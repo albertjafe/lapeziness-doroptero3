@@ -2176,7 +2176,7 @@
 <div class="view" id="view-pases">
   <button class="obras-chart-btn" onclick="openObrasChart()">
     <span>Evolución global de obras</span>
-    <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text3)">↗ gráfico</span>
+    <span style="font-size:12px;font-family:\'JetBrains Mono\',monospace;color:var(--text3)">↗ gráfico</span>
   </button>
   <div id="pasesList"></div>
 </div>
@@ -2188,7 +2188,7 @@
   <div id="estadoSection" style="margin-bottom:20px"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border2)">
     <div style="font-size:9px;color:var(--text3);letter-spacing:0.2em;text-transform:uppercase">Historial de sesiones</div>
-    <button class="add-manual-session-btn" onclick="openSesionManual()" style="padding:6px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.06em;cursor:pointer;transition:all 0.2s">+ añadir estudio</button>
+    <button class="add-manual-session-btn" onclick="openSesionManual()" style="padding:6px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:\'JetBrains Mono\',monospace;font-size:9px;letter-spacing:0.06em;cursor:pointer;transition:all 0.2s">+ añadir estudio</button>
   </div>
   <div id="sesionesHistorial"></div>
 </div>
@@ -2213,7 +2213,7 @@
     <div class="settings-section">Fuente</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
       <button class="theme-option font-option" data-font="mono" onclick="setFont('mono',this)" style="flex:1;min-width:80px">
-        <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text2);padding:4px 0">Aa</div>
+        <div style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--text2);padding:4px 0">Aa</div>
         <div class="theme-option-name">Mono</div>
       </button>
       <button class="theme-option font-option" data-font="serif" onclick="setFont('serif',this)" style="flex:1;min-width:80px">
@@ -2613,9 +2613,9 @@
 
     <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin:12px 0 6px">¿Cómo fue?</div>
     <div style="display:flex;gap:6px;margin-bottom:12px" id="manualTickRow">
-      <button class="tick-btn manual-tick hecho"   onclick="selectManualTick('hecho',this)"   style="flex:1;padding:7px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--green);font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all 0.2s">✓ Hecho</button>
-      <button class="tick-btn manual-tick parcial" onclick="selectManualTick('parcial',this)" style="flex:1;padding:7px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--orange);font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all 0.2s">≈ Parcial</button>
-      <button class="tick-btn manual-tick saltado" onclick="selectManualTick('saltado',this)" style="flex:1;padding:7px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--red);font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;transition:all 0.2s">✗ Saltado</button>
+      <button class="tick-btn manual-tick hecho"   onclick="selectManualTick('hecho',this)"   style="flex:1;padding:7px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--green);font-family:\'JetBrains Mono\',monospace;font-size:10px;cursor:pointer;transition:all 0.2s">✓ Hecho</button>
+      <button class="tick-btn manual-tick parcial" onclick="selectManualTick('parcial',this)" style="flex:1;padding:7px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--orange);font-family:\'JetBrains Mono\',monospace;font-size:10px;cursor:pointer;transition:all 0.2s">≈ Parcial</button>
+      <button class="tick-btn manual-tick saltado" onclick="selectManualTick('saltado',this)" style="flex:1;padding:7px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--red);font-family:\'JetBrains Mono\',monospace;font-size:10px;cursor:pointer;transition:all 0.2s">✗ Saltado</button>
     </div>
 
     <input class="modal-input" id="manualNota" type="text" placeholder="nota rápida (opcional)">
@@ -4203,10 +4203,10 @@ function renderTocHistSection() {
       const dur = a.endTs ? tocDurMin(a.startTs, a.endTs) : null;
       const pct = a.peakIntensity || 0;
       html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:7px 8px;background:var(--bg3);border-radius:6px;border-left:2px solid #c86e8860">'
-        + '<span style="font-size:10px;color:#e08898;font-family:'JetBrains Mono',monospace">' + tocFmt(a.startTs) + (a.endTs ? '–'+tocFmt(a.endTs) : '') + '</span>'
+        + '<span style="font-size:10px;color:#e08898;font-family:\'JetBrains Mono\',monospace">' + tocFmt(a.startTs) + (a.endTs ? '–'+tocFmt(a.endTs) : '') + '</span>'
         + (dur!==null ? '<span style="font-size:9px;color:var(--text3)">' + dur + 'min</span>' : '')
         + '<div style="flex:1;height:3px;background:var(--bg2);border-radius:2px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#8090e0,#c86e88);border-radius:2px"></div></div>'
-        + '<span style="font-size:10px;color:#e08898;font-family:'JetBrains Mono',monospace;min-width:30px;text-align:right">' + pct + '%</span>'
+        + '<span style="font-size:10px;color:#e08898;font-family:\'JetBrains Mono\',monospace;min-width:30px;text-align:right">' + pct + '%</span>'
         + '</div>';
       if (a.note) html += '<div style="font-size:9px;color:var(--text3);padding:0 8px;margin-bottom:6px">' + a.note + '</div>';
       if ((a.modificadores||[]).length) {
@@ -5938,7 +5938,7 @@ function renderObraCard(o, idx) {
                 <span class="scale-name">${labels[idx2]}</span>
                 <span class="scale-desc">${descs[idx2]}</span>
                 <span style="display:flex;align-items:baseline;gap:5px">
-                  <span style="font-size:15px;font-family:'JetBrains Mono',monospace;color:${baseColor}">${val}</span>
+                  <span style="font-size:15px;font-family:\'JetBrains Mono\',monospace;color:${baseColor}">${val}</span>
                   <span style="font-size:8px;padding:1px 6px;border-radius:8px;background:${baseColor}22;color:${baseColor};border:1px solid ${baseColor}44;white-space:nowrap">${stateLabel.label}</span>
                 </span>
               </div>
@@ -6540,7 +6540,7 @@ function renderMovimientoCard(obraId, mov) {
       <div class="scale-label-row">
         <span class="scale-name">${labels[i]}</span>
         <span style="display:flex;align-items:baseline;gap:4px;margin-left:auto">
-          <span id="${elId}" style="font-size:14px;font-family:'JetBrains Mono',monospace;color:${baseColor}">${val}</span>
+          <span id="${elId}" style="font-size:14px;font-family:\'JetBrains Mono\',monospace;color:${baseColor}">${val}</span>
           <span id="${elId}-lbl" style="font-size:8px;padding:1px 5px;border-radius:7px;background:${baseColor}22;color:${baseColor};border:1px solid ${baseColor}44;white-space:nowrap">${stLbl.label}</span>
         </span>
       </div>
@@ -7750,7 +7750,7 @@ function renderSesionesHistorial() {
       <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
         <div class="sesion-hist-date" style="margin-bottom:0">${label}${s.energia && s.energia !== 'manual' ? ' · ' + s.energia : ''}${s.energia === 'manual' ? ' <span style="font-size:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:1px 5px;color:var(--text3)">manual</span>' : ''}${s.rating != null ? ' <span style="font-size:8px;padding:1px 6px;border-radius:4px;margin-left:4px;background:' + solPctColor(s.rating) + '22;color:' + solPctColor(s.rating) + ';border:1px solid ' + solPctColor(s.rating) + '44">' + s.rating + '% sesión</span>' : ''}</div>
         <button onclick="deleteSession('${s.date}')"
-          style="background:none;border:none;color:var(--text3);font-size:10px;cursor:pointer;padding:0 2px;font-family:'JetBrains Mono',monospace"
+          style="background:none;border:none;color:var(--text3);font-size:10px;cursor:pointer;padding:0 2px;font-family:\'JetBrains Mono\',monospace"
           class="del-session-btn-inner">✕</button>
       </div>
       ${itemsHtml}
@@ -8093,10 +8093,10 @@ function renderPasajeRowGlobal(item, STATUS_LABEL, STATUS_COLOR, STATUS_BAR, sho
     </div>
     <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;margin-left:8px">
       <button onclick="openPasajeStats('${obra.id}','${p.id}')"
-        style="padding:5px 8px;background:transparent;border:1px solid var(--border2);border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:9px;cursor:pointer;color:${hasHistory ? 'var(--accent)' : 'var(--text3)'}"
+        style="padding:5px 8px;background:transparent;border:1px solid var(--border2);border-radius:6px;font-family:\'JetBrains Mono\',monospace;font-size:9px;cursor:pointer;color:${hasHistory ? 'var(--accent)' : 'var(--text3)'}"
         title="Ver estadísticas">↗ stats${hasHistory ? ' (' + (p.sesiones||[]).length + ')' : ''}</button>
       <button onclick="openPasajeScore('${obra.id}','${p.id}')"
-        style="padding:5px 8px;background:transparent;border:1px solid ${loggedToday ? 'var(--green)' : 'var(--border2)'};border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:9px;cursor:pointer;color:${loggedToday ? 'var(--green)' : 'var(--text3)'}">${logBtnTitle}</button>
+        style="padding:5px 8px;background:transparent;border:1px solid ${loggedToday ? 'var(--green)' : 'var(--border2)'};border-radius:6px;font-family:\'JetBrains Mono\',monospace;font-size:9px;cursor:pointer;color:${loggedToday ? 'var(--green)' : 'var(--text3)'}">${logBtnTitle}</button>
     </div>
   </div>`;
 }
@@ -8908,7 +8908,7 @@ function tocRenderList() {
       + (dur !== null ? '<span class="toc-attack-dur">' + dur + ' min</span>' : '')
       + '<div class="toc-intensity-bar"><div class="toc-intensity-fill" style="width:' + pct + '%"></div></div>'
       + '<span class="toc-attack-pct">' + pct + '%</span>'
-      + '<button class="toc-mod-btn" onclick="tocAddModificador('' + a.id + '')">+ mod</button>'
+      + '<button class="toc-mod-btn" onclick="tocAddModificador(\'' + a.id + '\')">+ mod</button>'
       + '</div>'
       + (a.note ? '<div style="font-size:9px;color:var(--text3);margin-top:4px">' + a.note + '</div>' : '')
       + modsHtml
