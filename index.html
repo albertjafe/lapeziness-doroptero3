@@ -1855,36 +1855,50 @@
   .toc-panel-title { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--text3); }
   .toc-start-btn { font-size:11px; padding:5px 12px; border-radius:6px; border:1px solid #c86e8844; background:#c86e8818; color:#e08898; cursor:pointer; font-family:inherit; transition:background 0.15s; user-select:none; -webkit-user-select:none; }
   .toc-start-btn:active { background:#c86e8830; }
-  .toc-start-btn.active { background:#c86e8830; border-color:#c86e8888; color:#f0a0b0; }
-  .toc-active-chip { display:flex; align-items:center; gap:8px; margin-top:10px; padding:8px 10px; background:#c86e8814; border:1px solid #c86e8844; border-radius:8px; }
+  .toc-active-chip { margin-top:10px; padding:8px 10px; background:#c86e8814; border:1px solid #c86e8844; border-radius:8px; }
+  .toc-chip-top { display:flex; align-items:center; gap:8px; }
   .toc-chip-dot { width:8px; height:8px; border-radius:50%; background:#e08898; animation:tocPulse 1.2s ease-in-out infinite; flex-shrink:0; }
   @keyframes tocPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
   .toc-chip-label { font-size:11px; color:#e08898; flex:1; }
-  .toc-chip-end { font-size:10px; padding:4px 10px; border-radius:5px; background:#c86e8820; border:1px solid #c86e8850; color:#f0a0b0; cursor:pointer; font-family:inherit; user-select:none; -webkit-user-select:none; }
-  .toc-list { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
-  .toc-attack-item { background:var(--bg3); border-radius:8px; padding:10px 12px; border-left:3px solid #c86e8860; }
-  .toc-attack-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-  .toc-attack-time { font-size:10px; color:#e08898; font-family:"JetBrains Mono",monospace; }
-  .toc-attack-dur { font-size:9px; color:var(--text3); }
-  .toc-intensity-bar { flex:1; height:3px; background:var(--bg2); border-radius:2px; overflow:hidden; min-width:40px; }
-  .toc-intensity-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,#8090e0,#c86e88); transition:width 0.3s; }
-  .toc-attack-pct { font-size:10px; color:#e08898; font-family:"JetBrains Mono",monospace; min-width:28px; text-align:right; }
-  .toc-mod-btn { font-size:9px; padding:2px 7px; border-radius:4px; background:var(--bg2); border:1px solid var(--border2); color:var(--text3); cursor:pointer; font-family:inherit; }
-  .toc-mod-btn:active { background:var(--bg3); }
-  .toc-mod-list { margin-top:6px; display:flex; flex-direction:column; gap:3px; }
-  .toc-mod-entry { display:flex; align-items:center; gap:6px; font-size:9px; color:var(--text3); }
-  .toc-mod-time { color:#e08898; font-family:"JetBrains Mono",monospace; }
-  .toc-end-form { margin-top:10px; padding:10px; background:var(--bg3); border-radius:8px; display:none; }
-  .toc-end-form.visible { display:block; }
-  .toc-end-label { font-size:9px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:6px; }
-  .toc-intensity-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .toc-chip-actions { display:flex; gap:6px; margin-top:8px; }
+  .toc-chip-btn { flex:1; font-size:11px; padding:6px 8px; border-radius:6px; border:1px solid #c86e8850; background:#c86e8820; color:#f0a0b0; cursor:pointer; font-family:inherit; text-align:center; user-select:none; -webkit-user-select:none; }
+  .toc-chip-btn.end { background:#c86e8835; border-color:#c86e8880; font-weight:600; }
+  /* Medición inline form */
+  .toc-medicion-form { margin-top:8px; padding:8px 10px; background:#1a1018; border-radius:6px; display:none; }
+  .toc-medicion-form.visible { display:block; }
+  .toc-medicion-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
   .toc-int-slider { flex:1; height:5px; -webkit-appearance:none; appearance:none; outline:none; border:none; border-radius:2.5px; background:var(--bg2); cursor:pointer; }
-  .toc-int-slider::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:#c86e88; cursor:pointer; border:2px solid var(--bg); }
-  .toc-int-val { font-size:12px; font-family:"JetBrains Mono",monospace; color:#e08898; min-width:30px; text-align:right; }
-  .toc-end-note { width:100%; background:var(--bg2); border:1px solid var(--border2); border-radius:6px; padding:7px 10px; color:var(--text2); font-family:"JetBrains Mono",monospace; font-size:11px; box-sizing:border-box; resize:none; height:48px; margin-bottom:8px; }
-  .toc-end-actions { display:flex; gap:8px; }
-  .toc-end-confirm { flex:1; padding:8px; background:#c86e8830; border:1px solid #c86e8860; border-radius:6px; color:#f0a0b0; font-family:inherit; font-size:13px; cursor:pointer; }
-  .toc-end-cancel { padding:8px 14px; background:var(--bg2); border:1px solid var(--border2); border-radius:6px; color:var(--text3); font-family:inherit; font-size:13px; cursor:pointer; }
+  .toc-int-slider::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:#c86e88; cursor:pointer; border:2px solid var(--bg); }
+  .toc-int-val { font-size:13px; font-family:"JetBrains Mono",monospace; color:#e08898; min-width:34px; text-align:right; }
+  .toc-medicion-note { width:100%; background:var(--bg2); border:1px solid var(--border2); border-radius:5px; padding:5px 8px; color:var(--text2); font-family:"JetBrains Mono",monospace; font-size:11px; box-sizing:border-box; margin-bottom:6px; }
+  .toc-medicion-actions { display:flex; gap:6px; }
+  .toc-medicion-confirm { flex:1; padding:7px; background:#c86e8830; border:1px solid #c86e8860; border-radius:5px; color:#f0a0b0; font-family:inherit; font-size:12px; cursor:pointer; }
+  .toc-medicion-cancel { padding:7px 12px; background:var(--bg2); border:1px solid var(--border2); border-radius:5px; color:var(--text3); font-family:inherit; font-size:12px; cursor:pointer; }
+  /* End form */
+  .toc-fin-form { margin-top:8px; padding:8px 10px; background:#1a1018; border-radius:6px; display:none; }
+  .toc-fin-form.visible { display:block; }
+  .toc-fin-label { font-size:9px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:4px; }
+  .toc-fin-note { width:100%; background:var(--bg2); border:1px solid var(--border2); border-radius:5px; padding:5px 8px; color:var(--text2); font-family:"JetBrains Mono",monospace; font-size:11px; box-sizing:border-box; margin-bottom:6px; }
+  .toc-fin-actions { display:flex; gap:6px; }
+  .toc-fin-confirm { flex:1; padding:8px; background:#c86e8835; border:1px solid #c86e8880; border-radius:5px; color:#f0a0b0; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  .toc-fin-cancel { padding:8px 12px; background:var(--bg2); border:1px solid var(--border2); border-radius:5px; color:var(--text3); font-family:inherit; font-size:12px; cursor:pointer; }
+  /* Attack list */
+  .toc-list { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+  .toc-attack-item { background:var(--bg3); border-radius:8px; padding:9px 11px; border-left:3px solid #c86e8860; }
+  .toc-attack-row { display:flex; align-items:center; gap:7px; }
+  .toc-attack-time { font-size:10px; color:#e08898; font-family:"JetBrains Mono",monospace; white-space:nowrap; }
+  .toc-attack-dur { font-size:9px; color:var(--text3); white-space:nowrap; }
+  .toc-intensity-bar { flex:1; height:3px; background:var(--bg2); border-radius:2px; overflow:hidden; min-width:30px; }
+  .toc-intensity-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,#8090e0,#c86e88); }
+  .toc-attack-pct { font-size:10px; color:#e08898; font-family:"JetBrains Mono",monospace; min-width:28px; text-align:right; }
+  /* Timeline of mediciones */
+  .toc-timeline { margin-top:6px; padding-top:6px; border-top:1px solid var(--border2); display:flex; flex-direction:column; gap:3px; }
+  .toc-tl-entry { display:flex; align-items:center; gap:7px; font-size:9px; }
+  .toc-tl-time { color:#e08898aa; font-family:"JetBrains Mono",monospace; min-width:38px; }
+  .toc-tl-bar { flex:1; height:3px; background:var(--bg2); border-radius:2px; overflow:hidden; }
+  .toc-tl-fill { height:100%; background:linear-gradient(90deg,#8090e0,#c86e88); border-radius:2px; }
+  .toc-tl-pct { color:#e08898; font-family:"JetBrains Mono",monospace; min-width:28px; text-align:right; }
+  .toc-tl-note { color:var(--text3); font-style:italic; }
 
   /* ── TOC HISTORIAL VIEW ──────────────────────────────────────────────────── */
   .toc-hist-card { background:var(--bg2); border-radius:10px; padding:14px; margin-bottom:12px; }
@@ -2047,27 +2061,44 @@
         <span class="toc-panel-title">🔴 Ataques de TOC</span>
         <button class="toc-start-btn" id="tocStartBtn" onclick="tocStartAttack()">+ Iniciar ataque</button>
       </div>
-      <!-- Active attack chip (shown while attack is ongoing) -->
+
+      <!-- Chip: ataque en curso -->
       <div class="toc-active-chip" id="tocActiveChip" style="display:none">
-        <div class="toc-chip-dot"></div>
-        <span class="toc-chip-label" id="tocChipLabel">Ataque en curso · --:--</span>
-        <button class="toc-chip-end" onclick="tocShowEndForm()">Registrar fin</button>
-      </div>
-      <!-- End-attack form -->
-      <div class="toc-end-form" id="tocEndForm">
-        <div class="toc-end-label">Intensidad pico del ataque</div>
-        <div class="toc-intensity-row">
-          <input type="range" class="toc-int-slider" id="tocIntSlider" min="10" max="100" step="5" value="60"
-            oninput="document.getElementById('tocIntVal').textContent=this.value+'%'">
-          <span class="toc-int-val" id="tocIntVal">60%</span>
+        <div class="toc-chip-top">
+          <div class="toc-chip-dot"></div>
+          <span class="toc-chip-label" id="tocChipLabel">Ataque en curso · --:--</span>
         </div>
-        <textarea class="toc-end-note" id="tocEndNote" placeholder="nota opcional (situación, desencadenante...)"></textarea>
-        <div class="toc-end-actions">
-          <button class="toc-end-cancel" onclick="tocCancelEnd()">Cancelar</button>
-          <button class="toc-end-confirm" onclick="tocConfirmEnd()">Guardar fin</button>
+        <div class="toc-chip-actions">
+          <button class="toc-chip-btn" onclick="tocShowMedicionForm()">+ Medición ahora</button>
+          <button class="toc-chip-btn end" onclick="tocShowFinForm()">✓ Fin del ataque</button>
+        </div>
+
+        <!-- Formulario: medición de intensidad en este momento -->
+        <div class="toc-medicion-form" id="tocMedicionForm">
+          <div class="toc-medicion-row">
+            <input type="range" class="toc-int-slider" id="tocMedSlider" min="5" max="100" step="5" value="60"
+              oninput="document.getElementById('tocMedVal').textContent=this.value+'%'">
+            <span class="toc-int-val" id="tocMedVal">60%</span>
+          </div>
+          <input class="toc-medicion-note" id="tocMedNote" type="text" placeholder="nota opcional...">
+          <div class="toc-medicion-actions">
+            <button class="toc-medicion-cancel" onclick="tocCancelMedicion()">Cancelar</button>
+            <button class="toc-medicion-confirm" onclick="tocConfirmMedicion()">Guardar medición</button>
+          </div>
+        </div>
+
+        <!-- Formulario: registrar fin real del ataque -->
+        <div class="toc-fin-form" id="tocFinForm">
+          <div class="toc-fin-label">La ansiedad ha desaparecido</div>
+          <input class="toc-fin-note" id="tocFinNote" type="text" placeholder="nota final opcional...">
+          <div class="toc-fin-actions">
+            <button class="toc-fin-cancel" onclick="tocCancelFin()">Cancelar</button>
+            <button class="toc-fin-confirm" onclick="tocConfirmFin()">Registrar fin</button>
+          </div>
         </div>
       </div>
-      <!-- List of today's attacks -->
+
+      <!-- Lista de ataques de hoy -->
       <div class="toc-list" id="tocList"></div>
     </div>
   </div>
@@ -4203,15 +4234,15 @@ function renderTocHistSection() {
       const dur = a.endTs ? tocDurMin(a.startTs, a.endTs) : null;
       const pct = a.peakIntensity || 0;
       html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:7px 8px;background:var(--bg3);border-radius:6px;border-left:2px solid #c86e8860">'
-        + '<span style="font-size:10px;color:#e08898;font-family:\'JetBrains Mono\',monospace">' + tocFmt(a.startTs) + (a.endTs ? '–'+tocFmt(a.endTs) : '') + '</span>'
+        + '<span style="font-size:10px;color:#e08898;font-family:\'JetBrains Mono\',monospace">' + tocFmt(a.startTs) + (a.endTs ? ' → '+tocFmt(a.endTs) : ' → …') + '</span>'
         + (dur!==null ? '<span style="font-size:9px;color:var(--text3)">' + dur + 'min</span>' : '')
         + '<div style="flex:1;height:3px;background:var(--bg2);border-radius:2px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#8090e0,#c86e88);border-radius:2px"></div></div>'
         + '<span style="font-size:10px;color:#e08898;font-family:\'JetBrains Mono\',monospace;min-width:30px;text-align:right">' + pct + '%</span>'
         + '</div>';
       if (a.note) html += '<div style="font-size:9px;color:var(--text3);padding:0 8px;margin-bottom:6px">' + a.note + '</div>';
-      if ((a.modificadores||[]).length) {
+      if ((a.mediciones||[]).length) {
         html += '<div style="padding:0 8px;margin-bottom:6px">'
-          + a.modificadores.map(m => '<div style="font-size:9px;color:var(--text3);display:flex;gap:6px"><span style="color:#e08898aa">' + tocFmt(m.ts) + '</span><span>→ ' + m.intensidad + '%</span>' + (m.nota?'<span>· '+m.nota+'</span>':'') + '</div>').join('')
+          + a.mediciones.map(m => '<div style="font-size:9px;color:var(--text3);display:flex;gap:6px"><span style="color:#e08898aa">' + tocFmt(m.ts) + '</span><span>→ ' + m.intensidad + '%</span>' + (m.nota?'<span>· '+m.nota+'</span>':'') + '</div>').join('')
           + '</div>';
       }
     });
@@ -8786,72 +8817,114 @@ function addRipple(el, e) {
 // iOS Safari kills JS when app goes to background. Save everything on hide.
 
 // ── TOC ATTACK TRACKER ───────────────────────────────────────────────────────
+// Flujo:
+//   1. "Iniciar ataque"  → registra startTs, muestra chip activo
+//   2. "+ Medición ahora" → en cualquier momento, guarda {ts, intensidad, nota}
+//      Se puede repetir N veces — construye la curva real del ataque
+//   3. "✓ Fin del ataque" → registra endTs, nota final
+//      El pico se calcula automáticamente como max de todas las mediciones
 
-let _tocActiveAttack = null; // { id, startTime, startTs }
+let _tocActiveAttack = null; // { id, startTs }
 let _tocTickInterval = null;
 
 function tocFmt(ts) {
-  const d = new Date(ts);
-  return d.toTimeString().slice(0,5);
+  return new Date(ts).toTimeString().slice(0, 5);
 }
-
 function tocDurMin(startTs, endTs) {
   return Math.round((endTs - startTs) / 60000);
 }
 
+// ── Iniciar ──────────────────────────────────────────────────────────────────
 function tocStartAttack() {
-  if (_tocActiveAttack) { tocShowEndForm(); return; }
+  if (_tocActiveAttack) return; // ya hay uno activo
   const now = Date.now();
   _tocActiveAttack = { id: 'toc_' + now, startTs: now };
 
-  // Show chip
-  const chip = document.getElementById('tocActiveChip');
-  if (chip) chip.style.display = 'flex';
-  const btn = document.getElementById('tocStartBtn');
-  if (btn) { btn.textContent = 'Registrar fin'; btn.classList.add('active'); }
+  document.getElementById('tocActiveChip').style.display = 'block';
+  document.getElementById('tocStartBtn').textContent = 'Ataque en curso…';
+  document.getElementById('tocStartBtn').disabled = true;
 
-  // Tick the elapsed time every 30s
   _tocTickInterval = setInterval(_tocUpdateChip, 30000);
   _tocUpdateChip();
-
-  // Save draft immediately
   saveDraft();
 }
 
 function _tocUpdateChip() {
   if (!_tocActiveAttack) return;
-  const el = document.getElementById('tocChipLabel');
-  if (!el) return;
   const elapsed = tocDurMin(_tocActiveAttack.startTs, Date.now());
-  el.textContent = 'Ataque en curso · ' + tocFmt(_tocActiveAttack.startTs) + ' · ' + elapsed + 'min';
+  const el = document.getElementById('tocChipLabel');
+  if (el) el.textContent = 'Ataque en curso · desde ' + tocFmt(_tocActiveAttack.startTs) + ' · ' + elapsed + 'min';
 }
 
-function tocShowEndForm() {
-  const form = document.getElementById('tocEndForm');
-  if (form) form.classList.add('visible');
-  const note = document.getElementById('tocEndNote');
-  if (note) { note.value = ''; note.focus(); }
+// ── Medición ─────────────────────────────────────────────────────────────────
+function tocShowMedicionForm() {
+  document.getElementById('tocFinForm').classList.remove('visible');
+  const f = document.getElementById('tocMedicionForm');
+  f.classList.toggle('visible');
+  if (f.classList.contains('visible')) {
+    document.getElementById('tocMedSlider').value = 60;
+    document.getElementById('tocMedVal').textContent = '60%';
+    document.getElementById('tocMedNote').value = '';
+  }
+}
+function tocCancelMedicion() {
+  document.getElementById('tocMedicionForm').classList.remove('visible');
+}
+function tocConfirmMedicion() {
+  if (!_tocActiveAttack) return;
+  const intensidad = parseInt(document.getElementById('tocMedSlider').value) || 60;
+  const nota = (document.getElementById('tocMedNote').value || '').trim();
+
+  // Store in active attack's mediciones array
+  if (!_tocActiveAttack.mediciones) _tocActiveAttack.mediciones = [];
+  _tocActiveAttack.mediciones.push({ ts: Date.now(), intensidad, nota });
+
+  document.getElementById('tocMedicionForm').classList.remove('visible');
+  // Show a quick confirmation in the chip
+  _tocUpdateChipMediciones();
+  saveDraft();
+  showToast('Medición guardada · ' + intensidad + '%');
 }
 
-function tocCancelEnd() {
-  const form = document.getElementById('tocEndForm');
-  if (form) form.classList.remove('visible');
+function _tocUpdateChipMediciones() {
+  if (!_tocActiveAttack || !_tocActiveAttack.mediciones) return;
+  const meds = _tocActiveAttack.mediciones;
+  const last = meds[meds.length - 1];
+  const peak = Math.max(...meds.map(m => m.intensidad));
+  const el = document.getElementById('tocChipLabel');
+  if (el) {
+    const elapsed = tocDurMin(_tocActiveAttack.startTs, Date.now());
+    el.textContent = 'Ataque · ' + elapsed + 'min · ahora ' + last.intensidad + '% · pico ' + peak + '%';
+  }
 }
 
-function tocConfirmEnd() {
+// ── Fin ──────────────────────────────────────────────────────────────────────
+function tocShowFinForm() {
+  document.getElementById('tocMedicionForm').classList.remove('visible');
+  const f = document.getElementById('tocFinForm');
+  f.classList.toggle('visible');
+  if (f.classList.contains('visible')) {
+    document.getElementById('tocFinNote').value = '';
+  }
+}
+function tocCancelFin() {
+  document.getElementById('tocFinForm').classList.remove('visible');
+}
+function tocConfirmFin() {
   if (!_tocActiveAttack) return;
   const endTs = Date.now();
-  const intensity = parseInt(document.getElementById('tocIntSlider').value) || 60;
-  const note = (document.getElementById('tocEndNote').value || '').trim();
+  const nota  = (document.getElementById('tocFinNote').value || '').trim();
+  const meds  = _tocActiveAttack.mediciones || [];
+  const peak  = meds.length ? Math.max(...meds.map(m => m.intensidad)) : null;
 
   const attack = {
-    id: _tocActiveAttack.id,
-    date: new Date().toDateString(),
-    startTs: _tocActiveAttack.startTs,
-    endTs: endTs,
-    peakIntensity: intensity,
-    note: note,
-    modificadores: [] // [{ts, intensidad, nota}]
+    id:           _tocActiveAttack.id,
+    date:         new Date().toDateString(),
+    startTs:      _tocActiveAttack.startTs,
+    endTs,
+    peakIntensity: peak,   // auto-calculated from mediciones
+    notaFinal:    nota,
+    mediciones:   meds,    // [{ts, intensidad, nota}]
   };
 
   if (!db.tocAtaques) db.tocAtaques = [];
@@ -8864,68 +8937,77 @@ function tocConfirmEnd() {
   clearInterval(_tocTickInterval);
   _tocTickInterval = null;
   document.getElementById('tocActiveChip').style.display = 'none';
-  document.getElementById('tocEndForm').classList.remove('visible');
+  document.getElementById('tocMedicionForm').classList.remove('visible');
+  document.getElementById('tocFinForm').classList.remove('visible');
   const btn = document.getElementById('tocStartBtn');
-  if (btn) { btn.textContent = '+ Iniciar ataque'; btn.classList.remove('active'); }
+  btn.textContent = '+ Iniciar ataque';
+  btn.disabled = false;
 
   tocRenderList();
-  showToast('Ataque registrado (' + tocDurMin(attack.startTs, endTs) + ' min)');
+  const dur = tocDurMin(attack.startTs, endTs);
+  showToast('Ataque registrado · ' + dur + 'min' + (peak ? ' · pico ' + peak + '%' : ''));
 }
 
-function tocAddModificador(attackId) {
-  const attack = (db.tocAtaques || []).find(a => a.id === attackId);
-  if (!attack) return;
-  const pct = parseInt(prompt('Intensidad actual (0-100%):', '40') || '');
-  if (isNaN(pct) || pct < 0 || pct > 100) return;
-  const nota = (prompt('Nota (opcional):', '') || '').trim();
-  if (!attack.modificadores) attack.modificadores = [];
-  attack.modificadores.push({ ts: Date.now(), intensidad: pct, nota });
-  saveData();
-  tocRenderList();
-}
-
+// ── Render lista de hoy ───────────────────────────────────────────────────────
 function tocRenderList() {
   const el = document.getElementById('tocList');
   if (!el) return;
   const today = new Date().toDateString();
-  const hoyAtaques = (db.tocAtaques || []).filter(a => a.date === today);
+  const hoy = (db.tocAtaques || []).filter(a => a.date === today);
 
-  if (!hoyAtaques.length) {
-    el.innerHTML = '<div style="font-size:10px;color:var(--text3);text-align:center;padding:10px 0;display:' + (_tocActiveAttack ? 'none' : 'block') + '">Sin ataques registrados hoy</div>';
+  if (!hoy.length) {
+    el.innerHTML = _tocActiveAttack
+      ? ''
+      : '<div style="font-size:10px;color:var(--text3);text-align:center;padding:10px 0">Sin ataques registrados hoy</div>';
     return;
   }
 
-  el.innerHTML = hoyAtaques.map(a => {
-    const dur = a.endTs ? tocDurMin(a.startTs, a.endTs) : null;
-    const pct = a.peakIntensity || 0;
-    const mods = (a.modificadores || []);
-    const modsHtml = mods.length ? '<div class="toc-mod-list">'
-      + mods.map(m => '<div class="toc-mod-entry"><span class="toc-mod-time">' + tocFmt(m.ts) + '</span><span>→ ' + m.intensidad + '%</span>' + (m.nota ? '<span style="color:var(--text3)">· ' + m.nota + '</span>' : '') + '</div>').join('')
-      + '</div>' : '';
+  el.innerHTML = hoy.map(a => {
+    const dur  = a.endTs ? tocDurMin(a.startTs, a.endTs) : null;
+    const peak = a.peakIntensity;
+    const meds = a.mediciones || [];
+
+    // Timeline de mediciones
+    const timelineHtml = meds.length
+      ? '<div class="toc-timeline">'
+        + meds.map(m =>
+            '<div class="toc-tl-entry">'
+            + '<span class="toc-tl-time">' + tocFmt(m.ts) + '</span>'
+            + '<div class="toc-tl-bar"><div class="toc-tl-fill" style="width:' + m.intensidad + '%"></div></div>'
+            + '<span class="toc-tl-pct">' + m.intensidad + '%</span>'
+            + (m.nota ? '<span class="toc-tl-note">' + m.nota + '</span>' : '')
+            + '</div>'
+          ).join('')
+        + (a.notaFinal ? '<div style="font-size:9px;color:var(--text3);margin-top:4px;font-style:italic">Fin: ' + a.notaFinal + '</div>' : '')
+        + '</div>'
+      : (a.notaFinal ? '<div style="font-size:9px;color:var(--text3);margin-top:4px">' + a.notaFinal + '</div>' : '');
+
     return '<div class="toc-attack-item">'
       + '<div class="toc-attack-row">'
-      + '<span class="toc-attack-time">' + tocFmt(a.startTs) + (a.endTs ? ' → ' + tocFmt(a.endTs) : ' →  …') + '</span>'
-      + (dur !== null ? '<span class="toc-attack-dur">' + dur + ' min</span>' : '')
-      + '<div class="toc-intensity-bar"><div class="toc-intensity-fill" style="width:' + pct + '%"></div></div>'
-      + '<span class="toc-attack-pct">' + pct + '%</span>'
-      + '<button class="toc-mod-btn" onclick="tocAddModificador(\'' + a.id + '\')">+ mod</button>'
+      + '<span class="toc-attack-time">' + tocFmt(a.startTs) + (a.endTs ? ' → ' + tocFmt(a.endTs) : ' → …') + '</span>'
+      + (dur !== null ? '<span class="toc-attack-dur">' + dur + 'min</span>' : '<span class="toc-attack-dur">en curso</span>')
+      + '<div class="toc-intensity-bar"><div class="toc-intensity-fill" style="width:' + (peak || 0) + '%"></div></div>'
+      + (peak !== null ? '<span class="toc-attack-pct">↑' + peak + '%</span>' : '<span class="toc-attack-pct">—</span>')
       + '</div>'
-      + (a.note ? '<div style="font-size:9px;color:var(--text3);margin-top:4px">' + a.note + '</div>' : '')
-      + modsHtml
+      + timelineHtml
       + '</div>';
   }).join('');
 }
 
-// Restore active attack from draft on page load
+// ── Restaurar desde draft (si la app se cerró con ataque activo) ──────────────
 function tocRestoreFromDraft(draft) {
-  if (draft && draft.tocActive) {
+  if (draft && draft.tocActive && draft.tocActive.startTs) {
     _tocActiveAttack = draft.tocActive;
-    const chip = document.getElementById('tocActiveChip');
-    if (chip) chip.style.display = 'flex';
+    document.getElementById('tocActiveChip').style.display = 'block';
     const btn = document.getElementById('tocStartBtn');
-    if (btn) { btn.textContent = 'Registrar fin'; btn.classList.add('active'); }
+    btn.textContent = 'Ataque en curso…';
+    btn.disabled = true;
     _tocTickInterval = setInterval(_tocUpdateChip, 30000);
-    _tocUpdateChip();
+    if (_tocActiveAttack.mediciones && _tocActiveAttack.mediciones.length) {
+      _tocUpdateChipMediciones();
+    } else {
+      _tocUpdateChip();
+    }
   }
   tocRenderList();
 }
