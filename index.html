@@ -41,6 +41,8 @@
     .estado-val { width: 24px; }
     .header-title { font-size: 18px; }
     .session-hero-title { font-size: 36px; }
+    /* Historial grid: single column on mobile */
+    #view-historial > div:first-child { grid-template-columns: 1fr !important; }
   }
 
   /* FUENTE CONFIGURABLE */
@@ -2214,12 +2216,15 @@
 
 
 <div class="view" id="view-historial">
-  <div id="tocHistSection" style="margin-bottom:20px"></div>
+  <!-- Grid top: estado + TOC lado a lado en pantallas anchas -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+    <div id="estadoSection"></div>
+    <div id="tocHistSection"></div>
+  </div>
   <div id="eficienciaSection" style="margin-bottom:20px"></div>
-  <div id="estadoSection" style="margin-bottom:20px"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border2)">
     <div style="font-size:9px;color:var(--text3);letter-spacing:0.2em;text-transform:uppercase">Historial de sesiones</div>
-    <button class="add-manual-session-btn" onclick="openSesionManual()" style="padding:6px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:\'JetBrains Mono\',monospace;font-size:9px;letter-spacing:0.06em;cursor:pointer;transition:all 0.2s">+ añadir estudio</button>
+    <button class="add-manual-session-btn" onclick="openSesionManual()" style="padding:6px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.06em;cursor:pointer;transition:all 0.2s">+ añadir estudio</button>
   </div>
   <div id="sesionesHistorial"></div>
 </div>
@@ -4238,6 +4243,7 @@ function renderTocHistSection() {
         + (dur!==null ? '<span style="font-size:9px;color:var(--text3)">' + dur + 'min</span>' : '')
         + '<div style="flex:1;height:3px;background:var(--bg2);border-radius:2px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#8090e0,#c86e88);border-radius:2px"></div></div>'
         + '<span style="font-size:10px;color:#e08898;font-family:\'JetBrains Mono\',monospace;min-width:30px;text-align:right">' + pct + '%</span>'
+        + '<button onclick="tocDeleteAtaque(\'' + a.id + '\')" title="Eliminar" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:0 2px;line-height:1;opacity:0.6;flex-shrink:0" onmouseover="this.style.color=\'#c86e88\'" onmouseout="this.style.color=\'var(--text3)\'">✕</button>'
         + '</div>';
       if (a.note) html += '<div style="font-size:9px;color:var(--text3);padding:0 8px;margin-bottom:6px">' + a.note + '</div>';
       if ((a.mediciones||[]).length) {
@@ -8836,7 +8842,7 @@ function tocDurMin(startTs, endTs) {
 
 // ── Iniciar ──────────────────────────────────────────────────────────────────
 function tocStartAttack() {
-  if (_tocActiveAttack) return; // ya hay uno activo
+  if (_tocActiveAttack) return;
   const now = Date.now();
   _tocActiveAttack = { id: 'toc_' + now, startTs: now };
 
@@ -8847,6 +8853,9 @@ function tocStartAttack() {
   _tocTickInterval = setInterval(_tocUpdateChip, 30000);
   _tocUpdateChip();
   saveDraft();
+  // Low warning tone — something is starting
+  playTone(196, 'triangle', 0.6, 0.12, 0);
+  setTimeout(() => playTone(185, 'triangle', 0.5, 0.10, 0), 120);
 }
 
 function _tocUpdateChip() {
@@ -8946,6 +8955,19 @@ function tocConfirmFin() {
   tocRenderList();
   const dur = tocDurMin(attack.startTs, endTs);
   showToast('Ataque registrado · ' + dur + 'min' + (peak ? ' · pico ' + peak + '%' : ''));
+  // Resolved gentle tone — attack is over
+  playTone(392, 'triangle', 0.4, 0.09, 0);
+  setTimeout(() => playTone(494, 'triangle', 0.45, 0.09, 0), 120);
+  setTimeout(() => playTone(523, 'triangle', 0.5, 0.10, 0), 240);
+}
+
+function tocDeleteAtaque(id) {
+  if (!confirm('¿Eliminar este ataque registrado?')) return;
+  db.tocAtaques = (db.tocAtaques || []).filter(a => a.id !== id);
+  saveData();
+  renderTocHistSection();
+  if (typeof SFX !== 'undefined') SFX.del();
+  showToast('Ataque eliminado');
 }
 
 // ── Render lista de hoy ───────────────────────────────────────────────────────
