@@ -1684,6 +1684,47 @@
   .botanical-deco.left  { left: 0; }
   .botanical-deco.right { right: 0; transform: scaleX(-1); }
   [data-theme="cozy"] .botanical-deco { opacity: 0.12; }
+  /* ── TEMA BRUMA ─────────────────────────────────────────────────────────── */
+  /* Azul pizarra suave · salvia · cobre antiguo · mañana de niebla           */
+  [data-theme="bruma"] {
+    --bg:      #edf0f2; /* pizarra muy claro, casi blanco azulado */
+    --bg2:     #dde3e8; /* azul gris suave */
+    --bg3:     #cdd6dd; /* pizarra medio */
+    --accent:  #4a7068; /* salvia oscuro — como cobre patinado */
+    --accent2: #6a9a8a;
+    --text:    #1a2a28; /* casi negro con tinte verde */
+    --text2:   #3a5250;
+    --text3:   #7a9896;
+    --green:   #4a7a5a;
+    --orange:  #b07040;
+    --red:     #a05050;
+    --border:  rgba(74,112,104,0.22);
+    --border2: rgba(74,112,104,0.11);
+    --cozy-radius: 20px; --cozy-radius-sm: 12px;
+  }
+  /* Forma visual propia: bordes más suaves que cozy, tipografía Cormorant (sin Caveat) */
+  [data-theme="bruma"] .card { border-radius: var(--cozy-radius) !important; }
+  [data-theme="bruma"] .obra-card { border-radius: var(--cozy-radius) !important; }
+  [data-theme="bruma"] .modal { border-radius: 20px !important; }
+  [data-theme="bruma"] .session-hero { border-radius: 20px !important; border: 1px solid var(--border); }
+  [data-theme="bruma"] .plan-item { border-radius: 12px !important; border-left: 3px solid var(--accent); }
+  [data-theme="bruma"] .generate-btn { border-radius: 12px !important; }
+  [data-theme="bruma"] .save-session-btn { border-radius: 12px !important; }
+  [data-theme="bruma"] .nav-btn { border-radius: 8px !important; }
+  [data-theme="bruma"] .nav-btn.active { background: var(--bg3) !important; }
+  [data-theme="bruma"] .nav { background: var(--bg2); }
+  [data-theme="bruma"] .header { border-bottom: 1px solid var(--border); background: var(--bg); }
+  [data-theme="bruma"] .topbar { background: var(--bg); }
+  [data-theme="bruma"] .header-title { font-size: 20px !important; letter-spacing: 0.01em; }
+  [data-theme="bruma"] .modal-btn { border-radius: 10px !important; }
+  [data-theme="bruma"] .sesion-hist-item { border-radius: 12px !important; border: 1px solid var(--border2); padding: 12px; margin-bottom: 10px; background: var(--bg2); }
+  [data-theme="bruma"] .obra-card { border: 1px solid var(--border2); }
+  [data-theme="bruma"] .evento-card { border-radius: 18px !important; }
+  [data-theme="bruma"] .botanical-deco { opacity: 0.07; filter: hue-rotate(140deg) saturate(0.5); }
+  /* Textura sutil: líneas finas diagonales como papel de acuarela */
+  [data-theme="bruma"] body {
+    background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%234a7068' fill-opacity='0.025'%3E%3Cpath d='M0 40L40 0H30L0 30V40zm40 0V30L10 0H0l40 40z'/%3E%3C/g%3E%3C/svg%3E");
+  }
 
   /* ── ANIMATIONS ─────────────────────────────────────────── */
 
@@ -2243,6 +2284,10 @@
       <div class="theme-option" data-theme="cozy" onclick="setTheme('cozy',this)">
         <div class="theme-swatch" style="background:linear-gradient(135deg,#fdf6ee 50%,#9b6a3a 100%)"></div>
         <div class="theme-option-name">☕ Cozy</div>
+      </div>
+      <div class="theme-option" data-theme="bruma" onclick="setTheme('bruma',this)">
+        <div class="theme-swatch" style="background:linear-gradient(135deg,#edf0f2 50%,#4a7068 100%)"></div>
+        <div class="theme-option-name">🌿 Bruma</div>
       </div>
     </div>
 
