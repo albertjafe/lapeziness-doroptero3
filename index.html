@@ -12,19 +12,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  /* AUTH SCREEN */
-  #authScreen { position:fixed;inset:0;z-index:9999;background:#1a1612;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:32px; }
-  .auth-card { width:100%;max-width:340px;background:#211e1a;border:1px solid #3d3530;border-radius:14px;padding:28px 24px; }
-  .auth-title { font-family:"Cormorant Garamond",serif;font-size:28px;font-weight:300;color:#c9a96e;margin-bottom:4px;text-align:center; }
-  .auth-sub { font-size:9px;color:#7a6f66;letter-spacing:0.15em;text-transform:uppercase;text-align:center;margin-bottom:24px; }
-  .auth-input { width:100%;background:#2a2520;border:1px solid #4a4540;border-radius:8px;padding:12px 14px;color:#e8ddd0;font-family:"JetBrains Mono",monospace;font-size:14px;margin-bottom:10px;box-sizing:border-box;outline:none;transition:border-color 0.2s; }
-  .auth-input:focus { border-color:#c9a96e; }
-  .auth-btn { width:100%;padding:13px;background:#c9a96e;color:#1a1612;border:none;border-radius:8px;font-family:"Cormorant Garamond",serif;font-size:20px;cursor:pointer;margin-top:6px;transition:opacity 0.2s;user-select:none;-webkit-user-select:none; }
-  .auth-btn:hover { opacity:0.85; }
-  .auth-btn:disabled { opacity:0.45;cursor:default; }
-  .auth-toggle { text-align:center;margin-top:14px;font-size:10px;color:#7a6f66;cursor:pointer;text-decoration:underline;user-select:none;-webkit-user-select:none; }
-  .auth-error { font-size:10px;color:#c96e6e;text-align:center;margin-top:8px;min-height:16px; }
-  .auth-status { font-size:9px;color:#7a6f66;text-align:center;margin-top:8px;min-height:14px; }
   /* SYNC INDICATOR */
   #syncIndicator { position:fixed;top:calc(env(safe-area-inset-top,0px) + 6px);left:50%;transform:translateX(-50%);font-size:9px;color:var(--text2);letter-spacing:0.05em;opacity:0;transition:opacity 0.4s;pointer-events:none;z-index:9999;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:4px 12px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.3); }
   #syncIndicator.visible { opacity:1; }
@@ -303,12 +290,17 @@
   .estado-row { display: flex; align-items: center; gap: 8px; }
   .estado-icon { font-size: 15px; width: 22px; flex-shrink: 0; text-align: center; }
   .estado-label { font-size: 8px; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; width: 70px; flex-shrink: 0; }
-  .estado-slider { flex: 1; height: 5px; border-radius: 2.5px; cursor: pointer; -webkit-appearance: none; appearance: none; outline: none; border: none; background: var(--bg2); }
+  .estado-slider {
+    flex: 1; height: 5px; border-radius: 2.5px; cursor: pointer;
+    -webkit-appearance: none; appearance: none; outline: none; border: none;
+    background: transparent;
+    --fp: 70%;
+    --fc: currentColor;
+  }
   .estado-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: currentColor; cursor: pointer; border: 2px solid var(--bg); box-shadow: 0 1px 4px rgba(0,0,0,0.25); margin-top: -6px; }
   .estado-slider::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: currentColor; border: 2px solid var(--bg); cursor: pointer; }
-  .estado-slider::-webkit-slider-runnable-track { border-radius: 2.5px; height: 5px; }
-  .estado-slider::-moz-range-track { border-radius: 2.5px; height: 5px; background: var(--bg2); }
-  .estado-slider::-moz-range-progress { border-radius: 2.5px; height: 5px; background: currentColor; }
+  .estado-slider::-webkit-slider-runnable-track { border-radius: 2.5px; height: 5px; background: linear-gradient(to right, var(--fc) 0%, var(--fc) var(--fp), var(--bg2) var(--fp), var(--bg2) 100%); }
+  .estado-slider::-moz-range-track { border-radius: 2.5px; height: 5px; background: linear-gradient(to right, var(--fc) 0%, var(--fc) var(--fp), var(--bg2) var(--fp), var(--bg2) 100%); }
   .estado-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; width: 28px; text-align: right; flex-shrink: 0; font-weight: bold; }
 
   .time-picker {
@@ -340,8 +332,8 @@
   .generate-btn:hover { background: var(--accent2); }
 
   /* SESSION PLAN */
-  .session-plan { display: none; }
-  .session-plan.visible { display: block; }
+  .session-plan { display: block; }
+  .session-plan.visible { display: block; } /* legacy class kept for compat */
 
   .plan-item {
     background: var(--bg2);
@@ -1007,7 +999,9 @@
     width: 100%; margin: 4px 0 6px; cursor: pointer;
     -webkit-appearance: none; appearance: none;
     height: 6px; border-radius: 3px;
-    background: var(--bg2); outline: none; border: none;
+    background: transparent; outline: none; border: none;
+    --fp: 50%;
+    --fc: currentColor;
   }
   .sol-slider::-webkit-slider-thumb {
     -webkit-appearance: none; appearance: none;
@@ -1024,12 +1018,11 @@
   }
   .sol-slider::-webkit-slider-runnable-track {
     border-radius: 3px; height: 6px;
+    background: linear-gradient(to right, var(--fc) 0%, var(--fc) var(--fp), var(--bg2) var(--fp), var(--bg2) 100%);
   }
   .sol-slider::-moz-range-track {
-    border-radius: 3px; height: 6px; background: var(--bg2);
-  }
-  .sol-slider::-moz-range-progress {
-    border-radius: 3px; height: 6px; background: currentColor;
+    border-radius: 3px; height: 6px;
+    background: linear-gradient(to right, var(--fc) 0%, var(--fc) var(--fp), var(--bg2) var(--fp), var(--bg2) 100%);
   }
   .sol-ref-row { display: flex; justify-content: space-between; font-size: 8px; color: var(--text3); margin-bottom: 14px; }
   .hecho-field-label { font-size: 8px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
@@ -1214,10 +1207,146 @@
   .theme-swatch { height: 22px; border-radius: 4px; margin-bottom: 2px; }
   .settings-section { font-size: 9px; color: var(--text3); letter-spacing: 0.2em; text-transform: uppercase; margin: 16px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border2); }
   /* HISTORIAL SESIONES */
-  .sesion-hist-item { background: var(--bg2); border-left: 2px solid var(--border); padding: 10px 14px; margin-bottom: 8px; border-radius: 0 6px 6px 0; }
-  .sesion-hist-date { font-size: 11px; color: var(--accent); margin-bottom: 6px; }
-  .sesion-hist-obra { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text2); margin-bottom: 3px; }
-  .sesion-tick { font-size: 11px; }
+  /* SESSION HISTORY — bigger, more visual */
+  .sesion-hist-item {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-left: 4px solid var(--accent);
+    padding: 16px 18px;
+    margin-bottom: 14px;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .sesion-hist-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px dashed var(--border2);
+  }
+  .sesion-hist-date {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--accent);
+    line-height: 1.1;
+    letter-spacing: 0.01em;
+    text-transform: capitalize;
+  }
+  .sesion-hist-meta {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 3px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .sesion-hist-rating {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 26px;
+    font-weight: 300;
+    line-height: 1;
+    text-align: right;
+    padding: 3px 12px;
+    border-radius: 8px;
+  }
+  .sesion-hist-rating-label {
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-align: right;
+    margin-top: 2px;
+  }
+  .sesion-hist-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .sesion-hist-action {
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 5px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    transition: all 0.15s;
+  }
+  .sesion-hist-action:hover { border-color: var(--accent); color: var(--accent); }
+  .sesion-hist-action.danger:hover { border-color: var(--red); color: var(--red); }
+  .sesion-hist-obra {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 7px;
+    flex-wrap: wrap;
+  }
+  .sesion-hist-obra:last-child { margin-bottom: 0; }
+  .sesion-hist-obra-tick {
+    font-size: 18px;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    flex-shrink: 0;
+    font-weight: bold;
+  }
+  .sesion-hist-obra-tick.hecho   { background: rgba(120,170,100,0.18); color: var(--green); }
+  .sesion-hist-obra-tick.parcial { background: rgba(200,160,48,0.18);  color: var(--orange); }
+  .sesion-hist-obra-tick.saltado { background: rgba(200,100,100,0.18); color: var(--red); }
+  .sesion-hist-obra-tick.none    { background: var(--bg2); color: var(--text3); }
+  .sesion-hist-obra-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px;
+    line-height: 1.2;
+    color: var(--text);
+    flex: 1;
+    min-width: 0;
+  }
+  .sesion-hist-obra-badges {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .sesion-hist-obra-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 5px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+  }
+  .sesion-hist-obra-note {
+    width: 100%;
+    font-size: 11px;
+    color: var(--text3);
+    font-style: italic;
+    padding-left: 36px;
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+  .sesion-hist-empty {
+    color: var(--text3);
+    font-size: 13px;
+    padding: 30px 20px;
+    text-align: center;
+    line-height: 1.6;
+  }
+  /* Cozy theme override */
+  [data-theme="cozy"] .sesion-hist-date { font-family: 'Caveat', cursive !important; font-size: 28px !important; }
+  [data-theme="cozy"] .sesion-hist-obra-name { font-family: 'Caveat', cursive !important; font-size: 19px !important; }
+  .sesion-tick { font-size: 11px; } /* legacy class kept for safety */
   /* PASE QUALITY */
   .pase-q-row { display: flex; gap: 6px; margin-top: 8px; }
   .pase-q-btn { flex: 1; padding: 7px 4px; border: 1px solid var(--border2); border-radius: 4px; background: transparent; color: var(--text3); font-family: 'JetBrains Mono', monospace; font-size: 9px; cursor: pointer; transition: all 0.2s; text-align: center; }
@@ -1947,20 +2076,6 @@
 </head>
 <body>
 
-<!-- AUTH SCREEN -->
-<div id="authScreen">
-  <div class="auth-card">
-    <div class="auth-title">♩ Estudio</div>
-    <div class="auth-sub" id="authMode">Iniciar sesión</div>
-    <input class="auth-input" type="email" id="authEmail" placeholder="tu@email.com" autocomplete="email">
-    <input class="auth-input" type="password" id="authPass" placeholder="contraseña" autocomplete="current-password">
-    <button class="auth-btn" id="authBtn" onclick="doAuth()">Entrar</button>
-    <div class="auth-error" id="authError"></div>
-    <div class="auth-status" id="authStatus"></div>
-    <div class="auth-toggle" id="authToggle" onclick="toggleAuthMode()">¿Sin cuenta? Regístrate</div>
-  </div>
-</div>
-
 <!-- SYNC INDICATOR -->
 <div id="syncIndicator">↑ sincronizando…</div>
 
@@ -2090,9 +2205,6 @@
     </div>
 
     <button class="generate-btn" onclick="generateSession()">Generar sesión</button>
-    <button onclick="openRegistroDirecto()" style="width:100%;margin-top:8px;padding:9px;background:transparent;border:1px dashed var(--border2);border-radius:8px;color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text3)'">
-      📝 Registro directo (sin plan)
-    </button>
 
     <!-- ── TOC ATTACK TRACKER ────────────────────────────────────────────── -->
     <div class="toc-panel" id="tocPanel">
@@ -2331,10 +2443,6 @@
     <input type="file" id="forestCsvInput" accept=".csv" style="display:none" onchange="loadForestCSV(this)">
     <div id="forestFeedback" style="font-size:9px;color:var(--green);margin-top:4px;display:none"></div>
 
-    <div class="settings-section" style="margin-top:16px">Cuenta</div>
-    <div id="authUserInfo" style="font-size:9px;color:var(--text3);margin-bottom:8px"></div>
-    <button class="modal-btn secondary" style="width:100%" onclick="doLogout()">Cerrar sesión</button>
-
     <div class="modal-buttons" style="margin-top:20px">
       <button class="modal-btn primary" onclick="closeModal('modalSettings')">Cerrar</button>
     </div>
@@ -2412,9 +2520,9 @@
 <!-- MODAL EXTRA OBRA -->
 <div class="modal-overlay" id="modalExtraObra">
   <div class="modal" style="max-width:380px">
-    <div class="modal-title" style="margin-bottom:4px">＋ Obra extra</div>
+    <div class="modal-title" style="margin-bottom:4px">＋ Añadir sesión</div>
     <div style="font-size:9px;color:var(--text3);margin-bottom:14px;line-height:1.6">
-      Selecciona la obra que has estudiado fuera del plan. Se registrará como trabajo adicional de hoy.
+      Selecciona la obra que vas a estudiar (o has estudiado) y los minutos. Aparecerá en la lista para marcarla como hecha o saltada.
     </div>
     <div class="hecho-field-label">Obra</div>
     <select id="extraObraSelect" class="modal-input" style="margin-bottom:14px">
@@ -2425,7 +2533,7 @@
       placeholder="ej: 30" style="width:90px;text-align:center;font-size:18px;color:var(--accent)">
     <div class="modal-buttons" style="margin-top:16px">
       <button class="modal-btn secondary" onclick="closeModal('modalExtraObra')">Cancelar</button>
-      <button class="modal-btn primary" onclick="confirmAddExtra()">Añadir al plan</button>
+      <button class="modal-btn primary" onclick="confirmAddExtra()">Añadir a la lista</button>
     </div>
   </div>
 </div>
@@ -2455,6 +2563,43 @@
     <div class="modal-buttons" style="margin-top:14px">
       <button class="modal-btn secondary" onclick="closeRatingSesion(false)">Omitir</button>
       <button class="modal-btn primary" onclick="closeRatingSesion(true)">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ¿Para qué día es esta sesión? -->
+<div class="modal-overlay" id="modalSaveDate">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title" style="margin-bottom:4px">¿Para qué día?</div>
+    <div style="font-size:9px;color:var(--text3);margin-bottom:16px;line-height:1.6">
+      Por defecto se guarda como sesión de hoy. Si te olvidaste de registrar otro día, elige una fecha pasada.
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+      <button class="modal-btn primary" id="saveDateToday" onclick="confirmSaveDate('today')"
+        style="width:100%;padding:14px;font-size:15px">
+        Guardar como sesión de HOY
+      </button>
+      <button class="modal-btn secondary" onclick="document.getElementById('saveDatePast').style.display='block';this.style.display='none'"
+        id="saveDateOtherBtn" style="width:100%;padding:10px;font-size:11px">
+        ↺ Otro día (olvidé registrarlo)
+      </button>
+    </div>
+
+    <div id="saveDatePast" style="display:none;border-top:1px dashed var(--border2);padding-top:14px;margin-bottom:6px">
+      <div class="hecho-field-label">Fecha de la sesión</div>
+      <input type="date" id="saveDateInput" class="modal-input" style="width:100%;font-size:14px">
+      <div style="font-size:9px;color:var(--text3);margin-top:6px;line-height:1.5;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:8px 10px">
+        ℹ️ Solo se cambiará la fecha del registro de la sesión. Los avances de compases o solidez ya quedaron registrados con la fecha de hoy y no se mueven.
+      </div>
+      <div class="modal-buttons" style="margin-top:14px">
+        <button class="modal-btn secondary" onclick="closeModal('modalSaveDate')">Cancelar</button>
+        <button class="modal-btn primary" onclick="confirmSaveDate('past')">Guardar en esa fecha</button>
+      </div>
+    </div>
+
+    <div class="modal-buttons" id="saveDateMainCancel" style="margin-top:6px">
+      <button class="modal-btn secondary" onclick="closeModal('modalSaveDate')" style="width:100%">Cancelar</button>
     </div>
   </div>
 </div>
@@ -2563,6 +2708,20 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- ¿Cómo fue esta sesión? (productividad por sesión, no por día) -->
+    <div style="margin-top:6px;padding-top:14px;border-top:1px dashed var(--border2)">
+      <div class="hecho-field-label">¿Cómo fue esta sesión?</div>
+      <div class="sol-pct-display" id="hechoProdDisplay" style="font-size:30px;margin:2px 0">70</div>
+      <div class="sol-pct-label" id="hechoProdLabel" style="margin-bottom:8px">Sesión productiva</div>
+      <input type="range" min="0" max="100" step="5" value="70" id="hechoProdSlider"
+        class="sol-slider" style="color:#c8a030" oninput="updateHechoProd(this.value)">
+      <div class="sol-ref-row">
+        <span>0 perdida</span>
+        <span>50 normal</span>
+        <span>100 perfecta</span>
       </div>
     </div>
 
@@ -3044,8 +3203,8 @@ function fillEstadoSlider(slider, color) {
   const max = parseFloat(slider.max) || 100;
   const val = parseFloat(slider.value) || 0;
   const pct = ((val - min) / (max - min)) * 100;
-  const track = resolveThemeBg2();
-  slider.style.background = 'linear-gradient(to right,' + color + ' 0%,' + color + ' ' + pct + '%,' + track + ' ' + pct + '%,' + track + ' 100%)';
+  slider.style.setProperty('--fp', pct + '%');
+  slider.style.setProperty('--fc', color);
   slider.style.color = color;
 }
 
@@ -3204,19 +3363,20 @@ let currentPlan = [];
 const sessionTicks = {};
 const sessionMinPlan = {};
 const sessionSolRatings = {};
+const sessionProductivityRatings = {}; // per-item productivity rating (0-100)
 
 const DRAFT_KEY = 'alberto_session_draft';
 
 function saveDraft() {
-  const notes = {}, objs = {}, mins = {}, sols = {};
+  const notes = {}, mins = {}, sols = {}, prods = {};
   currentPlan.forEach(o => {
     const pid = o._planId || o.id;
     const n = document.getElementById('tnote-' + pid);
     const m = document.getElementById('tmin-' + pid);
     if (n) notes[pid] = n.value;
-    if (ob) objs[pid] = ob.value;
     if (m) mins[pid] = m.value;
     if (sessionSolRatings[pid]) sols[pid] = sessionSolRatings[pid];
+    if (sessionProductivityRatings[pid] != null) prods[pid] = sessionProductivityRatings[pid];
   });
   const draft = {
     date: new Date().toDateString(),
@@ -3228,10 +3388,11 @@ function saveDraft() {
       planId: o._planId || o.id,
       obraId: o._obraId || o.id,
       movId: o._movId || null,
+      isExtra: !!o._isExtra,
     })),
     ticks: { ...sessionTicks },
     minPlan: { ...sessionMinPlan },
-    mins, notes, objs, sols,
+    mins, notes, sols, prods,
     tocActive: _tocActiveAttack || null,
   };
   localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -3312,8 +3473,8 @@ function _restoreDraftUI(draft) {
       html += renderTrabajoItem(entity, i, sessionMinPlan[pid] || 30, selectedEnergy, cargaHoy, analizarPases(entity._obraId || entity.id));
     }
   });
-  html += '<button class="add-extra-btn" onclick="openAddExtra()">＋ Añadir obra extra</button>';
-  html += '<button class="save-session-btn" onclick="saveSession()">Guardar sesión de hoy</button>';  const planDiv = document.getElementById('sessionPlan');
+  html += _planActionsHTML();
+  const planDiv = document.getElementById('sessionPlan');
   planDiv.innerHTML = html;
   planDiv.classList.add('visible');
   requestAnimationFrame(() => {
@@ -3338,8 +3499,13 @@ function _restoreDraftUI(draft) {
       }
       const noteEl = document.getElementById('tnote-' + pid);
       if (noteEl && draft.notes?.[pid]) noteEl.value = draft.notes[pid];
-      if (objEl && draft.objs?.[pid]) objEl.value = draft.objs[pid];
+      // Restore productivity rating if present, and rebuild badge
+      if (draft.prods?.[pid] != null) {
+        sessionProductivityRatings[pid] = draft.prods[pid];
+        if (typeof updateProductivityBadge === 'function') updateProductivityBadge(pid);
+      }
     });
+    if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
   });
 }
 
@@ -3381,11 +3547,53 @@ function setTick(planId, tick, btn, minPlan) {
 }
 
  function saveSession() {
+  if (!currentPlan.length) {
+    showToast('No hay sesiones que guardar');
+    return;
+  }
+  // Abrir el selector de fecha. Por defecto: hoy. Permite elegir otra fecha pasada.
+  const dateInput = document.getElementById('saveDateInput');
+  if (dateInput) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    dateInput.value = yyyy + '-' + mm + '-' + dd;
+    dateInput.max = yyyy + '-' + mm + '-' + dd; // no permitir fechas futuras
+  }
+  // Resetear visibilidad del bloque "Otro día"
+  const past = document.getElementById('saveDatePast');
+  const other = document.getElementById('saveDateOtherBtn');
+  if (past) past.style.display = 'none';
+  if (other) other.style.display = '';
+  openModal('modalSaveDate');
+}
+
+// Llamado desde el modal de selección de fecha. mode = 'today' | 'past'
+function confirmSaveDate(mode) {
+  let targetDate;
+  if (mode === 'past') {
+    const v = document.getElementById('saveDateInput')?.value;
+    if (!v) { showToast('Elige una fecha'); return; }
+    // Construir Date local a las 12:00 del día elegido (evita problemas de zona horaria)
+    const [y, m, d] = v.split('-').map(Number);
+    targetDate = new Date(y, m - 1, d, 12, 0, 0);
+    if (targetDate > new Date()) { showToast('No puedes usar una fecha futura'); return; }
+  } else {
+    targetDate = new Date();
+  }
+  closeModal('modalSaveDate');
+  commitSession(targetDate);
+}
+
+// Lógica real de guardado. targetDate = Date object para registrar la sesión.
+function commitSession(targetDate) {
   const items = currentPlan.map(entity => {
     const planId = entity._planId || entity.id;
     const obraId = entity._obraId || entity.id;
     const movId = entity._movId || null;
     return {
+      _planId: planId,
       obraId, movId,
       obraName: entity._isMovimiento
         ? entity._parentName + ' · ' + entity.name
@@ -3394,23 +3602,83 @@ function setTick(planId, tick, btn, minPlan) {
       minutosPlan: sessionMinPlan[planId] || null,
       minutosReales: parseInt(document.getElementById('tmin-' + planId)?.value) || null,
       solRating: sessionSolRatings[planId] || null,
+      rating: sessionProductivityRatings[planId] != null ? sessionProductivityRatings[planId] : null,
       note: document.getElementById('tnote-' + planId)?.value || '',
       objetivo: ''
     };
   });
-  items.forEach(it => {
-    if (it.tick === 'hecho' && it.solRating != null) {
-      if (it.movId) recordMovSolHistory(it.obraId, it.movId, it.solRating, 'sesion');
-      else recordSolHistory(it.obraId, it.solRating, 'sesion');
-    }
-  });
-  const sesionObj = {
-    date: new Date().toISOString(),
-    energia: selectedEnergy,
-    estado: { ...estadoDiario },
-    items
-  };
-  openRatingSesion(sesionObj);
+  // Solo registrar solHistory cuando la sesión es para HOY — si se está
+  // backdateando un día pasado, no queremos pintar registros de solidez con
+  // la fecha equivocada.
+  const isToday = targetDate.toDateString() === new Date().toDateString();
+  if (isToday) {
+    items.forEach(it => {
+      if (it.tick === 'hecho' && it.solRating != null) {
+        if (it.movId) recordMovSolHistory(it.obraId, it.movId, it.solRating, 'sesion');
+        else recordSolHistory(it.obraId, it.solRating, 'sesion');
+      }
+    });
+  }
+
+  const targetStr = targetDate.toDateString();
+  const existingIdx = db.sesiones.findIndex(s => new Date(s.date).toDateString() === targetStr);
+
+  if (existingIdx >= 0) {
+    // FUSIONAR con la sesión que ya existe en esa fecha — mantenemos su
+    // estado/energia (los sliders de la mañana, o los del día original)
+    const existing = db.sesiones[existingIdx];
+    if (!existing.items) existing.items = [];
+    const merged = [...existing.items];
+    items.forEach(newIt => {
+      const idx = newIt._planId
+        ? merged.findIndex(e => e._planId === newIt._planId)
+        : -1;
+      if (idx >= 0) merged[idx] = newIt;
+      else merged.push(newIt);
+    });
+    existing.items = merged;
+    const allRatings = merged.filter(i => i.rating != null).map(i => i.rating);
+    existing.rating = allRatings.length
+      ? Math.round(allRatings.reduce((s,v)=>s+v,0) / allRatings.length)
+      : null;
+  } else {
+    // Primer guardado en esa fecha — capturamos snapshot de los sliders actuales
+    const allRatings = items.filter(i => i.rating != null).map(i => i.rating);
+    const avgRating = allRatings.length
+      ? Math.round(allRatings.reduce((s,v)=>s+v,0) / allRatings.length)
+      : null;
+    const sesionObj = {
+      date: targetDate.toISOString(),
+      energia: selectedEnergy,
+      estado: { ...estadoDiario },
+      rating: avgRating,
+      items
+    };
+    // Insertar respetando orden cronológico (más reciente primero)
+    const insertIdx = db.sesiones.findIndex(s => new Date(s.date) < targetDate);
+    if (insertIdx === -1) db.sesiones.push(sesionObj);
+    else db.sesiones.splice(insertIdx, 0, sesionObj);
+    if (db.sesiones.length > 60) db.sesiones = db.sesiones.slice(0, 60);
+  }
+
+  saveData();
+  saveDraft();
+  renderRacha();
+  if (typeof SFX !== 'undefined' && SFX.saveSession) SFX.saveSession();
+  // Limpiar el draft solo si guardamos como hoy — si era de otro día, mantenemos
+  // el draft activo por si Alberto sigue añadiendo sesiones de hoy.
+  if (isToday) {
+    // No limpiamos el plan visible: Alberto pidió que pueda seguir añadiendo
+    // sesiones después de pulsar Guardar (ej. tarde tras guardar mañana).
+    showToast('Sesión guardada ✓');
+  } else {
+    const niceDate = targetDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' });
+    showToast('Guardado en ' + niceDate);
+  }
+  // Refrescar historial si está visible
+  if (document.getElementById('view-historial')?.classList.contains('active')) {
+    renderSesionesHistorial();
+  }
 }
 
 let _sesionPendienteRating = null;
@@ -3430,6 +3698,18 @@ function updateRatingSlider(val) {
   const d = document.getElementById('ratingDisplay');
   const l = document.getElementById('ratingLabel');
   const s = document.getElementById('ratingSlider');
+  if (d) { d.textContent = pct; d.style.color = col; }
+  if (l) l.textContent = ratingLabel(pct);
+  fillSlider(s, col);
+}
+
+// Productivity rating slider inside hecho modal (per-session)
+function updateHechoProd(val) {
+  const pct = parseInt(val);
+  const col = solPctColor(pct);
+  const d = document.getElementById('hechoProdDisplay');
+  const l = document.getElementById('hechoProdLabel');
+  const s = document.getElementById('hechoProdSlider');
   if (d) { d.textContent = pct; d.style.color = col; }
   if (l) l.textContent = ratingLabel(pct);
   fillSlider(s, col);
@@ -3501,6 +3781,27 @@ function openAddExtra() {
   openModal('modalExtraObra');
 }
 
+// HTML for the persistent action buttons that live inside #sessionPlan
+function _planActionsHTML() {
+  return '<button class="add-extra-btn" id="btnAddExtra" onclick="openAddExtra()">＋ Añadir sesión</button>'
+       + '<button class="save-session-btn" id="btnSaveSession" onclick="saveSession()">Guardar sesión de hoy</button>';
+}
+
+// Ensures the action buttons are always present in #sessionPlan, even with no items
+function ensureSessionPlanScaffold() {
+  const planDiv = document.getElementById('sessionPlan');
+  if (!planDiv) return;
+  if (!planDiv.querySelector('.add-extra-btn')) {
+    planDiv.insertAdjacentHTML('beforeend', _planActionsHTML());
+  }
+  // Hide save button when there are no plan items
+  const saveBtn = planDiv.querySelector('.save-session-btn');
+  if (saveBtn) {
+    const hasItems = planDiv.querySelectorAll('.plan-item').length > 0;
+    saveBtn.style.display = hasItems ? '' : 'none';
+  }
+}
+
 function confirmAddExtra() {
   const val = document.getElementById('extraObraSelect')?.value;
   const minutos = parseInt(document.getElementById('extraMinutos')?.value) || 0;
@@ -3541,6 +3842,9 @@ function confirmAddExtra() {
   currentPlan.push(extraEntity);
   sessionMinPlan[extraId] = minutos || (mov?.duracion || obra?.duracion || 20);
 
+  // Make sure scaffold buttons exist (case: no plan generated yet)
+  ensureSessionPlanScaffold();
+
   const planDiv = document.getElementById('sessionPlan');
   const addBtn  = planDiv.querySelector('.add-extra-btn');
   const saveBtn = planDiv.querySelector('.save-session-btn');
@@ -3549,8 +3853,12 @@ function confirmAddExtra() {
   wrapper.innerHTML = renderExtraItem(extraEntity, sessionMinPlan[extraId]);
   planDiv.insertBefore(wrapper.firstChild, addBtn || saveBtn);
 
+  // Refresh save button visibility
+  ensureSessionPlanScaffold();
+
   SFX.add();
   showToast('Añadido: ' + displayName);
+  saveDraft();
 }
 
 function renderExtraItem(entity, minutos) {
@@ -4702,8 +5010,8 @@ function fillSlider(slider, color) {
   const max = parseFloat(slider.max) || 100;
   const val = parseFloat(slider.value) || 0;
   const pct = ((val - min) / (max - min)) * 100;
-  const track = resolveThemeBg2();
-  slider.style.background = 'linear-gradient(to right,' + color + ' 0%,' + color + ' ' + pct + '%,' + track + ' ' + pct + '%,' + track + ' 100%)';
+  slider.style.setProperty('--fp', pct + '%');
+  slider.style.setProperty('--fc', color);
   slider.style.color = color;
 }
 
@@ -4975,6 +5283,14 @@ function openHechoDatos(planId, minPlan) {
   }
 
   document.getElementById('hechoNota').value = document.getElementById('tnote-' + planId)?.value || '';
+
+  // Initialize productivity slider — restore previous value or default to 70
+  const prevProd = sessionProductivityRatings[planId];
+  const prodInit = (prevProd != null) ? prevProd : 70;
+  const prodSlider = document.getElementById('hechoProdSlider');
+  if (prodSlider) { prodSlider.value = prodInit; }
+  if (typeof updateHechoProd === 'function') updateHechoProd(prodInit);
+
   openModal('modalHechoDatos');
 }
 
@@ -5118,8 +5434,37 @@ function closeHechoDatos(save) {
     }
   }
 
+  // Capture productivity rating from the embedded slider
+  const prodVal = parseInt(document.getElementById('hechoProdSlider')?.value);
+  if (!isNaN(prodVal)) {
+    sessionProductivityRatings[planId] = prodVal;
+  }
+
   saveDraft();
   SFX.tick();
+  // Show rating badge on the plan item, and ensure save button visible
+  updateProductivityBadge(planId);
+  if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
+}
+
+// Update or create the small productivity badge inside the tick-min-row
+function updateProductivityBadge(planId) {
+  const val = sessionProductivityRatings[planId];
+  const minRow = document.getElementById('tickmin-' + planId);
+  if (!minRow) return;
+  let prodEl = document.getElementById('prod-' + planId);
+  if (!prodEl) {
+    prodEl = document.createElement('span');
+    prodEl.id = 'prod-' + planId;
+    prodEl.style.fontSize = '9px';
+    prodEl.style.marginLeft = 'auto';
+    minRow.appendChild(prodEl);
+  }
+  if (val == null) { prodEl.innerHTML = ''; return; }
+  const col = solPctColor(val);
+  prodEl.innerHTML = '<span style="background:' + col + '22;color:' + col
+    + ';border:1px solid ' + col + '44;padding:1px 6px;border-radius:4px">'
+    + val + '% sesión</span>';
 }
 
 function openObraDetalleSession(obraId) {
@@ -5690,13 +6035,13 @@ function generateSession() {
   }
 
   currentPlan = currentPlanLocal;
-  html += `<button class="add-extra-btn" onclick="openAddExtra()">＋ Añadir obra extra</button>`;
-  html += `<button class="save-session-btn" onclick="saveSession()">Guardar sesión de hoy</button>`;
+  html += _planActionsHTML();
 
   const planDiv = document.getElementById('sessionPlan');
   planDiv.innerHTML = html;
   planDiv.classList.add('visible');
   planDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  ensureSessionPlanScaffold();
   saveDraft();
 }
 
@@ -7870,57 +8215,115 @@ function renderEstadoSection() {
 function renderSesionesHistorial() {
   const el = document.getElementById('sesionesHistorial');
   if (!db.sesiones || !db.sesiones.length) {
-    el.innerHTML = '<div style="color:var(--text3);font-size:11px;padding:20px 0">Aún no hay sesiones guardadas.<br>Genera una sesión, márcala con ticks y pulsa Guardar.</div>';
+    el.innerHTML = '<div class="sesion-hist-empty">Aún no hay sesiones guardadas.<br>Genera una sesión, márcala con ticks y pulsa Guardar.</div>';
     return;
   }
   const tickIcons = { hecho: '✓', parcial: '≈', saltado: '✗' };
-  const tickColors = { hecho: 'var(--green)', parcial: 'var(--orange)', saltado: 'var(--red)' };
   el.innerHTML = db.sesiones.slice(0, 30).map(s => {
     const d = new Date(s.date);
     const label = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' });
-    const itemsHtml = (s.items || []).map(it => {
+
+    // Header meta line (energía, manual, items count, total min)
+    const itemsArr = s.items || [];
+    const totalMin = itemsArr.reduce((acc, it) => acc + (it.minutosReales || 0), 0);
+    const numHechos = itemsArr.filter(it => it.tick === 'hecho').length;
+    const metaParts = [];
+    if (itemsArr.length) metaParts.push(itemsArr.length + (itemsArr.length === 1 ? ' obra' : ' obras'));
+    if (numHechos > 0 && numHechos !== itemsArr.length) metaParts.push(numHechos + ' hechas');
+    if (totalMin > 0) metaParts.push(totalMin + ' min');
+    if (s.energia && s.energia !== 'manual') metaParts.push('energía: ' + s.energia);
+    if (s.energia === 'manual') metaParts.push('manual');
+    const metaLine = metaParts.join(' · ');
+
+    // Big rating block (right side of header)
+    let ratingBlock = '';
+    if (s.rating != null) {
+      const col = solPctColor(s.rating);
+      ratingBlock =
+        '<div>' +
+          '<div class="sesion-hist-rating" style="background:' + col + '18;color:' + col + ';border:1px solid ' + col + '44">' + s.rating + '%</div>' +
+          '<div class="sesion-hist-rating-label" style="color:' + col + '">' + ratingLabel(s.rating).toLowerCase() + '</div>' +
+        '</div>';
+    }
+
+    // Items
+    const itemsHtml = itemsArr.map(it => {
       const tick = it.tick;
-      const icon = tick ? tickIcons[tick] : '—';
-      const color = tick ? tickColors[tick] : 'var(--text3)';
-      const manualBadge = it.manual
-        ? `<span style="font-size:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:1px 5px;color:var(--text3);margin-left:4px">${it.minutosEstudiados ? it.minutosEstudiados + 'min' : 'manual'}</span>`
-        : '';
-      const minBadge = (!it.manual && it.tick === 'hecho' && it.minutosReales != null && it.minutosPlan != null)
-        ? (() => {
-            const diff = it.minutosReales - it.minutosPlan;
-            const col = diff > 0 ? 'var(--green)' : diff < 0 ? 'var(--orange)' : 'var(--text3)';
-            return '<span style="font-size:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:1px 5px;color:' + col + ';margin-left:4px">' + it.minutosReales + 'min' + (diff !== 0 ? ' ' + (diff > 0 ? '+' : '') + diff : '') + '</span>';
-          })()
-        : '';
-      const solBadge = it.solRating != null
-        ? '<span style="font-size:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:1px 5px;color:var(--accent);margin-left:4px">sol ' + it.solRating + '%</span>'
-        : '';
-      return `<div class="sesion-hist-obra">
-        <span class="sesion-tick" style="color:${color}">${icon}</span>
-        <span>${it.obraName}</span>${manualBadge}${minBadge}${solBadge}
-        ${it.objetivo ? `<span style="color:var(--accent);font-size:9px">· obj: ${it.objetivo}</span>` : ''}
-        ${it.note ? `<span style="color:var(--text3);font-size:9px">${it.objetivo ? '' : '·'} ${it.note}</span>` : ''}
-      </div>`;
+      const tickClass = tick || 'none';
+      const icon = tick ? tickIcons[tick] : '·';
+      const badges = [];
+      if (it.manual) badges.push('<span class="sesion-hist-obra-badge">manual</span>');
+      if (!it.manual && it.tick === 'hecho' && it.minutosReales != null) {
+        const mins = it.minutosReales;
+        let txt = mins + ' min';
+        let col = '';
+        if (it.minutosPlan != null) {
+          const diff = mins - it.minutosPlan;
+          if (diff !== 0) {
+            txt += ' (' + (diff > 0 ? '+' : '') + diff + ')';
+            col = diff > 0 ? 'var(--green)' : 'var(--orange)';
+          }
+        }
+        badges.push('<span class="sesion-hist-obra-badge"' + (col ? ' style="color:' + col + '"' : '') + '>' + txt + '</span>');
+      } else if (!it.manual && it.minutosReales != null) {
+        badges.push('<span class="sesion-hist-obra-badge">' + it.minutosReales + ' min</span>');
+      }
+      if (it.solRating != null) {
+        const c = solPctColor(it.solRating);
+        badges.push('<span class="sesion-hist-obra-badge" style="color:' + c + ';border-color:' + c + '55">solidez ' + it.solRating + '%</span>');
+      }
+      if (it.rating != null) {
+        const c = solPctColor(it.rating);
+        badges.push('<span class="sesion-hist-obra-badge" style="color:' + c + ';border-color:' + c + '55">sesión ' + it.rating + '%</span>');
+      }
+
+      return '<div class="sesion-hist-obra">' +
+        '<div class="sesion-hist-obra-tick ' + tickClass + '">' + icon + '</div>' +
+        '<div class="sesion-hist-obra-name">' + escapeHtmlSafe(it.obraName || '—') + '</div>' +
+        '<div class="sesion-hist-obra-badges">' + badges.join('') + '</div>' +
+        (it.note ? '<div class="sesion-hist-obra-note">' + escapeHtmlSafe(it.note) + '</div>' : '') +
+      '</div>';
     }).join('');
-    return `<div class="sesion-hist-item">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div class="sesion-hist-date" style="margin-bottom:0">${label}${s.energia && s.energia !== 'manual' ? ' · ' + s.energia : ''}${s.energia === 'manual' ? ' <span style="font-size:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:1px 5px;color:var(--text3)">manual</span>' : ''}${s.rating != null ? ' <span style="font-size:8px;padding:1px 6px;border-radius:4px;margin-left:4px;background:' + solPctColor(s.rating) + '22;color:' + solPctColor(s.rating) + ';border:1px solid ' + solPctColor(s.rating) + '44">' + s.rating + '% sesión</span>' : ''}</div>
-          <button onclick="openEditarSesion('${s.date}')" title="Editar sesión" style="background:none;border:1px solid var(--border2);border-radius:5px;color:var(--text3);cursor:pointer;font-size:10px;padding:2px 8px;font-family:'JetBrains Mono',monospace">✏️</button>
-        </div>
-        <button onclick="deleteSession('${s.date}')"
-          style="background:none;border:none;color:var(--text3);font-size:10px;cursor:pointer;padding:0 2px;font-family:\'JetBrains Mono\',monospace"
-          class="del-session-btn-inner">✕</button>
-      </div>
-      ${itemsHtml}
-    </div>`;
+
+    return '<div class="sesion-hist-item">' +
+      '<div class="sesion-hist-header">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div class="sesion-hist-date">' + label + '</div>' +
+          (metaLine ? '<div class="sesion-hist-meta">' + metaLine + '</div>' : '') +
+        '</div>' +
+        ratingBlock +
+        '<div class="sesion-hist-actions">' +
+          '<button class="sesion-hist-action" onclick="openEditarSesion(\'' + s.date + '\')" title="Editar sesión">✏️</button>' +
+          '<button class="sesion-hist-action danger" onclick="deleteSession(\'' + s.date + '\')" title="Eliminar sesión">✕</button>' +
+        '</div>' +
+      '</div>' +
+      (itemsHtml || '<div style="color:var(--text3);font-size:11px;font-style:italic">Sin items registrados.</div>') +
+    '</div>';
   }).join('');
 }
 
+// Lightweight HTML escape used in renderSesionesHistorial — avoid corrupting names with quotes/HTML
+function escapeHtmlSafe(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, ch => (
+    { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]
+  ));
+}
+
 function deleteSession(dateStr) {
-  db.sesiones = db.sesiones.filter(s => s.date !== dateStr);
+  const s = db.sesiones.find(x => x.date === dateStr);
+  if (!s) return;
+  const d = new Date(s.date);
+  const label = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' });
+  const numItems = (s.items || []).length;
+  const msg = '¿Eliminar la sesión de ' + label + '?\n' +
+              (numItems > 0 ? '(' + numItems + (numItems === 1 ? ' obra registrada)' : ' obras registradas)') : '') +
+              '\n\nEsta acción no se puede deshacer.';
+  if (!confirm(msg)) return;
+  db.sesiones = db.sesiones.filter(x => x.date !== dateStr);
   saveData();
   renderSesionesHistorial();
+  renderRacha();
   showToast('Sesión eliminada');
 }
 
@@ -8792,7 +9195,7 @@ function setTheme(theme, btn) {
 }
 
 function loadTheme() {
-  // Migration: reset noche to cozy on first run of new version
+  // Migration v2: noche → cozy
   if (!localStorage.getItem('alberto_theme_v2_migrated')) {
     localStorage.setItem('alberto_theme_v2_migrated', '1');
     if (!localStorage.getItem('alberto_theme') || localStorage.getItem('alberto_theme') === 'noche') {
@@ -8801,6 +9204,11 @@ function loadTheme() {
     if (!localStorage.getItem('alberto_size') || localStorage.getItem('alberto_size') === 'normal') {
       localStorage.setItem('alberto_size', 'large');
     }
+  }
+  // Migration v3: force cozy default for everyone (one-time reset)
+  if (!localStorage.getItem('alberto_theme_v3_migrated')) {
+    localStorage.setItem('alberto_theme_v3_migrated', '1');
+    localStorage.setItem('alberto_theme', 'cozy');
   }
   const theme = localStorage.getItem('alberto_theme') || 'cozy';
   const font  = localStorage.getItem('alberto_font')  || 'mono';
@@ -9186,23 +9594,19 @@ async function _restoreSessionIfNeeded() {
   try {
     const sb = getSB();
 
-    // 1. Try token refresh (fastest — works if token not expired)
+    // 1. Refrescar token (rápido si aún no expiró)
     const { data: refreshData } = await sb.auth.refreshSession();
     if (refreshData && refreshData.session) {
-      const authEl = document.getElementById('authScreen');
-      if (authEl && authEl.style.display !== 'none') await onAuthSuccess();
       return;
     }
 
-    // 2. Try getSession from storage
+    // 2. Probar sesión desde almacenamiento
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
-      const authEl = document.getElementById('authScreen');
-      if (authEl && authEl.style.display !== 'none') await onAuthSuccess();
       return;
     }
 
-    // 3. Try auto-login with stored credentials (silent, no UI)
+    // 3. Auto-login silencioso con credenciales guardadas
     const creds = _loadStoredCredentials();
     if (creds) {
       showSyncIndicator('↺ reconectando…');
@@ -9210,17 +9614,12 @@ async function _restoreSessionIfNeeded() {
         email: creds.email, password: creds.password
       });
       if (!error && data.session) {
-        const authEl = document.getElementById('authScreen');
-        if (authEl && authEl.style.display !== 'none') await onAuthSuccess();
-        else showSyncIndicator('✓ reconectado');
+        showSyncIndicator('✓ reconectado');
         return;
       }
     }
-
-    // 4. All methods failed — show login only if auth screen was already visible
-    // If user is in the middle of a session, DON'T interrupt them
   } catch(e) {
-    // Network offline — stay in app silently
+    // Sin red — la app sigue funcionando en local
   }
 }
 
@@ -9682,124 +10081,22 @@ document.addEventListener('click', function(e) {
 
 
 // ─── AUTH & SUPABASE INIT ─────────────────────────────────────────────────────
+// Pantalla de login eliminada. Auto-login silencioso desde credenciales
+// guardadas. Estas funciones se mantienen como no-op por compatibilidad
+// (podrían ser llamadas desde el SFX wrapper o desde un onclick antiguo).
 
-
-function toggleAuthMode() {
-  _authMode = _authMode === 'login' ? 'signup' : 'login';
-  const isLogin = _authMode === 'login';
-  document.getElementById('authMode').textContent = isLogin ? 'Iniciar sesión' : 'Crear cuenta';
-  const btn = document.getElementById('authBtn');
-  btn.textContent = isLogin ? 'Entrar' : 'Registrarse';
-  btn.disabled = false;
-  document.getElementById('authToggle').textContent = isLogin ? '¿Sin cuenta? Regístrate' : '¿Ya tienes cuenta? Entra';
-  document.getElementById('authError').textContent = '';
-  document.getElementById('authStatus').textContent = '';
-}
-
-async function doAuth() {
-  const email = (document.getElementById('authEmail').value || '').trim();
-  const pass  = document.getElementById('authPass').value || '';
-  const errEl = document.getElementById('authError');
-  const stEl  = document.getElementById('authStatus');
-  const btn   = document.getElementById('authBtn');
-
-  errEl.textContent = '';
-  stEl.textContent = '';
-
-  if (!email) { errEl.textContent = 'Escribe tu email'; return; }
-  if (!pass)  { errEl.textContent = 'Escribe tu contraseña'; return; }
-
-  btn.disabled = true;
-  btn.textContent = '…';
-
-  try {
-    let sb;
-    try { sb = getSB(); }
-    catch(e) {
-      errEl.textContent = e.message;
-      btn.disabled = false;
-      btn.textContent = _authMode === 'login' ? 'Entrar' : 'Registrarse';
-      return;
-    }
-
-    stEl.textContent = _authMode === 'login' ? 'Entrando…' : 'Creando cuenta…';
-    let result;
-    if (_authMode === 'login') {
-      result = await sb.auth.signInWithPassword({ email, password: pass });
-    } else {
-      result = await sb.auth.signUp({ email, password: pass });
-    }
-
-    if (result.error) {
-      const msgs = {
-        'Invalid login credentials': 'Email o contraseña incorrectos',
-        'Email not confirmed': 'Revisa tu email para confirmar la cuenta',
-        'User already registered': 'Este email ya tiene cuenta — pulsa "Iniciar sesión"',
-        'Password should be at least 6 characters': 'La contraseña debe tener al menos 6 caracteres',
-      };
-      errEl.textContent = msgs[result.error.message] || result.error.message;
-      btn.disabled = false;
-      btn.textContent = _authMode === 'login' ? 'Entrar' : 'Registrarse';
-      stEl.textContent = '';
-      return;
-    }
-
-    if (_authMode === 'signup' && result.data?.user && !result.data?.session) {
-      stEl.textContent = '✓ Revisa tu email para confirmar la cuenta';
-      btn.disabled = false;
-      btn.textContent = 'Entrar';
-      _authMode = 'login';
-      document.getElementById('authMode').textContent = 'Iniciar sesión';
-      document.getElementById('authToggle').textContent = '¿Sin cuenta? Regístrate';
-      return;
-    }
-
-    // Save credentials for auto-reconnect
-    if (_authMode === 'login' && result.data?.session) {
-      _saveStoredCredentials(email, pass);
-    }
-
-    stEl.textContent = 'Cargando datos…';
-    await onAuthSuccess();
-
-  } catch(e) {
-    errEl.textContent = 'Error: ' + (e.message || 'desconocido');
-    btn.disabled = false;
-    btn.textContent = _authMode === 'login' ? 'Entrar' : 'Registrarse';
-    stEl.textContent = '';
-  }
-}
-
-async function doLogout() {
-  _clearStoredCredentials();
-  try {
-    const sb = getSB();
-    await sb.auth.signOut();
-  } catch(e) {}
-  const authEl = document.getElementById('authScreen');
-  if (authEl) authEl.style.display = 'flex';
-  closeModal('modalSettings');
-}
+function toggleAuthMode() {}
+async function doAuth() {}
+async function doLogout() {}
 
 async function onAuthSuccess() {
-  const authEl = document.getElementById('authScreen');
-  if (authEl) authEl.style.display = 'none';
-
-  // Show user email in settings
-  try {
-    const sb = getSB();
-    const { data: { user } } = await sb.auth.getUser();
-    if (user) {
-      const infoEl = document.getElementById('authUserInfo');
-      if (infoEl) infoEl.textContent = '✓ Conectado como ' + user.email;
-    }
-  } catch(e) {}
-
+  // (la pantalla de login ha sido eliminada — esta función sólo carga datos
+  // desde la nube si hay sesión válida)
   const reloaded = await loadFromCloud();
   if (reloaded) {
     renderObras();
     renderCalendario();
-    if (document.getElementById('view-historial').classList.contains('active')) {
+    if (document.getElementById('view-historial')?.classList.contains('active')) {
       renderSesionesHistorial();
       renderEficienciaSection();
       renderEstadoSection();
@@ -9821,6 +10118,7 @@ async function initApp() {
   } catch(e) {}
   initEstadoSliders();
   loadDraft();
+  ensureSessionPlanScaffold();
   updateHeader();
   spawnNotes();
   if (typeof renderRacha === 'function') renderRacha();
@@ -9836,21 +10134,21 @@ async function initApp() {
     }
   } catch(e) {}
 
-  // ── SUPABASE AUTH ─────────────────────────────────────────────────────────
-  // For personal use: try session → try saved credentials → offline mode
-  // Never block the UI with a login screen unless absolutely necessary
+  // ── SUPABASE AUTO-SYNC (sin pantalla de login, uso personal) ─────────────
+  // Si hay sesión guardada o credenciales almacenadas, sincronizamos en
+  // segundo plano. Si no, la app funciona en local sin pedir nada.
   try {
     if (typeof supabase === 'undefined') throw new Error('Supabase not loaded');
     const sb = getSB();
 
-    // 1. Try existing session
+    // 1. Intentar sesión existente
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
       await onAuthSuccess();
       return;
     }
 
-    // 2. Try auto-login with stored credentials
+    // 2. Intentar auto-login con credenciales guardadas
     const creds = _loadStoredCredentials();
     if (creds) {
       showSyncIndicator('↺ reconectando…');
@@ -9863,28 +10161,16 @@ async function initApp() {
       }
     }
 
-    // 3. Show login screen only if no stored credentials
-    document.getElementById('authScreen').style.display = 'flex';
-
-    // Listen for future auth changes
+    // 3. Sin credenciales — modo local, sin UI de login
+    // Escuchar cambios de auth por si la sesión llega más tarde
     sb.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        const authEl = document.getElementById('authScreen');
-        if (authEl && authEl.style.display !== 'none') {
-          await onAuthSuccess();
-        }
-      }
-      if (event === 'SIGNED_OUT') {
-        _clearStoredCredentials();
-        const authEl = document.getElementById('authScreen');
-        if (authEl) authEl.style.display = 'flex';
+        await onAuthSuccess();
       }
     });
 
   } catch(e) {
-    console.warn('Auth error, offline mode:', e.message);
-    // Offline: hide login, use local data
-    document.getElementById('authScreen').style.display = 'none';
+    console.warn('Auth/sync no disponible, modo local:', e.message);
   }
 }
 
@@ -9907,14 +10193,6 @@ function _clearStoredCredentials() {
 }
 
 
-// Allow Enter key in auth form
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && document.getElementById('authScreen') &&
-      document.getElementById('authScreen').style.display !== 'none') {
-    doAuth();
-  }
-});
-
 // Adjust app-content top padding - measure after layout settles
 function adjustTopPadding() {
   const topbar = document.querySelector('.topbar');
@@ -9935,6 +10213,9 @@ window.addEventListener('orientationchange', function() { setTimeout(adjustTopPa
 if (window.ResizeObserver) {
   new ResizeObserver(adjustTopPadding).observe(document.querySelector('.topbar'));
 }
+
+// Boot the app — runs auth, theme, draft restore, racha, etc.
+initApp();
 </script>
 
 </body>
