@@ -10024,9 +10024,11 @@ showView = function(name) { SFX.nav(); _origShowView(name); };
 const _origOpenAddObra = openAddObra;
 openAddObra = function() { SFX.add(); _origOpenAddObra(); };
 
-// Confirm add obra
-const _origConfirmAddObra = confirmAddObra;
-confirmAddObra = function() { SFX.save(); _origConfirmAddObra(); };
+// Confirm add obra (the real function is `addObra`)
+if (typeof addObra === 'function') {
+  const _origAddObra = addObra;
+  addObra = function() { SFX.save(); _origAddObra(); };
+}
 
 // Delete obra/pasaje — subtle descending
 const _origDeleteObra = deleteObra;
