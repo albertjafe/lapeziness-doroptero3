@@ -1126,6 +1126,59 @@
   .proyeccion-conf-bar { flex: 1; height: 3px; background: var(--bg2); border-radius: 2px; overflow: hidden; }
   .proyeccion-conf-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
 
+  /* Rango estimado (obras nuevas, basado en historial personal) */
+  .rango-widget {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--accent2);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin: 12px 0 6px;
+  }
+  .rango-header {
+    font-size: 8px; color: var(--text3); letter-spacing: 0.15em;
+    text-transform: uppercase; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .rango-header-icon { color: var(--accent2); font-size: 11px; }
+  .rango-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0;
+    gap: 12px;
+  }
+  .rango-row + .rango-row { border-top: 1px dashed var(--border2); }
+  .rango-row-label {
+    flex: 1;
+    font-size: 10px; color: var(--text2);
+    line-height: 1.3;
+  }
+  .rango-row-label-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 14px; color: var(--text);
+    margin-bottom: 1px;
+  }
+  .rango-row-val {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px; line-height: 1;
+    color: var(--accent);
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .rango-row-val .rango-unit {
+    font-size: 10px; color: var(--text3); margin-left: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+  .rango-footnote {
+    font-size: 8px; color: var(--text3); line-height: 1.5;
+    margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border2);
+    font-style: italic;
+  }
+  [data-theme="cozy"] .rango-row-val,
+  [data-theme="cozy"] .rango-row-label-title { font-family: 'Caveat', cursive !important; }
+  [data-theme="cozy"] .rango-row-val { font-size: 22px !important; }
+  [data-theme="cozy"] .rango-row-label-title { font-size: 16px !important; }
+
   /* EFICIENCIA */
   .efic-widget { background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
   .efic-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
@@ -4130,27 +4183,144 @@ function linkPaseToHistory(obraId, score, tipo) {
 }
 
 // ── DECAY MODEL ───────────────────────────────────────────────────────────────
-
+//
 // Values in solHistory are 0-100. Legacy values (1-10) are normalized on read.
 function normalizeSolVal(v) {
   if (v == null) return 0;
-  return v > 10 ? v : Math.round(v * 10); // convert old 1-10 to 0-100
+  return v > 10 ? v : Math.round(v * 10);
 }
 
-const DECAY_DEFAULT_PER_DAY = 1.7; // ~12%/week on 0-100 scale
+// El modelo estima cuánto se "olvida" la solidez de una obra entre días sin
+// tocarla. Combina cuatro fuentes de información:
+//
+//   1) Si la obra tiene historial propio suficiente → su propia velocidad
+//      de olvido medida en gaps reales.
+//   2) Si no la tiene → un "prior personal": la media de las velocidades
+//      de olvido del resto de obras del usuario, en lugar de un valor fijo.
+//      Esto hace que la app empiece adaptada a Alberto desde el primer día.
+//   3) Un coeficiente de "robustez" propio de cada obra que combina:
+//        · dificultad declarada
+//        · horas totales invertidas (más horas → memoria más profunda)
+//        · ciclos de recuperación detectados (efecto savings: cada
+//          re-aprendizaje deja la obra más resistente al olvido)
+//        · pases en contexto de escena/concierto (efecto testing real)
+//   4) Un factor de estabilidad sobre el último valor: las solideces muy
+//      altas caen más rápido en su primer tramo (zona alta es menos
+//      estable que la media).
+//
+// Resultado final: rate adaptativa por obra, que se afina sola con el uso.
 
-function computeDecayRate(obra) {
+const DECAY_DEFAULT_PER_DAY = 1.7; // ~12%/sem en escala 0-100. Sólo se usa si
+                                    // el usuario no tiene NINGUNA obra con
+                                    // datos suficientes (estado inicial).
+
+// Pura: tasa medida del propio historial, o null si no hay datos suficientes
+function _computeRawDecayFromHistory(obra) {
   const hist = (obra.solHistory || []).slice().reverse().map(h => ({ ...h, val: normalizeSolVal(h.val) }));
-  if (hist.length < 3) return { rate: DECAY_DEFAULT_PER_DAY, confianza: 0, puntos: 0 };
+  if (hist.length < 3) return null;
   const gaps = [];
   for (let i = 1; i < hist.length; i++) {
     const dayGap = (new Date(hist[i].date) - new Date(hist[i-1].date)) / 86400000;
     const drop = hist[i-1].val - hist[i].val;
     if (dayGap >= 4 && drop > 0) gaps.push(drop / dayGap);
   }
-  if (!gaps.length) return { rate: DECAY_DEFAULT_PER_DAY, confianza: 0.1, puntos: 0 };
+  if (!gaps.length) return null;
   const rate = gaps.reduce((s, r) => s + r, 0) / gaps.length;
-  return { rate: Math.max(0.5, Math.min(8, rate)), confianza: Math.min(1, gaps.length / 5), puntos: gaps.length };
+  return { rate: Math.max(0.5, Math.min(8, rate)), puntos: gaps.length };
+}
+
+// Prior personal: media de tasas de olvido sobre todas las obras del usuario
+// que tienen datos suficientes. Si no hay ninguna, cae al default global.
+// Trimmed mean (descarta extremos) cuando hay >=5 obras, para robustez.
+function computePersonalDecayPrior() {
+  const rates = (db.obras || [])
+    .map(o => _computeRawDecayFromHistory(o))
+    .filter(r => r != null)
+    .map(r => r.rate);
+  if (!rates.length) return DECAY_DEFAULT_PER_DAY;
+  if (rates.length >= 5) {
+    rates.sort((a, b) => a - b);
+    const trimmed = rates.slice(1, -1);
+    return trimmed.reduce((s, r) => s + r, 0) / trimmed.length;
+  }
+  return rates.reduce((s, r) => s + r, 0) / rates.length;
+}
+
+// Detecta ciclos bajada-recuperación en el historial de solidez. Una caída
+// significativa seguida del retorno cerca del pico previo cuenta como un
+// ciclo de re-aprendizaje. Capturar esto importa porque la memoria motora
+// se vuelve más resistente al olvido tras cada recuperación (efecto savings).
+function _countRecoveryCycles(obra) {
+  const hist = (obra.solHistory || []).slice().reverse(); // chronological
+  if (hist.length < 4) return 0;
+  let cycles = 0;
+  let inDip = false;
+  let peakBeforeDip = normalizeSolVal(hist[0].val);
+  for (let i = 1; i < hist.length; i++) {
+    const v = normalizeSolVal(hist[i].val);
+    if (!inDip) {
+      if (v < peakBeforeDip - 15) {
+        inDip = true;
+      } else {
+        peakBeforeDip = Math.max(peakBeforeDip, v);
+      }
+    } else {
+      if (v >= peakBeforeDip - 5) {
+        cycles++;
+        inDip = false;
+        peakBeforeDip = v;
+      }
+    }
+  }
+  return cycles;
+}
+
+// Robustez de la obra. Multiplicador que se aplica al ritmo base de olvido.
+// 1.0 = neutro · <1 = más resistente · >1 = más frágil. Limitado a [0.5, 1.5].
+function computeRobustness(obra) {
+  let m = 1.0;
+
+  // Dificultad declarada (1 fácil → 5 difícil)
+  const dif = obra.dificultad || 3;
+  m *= 0.85 + (dif - 1) * (0.35 / 4); // dif=1 → 0.85, dif=5 → 1.20
+
+  // Horas totales invertidas. Escala log: la diferencia entre 0 y 5 horas
+  // importa más que entre 50 y 100 horas. Saturación natural.
+  const horas = (typeof getMinutosObra === 'function' ? getMinutosObra(obra.id) : 0) / 60;
+  m *= Math.max(0.7, 1.2 - 0.3 * Math.log10(1 + horas));
+
+  // Ciclos de recuperación detectados (cada uno reduce el decaimiento ~10%)
+  const recoveries = _countRecoveryCycles(obra);
+  m *= Math.pow(0.9, Math.min(recoveries, 3));
+
+  // Pases en escena/concierto (cada uno reduce el decaimiento ~5%, máx 5)
+  const pasesEscena = (obra.solHistory || []).filter(h =>
+    h.context === 'pase-escena' || h.context === 'pase-concierto'
+  ).length;
+  m *= Math.pow(0.95, Math.min(pasesEscena, 5));
+
+  return Math.max(0.5, Math.min(1.5, m));
+}
+
+function computeDecayRate(obra) {
+  const own = _computeRawDecayFromHistory(obra);
+  let baseRate, confianza, puntos, fuente;
+  if (own) {
+    baseRate = own.rate;
+    confianza = Math.min(1, own.puntos / 5);
+    puntos = own.puntos;
+    fuente = 'propio';
+  } else {
+    baseRate = computePersonalDecayPrior();
+    // Si el prior viene de obras del propio usuario, sube algo la confianza
+    const personalDataExists = (db.obras || []).some(o => _computeRawDecayFromHistory(o) != null);
+    confianza = personalDataExists ? 0.15 : 0.05;
+    puntos = 0;
+    fuente = personalDataExists ? 'prior-personal' : 'default';
+  }
+  const robustness = computeRobustness(obra);
+  const finalRate = Math.max(0.3, Math.min(8, baseRate * robustness));
+  return { rate: finalRate, confianza, puntos, robustness, baseRate, fuente };
 }
 
 function estimateSolActual(obra) {
@@ -4168,6 +4338,190 @@ function estimateSolActual(obra) {
     decaying: diasGap >= 4, drop: Math.round(drop),
     rate, lastDate: last.date,
   };
+}
+
+// ── PROYECCIÓN PARA OBRAS NUEVAS ──────────────────────────────────────────────
+//
+// Estima el rango de horas (mínimo, máximo) que le puede llevar al usuario:
+//   1) Aprender todos los compases de una obra nueva.
+//   2) Llevarla desde "aprendida" hasta "sólida" (sol >= 75).
+//
+// El método: mira las obras ya completadas del historial del propio usuario,
+// identifica las que tienen perfil similar (dificultad y duración) y extrae
+// minutos/compás reales de cada fase. Devuelve un rango con percentiles
+// 25-75 ajustados por similitud.
+//
+// Clave: solo aparece cuando el usuario tiene >=4 obras con datos en una fase
+// para que el rango tenga base estadística mínima.
+
+// Resumen de cuánto tardó UNA obra concreta en cada fase, leyendo su historial.
+// Devuelve { minAprender, minConsolidar } o null si la obra no llegó.
+function _resumenObraFases(obra) {
+  if (!obra) return null;
+  if (!obra.compasesTotal || obra.compasesTotal <= 0) return null;
+
+  const out = { minAprender: null, minConsolidar: null };
+
+  // Fase 1: aprender. Buscar el primer punto del compasHistory donde
+  // compas alcanza el total (en orden cronológico). minAcum en ese punto
+  // es la respuesta directa.
+  const histAsc = (obra.compasHistory || []).slice().reverse(); // chronological
+  const punto = histAsc.find(p => p.compas >= obra.compasesTotal);
+  let minAcumAprendido = null;
+  let dateAprendido = null;
+  if (punto && punto.minAcum) {
+    minAcumAprendido = punto.minAcum;
+    dateAprendido = punto.date;
+    out.minAprender = punto.minAcum;
+  }
+
+  // Fase 2: consolidar. La obra se considera "sólida" cuando alcanza sol≥75.
+  // Buscamos el primer punto del solHistory cronológico con val>=75 que
+  // venga DESPUÉS de la fecha de aprendizaje. Los minutos invertidos en
+  // consolidar = minTotal hasta esa fecha menos minAcumAprendido.
+  if (dateAprendido && obra.solHistory?.length) {
+    const solAsc = obra.solHistory.slice().reverse();
+    const tAprendido = new Date(dateAprendido).getTime();
+    const puntoSol = solAsc.find(s =>
+      normalizeSolVal(s.val) >= 75 && new Date(s.date).getTime() > tAprendido
+    );
+    if (puntoSol) {
+      // Sumar minutos en sesiones de la obra hasta esa fecha
+      const tSol = new Date(puntoSol.date).getTime();
+      let minTotalHastaSol = 0;
+      (db.sesiones || []).forEach(s => {
+        if (new Date(s.date).getTime() > tSol) return;
+        (s.items || []).forEach(it => {
+          if (it.obraId !== obra.id) return;
+          if (it.manual && it.minutosEstudiados) minTotalHastaSol += it.minutosEstudiados;
+          else if (it.tick === 'hecho' && it.minutosReales) minTotalHastaSol += it.minutosReales;
+          else if (it.tick === 'hecho' && it.minutosPlan) minTotalHastaSol += it.minutosPlan;
+        });
+      });
+      // Sumar minutosExtra que estuvieran ya antes (proxy)
+      minTotalHastaSol += (obra.minutosExtra || 0);
+      const minConsolidar = minTotalHastaSol - minAcumAprendido;
+      if (minConsolidar > 0) out.minConsolidar = minConsolidar;
+    }
+  }
+
+  return out;
+}
+
+// Calcula percentiles (p25, p50, p75) sobre un array de números
+function _percentilesSimple(arr) {
+  if (!arr.length) return null;
+  const sorted = arr.slice().sort((a, b) => a - b);
+  const at = (p) => {
+    const idx = (sorted.length - 1) * p;
+    const lo = Math.floor(idx), hi = Math.ceil(idx);
+    if (lo === hi) return sorted[lo];
+    return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+  };
+  return { p25: at(0.25), p50: at(0.50), p75: at(0.75), n: sorted.length };
+}
+
+// Peso de similitud entre dos obras (1 = idéntica, 0 = muy distinta)
+// Combina dificultad y duración (proxy de duración: compasesTotal o duracion).
+function _similitud(obraTarget, obraRef) {
+  const difT = obraTarget.dificultad || 3;
+  const difR = obraRef.dificultad || 3;
+  const wDif = Math.max(0, 1 - Math.abs(difT - difR) / 4);
+
+  const compTarget = obraTarget.compasesTotal || 0;
+  const compRef = obraRef.compasesTotal || 0;
+  let wComp;
+  if (compTarget > 0 && compRef > 0) {
+    const ratio = Math.min(compTarget, compRef) / Math.max(compTarget, compRef);
+    wComp = ratio; // 1 = igual, 0.5 = mitad/doble
+  } else {
+    wComp = 0.7; // sin datos → similitud neutra
+  }
+
+  // Pesado: dificultad importa más que duración exacta
+  return 0.65 * wDif + 0.35 * wComp;
+}
+
+// Función principal: rango estimado para una obra nueva (típicamente sin
+// historial) o para reconfirmar a una obra en marcha.
+// Devuelve { aprender: {minH, maxH, minH_per, maxH_per, n, conf}, consolidar: {...} }
+// o null si no hay datos suficientes.
+function computeRangoEstimado(obra) {
+  if (!obra) return null;
+  const compasesTarget = obra.compasesTotal || 0;
+  const out = { aprender: null, consolidar: null };
+
+  // Recolectar datos de TODAS las obras del usuario que completaron cada fase
+  const datosAprender = [];   // [{ minPorCompas, peso, obra }]
+  const datosConsolidar = []; // [{ minTotal, peso, obra }]
+
+  (db.obras || []).forEach(ref => {
+    if (ref.id === obra.id) return; // no usar la propia obra como referencia
+    const fases = _resumenObraFases(ref);
+    if (!fases) return;
+    if (fases.minAprender && ref.compasesTotal > 0) {
+      const peso = _similitud(obra, ref);
+      datosAprender.push({
+        minPorCompas: fases.minAprender / ref.compasesTotal,
+        peso, ref
+      });
+    }
+    if (fases.minConsolidar) {
+      const peso = _similitud(obra, ref);
+      datosConsolidar.push({
+        minTotal: fases.minConsolidar,
+        peso, ref
+      });
+    }
+  });
+
+  // FASE APRENDER — escala por compases de la obra target
+  if (datosAprender.length >= 4 && compasesTarget > 0) {
+    // Usar percentiles ponderados por similitud: replicar cada dato según su peso
+    const expandido = [];
+    datosAprender.forEach(d => {
+      const replicas = Math.max(1, Math.round(d.peso * 4)); // peso 1 → 4 réplicas, peso 0.25 → 1
+      for (let i = 0; i < replicas; i++) expandido.push(d.minPorCompas);
+    });
+    const p = _percentilesSimple(expandido);
+    if (p) {
+      const minH = (p.p25 * compasesTarget) / 60;
+      const maxH = (p.p75 * compasesTarget) / 60;
+      out.aprender = {
+        minH: Math.round(minH * 2) / 2,        // redondeo a 0.5h
+        maxH: Math.round(maxH * 2) / 2,
+        medianaH: Math.round((p.p50 * compasesTarget) / 60 * 2) / 2,
+        minHPerCompas: p.p25,
+        maxHPerCompas: p.p75,
+        n: datosAprender.length,
+        conf: Math.min(1, datosAprender.length / 8),
+      };
+    }
+  }
+
+  // FASE CONSOLIDAR — escala por minutos absolutos (no por compás, porque
+  // consolidar depende más del número de pases que del tamaño)
+  if (datosConsolidar.length >= 4) {
+    const expandido = [];
+    datosConsolidar.forEach(d => {
+      const replicas = Math.max(1, Math.round(d.peso * 4));
+      for (let i = 0; i < replicas; i++) expandido.push(d.minTotal);
+    });
+    const p = _percentilesSimple(expandido);
+    if (p) {
+      // Consolidar es muy variable según calidad de pase, escala dificultad ligeramente
+      const difFactor = 0.85 + ((obra.dificultad || 3) - 1) * 0.075;
+      out.consolidar = {
+        minH: Math.round((p.p25 * difFactor) / 60 * 2) / 2,
+        maxH: Math.round((p.p75 * difFactor) / 60 * 2) / 2,
+        medianaH: Math.round((p.p50 * difFactor) / 60 * 2) / 2,
+        n: datosConsolidar.length,
+        conf: Math.min(1, datosConsolidar.length / 8),
+      };
+    }
+  }
+
+  return (out.aprender || out.consolidar) ? out : null;
 }
 
 function computeRecovery(obraId) {
@@ -4457,7 +4811,26 @@ function renderDecayWidget(obraId) {
     ? '<div class="decay-spark" style="margin-top:10px">' + renderSolChart(hist, escHist, decay.rate, solEst, db.sesiones, obraId, false) + '</div>'
     : '';
 
-  const confHtml = hist.length >= 3 ? '<div class="decay-conf"><span>Modelo</span><div class="decay-conf-bar"><div class="decay-conf-fill" style="width:' + Math.round(decay.confianza*100) + '%;background:' + (decay.confianza > 0.6 ? 'var(--green)' : decay.confianza > 0.3 ? 'var(--accent)' : 'var(--orange)') + '"></div></div><span>' + (decay.confianza < 0.2 ? 'default' : decay.confianza < 0.6 ? 'aprendiendo' : 'personalizado') + ' · ' + Math.round(decay.rate * 7) + 'pts/sem</span></div>' : '';
+  // Etiqueta del modelo: indica si el ritmo de olvido viene de datos
+  // propios de esta obra, de una media personal del usuario, o del default.
+  let confLabel, confColor;
+  if (decay.fuente === 'propio') {
+    if (decay.confianza > 0.6) { confLabel = 'personalizado'; confColor = 'var(--green)'; }
+    else { confLabel = 'aprendiendo'; confColor = 'var(--accent)'; }
+  } else if (decay.fuente === 'prior-personal') {
+    confLabel = 'media personal'; confColor = 'var(--accent)';
+  } else {
+    confLabel = 'estimado'; confColor = 'var(--orange)';
+  }
+  // Indicador de robustez: <1 obra resistente · >1 obra frágil
+  const robTxt = decay.robustness < 0.85 ? ' · obra robusta'
+                : decay.robustness > 1.15 ? ' · obra frágil'
+                : '';
+  const confHtml = (hist.length >= 1 || decay.fuente !== 'default')
+    ? '<div class="decay-conf"><span>Modelo</span><div class="decay-conf-bar"><div class="decay-conf-fill" style="width:'
+      + Math.round(Math.max(decay.confianza, 0.05) * 100) + '%;background:' + confColor
+      + '"></div></div><span>' + confLabel + ' · ' + Math.round(decay.rate * 7) + 'pts/sem' + robTxt + '</span></div>'
+    : '';
 
   return '<div class="decay-widget"><div class="decay-header"><span>🎯 Solidez &amp; escena</span></div><div class="decay-kpis">' + kpisHtml + '</div>' + alertHtml + chartHtml + confHtml + '</div>';
 }
@@ -4595,6 +4968,70 @@ function renderProyeccionWidget(obraId, movId, entity) {
   const confHtml = vel ? '<div class="proyeccion-conf"><span>Confianza</span><div class="proyeccion-conf-bar"><div class="proyeccion-conf-fill" style="width:' + Math.round(vel.confianza*100) + '%;background:' + (vel.confianza > 0.6 ? 'var(--green)' : vel.confianza > 0.3 ? 'var(--accent)' : 'var(--orange)') + '"></div></div><span>' + Math.round(vel.confianza*100) + '% · ' + vel.puntos + ' pts</span></div>' : '';
 
   return '<div class="proyeccion-widget"><div class="proyeccion-header">📈 Proyección · ' + restantes + ' cc. restantes</div><div class="proyeccion-kpis">' + kpisHtml + '</div>' + deadlineHtml + sparkHtml + confHtml + '</div>';
+}
+
+// Widget de rango estimado para obras NUEVAS (sin historial propio aún).
+// Se basa en obras pasadas de dificultad y duración similar del propio
+// usuario. Se oculta automáticamente cuando la obra ya tiene historial
+// propio suficiente (entonces toma el relevo el widget de proyección).
+function renderRangoWidget(obraId, entity) {
+  if (!entity || !entity.compasesTotal) return '';
+
+  // Si la obra ya tiene historial propio significativo, NO mostramos el
+  // rango estimado: para entonces el widget de proyección personalizada
+  // (renderProyeccionWidget) ya da una estimación más fiable.
+  const histProp = (entity.compasHistory || []).length;
+  if (histProp >= 3) return '';
+
+  const rango = computeRangoEstimado(entity);
+  if (!rango) return '';
+
+  const fmtH = h => {
+    if (h == null) return '—';
+    if (h >= 10) return Math.round(h) + 'h';
+    return (Math.round(h * 2) / 2) + 'h';
+  };
+
+  let rowsHtml = '';
+
+  if (rango.aprender) {
+    const a = rango.aprender;
+    rowsHtml +=
+      '<div class="rango-row">' +
+        '<div class="rango-row-label">' +
+          '<div class="rango-row-label-title">Aprender los compases</div>' +
+          '<span style="color:var(--text3)">según ' + a.n + ' obras tuyas similares</span>' +
+        '</div>' +
+        '<div class="rango-row-val">' + fmtH(a.minH) + '<span class="rango-unit"> – ' + fmtH(a.maxH) + '</span></div>' +
+      '</div>';
+  }
+
+  if (rango.consolidar) {
+    const c = rango.consolidar;
+    rowsHtml +=
+      '<div class="rango-row">' +
+        '<div class="rango-row-label">' +
+          '<div class="rango-row-label-title">Hasta solidez de concierto</div>' +
+          '<span style="color:var(--text3)">tras aprender · más variable</span>' +
+        '</div>' +
+        '<div class="rango-row-val">' + fmtH(c.minH) + '<span class="rango-unit"> – ' + fmtH(c.maxH) + '</span></div>' +
+      '</div>';
+  }
+
+  if (!rowsHtml) return '';
+
+  const footnote = (rango.consolidar && !rango.aprender)
+    ? 'Estimación basada en tus obras pasadas. La fase de consolidar depende mucho de la calidad de los pases, no solo del tiempo.'
+    : (rango.consolidar
+        ? 'Estimación basada en tus obras pasadas. La fase de consolidar depende mucho de la calidad de los pases, no solo del tiempo.'
+        : 'Estimación basada en tus obras pasadas con dificultad y duración similares.'
+      );
+
+  return '<div class="rango-widget">' +
+    '<div class="rango-header"><span class="rango-header-icon">⌛</span>Estimación inicial</div>' +
+    rowsHtml +
+    '<div class="rango-footnote">' + footnote + '</div>' +
+  '</div>';
 }
 
 // ── EFICIENCIA ────────────────────────────────────────────────────────────────
@@ -6472,8 +6909,6 @@ function renderObraCard(o, idx) {
         <!-- Escalas APR / CON / PER (solo sin movimientos) -->
         <div class="obra-scales">
           ${renderCompasWidget(o.id, null, o)}
-          ${renderMinutosWidget(o.id)}
-          ${renderDecayWidget(o.id)}
           ${['sol','esc'].map((key, idx2) => {
             const labels = ['Solidez','Escena'];
             const descs  = ['Técnica, pasajes y musicalidad','Bajo presión real'];
@@ -6526,6 +6961,7 @@ function renderObraCard(o, idx) {
         <!-- Movimientos -->
         ${movimientosHtml}
         ${renderMinutosWidget(o.id)}
+        ${renderRangoWidget(o.id, o)}
         ${renderDecayWidget(o.id)}
 
         <!-- Pase (solo si no hay movimientos) -->
