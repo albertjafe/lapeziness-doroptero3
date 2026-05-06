@@ -6201,10 +6201,36 @@ function recordMovSolHistory(obraId, movId, val, context) {
 function generateSession() {
   if (!db.obras || db.obras.length === 0) { showToast('Añade obras primero'); return; }
 
-  const obras = [...db.obras];
   const totalMin = selectedTime * 60;
   const hora = new Date().getHours();
   const now = Date.now();
+
+  // ── Filtro: solo obras en eventos futuros ────────────────────────────────
+  // Lógica: el generador debe centrarse en lo que está programado, no en todo
+  // el repertorio. Las obras sin evento futuro (ej. una obra de un examen ya
+  // hecho que no vuelves a tocar pronto) NO deben aparecer aquí. Si quieres
+  // tocarlas igualmente, usa "+ Añadir sesión" manual.
+  //
+  // Excepción única: si el calendario está completamente vacío (vacaciones,
+  // hueco entre temporadas), trabajamos con todo el repertorio para que la
+  // app siga siendo útil. En cuanto añadas un evento, el filtro se activa.
+  const eventosFuturos = (db.eventos || []).filter(ev =>
+    !ev.completado && new Date(ev.fecha) > now
+  );
+  const hayEventosFuturos = eventosFuturos.length > 0;
+  const obrasEnEventos = new Set();
+  eventosFuturos.forEach(ev => (ev.obras || []).forEach(id => obrasEnEventos.add(id)));
+
+  let obras;
+  if (hayEventosFuturos) {
+    obras = db.obras.filter(o => obrasEnEventos.has(o.id));
+    if (!obras.length) {
+      showToast('No hay obras programadas en eventos futuros. Añade obras a un evento o usa "+ Añadir sesión" manual.');
+      return;
+    }
+  } else {
+    obras = [...db.obras];
+  }
 
   // ── Carga del día actual ──────────────────────────────────────────────────
   const hoy = new Date().toDateString();
