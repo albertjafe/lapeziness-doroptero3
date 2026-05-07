@@ -2173,7 +2173,7 @@
   </div>
   <div style="display:flex;align-items:center;gap:8px">
     <div style="font-size:10px;color:var(--text3)" id="packNameHeader"></div>
-    <button class="settings-icon" onclick="openModal('modalSettings')" title="Ajustes">⚙</button>
+    <button class="settings-icon" onclick="openSettings()" title="Ajustes">⚙</button>
   </div>
 </div>
 
@@ -2441,6 +2441,27 @@
   <div id="sesionesHistorial"></div>
 </div>
 
+<!-- MODAL: Recuperar datos de la nube (instalación nueva sin datos locales) -->
+<div class="modal-overlay" id="modalCloudSync">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title" style="margin-bottom:6px">☁ Recuperar datos</div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:14px;line-height:1.6">
+      Esta instalación está vacía. Si tienes una cuenta con datos en la nube, escribe tu email y contraseña para recuperarlos.
+      <br><br>
+      Si nunca usaste cuenta, puedes <span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="closeModal('modalCloudSync')">empezar desde cero</span>.
+    </div>
+    <div class="hecho-field-label">Email</div>
+    <input type="email" id="cloudEmail" class="modal-input" placeholder="tu@email.com" autocomplete="email" style="margin-bottom:10px">
+    <div class="hecho-field-label">Contraseña</div>
+    <input type="password" id="cloudPass" class="modal-input" placeholder="contraseña" autocomplete="current-password" style="margin-bottom:6px">
+    <div id="cloudSyncError" style="font-size:10px;color:var(--red);min-height:14px;margin-bottom:6px"></div>
+    <div class="modal-buttons" style="margin-top:10px">
+      <button class="modal-btn secondary" onclick="closeModal('modalCloudSync')">Empezar de cero</button>
+      <button class="modal-btn primary" id="cloudSyncBtn" onclick="doCloudSync()">Recuperar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL SETTINGS -->
 <div class="modal-overlay" id="modalSettings">
   <div class="modal">
@@ -2508,6 +2529,13 @@
     </button>
     <input type="file" id="forestCsvInput" accept=".csv" style="display:none" onchange="loadForestCSV(this)">
     <div id="forestFeedback" style="font-size:9px;color:var(--green);margin-top:4px;display:none"></div>
+
+    <div class="settings-section" style="margin-top:16px">Sincronización</div>
+    <div id="syncStatusInfo" style="font-size:10px;color:var(--text3);margin-bottom:8px;line-height:1.5">Comprobando...</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="modal-btn secondary" onclick="forceCloudResync()" style="flex:1;font-size:11px">↺ Re-sincronizar con la nube</button>
+      <button class="modal-btn secondary" onclick="openModal('modalCloudSync')" style="flex:1;font-size:11px">Cuenta diferente</button>
+    </div>
 
     <div class="modal-buttons" style="margin-top:20px">
       <button class="modal-btn primary" onclick="closeModal('modalSettings')">Cerrar</button>
@@ -10725,6 +10753,97 @@ function toggleAuthMode() {}
 async function doAuth() {}
 async function doLogout() {}
 
+// Llamado desde el modal "Recuperar datos" cuando una instalación nueva no
+// tiene datos locales y el usuario quiere bajárselos de la nube.
+async function doCloudSync() {
+  const email = (document.getElementById('cloudEmail')?.value || '').trim();
+  const pass = document.getElementById('cloudPass')?.value || '';
+  const errEl = document.getElementById('cloudSyncError');
+  const btn = document.getElementById('cloudSyncBtn');
+  if (errEl) errEl.textContent = '';
+  if (!email || !pass) { if (errEl) errEl.textContent = 'Email y contraseña requeridos'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  try {
+    const sb = getSB();
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) {
+      const msgs = {
+        'Invalid login credentials': 'Email o contraseña incorrectos',
+        'Email not confirmed': 'Confirma tu email primero',
+      };
+      if (errEl) errEl.textContent = msgs[error.message] || error.message;
+      if (btn) { btn.disabled = false; btn.textContent = 'Recuperar'; }
+      return;
+    }
+    if (data.session) {
+      _saveStoredCredentials(email, pass);
+      await onAuthSuccess();
+      closeModal('modalCloudSync');
+      showToast('Datos sincronizados ✓');
+    }
+  } catch(e) {
+    if (errEl) errEl.textContent = 'Error: ' + (e.message || 'sin red');
+    if (btn) { btn.disabled = false; btn.textContent = 'Recuperar'; }
+  }
+}
+
+// Abre Ajustes y refresca el panel de estado de sincronización
+function openSettings() {
+  openModal('modalSettings');
+  if (typeof updateSyncStatusInfo === 'function') updateSyncStatusInfo();
+}
+
+// Refresca la información de estado en Ajustes
+async function updateSyncStatusInfo() {
+  const el = document.getElementById('syncStatusInfo');
+  if (!el) return;
+  try {
+    const sb = getSB();
+    const { data: { user } } = await sb.auth.getUser();
+    if (user) {
+      el.innerHTML = '✓ Conectado como <span style="color:var(--accent)">' + user.email + '</span><br>'
+        + '<span style="font-size:9px">Tus datos se guardan también en la nube y se sincronizan al iniciar.</span>';
+    } else {
+      el.innerHTML = '<span style="color:var(--orange)">⚠ Sin sesión activa</span><br>'
+        + '<span style="font-size:9px">La app está funcionando solo en este dispositivo. Pulsa "Re-sincronizar" para conectar con tu cuenta.</span>';
+    }
+  } catch(e) {
+    el.innerHTML = '<span style="color:var(--text3)">Sincronización no disponible (sin red o sin cuenta).</span>';
+  }
+}
+
+// Fuerza una re-sincronización con la nube. Útil si los datos locales se han
+// desincronizado o si se sospecha que la nube tiene una versión más reciente.
+async function forceCloudResync() {
+  if (!confirm('Re-sincronizar con la nube descargará los datos remotos y reemplazará lo que haya en este dispositivo si la nube es más reciente.\n\n¿Continuar?')) return;
+  try {
+    const sb = getSB();
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) {
+      // No hay sesión — pedir credenciales
+      closeModal('modalSettings');
+      openModal('modalCloudSync');
+      return;
+    }
+    showSyncIndicator('↺ sincronizando…');
+    const reloaded = await loadFromCloud();
+    if (reloaded) {
+      renderObras();
+      renderCalendario();
+      renderSesionesHistorial();
+      if (typeof renderEstadoSection === 'function') renderEstadoSection();
+      if (typeof renderRacha === 'function') renderRacha();
+      updateHeader();
+      updateSyncStatusInfo();
+      showToast('Datos actualizados desde la nube ✓');
+    } else {
+      showToast('No había datos nuevos en la nube');
+    }
+  } catch(e) {
+    showToast('Error sincronizando: ' + (e.message || 'sin red'));
+  }
+}
+
 async function onAuthSuccess() {
   // (la pantalla de login ha sido eliminada — esta función sólo carga datos
   // desde la nube si hay sesión válida)
@@ -10770,23 +10889,38 @@ async function initApp() {
     }
   } catch(e) {}
 
-  // ── SUPABASE AUTO-SYNC (sin pantalla de login, uso personal) ─────────────
-  // Si hay sesión guardada o credenciales almacenadas, sincronizamos en
-  // segundo plano. Si no, la app funciona en local sin pedir nada.
+  // ── DETECCIÓN DE INSTALACIÓN VACÍA ─────────────────────────────────────────
+  // Importante: este chequeo va FUERA del try-catch de Supabase para que
+  // funcione incluso si Supabase no carga (ej. red lenta, bloqueador). Si
+  // detectamos una instalación vacía sin credenciales, abrimos el modal
+  // de recuperación independientemente del estado de Supabase.
+  const _hayObras = (db.obras || []).length > 0;
+  const _haySesiones = (db.sesiones || []).length > 0;
+  const _instalacionVacia = !_hayObras && !_haySesiones;
+  const _credsGuardadas = !!_loadStoredCredentials();
+
+  // ── SUPABASE AUTO-SYNC ─────────────────────────────────────────────────────
+  // Estrategia:
+  // 1. Si hay sesión válida → cargar datos cloud y seguir.
+  // 2. Si hay credenciales guardadas → re-login silencioso.
+  // 3. Si NO hay sesión, NO hay credenciales y NO hay datos locales (instalación
+  //    nueva — típicamente PWA recién añadida a pantalla de inicio en iOS, que
+  //    tiene almacenamiento separado del Safari del navegador) → mostrar modal
+  //    para que el usuario recupere sus datos de la nube.
+  // 4. Si no hay sesión ni credenciales pero SÍ hay datos locales → seguir
+  //    funcionando en local sin molestar.
   try {
     if (typeof supabase === 'undefined') throw new Error('Supabase not loaded');
     const sb = getSB();
 
-    // 1. Intentar sesión existente
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
       await onAuthSuccess();
       return;
     }
 
-    // 2. Intentar auto-login con credenciales guardadas
-    const creds = _loadStoredCredentials();
-    if (creds) {
+    if (_credsGuardadas) {
+      const creds = _loadStoredCredentials();
       showSyncIndicator('↺ reconectando…');
       const { data, error } = await sb.auth.signInWithPassword({
         email: creds.email, password: creds.password
@@ -10797,8 +10931,13 @@ async function initApp() {
       }
     }
 
-    // 3. Sin credenciales — modo local, sin UI de login
-    // Escuchar cambios de auth por si la sesión llega más tarde
+    // Si la instalación está vacía y no hay credenciales válidas, ofrecer
+    // recuperación cloud
+    if (_instalacionVacia) {
+      setTimeout(() => openModal('modalCloudSync'), 400);
+    }
+
+    // En cualquier caso, escuchar futuros cambios de auth
     sb.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
         await onAuthSuccess();
@@ -10807,6 +10946,11 @@ async function initApp() {
 
   } catch(e) {
     console.warn('Auth/sync no disponible, modo local:', e.message);
+    // Si Supabase falló pero la instalación está vacía, igual abrimos el modal
+    // (el usuario podrá reintentar cuando vuelva la red)
+    if (_instalacionVacia && !_credsGuardadas) {
+      setTimeout(() => openModal('modalCloudSync'), 400);
+    }
   }
 }
 
