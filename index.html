@@ -2138,6 +2138,317 @@
   .toc-stat { flex:1; text-align:center; background:var(--bg3); border-radius:7px; padding:8px 4px; }
   .toc-stat-n { font-size:20px; font-family:"JetBrains Mono",monospace; color:#e08898; }
   .toc-stat-l { font-size:8px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-top:2px; }
+
+  /* ── CRONÓMETRO · MODO CONCENTRACIÓN ────────────────────────────────────── */
+
+  /* Cuando body tiene .crono-focus, ocultamos la topbar entera y reset padding */
+  body.crono-focus .topbar { display: none !important; }
+  body.crono-focus .app-content { padding-top: 0 !important; }
+  body.crono-focus .botanical-deco { display: none !important; }
+
+  /* Botón X flotante (solo visible en modo focus) */
+  .crono-close-btn {
+    position: fixed;
+    top: env(safe-area-inset-top, 14px);
+    right: 18px;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+    background: var(--bg2);
+    color: var(--text3);
+    cursor: pointer;
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 100;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+    backdrop-filter: blur(8px);
+  }
+  .crono-close-btn:hover { color: var(--text); border-color: var(--border); }
+  .crono-close-btn:active { transform: scale(0.92); }
+  .crono-close-btn svg { width: 14px; height: 14px; }
+  body.crono-focus .crono-close-btn { display: flex; }
+
+  /* Contenedor principal */
+  .crono-wrap {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: calc(100vh - 40px);
+    max-width: 480px; margin: 0 auto;
+    padding: 40px 24px;
+    position: relative;
+  }
+  .crono-stage { width: 100%; animation: cronoFadeIn 0.4s ease; }
+  @keyframes cronoFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Fase IDLE: select + start ────────────────────────────────────────── */
+  .crono-idle-wrap { text-align: center; }
+
+  .crono-idle-mark {
+    width: 4px; height: 36px; margin: 0 auto 36px;
+    background: linear-gradient(180deg, transparent, var(--accent) 50%, transparent);
+    opacity: 0.35;
+  }
+
+  .crono-select-wrap {
+    margin-bottom: 32px;
+    position: relative;
+  }
+  .crono-select {
+    width: 100%; padding: 18px 44px 18px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border2);
+    color: var(--text);
+    font-family: "Cormorant Garamond", serif;
+    font-size: 19px; font-weight: 400;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-sizing: border-box;
+    text-align: center;
+    -webkit-appearance: none; appearance: none;
+    transition: border-color 0.3s ease;
+  }
+  .crono-select:focus { outline: none; border-bottom-color: var(--accent); }
+  .crono-select-wrap::after {
+    content: "";
+    position: absolute;
+    right: 16px; top: 50%;
+    width: 6px; height: 6px;
+    border-right: 1.5px solid var(--text3);
+    border-bottom: 1.5px solid var(--text3);
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+  }
+
+  /* Botón circular grande de play (idle) */
+  .crono-start-circle {
+    width: 84px; height: 84px;
+    border-radius: 50%;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    cursor: pointer;
+    margin: 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.25s ease;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+  }
+  .crono-start-circle:disabled { opacity: 0.25; cursor: not-allowed; border-color: var(--border2); color: var(--text3); }
+  .crono-start-circle:not(:disabled):hover { background: rgba(201,169,110,0.06); }
+  .crono-start-circle:not(:disabled):active { transform: scale(0.95); }
+  .crono-start-circle svg { width: 28px; height: 28px; margin-left: 4px; }
+
+  .crono-start-circle:not(:disabled)::before {
+    content: "";
+    position: absolute; inset: -8px;
+    border-radius: 50%;
+    border: 1px solid var(--accent);
+    opacity: 0.15;
+    animation: cronoBreathe 3.6s ease-in-out infinite;
+  }
+  @keyframes cronoBreathe {
+    0%, 100% { transform: scale(1); opacity: 0.15; }
+    50% { transform: scale(1.08); opacity: 0; }
+  }
+
+  /* Sutil contador de fallidas */
+  .crono-fallidas-info {
+    position: absolute;
+    bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    color: var(--text3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+  .crono-fallidas-info .n { color: var(--text2); font-weight: 500; font-family: "JetBrains Mono", monospace; }
+
+  /* ── Fase RUNNING / PAUSED ────────────────────────────────────────────── */
+
+  .crono-display-wrap {
+    text-align: center;
+    margin-bottom: 32px;
+    position: relative;
+  }
+  .crono-display {
+    font-family: "Cormorant Garamond", serif;
+    font-size: clamp(78px, 19vw, 132px);
+    font-weight: 300;
+    color: var(--accent);
+    letter-spacing: 0.015em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.4s ease, opacity 0.4s ease;
+    position: relative;
+  }
+  .crono-display.paused { color: var(--text3); opacity: 0.55; }
+
+  /* Halo suave bajo el display cuando corre */
+  .crono-display-wrap::before {
+    content: "";
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 60%; height: 60%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(201,169,110,0.10), transparent 65%);
+    filter: blur(20px);
+    z-index: -1;
+    opacity: 1;
+    transition: opacity 0.4s ease;
+  }
+  .crono-display-wrap.is-paused::before { opacity: 0; }
+
+  /* Card de obra clickable (durante sesión) */
+  .crono-obra-card {
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 14px 18px;
+    text-align: center;
+    margin-bottom: 28px;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+  }
+  .crono-obra-card:hover { border-color: var(--border); background: rgba(255,255,255,0.015); }
+  .crono-obra-card:active { transform: scale(0.995); }
+  .crono-obra-name {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 18px;
+    color: var(--text);
+    line-height: 1.3;
+    letter-spacing: 0.005em;
+  }
+  .crono-obra-sub {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 4px;
+    font-style: italic;
+    letter-spacing: 0.02em;
+  }
+  .crono-obra-edit-hint {
+    position: absolute;
+    top: 8px; right: 10px;
+    opacity: 0.35;
+    color: var(--text3);
+    transition: opacity 0.2s;
+  }
+  .crono-obra-card:hover .crono-obra-edit-hint { opacity: 0.7; }
+  .crono-obra-edit-hint svg { width: 11px; height: 11px; display: block; }
+
+  /* Controles circulares */
+  .crono-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 28px;
+    margin-top: 8px;
+  }
+  .crono-ctrl-btn {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .crono-ctrl-btn:active { transform: scale(0.93); }
+  .crono-ctrl-btn svg { width: 22px; height: 22px; }
+
+  /* Botón principal (pause/play): más prominente */
+  .crono-ctrl-btn.primary {
+    width: 76px; height: 76px;
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .crono-ctrl-btn.primary:hover { background: rgba(201,169,110,0.06); }
+  .crono-ctrl-btn.primary svg { width: 26px; height: 26px; }
+
+  /* Botón stop: muy discreto */
+  .crono-ctrl-btn.stop {
+    border-color: var(--border2);
+    color: var(--text3);
+  }
+  .crono-ctrl-btn.stop:hover { color: var(--text2); border-color: var(--border); }
+
+  /* Banner de pausa: anillo con countdown */
+  .crono-pause-info {
+    text-align: center;
+    margin-top: 24px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    height: 22px;
+  }
+  .crono-pause-info.visible { opacity: 1; }
+  .crono-pause-countdown {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.15em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Modal de cambio de obra: muy limpio */
+  .crono-change-modal { max-width: 380px; padding: 28px 24px; }
+  .crono-change-title {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 18px; color: var(--accent);
+    text-align: center;
+    margin-bottom: 18px;
+    letter-spacing: 0.02em;
+  }
+  .crono-change-select {
+    width: 100%; padding: 14px 36px 14px 14px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: "Cormorant Garamond", serif;
+    font-size: 16px;
+    cursor: pointer; box-sizing: border-box;
+    -webkit-appearance: none; appearance: none;
+    margin-bottom: 18px;
+  }
+  .crono-change-actions { display: flex; gap: 10px; }
+  .crono-change-btn {
+    flex: 1; padding: 11px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .crono-change-btn.cancel {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text3);
+  }
+  .crono-change-btn.confirm {
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: var(--bg);
+    font-weight: 500;
+  }
+  .crono-change-btn:active { transform: scale(0.97); }
+
+  @media (max-width: 480px) {
+    .crono-wrap { padding: 28px 18px; }
+    .crono-controls { gap: 22px; }
+    .crono-ctrl-btn { width: 58px; height: 58px; }
+    .crono-ctrl-btn.primary { width: 70px; height: 70px; }
+  }
 </style>
 </head>
 <body>
@@ -2179,6 +2490,7 @@
 
 <div class="nav">
   <button class="nav-btn active" onclick="showView('session')">Sesión</button>
+  <button class="nav-btn" onclick="showView('cronometro')">⏱ Cronómetro</button>
   <button class="nav-btn" onclick="showView('obras')">Obras</button>
   <button class="nav-btn" onclick="showView('pasajes')">Pasajes</button>
   <button class="nav-btn" onclick="showView('pases')">Pases</button>
@@ -2226,13 +2538,6 @@
   <div class="session-hero">
     <div class="notes-deco" id="notesDeco"></div>
     <div id="rachaDisplay" style="display:none;margin-bottom:6px"></div>
-    <!-- Post-attack / malestar residual banner -->
-    <div id="postAttackBanner" style="display:none;margin-bottom:14px;padding:10px 14px;border-radius:10px;background:rgba(200,110,136,0.12);border:1px solid rgba(200,110,136,0.30)">
-      <div style="font-size:12px;color:#e08898;margin-bottom:4px;font-weight:500">🌊 Malestar residual detectado</div>
-      <div id="postAttackMsg" style="font-size:10px;color:var(--text3);line-height:1.5;margin-bottom:8px"></div>
-      <button onclick="applyPostAttackSliders()" style="font-size:10px;padding:5px 12px;border-radius:6px;border:1px solid rgba(200,110,136,0.4);background:rgba(200,110,136,0.12);color:#e08898;cursor:pointer">Ajustar sliders</button>
-      <button onclick="document.getElementById('postAttackBanner').style.display='none'" style="font-size:10px;padding:5px 10px;border-radius:6px;border:none;background:transparent;color:var(--text3);cursor:pointer;margin-left:6px">Ignorar</button>
-    </div>
     <div class="session-hero-title">¿Cómo estás hoy?</div>
     <div class="session-hero-sub">Genera tu sesión</div>
 
@@ -2271,56 +2576,77 @@
     </div>
 
     <button class="generate-btn" onclick="generateSession()">Generar sesión</button>
-
-    <!-- ── TOC ATTACK TRACKER ────────────────────────────────────────────── -->
-    <div class="toc-panel" id="tocPanel">
-      <div class="toc-panel-header">
-        <span class="toc-panel-title">🔴 Ataques de TOC</span>
-        <button class="toc-start-btn" id="tocStartBtn" onclick="tocStartAttack()">+ Iniciar ataque</button>
-      </div>
-
-      <!-- Chip: ataque en curso -->
-      <div class="toc-active-chip" id="tocActiveChip" style="display:none">
-        <div class="toc-chip-top">
-          <div class="toc-chip-dot"></div>
-          <span class="toc-chip-label" id="tocChipLabel">Ataque en curso · --:--</span>
-        </div>
-        <div class="toc-chip-actions">
-          <button class="toc-chip-btn" onclick="tocShowMedicionForm()">+ Medición ahora</button>
-          <button class="toc-chip-btn end" onclick="tocShowFinForm()">✓ Fin del ataque</button>
-        </div>
-
-        <!-- Formulario: medición de intensidad en este momento -->
-        <div class="toc-medicion-form" id="tocMedicionForm">
-          <div class="toc-medicion-row">
-            <input type="range" class="toc-int-slider" id="tocMedSlider" min="5" max="100" step="5" value="60"
-              oninput="document.getElementById('tocMedVal').textContent=this.value+'%'">
-            <span class="toc-int-val" id="tocMedVal">60%</span>
-          </div>
-          <input class="toc-medicion-note" id="tocMedNote" type="text" placeholder="nota opcional...">
-          <div class="toc-medicion-actions">
-            <button class="toc-medicion-cancel" onclick="tocCancelMedicion()">Cancelar</button>
-            <button class="toc-medicion-confirm" onclick="tocConfirmMedicion()">Guardar medición</button>
-          </div>
-        </div>
-
-        <!-- Formulario: registrar fin real del ataque -->
-        <div class="toc-fin-form" id="tocFinForm">
-          <div class="toc-fin-label">La ansiedad ha desaparecido</div>
-          <input class="toc-fin-note" id="tocFinNote" type="text" placeholder="nota final opcional...">
-          <div class="toc-fin-actions">
-            <button class="toc-fin-cancel" onclick="tocCancelFin()">Cancelar</button>
-            <button class="toc-fin-confirm" onclick="tocConfirmFin()">Registrar fin</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Lista de ataques de hoy -->
-      <div class="toc-list" id="tocList"></div>
-    </div>
   </div>
 
   <div class="session-plan" id="sessionPlan"></div>
+</div>
+
+<!-- CRONÓMETRO VIEW -->
+<div class="view" id="view-cronometro">
+
+  <!-- Botón X flotante para salir del modo concentración -->
+  <button class="crono-close-btn" onclick="cronoCloseFocus()" aria-label="Salir">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+      <line x1="2" y1="2" x2="12" y2="12"/>
+      <line x1="12" y1="2" x2="2" y2="12"/>
+    </svg>
+  </button>
+
+  <div class="crono-wrap">
+
+    <!-- FASE A: IDLE -->
+    <div class="crono-stage crono-idle-wrap" id="cronoStageIdle">
+      <div class="crono-idle-mark"></div>
+
+      <div class="crono-select-wrap">
+        <select id="cronoObraSelect" class="crono-select" onchange="cronoUpdateStartBtn()">
+          <option value="">Elige una obra</option>
+        </select>
+      </div>
+
+      <button class="crono-start-circle" id="cronoStartBtn" onclick="cronoStart()" disabled aria-label="Comenzar">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+      </button>
+
+      <div class="crono-fallidas-info" id="cronoFallidasInfo" style="display:none">
+        <span class="n" id="cronoFallidasN">0</span> · fallidas hoy
+      </div>
+    </div>
+
+    <!-- FASE B/C: RUNNING / PAUSED -->
+    <div class="crono-stage" id="cronoStageRun" style="display:none">
+
+      <!-- Card de obra, clickable para cambiar -->
+      <div class="crono-obra-card" onclick="cronoOpenChangeObra()" id="cronoObraCard">
+        <span class="crono-obra-edit-hint" aria-hidden="true">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9.5 2.5l2 2-7 7-2.5.5.5-2.5 7-7z"/>
+          </svg>
+        </span>
+        <div class="crono-obra-name" id="cronoRunName">—</div>
+        <div class="crono-obra-sub" id="cronoRunSub" style="display:none"></div>
+      </div>
+
+      <!-- Tiempo -->
+      <div class="crono-display-wrap" id="cronoDisplayWrap">
+        <div class="crono-display" id="cronoDisplay">00:00</div>
+      </div>
+
+      <!-- Controles circulares -->
+      <div class="crono-controls" id="cronoControls">
+        <!-- Se rellenan dinámicamente -->
+      </div>
+
+      <!-- Countdown discreto de pausa -->
+      <div class="crono-pause-info" id="cronoPauseInfo">
+        <span class="crono-pause-countdown" id="cronoPauseCountdown">05:00</span>
+      </div>
+
+    </div>
+
+  </div>
 </div>
 
 <!-- OBRAS VIEW -->
@@ -2431,7 +2757,6 @@
 
 
 <div class="view" id="view-historial">
-  <div id="tocHistSection" style="margin-bottom:20px"></div>
   <div id="eficienciaSection" style="margin-bottom:20px"></div>
   <div id="estadoSection" style="margin-bottom:20px"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border2)">
@@ -2593,20 +2918,6 @@
     </div>
     <div id="editObraList" style="font-size:10px;color:var(--text3);margin-bottom:14px"></div>
 
-    <!-- TOC del día -->
-    <div class="hecho-field-label" style="margin-top:8px;border-top:1px dashed var(--border2);padding-top:14px">¿Hubo un ataque de TOC este día?</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px">
-      <button id="editTocSiBtn" class="modal-btn secondary" onclick="selectEditToc(true)" style="flex:1">Sí</button>
-      <button id="editTocNoBtn" class="modal-btn secondary" onclick="selectEditToc(false)" style="flex:1">No</button>
-    </div>
-    <div id="editTocDetalle" style="display:none">
-      <div class="hecho-field-label">Duración del ataque (min)</div>
-      <input type="number" id="editTocDur" class="modal-input" min="1" max="300" placeholder="ej: 20" style="width:80px;text-align:center">
-      <div class="hecho-field-label" style="margin-top:8px">Intensidad pico (0-100%)</div>
-      <input type="range" min="0" max="100" step="5" value="50" class="sol-slider" id="editTocPct" style="color:#e08898" oninput="document.getElementById('editTocPctVal').textContent=this.value+'%';fillSlider(this,'#e08898')">
-      <div id="editTocPctVal" style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:13px;color:#e08898;margin-top:4px">50%</div>
-    </div>
-
     <!-- Nota -->
     <div class="hecho-field-label" style="margin-top:14px">Nota general</div>
     <input type="text" id="editNota" class="modal-input" placeholder="observación del día...">
@@ -2701,6 +3012,18 @@
 
     <div class="modal-buttons" id="saveDateMainCancel" style="margin-top:6px">
       <button class="modal-btn secondary" onclick="closeModal('modalSaveDate')" style="width:100%">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CRONO: cambiar de obra durante la sesión -->
+<div class="modal-overlay" id="modalCronoChangeObra">
+  <div class="modal crono-change-modal">
+    <div class="crono-change-title">Cambiar obra</div>
+    <select id="cronoChangeSelect" class="crono-change-select"></select>
+    <div class="crono-change-actions">
+      <button class="crono-change-btn cancel" onclick="closeModal('modalCronoChangeObra')">Cancelar</button>
+      <button class="crono-change-btn confirm" onclick="cronoConfirmChangeObra()">Cambiar</button>
     </div>
   </div>
 </div>
@@ -3217,15 +3540,18 @@ function showView(name) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
   const btns = document.querySelectorAll('.nav-btn');
-  const names = ['session','obras','pasajes','pases','calendario','historial'];
+  const names = ['session','cronometro','obras','pasajes','pases','calendario','historial'];
   const idx = names.indexOf(name);
   if (idx >= 0) btns[idx].classList.add('active');
-  if (name === 'session')    { renderRacha(); checkPostAttackState(); }
+  // Modo concentración: activar/desactivar al entrar/salir de cronometro
+  if (name !== 'cronometro' && typeof cronoOnLeaveView === 'function') cronoOnLeaveView();
+  if (name === 'session')    { renderRacha(); }
+  if (name === 'cronometro') { cronoOnEnterView(); }
   if (name === 'obras')      renderObras();
   if (name === 'pasajes')    renderPasajesGlobal();
   if (name === 'pases')      renderPases();
   if (name === 'calendario') renderCalendario();
-  if (name === 'historial')  { renderSesionesHistorial(); renderEficienciaSection(); renderEstadoSection(); renderTocHistSection(); }
+  if (name === 'historial')  { renderSesionesHistorial(); renderEficienciaSection(); renderEstadoSection(); }
 }
 
 function showToast(msg) {
@@ -10993,6 +11319,522 @@ window.addEventListener('orientationchange', function() { setTimeout(adjustTopPa
 if (window.ResizeObserver) {
   new ResizeObserver(adjustTopPadding).observe(document.querySelector('.topbar'));
 }
+
+// ── CRONÓMETRO ──────────────────────────────────────────────────────────────
+// Cronómetro tipo Forest integrado en la app. Selecciona obra/movimiento,
+// arranca, puede pausar (máx 5 min) o parar. Al parar con ≥10 min, se añade
+// como sesión extra a currentPlan y se abre automáticamente el modal hechoDatos.
+// Si dura <10 min, se descarta como fallida.
+// La vista activa el "modo concentración": oculta la topbar y muestra una X.
+
+const CRONO_STORAGE_KEY = 'pianoCrono_v1';
+const CRONO_MIN_MIN = 10;                  // mínimo de minutos para que cuente
+const CRONO_PAUSE_LIMIT_MS = 5 * 60 * 1000; // 5 minutos máx de pausa
+
+const crono = {
+  state: 'idle',         // 'idle' | 'running' | 'paused'
+  obraId: null,
+  movId: null,
+  displayName: '',
+  subName: '',
+  startTs: 0,            // ms al pulsar Comenzar
+  pausedMs: 0,           // ms acumulados en pausa
+  pauseStartTs: 0,       // ms del inicio de la pausa actual
+  tickInterval: null,
+  pauseInterval: null,
+};
+
+// Iconos SVG inline (currentColor para integrarse con la paleta)
+const CRONO_ICONS = {
+  pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+  play:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  stop:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg>',
+};
+
+function cronoSaveState() {
+  try {
+    localStorage.setItem(CRONO_STORAGE_KEY, JSON.stringify({
+      state: crono.state,
+      obraId: crono.obraId,
+      movId: crono.movId,
+      displayName: crono.displayName,
+      subName: crono.subName,
+      startTs: crono.startTs,
+      pausedMs: crono.pausedMs,
+      pauseStartTs: crono.pauseStartTs,
+    }));
+  } catch(e) {}
+}
+
+function cronoLoadState() {
+  try {
+    const raw = localStorage.getItem(CRONO_STORAGE_KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (s.state !== 'running' && s.state !== 'paused') return false;
+    if (!s.obraId || !s.startTs) return false;
+    crono.state = s.state;
+    crono.obraId = s.obraId;
+    crono.movId = s.movId || null;
+    crono.displayName = s.displayName || '';
+    crono.subName = s.subName || '';
+    crono.startTs = s.startTs;
+    crono.pausedMs = s.pausedMs || 0;
+    crono.pauseStartTs = s.pauseStartTs || 0;
+    return true;
+  } catch(e) { return false; }
+}
+
+function cronoClearState() {
+  try { localStorage.removeItem(CRONO_STORAGE_KEY); } catch(e) {}
+}
+
+function cronoFmt(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = n => String(n).padStart(2, '0');
+  if (h > 0) return h + ':' + pad(m) + ':' + pad(s);
+  return pad(m) + ':' + pad(s);
+}
+
+// ms reales estudiados (sin contar pausa)
+function cronoCurrentMs() {
+  if (!crono.startTs) return 0;
+  if (crono.state === 'paused') {
+    return Math.max(0, crono.pauseStartTs - crono.startTs - crono.pausedMs);
+  }
+  return Math.max(0, Date.now() - crono.startTs - crono.pausedMs);
+}
+
+// ms restantes de pausa antes de auto-cierre
+function cronoPauseRemainingMs() {
+  if (crono.state !== 'paused' || !crono.pauseStartTs) return 0;
+  return Math.max(0, CRONO_PAUSE_LIMIT_MS - (Date.now() - crono.pauseStartTs));
+}
+
+// ── Modo concentración (oculta topbar, muestra X) ───────────────────────────
+
+function cronoEnterFocus() {
+  document.body.classList.add('crono-focus');
+}
+
+function cronoExitFocus() {
+  document.body.classList.remove('crono-focus');
+}
+
+function cronoCloseFocus() {
+  // Salir del modo cronómetro: vuelve a Sesión. No para el cronómetro si está
+  // corriendo; sólo cambia de vista. Al volver a entrar, el estado sigue ahí.
+  showView('session');
+}
+
+// ── Render ──────────────────────────────────────────────────────────────────
+
+function cronoRender() {
+  const idle = document.getElementById('cronoStageIdle');
+  const run  = document.getElementById('cronoStageRun');
+  if (!idle || !run) return;
+
+  if (crono.state === 'idle') {
+    idle.style.display = '';
+    run.style.display = 'none';
+    // Contador de fallidas, sólo si > 0
+    const n = cronoGetFallidasToday();
+    const info = document.getElementById('cronoFallidasInfo');
+    const nEl  = document.getElementById('cronoFallidasN');
+    if (info && nEl) {
+      if (n > 0) { info.style.display = ''; nEl.textContent = n; }
+      else { info.style.display = 'none'; }
+    }
+    cronoUpdateStartBtn();
+    return;
+  }
+
+  // Running o paused
+  idle.style.display = 'none';
+  run.style.display  = '';
+
+  // Nombre de la obra
+  const nameEl = document.getElementById('cronoRunName');
+  const subEl  = document.getElementById('cronoRunSub');
+  if (nameEl) nameEl.textContent = crono.displayName || '—';
+  if (subEl) {
+    if (crono.subName) { subEl.textContent = crono.subName; subEl.style.display = ''; }
+    else { subEl.style.display = 'none'; }
+  }
+
+  // Tiempo
+  const disp = document.getElementById('cronoDisplay');
+  const wrap = document.getElementById('cronoDisplayWrap');
+  if (disp) {
+    disp.textContent = cronoFmt(cronoCurrentMs());
+    if (crono.state === 'paused') {
+      disp.classList.add('paused');
+      if (wrap) wrap.classList.add('is-paused');
+    } else {
+      disp.classList.remove('paused');
+      if (wrap) wrap.classList.remove('is-paused');
+    }
+  }
+
+  // Banner de pausa
+  const pauseInfo = document.getElementById('cronoPauseInfo');
+  if (pauseInfo) {
+    if (crono.state === 'paused') {
+      pauseInfo.classList.add('visible');
+      const cd = document.getElementById('cronoPauseCountdown');
+      if (cd) cd.textContent = cronoFmt(cronoPauseRemainingMs());
+    } else {
+      pauseInfo.classList.remove('visible');
+    }
+  }
+
+  // Controles según estado
+  const ctrl = document.getElementById('cronoControls');
+  if (!ctrl) return;
+  if (crono.state === 'running') {
+    ctrl.innerHTML =
+      '<button class="crono-ctrl-btn stop" onclick="cronoStop()" aria-label="Parar">' + CRONO_ICONS.stop + '</button>' +
+      '<button class="crono-ctrl-btn primary" onclick="cronoPause()" aria-label="Pausar">' + CRONO_ICONS.pause + '</button>';
+  } else if (crono.state === 'paused') {
+    ctrl.innerHTML =
+      '<button class="crono-ctrl-btn stop" onclick="cronoStop()" aria-label="Parar">' + CRONO_ICONS.stop + '</button>' +
+      '<button class="crono-ctrl-btn primary" onclick="cronoResume()" aria-label="Reanudar">' + CRONO_ICONS.play + '</button>';
+  }
+}
+
+// Habilitar/deshabilitar botón start según haya selección
+function cronoUpdateStartBtn() {
+  const btn = document.getElementById('cronoStartBtn');
+  const sel = document.getElementById('cronoObraSelect');
+  if (!btn || !sel) return;
+  btn.disabled = !sel.value;
+}
+
+// ── Tick intervals ──────────────────────────────────────────────────────────
+
+function cronoStartTick() {
+  if (crono.tickInterval) clearInterval(crono.tickInterval);
+  crono.tickInterval = setInterval(() => {
+    const disp = document.getElementById('cronoDisplay');
+    if (disp) disp.textContent = cronoFmt(cronoCurrentMs());
+  }, 1000);
+}
+
+function cronoStopTick() {
+  if (crono.tickInterval) { clearInterval(crono.tickInterval); crono.tickInterval = null; }
+}
+
+function cronoStartPauseCountdown() {
+  if (crono.pauseInterval) clearInterval(crono.pauseInterval);
+  const update = () => {
+    const remaining = cronoPauseRemainingMs();
+    const cd = document.getElementById('cronoPauseCountdown');
+    if (cd) cd.textContent = cronoFmt(remaining);
+    if (remaining <= 0) {
+      clearInterval(crono.pauseInterval);
+      crono.pauseInterval = null;
+      cronoForcedFinish();
+    }
+  };
+  update();
+  crono.pauseInterval = setInterval(update, 1000);
+}
+
+function cronoStopPauseCountdown() {
+  if (crono.pauseInterval) { clearInterval(crono.pauseInterval); crono.pauseInterval = null; }
+}
+
+// ── Resolver una selección del select (formato "obra::xxx" / "mov::xxx::yyy")
+// y devolver {obraId, movId, displayName, subName} o null
+function cronoResolveSelectValue(val) {
+  if (!val) return null;
+  if (val.startsWith('mov::')) {
+    const parts = val.split('::');
+    const obraId = parts[1], movId = parts[2];
+    const obra = findObra(obraId);
+    const mov  = obra && obra.movimientos ? obra.movimientos.find(m => m.id === movId) : null;
+    if (!obra || !mov) return null;
+    return {
+      obraId, movId,
+      displayName: mov.name,
+      subName: obra.name + (obra.composer ? ' · ' + obra.composer : ''),
+    };
+  }
+  const obraId = val.replace('obra::', '');
+  const obra = findObra(obraId);
+  if (!obra) return null;
+  return {
+    obraId, movId: null,
+    displayName: obra.name,
+    subName: obra.composer || '',
+  };
+}
+
+// ── Acciones ────────────────────────────────────────────────────────────────
+
+function cronoStart() {
+  const sel = document.getElementById('cronoObraSelect');
+  if (!sel) return;
+  const resolved = cronoResolveSelectValue(sel.value);
+  if (!resolved) { showToast('Elige una obra o movimiento'); return; }
+
+  crono.state = 'running';
+  crono.obraId = resolved.obraId;
+  crono.movId = resolved.movId;
+  crono.displayName = resolved.displayName;
+  crono.subName = resolved.subName;
+  crono.startTs = Date.now();
+  crono.pausedMs = 0;
+  crono.pauseStartTs = 0;
+
+  cronoSaveState();
+  cronoRender();
+  cronoStartTick();
+  if (typeof SFX !== 'undefined' && SFX.tick) SFX.tick();
+}
+
+function cronoPause() {
+  if (crono.state !== 'running') return;
+  cronoStopTick();
+  crono.state = 'paused';
+  crono.pauseStartTs = Date.now();
+  cronoSaveState();
+  cronoRender();
+  cronoStartPauseCountdown();
+}
+
+function cronoResume() {
+  if (crono.state !== 'paused') return;
+  cronoStopPauseCountdown();
+  const pauseDur = Date.now() - crono.pauseStartTs;
+  crono.pausedMs += pauseDur;
+  crono.pauseStartTs = 0;
+  crono.state = 'running';
+  cronoSaveState();
+  cronoRender();
+  cronoStartTick();
+}
+
+function cronoStop() {
+  const ms = cronoCurrentMs();
+  const min = Math.floor(ms / 60000);
+  let msg;
+  if (min >= CRONO_MIN_MIN) {
+    msg = '¿Parar y guardar la sesión?\n\nLlevas ' + cronoFmt(ms) + ' estudiando.';
+  } else {
+    msg = '¿Parar ahora?\n\nLlevas solo ' + cronoFmt(ms) + ' (mínimo ' + CRONO_MIN_MIN + ' min). La sesión se descartará como fallida.';
+  }
+  if (!confirm(msg)) return;
+  cronoFinish();
+}
+
+function cronoForcedFinish() {
+  showToast('Pausa expirada · sesión finalizada');
+  cronoFinish();
+}
+
+function cronoFinish() {
+  cronoStopTick();
+  cronoStopPauseCountdown();
+
+  const ms = cronoCurrentMs();
+  const minutos = Math.floor(ms / 60000);
+  const obraId = crono.obraId;
+  const movId  = crono.movId;
+  const displayName = crono.displayName;
+
+  if (minutos < CRONO_MIN_MIN) {
+    cronoIncFallidas();
+    showToast('Sesión fallida · ' + cronoFmt(ms) + ' (mínimo ' + CRONO_MIN_MIN + ' min)');
+    cronoReset();
+    cronoRender();
+    return;
+  }
+
+  const obra = findObra(obraId);
+  if (!obra) {
+    showToast('La obra ya no existe — sesión descartada');
+    cronoReset();
+    cronoRender();
+    return;
+  }
+  const mov = movId && obra.movimientos ? obra.movimientos.find(m => m.id === movId) : null;
+
+  const extraId = 'crono_' + obraId + (movId ? '_' + movId : '') + '_' + Date.now();
+  const baseEntity = movId
+    ? Object.assign({}, mov, { _parentName: obra.name, composer: obra.composer })
+    : Object.assign({}, obra);
+  const extraEntity = Object.assign({}, baseEntity, {
+    _planId: extraId,
+    _obraId: obraId,
+    _movId: movId || null,
+    _isMovimiento: !!movId,
+    _isExtra: true,
+    _displayName: displayName,
+  });
+  currentPlan.push(extraEntity);
+  sessionMinPlan[extraId] = minutos;
+
+  if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
+  const planDiv = document.getElementById('sessionPlan');
+  if (planDiv && typeof renderExtraItem === 'function') {
+    const addBtn  = planDiv.querySelector('.add-extra-btn');
+    const saveBtn = planDiv.querySelector('.save-session-btn');
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = renderExtraItem(extraEntity, minutos);
+    if (wrapper.firstChild) {
+      planDiv.insertBefore(wrapper.firstChild, addBtn || saveBtn);
+    }
+    if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
+  }
+  if (typeof saveDraft === 'function') saveDraft();
+
+  cronoReset();
+  cronoRender();
+
+  showView('session');
+  setTimeout(() => {
+    if (typeof openHechoDatos === 'function') {
+      openHechoDatos(extraId, minutos);
+    }
+  }, 120);
+}
+
+function cronoReset() {
+  crono.state = 'idle';
+  crono.obraId = null;
+  crono.movId = null;
+  crono.displayName = '';
+  crono.subName = '';
+  crono.startTs = 0;
+  crono.pausedMs = 0;
+  crono.pauseStartTs = 0;
+  cronoClearState();
+}
+
+// ── Cambiar de obra durante la sesión ───────────────────────────────────────
+
+function cronoOpenChangeObra() {
+  if (crono.state !== 'running' && crono.state !== 'paused') return;
+  // Rellenar el select del modal y preseleccionar la obra actual
+  const sel = document.getElementById('cronoChangeSelect');
+  if (!sel) return;
+  cronoFillSelectInto(sel);
+  // Preseleccionar la actual
+  const currentVal = crono.movId
+    ? ('mov::' + crono.obraId + '::' + crono.movId)
+    : ('obra::' + crono.obraId);
+  const has = Array.from(sel.options).some(o => o.value === currentVal);
+  if (has) sel.value = currentVal;
+  openModal('modalCronoChangeObra');
+}
+
+function cronoConfirmChangeObra() {
+  const sel = document.getElementById('cronoChangeSelect');
+  if (!sel) return;
+  const resolved = cronoResolveSelectValue(sel.value);
+  if (!resolved) { showToast('Elige una obra o movimiento'); return; }
+
+  // Si es la misma, simplemente cerramos
+  const same = (resolved.obraId === crono.obraId) && (resolved.movId === crono.movId);
+  if (same) { closeModal('modalCronoChangeObra'); return; }
+
+  crono.obraId = resolved.obraId;
+  crono.movId = resolved.movId;
+  crono.displayName = resolved.displayName;
+  crono.subName = resolved.subName;
+  cronoSaveState();
+  cronoRender();
+  closeModal('modalCronoChangeObra');
+  showToast('Cambiado a: ' + resolved.displayName);
+}
+
+// ── Selectores ──────────────────────────────────────────────────────────────
+
+function cronoFillSelectInto(select) {
+  if (!select) return;
+  const prev = select.value;
+  const obras = (db.obras || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+  let opts = '<option value="">Elige una obra</option>';
+  obras.forEach(o => {
+    const movs = (o.movimientos || []).filter(m => m.name);
+    if (!movs.length) {
+      opts += '<option value="obra::' + o.id + '">' +
+        o.name + (o.composer ? ' · ' + o.composer : '') + '</option>';
+    } else {
+      opts += '<option value="" disabled>── ' +
+        o.name + (o.composer ? ' · ' + o.composer : '') + ' ──</option>';
+      movs.forEach(m => {
+        opts += '<option value="mov::' + o.id + '::' + m.id + '">  ' + m.name + '</option>';
+      });
+    }
+  });
+  select.innerHTML = opts;
+  if (prev) {
+    const found = Array.from(select.options).some(o => o.value === prev);
+    if (found) select.value = prev;
+  }
+}
+
+function cronoFillObraSelect() {
+  cronoFillSelectInto(document.getElementById('cronoObraSelect'));
+}
+
+// ── Fallidas (counter por día, sólo informativo) ────────────────────────────
+
+function cronoIncFallidas() {
+  try {
+    const today = new Date().toDateString();
+    const k = 'cronoFallidas_' + today;
+    const n = (parseInt(localStorage.getItem(k)) || 0) + 1;
+    localStorage.setItem(k, String(n));
+  } catch(e) {}
+}
+
+function cronoGetFallidasToday() {
+  try {
+    const today = new Date().toDateString();
+    return parseInt(localStorage.getItem('cronoFallidas_' + today)) || 0;
+  } catch(e) { return 0; }
+}
+
+// ── Entrada / salida de la vista ────────────────────────────────────────────
+
+function cronoOnEnterView() {
+  cronoEnterFocus();
+  cronoFillObraSelect();
+  cronoRender();
+  if (crono.state === 'running' && !crono.tickInterval) cronoStartTick();
+  if (crono.state === 'paused'  && !crono.pauseInterval) cronoStartPauseCountdown();
+}
+
+// Se llama desde showView cuando se cambia a OTRA vista que no es cronometro
+function cronoOnLeaveView() {
+  cronoExitFocus();
+}
+
+// Hidratar al cargar (si había sesión activa)
+function cronoHydrate() {
+  if (cronoLoadState()) {
+    if (crono.state === 'paused' && cronoPauseRemainingMs() <= 0) {
+      const ms = cronoCurrentMs();
+      const minutos = Math.floor(ms / 60000);
+      if (minutos < CRONO_MIN_MIN) cronoIncFallidas();
+      cronoReset();
+    } else if (crono.state === 'running') {
+      cronoStartTick();
+    } else if (crono.state === 'paused') {
+      cronoStartPauseCountdown();
+    }
+  }
+}
+
+window.addEventListener('load', function() {
+  setTimeout(cronoHydrate, 100);
+});
 
 // Boot the app — runs auth, theme, draft restore, racha, etc.
 initApp();
