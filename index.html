@@ -2338,39 +2338,41 @@
   .crono-close-btn svg { width: 12px; height: 12px; }
   body.crono-focus .crono-close-btn { display: flex; }
 
-  /* Texto "Hoy te has concentrado X minutos", arriba del wrap */
+  /* Texto "Hoy te has concentrado X minutos", arriba del wrap pero más bajo
+     y prominente — no pegado al borde, claramente legible */
   .crono-concentrado {
     position: fixed;
-    top: max(env(safe-area-inset-top, 14px), 26px);
+    top: max(calc(env(safe-area-inset-top, 14px) + 70px), 92px);
     left: 50%;
     transform: translateX(-50%);
     font-family: "Cormorant Garamond", serif;
-    font-size: 13px;
-    font-style: italic;
-    color: var(--text3);
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--text);
     letter-spacing: 0.015em;
     z-index: 50;
     pointer-events: none;
     white-space: nowrap;
-    max-width: calc(100vw - 120px);
+    max-width: calc(100vw - 80px);
     overflow: hidden;
     text-overflow: ellipsis;
+    text-align: center;
     opacity: 0;
-    animation: cronoConcentradoIn 0.6s 0.2s cubic-bezier(0.16,1,0.3,1) forwards;
+    animation: cronoConcentradoIn 0.7s 0.25s cubic-bezier(0.16,1,0.3,1) forwards;
   }
   @keyframes cronoConcentradoIn {
-    from { opacity: 0; transform: translate(-50%, -4px); }
-    to   { opacity: 0.85; transform: translate(-50%, 0); }
+    from { opacity: 0; transform: translate(-50%, -6px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
   }
   body:not(.crono-focus) .crono-concentrado { display: none; }
 
   /* Mini-resumen lateral en cronómetro */
   .crono-resumen-lateral {
     position: fixed;
-    top: max(env(safe-area-inset-top, 14px), 62px);
+    top: max(calc(env(safe-area-inset-top, 14px) + 8px), 24px);
     left: 18px;
     z-index: 50;
-    max-width: 220px;
+    max-width: 200px;
     background: color-mix(in oklab, var(--bg2) 80%, transparent);
     border: 1px solid var(--border2);
     border-radius: 10px;
@@ -2420,15 +2422,20 @@
   /* En móvil, hacer más compacto el resumen */
   @media (max-width: 480px) {
     .crono-resumen-lateral {
-      max-width: 170px;
+      max-width: 150px;
       padding: 7px 9px;
-      top: max(env(safe-area-inset-top, 14px), 56px);
+      top: max(calc(env(safe-area-inset-top, 14px) + 8px), 22px);
       left: 12px;
     }
     .crono-resumen-row { font-size: 9px; }
     .crono-resumen-label { font-size: 11px; }
     .crono-resumen-min { font-size: 8px; }
-    .crono-concentrado { font-size: 12px; max-width: calc(100vw - 100px); }
+    .crono-concentrado {
+      font-size: 16px;
+      max-width: calc(100vw - 60px);
+      top: max(calc(env(safe-area-inset-top, 14px) + 62px), 82px);
+    }
+    .crono-wrap { padding: 118px 18px 30px; }
   }
 
   /* Contenedor principal */
@@ -2437,7 +2444,7 @@
     align-items: center; justify-content: center;
     min-height: 100vh;
     max-width: 520px; margin: 0 auto;
-    padding: 70px 24px 40px;
+    padding: 130px 24px 40px;
     position: relative;
   }
   .crono-stage {
@@ -2763,7 +2770,6 @@
   .crono-change-btn:active { transform: scale(0.97); }
 
   @media (max-width: 480px) {
-    .crono-wrap { padding: 60px 18px 30px; }
     .crono-controls { gap: 18px; }
     .crono-ctrl-btn { width: 54px; height: 54px; }
     .crono-ctrl-btn.primary { width: 68px; height: 68px; }
@@ -4209,13 +4215,19 @@ function restoreSessionFromDbToday() {
   // Solo reconstruir si currentPlan está vacío (no machacar nada que ya esté)
   if (currentPlan && currentPlan.length > 0) return false;
 
+  // Si la sesión trae el aggregate auto-guardado, restaurarlo intacto y
+  // reconstruir el plan a partir de sus claves planId.
+  const hasAggregate = sesionHoy._aggregate && typeof sesionHoy._aggregate === 'object';
+
   // Agrupar por obra+mov para fusionar
   const groups = {};
   sesionHoy.items.forEach(it => {
     if (!it || !it.obraId) return;
-    const key = it.obraId + '::' + (it.movId || '');
-    if (!groups[key]) {
-      groups[key] = {
+    // Usamos el _planId original si existe para preservar agregados
+    const planIdKey = it._planId || (it.obraId + '::' + (it.movId || ''));
+    if (!groups[planIdKey]) {
+      groups[planIdKey] = {
+        planId: it._planId || null,
         obraId: it.obraId,
         movId: it.movId || null,
         min: 0,
@@ -4225,16 +4237,17 @@ function restoreSessionFromDbToday() {
         note: it.note || '',
       };
     }
-    groups[key].min += parseInt(it.minutosReales || it.minutosPlan || 0) || 0;
-    if (it.tick === 'hecho') groups[key].tick = 'hecho';
-    if (it.rating != null) groups[key].rating = it.rating;
-    if (it.solRating != null) groups[key].solRating = it.solRating;
+    groups[planIdKey].min += parseInt(it.minutosReales || it.minutosPlan || 0) || 0;
+    if (it.tick === 'hecho') groups[planIdKey].tick = 'hecho';
+    if (it.rating != null) groups[planIdKey].rating = it.rating;
+    if (it.solRating != null) groups[planIdKey].solRating = it.solRating;
   });
 
   Object.values(groups).forEach(g => {
     const obra = findObra(g.obraId);
     if (!obra) return;
-    const planId = 'restored_' + g.obraId + (g.movId ? '_' + g.movId : '') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    // Conservar el planId original cuando exista para mantener el aggregate
+    const planId = g.planId || ('restored_' + g.obraId + (g.movId ? '_' + g.movId : '') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6));
     let entity;
     if (g.movId) {
       const mov = (obra.movimientos || []).find(m => m.id === g.movId);
@@ -4256,6 +4269,13 @@ function restoreSessionFromDbToday() {
     if (g.rating != null) sessionProductivityRatings[planId] = g.rating;
     if (g.solRating != null) sessionSolRatings[planId] = g.solRating;
   });
+
+  // Restaurar aggregate completo si está disponible
+  if (hasAggregate) {
+    Object.keys(sesionHoy._aggregate).forEach(k => {
+      sessionAggregate[k] = sesionHoy._aggregate[k];
+    });
+  }
 
   // Renderizar
   if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
@@ -4279,12 +4299,18 @@ function restoreSessionFromDbToday() {
         if (sessionProductivityRatings[pid] != null) {
           updateProductivityBadge(pid);
         }
+        // Restaurar nota
+        const noteEl = document.getElementById('tnote-' + pid);
+        const item = (sesionHoy.items || []).find(it =>
+          (it._planId === pid) ||
+          ((it.obraId === (e._obraId || e.id)) && ((it.movId || null) === (e._movId || null)))
+        );
+        if (noteEl && item && item.note) noteEl.value = item.note;
       });
       if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
     });
   }
-  // Persistir el plan reconstruido al draft local para que la próxima vez no
-  // tenga que reconstruirse
+  // Persistir al draft local
   saveDraft();
   return true;
 }
@@ -4525,7 +4551,7 @@ function commitSession(targetDate) {
         : entity.name,
       tick: sessionTicks[planId] || null,
       minutosPlan: sessionMinPlan[planId] || null,
-      minutosReales: parseInt(document.getElementById('tmin-' + planId)?.value) || null,
+      minutosReales: parseInt(document.getElementById('tmin-' + planId)?.value) || sessionMinPlan[planId] || null,
       solRating: sessionSolRatings[planId] || null,
       rating: sessionProductivityRatings[planId] != null ? sessionProductivityRatings[planId] : null,
       note: document.getElementById('tnote-' + planId)?.value || '',
@@ -4638,6 +4664,69 @@ function updateHechoProd(val) {
   if (d) { d.textContent = pct; d.style.color = col; }
   if (l) l.textContent = ratingLabel(pct);
   fillSlider(s, col);
+}
+
+// ── AUTO-SAVE DEL PLAN DE HOY ───────────────────────────────────────────────
+// Tras cada sesión del cronómetro o cada cierre del modal Hecho, sincronizamos
+// el currentPlan completo a db.sesiones[hoy] (creando o actualizando esa
+// entrada) y disparamos saveData() → Supabase. Así las tarjetas viven en la
+// nube en tiempo real, sin esperar a que el usuario pulse "Guardar sesión".
+let _autoSaveTimeout = null;
+function autoSaveTodayPlan() {
+  // Debounce a 800ms para no martillear la red en cambios rápidos
+  clearTimeout(_autoSaveTimeout);
+  _autoSaveTimeout = setTimeout(_autoSaveTodayPlanNow, 800);
+}
+function _autoSaveTodayPlanNow() {
+  try {
+    if (!Array.isArray(currentPlan) || currentPlan.length === 0) {
+      // Si no hay nada en el plan, no auto-guardamos (la sesión vacía no
+      // tiene sentido). Si el usuario hizo todo y luego eliminó todas las
+      // tarjetas, eso es algo que querría persistir? Por ahora no, lo
+      // dejamos como está.
+      return;
+    }
+    const items = currentPlan.map(entity => {
+      const planId = entity._planId || entity.id;
+      const obraId = entity._obraId || entity.id;
+      const movId = entity._movId || null;
+      return {
+        _planId: planId,
+        obraId, movId,
+        obraName: entity._isMovimiento
+          ? (entity._parentName || '') + ' · ' + entity.name
+          : (entity._displayName || entity.name),
+        tick: sessionTicks[planId] || null,
+        minutosPlan: sessionMinPlan[planId] || null,
+        minutosReales: sessionMinPlan[planId] || null,
+        solRating: sessionSolRatings[planId] || null,
+        rating: sessionProductivityRatings[planId] != null ? sessionProductivityRatings[planId] : null,
+        note: document.getElementById('tnote-' + planId)?.value || '',
+        objetivo: ''
+      };
+    });
+    const today = new Date();
+    const todayStr = today.toDateString();
+    // Buscar sesión existente de hoy
+    const existingIdx = db.sesiones.findIndex(s => new Date(s.date).toDateString() === todayStr);
+    const existing = existingIdx >= 0 ? db.sesiones[existingIdx] : null;
+    const sesion = {
+      date: today.toISOString(),
+      items,
+      // Persistir el aggregate (sub-sesiones, pasajes) para reconstrucción
+      _aggregate: JSON.parse(JSON.stringify(sessionAggregate || {})),
+      _autoSaved: true,
+      // Conservar rating si ya había uno guardado (formal)
+      rating: existing && existing.rating != null ? existing.rating : null,
+      ratingNota: existing && existing.ratingNota ? existing.ratingNota : null,
+    };
+    if (existingIdx >= 0) db.sesiones[existingIdx] = sesion;
+    else db.sesiones.unshift(sesion);
+    if (db.sesiones.length > 60) db.sesiones = db.sesiones.slice(0, 60);
+    saveData(); // saveData ya hace debounce a Supabase
+  } catch(e) {
+    console.warn('autoSaveTodayPlan failed:', e.message);
+  }
 }
 
 function openRatingSesion(sesionObj) {
@@ -4756,6 +4845,7 @@ function removeFromPlan(planId) {
   saveDraft();
   ensureSessionPlanScaffold();
   refreshConcentradoUI();
+  autoSaveTodayPlan();
   if (typeof SFX !== 'undefined' && SFX.del) SFX.del();
   showToast('Quitado del plan');
 }
@@ -6889,6 +6979,7 @@ function closeHechoDatos(save) {
   updateProductivityBadge(planId);
   if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
   refreshConcentradoUI();
+  autoSaveTodayPlan();
 }
 
 // Update or create the small productivity badge inside the tick-min-row
@@ -11744,6 +11835,12 @@ async function forceCloudResync() {
       if (typeof renderRacha === 'function') renderRacha();
       updateHeader();
       updateSyncStatusInfo();
+      // Reconstruir tarjetas de hoy si el plan local está vacío (caso típico:
+      // sincronización tras instalación nueva)
+      if (typeof restoreSessionFromDbToday === 'function' && (!currentPlan || currentPlan.length === 0)) {
+        restoreSessionFromDbToday();
+        if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+      }
       showToast('Datos actualizados desde la nube ✓');
     } else {
       showToast('No había datos nuevos en la nube');
@@ -11766,6 +11863,15 @@ async function onAuthSuccess() {
       renderEstadoSection();
     }
     updateHeader();
+    // ★ CRÍTICO: tras descargar de la nube, intentar reconstruir las tarjetas
+    // de hoy si el plan local está vacío. Esto resuelve el caso de "reinstalo
+    // la app en otro dispositivo y mis sesiones de hoy aparecen igual".
+    if (typeof restoreSessionFromDbToday === 'function') {
+      const restored = restoreSessionFromDbToday();
+      if (restored && typeof refreshConcentradoUI === 'function') {
+        refreshConcentradoUI();
+      }
+    }
   }
 }
 
@@ -12405,6 +12511,7 @@ function cronoFinish() {
       openHechoDatos(targetPlanId, minutos, { subSession: true });
     }
     refreshConcentradoUI();
+    autoSaveTodayPlan();
   }, 120);
 }
 
