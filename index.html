@@ -2207,55 +2207,56 @@
   .toc-stat-n { font-size:20px; font-family:"JetBrains Mono",monospace; color:#e08898; }
   .toc-stat-l { font-size:8px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-top:2px; }
 
-  /* ── CRONÓMETRO · MODO CONCENTRACIÓN (estética Forest, calmada) ────────── */
+  /* ── CRONÓMETRO · MODO CONCENTRACIÓN (estética sobria, integrada al tema) ─ */
 
   body.crono-focus .topbar { display: none !important; }
   body.crono-focus .app-content { padding-top: 0 !important; padding-bottom: 0 !important; }
   body.crono-focus .botanical-deco { display: none !important; }
   body.crono-focus #notesDeco { display: none !important; }
+  body.crono-focus::before { display: none !important; }
 
-  /* Fondo del cronómetro: verde calmo, capa propia que cubre toda la pantalla */
-  #view-cronometro {
-    position: relative;
-  }
+  /* Fondo: usa el color base del tema con una capa muy sutil de profundidad */
+  #view-cronometro { position: relative; }
   body.crono-focus #view-cronometro::before {
     content: "";
     position: fixed; inset: 0;
+    background: var(--bg);
+    z-index: -2;
+    pointer-events: none;
+  }
+  /* Capa superior: gradiente muy suave del propio accent, casi imperceptible */
+  body.crono-focus #view-cronometro::after {
+    content: "";
+    position: fixed; inset: 0;
     background:
-      radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.06) 0%, transparent 55%),
-      linear-gradient(165deg, #6fa685 0%, #5e9276 50%, #54866b 100%);
+      radial-gradient(ellipse 90% 70% at 50% 0%, color-mix(in oklab, var(--accent) 6%, transparent), transparent 60%),
+      radial-gradient(ellipse 80% 60% at 50% 100%, color-mix(in oklab, var(--accent) 4%, transparent), transparent 60%);
     z-index: -1;
     pointer-events: none;
-    animation: cronoBgShift 30s ease-in-out infinite;
+    animation: cronoBgDrift 60s ease-in-out infinite;
   }
-  [data-theme="bruma"] body.crono-focus #view-cronometro::before {
-    background:
-      radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.04) 0%, transparent 55%),
-      linear-gradient(165deg, #5e8478 0%, #4f7167 50%, #43625a 100%);
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    body.crono-focus #view-cronometro::after {
+      background:
+        radial-gradient(ellipse 90% 70% at 50% 0%, rgba(201,169,110,0.06), transparent 60%),
+        radial-gradient(ellipse 80% 60% at 50% 100%, rgba(201,169,110,0.04), transparent 60%);
+    }
   }
-  [data-theme="cozy"] body.crono-focus #view-cronometro::before {
-    background:
-      radial-gradient(ellipse at 50% 30%, rgba(255,235,205,0.10) 0%, transparent 55%),
-      linear-gradient(165deg, #7ba387 0%, #698f78 50%, #5b7e6b 100%);
-  }
-  @keyframes cronoBgShift {
-    0%, 100% { filter: hue-rotate(0deg) brightness(1); }
-    50%      { filter: hue-rotate(-4deg) brightness(1.03); }
+  @keyframes cronoBgDrift {
+    0%, 100% { transform: scale(1) translateY(0); opacity: 1; }
+    50%      { transform: scale(1.03) translateY(-1%); opacity: 0.85; }
   }
 
-  /* Cuando está en modo focus, todo el texto debe ser claro */
-  body.crono-focus { color: #f5f1e8; }
-
-  /* Botón X flotante */
+  /* Botón X flotante: integrado al tema */
   .crono-close-btn {
     position: fixed;
     top: max(env(safe-area-inset-top, 14px), 18px);
     right: 20px;
     width: 36px; height: 36px;
     border-radius: 50%;
-    border: 1px solid rgba(255,255,255,0.22);
-    background: rgba(255,255,255,0.10);
-    color: rgba(255,255,255,0.85);
+    border: 1px solid var(--border2);
+    background: var(--bg2);
+    color: var(--text3);
     cursor: pointer;
     display: none;
     align-items: center; justify-content: center;
@@ -2265,7 +2266,7 @@
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
   }
-  .crono-close-btn:hover { background: rgba(255,255,255,0.18); }
+  .crono-close-btn:hover { color: var(--text); border-color: var(--border); background: var(--bg3); }
   .crono-close-btn:active { transform: scale(0.92); }
   .crono-close-btn svg { width: 12px; height: 12px; }
   body.crono-focus .crono-close-btn { display: flex; }
@@ -2276,7 +2277,7 @@
     align-items: center; justify-content: center;
     min-height: 100vh;
     max-width: 520px; margin: 0 auto;
-    padding: 60px 24px 40px;
+    padding: 70px 24px 40px;
     position: relative;
   }
   .crono-stage {
@@ -2291,80 +2292,61 @@
   /* ── Fase IDLE ────────────────────────────────────────────────────────── */
   .crono-idle-wrap { text-align: center; }
 
-  /* Mensaje superior, como "¡Empieza a plantar hoy!" pero más sobrio */
   .crono-idle-message {
     font-family: "Cormorant Garamond", serif;
-    font-size: 22px;
-    color: rgba(255,255,255,0.92);
+    font-size: 19px;
+    color: var(--text2);
     font-weight: 400;
-    letter-spacing: 0.01em;
-    margin-bottom: 56px;
-    margin-top: 20px;
+    letter-spacing: 0.02em;
+    margin-bottom: 60px;
+    margin-top: 12px;
     line-height: 1.3;
     font-style: italic;
+    opacity: 0.85;
   }
 
-  /* Pieza central: círculo orgánico que respira (en lugar del árbol) */
+  /* Pieza central: ensō (círculo zen) sobrio.
+     Un solo trazo en el color accent del tema, respiración apenas perceptible. */
   .crono-centerpiece {
-    width: 240px; height: 240px;
-    margin: 0 auto 56px;
+    width: 200px; height: 200px;
+    margin: 0 auto 60px;
     position: relative;
-    display: flex; align-items: center; justify-content: center;
   }
-  .crono-centerpiece svg { width: 100%; height: 100%; overflow: visible; }
-  .crono-centerpiece-ring {
-    fill: none;
-    stroke: rgba(255,255,255,0.45);
-    stroke-width: 1;
+  .crono-centerpiece svg {
+    width: 100%; height: 100%;
+    display: block;
+    animation: cronoEnsoBreathe 9s ease-in-out infinite;
     transform-origin: center;
-    transform-box: fill-box;
   }
-  .crono-centerpiece-ring.r1 { animation: cronoRingBreathe 5.5s ease-in-out infinite; }
-  .crono-centerpiece-ring.r2 { animation: cronoRingBreathe 5.5s ease-in-out infinite 1.8s; opacity: 0.6; }
-  .crono-centerpiece-ring.r3 { animation: cronoRingBreathe 5.5s ease-in-out infinite 3.6s; opacity: 0.35; }
-  @keyframes cronoRingBreathe {
-    0%   { transform: scale(0.78); opacity: 0; }
-    20%  { opacity: 1; }
-    100% { transform: scale(1.18); opacity: 0; }
-  }
-  .crono-centerpiece-core {
-    fill: rgba(255,255,255,0.18);
-    stroke: rgba(255,255,255,0.6);
-    stroke-width: 1.2;
-    transform-origin: center;
-    transform-box: fill-box;
-    animation: cronoCoreBreathe 4.2s ease-in-out infinite;
-  }
-  @keyframes cronoCoreBreathe {
+  @keyframes cronoEnsoBreathe {
     0%, 100% { transform: scale(1);    opacity: 0.85; }
-    50%      { transform: scale(1.06); opacity: 1; }
+    50%      { transform: scale(1.02); opacity: 1; }
   }
-  /* Pétalos minimal en cuatro direcciones, muy sutiles */
-  .crono-petal {
-    fill: rgba(255,255,255,0.35);
-    transform-origin: center;
-    transform-box: fill-box;
-    animation: cronoPetalFloat 7s ease-in-out infinite;
+  .crono-enso-stroke {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    opacity: 0.65;
+  }
+  .crono-enso-dot {
+    fill: var(--accent);
+    opacity: 0.55;
   }
 
-  @keyframes cronoPetalFloat {
-    0%, 100% { transform: scale(1) translateY(0);    opacity: 0.6; }
-    50%      { transform: scale(1.05) translateY(-2px); opacity: 0.9; }
-  }
-
-  /* Pildora con nombre de obra (estilo Forest) — abajo, antes del select */
+  /* Selector de obra: integrado al tema */
   .crono-select-wrap {
-    margin: 0 auto 28px;
+    margin: 0 auto 24px;
     max-width: 340px;
     position: relative;
   }
   .crono-select {
     width: 100%;
     padding: 14px 40px 14px 22px;
-    background: rgba(255,255,255,0.12);
-    border: 1px solid rgba(255,255,255,0.25);
+    background: var(--bg2);
+    border: 1px solid var(--border2);
     border-radius: 999px;
-    color: #fff;
+    color: var(--text);
     font-family: "Cormorant Garamond", serif;
     font-size: 17px;
     font-weight: 400;
@@ -2373,32 +2355,30 @@
     box-sizing: border-box;
     text-align: center;
     -webkit-appearance: none; appearance: none;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
   }
-  .crono-select:focus { outline: none; border-color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.18); }
-  .crono-select option { background: #4a7560; color: #fff; }
+  .crono-select:focus { outline: none; border-color: var(--accent); background: var(--bg3); }
+  .crono-select option { background: var(--bg); color: var(--text); }
   .crono-select-wrap::after {
     content: "";
     position: absolute;
     right: 20px; top: 50%;
     width: 6px; height: 6px;
-    border-right: 1.5px solid rgba(255,255,255,0.6);
-    border-bottom: 1.5px solid rgba(255,255,255,0.6);
+    border-right: 1.5px solid var(--text3);
+    border-bottom: 1.5px solid var(--text3);
     transform: translateY(-70%) rotate(45deg);
     pointer-events: none;
   }
 
-  /* Botón principal "plantar" estilo Forest */
+  /* Botón principal */
   .crono-plant-btn {
     display: block;
     margin: 0 auto;
     padding: 13px 56px;
     border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.35);
-    background: rgba(255,255,255,0.12);
-    color: #fff;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
     font-family: "Cormorant Garamond", serif;
     font-size: 17px;
     font-weight: 400;
@@ -2406,58 +2386,61 @@
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
     -webkit-tap-highlight-color: transparent;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    position: relative;
   }
   .crono-plant-btn:not(:disabled):hover {
-    background: rgba(255,255,255,0.22);
-    border-color: rgba(255,255,255,0.5);
+    background: color-mix(in oklab, var(--accent) 8%, transparent);
+  }
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    .crono-plant-btn:not(:disabled):hover { background: rgba(201,169,110,0.08); }
   }
   .crono-plant-btn:not(:disabled):active { transform: scale(0.97); }
-  .crono-plant-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .crono-plant-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: var(--border2); color: var(--text3); }
 
   .crono-fallidas-info {
     position: absolute;
     bottom: 28px; left: 50%;
     transform: translateX(-50%);
     font-size: 9px;
-    color: rgba(255,255,255,0.55);
+    color: var(--text3);
     letter-spacing: 0.14em;
     text-transform: uppercase;
+    opacity: 0.7;
   }
-  .crono-fallidas-info .n { color: rgba(255,255,255,0.85); font-family: "JetBrains Mono", monospace; font-weight: 500; }
+  .crono-fallidas-info .n { color: var(--text2); font-family: "JetBrains Mono", monospace; font-weight: 500; }
 
   /* ── Fase RUNNING / PAUSED ────────────────────────────────────────────── */
 
-  /* Pildora con nombre de obra (clickable, estilo Forest) */
+  /* Píldora con nombre de obra (clickable) */
   .crono-obra-pill {
-    display: inline-flex; align-items: center; gap: 8px;
-    margin: 0 auto 60px;
-    padding: 8px 22px;
+    display: inline-flex; align-items: center; gap: 9px;
+    margin: 0 auto 64px;
+    padding: 9px 22px;
     border-radius: 999px;
-    background: rgba(255,255,255,0.12);
-    border: 1px solid rgba(255,255,255,0.20);
-    color: #fff;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    color: var(--text);
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     -webkit-tap-highlight-color: transparent;
     max-width: 88%;
   }
-  .crono-obra-pill:hover { background: rgba(255,255,255,0.20); }
+  .crono-obra-pill:hover { background: var(--bg3); border-color: var(--border); }
   .crono-obra-pill:active { transform: scale(0.98); }
   .crono-obra-pill-dot {
     width: 7px; height: 7px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.85);
+    background: var(--accent);
     flex-shrink: 0;
-    animation: cronoDotPulse 2.2s ease-in-out infinite;
+    animation: cronoDotPulse 2.4s ease-in-out infinite;
   }
-  .crono-obra-pill.paused .crono-obra-pill-dot { animation: none; opacity: 0.4; }
+  .crono-obra-pill.paused .crono-obra-pill-dot {
+    animation: none;
+    opacity: 0.35;
+  }
   @keyframes cronoDotPulse {
-    0%, 100% { opacity: 1;   transform: scale(1); }
-    50%      { opacity: 0.45; transform: scale(0.8); }
+    0%, 100% { opacity: 1;    transform: scale(1); }
+    50%      { opacity: 0.45; transform: scale(0.82); }
   }
   .crono-obra-pill-name {
     font-family: "Cormorant Garamond", serif;
@@ -2475,22 +2458,46 @@
     align-items: center;
   }
 
-  /* Display tiempo: números con outline (Forest-style) */
-  .crono-display-wrap { text-align: center; margin: 0 auto 56px; }
+  /* Display de tiempo: usa el accent del tema como color sólido (más legible
+     sobre fondos claros/oscuros que un outline). Halo muy sutil detrás. */
+  .crono-display-wrap {
+    text-align: center;
+    margin: 0 auto 60px;
+    position: relative;
+  }
+  .crono-display-wrap::before {
+    content: "";
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 70%; height: 70%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(ellipse, color-mix(in oklab, var(--accent) 14%, transparent), transparent 65%);
+    filter: blur(28px);
+    z-index: -1;
+    opacity: 1;
+    transition: opacity 0.5s ease;
+  }
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    .crono-display-wrap::before {
+      background: radial-gradient(ellipse, rgba(201,169,110,0.14), transparent 65%);
+    }
+  }
+  .crono-display-wrap.is-paused::before { opacity: 0; }
+
   .crono-display {
     font-family: "Cormorant Garamond", serif;
     font-size: clamp(96px, 22vw, 150px);
     font-weight: 300;
-    color: transparent;
-    -webkit-text-stroke: 1.2px rgba(255,255,255,0.85);
-    letter-spacing: 0.03em;
+    color: var(--accent);
+    letter-spacing: 0.02em;
     line-height: 1;
     font-variant-numeric: tabular-nums;
-    transition: -webkit-text-stroke 0.5s ease, opacity 0.5s ease;
+    transition: color 0.5s ease, opacity 0.5s ease;
   }
-  .crono-display.paused { -webkit-text-stroke-color: rgba(255,255,255,0.4); opacity: 0.7; }
+  .crono-display.paused { color: var(--text3); opacity: 0.7; }
 
-  /* Controles circulares en fila */
+  /* Controles circulares */
   .crono-controls {
     display: flex;
     justify-content: center;
@@ -2501,33 +2508,38 @@
   .crono-ctrl-btn {
     width: 60px; height: 60px;
     border-radius: 50%;
-    border: 1px solid rgba(255,255,255,0.32);
-    background: rgba(255,255,255,0.10);
-    color: rgba(255,255,255,0.95);
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text2);
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
     -webkit-tap-highlight-color: transparent;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
   }
-  .crono-ctrl-btn:hover { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.5); }
+  .crono-ctrl-btn:hover { background: var(--bg3); color: var(--text); }
   .crono-ctrl-btn:active { transform: scale(0.92); }
   .crono-ctrl-btn svg { width: 20px; height: 20px; }
 
   .crono-ctrl-btn.primary {
     width: 76px; height: 76px;
-    background: rgba(255,255,255,0.20);
-    border-color: rgba(255,255,255,0.45);
+    border-color: var(--accent);
+    color: var(--accent);
+    background: transparent;
   }
-  .crono-ctrl-btn.primary:hover { background: rgba(255,255,255,0.30); }
+  .crono-ctrl-btn.primary:hover {
+    background: color-mix(in oklab, var(--accent) 8%, transparent);
+    color: var(--accent);
+  }
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    .crono-ctrl-btn.primary:hover { background: rgba(201,169,110,0.08); }
+  }
   .crono-ctrl-btn.primary svg { width: 26px; height: 26px; }
 
   .crono-ctrl-btn.stop {
-    border-color: rgba(255,255,255,0.22);
-    color: rgba(255,255,255,0.7);
+    border-color: var(--border2);
+    color: var(--text3);
   }
-  .crono-ctrl-btn.stop:hover { color: #fff; }
+  .crono-ctrl-btn.stop:hover { color: var(--text2); border-color: var(--border); }
 
   /* Countdown discreto en pausa */
   .crono-pause-info {
@@ -2542,12 +2554,12 @@
   .crono-pause-countdown {
     font-family: "JetBrains Mono", monospace;
     font-size: 11px;
-    color: rgba(255,255,255,0.75);
+    color: var(--text3);
     letter-spacing: 0.18em;
     font-variant-numeric: tabular-nums;
   }
 
-  /* Modal de cambio de obra: mantener el estilo de la app, pero un poco más limpio */
+  /* Modal de cambio de obra */
   .crono-change-modal { max-width: 380px; padding: 28px 24px; }
   .crono-change-title {
     font-family: "Cormorant Garamond", serif;
@@ -2591,11 +2603,11 @@
   .crono-change-btn:active { transform: scale(0.97); }
 
   @media (max-width: 480px) {
-    .crono-wrap { padding: 50px 18px 30px; }
+    .crono-wrap { padding: 60px 18px 30px; }
     .crono-controls { gap: 18px; }
     .crono-ctrl-btn { width: 54px; height: 54px; }
     .crono-ctrl-btn.primary { width: 68px; height: 68px; }
-    .crono-centerpiece { width: 200px; height: 200px; }
+    .crono-centerpiece { width: 170px; height: 170px; }
   }
 </style>
 </head>
@@ -2745,22 +2757,19 @@
 
       <div class="crono-idle-message" id="cronoIdleMessage">Empieza tu sesión de hoy</div>
 
-      <!-- Pieza central orgánica: tres anillos que respiran + núcleo + 4 pétalos -->
+      <!-- Pieza central: ensō (círculo zen). Un solo trazo, sobrio, respira muy lento. -->
       <div class="crono-centerpiece">
-        <svg viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg">
-          <!-- Anillos en expansión -->
-          <circle class="crono-centerpiece-ring r1" cx="120" cy="120" r="62"/>
-          <circle class="crono-centerpiece-ring r2" cx="120" cy="120" r="62"/>
-          <circle class="crono-centerpiece-ring r3" cx="120" cy="120" r="62"/>
-          <!-- Pétalos minimalistas en cuatro direcciones (forma de loto sutil) -->
-          <ellipse class="crono-petal" cx="120" cy="58"  rx="10" ry="22" style="animation-delay:0s"/>
-          <ellipse class="crono-petal" cx="120" cy="182" rx="10" ry="22" style="animation-delay:1.75s"/>
-          <ellipse class="crono-petal" cx="58"  cy="120" rx="22" ry="10" style="animation-delay:3.5s"/>
-          <ellipse class="crono-petal" cx="182" cy="120" rx="22" ry="10" style="animation-delay:5.25s"/>
-          <!-- Núcleo central -->
-          <circle class="crono-centerpiece-core" cx="120" cy="120" r="38"/>
-          <!-- Punto interior -->
-          <circle cx="120" cy="120" r="3" fill="rgba(255,255,255,0.9)"/>
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <!-- Ensō: círculo con apertura en la parte superior, trazado de un gesto.
+               El path es un arco de ~340°, con extremos ligeramente desalineados
+               para sugerir el trazo de pincel. -->
+          <path class="crono-enso-stroke"
+                d="M 100 28
+                   A 72 72 0 1 1 90.5 28.62"
+                stroke-dasharray="0"
+                pathLength="100" />
+          <!-- Punto central, casi imperceptible -->
+          <circle class="crono-enso-dot" cx="100" cy="100" r="1.6"/>
         </svg>
       </div>
 
