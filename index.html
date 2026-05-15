@@ -301,6 +301,34 @@
   }
 
   /* SESSION VIEW */
+
+  /* Banner "Hoy te has concentrado X" */
+  .session-concentrado-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 10px 16px;
+    background: color-mix(in oklab, var(--accent) 5%, var(--bg2));
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    font-family: "Cormorant Garamond", serif;
+    font-size: 14px;
+    color: var(--text);
+    letter-spacing: 0.015em;
+    font-style: italic;
+    transition: background 0.4s ease, border-color 0.4s ease;
+  }
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    .session-concentrado-banner { background: var(--bg2); }
+  }
+  .session-concentrado-icon {
+    color: var(--accent);
+    font-size: 14px;
+    font-style: normal;
+  }
+
   .session-hero {
     background: var(--bg2);
     border: 1px solid var(--border);
@@ -2310,6 +2338,99 @@
   .crono-close-btn svg { width: 12px; height: 12px; }
   body.crono-focus .crono-close-btn { display: flex; }
 
+  /* Texto "Hoy te has concentrado X minutos", arriba del wrap */
+  .crono-concentrado {
+    position: fixed;
+    top: max(env(safe-area-inset-top, 14px), 26px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: "Cormorant Garamond", serif;
+    font-size: 13px;
+    font-style: italic;
+    color: var(--text3);
+    letter-spacing: 0.015em;
+    z-index: 50;
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: calc(100vw - 120px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    animation: cronoConcentradoIn 0.6s 0.2s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+  @keyframes cronoConcentradoIn {
+    from { opacity: 0; transform: translate(-50%, -4px); }
+    to   { opacity: 0.85; transform: translate(-50%, 0); }
+  }
+  body:not(.crono-focus) .crono-concentrado { display: none; }
+
+  /* Mini-resumen lateral en cronómetro */
+  .crono-resumen-lateral {
+    position: fixed;
+    top: max(env(safe-area-inset-top, 14px), 62px);
+    left: 18px;
+    z-index: 50;
+    max-width: 220px;
+    background: color-mix(in oklab, var(--bg2) 80%, transparent);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 9px 11px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    opacity: 0;
+    animation: cronoResumenIn 0.7s 0.3s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    .crono-resumen-lateral { background: rgba(0,0,0,0.04); }
+  }
+  @keyframes cronoResumenIn {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 0.95; transform: translateX(0); }
+  }
+  body:not(.crono-focus) .crono-resumen-lateral { display: none !important; }
+  .crono-resumen-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 3px 0;
+    font-size: 10px;
+  }
+  .crono-resumen-row + .crono-resumen-row {
+    border-top: 1px dashed var(--border2);
+  }
+  .crono-resumen-label {
+    flex: 1;
+    color: var(--text2);
+    font-family: "Cormorant Garamond", serif;
+    font-size: 12px;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .crono-resumen-min {
+    color: var(--accent);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 9px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* En móvil, hacer más compacto el resumen */
+  @media (max-width: 480px) {
+    .crono-resumen-lateral {
+      max-width: 170px;
+      padding: 7px 9px;
+      top: max(env(safe-area-inset-top, 14px), 56px);
+      left: 12px;
+    }
+    .crono-resumen-row { font-size: 9px; }
+    .crono-resumen-label { font-size: 11px; }
+    .crono-resumen-min { font-size: 8px; }
+    .crono-concentrado { font-size: 12px; max-width: calc(100vw - 100px); }
+  }
+
   /* Contenedor principal */
   .crono-wrap {
     display: flex; flex-direction: column;
@@ -2732,6 +2853,12 @@
   <path d="M40 420 Q44 400 48 382" stroke="var(--accent)" stroke-width="1" fill="none"/>
 </svg>
 <div class="view active" id="view-session">
+  <!-- Banner: "Hoy te has concentrado X" -->
+  <div class="session-concentrado-banner" id="sessionConcentradoBanner">
+    <span class="session-concentrado-icon">⏱</span>
+    <span id="sessionConcentradoText">Hoy te has concentrado 0 minutos</span>
+  </div>
+
   <div class="session-hero">
     <div class="notes-deco" id="notesDeco"></div>
     <div id="rachaDisplay" style="display:none;margin-bottom:6px"></div>
@@ -2788,6 +2915,12 @@
       <line x1="12" y1="2" x2="2" y2="12"/>
     </svg>
   </button>
+
+  <!-- Mini-resumen lateral (visible siempre que haya tarjetas) -->
+  <div class="crono-resumen-lateral" id="cronoResumenLateral" style="display:none"></div>
+
+  <!-- Texto "hoy te has concentrado X", siempre visible arriba -->
+  <div class="crono-concentrado" id="cronoConcentradoText">Hoy te has concentrado 0 minutos</div>
 
   <div class="crono-wrap">
 
@@ -3749,7 +3882,7 @@ function showView(name) {
   if (idx >= 0) btns[idx].classList.add('active');
   // Modo concentración: activar/desactivar al entrar/salir de cronometro
   if (name !== 'cronometro' && typeof cronoOnLeaveView === 'function') cronoOnLeaveView();
-  if (name === 'session')    { renderRacha(); }
+  if (name === 'session')    { renderRacha(); if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI(); }
   if (name === 'cronometro') { cronoOnEnterView(); }
   if (name === 'obras')      renderObras();
   if (name === 'pasajes')    renderPasajesGlobal();
@@ -4059,9 +4192,101 @@ function saveDraft() {
     ticks: { ...sessionTicks },
     minPlan: { ...sessionMinPlan },
     mins, notes, sols, prods,
+    aggregate: JSON.parse(JSON.stringify(sessionAggregate || {})),
     tocActive: _tocActiveAttack || null,
   };
   localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+}
+
+// Reconstruye currentPlan desde db.sesiones del día de hoy, en formato de
+// tarjetas extras (fusionadas si hay múltiples items con misma obra/movimiento).
+// Se llama tras loadDraft() cuando el draft está vacío — caso típico de app
+// recién instalada / sincronización desde nube.
+function restoreSessionFromDbToday() {
+  const today = new Date().toDateString();
+  const sesionHoy = (db.sesiones || []).find(s => new Date(s.date).toDateString() === today);
+  if (!sesionHoy || !Array.isArray(sesionHoy.items) || !sesionHoy.items.length) return false;
+  // Solo reconstruir si currentPlan está vacío (no machacar nada que ya esté)
+  if (currentPlan && currentPlan.length > 0) return false;
+
+  // Agrupar por obra+mov para fusionar
+  const groups = {};
+  sesionHoy.items.forEach(it => {
+    if (!it || !it.obraId) return;
+    const key = it.obraId + '::' + (it.movId || '');
+    if (!groups[key]) {
+      groups[key] = {
+        obraId: it.obraId,
+        movId: it.movId || null,
+        min: 0,
+        tick: it.tick || null,
+        rating: it.rating || null,
+        solRating: it.solRating || null,
+        note: it.note || '',
+      };
+    }
+    groups[key].min += parseInt(it.minutosReales || it.minutosPlan || 0) || 0;
+    if (it.tick === 'hecho') groups[key].tick = 'hecho';
+    if (it.rating != null) groups[key].rating = it.rating;
+    if (it.solRating != null) groups[key].solRating = it.solRating;
+  });
+
+  Object.values(groups).forEach(g => {
+    const obra = findObra(g.obraId);
+    if (!obra) return;
+    const planId = 'restored_' + g.obraId + (g.movId ? '_' + g.movId : '') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    let entity;
+    if (g.movId) {
+      const mov = (obra.movimientos || []).find(m => m.id === g.movId);
+      if (!mov) return;
+      entity = Object.assign({}, mov, {
+        _parentName: obra.name, composer: obra.composer,
+        _planId: planId, _obraId: g.obraId, _movId: g.movId,
+        _isMovimiento: true, _isExtra: true, _displayName: mov.name,
+      });
+    } else {
+      entity = Object.assign({}, obra, {
+        _planId: planId, _obraId: g.obraId, _movId: null,
+        _isMovimiento: false, _isExtra: true, _displayName: obra.name,
+      });
+    }
+    currentPlan.push(entity);
+    sessionMinPlan[planId] = g.min;
+    if (g.tick) sessionTicks[planId] = g.tick;
+    if (g.rating != null) sessionProductivityRatings[planId] = g.rating;
+    if (g.solRating != null) sessionSolRatings[planId] = g.solRating;
+  });
+
+  // Renderizar
+  if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
+  const planDiv = document.getElementById('sessionPlan');
+  if (planDiv) {
+    let html = '';
+    currentPlan.forEach(e => {
+      const pid = e._planId || e.id;
+      html += renderExtraItem(e, sessionMinPlan[pid] || 0);
+    });
+    planDiv.innerHTML = html;
+    planDiv.classList.add('visible');
+    requestAnimationFrame(() => {
+      currentPlan.forEach(e => {
+        const pid = e._planId || e.id;
+        if (sessionTicks[pid] === 'hecho') {
+          const planEl = document.getElementById('plan-' + pid);
+          const btn = planEl?.querySelector('.tick-btn');
+          if (btn) btn.classList.add('hecho');
+        }
+        if (sessionProductivityRatings[pid] != null) {
+          updateProductivityBadge(pid);
+        }
+      });
+      if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
+    });
+  }
+  // Persistir el plan reconstruido al draft local para que la próxima vez no
+  // tenga que reconstruirse
+  saveDraft();
+  return true;
 }
 
 function loadDraft() {
@@ -4085,8 +4310,36 @@ function loadDraft() {
     // Rebuild plan from stored descriptors (new format) or IDs (legacy)
     let planObras = [];
     if (draft.plan && draft.plan.length > 0 && typeof draft.plan[0] === 'object') {
-      // New format: array of {planId, obraId, movId}
       planObras = draft.plan.map(desc => {
+        // ── Tarjetas del cronómetro (extras): reconstruir como extraEntity ──
+        if (desc.isExtra) {
+          const obra = findObra(desc.obraId);
+          if (!obra) return null;
+          if (desc.movId) {
+            const mov = (obra.movimientos || []).find(m => m.id === desc.movId);
+            if (!mov) return null;
+            return Object.assign({}, mov, {
+              _parentName: obra.name,
+              composer: obra.composer,
+              _planId: desc.planId,
+              _obraId: desc.obraId,
+              _movId: desc.movId,
+              _isMovimiento: true,
+              _isExtra: true,
+              _displayName: mov.name,
+            });
+          } else {
+            return Object.assign({}, obra, {
+              _planId: desc.planId,
+              _obraId: desc.obraId,
+              _movId: null,
+              _isMovimiento: false,
+              _isExtra: true,
+              _displayName: obra.name,
+            });
+          }
+        }
+        // ── Plan generado (no-extra) ──
         if (desc.movId) {
           const obra = findObra(desc.obraId);
           const mov = obra ? (obra.movimientos || []).find(m => m.id === desc.movId) : null;
@@ -4111,14 +4364,17 @@ function loadDraft() {
         }
       }).filter(Boolean);
     } else {
-      // Legacy format: array of obra IDs
       planObras = draft.plan.map(id => findObra(id)).filter(Boolean);
     }
     if (!planObras.length) return false;
     currentPlan = planObras;
-    // Restore ticks
     Object.assign(sessionTicks, draft.ticks || {});
-    // Re-render (reuse generateSession rendering but with saved plan)
+    // Restaurar sessionAggregate (datos de sub-sesiones fusionadas)
+    if (draft.aggregate) {
+      Object.keys(draft.aggregate).forEach(k => {
+        sessionAggregate[k] = draft.aggregate[k];
+      });
+    }
     _restoreDraftUI(draft);
     return true;
   } catch(e) { return false; }
@@ -4133,7 +4389,10 @@ function _restoreDraftUI(draft) {
   let html = '';
   currentPlan.forEach((entity, i) => {
     const pid = entity._planId || entity.id;
-    if (entity._isMovimiento) {
+    if (entity._isExtra) {
+      // Tarjeta del cronómetro (fusionada o no)
+      html += renderExtraItem(entity, sessionMinPlan[pid] || 0);
+    } else if (entity._isMovimiento) {
       html += renderMovimientoPlanItem(entity, i, sessionMinPlan[pid] || (entity.duracion || 20), selectedEnergy, cargaHoy);
     } else {
       html += renderTrabajoItem(entity, i, sessionMinPlan[pid] || 30, selectedEnergy, cargaHoy, analizarPases(entity._obraId || entity.id));
@@ -4400,13 +4659,32 @@ function closeRatingSesion(save) {
     if (nota) _sesionPendienteRating.ratingNota = nota;
   }
   const today = new Date().toDateString();
+  const isToday = _sesionPendienteRating.date
+    && new Date(_sesionPendienteRating.date).toDateString() === today;
   db.sesiones = db.sesiones.filter(s => new Date(s.date).toDateString() !== today);
   db.sesiones.unshift(_sesionPendienteRating);
   if (db.sesiones.length > 60) db.sesiones = db.sesiones.slice(0, 60);
   _sesionPendienteRating = null;
   saveData();
-  clearDraft();
+  // Si la sesión es para HOY, conservamos el draft: las tarjetas siguen en
+  // la pestaña de Sesión hasta que cambie el día. Si era para fecha pasada,
+  // limpiamos el plan en curso.
+  if (isToday) {
+    saveDraft();
+  } else {
+    clearDraft();
+    // Reset también las estructuras en memoria
+    currentPlan = [];
+    Object.keys(sessionTicks).forEach(k => delete sessionTicks[k]);
+    Object.keys(sessionMinPlan).forEach(k => delete sessionMinPlan[k]);
+    Object.keys(sessionSolRatings).forEach(k => delete sessionSolRatings[k]);
+    Object.keys(sessionProductivityRatings).forEach(k => delete sessionProductivityRatings[k]);
+    Object.keys(sessionAggregate).forEach(k => delete sessionAggregate[k]);
+    const planDiv = document.getElementById('sessionPlan');
+    if (planDiv) { planDiv.innerHTML = ''; planDiv.classList.remove('visible'); }
+  }
   renderRacha();
+  refreshConcentradoUI();
   showToast('Sesión guardada ✓');
 }
 
@@ -4469,6 +4747,7 @@ function removeFromPlan(planId) {
   delete sessionMinPlan[planId];
   delete sessionSolRatings[planId];
   delete sessionProductivityRatings[planId];
+  delete sessionAggregate[planId];
 
   // Quitar el DOM
   const el = document.getElementById('plan-' + planId);
@@ -4476,6 +4755,7 @@ function removeFromPlan(planId) {
 
   saveDraft();
   ensureSessionPlanScaffold();
+  refreshConcentradoUI();
   if (typeof SFX !== 'undefined' && SFX.del) SFX.del();
   showToast('Quitado del plan');
 }
@@ -4590,22 +4870,13 @@ function renderExtraItem(entity, minutos) {
         '<div class="plan-item-name" onclick="openObraDetalleSession(\'' + obraId + '\')" style="cursor:pointer;text-decoration:underline dotted var(--border)">' +
           (entity._isMovimiento ? entity.name : displayName) +
           ' <span style="font-size:11px;color:var(--text3);font-style:italic">' + subName + '</span>' +
-          '<span style="font-size:8px;background:var(--accent);color:var(--bg);border-radius:3px;padding:1px 5px;margin-left:6px">extra</span>' +
         '</div>' +
       '</div>' +
-      '<div class="plan-item-time">~' + minPlan + 'min</div>' +
+      '<div class="plan-item-time">' + minPlan + ' min</div>' +
     '</div>' +
     '<div class="tick-row">' +
       '<button class="tick-btn" onclick="setTick(\'' + planId + '\',\'hecho\',this,' + minPlan + ')">✓ Hecho</button>' +
       '<input class="tick-note" id="tnote-' + planId + '" type="text" placeholder="nota...">' +
-    '</div>' +
-    '<div class="tick-min-row" id="tickmin-' + planId + '" style="display:none;margin-top:6px;align-items:center;gap:8px;flex-wrap:wrap">' +
-      '<span style="font-size:9px;color:var(--text3)">minutos reales:</span>' +
-      '<input type="number" class="tick-min-input" id="tmin-' + planId + '" min="1" max="480" step="5" value="' + minPlan + '"' +
-      ' oninput="updateMinDiff(\'' + planId + '\',' + minPlan + ');saveDraft()"' +
-      ' style="width:58px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:4px 7px;color:var(--accent);font-family:\'JetBrains Mono\',monospace;font-size:12px;text-align:center">' +
-      '<span style="font-size:9px;color:var(--text3)">/ ' + minPlan + ' planif.</span>' +
-      '<span id="tickmin-diff-' + planId + '" style="font-size:9px"></span>' +
     '</div>' +
     fusionFooter +
   '</div>';
@@ -6617,20 +6888,28 @@ function closeHechoDatos(save) {
   // Show rating badge on the plan item, and ensure save button visible
   updateProductivityBadge(planId);
   if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
+  refreshConcentradoUI();
 }
 
 // Update or create the small productivity badge inside the tick-min-row
 function updateProductivityBadge(planId) {
   const val = sessionProductivityRatings[planId];
+  // Buscar el item de plan (cualquier tarjeta, no solo extras)
+  const planItem = document.getElementById('plan-' + planId);
+  if (!planItem) return;
+  // Slot dentro del tick-row o crear uno
+  const tickRow = planItem.querySelector('.tick-row');
   const minRow = document.getElementById('tickmin-' + planId);
-  if (!minRow) return;
   let prodEl = document.getElementById('prod-' + planId);
   if (!prodEl) {
     prodEl = document.createElement('span');
     prodEl.id = 'prod-' + planId;
     prodEl.style.fontSize = '9px';
     prodEl.style.marginLeft = 'auto';
-    minRow.appendChild(prodEl);
+    prodEl.style.flexShrink = '0';
+    // Preferimos colocarlo en el tickmin-row si existe (legacy), si no, en el tick-row
+    if (minRow) minRow.appendChild(prodEl);
+    else if (tickRow) tickRow.appendChild(prodEl);
   }
   if (val == null) { prodEl.innerHTML = ''; return; }
   const col = solPctColor(val);
@@ -11502,11 +11781,17 @@ async function initApp() {
     if (saved && typeof saved.energia === 'number') Object.assign(estadoDiario, saved);
   } catch(e) {}
   initEstadoSliders();
-  loadDraft();
+  const draftLoaded = loadDraft();
+  // Si no había draft local pero hay sesiones de hoy guardadas en la nube/db,
+  // reconstruir el plan para que las tarjetas no desaparezcan.
+  if (!draftLoaded && typeof restoreSessionFromDbToday === 'function') {
+    restoreSessionFromDbToday();
+  }
   ensureSessionPlanScaffold();
   updateHeader();
   spawnNotes();
   if (typeof renderRacha === 'function') renderRacha();
+  if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
   checkPostAttackState();
 
   // Forest draft
@@ -11701,6 +11986,82 @@ function cronoFmt(ms) {
   const pad = n => String(n).padStart(2, '0');
   if (h > 0) return h + ':' + pad(m) + ':' + pad(s);
   return pad(m) + ':' + pad(s);
+}
+
+// ── Resumen de minutos concentrado HOY ──────────────────────────────────────
+// Suma minutos de todas las tarjetas extras (provenientes del cronómetro) que
+// estén en currentPlan. Cada tarjeta puede agregar varias sub-sesiones; los
+// minutos totales viven en sessionMinPlan[planId].
+function getMinutosConcentradoHoy() {
+  let total = 0;
+  if (!Array.isArray(currentPlan)) return 0;
+  currentPlan.forEach(entity => {
+    if (!entity._isExtra) return;
+    const pid = entity._planId || entity.id;
+    const m = sessionMinPlan[pid];
+    if (typeof m === 'number' && m > 0) total += m;
+  });
+  return total;
+}
+
+// "55 minutos" / "3 horas y 40 minutos" / "1 hora" / "0 minutos"
+function fmtMinutosLargo(min) {
+  if (!min || min <= 0) return '0 minutos';
+  if (min < 60) return min + ' minuto' + (min === 1 ? '' : 's');
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  const hPart = h + ' hora' + (h === 1 ? '' : 's');
+  if (m === 0) return hPart;
+  return hPart + ' y ' + m + ' minuto' + (m === 1 ? '' : 's');
+}
+
+// Lista de items para el mini-resumen: [{label, minutos}, ...]
+// Para movimientos: "Obra — Movimiento"; para obras: "Obra"
+function getResumenSesionesHoy() {
+  if (!Array.isArray(currentPlan)) return [];
+  const items = [];
+  currentPlan.forEach(entity => {
+    if (!entity._isExtra) return;
+    const pid = entity._planId || entity.id;
+    const min = sessionMinPlan[pid];
+    if (typeof min !== 'number' || min <= 0) return;
+    const label = entity._isMovimiento
+      ? (entity._parentName || '') + ' — ' + entity.name
+      : (entity._displayName || entity.name || '—');
+    items.push({ label, minutos: min });
+  });
+  return items;
+}
+
+// Refresca todos los textos "hoy te has concentrado..." y el mini-resumen
+function refreshConcentradoUI() {
+  const min = getMinutosConcentradoHoy();
+  const text = 'Hoy te has concentrado ' + fmtMinutosLargo(min);
+  const ids = ['cronoConcentradoText', 'sessionConcentradoText'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  });
+
+  // Mini-resumen lateral
+  const resumenEl = document.getElementById('cronoResumenLateral');
+  if (resumenEl) {
+    const items = getResumenSesionesHoy();
+    if (!items.length) {
+      resumenEl.style.display = 'none';
+    } else {
+      resumenEl.style.display = '';
+      resumenEl.innerHTML = items.map(it => {
+        const minTxt = it.minutos >= 60
+          ? Math.floor(it.minutos / 60) + 'h' + (it.minutos % 60 ? ' ' + (it.minutos % 60) + 'm' : '')
+          : it.minutos + ' min';
+        return '<div class="crono-resumen-row">' +
+          '<span class="crono-resumen-label">' + it.label + '</span>' +
+          '<span class="crono-resumen-min">' + minTxt + '</span>' +
+        '</div>';
+      }).join('');
+    }
+  }
 }
 
 // ms reales estudiados (sin contar pausa)
@@ -12043,6 +12404,7 @@ function cronoFinish() {
     if (typeof openHechoDatos === 'function') {
       openHechoDatos(targetPlanId, minutos, { subSession: true });
     }
+    refreshConcentradoUI();
   }, 120);
 }
 
@@ -12150,6 +12512,7 @@ function cronoOnEnterView() {
   cronoEnterFocus();
   cronoFillObraSelect();
   cronoRender();
+  refreshConcentradoUI();
   if (crono.state === 'running' && !crono.tickInterval) cronoStartTick();
   if (crono.state === 'paused'  && !crono.pauseInterval) cronoStartPauseCountdown();
 }
