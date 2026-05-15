@@ -1059,6 +1059,45 @@
   }
   .plan-item-remove:hover { background: rgba(200,110,110,0.15); color: var(--red); opacity: 1; }
   .plan-item-remove:active { transform: scale(0.92); }
+
+  /* Footer de tarjeta fusionada (varias sub-sesiones del mismo obra/movimiento) */
+  .fusion-footer {
+    margin-top: 8px; padding: 6px 10px;
+    background: var(--bg3); border-radius: 6px;
+    display: flex; flex-wrap: wrap; gap: 6px;
+    align-items: center;
+    border-left: 2px solid var(--accent);
+    animation: fusionFooterIn 0.4s cubic-bezier(0.16,1,0.3,1);
+  }
+  @keyframes fusionFooterIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fusion-badge {
+    font-size: 8px;
+    color: var(--accent);
+    background: color-mix(in oklab, var(--accent) 12%, transparent);
+    border: 1px solid color-mix(in oklab, var(--accent) 28%, transparent);
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+  }
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    .fusion-badge { background: rgba(201,169,110,0.12); border-color: rgba(201,169,110,0.28); }
+  }
+  .fusion-pasajes {
+    font-size: 9px;
+    color: var(--text3);
+    font-style: italic;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.5;
+  }
+
   .add-extra-btn { width: 100%; margin-top: 10px; padding: 9px; background: transparent; border: 1px dashed var(--border2); border-radius: 8px; color: var(--text3); font-family: 'JetBrains Mono', monospace; font-size: 11px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.05em; }
   .add-extra-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--bg3); }
 
@@ -3506,7 +3545,6 @@
     <div style="display:flex;gap:6px;margin-bottom:12px" id="manualTickRow">
       <button class="tick-btn manual-tick hecho"   onclick="selectManualTick('hecho',this)"   style="flex:1;padding:7px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--green);font-family:\'JetBrains Mono\',monospace;font-size:10px;cursor:pointer;transition:all 0.2s">✓ Hecho</button>
       <button class="tick-btn manual-tick parcial" onclick="selectManualTick('parcial',this)" style="flex:1;padding:7px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--orange);font-family:\'JetBrains Mono\',monospace;font-size:10px;cursor:pointer;transition:all 0.2s">≈ Parcial</button>
-      <button class="tick-btn manual-tick saltado" onclick="selectManualTick('saltado',this)" style="flex:1;padding:7px;background:transparent;border:1px solid var(--border2);border-radius:4px;color:var(--red);font-family:\'JetBrains Mono\',monospace;font-size:10px;cursor:pointer;transition:all 0.2s">✗ Saltado</button>
     </div>
 
     <input class="modal-input" id="manualNota" type="text" placeholder="nota rápida (opcional)">
@@ -3957,6 +3995,41 @@ const sessionTicks = {};
 const sessionMinPlan = {};
 const sessionSolRatings = {};
 const sessionProductivityRatings = {}; // per-item productivity rating (0-100)
+// Para tarjetas fusionadas (varias sub-sesiones de la misma obra/movimiento).
+// Cada planId puede acumular sub-sesiones: para productividad media ponderada
+// por minutos, y para listar pasajes trabajados acumulados.
+// sessionAggregate[planId] = { subsessions: [{min, prod, pasajes: [{id,nombre,intensidad}], timestamp}], pasajesAcum: Set }
+const sessionAggregate = {};
+
+function aggregateGetPasajes(planId) {
+  // Devuelve un array de {id, nombre, intensidad} de los pasajes ya trabajados
+  // en sub-sesiones anteriores de este planId.
+  const ag = sessionAggregate[planId];
+  if (!ag) return [];
+  const map = {};
+  (ag.subsessions || []).forEach(s => {
+    (s.pasajes || []).forEach(p => {
+      // Si se trabaja el mismo pasaje varias veces, nos quedamos con la última
+      // intensidad para mostrar (pero los conservamos todos en historial real)
+      map[p.id] = { id: p.id, nombre: p.nombre, intensidad: p.intensidad };
+    });
+  });
+  return Object.values(map);
+}
+
+function aggregateWeightedProd(planId) {
+  // Productividad media ponderada por minutos a partir de las sub-sesiones
+  const ag = sessionAggregate[planId];
+  if (!ag || !ag.subsessions || !ag.subsessions.length) return null;
+  let totalMin = 0, sumProdMin = 0;
+  ag.subsessions.forEach(s => {
+    if (s.min > 0 && typeof s.prod === 'number') {
+      totalMin += s.min;
+      sumProdMin += s.min * s.prod;
+    }
+  });
+  return totalMin > 0 ? Math.round(sumProdMin / totalMin) : null;
+}
 
 const DRAFT_KEY = 'alberto_session_draft';
 
@@ -4492,6 +4565,23 @@ function renderExtraItem(entity, minutos) {
     ? (entity._parentName || '') + ' · ' + entity.name
     : (entity.composer || '');
 
+  // Si hay sub-sesiones acumuladas (tarjeta fusionada), mostrar lista pequeña
+  // de pasajes trabajados acumulados al final.
+  const subsessions = sessionAggregate[planId]?.subsessions || [];
+  let fusionFooter = '';
+  if (subsessions.length > 1) {
+    const accPasajes = aggregateGetPasajes(planId);
+    const intensidadIcon = { intenso: '🔥', normal: '●', superficial: '○' };
+    const pasajesLine = accPasajes.length
+      ? accPasajes.map(p => intensidadIcon[p.intensidad] + ' ' + p.nombre).join(' · ')
+      : '';
+    fusionFooter =
+      '<div class="fusion-footer">' +
+        '<span class="fusion-badge">' + subsessions.length + ' sesiones</span>' +
+        (pasajesLine ? '<span class="fusion-pasajes">' + pasajesLine + '</span>' : '') +
+      '</div>';
+  }
+
   return '<div class="plan-item" id="plan-' + planId + '" style="border-left:2px solid var(--accent);opacity:0.95;position:relative">' +
     '<button class="plan-item-remove" onclick="removeFromPlan(\'' + planId + '\')" title="Quitar de la sesión" aria-label="Quitar">×</button>' +
     '<div class="plan-item-top">' +
@@ -4507,7 +4597,6 @@ function renderExtraItem(entity, minutos) {
     '</div>' +
     '<div class="tick-row">' +
       '<button class="tick-btn" onclick="setTick(\'' + planId + '\',\'hecho\',this,' + minPlan + ')">✓ Hecho</button>' +
-      '<button class="tick-btn" onclick="setTick(\'' + planId + '\',\'saltado\',this,' + minPlan + ')">✗ Saltado</button>' +
       '<input class="tick-note" id="tnote-' + planId + '" type="text" placeholder="nota...">' +
     '</div>' +
     '<div class="tick-min-row" id="tickmin-' + planId + '" style="display:none;margin-top:6px;align-items:center;gap:8px;flex-wrap:wrap">' +
@@ -4518,6 +4607,7 @@ function renderExtraItem(entity, minutos) {
       '<span style="font-size:9px;color:var(--text3)">/ ' + minPlan + ' planif.</span>' +
       '<span id="tickmin-diff-' + planId + '" style="font-size:9px"></span>' +
     '</div>' +
+    fusionFooter +
   '</div>';
 }
 
@@ -6110,6 +6200,21 @@ function togglePaseBlock(cual) {
     const slider = document.getElementById('pase' + (isAntes ? 'Antes' : 'Despues') + 'Slider');
     fillSlider(slider, SOL_COLOR);
   }
+  // Mostrar/ocultar la sección de fallo de memoria según haya algún pase activo
+  const memSection = document.getElementById('hechoMemSection');
+  if (memSection) {
+    const anyPase = _paseAntesActive || _paseDespuesActive;
+    memSection.style.display = (_hechoShowMem && anyPase) ? 'block' : 'none';
+    // Si se desactivan todos los pases, resetear el estado de fallo de memoria
+    if (!anyPase && _memLapseYes) {
+      _memLapseYes = false;
+      document.querySelectorAll('.memlapse-btn').forEach(b => b.classList.remove('active'));
+      const noBtn = document.querySelector('.memlapse-btn.no');
+      if (noBtn) noBtn.classList.add('active');
+      const detail = document.getElementById('memLapseDetail');
+      if (detail) detail.style.display = 'none';
+    }
+  }
 }
 
 function updatePaseSlider(cual, val) {
@@ -6141,7 +6246,9 @@ function updatePasajeSolSlider(pasajeId, momento, val) {
   fillSlider(slider, SOL_COLOR);
 }
 
-function openHechoDatos(planId, minPlan) {
+function openHechoDatos(planId, minPlan, opts) {
+  opts = opts || {};
+  const isSubSession = !!opts.subSession;
   const { obraId: parsedObraId, movId: parsedMovId } = parsePlanId(planId);
 
   // For extra obras, look up the entity in currentPlan to get correct obraId/movId
@@ -6165,7 +6272,7 @@ function openHechoDatos(planId, minPlan) {
   const fase = entity ? obraFase(entity) : 'digitando';
   const pct = entity ? compasPercent(entity) : null;
 
-  _hechoShowCompas = !!(entity && entity.compasesTotal);  // show if obra has compas defined
+  _hechoShowCompas = !!(entity && entity.compasesTotal) && fase === 'digitando';
   _hechoShowMem = !movId && (fase === 'consolidando' || fase === 'mantenimiento');
   const showPases = !movId && (fase === 'consolidando' || fase === 'mantenimiento');
 
@@ -6233,11 +6340,25 @@ function openHechoDatos(planId, minPlan) {
   const pasajesList    = document.getElementById('hechoPasajesList');
   if (pasajesSection) pasajesSection.style.display = pasajosActivos.length ? 'block' : 'none';
   if (pasajesList && pasajosActivos.length) {
+    // Pasajes ya trabajados en sub-sesiones anteriores de este mismo planId
+    const prevWorked = aggregateGetPasajes(planId);
+    const prevMap = {};
+    prevWorked.forEach(p => { prevMap[p.id] = p; });
+
     pasajesList.innerHTML = pasajosActivos.map(p => {
       const lastSolP = p.solHistory?.[0]?.val != null ? normalizeSolVal(p.solHistory[0].val) : 50;
       const solD = Math.min(100, lastSolP + 10);
+      const prevList = (sessionAggregate[planId]?.subsessions || [])
+        .filter(s => (s.pasajes || []).some(pp => pp.id === p.id));
+      const prevCount = prevList.length;
+      const prevTicks = prevCount > 0
+        ? '<span class="pasaje-prev-tick" title="Ya trabajado en sub-sesiones anteriores" style="display:inline-flex;align-items:center;gap:2px;margin-left:6px;font-size:9px;color:var(--green);font-family:\'JetBrains Mono\',monospace">' +
+          '✓'.repeat(Math.min(prevCount, 4)) +
+          (prevCount > 4 ? '+' + (prevCount - 4) : '') +
+          '</span>'
+        : '';
       return '<div class="pasaje-work-block" id="pw-' + p.id + '">' +
-        '<div class="pasaje-work-name"><span>' + p.text.slice(0,40) + (p.text.length>40?'…':'') + '</span>' +
+        '<div class="pasaje-work-name"><span>' + p.text.slice(0,40) + (p.text.length>40?'…':'') + prevTicks + '</span>' +
         '<div class="intensidad-btns">' +
           '<button class="intensidad-btn intenso"    onclick="selectPasajeIntensidad(\'' + p.id + '\',\'intenso\',this)"    title="Trabajo intenso">🔥</button>' +
           '<button class="intensidad-btn normal"     onclick="selectPasajeIntensidad(\'' + p.id + '\',\'normal\',this)"     title="Normal">●</button>' +
@@ -6261,10 +6382,11 @@ function openHechoDatos(planId, minPlan) {
     });
   }
 
-  // Memory lapse
+  // Memory lapse — empieza siempre oculta. Se mostrará si el usuario añade
+  // un pase inicial o final (ver togglePaseBlock).
   const memSection = document.getElementById('hechoMemSection');
   if (memSection) {
-    memSection.style.display = _hechoShowMem ? 'block' : 'none';
+    memSection.style.display = 'none';
     if (_hechoShowMem) {
       document.querySelectorAll('.memlapse-btn').forEach(b => b.classList.remove('active'));
       const noBtn = document.querySelector('.memlapse-btn.no');
@@ -6448,10 +6570,46 @@ function closeHechoDatos(save) {
     }
   }
 
-  // Capture productivity rating from the embedded slider
+  // Capture productivity rating from the embedded slider.
+  // Si esta es una sub-sesión (tarjeta fusionada), añadimos esta sub-sesión al
+  // agregado y la productividad final es media ponderada por minutos.
   const prodVal = parseInt(document.getElementById('hechoProdSlider')?.value);
   if (!isNaN(prodVal)) {
-    sessionProductivityRatings[planId] = prodVal;
+    // Recogemos los pasajes trabajados en esta apertura (snapshot de _pasajeWork)
+    const subPasajes = [];
+    Object.entries(_pasajeWork).forEach(([pid, w]) => {
+      if (!w.intensidad) return;
+      const pObj = obra && (obra.pasajes || []).find(pp => pp.id === pid);
+      subPasajes.push({
+        id: pid,
+        nombre: pObj ? pObj.text.slice(0, 40) : pid,
+        intensidad: w.intensidad,
+      });
+    });
+    // Inicializar agregado si no existe
+    if (!sessionAggregate[planId]) {
+      sessionAggregate[planId] = { subsessions: [] };
+    }
+    // Determinar los minutos de ESTA sub-sesión:
+    //  - Si es la primera (no había agregado), son los minutos totales actuales
+    //    de sessionMinPlan[planId].
+    //  - Si ya había sub-sesiones, son los minutos NUEVOS = minutos actuales -
+    //    suma de los minutos de las sub-sesiones previas.
+    const prevSubMin = (sessionAggregate[planId].subsessions || [])
+      .reduce((s, x) => s + (x.min || 0), 0);
+    const totalAcum = sessionMinPlan[planId] || 0;
+    const subMin = Math.max(0, totalAcum - prevSubMin) || minutos || totalAcum;
+
+    sessionAggregate[planId].subsessions.push({
+      min: subMin,
+      prod: prodVal,
+      pasajes: subPasajes,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Productividad ponderada
+    const weighted = aggregateWeightedProd(planId);
+    sessionProductivityRatings[planId] = weighted != null ? weighted : prodVal;
   }
 
   saveDraft();
@@ -7102,7 +7260,6 @@ function renderMicropaseItem(obra, totalMin, tipoSug) {
     '<div class="plan-item-detail">pase ' + tipoSug + (obra.duracion ? ' · ' + obra.duracion + ' min' : '') + '</div></div>' +
     '<div class="plan-item-time">' + (obra.duracion || '?') + ' min</div></div>' +
     '<div class="tick-row"><button class="tick-btn" onclick="setTick(\'' + obra.id + '\',\'hecho\',this,' + minPlan + ')">✓ Hecho</button>' +
-    '<button class="tick-btn" onclick="setTick(\'' + obra.id + '\',\'saltado\',this,' + minPlan + ')">✗ Saltado</button>' +
     '<input class="tick-note" id="tnote-' + obra.id + '" type="text" placeholder="nota..."></div>' +
     renderSolRatingRow(obra.id) +
     '<div class="tick-min-row" id="tickmin-' + obra.id + '" style="display:none;margin-top:6px;align-items:center;gap:8px;flex-wrap:wrap">' +
@@ -7188,7 +7345,6 @@ function renderMovimientoPlanItem(entity, i, minAsignado, energia, cargaTotal) {
     // tick buttons
     + '<div class="tick-row">'
     + '<button class="tick-btn" onclick="setTick(\'' + planId + '\',\'hecho\',this,' + minAsignado + ')">✓ Hecho</button>'
-    + '<button class="tick-btn" onclick="setTick(\'' + planId + '\',\'saltado\',this,' + minAsignado + ')">✗ Saltado</button>'
     + '<input class="tick-note" id="tnote-' + planId + '" type="text" placeholder="nota...">'
     + '</div>'
     + renderSolRatingRow(planId)
@@ -7208,7 +7364,6 @@ function renderConciertoItem(obra, i, minDeadlineDays) {
     '<div class="plan-item-detail">pase completo' + (obra.duracion ? ' · ' + obra.duracion + ' min' : '') + (diasSinConcierto !== null ? ' · último ' + diasSinConcierto + 'd' : '') + '</div></div>' +
     '<div class="plan-item-time">' + (obra.duracion || '?') + ' min</div></div>' +
     '<div class="tick-row"><button class="tick-btn" onclick="setTick(\'' + obra.id + '\',\'hecho\',this,' + minPlan + ')">✓ Hecho</button>' +
-    '<button class="tick-btn" onclick="setTick(\'' + obra.id + '\',\'saltado\',this,' + minPlan + ')">✗ Saltado</button>' +
     '<input class="tick-note" id="tnote-' + obra.id + '" type="text" placeholder="nota..."></div>' +
     renderSolRatingRow(obra.id) +
     '<div class="tick-min-row" id="tickmin-' + obra.id + '" style="display:none;margin-top:6px;align-items:center;gap:8px;flex-wrap:wrap">' +
@@ -7293,7 +7448,6 @@ function renderTrabajoItem(obra, i, minAsignado, energia, cargaTotal, paseAnalis
     '<div class="plan-item-time" style="text-align:right"><div>~' + minAsignado + 'min</div>' +
     '</div></div>' +
     '<div class="tick-row"><button class="tick-btn" onclick="setTick(\'' + obra.id + '\',\'hecho\',this,' + minAsignado + ')">✓ Hecho</button>' +
-    '<button class="tick-btn" onclick="setTick(\'' + obra.id + '\',\'saltado\',this,' + minAsignado + ')">✗ Saltado</button>' +
     '<input class="tick-note" id="tnote-' + obra.id + '" type="text" placeholder="nota..."></div>' +
     renderSolRatingRow(obra.id) +
     '<div class="tick-min-row" id="tickmin-' + obra.id + '" style="display:none;margin-top:6px;align-items:center;gap:8px;flex-wrap:wrap">' +
@@ -11809,42 +11963,85 @@ function cronoFinish() {
   }
   const mov = movId && obra.movimientos ? obra.movimientos.find(m => m.id === movId) : null;
 
-  const extraId = 'crono_' + obraId + (movId ? '_' + movId : '') + '_' + Date.now();
-  const baseEntity = movId
-    ? Object.assign({}, mov, { _parentName: obra.name, composer: obra.composer })
-    : Object.assign({}, obra);
-  const extraEntity = Object.assign({}, baseEntity, {
-    _planId: extraId,
-    _obraId: obraId,
-    _movId: movId || null,
-    _isMovimiento: !!movId,
-    _isExtra: true,
-    _displayName: displayName,
-  });
-  currentPlan.push(extraEntity);
-  sessionMinPlan[extraId] = minutos;
+  // ── FUSIÓN: buscar tarjeta existente para la misma obra/movimiento ───────
+  // Si ya hay una tarjeta de esta misma obra y movimiento en el plan, sumamos
+  // los minutos a la existente en lugar de crear una nueva tarjeta.
+  const existing = currentPlan.find(e =>
+    (e._obraId || e.id) === obraId &&
+    (e._movId || null) === (movId || null)
+  );
 
-  if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
-  const planDiv = document.getElementById('sessionPlan');
-  if (planDiv && typeof renderExtraItem === 'function') {
-    const addBtn  = planDiv.querySelector('.add-extra-btn');
-    const saveBtn = planDiv.querySelector('.save-session-btn');
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = renderExtraItem(extraEntity, minutos);
-    if (wrapper.firstChild) {
-      planDiv.insertBefore(wrapper.firstChild, addBtn || saveBtn);
+  let targetPlanId, isFusion;
+
+  if (existing) {
+    targetPlanId = existing._planId || existing.id;
+    isFusion = true;
+    // Sumar minutos al total de la tarjeta
+    sessionMinPlan[targetPlanId] = (sessionMinPlan[targetPlanId] || 0) + minutos;
+    // Re-renderizar la tarjeta con el total actualizado
+    const planEl = document.getElementById('plan-' + targetPlanId);
+    if (planEl) {
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = renderExtraItem(existing, sessionMinPlan[targetPlanId]);
+      if (wrapper.firstChild) {
+        planEl.replaceWith(wrapper.firstChild);
+      }
+      // Si ya tenía tick "hecho", restaurar la marca visual
+      if (sessionTicks[targetPlanId] === 'hecho') {
+        const newRow = document.querySelector('#plan-' + targetPlanId + ' .tick-row');
+        if (newRow) {
+          const hechoBtn = newRow.querySelector('.tick-btn');
+          if (hechoBtn) hechoBtn.classList.add('hecho');
+        }
+        const minRow = document.getElementById('tickmin-' + targetPlanId);
+        if (minRow) minRow.style.display = 'flex';
+        updateProductivityBadge(targetPlanId);
+      }
     }
+  } else {
+    // Crear nueva tarjeta
+    const extraId = 'crono_' + obraId + (movId ? '_' + movId : '') + '_' + Date.now();
+    const baseEntity = movId
+      ? Object.assign({}, mov, { _parentName: obra.name, composer: obra.composer })
+      : Object.assign({}, obra);
+    const extraEntity = Object.assign({}, baseEntity, {
+      _planId: extraId,
+      _obraId: obraId,
+      _movId: movId || null,
+      _isMovimiento: !!movId,
+      _isExtra: true,
+      _displayName: displayName,
+    });
+    currentPlan.push(extraEntity);
+    sessionMinPlan[extraId] = minutos;
+    targetPlanId = extraId;
+    isFusion = false;
+
     if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
+    const planDiv = document.getElementById('sessionPlan');
+    if (planDiv && typeof renderExtraItem === 'function') {
+      const addBtn  = planDiv.querySelector('.add-extra-btn');
+      const saveBtn = planDiv.querySelector('.save-session-btn');
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = renderExtraItem(extraEntity, minutos);
+      if (wrapper.firstChild) {
+        planDiv.insertBefore(wrapper.firstChild, addBtn || saveBtn);
+      }
+      if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
+    }
   }
+
   if (typeof saveDraft === 'function') saveDraft();
 
   cronoReset();
   cronoRender();
 
   showView('session');
+  // Pasamos los minutos de ESTA sub-sesión (no el acumulado) para que el modal
+  // muestre lo que acabas de hacer.
   setTimeout(() => {
     if (typeof openHechoDatos === 'function') {
-      openHechoDatos(extraId, minutos);
+      openHechoDatos(targetPlanId, minutos, { subSession: true });
     }
   }, 120);
 }
