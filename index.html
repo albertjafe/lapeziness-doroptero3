@@ -2495,7 +2495,7 @@
   /* Pieza central: ensō (círculo zen) sobrio.
      Un solo trazo en el color accent del tema, respiración apenas perceptible. */
   .crono-centerpiece {
-    width: 200px; height: 200px;
+    width: 260px; height: 260px;
     margin: 0 auto 60px;
     position: relative;
   }
@@ -2570,7 +2570,7 @@
   .crono-timer-text {
     fill: var(--text);
     font-family: "Cormorant Garamond", serif;
-    font-size: 48px;
+    font-size: 56px;
     font-weight: 300;
     font-variant-numeric: tabular-nums;
     pointer-events: none;
@@ -2579,7 +2579,7 @@
     fill: var(--text3);
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     pointer-events: none;
   }
@@ -3016,7 +3016,7 @@
     .crono-controls { gap: 18px; }
     .crono-ctrl-btn { width: 54px; height: 54px; }
     .crono-ctrl-btn.primary { width: 68px; height: 68px; }
-    .crono-centerpiece { width: 170px; height: 170px; }
+    .crono-centerpiece { width: 220px; height: 220px; }
   }
 
   /* Modal de sesión fallida */
@@ -3354,11 +3354,11 @@
                   cx="100" cy="28" r="10"/>
           <!-- Texto de minutos seleccionados, dentro del círculo -->
           <text class="crono-timer-text" id="cronoTimerText"
-                x="100" y="100"
+                x="100" y="95"
                 text-anchor="middle"
                 dominant-baseline="central">25</text>
           <text class="crono-timer-unit"
-                x="100" y="125"
+                x="100" y="135"
                 text-anchor="middle"
                 dominant-baseline="central">min</text>
         </svg>
@@ -4717,12 +4717,29 @@ function saveDraft() {
 // tarjetas extras (fusionadas si hay múltiples items con misma obra/movimiento).
 // Se llama tras loadDraft() cuando el draft está vacío — caso típico de app
 // recién instalada / sincronización desde nube.
-function restoreSessionFromDbToday() {
+function restoreSessionFromDbToday(opts) {
+  opts = opts || {};
+  const force = !!opts.force;
   const today = new Date().toDateString();
   const sesionHoy = (db.sesiones || []).find(s => new Date(s.date).toDateString() === today);
-  if (!sesionHoy || !Array.isArray(sesionHoy.items) || !sesionHoy.items.length) return false;
-  // Solo reconstruir si currentPlan está vacío (no machacar nada que ya esté)
-  if (currentPlan && currentPlan.length > 0) return false;
+  if (!sesionHoy || !Array.isArray(sesionHoy.items) || !sesionHoy.items.length) {
+    return false;
+  }
+  // Solo reconstruir si currentPlan está vacío, o si se fuerza.
+  // (force=true lo usamos en onAuthSuccess para garantizar que el plan
+  //  refleje siempre la nube tras una descarga, incluso si había draft local
+  //  con datos antiguos.)
+  if (!force && currentPlan && currentPlan.length > 0) return false;
+  if (force) {
+    // Reset completo del estado en memoria para no mezclar con cualquier
+    // draft local antiguo que pudiera quedar.
+    currentPlan = [];
+    Object.keys(sessionTicks).forEach(k => delete sessionTicks[k]);
+    Object.keys(sessionMinPlan).forEach(k => delete sessionMinPlan[k]);
+    Object.keys(sessionSolRatings).forEach(k => delete sessionSolRatings[k]);
+    Object.keys(sessionProductivityRatings).forEach(k => delete sessionProductivityRatings[k]);
+    Object.keys(sessionAggregate).forEach(k => delete sessionAggregate[k]);
+  }
 
   // Si la sesión trae el aggregate auto-guardado, restaurarlo intacto y
   // reconstruir el plan a partir de sus claves planId.
@@ -4994,7 +5011,11 @@ function getRecentTicksForObra(obraId, n) {
 
 function setTick(planId, tick, btn, minPlan) {
   if (tick === 'hecho') {
-    openHechoDatos(planId, minPlan);
+    // Si ya estaba marcado hecho, reabrir el modal para EDITAR la sub-sesión.
+    // Esto permite modificar pases (inicial/final), pasajes trabajados, fallo
+    // de memoria, productividad — útil para tarjetas fusionadas donde quieres
+    // añadir info tras varias sub-sesiones acumuladas.
+    openHechoDatos(planId, minPlan, { editMode: sessionTicks[planId] === 'hecho' });
     return;
   }
   const row = btn.closest('.tick-row');
@@ -7069,6 +7090,7 @@ let _hechoObraId = null;
 let _hechoMovId = null;
 let _hechoPlanId = null;
 let _hechoMinPlan = 0;
+let _hechoEditMode = false;
 let _hechoShowSol = false;
 let _hechoShowCompas = false;
 let _hechoShowMem = false;
@@ -7250,6 +7272,7 @@ function updatePasajeSolSlider(pasajeId, momento, val) {
 function openHechoDatos(planId, minPlan, opts) {
   opts = opts || {};
   const isSubSession = !!opts.subSession;
+  const isEditMode = !!opts.editMode;
   const { obraId: parsedObraId, movId: parsedMovId } = parsePlanId(planId);
 
   // For extra obras, look up the entity in currentPlan to get correct obraId/movId
@@ -7261,6 +7284,7 @@ function openHechoDatos(planId, minPlan, opts) {
   _hechoObraId = obraId;
   _hechoMovId = movId;
   _hechoMinPlan = minPlan || 0;
+  _hechoEditMode = isEditMode;
   _hechoCompasStep = 0;
   _memLapseYes = false;
   _memPasajeSelected = null;
@@ -7420,6 +7444,93 @@ function openHechoDatos(planId, minPlan, opts) {
   if (prodSlider) { prodSlider.value = prodInit; }
   if (typeof updateHechoProd === 'function') updateHechoProd(prodInit);
 
+  // ── EDIT MODE ──────────────────────────────────────────────────────────
+  // Si estamos reabriendo la tarjeta para EDITAR, restaurar lo que se guardó
+  // en la última sub-sesión: pases inicial/final, fallo de memoria, pasajes
+  // trabajados con su intensidad y solidez antes/después.
+  if (isEditMode) {
+    const agg = sessionAggregate[planId];
+    const lastSub = (agg && Array.isArray(agg.subsessions) && agg.subsessions.length)
+      ? agg.subsessions[agg.subsessions.length - 1]
+      : null;
+    if (lastSub) {
+      // Pasajes trabajados: marcar intensidad
+      if (Array.isArray(lastSub.pasajes)) {
+        lastSub.pasajes.forEach(p => {
+          if (!p || !p.id || !p.intensidad) return;
+          _pasajeWork[p.id] = { intensidad: p.intensidad };
+          // Activar el botón visual de intensidad correspondiente
+          requestAnimationFrame(() => {
+            const block = document.getElementById('pw-' + p.id);
+            if (!block) return;
+            const btn = block.querySelector('.intensidad-btn.' + p.intensidad);
+            if (btn) {
+              block.querySelectorAll('.intensidad-btn').forEach(b => b.classList.remove('active'));
+              btn.classList.add('active');
+              // Mostrar el sub-bloque sol antes/después
+              const solPair = document.getElementById('pwsol-' + p.id);
+              if (solPair) solPair.style.display = '';
+            }
+          });
+        });
+      }
+      // Pases inicial/final: restaurar sliders y activar bloque si tenía nota o valor
+      const lastPasesRaw = lastSub.pases || null;
+      if (lastPasesRaw) {
+        if (lastPasesRaw.antes != null) {
+          _paseAntesActive = true;
+          requestAnimationFrame(() => {
+            const content = document.getElementById('paseAntesContent');
+            const toggle = document.getElementById('paseAntesToggle');
+            const slider = document.getElementById('paseAntesSlider');
+            const val = document.getElementById('paseAntesVal');
+            const nota = document.getElementById('paseAntesNota');
+            if (content) content.style.display = 'block';
+            if (toggle) toggle.textContent = '− quitar';
+            if (slider) { slider.value = lastPasesRaw.antes; fillSlider(slider, SOL_COLOR); }
+            if (val) val.textContent = lastPasesRaw.antes + '%';
+            if (nota && lastPasesRaw.notaAntes) nota.value = lastPasesRaw.notaAntes;
+          });
+        }
+        if (lastPasesRaw.despues != null) {
+          _paseDespuesActive = true;
+          requestAnimationFrame(() => {
+            const content = document.getElementById('paseDespuesContent');
+            const toggle = document.getElementById('paseDespuesToggle');
+            const slider = document.getElementById('paseDespuesSlider');
+            const val = document.getElementById('paseDespuesVal');
+            const nota = document.getElementById('paseDespuesNota');
+            if (content) content.style.display = 'block';
+            if (toggle) toggle.textContent = '− quitar';
+            if (slider) { slider.value = lastPasesRaw.despues; fillSlider(slider, SOL_COLOR); }
+            if (val) val.textContent = lastPasesRaw.despues + '%';
+            if (nota && lastPasesRaw.notaDespues) nota.value = lastPasesRaw.notaDespues;
+          });
+        }
+        // Memoria
+        if (lastPasesRaw.memLapse) {
+          _memLapseYes = true;
+          requestAnimationFrame(() => {
+            document.querySelectorAll('.memlapse-btn').forEach(b => b.classList.remove('active'));
+            const yesBtn = document.querySelector('.memlapse-btn.yes');
+            if (yesBtn) yesBtn.classList.add('active');
+            const detail = document.getElementById('memLapseDetail');
+            if (detail) detail.style.display = '';
+          });
+        }
+        // Mostrar sección de fallo de memoria si hay algún pase
+        if (_hechoShowMem) {
+          requestAnimationFrame(() => {
+            const memSection = document.getElementById('hechoMemSection');
+            if (memSection && (_paseAntesActive || _paseDespuesActive)) {
+              memSection.style.display = 'block';
+            }
+          });
+        }
+      }
+    }
+  }
+
   openModal('modalHechoDatos');
 }
 
@@ -7441,8 +7552,10 @@ function closeHechoDatos(save) {
   const noteInp = document.getElementById('tnote-' + planId);
   if (noteInp && nota) noteInp.value = nota;
 
-  // Save pases to paseHistory + solHistory
-  if (obra && !movId) {
+  // Save pases to paseHistory + solHistory.
+  // En editMode no duplicamos paseHistory; ya está registrado de la primera vez.
+  // El subsession.pases es lo que se actualiza para reflejar la edición.
+  if (obra && !movId && !_hechoEditMode) {
     const now = new Date().toISOString();
     if (_paseAntesActive) {
       const sol = parseInt(document.getElementById('paseAntesSlider')?.value || 50);
@@ -7607,14 +7720,44 @@ function closeHechoDatos(save) {
     const endedAt   = pending ? pending.endedAt   : new Date().toISOString();
     delete sessionAggregate[planId]._pendingTimes;
 
+    // Snapshot de pases/memoria de ESTA apertura del modal, para poder
+    // reabrir la tarjeta y editar tras varias sub-sesiones.
+    const subPases = {};
+    if (_paseAntesActive) {
+      subPases.antes = parseInt(document.getElementById('paseAntesSlider')?.value || 50);
+      const n = document.getElementById('paseAntesNota')?.value.trim();
+      if (n) subPases.notaAntes = n;
+    }
+    if (_paseDespuesActive) {
+      subPases.despues = parseInt(document.getElementById('paseDespuesSlider')?.value || 60);
+      const n = document.getElementById('paseDespuesNota')?.value.trim();
+      if (n) subPases.notaDespues = n;
+    }
+    if (_memLapseYes) subPases.memLapse = true;
+
     sessionAggregate[planId].subsessions.push({
       min: subMin,
       prod: prodVal,
       pasajes: subPasajes,
+      pases: Object.keys(subPases).length ? subPases : null,
       startedAt: startedAt,
       endedAt: endedAt,
       timestamp: endedAt, // legacy compat
     });
+    // En editMode, fusionamos esta apertura con la última sub-sesión real:
+    // mantenemos los minutos/timestamps originales y solo actualizamos los
+    // datos de edición (pasajes, pases, prod). Para evitar contar minutos dos
+    // veces y mantener el histórico de horas intacto.
+    if (_hechoEditMode && sessionAggregate[planId].subsessions.length >= 2) {
+      const arr = sessionAggregate[planId].subsessions;
+      const justAdded = arr.pop();
+      const previous = arr[arr.length - 1];
+      // Preservar min/startedAt/endedAt/timestamp de la previa; sobrescribir
+      // pasajes, pases, prod con los nuevos valores editados.
+      previous.pasajes = justAdded.pasajes;
+      previous.pases = justAdded.pases;
+      previous.prod = justAdded.prod;
+    }
 
     // Productividad ponderada
     const weighted = aggregateWeightedProd(planId);
@@ -12649,11 +12792,13 @@ async function onAuthSuccess() {
       renderEstadoSection();
     }
     updateHeader();
-    // ★ CRÍTICO: tras descargar de la nube, intentar reconstruir las tarjetas
-    // de hoy si el plan local está vacío. Esto resuelve el caso de "reinstalo
-    // la app en otro dispositivo y mis sesiones de hoy aparecen igual".
+    // ★ CRÍTICO: tras descargar de la nube, RECONSTRUIR siempre las tarjetas
+    // de hoy desde db.sesiones. Usamos force=true para que machaque cualquier
+    // draft local antiguo que pudiera quedar de otra fecha o sesión obsoleta.
+    // Resuelve el caso de "reinstalo en otro dispositivo y mis sesiones de
+    // hoy aparecen igual".
     if (typeof restoreSessionFromDbToday === 'function') {
-      const restored = restoreSessionFromDbToday();
+      const restored = restoreSessionFromDbToday({ force: true });
       if (restored && typeof refreshConcentradoUI === 'function') {
         refreshConcentradoUI();
       }
@@ -13321,7 +13466,7 @@ function cronoTimerInitDrag() {
     if (newMin !== crono.timerMinutes) {
       crono.timerMinutes = newMin;
       cronoTimerRenderSlider();
-      if (typeof SFX !== 'undefined' && SFX.nav) SFX.nav(); // tick discreto al cambiar
+      // No emitir sonido al arrastrar (era molesto al mover continuamente).
     }
   }
 
