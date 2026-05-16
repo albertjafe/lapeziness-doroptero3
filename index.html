@@ -328,6 +328,27 @@
     font-size: 14px;
     font-style: normal;
   }
+  /* Botón discreto para registrar sesión de día pasado */
+  .session-concentrado-past-btn {
+    width: 26px; height: 26px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    -webkit-tap-highlight-color: transparent;
+    margin-left: 8px;
+  }
+  .session-concentrado-past-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .session-concentrado-past-btn:active { transform: scale(0.92); }
+  .session-concentrado-past-btn svg { width: 12px; height: 12px; }
 
   .session-hero {
     background: var(--bg2);
@@ -2370,20 +2391,14 @@
   .crono-resumen-lateral {
     position: fixed;
     top: max(calc(env(safe-area-inset-top, 14px) + 8px), 24px);
-    left: 18px;
+    left: 20px;
     z-index: 50;
-    max-width: 200px;
-    background: color-mix(in oklab, var(--bg2) 80%, transparent);
-    border: 1px solid var(--border2);
-    border-radius: 10px;
-    padding: 9px 11px;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    max-width: 220px;
+    padding: 0;
+    background: transparent;
+    border: none;
     opacity: 0;
     animation: cronoResumenIn 0.7s 0.3s cubic-bezier(0.16,1,0.3,1) forwards;
-  }
-  @supports not (background: color-mix(in oklab, red, blue)) {
-    .crono-resumen-lateral { background: rgba(0,0,0,0.04); }
   }
   @keyframes cronoResumenIn {
     from { opacity: 0; transform: translateX(-6px); }
@@ -2393,30 +2408,35 @@
   .crono-resumen-row {
     display: flex;
     align-items: baseline;
-    gap: 8px;
-    padding: 3px 0;
-    font-size: 10px;
+    gap: 10px;
+    padding: 4px 0;
+    line-height: 1.3;
   }
   .crono-resumen-row + .crono-resumen-row {
-    border-top: 1px dashed var(--border2);
+    border-top: 1px solid color-mix(in oklab, var(--text3) 18%, transparent);
+  }
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    .crono-resumen-row + .crono-resumen-row { border-top: 1px solid rgba(128,128,128,0.18); }
   }
   .crono-resumen-label {
     flex: 1;
     color: var(--text2);
     font-family: "Cormorant Garamond", serif;
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.3;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    opacity: 0.85;
   }
   .crono-resumen-min {
-    color: var(--accent);
+    color: var(--text3);
     font-family: "JetBrains Mono", monospace;
     font-size: 9px;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
     flex-shrink: 0;
+    letter-spacing: 0.04em;
   }
 
   /* En móvil, hacer más compacto el resumen */
@@ -2479,26 +2499,129 @@
     margin: 0 auto 60px;
     position: relative;
   }
-  .crono-centerpiece svg {
-    width: 100%; height: 100%;
+  /* Por defecto modo cronómetro: ensō visible, timer oculto */
+  .crono-centerpiece .crono-enso-svg {
     display: block;
+    width: 100%; height: 100%;
     animation: cronoEnsoBreathe 9s ease-in-out infinite;
     transform-origin: center;
   }
+  .crono-centerpiece .crono-timer-svg {
+    display: none;
+    width: 100%; height: 100%;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+  /* En modo timer: ocultar ensō, mostrar slider */
+  body.crono-timer-mode .crono-centerpiece .crono-enso-svg { display: none; }
+  body.crono-timer-mode .crono-centerpiece .crono-timer-svg { display: block; }
+
   @keyframes cronoEnsoBreathe {
     0%, 100% { transform: scale(1);    opacity: 0.85; }
     50%      { transform: scale(1.02); opacity: 1; }
   }
   .crono-enso-stroke {
     fill: none;
-    stroke: var(--accent);
+    stroke: var(--crono-color, var(--accent));
     stroke-width: 1.2;
     stroke-linecap: round;
     opacity: 0.65;
+    transition: stroke 0.5s ease;
   }
   .crono-enso-dot {
-    fill: var(--accent);
+    fill: var(--crono-color, var(--accent));
     opacity: 0.55;
+    transition: fill 0.5s ease;
+  }
+
+  /* Slider radial del temporizador */
+  .crono-timer-track {
+    fill: none;
+    stroke: var(--border2);
+    stroke-width: 2;
+    opacity: 0.5;
+  }
+  .crono-timer-arc {
+    fill: none;
+    stroke: var(--crono-color, var(--accent));
+    stroke-width: 3;
+    stroke-linecap: round;
+    opacity: 0.85;
+    transition: stroke 0.5s ease, stroke-dashoffset 0.18s cubic-bezier(0.4,0,0.2,1);
+  }
+  .crono-timer-handle {
+    fill: var(--crono-color, var(--accent));
+    stroke: var(--bg);
+    stroke-width: 2;
+    cursor: grab;
+    transition: fill 0.5s ease, transform 0.18s cubic-bezier(0.4,0,0.2,1);
+    transform-origin: 100px 100px;
+    transform-box: view-box;
+    filter: drop-shadow(0 1px 4px rgba(0,0,0,0.15));
+  }
+  .crono-timer-handle:active,
+  .crono-timer-handle.dragging {
+    cursor: grabbing;
+    transform: scale(1.15);
+  }
+  .crono-timer-text {
+    fill: var(--text);
+    font-family: "Cormorant Garamond", serif;
+    font-size: 48px;
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+  }
+  .crono-timer-unit {
+    fill: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  /* Toggle Cronómetro / Temporizador */
+  .crono-mode-toggle {
+    display: inline-flex;
+    position: relative;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 999px;
+    padding: 3px;
+    margin: 0 auto 24px;
+    gap: 0;
+  }
+  .crono-mode-opt {
+    background: transparent;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 999px;
+    color: var(--text3);
+    font-family: "Cormorant Garamond", serif;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: color 0.35s cubic-bezier(0.4,0,0.2,1);
+    position: relative;
+    z-index: 2;
+    -webkit-tap-highlight-color: transparent;
+    white-space: nowrap;
+  }
+  .crono-mode-opt.active { color: var(--text); }
+  .crono-mode-indicator {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    height: calc(100% - 6px);
+    background: var(--bg3);
+    border-radius: 999px;
+    transition: all 0.45s cubic-bezier(0.4,0,0.2,1);
+    z-index: 1;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
   }
 
   /* Selector de obra: integrado al tema */
@@ -2543,9 +2666,9 @@
     margin: 0 auto;
     padding: 13px 56px;
     border-radius: 999px;
-    border: 1px solid var(--accent);
+    border: 1px solid var(--crono-color, var(--accent));
     background: transparent;
-    color: var(--accent);
+    color: var(--crono-color, var(--accent));
     font-family: "Cormorant Garamond", serif;
     font-size: 17px;
     font-weight: 400;
@@ -2556,13 +2679,32 @@
     position: relative;
   }
   .crono-plant-btn:not(:disabled):hover {
-    background: color-mix(in oklab, var(--accent) 8%, transparent);
+    background: color-mix(in oklab, var(--crono-color, var(--accent)) 10%, transparent);
   }
   @supports not (background: color-mix(in oklab, red, blue)) {
-    .crono-plant-btn:not(:disabled):hover { background: rgba(201,169,110,0.08); }
+    .crono-plant-btn:not(:disabled):hover { background: rgba(201,169,110,0.10); }
   }
   .crono-plant-btn:not(:disabled):active { transform: scale(0.97); }
   .crono-plant-btn:disabled { opacity: 0.3; cursor: not-allowed; border-color: var(--border2); color: var(--text3); }
+
+  /* Indicador discreto de color bajo el select (idle) */
+  .crono-idle-dot-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 14px;
+    margin: -18px 0 14px;
+  }
+  .crono-idle-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--crono-color, var(--accent));
+    box-shadow: 0 0 12px 1px color-mix(in oklab, var(--crono-color, var(--accent)) 35%, transparent);
+    transition: background 0.5s ease, box-shadow 0.5s ease;
+  }
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    .crono-idle-dot { box-shadow: 0 0 10px rgba(201,169,110,0.35); }
+  }
 
   .crono-fallidas-info {
     position: absolute;
@@ -2588,18 +2730,50 @@
     border: 1px solid var(--border2);
     color: var(--text);
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
     -webkit-tap-highlight-color: transparent;
     max-width: 88%;
+    position: relative;
+  }
+  /* Halo del color de la obra alrededor de la píldora durante running */
+  .crono-obra-pill::before {
+    content: "";
+    position: absolute;
+    inset: -8px;
+    border-radius: 999px;
+    background: radial-gradient(ellipse, color-mix(in oklab, var(--crono-color, var(--accent)) 25%, transparent), transparent 70%);
+    filter: blur(14px);
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    pointer-events: none;
+  }
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    .crono-obra-pill::before {
+      background: radial-gradient(ellipse, rgba(201,169,110,0.25), transparent 70%);
+    }
+  }
+  .crono-obra-pill.running::before {
+    opacity: 1;
+    animation: cronoPillHalo 4.5s ease-in-out infinite;
+  }
+  @keyframes cronoPillHalo {
+    0%, 100% { opacity: 0.7; transform: scale(1); }
+    50%      { opacity: 1;   transform: scale(1.06); }
   }
   .crono-obra-pill:hover { background: var(--bg3); border-color: var(--border); }
   .crono-obra-pill:active { transform: scale(0.98); }
   .crono-obra-pill-dot {
-    width: 7px; height: 7px;
+    width: 8px; height: 8px;
     border-radius: 50%;
-    background: var(--accent);
+    background: var(--crono-color, var(--accent));
+    box-shadow: 0 0 8px color-mix(in oklab, var(--crono-color, var(--accent)) 50%, transparent);
     flex-shrink: 0;
     animation: cronoDotPulse 2.4s ease-in-out infinite;
+    transition: background 0.5s ease, box-shadow 0.5s ease;
+  }
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    .crono-obra-pill-dot { box-shadow: 0 0 8px rgba(201,169,110,0.5); }
   }
   .crono-obra-pill.paused .crono-obra-pill-dot {
     animation: none;
@@ -2639,11 +2813,11 @@
     width: 70%; height: 70%;
     transform: translate(-50%, -50%);
     border-radius: 50%;
-    background: radial-gradient(ellipse, color-mix(in oklab, var(--accent) 14%, transparent), transparent 65%);
+    background: radial-gradient(ellipse, color-mix(in oklab, var(--crono-color, var(--accent)) 14%, transparent), transparent 65%);
     filter: blur(28px);
     z-index: -1;
     opacity: 1;
-    transition: opacity 0.5s ease;
+    transition: opacity 0.5s ease, background 0.5s ease;
   }
   @supports not (background: color-mix(in oklab, red, blue)) {
     .crono-display-wrap::before {
@@ -2656,7 +2830,7 @@
     font-family: "Cormorant Garamond", serif;
     font-size: clamp(96px, 22vw, 150px);
     font-weight: 300;
-    color: var(--accent);
+    color: var(--crono-color, var(--accent));
     letter-spacing: 0.02em;
     line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -2689,16 +2863,17 @@
 
   .crono-ctrl-btn.primary {
     width: 76px; height: 76px;
-    border-color: var(--accent);
-    color: var(--accent);
+    border-color: var(--crono-color, var(--accent));
+    color: var(--crono-color, var(--accent));
     background: transparent;
+    transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
   }
   .crono-ctrl-btn.primary:hover {
-    background: color-mix(in oklab, var(--accent) 8%, transparent);
-    color: var(--accent);
+    background: color-mix(in oklab, var(--crono-color, var(--accent)) 10%, transparent);
+    color: var(--crono-color, var(--accent));
   }
   @supports not (background: color-mix(in oklab, red, blue)) {
-    .crono-ctrl-btn.primary:hover { background: rgba(201,169,110,0.08); }
+    .crono-ctrl-btn.primary:hover { background: rgba(201,169,110,0.10); }
   }
   .crono-ctrl-btn.primary svg { width: 26px; height: 26px; }
 
@@ -2708,22 +2883,90 @@
   }
   .crono-ctrl-btn.stop:hover { color: var(--text2); border-color: var(--border); }
 
-  /* Countdown discreto en pausa */
-  .crono-pause-info {
-    text-align: center;
-    margin-top: 26px;
+  /* Overlay de pausa: cubre toda la pantalla, difumina el fondo, y muestra el
+     cronómetro de pausa en primer plano. Estilo Forest, transición lenta. */
+  .crono-pause-overlay {
+    position: fixed; inset: 0;
+    z-index: 90;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: color-mix(in oklab, var(--bg) 60%, transparent);
+    backdrop-filter: blur(14px) saturate(0.7);
+    -webkit-backdrop-filter: blur(14px) saturate(0.7);
     opacity: 0;
-    transition: opacity 0.4s ease;
     pointer-events: none;
-    height: 22px;
+    transition: opacity 1.2s cubic-bezier(0.22, 0.61, 0.36, 1),
+                backdrop-filter 1.2s cubic-bezier(0.22, 0.61, 0.36, 1),
+                -webkit-backdrop-filter 1.2s cubic-bezier(0.22, 0.61, 0.36, 1);
   }
-  .crono-pause-info.visible { opacity: 1; }
-  .crono-pause-countdown {
-    font-family: "JetBrains Mono", monospace;
-    font-size: 11px;
-    color: var(--text3);
-    letter-spacing: 0.18em;
+  @supports not (backdrop-filter: blur(14px)) {
+    .crono-pause-overlay { background: color-mix(in oklab, var(--bg) 92%, transparent); }
+  }
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    .crono-pause-overlay { background: rgba(0,0,0,0.5); }
+  }
+  body.crono-paused .crono-pause-overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  /* Sólo visible cuando estamos en la vista cronómetro */
+  body:not(.crono-focus) .crono-pause-overlay { display: none; }
+
+  .crono-pause-overlay-inner {
+    text-align: center;
+    transform: translateY(14px);
+    opacity: 0;
+    transition: opacity 1.4s 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
+                transform 1.4s 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  body.crono-paused .crono-pause-overlay-inner {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .crono-pause-overlay-label {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 15px;
+    color: var(--text2);
+    letter-spacing: 0.015em;
+    margin-bottom: 14px;
+    font-style: italic;
+  }
+  .crono-pause-overlay-time {
+    font-family: "Cormorant Garamond", serif;
+    font-size: clamp(72px, 18vw, 110px);
+    font-weight: 300;
+    color: var(--text);
+    letter-spacing: 0.025em;
+    line-height: 1;
     font-variant-numeric: tabular-nums;
+    margin-bottom: 32px;
+  }
+  .crono-pause-overlay-play {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text2);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .crono-pause-overlay-play:hover {
+    background: var(--bg3);
+    color: var(--text);
+    border-color: var(--crono-color, var(--accent));
+  }
+  .crono-pause-overlay-play:active { transform: scale(0.92); }
+  .crono-pause-overlay-play svg { width: 24px; height: 24px; margin-left: 3px; }
+
+  @media (max-width: 480px) {
+    .crono-pause-overlay-label { font-size: 13px; }
+    .crono-pause-overlay-time { font-size: 76px; }
+    .crono-pause-overlay-play { width: 56px; height: 56px; }
   }
 
   /* Modal de cambio de obra */
@@ -2774,6 +3017,146 @@
     .crono-ctrl-btn { width: 54px; height: 54px; }
     .crono-ctrl-btn.primary { width: 68px; height: 68px; }
     .crono-centerpiece { width: 170px; height: 170px; }
+  }
+
+  /* Modal de sesión fallida */
+  .crono-fallida-modal {
+    max-width: 360px;
+    padding: 30px 28px 24px;
+    text-align: center;
+  }
+  .crono-fallida-icon {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 38px;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 16px;
+    opacity: 0.7;
+    animation: cronoFallidaIcon 1.2s cubic-bezier(0.16,1,0.3,1);
+  }
+  @keyframes cronoFallidaIcon {
+    from { opacity: 0; transform: scale(0.6) rotate(-20deg); }
+    to   { opacity: 0.7; transform: scale(1) rotate(0deg); }
+  }
+  .crono-fallida-title {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 22px;
+    color: var(--text);
+    letter-spacing: 0.015em;
+    margin-bottom: 10px;
+    line-height: 1.3;
+  }
+  .crono-fallida-sub {
+    font-size: 12px;
+    color: var(--text3);
+    margin-bottom: 22px;
+    line-height: 1.5;
+  }
+  .crono-fallida-sub span {
+    font-family: "JetBrains Mono", monospace;
+    color: var(--text2);
+    font-variant-numeric: tabular-nums;
+  }
+  .crono-fallida-actions {
+    display: flex; flex-direction: column;
+    gap: 8px;
+  }
+  .crono-fallida-ok {
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--green);
+    background: color-mix(in oklab, var(--green) 12%, transparent);
+    color: var(--green);
+    font-family: "Cormorant Garamond", serif;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    -webkit-tap-highlight-color: transparent;
+  }
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    .crono-fallida-ok { background: rgba(74,138,90,0.12); }
+  }
+  .crono-fallida-ok:hover { background: color-mix(in oklab, var(--green) 18%, transparent); }
+  .crono-fallida-ok:active { transform: scale(0.97); }
+  .crono-fallida-del {
+    padding: 9px;
+    border-radius: 8px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--red, #c87878);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    -webkit-tap-highlight-color: transparent;
+    opacity: 0.75;
+  }
+  .crono-fallida-del:hover {
+    opacity: 1;
+    border-color: var(--red, #c87878);
+    background: color-mix(in oklab, var(--red, #c87878) 8%, transparent);
+  }
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    .crono-fallida-del:hover { background: rgba(200,120,120,0.08); }
+  }
+  .crono-fallida-del:active { transform: scale(0.97); }
+
+  /* Dot de color en obra-header */
+  .obra-color-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+  }
+  .obra-color-dot:hover { transform: scale(1.18); }
+  .obra-color-dot:active { transform: scale(0.92); }
+
+  /* Grid de colores en el modal picker */
+  .obra-color-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    justify-items: center;
+  }
+  .obra-color-option {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    position: relative;
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .obra-color-option-inner {
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+  }
+  .obra-color-option.active {
+    border-color: var(--text);
+  }
+  .obra-color-option.active::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    opacity: 0.4;
+  }
+  .obra-color-option:hover { transform: scale(1.1); }
+  .obra-color-option:active { transform: scale(0.92); }
+  .obra-color-option.is-default .obra-color-option-inner {
+    background: linear-gradient(135deg, var(--bg3) 50%, var(--accent) 50%);
   }
 </style>
 </head>
@@ -2859,10 +3242,18 @@
   <path d="M40 420 Q44 400 48 382" stroke="var(--accent)" stroke-width="1" fill="none"/>
 </svg>
 <div class="view active" id="view-session">
-  <!-- Banner: "Hoy te has concentrado X" -->
+  <!-- Banner: "Hoy te has concentrado X" + opción discreta para día pasado -->
   <div class="session-concentrado-banner" id="sessionConcentradoBanner">
     <span class="session-concentrado-icon">⏱</span>
-    <span id="sessionConcentradoText">Hoy te has concentrado 0 minutos</span>
+    <span id="sessionConcentradoText" style="flex:1">Hoy te has concentrado 0 minutos</span>
+    <button class="session-concentrado-past-btn" onclick="openSavePastDate()" title="Registrar sesión de un día pasado">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="10" height="9" rx="1.5"/>
+        <line x1="2" y1="6" x2="12" y2="6"/>
+        <line x1="5" y1="1.5" x2="5" y2="4"/>
+        <line x1="9" y1="1.5" x2="9" y2="4"/>
+      </svg>
+    </button>
   </div>
 
   <div class="session-hero">
@@ -2873,18 +3264,11 @@
 
     <div class="estado-sliders">
       <div class="estado-row">
-        <span class="estado-icon">⚡</span>
-        <span class="estado-label">Energía</span>
-        <input type="range" class="estado-slider" id="est-energia" min="0" max="100" step="5" value="70"
-          oninput="updateEstado('energia',this.value)" style="color:#c8a030">
-        <span class="estado-val" id="estval-energia" style="color:#c8a030">70</span>
-      </div>
-      <div class="estado-row">
-        <span class="estado-icon">🌊</span>
-        <span class="estado-label">Calma</span>
-        <input type="range" class="estado-slider" id="est-claridad" min="0" max="100" step="5" value="70"
-          oninput="updateEstado('claridad',this.value)" style="color:#e08898">
-        <span class="estado-val" id="estval-claridad" style="color:#e08898">70</span>
+        <span class="estado-icon">🌿</span>
+        <span class="estado-label">Bienestar</span>
+        <input type="range" class="estado-slider" id="est-bienestar" min="0" max="100" step="5" value="70"
+          oninput="updateEstado('bienestar',this.value)" style="color:#c8a030">
+        <span class="estado-val" id="estval-bienestar" style="color:#c8a030">70</span>
       </div>
       <div class="estado-row">
         <span class="estado-icon">😴</span>
@@ -2933,21 +3317,50 @@
     <!-- FASE A: IDLE -->
     <div class="crono-stage crono-idle-wrap" id="cronoStageIdle">
 
+      <!-- Toggle Cronómetro / Temporizador, arriba sutil -->
+      <div class="crono-mode-toggle" id="cronoModeToggle">
+        <button class="crono-mode-opt active" data-mode="stopwatch" onclick="cronoSetMode('stopwatch')">Cronómetro</button>
+        <button class="crono-mode-opt" data-mode="timer" onclick="cronoSetMode('timer')">Temporizador</button>
+        <span class="crono-mode-indicator" id="cronoModeIndicator"></span>
+      </div>
+
       <div class="crono-idle-message" id="cronoIdleMessage">Empieza tu sesión de hoy</div>
 
-      <!-- Pieza central: ensō (círculo zen). Un solo trazo, sobrio, respira muy lento. -->
-      <div class="crono-centerpiece">
-        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-          <!-- Ensō: círculo con apertura en la parte superior, trazado de un gesto.
-               El path es un arco de ~340°, con extremos ligeramente desalineados
-               para sugerir el trazo de pincel. -->
+      <!-- Pieza central: ensō en modo cronómetro / slider radial en modo temporizador -->
+      <div class="crono-centerpiece" id="cronoCenterpiece">
+        <!-- Modo cronómetro: ensō (un solo trazo, respira muy lento) -->
+        <svg class="crono-enso-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
           <path class="crono-enso-stroke"
                 d="M 100 28
                    A 72 72 0 1 1 90.5 28.62"
                 stroke-dasharray="0"
                 pathLength="100" />
-          <!-- Punto central, casi imperceptible -->
           <circle class="crono-enso-dot" cx="100" cy="100" r="1.6"/>
+        </svg>
+
+        <!-- Modo temporizador: slider radial arrastrable. 360° = 120 min, snap a 5. -->
+        <svg class="crono-timer-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"
+             id="cronoTimerSvg">
+          <!-- Track de fondo (círculo completo, tenue) -->
+          <circle class="crono-timer-track" cx="100" cy="100" r="72"/>
+          <!-- Arco activo (transformación rota empieza desde arriba = 12 en punto) -->
+          <circle class="crono-timer-arc" id="cronoTimerArc"
+                  cx="100" cy="100" r="72"
+                  transform="rotate(-90 100 100)"
+                  stroke-dasharray="452.39"
+                  stroke-dashoffset="452.39"/>
+          <!-- Handle arrastrable -->
+          <circle class="crono-timer-handle" id="cronoTimerHandle"
+                  cx="100" cy="28" r="10"/>
+          <!-- Texto de minutos seleccionados, dentro del círculo -->
+          <text class="crono-timer-text" id="cronoTimerText"
+                x="100" y="100"
+                text-anchor="middle"
+                dominant-baseline="central">25</text>
+          <text class="crono-timer-unit"
+                x="100" y="125"
+                text-anchor="middle"
+                dominant-baseline="central">min</text>
         </svg>
       </div>
 
@@ -2955,6 +3368,11 @@
         <select id="cronoObraSelect" class="crono-select" onchange="cronoUpdateStartBtn()">
           <option value="">Elige una obra</option>
         </select>
+      </div>
+
+      <!-- Indicador discreto del color de la obra seleccionada -->
+      <div class="crono-idle-dot-wrap">
+        <div class="crono-idle-dot" id="cronoIdleDot" style="display:none"></div>
       </div>
 
       <button class="crono-plant-btn" id="cronoStartBtn" onclick="cronoStart()" disabled>Plantar</button>
@@ -2983,13 +3401,20 @@
         <!-- Se rellenan dinámicamente -->
       </div>
 
-      <!-- Countdown discreto de pausa -->
-      <div class="crono-pause-info" id="cronoPauseInfo">
-        <span class="crono-pause-countdown" id="cronoPauseCountdown">05:00</span>
-      </div>
-
     </div>
 
+  </div>
+
+  <!-- Overlay de pausa: difumina toda la pantalla con backdrop y muestra el
+       cronómetro de pausa en primer plano. Estilo Forest. -->
+  <div class="crono-pause-overlay" id="cronoPauseOverlay" aria-hidden="true">
+    <div class="crono-pause-overlay-inner">
+      <div class="crono-pause-overlay-label">Concentración en pausa · Reanuda en</div>
+      <div class="crono-pause-overlay-time" id="cronoPauseOverlayTime">05:00</div>
+      <button class="crono-pause-overlay-play" onclick="cronoResume()" aria-label="Reanudar">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -3188,6 +3613,24 @@
       </button>
     </div>
 
+    <div class="settings-section" style="margin-top:16px">Sonidos</div>
+    <div style="font-size:9px;color:var(--text3);line-height:1.6;margin-bottom:8px">Tipo de sonidos que la app emite al interactuar.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+      <button class="theme-option sound-option" data-sound="piano" onclick="setSoundPack('piano');refreshSoundOptionUI()" style="flex:1;min-width:80px">
+        <div style="font-size:16px;padding:2px 0">🎹</div>
+        <div class="theme-option-name">Piano</div>
+      </button>
+      <button class="theme-option sound-option" data-sound="wood" onclick="setSoundPack('wood');refreshSoundOptionUI()" style="flex:1;min-width:80px">
+        <div style="font-size:16px;padding:2px 0">🪵</div>
+        <div class="theme-option-name">Madera</div>
+      </button>
+      <button class="theme-option sound-option" data-sound="paper" onclick="setSoundPack('paper');refreshSoundOptionUI()" style="flex:1;min-width:80px">
+        <div style="font-size:16px;padding:2px 0">📄</div>
+        <div class="theme-option-name">Papel</div>
+      </button>
+    </div>
+    <div style="font-size:9px;color:var(--text3);font-style:italic;margin-top:4px">Toca para escuchar la prueba.</div>
+
     <div class="settings-section" style="margin-top:16px">Forest App — Importar historial</div>
     <div style="font-size:9px;color:var(--text3);line-height:1.6;margin-bottom:10px">Importa tu CSV de Forest para añadir horas previas a cada obra. Cada etiqueta aparece por separado — tú decides si juntarlas o no.</div>
     <button class="modal-btn secondary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px" onclick="document.getElementById('forestCsvInput').click()">
@@ -3357,6 +3800,16 @@
     <div class="modal-buttons" id="saveDateMainCancel" style="margin-top:6px">
       <button class="modal-btn secondary" onclick="closeModal('modalSaveDate')" style="width:100%">Cancelar</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL: color picker de obra -->
+<div class="modal-overlay" id="modalObraColor">
+  <div class="modal" style="max-width:340px;padding:24px 22px;text-align:center">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--accent);margin-bottom:6px">Color de la obra</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:18px;font-style:italic">Aparecerá en el cronómetro</div>
+    <div id="obraColorGrid" class="obra-color-grid"></div>
+    <button onclick="closeModal('modalObraColor')" style="margin-top:18px;padding:8px 24px;background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--text3);font-family:inherit;font-size:11px;cursor:pointer;letter-spacing:0.05em">Cerrar</button>
   </div>
 </div>
 
@@ -3868,6 +4321,43 @@ if (!db.sesiones) db.sesiones = [];
 if (!db.eventos) db.eventos = [];
 if (!db.obras) db.obras = [];
 if (!db.tocAtaques) db.tocAtaques = [];
+if (!db.forestPlants) db.forestPlants = [];
+// db.sessionPlants[]: array paralelo a forestPlants con UN registro por sub-sesión
+// del cronómetro. Persiste los timestamps detallados aunque la sesión en
+// db.sesiones[] sea descartada por el cap. Estructura por entrada:
+//   { obraId, movId, startedAt: ISO, endedAt: ISO, mins, source: 'app' }
+if (!db.sessionPlants) db.sessionPlants = [];
+
+// Migración one-shot: si sessionPlants está vacío pero hay sesiones existentes
+// con _aggregate que contiene timestamps de sub-sesiones, los rescatamos al
+// array nuevo. Sólo se ejecuta una vez (cuando sessionPlants no tiene nada).
+(function migrateSessionsToPlants() {
+  if (db.sessionPlants.length > 0) return;
+  if (!Array.isArray(db.sesiones) || db.sesiones.length === 0) return;
+  db.sesiones.forEach(sesion => {
+    if (!sesion._aggregate || typeof sesion._aggregate !== 'object') return;
+    Object.entries(sesion._aggregate).forEach(([planId, agg]) => {
+      if (!agg || !Array.isArray(agg.subsessions)) return;
+      // Buscar el item correspondiente para sacar obraId/movId
+      const item = (sesion.items || []).find(it => it._planId === planId);
+      if (!item) return;
+      agg.subsessions.forEach(sub => {
+        if (!sub.startedAt || !sub.endedAt) return;
+        db.sessionPlants.push({
+          obraId: item.obraId,
+          movId: item.movId || null,
+          startedAt: sub.startedAt,
+          endedAt: sub.endedAt,
+          mins: sub.min || 0,
+          source: 'app',
+        });
+      });
+    });
+  });
+  if (db.sessionPlants.length > 0) {
+    db.sessionPlants.sort((a, b) => (a.startedAt < b.startedAt ? -1 : 1));
+  }
+})();
 
 // Migration: ensure all obras have apr/sol/esc
 (db.obras || []).forEach(o => {
@@ -3948,8 +4438,11 @@ function updateHeader() {
 
 let selectedEnergy = 'normal';
 let selectedTime = 2;
-let estadoDiario = { energia: 70, claridad: 70, sueno: 70 };
-const ESTADO_COLORS = { energia: '#c8a030', claridad: '#e08898', sueno: '#a090e0' };
+// Estado diario: bienestar (fusión de energía/calma) + sueño.
+// Para retrocompatibilidad con código antiguo que lee .energia/.claridad,
+// los exponemos como alias en el getter de actualización.
+let estadoDiario = { bienestar: 70, sueno: 70, energia: 70, claridad: 70 };
+const ESTADO_COLORS = { bienestar: '#c8a030', sueno: '#a090e0', energia: '#c8a030', claridad: '#e08898' };
 
 function resolveThemeBg2() {
   // Resolve --bg2 CSS variable to actual color by measuring a temp element
@@ -3979,24 +4472,40 @@ function fillEstadoSlider(slider, color) {
 }
 
 function updateEstado(dim, val) {
-  estadoDiario[dim] = parseInt(val);
+  const n = parseInt(val);
+  estadoDiario[dim] = n;
+  // Mantener alias retrocompat: bienestar refleja energia y claridad a la vez
+  if (dim === 'bienestar') {
+    estadoDiario.energia = n;
+    estadoDiario.claridad = n;
+  }
   const valEl = document.getElementById('estval-' + dim);
   if (valEl) { valEl.textContent = val; }
   const slider = document.getElementById('est-' + dim);
   fillEstadoSlider(slider, ESTADO_COLORS[dim]);
-  // keep selectedEnergy alias for session algorithm
-  const avg = Math.round((estadoDiario.energia + estadoDiario.claridad) / 2);
-  selectedEnergy = avg >= 65 ? 'alta' : avg >= 35 ? 'normal' : 'baja';
+  // alias para algoritmo de sesión
+  const ref = (estadoDiario.bienestar != null)
+    ? estadoDiario.bienestar
+    : Math.round((estadoDiario.energia + estadoDiario.claridad) / 2);
+  selectedEnergy = ref >= 65 ? 'alta' : ref >= 35 ? 'normal' : 'baja';
 }
 
 function initEstadoSliders() {
-  ['energia','claridad','motivacion','sueno'].forEach(dim => {
+  // Migración: si solo tiene energia/claridad antiguos, generar bienestar.
+  if (estadoDiario.bienestar == null) {
+    const e = estadoDiario.energia != null ? estadoDiario.energia : 70;
+    const c = estadoDiario.claridad != null ? estadoDiario.claridad : 70;
+    estadoDiario.bienestar = Math.round((e + c) / 2);
+  }
+  // Asegurar alias siempre sincronizados con bienestar
+  estadoDiario.energia = estadoDiario.bienestar;
+  estadoDiario.claridad = estadoDiario.bienestar;
+  ['bienestar','sueno'].forEach(dim => {
     const slider = document.getElementById('est-' + dim);
     const valEl  = document.getElementById('estval-' + dim);
     if (!slider) return;
     slider.value = estadoDiario[dim];
     if (valEl) valEl.textContent = estadoDiario[dim];
-    // Set color AND fill the track
     slider.style.color = ESTADO_COLORS[dim];
     fillEstadoSlider(slider, ESTADO_COLORS[dim]);
   });
@@ -4520,6 +5029,36 @@ function setTick(planId, tick, btn, minPlan) {
   openModal('modalSaveDate');
 }
 
+// Variante del flujo anterior, accesible desde el botón discreto del banner.
+// Abre directamente la elección de fecha pasada (no "hoy" — para eso está
+// el autoguardado).
+function openSavePastDate() {
+  if (!currentPlan.length) {
+    showToast('No hay sesiones en el plan actual para registrar en otra fecha');
+    return;
+  }
+  const dateInput = document.getElementById('saveDateInput');
+  if (dateInput) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    // Por defecto ayer
+    const yest = new Date(today.getTime() - 86400000);
+    const yy2 = yest.getFullYear();
+    const mm2 = String(yest.getMonth() + 1).padStart(2, '0');
+    const dd2 = String(yest.getDate()).padStart(2, '0');
+    dateInput.value = yy2 + '-' + mm2 + '-' + dd2;
+    dateInput.max = yyyy + '-' + mm + '-' + dd;
+  }
+  // Mostrar directamente la sección de fecha pasada
+  const past = document.getElementById('saveDatePast');
+  const other = document.getElementById('saveDateOtherBtn');
+  if (past) past.style.display = '';
+  if (other) other.style.display = 'none';
+  openModal('modalSaveDate');
+}
+
 // Llamado desde el modal de selección de fecha. mode = 'today' | 'past'
 function confirmSaveDate(mode) {
   let targetDate;
@@ -4609,7 +5148,7 @@ function commitSession(targetDate) {
     const insertIdx = db.sesiones.findIndex(s => new Date(s.date) < targetDate);
     if (insertIdx === -1) db.sesiones.push(sesionObj);
     else db.sesiones.splice(insertIdx, 0, sesionObj);
-    if (db.sesiones.length > 60) db.sesiones = db.sesiones.slice(0, 60);
+    if (db.sesiones.length > 365) db.sesiones = db.sesiones.slice(0, 365);
   }
 
   saveData();
@@ -4677,6 +5216,35 @@ function autoSaveTodayPlan() {
   clearTimeout(_autoSaveTimeout);
   _autoSaveTimeout = setTimeout(_autoSaveTodayPlanNow, 800);
 }
+
+// Registra una sub-sesión del cronómetro como entrada permanente en
+// db.sessionPlants[], independiente del cap de db.sesiones[]. Esto permite
+// hacer estadísticas históricas (horas por mes, picos diarios, etc.) sin
+// perder timestamps cuando una sesión antigua sale de db.sesiones por edad.
+function recordSessionPlant(obraId, movId, startedAt, endedAt, mins, opts) {
+  if (!obraId || !startedAt || !endedAt) return;
+  if (!Array.isArray(db.sessionPlants)) db.sessionPlants = [];
+  // Dedup defensivo: si ya existe una entrada con el mismo startedAt+obraId,
+  // no la duplicamos. Improbable pero protege contra dobles llamadas.
+  const exists = db.sessionPlants.some(p =>
+    p.obraId === obraId && p.startedAt === startedAt
+  );
+  if (exists) return;
+  const entry = {
+    obraId,
+    movId: movId || null,
+    startedAt,
+    endedAt,
+    mins: Math.max(0, Math.floor(mins || 0)),
+    source: 'app',
+  };
+  // Si la sesión es fallida (<10 min, abortada), marcarla como tal. Esto
+  // permite distinguir en estadísticas las sesiones exitosas de las fallidas.
+  if (opts && opts.failed) entry.failed = true;
+  db.sessionPlants.push(entry);
+  // Mantener orden cronológico
+  db.sessionPlants.sort((a, b) => (a.startedAt < b.startedAt ? -1 : 1));
+}
 function _autoSaveTodayPlanNow() {
   try {
     if (!Array.isArray(currentPlan) || currentPlan.length === 0) {
@@ -4690,6 +5258,10 @@ function _autoSaveTodayPlanNow() {
       const planId = entity._planId || entity.id;
       const obraId = entity._obraId || entity.id;
       const movId = entity._movId || null;
+      // Extraer hora de la primera y última sub-sesión, si existen
+      const subs = (sessionAggregate[planId] && sessionAggregate[planId].subsessions) || [];
+      const firstStartedAt = subs.length ? (subs[0].startedAt || subs[0].timestamp || null) : null;
+      const lastEndedAt = subs.length ? (subs[subs.length - 1].endedAt || subs[subs.length - 1].timestamp || null) : null;
       return {
         _planId: planId,
         obraId, movId,
@@ -4702,6 +5274,8 @@ function _autoSaveTodayPlanNow() {
         solRating: sessionSolRatings[planId] || null,
         rating: sessionProductivityRatings[planId] != null ? sessionProductivityRatings[planId] : null,
         note: document.getElementById('tnote-' + planId)?.value || '',
+        startedAt: firstStartedAt,
+        endedAt: lastEndedAt,
         objetivo: ''
       };
     });
@@ -4722,7 +5296,7 @@ function _autoSaveTodayPlanNow() {
     };
     if (existingIdx >= 0) db.sesiones[existingIdx] = sesion;
     else db.sesiones.unshift(sesion);
-    if (db.sesiones.length > 60) db.sesiones = db.sesiones.slice(0, 60);
+    if (db.sesiones.length > 365) db.sesiones = db.sesiones.slice(0, 365);
     saveData(); // saveData ya hace debounce a Supabase
   } catch(e) {
     console.warn('autoSaveTodayPlan failed:', e.message);
@@ -4752,7 +5326,7 @@ function closeRatingSesion(save) {
     && new Date(_sesionPendienteRating.date).toDateString() === today;
   db.sesiones = db.sesiones.filter(s => new Date(s.date).toDateString() !== today);
   db.sesiones.unshift(_sesionPendienteRating);
-  if (db.sesiones.length > 60) db.sesiones = db.sesiones.slice(0, 60);
+  if (db.sesiones.length > 365) db.sesiones = db.sesiones.slice(0, 365);
   _sesionPendienteRating = null;
   saveData();
   // Si la sesión es para HOY, conservamos el draft: las tarjetas siguen en
@@ -4816,8 +5390,10 @@ function openAddExtra() {
 
 // HTML for the persistent action buttons that live inside #sessionPlan
 function _planActionsHTML() {
-  return '<button class="add-extra-btn" id="btnAddExtra" onclick="openAddExtra()">＋ Añadir sesión</button>'
-       + '<button class="save-session-btn" id="btnSaveSession" onclick="saveSession()">Guardar sesión de hoy</button>';
+  // El botón "Guardar sesión de hoy" se ha quitado: el autoguardado ya
+  // persiste cada cambio automáticamente. La opción de registrar para un día
+  // pasado sigue disponible desde el botón discreto junto al banner.
+  return '<button class="add-extra-btn" id="btnAddExtra" onclick="openAddExtra()">＋ Añadir sesión</button>';
 }
 
 // Quita una tarjeta de la sesión actual. No afecta a sesiones ya guardadas en
@@ -6216,23 +6792,52 @@ function parseForestCSV(text) {
   for (let i = 1; i < lines.length; i++) {
     const parts = lines[i].split(',');
     const cl = f => (f||'').replace(/^"|"$/g,'').trim();
-    if (cl(parts[iO]) !== 'True') continue;
+    // Ahora aceptamos tanto plantas exitosas (True) como marchitadas (False).
+    // Las marchitadas (sesiones fallidas <10min) se marcan con failed: true.
+    const isSuccess = cl(parts[iO]) === 'True';
     const tag = cl(parts[iT]);
     if (!tag) continue;
     try {
-      const start = new Date(cl(parts[iS])), end = new Date(cl(parts[iE]));
+      const startRaw = cl(parts[iS]);
+      const endRaw = cl(parts[iE]);
+      const start = new Date(startRaw), end = new Date(endRaw);
       const mins = (end - start) / 60000;
       if (mins <= 0 || mins > 480) continue;
-      if (!tagMap[tag]) tagMap[tag] = { minutos: 0, sessions: 0, first: start, last: start };
-      tagMap[tag].minutos += mins; tagMap[tag].sessions++;
+      if (!tagMap[tag]) {
+        tagMap[tag] = {
+          minutos: 0, sessions: 0,
+          first: start, last: start,
+          plants: [],
+        };
+      }
+      // El total de minutos y sesiones suma solo las exitosas (las marchitadas
+      // no cuentan para el total "plantado"). Pero las guardamos todas como
+      // plantas individuales para el histórico completo.
+      if (isSuccess) {
+        tagMap[tag].minutos += mins;
+        tagMap[tag].sessions++;
+      }
       if (start < tagMap[tag].first) tagMap[tag].first = start;
       if (start > tagMap[tag].last) tagMap[tag].last = start;
+      const plant = {
+        startedAt: start.toISOString(),
+        endedAt: end.toISOString(),
+        mins: Math.round(mins),
+      };
+      if (!isSuccess) plant.failed = true;
+      tagMap[tag].plants.push(plant);
     } catch(e) {}
   }
-  // Each unique tag becomes its own row — no merging, user decides
   return Object.entries(tagMap)
-    .map(([tag,d]) => ({ tag, minutos: Math.round(d.minutos), sessions: d.sessions, first: d.first, last: d.last }))
-    .sort((a,b) => b.minutos - a.minutos);
+    .map(([tag, d]) => ({
+      tag,
+      minutos: Math.round(d.minutos),
+      sessions: d.sessions,
+      first: d.first,
+      last: d.last,
+      plants: d.plants,
+    }))
+    .sort((a, b) => b.minutos - a.minutos);
 }
 
 function fuzzyMatchForest(tag, obraName) {
@@ -6393,27 +6998,62 @@ function openForestMapper() {
 }
 
 function confirmForestImport() {
-  let imported = 0, totalMin = 0;
+  let imported = 0, totalMin = 0, totalPlants = 0;
+  if (!db.forestPlants) db.forestPlants = [];
   document.querySelectorAll('#forestMapList .forest-obra-select').forEach(sel => {
     const obraId = sel.value, minutos = parseInt(sel.dataset.min)||0, tag = sel.dataset.tag;
     if (obraId === '__ignore__' || !minutos) return;
+    // Recuperar la entrada original (con sus plants) del forestTagData
+    const tagEntry = (forestTagData || []).find(t => t.tag === tag);
+    const plants = (tagEntry && tagEntry.plants) ? tagEntry.plants : [];
+    let finalObraId;
     if (obraId === '__new__') {
       if (!db.obras) db.obras = [];
-      db.obras.push({ id: 'f' + Date.now() + Math.random().toString(36).slice(2,5), name: tag, composer: '', origen: 'recuperacion', dificultad: 5, duracion: 10, apr: 1, sol: 1, esc: 1, lastPase: null, pasajes: [], notes: '', minutosExtra: minutos });
+      finalObraId = 'f' + Date.now() + Math.random().toString(36).slice(2, 5);
+      db.obras.push({
+        id: finalObraId,
+        name: tag, composer: '',
+        origen: 'recuperacion', dificultad: 5, duracion: 10,
+        apr: 1, sol: 1, esc: 1, lastPase: null,
+        pasajes: [], notes: '', minutosExtra: minutos,
+      });
     } else {
+      finalObraId = obraId;
       const obra = findObra(obraId);
       if (obra) obra.minutosExtra = (obra.minutosExtra || 0) + minutos;
     }
+    // Guardar plantas individuales con timestamps. Deduplicamos por startedAt:
+    // si ya existe una planta importada con el mismo start, no la duplicamos
+    // (permite re-importar el mismo CSV sin contar doble).
+    const existingStarts = new Set(
+      db.forestPlants
+        .filter(p => p.obraId === finalObraId)
+        .map(p => p.startedAt)
+    );
+    plants.forEach(pl => {
+      if (existingStarts.has(pl.startedAt)) return;
+      const entry = {
+        obraId: finalObraId,
+        startedAt: pl.startedAt,
+        endedAt: pl.endedAt,
+        mins: pl.mins,
+        tag,
+        source: 'forest',
+      };
+      if (pl.failed) entry.failed = true;
+      db.forestPlants.push(entry);
+      totalPlants++;
+    });
     imported++; totalMin += minutos;
   });
-  // Save the draft (ignored ones remain for next time)
+  // Sort para tener todo cronológico (útil para queries futuras)
+  db.forestPlants.sort((a, b) => (a.startedAt < b.startedAt ? -1 : 1));
   saveForestDraft();
   saveData();
   closeModal('modalForestImport');
-  // Show reopen button in settings
   const btn = document.getElementById('forestReopenBtn');
   if (btn) btn.style.display = 'block';
-  showToast('Forest: ' + imported + ' obras · ' + Math.round(totalMin/60) + 'h importadas ✓');
+  showToast('Forest: ' + imported + ' obras · ' + Math.round(totalMin/60) + 'h · ' + totalPlants + ' sesiones detalladas ✓');
   if (document.getElementById('view-obras').classList.contains('active')) renderObras();
 }
 
@@ -6961,11 +7601,19 @@ function closeHechoDatos(save) {
     const totalAcum = sessionMinPlan[planId] || 0;
     const subMin = Math.max(0, totalAcum - prevSubMin) || minutos || totalAcum;
 
+    // Recoger timestamps reales capturados por cronoFinish (si están)
+    const pending = sessionAggregate[planId]._pendingTimes || null;
+    const startedAt = pending ? pending.startedAt : null;
+    const endedAt   = pending ? pending.endedAt   : new Date().toISOString();
+    delete sessionAggregate[planId]._pendingTimes;
+
     sessionAggregate[planId].subsessions.push({
       min: subMin,
       prod: prodVal,
       pasajes: subPasajes,
-      timestamp: new Date().toISOString(),
+      startedAt: startedAt,
+      endedAt: endedAt,
+      timestamp: endedAt, // legacy compat
     });
 
     // Productividad ponderada
@@ -7936,6 +8584,9 @@ function renderObraCard(o, idx) {
     <div class="obra-card" id="obra-${o.id}">
       <div class="obra-header" onclick="toggleObra('${o.id}')">
         <div class="obra-fase ${obraFase(eff)}"></div>
+        <button class="obra-color-dot" title="Cambiar color"
+          onclick="event.stopPropagation();openObraColorPicker('${o.id}')"
+          style="background:${obraColorHex(o) || 'transparent'};border-color:${obraColorHex(o) || 'var(--border2)'}"></button>
         <div class="obra-name" id="obra-name-display-${o.id}">${o.name}${origenTag}${difBadge}${tendencia} <span class="obra-composer">${o.composer}</span></div>
         <div class="obra-scores">
           ${durDisplay ? `<span style="font-size:9px;color:var(--text3)">${durDisplay}m</span>` : ''}
@@ -10661,7 +11312,7 @@ function saveSesionManual() {
     sesion.items.push(newItem);
   }
 
-  if (db.sesiones.length > 60) db.sesiones = db.sesiones.slice(0, 60);
+  if (db.sesiones.length > 365) db.sesiones = db.sesiones.slice(0, 365);
   saveData();
   closeModal('modalSesionManual');
   showToast(`${minutos} min de ${obra.name} registrados ✓`);
@@ -10800,11 +11451,9 @@ function playTone(freq, type = 'triangle', dur = 0.25, vol = 0.10, delay = 0) {
     const ac = getAC();
     const osc = ac.createOscillator();
     const gain = ac.createGain();
-    // Add a tiny bit of body: second osc one octave down, very quiet
     osc.connect(gain); gain.connect(ac.destination);
     osc.type = type;
     osc.frequency.setValueAtTime(freq, ac.currentTime + delay);
-    // Sharp attack (2ms), then exponential decay — gives woody/piano feel
     gain.gain.setValueAtTime(0, ac.currentTime + delay);
     gain.gain.linearRampToValueAtTime(vol, ac.currentTime + delay + 0.002);
     gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + delay + dur);
@@ -10813,83 +11462,219 @@ function playTone(freq, type = 'triangle', dur = 0.25, vol = 0.10, delay = 0) {
   } catch(e) {}
 }
 
-// Named sound palette — warm, woody, pianistic
-const SFX = {
-  // Major chord — like pressing piano keys gently
-  generate() {
-    [[261.6, 0, 'triangle', 0.6, 0.11],
-     [329.6, 0.05, 'triangle', 0.55, 0.09],
-     [392.0, 0.10, 'triangle', 0.55, 0.08]
-    ].forEach(([f, d, t, dur, v]) => playTone(f, t, dur, v, d));
+// Burst de noise filtrado: para clicks de madera, papel, botón.
+//   cutoff: frecuencia del paso-bajo (Hz). Más bajo = más sordo/leñoso.
+//   q: resonancia del filtro. Sutil bump = "cuerpo".
+//   dur: duración. Muy corta = click; corta = tap.
+//   vol: pico de amplitud.
+//   delay: offset desde "ahora".
+function playNoiseBurst(cutoff, q, dur, vol, delay = 0) {
+  try {
+    const ac = getAC();
+    // Buffer de ruido blanco corto
+    const len = Math.max(1, Math.floor(ac.sampleRate * (dur + 0.02)));
+    const buf = ac.createBuffer(1, len, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    const filt = ac.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = cutoff;
+    filt.Q.value = q;
+    const gain = ac.createGain();
+    src.connect(filt); filt.connect(gain); gain.connect(ac.destination);
+    const t0 = ac.currentTime + delay;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(vol, t0 + 0.001);  // attack 1ms
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    src.start(t0);
+    src.stop(t0 + dur + 0.02);
+  } catch(e) {}
+}
+
+// ── SOUND PACKS ──────────────────────────────────────────────────────────────
+// Cada pack es un objeto con los mismos métodos. El usuario elige uno y SFX
+// proxea las llamadas al pack activo.
+
+const SFX_PACKS = {
+  piano: {
+    // Acorde mayor — como pulsar teclas suavemente
+    generate() {
+      [[261.6, 0,    'triangle', 0.6,  0.11],
+       [329.6, 0.05, 'triangle', 0.55, 0.09],
+       [392.0, 0.10, 'triangle', 0.55, 0.08]
+      ].forEach(([f, d, t, dur, v]) => playTone(f, t, dur, v, d));
+    },
+    tick() {
+      playTone(523.3, 'triangle', 0.35, 0.10, 0);
+      playTone(262.0, 'triangle', 0.18, 0.04, 0);
+    },
+    save() {
+      playTone(392.0, 'triangle', 0.45, 0.10, 0);
+      playTone(523.3, 'triangle', 0.50, 0.10, 0.10);
+    },
+    saveSession() {
+      [[349.2, 0,    'triangle', 0.50, 0.09],
+       [392.0, 0.08, 'triangle', 0.45, 0.09],
+       [440.0, 0.16, 'triangle', 0.45, 0.09],
+       [523.3, 0.26, 'triangle', 0.60, 0.11],
+      ].forEach(([f, d, t, dur, v]) => playTone(f, t, dur, v, d));
+    },
+    skip() {
+      playTone(196.0, 'triangle', 0.20, 0.08, 0);
+      playTone(185.0, 'triangle', 0.15, 0.04, 0.04);
+    },
+    open() { playTone(440, 'triangle', 0.18, 0.06, 0); },
+    pase() {
+      playTone(440.0, 'triangle', 0.30, 0.09, 0);
+      playTone(523.3, 'triangle', 0.35, 0.09, 0.12);
+    },
+    add() {
+      playTone(293.7, 'triangle', 0.28, 0.09, 0);
+      playTone(369.9, 'triangle', 0.32, 0.09, 0.10);
+    },
+    del() {
+      playTone(369.9, 'triangle', 0.18, 0.07, 0);
+      playTone(293.7, 'triangle', 0.18, 0.05, 0.05);
+    },
+    nav() { playTone(523.3, 'triangle', 0.10, 0.04, 0); },
+    memlapse() { playTone(220, 'sine', 0.40, 0.06, 0); },
   },
-  // Single soft key — gentle piano keypress
-  tick() {
-    playTone(523.3, 'triangle', 0.35, 0.10, 0);
-    playTone(262.0, 'triangle', 0.18, 0.04, 0);
+
+  // ── MADERA ──
+  // Clicks leñosos: burst de ruido con paso-bajo bajo y poca duración.
+  // El "knock" simula una madera golpeada: cutoff bajo (sin agudos),
+  // pulso muy breve.
+  wood: {
+    generate() {
+      // Tres "knocks" más profundos, en intervalo musical
+      playNoiseBurst(800, 6, 0.08, 0.30, 0);
+      playNoiseBurst(700, 6, 0.09, 0.25, 0.08);
+      playNoiseBurst(600, 6, 0.10, 0.22, 0.16);
+    },
+    tick() {
+      // Knock corto, sordo
+      playNoiseBurst(1200, 4, 0.05, 0.22, 0);
+    },
+    save() {
+      playNoiseBurst(900, 5, 0.07, 0.25, 0);
+      playNoiseBurst(700, 5, 0.10, 0.22, 0.07);
+    },
+    saveSession() {
+      // Cuatro knocks resolutivos
+      playNoiseBurst(900, 5, 0.07, 0.22, 0);
+      playNoiseBurst(800, 5, 0.07, 0.22, 0.08);
+      playNoiseBurst(700, 5, 0.08, 0.24, 0.16);
+      playNoiseBurst(550, 5, 0.12, 0.28, 0.25);
+    },
+    skip() {
+      playNoiseBurst(400, 3, 0.06, 0.16, 0);
+    },
+    open() {
+      playNoiseBurst(1500, 3, 0.03, 0.16, 0);
+    },
+    pase() {
+      playNoiseBurst(900, 4, 0.06, 0.22, 0);
+      playNoiseBurst(1100, 4, 0.06, 0.20, 0.10);
+    },
+    add() {
+      playNoiseBurst(800, 4, 0.06, 0.22, 0);
+      playNoiseBurst(1000, 4, 0.07, 0.22, 0.08);
+    },
+    del() {
+      playNoiseBurst(700, 4, 0.05, 0.20, 0);
+      playNoiseBurst(500, 4, 0.07, 0.18, 0.05);
+    },
+    nav() {
+      playNoiseBurst(1800, 2, 0.025, 0.10, 0);
+    },
+    memlapse() {
+      playNoiseBurst(350, 4, 0.18, 0.18, 0);
+    },
   },
-  // Warm two-note ascending save
-  save() {
-    playTone(392.0, 'triangle', 0.45, 0.10, 0);
-    playTone(523.3, 'triangle', 0.50, 0.10, 0.10);
+
+  // ── PAPEL ──
+  // Roces ultra-cortos con cutoff muy alto (preservar agudos) — como pasar
+  // una página o un pequeño "fwop".
+  paper: {
+    generate() {
+      playNoiseBurst(4000, 1, 0.05, 0.10, 0);
+      playNoiseBurst(3500, 1, 0.07, 0.10, 0.06);
+    },
+    tick() {
+      // "Fst" muy corto
+      playNoiseBurst(4500, 0.5, 0.025, 0.10, 0);
+    },
+    save() {
+      playNoiseBurst(4000, 1, 0.04, 0.10, 0);
+      playNoiseBurst(3000, 1, 0.07, 0.09, 0.05);
+    },
+    saveSession() {
+      playNoiseBurst(4200, 1, 0.05, 0.10, 0);
+      playNoiseBurst(3800, 1, 0.05, 0.10, 0.07);
+      playNoiseBurst(3200, 1, 0.08, 0.10, 0.14);
+    },
+    skip() {
+      playNoiseBurst(2500, 1, 0.03, 0.07, 0);
+    },
+    open() {
+      playNoiseBurst(5000, 0.5, 0.015, 0.08, 0);
+    },
+    pase() {
+      playNoiseBurst(4000, 1, 0.04, 0.09, 0);
+      playNoiseBurst(4500, 1, 0.05, 0.09, 0.07);
+    },
+    add() {
+      playNoiseBurst(3500, 1, 0.04, 0.09, 0);
+      playNoiseBurst(4200, 1, 0.05, 0.09, 0.06);
+    },
+    del() {
+      playNoiseBurst(3000, 1, 0.04, 0.08, 0);
+      playNoiseBurst(2200, 1, 0.05, 0.08, 0.04);
+    },
+    nav() {
+      playNoiseBurst(5500, 0.3, 0.015, 0.06, 0);
+    },
+    memlapse() {
+      playNoiseBurst(1500, 1, 0.12, 0.07, 0);
+    },
   },
-  // Session complete — four-note resolved cadence (V→I feel)
-  saveSession() {
-    [[349.2, 0,    'triangle', 0.50, 0.09],
-     [392.0, 0.08, 'triangle', 0.45, 0.09],
-     [440.0, 0.16, 'triangle', 0.45, 0.09],
-     [523.3, 0.26, 'triangle', 0.60, 0.11],
-    ].forEach(([f, d, t, dur, v]) => playTone(f, t, dur, v, d));
-  },
-  // Muted low thud — damped string
-  skip() {
-    playTone(196.0, 'triangle', 0.20, 0.08, 0);
-    playTone(185.0, 'triangle', 0.15, 0.04, 0.04);
-  },
-  // Very quiet soft tap — nav/open
-  open() { playTone(440, 'triangle', 0.18, 0.06, 0); },
-  // Pase — ascending minor third
-  pase() {
-    playTone(440.0, 'triangle', 0.30, 0.09, 0);
-    playTone(523.3, 'triangle', 0.35, 0.09, 0.12);
-  },
-  // Add obra — rising two-note (D→F#, major feel)
-  add() {
-    playTone(293.7, 'triangle', 0.28, 0.09, 0);
-    playTone(369.9, 'triangle', 0.32, 0.09, 0.10);
-  },
-  // Delete — descending short drop
-  del() {
-    playTone(369.9, 'triangle', 0.18, 0.07, 0);
-    playTone(246.9, 'triangle', 0.22, 0.07, 0.08);
-  },
-  // Tab nav — single soft higher note
-  nav() { playTone(587.3, 'sine', 0.14, 0.05, 0); },
-  // Slider move — tiny sine blip (called throttled)
-  slider() { playTone(880, 'sine', 0.06, 0.03, 0); },
-  // Toggle/select — quick double tap
-  toggle() {
-    playTone(523.3, 'triangle', 0.12, 0.06, 0);
-    playTone(659.3, 'triangle', 0.12, 0.06, 0.07);
-  },
-  // Event done / milestone — full arpeggio
-  milestone() {
-    [[261.6, 0,    'triangle', 0.55, 0.10],
-     [329.6, 0.08, 'triangle', 0.50, 0.09],
-     [392.0, 0.16, 'triangle', 0.50, 0.09],
-     [523.3, 0.25, 'triangle', 0.55, 0.10],
-     [659.3, 0.36, 'triangle', 0.55, 0.09],
-    ].forEach(([f, d, t, dur, v]) => playTone(f, t, dur, v, d));
-  },
-  // Rating modal confirm — warm resolved pair
-  rating() {
-    playTone(440.0, 'triangle', 0.40, 0.09, 0);
-    playTone(554.4, 'triangle', 0.45, 0.10, 0.14);
-  },
-  // New pasaje — single mid note
-  pasaje() { playTone(493.9, 'triangle', 0.22, 0.07, 0); },
-  // Close modal — subtle low tap
-  close() { playTone(329.6, 'triangle', 0.16, 0.05, 0); },
 };
+
+// Pack activo, cargado de localStorage
+let _activeSoundPack = (function() {
+  try {
+    return localStorage.getItem('alberto_sound_pack') || 'piano';
+  } catch(e) { return 'piano'; }
+})();
+
+function setSoundPack(name) {
+  if (!SFX_PACKS[name]) return;
+  _activeSoundPack = name;
+  try { localStorage.setItem('alberto_sound_pack', name); } catch(e) {}
+  // Pequeño preview al elegir
+  try { SFX_PACKS[name].tick(); } catch(e) {}
+}
+
+function getSoundPack() { return _activeSoundPack; }
+
+function refreshSoundOptionUI() {
+  document.querySelectorAll('.sound-option').forEach(b => {
+    b.classList.toggle('active', b.dataset.sound === _activeSoundPack);
+  });
+}
+
+// SFX como proxy al pack activo
+const SFX = new Proxy({}, {
+  get(_, prop) {
+    return function(...args) {
+      const pack = SFX_PACKS[_activeSoundPack] || SFX_PACKS.piano;
+      if (typeof pack[prop] === 'function') return pack[prop](...args);
+    };
+  }
+});
+
 
 // ─── RIPPLE ──────────────────────────────────────────────────────────────────
 
@@ -11791,6 +12576,7 @@ async function doCloudSync() {
 function openSettings() {
   openModal('modalSettings');
   if (typeof updateSyncStatusInfo === 'function') updateSyncStatusInfo();
+  if (typeof refreshSoundOptionUI === 'function') refreshSoundOptionUI();
 }
 
 // Refresca la información de estado en Ajustes
@@ -12026,12 +12812,78 @@ const CRONO_STORAGE_KEY = 'pianoCrono_v1';
 const CRONO_MIN_MIN = 10;                  // mínimo de minutos para que cuente
 const CRONO_PAUSE_LIMIT_MS = 5 * 60 * 1000; // 5 minutos máx de pausa
 
+// ── PALETA DE COLORES PERSONALIZABLES PARA OBRAS ────────────────────────────
+// 8 colores cuidados, calmados, distinguibles. Cada obra puede tener uno.
+// "default" es null y usa var(--accent) del tema.
+const OBRA_COLORS = [
+  { id: 'default', hex: null,        name: 'Tema' },
+  { id: 'amber',   hex: '#c8a030',   name: 'Ámbar' },
+  { id: 'rose',    hex: '#c87878',   name: 'Rosa' },
+  { id: 'sage',    hex: '#7ba87a',   name: 'Salvia' },
+  { id: 'sky',     hex: '#6a9ac8',   name: 'Cielo' },
+  { id: 'violet',  hex: '#9b7ac8',   name: 'Violeta' },
+  { id: 'teal',    hex: '#5ea8a0',   name: 'Verde mar' },
+  { id: 'sunset',  hex: '#d59060',   name: 'Atardecer' },
+  { id: 'plum',    hex: '#a06880',   name: 'Ciruela' },
+];
+function obraColorHex(obra) {
+  if (!obra || !obra.color || obra.color === 'default') return null;
+  const c = OBRA_COLORS.find(x => x.id === obra.color);
+  return c ? c.hex : null;
+}
+function obraColorOrAccent(obra) {
+  return obraColorHex(obra) || 'var(--accent)';
+}
+
+// Abrir picker de color para una obra concreta
+function openObraColorPicker(obraId) {
+  const obra = findObra(obraId);
+  if (!obra) return;
+  const grid = document.getElementById('obraColorGrid');
+  if (!grid) return;
+  const currentId = obra.color || 'default';
+  grid.innerHTML = OBRA_COLORS.map(c => {
+    const isActive = c.id === currentId;
+    const isDefault = c.id === 'default';
+    const innerStyle = isDefault
+      ? ''
+      : 'background:' + c.hex + ';';
+    return '<button class="obra-color-option' + (isActive ? ' active' : '') + (isDefault ? ' is-default' : '') + '" ' +
+      'title="' + c.name + '" ' +
+      'style="color:' + (c.hex || 'var(--accent)') + '" ' +
+      'onclick="setObraColor(\'' + obraId + '\',\'' + c.id + '\')">' +
+      '<span class="obra-color-option-inner" style="' + innerStyle + '"></span>' +
+    '</button>';
+  }).join('');
+  openModal('modalObraColor');
+}
+
+function setObraColor(obraId, colorId) {
+  const obra = findObra(obraId);
+  if (!obra) return;
+  if (colorId === 'default') delete obra.color;
+  else obra.color = colorId;
+  saveData();
+  // Actualizar UI: el dot del header y el color en cronómetro si está en uso
+  renderObras();
+  if (crono.obraId === obraId) {
+    crono.color = obraColorHex(obra);
+    cronoSaveState();
+    cronoApplyColor(crono.color);
+  }
+  closeModal('modalObraColor');
+}
+
 const crono = {
   state: 'idle',         // 'idle' | 'running' | 'paused'
+  mode: 'stopwatch',     // 'stopwatch' | 'timer'
+  timerMinutes: 25,      // minutos seleccionados en modo timer (5..120, step 5)
+  targetMinutes: null,   // minutos objetivo de la sesión en curso (timer mode); null en stopwatch
   obraId: null,
   movId: null,
   displayName: '',
   subName: '',
+  color: null,           // hex personalizable de la obra; null = accent del tema
   startTs: 0,            // ms al pulsar Comenzar
   pausedMs: 0,           // ms acumulados en pausa
   pauseStartTs: 0,       // ms del inicio de la pausa actual
@@ -12050,10 +12902,14 @@ function cronoSaveState() {
   try {
     localStorage.setItem(CRONO_STORAGE_KEY, JSON.stringify({
       state: crono.state,
+      mode: crono.mode,
+      timerMinutes: crono.timerMinutes,
+      targetMinutes: crono.targetMinutes,
       obraId: crono.obraId,
       movId: crono.movId,
       displayName: crono.displayName,
       subName: crono.subName,
+      color: crono.color,
       startTs: crono.startTs,
       pausedMs: crono.pausedMs,
       pauseStartTs: crono.pauseStartTs,
@@ -12066,13 +12922,20 @@ function cronoLoadState() {
     const raw = localStorage.getItem(CRONO_STORAGE_KEY);
     if (!raw) return false;
     const s = JSON.parse(raw);
+    // Cargar siempre la preferencia de mode + timerMinutes (independiente del state)
+    if (s.mode === 'stopwatch' || s.mode === 'timer') crono.mode = s.mode;
+    if (typeof s.timerMinutes === 'number' && s.timerMinutes >= 5 && s.timerMinutes <= 120) {
+      crono.timerMinutes = s.timerMinutes;
+    }
     if (s.state !== 'running' && s.state !== 'paused') return false;
     if (!s.obraId || !s.startTs) return false;
     crono.state = s.state;
+    crono.targetMinutes = s.targetMinutes || null;
     crono.obraId = s.obraId;
     crono.movId = s.movId || null;
     crono.displayName = s.displayName || '';
     crono.subName = s.subName || '';
+    crono.color = s.color || null;
     crono.startTs = s.startTs;
     crono.pausedMs = s.pausedMs || 0;
     crono.pauseStartTs = s.pauseStartTs || 0;
@@ -12193,6 +13056,7 @@ function cronoEnterFocus() {
 
 function cronoExitFocus() {
   document.body.classList.remove('crono-focus');
+  document.body.classList.remove('crono-paused');
 }
 
 function cronoCloseFocus() {
@@ -12211,6 +13075,7 @@ function cronoRender() {
   if (crono.state === 'idle') {
     idle.style.display = '';
     run.style.display = 'none';
+    document.body.classList.remove('crono-paused');
     // Contador de fallidas, sólo si > 0
     const n = cronoGetFallidasToday();
     const info = document.getElementById('cronoFallidasInfo');
@@ -12227,35 +13092,51 @@ function cronoRender() {
   idle.style.display = 'none';
   run.style.display  = '';
 
+  // Aplicar color personalizable de la obra (o quitar si no tiene)
+  cronoApplyColor(crono.color || null);
+
   // Nombre de la obra (pildora)
   const nameEl = document.getElementById('cronoRunName');
   if (nameEl) nameEl.textContent = crono.displayName || '—';
 
-  // Estado de la pildora (paused atenúa el punto)
+  // Estado de la pildora: running activa halo y dot pulse, paused los atenúa
   const pill = document.getElementById('cronoObraPill');
   if (pill) {
-    if (crono.state === 'paused') pill.classList.add('paused');
-    else pill.classList.remove('paused');
-  }
-
-  // Tiempo
-  const disp = document.getElementById('cronoDisplay');
-  if (disp) {
-    disp.textContent = cronoFmt(cronoCurrentMs());
-    if (crono.state === 'paused') disp.classList.add('paused');
-    else disp.classList.remove('paused');
-  }
-
-  // Banner de pausa
-  const pauseInfo = document.getElementById('cronoPauseInfo');
-  if (pauseInfo) {
-    if (crono.state === 'paused') {
-      pauseInfo.classList.add('visible');
-      const cd = document.getElementById('cronoPauseCountdown');
-      if (cd) cd.textContent = cronoFmt(cronoPauseRemainingMs());
+    if (crono.state === 'running') {
+      pill.classList.add('running');
+      pill.classList.remove('paused');
     } else {
-      pauseInfo.classList.remove('visible');
+      pill.classList.remove('running');
+      pill.classList.add('paused');
     }
+  }
+
+  // Tiempo principal
+  const disp = document.getElementById('cronoDisplay');
+  const wrap = document.getElementById('cronoDisplayWrap');
+  if (disp) {
+    if (crono.targetMinutes != null) {
+      const remainingMs = Math.max(0, crono.targetMinutes * 60000 - cronoCurrentMs());
+      disp.textContent = cronoFmt(remainingMs);
+    } else {
+      disp.textContent = cronoFmt(cronoCurrentMs());
+    }
+    if (crono.state === 'paused') {
+      disp.classList.add('paused');
+      if (wrap) wrap.classList.add('is-paused');
+    } else {
+      disp.classList.remove('paused');
+      if (wrap) wrap.classList.remove('is-paused');
+    }
+  }
+
+  // Overlay de pausa: activar body.crono-paused para mostrarlo
+  if (crono.state === 'paused') {
+    document.body.classList.add('crono-paused');
+    const ovTime = document.getElementById('cronoPauseOverlayTime');
+    if (ovTime) ovTime.textContent = cronoFmt(cronoPauseRemainingMs());
+  } else {
+    document.body.classList.remove('crono-paused');
   }
 
   // Controles según estado
@@ -12278,6 +13159,201 @@ function cronoUpdateStartBtn() {
   const sel = document.getElementById('cronoObraSelect');
   if (!btn || !sel) return;
   btn.disabled = !sel.value;
+  // Texto del botón según modo
+  if (crono.mode === 'timer') {
+    btn.textContent = 'Plantar · ' + crono.timerMinutes + ' min';
+  } else {
+    btn.textContent = 'Plantar';
+  }
+  // Calcular color de la obra seleccionada y aplicarlo al ensō y al botón
+  let color = null;
+  if (sel.value) {
+    const resolved = cronoResolveSelectValue(sel.value);
+    color = resolved ? resolved.color : null;
+  }
+  cronoApplyColor(color);
+  // Mostrar el punto pre-sesión junto al select
+  const dot = document.getElementById('cronoIdleDot');
+  if (dot) {
+    if (sel.value) {
+      dot.style.display = '';
+      dot.style.background = color || 'var(--accent)';
+    } else {
+      dot.style.display = 'none';
+    }
+  }
+}
+
+// Aplica un color (hex o null) a todos los elementos del cronómetro que deben
+// teñirse: ensō, botón plantar (idle) y aros/píldora/halo (running).
+function cronoApplyColor(hex) {
+  const root = document.getElementById('view-cronometro');
+  if (!root) return;
+  if (hex) root.style.setProperty('--crono-color', hex);
+  else root.style.removeProperty('--crono-color');
+}
+
+// ── MODO CRONÓMETRO / TEMPORIZADOR ──────────────────────────────────────────
+
+const TIMER_MIN_MINUTES = 5;
+const TIMER_MAX_MINUTES = 120;
+const TIMER_STEP_MINUTES = 5;
+const TIMER_RADIUS = 72;
+const TIMER_CIRC = 2 * Math.PI * TIMER_RADIUS; // ≈ 452.39
+
+function cronoSetMode(mode) {
+  if (mode !== 'stopwatch' && mode !== 'timer') return;
+  if (crono.state !== 'idle') {
+    // No permitir cambiar de modo mientras corre una sesión
+    showToast('Termina la sesión actual antes de cambiar de modo');
+    return;
+  }
+  crono.mode = mode;
+  cronoSaveState();
+  cronoApplyModeUI();
+  cronoUpdateStartBtn();
+}
+
+function cronoApplyModeUI() {
+  // Toggle visual
+  document.body.classList.toggle('crono-timer-mode', crono.mode === 'timer');
+  document.querySelectorAll('.crono-mode-opt').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === crono.mode);
+  });
+  // Mover indicador
+  cronoMoveModeIndicator();
+  // Si timer mode, actualizar el slider visualmente y el botón "Plantar"
+  if (crono.mode === 'timer') {
+    cronoTimerRenderSlider();
+  }
+  // Mensaje contextual
+  const msg = document.getElementById('cronoIdleMessage');
+  if (msg) {
+    msg.textContent = crono.mode === 'timer'
+      ? 'Elige cuánto quieres concentrarte'
+      : 'Empieza tu sesión de hoy';
+  }
+}
+
+function cronoMoveModeIndicator() {
+  const toggle = document.getElementById('cronoModeToggle');
+  const indicator = document.getElementById('cronoModeIndicator');
+  if (!toggle || !indicator) return;
+  const active = toggle.querySelector('.crono-mode-opt.active');
+  if (!active) return;
+  indicator.style.width = active.offsetWidth + 'px';
+  indicator.style.left = active.offsetLeft + 'px';
+}
+
+// Renderiza el slider radial con crono.timerMinutes
+function cronoTimerRenderSlider() {
+  const arc = document.getElementById('cronoTimerArc');
+  const handle = document.getElementById('cronoTimerHandle');
+  const text = document.getElementById('cronoTimerText');
+  if (!arc || !handle || !text) return;
+
+  const m = crono.timerMinutes;
+  const pct = m / TIMER_MAX_MINUTES; // 0..1
+  // Arc: stroke-dashoffset = circ - circ*pct
+  arc.setAttribute('stroke-dashoffset', String(TIMER_CIRC * (1 - pct)));
+
+  // Handle: posición sobre la circunferencia, ángulo θ desde "arriba" (12 en punto)
+  // θ en radianes; 12 en punto = 0; sentido horario.
+  // En SVG con y hacia abajo: x = cx + r*sin(θ), y = cy - r*cos(θ)
+  const theta = pct * 2 * Math.PI;
+  const cx = 100 + TIMER_RADIUS * Math.sin(theta);
+  const cy = 100 - TIMER_RADIUS * Math.cos(theta);
+  handle.setAttribute('cx', String(cx));
+  handle.setAttribute('cy', String(cy));
+
+  // Texto
+  text.textContent = String(m);
+  // Actualizar el botón "Plantar · N min"
+  cronoUpdateStartBtn();
+}
+
+// Convierte un punto (x, y) en coordenadas del SVG en minutos snap-eados.
+function cronoTimerXYToMinutes(svgX, svgY) {
+  // Centro está en (100, 100)
+  const dx = svgX - 100;
+  const dy = svgY - 100;
+  // Ángulo desde "arriba" (12 en punto), sentido horario.
+  // atan2(dx, -dy) da 0 cuando dx=0, dy<0 (arriba), creciendo en sentido horario.
+  let theta = Math.atan2(dx, -dy);
+  if (theta < 0) theta += 2 * Math.PI; // 0..2π
+  const pct = theta / (2 * Math.PI);
+  let minutes = pct * TIMER_MAX_MINUTES;
+  // Snap a step
+  minutes = Math.round(minutes / TIMER_STEP_MINUTES) * TIMER_STEP_MINUTES;
+  if (minutes < TIMER_MIN_MINUTES) {
+    // Por debajo del mínimo: o saltar al mínimo o al máximo según cercanía
+    minutes = (pct > 0.5) ? TIMER_MAX_MINUTES : TIMER_MIN_MINUTES;
+  }
+  if (minutes > TIMER_MAX_MINUTES) minutes = TIMER_MAX_MINUTES;
+  return minutes;
+}
+
+// Convierte un punto en coords de cliente (touch/mouse) a coords del SVG
+function cronoTimerClientToSVG(clientX, clientY) {
+  const svg = document.getElementById('cronoTimerSvg');
+  if (!svg) return null;
+  const pt = svg.createSVGPoint();
+  pt.x = clientX; pt.y = clientY;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return null;
+  const transformed = pt.matrixTransform(ctm.inverse());
+  return { x: transformed.x, y: transformed.y };
+}
+
+// Inicializa drag handlers en el SVG del timer
+function cronoTimerInitDrag() {
+  const svg = document.getElementById('cronoTimerSvg');
+  const handle = document.getElementById('cronoTimerHandle');
+  if (!svg || svg._cronoBound) return;
+  svg._cronoBound = true;
+
+  let isDragging = false;
+
+  function onPointerMove(clientX, clientY) {
+    const p = cronoTimerClientToSVG(clientX, clientY);
+    if (!p) return;
+    const newMin = cronoTimerXYToMinutes(p.x, p.y);
+    if (newMin !== crono.timerMinutes) {
+      crono.timerMinutes = newMin;
+      cronoTimerRenderSlider();
+      if (typeof SFX !== 'undefined' && SFX.nav) SFX.nav(); // tick discreto al cambiar
+    }
+  }
+
+  function onDown(e) {
+    e.preventDefault();
+    isDragging = true;
+    if (handle) handle.classList.add('dragging');
+    const t = e.touches ? e.touches[0] : e;
+    onPointerMove(t.clientX, t.clientY);
+  }
+  function onMove(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+    const t = e.touches ? e.touches[0] : e;
+    onPointerMove(t.clientX, t.clientY);
+  }
+  function onUp() {
+    if (!isDragging) return;
+    isDragging = false;
+    if (handle) handle.classList.remove('dragging');
+    cronoSaveState();
+  }
+
+  // Touch
+  svg.addEventListener('touchstart', onDown, { passive: false });
+  svg.addEventListener('touchmove', onMove, { passive: false });
+  svg.addEventListener('touchend', onUp);
+  svg.addEventListener('touchcancel', onUp);
+  // Mouse
+  svg.addEventListener('mousedown', onDown);
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
 }
 
 // ── Tick intervals ──────────────────────────────────────────────────────────
@@ -12286,7 +13362,25 @@ function cronoStartTick() {
   if (crono.tickInterval) clearInterval(crono.tickInterval);
   crono.tickInterval = setInterval(() => {
     const disp = document.getElementById('cronoDisplay');
-    if (disp) disp.textContent = cronoFmt(cronoCurrentMs());
+    const elapsedMs = cronoCurrentMs();
+    // En modo timer: mostrar cuenta atrás y auto-finalizar al llegar a 0
+    if (crono.targetMinutes != null) {
+      const targetMs = crono.targetMinutes * 60000;
+      const remainingMs = Math.max(0, targetMs - elapsedMs);
+      if (disp) disp.textContent = cronoFmt(remainingMs);
+      if (remainingMs <= 0) {
+        clearInterval(crono.tickInterval);
+        crono.tickInterval = null;
+        // Pequeña pausa para que se vea el 00:00 antes de finalizar
+        setTimeout(() => {
+          if (typeof SFX !== 'undefined' && SFX.saveSession) SFX.saveSession();
+          cronoFinish();
+        }, 150);
+      }
+    } else {
+      // Modo cronómetro: cuenta hacia arriba
+      if (disp) disp.textContent = cronoFmt(elapsedMs);
+    }
   }, 1000);
 }
 
@@ -12298,12 +13392,18 @@ function cronoStartPauseCountdown() {
   if (crono.pauseInterval) clearInterval(crono.pauseInterval);
   const update = () => {
     const remaining = cronoPauseRemainingMs();
+    // Actualizar tanto el countdown legacy (si existe) como el del overlay nuevo
     const cd = document.getElementById('cronoPauseCountdown');
     if (cd) cd.textContent = cronoFmt(remaining);
+    const ovTime = document.getElementById('cronoPauseOverlayTime');
+    if (ovTime) ovTime.textContent = cronoFmt(remaining);
     if (remaining <= 0) {
       clearInterval(crono.pauseInterval);
       crono.pauseInterval = null;
-      cronoForcedFinish();
+      // El tiempo de pausa se acabó → REANUDAR automáticamente la sesión.
+      // (Antes se terminaba la sesión; ahora se renuda como en Forest.)
+      cronoResume();
+      showToast('Pausa terminada · continúa la sesión');
     }
   };
   update();
@@ -12328,6 +13428,7 @@ function cronoResolveSelectValue(val) {
       obraId, movId,
       displayName: mov.name,
       subName: obra.name + (obra.composer ? ' · ' + obra.composer : ''),
+      color: obraColorHex(obra),
     };
   }
   const obraId = val.replace('obra::', '');
@@ -12337,6 +13438,7 @@ function cronoResolveSelectValue(val) {
     obraId, movId: null,
     displayName: obra.name,
     subName: obra.composer || '',
+    color: obraColorHex(obra),
   };
 }
 
@@ -12353,9 +13455,12 @@ function cronoStart() {
   crono.movId = resolved.movId;
   crono.displayName = resolved.displayName;
   crono.subName = resolved.subName;
+  crono.color = resolved.color || null;
   crono.startTs = Date.now();
   crono.pausedMs = 0;
   crono.pauseStartTs = 0;
+  // Si modo timer, fijar el objetivo de minutos para auto-finalizar al llegar
+  crono.targetMinutes = (crono.mode === 'timer') ? crono.timerMinutes : null;
 
   cronoSaveState();
   cronoRender();
@@ -12388,13 +13493,47 @@ function cronoResume() {
 function cronoStop() {
   const ms = cronoCurrentMs();
   const min = Math.floor(ms / 60000);
-  let msg;
   if (min >= CRONO_MIN_MIN) {
-    msg = '¿Parar y guardar la sesión?\n\nLlevas ' + cronoFmt(ms) + ' estudiando.';
+    // Sesión válida: confirmación simple inline (sin modal, es seguro)
+    if (!confirm('¿Parar y guardar la sesión?\n\nLlevas ' + cronoFmt(ms) + ' estudiando.')) return;
+    cronoFinish();
   } else {
-    msg = '¿Parar ahora?\n\nLlevas solo ' + cronoFmt(ms) + ' (mínimo ' + CRONO_MIN_MIN + ' min). La sesión se descartará como fallida.';
+    // Sesión que será fallida: mostrar modal HTML elegante
+    cronoShowConfirmFallidaModal(ms);
   }
-  if (!confirm(msg)) return;
+}
+
+// Modal antes de parar con <10 min. Pregunta si quiere abortar como fallida.
+function cronoShowConfirmFallidaModal(ms) {
+  const dur = cronoFmt(ms);
+  let modal = document.getElementById('modalCronoConfirmFallida');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modalCronoConfirmFallida';
+    modal.className = 'modal-overlay';
+    modal.innerHTML =
+      '<div class="modal crono-fallida-modal">' +
+        '<div class="crono-fallida-icon">⏳</div>' +
+        '<div class="crono-fallida-title">¿Parar ahora?</div>' +
+        '<div class="crono-fallida-sub">Llevas <span id="cronoConfirmFallidaDur"></span>. Si paras ahora será una <strong>sesión fallida</strong> (mínimo ' + CRONO_MIN_MIN + ' min).</div>' +
+        '<div class="crono-fallida-actions">' +
+          '<button class="crono-fallida-ok" style="border-color:var(--text2);background:transparent;color:var(--text2)" onclick="cronoConfirmFallidaCancel()">Seguir estudiando</button>' +
+          '<button class="crono-fallida-del" onclick="cronoConfirmFallidaAccept()">Parar como fallida</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+  }
+  const durEl = document.getElementById('cronoConfirmFallidaDur');
+  if (durEl) durEl.textContent = dur;
+  openModal('modalCronoConfirmFallida');
+}
+
+function cronoConfirmFallidaCancel() {
+  closeModal('modalCronoConfirmFallida');
+}
+
+function cronoConfirmFallidaAccept() {
+  closeModal('modalCronoConfirmFallida');
   cronoFinish();
 }
 
@@ -12415,9 +13554,20 @@ function cronoFinish() {
 
   if (minutos < CRONO_MIN_MIN) {
     cronoIncFallidas();
-    showToast('Sesión fallida · ' + cronoFmt(ms) + ' (mínimo ' + CRONO_MIN_MIN + ' min)');
+    // Guardar la sesión fallida en db.sessionPlants con flag failed:true,
+    // para que aparezca en estadísticas y mantenga el historial completo
+    // (igual que los "árboles marchitos" del CSV de Forest).
+    if (obraId && crono.startTs) {
+      const startedAtIso = new Date(crono.startTs).toISOString();
+      const endedAtIso = new Date().toISOString();
+      recordSessionPlant(obraId, movId, startedAtIso, endedAtIso, minutos, { failed: true });
+      saveData();
+    }
     cronoReset();
     cronoRender();
+    refreshConcentradoUI();
+    // Mostrar modal con opciones (¡La próxima vez mejorará!)
+    cronoShowFallidaModal(ms);
     return;
   }
 
@@ -12500,6 +13650,18 @@ function cronoFinish() {
 
   if (typeof saveDraft === 'function') saveDraft();
 
+  // Capturar timestamps reales de inicio/fin para que closeHechoDatos los
+  // grabe en la sub-sesión. Se guardan en un slot temporal del aggregate
+  // antes de hacer reset.
+  const startedAtIso = new Date(crono.startTs).toISOString();
+  const endedAtIso = new Date().toISOString();
+  if (!sessionAggregate[targetPlanId]) sessionAggregate[targetPlanId] = { subsessions: [] };
+  sessionAggregate[targetPlanId]._pendingTimes = { startedAt: startedAtIso, endedAt: endedAtIso };
+
+  // ★ Registrar también la sub-sesión en db.sessionPlants[] (permanente,
+  // sobrevive al cap de db.sesiones[]). Para estadísticas históricas.
+  recordSessionPlant(obraId, movId, startedAtIso, endedAtIso, minutos);
+
   cronoReset();
   cronoRender();
 
@@ -12517,14 +13679,18 @@ function cronoFinish() {
 
 function cronoReset() {
   crono.state = 'idle';
+  crono.targetMinutes = null;
   crono.obraId = null;
   crono.movId = null;
   crono.displayName = '';
   crono.subName = '';
+  crono.color = null;
   crono.startTs = 0;
   crono.pausedMs = 0;
   crono.pauseStartTs = 0;
-  cronoClearState();
+  // NB: NO reseteamos mode ni timerMinutes — son preferencias persistentes.
+  // Las guardamos en localStorage para la próxima sesión.
+  cronoSaveState();
 }
 
 // ── Cambiar de obra durante la sesión ───────────────────────────────────────
@@ -12558,6 +13724,7 @@ function cronoConfirmChangeObra() {
   crono.movId = resolved.movId;
   crono.displayName = resolved.displayName;
   crono.subName = resolved.subName;
+  crono.color = resolved.color || null;
   cronoSaveState();
   cronoRender();
   closeModal('modalCronoChangeObra');
@@ -12613,13 +13780,62 @@ function cronoGetFallidasToday() {
   } catch(e) { return 0; }
 }
 
+function cronoDecFallidas() {
+  try {
+    const today = new Date().toDateString();
+    const k = 'cronoFallidas_' + today;
+    const n = Math.max(0, (parseInt(localStorage.getItem(k)) || 0) - 1);
+    localStorage.setItem(k, String(n));
+  } catch(e) {}
+}
+
+// Modal de sesión fallida — aparece tras parar el cronómetro con <10 min
+function cronoShowFallidaModal(ms) {
+  const dur = cronoFmt(ms);
+  let modal = document.getElementById('modalCronoFallida');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modalCronoFallida';
+    modal.className = 'modal-overlay';
+    modal.innerHTML =
+      '<div class="modal crono-fallida-modal">' +
+        '<div class="crono-fallida-icon">✿</div>' +
+        '<div class="crono-fallida-title">¡La próxima vez mejorará!</div>' +
+        '<div class="crono-fallida-sub" id="cronoFallidaSub">Sólo has estudiado <span id="cronoFallidaDur"></span>. Mínimo: ' + CRONO_MIN_MIN + ' min.</div>' +
+        '<div class="crono-fallida-actions">' +
+          '<button class="crono-fallida-ok" onclick="cronoFallidaOk()">De acuerdo</button>' +
+          '<button class="crono-fallida-del" onclick="cronoFallidaBorrarRegistro()">Borrar el registro</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+  }
+  const durEl = document.getElementById('cronoFallidaDur');
+  if (durEl) durEl.textContent = dur;
+  openModal('modalCronoFallida');
+}
+
+function cronoFallidaOk() {
+  closeModal('modalCronoFallida');
+}
+
+function cronoFallidaBorrarRegistro() {
+  cronoDecFallidas();
+  closeModal('modalCronoFallida');
+  cronoRender();
+  showToast('Registro borrado');
+}
+
 // ── Entrada / salida de la vista ────────────────────────────────────────────
 
 function cronoOnEnterView() {
   cronoEnterFocus();
   cronoFillObraSelect();
+  cronoApplyModeUI();
+  cronoTimerInitDrag();
   cronoRender();
   refreshConcentradoUI();
+  // El indicador del toggle necesita layout para medir; volver a moverlo tras frame
+  requestAnimationFrame(cronoMoveModeIndicator);
   if (crono.state === 'running' && !crono.tickInterval) cronoStartTick();
   if (crono.state === 'paused'  && !crono.pauseInterval) cronoStartPauseCountdown();
 }
@@ -12627,16 +13843,21 @@ function cronoOnEnterView() {
 // Se llama desde showView cuando se cambia a OTRA vista que no es cronometro
 function cronoOnLeaveView() {
   cronoExitFocus();
+  document.body.classList.remove('crono-timer-mode');
 }
 
 // Hidratar al cargar (si había sesión activa)
 function cronoHydrate() {
   if (cronoLoadState()) {
     if (crono.state === 'paused' && cronoPauseRemainingMs() <= 0) {
-      const ms = cronoCurrentMs();
-      const minutos = Math.floor(ms / 60000);
-      if (minutos < CRONO_MIN_MIN) cronoIncFallidas();
-      cronoReset();
+      // La pausa expiró estando la app cerrada. En lugar de terminar (como
+      // antes), reanudamos la sesión: respetamos los ms acumulados de pausa
+      // hasta el límite (5 min) y volvemos al estado running.
+      crono.pausedMs += CRONO_PAUSE_LIMIT_MS;
+      crono.pauseStartTs = 0;
+      crono.state = 'running';
+      cronoSaveState();
+      cronoStartTick();
     } else if (crono.state === 'running') {
       cronoStartTick();
     } else if (crono.state === 'paused') {
