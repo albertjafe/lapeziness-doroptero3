@@ -4793,6 +4793,10 @@ function renderBreakCard(tipo, energia, idx) {
 
 // Historial de ticks por obra (sesiones guardadas)
 let currentPlan = [];
+// Marca el día (toDateString) al que pertenece el currentPlan en memoria.
+// Se usa para detectar si la app cruzó medianoche con la sesión abierta y
+// evitar que se guarden datos viejos como si fueran de hoy.
+let _currentPlanDay = new Date().toDateString();
 const sessionTicks = {};
 const sessionMinPlan = {};
 const sessionSolRatings = {};
@@ -4875,6 +4879,7 @@ function restoreSessionFromDbToday(opts) {
   opts = opts || {};
   const force = !!opts.force;
   const today = new Date().toDateString();
+  _currentPlanDay = today;
   const sesionHoy = (db.sesiones || []).find(s => new Date(s.date).toDateString() === today);
   if (!sesionHoy || !Array.isArray(sesionHoy.items) || !sesionHoy.items.length) {
     return false;
@@ -5004,6 +5009,7 @@ function loadDraft() {
       localStorage.removeItem(DRAFT_KEY);
       return false;
     }
+    _currentPlanDay = draft.date;
     // Restore energy + time selection
     selectedEnergy = draft.energia || 'normal';
     selectedTime   = draft.time    || 2;
@@ -5392,6 +5398,63 @@ function autoSaveTodayPlan() {
   _autoSaveTimeout = setTimeout(_autoSaveTodayPlanNow, 800);
 }
 
+// ── RESET DIARIO ─────────────────────────────────────────────────────────────
+// Cuando el día cambia (la app estaba abierta cruzando medianoche), limpiamos
+// el plan en memoria, las estructuras de sesión, el draft local y refrescamos
+// la UI. Las sesiones del día anterior YA están en db.sesiones[] con su
+// fecha real, así que no se pierden — sólo se ocultan del "hoy".
+function handleDayChange() {
+  try {
+    currentPlan = [];
+    Object.keys(sessionTicks).forEach(k => delete sessionTicks[k]);
+    Object.keys(sessionMinPlan).forEach(k => delete sessionMinPlan[k]);
+    Object.keys(sessionSolRatings).forEach(k => delete sessionSolRatings[k]);
+    Object.keys(sessionProductivityRatings).forEach(k => delete sessionProductivityRatings[k]);
+    Object.keys(sessionAggregate).forEach(k => delete sessionAggregate[k]);
+    _currentPlanDay = new Date().toDateString();
+    // Borrar el draft local (saveDraft pone date=hoy, así que loadDraft del día
+    // siguiente lo descartaría — pero por limpieza lo borramos ahora)
+    try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
+    // Limpiar el DOM del plan
+    const planDiv = document.getElementById('sessionPlan');
+    if (planDiv) {
+      planDiv.innerHTML = '';
+      planDiv.classList.remove('visible');
+    }
+    if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
+    if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+    if (typeof renderRacha === 'function') renderRacha();
+    // Programar siguiente comprobación de medianoche
+    scheduleNextMidnightCheck();
+  } catch(e) {
+    console.warn('handleDayChange error:', e.message);
+  }
+}
+
+// Programa una llamada a checkDayChange a la próxima medianoche local.
+// Se reprograma sola tras disparar. También se ejecuta al volver a primer
+// plano la app (visibilitychange) por si el setTimeout falló durmiéndose.
+let _midnightTimer = null;
+function scheduleNextMidnightCheck() {
+  if (_midnightTimer) clearTimeout(_midnightTimer);
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(24, 0, 30, 0); // 00:00:30 para tener margen sobre la medianoche exacta
+  const delay = next.getTime() - now.getTime();
+  _midnightTimer = setTimeout(checkDayChange, delay);
+}
+
+// Comprueba si el día actual difiere del registrado en _currentPlanDay.
+// Si difiere, dispara handleDayChange. Siempre reprograma el siguiente check.
+function checkDayChange() {
+  const todayStr = new Date().toDateString();
+  if (_currentPlanDay !== todayStr) {
+    handleDayChange();
+  } else {
+    scheduleNextMidnightCheck();
+  }
+}
+
 // Registra una sub-sesión del cronómetro como entrada permanente en
 // db.sessionPlants[], independiente del cap de db.sesiones[]. Esto permite
 // hacer estadísticas históricas (horas por mes, picos diarios, etc.) sin
@@ -5429,6 +5492,17 @@ function _autoSaveTodayPlanNow() {
       // dejamos como está.
       return;
     }
+    // ★ GUARDIAN DE FECHA: si el plan en memoria corresponde a un día anterior
+    // (la app cruzó medianoche con sesión abierta), NO autoguardamos. En su
+    // lugar disparamos un reset diario que limpia el plan y deja la pestaña
+    // sesiones en cero. Las sesiones del día anterior ya están guardadas en
+    // db.sesiones[] con su fecha real.
+    const todayStr = new Date().toDateString();
+    if (_currentPlanDay !== todayStr) {
+      console.log('[crono] día cambió de', _currentPlanDay, 'a', todayStr, '— reset diario');
+      handleDayChange();
+      return;
+    }
     const items = currentPlan.map(entity => {
       const planId = entity._planId || entity.id;
       const obraId = entity._obraId || entity.id;
@@ -5455,12 +5529,15 @@ function _autoSaveTodayPlanNow() {
       };
     });
     const today = new Date();
-    const todayStr = today.toDateString();
+    // (todayStr ya declarado en el guardian anterior)
     // Buscar sesión existente de hoy
     const existingIdx = db.sesiones.findIndex(s => new Date(s.date).toDateString() === todayStr);
     const existing = existingIdx >= 0 ? db.sesiones[existingIdx] : null;
     const sesion = {
-      date: today.toISOString(),
+      // ★ FIX: preservar la fecha original de la sesión cuando ya existía.
+      // Si la pisamos con `today.toISOString()`, una sesión vieja podría
+      // "viajar" a hoy en un autoguardado tardío.
+      date: existing && existing.date ? existing.date : today.toISOString(),
       items,
       // Persistir el aggregate (sub-sesiones, pasajes) para reconstrucción
       _aggregate: JSON.parse(JSON.stringify(sessionAggregate || {})),
@@ -13042,6 +13119,7 @@ async function initApp() {
     if (saved && typeof saved.energia === 'number') Object.assign(estadoDiario, saved);
   } catch(e) {}
   initEstadoSliders();
+  _currentPlanDay = new Date().toDateString();
   const draftLoaded = loadDraft();
   // Si no había draft local pero hay sesiones de hoy guardadas en la nube/db,
   // reconstruir el plan para que las tarjetas no desaparezcan.
@@ -13053,6 +13131,14 @@ async function initApp() {
   spawnNotes();
   if (typeof renderRacha === 'function') renderRacha();
   if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+  // Programar el chequeo de medianoche y escuchar visibilitychange por si el
+  // setTimeout falla (móviles que duermen tabs en background)
+  scheduleNextMidnightCheck();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      checkDayChange();
+    }
+  });
   checkPostAttackState();
 
   // Forest draft
@@ -13919,6 +14005,14 @@ function cronoForcedFinish() {
 function cronoFinish() {
   cronoStopTick();
   cronoStopPauseCountdown();
+
+  // Si el día cambió mientras el cronómetro corría, hacer reset del plan ANTES
+  // de añadir esta sesión, para que cuente como sesión del día NUEVO. La
+  // sesión se asigna por hora de finalización (igual que Forest).
+  const nowDay = new Date().toDateString();
+  if (_currentPlanDay !== nowDay) {
+    handleDayChange();
+  }
 
   const ms = cronoCurrentMs();
   const minutos = Math.floor(ms / 60000);
