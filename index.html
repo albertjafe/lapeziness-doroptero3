@@ -3172,11 +3172,12 @@
   .obra-color-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 12px;
+    gap: 14px;
     justify-items: center;
+    padding: 8px 0;
   }
   .obra-color-option {
-    width: 36px; height: 36px;
+    width: 52px; height: 52px;
     border-radius: 50%;
     border: 2px solid transparent;
     cursor: pointer;
@@ -3192,7 +3193,9 @@
   }
   .obra-color-option.active {
     border-color: var(--text);
+    transform: scale(1.05);
   }
+  .obra-color-option:active { transform: scale(0.94); }
   .obra-color-option.active::after {
     content: "";
     position: absolute;
@@ -5573,6 +5576,14 @@ function _autoSaveTodayPlanNow() {
     // Buscar sesión existente de hoy
     const existingIdx = db.sesiones.findIndex(s => new Date(s.date).toDateString() === todayStr);
     const existing = existingIdx >= 0 ? db.sesiones[existingIdx] : null;
+    // ★ GUARDIAN DEFENSIVO: si la sesión existente tiene MÁS items de los que
+    // tenemos en memoria, NO sobrescribir (sería pérdida de datos). Esto
+    // protege contra timing en que currentPlan no se hubo restaurado del todo
+    // antes del primer autoSave.
+    if (existing && Array.isArray(existing.items) && existing.items.length > items.length) {
+      console.warn('[autoSave] abortado: memoria (' + items.length + ') tiene menos items que db (' + existing.items.length + ')');
+      return;
+    }
     const sesion = {
       // ★ FIX: preservar la fecha original de la sesión cuando ya existía.
       // Si la pisamos con `today.toISOString()`, una sesión vieja podría
@@ -5757,6 +5768,41 @@ function confirmAddExtra() {
 
   closeModal('modalExtraObra');
 
+  // ── FUSIÓN: buscar tarjeta existente de la misma obra/movimiento ─────
+  // Si ya hay una tarjeta de esta misma obra y movimiento en el plan,
+  // sumamos los minutos a la existente en lugar de crear otra. Misma
+  // lógica que en cronoFinish.
+  const existing = currentPlan.find(e =>
+    (e._obraId || e.id) === obraId &&
+    (e._movId || null) === (movId || null)
+  );
+
+  if (existing) {
+    const targetPlanId = existing._planId || existing.id;
+    const addMin = minutos || (mov?.duracion || obra?.duracion || 20);
+    sessionMinPlan[targetPlanId] = (sessionMinPlan[targetPlanId] || 0) + addMin;
+    // Re-render la tarjeta con el total actualizado
+    const planEl = document.getElementById('plan-' + targetPlanId);
+    if (planEl) {
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = renderExtraItem(existing, sessionMinPlan[targetPlanId]);
+      if (wrapper.firstChild) planEl.replaceWith(wrapper.firstChild);
+      // Conservar marca de "hecho" si la tenía
+      if (sessionTicks[targetPlanId] === 'hecho') {
+        const newBtn = document.querySelector('#plan-' + targetPlanId + ' .tick-btn');
+        if (newBtn) newBtn.classList.add('hecho');
+        if (typeof updateProductivityBadge === 'function') updateProductivityBadge(targetPlanId);
+      }
+    }
+    SFX.add();
+    saveDraft();
+    refreshConcentradoUI();
+    autoSaveTodayPlan();
+    showToast('Sumado a la tarjeta existente');
+    return;
+  }
+
+  // ── No existe: crear nueva tarjeta ──
   const extraId = 'extra_' + obraId + (movId ? '_' + movId : '') + '_' + Date.now();
   const baseEntity = movId ? { ...mov, _parentName: obra.name, composer: obra.composer } : { ...obra };
 
@@ -5773,7 +5819,6 @@ function confirmAddExtra() {
   currentPlan.push(extraEntity);
   sessionMinPlan[extraId] = minutos || (mov?.duracion || obra?.duracion || 20);
 
-  // Make sure scaffold buttons exist (case: no plan generated yet)
   ensureSessionPlanScaffold();
 
   const planDiv = document.getElementById('sessionPlan');
@@ -5784,12 +5829,12 @@ function confirmAddExtra() {
   wrapper.innerHTML = renderExtraItem(extraEntity, sessionMinPlan[extraId]);
   planDiv.insertBefore(wrapper.firstChild, addBtn || saveBtn);
 
-  // Refresh save button visibility
   ensureSessionPlanScaffold();
 
   SFX.add();
-  showToast('Añadido: ' + displayName);
   saveDraft();
+  refreshConcentradoUI();
+  autoSaveTodayPlan();
 }
 
 function renderExtraItem(entity, minutos) {
@@ -9116,8 +9161,7 @@ function renderObraCard(o, idx) {
   return `
     <div class="obra-card" id="obra-${o.id}">
       <div class="obra-header" onclick="toggleObra('${o.id}')">
-        <div class="obra-fase ${obraFase(eff)}"></div>
-        <button class="obra-color-dot" title="Cambiar color"
+        <button class="obra-color-dot obra-fase-${obraFase(eff)}" title="Cambiar color"
           onclick="event.stopPropagation();openObraColorPicker('${o.id}')"
           style="background:${obraColorHex(o) || 'transparent'};border-color:${obraColorHex(o) || 'var(--border2)'}"></button>
         <div class="obra-name" id="obra-name-display-${o.id}">${o.name}${origenTag}${difBadge}${tendencia} <span class="obra-composer">${o.composer}</span></div>
@@ -13231,15 +13275,36 @@ async function onAuthSuccess() {
       renderEstadoSection();
     }
     updateHeader();
-    // ★ CRÍTICO: tras descargar de la nube, RECONSTRUIR siempre las tarjetas
-    // de hoy desde db.sesiones. Usamos force=true para que machaque cualquier
-    // draft local antiguo que pudiera quedar de otra fecha o sesión obsoleta.
-    // Resuelve el caso de "reinstalo en otro dispositivo y mis sesiones de
-    // hoy aparecen igual".
+    // Tras descargar de la nube, queremos que el plan refleje la unión más
+    // completa de lo que hay. Estrategia:
+    //  - Si el plan en memoria está vacío → restaurar desde db.sesiones[hoy].
+    //  - Si el plan en memoria YA tiene tarjetas → comparar con db.sesiones[hoy]:
+    //      * Si la nube tiene MÁS tarjetas que el local (caso típico:
+    //        instalación nueva sincronizando), usar la nube.
+    //      * Si el local tiene más o igual, conservar local (caso: autoSave
+    //        de la nube quedó atrás).
+    // Esto previene el bug en que `force:true` machacaba draft válido con una
+    // nube parcial y borraba tarjetas.
     if (typeof restoreSessionFromDbToday === 'function') {
-      const restored = restoreSessionFromDbToday({ force: true });
-      if (restored && typeof refreshConcentradoUI === 'function') {
-        refreshConcentradoUI();
+      const today = new Date().toDateString();
+      const sesionNube = (db.sesiones || []).find(s => new Date(s.date).toDateString() === today);
+      const itemsNube = sesionNube && Array.isArray(sesionNube.items) ? sesionNube.items.length : 0;
+      const itemsLocal = Array.isArray(currentPlan) ? currentPlan.length : 0;
+      if (itemsLocal === 0 && itemsNube > 0) {
+        restoreSessionFromDbToday();
+        if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+      } else if (itemsNube > itemsLocal) {
+        // Nube tiene más tarjetas — restaurar con force porque la nube es la
+        // fuente más completa en este caso (instalación reciente).
+        const restored = restoreSessionFromDbToday({ force: true });
+        if (restored && typeof refreshConcentradoUI === 'function') {
+          refreshConcentradoUI();
+        }
+      } else {
+        // Local tiene tantas o más tarjetas — NO machacar. Esto preserva
+        // las tarjetas locales que aún no se hayan sincronizado a la nube.
+        // Disparamos un autoSave para subir las que faltan.
+        if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
       }
     }
   }
