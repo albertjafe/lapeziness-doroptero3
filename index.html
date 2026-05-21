@@ -2523,11 +2523,17 @@
     opacity: 0.85;
   }
   /* Sección Ayer: más difuminada para distinguirla visualmente de hoy */
+  /* Sección Ayer: difuminada. Anteayer y posteriores aún más difuminados.
+     Controlado por data-dia-idx (0 = ayer, 1 = anteayer, 2+ no se renderizan). */
   .crono-resumen-ayer {
     opacity: 0.62;
     transition: opacity 0.3s ease;
   }
+  .crono-resumen-ayer[data-dia-idx="1"] {
+    opacity: 0.42;
+  }
   .crono-resumen-ayer:hover { opacity: 0.88; }
+  .crono-resumen-ayer[data-dia-idx="1"]:hover { opacity: 0.72; }
   /* Pasajes y nota debajo de cada fila de ayer */
   .crono-resumen-pasajes {
     margin: 2px 0 4px 0;
@@ -2836,15 +2842,128 @@
   }
   .crono-select:focus { outline: none; border-color: var(--accent); background: var(--bg3); }
   .crono-select option { background: var(--bg); color: var(--text); }
+  /* ── Botón custom que reemplaza visualmente al select nativo ──
+     Mismo aspecto que el select original (mismas dimensiones, mismo padding,
+     misma tipografía) pero con dot de color y chevron consistente con la
+     estética de la app. Acepta también la clase crono-select para reutilizar
+     reglas. */
+  .crono-select-custom {
+    width: 100%;
+    padding: 14px 40px 14px 22px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 999px;
+    color: var(--text);
+    font-family: "Cormorant Garamond", serif;
+    font-size: 17px;
+    font-weight: 400;
+    letter-spacing: 0.015em;
+    cursor: pointer;
+    box-sizing: border-box;
+    text-align: center;
+    -webkit-appearance: none; appearance: none;
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .crono-select-custom:active { background: var(--bg3); transform: scale(0.99); }
+  .crono-select-custom-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--text3);
+    border: 1px solid var(--border2);
+    flex: none;
+    transition: background 0.3s ease;
+  }
+  .crono-select-custom-dot.is-empty {
+    background: transparent;
+    border-style: dashed;
+    opacity: 0.6;
+  }
+  .crono-select-custom-label {
+    flex: 1;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .crono-select-custom-chevron {
+    font-size: 14px;
+    color: var(--text3);
+    transform: translateY(-2px);
+    flex: none;
+  }
+  /* ── Lista del modal picker ── */
+  .crono-picker-section {
+    padding: 6px 16px 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-top: 10px;
+  }
+  .crono-picker-section:first-child { margin-top: 0; }
+  .crono-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    color: var(--text);
+    font-family: "Cormorant Garamond", serif;
+    font-size: 15px;
+    transition: background 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .crono-picker-item:hover { background: var(--bg3); }
+  .crono-picker-item:active { background: var(--bg2); }
+  .crono-picker-item.is-mov {
+    padding-left: 44px;
+    font-size: 14px;
+    color: var(--text2);
+  }
+  .crono-picker-item.is-active {
+    background: var(--bg3);
+    font-weight: 500;
+  }
+  .crono-picker-item.is-active::after {
+    content: "✓";
+    margin-left: auto;
+    color: var(--accent);
+    font-size: 14px;
+  }
+  .crono-picker-dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--text3);
+    border: 1px solid var(--border2);
+    flex: none;
+  }
+  .crono-picker-composer {
+    font-size: 11px;
+    color: var(--text3);
+    margin-left: 4px;
+    font-style: italic;
+  }
+  .crono-picker-empty {
+    text-align: center;
+    padding: 30px;
+    color: var(--text3);
+    font-style: italic;
+  }
   .crono-select-wrap::after {
-    content: "";
-    position: absolute;
-    right: 20px; top: 50%;
-    width: 6px; height: 6px;
-    border-right: 1.5px solid var(--text3);
-    border-bottom: 1.5px solid var(--text3);
-    transform: translateY(-70%) rotate(45deg);
-    pointer-events: none;
+    /* Chevron desactivado: el botón custom dibuja el suyo propio.
+       Se conserva la regla vacía por si volvemos al select nativo. */
+    display: none;
   }
 
   /* Botón principal */
@@ -3336,27 +3455,41 @@
 
   /* Grid de colores en el modal picker */
   .obra-color-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 14px;
-    justify-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
     padding: 8px 0;
   }
+  /* Forzar círculos perfectos: width y height idénticos en px (sin %, sin
+     aspect-ratio que algunos navegadores ignoran dentro de grid+1fr). flex
+     en lugar de grid evita que el padre estire los botones. */
   .obra-color-option {
-    width: 100%;
-    max-width: 56px;
-    aspect-ratio: 1 / 1;  /* fuerza relación 1:1 para que NUNCA sean óvalos */
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    max-width: 48px;
+    max-height: 48px;
     border-radius: 50%;
     border: 2px solid transparent;
     cursor: pointer;
     padding: 0;
     position: relative;
-    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    transition: transform 0.25s cubic-bezier(0.4,0,0.2,1),
+                border-color 0.25s ease;
     -webkit-tap-highlight-color: transparent;
     box-sizing: border-box;
+    display: inline-block;
+    flex: 0 0 auto;
+    overflow: hidden;
+    line-height: 0;
+    background: transparent;
   }
   .obra-color-option-inner {
-    width: 100%; height: 100%;
+    display: block;
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
     border: 1px solid var(--border2);
     box-sizing: border-box;
@@ -3373,9 +3506,9 @@
     border-radius: 50%;
     border: 1px solid currentColor;
     opacity: 0.4;
+    pointer-events: none;
   }
   .obra-color-option:hover { transform: scale(1.1); }
-  .obra-color-option:active { transform: scale(0.92); }
   .obra-color-option.is-default .obra-color-option-inner {
     background: linear-gradient(135deg, var(--bg3) 50%, var(--accent) 50%);
   }  /* Flash de éxito tras "Hecho" en el cronómetro: usa la estructura de
@@ -3758,9 +3891,20 @@
       </div>
 
       <div class="crono-select-wrap">
-        <select id="cronoObraSelect" class="crono-select" onchange="cronoUpdateStartBtn()">
+        <!-- Select nativo OCULTO: preserva compatibilidad con todo el código
+             que lee/escribe select.value. El usuario interactúa con el
+             botón custom de abajo, que sincroniza con este select. -->
+        <select id="cronoObraSelect" class="crono-select" onchange="cronoUpdateStartBtn()" style="display:none">
           <option value="">Elige una obra</option>
         </select>
+        <!-- Botón custom estilizado: muestra el dot de color de la obra
+             seleccionada + nombre. Al pulsar abre el modal selector. -->
+        <button type="button" class="crono-select-custom" id="cronoObraSelectBtn"
+                onclick="openCronoObraPicker()">
+          <span class="crono-select-custom-dot" id="cronoObraSelectBtnDot"></span>
+          <span class="crono-select-custom-label" id="cronoObraSelectBtnLabel">Elige una obra o actividad</span>
+          <span class="crono-select-custom-chevron">⌄</span>
+        </button>
       </div>
 
       <!-- Indicador discreto del color de la obra seleccionada -->
@@ -4244,6 +4388,23 @@
 </div>
 
 <!-- MODAL CRONO: cambiar de obra durante la sesión -->
+<!-- MODAL: PICKER PERSONALIZADO DE OBRAS para el cronómetro -->
+<div class="modal-overlay" id="modalCronoObraPicker">
+  <div class="modal" style="max-width:480px;padding:0;display:flex;flex-direction:column;max-height:80vh">
+    <div style="padding:18px 22px 12px;border-bottom:1px solid var(--border2);background:var(--bg2)">
+      <div class="modal-title" style="margin-bottom:4px">Elige obra o actividad</div>
+      <input type="text" id="cronoObraPickerSearch"
+             placeholder="Buscar..." autocomplete="off"
+             oninput="renderCronoObraPicker()"
+             style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:8px 12px;font-family:'Cormorant Garamond',serif;font-size:14px;color:var(--text);margin-top:6px;box-sizing:border-box">
+    </div>
+    <div id="cronoObraPickerList" style="overflow-y:auto;flex:1;padding:8px 0;-webkit-overflow-scrolling:touch"></div>
+    <div style="padding:12px 22px;border-top:1px solid var(--border2);background:var(--bg2);text-align:right">
+      <button class="modal-btn secondary" onclick="closeModal('modalCronoObraPicker')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalCronoChangeObra">
   <div class="modal crono-change-modal">
     <div class="crono-change-title">Cambiar obra</div>
@@ -14497,29 +14658,20 @@ function getResumenSesionesHoy() {
 // Cada item incluye: label, minutos, pasajes trabajados (con su intensidad)
 // y la nota general si la había. Útil para mostrar contexto previo en el
 // cronómetro: "lo que dejé pendiente, retomo desde aquí".
-function getResumenSesionesAyer() {
-  if (!Array.isArray(db.sesiones) || !db.sesiones.length) return null;
-  const todayStr = new Date().toDateString();
-  // Buscar la sesión más reciente que NO sea de hoy.
-  const sesionesOrdenadas = db.sesiones
-    .filter(s => new Date(s.date).toDateString() !== todayStr)
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
-  if (!sesionesOrdenadas.length) return null;
-  const sesion = sesionesOrdenadas[0];
+// Procesa una sesión de db.sesiones y devuelve { etiquetaDia, items }
+// con la forma de cada item lista para renderizar en el resumen lateral.
+// Devuelve null si la sesión no tiene items con minutos > 0.
+function _procesarSesionParaResumen(sesion) {
   if (!Array.isArray(sesion.items) || !sesion.items.length) return null;
-
-  // Calcular qué día fue: ayer, anteayer, hace N días, según corresponda.
   const sesionDate = new Date(sesion.date);
-  const diasDif = Math.round((new Date().setHours(0,0,0,0) - sesionDate.setHours(0,0,0,0)) / 86400000);
+  const diasDif = Math.round((new Date().setHours(0,0,0,0) - new Date(sesion.date).setHours(0,0,0,0)) / 86400000);
   let etiquetaDia;
   if (diasDif === 1) etiquetaDia = 'Ayer';
   else if (diasDif === 2) etiquetaDia = 'Anteayer';
   else if (diasDif <= 7) etiquetaDia = 'Hace ' + diasDif + ' días';
   else etiquetaDia = sesionDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 
-  // Resucitar el aggregate si está en la sesión (pasajes trabajados por planId)
   const aggregate = sesion._aggregate || {};
-
   const items = sesion.items.map(it => {
     const planId = it._planId || (it.obraId + '::' + (it.movId || ''));
     const obra = (db.obras || []).find(o => o.id === it.obraId);
@@ -14531,11 +14683,10 @@ function getResumenSesionesAyer() {
     } else {
       label = obra.name + (obra.composer && obra.composer !== '—' ? ' · ' + obra.composer : '');
     }
-    // Pasajes trabajados: vienen del aggregate de esa sesión
+    // Pasajes trabajados: del aggregate, agrupados por id con intensidad más
+    // reciente si aparece varias veces.
     const agg = aggregate[planId];
     const subsessions = agg?.subsessions || [];
-    // Mergear pasajes de todas las subsesiones del planId; si un pasaje aparece
-    // varias veces, conservar la intensidad más reciente.
     const pasajesMap = {};
     subsessions.forEach(sub => {
       (sub.pasajes || []).forEach(p => {
@@ -14543,26 +14694,46 @@ function getResumenSesionesAyer() {
         pasajesMap[p.id] = p.intensidad || pasajesMap[p.id];
       });
     });
-    const pasajesIds = Object.keys(pasajesMap);
-    const pasajes = pasajesIds.map(pid => {
+    const pasajes = Object.keys(pasajesMap).map(pid => {
       const pasaje = (obra.pasajes || []).find(pp => pp.id === pid);
       if (!pasaje) return null;
       return { name: pasaje.name || pasaje.compases || '?', intensidad: pasajesMap[pid] };
     }).filter(Boolean);
-
     return {
       label,
-      // Los items en db.sesiones usan los campos `minutosReales` / `minutosPlan`
-      // y `note` (NO `min`/`nota`). Aceptamos varias formas por compatibilidad
-      // con sesiones de versiones antiguas y de commitSession (que usan min/nota).
       minutos: it.minutosReales || it.minutosPlan || it.min || 0,
       pasajes,
       nota: (it.note || it.nota || '').trim(),
     };
   }).filter(Boolean).filter(x => x.minutos > 0);
-
   if (!items.length) return null;
   return { etiquetaDia, items };
+}
+
+// Devuelve un array con hasta N días previos (no hoy) con actividad.
+// Cada elemento es { etiquetaDia, items }. Los días sin actividad se saltan
+// (si no hubo nada anteayer pero sí hace 3 días, ese se usa como segundo
+// elemento). Esto da continuidad pedagógica.
+function getResumenSesionesPasadas(maxDias) {
+  maxDias = maxDias || 2;
+  if (!Array.isArray(db.sesiones) || !db.sesiones.length) return [];
+  const todayStr = new Date().toDateString();
+  const sesionesOrdenadas = db.sesiones
+    .filter(s => new Date(s.date).toDateString() !== todayStr)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+  const resultado = [];
+  for (const sesion of sesionesOrdenadas) {
+    if (resultado.length >= maxDias) break;
+    const procesada = _procesarSesionParaResumen(sesion);
+    if (procesada) resultado.push(procesada);
+  }
+  return resultado;
+}
+
+// Alias retrocompat (algún código viejo podría llamar a getResumenSesionesAyer)
+function getResumenSesionesAyer() {
+  const resultados = getResumenSesionesPasadas(1);
+  return resultados[0] || null;
 }
 
 // Refresca todos los textos "hoy te has concentrado..." y el mini-resumen
@@ -14579,8 +14750,9 @@ function refreshConcentradoUI() {
   const resumenEl = document.getElementById('cronoResumenLateral');
   if (resumenEl) {
     const itemsHoy = getResumenSesionesHoy();
-    const ayer = getResumenSesionesAyer();
-    if (!itemsHoy.length && !ayer) {
+    // Hasta 2 días previos con actividad (Ayer + Anteayer u otros si hubo huecos)
+    const pasadas = getResumenSesionesPasadas(2);
+    if (!itemsHoy.length && !pasadas.length) {
       resumenEl.style.display = 'none';
       return;
     }
@@ -14606,16 +14778,17 @@ function refreshConcentradoUI() {
       }).join('');
       html += '</div>';
     }
-    // Sección AYER (o último día con actividad)
-    if (ayer) {
-      html += '<div class="crono-resumen-section crono-resumen-ayer">';
-      html += '<div class="crono-resumen-section-label">' + escapeHtmlSafe(ayer.etiquetaDia) + '</div>';
-      html += ayer.items.map(it => {
+    // Secciones de días previos (Ayer, Anteayer, ...).
+    // data-dia-idx controla la opacidad CSS: 0 = ayer (más visible),
+    // 1 = anteayer (más diluido).
+    pasadas.forEach((dia, idx) => {
+      html += '<div class="crono-resumen-section crono-resumen-ayer" data-dia-idx="' + idx + '">';
+      html += '<div class="crono-resumen-section-label">' + escapeHtmlSafe(dia.etiquetaDia) + '</div>';
+      html += dia.items.map(it => {
         const minTxt = it.minutos >= 60
           ? Math.floor(it.minutos / 60) + 'h' + (it.minutos % 60 ? ' ' + (it.minutos % 60) + 'm' : '')
           : it.minutos + ' min';
         let extras = '';
-        // Pasajes trabajados con icono de intensidad
         if (it.pasajes && it.pasajes.length) {
           extras += '<div class="crono-resumen-pasajes">';
           extras += it.pasajes.map(p => {
@@ -14625,7 +14798,6 @@ function refreshConcentradoUI() {
           }).join('');
           extras += '</div>';
         }
-        // Nota general si existe (max 2 líneas con ellipsis vía CSS)
         if (it.nota) {
           extras += '<div class="crono-resumen-nota">' + escapeHtmlSafe(it.nota) + '</div>';
         }
@@ -14635,7 +14807,7 @@ function refreshConcentradoUI() {
           '</div>' + extras;
       }).join('');
       html += '</div>';
-    }
+    });
     resumenEl.innerHTML = html;
   }
 }
@@ -14766,6 +14938,8 @@ function cronoUpdateStartBtn() {
   const sel = document.getElementById('cronoObraSelect');
   if (!btn || !sel) return;
   btn.disabled = !sel.value;
+  // Mantener el botón custom sincronizado (dot de color + nombre)
+  if (typeof cronoUpdateSelectBtn === 'function') cronoUpdateSelectBtn();
   // Texto del botón según modo
   if (crono.mode === 'timer') {
     btn.textContent = 'Plantar · ' + crono.timerMinutes + ' min';
@@ -15604,6 +15778,144 @@ function cronoFillSelectInto(select) {
 
 function cronoFillObraSelect() {
   cronoFillSelectInto(document.getElementById('cronoObraSelect'));
+  // Tras rellenar el select nativo, sincronizar el botón custom.
+  cronoUpdateSelectBtn();
+}
+
+// Sincroniza el botón custom con el valor actual del <select> nativo.
+// Muestra el dot del color de la obra y su nombre + composer.
+function cronoUpdateSelectBtn() {
+  const sel = document.getElementById('cronoObraSelect');
+  const btn = document.getElementById('cronoObraSelectBtn');
+  const dot = document.getElementById('cronoObraSelectBtnDot');
+  const label = document.getElementById('cronoObraSelectBtnLabel');
+  if (!sel || !btn || !dot || !label) return;
+  const val = sel.value;
+  if (!val) {
+    dot.classList.add('is-empty');
+    dot.style.background = '';
+    label.textContent = 'Elige una obra o actividad';
+    return;
+  }
+  // Resolver obra (y movimiento si aplica) desde el value
+  // Formato: "obra::<obraId>" o "mov::<obraId>::<movId>"
+  const parts = val.split('::');
+  const obraId = parts[1];
+  const movId = parts[2] || null;
+  const obra = (db.obras || []).find(o => o.id === obraId);
+  if (!obra) {
+    dot.classList.add('is-empty');
+    label.textContent = 'Elige una obra o actividad';
+    return;
+  }
+  dot.classList.remove('is-empty');
+  const hex = (typeof obraColorHex === 'function') ? (obraColorHex(obra) || 'var(--accent)') : 'var(--accent)';
+  dot.style.background = hex;
+  let texto = obra.name;
+  if (movId) {
+    const mov = (obra.movimientos || []).find(m => m.id === movId);
+    if (mov) texto = obra.name + ' — ' + mov.name;
+  } else if (obra.composer && obra.composer !== '—') {
+    texto = obra.name + ' · ' + obra.composer;
+  }
+  label.textContent = texto;
+}
+
+// Abre el modal picker. Resetea el buscador y renderiza.
+function openCronoObraPicker() {
+  const search = document.getElementById('cronoObraPickerSearch');
+  if (search) search.value = '';
+  renderCronoObraPicker();
+  openModal('modalCronoObraPicker');
+  // Focus al search tras un pequeño delay para que iOS termine la animación
+  setTimeout(() => { if (search) search.focus(); }, 200);
+}
+
+// Renderiza la lista de obras/actividades con su dot de color.
+// Filtra por el texto del buscador (case-insensitive, sobre nombre+composer).
+function renderCronoObraPicker() {
+  const list = document.getElementById('cronoObraPickerList');
+  const search = document.getElementById('cronoObraPickerSearch');
+  const sel = document.getElementById('cronoObraSelect');
+  if (!list) return;
+  const q = (search?.value || '').toLowerCase().trim();
+  const obras = (db.obras || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+  const currentValue = sel?.value || '';
+
+  // Separar actividades de obras para mostrarlas agrupadas
+  const obrasNormales = [];
+  const actividades = [];
+  obras.forEach(o => {
+    const composerTxt = (o.composer && o.composer !== '—') ? o.composer : '';
+    if (q && !(o.name + ' ' + composerTxt).toLowerCase().includes(q)) {
+      // Si la obra no matchea, comprobar si algún movimiento sí matchea
+      const movMatches = (o.movimientos || []).some(m => m.name && m.name.toLowerCase().includes(q));
+      if (!movMatches) return;
+    }
+    (o.tipo === 'actividad' ? actividades : obrasNormales).push(o);
+  });
+
+  function obraButtonHTML(o, isActivity) {
+    const hex = (typeof obraColorHex === 'function') ? (obraColorHex(o) || '') : '';
+    const dotStyle = hex ? 'background:' + hex : '';
+    const composerSpan = (o.composer && o.composer !== '—')
+      ? '<span class="crono-picker-composer">· ' + escapeHtmlSafe(o.composer) + '</span>'
+      : '';
+    const movs = isActivity ? [] : (o.movimientos || []).filter(m => m.name);
+    let html = '';
+    if (!movs.length) {
+      const val = 'obra::' + o.id;
+      const activeCls = (val === currentValue) ? ' is-active' : '';
+      html += '<button class="crono-picker-item' + activeCls + '" onclick="pickCronoObra(\'' + val + '\')">' +
+        '<span class="crono-picker-dot" style="' + dotStyle + '"></span>' +
+        '<span>' + escapeHtmlSafe(o.name) + composerSpan + '</span>' +
+        '</button>';
+    } else {
+      // Obra con movimientos: encabezado con dot (no clickable como obra
+      // entera, porque la lógica de movimientos exige escoger uno) +
+      // movimientos debajo indentados.
+      html += '<div class="crono-picker-item" style="cursor:default;background:transparent" onclick="event.stopPropagation()">' +
+        '<span class="crono-picker-dot" style="' + dotStyle + '"></span>' +
+        '<span style="font-weight:500">' + escapeHtmlSafe(o.name) + composerSpan + '</span>' +
+        '</div>';
+      movs.forEach(m => {
+        const val = 'mov::' + o.id + '::' + m.id;
+        const activeCls = (val === currentValue) ? ' is-active' : '';
+        html += '<button class="crono-picker-item is-mov' + activeCls + '" onclick="pickCronoObra(\'' + val + '\')">' +
+          '<span>' + escapeHtmlSafe(m.name) + '</span>' +
+          '</button>';
+      });
+    }
+    return html;
+  }
+
+  let html = '';
+  if (obrasNormales.length) {
+    html += '<div class="crono-picker-section">Obras</div>';
+    html += obrasNormales.map(o => obraButtonHTML(o, false)).join('');
+  }
+  if (actividades.length) {
+    html += '<div class="crono-picker-section">Actividades</div>';
+    html += actividades.map(o => obraButtonHTML(o, true)).join('');
+  }
+  if (!html) {
+    html = '<div class="crono-picker-empty">' +
+      (q ? 'Sin resultados para "' + escapeHtmlSafe(q) + '"' : 'No hay obras todavía') +
+      '</div>';
+  }
+  list.innerHTML = html;
+}
+
+// Click en un item del picker: actualiza el select nativo, cierra modal,
+// dispara onchange para que la lógica existente (cronoUpdateStartBtn, etc.)
+// se ejecute igual que antes.
+function pickCronoObra(val) {
+  const sel = document.getElementById('cronoObraSelect');
+  if (!sel) return;
+  sel.value = val;
+  sel.dispatchEvent(new Event('change', { bubbles: true }));
+  cronoUpdateSelectBtn();
+  closeModal('modalCronoObraPicker');
 }
 
 // ── Fallidas (counter por día, sólo informativo) ────────────────────────────
