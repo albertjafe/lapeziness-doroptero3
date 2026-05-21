@@ -9492,6 +9492,14 @@ async function onAuthSuccess() {
 }
 
 async function initApp() {
+  // Hide splash after a guaranteed minimum display time.
+  setTimeout(function() {
+    const s = document.getElementById('splashScreen');
+    if (!s || s.classList.contains('gone')) return;
+    s.classList.add('fade-out');
+    setTimeout(function() { s.classList.add('gone'); }, 650);
+  }, 1200);
+
   // Load local data first so app is usable immediately
   db = loadData();
 
@@ -10219,6 +10227,31 @@ const TIMER_STEP_MINUTES = 5;
 const TIMER_RADIUS = 88;
 const TIMER_CIRC = 2 * Math.PI * TIMER_RADIUS; // ≈ 552.92
 
+// Shared AudioContext for the timer drag ticks — created lazily.
+let _tickAudioCtx = null;
+function _playCronoTick() {
+  try {
+    if (!_tickAudioCtx || _tickAudioCtx.state === 'closed') {
+      _tickAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const ctx = _tickAudioCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+    const dur = 0.018;
+    const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.22));
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const flt = ctx.createBiquadFilter();
+    flt.type = 'bandpass'; flt.frequency.value = 950; flt.Q.value = 0.9;
+    const g = ctx.createGain(); g.gain.value = 0.42;
+    src.connect(flt); flt.connect(g); g.connect(ctx.destination);
+    src.start();
+  } catch(e) {}
+}
+
 function cronoSetMode(mode) {
   if (mode !== 'stopwatch' && mode !== 'timer') return;
   if (crono.state !== 'idle') {
@@ -10349,16 +10382,27 @@ function cronoTimerInitDrag() {
   function onPointerMove(clientX, clientY) {
     const p = cronoTimerClientToSVG(clientX, clientY);
     if (!p) return;
-    const newMin = cronoTimerXYToMinutes(p.x, p.y);
-    if (newMin !== crono.timerMinutes) {
+    let newMin = cronoTimerXYToMinutes(p.x, p.y);
+    const prev = crono.timerMinutes;
+    // Prevent wrap-around at 120: if the angle crosses the 0/360 boundary
+    // while near max, clamp instead of allowing another revolution.
+    if (prev >= TIMER_MAX_MINUTES - TIMER_STEP_MINUTES && newMin <= TIMER_STEP_MINUTES) {
+      newMin = TIMER_MAX_MINUTES;
+    }
+    if (prev <= TIMER_MIN_MINUTES && newMin >= TIMER_MAX_MINUTES - TIMER_STEP_MINUTES) {
+      newMin = TIMER_MIN_MINUTES;
+    }
+    if (newMin !== prev) {
       crono.timerMinutes = newMin;
       cronoTimerRenderSlider();
+      _playCronoTick();
     }
   }
 
   function onDown(e) {
     e.preventDefault();
     isDragging = true;
+    svg.classList.add('dragging');
     if (handle) handle.classList.add('dragging');
     const t = e.touches ? e.touches[0] : e;
     const p = cronoTimerClientToSVG(t.clientX, t.clientY);
@@ -10385,6 +10429,7 @@ function cronoTimerInitDrag() {
     if (!isDragging) return;
     isDragging = false;
     startedOnHandle = false;
+    svg.classList.remove('dragging');
     if (handle) handle.classList.remove('dragging');
     cronoSaveState();
   }
@@ -11220,6 +11265,30 @@ function cronoFallidaBorrarRegistro() {
 
 // ── Entrada / salida de la vista ────────────────────────────────────────────
 
+// Live clock shown in the center of the stopwatch when idle.
+let _cronoClockInterval = null;
+function _startCronoClock() {
+  function _tick() {
+    const timeEl = document.getElementById('cronoClockTime');
+    const hoyEl  = document.getElementById('cronoClockHoy');
+    if (!timeEl) return;
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    timeEl.textContent = h + ':' + m;
+    if (hoyEl) {
+      const min = typeof getMinutosConcentradoHoy === 'function' ? getMinutosConcentradoHoy() : 0;
+      hoyEl.textContent = 'hoy · ' + min + ' min';
+    }
+  }
+  _tick();
+  if (_cronoClockInterval) clearInterval(_cronoClockInterval);
+  _cronoClockInterval = setInterval(_tick, 1000);
+}
+function _stopCronoClock() {
+  if (_cronoClockInterval) { clearInterval(_cronoClockInterval); _cronoClockInterval = null; }
+}
+
 function cronoOnEnterView() {
   cronoEnterFocus();
   cronoFillObraSelect();
@@ -11227,6 +11296,7 @@ function cronoOnEnterView() {
   cronoTimerInitDrag();
   cronoRender();
   refreshConcentradoUI();
+  _startCronoClock();
   // El indicador del toggle necesita layout para medir; volver a moverlo tras frame
   requestAnimationFrame(cronoMoveModeIndicator);
   if (crono.state === 'running' && !crono.tickInterval) cronoStartTick();
@@ -11235,6 +11305,7 @@ function cronoOnEnterView() {
 
 // Se llama desde showView cuando se cambia a OTRA vista que no es cronometro
 function cronoOnLeaveView() {
+  _stopCronoClock();
   cronoExitFocus();
   document.body.classList.remove('crono-timer-mode');
 }

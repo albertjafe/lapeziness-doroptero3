@@ -2727,6 +2727,10 @@
     opacity: 0.9;
     transition: stroke 0.5s ease, stroke-dashoffset 0.18s cubic-bezier(0.4,0,0.2,1);
   }
+  /* During drag, kill the dashoffset transition so handle and arc stay in sync. */
+  .crono-timer-svg.dragging .crono-timer-arc {
+    transition: stroke 0.5s ease;
+  }
   .crono-timer-handle {
     fill: var(--crono-color, var(--accent));
     stroke: var(--bg);
@@ -3506,19 +3510,18 @@
      tick destaque al máximo. Centrado garantizado con position:fixed + inset:0
      + flex centering propio (no depende del modal-overlay heredado). */
   .crono-hecho-flash {
-    /* Sobrescribir el comportamiento del .modal-overlay padre */
-    background: rgba(0,0,0,0.18) !important;
+    background: rgba(0,0,0,0.45) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     z-index: 260;
     pointer-events: none;
-    /* Forzar centrado absoluto */
     display: none;
     position: fixed;
     inset: 0;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
   .crono-hecho-flash.visible {
     display: flex;
@@ -3544,13 +3547,12 @@
     100% { opacity: 0; transform: scale(1); }
   }
   .crono-hecho-flash svg {
-    width: 140px;
-    height: 140px;
-    filter: drop-shadow(0 4px 24px rgba(74,138,90,0.35));
+    width: 150px;
+    height: 150px;
+    filter: drop-shadow(0 6px 36px rgba(46,218,100,0.60));
   }
-  /* Círculo SÓLIDO de fondo verde, ya no traceado */
   .crono-hecho-flash .cf-circle-fill {
-    fill: var(--green, #4a8a5a);
+    fill: #2ada64;
     opacity: 0;
   }
   .crono-hecho-flash.visible .cf-circle-fill {
@@ -3584,9 +3586,9 @@
   }
   .crono-hecho-flash-text {
     font-family: "Cormorant Garamond", serif;
-    font-size: 30px;
+    font-size: 32px;
     font-weight: 400;
-    color: var(--green, #4a8a5a);
+    color: #2ada64;
     letter-spacing: 0.06em;
     text-shadow: 0 2px 12px rgba(0,0,0,0.4);
     opacity: 0;
@@ -3629,5 +3631,71 @@
   @keyframes cronoResumenLabelGlow {
     0%   { color: var(--accent); }
     100% { color: var(--text2); }
+  }
+
+  /* ── Live clock in cronometer center ──────────────────────────────────────── */
+  .crono-clock-time {
+    fill: var(--text);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 40px;
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+  }
+  .crono-clock-hoy {
+    fill: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5px;
+    letter-spacing: 0.16em;
+    pointer-events: none;
+  }
+  /* Hide clock in timer mode */
+  body.crono-timer-mode .crono-clock-time,
+  body.crono-timer-mode .crono-clock-hoy { display: none; }
+
+  /* ── Splash screen ─────────────────────────────────────────────────────────── */
+  #splashScreen {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.65s ease;
+  }
+  #splashScreen.fade-out { opacity: 0; }
+  #splashScreen.gone { display: none; }
+  .splash-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 22px;
+    animation: splashIn 0.8s cubic-bezier(0.16,1,0.3,1) both;
+  }
+  @keyframes splashIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .splash-note { fill: var(--accent); }
+  .splash-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 26px;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    text-align: center;
+    line-height: 1.35;
+  }
+  .splash-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text3);
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
   }
 

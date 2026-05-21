@@ -15,6 +15,19 @@
 </head>
 <body>
 
+<!-- Splash screen: brief welcome shown while the app initialises -->
+<div id="splashScreen">
+  <div class="splash-inner">
+    <svg class="splash-note" width="52" height="68" viewBox="0 0 52 68" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <ellipse cx="16" cy="56" rx="13.5" ry="9.5" transform="rotate(-20 16 56)"/>
+      <rect x="28" y="13" width="3" height="45" rx="1.5"/>
+      <path d="M 31 13 C 50 19 50 42 35 51 C 46 39 44 23 31 23 Z"/>
+    </svg>
+    <div class="splash-title">Planificador<br>de estudio</div>
+    <div class="splash-sub">piano · práctica</div>
+  </div>
+</div>
+
 <!-- SYNC INDICATOR -->
 <div id="syncIndicator">↑ sincronizando…</div>
 
@@ -213,19 +226,11 @@
           <circle class="crono-deco-tick-mini" cx="20.7" cy="54"   r="0.7"/>
           <circle class="crono-deco-tick-mini" cx="54" cy="20.7"   r="0.7"/>
 
-          <!-- Ensō: el trazo expresivo central. Respira con la animación -->
-          <g class="crono-enso-group">
-            <path class="crono-enso-stroke"
-                  d="M 100 28
-                     A 72 72 0 1 1 90.5 28.62"
-                  stroke-dasharray="0"
-                  pathLength="100" />
-            <!-- Pequeño cierre estilo pincel en el extremo del trazo -->
-            <circle class="crono-enso-end" cx="90.5" cy="28.62" r="2.2"/>
-          </g>
-
-          <!-- Punto central, casi imperceptible -->
-          <circle class="crono-enso-dot" cx="100" cy="100" r="1.6"/>
+          <!-- Live clock: current time and today's minutes (updated by JS) -->
+          <text class="crono-clock-time" id="cronoClockTime"
+                x="100" y="94" text-anchor="middle" dominant-baseline="central">00:00</text>
+          <text class="crono-clock-hoy" id="cronoClockHoy"
+                x="100" y="133" text-anchor="middle" dominant-baseline="central">hoy · 0 min</text>
         </svg>
 
         <!-- Modo temporizador: slider radial arrastrable. 360° = 120 min, snap a 5. -->
