@@ -7045,11 +7045,38 @@ function _buildEstadoChartSvg(W, H, sesiones) {
     + gridY + tocMarkers + lines + xLabels + '</svg>';
 }
 
+let _estadoChartRangeDays = null; // null = todo el histórico
+
+function setEstadoChartRange(days, btn) {
+  _estadoChartRangeDays = days;
+  document.querySelectorAll('#estadoChartRangeBtns .sort-btn')
+    .forEach(b => b.classList.toggle('active', b === btn));
+  _renderEstadoChartModal();
+}
+
 function openEstadoChartModal() {
-  if (_estadoSesionesCache.length < 2) return;
-  const el = document.getElementById('estadoChartModalSvg');
-  if (el) el.innerHTML = _buildEstadoChartSvg(680, 220, _estadoSesionesCache);
+  _estadoChartRangeDays = null;
+  document.querySelectorAll('#estadoChartRangeBtns .sort-btn')
+    .forEach((b, i) => b.classList.toggle('active', i === 0));
+  _renderEstadoChartModal();
   openModal('modalEstadoChart');
+}
+
+function _renderEstadoChartModal() {
+  const all = (db.sesiones || [])
+    .filter(s => s.estado && (typeof s.estado.bienestar === 'number' || typeof s.estado.energia === 'number'))
+    .slice()
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+  const sesiones = _estadoChartRangeDays
+    ? all.filter(s => (Date.now() - new Date(s.date).getTime()) <= _estadoChartRangeDays * 86400000)
+    : all;
+  const el = document.getElementById('estadoChartModalSvg');
+  if (!el) return;
+  if (sesiones.length < 2) {
+    el.innerHTML = '<div style="padding:40px;text-align:center;font-size:11px;color:var(--text3)">No hay suficientes datos para el rango seleccionado.</div>';
+    return;
+  }
+  el.innerHTML = _buildEstadoChartSvg(680, 240, sesiones);
 }
 
 function renderEstadoSection() {
@@ -11366,6 +11393,111 @@ function cronoFallidaBorrarRegistro() {
   closeModal('modalCronoFallida');
   cronoRender();
   showToast('Registro borrado');
+}
+
+// ── Metrónomo ────────────────────────────────────────────────────────────────
+
+let _metroBpm        = 80;
+let _metroRunning    = false;
+let _metroNextTime   = 0;
+let _metroTimer      = null;
+let _metroAudioCtx   = null;
+
+const _TEMPO_MARKS = [
+  { max:  39, label: 'Larghissimo' },
+  { max:  59, label: 'Largo'       },
+  { max:  65, label: 'Larghetto'   },
+  { max:  71, label: 'Adagio'      },
+  { max:  77, label: 'Adagietto'   },
+  { max:  83, label: 'Andante'     },
+  { max:  93, label: 'Andantino'   },
+  { max: 103, label: 'Moderato'    },
+  { max: 117, label: 'Allegretto'  },
+  { max: 137, label: 'Allegro'     },
+  { max: 167, label: 'Vivace'      },
+  { max: 199, label: 'Presto'      },
+  { max: 999, label: 'Prestissimo' },
+];
+
+function _metroTempoLabel(bpm) {
+  return (_TEMPO_MARKS.find(t => bpm <= t.max) || _TEMPO_MARKS.at(-1)).label;
+}
+
+function _metroGetCtx() {
+  if (!_metroAudioCtx) _metroAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return _metroAudioCtx;
+}
+
+function _metroPlayTick(isAccent) {
+  try {
+    const ctx  = _metroGetCtx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now  = ctx.currentTime;
+    const freq = isAccent ? 1320 : 880;
+    osc.frequency.setValueAtTime(freq, now);
+    gain.gain.setValueAtTime(isAccent ? 0.18 : 0.10, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+    osc.start(now);
+    osc.stop(now + 0.05);
+  } catch (e) {}
+}
+
+function _metroSchedule() {
+  if (!_metroRunning) return;
+  const interval = 60000 / _metroBpm;
+  const now = Date.now();
+  if (now >= _metroNextTime - 8) {
+    _metroPlayTick(false);
+    _metroNextTime = (now < _metroNextTime) ? _metroNextTime + interval : now + interval;
+  }
+  _metroTimer = setTimeout(_metroSchedule, Math.max(4, _metroNextTime - Date.now() - 8));
+}
+
+function metroToggle() {
+  _metroRunning = !_metroRunning;
+  if (_metroRunning) {
+    // Resume suspended AudioContext (iOS requires user gesture)
+    if (_metroAudioCtx && _metroAudioCtx.state === 'suspended') _metroAudioCtx.resume();
+    _metroNextTime = Date.now();
+    _metroSchedule();
+  } else {
+    clearTimeout(_metroTimer);
+  }
+  _metroUpdateUI();
+}
+
+function metroBpm(delta) {
+  metroSetBpm(_metroBpm + delta);
+}
+
+function metroSetBpm(bpm) {
+  _metroBpm = Math.max(20, Math.min(250, Math.round(bpm)));
+  if (_metroRunning) {
+    clearTimeout(_metroTimer);
+    _metroNextTime = Date.now();
+    _metroSchedule();
+  }
+  _metroUpdateUI();
+}
+
+function _metroUpdateUI() {
+  const mainEl  = document.getElementById('metroBpmMain');
+  const prevEl  = document.getElementById('metroBpmPrev');
+  const nextEl  = document.getElementById('metroBpmNext');
+  const labelEl = document.getElementById('metroTempoLabel');
+  const dotEl   = document.getElementById('metroStateDot');
+  const slider  = document.getElementById('metroSlider');
+  if (mainEl)  mainEl.textContent  = _metroBpm;
+  if (prevEl)  prevEl.textContent  = _metroBpm - 1;
+  if (nextEl)  nextEl.textContent  = _metroBpm + 1;
+  if (labelEl) labelEl.textContent = _metroTempoLabel(_metroBpm);
+  if (dotEl)   dotEl.className     = 'metro-state-dot' + (_metroRunning ? ' running' : '');
+  const mainEl2 = document.getElementById('metroBpmMain');
+  if (mainEl2) mainEl2.style.color = _metroRunning ? 'var(--accent)' : '';
+  if (slider)  slider.value        = _metroBpm;
 }
 
 // ── Entrada / salida de la vista ────────────────────────────────────────────

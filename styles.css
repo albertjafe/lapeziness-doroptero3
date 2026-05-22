@@ -2644,6 +2644,114 @@
   /* ── Fase IDLE ────────────────────────────────────────────────────────── */
   .crono-idle-wrap { text-align: center; }
 
+  /* ── Metrónomo ─────────────────────────────────────────────────────────── */
+  .crono-metro {
+    margin: 0 auto 18px;
+    max-width: 260px;
+    user-select: none;
+  }
+  .metro-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .metro-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+  }
+  .metro-main {
+    cursor: pointer;
+    margin: 2px 0;
+  }
+  .metro-btn {
+    width: 40px; height: 40px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .metro-btn:active { background: var(--bg3); }
+  .metro-bpm-ctx {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    color: var(--text3);
+    width: 60px;
+    text-align: center;
+    opacity: 0.5;
+  }
+  .metro-bpm-main {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 64px;
+    font-weight: 300;
+    color: var(--text);
+    width: 100px;
+    text-align: center;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    transition: color 0.2s;
+  }
+  .metro-state-dot.running + .metro-bpm-main,
+  .metro-main:has(+ .metro-state-dot.running) .metro-bpm-main { color: var(--accent); }
+  .metro-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 4px 0 8px;
+  }
+  .metro-tempo-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+  .metro-state-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.2s;
+  }
+  .metro-state-dot.running {
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+  }
+  .metro-slider {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 2px;
+    background: var(--border2);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  .metro-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 0 4px rgba(0,0,0,0.4);
+  }
+  .metro-slider::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  /* Oculto en modo concentración */
+  body.crono-focus .crono-metro { display: none; }
+
   .crono-idle-message {
     font-family: "Cormorant Garamond", serif;
     font-size: 19px;

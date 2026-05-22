@@ -196,6 +196,32 @@
         <span class="crono-mode-indicator" id="cronoModeIndicator"></span>
       </div>
 
+      <!-- Metrónomo discreto, integrado sobre el círculo central -->
+      <div class="crono-metro" id="cronoMetro">
+        <div class="metro-display">
+          <div class="metro-row metro-fine">
+            <button class="metro-btn" onclick="metroBpm(-1)">-1</button>
+            <span class="metro-bpm-ctx" id="metroBpmPrev">79</span>
+            <button class="metro-btn" onclick="metroBpm(+1)">+1</button>
+          </div>
+          <div class="metro-row metro-main" onclick="metroToggle()" title="Toca para iniciar/pausar">
+            <span class="metro-bpm-main" id="metroBpmMain">80</span>
+          </div>
+          <div class="metro-row metro-coarse">
+            <button class="metro-btn" onclick="metroBpm(-5)">-5</button>
+            <span class="metro-bpm-ctx" id="metroBpmNext">81</span>
+            <button class="metro-btn" onclick="metroBpm(+5)">+5</button>
+          </div>
+        </div>
+        <div class="metro-label-row">
+          <span class="metro-tempo-label" id="metroTempoLabel">Andante</span>
+          <span class="metro-state-dot" id="metroStateDot"></span>
+        </div>
+        <input type="range" class="metro-slider" id="metroSlider"
+               min="20" max="250" value="80"
+               oninput="metroSetBpm(parseInt(this.value))">
+      </div>
+
       <div class="crono-idle-message" id="cronoIdleMessage">Empieza tu sesión de hoy</div>
 
       <!-- Pieza central: ensō en modo cronómetro / slider radial en modo temporizador -->
@@ -1037,11 +1063,19 @@
 <!-- MODAL ESTADO CHART (versión ampliada) -->
 <div class="modal-overlay" id="modalEstadoChart">
   <div class="modal" style="max-width:720px;padding:18px 20px">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">
-      <div class="modal-title" style="margin-bottom:0">Estado diario — detalle</div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
+      <div class="modal-title" style="margin-bottom:0">Estado diario</div>
       <button class="modal-btn secondary" onclick="closeModal('modalEstadoChart')" style="padding:4px 12px;font-size:10px">✕</button>
     </div>
-    <div id="estadoChartModalSvg"></div>
+    <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Rango temporal</div>
+    <div style="display:flex;gap:6px;margin-bottom:14px" id="estadoChartRangeBtns">
+      <button class="sort-btn active" onclick="setEstadoChartRange(null,this)">Todo</button>
+      <button class="sort-btn" onclick="setEstadoChartRange(365,this)">Año</button>
+      <button class="sort-btn" onclick="setEstadoChartRange(90,this)">3 meses</button>
+      <button class="sort-btn" onclick="setEstadoChartRange(30,this)">Mes</button>
+      <button class="sort-btn" onclick="setEstadoChartRange(7,this)">Semana</button>
+    </div>
+    <div id="estadoChartModalSvg" style="min-height:80px"></div>
     <div class="modal-buttons" style="margin-top:14px">
       <button class="modal-btn primary" onclick="closeModal('modalEstadoChart')">Cerrar</button>
     </div>
