@@ -4197,10 +4197,11 @@ function showCronoHechoFlash() {
     flash.className = 'modal-overlay crono-hecho-flash';
     flash.innerHTML =
       '<div class="crono-hecho-flash-inner">' +
-        '<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-          '<circle class="cf-circle-fill" cx="30" cy="30" r="28"/>' +
-          '<path class="cf-check" d="M 17 31 L 26 40 L 43 22"/>' +
-        '</svg>' +
+        '<div class="cf-badge">' +
+          '<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+            '<path class="cf-check" d="M 17 31 L 26 40 L 43 22"/>' +
+          '</svg>' +
+        '</div>' +
         '<div class="crono-hecho-flash-text">Hecho</div>' +
       '</div>';
     document.body.appendChild(flash);
@@ -4210,14 +4211,14 @@ function showCronoHechoFlash() {
   void flash.offsetWidth; // forzar reflow para reiniciar la animación
   flash.classList.add('visible');
   document.body.classList.add('modal-open');
-  // Quitar tras 1.4s con un breve fade-out
+  // Quitar tras ~2s con un breve fade-out
   clearTimeout(flash._t);
   flash._t = setTimeout(() => {
     flash.classList.remove('visible');
     // Liberar modal-open sólo si no hay otros modales abiertos
     const anyOpen = document.querySelector('.modal-overlay.visible');
     if (!anyOpen) document.body.classList.remove('modal-open');
-  }, 1400);
+  }, 2000);
 }
 
 let _cronoLastAddedPlanId = null;
@@ -11553,13 +11554,16 @@ function _metroUpdateUI() {
 let _cronoClockInterval = null;
 function _startCronoClock() {
   function _tick() {
-    const timeEl = document.getElementById('cronoClockTime');
-    const hoyEl  = document.getElementById('cronoClockHoy');
-    if (!timeEl) return;
+    const hourHand = document.getElementById('cronoClockHourHand');
+    const minHand  = document.getElementById('cronoClockMinHand');
+    const secHand  = document.getElementById('cronoClockSecHand');
+    const hoyEl    = document.getElementById('cronoClockHoy');
+    if (!hourHand && !hoyEl) return;
     const now = new Date();
-    const h = String(now.getHours()).padStart(2, '0');
-    const m = String(now.getMinutes()).padStart(2, '0');
-    timeEl.textContent = h + ':' + m;
+    const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+    if (hourHand) hourHand.setAttribute('transform', 'rotate(' + ((h % 12) * 30 + m * 0.5) + ' 100 100)');
+    if (minHand)  minHand.setAttribute('transform',  'rotate(' + (m * 6 + s * 0.1) + ' 100 100)');
+    if (secHand)  secHand.setAttribute('transform',  'rotate(' + (s * 6) + ' 100 100)');
     if (hoyEl) {
       const min = typeof getMinutosConcentradoHoy === 'function' ? getMinutosConcentradoHoy() : 0;
       hoyEl.textContent = 'hoy · ' + min + ' min';

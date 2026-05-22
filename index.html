@@ -259,11 +259,17 @@
           <circle class="crono-deco-tick-mini" cx="20.7" cy="54"   r="0.7"/>
           <circle class="crono-deco-tick-mini" cx="54" cy="20.7"   r="0.7"/>
 
-          <!-- Live clock: current time and today's minutes (updated by JS) -->
-          <text class="crono-clock-time" id="cronoClockTime"
-                x="100" y="94" text-anchor="middle" dominant-baseline="central">00:00</text>
+          <!-- Reloj analógico de manecillas (rotadas por JS cada segundo).
+               Las marcas de hora ya están dibujadas arriba como deco-ticks. -->
+          <line class="crono-clock-hand crono-clock-hand-hour" id="cronoClockHourHand"
+                x1="100" y1="110" x2="100" y2="60"/>
+          <line class="crono-clock-hand crono-clock-hand-min" id="cronoClockMinHand"
+                x1="100" y1="112" x2="100" y2="42"/>
+          <line class="crono-clock-hand crono-clock-hand-sec" id="cronoClockSecHand"
+                x1="100" y1="116" x2="100" y2="46"/>
+          <circle class="crono-clock-cap" cx="100" cy="100" r="3.2"/>
           <text class="crono-clock-hoy" id="cronoClockHoy"
-                x="100" y="133" text-anchor="middle" dominant-baseline="central">hoy · 0 min</text>
+                x="100" y="170" text-anchor="middle" dominant-baseline="central">hoy · 0 min</text>
         </svg>
 
         <!-- Modo temporizador: slider radial arrastrable. 360° = 120 min, snap a 5. -->
