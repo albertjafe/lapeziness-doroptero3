@@ -1671,6 +1671,7 @@ function renderExtraItem(entity, minutos) {
     '</div>' +
     '<div class="tick-row">' +
       '<button class="tick-btn" onclick="setTick(\'' + planId + '\',\'hecho\',this,' + minPlan + ')">✓ Hecho</button>' +
+      (entity.tipo !== 'actividad' ? '<button class="tick-btn tick-pase-btn" onclick="registerPase(\'' + obraId + '\'' + (entity._movId ? ',\'' + entity._movId + '\'' : '') + ')">Pase</button>' : '') +
       '<input class="tick-note" id="tnote-' + planId + '" type="text" placeholder="nota...">' +
     '</div>' +
     fusionFooter +
@@ -4854,6 +4855,7 @@ function renderMicropaseItem(obra, totalMin, tipoSug) {
     '<div class="plan-item-detail">pase ' + tipoSug + (obra.duracion ? ' · ' + obra.duracion + ' min' : '') + '</div></div>' +
     '<div class="plan-item-time">' + (obra.duracion || '?') + ' min</div></div>' +
     '<div class="tick-row"><button class="tick-btn" onclick="setTick(\'' + obra.id + '\',\'hecho\',this,' + minPlan + ')">✓ Hecho</button>' +
+    '<button class="tick-btn tick-pase-btn" onclick="registerPase(\'' + obra.id + '\')">Pase</button>' +
     '<input class="tick-note" id="tnote-' + obra.id + '" type="text" placeholder="nota..."></div>' +
     renderSolRatingRow(obra.id) +
     '<div class="tick-min-row" id="tickmin-' + obra.id + '" style="display:none;margin-top:6px;align-items:center;gap:8px;flex-wrap:wrap">' +
@@ -4939,6 +4941,7 @@ function renderMovimientoPlanItem(entity, i, minAsignado, energia, cargaTotal) {
     // tick buttons
     + '<div class="tick-row">'
     + '<button class="tick-btn" onclick="setTick(\'' + planId + '\',\'hecho\',this,' + minAsignado + ')">✓ Hecho</button>'
+    + '<button class="tick-btn tick-pase-btn" onclick="registerPase(\'' + entity._obraId + '\'' + (entity._movId ? ',\'' + entity._movId + '\'' : '') + ')">Pase</button>'
     + '<input class="tick-note" id="tnote-' + planId + '" type="text" placeholder="nota...">'
     + '</div>'
     + renderSolRatingRow(planId)
@@ -4958,6 +4961,7 @@ function renderConciertoItem(obra, i, minDeadlineDays) {
     '<div class="plan-item-detail">pase completo' + (obra.duracion ? ' · ' + obra.duracion + ' min' : '') + (diasSinConcierto !== null ? ' · último ' + diasSinConcierto + 'd' : '') + '</div></div>' +
     '<div class="plan-item-time">' + (obra.duracion || '?') + ' min</div></div>' +
     '<div class="tick-row"><button class="tick-btn" onclick="setTick(\'' + obra.id + '\',\'hecho\',this,' + minPlan + ')">✓ Hecho</button>' +
+    '<button class="tick-btn tick-pase-btn" onclick="registerPase(\'' + obra.id + '\')">Pase</button>' +
     '<input class="tick-note" id="tnote-' + obra.id + '" type="text" placeholder="nota..."></div>' +
     renderSolRatingRow(obra.id) +
     '<div class="tick-min-row" id="tickmin-' + obra.id + '" style="display:none;margin-top:6px;align-items:center;gap:8px;flex-wrap:wrap">' +
@@ -5042,6 +5046,7 @@ function renderTrabajoItem(obra, i, minAsignado, energia, cargaTotal, paseAnalis
     '<div class="plan-item-time" style="text-align:right"><div>~' + minAsignado + 'min</div>' +
     '</div></div>' +
     '<div class="tick-row"><button class="tick-btn" onclick="setTick(\'' + obra.id + '\',\'hecho\',this,' + minAsignado + ')">✓ Hecho</button>' +
+    '<button class="tick-btn tick-pase-btn" onclick="registerPase(\'' + obra.id + '\')">Pase</button>' +
     '<input class="tick-note" id="tnote-' + obra.id + '" type="text" placeholder="nota..."></div>' +
     renderSolRatingRow(obra.id) +
     '<div class="tick-min-row" id="tickmin-' + obra.id + '" style="display:none;margin-top:6px;align-items:center;gap:8px;flex-wrap:wrap">' +
@@ -10384,12 +10389,18 @@ function cronoTimerInitDrag() {
     if (!p) return;
     let newMin = cronoTimerXYToMinutes(p.x, p.y);
     const prev = crono.timerMinutes;
-    // Prevent wrap-around at 120: if the angle crosses the 0/360 boundary
-    // while near max, clamp instead of allowing another revolution.
-    if (prev >= TIMER_MAX_MINUTES - TIMER_STEP_MINUTES && newMin <= TIMER_STEP_MINUTES) {
+    // Robust wrap detection using the raw angle, not the snapped value.
+    // Fast swipes can jump past multiple steps so checking newMin <= 5 is not enough.
+    const dx = p.x - 100, dy = p.y - 100;
+    let rawTheta = Math.atan2(dx, -dy);
+    if (rawTheta < 0) rawTheta += 2 * Math.PI; // 0..2π, 0 = 12 o'clock CW
+    const prevAngle = (prev / TIMER_MAX_MINUTES) * 2 * Math.PI;
+    // CW wrap: prev was in "late" sector (>288°) and raw jumped to "early" (<72°)
+    if (prevAngle > Math.PI * 1.6 && rawTheta < Math.PI * 0.4) {
       newMin = TIMER_MAX_MINUTES;
     }
-    if (prev <= TIMER_MIN_MINUTES && newMin >= TIMER_MAX_MINUTES - TIMER_STEP_MINUTES) {
+    // CCW wrap from min: prev was early, raw jumped to late → clamp at min
+    if (prevAngle < Math.PI * 0.4 && rawTheta > Math.PI * 1.6) {
       newMin = TIMER_MIN_MINUTES;
     }
     if (newMin !== prev) {

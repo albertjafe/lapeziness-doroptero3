@@ -1108,6 +1108,7 @@
   .tick-btn.hecho { background: var(--green); color: var(--bg); border-color: var(--green); }
   .tick-btn.parcial { background: var(--orange); color: var(--bg); border-color: var(--orange); }
   .tick-btn.saltado { background: var(--red); color: var(--bg); border-color: var(--red); }
+  .tick-pase-btn { color: var(--accent) !important; border-color: var(--accent) !important; }
   .tick-note { flex: 1; min-width: 100px; background: var(--bg3); border: 1px solid var(--border2); border-radius: 4px; padding: 5px 8px; color: var(--text2); font-family: 'JetBrains Mono', monospace; font-size: 10px; }
   .tick-note:focus { outline: none; border-color: var(--border); }
   .tick-note::placeholder { color: var(--text3); }
