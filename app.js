@@ -10236,19 +10236,19 @@ function _playCronoTick() {
     }
     const ctx = _tickAudioCtx;
     if (ctx.state === 'suspended') ctx.resume();
-    const dur = 0.018;
-    const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < d.length; i++) {
-      d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.22));
-    }
-    const src = ctx.createBufferSource();
-    src.buffer = buf;
-    const flt = ctx.createBiquadFilter();
-    flt.type = 'bandpass'; flt.frequency.value = 950; flt.Q.value = 0.9;
-    const g = ctx.createGain(); g.gain.value = 0.42;
-    src.connect(flt); flt.connect(g); g.connect(ctx.destination);
-    src.start();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(700, now);
+    osc.frequency.exponentialRampToValueAtTime(320, now + 0.011);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.055, now + 0.001);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.018);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.022);
   } catch(e) {}
 }
 
