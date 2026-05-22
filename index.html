@@ -195,7 +195,9 @@
           <button class="metro-btn" onclick="metroBpm(+1)">+1</button>
         </div>
         <div class="metro-row metro-main" onclick="metroToggle()" title="Toca para iniciar/pausar">
-          <span class="metro-bpm-main" id="metroBpmMain">80</span>
+          <div class="metro-bpm-reel">
+            <span class="metro-bpm-main" id="metroBpmMain">80</span>
+          </div>
         </div>
         <div class="metro-row metro-coarse">
           <button class="metro-btn" onclick="metroBpm(-5)">-5</button>
@@ -203,9 +205,14 @@
           <button class="metro-btn" onclick="metroBpm(+5)">+5</button>
         </div>
       </div>
+      <!-- Beat indicator: flashes on every tick -->
+      <div class="metro-beat-row">
+        <span class="metro-beat-dot" id="metroBeatDot"></span>
+      </div>
       <div class="metro-label-row">
         <span class="metro-tempo-label" id="metroTempoLabel">Andante</span>
         <span class="metro-state-dot" id="metroStateDot"></span>
+        <button class="metro-tap-btn" id="metroTapBtn" onclick="metroTapTempo()" title="Toca el ritmo para calcular el tempo">TAP</button>
       </div>
       <input type="range" class="metro-slider" id="metroSlider"
              min="20" max="250" value="80"

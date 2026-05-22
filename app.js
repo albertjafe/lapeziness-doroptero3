@@ -11398,10 +11398,13 @@ function cronoFallidaBorrarRegistro() {
 // ── Metrónomo ────────────────────────────────────────────────────────────────
 
 let _metroBpm        = 80;
+let _metroPrevBpm    = 80;
 let _metroRunning    = false;
 let _metroNextTime   = 0;
+let _metroBeatCount  = 0;
 let _metroTimer      = null;
 let _metroAudioCtx   = null;
+let _metroTaps       = [];
 
 const _TEMPO_MARKS = [
   { max:  39, label: 'Larghissimo' },
@@ -11430,19 +11433,40 @@ function _metroGetCtx() {
 
 function _metroPlayTick(isAccent) {
   try {
-    const ctx  = _metroGetCtx();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    const now  = ctx.currentTime;
-    const freq = isAccent ? 1320 : 880;
-    osc.frequency.setValueAtTime(freq, now);
-    gain.gain.setValueAtTime(isAccent ? 0.18 : 0.10, now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
-    osc.start(now);
-    osc.stop(now + 0.05);
+    const ctx = _metroGetCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+    // Compressor prevents clipping at high gain
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.setValueAtTime(-6, now);
+    comp.ratio.setValueAtTime(4, now);
+    comp.connect(ctx.destination);
+    // Sharp square-wave click (cuts through piano sound)
+    const cOsc = ctx.createOscillator(); const cGain = ctx.createGain();
+    cOsc.type = 'square';
+    cOsc.frequency.setValueAtTime(isAccent ? 2200 : 1700, now);
+    cOsc.connect(cGain); cGain.connect(comp);
+    cGain.gain.setValueAtTime(isAccent ? 0.9 : 0.7, now);
+    cGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.015);
+    cOsc.start(now); cOsc.stop(now + 0.02);
+    // Tonal body for pitch clarity
+    const bOsc = ctx.createOscillator(); const bGain = ctx.createGain();
+    bOsc.frequency.setValueAtTime(isAccent ? 880 : 660, now);
+    bOsc.connect(bGain); bGain.connect(comp);
+    bGain.gain.setValueAtTime(isAccent ? 0.7 : 0.5, now);
+    bGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+    bOsc.start(now); bOsc.stop(now + 0.1);
+    _metroFlashBeat(isAccent);
   } catch (e) {}
+}
+
+function _metroFlashBeat(isAccent) {
+  const el = document.getElementById('metroBeatDot');
+  if (!el) return;
+  el.classList.remove('beat', 'beat-accent');
+  void el.offsetWidth;
+  el.classList.add('beat');
+  if (isAccent) el.classList.add('beat-accent');
 }
 
 function _metroSchedule() {
@@ -11450,7 +11474,8 @@ function _metroSchedule() {
   const interval = 60000 / _metroBpm;
   const now = Date.now();
   if (now >= _metroNextTime - 8) {
-    _metroPlayTick(false);
+    _metroPlayTick(_metroBeatCount === 0);
+    _metroBeatCount = (_metroBeatCount + 1) % 4;
     _metroNextTime = (now < _metroNextTime) ? _metroNextTime + interval : now + interval;
   }
   _metroTimer = setTimeout(_metroSchedule, Math.max(4, _metroNextTime - Date.now() - 8));
@@ -11459,8 +11484,9 @@ function _metroSchedule() {
 function metroToggle() {
   _metroRunning = !_metroRunning;
   if (_metroRunning) {
-    // Resume suspended AudioContext (iOS requires user gesture)
     if (_metroAudioCtx && _metroAudioCtx.state === 'suspended') _metroAudioCtx.resume();
+    _metroBeatCount = 0;
+    _metroTaps = [];
     _metroNextTime = Date.now();
     _metroSchedule();
   } else {
@@ -11474,6 +11500,7 @@ function metroBpm(delta) {
 }
 
 function metroSetBpm(bpm) {
+  _metroPrevBpm = _metroBpm;
   _metroBpm = Math.max(20, Math.min(250, Math.round(bpm)));
   if (_metroRunning) {
     clearTimeout(_metroTimer);
@@ -11483,6 +11510,19 @@ function metroSetBpm(bpm) {
   _metroUpdateUI();
 }
 
+function metroTapTempo() {
+  const now = Date.now();
+  _metroTaps = _metroTaps.filter(t => now - t < 3500);
+  _metroTaps.push(now);
+  // Visual feedback on the tap button
+  const btn = document.getElementById('metroTapBtn');
+  if (btn) { btn.classList.add('tapped'); setTimeout(() => btn.classList.remove('tapped'), 120); }
+  if (_metroTaps.length < 2) return;
+  let total = 0;
+  for (let i = 1; i < _metroTaps.length; i++) total += _metroTaps[i] - _metroTaps[i - 1];
+  metroSetBpm(Math.round(60000 / (total / (_metroTaps.length - 1))));
+}
+
 function _metroUpdateUI() {
   const mainEl  = document.getElementById('metroBpmMain');
   const prevEl  = document.getElementById('metroBpmPrev');
@@ -11490,13 +11530,20 @@ function _metroUpdateUI() {
   const labelEl = document.getElementById('metroTempoLabel');
   const dotEl   = document.getElementById('metroStateDot');
   const slider  = document.getElementById('metroSlider');
-  if (mainEl)  mainEl.textContent  = _metroBpm;
+  if (mainEl && mainEl.textContent !== String(_metroBpm)) {
+    const dir = _metroBpm > _metroPrevBpm ? 1 : -1;
+    mainEl.textContent = _metroBpm;
+    mainEl.style.animation = 'none';
+    void mainEl.offsetWidth;
+    mainEl.style.animation = dir > 0
+      ? 'metroRollUp 0.18s cubic-bezier(0.16,1,0.3,1)'
+      : 'metroRollDown 0.18s cubic-bezier(0.16,1,0.3,1)';
+  }
+  if (mainEl)  mainEl.style.color  = _metroRunning ? 'var(--accent)' : '';
   if (prevEl)  prevEl.textContent  = _metroBpm - 1;
   if (nextEl)  nextEl.textContent  = _metroBpm + 1;
   if (labelEl) labelEl.textContent = _metroTempoLabel(_metroBpm);
   if (dotEl)   dotEl.className     = 'metro-state-dot' + (_metroRunning ? ' running' : '');
-  const mainEl2 = document.getElementById('metroBpmMain');
-  if (mainEl2) mainEl2.style.color = _metroRunning ? 'var(--accent)' : '';
   if (slider)  slider.value        = _metroBpm;
 }
 

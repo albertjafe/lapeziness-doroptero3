@@ -2687,25 +2687,40 @@
     text-align: center;
     opacity: 0.5;
   }
+  .metro-bpm-reel {
+    overflow: hidden;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 110px;
+  }
+  @keyframes metroRollUp {
+    from { transform: translateY(55%); opacity: 0; }
+    to   { transform: translateY(0);   opacity: 1; }
+  }
+  @keyframes metroRollDown {
+    from { transform: translateY(-55%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
   .metro-bpm-main {
     font-family: 'Cormorant Garamond', serif;
     font-size: 64px;
     font-weight: 300;
     color: var(--text);
-    width: 100px;
+    width: 110px;
     text-align: center;
     line-height: 1;
     letter-spacing: -0.02em;
     transition: color 0.2s;
+    display: block;
   }
-  .metro-state-dot.running + .metro-bpm-main,
-  .metro-main:has(+ .metro-state-dot.running) .metro-bpm-main { color: var(--accent); }
   .metro-label-row {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    margin: 4px 0 8px;
+    margin: 2px 0 8px;
   }
   .metro-tempo-label {
     font-family: 'JetBrains Mono', monospace;
@@ -2723,6 +2738,51 @@
   .metro-state-dot.running {
     background: var(--accent);
     box-shadow: 0 0 6px var(--accent);
+  }
+  /* Beat flash indicator */
+  .metro-beat-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 6px 0 2px;
+  }
+  .metro-beat-dot {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--bg3);
+    border: 1.5px solid var(--border);
+    transition: none;
+  }
+  @keyframes metroBeatFlash {
+    0%   { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent), 0 0 22px var(--accent); transform: scale(1.35); }
+    60%  { background: color-mix(in srgb, var(--accent) 30%, transparent); box-shadow: 0 0 6px var(--accent); transform: scale(1.1); }
+    100% { background: var(--bg3); border-color: var(--border); box-shadow: none; transform: scale(1); }
+  }
+  @keyframes metroBeatFlashAccent {
+    0%   { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 16px var(--accent), 0 0 36px var(--accent); transform: scale(1.6); }
+    60%  { background: color-mix(in srgb, var(--accent) 40%, transparent); box-shadow: 0 0 10px var(--accent); transform: scale(1.2); }
+    100% { background: var(--bg3); border-color: var(--border); box-shadow: none; transform: scale(1); }
+  }
+  .metro-beat-dot.beat { animation: metroBeatFlash 0.28s ease-out forwards; }
+  .metro-beat-dot.beat.beat-accent { animation: metroBeatFlashAccent 0.28s ease-out forwards; }
+  /* Tap tempo button */
+  .metro-tap-btn {
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: 5px;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    padding: 3px 9px;
+    cursor: pointer;
+    transition: border-color 0.12s, color 0.12s, background 0.12s;
+  }
+  .metro-tap-btn:active,
+  .metro-tap-btn.tapped {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--bg3);
   }
   .metro-slider {
     width: 100%;
