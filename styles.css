@@ -2749,9 +2749,6 @@
     background: var(--accent);
     cursor: pointer;
   }
-  /* Oculto en modo concentración */
-  body.crono-focus .crono-metro { display: none; }
-
   .crono-idle-message {
     font-family: "Cormorant Garamond", serif;
     font-size: 19px;

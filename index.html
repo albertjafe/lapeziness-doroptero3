@@ -186,6 +186,32 @@
 
   <div class="crono-wrap">
 
+    <!-- Metrónomo: visible en todos los estados (idle, running, paused) -->
+    <div class="crono-metro" id="cronoMetro">
+      <div class="metro-display">
+        <div class="metro-row metro-fine">
+          <button class="metro-btn" onclick="metroBpm(-1)">-1</button>
+          <span class="metro-bpm-ctx" id="metroBpmPrev">79</span>
+          <button class="metro-btn" onclick="metroBpm(+1)">+1</button>
+        </div>
+        <div class="metro-row metro-main" onclick="metroToggle()" title="Toca para iniciar/pausar">
+          <span class="metro-bpm-main" id="metroBpmMain">80</span>
+        </div>
+        <div class="metro-row metro-coarse">
+          <button class="metro-btn" onclick="metroBpm(-5)">-5</button>
+          <span class="metro-bpm-ctx" id="metroBpmNext">81</span>
+          <button class="metro-btn" onclick="metroBpm(+5)">+5</button>
+        </div>
+      </div>
+      <div class="metro-label-row">
+        <span class="metro-tempo-label" id="metroTempoLabel">Andante</span>
+        <span class="metro-state-dot" id="metroStateDot"></span>
+      </div>
+      <input type="range" class="metro-slider" id="metroSlider"
+             min="20" max="250" value="80"
+             oninput="metroSetBpm(parseInt(this.value))">
+    </div>
+
     <!-- FASE A: IDLE -->
     <div class="crono-stage crono-idle-wrap" id="cronoStageIdle">
 
@@ -194,32 +220,6 @@
         <button class="crono-mode-opt active" data-mode="stopwatch" onclick="cronoSetMode('stopwatch')">Cronómetro</button>
         <button class="crono-mode-opt" data-mode="timer" onclick="cronoSetMode('timer')">Temporizador</button>
         <span class="crono-mode-indicator" id="cronoModeIndicator"></span>
-      </div>
-
-      <!-- Metrónomo discreto, integrado sobre el círculo central -->
-      <div class="crono-metro" id="cronoMetro">
-        <div class="metro-display">
-          <div class="metro-row metro-fine">
-            <button class="metro-btn" onclick="metroBpm(-1)">-1</button>
-            <span class="metro-bpm-ctx" id="metroBpmPrev">79</span>
-            <button class="metro-btn" onclick="metroBpm(+1)">+1</button>
-          </div>
-          <div class="metro-row metro-main" onclick="metroToggle()" title="Toca para iniciar/pausar">
-            <span class="metro-bpm-main" id="metroBpmMain">80</span>
-          </div>
-          <div class="metro-row metro-coarse">
-            <button class="metro-btn" onclick="metroBpm(-5)">-5</button>
-            <span class="metro-bpm-ctx" id="metroBpmNext">81</span>
-            <button class="metro-btn" onclick="metroBpm(+5)">+5</button>
-          </div>
-        </div>
-        <div class="metro-label-row">
-          <span class="metro-tempo-label" id="metroTempoLabel">Andante</span>
-          <span class="metro-state-dot" id="metroStateDot"></span>
-        </div>
-        <input type="range" class="metro-slider" id="metroSlider"
-               min="20" max="250" value="80"
-               oninput="metroSetBpm(parseInt(this.value))">
       </div>
 
       <div class="crono-idle-message" id="cronoIdleMessage">Empieza tu sesión de hoy</div>
