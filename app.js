@@ -1704,6 +1704,13 @@ function compasBarColor(pct) {
   return 'var(--orange)';
 }
 
+const _saveCompasTimers = {};
+function debouncedSaveCompas(obraId, movId, field, val) {
+  const key = (movId || '') + ':' + field;
+  clearTimeout(_saveCompasTimers[key]);
+  _saveCompasTimers[key] = setTimeout(() => saveCompas(obraId, movId, field, val), 700);
+}
+
 function saveCompas(obraId, movId, field, val) {
   const entity = movId ? findMovimiento(obraId, movId) : findObra(obraId);
   if (!entity) return;
@@ -1722,7 +1729,17 @@ function saveCompas(obraId, movId, field, val) {
     }
   }
   saveData();
-  rerenderObraCard(obraId);
+  // Actualización quirúrgica de la barra (sin re-render del card completo,
+  // para no destruir el input en el que el usuario puede seguir escribiendo).
+  const elBase = movId ? 'mov-compas-' + obraId + '-' + movId : 'obra-compas-' + obraId;
+  const pct = compasPercent(entity);
+  const barColor = compasBarColor(pct);
+  const pctStr = pct !== null ? pct + '%' : '—';
+  const barW = pct !== null ? pct : 0;
+  const barFillEl = document.getElementById(elBase + '-bar-fill');
+  const pctEl     = document.getElementById(elBase + '-pct');
+  if (barFillEl) { barFillEl.style.width = barW + '%'; barFillEl.style.background = barColor; }
+  if (pctEl)     { pctEl.textContent = pctStr; pctEl.style.color = barColor; }
 }
 
 // ── MINUTOS ───────────────────────────────────────────────────────────────────
@@ -4537,9 +4554,7 @@ function generateSession() {
     .reduce((min, ev) => Math.min(min, Math.ceil((new Date(ev.fecha) - now) / 86400000)), 999);
 
   // ── Obras conciertables ───────────────────────────────────────────────────
-  const obrasConciertables = obras.filter(o =>
-    (obraFase(o) !== 'digitando') && o.origen !== 'recuperacion'
-  );
+  const obrasConciertables = obras.filter(o => obraFase(o) !== 'digitando');
   const ratioConciertable = obrasConciertables.length / Math.max(obras.length, 1);
 
   // ── Tipo de sesión ────────────────────────────────────────────────────────
@@ -4572,7 +4587,6 @@ function generateSession() {
     const fase = obraFase(o);
 
     score += (o.esc || 1) < 7 ? 20 : 10;
-    if (o.origen === 'recuperacion') score += 20;
 
     // Pasajes — only for obra-level entries (movements don't have pasajes)
     if (!o._isMovimiento) {
@@ -4607,7 +4621,6 @@ function generateSession() {
       const dias = Math.floor((now - new Date(lastPaseDate)) / 86400000);
       if (fase === 'consolidando' && dias > 2) score += 10;
       if (fase === 'mantenimiento' && dias > 7) score += 8;
-      if (o.origen === 'recuperacion' && dias > 1) score += 12;
       const { movId } = parsePlanId(planId);
       const fueEnSesion = db.sesiones
         .filter(s => (now - new Date(s.date)) <= 7 * 86400000)
@@ -4710,7 +4723,7 @@ function generateSession() {
     let tiempoRestante = totalMin;
     const seleccionadas = [];
     // concierto uses scoredObras: full pieces (movimientos not split here)
-    for (const o of scoredObras.filter(x => obraFase(x) !== 'digitando' && x.origen !== 'recuperacion')) {
+    for (const o of scoredObras.filter(x => obraFase(x) !== 'digitando')) {
       const dur = (o.duracion || 8) + 2;
       if (tiempoRestante - dur >= 0) { seleccionadas.push(o); tiempoRestante -= dur; }
       if (seleccionadas.length >= 6) break;
@@ -4768,7 +4781,6 @@ function generateSession() {
       if (fase === 'mantenimiento')    minimo = dur + Math.max(3, Math.round(dur * 0.25));
       else if (fase === 'digitando')   minimo = Math.max(12, Math.round(dur * 1.5));
       else /* consolidando */          minimo = dur + Math.max(8, Math.round(dur * 0.5));
-      if (o.origen === 'recuperacion') minimo = Math.max(minimo, dur + 8);
       return minimo;
     });
 
@@ -4973,13 +4985,12 @@ function renderConciertoItem(obra, i, minDeadlineDays) {
 
 function renderTrabajoItem(obra, i, minAsignado, energia, cargaTotal, paseAnalisis) {
   const pasajosActivos = (obra.pasajes || []).filter(p => p.status === 'activo');
-  const esRecuperacion = obra.origen === 'recuperacion';
   const fase = obraFase(obra);
 
   // ── Pase al principio: usa deadline POR OBRA ─────────────────────────────
   const urgObra = computeUrgencia(obra.id);
   const deadlineObra = urgObra.dias || 999;
-  const paseAlPrincipio = !esRecuperacion && (
+  const paseAlPrincipio = (
     fase === 'mantenimiento' ||
     deadlineObra <= 7 ||
     (fase === 'consolidando' && energia === 'alta' && i === 0)
@@ -5142,10 +5153,7 @@ function renderObraCard(o, idx) {
     else if (last3.filter(t => t === 'saltado').length >= 2) tendencia = '<span class="obra-tendencia" style="color:var(--red)">↓ atención</span>';
   }
 
-  // Origen tag
-  const origenTag = o.origen === 'recuperacion'
-    ? '<span class="origen-tag recuperacion">Recuperación</span>'
-    : '';
+  const origenTag = '';
 
   const tipoIcons = { solo: 'solo', informal: 'amigos', escena: '🎭', tecnico: 'tec', memoria: 'mem', concierto: '🎭' };
   const paseHistHtml = (o.paseHistory||[]).slice(0,5).map(p => {
@@ -5794,22 +5802,24 @@ function renderCompasWidget(obraId, movId, entity) {
       <div style="display:flex;align-items:center;gap:4px">
         <input class="compas-field" id="${elBase}-actual" type="number" min="0"
           value="${actual}" placeholder="0"
+          oninput="debouncedSaveCompas('${obraId}',${movId ? "'"+movId+"'" : 'null'},'compasActual',this.value)"
           onblur="saveCompas('${obraId}',${movId ? "'"+movId+"'" : 'null'},'compasActual',this.value)"
           title="Compás hasta donde llegas">
         <span class="compas-sep">de</span>
         <input class="compas-field" id="${elBase}-total" type="number" min="1"
           value="${total}" placeholder="total"
+          oninput="debouncedSaveCompas('${obraId}',${movId ? "'"+movId+"'" : 'null'},'compasesTotal',this.value)"
           onblur="saveCompas('${obraId}',${movId ? "'"+movId+"'" : 'null'},'compasesTotal',this.value)"
           title="Compases totales de la obra/movimiento">
         <span class="compas-sep">cc.</span>
       </div>
       <div class="compas-bar-wrap">
         <div class="compas-bar-track">
-          <div class="compas-bar-fill" style="width:${barW}%;background:${barColor}"></div>
+          <div class="compas-bar-fill" id="${elBase}-bar-fill" style="width:${barW}%;background:${barColor}"></div>
         </div>
         <div class="compas-label-row">
           <span>aprendido</span>
-          <span style="color:${barColor};font-size:10px;font-family:'Cormorant Garamond',serif">${pctStr}</span>
+          <span id="${elBase}-pct" style="color:${barColor};font-size:10px;font-family:'Cormorant Garamond',serif">${pctStr}</span>
         </div>
       </div>
     </div>
@@ -6002,39 +6012,18 @@ function saveMovScale(obraId, movId, key, value) {
 // ─── ADD OBRA ────────────────────────────────────────────────────────────────
 
 
-let modalOrigenSelected = 'nueva';
-
 function openAddObra() {
   document.getElementById('newObraName').value = '';
   document.getElementById('newObraComposer').value = '';
   modalFaseSelected = 'digitando';
-  modalOrigenSelected = 'nueva';
   document.querySelectorAll('#modalFaseSelector .fase-btn').forEach(b => {
     b.classList.remove('active');
     if (b.classList.contains('digitando')) b.classList.add('active');
   });
-  document.querySelectorAll('#modalOrigenSelector .origen-btn').forEach(b => {
-    b.classList.remove('active');
-    if (b.classList.contains('nueva')) b.classList.add('active');
-  });
   openModal('modalAddObra');
 }
 
-function selectModalOrigen(btn, origen) {
-  modalOrigenSelected = origen;
-  document.querySelectorAll('#modalOrigenSelector .origen-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active', origen);
-  // Si es recuperación, pre-seleccionar consolidando
-  if (origen === 'recuperacion') {
-    modalFaseSelected = 'consolidando';
-    document.querySelectorAll('#modalFaseSelector .fase-btn').forEach(b => {
-      b.classList.remove('active');
-      if (b.classList.contains('consolidando')) b.classList.add('active');
-    });
-  }
-}
-
-// selectModalFase removed
+// selectModalFase / selectModalOrigen removed
 
 let modalTipoSelected = 'obra';
 function selectModalTipo(btn, tipo) {
@@ -6074,7 +6063,7 @@ function addObra() {
     // tampoco origen "nueva/recuperación". Sólo nombre y tiempo.
     tipo: isActividad ? 'actividad' : 'obra',
     estado: isActividad ? null : 'aprendiendo-inicial',
-    origen: isActividad ? null : modalOrigenSelected,
+    origen: null,
     dificultad: isActividad ? null : 3,
     duracion: null,
     apr: isActividad ? null : 1,
@@ -6773,7 +6762,7 @@ function renderEventoCard(ev, isPast, isCompletado) {
   const fechaStr = new Date(ev.fecha).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
   const obrasHtml = obras.map(o => {
-    const faseClass = o.origen === 'recuperacion' ? 'recuperacion' : obraFase(o);
+    const faseClass = obraFase(o);
     return '<span class="evento-obra-chip"><span class="evento-obra-dot ' + faseClass + '"></span>' + o.name + '</span>';
   }).join('');
 
@@ -6957,6 +6946,112 @@ function startBreakTimer(id, totalSecs) {
 
 // ─── ESTADO DIARIO CHART ─────────────────────────────────────────────────────
 
+// Cache for full-screen modal
+let _estadoSesionesCache = [];
+
+// Shared SVG builder — called from inline section and from the full-screen modal.
+function _buildEstadoChartSvg(W, H, sesiones) {
+  const pad = { l: 28, r: 12, t: 12, b: 30 };
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+  const minT = new Date(sesiones[0].date).getTime();
+  const maxT = new Date(sesiones[sesiones.length-1].date).getTime();
+  const rangeT = maxT - minT || 1;
+  const xOf = t => pad.l + ((t - minT) / rangeT) * cW;
+  const yOf = v => pad.t + cH - (Math.max(0, Math.min(100, v)) / 100) * cH;
+
+  // Grid
+  const gridY = [0, 25, 50, 75, 100].map(v => {
+    const y = yOf(v);
+    return '<line x1="' + pad.l + '" y1="' + y + '" x2="' + (W-pad.r) + '" y2="' + y
+      + '" stroke="var(--border2)" stroke-width="' + (v === 50 ? 1 : 0.5) + '" stroke-dasharray="2,3"/>'
+      + '<text x="' + (pad.l-3) + '" y="' + (y+3) + '" text-anchor="end" font-size="6.5" fill="var(--text3)">' + v + '</text>';
+  }).join('');
+
+  const dims = [
+    { key: 'bienestar', color: '#c8a030', label: 'Bienestar', src: 'estado' },
+    { key: 'sueno',     color: '#a090e0', label: 'Sueño',     src: 'estado' },
+    { key: 'rating',    color: '#e07060', label: 'Sesión',    src: 'root'   },
+  ];
+
+  const lines = dims.map(d => {
+    const pts = sesiones
+      .filter(s => d.src === 'root' ? s.rating != null : true)
+      .map(s => {
+        let val;
+        if (d.src === 'root') {
+          val = s.rating;
+        } else if (d.key === 'bienestar') {
+          if (typeof s.estado?.bienestar === 'number') val = s.estado.bienestar;
+          else if (typeof s.estado?.energia === 'number' && typeof s.estado?.claridad === 'number') {
+            val = Math.round((s.estado.energia + s.estado.claridad) / 2);
+          } else val = 50;
+        } else {
+          val = s.estado?.[d.key] || 50;
+        }
+        return { x: xOf(new Date(s.date).getTime()), y: yOf(val), val, date: s.date };
+      });
+    if (pts.length < 2) return '';
+    const pathD = pts.map((p,i) => (i===0?'M':'L') + p.x + ',' + p.y).join(' ');
+    const dotsHtml = pts.map(p =>
+      '<circle cx="' + p.x + '" cy="' + p.y + '" r="3" fill="' + d.color + '" stroke="var(--bg2)" stroke-width="1" opacity="0.85">'
+      + '<title>' + d.label + ': ' + p.val + ' · ' + new Date(p.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'}) + '</title></circle>'
+    ).join('');
+    const dashAttr = d.src === 'root' ? ' stroke-dasharray="5,3"' : '';
+    return '<path d="' + pathD + '" fill="none" stroke="' + d.color + '" stroke-width="1.8" stroke-linejoin="round" opacity="0.85"' + dashAttr + '/>' + dotsHtml;
+  }).join('');
+
+  // X date labels — intervalos temporales con filtro de colisión en píxeles.
+  // Evita el amontonamiento cuando hay muchas sesiones en poco tiempo.
+  const rangeDays = (maxT - minT) / 86400000;
+  const dayMs = 86400000;
+  const tickInterval = rangeDays <= 10  ? dayMs
+    : rangeDays <= 45  ? 7  * dayMs
+    : rangeDays <= 120 ? 14 * dayMs
+    : 30 * dayMs;
+  const firstTickT = Math.ceil(minT / tickInterval) * tickInterval;
+  const candidateTimes = [minT];
+  for (let t = firstTickT; t <= maxT; t += tickInterval) candidateTimes.push(t);
+  if (candidateTimes[candidateTimes.length-1] < maxT) candidateTimes.push(maxT);
+  const minPxGap = Math.max(22, Math.round(cW / 10)); // adapt to chart width
+  const usedXs = [];
+  const xLabels = candidateTimes
+    .filter((t, idx, arr) => arr.indexOf(t) === idx && t >= minT && t <= maxT)
+    .filter(t => {
+      const x = xOf(t);
+      if (usedXs.some(ux => Math.abs(ux - x) < minPxGap)) return false;
+      usedXs.push(x);
+      return true;
+    })
+    .map(t => {
+      const d = new Date(t);
+      const lbl = rangeDays > 90
+        ? d.getDate() + '/' + (d.getMonth()+1) + '/' + String(d.getFullYear()).slice(2)
+        : d.getDate() + '/' + (d.getMonth()+1);
+      return '<text x="' + xOf(t) + '" y="' + (H-5) + '" text-anchor="middle" font-size="6.5" fill="var(--text3)">' + lbl + '</text>';
+    }).join('');
+
+  // TOC attack markers
+  const tocMarkers = (db.tocAtaques || [])
+    .filter(a => a.startTs >= minT && a.startTs <= maxT)
+    .map(a => {
+      const x = xOf(new Date(a.startTs).getTime());
+      const pct = a.peakIntensity || 0;
+      const col = pct >= 70 ? '#c86e88' : pct >= 40 ? '#e09060' : '#a090d0';
+      return '<line x1="' + x + '" y1="' + pad.t + '" x2="' + x + '" y2="' + (pad.t+cH) + '" stroke="' + col + '" stroke-width="1.5" opacity="0.5" stroke-dasharray="2,2"/>'
+        + '<circle cx="' + x + '" cy="' + (pad.t+cH+5) + '" r="3" fill="' + col + '" opacity="0.8"><title>Ataque TOC: ' + pct + '% · ' + new Date(a.startTs).toLocaleDateString('es-ES') + '</title></circle>';
+    }).join('');
+
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">'
+    + gridY + tocMarkers + lines + xLabels + '</svg>';
+}
+
+function openEstadoChartModal() {
+  if (_estadoSesionesCache.length < 2) return;
+  const el = document.getElementById('estadoChartModalSvg');
+  if (el) el.innerHTML = _buildEstadoChartSvg(680, 220, _estadoSesionesCache);
+  openModal('modalEstadoChart');
+}
+
 function renderEstadoSection() {
   const el = document.getElementById('estadoSection');
   if (!el) return;
@@ -6977,80 +7072,9 @@ function renderEstadoSection() {
     return;
   }
 
-  const W = 340, H = 160;
-  const pad = { l: 28, r: 12, t: 12, b: 28 };
-  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
-
-  const minT = new Date(sesionesConEstado[0].date).getTime();
-  const maxT = new Date(sesionesConEstado[sesionesConEstado.length-1].date).getTime();
-  const rangeT = maxT - minT || 1;
-
-  const xOf = t => pad.l + ((t - minT) / rangeT) * cW;
-  const yOf = v => pad.t + cH - (Math.max(0, Math.min(100, v)) / 100) * cH;
-
-  // Grid
-  const gridY = [0, 25, 50, 75, 100].map(v => {
-    const y = yOf(v);
-    return '<line x1="' + pad.l + '" y1="' + y + '" x2="' + (W-pad.r) + '" y2="' + y
-      + '" stroke="var(--border2)" stroke-width="' + (v === 50 ? 1 : 0.5) + '" stroke-dasharray="2,3"/>'
-      + '<text x="' + (pad.l-3) + '" y="' + (y+3) + '" text-anchor="end" font-size="6.5" fill="var(--text3)">' + v + '</text>';
-  }).join('');
-
-  // Lines per dimension. Solo mostramos Bienestar y Sueño (que son las dos
-  // dimensiones reales que el usuario rellena en los sliders). Las antiguas
-  // "Energía/Calma/Motivación" se quitan; bienestar absorbió a las dos
-  // primeras y motivación ya no se pregunta. El rating de la sesión se
-  // muestra como referencia complementaria con línea punteada.
-  const dims = [
-    { key: 'bienestar', color: '#c8a030', label: 'Bienestar', src: 'estado' },
-    { key: 'sueno',     color: '#a090e0', label: 'Sueño',     src: 'estado' },
-    { key: 'rating',    color: '#e07060', label: 'Sesión',    src: 'root'   },
-  ];
-
-  const lines = dims.map(d => {
-    const pts = sesionesConEstado
-      .filter(s => d.src === 'root' ? s.rating != null : true)
-      .map(s => {
-        let val;
-        if (d.src === 'root') {
-          val = s.rating;
-        } else if (d.key === 'bienestar') {
-          // Compatibilidad: si la sesión antigua tiene energia/claridad pero
-          // no bienestar, derivar el bienestar como su media.
-          if (typeof s.estado?.bienestar === 'number') val = s.estado.bienestar;
-          else if (typeof s.estado?.energia === 'number' && typeof s.estado?.claridad === 'number') {
-            val = Math.round((s.estado.energia + s.estado.claridad) / 2);
-          } else val = 50;
-        } else {
-          val = s.estado?.[d.key] || 50;
-        }
-        const x = xOf(new Date(s.date).getTime());
-        const y = yOf(val);
-        return { x, y, val, date: s.date };
-      });
-    if (pts.length < 2) return '';
-    const pathD = pts.map((p,i) => (i===0?'M':'L') + p.x + ',' + p.y).join(' ');
-    const dotsHtml = pts.map(p =>
-      '<circle cx="' + p.x + '" cy="' + p.y + '" r="3" fill="' + d.color + '" stroke="var(--bg2)" stroke-width="1" opacity="0.85">'
-      + '<title>' + d.label + ': ' + p.val + ' · ' + new Date(p.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'}) + '</title></circle>'
-    ).join('');
-    const dashAttr = d.src === 'root' ? ' stroke-dasharray="5,3"' : '';
-    return '<path d="' + pathD + '" fill="none" stroke="' + d.color + '" stroke-width="1.8" stroke-linejoin="round" opacity="0.85"' + dashAttr + '/>' + dotsHtml;
-  }).join('');
-
-  // X date labels (sparse)
-  const showEvery = Math.max(1, Math.ceil(sesionesConEstado.length / 6));
-  const xLabels = sesionesConEstado
-    .filter((_, i) => i === 0 || i === sesionesConEstado.length-1 || i % showEvery === 0)
-    .map(s => {
-      const d = new Date(s.date);
-      return '<text x="' + xOf(d.getTime()) + '" y="' + (H-4) + '" text-anchor="middle" font-size="6.5" fill="var(--text3)">'
-        + d.getDate() + '/' + (d.getMonth()+1) + '</text>';
-    }).join('');
+  _estadoSesionesCache = sesionesConEstado; // for full-screen modal
 
   // Detect pattern: cycles of low BIENESTAR.
-  // Antes esta detección usaba "motivacion" que ya no se pregunta. Ahora la
-  // hacemos sobre bienestar, que es la dimensión actual más cercana.
   let patternNote = '';
   const bienestarSeries = sesionesConEstado.map(s => {
     if (typeof s.estado?.bienestar === 'number') return s.estado.bienestar;
@@ -7078,9 +7102,14 @@ function renderEstadoSection() {
     patternNote = '<div style="font-size:9px;color:var(--text3);margin-top:6px">Registra más sesiones para detectar tu ciclo de bienestar.</div>';
   }
 
-  // Recent averages
+  // Dims definition (shared with helper — duplicated here for avgBlock)
+  const _statDims = [
+    { key: 'bienestar', color: '#c8a030', label: 'Bienestar', src: 'estado' },
+    { key: 'sueno',     color: '#a090e0', label: 'Sueño',     src: 'estado' },
+    { key: 'rating',    color: '#e07060', label: 'Sesión',    src: 'root'   },
+  ];
   const recent = sesionesConEstado.slice(-7);
-  const avgBlock = dims.map(d => {
+  const avgBlock = _statDims.map(d => {
     const vals = recent
       .map(s => {
         if (d.src === 'root') return s.rating;
@@ -7102,19 +7131,8 @@ function renderEstadoSection() {
       + '</div>';
   }).join('');
 
-  const legend = dims.map(d => '<span style="color:' + d.color + '">— ' + d.label + '</span>').join(' ');
-
-  // TOC attack markers on the chart
-  const tocMarkers = (db.tocAtaques || [])
-    .filter(a => a.startTs >= minT && a.startTs <= maxT)
-    .map(a => {
-      const x = xOf(new Date(a.startTs).getTime());
-      const pct = a.peakIntensity || 0;
-      const col = pct >= 70 ? '#c86e88' : pct >= 40 ? '#e09060' : '#a090d0';
-      return '<line x1="' + x + '" y1="' + pad.t + '" x2="' + x + '" y2="' + (pad.t+cH) + '" stroke="' + col + '" stroke-width="1.5" opacity="0.5" stroke-dasharray="2,2"/>'
-        + '<circle cx="' + x + '" cy="' + (pad.t+cH+5) + '" r="3" fill="' + col + '" opacity="0.8"><title>Ataque TOC: ' + pct + '% · ' + new Date(a.startTs).toLocaleDateString('es-ES') + '</title></circle>';
-    }).join('');
-
+  const legend = _statDims.map(d => '<span style="color:' + d.color + '">— ' + d.label + '</span>').join(' ');
+  const minT = new Date(sesionesConEstado[0].date).getTime();
   const tocLegend = (db.tocAtaques || []).some(a => a.startTs >= minT)
     ? ' <span style="color:#c86e88">| ataques TOC</span>' : '';
 
@@ -7122,11 +7140,13 @@ function renderEstadoSection() {
     + '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">'
     + '<div><div style="font-family:\'Cormorant Garamond\',serif;font-size:18px;color:var(--accent);font-weight:300">Estado diario</div>'
     + '<div style="font-size:8px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase">Últimas ' + sesionesConEstado.length + ' sesiones registradas</div></div>'
-    + '<div style="font-size:8px;color:var(--text3)">Media 7d</div></div>'
+    + '<div style="display:flex;align-items:center;gap:10px">'
+    + '<div style="font-size:8px;color:var(--text3)">Media 7d</div>'
+    + '<button onclick="openEstadoChartModal()" style="font-family:\'JetBrains Mono\',monospace;font-size:8px;padding:3px 9px;background:transparent;border:1px solid var(--border2);border-radius:5px;color:var(--text3);cursor:pointer">↗ ampliar</button>'
+    + '</div></div>'
     + '<div style="display:flex;gap:4px;margin-bottom:12px">' + avgBlock + '</div>'
-    + '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">'
-    + gridY + tocMarkers + lines + xLabels + '</svg>'
-    + '<div style="font-size:7px;color:var(--text3);display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;padding-left:' + pad.l + 'px">' + legend + tocLegend + '</div>'
+    + _buildEstadoChartSvg(340, 160, sesionesConEstado)
+    + '<div style="font-size:7px;color:var(--text3);display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;padding-left:28px">' + legend + tocLegend + '</div>'
     + patternNote
     + '</div>';
 }
@@ -7776,14 +7796,33 @@ function renderObrasChart() {
       <text x="${PAD.left - 3}" y="${y + 3.5}" text-anchor="end" font-size="8" fill="var(--text3)" font-family="JetBrains Mono,monospace">${v}</text>`;
   }).join('');
 
-  // X axis labels (3 dates)
-  const timeRange = [minT, (minT + maxT) / 2, maxT];
-  const xLabels = timeRange.map(t => {
-    const x = xOf(t, minT, rangeT);
-    const d = new Date(t);
-    const lbl = d.getDate() + '/' + (d.getMonth() + 1);
-    return `<text x="${x}" y="${H - 4}" text-anchor="middle" font-size="8" fill="var(--text3)" font-family="JetBrains Mono,monospace">${lbl}</text>`;
-  }).join('');
+  // X axis labels — time-based with collision check
+  const xRangeDays = (maxT - minT) / 86400000;
+  const xDayMs = 86400000;
+  const xTickInterval = xRangeDays <= 10  ? xDayMs
+    : xRangeDays <= 45  ? 7  * xDayMs
+    : xRangeDays <= 120 ? 14 * xDayMs
+    : 30 * xDayMs;
+  const xFirstTick = Math.ceil(minT / xTickInterval) * xTickInterval;
+  const xCands = [minT];
+  for (let t = xFirstTick; t <= maxT; t += xTickInterval) xCands.push(t);
+  if (xCands[xCands.length-1] < maxT) xCands.push(maxT);
+  const xUsedXs = [];
+  const xLabels = xCands
+    .filter((t, idx, arr) => arr.indexOf(t) === idx && t >= minT && t <= maxT)
+    .filter(t => {
+      const x = xOf(t, minT, rangeT);
+      if (xUsedXs.some(ux => Math.abs(ux - x) < 32)) return false;
+      xUsedXs.push(x);
+      return true;
+    })
+    .map(t => {
+      const d = new Date(t);
+      const lbl = xRangeDays > 90
+        ? d.getDate() + '/' + (d.getMonth()+1) + '/' + String(d.getFullYear()).slice(2)
+        : d.getDate() + '/' + (d.getMonth()+1);
+      return `<text x="${xOf(t, minT, rangeT).toFixed(1)}" y="${H - 4}" text-anchor="middle" font-size="8" fill="var(--text3)" font-family="JetBrains Mono,monospace">${lbl}</text>`;
+    }).join('');
 
   // Lines + dots per obra
   const paths = series.map(({ obra, points, color }) => {
@@ -11114,6 +11153,15 @@ function cronoUpdateSelectBtn() {
   label.textContent = texto;
 }
 
+// Modo del picker: 'crono' (selecciona obra para el cronómetro) |
+//                 'pase'  (abre registerPase al elegir obra)
+let _obraPickerMode = 'crono';
+
+function openPasePicker() {
+  _obraPickerMode = 'pase';
+  openCronoObraPicker();
+}
+
 // ── Recencia del picker: las últimas obras/actividades elegidas suben arriba ──
 function getCronoPickRecency() {
   try { return JSON.parse(localStorage.getItem('cronoPickRecency') || '{}') || {}; }
@@ -11239,14 +11287,22 @@ function renderCronoObraPicker() {
 // dispara onchange para que la lógica existente (cronoUpdateStartBtn, etc.)
 // se ejecute igual que antes.
 function pickCronoObra(val) {
-  const sel = document.getElementById('cronoObraSelect');
-  if (!sel) return;
   const parts = String(val).split('::');  // 'obra::id' | 'mov::id::movId'
   if (parts.length >= 2) bumpCronoPickRecency(parts[1]);
+  closeModal('modalCronoObraPicker');
+  if (_obraPickerMode === 'pase') {
+    _obraPickerMode = 'crono';
+    const obraId = parts[1];
+    const movId  = parts[0] === 'mov' && parts[2] ? parts[2] : null;
+    if (obraId) registerPase(obraId, movId || undefined);
+    return;
+  }
+  _obraPickerMode = 'crono';
+  const sel = document.getElementById('cronoObraSelect');
+  if (!sel) return;
   sel.value = val;
   sel.dispatchEvent(new Event('change', { bubbles: true }));
   cronoUpdateSelectBtn();
-  closeModal('modalCronoObraPicker');
 }
 
 // ── Fallidas (counter por día, sólo informativo) ────────────────────────────
