@@ -11406,6 +11406,8 @@ let _metroBeatCount  = 0;
 let _metroTimer      = null;
 let _metroAudioCtx   = null;
 let _metroTaps       = [];
+let _metroCurSlot    = null;   // the span currently visible in the reel
+let _metroDispBpm    = null;   // BPM value currently shown
 
 const _TEMPO_MARKS = [
   { max:  39, label: 'Larghissimo' },
@@ -11470,6 +11472,66 @@ function _metroFlashBeat(isAccent) {
   if (isAccent) el.classList.add('beat-accent');
 }
 
+// Two-slot slot-machine animation for the BPM number.
+// dir > 0 = new number enters from below (BPM increased)
+// dir < 0 = new number enters from above (BPM decreased)
+function _metroBpmRoll(newBpm, dir) {
+  const reel = document.getElementById('metroBpmReel');
+  if (!reel) return;
+
+  // Lazily grab the static initial slot on first call
+  if (!_metroCurSlot) _metroCurSlot = reel.querySelector('.metro-bpm-slot');
+
+  const outgoing = _metroCurSlot;
+  const incoming  = document.createElement('span');
+  incoming.className = 'metro-bpm-slot';
+  incoming.textContent = newBpm;
+  incoming.style.color  = _metroRunning ? 'var(--accent)' : '';
+  incoming.style.transform = dir > 0 ? 'translateY(100%)' : 'translateY(-100%)';
+  reel.appendChild(incoming);
+
+  requestAnimationFrame(() => {
+    if (outgoing) {
+      outgoing.style.transition = 'transform 0.24s cubic-bezier(0.65,0,0.35,1)';
+      outgoing.style.transform  = dir > 0 ? 'translateY(-100%)' : 'translateY(100%)';
+      setTimeout(() => { if (outgoing.parentNode) outgoing.remove(); }, 300);
+    }
+    incoming.style.transition = 'transform 0.24s cubic-bezier(0.65,0,0.35,1)';
+    incoming.style.transform  = 'translateY(0)';
+  });
+
+  _metroCurSlot = incoming;
+  _metroDispBpm = newBpm;
+}
+
+// Wheel + touch-swipe on the BPM reel to change tempo
+function _metroInitScroll() {
+  const reel = document.getElementById('metroBpmReel');
+  if (!reel || reel._scrollBound) return;
+  reel._scrollBound = true;
+
+  reel.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    metroBpm(e.deltaY < 0 ? 1 : -1);
+  }, { passive: false });
+
+  let _tY = 0, _tAccum = 0;
+  reel.addEventListener('touchstart', (e) => {
+    _tY     = e.touches[0].clientY;
+    _tAccum = 0;
+  }, { passive: true });
+  reel.addEventListener('touchmove', (e) => {
+    const dy = _tY - e.touches[0].clientY; // positive = swiping up
+    _tAccum += dy;
+    _tY      = e.touches[0].clientY;
+    if (Math.abs(_tAccum) >= 8) {
+      e.preventDefault();
+      metroBpm(_tAccum > 0 ? 1 : -1);
+      _tAccum = _tAccum > 0 ? _tAccum - 8 : _tAccum + 8;
+    }
+  }, { passive: false });
+}
+
 function _metroSchedule() {
   if (!_metroRunning) return;
   const interval = 60000 / _metroBpm;
@@ -11525,24 +11587,32 @@ function metroTapTempo() {
 }
 
 function _metroUpdateUI() {
-  const mainEl  = document.getElementById('metroBpmMain');
   const prevEl  = document.getElementById('metroBpmPrev');
   const nextEl  = document.getElementById('metroBpmNext');
   const labelEl = document.getElementById('metroTempoLabel');
   const dotEl   = document.getElementById('metroStateDot');
   const slider  = document.getElementById('metroSlider');
-  if (mainEl && mainEl.textContent !== String(_metroBpm)) {
-    const dir = _metroBpm > _metroPrevBpm ? 1 : -1;
-    mainEl.textContent = _metroBpm;
-    mainEl.style.animation = 'none';
-    void mainEl.offsetWidth;
-    mainEl.style.animation = dir > 0
-      ? 'metroRollUp 0.18s cubic-bezier(0.16,1,0.3,1)'
-      : 'metroRollDown 0.18s cubic-bezier(0.16,1,0.3,1)';
+
+  // Main BPM: slot-machine roll
+  if (_metroDispBpm !== _metroBpm) {
+    _metroBpmRoll(_metroBpm, _metroBpm > _metroPrevBpm ? 1 : -1);
   }
-  if (mainEl)  mainEl.style.color  = _metroRunning ? 'var(--accent)' : '';
-  if (prevEl)  prevEl.textContent  = _metroBpm - 1;
-  if (nextEl)  nextEl.textContent  = _metroBpm + 1;
+  // Keep current slot's color in sync with running state
+  if (_metroCurSlot) _metroCurSlot.style.color = _metroRunning ? 'var(--accent)' : '';
+
+  // Context numbers: simple crossfade
+  const newPrev = String(_metroBpm - 1), newNext = String(_metroBpm + 1);
+  if (prevEl && prevEl.textContent !== newPrev) {
+    prevEl.textContent = newPrev;
+    prevEl.style.animation = 'none'; void prevEl.offsetWidth;
+    prevEl.style.animation = 'metroCrossIn 0.18s ease-out forwards';
+  }
+  if (nextEl && nextEl.textContent !== newNext) {
+    nextEl.textContent = newNext;
+    nextEl.style.animation = 'none'; void nextEl.offsetWidth;
+    nextEl.style.animation = 'metroCrossIn 0.18s ease-out forwards';
+  }
+
   if (labelEl) labelEl.textContent = _metroTempoLabel(_metroBpm);
   if (dotEl)   dotEl.className     = 'metro-state-dot' + (_metroRunning ? ' running' : '');
   if (slider)  slider.value        = _metroBpm;
@@ -11620,6 +11690,7 @@ function cronoHydrate() {
 
 window.addEventListener('load', function() {
   setTimeout(cronoHydrate, 100);
+  setTimeout(_metroInitScroll, 300);
 });
 
 // Boot the app — runs auth, theme, draft restore, racha, etc.
