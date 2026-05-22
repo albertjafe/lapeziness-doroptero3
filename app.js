@@ -11114,14 +11114,45 @@ function cronoUpdateSelectBtn() {
   label.textContent = texto;
 }
 
+// ── Recencia del picker: las últimas obras/actividades elegidas suben arriba ──
+function getCronoPickRecency() {
+  try { return JSON.parse(localStorage.getItem('cronoPickRecency') || '{}') || {}; }
+  catch (e) { return {}; }
+}
+function bumpCronoPickRecency(obraId) {
+  if (!obraId) return;
+  try {
+    const m = getCronoPickRecency();
+    m[obraId] = Date.now();
+    localStorage.setItem('cronoPickRecency', JSON.stringify(m));
+  } catch (e) {}
+}
+
+// Ajusta la altura del picker al viewport visible. Clave en móvil: cuando el
+// teclado del buscador aparece, visualViewport se encoge y el modal queda
+// contenido en la zona visible (anclado arriba) en lugar de tapado por el teclado.
+function _cronoPickerFit() {
+  const overlay = document.getElementById('modalCronoObraPicker');
+  if (!overlay || !overlay.classList.contains('visible')) return;
+  const modal = overlay.querySelector('.modal');
+  if (!modal) return;
+  const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  modal.style.maxHeight = Math.max(220, Math.round(h - 20)) + 'px';
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', _cronoPickerFit);
+  window.visualViewport.addEventListener('scroll', _cronoPickerFit);
+}
+
 // Abre el modal picker. Resetea el buscador y renderiza.
 function openCronoObraPicker() {
   const search = document.getElementById('cronoObraPickerSearch');
   if (search) search.value = '';
   renderCronoObraPicker();
   openModal('modalCronoObraPicker');
+  _cronoPickerFit();
   // Focus al search tras un pequeño delay para que iOS termine la animación
-  setTimeout(() => { if (search) search.focus(); }, 200);
+  setTimeout(() => { if (search) search.focus(); _cronoPickerFit(); }, 200);
 }
 
 // Renderiza la lista de obras/actividades con su dot de color.
@@ -11132,7 +11163,12 @@ function renderCronoObraPicker() {
   const sel = document.getElementById('cronoObraSelect');
   if (!list) return;
   const q = (search?.value || '').toLowerCase().trim();
-  const obras = (db.obras || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+  const recency = getCronoPickRecency();
+  const obras = (db.obras || []).slice().sort((a, b) => {
+    const ra = recency[a.id] || 0, rb = recency[b.id] || 0;
+    if (ra !== rb) return rb - ra;        // más reciente primero
+    return a.name.localeCompare(b.name);  // sin uso previo: alfabético
+  });
   const currentValue = sel?.value || '';
 
   // Separar actividades de obras para mostrarlas agrupadas
@@ -11205,6 +11241,8 @@ function renderCronoObraPicker() {
 function pickCronoObra(val) {
   const sel = document.getElementById('cronoObraSelect');
   if (!sel) return;
+  const parts = String(val).split('::');  // 'obra::id' | 'mov::id::movId'
+  if (parts.length >= 2) bumpCronoPickRecency(parts[1]);
   sel.value = val;
   sel.dispatchEvent(new Event('change', { bubbles: true }));
   cronoUpdateSelectBtn();

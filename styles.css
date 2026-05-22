@@ -768,6 +768,25 @@
   .modal-overlay.visible .modal {
     opacity: 1;
   }
+  /* Picker de obras/actividades del cronómetro: anclado hacia arriba (estilo
+     paleta de comandos) para que el teclado del buscador no lo tape ni lo
+     empuje fuera de vista. Altura dinámica (dvh) en iOS; JS la afina al
+     visualViewport real cuando el teclado está abierto. */
+  #modalCronoObraPicker {
+    align-items: flex-start;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 18px);
+  }
+  #modalCronoObraPicker .modal {
+    max-height: 84vh;
+    max-height: 84dvh;
+  }
+  @media (max-width: 480px) {
+    #modalCronoObraPicker { align-items: flex-start; padding: 10px 12px; }
+    #modalCronoObraPicker .modal {
+      max-height: 72vh;
+      max-height: 72dvh;
+    }
+  }
   .modal-title {
     font-family: 'Cormorant Garamond', serif;
     font-size: 22px; color: var(--accent); margin-bottom: 16px;
