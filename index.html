@@ -183,6 +183,8 @@
 
   <!-- Texto "hoy te has concentrado X", siempre visible arriba -->
   <div class="crono-concentrado" id="cronoConcentradoText">Hoy te has concentrado 0 minutos</div>
+  <!-- Motivador de hito: tiempo redondeado a la baja al múltiplo de 15min más cercano -->
+  <div class="crono-milestone" id="cronoMilestone"></div>
 
   <div class="crono-wrap">
 
@@ -364,6 +366,27 @@
 
   <!-- Overlay de pausa: difumina toda la pantalla con backdrop y muestra el
        cronómetro de pausa en primer plano. Estilo Forest. -->
+  <!-- Drawer de pases: pestaña lateral visible sólo durante sesión running -->
+  <div class="crono-pase-drawer" id="cronoPaseDrawer">
+    <div class="crono-pase-tab" id="cronoPaseTab" onclick="cronoPaseDrawerToggle()" title="Pases de hoy">PASES</div>
+    <div class="crono-pase-panel" id="cronoPasePanel">
+      <div class="crono-pase-panel-inner">
+        <div class="crono-pase-panel-titulo">Pase inicial</div>
+        <button class="crono-pase-toggle-btn" id="drawerAntesToggle" onclick="drawerTogglePase('antes')">+ añadir</button>
+        <div id="drawerAntesContent" style="display:none">
+          <input type="range" min="0" max="100" step="1" value="50" class="crono-pase-slider" id="drawerAntesSlider" oninput="drawerUpdateSlider('antes',this.value)">
+          <div class="crono-pase-val" id="drawerAntesVal">50%</div>
+        </div>
+        <div class="crono-pase-panel-titulo" style="margin-top:12px">Pase final</div>
+        <button class="crono-pase-toggle-btn" id="drawerDespuesToggle" onclick="drawerTogglePase('despues')">+ añadir</button>
+        <div id="drawerDespuesContent" style="display:none">
+          <input type="range" min="0" max="100" step="1" value="60" class="crono-pase-slider" id="drawerDespuesSlider" oninput="drawerUpdateSlider('despues',this.value)">
+          <div class="crono-pase-val" id="drawerDespuesVal">60%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="crono-pause-overlay" id="cronoPauseOverlay" aria-hidden="true">
     <div class="crono-pause-overlay-inner">
       <div class="crono-pause-overlay-label">Concentración en pausa · Reanuda en</div>

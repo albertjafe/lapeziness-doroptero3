@@ -3708,6 +3708,38 @@ function openHechoDatos(planId, minPlan, opts) {
     if (slD) { slD.value = Math.min(100, lastSol + 5); }
     if (vA) vA.textContent = lastSol + '%';
     if (vD) vD.textContent = Math.min(100, lastSol + 5) + '%';
+
+    // Pre-rellenar desde el drawer de pases si el usuario los anotó durante la sesión
+    if (_cronoDraftPases.antesActive) {
+      _paseAntesActive = true;
+      requestAnimationFrame(() => {
+        const c = document.getElementById('paseAntesContent');
+        const t = document.getElementById('paseAntesToggle');
+        const sl = document.getElementById('paseAntesSlider');
+        const v = document.getElementById('paseAntesVal');
+        if (c) c.style.display = 'block';
+        if (t) t.textContent = '− quitar';
+        if (sl) { sl.value = _cronoDraftPases.antesVal; fillSlider(sl, SOL_COLOR); }
+        if (v) v.textContent = _cronoDraftPases.antesVal + '%';
+        const mem = document.getElementById('hechoMemSection');
+        if (mem && _hechoShowMem) mem.style.display = 'block';
+      });
+    }
+    if (_cronoDraftPases.despuesActive) {
+      _paseDespuesActive = true;
+      requestAnimationFrame(() => {
+        const c = document.getElementById('paseDespuesContent');
+        const t = document.getElementById('paseDespuesToggle');
+        const sl = document.getElementById('paseDespuesSlider');
+        const v = document.getElementById('paseDespuesVal');
+        if (c) c.style.display = 'block';
+        if (t) t.textContent = '− quitar';
+        if (sl) { sl.value = _cronoDraftPases.despuesVal; fillSlider(sl, SOL_COLOR); }
+        if (v) v.textContent = _cronoDraftPases.despuesVal + '%';
+        const mem = document.getElementById('hechoMemSection');
+        if (mem && _hechoShowMem) mem.style.display = 'block';
+      });
+    }
   }
 
   // Pasajes section
@@ -9836,6 +9868,10 @@ const crono = {
   pauseInterval: null,
 };
 
+// Pases registrados durante la sesión (drawer lateral) — se pre-rellenan en el modal Hecho
+let _cronoDraftPases = { antesActive: false, antesVal: 50, despuesActive: false, despuesVal: 60 };
+let _cronoPaseDrawerOpen = false;
+
 // Iconos SVG inline (currentColor para integrarse con la paleta)
 const CRONO_ICONS = {
   pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
@@ -10538,15 +10574,30 @@ function cronoStartTick() {
       if (remainingMs <= 0) {
         clearInterval(crono.tickInterval);
         crono.tickInterval = null;
-        // Pequeña pausa para que se vea el 00:00 antes de finalizar
         setTimeout(() => {
           if (typeof SFX !== 'undefined' && SFX.saveSession) SFX.saveSession();
           cronoFinish();
         }, 150);
       }
     } else {
-      // Modo cronómetro: cuenta hacia arriba
       if (disp) disp.textContent = cronoFmt(elapsedMs);
+    }
+    // Motivador de hito: muestra el tiempo total redondeado al múltiplo de 15min inferior
+    const milestoneEl = document.getElementById('cronoMilestone');
+    if (milestoneEl) {
+      const minHoy = typeof getMinutosConcentradoHoy === 'function' ? getMinutosConcentradoHoy() : 0;
+      const sessionMin = Math.floor(elapsedMs / 60000);
+      const totalMin = minHoy + sessionMin;
+      const milestone = Math.floor(totalMin / 15) * 15;
+      if (milestone >= 15) {
+        const h = Math.floor(milestone / 60);
+        const m = milestone % 60;
+        const t = h > 0 ? (h + 'h' + (m > 0 ? ' ' + m + 'min' : '')) : (m + 'min');
+        milestoneEl.textContent = 'si paras ahora · ' + t;
+        milestoneEl.style.display = '';
+      } else {
+        milestoneEl.style.display = 'none';
+      }
     }
   }, 1000);
 }
@@ -10616,6 +10667,8 @@ function cronoStart() {
   if (!sel) return;
   const resolved = cronoResolveSelectValue(sel.value);
   if (!resolved) { showToast('Elige una obra o movimiento'); return; }
+
+  _cronoPaseDrawerReset();
 
   crono.state = 'running';
   crono.isRest = false;
@@ -10922,6 +10975,55 @@ function cronoReset() {
   // NB: NO reseteamos mode ni timerMinutes — son preferencias persistentes.
   // Las guardamos en localStorage para la próxima sesión.
   cronoSaveState();
+}
+
+// ── Drawer de pases ──────────────────────────────────────────────────────────
+
+function cronoPaseDrawerToggle() {
+  _cronoPaseDrawerOpen = !_cronoPaseDrawerOpen;
+  const drawer = document.getElementById('cronoPaseDrawer');
+  if (drawer) drawer.classList.toggle('open', _cronoPaseDrawerOpen);
+}
+
+function drawerTogglePase(cual) {
+  const isAntes = cual === 'antes';
+  if (isAntes) {
+    _cronoDraftPases.antesActive = !_cronoDraftPases.antesActive;
+  } else {
+    _cronoDraftPases.despuesActive = !_cronoDraftPases.despuesActive;
+  }
+  const active = isAntes ? _cronoDraftPases.antesActive : _cronoDraftPases.despuesActive;
+  const suffix = isAntes ? 'Antes' : 'Despues';
+  const content = document.getElementById('drawer' + suffix + 'Content');
+  const btn = document.getElementById('drawer' + suffix + 'Toggle');
+  if (content) content.style.display = active ? 'block' : 'none';
+  if (btn) btn.textContent = active ? '− quitar' : '+ añadir';
+}
+
+function drawerUpdateSlider(cual, val) {
+  const pct = parseInt(val);
+  if (cual === 'antes') _cronoDraftPases.antesVal = pct;
+  else _cronoDraftPases.despuesVal = pct;
+  const suffix = cual === 'antes' ? 'Antes' : 'Despues';
+  const valEl = document.getElementById('drawer' + suffix + 'Val');
+  if (valEl) valEl.textContent = pct + '%';
+}
+
+function _cronoPaseDrawerReset() {
+  _cronoDraftPases = { antesActive: false, antesVal: 50, despuesActive: false, despuesVal: 60 };
+  _cronoPaseDrawerOpen = false;
+  const drawer = document.getElementById('cronoPaseDrawer');
+  if (drawer) drawer.classList.remove('open');
+  ['Antes','Despues'].forEach(s => {
+    const c = document.getElementById('drawer' + s + 'Content');
+    const b = document.getElementById('drawer' + s + 'Toggle');
+    const v = document.getElementById('drawer' + s + 'Val');
+    if (c) c.style.display = 'none';
+    if (b) b.textContent = '+ añadir';
+    if (v) v.textContent = (s === 'Antes' ? '50' : '60') + '%';
+    const sl = document.getElementById('drawer' + s + 'Slider');
+    if (sl) sl.value = s === 'Antes' ? 50 : 60;
+  });
 }
 
 // ── Cambiar la obra de una tarjeta ya añadida al plan ─────────────────────
@@ -11430,35 +11532,42 @@ function _metroTempoLabel(bpm) {
 }
 
 function _metroGetCtx() {
-  if (!_metroAudioCtx) _metroAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!_metroAudioCtx || _metroAudioCtx.state === 'closed') {
+    _metroAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
   return _metroAudioCtx;
 }
 
 function _metroPlayTick(isAccent) {
   try {
     const ctx = _metroGetCtx();
-    if (ctx.state === 'suspended') ctx.resume();
-    const now = ctx.currentTime;
-    // Compressor prevents clipping at high gain
-    const comp = ctx.createDynamicsCompressor();
-    comp.threshold.setValueAtTime(-6, now);
-    comp.ratio.setValueAtTime(4, now);
-    comp.connect(ctx.destination);
-    // Sharp square-wave click (cuts through piano sound)
-    const cOsc = ctx.createOscillator(); const cGain = ctx.createGain();
-    cOsc.type = 'square';
-    cOsc.frequency.setValueAtTime(isAccent ? 2200 : 1700, now);
-    cOsc.connect(cGain); cGain.connect(comp);
-    cGain.gain.setValueAtTime(isAccent ? 0.9 : 0.7, now);
-    cGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.015);
-    cOsc.start(now); cOsc.stop(now + 0.02);
-    // Tonal body for pitch clarity
-    const bOsc = ctx.createOscillator(); const bGain = ctx.createGain();
-    bOsc.frequency.setValueAtTime(isAccent ? 880 : 660, now);
-    bOsc.connect(bGain); bGain.connect(comp);
-    bGain.gain.setValueAtTime(isAccent ? 0.7 : 0.5, now);
-    bGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
-    bOsc.start(now); bOsc.stop(now + 0.1);
+    const doPlay = () => {
+      try {
+        const now = ctx.currentTime;
+        const comp = ctx.createDynamicsCompressor();
+        comp.threshold.setValueAtTime(-6, now);
+        comp.ratio.setValueAtTime(4, now);
+        comp.connect(ctx.destination);
+        const cOsc = ctx.createOscillator(); const cGain = ctx.createGain();
+        cOsc.type = 'square';
+        cOsc.frequency.setValueAtTime(isAccent ? 2200 : 1700, now);
+        cOsc.connect(cGain); cGain.connect(comp);
+        cGain.gain.setValueAtTime(isAccent ? 0.9 : 0.7, now);
+        cGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.015);
+        cOsc.start(now); cOsc.stop(now + 0.02);
+        const bOsc = ctx.createOscillator(); const bGain = ctx.createGain();
+        bOsc.frequency.setValueAtTime(isAccent ? 880 : 660, now);
+        bOsc.connect(bGain); bGain.connect(comp);
+        bGain.gain.setValueAtTime(isAccent ? 0.7 : 0.5, now);
+        bGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+        bOsc.start(now); bOsc.stop(now + 0.1);
+      } catch (e) {}
+    };
+    if (ctx.state !== 'running') {
+      ctx.resume().then(doPlay).catch(() => {});
+    } else {
+      doPlay();
+    }
     _metroFlashBeat(isAccent);
   } catch (e) {}
 }
