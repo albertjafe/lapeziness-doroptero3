@@ -11434,31 +11434,60 @@ function _metroGetCtx() {
   return _metroAudioCtx;
 }
 
+// White-noise buffer cached after first tick — avoids GC pauses mid-performance
+let _metroNoiseBuf = null;
+function _metroGetNoise() {
+  const ctx = _metroGetCtx();
+  if (!_metroNoiseBuf) {
+    const len = Math.ceil(ctx.sampleRate * 0.08);
+    _metroNoiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = _metroNoiseBuf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  }
+  return _metroNoiseBuf;
+}
+
 function _metroPlayTick(isAccent) {
   try {
     const ctx = _metroGetCtx();
     if (ctx.state === 'suspended') ctx.resume();
     const now = ctx.currentTime;
-    // Compressor prevents clipping at high gain
+
+    // Limiter shared by all layers
     const comp = ctx.createDynamicsCompressor();
-    comp.threshold.setValueAtTime(-6, now);
-    comp.ratio.setValueAtTime(4, now);
+    comp.threshold.setValueAtTime(-3, now);
+    comp.ratio.setValueAtTime(10, now);
+    comp.attack.setValueAtTime(0.0005, now);
+    comp.release.setValueAtTime(0.04, now);
     comp.connect(ctx.destination);
-    // Sharp square-wave click (cuts through piano sound)
-    const cOsc = ctx.createOscillator(); const cGain = ctx.createGain();
-    cOsc.type = 'square';
-    cOsc.frequency.setValueAtTime(isAccent ? 2200 : 1700, now);
-    cOsc.connect(cGain); cGain.connect(comp);
-    cGain.gain.setValueAtTime(isAccent ? 0.9 : 0.7, now);
-    cGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.015);
-    cOsc.start(now); cOsc.stop(now + 0.02);
-    // Tonal body for pitch clarity
-    const bOsc = ctx.createOscillator(); const bGain = ctx.createGain();
-    bOsc.frequency.setValueAtTime(isAccent ? 880 : 660, now);
-    bOsc.connect(bGain); bGain.connect(comp);
-    bGain.gain.setValueAtTime(isAccent ? 0.7 : 0.5, now);
-    bGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
-    bOsc.start(now); bOsc.stop(now + 0.1);
+
+    // ── Layer 1: transient ─────────────────────────────────────────────────
+    // Bandpass-filtered white noise → the physical "click" impact.
+    // This is what makes a woodblock sound like a woodblock, not a beep.
+    const noise = ctx.createBufferSource();
+    noise.buffer = _metroGetNoise();
+    const bpf = ctx.createBiquadFilter();
+    bpf.type = 'bandpass';
+    bpf.frequency.setValueAtTime(isAccent ? 2400 : 1700, now);
+    bpf.Q.value = 1.4;
+    const nGain = ctx.createGain();
+    nGain.gain.setValueAtTime(isAccent ? 1.4 : 1.0, now);
+    nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.010);
+    noise.connect(bpf); bpf.connect(nGain); nGain.connect(comp);
+    noise.start(now); noise.stop(now + 0.013);
+
+    // ── Layer 2: body ──────────────────────────────────────────────────────
+    // Sine with a rapid pitch drop → physical resonance decay.
+    // Real objects ring at a pitch that falls as energy dissipates.
+    const body = ctx.createOscillator();
+    const bGain = ctx.createGain();
+    body.frequency.setValueAtTime(isAccent ? 880 : 660, now);
+    body.frequency.exponentialRampToValueAtTime(isAccent ? 180 : 140, now + 0.065);
+    body.connect(bGain); bGain.connect(comp);
+    bGain.gain.setValueAtTime(isAccent ? 0.85 : 0.65, now);
+    bGain.gain.exponentialRampToValueAtTime(0.001, now + 0.070);
+    body.start(now); body.stop(now + 0.075);
+
     _metroFlashBeat(isAccent);
   } catch (e) {}
 }
