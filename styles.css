@@ -2645,167 +2645,219 @@
   /* ── Fase IDLE ────────────────────────────────────────────────────────── */
   .crono-idle-wrap { text-align: center; }
 
-  /* ── Metrónomo ─────────────────────────────────────────────────────────── */
-  .crono-metro {
-    margin: 0 auto 18px;
-    max-width: 260px;
-    user-select: none;
+  /* ── Metrónomo: drawer lateral derecho ──────────────────────────────────── */
+  .metro-drawer {
+    position: fixed;
+    right: 0;
+    top: 120px;
+    z-index: 90;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
   }
-  .metro-display {
+  .metro-drawer-tab {
+    width: 32px;
+    min-height: 70px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-right: none;
+    border-radius: 10px 0 0 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0;
-  }
-  .metro-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 18px;
-  }
-  .metro-main {
-    cursor: pointer;
-    margin: 2px 0;
-  }
-  .metro-btn {
-    width: 40px; height: 40px;
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--accent);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .metro-btn:active { background: var(--bg3); }
-  .metro-bpm-ctx {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 22px;
-    color: var(--text3);
-    width: 60px;
-    text-align: center;
-    opacity: 0.5;
-  }
-  /* Slot-machine BPM reel */
-  .metro-bpm-reel {
-    position: relative;
-    overflow: hidden;
-    height: 72px;
-    width: 110px;
-    cursor: ns-resize;
-  }
-  .metro-bpm-slot {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 64px;
-    font-weight: 300;
-    color: var(--text);
-    letter-spacing: -0.02em;
-    line-height: 1;
-    will-change: transform;
-  }
-  @keyframes metroCrossIn {
-    from { opacity: 0; }
-    to   { opacity: 0.5; }
-  }
-  .metro-label-row {
-    display: flex;
-    align-items: center;
     justify-content: center;
     gap: 8px;
-    margin: 2px 0 8px;
+    cursor: pointer;
+    padding: 10px 0;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.2s, color 0.2s;
   }
-  .metro-tempo-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text3);
-  }
-  .metro-state-dot {
-    width: 6px; height: 6px;
+  .metro-drawer-tab:hover,
+  .metro-drawer.open .metro-drawer-tab { background: var(--bg2); }
+  .metro-drawer-tab.running { border-color: var(--accent); }
+  .metro-tab-icon { font-size: 16px; color: var(--text2); line-height: 1; }
+  .metro-drawer.open .metro-tab-icon,
+  .metro-drawer-tab.running .metro-tab-icon { color: var(--accent); }
+
+  /* Beat dot (también dentro de la pestaña) */
+  .metro-beat-dot {
+    width: 8px; height: 8px;
     border-radius: 50%;
     background: var(--border);
-    transition: background 0.2s;
-  }
-  .metro-state-dot.running {
-    background: var(--accent);
-    box-shadow: 0 0 6px var(--accent);
-  }
-  /* Beat flash indicator */
-  .metro-beat-row {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 6px 0 2px;
-  }
-  .metro-beat-dot {
-    width: 18px; height: 18px;
-    border-radius: 50%;
-    background: var(--bg3);
-    border: 1.5px solid var(--border);
-    transition: none;
+    transition: background 0.06s, transform 0.06s;
   }
   @keyframes metroBeatFlash {
-    0%   { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent), 0 0 22px var(--accent); transform: scale(1.35); }
-    60%  { background: color-mix(in srgb, var(--accent) 30%, transparent); box-shadow: 0 0 6px var(--accent); transform: scale(1.1); }
-    100% { background: var(--bg3); border-color: var(--border); box-shadow: none; transform: scale(1); }
+    0%   { background: var(--accent); box-shadow: 0 0 8px var(--accent); transform: scale(1.5); }
+    100% { background: var(--border); box-shadow: none; transform: scale(1); }
   }
   @keyframes metroBeatFlashAccent {
-    0%   { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 16px var(--accent), 0 0 36px var(--accent); transform: scale(1.6); }
-    60%  { background: color-mix(in srgb, var(--accent) 40%, transparent); box-shadow: 0 0 10px var(--accent); transform: scale(1.2); }
-    100% { background: var(--bg3); border-color: var(--border); box-shadow: none; transform: scale(1); }
+    0%   { background: var(--accent); box-shadow: 0 0 12px var(--accent); transform: scale(1.9); }
+    100% { background: var(--border); box-shadow: none; transform: scale(1); }
   }
   .metro-beat-dot.beat { animation: metroBeatFlash 0.28s ease-out forwards; }
   .metro-beat-dot.beat.beat-accent { animation: metroBeatFlashAccent 0.28s ease-out forwards; }
-  /* Tap tempo button */
-  .metro-tap-btn {
-    background: transparent;
-    border: 1px solid var(--border2);
-    border-radius: 5px;
-    color: var(--text3);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
-    letter-spacing: 0.12em;
-    padding: 3px 9px;
-    cursor: pointer;
-    transition: border-color 0.12s, color 0.12s, background 0.12s;
+
+  /* Panel deslizable */
+  .metro-drawer-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-right: none;
+    border-radius: 12px 0 0 12px;
+    overflow: hidden;
+    width: 0;
+    transition: width 0.28s cubic-bezier(0.4,0,0.2,1);
   }
-  .metro-tap-btn:active,
-  .metro-tap-btn.tapped {
+  .metro-drawer.open .metro-drawer-panel { width: 210px; }
+  .metro-drawer-inner {
+    padding: 14px 12px 12px;
+    width: 210px;
+    box-sizing: border-box;
+  }
+  .metro-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .metro-panel-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+  .metro-pin-btn {
+    background: none;
+    border: none;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    opacity: 0.4;
+    transition: opacity 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .metro-pin-btn:hover { opacity: 0.8; }
+  .metro-pin-btn.active { opacity: 1; filter: hue-rotate(180deg); }
+
+  /* 3-slot BPM display */
+  .metro-3slot-wrap {
+    height: 162px;
+    overflow: hidden;
+    cursor: ns-resize;
+    position: relative;
+    margin-bottom: 10px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .metro-3slot { position: relative; height: 162px; }
+  .metro-3s {
+    position: absolute;
+    left: 0; right: 0;
+    text-align: center;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    will-change: transform, font-size, opacity;
+    transition:
+      transform 0.24s cubic-bezier(0.65,0,0.35,1),
+      font-size 0.24s cubic-bezier(0.65,0,0.35,1),
+      opacity   0.24s cubic-bezier(0.65,0,0.35,1),
+      color     0.24s ease;
+  }
+  .metro-3s-top {
+    transform: translateY(0px);
+    font-size: 28px; line-height: 54px;
+    opacity: 0.28; color: var(--text3);
+  }
+  .metro-3s-mid {
+    transform: translateY(54px);
+    font-size: 72px; line-height: 54px;
+    opacity: 1; color: var(--text);
+    letter-spacing: -0.02em;
+  }
+  .metro-3s-mid.running { color: var(--accent); }
+  .metro-3s-bot {
+    transform: translateY(108px);
+    font-size: 28px; line-height: 54px;
+    opacity: 0.28; color: var(--text3);
+  }
+
+  /* Play / Tap */
+  .metro-actions-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: stretch;
+  }
+  .metro-play-btn {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    color: var(--text2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+  }
+  .metro-play-btn:hover { background: var(--bg2); }
+  .metro-play-btn.active {
     border-color: var(--accent);
     color: var(--accent);
+    background: transparent;
+  }
+  .metro-play-btn svg { width: 22px; height: 22px; }
+  .metro-tap-big {
+    flex: 1;
+    height: 52px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
     background: var(--bg3);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.1s, transform 0.05s;
+    user-select: none;
   }
-  .metro-slider {
+  .metro-tap-big:active { transform: scale(0.95); background: var(--bg2); }
+  .metro-tap-big.tapped {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+
+  /* Fine adjust row */
+  .metro-fine-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+  .metro-fine-btn {
+    height: 32px;
+    border: 1px solid var(--border2);
+    border-radius: 5px;
+    background: none;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s, color 0.15s;
+  }
+  .metro-fine-btn:hover { background: var(--bg3); color: var(--text); }
+  .metro-fine-btn:active { transform: scale(0.92); }
+
+  .metro-range {
     width: 100%;
-    -webkit-appearance: none;
-    appearance: none;
-    height: 2px;
-    background: var(--border2);
-    border-radius: 2px;
-    outline: none;
-    cursor: pointer;
-  }
-  .metro-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    background: var(--accent);
-    cursor: pointer;
-    box-shadow: 0 0 4px rgba(0,0,0,0.4);
-  }
-  .metro-slider::-moz-range-thumb {
-    width: 14px; height: 14px;
-    border-radius: 50%;
-    border: none;
-    background: var(--accent);
+    accent-color: var(--accent);
     cursor: pointer;
   }
   .crono-idle-message {

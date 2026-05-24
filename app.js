@@ -11508,8 +11508,14 @@ let _metroBeatCount  = 0;
 let _metroTimer      = null;
 let _metroAudioCtx   = null;
 let _metroTaps       = [];
-let _metroCurSlot    = null;   // the span currently visible in the reel
-let _metroDispBpm    = null;   // BPM value currently shown
+let _metroCurSlot    = null;   // legacy — unused after ring-buffer redesign
+let _metroDispBpm    = null;   // BPM value currently shown in the slot
+// Ring-buffer 3-slot display
+let _metroSlotEls    = null;   // [el0, el1, el2]
+let _metroSlotMid    = 1;      // index of the element currently in 'mid' position
+// Drawer state
+let _metroDrawerOpen   = false;
+let _metroDrawerPinned = false;
 
 const _TEMPO_MARKS = [
   { max:  39, label: 'Larghissimo' },
@@ -11584,53 +11590,96 @@ function _metroFlashBeat(isAccent) {
 // Two-slot slot-machine animation for the BPM number.
 // dir > 0 = new number enters from below (BPM increased)
 // dir < 0 = new number enters from above (BPM decreased)
-function _metroBpmRoll(newBpm, dir) {
-  const reel = document.getElementById('metroBpmReel');
-  if (!reel) return;
+// Ring-buffer 3-slot BPM animation: prev (top) / current (mid) / next (bot)
+// Each slot physically slides into the center so the numbers feel connected.
+function _metroSlotInit() {
+  const wrap = document.getElementById('metroBpm3Slot');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  _metroSlotEls = [];
+  for (let i = 0; i < 3; i++) {
+    const el = document.createElement('span');
+    el.className = 'metro-3s';
+    wrap.appendChild(el);
+    _metroSlotEls.push(el);
+  }
+  _metroSlotMid = 1;
+  _metroSlotSetInstant(_metroBpm);
+}
 
-  // Lazily grab the static initial slot on first call
-  if (!_metroCurSlot) _metroCurSlot = reel.querySelector('.metro-bpm-slot');
-
-  const outgoing = _metroCurSlot;
-  const incoming  = document.createElement('span');
-  incoming.className = 'metro-bpm-slot';
-  incoming.textContent = newBpm;
-  incoming.style.color  = _metroRunning ? 'var(--accent)' : '';
-  incoming.style.transform = dir > 0 ? 'translateY(100%)' : 'translateY(-100%)';
-  reel.appendChild(incoming);
-
-  requestAnimationFrame(() => {
-    if (outgoing) {
-      outgoing.style.transition = 'transform 0.24s cubic-bezier(0.65,0,0.35,1)';
-      outgoing.style.transform  = dir > 0 ? 'translateY(-100%)' : 'translateY(100%)';
-      setTimeout(() => { if (outgoing.parentNode) outgoing.remove(); }, 300);
-    }
-    incoming.style.transition = 'transform 0.24s cubic-bezier(0.65,0,0.35,1)';
-    incoming.style.transform  = 'translateY(0)';
+function _metroSlotSetInstant(bpm) {
+  if (!_metroSlotEls) { _metroSlotInit(); return; }
+  _metroSlotMid = 1;
+  const positions = ['top','mid','bot'];
+  _metroSlotEls.forEach((el, i) => {
+    el.style.transition = 'none';
+    el.textContent = bpm + (i - 1);
+    el.className = 'metro-3s metro-3s-' + positions[i] + (_metroRunning && i === 1 ? ' running' : '');
   });
+  requestAnimationFrame(() => { _metroSlotEls.forEach(el => { el.style.transition = ''; }); });
+  _metroDispBpm = bpm;
+}
 
-  _metroCurSlot = incoming;
+function _metroBpmRoll(newBpm, dir) {
+  if (!_metroSlotEls) { _metroSlotInit(); return; }
+  const prevBpm = _metroDispBpm ?? _metroBpm;
+  if (Math.abs(newBpm - prevBpm) > 2) {
+    _metroSlotSetInstant(newBpm);
+    return;
+  }
+  const topIdx = (_metroSlotMid + 2) % 3;
+  const botIdx = (_metroSlotMid + 1) % 3;
+
+  if (dir > 0) {
+    // Scroll up: recycle top element → instant move to bottom with new value
+    const recycled = _metroSlotEls[topIdx];
+    recycled.style.transition = 'none';
+    recycled.textContent = newBpm + 1;
+    recycled.className = 'metro-3s metro-3s-bot';
+    void recycled.offsetWidth;
+    recycled.style.transition = '';
+    _metroSlotMid = (_metroSlotMid + 1) % 3;
+    const newTopIdx = (_metroSlotMid + 2) % 3;
+    requestAnimationFrame(() => {
+      _metroSlotEls[newTopIdx].className = 'metro-3s metro-3s-top';
+      _metroSlotEls[_metroSlotMid].className = 'metro-3s metro-3s-mid' + (_metroRunning ? ' running' : '');
+    });
+  } else {
+    // Scroll down: recycle bot element → instant move to top with new value
+    const recycled = _metroSlotEls[botIdx];
+    recycled.style.transition = 'none';
+    recycled.textContent = newBpm - 1;
+    recycled.className = 'metro-3s metro-3s-top';
+    void recycled.offsetWidth;
+    recycled.style.transition = '';
+    _metroSlotMid = (_metroSlotMid + 2) % 3;
+    const newBotIdx = (_metroSlotMid + 1) % 3;
+    requestAnimationFrame(() => {
+      _metroSlotEls[_metroSlotMid].className = 'metro-3s metro-3s-mid' + (_metroRunning ? ' running' : '');
+      _metroSlotEls[newBotIdx].className = 'metro-3s metro-3s-bot';
+    });
+  }
   _metroDispBpm = newBpm;
 }
 
-// Wheel + touch-swipe on the BPM reel to change tempo
+// Wheel + touch-swipe on the BPM slot to change tempo
 function _metroInitScroll() {
-  const reel = document.getElementById('metroBpmReel');
-  if (!reel || reel._scrollBound) return;
-  reel._scrollBound = true;
+  const wrap = document.getElementById('metroReelWrap');
+  if (!wrap || wrap._scrollBound) return;
+  wrap._scrollBound = true;
 
-  reel.addEventListener('wheel', (e) => {
+  wrap.addEventListener('wheel', (e) => {
     e.preventDefault();
     metroBpm(e.deltaY < 0 ? 1 : -1);
   }, { passive: false });
 
   let _tY = 0, _tAccum = 0;
-  reel.addEventListener('touchstart', (e) => {
+  wrap.addEventListener('touchstart', (e) => {
     _tY     = e.touches[0].clientY;
     _tAccum = 0;
   }, { passive: true });
-  reel.addEventListener('touchmove', (e) => {
-    const dy = _tY - e.touches[0].clientY; // positive = swiping up
+  wrap.addEventListener('touchmove', (e) => {
+    const dy = _tY - e.touches[0].clientY;
     _tAccum += dy;
     _tY      = e.touches[0].clientY;
     if (Math.abs(_tAccum) >= 8) {
@@ -11639,6 +11688,38 @@ function _metroInitScroll() {
       _tAccum = _tAccum > 0 ? _tAccum - 8 : _tAccum + 8;
     }
   }, { passive: false });
+}
+
+// ── Drawer state ──────────────────────────────────────────────────────────────
+function _metroDrawerInit() {
+  _metroDrawerPinned = localStorage.getItem('metro_pinned') === 'true';
+  _metroDrawerOpen   = _metroDrawerPinned;
+  _metroDrawerApplyState();
+  _metroSlotInit();
+  _metroInitScroll();
+}
+
+function metroDrawerToggle() {
+  if (_metroDrawerPinned) return;
+  _metroDrawerOpen = !_metroDrawerOpen;
+  _metroDrawerApplyState();
+}
+
+function metroTogglePin() {
+  _metroDrawerPinned = !_metroDrawerPinned;
+  if (_metroDrawerPinned) _metroDrawerOpen = true;
+  localStorage.setItem('metro_pinned', String(_metroDrawerPinned));
+  _metroDrawerApplyState();
+}
+
+function _metroDrawerApplyState() {
+  const drawer = document.getElementById('metroDrawer');
+  const pinBtn = document.getElementById('metroPinBtn');
+  if (drawer) {
+    drawer.classList.toggle('open', _metroDrawerOpen);
+    drawer.classList.toggle('pinned', _metroDrawerPinned);
+  }
+  if (pinBtn) pinBtn.classList.toggle('active', _metroDrawerPinned);
 }
 
 function _metroSchedule() {
@@ -11676,8 +11757,9 @@ function metroSetBpm(bpm) {
   _metroBpm = Math.max(20, Math.min(250, Math.round(bpm)));
   if (_metroRunning) {
     clearTimeout(_metroTimer);
-    _metroNextTime = Date.now();
-    _metroSchedule();
+    // Keep existing beat position — just reschedule with the new interval.
+    // (Do NOT reset _metroNextTime, that would fire an immediate, jarring tick.)
+    _metroTimer = setTimeout(_metroSchedule, Math.max(4, _metroNextTime - Date.now() - 8));
   }
   _metroUpdateUI();
 }
@@ -11696,35 +11778,33 @@ function metroTapTempo() {
 }
 
 function _metroUpdateUI() {
-  const prevEl  = document.getElementById('metroBpmPrev');
-  const nextEl  = document.getElementById('metroBpmNext');
-  const labelEl = document.getElementById('metroTempoLabel');
-  const dotEl   = document.getElementById('metroStateDot');
   const slider  = document.getElementById('metroSlider');
+  const playBtn = document.getElementById('metroPlayBtn');
 
-  // Main BPM: slot-machine roll
+  // 3-slot BPM roll
   if (_metroDispBpm !== _metroBpm) {
     _metroBpmRoll(_metroBpm, _metroBpm > _metroPrevBpm ? 1 : -1);
   }
-  // Keep current slot's color in sync with running state
-  if (_metroCurSlot) _metroCurSlot.style.color = _metroRunning ? 'var(--accent)' : '';
-
-  // Context numbers: simple crossfade
-  const newPrev = String(_metroBpm - 1), newNext = String(_metroBpm + 1);
-  if (prevEl && prevEl.textContent !== newPrev) {
-    prevEl.textContent = newPrev;
-    prevEl.style.animation = 'none'; void prevEl.offsetWidth;
-    prevEl.style.animation = 'metroCrossIn 0.18s ease-out forwards';
-  }
-  if (nextEl && nextEl.textContent !== newNext) {
-    nextEl.textContent = newNext;
-    nextEl.style.animation = 'none'; void nextEl.offsetWidth;
-    nextEl.style.animation = 'metroCrossIn 0.18s ease-out forwards';
+  // Sync mid slot running color
+  if (_metroSlotEls) {
+    _metroSlotEls[_metroSlotMid].className =
+      'metro-3s metro-3s-mid' + (_metroRunning ? ' running' : '');
   }
 
-  if (labelEl) labelEl.textContent = _metroTempoLabel(_metroBpm);
-  if (dotEl)   dotEl.className     = 'metro-state-dot' + (_metroRunning ? ' running' : '');
-  if (slider)  slider.value        = _metroBpm;
+  // Play/stop button icons
+  if (playBtn) {
+    const playIcon = playBtn.querySelector('.metro-play-icon');
+    const stopIcon = playBtn.querySelector('.metro-stop-icon');
+    if (playIcon) playIcon.style.display = _metroRunning ? 'none' : '';
+    if (stopIcon) stopIcon.style.display = _metroRunning ? '' : 'none';
+    playBtn.classList.toggle('active', _metroRunning);
+  }
+
+  // Tab: accent when running
+  const tab = document.getElementById('metroDrawerTab');
+  if (tab) tab.classList.toggle('running', _metroRunning);
+
+  if (slider) slider.value = _metroBpm;
 }
 
 // ── Entrada / salida de la vista ────────────────────────────────────────────
@@ -11799,8 +11879,37 @@ function cronoHydrate() {
 
 window.addEventListener('load', function() {
   setTimeout(cronoHydrate, 100);
-  setTimeout(_metroInitScroll, 300);
+  setTimeout(_metroDrawerInit, 150);
+  _swUpdateInit();
 });
+
+// ── Service Worker update detection ──────────────────────────────────────────
+let _swReg = null;
+
+function _swUpdateInit() {
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.ready.then(reg => {
+    _swReg = reg;
+    if (reg.waiting) _swShowBanner();
+    reg.addEventListener('updatefound', () => {
+      const nw = reg.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', () => {
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) _swShowBanner();
+      });
+    });
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', () => { window.location.reload(); });
+}
+
+function _swShowBanner() {
+  const b = document.getElementById('swUpdateBanner');
+  if (b) b.style.display = 'flex';
+}
+
+function swDoUpdate() {
+  if (_swReg && _swReg.waiting) _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+}
 
 // Boot the app — runs auth, theme, draft restore, racha, etc.
 initApp();

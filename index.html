@@ -31,6 +31,17 @@
 <!-- SYNC INDICATOR -->
 <div id="syncIndicator">↑ sincronizando…</div>
 
+<!-- SW UPDATE BANNER -->
+<div id="swUpdateBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9998;
+  background:var(--accent);color:var(--bg);padding:11px 20px;
+  align-items:center;justify-content:center;gap:14px;font-size:11px;
+  font-family:'JetBrains Mono',monospace;letter-spacing:0.04em">
+  Nueva versión disponible
+  <button onclick="swDoUpdate()" style="background:var(--bg);color:var(--accent);border:none;
+    border-radius:6px;padding:6px 14px;font-size:11px;font-family:inherit;cursor:pointer;
+    font-weight:600">Actualizar →</button>
+</div>
+
 <div class="topbar">
 <div class="header">
   <div style="display:flex;align-items:center;gap:10px">
@@ -188,39 +199,6 @@
 
   <div class="crono-wrap">
 
-    <!-- Metrónomo: visible en todos los estados (idle, running, paused) -->
-    <div class="crono-metro" id="cronoMetro">
-      <div class="metro-display">
-        <div class="metro-row metro-fine">
-          <button class="metro-btn" onclick="metroBpm(-1)">-1</button>
-          <span class="metro-bpm-ctx" id="metroBpmPrev">79</span>
-          <button class="metro-btn" onclick="metroBpm(+1)">+1</button>
-        </div>
-        <div class="metro-row metro-main" onclick="metroToggle()" title="Toca para iniciar/pausar">
-          <div class="metro-bpm-reel" id="metroBpmReel">
-            <span class="metro-bpm-slot">80</span>
-          </div>
-        </div>
-        <div class="metro-row metro-coarse">
-          <button class="metro-btn" onclick="metroBpm(-5)">-5</button>
-          <span class="metro-bpm-ctx" id="metroBpmNext">81</span>
-          <button class="metro-btn" onclick="metroBpm(+5)">+5</button>
-        </div>
-      </div>
-      <!-- Beat indicator: flashes on every tick -->
-      <div class="metro-beat-row">
-        <span class="metro-beat-dot" id="metroBeatDot"></span>
-      </div>
-      <div class="metro-label-row">
-        <span class="metro-tempo-label" id="metroTempoLabel">Andante</span>
-        <span class="metro-state-dot" id="metroStateDot"></span>
-        <button class="metro-tap-btn" id="metroTapBtn" onclick="metroTapTempo()" title="Toca el ritmo para calcular el tempo">TAP</button>
-      </div>
-      <input type="range" class="metro-slider" id="metroSlider"
-             min="20" max="250" value="80"
-             oninput="metroSetBpm(parseInt(this.value))">
-    </div>
-
     <!-- FASE A: IDLE -->
     <div class="crono-stage crono-idle-wrap" id="cronoStageIdle">
 
@@ -366,6 +344,45 @@
 
   <!-- Overlay de pausa: difumina toda la pantalla con backdrop y muestra el
        cronómetro de pausa en primer plano. Estilo Forest. -->
+
+  <!-- Metrónomo: drawer lateral derecho, siempre disponible en la vista cronómetro -->
+  <div class="metro-drawer" id="metroDrawer">
+    <div class="metro-drawer-tab" id="metroDrawerTab" onclick="metroDrawerToggle()" title="Metrónomo">
+      <span class="metro-tab-icon">♩</span>
+      <span class="metro-beat-dot" id="metroBeatDot"></span>
+    </div>
+    <div class="metro-drawer-panel" id="metroDrawerPanel">
+      <div class="metro-drawer-inner">
+        <div class="metro-panel-header">
+          <span class="metro-panel-title">Metrónomo</span>
+          <button class="metro-pin-btn" id="metroPinBtn" onclick="metroTogglePin()" title="Anclar abierto">📌</button>
+        </div>
+        <!-- 3-slot BPM display: prev / current / next animate together -->
+        <div class="metro-3slot-wrap" id="metroReelWrap">
+          <div class="metro-3slot" id="metroBpm3Slot"></div>
+        </div>
+        <!-- Play/Tap row -->
+        <div class="metro-actions-row">
+          <button class="metro-play-btn" id="metroPlayBtn" onclick="metroToggle()" aria-label="Iniciar/parar">
+            <svg class="metro-play-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <svg class="metro-stop-icon" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+          </button>
+          <button class="metro-tap-big" id="metroTapBtn" onclick="metroTapTempo()">TAP</button>
+        </div>
+        <!-- Fine adjust buttons -->
+        <div class="metro-fine-row">
+          <button class="metro-fine-btn" onclick="metroBpm(-5)">−5</button>
+          <button class="metro-fine-btn" onclick="metroBpm(-1)">−1</button>
+          <button class="metro-fine-btn" onclick="metroBpm(1)">+1</button>
+          <button class="metro-fine-btn" onclick="metroBpm(5)">+5</button>
+        </div>
+        <!-- Slider -->
+        <input type="range" class="metro-range" id="metroSlider" min="20" max="250" value="80"
+               oninput="metroSetBpm(parseInt(this.value))">
+      </div>
+    </div>
+  </div>
+
   <!-- Drawer de pases: pestaña lateral visible sólo durante sesión running -->
   <div class="crono-pase-drawer" id="cronoPaseDrawer">
     <div class="crono-pase-tab" id="cronoPaseTab" onclick="cronoPaseDrawerToggle()" title="Pases de hoy">PASES</div>
