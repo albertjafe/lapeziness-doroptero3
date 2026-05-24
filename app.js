@@ -165,7 +165,6 @@ let db = loadData();
 if (!db.sesiones) db.sesiones = [];
 if (!db.eventos) db.eventos = [];
 if (!db.obras) db.obras = [];
-if (!db.tocAtaques) db.tocAtaques = [];
 if (!db.forestPlants) db.forestPlants = [];
 // db.sessionPlants[]: array paralelo a forestPlants con UN registro por sub-sesión
 // del cronómetro. Persiste los timestamps detallados aunque la sesión en
@@ -660,7 +659,6 @@ function saveDraft() {
   const draft = {
     date: new Date().toDateString(),
     energia: selectedEnergy,
-    estado: { ...estadoDiario },
     time: selectedTime,
     // Store full entity descriptors so we can restore movement plan items
     plan: currentPlan.map(o => ({
@@ -673,7 +671,6 @@ function saveDraft() {
     minPlan: { ...sessionMinPlan },
     mins, notes, sols, prods,
     aggregate: JSON.parse(JSON.stringify(sessionAggregate || {})),
-    tocActive: _tocActiveAttack || null,
   };
   localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
 }
@@ -902,7 +899,11 @@ function loadDraft() {
 function _restoreDraftUI(draft) {
   Object.assign(sessionMinPlan, draft.minPlan || {});
   Object.assign(sessionSolRatings, draft.sols || {});
-  if (draft.estado) { Object.assign(estadoDiario, draft.estado); initEstadoSliders(); }
+  // El estado diario (bienestar/sueño) se persiste de forma independiente vía
+  // alberto_estado_v1 + db.estadoDiario con marca de fecha, y se carga en
+  // loadEstadoDiarioFromSources() ANTES de loadDraft(). No restaurar aquí desde
+  // draft.estado: el draft puede tener un estado más viejo (saveDraft no se
+  // dispara al mover los sliders) y machacaría los valores correctos.
   const sesionHoy = db.sesiones.find(s => new Date(s.date).toDateString() === new Date().toDateString());
   const cargaHoy = sesionHoy ? 50 : 0;
   let html = '';
@@ -2758,98 +2759,6 @@ function linearRegression(points) {
   const sse = ys.reduce((s,y,i)=>s+(y-(slope*xs[i]+intercept))**2,0);
   const sst = ys.reduce((s,y)=>s+(y-yM)**2,0);
   return { slope, intercept, r2: sst > 0 ? 1 - sse/sst : 0, xMean: xM, yMean: yM };
-}
-
-
-function renderTocHistSection() {
-  const el = document.getElementById('tocHistSection');
-  if (!el) return;
-  const ataques = (db.tocAtaques || []);
-  if (!ataques.length) { el.innerHTML = ''; return; }
-
-  // Group by day
-  const byDay = {};
-  ataques.forEach(a => {
-    if (!byDay[a.date]) byDay[a.date] = [];
-    byDay[a.date].push(a);
-  });
-
-  const days = Object.keys(byDay).sort((a, b) => new Date(b) - new Date(a)).slice(0, 30);
-
-  // Overall stats
-  const totalCount = ataques.length;
-  const avgDur = ataques.filter(a => a.endTs)
-    .map(a => tocDurMin(a.startTs, a.endTs));
-  const avgDurVal = avgDur.length ? Math.round(avgDur.reduce((s,v) => s+v, 0) / avgDur.length) : null;
-  const avgInt = ataques.filter(a => a.peakIntensity)
-    .map(a => a.peakIntensity);
-  const avgIntVal = avgInt.length ? Math.round(avgInt.reduce((s,v) => s+v, 0) / avgInt.length) : null;
-
-  // 7-day mini chart (attacks per day)
-  const last7 = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    const key = d.toDateString();
-    last7.push({ label: d.toLocaleDateString('es', {weekday:'narrow'}), count: (byDay[key] || []).length });
-  }
-  const maxCount = Math.max(1, ...last7.map(d => d.count));
-  const miniChart = last7.map(d => {
-    const h = Math.round((d.count / maxCount) * 32);
-    const color = d.count === 0 ? 'var(--bg3)' : d.count >= 3 ? '#c86e88' : '#e08898aa';
-    return '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">'
-      + '<div style="width:100%;height:' + h + 'px;background:' + color + ';border-radius:3px 3px 0 0;min-height:2px;align-self:flex-end"></div>'
-      + '<div style="font-size:8px;color:var(--text3)">' + d.label + '</div>'
-      + (d.count ? '<div style="font-size:8px;color:#e08898">' + d.count + '</div>' : '<div style="font-size:8px;color:transparent">0</div>')
-      + '</div>';
-  }).join('');
-
-  let html = '<div style="font-size:9px;color:#e08898;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:10px">🔴 Registro TOC</div>';
-
-  // Stats row
-  html += '<div class="toc-stat-row">'
-    + '<div class="toc-stat"><div class="toc-stat-n">' + totalCount + '</div><div class="toc-stat-l">total ataques</div></div>'
-    + (avgDurVal !== null ? '<div class="toc-stat"><div class="toc-stat-n">' + avgDurVal + '<span style="font-size:11px">m</span></div><div class="toc-stat-l">duración media</div></div>' : '')
-    + (avgIntVal !== null ? '<div class="toc-stat"><div class="toc-stat-n">' + avgIntVal + '<span style="font-size:11px">%</span></div><div class="toc-stat-l">intensidad media</div></div>' : '')
-    + '</div>';
-
-  // Mini frequency chart
-  html += '<div style="background:var(--bg2);border-radius:8px;padding:10px 12px;margin-bottom:12px">'
-    + '<div style="font-size:8px;color:var(--text3);margin-bottom:6px;letter-spacing:0.08em">Frecuencia últimos 7 días</div>'
-    + '<div style="display:flex;align-items:flex-end;gap:4px;height:46px">' + miniChart + '</div>'
-    + '</div>';
-
-  // Per-day list
-  days.forEach(dayKey => {
-    const dayAtaques = byDay[dayKey];
-    const dayAvgInt = Math.round(dayAtaques.filter(a=>a.peakIntensity).reduce((s,a)=>s+a.peakIntensity,0) / Math.max(1, dayAtaques.filter(a=>a.peakIntensity).length));
-    const totalDayDur = dayAtaques.filter(a=>a.endTs).reduce((s,a)=>s+tocDurMin(a.startTs,a.endTs),0);
-    const d = new Date(dayKey);
-    const dayLabel = d.toLocaleDateString('es', {weekday:'long', day:'numeric', month:'long'});
-
-    html += '<div class="toc-hist-card">'
-      + '<div class="toc-hist-day">' + dayLabel + ' · ' + dayAtaques.length + ' ataque' + (dayAtaques.length!==1?'s':'') + ' · ' + totalDayDur + 'min total</div>';
-
-    dayAtaques.forEach(a => {
-      const dur = a.endTs ? tocDurMin(a.startTs, a.endTs) : null;
-      const pct = a.peakIntensity || 0;
-      html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;padding:7px 8px;background:var(--bg3);border-radius:6px;border-left:2px solid #c86e8860">'
-        + '<span style="font-size:10px;color:#e08898;font-family:\'JetBrains Mono\',monospace">' + tocFmt(a.startTs) + (a.endTs ? ' → '+tocFmt(a.endTs) : ' → …') + '</span>'
-        + (dur!==null ? '<span style="font-size:9px;color:var(--text3)">' + dur + 'min</span>' : '')
-        + '<div style="flex:1;height:3px;background:var(--bg2);border-radius:2px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#8090e0,#c86e88);border-radius:2px"></div></div>'
-        + '<span style="font-size:10px;color:#e08898;font-family:\'JetBrains Mono\',monospace;min-width:30px;text-align:right">' + pct + '%</span>'
-        + '<button onclick="tocDeleteAtaque(\'' + a.id + '\')" title="Eliminar" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;padding:0 2px;flex-shrink:0;opacity:0.6">✕</button>'
-        + '</div>';
-      if (a.note) html += '<div style="font-size:9px;color:var(--text3);padding:0 8px;margin-bottom:6px">' + a.note + '</div>';
-      if ((a.mediciones||[]).length) {
-        html += '<div style="padding:0 8px;margin-bottom:6px">'
-          + a.mediciones.map(m => '<div style="font-size:9px;color:var(--text3);display:flex;gap:6px"><span style="color:#e08898aa">' + tocFmt(m.ts) + '</span><span>→ ' + m.intensidad + '%</span>' + (m.nota?'<span>· '+m.nota+'</span>':'') + '</div>').join('')
-          + '</div>';
-      }
-    });
-    html += '</div>';
-  });
-
-  el.innerHTML = html;
 }
 
 function renderEficienciaSection() {
@@ -7063,19 +6972,8 @@ function _buildEstadoChartSvg(W, H, sesiones) {
       return '<text x="' + xOf(t) + '" y="' + (H-5) + '" text-anchor="middle" font-size="6.5" fill="var(--text3)">' + lbl + '</text>';
     }).join('');
 
-  // TOC attack markers
-  const tocMarkers = (db.tocAtaques || [])
-    .filter(a => a.startTs >= minT && a.startTs <= maxT)
-    .map(a => {
-      const x = xOf(new Date(a.startTs).getTime());
-      const pct = a.peakIntensity || 0;
-      const col = pct >= 70 ? '#c86e88' : pct >= 40 ? '#e09060' : '#a090d0';
-      return '<line x1="' + x + '" y1="' + pad.t + '" x2="' + x + '" y2="' + (pad.t+cH) + '" stroke="' + col + '" stroke-width="1.5" opacity="0.5" stroke-dasharray="2,2"/>'
-        + '<circle cx="' + x + '" cy="' + (pad.t+cH+5) + '" r="3" fill="' + col + '" opacity="0.8"><title>Ataque TOC: ' + pct + '% · ' + new Date(a.startTs).toLocaleDateString('es-ES') + '</title></circle>';
-    }).join('');
-
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">'
-    + gridY + tocMarkers + lines + xLabels + '</svg>';
+    + gridY + lines + xLabels + '</svg>';
 }
 
 let _estadoChartRangeDays = null; // null = todo el histórico
@@ -7192,9 +7090,6 @@ function renderEstadoSection() {
   }).join('');
 
   const legend = _statDims.map(d => '<span style="color:' + d.color + '">— ' + d.label + '</span>').join(' ');
-  const minT = new Date(sesionesConEstado[0].date).getTime();
-  const tocLegend = (db.tocAtaques || []).some(a => a.startTs >= minT)
-    ? ' <span style="color:#c86e88">| ataques TOC</span>' : '';
 
   el.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:14px 16px">'
     + '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">'
@@ -7206,7 +7101,7 @@ function renderEstadoSection() {
     + '</div></div>'
     + '<div style="display:flex;gap:4px;margin-bottom:12px">' + avgBlock + '</div>'
     + _buildEstadoChartSvg(340, 160, sesionesConEstado)
-    + '<div style="font-size:7px;color:var(--text3);display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;padding-left:28px">' + legend + tocLegend + '</div>'
+    + '<div style="font-size:7px;color:var(--text3);display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;padding-left:28px">' + legend + '</div>'
     + patternNote
     + '</div>';
 }
@@ -8596,234 +8491,11 @@ function addRipple(el, e) {
 // ── iOS BACKGROUND PERSISTENCE ───────────────────────────────────────────────
 // iOS Safari kills JS when app goes to background. Save everything on hide.
 
-// ── TOC ATTACK TRACKER ───────────────────────────────────────────────────────
-// Flujo:
-//   1. "Iniciar ataque"  → registra startTs, muestra chip activo
-//   2. "+ Medición ahora" → en cualquier momento, guarda {ts, intensidad, nota}
-//      Se puede repetir N veces — construye la curva real del ataque
-//   3. "✓ Fin del ataque" → registra endTs, nota final
-//      El pico se calcula automáticamente como max de todas las mediciones
-
-let _tocActiveAttack = null; // { id, startTs }
-let _tocTickInterval = null;
-
-function tocFmt(ts) {
-  return new Date(ts).toTimeString().slice(0, 5);
-}
-function tocDurMin(startTs, endTs) {
-  return Math.round((endTs - startTs) / 60000);
-}
-
-// ── Iniciar ──────────────────────────────────────────────────────────────────
-function tocStartAttack() {
-  if (_tocActiveAttack) return; // ya hay uno activo
-  const now = Date.now();
-  _tocActiveAttack = { id: 'toc_' + now, startTs: now };
-
-  document.getElementById('tocActiveChip').style.display = 'block';
-  document.getElementById('tocStartBtn').textContent = 'Ataque en curso…';
-  document.getElementById('tocStartBtn').disabled = true;
-
-  _tocTickInterval = setInterval(_tocUpdateChip, 30000);
-  _tocUpdateChip();
-  saveDraft();
-  try { playTone(196,"triangle",0.6,0.12,0); } catch(e) {}
-}
-
-function _tocUpdateChip() {
-  if (!_tocActiveAttack) return;
-  const elapsed = tocDurMin(_tocActiveAttack.startTs, Date.now());
-  const el = document.getElementById('tocChipLabel');
-  if (el) el.textContent = 'Ataque en curso · desde ' + tocFmt(_tocActiveAttack.startTs) + ' · ' + elapsed + 'min';
-}
-
-// ── Medición ─────────────────────────────────────────────────────────────────
-function tocShowMedicionForm() {
-  document.getElementById('tocFinForm').classList.remove('visible');
-  const f = document.getElementById('tocMedicionForm');
-  f.classList.toggle('visible');
-  if (f.classList.contains('visible')) {
-    document.getElementById('tocMedSlider').value = 60;
-    document.getElementById('tocMedVal').textContent = '60%';
-    document.getElementById('tocMedNote').value = '';
-  }
-}
-function tocCancelMedicion() {
-  document.getElementById('tocMedicionForm').classList.remove('visible');
-}
-function tocConfirmMedicion() {
-  if (!_tocActiveAttack) return;
-  const intensidad = parseInt(document.getElementById('tocMedSlider').value) || 60;
-  const nota = (document.getElementById('tocMedNote').value || '').trim();
-
-  // Store in active attack's mediciones array
-  if (!_tocActiveAttack.mediciones) _tocActiveAttack.mediciones = [];
-  _tocActiveAttack.mediciones.push({ ts: Date.now(), intensidad, nota });
-
-  document.getElementById('tocMedicionForm').classList.remove('visible');
-  // Show a quick confirmation in the chip
-  _tocUpdateChipMediciones();
-  saveDraft();
-  showToast('Medición guardada · ' + intensidad + '%');
-}
-
-function _tocUpdateChipMediciones() {
-  if (!_tocActiveAttack || !_tocActiveAttack.mediciones) return;
-  const meds = _tocActiveAttack.mediciones;
-  const last = meds[meds.length - 1];
-  const peak = Math.max(...meds.map(m => m.intensidad));
-  const el = document.getElementById('tocChipLabel');
-  if (el) {
-    const elapsed = tocDurMin(_tocActiveAttack.startTs, Date.now());
-    el.textContent = 'Ataque · ' + elapsed + 'min · ahora ' + last.intensidad + '% · pico ' + peak + '%';
-  }
-}
-
-// ── Fin ──────────────────────────────────────────────────────────────────────
-function tocShowFinForm() {
-  document.getElementById('tocMedicionForm').classList.remove('visible');
-  const f = document.getElementById('tocFinForm');
-  f.classList.toggle('visible');
-  if (f.classList.contains('visible')) {
-    document.getElementById('tocFinNote').value = '';
-  }
-}
-function tocCancelFin() {
-  document.getElementById('tocFinForm').classList.remove('visible');
-}
-function tocConfirmFin() {
-  if (!_tocActiveAttack) return;
-  const endTs = Date.now();
-  const nota  = (document.getElementById('tocFinNote').value || '').trim();
-  const meds  = _tocActiveAttack.mediciones || [];
-  const peak  = meds.length ? Math.max(...meds.map(m => m.intensidad)) : null;
-
-  const attack = {
-    id:           _tocActiveAttack.id,
-    date:         new Date().toDateString(),
-    startTs:      _tocActiveAttack.startTs,
-    endTs,
-    peakIntensity: peak,   // auto-calculated from mediciones
-    notaFinal:    nota,
-    mediciones:   meds,    // [{ts, intensidad, nota}]
-  };
-
-  if (!db.tocAtaques) db.tocAtaques = [];
-  db.tocAtaques.unshift(attack);
-  if (db.tocAtaques.length > 500) db.tocAtaques = db.tocAtaques.slice(0, 500);
-  saveData();
-
-  // Reset state
-  _tocActiveAttack = null;
-  clearInterval(_tocTickInterval);
-  _tocTickInterval = null;
-  document.getElementById('tocActiveChip').style.display = 'none';
-  document.getElementById('tocMedicionForm').classList.remove('visible');
-  document.getElementById('tocFinForm').classList.remove('visible');
-  const btn = document.getElementById('tocStartBtn');
-  btn.textContent = '+ Iniciar ataque';
-  btn.disabled = false;
-
-  tocRenderList();
-  const dur = tocDurMin(attack.startTs, endTs);
-  showToast('Ataque registrado · ' + dur + 'min' + (peak ? ' · pico ' + peak + '%' : ''));
-  try { playTone(523,'triangle',0.5,0.10,0); } catch(e) {}
-}
-
-// ── Eliminar un ataque del historial ──────────────────────────────────────────
-function tocDeleteAtaque(ataqueId) {
-  const ataque = (db.tocAtaques || []).find(a => a.id === ataqueId);
-  if (!ataque) return;
-  const fechaLabel = new Date(ataque.startTs).toLocaleDateString('es-ES',
-    { weekday: 'long', day: 'numeric', month: 'long' });
-  const horaLabel = tocFmt(ataque.startTs);
-  const msg = '¿Eliminar el ataque de ' + fechaLabel + ' (' + horaLabel + ')?\n\n' +
-              'Esta acción no se puede deshacer.';
-  if (!confirm(msg)) return;
-  db.tocAtaques = (db.tocAtaques || []).filter(a => a.id !== ataqueId);
-  saveData();
-  // Refrescar todas las vistas que muestran ataques
-  if (typeof tocRenderList === 'function') tocRenderList();
-  if (typeof renderTocHistSection === 'function') renderTocHistSection();
-  if (typeof checkPostAttackState === 'function') checkPostAttackState();
-  if (typeof renderEstadoSection === 'function') renderEstadoSection();
-  showToast('Ataque eliminado');
-}
-
-// ── Render lista de hoy ───────────────────────────────────────────────────────
-function tocRenderList() {
-  const el = document.getElementById('tocList');
-  if (!el) return;
-  const today = new Date().toDateString();
-  const hoy = (db.tocAtaques || []).filter(a => a.date === today);
-
-  if (!hoy.length) {
-    el.innerHTML = _tocActiveAttack
-      ? ''
-      : '<div style="font-size:10px;color:var(--text3);text-align:center;padding:10px 0">Sin ataques registrados hoy</div>';
-    return;
-  }
-
-  el.innerHTML = hoy.map(a => {
-    const dur  = a.endTs ? tocDurMin(a.startTs, a.endTs) : null;
-    const peak = a.peakIntensity;
-    const meds = a.mediciones || [];
-
-    // Timeline de mediciones
-    const timelineHtml = meds.length
-      ? '<div class="toc-timeline">'
-        + meds.map(m =>
-            '<div class="toc-tl-entry">'
-            + '<span class="toc-tl-time">' + tocFmt(m.ts) + '</span>'
-            + '<div class="toc-tl-bar"><div class="toc-tl-fill" style="width:' + m.intensidad + '%"></div></div>'
-            + '<span class="toc-tl-pct">' + m.intensidad + '%</span>'
-            + (m.nota ? '<span class="toc-tl-note">' + m.nota + '</span>' : '')
-            + '</div>'
-          ).join('')
-        + (a.notaFinal ? '<div style="font-size:9px;color:var(--text3);margin-top:4px;font-style:italic">Fin: ' + a.notaFinal + '</div>' : '')
-        + '</div>'
-      : (a.notaFinal ? '<div style="font-size:9px;color:var(--text3);margin-top:4px">' + a.notaFinal + '</div>' : '');
-
-    return '<div class="toc-attack-item">'
-      + '<div class="toc-attack-row">'
-      + '<span class="toc-attack-time">' + tocFmt(a.startTs) + (a.endTs ? ' → ' + tocFmt(a.endTs) : ' → …') + '</span>'
-      + (dur !== null ? '<span class="toc-attack-dur">' + dur + 'min</span>' : '<span class="toc-attack-dur">en curso</span>')
-      + '<div class="toc-intensity-bar"><div class="toc-intensity-fill" style="width:' + (peak || 0) + '%"></div></div>'
-      + (peak !== null ? '<span class="toc-attack-pct">↑' + peak + '%</span>' : '<span class="toc-attack-pct">—</span>')
-      + '</div>'
-      + timelineHtml
-      + '</div>';
-  }).join('');
-}
-
-// ── Restaurar desde draft (si la app se cerró con ataque activo) ──────────────
-function tocRestoreFromDraft(draft) {
-  if (draft && draft.tocActive && draft.tocActive.startTs) {
-    _tocActiveAttack = draft.tocActive;
-    document.getElementById('tocActiveChip').style.display = 'block';
-    const btn = document.getElementById('tocStartBtn');
-    btn.textContent = 'Ataque en curso…';
-    btn.disabled = true;
-    _tocTickInterval = setInterval(_tocUpdateChip, 30000);
-    if (_tocActiveAttack.mediciones && _tocActiveAttack.mediciones.length) {
-      _tocUpdateChipMediciones();
-    } else {
-      _tocUpdateChip();
-    }
-  }
-  tocRenderList();
-}
-
 document.addEventListener('visibilitychange', function() {
   if (document.visibilityState === 'hidden') {
     // Save draft + estado immediately when going to background
     saveDraft();
     saveEstadoDiario();
-    // Save TOC active attack if any
-    try {
-      if (_tocActiveAttack) localStorage.setItem('alberto_toc_active', JSON.stringify(_tocActiveAttack));
-      else localStorage.removeItem('alberto_toc_active');
-    } catch(e) {}
     syncToCloud();
   } else if (document.visibilityState === 'visible') {
     // Came back to foreground — always try to refresh session first
@@ -8834,21 +8506,6 @@ document.addEventListener('visibilitychange', function() {
       if (saved && typeof saved.energia === 'number') {
         Object.assign(estadoDiario, saved);
         initEstadoSliders();
-      }
-    } catch(e) {}
-    // Restore TOC active attack if not already running
-    try {
-      if (!_tocActiveAttack) {
-        const saved = JSON.parse(localStorage.getItem('alberto_toc_active') || 'null');
-        if (saved && saved.startTs) {
-          _tocActiveAttack = saved;
-          const chip = document.getElementById('tocActiveChip');
-          if (chip) chip.style.display = 'flex';
-          const btn = document.getElementById('tocStartBtn');
-          if (btn) { btn.textContent = 'Registrar fin'; btn.classList.add('active'); }
-          _tocTickInterval = setInterval(_tocUpdateChip, 30000);
-          _tocUpdateChip();
-        }
       }
     } catch(e) {}
   }
@@ -9021,14 +8678,12 @@ function confirmRegistroDirecto() {
 // ─── EDITAR SESION PASADA ─────────────────────────────────────────────────────
 
 let _editSesionIdx = -1;
-let _editTocSi = false;
 let _editObraItems = [];
 
 function openEditarSesion(sesionDate) {
   const idx = db.sesiones.findIndex(s => s.date === sesionDate);
   if (idx === -1) return;
   _editSesionIdx = idx;
-  _editTocSi = false;
   _editObraItems = [];
 
   const s = db.sesiones[idx];
@@ -9038,15 +8693,6 @@ function openEditarSesion(sesionDate) {
 
   // Render existing items: each can be edited (minutos, tick) or deleted
   renderEditExistingItems();
-
-  // TOC buttons reset
-  document.getElementById('editTocSiBtn').style.background = '';
-  document.getElementById('editTocNoBtn').style.background = '';
-  document.getElementById('editTocDetalle').style.display = 'none';
-  document.getElementById('editTocDur').value = '';
-  const pctSlider = document.getElementById('editTocPct');
-  if (pctSlider) { pctSlider.value = 50; fillSlider(pctSlider, '#e08898'); }
-  document.getElementById('editTocPctVal').textContent = '50%';
 
   // Nota
   document.getElementById('editNota').value = s.notaGeneral || '';
@@ -9129,19 +8775,6 @@ function deleteEditExistingItem(itemIdx) {
   showToast('Eliminado de la sesión');
 }
 
-function selectEditToc(si) {
-  _editTocSi = si;
-  const siBtn = document.getElementById('editTocSiBtn');
-  const noBtn = document.getElementById('editTocNoBtn');
-  const det   = document.getElementById('editTocDetalle');
-  siBtn.style.background = si ? 'var(--red)' : '';
-  siBtn.style.color = si ? 'var(--bg)' : '';
-  noBtn.style.background = !si ? 'var(--green)' : '';
-  noBtn.style.color = !si ? 'var(--bg)' : '';
-  det.style.display = si ? 'block' : 'none';
-  if (si) { const s = document.getElementById('editTocPct'); if (s) fillSlider(s, '#e08898'); }
-}
-
 function addEditObraItem() {
   const val  = document.getElementById('editObraSelect')?.value;
   const min  = parseInt(document.getElementById('editMinutos')?.value) || 0;
@@ -9170,23 +8803,6 @@ function addEditObraItem() {
 function confirmEditarSesion() {
   if (_editSesionIdx < 0) return;
   const s = db.sesiones[_editSesionIdx];
-
-  // Add TOC attack if selected
-  if (_editTocSi) {
-    const dur = parseInt(document.getElementById('editTocDur')?.value) || 0;
-    const pct = parseInt(document.getElementById('editTocPct')?.value) || 50;
-    const dayStr = new Date(s.date).toISOString().split('T')[0];
-    const startTs = new Date(s.date).getTime();
-    const endTs   = dur ? startTs + dur * 60000 : null;
-    if (!db.tocAtaques) db.tocAtaques = [];
-    db.tocAtaques.unshift({
-      id: 'manual_' + startTs,
-      date: dayStr,
-      startTs, endTs,
-      peakIntensity: pct,
-      manual: true
-    });
-  }
 
   // Add extra obras (newly added in this edit session)
   _editObraItems.forEach(function(it) {
@@ -9223,75 +8839,6 @@ function confirmEditarSesion() {
   if (typeof renderRacha === 'function') renderRacha();
   showToast('Sesión actualizada');
   if (typeof SFX !== 'undefined' && SFX.save) SFX.save();
-}
-
-function checkPostAttackState() {
-  const banner = document.getElementById('postAttackBanner');
-  const msg    = document.getElementById('postAttackMsg');
-  if (!banner || !msg) return;
-
-  const ataques = db.tocAtaques || [];
-  if (!ataques.length) return;
-
-  const now   = Date.now();
-  const today = new Date().toDateString();
-
-  // Attacks in last 48h but NOT today (residual, not active)
-  const recent = ataques.filter(a => {
-    const d    = new Date(a.date || a.startTs);
-    const age  = (now - d.getTime()) / 3600000;
-    return d.toDateString() !== today && age <= 48;
-  });
-
-  if (!recent.length) { banner.style.display = 'none'; return; }
-
-  const worst    = recent.reduce((a, b) => ((b.peakIntensity||0) > (a.peakIntensity||0) ? b : a), recent[0]);
-  const hoursAgo = Math.round((now - new Date(worst.date || worst.startTs).getTime()) / 3600000);
-  const intensity = worst.peakIntensity || 50;
-  const dur = worst.endTs && worst.startTs ? Math.round((worst.endTs - worst.startTs) / 60000) : null;
-
-  let text = 'Hace ' + hoursAgo + 'h tuviste un episodio'
-    + (intensity ? ' (pico ' + intensity + '%)' : '')
-    + (dur ? ' de ' + dur + ' min' : '') + '. ';
-
-  if (intensity >= 70) {
-    text += 'El sistema nervioso puede estar reactivo. Un día suave tiene más sentido que forzar.';
-  } else if (intensity >= 40) {
-    text += 'Puede haber tensión residual. Estudia con atención plena, sin presión de rendimiento.';
-  } else {
-    text += 'Puede quedar algo de tensión. Escúchate.';
-  }
-
-  msg.textContent = text;
-  banner._intensity = intensity;
-  banner.style.display = 'block';
-}
-
-function applyPostAttackSliders() {
-  const banner    = document.getElementById('postAttackBanner');
-  const intensity = banner?._intensity || 50;
-  const drop      = Math.round((intensity / 100) * 35);
-
-  const suggestions = {
-    energia:    Math.max(15, 70 - drop - 5),
-    claridad:   Math.max(15, 70 - drop - 8),
-    sueno:      Math.max(20, 70 - Math.round(drop * 0.6))
-  };
-
-  Object.entries(suggestions).forEach(function(entry) {
-    const dim = entry[0], val = entry[1];
-    estadoDiario[dim] = val;
-    const slider = document.getElementById('est-' + dim);
-    const valEl  = document.getElementById('estval-' + dim);
-    if (slider) { slider.value = val; fillEstadoSlider(slider, ESTADO_COLORS[dim]); }
-    if (valEl)  valEl.textContent = val;
-  });
-
-  const avg = Math.round((suggestions.energia + suggestions.claridad) / 2);
-  selectedEnergy = avg >= 65 ? 'alta' : avg >= 35 ? 'normal' : 'baja';
-  saveEstadoDiario();
-  banner.style.display = 'none';
-  showToast('Sliders ajustados para día de recuperación');
 }
 
 function spawnNotes() {
@@ -9641,7 +9188,6 @@ async function initApp() {
   // setTimeout falle por estar suspendido, en cuanto la tab despierta se
   // detecte el cambio de día en el siguiente intervalo.
   setInterval(checkDayChange, 60 * 1000);
-  checkPostAttackState();
 
   // Forest draft
   try {
@@ -11504,7 +11050,6 @@ let _metroBpm        = 80;
 let _metroPrevBpm    = 80;
 let _metroRunning    = false;
 let _metroNextTime   = 0;
-let _metroBeatCount  = 0;
 let _metroTimer      = null;
 let _metroAudioCtx   = null;
 let _metroTaps       = [];
@@ -11513,6 +11058,7 @@ let _metroDispBpm    = null;   // BPM value currently shown in the slot
 // Ring-buffer 3-slot display
 let _metroSlotEls    = null;   // [el0, el1, el2]
 let _metroSlotMid    = 1;      // index of the element currently in 'mid' position
+let _metroRatchetTimer = null; // timer del avance número-a-número (ruleta)
 // Drawer state
 let _metroDrawerOpen   = false;
 let _metroDrawerPinned = false;
@@ -11585,6 +11131,49 @@ function _metroFlashBeat(isAccent) {
   void el.offsetWidth;
   el.classList.add('beat');
   if (isAccent) el.classList.add('beat-accent');
+}
+
+// Tick discreto de "rueda de reloj" al girar el tempo (arrastre / botones ±).
+// Es muy corto y suave para que se note el detente sin molestar.
+function _metroPlayWheelTick() {
+  try {
+    const ctx = _metroGetCtx();
+    const play = () => {
+      try {
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(2500, now);
+        osc.frequency.exponentialRampToValueAtTime(1500, now + 0.012);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.025);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(now); osc.stop(now + 0.03);
+      } catch (e) {}
+    };
+    if (ctx.state !== 'running') ctx.resume().then(play).catch(() => {});
+    else play();
+  } catch (e) {}
+}
+
+// Anima el número mostrado avanzando de uno en uno hasta `target`, como una
+// ruleta con detentes. Cada paso reproduce un tick (si tick=true). Saltos
+// grandes (p.ej. tap tempo) se ajustan de golpe sin ruleta.
+function _metroAnimateDisplayTo(target, tick) {
+  clearTimeout(_metroRatchetTimer);
+  const stepOnce = () => {
+    const cur = _metroDispBpm == null ? _metroBpm : _metroDispBpm;
+    if (cur === target) return;
+    if (Math.abs(target - cur) > 8) { _metroSlotSetInstant(target); return; }
+    const dir = target > cur ? 1 : -1;
+    _metroBpmRoll(cur + dir, dir);
+    if (tick) _metroPlayWheelTick();
+    if ((_metroDispBpm == null ? _metroBpm : _metroDispBpm) !== target) {
+      _metroRatchetTimer = setTimeout(stepOnce, 130);
+    }
+  };
+  stepOnce();
 }
 
 // Two-slot slot-machine animation for the BPM number.
@@ -11673,6 +11262,9 @@ function _metroInitScroll() {
     metroBpm(e.deltaY < 0 ? 1 : -1);
   }, { passive: false });
 
+  // Píxeles de arrastre por cada paso de BPM. Más alto = rueda más lenta y
+  // controlable (antes 8px hacía que el número volase al mover el dedo).
+  const STEP_PX = 26;
   let _tY = 0, _tAccum = 0;
   wrap.addEventListener('touchstart', (e) => {
     _tY     = e.touches[0].clientY;
@@ -11682,10 +11274,10 @@ function _metroInitScroll() {
     const dy = _tY - e.touches[0].clientY;
     _tAccum += dy;
     _tY      = e.touches[0].clientY;
-    if (Math.abs(_tAccum) >= 8) {
+    if (Math.abs(_tAccum) >= STEP_PX) {
       e.preventDefault();
       metroBpm(_tAccum > 0 ? 1 : -1);
-      _tAccum = _tAccum > 0 ? _tAccum - 8 : _tAccum + 8;
+      _tAccum = _tAccum > 0 ? _tAccum - STEP_PX : _tAccum + STEP_PX;
     }
   }, { passive: false });
 }
@@ -11727,8 +11319,8 @@ function _metroSchedule() {
   const interval = 60000 / _metroBpm;
   const now = Date.now();
   if (now >= _metroNextTime - 8) {
-    _metroPlayTick(_metroBeatCount === 0);
-    _metroBeatCount = (_metroBeatCount + 1) % 4;
+    // Todos los golpes suenan igual — sin acento de compás.
+    _metroPlayTick(false);
     _metroNextTime = (now < _metroNextTime) ? _metroNextTime + interval : now + interval;
   }
   _metroTimer = setTimeout(_metroSchedule, Math.max(4, _metroNextTime - Date.now() - 8));
@@ -11738,7 +11330,6 @@ function metroToggle() {
   _metroRunning = !_metroRunning;
   if (_metroRunning) {
     if (_metroAudioCtx && _metroAudioCtx.state === 'suspended') _metroAudioCtx.resume();
-    _metroBeatCount = 0;
     _metroTaps = [];
     _metroNextTime = Date.now();
     _metroSchedule();
@@ -11748,11 +11339,12 @@ function metroToggle() {
   _metroUpdateUI();
 }
 
+// delta desde rueda / botones ±: anima la ruleta número a número con tick.
 function metroBpm(delta) {
-  metroSetBpm(_metroBpm + delta);
+  metroSetBpm(_metroBpm + delta, { ratchet: true });
 }
 
-function metroSetBpm(bpm) {
+function metroSetBpm(bpm, opts) {
   _metroPrevBpm = _metroBpm;
   _metroBpm = Math.max(20, Math.min(250, Math.round(bpm)));
   if (_metroRunning) {
@@ -11761,7 +11353,7 @@ function metroSetBpm(bpm) {
     // (Do NOT reset _metroNextTime, that would fire an immediate, jarring tick.)
     _metroTimer = setTimeout(_metroSchedule, Math.max(4, _metroNextTime - Date.now() - 8));
   }
-  _metroUpdateUI();
+  _metroUpdateUI(opts);
 }
 
 function metroTapTempo() {
@@ -11777,13 +11369,20 @@ function metroTapTempo() {
   metroSetBpm(Math.round(60000 / (total / (_metroTaps.length - 1))));
 }
 
-function _metroUpdateUI() {
+function _metroUpdateUI(opts) {
   const slider  = document.getElementById('metroSlider');
   const playBtn = document.getElementById('metroPlayBtn');
 
   // 3-slot BPM roll
   if (_metroDispBpm !== _metroBpm) {
-    _metroBpmRoll(_metroBpm, _metroBpm > _metroPrevBpm ? 1 : -1);
+    if (opts && opts.ratchet) {
+      // Rueda/botones ±: avanza número a número con tick (anima también ±5).
+      _metroAnimateDisplayTo(_metroBpm, true);
+    } else {
+      // Slider / programático: un solo giro, sin tick.
+      clearTimeout(_metroRatchetTimer);
+      _metroBpmRoll(_metroBpm, _metroBpm > _metroPrevBpm ? 1 : -1);
+    }
   }
   // Sync mid slot running color
   if (_metroSlotEls) {

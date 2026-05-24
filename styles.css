@@ -2307,65 +2307,6 @@
   }
   .manana-banner-label { font-size: 8px; color: var(--accent); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 4px; }
 
-  /* ── TOC ATTACK TRACKER ─────────────────────────────────────────────────── */
-  .toc-panel { margin: 14px 0 0; padding: 12px 14px; background: var(--bg2); border-radius: 10px; border: 1px solid var(--border2); }
-  .toc-panel-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:0; }
-  .toc-panel-title { font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--text3); }
-  .toc-start-btn { font-size:11px; padding:5px 12px; border-radius:6px; border:1px solid #c86e8844; background:#c86e8818; color:#e08898; cursor:pointer; font-family:inherit; transition:background 0.15s; user-select:none; -webkit-user-select:none; }
-  .toc-start-btn:active { background:#c86e8830; }
-  .toc-active-chip { margin-top:10px; padding:8px 10px; background:#c86e8814; border:1px solid #c86e8844; border-radius:8px; }
-  .toc-chip-top { display:flex; align-items:center; gap:8px; }
-  .toc-chip-dot { width:8px; height:8px; border-radius:50%; background:#e08898; animation:tocPulse 1.2s ease-in-out infinite; flex-shrink:0; }
-  @keyframes tocPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
-  .toc-chip-label { font-size:11px; color:#e08898; flex:1; }
-  .toc-chip-actions { display:flex; gap:6px; margin-top:8px; }
-  .toc-chip-btn { flex:1; font-size:11px; padding:6px 8px; border-radius:6px; border:1px solid #c86e8850; background:#c86e8820; color:#f0a0b0; cursor:pointer; font-family:inherit; text-align:center; user-select:none; -webkit-user-select:none; }
-  .toc-chip-btn.end { background:#c86e8835; border-color:#c86e8880; font-weight:600; }
-  /* Medición inline form */
-  .toc-medicion-form { margin-top:8px; padding:8px 10px; background:#1a1018; border-radius:6px; display:none; }
-  .toc-medicion-form.visible { display:block; }
-  .toc-medicion-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
-  .toc-int-slider { flex:1; height:5px; -webkit-appearance:none; appearance:none; outline:none; border:none; border-radius:2.5px; background:var(--bg2); cursor:pointer; }
-  .toc-int-slider::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:#c86e88; cursor:pointer; border:2px solid var(--bg); }
-  .toc-int-val { font-size:13px; font-family:"JetBrains Mono",monospace; color:#e08898; min-width:34px; text-align:right; }
-  .toc-medicion-note { width:100%; background:var(--bg2); border:1px solid var(--border2); border-radius:5px; padding:5px 8px; color:var(--text2); font-family:"JetBrains Mono",monospace; font-size:11px; box-sizing:border-box; margin-bottom:6px; }
-  .toc-medicion-actions { display:flex; gap:6px; }
-  .toc-medicion-confirm { flex:1; padding:7px; background:#c86e8830; border:1px solid #c86e8860; border-radius:5px; color:#f0a0b0; font-family:inherit; font-size:12px; cursor:pointer; }
-  .toc-medicion-cancel { padding:7px 12px; background:var(--bg2); border:1px solid var(--border2); border-radius:5px; color:var(--text3); font-family:inherit; font-size:12px; cursor:pointer; }
-  /* End form */
-  .toc-fin-form { margin-top:8px; padding:8px 10px; background:#1a1018; border-radius:6px; display:none; }
-  .toc-fin-form.visible { display:block; }
-  .toc-fin-label { font-size:9px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:4px; }
-  .toc-fin-note { width:100%; background:var(--bg2); border:1px solid var(--border2); border-radius:5px; padding:5px 8px; color:var(--text2); font-family:"JetBrains Mono",monospace; font-size:11px; box-sizing:border-box; margin-bottom:6px; }
-  .toc-fin-actions { display:flex; gap:6px; }
-  .toc-fin-confirm { flex:1; padding:8px; background:#c86e8835; border:1px solid #c86e8880; border-radius:5px; color:#f0a0b0; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; }
-  .toc-fin-cancel { padding:8px 12px; background:var(--bg2); border:1px solid var(--border2); border-radius:5px; color:var(--text3); font-family:inherit; font-size:12px; cursor:pointer; }
-  /* Attack list */
-  .toc-list { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
-  .toc-attack-item { background:var(--bg3); border-radius:8px; padding:9px 11px; border-left:3px solid #c86e8860; }
-  .toc-attack-row { display:flex; align-items:center; gap:7px; }
-  .toc-attack-time { font-size:10px; color:#e08898; font-family:"JetBrains Mono",monospace; white-space:nowrap; }
-  .toc-attack-dur { font-size:9px; color:var(--text3); white-space:nowrap; }
-  .toc-intensity-bar { flex:1; height:3px; background:var(--bg2); border-radius:2px; overflow:hidden; min-width:30px; }
-  .toc-intensity-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,#8090e0,#c86e88); }
-  .toc-attack-pct { font-size:10px; color:#e08898; font-family:"JetBrains Mono",monospace; min-width:28px; text-align:right; }
-  /* Timeline of mediciones */
-  .toc-timeline { margin-top:6px; padding-top:6px; border-top:1px solid var(--border2); display:flex; flex-direction:column; gap:3px; }
-  .toc-tl-entry { display:flex; align-items:center; gap:7px; font-size:9px; }
-  .toc-tl-time { color:#e08898aa; font-family:"JetBrains Mono",monospace; min-width:38px; }
-  .toc-tl-bar { flex:1; height:3px; background:var(--bg2); border-radius:2px; overflow:hidden; }
-  .toc-tl-fill { height:100%; background:linear-gradient(90deg,#8090e0,#c86e88); border-radius:2px; }
-  .toc-tl-pct { color:#e08898; font-family:"JetBrains Mono",monospace; min-width:28px; text-align:right; }
-  .toc-tl-note { color:var(--text3); font-style:italic; }
-
-  /* ── TOC HISTORIAL VIEW ──────────────────────────────────────────────────── */
-  .toc-hist-card { background:var(--bg2); border-radius:10px; padding:14px; margin-bottom:12px; }
-  .toc-hist-day { font-size:10px; color:#e08898; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:8px; }
-  .toc-stat-row { display:flex; gap:10px; margin-bottom:10px; }
-  .toc-stat { flex:1; text-align:center; background:var(--bg3); border-radius:7px; padding:8px 4px; }
-  .toc-stat-n { font-size:20px; font-family:"JetBrains Mono",monospace; color:#e08898; }
-  .toc-stat-l { font-size:8px; color:var(--text3); letter-spacing:0.08em; text-transform:uppercase; margin-top:2px; }
-
   /* ── CRONÓMETRO · MODO CONCENTRACIÓN (estética sobria, integrada al tema) ─ */
 
   body.crono-focus .topbar { display: none !important; }
@@ -2671,7 +2612,7 @@
     padding: 10px 0;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
-    transition: background 0.2s, color 0.2s;
+    transition: background 0.2s, color 0.2s, opacity 0.35s ease, transform 0.35s ease;
   }
   .metro-drawer-tab:hover,
   .metro-drawer.open .metro-drawer-tab { background: var(--bg2); }
@@ -2706,9 +2647,27 @@
     border-radius: 12px 0 0 12px;
     overflow: hidden;
     width: 0;
-    transition: width 0.28s cubic-bezier(0.4,0,0.2,1);
+    transition: width 0.28s cubic-bezier(0.4,0,0.2,1),
+                background-color 0.4s ease,
+                border-color 0.4s ease,
+                box-shadow 0.4s ease;
   }
   .metro-drawer.open .metro-drawer-panel { width: 210px; }
+
+  /* ── Fijado = fusión ──────────────────────────────────────────────────────
+     Al fijar (pin), la "tarjeta" se disuelve y el metrónomo queda integrado en
+     la pantalla, en el mismo sitio. La pestaña lateral desaparece; el botón
+     de pin (📌) sigue visible para poder desfijar. */
+  .metro-drawer.pinned .metro-drawer-panel {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+  .metro-drawer.pinned .metro-drawer-tab {
+    opacity: 0;
+    transform: translateX(12px);
+    pointer-events: none;
+  }
   .metro-drawer-inner {
     padding: 14px 12px 12px;
     width: 210px;

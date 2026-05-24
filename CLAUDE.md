@@ -62,11 +62,14 @@ El mecanismo de actualización automática (`_swUpdateInit`) ya está implementa
 ### Metrónomo (`#metroDrawer`)
 - Drawer lateral derecho colapsable, posición fija `top: 120px`
 - Se puede anclar abierto (pin) — estado guardado en `localStorage` key `metro_pinned`
+- **Pin = fusión**: al fijar, la tarjeta del drawer se disuelve (fondo/borde transparentes vía `.metro-drawer.pinned`) y la pestaña lateral desaparece; el metrónomo queda integrado en la pantalla. El botón 📌 sigue visible para desfijar.
 - Punto parpadeante en la pestaña indica beat mientras corre
 - Animación ring-buffer 3-slots: los tres números (anterior, actual, siguiente) hacen efecto slot-machine al cambiar BPM
+- **Ruleta de tempo** (`_metroAnimateDisplayTo`): rueda/botones ± avanzan número a número (los ±5 también se animan, no saltan) con un **tick de rueda discreto** (`_metroPlayWheelTick`) en cada paso. Arrastre táctil a `STEP_PX = 26` px por paso (más lento y controlable). El slider y los cambios programáticos no hacen tick.
 - Sin etiqueta de tempo (Andante, Allegro, etc. — eliminada)
+- **Sin acento de compás**: todos los golpes suenan igual (`_metroPlayTick(false)` siempre; no hay contador de beats)
 - Botón TAP grande + botón Play/Pause explícito
-- Botones ±1 / ±5 no generan click audible al cambiar BPM mientras corre (solo reprograma el timer sin tick inmediato)
+- Al cambiar BPM mientras corre solo se reprograma el timer (sin golpe de metrónomo inmediato)
 
 ### Corrección de audio
 - `_metroGetCtx()`: recrea el `AudioContext` si está cerrado o nulo
@@ -102,4 +105,6 @@ El mecanismo de actualización automática (`_swUpdateInit`) ya está implementa
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v6`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v7`.
+
+El antiguo registro de **ataques TOC** (marcadores en la gráfica de Estado diario, sección "Registro TOC" y campos del modal de editar sesión) se ha **eliminado por completo**. El estado diario (Bienestar/Sueño) persiste de forma independiente vía `alberto_estado_v1` + `db.estadoDiario` con marca de fecha; **no** debe restaurarse desde `draft.estado` (eso machacaba los valores guardados el mismo día).
