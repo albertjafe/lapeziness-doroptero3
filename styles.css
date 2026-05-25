@@ -85,7 +85,6 @@
   [data-theme="cozy"] .mes-nav-label { font-family: 'Caveat', cursive !important; font-size: 24px !important; }
   [data-theme="cozy"] .break-card { border-radius: var(--cozy-radius) !important; border: 1px solid var(--border); }
   [data-theme="cozy"] .energy-btn { border-radius: 20px !important; }
-  [data-theme="cozy"] .time-btn { border-radius: 10px !important; }
   [data-theme="cozy"] .modal-btn { border-radius: 12px !important; }
   [data-theme="cozy"] .add-obra-btn, [data-theme="cozy"] .add-evento-btn, [data-theme="cozy"] .add-manual-session-btn { border-radius: 14px !important; }
   [data-theme="cozy"] .evento-card { border-radius: var(--cozy-radius) !important; }
@@ -183,7 +182,7 @@
     .save-session-btn { font-size: 20px !important; }
     .generate-btn { font-size: 22px !important; }
     .energy-btn { font-size: 14px !important; padding: 10px 20px !important; }
-    .time-btn { font-size: 13px !important; padding: 8px 18px !important; }
+    .time-slider-val { font-size: 17px !important; }
     .add-obra-btn, .add-pasaje-btn, .add-movimiento-btn { font-size: 13px !important; padding: 12px !important; }
     .header-title { font-size: 28px !important; }
     .header-date { font-size: 13px !important; }
@@ -387,20 +386,17 @@
   .estado-slider::-moz-range-track { border-radius: 2.5px; height: 5px; background: linear-gradient(to right, var(--fc) 0%, var(--fc) var(--fp), var(--bg2) var(--fp), var(--bg2) 100%); }
   .estado-val { font-family: 'JetBrains Mono', monospace; font-size: 11px; width: 28px; text-align: right; flex-shrink: 0; font-weight: bold; }
 
-  .time-picker {
-    display: flex; gap: 6px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap;
+  .time-slider-wrap {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px; padding: 4px 6px 0;
   }
-  .time-btn {
-    padding: 6px 14px;
-    border: 1px solid var(--border2);
-    border-radius: 4px;
-    background: transparent;
-    color: var(--text3);
+  .time-slider { flex: 1; }
+  .time-slider-val {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; cursor: pointer;
-    transition: all 0.2s;
+    font-size: 15px; font-weight: bold;
+    color: var(--accent);
+    min-width: 64px; text-align: right; flex-shrink: 0;
   }
-  .time-btn.active { background: var(--bg3); color: var(--accent2); border-color: var(--border); }
 
   .generate-btn {
     width: 100%;

@@ -163,13 +163,10 @@
     </div>
 
     <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Tiempo disponible</div>
-    <div class="time-picker">
-      <button class="time-btn" data-time="1" onclick="selectTime(this)">1h</button>
-      <button class="time-btn" data-time="1.5" onclick="selectTime(this)">1.5h</button>
-      <button class="time-btn active" data-time="2" onclick="selectTime(this)">2h</button>
-      <button class="time-btn" data-time="3" onclick="selectTime(this)">3h</button>
-      <button class="time-btn" data-time="4" onclick="selectTime(this)">4h</button>
-      <button class="time-btn" data-time="5" onclick="selectTime(this)">5h+</button>
+    <div class="time-slider-wrap">
+      <input type="range" class="estado-slider time-slider" id="timeSlider" min="15" max="300" step="15" value="120"
+        oninput="setTimeFromSlider(this.value)">
+      <span class="time-slider-val" id="timeSliderVal">2 h</span>
     </div>
 
     <button class="generate-btn" onclick="generateSession()">Generar sesión</button>

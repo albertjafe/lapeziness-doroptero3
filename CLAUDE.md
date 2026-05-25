@@ -105,6 +105,6 @@ El mecanismo de actualización automática (`_swUpdateInit`) ya está implementa
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v7`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v8`.
 
 El antiguo registro de **ataques TOC** (marcadores en la gráfica de Estado diario, sección "Registro TOC" y campos del modal de editar sesión) se ha **eliminado por completo**. El estado diario (Bienestar/Sueño) persiste de forma independiente vía `alberto_estado_v1` + `db.estadoDiario` con marca de fecha; **no** debe restaurarse desde `draft.estado` (eso machacaba los valores guardados el mismo día).

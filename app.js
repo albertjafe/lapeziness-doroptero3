@@ -477,10 +477,34 @@ function selectEnergy(btn) {
   selectedEnergy = btn.dataset.energy;
 }
 
-function selectTime(btn) {
-  document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  selectedTime = parseFloat(btn.dataset.time);
+// Slider de tiempo disponible (en minutos, paso de 15). selectedTime en horas.
+function _fmtTimeLabel(min) {
+  const h = Math.floor(min / 60), m = min % 60;
+  if (h === 0) return m + ' min';
+  if (m === 0) return h + ' h';
+  return h + 'h ' + m + 'm';
+}
+
+function _updateTimeSliderLabel(min) {
+  const el = document.getElementById('timeSliderVal');
+  if (el) el.textContent = _fmtTimeLabel(min);
+}
+
+function setTimeFromSlider(minVal) {
+  const min = parseInt(minVal) || 60;
+  selectedTime = min / 60;
+  _updateTimeSliderLabel(min);
+  const slider = document.getElementById('timeSlider');
+  if (slider) fillSlider(slider, 'var(--accent)');
+}
+
+function initTimeSlider() {
+  const slider = document.getElementById('timeSlider');
+  if (!slider) return;
+  const min = Math.round((selectedTime || 2) * 60);
+  slider.value = min;
+  _updateTimeSliderLabel(min);
+  fillSlider(slider, 'var(--accent)');
 }
 
 // ─── RACHA ───────────────────────────────────────────────────────────────────
@@ -820,9 +844,7 @@ function loadDraft() {
     document.querySelectorAll('.energy-btn').forEach(b => {
       b.classList.toggle('active', b.dataset.energy === selectedEnergy);
     });
-    document.querySelectorAll('.time-btn').forEach(b => {
-      b.classList.toggle('active', parseFloat(b.dataset.time) === selectedTime);
-    });
+    if (typeof initTimeSlider === 'function') initTimeSlider();
     // Rebuild plan from stored descriptors (new format) or IDs (legacy)
     let planObras = [];
     if (draft.plan && draft.plan.length > 0 && typeof draft.plan[0] === 'object') {
@@ -1567,7 +1589,13 @@ function confirmAddExtra() {
   if (existing) {
     const targetPlanId = existing._planId || existing.id;
     const addMin = minutos || (mov?.duracion || obra?.duracion || 20);
-    sessionMinPlan[targetPlanId] = (sessionMinPlan[targetPlanId] || 0) + addMin;
+    if (!existing._isExtra) {
+      // Tarjeta planificada: reemplazar la estimación por el tiempo real.
+      sessionMinPlan[targetPlanId] = addMin;
+      existing._isExtra = true;
+    } else {
+      sessionMinPlan[targetPlanId] = (sessionMinPlan[targetPlanId] || 0) + addMin;
+    }
     // Re-render la tarjeta con el total actualizado
     const planEl = document.getElementById('plan-' + targetPlanId);
     if (planEl) {
@@ -4942,15 +4970,7 @@ function renderTrabajoItem(obra, i, minAsignado, energia, cargaTotal, paseAnalis
 
   let detailLines = [];
 
-  if (esRecuperacion) {
-    detailLines.push('secciones');
-    if (pasajosActivos.length) detailLines.push(pasajosActivos.slice(0,2).map(p => {
-      let t = p.text;
-      if (p.tempoAct && p.tempoObj) t += ` (♩=${p.tempoAct}→${p.tempoObj})`;
-      return t;
-    }).join(' · '));
-
-  } else if (fase === 'digitando') {
+  if (fase === 'digitando') {
     detailLines.push('estudio');
     if (pasajosActivos.length) detailLines.push(pasajosActivos.map(p => {
       let t = p.text;
@@ -4984,8 +5004,6 @@ function renderTrabajoItem(obra, i, minAsignado, energia, cargaTotal, paseAnalis
   const urgInfo = computeUrgencia(obra.id);
   const urgBadge = urgInfo.nivel !== 'sin-evento'
     ? `<span style="font-size:9px;color:${urgInfo.color};margin-left:6px">${urgInfo.label} · ${urgInfo.dias}d</span>` : '';
-  const recBadge = esRecuperacion
-    ? `<span style="font-size:8px;background:#5a4aaa;color:#d0c8ff;border-radius:3px;padding:1px 5px;margin-left:6px">R</span>` : '';
   const lastTick = getLastTickForObra(obra.id);
   const tickBadge = lastTick?.tick
     ? `<span style="font-size:10px;color:${{hecho:'var(--green)',parcial:'var(--orange)',saltado:'var(--red)'}[lastTick.tick]};margin-left:6px">${{hecho:'✓',parcial:'≈',saltado:'✗'}[lastTick.tick]}</span>` : '';
@@ -4994,7 +5012,7 @@ function renderTrabajoItem(obra, i, minAsignado, energia, cargaTotal, paseAnalis
   return '<div class="plan-item" id="plan-' + obra.id + '" style="position:relative">' +
     '<button class="plan-item-remove" onclick="removeFromPlan(\'' + obra.id + '\')" title="Quitar de la sesión" aria-label="Quitar">×</button>' +
     '<div class="plan-item-top"><div class="plan-item-num">' + (i+1) + '.</div><div class="plan-item-content">' +
-    '<div class="plan-item-name" onclick="openObraDetalleSession(\'' + obra.id + '\')" style="cursor:pointer;text-decoration:underline dotted var(--border)">' + obra.name + recBadge + urgBadge + tickBadge + ' <span style="font-size:11px;color:var(--text3);font-style:italic">' + obra.composer + '</span></div>' +
+    '<div class="plan-item-name" onclick="openObraDetalleSession(\'' + obra.id + '\')" style="cursor:pointer;text-decoration:underline dotted var(--border)">' + obra.name + urgBadge + tickBadge + ' <span style="font-size:11px;color:var(--text3);font-style:italic">' + obra.composer + '</span></div>' +
     '</div>' +
     '<div class="plan-item-time" style="text-align:right"><div>~' + minAsignado + 'min</div>' +
     '</div></div>' +
@@ -8957,9 +8975,14 @@ updateRatingSlider = function(val) {
   _origUpdateRatingSlider(val);
 };
 
-// Time picker
-const _origSelectTime = selectTime;
-selectTime = function(btn) { SFX.toggle(); _origSelectTime(btn); };
+// Time slider — sonido sutil con debounce (no martillear al arrastrar)
+const _origSetTimeFromSlider = setTimeFromSlider;
+let _timeSliderSfxTimeout = null;
+setTimeFromSlider = function(minVal) {
+  clearTimeout(_timeSliderSfxTimeout);
+  _timeSliderSfxTimeout = setTimeout(() => SFX.slider(), 70);
+  _origSetTimeFromSlider(minVal);
+};
 
 // Pase toggle (antes/despues in hecho modal)
 const _origTogglePaseBlock = togglePaseBlock;
@@ -9159,6 +9182,7 @@ async function initApp() {
   loadAppTitle();
   loadEstadoDiarioFromSources();
   initEstadoSliders();
+  initTimeSlider();
   _currentPlanDay = new Date().toDateString();
   const draftLoaded = loadDraft();
   // Si no había draft local pero hay sesiones de hoy guardadas en la nube/db,
@@ -10421,8 +10445,17 @@ function cronoFinish() {
   if (existing) {
     targetPlanId = existing._planId || existing.id;
     isFusion = true;
-    // Sumar minutos al total de la tarjeta
-    sessionMinPlan[targetPlanId] = (sessionMinPlan[targetPlanId] || 0) + minutos;
+    if (!existing._isExtra) {
+      // Primera vez que se estudia una tarjeta PLANIFICADA: el valor que tenía
+      // era una estimación (p.ej. 10 min). Lo reemplazamos por los minutos
+      // REALES estudiados (p.ej. 20). A partir de aquí pasa a ser tarjeta de
+      // tiempo real y las siguientes sesiones SÍ suman.
+      sessionMinPlan[targetPlanId] = minutos;
+      existing._isExtra = true;
+    } else {
+      // Tarjeta de tiempo real: acumular.
+      sessionMinPlan[targetPlanId] = (sessionMinPlan[targetPlanId] || 0) + minutos;
+    }
     // Re-renderizar la tarjeta con el total actualizado
     const planEl = document.getElementById('plan-' + targetPlanId);
     if (planEl) {
