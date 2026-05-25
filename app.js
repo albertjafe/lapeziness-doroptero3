@@ -4458,6 +4458,25 @@ function recordMovSolHistory(obraId, movId, val, context) {
   saveData();
 }
 
+// ── Pesos del algoritmo de generación ───────────────────────────────────────
+// Jerarquía declarada (techo de influencia de cada señal sobre el score):
+//   urgencia de evento (60) ≳ pasajes (50) ≈ solidez (50) > rotación (~33)
+//   > escenario (20) > ticks (±25) > fatiga (−20)
+// Cada bloque está acotado a su techo para que ninguna señal (p.ej. una obra
+// con muchos pasajes marcados) aplaste al resto del repertorio. Para afinar el
+// comportamiento, tocar SOLO estos números.
+const SCORE_W = {
+  escListo: 20, escCasi: 10,
+  pasajeBase: 8, pasajeTempoMax: 10,
+  pasajeLapso: { d1: 35, d3: 22, d7: 14, d14: 8 },
+  pasajeCap: 50,
+  urgSinEvento: 5, urgFactor: 4, urgCap: 60,
+  rotNuncaPase: 15, rotConsolidando: 10, rotMantenimiento: 8, rotNoEnSesion: 18,
+  tickSaltado: 25, tickParcial: 12, tickHecho: -8, tick3Hechos: -15,
+  fatigaAlta: -15, fatigaMuyAlta: -20,
+  solidezMax: 35, solCaida: { c20: 22, c10: 12, c5: 6 }, solidezCap: 50,
+};
+
 function generateSession() {
   if (!db.obras || db.obras.length === 0) { showToast('Añade obras primero'); return; }
 
@@ -4555,42 +4574,47 @@ function generateSession() {
     const dif = o.dificultad || 3;
     const dur = o.duracion || 8;
     const fase = obraFase(o);
+    const urg = computeUrgencia(rootObraId); // calculado una vez, reusado abajo
 
-    score += (o.esc || 1) < 7 ? 20 : 10;
+    // Escenario: menos listo (<7) → más prioridad
+    score += (o.esc || 1) < 7 ? SCORE_W.escListo : SCORE_W.escCasi;
 
-    // Pasajes — only for obra-level entries (movements don't have pasajes)
+    // Pasajes — solo obra-level (los movimientos no tienen pasajes). El bloque
+    // se acota a SCORE_W.pasajeCap para que una obra con muchos pasajes
+    // marcados no monopolice el plan.
     if (!o._isMovimiento) {
+      const evMult = urg.nivel === 'critico' ? 3 : urg.nivel === 'urgente' ? 2 : 1.2;
+      let pasajeScore = 0;
       (o.pasajes || []).filter(p => p.status === 'activo').forEach(p => {
-        let pScore = 8;
+        let pScore = SCORE_W.pasajeBase;
         if (p.tempoAct && p.tempoObj && p.tempoObj > p.tempoAct) {
           const ratio = p.tempoAct / p.tempoObj;
-          pScore = 8 + Math.round((1 - ratio) * 10);
+          pScore = SCORE_W.pasajeBase + Math.round((1 - ratio) * SCORE_W.pasajeTempoMax);
         }
         if (p.lastMemLapse) {
           const diasLapse = (now - new Date(p.lastMemLapse)) / 86400000;
-          const urgEv = computeUrgencia(rootObraId);
-          const evMultiplier = urgEv.nivel === 'critico' ? 3 : urgEv.nivel === 'urgente' ? 2 : 1.2;
-          if (diasLapse < 1)  pScore += 35 * evMultiplier;
-          else if (diasLapse < 3)  pScore += 22 * evMultiplier;
-          else if (diasLapse < 7)  pScore += 14 * evMultiplier;
-          else if (diasLapse < 14) pScore += 8  * evMultiplier;
+          const L = SCORE_W.pasajeLapso;
+          if (diasLapse < 1)       pScore += L.d1 * evMult;
+          else if (diasLapse < 3)  pScore += L.d3 * evMult;
+          else if (diasLapse < 7)  pScore += L.d7 * evMult;
+          else if (diasLapse < 14) pScore += L.d14 * evMult;
         }
-        score += pScore;
+        pasajeScore += pScore;
       });
+      score += Math.min(SCORE_W.pasajeCap, pasajeScore);
     }
 
     // Urgencia calendario — movements inherit from parent obra
-    const urg = computeUrgencia(rootObraId);
-    if (urg.nivel === 'sin-evento') score += 5;
-    else score += Math.min(60, urg.score * 4);
+    if (urg.nivel === 'sin-evento') score += SCORE_W.urgSinEvento;
+    else score += Math.min(SCORE_W.urgCap, urg.score * SCORE_W.urgFactor);
 
     // Tiempo desde último pase (movement-aware)
     const lastPaseDate = o.lastPase;
-    if (!lastPaseDate) score += 15;
+    if (!lastPaseDate) score += SCORE_W.rotNuncaPase;
     else {
       const dias = Math.floor((now - new Date(lastPaseDate)) / 86400000);
-      if (fase === 'consolidando' && dias > 2) score += 10;
-      if (fase === 'mantenimiento' && dias > 7) score += 8;
+      if (fase === 'consolidando' && dias > 2) score += SCORE_W.rotConsolidando;
+      if (fase === 'mantenimiento' && dias > 7) score += SCORE_W.rotMantenimiento;
       const { movId } = parsePlanId(planId);
       const fueEnSesion = db.sesiones
         .filter(s => (now - new Date(s.date)) <= 7 * 86400000)
@@ -4598,34 +4622,36 @@ function generateSession() {
         .some(it => movId
           ? (it.obraId === rootObraId && it.movId === movId)
           : (it.obraId === rootObraId && !it.movId));
-      if (!fueEnSesion) score += 18;
+      if (!fueEnSesion) score += SCORE_W.rotNoEnSesion;
     }
 
     // Historial de ticks (movement-aware)
     const lastTick = getLastTickForEntity(planId);
     if (lastTick) {
-      if (lastTick.tick === 'saltado') score += 25;
-      else if (lastTick.tick === 'parcial') score += 12;
-      else if (lastTick.tick === 'hecho') score -= 8;
+      if (lastTick.tick === 'saltado') score += SCORE_W.tickSaltado;
+      else if (lastTick.tick === 'parcial') score += SCORE_W.tickParcial;
+      else if (lastTick.tick === 'hecho') score += SCORE_W.tickHecho;
     }
     const recent = getRecentTicksForEntity(planId, 3);
-    if (recent.length === 3 && recent.every(r => r.tick === 'hecho')) score -= 15;
+    if (recent.length === 3 && recent.every(r => r.tick === 'hecho')) score += SCORE_W.tick3Hechos;
 
     // Fatiga acumulada
-    if (cargaTotal > 80 && dif >= 5) score -= 15;
-    if (cargaTotal > 130 && dif >= 4) score -= 20;
+    if (cargaTotal > 80 && dif >= 5) score += SCORE_W.fatigaAlta;
+    if (cargaTotal > 130 && dif >= 4) score += SCORE_W.fatigaMuyAlta;
 
-    // Solidez — baja solidez = más urgente
+    // Solidez — baja solidez = más urgente. Bloque acotado a solidezCap.
     if (o.solHistory && o.solHistory.length) {
+      let solScore = 0;
       const solActual = normalizeSolVal(o.solHistory[0].val);
-      score += Math.round((100 - solActual) / 100 * 35);
+      solScore += Math.round((100 - solActual) / 100 * SCORE_W.solidezMax);
       if (o.solHistory.length >= 2) {
         const solPrev = normalizeSolVal(o.solHistory[1].val);
         const caida = solPrev - solActual;
-        if (caida >= 20) score += 22;
-        else if (caida >= 10) score += 12;
-        else if (caida >= 5) score += 6;
+        if (caida >= 20) solScore += SCORE_W.solCaida.c20;
+        else if (caida >= 10) solScore += SCORE_W.solCaida.c10;
+        else if (caida >= 5) solScore += SCORE_W.solCaida.c5;
       }
+      score += Math.min(SCORE_W.solidezCap, solScore);
     }
 
     return { ...o, score, dif, dur, fase };
@@ -4769,11 +4795,17 @@ function generateSession() {
       return round5(raw);
     });
 
-    // Ajustar si el redondeo se pasa del total
+    // Ajustar si la asignación se pasa del total disponible: recortar 5 min de
+    // la tarjeta mayor repetidamente hasta encajar. Así el recorte se reparte
+    // entre todas (no solo la mayor) y se respeta el suelo de 10 min/tarjeta.
     let totalAsign = minPorObra.reduce((s, m) => s + m, 0);
-    if (totalAsign > totalMin) {
-      const idx = minPorObra.indexOf(Math.max(...minPorObra));
-      minPorObra[idx] = Math.max(10, round5(minPorObra[idx] - (totalAsign - totalMin)));
+    let _recGuard = 0;
+    while (totalAsign > totalMin && _recGuard++ < 500) {
+      let idx = -1, max = 10;
+      minPorObra.forEach((m, i) => { if (m > max) { max = m; idx = i; } });
+      if (idx === -1) break; // todas en el mínimo: no se puede recortar más
+      minPorObra[idx] -= 5;
+      totalAsign -= 5;
     }
 
     html += `<div class="session-type-banner trabajo">

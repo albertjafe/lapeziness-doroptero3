@@ -105,6 +105,12 @@ El mecanismo de actualización automática (`_swUpdateInit`) ya está implementa
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v8`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v9`.
+
+### Algoritmo de generación (`generateSession` / `scoreEntity`)
+
+Los pesos del scoring viven en una sola constante `SCORE_W` (justo antes de `generateSession`), con la jerarquía declarada: urgencia de evento (60) ≳ pasajes (50) ≈ solidez (50) > rotación (~33) > escenario (20) > ticks (±25) > fatiga (−20). Cada bloque está **acotado a su techo** (`pasajeCap`, `solidezCap`, `urgCap`) para que ninguna señal aplaste al resto. Para afinar el comportamiento, tocar solo los números de `SCORE_W`.
+
+El reparto de tiempo en sesión de trabajo recorta 5 min de la tarjeta mayor en bucle hasta encajar en el tiempo disponible (suelo de 10 min/tarjeta), de modo que la asignación nunca excede el total.
 
 El antiguo registro de **ataques TOC** (marcadores en la gráfica de Estado diario, sección "Registro TOC" y campos del modal de editar sesión) se ha **eliminado por completo**. El estado diario (Bienestar/Sueño) persiste de forma independiente vía `alberto_estado_v1` + `db.estadoDiario` con marca de fecha; **no** debe restaurarse desde `draft.estado` (eso machacaba los valores guardados el mismo día).
