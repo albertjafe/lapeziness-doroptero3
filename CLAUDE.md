@@ -67,13 +67,19 @@ El mecanismo de actualización automática (`_swUpdateInit`) ya está implementa
 - Animación ring-buffer 3-slots: los tres números (anterior, actual, siguiente) hacen efecto slot-machine al cambiar BPM
 - **Ruleta de tempo** (`_metroAnimateDisplayTo`): rueda/botones ± avanzan número a número (los ±5 también se animan, no saltan) con un **tick de rueda discreto** (`_metroPlayWheelTick`) en cada paso. Arrastre táctil a `STEP_PX = 26` px por paso (más lento y controlable). El slider y los cambios programáticos no hacen tick.
 - Sin etiqueta de tempo (Andante, Allegro, etc. — eliminada)
-- **Sin acento de compás**: todos los golpes suenan igual (`_metroPlayTick(false)` siempre; no hay contador de beats)
+- **Sin acento de compás**: todos los golpes suenan igual (`_metroPlayTick(false, when)` siempre; no hay contador de beats)
 - Botón TAP grande + botón Play/Pause explícito
-- Al cambiar BPM mientras corre solo se reprograma el timer (sin golpe de metrónomo inmediato)
+- Al cambiar BPM mientras corre, el planificador adopta el nuevo tempo en la siguiente ventana de lookahead (`metroSetBpm` ya **no** toca el timer; hacerlo paraba el bucle)
+- **Volumen muy alto a propósito**: el golpe usa ganancias > 1 (click 2.8, grave 2.2) empujadas contra un limitador (`DynamicsCompressor` threshold −10, ratio 20) para sonar fortísimo sin crackeo digital
+
+### Planificador del metrónomo (fix de clicks perdidos)
+- `_metroSchedule()` usa **lookahead sobre el reloj de Web Audio** (Chris Wilson): cada 25 ms pre-programa todos los golpes que caen dentro de los próximos `_METRO_LOOKAHEAD = 0.1` s, pasando su timestamp exacto a `_metroPlayTick(false, when)`.
+- `_metroNextTime` está en **segundos del reloj de audio** (`ctx.currentTime`), no en `Date.now()`. Si la pestaña se duerme y queda atrás, reengancha a `currentTime` sin disparar una ráfaga.
+- Esto arregla el bug de iPad por el que 1 de cada 3-4 clicks no sonaba (antes el golpe se creaba en el instante impreciso del `setTimeout`, con envolvente tan corta que se truncaba).
 
 ### Corrección de audio
 - `_metroGetCtx()`: recrea el `AudioContext` si está cerrado o nulo
-- `_metroPlayTick()`: llama `ctx.resume()` antes de programar nodos si el contexto está suspendido (fix para el bug de silencio tras uso prolongado en iOS)
+- `_metroPlayTick()` y el planificador llaman `ctx.resume()` si el contexto está suspendido (fix para el bug de silencio tras uso prolongado en iOS)
 
 ### Banner de actualización SW
 - `_swUpdateInit()` se llama en `window load`
@@ -105,7 +111,7 @@ El mecanismo de actualización automática (`_swUpdateInit`) ya está implementa
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v9`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v10`.
 
 ### Algoritmo de generación (`generateSession` / `scoreEntity`)
 

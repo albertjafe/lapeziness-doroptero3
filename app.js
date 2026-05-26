@@ -11155,37 +11155,48 @@ function _metroGetCtx() {
   return _metroAudioCtx;
 }
 
-function _metroPlayTick(isAccent) {
+// Golpe del metrónomo. `when` = timestamp del reloj de audio (segundos) en el
+// que debe sonar; si no se pasa, suena de inmediato. Programar el golpe en el
+// futuro inmediato (no en `currentTime` exacto) evita que iPad se salte clicks.
+// Volumen MUY alto a propósito: ganancias por encima de 1 empujadas contra un
+// limitador, para que se oiga fuerte aunque sature, sin crackeo digital.
+function _metroPlayTick(isAccent, when) {
   try {
     const ctx = _metroGetCtx();
-    const doPlay = () => {
-      try {
-        const now = ctx.currentTime;
-        const comp = ctx.createDynamicsCompressor();
-        comp.threshold.setValueAtTime(-6, now);
-        comp.ratio.setValueAtTime(4, now);
-        comp.connect(ctx.destination);
-        const cOsc = ctx.createOscillator(); const cGain = ctx.createGain();
-        cOsc.type = 'square';
-        cOsc.frequency.setValueAtTime(isAccent ? 2200 : 1700, now);
-        cOsc.connect(cGain); cGain.connect(comp);
-        cGain.gain.setValueAtTime(isAccent ? 0.9 : 0.7, now);
-        cGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.015);
-        cOsc.start(now); cOsc.stop(now + 0.02);
-        const bOsc = ctx.createOscillator(); const bGain = ctx.createGain();
-        bOsc.frequency.setValueAtTime(isAccent ? 880 : 660, now);
-        bOsc.connect(bGain); bGain.connect(comp);
-        bGain.gain.setValueAtTime(isAccent ? 0.7 : 0.5, now);
-        bGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
-        bOsc.start(now); bOsc.stop(now + 0.1);
-      } catch (e) {}
-    };
-    if (ctx.state !== 'running') {
-      ctx.resume().then(doPlay).catch(() => {});
-    } else {
-      doPlay();
-    }
-    _metroFlashBeat(isAccent);
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
+    const t = (typeof when === 'number') ? Math.max(when, ctx.currentTime) : ctx.currentTime;
+
+    // Limitador de salida: deja empujar muchísima ganancia sin que reviente feo.
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.setValueAtTime(-10, t);
+    comp.knee.setValueAtTime(0, t);
+    comp.ratio.setValueAtTime(20, t);
+    comp.attack.setValueAtTime(0.001, t);
+    comp.release.setValueAtTime(0.05, t);
+    comp.connect(ctx.destination);
+
+    // Click agudo — cuerpo del "tic"
+    const cOsc = ctx.createOscillator(); const cGain = ctx.createGain();
+    cOsc.type = 'square';
+    cOsc.frequency.setValueAtTime(isAccent ? 2300 : 1800, t);
+    cGain.gain.setValueAtTime(2.8, t);
+    cGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+    cOsc.connect(cGain); cGain.connect(comp);
+    cOsc.start(t); cOsc.stop(t + 0.035);
+
+    // Tono grave — da pegada y cuerpo al golpe
+    const bOsc = ctx.createOscillator(); const bGain = ctx.createGain();
+    bOsc.type = 'square';
+    bOsc.frequency.setValueAtTime(isAccent ? 900 : 700, t);
+    bGain.gain.setValueAtTime(2.2, t);
+    bGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    bOsc.connect(bGain); bGain.connect(comp);
+    bOsc.start(t); bOsc.stop(t + 0.1);
+
+    // Flash visual sincronizado con el golpe
+    const delayMs = Math.max(0, (t - ctx.currentTime) * 1000);
+    if (delayMs < 4) _metroFlashBeat(isAccent);
+    else setTimeout(() => _metroFlashBeat(isAccent), delayMs);
   } catch (e) {}
 }
 
@@ -11379,27 +11390,39 @@ function _metroDrawerApplyState() {
   if (pinBtn) pinBtn.classList.toggle('active', _metroDrawerPinned);
 }
 
+const _METRO_LOOKAHEAD = 0.1;  // s — ventana de pre-programación de golpes
+const _METRO_SCHED_MS  = 25;   // ms — cada cuánto corre el planificador
+
+// Planificador con "lookahead" sobre el reloj de Web Audio. En vez de crear el
+// golpe en el instante (impreciso) en que dispara el setTimeout —lo que en iPad
+// hacía que se saltara clicks al azar—, pre-programa cada golpe con su timestamp
+// exacto en el reloj de audio. Así ningún click se pierde ni llega tarde.
+// _metroNextTime está en SEGUNDOS del reloj de audio (ctx.currentTime).
 function _metroSchedule() {
   if (!_metroRunning) return;
-  const interval = 60000 / _metroBpm;
-  const now = Date.now();
-  if (now >= _metroNextTime - 8) {
-    // Todos los golpes suenan igual — sin acento de compás.
-    _metroPlayTick(false);
-    _metroNextTime = (now < _metroNextTime) ? _metroNextTime + interval : now + interval;
+  const ctx = _metroGetCtx();
+  if (ctx.state !== 'running') ctx.resume().catch(() => {});
+  const interval = 60 / _metroBpm; // segundos por golpe
+  // Si nos quedamos atrás (tab en segundo plano dormida), reengancha sin ráfaga.
+  if (_metroNextTime < ctx.currentTime) _metroNextTime = ctx.currentTime;
+  while (_metroNextTime < ctx.currentTime + _METRO_LOOKAHEAD) {
+    _metroPlayTick(false, _metroNextTime); // todos los golpes iguales (sin acento)
+    _metroNextTime += interval;
   }
-  _metroTimer = setTimeout(_metroSchedule, Math.max(4, _metroNextTime - Date.now() - 8));
+  _metroTimer = setTimeout(_metroSchedule, _METRO_SCHED_MS);
 }
 
 function metroToggle() {
   _metroRunning = !_metroRunning;
   if (_metroRunning) {
-    if (_metroAudioCtx && _metroAudioCtx.state === 'suspended') _metroAudioCtx.resume();
+    const ctx = _metroGetCtx();
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
     _metroTaps = [];
-    _metroNextTime = Date.now();
+    _metroNextTime = ctx.currentTime; // arranca en el reloj de audio
     _metroSchedule();
   } else {
     clearTimeout(_metroTimer);
+    _metroTimer = null;
   }
   _metroUpdateUI();
 }
@@ -11412,12 +11435,9 @@ function metroBpm(delta) {
 function metroSetBpm(bpm, opts) {
   _metroPrevBpm = _metroBpm;
   _metroBpm = Math.max(20, Math.min(250, Math.round(bpm)));
-  if (_metroRunning) {
-    clearTimeout(_metroTimer);
-    // Keep existing beat position — just reschedule with the new interval.
-    // (Do NOT reset _metroNextTime, that would fire an immediate, jarring tick.)
-    _metroTimer = setTimeout(_metroSchedule, Math.max(4, _metroNextTime - Date.now() - 8));
-  }
+  // Si está sonando, el planificador (que lee _metroBpm en cada vuelta) adopta
+  // el nuevo tempo en la siguiente ventana de lookahead, sin golpe brusco. No
+  // tocar _metroTimer aquí: pararía el bucle del planificador.
   _metroUpdateUI(opts);
 }
 
