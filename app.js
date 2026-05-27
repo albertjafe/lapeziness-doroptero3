@@ -631,6 +631,10 @@ const sessionTicks = {};
 const sessionMinPlan = {};
 const sessionSolRatings = {};
 const sessionProductivityRatings = {}; // per-item productivity rating (0-100)
+// Destellos: sesiones de excelencia marcadas por el usuario (slider ≥ DESTELLO_UMBRAL).
+// sessionDestello[planId] = { on: true, nota: 'lo que la hizo especial' }
+const sessionDestello = {};
+const DESTELLO_UMBRAL = 80; // a partir de aquí el modal ofrece marcar la sesión como destello
 // Para tarjetas fusionadas (varias sub-sesiones de la misma obra/movimiento).
 // Cada planId puede acumular sub-sesiones: para productividad media ponderada
 // por minutos, y para listar pasajes trabajados acumulados.
@@ -725,6 +729,7 @@ function restoreSessionFromDbToday(opts) {
     Object.keys(sessionMinPlan).forEach(k => delete sessionMinPlan[k]);
     Object.keys(sessionSolRatings).forEach(k => delete sessionSolRatings[k]);
     Object.keys(sessionProductivityRatings).forEach(k => delete sessionProductivityRatings[k]);
+    Object.keys(sessionDestello).forEach(k => delete sessionDestello[k]);
     Object.keys(sessionAggregate).forEach(k => delete sessionAggregate[k]);
   }
 
@@ -748,12 +753,15 @@ function restoreSessionFromDbToday(opts) {
         rating: it.rating || null,
         solRating: it.solRating || null,
         note: it.note || '',
+        destello: !!it.destello,
+        destelloNota: it.destelloNota || null,
       };
     }
     groups[planIdKey].min += parseInt(it.minutosReales || it.minutosPlan || 0) || 0;
     if (it.tick === 'hecho') groups[planIdKey].tick = 'hecho';
     if (it.rating != null) groups[planIdKey].rating = it.rating;
     if (it.solRating != null) groups[planIdKey].solRating = it.solRating;
+    if (it.destello) { groups[planIdKey].destello = true; groups[planIdKey].destelloNota = it.destelloNota || groups[planIdKey].destelloNota || null; }
   });
 
   Object.values(groups).forEach(g => {
@@ -781,6 +789,7 @@ function restoreSessionFromDbToday(opts) {
     if (g.tick) sessionTicks[planId] = g.tick;
     if (g.rating != null) sessionProductivityRatings[planId] = g.rating;
     if (g.solRating != null) sessionSolRatings[planId] = g.solRating;
+    if (g.destello) sessionDestello[planId] = { on: true, nota: g.destelloNota || '' };
   });
 
   // Restaurar aggregate completo si está disponible
@@ -1105,6 +1114,8 @@ function commitSession(targetDate) {
       solRating: sessionSolRatings[planId] || null,
       rating: sessionProductivityRatings[planId] != null ? sessionProductivityRatings[planId] : null,
       note: document.getElementById('tnote-' + planId)?.value || '',
+      destello: sessionDestello[planId]?.on ? true : false,
+      destelloNota: sessionDestello[planId]?.nota || null,
       objetivo: ''
     };
   });
@@ -1214,6 +1225,32 @@ function updateHechoProd(val) {
   if (d) { d.textContent = pct; d.style.color = col; }
   if (l) l.textContent = ratingLabel(pct);
   fillSlider(s, col);
+
+  // Caja de destello: aparece al cruzar el umbral de excelencia. Al revelarla
+  // por primera vez se autoselecciona la casilla; bajar del umbral la oculta.
+  const box = document.getElementById('hechoDestelloBox');
+  if (box) {
+    const wasVisible = box.style.display !== 'none';
+    const shouldShow = pct >= DESTELLO_UMBRAL;
+    if (shouldShow && !wasVisible) {
+      box.style.display = 'block';
+      const chk = document.getElementById('hechoDestelloChk');
+      if (chk) chk.checked = true;
+      toggleHechoDestello(true);
+      requestAnimationFrame(() => box.classList.add('on'));
+    } else if (!shouldShow && wasVisible) {
+      box.classList.remove('on');
+      box.style.display = 'none';
+    }
+  }
+}
+
+// Activa/atenúa el campo de nota del destello según la casilla "guardar destello".
+function toggleHechoDestello(on) {
+  const nota = document.getElementById('hechoDestelloNota');
+  const box = document.getElementById('hechoDestelloBox');
+  if (nota) nota.disabled = !on;
+  if (box) box.classList.toggle('off', !on);
 }
 
 // ── AUTO-SAVE DEL PLAN DE HOY ───────────────────────────────────────────────
@@ -1240,6 +1277,7 @@ function handleDayChange() {
     Object.keys(sessionMinPlan).forEach(k => delete sessionMinPlan[k]);
     Object.keys(sessionSolRatings).forEach(k => delete sessionSolRatings[k]);
     Object.keys(sessionProductivityRatings).forEach(k => delete sessionProductivityRatings[k]);
+    Object.keys(sessionDestello).forEach(k => delete sessionDestello[k]);
     Object.keys(sessionAggregate).forEach(k => delete sessionAggregate[k]);
     _currentPlanDay = new Date().toDateString();
     // Borrar el draft local (saveDraft pone date=hoy, así que loadDraft del día
@@ -1361,6 +1399,8 @@ function _autoSaveTodayPlanNow() {
         solRating: sessionSolRatings[planId] || null,
         rating: sessionProductivityRatings[planId] != null ? sessionProductivityRatings[planId] : null,
         note: document.getElementById('tnote-' + planId)?.value || '',
+        destello: sessionDestello[planId]?.on ? true : false,
+        destelloNota: sessionDestello[planId]?.nota || null,
         startedAt: firstStartedAt,
         endedAt: lastEndedAt,
         objetivo: ''
@@ -1454,6 +1494,7 @@ function closeRatingSesion(save) {
     Object.keys(sessionMinPlan).forEach(k => delete sessionMinPlan[k]);
     Object.keys(sessionSolRatings).forEach(k => delete sessionSolRatings[k]);
     Object.keys(sessionProductivityRatings).forEach(k => delete sessionProductivityRatings[k]);
+    Object.keys(sessionDestello).forEach(k => delete sessionDestello[k]);
     Object.keys(sessionAggregate).forEach(k => delete sessionAggregate[k]);
     const planDiv = document.getElementById('sessionPlan');
     if (planDiv) { planDiv.innerHTML = ''; planDiv.classList.remove('visible'); }
@@ -3757,12 +3798,32 @@ function openHechoDatos(planId, minPlan, opts) {
 
   document.getElementById('hechoNota').value = document.getElementById('tnote-' + planId)?.value || '';
 
+  // Reset destello box, then init productivity slider (que decide si se muestra).
+  const destBox = document.getElementById('hechoDestelloBox');
+  const destChk = document.getElementById('hechoDestelloChk');
+  const destNotaEl = document.getElementById('hechoDestelloNota');
+  if (destBox) { destBox.style.display = 'none'; destBox.classList.remove('on'); }
+  if (destChk) destChk.checked = true;
+  if (destNotaEl) { destNotaEl.value = ''; destNotaEl.disabled = false; }
+
   // Initialize productivity slider — restore previous value or default to 70
   const prevProd = sessionProductivityRatings[planId];
   const prodInit = (prevProd != null) ? prevProd : 70;
   const prodSlider = document.getElementById('hechoProdSlider');
   if (prodSlider) { prodSlider.value = prodInit; }
   if (typeof updateHechoProd === 'function') updateHechoProd(prodInit);
+
+  // Restaurar un destello previamente guardado para este planId (nota + casilla).
+  const prevDest = sessionDestello[planId];
+  if (prevDest && destBox) {
+    if (destChk) destChk.checked = !!prevDest.on;
+    if (destNotaEl) destNotaEl.value = prevDest.nota || '';
+    if (prevDest.on || (prevDest.nota || '').length) {
+      destBox.style.display = 'block';
+      requestAnimationFrame(() => destBox.classList.add('on'));
+    }
+    toggleHechoDestello(destChk ? destChk.checked : true);
+  }
 
   // ── EDIT MODE ──────────────────────────────────────────────────────────
   // Si estamos reabriendo la tarjeta para EDITAR, restaurar lo que se guardó
@@ -4055,6 +4116,15 @@ function closeHechoDatos(save) {
     }
   }
 
+  // Capturar destello: solo cuenta si la caja está visible (slider ≥ umbral) y
+  // la casilla "guardar destello" sigue marcada. La nota es opcional.
+  const destBox = document.getElementById('hechoDestelloBox');
+  const destChk = document.getElementById('hechoDestelloChk');
+  const destOn = !!(destBox && destBox.style.display !== 'none' && destChk && destChk.checked);
+  const destNota = destOn ? (document.getElementById('hechoDestelloNota')?.value || '').trim() : '';
+  if (destOn) sessionDestello[planId] = { on: true, nota: destNota };
+  else delete sessionDestello[planId];
+
   // Capture productivity rating from the embedded slider.
   // Si esta es una sub-sesión (tarjeta fusionada), añadimos esta sub-sesión al
   // agregado y la productividad final es media ponderada por minutos.
@@ -4111,6 +4181,8 @@ function closeHechoDatos(save) {
       prod: prodVal,
       pasajes: subPasajes,
       pases: Object.keys(subPases).length ? subPases : null,
+      destello: destOn,
+      destelloNota: destOn ? destNota : null,
       startedAt: startedAt,
       endedAt: endedAt,
       timestamp: endedAt, // legacy compat
@@ -4128,6 +4200,8 @@ function closeHechoDatos(save) {
       previous.pasajes = justAdded.pasajes;
       previous.pases = justAdded.pases;
       previous.prod = justAdded.prod;
+      previous.destello = justAdded.destello;
+      previous.destelloNota = justAdded.destelloNota;
     }
 
     // Productividad ponderada
@@ -9582,7 +9656,12 @@ function getResumenSesionesHoy() {
     const label = entity._isMovimiento
       ? (entity._parentName || '') + ' — ' + entity.name
       : (entity._displayName || entity.name || '—');
-    items.push({ label, minutos: min, planId: pid });
+    const dest = sessionDestello[pid];
+    items.push({
+      label, minutos: min, planId: pid,
+      destello: !!(dest && dest.on),
+      destelloNota: dest && dest.on ? (dest.nota || '') : '',
+    });
   });
   // Añadir DESCANSOS del día desde db.sessionPlants. Los agrupamos en una
   // sola entrada con el total de minutos descansados, etiquetada como
@@ -9654,11 +9733,21 @@ function _procesarSesionParaResumen(sesion) {
       if (!pasaje) return null;
       return { name: pasaje.name || pasaje.compases || '?', intensidad: pasajesMap[pid] };
     }).filter(Boolean);
+    // Destello: del item (forma persistida) o, de respaldo, de alguna sub-sesión.
+    let destello = !!it.destello;
+    let destelloNota = (it.destelloNota || '').trim();
+    if (!destello && subsessions.some(s => s && s.destello)) {
+      destello = true;
+      const sub = subsessions.find(s => s && s.destello && (s.destelloNota || '').trim());
+      if (sub) destelloNota = (sub.destelloNota || '').trim();
+    }
     return {
       label,
       minutos: it.minutosReales || it.minutosPlan || it.min || 0,
       pasajes,
       nota: (it.note || it.nota || '').trim(),
+      destello,
+      destelloNota,
     };
   }).filter(Boolean).filter(x => x.minutos > 0);
   if (!items.length) return null;
@@ -9691,6 +9780,103 @@ function getResumenSesionesAyer() {
   return resultados[0] || null;
 }
 
+// ── DESTELLOS ────────────────────────────────────────────────────────────────
+// Recopila todas las sesiones de excelencia marcadas, de todo el historial,
+// más recientes primero. Cada entrada: { date, obra, nota }.
+// Los días pasados se leen de db.sesiones; HOY se lee del estado en memoria
+// (sessionDestello) para que un destello recién marcado aparezca al instante,
+// sin esperar al autoguardado (que va con debounce de 800ms).
+function getAllDestellos() {
+  const out = [];
+  const todayStr = new Date().toDateString();
+
+  // HOY — desde memoria
+  Object.keys(sessionDestello).forEach(planId => {
+    const d = sessionDestello[planId];
+    if (!d || !d.on) return;
+    const entity = (currentPlan || []).find(e => (e._planId || e.id) === planId);
+    let obraName = 'Sesión';
+    if (entity) {
+      obraName = entity._isMovimiento
+        ? (entity._parentName || '') + ' — ' + entity.name
+        : (entity._displayName || entity.name || 'Sesión');
+    }
+    out.push({ date: new Date().toISOString(), obra: obraName, nota: (d.nota || '').trim() });
+  });
+
+  // DÍAS PASADOS — desde db.sesiones
+  if (Array.isArray(db.sesiones)) {
+    db.sesiones.forEach(sesion => {
+      if (!sesion || !Array.isArray(sesion.items)) return;
+      if (new Date(sesion.date).toDateString() === todayStr) return; // hoy ya cubierto por memoria
+      const aggregate = sesion._aggregate || {};
+      sesion.items.forEach(it => {
+        if (!it) return;
+        const planId = it._planId || (it.obraId + '::' + (it.movId || ''));
+        let on = !!it.destello;
+        let nota = (it.destelloNota || '').trim();
+        // Respaldo: destello guardado solo en alguna sub-sesión.
+        if (!on) {
+          const subs = aggregate[planId]?.subsessions || [];
+          const sub = subs.find(s => s && s.destello);
+          if (sub) { on = true; if (!nota) nota = (sub.destelloNota || '').trim(); }
+        }
+        if (!on) return;
+        // Nombre de la obra: del item guardado o reconstruido desde db.obras.
+        let obraName = it.obraName || '';
+        if (!obraName) {
+          const obra = (db.obras || []).find(o => o.id === it.obraId);
+          if (obra) {
+            if (it.movId) {
+              const mov = (obra.movimientos || []).find(m => m.id === it.movId);
+              obraName = obra.name + (mov ? ' — ' + mov.name : '');
+            } else {
+              obraName = obra.name + (obra.composer && obra.composer !== '—' ? ' · ' + obra.composer : '');
+            }
+          }
+        }
+        out.push({ date: sesion.date, obra: obraName || 'Sesión', nota });
+      });
+    });
+  }
+  out.sort((a, b) => new Date(b.date) - new Date(a.date));
+  return out;
+}
+
+// Muestra/oculta el pill de Destellos (abajo a la izquierda) con el conteo.
+function refreshDestellosPill() {
+  const pill = document.getElementById('cronoDestellosPill');
+  if (!pill) return;
+  const n = getAllDestellos().length;
+  const countEl = document.getElementById('cronoDestellosCount');
+  if (countEl) countEl.textContent = n;
+  pill.style.display = n > 0 ? '' : 'none';
+}
+
+function openDestellosModal() {
+  const list = document.getElementById('destellosList');
+  if (list) {
+    const destellos = getAllDestellos();
+    if (!destellos.length) {
+      list.innerHTML = '<div class="destellos-empty">Aún no hay destellos. Cuando una sesión vaya de excelencia (80 o más), podrás guardarla aquí.</div>';
+    } else {
+      list.innerHTML = destellos.map(d => {
+        const fecha = new Date(d.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+        const notaHtml = d.nota
+          ? '<div class="destello-card-nota">' + escapeHtmlSafe(d.nota) + '</div>'
+          : '<div class="destello-card-nota destello-card-nota--vacia">— sin nota —</div>';
+        return '<div class="destello-card">' +
+          '<div class="destello-card-head">' +
+            '<span class="destello-card-obra">' + escapeHtmlSafe(d.obra) + '</span>' +
+            '<span class="destello-card-fecha">' + fecha + '</span>' +
+          '</div>' + notaHtml +
+        '</div>';
+      }).join('');
+    }
+  }
+  openModal('modalDestellos');
+}
+
 // Refresca todos los textos "hoy te has concentrado..." y el mini-resumen
 function refreshConcentradoUI() {
   const min = getMinutosConcentradoHoy();
@@ -9700,6 +9886,9 @@ function refreshConcentradoUI() {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
   });
+
+  // Pill de destellos (abajo a la izquierda en el cronómetro en reposo)
+  if (typeof refreshDestellosPill === 'function') refreshDestellosPill();
 
   // Mini-resumen lateral: HOY + AYER
   const resumenEl = document.getElementById('cronoResumenLateral');
@@ -9726,10 +9915,15 @@ function refreshConcentradoUI() {
           : it.minutos + ' min';
         const isNew = (it.planId && it.planId === newId);
         const restCls = it.isRest ? ' is-rest' : '';
-        return '<div class="crono-resumen-row' + (isNew ? ' is-new' : '') + restCls + '" data-plan="' + it.planId + '">' +
-          '<span class="crono-resumen-label">' + it.label + '</span>' +
+        const destCls = it.destello ? ' is-destello' : '';
+        const destLabel = it.destello ? '✨ ' : '';
+        const destNotaHtml = (it.destello && it.destelloNota)
+          ? '<div class="crono-resumen-destello-nota">' + escapeHtmlSafe(it.destelloNota) + '</div>'
+          : '';
+        return '<div class="crono-resumen-row' + (isNew ? ' is-new' : '') + restCls + destCls + '" data-plan="' + it.planId + '">' +
+          '<span class="crono-resumen-label">' + destLabel + it.label + '</span>' +
           '<span class="crono-resumen-min">' + minTxt + '</span>' +
-        '</div>';
+        '</div>' + destNotaHtml;
       }).join('');
       html += '</div>';
     }
@@ -9753,11 +9947,16 @@ function refreshConcentradoUI() {
           }).join('');
           extras += '</div>';
         }
+        if (it.destello && it.destelloNota) {
+          extras += '<div class="crono-resumen-destello-nota">' + escapeHtmlSafe(it.destelloNota) + '</div>';
+        }
         if (it.nota) {
           extras += '<div class="crono-resumen-nota">' + escapeHtmlSafe(it.nota) + '</div>';
         }
-        return '<div class="crono-resumen-row">' +
-          '<span class="crono-resumen-label">' + escapeHtmlSafe(it.label) + '</span>' +
+        const destCls = it.destello ? ' is-destello' : '';
+        const destLabel = it.destello ? '✨ ' : '';
+        return '<div class="crono-resumen-row' + destCls + '">' +
+          '<span class="crono-resumen-label">' + destLabel + escapeHtmlSafe(it.label) + '</span>' +
           '<span class="crono-resumen-min">' + minTxt + '</span>' +
           '</div>' + extras;
       }).join('');
@@ -9805,6 +10004,9 @@ function cronoRender() {
   const idle = document.getElementById('cronoStageIdle');
   const run  = document.getElementById('cronoStageRun');
   if (!idle || !run) return;
+
+  // Marca de marcha: el pill de Destellos solo se muestra en reposo (idle).
+  document.body.classList.toggle('crono-running', crono.state !== 'idle');
 
   if (crono.state === 'idle') {
     idle.style.display = '';
@@ -11539,6 +11741,7 @@ function cronoOnLeaveView() {
   _stopCronoClock();
   cronoExitFocus();
   document.body.classList.remove('crono-timer-mode');
+  document.body.classList.remove('crono-running');
 }
 
 // Hidratar al cargar (si había sesión activa)

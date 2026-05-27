@@ -189,6 +189,14 @@
   <!-- Mini-resumen lateral (visible siempre que haya tarjetas) -->
   <div class="crono-resumen-lateral" id="cronoResumenLateral" style="display:none"></div>
 
+  <!-- Pill de Destellos: abajo a la izquierda, abre la lista de sesiones de excelencia.
+       Visible solo en el cronómetro en reposo (no en modo concentración). -->
+  <button class="crono-destellos-pill" id="cronoDestellosPill" style="display:none" onclick="openDestellosModal()">
+    <span class="crono-destellos-pill-spark">✨</span>
+    <span class="crono-destellos-pill-text">Destellos</span>
+    <span class="crono-destellos-pill-count" id="cronoDestellosCount">0</span>
+  </button>
+
   <!-- Texto "hoy te has concentrado X", siempre visible arriba -->
   <div class="crono-concentrado" id="cronoConcentradoText">Hoy te has concentrado 0 minutos</div>
   <!-- Motivador de hito: tiempo redondeado a la baja al múltiplo de 15min más cercano -->
@@ -981,6 +989,19 @@
         <span>50 normal</span>
         <span>100 perfecta</span>
       </div>
+
+      <!-- ✨ Destello: aparece solo si la sesión fue de excelencia (slider ≥ 80) -->
+      <div id="hechoDestelloBox" class="hecho-destello-box" style="display:none">
+        <div class="hecho-destello-head">
+          <span class="hecho-destello-title">✨ Sesión de excelencia</span>
+          <label class="hecho-destello-keep">
+            <input type="checkbox" id="hechoDestelloChk" checked onchange="toggleHechoDestello(this.checked)">
+            <span>guardar destello</span>
+          </label>
+        </div>
+        <div class="hecho-destello-prompt">¿Qué hizo especial esta sesión? La idea, el enfoque, el clic que llevabas tiempo buscando…</div>
+        <input type="text" id="hechoDestelloNota" class="modal-input hecho-destello-input" placeholder="lo que quieras recordar de hoy…">
+      </div>
     </div>
 
     <!-- Nota general -->
@@ -993,6 +1014,20 @@
       <button class="modal-btn secondary" onclick="closeHechoDatos(false)">Cancelar</button>
       <button class="modal-btn primary" onclick="closeHechoDatos(true)">Guardar</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL DESTELLOS — lista de sesiones de excelencia para releer en días flojos -->
+<div class="modal-overlay" id="modalDestellos">
+  <div class="modal destellos-modal" style="max-width:460px;max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;padding:22px 24px 6px">
+      <div class="modal-title" style="margin-bottom:0">✨ Destellos</div>
+      <button class="modal-btn secondary" onclick="closeModal('modalDestellos')" style="padding:4px 12px;font-size:10px;flex:none">✕</button>
+    </div>
+    <div style="font-size:10px;color:var(--text3);padding:0 24px 12px;line-height:1.6">
+      Tus sesiones de excelencia. Vuelve aquí cuando necesites recordar de lo que eres capaz.
+    </div>
+    <div class="destellos-list" id="destellosList" style="overflow-y:auto;padding:0 24px 22px;flex:1;-webkit-overflow-scrolling:touch"></div>
   </div>
 </div>
 

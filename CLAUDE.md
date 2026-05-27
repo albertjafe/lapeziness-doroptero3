@@ -111,7 +111,18 @@ El mecanismo de actualización automática (`_swUpdateInit`) ya está implementa
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v10`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v11`.
+
+### Destellos (sesiones de excelencia)
+
+Cuando el slider "¿Cómo fue esta sesión?" del modal Hecho llega a **≥ `DESTELLO_UMBRAL` (80)**, aparece bajo el slider una caja dorada (`#hechoDestelloBox`) que pregunta qué hizo especial la sesión y la marca como **destello** (casilla para desmarcar). El estado vive en `sessionDestello[planId] = { on, nota }`, se serializa en cada item de sesión (`destello` + `destelloNota`) y se restaura igual que `sessionProductivityRatings`.
+
+- En el **mini-resumen lateral** del cronómetro las filas de destello salen con ✨ y la nota resaltada (`.crono-resumen-destello-nota`).
+- Un **pill "✨ Destellos"** abajo a la izquierda (solo en el cronómetro en reposo, oculto con `body.crono-running`) abre `#modalDestellos`, la lista completa de destellos del historial (`getAllDestellos`): hoy se lee de memoria, días pasados de `db.sesiones`.
+
+### Fix de zoom en modales sobre el cronómetro
+
+`body.crono-focus` usa `touch-action: none` (bloquea pellizco). Los modales sobre el cronómetro ahora usan `touch-action: pan-y` (antes `auto`): permiten scroll vertical pero **no** pinch-zoom, evitando que la pantalla quede ampliada al cerrar el modal.
 
 ### Algoritmo de generación (`generateSession` / `scoreEntity`)
 

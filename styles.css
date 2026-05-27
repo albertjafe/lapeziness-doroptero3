@@ -1253,6 +1253,125 @@
     margin: 0;
   }
 
+  /* ✨ CAJA DE DESTELLO (sesión de excelencia) dentro del modal Hecho */
+  .hecho-destello-box {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border: 1px solid rgba(201,169,110,0.45);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(201,169,110,0.14), rgba(201,169,110,0.05));
+    box-shadow: 0 0 0 1px rgba(201,169,110,0.08), 0 6px 18px -10px rgba(201,169,110,0.5);
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1);
+  }
+  .hecho-destello-box.on { opacity: 1; transform: translateY(0); }
+  .hecho-destello-box.off { opacity: 0.55; }
+  .hecho-destello-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; margin-bottom: 6px;
+  }
+  .hecho-destello-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px; color: #d8b46a; letter-spacing: 0.01em;
+  }
+  .hecho-destello-keep {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text3); cursor: pointer; white-space: nowrap;
+  }
+  .hecho-destello-keep input { accent-color: #c8a030; cursor: pointer; }
+  .hecho-destello-prompt {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic; font-size: 13px; line-height: 1.4;
+    color: var(--text2); margin-bottom: 8px;
+  }
+  .hecho-destello-input { margin-bottom: 0 !important; border-color: rgba(201,169,110,0.4) !important; }
+  .hecho-destello-input:disabled { opacity: 0.45; }
+
+  /* Fila destacada de destello en el mini-resumen lateral */
+  .crono-resumen-row.is-destello .crono-resumen-label {
+    color: #d8b46a; opacity: 1;
+    font-style: italic;
+  }
+  .crono-resumen-destello-nota {
+    font-family: 'Caveat', 'Cormorant Garamond', cursive;
+    font-size: 14px; line-height: 1.25;
+    color: #d8b46a; opacity: 0.92;
+    margin: 1px 0 5px 0;
+    padding-left: 8px;
+    border-left: 2px solid rgba(201,169,110,0.5);
+  }
+
+  /* Pill de Destellos: abajo a la izquierda en el cronómetro en reposo */
+  .crono-destellos-pill {
+    position: fixed;
+    left: 18px;
+    bottom: max(env(safe-area-inset-bottom, 14px), 18px);
+    z-index: 55;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 13px;
+    border-radius: 999px;
+    border: 1px solid rgba(201,169,110,0.4);
+    background: linear-gradient(180deg, rgba(201,169,110,0.16), rgba(201,169,110,0.06));
+    color: #d8b46a;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; letter-spacing: 0.08em;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 6px 20px -10px rgba(201,169,110,0.6);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease;
+  }
+  .crono-destellos-pill:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -10px rgba(201,169,110,0.7); }
+  .crono-destellos-pill:active { transform: scale(0.96); }
+  .crono-destellos-pill-spark { font-size: 13px; }
+  .crono-destellos-pill-text { text-transform: uppercase; }
+  .crono-destellos-pill-count {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 17px; height: 17px; padding: 0 4px;
+    border-radius: 999px;
+    background: rgba(201,169,110,0.28);
+    color: #f0d9a6; font-size: 9px; font-variant-numeric: tabular-nums;
+  }
+  /* Ocultar el pill mientras el cronómetro corre/pausado (solo en reposo) */
+  body.crono-running .crono-destellos-pill { display: none !important; }
+
+  /* MODAL DESTELLOS — lista de sesiones de excelencia */
+  .destellos-list { display: flex; flex-direction: column; gap: 10px; }
+  .destellos-empty {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 14px; color: var(--text3); line-height: 1.5; padding: 12px 0;
+  }
+  .destello-card {
+    padding: 12px 14px;
+    border: 1px solid rgba(201,169,110,0.32);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(201,169,110,0.10), rgba(201,169,110,0.03));
+  }
+  .destello-card-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 10px; margin-bottom: 6px;
+  }
+  .destello-card-obra {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px; color: #d8b46a; line-height: 1.2;
+  }
+  .destello-card-fecha {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--text3); white-space: nowrap; flex-shrink: 0;
+    letter-spacing: 0.04em;
+  }
+  .destello-card-nota {
+    font-family: 'Caveat', 'Cormorant Garamond', cursive;
+    font-size: 17px; line-height: 1.3; color: var(--text);
+  }
+  .destello-card-nota--vacia {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 12px; color: var(--text3); opacity: 0.7;
+  }
+
   /* COMPAS STEPPER */
   .compas-stepper { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
   .stepper-btn { width: 34px; height: 34px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg3); color: var(--accent); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
@@ -2340,12 +2459,15 @@
     padding-bottom: max(env(safe-area-inset-bottom, 0px), 12px);
   }
   /* Permitir scroll DENTRO de modales aunque body esté bloqueado.
-     touch-action: auto en modales evita que se hereda el none del body. */
+     pan-y permite el desplazamiento vertical del modal pero NO el pinch-zoom:
+     antes usábamos touch-action:auto, que reactivaba el zoom por pellizco y
+     dejaba la pantalla ampliada al cerrar (el cronómetro lo bloquea con
+     touch-action:none). Con pan-y el comportamiento es coherente. */
   body.crono-focus .modal-overlay {
-    touch-action: auto;
+    touch-action: pan-y;
   }
   body.crono-focus .modal {
-    touch-action: auto;
+    touch-action: pan-y;
   }
 
   /* Fondo: usa el color base del tema con una capa muy sutil de profundidad */
