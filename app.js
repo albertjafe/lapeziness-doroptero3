@@ -6387,8 +6387,10 @@ function openGrafico(obraId, movId) {
     tabsEl.style.display = 'none';
   }
 
-  renderGraficoSvg();
   openModal('modalGrafico');
+  // Renderizar tras abrir el modal: el SVG necesita un contenedor con anchura
+  // medible para dibujarse bien en móvil.
+  requestAnimationFrame(() => renderGraficoSvg());
 }
 
 function switchGraficoMov(movId, btn) {
@@ -6887,11 +6889,13 @@ function computeEventoReadiness(evento) {
 }
 
 let _eventoResId = null;
+const _eventoResExcluidas = new Set(); // obraIds excluidas del resultado
 
 function openEventoResultado(eventoId) {
   const ev = (db.eventos || []).find(e => e.id === eventoId);
   if (!ev) return;
   _eventoResId = eventoId;
+  _eventoResExcluidas.clear();
   const obras = (ev.obras || []).map(id => findObra(id)).filter(Boolean);
 
   document.getElementById('eventoResTitle').textContent = ev.nombre;
@@ -6899,21 +6903,26 @@ function openEventoResultado(eventoId) {
   const obrasHtml = obras.map(obra => {
     const solPrev = estimateSolActual(obra).val;
     const escPrev = obra.escHistory?.length ? normalizeSolVal(obra.escHistory[0].val) : Math.min(100, (obra.esc || 1) * 10);
-    return '<div class="resultado-obra-block">' +
-      '<div class="resultado-obra-name">' + obra.name + (obra.composer ? ' <span style="font-size:11px;color:var(--text3)">' + obra.composer + '</span>' : '') + '</div>' +
+    return '<div class="resultado-obra-block" id="res-block-' + obra.id + '">' +
+      '<div class="resultado-obra-head">' +
+        '<div class="resultado-obra-name">' + obra.name + (obra.composer ? ' <span style="font-size:11px;color:var(--text3)">' + obra.composer + '</span>' : '') + '</div>' +
+        '<button type="button" class="resultado-skip-btn" id="res-skip-' + obra.id + '" onclick="toggleEventoResObra(\'' + obra.id + '\')">No la toqué</button>' +
+      '</div>' +
 
-      '<div class="resultado-slider-label"><span>Solidez</span>' +
-      '<span class="resultado-pct-val" id="res-sol-val-' + obra.id + '" style="color:' + SOL_COLOR + '">' + solPrev + '%</span></div>' +
-      '<input type="range" min="0" max="100" step="1" value="' + solPrev + '" class="sol-slider" id="res-sol-' + obra.id + '" style="color:' + SOL_COLOR + '"' +
-      ' oninput="updateResSlider(\'sol\',\'' + obra.id + '\',this.value)">' +
+      '<div class="resultado-obra-body" id="res-body-' + obra.id + '">' +
+        '<div class="resultado-slider-label"><span>Solidez</span>' +
+        '<span class="resultado-pct-val" id="res-sol-val-' + obra.id + '" style="color:' + SOL_COLOR + '">' + solPrev + '%</span></div>' +
+        '<input type="range" min="0" max="100" step="1" value="' + solPrev + '" class="sol-slider" id="res-sol-' + obra.id + '" style="color:' + SOL_COLOR + '"' +
+        ' oninput="updateResSlider(\'sol\',\'' + obra.id + '\',this.value)">' +
 
-      '<div class="resultado-slider-label" style="margin-top:8px"><span>Libertad en escena</span>' +
-      '<span class="resultado-pct-val" id="res-esc-val-' + obra.id + '" style="color:' + ESC_COLOR + '">' + escPrev + '%</span></div>' +
-      '<input type="range" min="0" max="100" step="1" value="' + escPrev + '" class="sol-slider" id="res-esc-' + obra.id + '" style="color:' + ESC_COLOR + '"' +
-      ' oninput="updateResSlider(\'esc\',\'' + obra.id + '\',this.value)">' +
+        '<div class="resultado-slider-label" style="margin-top:8px"><span>Libertad en escena</span>' +
+        '<span class="resultado-pct-val" id="res-esc-val-' + obra.id + '" style="color:' + ESC_COLOR + '">' + escPrev + '%</span></div>' +
+        '<input type="range" min="0" max="100" step="1" value="' + escPrev + '" class="sol-slider" id="res-esc-' + obra.id + '" style="color:' + ESC_COLOR + '"' +
+        ' oninput="updateResSlider(\'esc\',\'' + obra.id + '\',this.value)">' +
 
-      '<input type="text" class="modal-input" id="res-nota-' + obra.id + '" placeholder="nota sobre esta obra (opcional)" style="margin-top:8px;margin-bottom:0">' +
-      '</div>';
+        '<input type="text" class="modal-input" id="res-nota-' + obra.id + '" placeholder="nota sobre esta obra (opcional)" style="margin-top:8px;margin-bottom:0">' +
+      '</div>' +
+    '</div>';
   }).join('');
 
   document.getElementById('eventoResObras').innerHTML = obrasHtml || '<div style="color:var(--text3);font-size:11px">Este evento no tiene obras asignadas.</div>';
@@ -6924,6 +6933,20 @@ function openEventoResultado(eventoId) {
       fillSlider(document.getElementById('res-esc-' + obra.id), ESC_COLOR);
     });
   });
+}
+
+// Excluye/incluye una obra del resultado del evento. Las excluidas no cuentan
+// en el score global, no graban pase de escena ni quedan en `obrasResultados`.
+function toggleEventoResObra(obraId) {
+  const excluida = !_eventoResExcluidas.has(obraId);
+  if (excluida) _eventoResExcluidas.add(obraId);
+  else _eventoResExcluidas.delete(obraId);
+  const block = document.getElementById('res-block-' + obraId);
+  const body  = document.getElementById('res-body-' + obraId);
+  const btn   = document.getElementById('res-skip-' + obraId);
+  if (block) block.classList.toggle('excluida', excluida);
+  if (body)  body.style.display = excluida ? 'none' : '';
+  if (btn)   btn.textContent = excluida ? '↺ Incluir' : 'No la toqué';
 }
 
 function updateResSlider(tipo, obraId, val) {
@@ -6939,7 +6962,16 @@ function confirmEventoResultado() {
   const obras = (ev.obras || []).map(id => findObra(id)).filter(Boolean);
 
   let totalScore = 0, totalWeight = 0;
-  const obrasResultados = obras.map(obra => {
+  // Solo las obras NO excluidas se valoran y registran como pase de escena.
+  // Las excluidas se guardan aparte con flag skipped:true para tener constancia
+  // de que pertenecían al evento pero no se tocaron — sin contaminar las stats.
+  const obrasResultados = [];
+  const obrasOmitidas = [];
+  obras.forEach(obra => {
+    if (_eventoResExcluidas.has(obra.id)) {
+      obrasOmitidas.push({ obraId: obra.id, obraName: obra.name, skipped: true });
+      return;
+    }
     const sol = parseInt(document.getElementById('res-sol-' + obra.id)?.value || 0);
     const esc = parseInt(document.getElementById('res-esc-' + obra.id)?.value || 0);
     const nota = document.getElementById('res-nota-' + obra.id)?.value.trim() || '';
@@ -6947,22 +6979,32 @@ function confirmEventoResultado() {
     const obraScore = Math.round(sol * 0.5 + esc * 0.5);
     totalScore += obraScore * weight;
     totalWeight += weight;
-    // Update obra's sol/esc history
     recordSolHistory(obra.id, sol, 'pase-escena');
     recordEscHistory(obra.id, esc, 'pase-escena');
-    return { obraId: obra.id, obraName: obra.name, sol, esc, nota, obraScore };
+    obrasResultados.push({ obraId: obra.id, obraName: obra.name, sol, esc, nota, obraScore });
   });
 
-  const scoreTotal = totalWeight > 0 ? Math.round(totalScore / totalWeight) : 0;
+  // Si todas las obras se omitieron, marcamos como realizado sin score: que se
+  // pinte "✓ Realizado" en lugar de "0% éxito" en rojo.
+  const scoreTotal = obrasResultados.length === 0
+    ? null
+    : (totalWeight > 0 ? Math.round(totalScore / totalWeight) : 0);
 
   ev.completado = true;
   ev.completedDate = new Date().toISOString();
-  ev.resultado = { obrasResultados, scoreTotal };
+  ev.resultado = { obrasResultados, obrasOmitidas, scoreTotal };
 
   saveData();
   closeModal('modalEventoResultado');
   renderCalendario();
-  showToast(ev.nombre + ' · ' + scoreTotal + '% de éxito ✓');
+  const sufijoOmitidas = obrasOmitidas.length
+    ? ' · ' + obrasOmitidas.length + (obrasOmitidas.length === 1 ? ' obra omitida' : ' obras omitidas')
+    : '';
+  if (obrasResultados.length === 0) {
+    showToast(ev.nombre + ' · marcado realizado (todas omitidas)');
+  } else {
+    showToast(ev.nombre + ' · ' + scoreTotal + '% de éxito ✓' + sufijoOmitidas);
+  }
 }
 
 function renderCalendario() {
@@ -7308,8 +7350,11 @@ function openEstadoChartModal() {
   _estadoChartRangeDays = null;
   document.querySelectorAll('#estadoChartRangeBtns .sort-btn')
     .forEach((b, i) => b.classList.toggle('active', i === 0));
-  _renderEstadoChartModal();
+  // Abrir PRIMERO el modal y renderizar luego, cuando el contenedor ya tiene
+  // dimensiones reales. Renderizar en display:none puede dejar el SVG con
+  // width=0 en algunos navegadores móviles, y el usuario ve el modal vacío.
   openModal('modalEstadoChart');
+  requestAnimationFrame(() => _renderEstadoChartModal());
 }
 
 function _renderEstadoChartModal() {
@@ -7998,8 +8043,8 @@ function setChartMetric(metric, btn) {
 function openObrasChart() {
   chartMetric = 'pases';
   document.querySelectorAll('#chartMetricBtns .sort-btn').forEach((b, i) => b.classList.toggle('active', i === 0));
-  renderObrasChart();
   openModal('modalObrasChart');
+  requestAnimationFrame(() => renderObrasChart());
 }
 
 function renderObrasChart() {
@@ -8530,25 +8575,35 @@ function _scheduleCleanup(node, stopTime, ac) {
 }
 
 function playTone(freq, type = 'triangle', dur = 0.25, vol = 0.10, delay = 0) {
-  try {
-    const ac = getAC();
-    if (!ac || ac.state === 'closed') return;
-    const osc = ac.createOscillator();
-    const gain = ac.createGain();
-    osc.connect(gain); gain.connect(ac.destination);
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, ac.currentTime + delay);
-    gain.gain.setValueAtTime(0, ac.currentTime + delay);
-    gain.gain.linearRampToValueAtTime(vol, ac.currentTime + delay + 0.002);
-    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + delay + dur);
-    const stopAt = ac.currentTime + delay + dur + 0.01;
-    osc.start(ac.currentTime + delay);
-    osc.stop(stopAt);
-    _scheduleCleanup(osc, stopAt, ac);
-    _scheduleCleanup(gain, stopAt, ac);
-  } catch(e) {
-    _acFailureCount++;
-  }
+  const ac = getAC();
+  if (!ac || ac.state === 'closed') return;
+  const schedule = () => {
+    // Si tras esperar al resume sigue sin estar running (silencio del SO,
+    // pestaña en background, gesto perdido…), abortar limpio en lugar de
+    // programar contra un currentTime estancado: eso provocaba "se quedan
+    // pegados" tonos que ya no sonaban más tarde.
+    if (ac.state !== 'running') return;
+    try {
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.type = type;
+      const t0 = ac.currentTime + delay;
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(vol, t0 + 0.002);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      const stopAt = t0 + dur + 0.01;
+      osc.start(t0);
+      osc.stop(stopAt);
+      _scheduleCleanup(osc, stopAt, ac);
+      _scheduleCleanup(gain, stopAt, ac);
+    } catch(e) {
+      _acFailureCount++;
+    }
+  };
+  if (ac.state === 'running') schedule();
+  else ac.resume().then(schedule).catch(() => { _acFailureCount++; });
 }
 
 // Burst de noise filtrado: para clicks de madera, papel, botón.
@@ -8558,44 +8613,56 @@ function playTone(freq, type = 'triangle', dur = 0.25, vol = 0.10, delay = 0) {
 //   vol: pico de amplitud.
 //   delay: offset desde "ahora".
 function playNoiseBurst(cutoff, q, dur, vol, delay = 0) {
-  try {
-    const ac = getAC();
-    if (!ac || ac.state === 'closed') return;
-    // Buffer de ruido blanco corto
-    const len = Math.max(1, Math.floor(ac.sampleRate * (dur + 0.02)));
-    const buf = ac.createBuffer(1, len, ac.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
-    const src = ac.createBufferSource();
-    src.buffer = buf;
-    const filt = ac.createBiquadFilter();
-    filt.type = 'lowpass';
-    filt.frequency.value = cutoff;
-    filt.Q.value = q;
-    const gain = ac.createGain();
-    src.connect(filt); filt.connect(gain); gain.connect(ac.destination);
-    const t0 = ac.currentTime + delay;
-    gain.gain.setValueAtTime(0, t0);
-    gain.gain.linearRampToValueAtTime(vol, t0 + 0.001);  // attack 1ms
-    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-    const stopAt = t0 + dur + 0.02;
-    src.start(t0);
-    src.stop(stopAt);
-    _scheduleCleanup(src, stopAt, ac);
-    _scheduleCleanup(filt, stopAt, ac);
-    _scheduleCleanup(gain, stopAt, ac);
-  } catch(e) {
-    _acFailureCount++;
-  }
+  const ac = getAC();
+  if (!ac || ac.state === 'closed') return;
+  const schedule = () => {
+    if (ac.state !== 'running') return;
+    try {
+      const len = Math.max(1, Math.floor(ac.sampleRate * (dur + 0.02)));
+      const buf = ac.createBuffer(1, len, ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      const filt = ac.createBiquadFilter();
+      filt.type = 'lowpass';
+      filt.frequency.value = cutoff;
+      filt.Q.value = q;
+      const gain = ac.createGain();
+      src.connect(filt); filt.connect(gain); gain.connect(ac.destination);
+      const t0 = ac.currentTime + delay;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(vol, t0 + 0.001);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      const stopAt = t0 + dur + 0.02;
+      src.start(t0);
+      src.stop(stopAt);
+      _scheduleCleanup(src, stopAt, ac);
+      _scheduleCleanup(filt, stopAt, ac);
+      _scheduleCleanup(gain, stopAt, ac);
+    } catch(e) {
+      _acFailureCount++;
+    }
+  };
+  if (ac.state === 'running') schedule();
+  else ac.resume().then(schedule).catch(() => { _acFailureCount++; });
 }
 
 // Despertar el contexto de audio cuando la app vuelve al foreground.
 // iOS lo suspende automáticamente y a veces no se recupera solo.
 function _wakeAudioContext() {
-  if (_ac && (_ac.state === 'suspended' || _ac.state === 'interrupted')) {
+  if (!_ac) return;
+  // Si iOS lo cerró tras una inactividad larga, descartamos la referencia:
+  // la próxima llamada a getAC() creará uno nuevo en respuesta a un gesto.
+  if (_ac.state === 'closed') {
+    _ac = null;
+    _acFailureCount = 0;
+    return;
+  }
+  if (_ac.state === 'suspended' || _ac.state === 'interrupted') {
     _ac.resume().catch(() => {
       _acFailureCount++;
-      if (_acFailureCount >= 3) {
+      if (_acFailureCount >= 2) {
         try { _ac.close(); } catch(e) {}
         _ac = null;
         _acFailureCount = 0;
@@ -8604,22 +8671,52 @@ function _wakeAudioContext() {
   }
 }
 
+// Watchdog: si el AudioContext queda "zombi" (state running pero currentTime
+// no avanza) tras una pausa larga del SO, ningún sonido se escucha. Detectamos
+// medición a medición y, si no avanza, descartamos para forzar recreación.
+let _acLastCheckTime = 0;
+let _acLastCheckAt = 0;
+function _ensureAudioContextAlive() {
+  if (!_ac) return;
+  if (_ac.state !== 'running') return;
+  const now = Date.now();
+  const ct = _ac.currentTime;
+  if (_acLastCheckAt && now - _acLastCheckAt > 400 && ct === _acLastCheckTime) {
+    // No avanzó en >400ms estando supuestamente "running" → AC zombi.
+    try { _ac.close(); } catch(e) {}
+    _ac = null;
+    _acFailureCount = 0;
+  }
+  _acLastCheckTime = ct;
+  _acLastCheckAt = now;
+}
+
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') _wakeAudioContext();
   });
   // window.focus también porque iOS no siempre dispara visibilitychange
   window.addEventListener('focus', _wakeAudioContext);
-  // Touch/click en cualquier parte de la app: garantiza que el audio
-  // siempre tiene un "user gesture" reciente. Sin esto, iOS bloquea
-  // sonidos que no fueron iniciados por interacción reciente.
-  // El listener es 'once' por sesión (passive para no bloquear scroll).
-  const initOnFirstGesture = () => {
+  // pageshow tras volver del bfcache (Safari): el AC viejo suele estar muerto.
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) {
+      if (_ac) { try { _ac.close(); } catch(_) {} _ac = null; _acFailureCount = 0; }
+    } else {
+      _wakeAudioContext();
+    }
+  });
+  // Cada gesto del usuario reactiva el audio. NO es 'once': iOS necesita que
+  // el resume venga acompañado de un gesto reciente cada vez que el AC haya
+  // pasado por suspended.
+  const wakeOnGesture = () => {
+    _ensureAudioContextAlive();
     if (!_ac) getAC();
     else _wakeAudioContext();
   };
-  document.addEventListener('touchstart', initOnFirstGesture, { passive: true });
-  document.addEventListener('click', initOnFirstGesture, { passive: true });
+  document.addEventListener('touchstart', wakeOnGesture, { passive: true });
+  document.addEventListener('pointerdown', wakeOnGesture, { passive: true });
+  document.addEventListener('click', wakeOnGesture, { passive: true });
+  document.addEventListener('keydown', wakeOnGesture);
 }
 
 // ── SOUND PACKS ──────────────────────────────────────────────────────────────
@@ -9018,21 +9115,24 @@ function openEditarSesion(sesionDate) {
 
   const s = db.sesiones[idx];
   const d = new Date(s.date);
-  document.getElementById('editSesionFecha').textContent =
-    d.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
-  // Render existing items: each can be edited (minutos, tick) or deleted
-  renderEditExistingItems();
-
-  // Nota
-  document.getElementById('editNota').value = s.notaGeneral || '';
-
-  // Obra list (new items to add)
-  document.getElementById('editObraList').innerHTML = '';
-  buildObraSelectOptions('editObraSelect');
-  document.getElementById('editMinutos').value = '';
-
+  // Abrir el modal primero, rellenar después: garantiza que los elementos
+  // tengan dimensiones reales y que un re-render no quede en un contenedor
+  // display:none (causa frecuente de "el botón no hace nada visible").
   openModal('modalEditarSesion');
+  requestAnimationFrame(() => {
+    const fechaEl = document.getElementById('editSesionFecha');
+    if (fechaEl) fechaEl.textContent =
+      d.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    renderEditExistingItems();
+    const notaEl = document.getElementById('editNota');
+    if (notaEl) notaEl.value = s.notaGeneral || '';
+    const obraListEl = document.getElementById('editObraList');
+    if (obraListEl) obraListEl.innerHTML = '';
+    buildObraSelectOptions('editObraSelect');
+    const minEl = document.getElementById('editMinutos');
+    if (minEl) minEl.value = '';
+  });
 }
 
 // Renderiza la lista de items ya guardados, con controles inline para

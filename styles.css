@@ -1631,10 +1631,43 @@
   .resultado-obra-block {
     background: var(--bg3); border-radius: 8px; padding: 12px 14px;
     margin-bottom: 10px; border: 1px solid var(--border2);
+    transition: opacity 0.25s, background 0.25s, border-color 0.25s;
+  }
+  .resultado-obra-block.excluida {
+    opacity: 0.5;
+    background: transparent;
+    border-style: dashed;
+  }
+  .resultado-obra-block.excluida .resultado-obra-name {
+    text-decoration: line-through;
+    color: var(--text3);
+  }
+  .resultado-obra-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 10px; margin-bottom: 10px;
   }
   .resultado-obra-name {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 16px; color: var(--text); margin-bottom: 10px;
+    font-size: 16px; color: var(--text);
+    line-height: 1.25; flex: 1;
+  }
+  .resultado-skip-btn {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text3);
+    border-radius: 12px;
+    padding: 3px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; letter-spacing: 0.06em;
+    cursor: pointer; transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .resultado-skip-btn:hover { color: var(--text2); border-color: var(--border); }
+  .resultado-obra-block.excluida .resultado-skip-btn {
+    background: var(--bg3);
+    color: var(--accent);
+    border-color: var(--accent);
   }
   .resultado-slider-label {
     font-size: 8px; color: var(--text3); letter-spacing: 0.1em;

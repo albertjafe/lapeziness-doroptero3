@@ -113,7 +113,19 @@ El mecanismo de actualización automática (`_swUpdateInit`) ya está implementa
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v13`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v14`.
+
+### Excluir obras al marcar un evento como realizado
+
+`openEventoResultado` añade un botón **"No la toqué"** por obra en `#modalEventoResultado`. Las excluidas (`_eventoResExcluidas`) no graban pase de escena, no cuentan en el score global y se guardan aparte en `resultado.obrasOmitidas` con `skipped:true`. Si se excluyen todas, `scoreTotal` queda `null` y el calendario pinta "✓ Realizado" en vez de "0% éxito".
+
+### Modales con gráficas/edición: abrir antes que renderizar
+
+`openGrafico`, `openObrasChart`, `openEstadoChartModal` y `openEditarSesion` ahora llaman `openModal` primero y rinden el contenido en el `requestAnimationFrame` siguiente. Renderizar dentro de un overlay con `display:none` dejaba SVGs con `width=0` en algunos navegadores móviles (el usuario veía el modal vacío al pulsar "↗ ampliar" / "Evolución ↗" / "✏️ Editar").
+
+### Audio robusto contra suspensiones largas de iOS
+
+`playTone` y `playNoiseBurst` ya no programan tonos contra un `currentTime` estancado: si el `AudioContext` no está `running`, esperan a `resume()` y abortan si el resume no completa. `_wakeAudioContext` descarta el AC si está `closed` (iOS lo cierra tras inactividad larga). Listener `pageshow` con `e.persisted` (bfcache de Safari) recrea el AC. Watchdog `_ensureAudioContextAlive` detecta el AC zombi (state `running` pero `currentTime` no avanza) y lo descarta. Gestos `touchstart` / `pointerdown` / `click` / `keydown` reactivan el AC en cada interacción, no solo la primera.
 
 ### Marcar obra como aprendida al instante
 
