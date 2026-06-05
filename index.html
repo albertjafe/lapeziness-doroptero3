@@ -498,7 +498,11 @@
     <input class="modal-input" id="newObraComposer" placeholder="compositor" type="text">
     <div id="modalTipoObraExtra">
       <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px">Estado inicial</div>
-      <div style="font-size:10px;color:var(--text3);margin-bottom:10px;line-height:1.5">Se evaluará con el diagnóstico después de añadirla.<br>Por defecto: <span style="color:var(--orange)">Aprendiendo — inicial</span></div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:10px;line-height:1.5">Por defecto: <span style="color:var(--orange)">Aprendiendo — inicial</span>. Los compases se añaden después.</div>
+      <label class="add-aprendida-row">
+        <input type="checkbox" id="newObraAprendida">
+        <span>Ya me la sé · marcar como aprendida (sin contar compases)</span>
+      </label>
     </div>
     <div id="modalTipoActividadExtra" style="display:none;font-size:10px;color:var(--text3);margin-bottom:14px;line-height:1.5;font-style:italic">
       Una actividad es estudio sin estructura interna: lectura a primera vista, técnica, improvisación, etc.<br>
@@ -1261,6 +1265,12 @@
 </div> <!-- end app-content -->
 
 <div class="toast" id="toast"></div>
+
+<!-- Toast con acción de deshacer tras un borrado -->
+<div class="undo-toast" id="undoToast">
+  <span class="undo-toast-msg" id="undoToastMsg"></span>
+  <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
+</div>
 
 <script src="app.js"></script>
 

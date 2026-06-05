@@ -238,6 +238,34 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('visible'), 2000);
 }
 
+// ── TOAST DE DESHACER ─────────────────────────────────────────────────────────
+// Muestra un aviso con botón "Deshacer" durante unos segundos. Si se pulsa,
+// ejecuta la función de restauración. Útil tras borrados para evitar perder
+// cosas por un toque accidental.
+let _undoTimer = null;
+let _undoFn = null;
+function showUndoToast(msg, undoFn, ms) {
+  _undoFn = typeof undoFn === 'function' ? undoFn : null;
+  const t = document.getElementById('undoToast');
+  const m = document.getElementById('undoToastMsg');
+  if (!t || !m) { showToast(msg); return; }
+  m.textContent = msg;
+  t.classList.add('visible');
+  clearTimeout(_undoTimer);
+  _undoTimer = setTimeout(_hideUndoToast, ms || 6000);
+}
+function _hideUndoToast() {
+  const t = document.getElementById('undoToast');
+  if (t) t.classList.remove('visible');
+  clearTimeout(_undoTimer);
+  _undoFn = null;
+}
+function _doUndo() {
+  const fn = _undoFn;
+  _hideUndoToast();
+  if (typeof fn === 'function') fn();
+}
+
 function openModal(id) {
   const overlay = document.getElementById(id);
   if (!overlay) return;
@@ -1575,11 +1603,25 @@ function _planActionsHTML() {
 // el historial (para eso se usa el editor de sesiones). Sólo modifica el plan
 // vivo en pantalla y su draft.
 function removeFromPlan(planId) {
-  const entity = currentPlan.find(e => (e._planId || e.id) === planId);
-  const name = entity
-    ? (entity._displayName || entity.name || 'esta sesión')
-    : 'esta sesión';
-  if (!confirm('¿Quitar "' + name + '" de la sesión?\n\nLa tarjeta se eliminará del plan actual. Si ya habías guardado la sesión, esto no la borra del historial.')) return;
+  const idx = currentPlan.findIndex(e => (e._planId || e.id) === planId);
+  if (idx < 0) return;
+  const entity = currentPlan[idx];
+  const name = entity._displayName || entity.name || 'la tarjeta';
+
+  // Snapshot para deshacer (estado + DOM de la tarjeta)
+  const el = document.getElementById('plan-' + planId);
+  const snap = {
+    entity, idx,
+    html: el ? el.outerHTML : null,
+    nextId: el && el.nextElementSibling ? el.nextElementSibling.id : null,
+    note: document.getElementById('tnote-' + planId)?.value || '',
+    tick: sessionTicks[planId],
+    minPlan: sessionMinPlan[planId],
+    sol: sessionSolRatings[planId],
+    prod: sessionProductivityRatings[planId],
+    agg: sessionAggregate[planId],
+    dest: sessionDestello[planId],
+  };
 
   // Eliminar del estado en memoria
   currentPlan = currentPlan.filter(e => (e._planId || e.id) !== planId);
@@ -1588,9 +1630,9 @@ function removeFromPlan(planId) {
   delete sessionSolRatings[planId];
   delete sessionProductivityRatings[planId];
   delete sessionAggregate[planId];
+  delete sessionDestello[planId];
 
   // Quitar el DOM
-  const el = document.getElementById('plan-' + planId);
   if (el) el.remove();
 
   saveDraft();
@@ -1598,7 +1640,45 @@ function removeFromPlan(planId) {
   refreshConcentradoUI();
   autoSaveTodayPlan();
   if (typeof SFX !== 'undefined' && SFX.del) SFX.del();
-  showToast('Quitado del plan');
+  showUndoToast('Quitado: ' + name, () => _undoRemoveFromPlan(planId, snap));
+}
+
+function _undoRemoveFromPlan(planId, snap) {
+  if (currentPlan.some(e => (e._planId || e.id) === planId)) return;
+  const at = Math.min(snap.idx, currentPlan.length);
+  currentPlan.splice(at, 0, snap.entity);
+  if (snap.tick !== undefined) sessionTicks[planId] = snap.tick;
+  if (snap.minPlan !== undefined) sessionMinPlan[planId] = snap.minPlan;
+  if (snap.sol !== undefined) sessionSolRatings[planId] = snap.sol;
+  if (snap.prod !== undefined) sessionProductivityRatings[planId] = snap.prod;
+  if (snap.agg !== undefined) sessionAggregate[planId] = snap.agg;
+  if (snap.dest !== undefined) sessionDestello[planId] = snap.dest;
+
+  const planDiv = document.getElementById('sessionPlan');
+  if (planDiv && snap.html) {
+    ensureSessionPlanScaffold();
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = snap.html;
+    const node = wrapper.firstElementChild;
+    if (node) {
+      const nextEl = snap.nextId ? document.getElementById(snap.nextId) : null;
+      const addBtn = planDiv.querySelector('.add-extra-btn') || planDiv.querySelector('.save-session-btn');
+      planDiv.insertBefore(node, nextEl || addBtn || null);
+      const noteEl = document.getElementById('tnote-' + planId);
+      if (noteEl) noteEl.value = snap.note || '';
+      if (snap.tick === 'hecho') {
+        const btn = node.querySelector('.tick-btn');
+        if (btn) btn.classList.add('hecho');
+      }
+      if (sessionProductivityRatings[planId] != null && typeof updateProductivityBadge === 'function') {
+        updateProductivityBadge(planId);
+      }
+    }
+  }
+  saveDraft();
+  refreshConcentradoUI();
+  autoSaveTodayPlan();
+  showToast('Restaurado ✓');
 }
 
 // Ensures the action buttons are always present in #sessionPlan, even with no items
@@ -1759,7 +1839,7 @@ function renderExtraItem(entity, minutos) {
           ' <span style="font-size:11px;color:var(--text3);font-style:italic">' + subName + '</span>' +
         '</div>' +
       '</div>' +
-      '<div class="plan-item-time">' + minPlan + ' min</div>' +
+      '<div class="plan-item-time editable" id="plan-time-' + planId + '" onclick="editPlanItemMin(\'' + planId + '\')" title="Tocar para editar los minutos">' + minPlan + ' min</div>' +
     '</div>' +
     '<div class="tick-row">' +
       '<button class="tick-btn" onclick="setTick(\'' + planId + '\',\'hecho\',this,' + minPlan + ')">✓ Hecho</button>' +
@@ -1768,6 +1848,42 @@ function renderExtraItem(entity, minutos) {
     '</div>' +
     fusionFooter +
   '</div>';
+}
+
+// Edición rápida de los minutos de una tarjeta de sesión, tocando el tiempo.
+// Evita tener que ir al historial → Editar sesión para corregir un valor.
+function editPlanItemMin(planId) {
+  const el = document.getElementById('plan-time-' + planId);
+  if (!el || el.querySelector('input')) return;
+  const actual = sessionMinPlan[planId] || parseInt(el.textContent) || 0;
+  el.classList.remove('editable');
+  el.innerHTML = '<input class="plan-item-time-input" type="number" min="1" max="480" step="5" value="' + actual + '">';
+  const input = el.querySelector('input');
+  input.focus();
+  input.select();
+  let done = false;
+  const commit = () => {
+    if (done) return; done = true;
+    let v = parseInt(input.value);
+    if (isNaN(v) || v < 1) v = actual;
+    v = Math.min(480, v);
+    sessionMinPlan[planId] = v;
+    const entity = currentPlan.find(e => (e._planId || e.id) === planId);
+    if (entity) entity._isExtra = true; // editar minutos reales = cuenta como estudiado
+    const tminInp = document.getElementById('tmin-' + planId);
+    if (tminInp) { tminInp.value = v; tminInp._touched = true; }
+    el.textContent = v + ' min';
+    el.classList.add('editable');
+    refreshConcentradoUI();
+    if (typeof saveDraft === 'function') saveDraft();
+    if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
+    if (typeof SFX !== 'undefined' && SFX.tick) SFX.tick();
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    else if (e.key === 'Escape') { done = true; el.textContent = actual + ' min'; el.classList.add('editable'); }
+  });
 }
 
 // ── SISTEMA DE EVALUACIÓN: 3 ESCALAS ─────────────────────────────────────────
@@ -1832,6 +1948,30 @@ function saveCompas(obraId, movId, field, val) {
   const pctEl     = document.getElementById(elBase + '-pct');
   if (barFillEl) { barFillEl.style.width = barW + '%'; barFillEl.style.background = barColor; }
   if (pctEl)     { pctEl.textContent = pctStr; pctEl.style.color = barColor; }
+}
+
+// Marca una obra o movimiento como APRENDIDA al instante, saltando la fase de
+// digitando sin tener que contar compases. Pone apr=10. Si ya hay compases
+// totales, lleva el actual al total (100%) para que el % cuadre. Los compases
+// se pueden ajustar después. Si la obra tiene movimientos, marca todos.
+function marcarAprendida(obraId, movId) {
+  const obra = findObra(obraId);
+  if (!obra) return;
+  const marcarEntidad = (e) => {
+    if (!e) return;
+    if (e.compasesTotal) e.compasActual = e.compasesTotal;
+    e.apr = 10;
+    if (e.estado === 'aprendiendo-inicial' || e.estado === 'aprendiendo') e.estado = 'consolidando';
+  };
+  if (!movId && Array.isArray(obra.movimientos) && obra.movimientos.length) {
+    obra.movimientos.forEach(marcarEntidad);
+  } else {
+    marcarEntidad(movId ? findMovimiento(obraId, movId) : obra);
+  }
+  saveData();
+  if (typeof rerenderObraCard === 'function') rerenderObraCard(obraId);
+  showToast('Marcada como aprendida ✓');
+  if (typeof SFX !== 'undefined' && SFX.tick) SFX.tick();
 }
 
 // ── MINUTOS ───────────────────────────────────────────────────────────────────
@@ -5905,8 +6045,15 @@ function renderCompasWidget(obraId, movId, entity) {
   const saveTotal  = saveCall.replace('{F}', 'compasesTotal').replace("mov_quote('", "'").replace("')", "'");
   const saveActual = saveCall.replace('{F}', 'compasActual').replace("mov_quote('", "'").replace("')", "'");
 
+  const yaAprendida = aprFromCompas(entity) >= 10;
+  const aprendidaBtn = yaAprendida ? '' :
+    `<button class="marcar-aprendida-btn" onclick="marcarAprendida('${obraId}',${movId ? "'" + movId + "'" : 'null'})" title="Marcar como aprendida sin contar compases (los puedes añadir después)">✓ ya me la sé</button>`;
+
   return `<div>
-    <div style="font-size:8px;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:5px">Progreso de aprendizaje</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px">
+      <span style="font-size:8px;color:var(--text3);letter-spacing:0.08em;text-transform:uppercase">Progreso de aprendizaje</span>
+      ${aprendidaBtn}
+    </div>
     <div class="compas-row">
       <div style="display:flex;align-items:center;gap:4px">
         <input class="compas-field" id="${elBase}-actual" type="number" min="0"
@@ -6124,6 +6271,8 @@ function saveMovScale(obraId, movId, key, value) {
 function openAddObra() {
   document.getElementById('newObraName').value = '';
   document.getElementById('newObraComposer').value = '';
+  const aprChk = document.getElementById('newObraAprendida');
+  if (aprChk) aprChk.checked = false;
   modalFaseSelected = 'digitando';
   document.querySelectorAll('#modalFaseSelector .fase-btn').forEach(b => {
     b.classList.remove('active');
@@ -6164,6 +6313,7 @@ function addObra() {
   if (!db.obras) db.obras = [];
   const newId = 'o' + Date.now();
   const isActividad = modalTipoSelected === 'actividad';
+  const yaAprendida = !isActividad && !!document.getElementById('newObraAprendida')?.checked;
   const entry = {
     id: newId,
     name,
@@ -6171,11 +6321,13 @@ function addObra() {
     // Las actividades no tienen fase de aprendizaje, dificultad ni duración;
     // tampoco origen "nueva/recuperación". Sólo nombre y tiempo.
     tipo: isActividad ? 'actividad' : 'obra',
-    estado: isActividad ? null : 'aprendiendo-inicial',
+    // Si se marca "ya me la sé", nace aprendida (consolidando) en vez de
+    // aprendiendo-inicial. Los compases se pueden añadir después.
+    estado: isActividad ? null : (yaAprendida ? 'consolidando' : 'aprendiendo-inicial'),
     origen: null,
     dificultad: isActividad ? null : 3,
     duracion: null,
-    apr: isActividad ? null : 1,
+    apr: isActividad ? null : (yaAprendida ? 10 : 1),
     sol: isActividad ? null : 1,
     esc: isActividad ? null : 1,
     lastPase: null,
@@ -8085,10 +8237,22 @@ function saveEditObraNombre() {
 function confirmDeleteObra(obraId) {
   const obra = findObra(obraId);
   if (!obra) return;
-  if (confirm(`¿Eliminar "${obra.name}"?\nEsta acción no se puede deshacer.`)) {
-    deleteObra(obraId);
-    showToast('Obra eliminada');
-  }
+  if (!confirm(`¿Eliminar "${obra.name}"?`)) return;
+  const idx = (db.obras || []).indexOf(obra);
+  const eventoIds = (db.eventos || []).filter(ev => (ev.obras || []).includes(obraId)).map(ev => ev.id);
+  deleteObra(obraId);
+  showUndoToast('Obra eliminada: ' + obra.name, () => {
+    if (findObra(obraId)) return;
+    const at = idx >= 0 ? Math.min(idx, db.obras.length) : db.obras.length;
+    db.obras.splice(at, 0, obra);
+    eventoIds.forEach(eid => {
+      const ev = (db.eventos || []).find(e => e.id === eid);
+      if (ev) { if (!ev.obras) ev.obras = []; if (!ev.obras.includes(obraId)) ev.obras.push(obraId); }
+    });
+    saveData();
+    renderObras();
+    showToast('Obra restaurada ✓');
+  }, 8000);
 }
 
 // ─── SESIÓN MANUAL ─────────────────────────────────────────────────────────
@@ -8986,13 +9150,44 @@ function deleteEditExistingItem(itemIdx) {
   const s = db.sesiones[_editSesionIdx];
   if (!s.items || !s.items[itemIdx]) return;
   const item = s.items[itemIdx];
-  const name = item.obraName || 'esta entrada';
-  if (!confirm('¿Quitar "' + name + '" de la sesión?\n\nEsta acción no se puede deshacer.')) return;
+  const name = item.obraName || 'la entrada';
   const eraHoy = _editSesionEsHoy();
+  const planId = item._planId;
+  const liveEntity = eraHoy && planId ? currentPlan.find(e => (e._planId || e.id) === planId) : null;
+  const snap = {
+    sesion: s, item, itemIdx, eraHoy, planId,
+    liveEntity, liveIdx: liveEntity ? currentPlan.indexOf(liveEntity) : -1,
+    tick: sessionTicks[planId], minPlan: sessionMinPlan[planId],
+    sol: sessionSolRatings[planId], prod: sessionProductivityRatings[planId],
+    agg: sessionAggregate[planId], dest: sessionDestello[planId],
+  };
   s.items.splice(itemIdx, 1);
   if (eraHoy) _editSyncLivePlan(item, { remove: true });
   renderEditExistingItems();
-  showToast('Eliminado de la sesión');
+  saveData();
+  if (eraHoy) { if (typeof saveDraft === 'function') saveDraft(); refreshConcentradoUI(); }
+  showUndoToast('Eliminado: ' + name, () => _undoDeleteEditItem(snap));
+}
+
+function _undoDeleteEditItem(snap) {
+  if (snap.sesion && Array.isArray(snap.sesion.items)) {
+    const at = Math.min(snap.itemIdx, snap.sesion.items.length);
+    snap.sesion.items.splice(at, 0, snap.item);
+  }
+  if (snap.eraHoy && snap.liveEntity && !currentPlan.some(e => (e._planId || e.id) === snap.planId)) {
+    const at = snap.liveIdx >= 0 ? Math.min(snap.liveIdx, currentPlan.length) : currentPlan.length;
+    currentPlan.splice(at, 0, snap.liveEntity);
+    if (snap.tick !== undefined) sessionTicks[snap.planId] = snap.tick;
+    if (snap.minPlan !== undefined) sessionMinPlan[snap.planId] = snap.minPlan;
+    if (snap.sol !== undefined) sessionSolRatings[snap.planId] = snap.sol;
+    if (snap.prod !== undefined) sessionProductivityRatings[snap.planId] = snap.prod;
+    if (snap.agg !== undefined) sessionAggregate[snap.planId] = snap.agg;
+    if (snap.dest !== undefined) sessionDestello[snap.planId] = snap.dest;
+  }
+  saveData();
+  if (snap.eraHoy) { if (typeof saveDraft === 'function') saveDraft(); refreshConcentradoUI(); }
+  renderEditExistingItems();
+  showToast('Restaurado ✓');
 }
 
 function addEditObraItem() {

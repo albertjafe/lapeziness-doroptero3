@@ -113,7 +113,19 @@ El mecanismo de actualización automática (`_swUpdateInit`) ya está implementa
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v12`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v13`.
+
+### Marcar obra como aprendida al instante
+
+`marcarAprendida(obraId, movId)` salta la fase de digitando sin contar compases: pone `apr = 10` (y `compasActual = compasesTotal` si existe). Botón "✓ ya me la sé" en cada `renderCompasWidget` (obra sin movimientos y cada movimiento), visible solo si `aprFromCompas(entity) < 10`. En el modal de añadir obra hay una casilla `#newObraAprendida` que crea la obra con `apr: 10` y `estado: 'consolidando'`.
+
+### Editar minutos desde la tarjeta
+
+En las tarjetas de sesión (`renderExtraItem`), tocar el tiempo (`.plan-item-time.editable`) lo convierte en un input inline (`editPlanItemMin`): actualiza `sessionMinPlan`, marca `_isExtra`, refresca el concentrado y autoguarda. Evita ir al historial → Editar sesión para una corrección rápida.
+
+### Deshacer tras borrar
+
+Toast con acción "Deshacer" (`showUndoToast(msg, undoFn, ms)` + `#undoToast`). Wired en `removeFromPlan` (snapshot de estado + DOM), `deleteEditExistingItem` (snapshot de item + estado en memoria si es hoy) y `confirmDeleteObra` (snapshot de obra + pertenencia a eventos). Estos dos primeros ya no usan `confirm()`; el de obra mantiene confirmación y añade deshacer.
 
 ### Tiempo realmente estudiado (no contar lo planificado)
 
