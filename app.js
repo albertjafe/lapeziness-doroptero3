@@ -698,6 +698,7 @@ function saveDraft() {
     ticks: { ...sessionTicks },
     minPlan: { ...sessionMinPlan },
     mins, notes, sols, prods,
+    dests: JSON.parse(JSON.stringify(sessionDestello || {})),
     aggregate: JSON.parse(JSON.stringify(sessionAggregate || {})),
   };
   localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -748,7 +749,9 @@ function restoreSessionFromDbToday(opts) {
         planId: it._planId || null,
         obraId: it.obraId,
         movId: it.movId || null,
-        min: 0,
+        studiedMin: 0,   // minutos realmente estudiados
+        planMin: 0,      // estimación planificada (para mostrar la tarjeta sin contar)
+        anyStudied: false,
         tick: it.tick || null,
         rating: it.rating || null,
         solRating: it.solRating || null,
@@ -757,7 +760,11 @@ function restoreSessionFromDbToday(opts) {
         destelloNota: it.destelloNota || null,
       };
     }
-    groups[planIdKey].min += parseInt(it.minutosReales || it.minutosPlan || 0) || 0;
+    groups[planIdKey].planMin += parseInt(it.minutosPlan || it.minutosReales || 0) || 0;
+    if (_itemEstudiado(it)) {
+      groups[planIdKey].studiedMin += _itemMinReal(it);
+      groups[planIdKey].anyStudied = true;
+    }
     if (it.tick === 'hecho') groups[planIdKey].tick = 'hecho';
     if (it.rating != null) groups[planIdKey].rating = it.rating;
     if (it.solRating != null) groups[planIdKey].solRating = it.solRating;
@@ -770,22 +777,25 @@ function restoreSessionFromDbToday(opts) {
     // Conservar el planId original cuando exista para mantener el aggregate
     const planId = g.planId || ('restored_' + g.obraId + (g.movId ? '_' + g.movId : '') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6));
     let entity;
+    // _isExtra solo si de verdad se estudió: así una tarjeta planificada
+    // restaurada de la nube no infla el "concentrado hoy".
+    const esExtra = g.anyStudied;
     if (g.movId) {
       const mov = (obra.movimientos || []).find(m => m.id === g.movId);
       if (!mov) return;
       entity = Object.assign({}, mov, {
         _parentName: obra.name, composer: obra.composer,
         _planId: planId, _obraId: g.obraId, _movId: g.movId,
-        _isMovimiento: true, _isExtra: true, _displayName: mov.name,
+        _isMovimiento: true, _isExtra: esExtra, _displayName: mov.name,
       });
     } else {
       entity = Object.assign({}, obra, {
         _planId: planId, _obraId: g.obraId, _movId: null,
-        _isMovimiento: false, _isExtra: true, _displayName: obra.name,
+        _isMovimiento: false, _isExtra: esExtra, _displayName: obra.name,
       });
     }
     currentPlan.push(entity);
-    sessionMinPlan[planId] = g.min;
+    sessionMinPlan[planId] = g.anyStudied ? g.studiedMin : g.planMin;
     if (g.tick) sessionTicks[planId] = g.tick;
     if (g.rating != null) sessionProductivityRatings[planId] = g.rating;
     if (g.solRating != null) sessionSolRatings[planId] = g.solRating;
@@ -930,6 +940,7 @@ function loadDraft() {
 function _restoreDraftUI(draft) {
   Object.assign(sessionMinPlan, draft.minPlan || {});
   Object.assign(sessionSolRatings, draft.sols || {});
+  if (draft.dests) Object.assign(sessionDestello, draft.dests);
   // El estado diario (bienestar/sueño) se persiste de forma independiente vía
   // alberto_estado_v1 + db.estadoDiario con marca de fecha, y se carga en
   // loadEstadoDiarioFromSources() ANTES de loadDraft(). No restaurar aquí desde
@@ -1102,15 +1113,21 @@ function commitSession(targetDate) {
     const planId = entity._planId || entity.id;
     const obraId = entity._obraId || entity.id;
     const movId = entity._movId || null;
+    const tickVal = sessionTicks[planId] || null;
+    // Estudiado de verdad = vino del cronómetro (_isExtra) o se marcó hecho/parcial.
+    // Las tarjetas planificadas que no se tocaron NO graban minutosReales.
+    const estudiado = !!entity._isExtra || tickVal === 'hecho' || tickVal === 'parcial';
+    const minRealInput = parseInt(document.getElementById('tmin-' + planId)?.value) || sessionMinPlan[planId] || null;
     return {
       _planId: planId,
       obraId, movId,
       obraName: entity._isMovimiento
         ? entity._parentName + ' · ' + entity.name
         : entity.name,
-      tick: sessionTicks[planId] || null,
+      tick: tickVal,
       minutosPlan: sessionMinPlan[planId] || null,
-      minutosReales: parseInt(document.getElementById('tmin-' + planId)?.value) || sessionMinPlan[planId] || null,
+      minutosReales: estudiado ? minRealInput : null,
+      estudiado,
       solRating: sessionSolRatings[planId] || null,
       rating: sessionProductivityRatings[planId] != null ? sessionProductivityRatings[planId] : null,
       note: document.getElementById('tnote-' + planId)?.value || '',
@@ -1387,15 +1404,20 @@ function _autoSaveTodayPlanNow() {
       const subs = (sessionAggregate[planId] && sessionAggregate[planId].subsessions) || [];
       const firstStartedAt = subs.length ? (subs[0].startedAt || subs[0].timestamp || null) : null;
       const lastEndedAt = subs.length ? (subs[subs.length - 1].endedAt || subs[subs.length - 1].timestamp || null) : null;
+      const tickVal = sessionTicks[planId] || null;
+      // Solo cuenta como tiempo estudiado si vino del cronómetro o se marcó
+      // hecho/parcial. Las tarjetas planificadas no estudiadas no inflan horas.
+      const estudiado = !!entity._isExtra || tickVal === 'hecho' || tickVal === 'parcial';
       return {
         _planId: planId,
         obraId, movId,
         obraName: entity._isMovimiento
           ? (entity._parentName || '') + ' · ' + entity.name
           : (entity._displayName || entity.name),
-        tick: sessionTicks[planId] || null,
+        tick: tickVal,
         minutosPlan: sessionMinPlan[planId] || null,
-        minutosReales: sessionMinPlan[planId] || null,
+        minutosReales: estudiado ? (sessionMinPlan[planId] || null) : null,
+        estudiado,
         solRating: sessionSolRatings[planId] || null,
         rating: sessionProductivityRatings[planId] != null ? sessionProductivityRatings[planId] : null,
         note: document.getElementById('tnote-' + planId)?.value || '',
@@ -1819,6 +1841,27 @@ function fmtMinutos(min) {
   if (min < 60) return min + ' min';
   const h = Math.floor(min / 60), m = min % 60;
   return m > 0 ? h + 'h ' + m + 'min' : h + 'h';
+}
+
+// ── TIEMPO REALMENTE ESTUDIADO ────────────────────────────────────────────────
+// Un item de sesión cuenta como tiempo estudiado SOLO si de verdad se estudió:
+//  - registro manual (registro directo), o
+//  - vino del cronómetro / se marcó como estudiado (flag `estudiado`), o
+//  - (datos antiguos sin flag) tiene tick 'hecho' o 'parcial'.
+// Una tarjeta planificada que nunca se tocó (tick null/saltado) NO cuenta,
+// aunque el generador le pusiera una estimación de minutos.
+function _itemEstudiado(it) {
+  if (!it) return false;
+  if (it.manual) return true;
+  if (it.estudiado === true) return true;
+  if (it.estudiado === false) return false;
+  return it.tick === 'hecho' || it.tick === 'parcial';
+}
+
+// Minutos realmente estudiados de un item (0 si no se estudió).
+function _itemMinReal(it) {
+  if (!_itemEstudiado(it)) return 0;
+  return it.minutosEstudiados || it.minutosReales || it.minutosPlan || it.min || 0;
 }
 
 function getMinutosObra(obraId) {
@@ -7243,7 +7286,7 @@ function renderSesionesHistorial() {
 
     // Header meta line (energía, manual, items count, total min)
     const itemsArr = s.items || [];
-    const totalMin = itemsArr.reduce((acc, it) => acc + (it.minutosReales || 0), 0);
+    const totalMin = itemsArr.reduce((acc, it) => acc + _itemMinReal(it), 0);
     const numHechos = itemsArr.filter(it => it.tick === 'hecho').length;
     const metaParts = [];
     if (itemsArr.length) metaParts.push(itemsArr.length + (itemsArr.length === 1 ? ' obra' : ' obras'));
@@ -7271,10 +7314,9 @@ function renderSesionesHistorial() {
       const icon = tick ? tickIcons[tick] : '·';
       const badges = [];
       if (it.manual) badges.push('<span class="sesion-hist-obra-badge">manual</span>');
-      if (!it.manual && it.tick === 'hecho' && it.minutosReales != null) {
-        badges.push('<span class="sesion-hist-obra-badge">' + it.minutosReales + ' min</span>');
-      } else if (!it.manual && it.minutosReales != null) {
-        badges.push('<span class="sesion-hist-obra-badge">' + it.minutosReales + ' min</span>');
+      const minRealItem = _itemMinReal(it);
+      if (!it.manual && minRealItem > 0) {
+        badges.push('<span class="sesion-hist-obra-badge">' + minRealItem + ' min</span>');
       }
       if (it.solRating != null) {
         const c = solPctColor(it.solRating);
@@ -8867,14 +8909,60 @@ function renderEditExistingItems() {
   }).join('');
 }
 
+// ¿La sesión que se está editando es la de HOY? Para hoy, los cambios deben
+// reflejarse también en el estado en memoria (currentPlan/sessionMinPlan/…),
+// porque el autosave reconstruye la sesión de hoy desde memoria y, sin
+// sincronizar, pisaría la edición al instante.
+function _editSesionEsHoy() {
+  if (_editSesionIdx < 0) return false;
+  const s = db.sesiones[_editSesionIdx];
+  return !!s && new Date(s.date).toDateString() === new Date().toDateString();
+}
+
+// Sincroniza un cambio de un item editado con el estado en memoria del día.
+function _editSyncLivePlan(item, changes) {
+  if (!item || !item._planId) return;
+  const pid = item._planId;
+  if (changes.remove) {
+    currentPlan = currentPlan.filter(e => (e._planId || e.id) !== pid);
+    delete sessionMinPlan[pid];
+    delete sessionTicks[pid];
+    delete sessionSolRatings[pid];
+    delete sessionProductivityRatings[pid];
+    delete sessionAggregate[pid];
+    delete sessionDestello[pid];
+    return;
+  }
+  const entity = currentPlan.find(e => (e._planId || e.id) === pid);
+  if (changes.minutos !== undefined) {
+    if (changes.minutos == null) {
+      delete sessionMinPlan[pid];
+    } else {
+      sessionMinPlan[pid] = changes.minutos;
+      // Editar minutos reales implica que la tarjeta se estudió → cuenta.
+      if (entity) entity._isExtra = true;
+      const tminInp = document.getElementById('tmin-' + pid);
+      if (tminInp) { tminInp.value = changes.minutos; tminInp._touched = true; }
+    }
+  }
+  if (changes.tick !== undefined) {
+    if (changes.tick == null) delete sessionTicks[pid];
+    else sessionTicks[pid] = changes.tick;
+  }
+}
+
 // Cambia el tick (hecho/saltado) de un item ya guardado
 function setEditExistingTick(itemIdx, tick) {
   if (_editSesionIdx < 0) return;
   const s = db.sesiones[_editSesionIdx];
   if (!s.items || !s.items[itemIdx]) return;
+  const item = s.items[itemIdx];
   // Toggle: si ya estaba ese tick, quitarlo
-  if (s.items[itemIdx].tick === tick) s.items[itemIdx].tick = null;
-  else s.items[itemIdx].tick = tick;
+  const nuevoTick = item.tick === tick ? null : tick;
+  item.tick = nuevoTick;
+  // estudiado coherente con el nuevo tick (manual items se respetan)
+  if (!item.manual) item.estudiado = (nuevoTick === 'hecho' || nuevoTick === 'parcial');
+  if (_editSesionEsHoy()) _editSyncLivePlan(item, { tick: nuevoTick });
   renderEditExistingItems();
 }
 
@@ -8883,8 +8971,13 @@ function setEditExistingMinutos(itemIdx, val) {
   if (_editSesionIdx < 0) return;
   const s = db.sesiones[_editSesionIdx];
   if (!s.items || !s.items[itemIdx]) return;
+  const item = s.items[itemIdx];
   const v = parseInt(val);
-  s.items[itemIdx].minutosReales = isNaN(v) ? null : v;
+  const minutos = isNaN(v) ? null : v;
+  item.minutosReales = minutos;
+  // Editar minutos reales marca el item como estudiado.
+  if (minutos != null && !item.manual) item.estudiado = true;
+  if (_editSesionEsHoy()) _editSyncLivePlan(item, { minutos });
 }
 
 // Elimina un item ya guardado (con confirmación)
@@ -8892,9 +8985,12 @@ function deleteEditExistingItem(itemIdx) {
   if (_editSesionIdx < 0) return;
   const s = db.sesiones[_editSesionIdx];
   if (!s.items || !s.items[itemIdx]) return;
-  const name = s.items[itemIdx].obraName || 'esta entrada';
+  const item = s.items[itemIdx];
+  const name = item.obraName || 'esta entrada';
   if (!confirm('¿Quitar "' + name + '" de la sesión?\n\nEsta acción no se puede deshacer.')) return;
+  const eraHoy = _editSesionEsHoy();
   s.items.splice(itemIdx, 1);
+  if (eraHoy) _editSyncLivePlan(item, { remove: true });
   renderEditExistingItems();
   showToast('Eliminado de la sesión');
 }
@@ -8956,11 +9052,20 @@ function confirmEditarSesion() {
     ? Math.round(surviving.reduce((acc, v) => acc + v, 0) / surviving.length)
     : null;
 
+  // Si editamos la sesión de HOY, los cambios ya se sincronizaron con el estado
+  // en memoria (vía _editSyncLivePlan). Persistimos el draft y refrescamos el
+  // tiempo concentrado para que se vea al instante y el autosave no lo revierta.
+  const editamosHoy = _editSesionEsHoy();
+
   saveData();
   closeModal('modalEditarSesion');
   renderSesionesHistorial();
   if (typeof renderEstadoSection === 'function') renderEstadoSection();
   if (typeof renderRacha === 'function') renderRacha();
+  if (editamosHoy) {
+    if (typeof saveDraft === 'function') saveDraft();
+    if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+  }
   showToast('Sesión actualizada');
   if (typeof SFX !== 'undefined' && SFX.save) SFX.save();
 }
@@ -9444,6 +9549,8 @@ if (window.ResizeObserver) {
 const CRONO_STORAGE_KEY = 'pianoCrono_v1';
 const CRONO_MIN_MIN = 10;                  // mínimo de minutos para que cuente
 const CRONO_PAUSE_LIMIT_MS = 5 * 60 * 1000; // 5 minutos máx de pausa
+const CRONO_MAX_MIN = 120;                 // tope: en modo cronómetro se autodetiene a las 2h
+const CRONO_MAX_MS = CRONO_MAX_MIN * 60 * 1000;
 
 // ── PALETA DE COLORES PERSONALIZABLES PARA OBRAS ────────────────────────────
 // 8 colores cuidados, calmados, distinguibles. Cada obra puede tener uno.
@@ -9743,7 +9850,7 @@ function _procesarSesionParaResumen(sesion) {
     }
     return {
       label,
-      minutos: it.minutosReales || it.minutosPlan || it.min || 0,
+      minutos: _itemMinReal(it),
       pasajes,
       nota: (it.note || it.nota || '').trim(),
       destello,
@@ -10384,6 +10491,19 @@ function cronoStartTick() {
         }, 150);
       }
     } else {
+      // Modo cronómetro (sin objetivo): tope de 2h. Si se olvida apagar, se
+      // autodetiene y guarda la sesión en lugar de correr indefinidamente.
+      if (elapsedMs >= CRONO_MAX_MS) {
+        if (disp) disp.textContent = cronoFmt(CRONO_MAX_MS);
+        clearInterval(crono.tickInterval);
+        crono.tickInterval = null;
+        setTimeout(() => {
+          showToast('Tope de 2h alcanzado · sesión guardada');
+          if (typeof SFX !== 'undefined' && SFX.saveSession) SFX.saveSession();
+          cronoFinish();
+        }, 150);
+        return;
+      }
       if (disp) disp.textContent = cronoFmt(elapsedMs);
     }
     // Motivador de hito: muestra el tiempo total redondeado al múltiplo de 15min inferior
@@ -10605,7 +10725,10 @@ function cronoFinish() {
     handleDayChange();
   }
 
-  const ms = cronoCurrentMs();
+  // En modo cronómetro capamos a 2h: si la app estuvo cerrada mucho tiempo con
+  // una sesión corriendo, no queremos grabar 5h de golpe. En modo temporizador
+  // el objetivo ya limita la duración.
+  const ms = (crono.targetMinutes == null) ? Math.min(cronoCurrentMs(), CRONO_MAX_MS) : cronoCurrentMs();
   const minutos = Math.floor(ms / 60000);
 
   // ── DESCANSO: no añade tarjeta, no llama al modal hecho, no suma minutos

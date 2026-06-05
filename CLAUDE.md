@@ -113,7 +113,19 @@ El mecanismo de actualización automática (`_swUpdateInit`) ya está implementa
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v11`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v12`.
+
+### Tiempo realmente estudiado (no contar lo planificado)
+
+Helpers `_itemEstudiado(it)` / `_itemMinReal(it)`: un item de sesión solo cuenta como tiempo estudiado si vino del cronómetro (`_isExtra`), se marcó hecho/parcial, o es registro manual. Las tarjetas planificadas por el generador que nunca se tocaron **no** suman horas. Cada item serializado lleva un flag `estudiado`; los datos antiguos sin flag se interpretan por su `tick`. Esto se aplica en la serialización (`commitSession`, `_autoSaveTodayPlanNow`), en el historial, en el resumen lateral y en la restauración desde la nube (`restoreSessionFromDbToday` marca `_isExtra` según `anyStudied`).
+
+### Tope del cronómetro (2h)
+
+`CRONO_MAX_MIN = 120`. En modo Cronómetro (sin objetivo) se autodetiene y guarda al llegar a 2h (en `cronoStartTick`). `cronoFinish` capa los minutos a 2h para que reabrir la app tras horas no grabe una sesión enorme. El modo Temporizador ya se limita por su objetivo.
+
+### Editar/eliminar tiempo de HOY
+
+El modal "Editar sesión" sincroniza los cambios de la sesión de hoy con el estado en memoria (`_editSyncLivePlan`): editar minutos/tick o borrar un item actualiza `sessionMinPlan`/`sessionTicks`/`currentPlan`, no solo `db.sesiones`. Sin esto el autosave (que reconstruye la sesión de hoy desde memoria) revertía la edición al instante.
 
 ### Destellos (sesiones de excelencia)
 
