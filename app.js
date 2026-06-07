@@ -274,15 +274,36 @@ function openModal(id) {
   // transform/filter/will-change que cree un contexto de stacking.
   // (Era la causa de que el modal de colores apareciera "en el centro del
   // contenido" en lugar del centro de la pantalla.)
-  if (overlay.parentNode !== document.body) {
+  const justMoved = overlay.parentNode !== document.body;
+  if (justMoved) {
     overlay._originalParent = overlay.parentNode;
     overlay._originalNext = overlay.nextSibling;
     document.body.appendChild(overlay);
+    // Forzar reflow tras el move. Sin esto, en algunos navegadores móviles
+    // (iOS Safari sobre todo), la transición de opacity del .modal interno
+    // no arranca al mismo tiempo que se añade `.visible` y el modal queda
+    // invisible (opacity 0) aunque el backdrop sí se vea — síntoma
+    // "se desenfoca la pantalla pero no aparece nada".
+    void overlay.offsetWidth;
   }
   overlay.classList.add('visible');
   // Bloquear scroll del body para que el fondo no se desplace y el modal
   // quede correctamente centrado en el viewport
   document.body.classList.add('modal-open');
+  // Salvavidas: si por cualquier motivo la transición no completa (move +
+  // visible + rAF en un mismo frame puede comerse el arranque del fade),
+  // forzamos opacity 1 al instante siguiente para que nunca quede invisible.
+  // Usamos doble rAF + setTimeout como triple red de seguridad: rAF puede
+  // pausarse si la pestaña pierde foco al instante de abrir; setTimeout sí
+  // se dispara igualmente.
+  const forceVisible = () => {
+    const m = overlay.querySelector('.modal');
+    if (m && overlay.classList.contains('visible')) {
+      m.style.opacity = '1';
+    }
+  };
+  requestAnimationFrame(() => requestAnimationFrame(forceVisible));
+  setTimeout(forceVisible, 60);
   // Close on tap outside the modal box
   overlay._outsideHandler = function(e) {
     if (e.target === overlay) closeModal(id);
@@ -294,6 +315,10 @@ function closeModal(id) {
   const overlay = document.getElementById(id);
   if (!overlay) return;
   overlay.classList.remove('visible');
+  // Limpiar el opacity inline que pusimos como salvavidas, así la próxima
+  // apertura empieza desde la transición CSS y no salta visualmente.
+  const m = overlay.querySelector('.modal');
+  if (m) m.style.opacity = '';
   if (overlay._outsideHandler) {
     overlay.removeEventListener('click', overlay._outsideHandler);
     overlay._outsideHandler = null;

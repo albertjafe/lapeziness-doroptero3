@@ -750,9 +750,15 @@
     padding: 24px;
     width: 100%;
     max-width: 400px;
+    /* dvh = dynamic viewport height: respeta el viewport real en iOS cuando
+       las barras del navegador o el teclado aparecen/desaparecen. Sin esto,
+       100vh se queda con la altura sin barras y el modal sobresale por
+       debajo de la pantalla con el síntoma "no se puede hacer scroll". */
     max-height: 90vh;
+    max-height: 90dvh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     position: relative;
     box-sizing: border-box;
     /* Entrada suave: opacity sólo, sin transform — el transform sobre un
@@ -767,20 +773,39 @@
   /* Picker de obras/actividades del cronómetro: anclado hacia arriba (estilo
      paleta de comandos) para que el teclado del buscador no lo tape ni lo
      empuje fuera de vista. Altura dinámica (dvh) en iOS; JS la afina al
-     visualViewport real cuando el teclado está abierto. */
+     visualViewport real cuando el teclado está abierto.
+
+     Importante: el .modal usa overflow:hidden (no auto). Si dejamos el auto
+     del .modal base, con listas largas el modal entero scrollea (header,
+     lista y footer juntos) y el flex:1 del list deja de tener altura
+     definida — síntoma "el cuadro se hace enorme y no se puede hacer
+     scroll, hay que hacer pinch-zoom". Con overflow:hidden en el .modal,
+     SOLO la lista interna scrollea, que es lo correcto. */
   #modalCronoObraPicker {
     align-items: flex-start;
     padding-top: calc(env(safe-area-inset-top, 0px) + 18px);
   }
   #modalCronoObraPicker .modal {
+    height: 84vh;
+    height: 84dvh;
     max-height: 84vh;
     max-height: 84dvh;
+    overflow: hidden;
+  }
+  #cronoObraPickerList {
+    flex: 1 1 0;
+    min-height: 0;     /* sin esto, flex children con overflow no se contraen */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
   @media (max-width: 480px) {
     #modalCronoObraPicker { align-items: flex-start; padding: 10px 12px; }
     #modalCronoObraPicker .modal {
-      max-height: 72vh;
-      max-height: 72dvh;
+      height: 82vh;
+      height: 82dvh;
+      max-height: 82vh;
+      max-height: 82dvh;
     }
   }
   .modal-title {
@@ -2546,12 +2571,31 @@
      pan-y permite el desplazamiento vertical del modal pero NO el pinch-zoom:
      antes usábamos touch-action:auto, que reactivaba el zoom por pellizco y
      dejaba la pantalla ampliada al cerrar (el cronómetro lo bloquea con
-     touch-action:none). Con pan-y el comportamiento es coherente. */
+     touch-action:none). Con pan-y el comportamiento es coherente.
+
+     En body.crono-focus, además, fijamos explícitamente las dimensiones del
+     overlay al viewport dinámico (dvh): body tiene overflow:hidden y
+     height:100vh, lo que en iOS Safari puede crear un containing block para
+     position:fixed y descentrar el modal Hecho. Con estas reglas el overlay
+     se ancla siempre al viewport real y el .modal queda bien centrado. */
   body.crono-focus .modal-overlay {
     touch-action: pan-y;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    padding: 12px;
   }
   body.crono-focus .modal {
     touch-action: pan-y;
+    margin: auto;            /* centrado explícito como salvavidas del flex */
+  }
+  /* Modal Hecho: usa todo el alto disponible menos el padding del overlay,
+     así nunca aparece descolocado por encima del viewport en cronómetro. */
+  body.crono-focus #modalHechoDatos .hecho-modal {
+    max-height: calc(100dvh - 24px);
+    max-height: calc(100vh - 24px);
   }
 
   /* Fondo: usa el color base del tema con una capa muy sutil de profundidad */

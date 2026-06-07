@@ -113,7 +113,19 @@ El mecanismo de actualización automática (`_swUpdateInit`) ya está implementa
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v14`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v15`.
+
+### Modales que nunca quedan invisibles ni descentrados
+
+`openModal` fuerza un reflow tras mover el overlay a `body` (`void overlay.offsetWidth`) y añade un triple salvavidas (doble rAF + setTimeout 60 ms) que pone `opacity:1` al `.modal` interno. Sin esto, en iOS Safari el move + add(`visible`) en el mismo frame podía dejar el `.modal` en `opacity:0` (overlay borroso pero modal invisible). `closeModal` limpia el `opacity` inline.
+
+El `.modal` base usa `max-height: 90dvh` (con fallback a `vh`) y `overscroll-behavior: contain` para que el contenido nunca sobresalga del viewport en iOS y el scroll interno no contagie al body.
+
+En `body.crono-focus`, el `.modal-overlay` se ancla explícitamente al viewport con `position:fixed; width:100vw; height:100dvh` y `padding:12px`, y se añade `margin:auto` al `.modal` como red de seguridad del centrado. Sin esto, el `body { overflow:hidden; height:100vh }` del modo concentración creaba un containing block para `position:fixed` en iOS y el modal Hecho aparecía descolocado por encima del viewport.
+
+### Picker de obras del cronómetro: scroll en listas largas
+
+`#modalCronoObraPicker .modal` tiene `height:84dvh` y `overflow:hidden` (no auto), y `#cronoObraPickerList` usa `flex:1 1 0; min-height:0; overflow-y:auto`. Sin `min-height:0` un flex child con overflow no se contrae, así que con listas largas el modal entero scrolleaba (header, lista y footer juntos) y el `flex:1` perdía su altura; el síntoma era "el cuadro se hace enorme y hay que hacer pinch-zoom para ver abajo".
 
 ### Excluir obras al marcar un evento como realizado
 
