@@ -2591,12 +2591,6 @@
     touch-action: pan-y;
     margin: auto;            /* centrado explícito como salvavidas del flex */
   }
-  /* Modal Hecho: usa todo el alto disponible menos el padding del overlay,
-     así nunca aparece descolocado por encima del viewport en cronómetro. */
-  body.crono-focus #modalHechoDatos .hecho-modal {
-    max-height: calc(100dvh - 24px);
-    max-height: calc(100vh - 24px);
-  }
 
   /* Fondo: usa el color base del tema con una capa muy sutil de profundidad */
   #view-cronometro { position: relative; }
@@ -4165,6 +4159,66 @@
   /* ── Hecho modal: ensure scrollable body in flex layout ─────────────────── */
   .hecho-modal .hecho-modal-body {
     min-height: 0;
+  }
+
+  /* ── Hecho modal compacto y siempre dentro del viewport ─────────────────
+     Tope conservador (85dvh) para que siempre quede ~7-8% de margen arriba
+     y abajo: con el align-items:center del overlay garantiza centrado
+     visible incluso en iPad cuando hay barras visibles de Safari.
+     Reducimos paddings, márgenes y tamaños para que el contenido completo
+     (minutos + compases/pases + pasajes + memoria + ¿cómo fue? + nota)
+     entre sin sentirse "muy largo". */
+  .hecho-modal {
+    max-height: 85dvh !important;
+    max-height: 85vh !important;
+  }
+  .hecho-modal .hecho-modal-body {
+    padding: 16px 18px 8px !important;
+  }
+  .hecho-modal .modal-title {
+    font-size: 18px !important;
+    margin-bottom: 2px !important;
+  }
+  .hecho-modal-obra {
+    font-size: 14px !important;
+    margin-bottom: 10px !important;
+    line-height: 1.25 !important;
+  }
+  .hecho-modal .hecho-field-label {
+    margin-bottom: 4px !important;
+  }
+  .hecho-modal .sol-slider {
+    margin: 2px 0 4px !important;
+  }
+  .hecho-modal .sol-ref-row {
+    margin-bottom: 10px !important;
+  }
+  /* Productividad y nota general: bloque condensado, no necesita display 30px */
+  .hecho-modal #hechoProdDisplay {
+    font-size: 24px !important;
+    margin: 0 !important;
+  }
+  .hecho-modal #hechoProdLabel {
+    margin-bottom: 4px !important;
+  }
+  /* Compactar las secciones intermedias del modal */
+  .hecho-modal #hechoCompasSection,
+  .hecho-modal #hechoPasesSection,
+  .hecho-modal #hechoPasajesSection,
+  .hecho-modal #hechoMemSection {
+    margin-bottom: 8px;
+  }
+  .hecho-modal-footer {
+    padding: 10px 18px 14px !important;
+  }
+  .hecho-destello-box {
+    margin-top: 8px !important;
+    padding: 8px 12px !important;
+  }
+  .hecho-destello-prompt {
+    font-size: 12px !important;
+    margin-bottom: 6px !important;
+    line-height: 1.3 !important;
   }
 
   /* ── Flash "Hecho": slight upward visual centering ──────────────────────── */
