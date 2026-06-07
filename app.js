@@ -11562,16 +11562,31 @@ function bumpCronoPickRecency(obraId) {
   } catch (e) {}
 }
 
-// Ajusta la altura del picker al viewport visible. Clave en móvil: cuando el
-// teclado del buscador aparece, visualViewport se encoge y el modal queda
-// contenido en la zona visible (anclado arriba) en lugar de tapado por el teclado.
+// Ajusta el picker al viewport visible. Si el teclado del buscador está
+// abierto, anclamos arriba (clase .keyboard-open) y cuadramos el alto al
+// visualViewport real para que el teclado no tape el modal. Si no hay
+// teclado, dejamos que el CSS lo centre con su altura compacta (70dvh).
 function _cronoPickerFit() {
   const overlay = document.getElementById('modalCronoObraPicker');
   if (!overlay || !overlay.classList.contains('visible')) return;
   const modal = overlay.querySelector('.modal');
   if (!modal) return;
-  const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-  modal.style.maxHeight = Math.max(220, Math.round(h - 20)) + 'px';
+  const vv = window.visualViewport;
+  const visualH = vv ? vv.height : window.innerHeight;
+  const innerH = window.innerHeight;
+  // Detección de teclado: si el visualViewport es notablemente más pequeño
+  // que el viewport completo, es porque el teclado está abierto.
+  const keyboardOpen = !!vv && (innerH - visualH > 120);
+  overlay.classList.toggle('keyboard-open', keyboardOpen);
+  if (keyboardOpen) {
+    const h = Math.max(220, Math.round(visualH - 20)) + 'px';
+    modal.style.height = h;
+    modal.style.maxHeight = h;
+  } else {
+    // Sin teclado: limpia los estilos inline y el CSS centrado-compacto manda.
+    modal.style.height = '';
+    modal.style.maxHeight = '';
+  }
 }
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', _cronoPickerFit);

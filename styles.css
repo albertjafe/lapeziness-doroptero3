@@ -770,11 +770,11 @@
   .modal-overlay.visible .modal {
     opacity: 1;
   }
-  /* Picker de obras/actividades del cronómetro: anclado hacia arriba (estilo
-     paleta de comandos) para que el teclado del buscador no lo tape ni lo
-     empuje fuera de vista. Altura dinámica (dvh) en iOS; JS la afina al
-     visualViewport real cuando el teclado está abierto.
-
+  /* Picker de obras/actividades del cronómetro.
+     Por defecto se centra en el viewport y queda compacto (70dvh) para
+     que no se vea "muy largo". Cuando el teclado del buscador aparece,
+     JS añade la clase .keyboard-open y entonces se ancla arriba para que
+     el teclado no lo tape (es el comportamiento de paleta de comandos).
      Importante: el .modal usa overflow:hidden (no auto). Si dejamos el auto
      del .modal base, con listas largas el modal entero scrollea (header,
      lista y footer juntos) y el flex:1 del list deja de tener altura
@@ -782,14 +782,17 @@
      scroll, hay que hacer pinch-zoom". Con overflow:hidden en el .modal,
      SOLO la lista interna scrollea, que es lo correcto. */
   #modalCronoObraPicker {
+    align-items: center;
+  }
+  #modalCronoObraPicker.keyboard-open {
     align-items: flex-start;
-    padding-top: calc(env(safe-area-inset-top, 0px) + 18px);
+    padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
   }
   #modalCronoObraPicker .modal {
-    height: 84vh;
-    height: 84dvh;
-    max-height: 84vh;
-    max-height: 84dvh;
+    height: 70vh;
+    height: 70dvh;
+    max-height: 70vh;
+    max-height: 70dvh;
     overflow: hidden;
   }
   #cronoObraPickerList {
@@ -800,13 +803,13 @@
     overscroll-behavior: contain;
   }
   @media (max-width: 480px) {
-    #modalCronoObraPicker { align-items: flex-start; padding: 10px 12px; }
     #modalCronoObraPicker .modal {
-      height: 82vh;
-      height: 82dvh;
-      max-height: 82vh;
-      max-height: 82dvh;
+      height: 75vh;
+      height: 75dvh;
+      max-height: 75vh;
+      max-height: 75dvh;
     }
+    #modalCronoObraPicker.keyboard-open { padding: 10px 12px; }
   }
   .modal-title {
     font-family: 'Cormorant Garamond', serif;
