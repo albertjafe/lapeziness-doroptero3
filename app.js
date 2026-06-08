@@ -4148,6 +4148,19 @@ function closeHechoDatos(save) {
   const minutos = parseInt(document.getElementById('hechoMinutos').value) || _hechoMinPlan || null;
   const nota = document.getElementById('hechoNota').value.trim();
 
+  // ★ Aplicar el cambio de minutos al estado en memoria.
+  // Antes este valor solo se escribía en el input HTML tmin-, pero NO en
+  // sessionMinPlan[planId]: el resultado era que editar los minutos en el
+  // modal "Hecho" no se reflejaba en el "concentrado hoy" ni en la nube,
+  // se grababa el tiempo originalmente calculado por el cronómetro.
+  // Aplicamos como delta para que el caso fusionado (varias sub-sesiones
+  // de la misma obra) mantenga el total acumulado bien.
+  const minOriginal = _hechoMinPlan || 0;
+  const minDelta = (minutos || 0) - minOriginal;
+  if (minDelta !== 0) {
+    sessionMinPlan[planId] = Math.max(0, (sessionMinPlan[planId] || 0) + minDelta);
+  }
+
   // Store minutes and notes
   const minInp = document.getElementById('tmin-' + planId);
   if (minInp && minutos) { minInp.value = minutos; minInp._touched = true; }
@@ -4403,13 +4416,18 @@ function closeHechoDatos(save) {
       const arr = sessionAggregate[planId].subsessions;
       const justAdded = arr.pop();
       const previous = arr[arr.length - 1];
-      // Preservar min/startedAt/endedAt/timestamp de la previa; sobrescribir
-      // pasajes, pases, prod con los nuevos valores editados.
+      // Preservar startedAt/endedAt/timestamp de la previa; sobrescribir
+      // pasajes, pases, prod, destello con los nuevos valores editados.
       previous.pasajes = justAdded.pasajes;
       previous.pases = justAdded.pases;
       previous.prod = justAdded.prod;
       previous.destello = justAdded.destello;
       previous.destelloNota = justAdded.destelloNota;
+      // Si el usuario editó los minutos del modal, propagar a la sub-sesión
+      // previa también para que la edición se refleje en su .min.
+      if (minDelta !== 0 && previous.min != null) {
+        previous.min = Math.max(0, previous.min + minDelta);
+      }
     }
 
     // Productividad ponderada
@@ -4515,13 +4533,31 @@ function openObraDetalleSession(obraId) {
 
 function updateMinDiff(planId, minPlan) {
   const input = document.getElementById('tmin-' + planId);
-  const diffEl = document.getElementById('tickmin-diff-' + planId);
-  if (!input || !diffEl) return;
+  if (!input) return;
   input._touched = true;
-  const real = parseInt(input.value), diff = real - minPlan;
-  if (!real || !minPlan) { diffEl.textContent = ''; return; }
-  diffEl.textContent = diff > 0 ? '+' + diff + 'min' : diff < 0 ? diff + 'min' : '= exacto';
-  diffEl.style.color = diff > 0 ? 'var(--green)' : diff < 0 ? 'var(--orange)' : 'var(--text3)';
+  const real = parseInt(input.value);
+  const diffEl = document.getElementById('tickmin-diff-' + planId);
+  if (diffEl) {
+    if (!real || !minPlan) {
+      diffEl.textContent = '';
+    } else {
+      const diff = real - minPlan;
+      diffEl.textContent = diff > 0 ? '+' + diff + 'min' : diff < 0 ? diff + 'min' : '= exacto';
+      diffEl.style.color = diff > 0 ? 'var(--green)' : diff < 0 ? 'var(--orange)' : 'var(--text3)';
+    }
+  }
+  // ★ Reflejar el cambio de minutos en el estado en memoria. Sin esto,
+  // editar el input inline solo actualizaba el texto del diff, pero
+  // sessionMinPlan seguía con el valor viejo y el cómputo de "concentrado
+  // hoy" + el autoguardado se quedaban con el tiempo original.
+  if (!isNaN(real) && real > 0) {
+    sessionMinPlan[planId] = real;
+    // Editar minutos reales = la tarjeta cuenta como estudiada.
+    const entity = currentPlan.find(e => (e._planId || e.id) === planId);
+    if (entity) entity._isExtra = true;
+    if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+    if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
+  }
 }
 
 // ── ESTADO LABELS ────────────────────────────────────────────────────────────
