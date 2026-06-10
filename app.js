@@ -1171,6 +1171,7 @@ function commitSession(targetDate) {
     // Las tarjetas planificadas que no se tocaron NO graban minutosReales.
     const estudiado = !!entity._isExtra || tickVal === 'hecho' || tickVal === 'parcial';
     const minRealInput = parseInt(document.getElementById('tmin-' + planId)?.value) || sessionMinPlan[planId] || null;
+    const latestZone = latestZoneForPlan(planId, obraId, movId, entity);
     return {
       _planId: planId,
       obraId, movId,
@@ -1186,6 +1187,8 @@ function commitSession(targetDate) {
       note: document.getElementById('tnote-' + planId)?.value || '',
       destello: sessionDestello[planId]?.on ? true : false,
       destelloNota: sessionDestello[planId]?.nota || null,
+      zone: latestZone,
+      zona: zoneSummaryText(latestZone),
       objetivo: ''
     };
   });
@@ -1223,6 +1226,7 @@ function commitSession(targetDate) {
     existing.rating = allRatings.length
       ? Math.round(allRatings.reduce((s,v)=>s+v,0) / allRatings.length)
       : null;
+    existing._aggregate = JSON.parse(JSON.stringify(sessionAggregate || {}));
   } else {
     // Primer guardado en esa fecha — capturamos snapshot de los sliders actuales
     const allRatings = items.filter(i => i.rating != null).map(i => i.rating);
@@ -1234,7 +1238,8 @@ function commitSession(targetDate) {
       energia: selectedEnergy,
       estado: { ...estadoDiario },
       rating: avgRating,
-      items
+      items,
+      _aggregate: JSON.parse(JSON.stringify(sessionAggregate || {}))
     };
     // Insertar respetando orden cronológico (más reciente primero)
     const insertIdx = db.sesiones.findIndex(s => new Date(s.date) < targetDate);
@@ -1461,6 +1466,7 @@ function _autoSaveTodayPlanNow() {
       // Solo cuenta como tiempo estudiado si vino del cronómetro o se marcó
       // hecho/parcial. Las tarjetas planificadas no estudiadas no inflan horas.
       const estudiado = !!entity._isExtra || tickVal === 'hecho' || tickVal === 'parcial';
+      const latestZone = latestZoneForPlan(planId, obraId, movId, entity);
       return {
         _planId: planId,
         obraId, movId,
@@ -1478,6 +1484,8 @@ function _autoSaveTodayPlanNow() {
         destelloNota: sessionDestello[planId]?.nota || null,
         startedAt: firstStartedAt,
         endedAt: lastEndedAt,
+        zone: latestZone,
+        zona: zoneSummaryText(latestZone),
         objetivo: ''
       };
     });
@@ -1973,6 +1981,7 @@ function saveCompas(obraId, movId, field, val) {
   const pctEl     = document.getElementById(elBase + '-pct');
   if (barFillEl) { barFillEl.style.width = barW + '%'; barFillEl.style.background = barColor; }
   if (pctEl)     { pctEl.textContent = pctStr; pctEl.style.color = barColor; }
+  if (typeof refreshObraMap === 'function') refreshObraMap(obraId);
 }
 
 // Marca una obra o movimiento como APRENDIDA al instante, saltando la fase de
@@ -3837,6 +3846,11 @@ let _memPasajeSelected = null;
 let _paseAntesActive = false;
 let _paseDespuesActive = false;
 let _pasajeWork = {};
+let _hechoZoneOptions = [];
+let _hechoZoneKey = null;
+let _hechoZoneStage = 'digitando';
+let _hechoZoneStart = null;
+let _hechoZoneEnd = null;
 
 function solPctColor(pct) {
   if (pct >= 85) return 'var(--green)';
@@ -3853,6 +3867,334 @@ function solPctLabel(pct) {
   if (pct >= 40) return 'Frágil · muchos fallos';
   if (pct >= 20) return 'Inicio de consolidación';
   return 'Sin solidez aún';
+}
+
+function hechoJs(s) {
+  return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function aprendizajeStageMeta(stage) {
+  const map = {
+    pendiente: {
+      label: 'Pendiente',
+      short: 'pendiente',
+      color: 'var(--text3)',
+      hint: 'Guarda tiempo y zona; la solidez global puede esperar.'
+    },
+    lectura: {
+      label: 'Lectura',
+      short: 'lectura',
+      color: 'var(--orange)',
+      hint: 'Zona util para ubicarte. Aun no hace falta medir la obra entera.'
+    },
+    digitando: {
+      label: 'Digitando',
+      short: 'digitando',
+      color: 'var(--orange)',
+      hint: 'Registra el tramo aprendido hoy. La solidez es opcional y mejor por pasaje.'
+    },
+    manos: {
+      label: 'Manos juntas',
+      short: 'manos',
+      color: 'var(--accent)',
+      hint: 'Ya hay forma. Conviene registrar tramo y algun pasaje inestable.'
+    },
+    consolidando: {
+      label: 'Consolidando',
+      short: 'consolida',
+      color: '#8aaa30',
+      hint: 'Tiene sentido medir pase en frio y solidez de la zona.'
+    },
+    mantenimiento: {
+      label: 'Mantenimiento',
+      short: 'mantener',
+      color: 'var(--green)',
+      hint: 'Prioriza pase completo, memoria y pequenos puntos fragiles.'
+    }
+  };
+  return map[stage] || map.digitando;
+}
+
+function aprendizajeStageFromEntity(entity) {
+  if (!entity) return 'pendiente';
+  const pct = compasPercent(entity);
+  const solPct = entity.solHistory && entity.solHistory[0]
+    ? normalizeSolVal(entity.solHistory[0].val)
+    : normalizeSolVal(entity.sol || 0);
+  if (pct != null) {
+    if (pct <= 0) return 'lectura';
+    if (pct < 50) return 'digitando';
+    if (pct < 100) return 'manos';
+    if (solPct >= 85) return 'mantenimiento';
+    return 'consolidando';
+  }
+  const fase = obraFase(entity);
+  if (fase === 'mantenimiento') return 'mantenimiento';
+  if (fase === 'consolidando') return 'consolidando';
+  return (entity.apr || 1) <= 1 ? 'lectura' : 'digitando';
+}
+
+function hechoRangeText(start, end) {
+  if (start == null && end == null) return '';
+  if (start != null && end != null && start !== end) return 'cc. ' + start + '-' + end;
+  const val = start != null ? start : end;
+  return val != null ? 'cc. ' + val : '';
+}
+
+function hechoDefaultAdvanceRange(entity) {
+  const total = parseInt(entity?.compasesTotal || 0);
+  if (!total) return { start: null, end: null };
+  const actual = Math.max(0, Math.min(total, parseInt(entity.compasActual || 0)));
+  if (actual < total) {
+    const start = actual + 1;
+    return { start, end: Math.min(total, Math.max(start, actual + 8)) };
+  }
+  return { start: Math.max(1, total - 7), end: total };
+}
+
+function hechoDefaultReviewRange(entity) {
+  const total = parseInt(entity?.compasesTotal || 0);
+  if (!total) return { start: null, end: null };
+  const actual = Math.max(1, Math.min(total, parseInt(entity.compasActual || total)));
+  return { start: Math.max(1, actual - 7), end: actual };
+}
+
+function hechoGetZoneOption(key) {
+  return (_hechoZoneOptions || []).find(o => o.key === key) || null;
+}
+
+function hechoRenderZoneSection(obra, entity, pasajesActivos, isActividad) {
+  const section = document.getElementById('hechoZoneSection');
+  if (!section) return;
+  _hechoZoneOptions = [];
+  _hechoZoneKey = null;
+  _hechoZoneStart = null;
+  _hechoZoneEnd = null;
+
+  if (isActividad || !obra || !entity) {
+    section.style.display = 'none';
+    return;
+  }
+
+  const hasCompases = !!(entity.compasesTotal && entity.compasesTotal > 0);
+  const advance = hechoDefaultAdvanceRange(entity);
+  const review = hechoDefaultReviewRange(entity);
+  const isMov = !!_hechoMovId;
+  _hechoZoneOptions.push({
+    key: 'obra',
+    type: 'obra',
+    label: isMov ? 'Movimiento completo' : 'Obra completa',
+    short: isMov ? 'movimiento' : 'obra',
+  });
+  if (hasCompases) {
+    _hechoZoneOptions.push({
+      key: 'avance',
+      type: 'avance',
+      label: 'Avance',
+      short: hechoRangeText(advance.start, advance.end) || 'avance',
+      start: advance.start,
+      end: advance.end,
+    });
+    _hechoZoneOptions.push({
+      key: 'repaso',
+      type: 'repaso',
+      label: 'Repaso tramo',
+      short: hechoRangeText(review.start, review.end) || 'repaso',
+      start: review.start,
+      end: review.end,
+    });
+  }
+  (pasajesActivos || []).slice(0, 8).forEach(p => {
+    _hechoZoneOptions.push({
+      key: 'pasaje:' + p.id,
+      type: 'pasaje',
+      label: p.text || 'Pasaje',
+      short: 'pasaje',
+      pasajeId: p.id,
+      pasajeName: p.text || 'Pasaje',
+    });
+  });
+
+  _hechoZoneStage = aprendizajeStageFromEntity(entity);
+  const pct = compasPercent(entity);
+  const defaultKey = hasCompases && pct !== 100 ? 'avance'
+    : ((pasajesActivos || []).length ? 'pasaje:' + pasajesActivos[0].id : 'obra');
+  _hechoZoneKey = hechoGetZoneOption(defaultKey) ? defaultKey : (_hechoZoneOptions[0]?.key || null);
+  const opt = hechoGetZoneOption(_hechoZoneKey);
+  if (opt && opt.start != null) {
+    _hechoZoneStart = opt.start;
+    _hechoZoneEnd = opt.end;
+  }
+
+  const head = document.getElementById('hechoZoneHead');
+  if (head) {
+    const title = isMov ? entity.name : obra.name;
+    head.textContent = title ? ('Que parte de "' + title + '" has tocado') : 'Que parte has trabajado hoy';
+  }
+  section.style.display = '';
+  hechoRefreshZoneUi();
+}
+
+function hechoRefreshZoneUi() {
+  const chips = document.getElementById('hechoZoneChips');
+  const range = document.getElementById('hechoZoneRange');
+  const startInp = document.getElementById('hechoZoneStart');
+  const endInp = document.getElementById('hechoZoneEnd');
+  const stageRow = document.getElementById('hechoZoneStageRow');
+  const hint = document.getElementById('hechoZoneHint');
+  const step = document.getElementById('hechoZoneStep');
+  const selected = hechoGetZoneOption(_hechoZoneKey);
+  if (chips) {
+    chips.innerHTML = (_hechoZoneOptions || []).map(opt => {
+      const active = opt.key === _hechoZoneKey ? ' active' : '';
+      const detail = opt.short && opt.short !== opt.label ? '<span>' + escapeHtmlSafe(opt.short) + '</span>' : '';
+      return '<button class="hecho-zone-chip' + active + '" onclick="hechoSelectZone(\'' + hechoJs(opt.key) + '\')">' +
+        '<strong>' + escapeHtmlSafe(opt.label) + '</strong>' + detail +
+      '</button>';
+    }).join('');
+  }
+  const showRange = selected && (selected.type === 'avance' || selected.type === 'repaso');
+  if (range) range.style.display = showRange ? 'flex' : 'none';
+  if (startInp) startInp.value = _hechoZoneStart != null ? _hechoZoneStart : '';
+  if (endInp) endInp.value = _hechoZoneEnd != null ? _hechoZoneEnd : '';
+  if (stageRow) {
+    const stages = ['lectura', 'digitando', 'manos', 'consolidando', 'mantenimiento'];
+    stageRow.innerHTML = stages.map(st => {
+      const meta = aprendizajeStageMeta(st);
+      const active = st === _hechoZoneStage ? ' active' : '';
+      return '<button class="hecho-zone-stage' + active + '" style="--stage-color:' + meta.color + '" onclick="hechoSelectZoneStage(\'' + st + '\')">' +
+        escapeHtmlSafe(meta.label) +
+      '</button>';
+    }).join('');
+  }
+  const meta = aprendizajeStageMeta(_hechoZoneStage);
+  if (hint) {
+    const zoneText = zoneSummaryText(hechoCurrentZoneSnapshot(false));
+    hint.innerHTML = '<strong>' + escapeHtmlSafe(zoneText || 'Zona sin definir') + '</strong><span>' + escapeHtmlSafe(meta.hint) + '</span>';
+  }
+  if (step) {
+    step.textContent = meta.short;
+    step.style.color = meta.color;
+    step.style.borderColor = meta.color;
+    step.style.background = 'color-mix(in oklab, ' + meta.color + ' 12%, transparent)';
+  }
+  if (typeof hechoUpdateFastSolidityAction === 'function') hechoUpdateFastSolidityAction();
+}
+
+function hechoSelectZone(key) {
+  const opt = hechoGetZoneOption(key);
+  if (!opt) return;
+  _hechoZoneKey = key;
+  if (opt.start != null) {
+    _hechoZoneStart = opt.start;
+    _hechoZoneEnd = opt.end;
+  }
+  hechoRefreshZoneUi();
+}
+
+function hechoUpdateZoneRange(which, value) {
+  const entity = _hechoMovId ? findMovimiento(_hechoObraId, _hechoMovId) : findObra(_hechoObraId);
+  const total = parseInt(entity?.compasesTotal || 0);
+  let v = parseInt(value);
+  if (isNaN(v)) v = null;
+  if (v != null && total) v = Math.max(1, Math.min(total, v));
+  if (which === 'start') _hechoZoneStart = v;
+  else _hechoZoneEnd = v;
+  if (_hechoZoneStart != null && _hechoZoneEnd != null && _hechoZoneEnd < _hechoZoneStart) {
+    if (which === 'start') _hechoZoneEnd = _hechoZoneStart;
+    else _hechoZoneStart = _hechoZoneEnd;
+  }
+  hechoRefreshZoneUi();
+}
+
+function hechoSelectZoneStage(stage) {
+  _hechoZoneStage = aprendizajeStageMeta(stage) ? stage : 'digitando';
+  hechoRefreshZoneUi();
+}
+
+function hechoSyncZoneToCompas() {
+  if (_hechoZoneKey !== 'avance' || _hechoZoneStart == null) return;
+  const entity = _hechoMovId ? findMovimiento(_hechoObraId, _hechoMovId) : findObra(_hechoObraId);
+  const total = parseInt(entity?.compasesTotal || 0);
+  if (!total) return;
+  const nextEnd = Math.max(_hechoZoneStart, Math.min(total, _hechoCompasStep || _hechoZoneEnd || _hechoZoneStart));
+  _hechoZoneEnd = nextEnd;
+  const opt = hechoGetZoneOption('avance');
+  if (opt) {
+    opt.end = nextEnd;
+    opt.short = hechoRangeText(_hechoZoneStart, _hechoZoneEnd);
+  }
+  hechoRefreshZoneUi();
+}
+
+function hechoCurrentZoneSnapshot(includeMeta = true) {
+  const opt = hechoGetZoneOption(_hechoZoneKey);
+  if (!opt) return null;
+  const snap = {
+    key: opt.key,
+    type: opt.type,
+    label: opt.label,
+    stage: _hechoZoneStage,
+    stageLabel: aprendizajeStageMeta(_hechoZoneStage).label,
+  };
+  if (includeMeta) {
+    snap.obraId = _hechoObraId || null;
+    snap.movId = _hechoMovId || null;
+  }
+  if (opt.type === 'avance' || opt.type === 'repaso') {
+    snap.start = _hechoZoneStart;
+    snap.end = _hechoZoneEnd;
+  }
+  if (opt.type === 'pasaje') {
+    snap.pasajeId = opt.pasajeId;
+    snap.pasajeName = opt.pasajeName || opt.label;
+  }
+  snap.summary = zoneSummaryText(snap);
+  return snap;
+}
+
+function hechoRestoreZone(zone) {
+  if (!zone) return;
+  let key = zone.key || null;
+  if (!key && zone.type === 'pasaje' && zone.pasajeId) key = 'pasaje:' + zone.pasajeId;
+  if (key && hechoGetZoneOption(key)) _hechoZoneKey = key;
+  if (zone.start != null) _hechoZoneStart = zone.start;
+  if (zone.end != null) _hechoZoneEnd = zone.end;
+  if (zone.stage) _hechoZoneStage = zone.stage;
+  hechoRefreshZoneUi();
+}
+
+function hechoStoreZoneSnapshot(entity, zoneSnapshot) {
+  if (!entity || !zoneSnapshot) return;
+  const entry = { date: new Date().toISOString(), ...zoneSnapshot };
+  entity.currentZone = entry;
+  entity.learningStage = zoneSnapshot.stage;
+  if (!entity.zoneHistory) entity.zoneHistory = [];
+  if (_hechoEditMode && entity.zoneHistory.length) entity.zoneHistory[0] = entry;
+  else entity.zoneHistory.unshift(entry);
+  if (entity.zoneHistory.length > 40) entity.zoneHistory = entity.zoneHistory.slice(0, 40);
+}
+
+function zoneSummaryText(zone) {
+  if (!zone) return '';
+  if (typeof zone === 'string') return zone;
+  if (zone.type === 'pasaje') return 'Pasaje: ' + (zone.pasajeName || zone.label || 'pasaje');
+  if (zone.start != null || zone.end != null) {
+    const range = hechoRangeText(zone.start, zone.end);
+    if (zone.type === 'repaso') return 'Repaso ' + range;
+    if (zone.type === 'avance') return 'Avance ' + range;
+    return range;
+  }
+  return zone.label || zone.summary || '';
+}
+
+function latestZoneForPlan(planId, obraId, movId, entity) {
+  const subs = (sessionAggregate[planId] && sessionAggregate[planId].subsessions) || [];
+  for (let i = subs.length - 1; i >= 0; i--) {
+    if (subs[i] && subs[i].zone) return subs[i].zone;
+  }
+  const target = movId ? findMovimiento(obraId, movId) : findObra(obraId);
+  return target?.currentZone || entity?.currentZone || null;
 }
 
 // Colors matching obra scale sliders: amber=sol, green=esc
@@ -3887,6 +4229,7 @@ function stepCompas(delta) {
   const el = document.getElementById('compasStepVal');
   if (el) el.textContent = _hechoCompasStep;
   updateCompasMeta();
+  hechoSyncZoneToCompas();
 }
 
 function updateCompasMeta() {
@@ -4027,6 +4370,11 @@ function openHechoDatos(planId, minPlan, opts) {
   _paseAntesActive = false;
   _paseDespuesActive = false;
   _pasajeWork = {};
+  _hechoZoneOptions = [];
+  _hechoZoneKey = null;
+  _hechoZoneStage = 'digitando';
+  _hechoZoneStart = null;
+  _hechoZoneEnd = null;
 
   const obra = findObra(obraId);
   const entity = movId ? findMovimiento(obraId, movId) : obra;
@@ -4141,6 +4489,7 @@ function openHechoDatos(planId, minPlan, opts) {
 
   // Pasajes section
   const pasajosActivos = !movId ? (obra?.pasajes || []).filter(p => p.status !== 'resuelto') : [];
+  hechoRenderZoneSection(obra, entity, pasajosActivos, isActividad);
   const pasajesSection = document.getElementById('hechoPasajesSection');
   const pasajesList    = document.getElementById('hechoPasajesList');
   if (pasajesSection) pasajesSection.style.display = (showPasajes && pasajosActivos.length) ? 'block' : 'none';
@@ -4254,6 +4603,7 @@ function openHechoDatos(planId, minPlan, opts) {
       ? agg.subsessions[agg.subsessions.length - 1]
       : null;
     if (lastSub) {
+      if (lastSub.zone) hechoRestoreZone(lastSub.zone);
       // Pasajes trabajados: marcar intensidad
       if (Array.isArray(lastSub.pasajes)) {
         lastSub.pasajes.forEach(p => {
@@ -4358,6 +4708,8 @@ function closeHechoDatos(save) {
   const entity = movId ? findMovimiento(obraId, movId) : obra;
   const minutos = parseInt(document.getElementById('hechoMinutos').value) || _hechoMinPlan || null;
   const nota = document.getElementById('hechoNota').value.trim();
+  const zoneSnapshot = obra && obra.tipo !== 'actividad' ? hechoCurrentZoneSnapshot(true) : null;
+  if (zoneSnapshot && entity) hechoStoreZoneSnapshot(entity, zoneSnapshot);
 
   // ★ Aplicar el cambio de minutos al estado en memoria.
   // Antes este valor solo se escribía en el input HTML tmin-, pero NO en
@@ -4613,6 +4965,7 @@ function closeHechoDatos(save) {
       prod: prodVal,
       pasajes: subPasajes,
       pases: Object.keys(subPases).length ? subPases : null,
+      zone: zoneSnapshot,
       destello: destOn,
       destelloNota: destOn ? destNota : null,
       startedAt: startedAt,
@@ -4631,6 +4984,7 @@ function closeHechoDatos(save) {
       // pasajes, pases, prod, destello con los nuevos valores editados.
       previous.pasajes = justAdded.pasajes;
       previous.pases = justAdded.pases;
+      previous.zone = justAdded.zone;
       previous.prod = justAdded.prod;
       previous.destello = justAdded.destello;
       previous.destelloNota = justAdded.destelloNota;
@@ -5653,6 +6007,98 @@ function renderActividadCard(o, idx) {
   `;
 }
 
+function obraMapLatestZone(entity) {
+  const zone = entity?.currentZone || (entity?.zoneHistory && entity.zoneHistory[0]) || null;
+  return zoneSummaryText(zone);
+}
+
+function obraMapSolPercent(entity) {
+  if (!entity) return null;
+  if (entity.solHistory && entity.solHistory[0]) return normalizeSolVal(entity.solHistory[0].val);
+  const raw = entity.sol;
+  if (raw == null || raw <= 1) return null;
+  return normalizeSolVal(raw);
+}
+
+function obraMapStageLabel(entity) {
+  const zone = entity?.currentZone || (entity?.zoneHistory && entity.zoneHistory[0]) || null;
+  if (zone?.stageLabel) return zone.stageLabel;
+  return aprendizajeStageMeta(aprendizajeStageFromEntity(entity)).label;
+}
+
+function renderObraMap(o) {
+  if (!o || o.tipo === 'actividad') return '';
+  const movs = (o.movimientos || []).filter(Boolean);
+  const activePasajes = (o.pasajes || []).filter(p => p.status !== 'resuelto');
+
+  if (movs.length) {
+    const totalWeight = movs.reduce((s, m) => s + (m.compasesTotal || m.duracion || 1), 0) || movs.length;
+    const segments = movs.map(m => {
+      const pctRaw = compasPercent(m);
+      const learned = pctRaw != null ? pctRaw : Math.min(100, aprFromCompas(m) * 10);
+      const fl = obraFaseLabel(m);
+      const weight = (m.compasesTotal || m.duracion || 1) / totalWeight;
+      return '<div class="obra-map-segment" style="flex:' + weight + ';--map-color:' + fl.color + '" title="' +
+        escapeHtmlSafe(m.name + ' ' + learned + '%') + '"><span style="width:' + learned + '%"></span></div>';
+    }).join('');
+    const rows = movs.map((m, i) => {
+      const pctRaw = compasPercent(m);
+      const learned = pctRaw != null ? pctRaw + '%' : (aprFromCompas(m) * 10) + '%';
+      const fl = obraFaseLabel(m);
+      const zone = obraMapLatestZone(m);
+      const solPct = obraMapSolPercent(m);
+      const solText = pctRaw === 100 || (pctRaw == null && aprFromCompas(m) >= 10)
+        ? (solPct != null ? solPct + '%' : 'sin medir')
+        : 'pendiente';
+      return '<div class="obra-map-row">' +
+        '<span><i style="background:' + fl.color + '"></i>' + escapeHtmlSafe(m.name || ('Mov. ' + (i + 1))) + '</span>' +
+        '<strong>' + learned + '</strong>' +
+        '<em>' + escapeHtmlSafe(obraMapStageLabel(m)) + '</em>' +
+        '<small>' + escapeHtmlSafe(zone || 'sin zona') + '</small>' +
+        '<small>sol ' + escapeHtmlSafe(solText) + '</small>' +
+      '</div>';
+    }).join('');
+    return '<div class="obra-map">' +
+      '<div class="obra-map-head"><span>Mapa de obra</span><strong>' + movs.length + ' movimientos</strong></div>' +
+      '<div class="obra-map-bar">' + segments + '</div>' +
+      '<div class="obra-map-rows">' + rows + '</div>' +
+    '</div>';
+  }
+
+  const pct = compasPercent(o);
+  const learned = pct != null ? pct : Math.min(100, aprFromCompas(o) * 10);
+  const fl = obraFaseLabel(o);
+  const zone = obraMapLatestZone(o);
+  const solPct = obraMapSolPercent(o);
+  const solReady = pct === 100 || (pct == null && aprFromCompas(o) >= 10);
+  const solText = solReady
+    ? (solPct != null ? solPct + '%' : 'sin medir')
+    : 'pendiente hasta aprenderla';
+  const compasText = o.compasesTotal
+    ? ((o.compasActual || 0) + '/' + o.compasesTotal + ' cc.')
+    : 'sin compases definidos';
+  return '<div class="obra-map">' +
+    '<div class="obra-map-head"><span>Mapa de estudio</span><strong>' + learned + '%</strong></div>' +
+    '<div class="obra-map-single" style="--map-color:' + fl.color + '"><span style="width:' + learned + '%"></span></div>' +
+    '<div class="obra-map-rows">' +
+      '<div class="obra-map-row"><span><i style="background:' + fl.color + '"></i>Avance</span><strong>' + escapeHtmlSafe(compasText) + '</strong><em>' + escapeHtmlSafe(obraMapStageLabel(o)) + '</em><small>' + escapeHtmlSafe(zone || 'sin zona') + '</small></div>' +
+      '<div class="obra-map-row"><span><i></i>Pasajes activos</span><strong>' + activePasajes.length + '</strong><em>' + (activePasajes.length ? 'seguimiento' : 'limpio') + '</em><small>' + escapeHtmlSafe(activePasajes[0]?.text || 'sin pasaje activo') + '</small></div>' +
+      '<div class="obra-map-row"><span><i></i>Solidez</span><strong>' + escapeHtmlSafe(solText) + '</strong><em>' + (solReady ? 'medible' : 'secundaria') + '</em><small>' + (solReady ? 'pase o registro rapido' : 'primero avance') + '</small></div>' +
+    '</div>' +
+  '</div>';
+}
+
+function refreshObraMap(obraId) {
+  const card = document.getElementById('obra-' + obraId);
+  const obra = findObra(obraId);
+  const current = card?.querySelector('.obra-map');
+  if (!card || !obra || !current) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = renderObraMap(obra);
+  const next = tmp.firstElementChild;
+  if (next) current.replaceWith(next);
+}
+
 function renderObraCard(o, idx) {
   // ── ACTIVIDADES: render simplificado ────────────────────────────────
   if (o.tipo === 'actividad') {
@@ -5756,6 +6202,8 @@ function renderObraCard(o, idx) {
           ${hasMovs ? `<span style="font-size:9px;color:var(--text3)">(media ponderada por duración)</span>` : ''}
           <button class="diagnose-btn" onclick="openGrafico('${o.id}',null)">Evolución ↗</button>
         </div>
+
+        ${renderObraMap(o)}
 
         <!-- Dificultad + Duración (solo sin movimientos) -->
         ${!hasMovs ? `
@@ -7791,6 +8239,10 @@ function renderSesionesHistorial() {
         const c = solPctColor(it.solRating);
         badges.push('<span class="sesion-hist-obra-badge" style="color:' + c + ';border-color:' + c + '55">solidez ' + it.solRating + '%</span>');
       }
+      const zoneLabel = it.zona || zoneSummaryText(it.zone);
+      if (zoneLabel) {
+        badges.push('<span class="sesion-hist-obra-badge">zona ' + escapeHtmlSafe(zoneLabel) + '</span>');
+      }
       if (it.rating != null) {
         const c = solPctColor(it.rating);
         badges.push('<span class="sesion-hist-obra-badge" style="color:' + c + ';border-color:' + c + '55">sesión ' + it.rating + '%</span>');
@@ -8678,6 +9130,7 @@ function setFontSize(size, btn) {
   const zooms = { small: 0.82, normal: 1, large: 1.22, xlarge: 1.5 };
   const z = zooms[size] || 1;
   applyZoom(z);
+  document.documentElement.setAttribute('data-size', size);
   localStorage.setItem('alberto_size', size);
   document.querySelectorAll('.size-option').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
@@ -8768,6 +9221,7 @@ function loadTheme() {
 
   document.documentElement.setAttribute('data-theme', theme);
   document.documentElement.setAttribute('data-font', font);
+  document.documentElement.setAttribute('data-size', size);
   applyZoom(z);
 
   document.querySelectorAll('.theme-option').forEach(b => {
@@ -11080,11 +11534,36 @@ function confirmQuickSolidez() {
   }
 }
 
+function cronoZonePreviewForBase(base) {
+  if (!base || !base.obraId) return null;
+  const obra = findObra(base.obraId);
+  const entity = base.movId ? findMovimiento(base.obraId, base.movId) : obra;
+  if (!obra || obra.tipo === 'actividad' || !entity) return null;
+  const total = parseInt(entity.compasesTotal || 0);
+  if (total) {
+    const actual = Math.max(0, Math.min(total, parseInt(entity.compasActual || 0)));
+    if (actual < total) {
+      const start = actual + 1;
+      const end = Math.min(total, Math.max(start, actual + 8));
+      return hechoRangeText(start, end);
+    }
+    const review = hechoDefaultReviewRange(entity);
+    return 'repaso ' + hechoRangeText(review.start, review.end);
+  }
+  if (!base.movId) {
+    const activePasajes = (obra.pasajes || []).filter(p => p.status !== 'resuelto');
+    if (activePasajes.length) return activePasajes.length === 1 ? '1 pasaje' : activePasajes.length + ' pasajes';
+  }
+  return base.movId ? 'movimiento' : 'obra completa';
+}
+
 function cronoUpdateSolidityActions() {
   const idleBtn = document.getElementById('cronoQuickSolBtn');
   const idleVal = document.getElementById('cronoQuickSolValue');
   const runBtn = document.getElementById('cronoRunSolBtn');
   const runVal = document.getElementById('cronoRunSolValue');
+  const runZoneBtn = document.getElementById('cronoRunZoneBtn');
+  const runZoneVal = document.getElementById('cronoRunZoneValue');
 
   const idleBase = _quickSolCurrentBase('idle');
   const runBase = crono.obraId ? _quickSolCurrentBase('running') : null;
@@ -11103,15 +11582,22 @@ function cronoUpdateSolidityActions() {
   if (idleVal) idleVal.textContent = idlePct == null ? '—' : idlePct + '%';
   if (runBtn) runBtn.style.display = runPct == null ? 'none' : '';
   if (runVal) runVal.textContent = runPct == null ? '—' : runPct + '%';
+  const zonePreview = cronoZonePreviewForBase(runBase);
+  if (runZoneBtn) runZoneBtn.style.display = zonePreview ? '' : 'none';
+  if (runZoneVal) runZoneVal.textContent = zonePreview || 'al terminar';
 }
 
 function hechoUpdateFastSolidityAction() {
   const wrap = document.getElementById('hechoFastActions');
   const valEl = document.getElementById('hechoFastSolValue');
+  const labelEl = document.getElementById('hechoFastSolLabel');
   if (!wrap || !valEl) return;
   const base = _quickSolCurrentBase('hecho');
   const targets = _quickSolBuildTargets(base);
   const pct = targets.length ? _quickSolTargetValue(targets[0]) : null;
+  const zone = hechoCurrentZoneSnapshot(false);
+  const isLearningZone = zone && (zone.type === 'avance' || zone.type === 'repaso');
+  if (labelEl) labelEl.textContent = isLearningZone ? 'Solidez opcional' : 'Registrar solidez';
   wrap.style.display = pct == null ? 'none' : '';
   valEl.textContent = pct == null ? '—' : pct + '%';
 }

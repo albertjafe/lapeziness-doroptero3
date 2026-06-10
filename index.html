@@ -346,6 +346,10 @@
       </div>
 
       <div class="crono-run-quick-row">
+        <button class="crono-zone-btn" id="cronoRunZoneBtn" onclick="showToast('La zona se registra al pulsar Hecho')">
+          <span>Zona</span>
+          <strong id="cronoRunZoneValue">al terminar</strong>
+        </button>
         <button class="crono-solidity-btn crono-solidity-btn-run" id="cronoRunSolBtn" onclick="openQuickSolidez('running')">
           <span>Solidez</span>
           <strong id="cronoRunSolValue">—</strong>
@@ -897,7 +901,7 @@
 
     <div class="hecho-fast-actions" id="hechoFastActions">
       <button class="hecho-fast-sol-btn" onclick="openQuickSolidez('hecho')">
-        <span>Registrar solidez</span>
+        <span id="hechoFastSolLabel">Registrar solidez</span>
         <strong id="hechoFastSolValue">—</strong>
       </button>
     </div>
@@ -909,6 +913,26 @@
         class="modal-input" style="margin-bottom:0;width:90px;text-align:center;font-size:18px;color:var(--accent)">
       <span style="font-size:9px;color:var(--text3)">planif: <span id="hechoMinPlan" style="color:var(--text2)">—</span></span>
       <span id="hechoMinDiff" style="font-size:9px;margin-left:auto"></span>
+    </div>
+
+    <!-- Zona trabajada -->
+    <div id="hechoZoneSection" class="hecho-zone-section" style="display:none">
+      <div class="hecho-zone-top">
+        <div>
+          <div class="hecho-field-label" style="margin-bottom:3px">Zona trabajada</div>
+          <div class="hecho-zone-head" id="hechoZoneHead">Que parte has trabajado hoy</div>
+        </div>
+        <div class="hecho-zone-step" id="hechoZoneStep">avance</div>
+      </div>
+      <div class="hecho-zone-chips" id="hechoZoneChips"></div>
+      <div class="hecho-zone-range" id="hechoZoneRange" style="display:none">
+        <span>cc.</span>
+        <input type="number" id="hechoZoneStart" min="1" inputmode="numeric" oninput="hechoUpdateZoneRange('start', this.value)">
+        <span>-</span>
+        <input type="number" id="hechoZoneEnd" min="1" inputmode="numeric" oninput="hechoUpdateZoneRange('end', this.value)">
+      </div>
+      <div class="hecho-zone-stage-row" id="hechoZoneStageRow"></div>
+      <div class="hecho-zone-hint" id="hechoZoneHint"></div>
     </div>
 
     <!-- Compases (solo si obra en aprendizaje) -->
