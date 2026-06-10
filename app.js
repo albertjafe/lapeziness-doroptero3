@@ -228,7 +228,7 @@ function showView(name) {
   if (name === 'pasajes')    renderPasajesGlobal();
   if (name === 'pases')      renderPases();
   if (name === 'calendario') renderCalendario();
-  if (name === 'historial')  { renderSesionesHistorial(); renderEficienciaSection(); renderEstadoSection(); }
+  if (name === 'historial')  { renderSesionesHistorial(); renderSolidezSection(); renderEficienciaSection(); renderEstadoSection(); }
 }
 
 function showToast(msg) {
@@ -3112,6 +3112,216 @@ function renderEficienciaSection() {
 
 // ── FOREST IMPORT ─────────────────────────────────────────────────────────────
 
+// -- SOLIDEZ DASHBOARD ------------------------------------------------------
+
+function _solidezCurrentValue(hist, fallback) {
+  if (hist && hist[0] && hist[0].val != null) return normalizeSolVal(hist[0].val);
+  if (fallback != null && fallback > 1) return normalizeSolVal(fallback);
+  return null;
+}
+
+function _solidezDaysSince(date) {
+  if (!date) return null;
+  const t = new Date(date).getTime();
+  if (!isFinite(t)) return null;
+  return Math.max(0, Math.floor((Date.now() - t) / 86400000));
+}
+
+function _solidezAgeLabel(days) {
+  if (days == null) return 'sin historial';
+  if (days <= 0) return 'hoy';
+  if (days === 1) return 'ayer';
+  return 'hace ' + days + ' d';
+}
+
+function _solidezState(value) {
+  if (value == null) return { key: 'none', label: 'Sin medir', color: 'var(--text3)' };
+  if (value >= 80) return { key: 'solid', label: 'Solida', color: 'var(--green)' };
+  if (value >= 60) return { key: 'stable', label: 'Estable', color: '#8aaa30' };
+  if (value >= 40) return { key: 'fragile', label: 'Fragil', color: 'var(--accent)' };
+  return { key: 'risk', label: 'Urgente', color: 'var(--orange)' };
+}
+
+function _solidezMakeItem(data) {
+  const hist = data.hist || [];
+  const value = _solidezCurrentValue(hist, data.fallback);
+  const prev = hist[1] && hist[1].val != null ? normalizeSolVal(hist[1].val) : null;
+  const days = _solidezDaysSince(hist[0]?.date);
+  const delta = value != null && prev != null ? value - prev : null;
+  return {
+    ...data,
+    value,
+    prev,
+    delta,
+    days,
+    lastDate: hist[0]?.date || null,
+    state: _solidezState(value),
+  };
+}
+
+function _solidezCollectTargets() {
+  const items = [];
+  (db.obras || []).forEach(obra => {
+    if (!obra || obra.tipo === 'actividad') return;
+    const obraColor = obraColorHex(obra) || 'var(--accent)';
+    const obraHist = obra.solHistory || [];
+    items.push(_solidezMakeItem({
+      type: 'obra',
+      obraId: obra.id,
+      name: obra.name || 'Obra sin nombre',
+      sub: obra.composer || 'Obra completa',
+      color: obraColor,
+      hist: obraHist,
+      fallback: obra.sol,
+    }));
+
+    (obra.movimientos || []).forEach(mov => {
+      items.push(_solidezMakeItem({
+        type: 'mov',
+        obraId: obra.id,
+        movId: mov.id,
+        name: mov.name || 'Movimiento',
+        sub: obra.name || '',
+        color: obraColor,
+        hist: mov.solHistory || [],
+        fallback: mov.sol,
+      }));
+    });
+
+    (obra.pasajes || [])
+      .filter(p => (p.status || 'activo') !== 'resuelto' || (p.solHistory && p.solHistory.length))
+      .forEach(p => {
+        items.push(_solidezMakeItem({
+          type: 'pasaje',
+          obraId: obra.id,
+          pasajeId: p.id,
+          name: p.text || 'Pasaje',
+          sub: obra.name || '',
+          color: obraColor,
+          hist: p.solHistory || [],
+          fallback: p.sol,
+        }));
+      });
+  });
+  return items.filter(Boolean);
+}
+
+function _solidezPriority(item) {
+  const valueRisk = item.value == null ? 72 : Math.max(0, 100 - item.value);
+  const staleRisk = item.days == null ? 18 : Math.min(30, item.days) * 0.8;
+  const pasajeBoost = item.type === 'pasaje' ? 8 : 0;
+  return valueRisk + staleRisk + pasajeBoost;
+}
+
+function _solidezOpenArgs(item) {
+  const obraId = _quickSolJs(item.obraId || '');
+  const movId = _quickSolJs(item.movId || '');
+  const pasajeId = _quickSolJs(item.pasajeId || '');
+  return "'" + obraId + "','" + movId + "','" + pasajeId + "'";
+}
+
+function _solidezRenderRow(item, compact) {
+  const valueHtml = item.value == null ? '--' : item.value + '%';
+  const valueColor = item.value == null ? 'var(--text3)' : solPctColor(item.value);
+  const deltaHtml = item.delta == null
+    ? ''
+    : '<span class="sol-dash-delta ' + (item.delta > 0 ? 'up' : item.delta < 0 ? 'down' : 'flat') + '">' +
+      (item.delta > 0 ? '+' : '') + item.delta + '</span>';
+  const typeLabel = item.type === 'pasaje' ? 'Pasaje' : item.type === 'mov' ? 'Movimiento' : 'Obra';
+  return '<div class="sol-dash-row' + (compact ? ' compact' : '') + '">' +
+    '<div class="sol-dash-main">' +
+      '<span class="sol-dash-dot" style="background:' + (item.color || valueColor) + '"></span>' +
+      '<div class="sol-dash-name-wrap">' +
+        '<div class="sol-dash-name">' + escapeHtmlSafe(item.name) + '</div>' +
+        '<div class="sol-dash-sub">' + escapeHtmlSafe(typeLabel + (item.sub ? ' - ' + item.sub : '')) + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="sol-dash-meta">' +
+      '<span class="sol-dash-state" style="color:' + item.state.color + ';border-color:' + item.state.color + '55">' + item.state.label + '</span>' +
+      '<span class="sol-dash-age">' + _solidezAgeLabel(item.days) + '</span>' +
+      '<span class="sol-dash-pct" style="color:' + valueColor + '">' + valueHtml + '</span>' +
+      deltaHtml +
+      '<button class="sol-dash-measure" onclick="openQuickSolidezTarget(' + _solidezOpenArgs(item) + ')">medir</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function _solidezDistribution(measured) {
+  const buckets = [
+    { label: '0-39', count: measured.filter(i => i.value < 40).length, color: 'var(--orange)' },
+    { label: '40-59', count: measured.filter(i => i.value >= 40 && i.value < 60).length, color: 'var(--accent)' },
+    { label: '60-79', count: measured.filter(i => i.value >= 60 && i.value < 80).length, color: '#8aaa30' },
+    { label: '80-100', count: measured.filter(i => i.value >= 80).length, color: 'var(--green)' },
+  ];
+  if (!measured.length) {
+    return '<div class="sol-dash-distribution empty"><span>Registra una primera solidez para activar el mapa.</span></div>';
+  }
+  const total = measured.length;
+  const bar = buckets.map(b => {
+    const pct = Math.max(3, Math.round((b.count / total) * 100));
+    return '<div class="sol-dash-segment" style="width:' + pct + '%;background:' + b.color + '" title="' + b.label + ': ' + b.count + '"></div>';
+  }).join('');
+  const legend = buckets.map(b =>
+    '<span><i style="background:' + b.color + '"></i>' + b.label + ' <strong>' + b.count + '</strong></span>'
+  ).join('');
+  return '<div class="sol-dash-distribution"><div class="sol-dash-bar">' + bar + '</div><div class="sol-dash-legend">' + legend + '</div></div>';
+}
+
+function renderSolidezSection() {
+  const el = document.getElementById('solidezSection');
+  if (!el) return;
+  const items = _solidezCollectTargets();
+  if (!items.length) {
+    el.innerHTML = '<div class="sol-dash-widget empty"><div class="sol-dash-title">Seguimiento de solidez</div><div class="sol-dash-empty">Anade una obra para empezar a medir solidez sin salir del flujo de estudio.</div></div>';
+    return;
+  }
+
+  const measured = items.filter(i => i.value != null);
+  const avg = measured.length ? Math.round(measured.reduce((s, i) => s + i.value, 0) / measured.length) : null;
+  const fragiles = measured.filter(i => i.value < 60).length + items.filter(i => i.value == null).length;
+  const recientes = measured.filter(i => i.days != null && i.days <= 7).length;
+  const stale = measured.filter(i => i.days != null && i.days > 14).length;
+  const recentRows = measured
+    .filter(i => i.lastDate)
+    .slice()
+    .sort((a, b) => new Date(b.lastDate) - new Date(a.lastDate))
+    .slice(0, 4);
+  let watchRows = items
+    .filter(i => i.value == null || i.value < 65 || (i.days != null && i.days > 14))
+    .slice()
+    .sort((a, b) => _solidezPriority(b) - _solidezPriority(a))
+    .slice(0, 4);
+  if (!watchRows.length) {
+    watchRows = items.slice().sort((a, b) => (a.value ?? 999) - (b.value ?? 999)).slice(0, 3);
+  }
+  const mainTarget = watchRows[0] || items[0];
+
+  const kpis = '<div class="sol-dash-kpi"><strong>' + (avg == null ? '--' : avg + '%') + '</strong><span>media medida</span></div>' +
+    '<div class="sol-dash-kpi"><strong>' + fragiles + '</strong><span>a consolidar</span></div>' +
+    '<div class="sol-dash-kpi"><strong>' + recientes + '</strong><span>medidas 7d</span></div>' +
+    '<div class="sol-dash-kpi"><strong>' + stale + '</strong><span>sin tocar 14d</span></div>';
+
+  const watchHtml = watchRows.length
+    ? watchRows.map(i => _solidezRenderRow(i, false)).join('')
+    : '<div class="sol-dash-empty">Nada urgente ahora.</div>';
+  const recentHtml = recentRows.length
+    ? recentRows.map(i => _solidezRenderRow(i, true)).join('')
+    : '<div class="sol-dash-empty">Aun no hay mediciones recientes.</div>';
+
+  el.innerHTML = '<div class="sol-dash-widget">' +
+    '<div class="sol-dash-header">' +
+      '<div><div class="sol-dash-title">Seguimiento de solidez</div><div class="sol-dash-subtitle">Obras, movimientos y pasajes en una sola lectura</div></div>' +
+      '<button class="sol-dash-primary" onclick="openQuickSolidezTarget(' + _solidezOpenArgs(mainTarget) + ')">Registrar ahora</button>' +
+    '</div>' +
+    '<div class="sol-dash-kpis">' + kpis + '</div>' +
+    _solidezDistribution(measured) +
+    '<div class="sol-dash-columns">' +
+      '<div><div class="sol-dash-section-title">A vigilar</div>' + watchHtml + '</div>' +
+      '<div><div class="sol-dash-section-title">Ultimas mediciones</div>' + recentHtml + '</div>' +
+    '</div>' +
+  '</div>';
+}
+
 let forestTagData = [];
 const FOREST_IGNORE_WORDS = ['general','otros','practica','solfeo','descanso'];
 const FOREST_DRAFT_KEY = 'alberto_forest_draft';
@@ -3846,6 +4056,7 @@ function openHechoDatos(planId, minPlan, opts) {
   } else {
     nameEl.textContent = obraTitle;
   }
+  hechoUpdateFastSolidityAction();
 
   // Minutes
   document.getElementById('hechoMinutos').value = minPlan || '';
@@ -10447,10 +10658,12 @@ function cronoPauseRemainingMs() {
 // ── Modo concentración (oculta topbar, muestra X) ───────────────────────────
 
 function cronoEnterFocus() {
+  document.documentElement.classList.add('crono-focus-root');
   document.body.classList.add('crono-focus');
 }
 
 function cronoExitFocus() {
+  document.documentElement.classList.remove('crono-focus-root');
   document.body.classList.remove('crono-focus');
   document.body.classList.remove('crono-paused');
 }
@@ -10550,6 +10763,7 @@ function cronoRender() {
       '<button class="crono-ctrl-btn stop" onclick="cronoStop()" aria-label="Parar">' + CRONO_ICONS.stop + '</button>' +
       '<button class="crono-ctrl-btn primary" onclick="cronoResume()" aria-label="Reanudar">' + CRONO_ICONS.play + '</button>';
   }
+  cronoUpdateSolidityActions();
 }
 
 // Habilitar/deshabilitar botón start según haya selección
@@ -10583,6 +10797,7 @@ function cronoUpdateStartBtn() {
       dot.style.display = 'none';
     }
   }
+  cronoUpdateSolidityActions();
 }
 
 // Aplica un color (hex o null) a todos los elementos del cronómetro que deben
@@ -10592,6 +10807,313 @@ function cronoApplyColor(hex) {
   if (!root) return;
   if (hex) root.style.setProperty('--crono-color', hex);
   else root.style.removeProperty('--crono-color');
+}
+
+// ── SOLIDEZ RÁPIDA ─────────────────────────────────────────────────────────
+let _quickSolBase = null;
+let _quickSolTargets = [];
+let _quickSolTargetKey = null;
+
+function _quickSolJs(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function _quickSolFromValue(value) {
+  if (!value) return null;
+  const resolved = cronoResolveSelectValue(value);
+  if (!resolved) return null;
+  return {
+    obraId: resolved.obraId,
+    movId: resolved.movId || null,
+    displayName: resolved.displayName,
+    subName: resolved.subName || '',
+    color: resolved.color || null,
+  };
+}
+
+function _quickSolCurrentBase(source) {
+  if (source === 'hecho' && _hechoObraId) {
+    const obra = findObra(_hechoObraId);
+    const mov = _hechoMovId ? findMovimiento(_hechoObraId, _hechoMovId) : null;
+    const entity = mov || obra;
+    if (!obra || !entity) return null;
+    return {
+      obraId: _hechoObraId,
+      movId: _hechoMovId || null,
+      displayName: mov ? mov.name : obra.name,
+      subName: mov ? (obra.name + (obra.composer ? ' · ' + obra.composer : '')) : (obra.composer || ''),
+      color: obraColorHex(obra),
+    };
+  }
+  if (source === 'running' && crono.obraId) {
+    return {
+      obraId: crono.obraId,
+      movId: crono.movId || null,
+      displayName: crono.displayName || '—',
+      subName: crono.subName || '',
+      color: crono.color || null,
+    };
+  }
+  const sel = document.getElementById('cronoObraSelect');
+  return _quickSolFromValue(sel ? sel.value : '');
+}
+
+function _quickSolTargetName(target) {
+  if (!target) return '';
+  if (target.type === 'pasaje') return target.name;
+  if (target.type === 'mov') return target.name;
+  return target.name || 'Obra completa';
+}
+
+function _quickSolTargetValue(target) {
+  if (!target) return 70;
+  if (target.type === 'pasaje') {
+    const obra = findObra(target.obraId);
+    const p = obra && (obra.pasajes || []).find(x => x.id === target.pasajeId);
+    if (!p) return 70;
+    if (p.solHistory && p.solHistory[0]) return normalizeSolVal(p.solHistory[0].val);
+    if (p.workHistory && p.workHistory[0] && p.workHistory[0].solDespues != null) return normalizeSolVal(p.workHistory[0].solDespues);
+    return 50;
+  }
+  if (target.type === 'mov') {
+    const mov = findMovimiento(target.obraId, target.movId);
+    if (!mov) return 70;
+    if (mov.solHistory && mov.solHistory[0]) return normalizeSolVal(mov.solHistory[0].val);
+    return mov.sol != null && mov.sol > 1 ? normalizeSolVal(mov.sol) : 50;
+  }
+  const obra = findObra(target.obraId);
+  if (!obra) return 70;
+  if (obra.solHistory && obra.solHistory[0]) return normalizeSolVal(obra.solHistory[0].val);
+  return obra.sol != null && obra.sol > 1 ? normalizeSolVal(obra.sol) : 50;
+}
+
+function _quickSolBuildTargets(base) {
+  const obra = base ? findObra(base.obraId) : null;
+  if (!obra || obra.tipo === 'actividad') return [];
+  if (base.movId) {
+    const mov = findMovimiento(base.obraId, base.movId);
+    return mov ? [{ key: 'mov:' + mov.id, type: 'mov', obraId: base.obraId, movId: mov.id, name: mov.name, section: 'Movimiento' }] : [];
+  }
+  const targets = [{ key: 'obra:' + obra.id, type: 'obra', obraId: obra.id, name: 'Obra completa', section: 'Obra' }];
+  (obra.movimientos || []).forEach(m => {
+    targets.push({ key: 'mov:' + m.id, type: 'mov', obraId: obra.id, movId: m.id, name: m.name, section: 'Movimientos' });
+  });
+  (obra.pasajes || []).filter(p => p.status !== 'resuelto').forEach(p => {
+    targets.push({ key: 'pasaje:' + p.id, type: 'pasaje', obraId: obra.id, pasajeId: p.id, name: p.text, section: 'Pasajes' });
+  });
+  return targets;
+}
+
+function _quickSolRenderTargets() {
+  const wrap = document.getElementById('quickSolTargets');
+  if (!wrap) return;
+  let section = '';
+  let html = '';
+  _quickSolTargets.forEach(t => {
+    if (t.section !== section) {
+      section = t.section;
+      html += '<div class="quick-sol-section">' + escapeHtmlSafe(section) + '</div>';
+    }
+    const active = t.key === _quickSolTargetKey ? ' active' : '';
+    html += '<button class="quick-sol-target' + active + '" onclick="selectQuickSolTarget(\'' + _quickSolJs(t.key) + '\')">' +
+      escapeHtmlSafe(_quickSolTargetName(t)) + '</button>';
+  });
+  wrap.innerHTML = html;
+}
+
+function _quickSolSelectedTarget() {
+  return _quickSolTargets.find(t => t.key === _quickSolTargetKey) || _quickSolTargets[0] || null;
+}
+
+function _quickSolContextText(target) {
+  if (!target) return '';
+  let hist = [];
+  if (target.type === 'pasaje') {
+    const obra = findObra(target.obraId);
+    const p = obra && (obra.pasajes || []).find(x => x.id === target.pasajeId);
+    hist = p?.solHistory || [];
+  } else if (target.type === 'mov') {
+    hist = findMovimiento(target.obraId, target.movId)?.solHistory || [];
+  } else {
+    hist = findObra(target.obraId)?.solHistory || [];
+  }
+  if (!hist.length) return 'Primer registro de solidez para este elemento.';
+  const last = hist[0];
+  const dias = Math.floor((Date.now() - new Date(last.date).getTime()) / 86400000);
+  const when = dias <= 0 ? 'hoy' : dias === 1 ? 'ayer' : 'hace ' + dias + ' días';
+  const prev = hist[1] ? normalizeSolVal(hist[1].val) : null;
+  const val = normalizeSolVal(last.val);
+  const trend = prev == null ? '' : (val > prev ? ' · subió ' + (val - prev) : val < prev ? ' · bajó ' + (prev - val) : ' · estable');
+  return 'Último: ' + val + '% · ' + when + trend;
+}
+
+function selectQuickSolTarget(key) {
+  _quickSolTargetKey = key;
+  _quickSolRenderTargets();
+  const target = _quickSolSelectedTarget();
+  const val = _quickSolTargetValue(target);
+  const slider = document.getElementById('quickSolSlider');
+  if (slider) slider.value = val;
+  updateQuickSolidez(val);
+  const context = document.getElementById('quickSolContext');
+  if (context) context.textContent = _quickSolContextText(target);
+}
+
+function updateQuickSolidez(val) {
+  const pct = parseInt(val) || 0;
+  const value = document.getElementById('quickSolValue');
+  const label = document.getElementById('quickSolLabel');
+  const slider = document.getElementById('quickSolSlider');
+  const color = solPctColor(pct);
+  if (value) {
+    value.textContent = pct + '%';
+    value.style.color = color;
+  }
+  if (label) label.textContent = solPctLabel(pct);
+  fillSlider(slider, color);
+}
+
+function quickSolidezPreset(val) {
+  const slider = document.getElementById('quickSolSlider');
+  if (slider) slider.value = val;
+  updateQuickSolidez(val);
+}
+
+function openQuickSolidez(source) {
+  const base = _quickSolCurrentBase(source || 'idle');
+  if (!base || !base.obraId) {
+    showToast('Elige una obra primero');
+    if (typeof openCronoObraPicker === 'function') openCronoObraPicker();
+    return;
+  }
+  const obra = findObra(base.obraId);
+  if (!obra || obra.tipo === 'actividad') {
+    showToast('Las actividades no tienen solidez');
+    return;
+  }
+  _quickSolBase = base;
+  _quickSolTargets = _quickSolBuildTargets(base);
+  _quickSolTargetKey = _quickSolTargets[0]?.key || null;
+
+  const entity = document.getElementById('quickSolEntity');
+  if (entity) {
+    const sub = base.subName ? '<span>' + escapeHtmlSafe(base.subName) + '</span>' : '';
+    entity.innerHTML = '<strong>' + escapeHtmlSafe(base.displayName || obra.name) + '</strong>' + sub;
+  }
+  const note = document.getElementById('quickSolNote');
+  if (note) note.value = '';
+  _quickSolRenderTargets();
+  selectQuickSolTarget(_quickSolTargetKey);
+  openModal('modalQuickSolidez');
+}
+
+function openQuickSolidezTarget(obraId, movId, pasajeId) {
+  const obra = findObra(obraId);
+  if (!obra || obra.tipo === 'actividad') {
+    showToast('No hay solidez para registrar');
+    return;
+  }
+  const mov = movId ? findMovimiento(obraId, movId) : null;
+  const base = {
+    obraId,
+    movId: mov ? mov.id : null,
+    displayName: mov ? mov.name : obra.name,
+    subName: mov ? (obra.name + (obra.composer ? ' - ' + obra.composer : '')) : (obra.composer || ''),
+    color: obraColorHex(obra),
+  };
+  _quickSolBase = base;
+  _quickSolTargets = _quickSolBuildTargets(base);
+  const desiredKey = pasajeId ? 'pasaje:' + pasajeId : mov ? 'mov:' + mov.id : 'obra:' + obra.id;
+  _quickSolTargetKey = _quickSolTargets.some(t => t.key === desiredKey) ? desiredKey : (_quickSolTargets[0]?.key || null);
+
+  const entity = document.getElementById('quickSolEntity');
+  if (entity) {
+    const sub = base.subName ? '<span>' + escapeHtmlSafe(base.subName) + '</span>' : '';
+    entity.innerHTML = '<strong>' + escapeHtmlSafe(base.displayName || obra.name) + '</strong>' + sub;
+  }
+  const note = document.getElementById('quickSolNote');
+  if (note) note.value = '';
+  _quickSolRenderTargets();
+  selectQuickSolTarget(_quickSolTargetKey);
+  openModal('modalQuickSolidez');
+}
+
+function confirmQuickSolidez() {
+  const target = _quickSolSelectedTarget();
+  if (!target) { closeModal('modalQuickSolidez'); return; }
+  const val = parseInt(document.getElementById('quickSolSlider')?.value || 0);
+  const note = (document.getElementById('quickSolNote')?.value || '').trim();
+  const now = new Date().toISOString();
+
+  if (target.type === 'pasaje') {
+    const obra = findObra(target.obraId);
+    const p = obra && (obra.pasajes || []).find(x => x.id === target.pasajeId);
+    if (p) {
+      if (!p.solHistory) p.solHistory = [];
+      const today = new Date().toDateString();
+      const last = p.solHistory[0];
+      const entry = { date: now, val, context: 'rapido', note };
+      if (last && new Date(last.date).toDateString() === today && last.context === 'rapido') p.solHistory[0] = entry;
+      else p.solHistory.unshift(entry);
+      if (p.solHistory.length > 30) p.solHistory = p.solHistory.slice(0, 30);
+      p.sol = val;
+      saveData();
+    }
+  } else if (target.type === 'mov') {
+    recordMovSolHistory(target.obraId, target.movId, val, 'rapido');
+    const mov = findMovimiento(target.obraId, target.movId);
+    if (note && mov?.solHistory?.[0]) { mov.solHistory[0].note = note; saveData(); }
+  } else {
+    recordSolHistory(target.obraId, val, 'rapido');
+    const obra = findObra(target.obraId);
+    if (note && obra?.solHistory?.[0]) { obra.solHistory[0].note = note; saveData(); }
+  }
+
+  closeModal('modalQuickSolidez');
+  showToast('Solidez registrada · ' + val + '%');
+  cronoUpdateSolidityActions();
+  hechoUpdateFastSolidityAction();
+  if (typeof renderObras === 'function' && document.getElementById('view-obras')?.classList.contains('active')) renderObras();
+  if (document.getElementById('view-historial')?.classList.contains('active')) {
+    if (typeof renderSolidezSection === 'function') renderSolidezSection();
+    if (typeof renderSesionesHistorial === 'function') renderSesionesHistorial();
+  }
+}
+
+function cronoUpdateSolidityActions() {
+  const idleBtn = document.getElementById('cronoQuickSolBtn');
+  const idleVal = document.getElementById('cronoQuickSolValue');
+  const runBtn = document.getElementById('cronoRunSolBtn');
+  const runVal = document.getElementById('cronoRunSolValue');
+
+  const idleBase = _quickSolCurrentBase('idle');
+  const runBase = crono.obraId ? _quickSolCurrentBase('running') : null;
+
+  function valueFor(base) {
+    const targets = _quickSolBuildTargets(base);
+    return targets.length ? _quickSolTargetValue(targets[0]) : null;
+  }
+  const idlePct = valueFor(idleBase);
+  const runPct = valueFor(runBase);
+
+  if (idleBtn) {
+    idleBtn.classList.toggle('is-empty', idlePct == null);
+    idleBtn.title = idlePct == null ? 'Elige una obra para registrar solidez' : 'Registrar solidez rápida';
+  }
+  if (idleVal) idleVal.textContent = idlePct == null ? '—' : idlePct + '%';
+  if (runBtn) runBtn.style.display = runPct == null ? 'none' : '';
+  if (runVal) runVal.textContent = runPct == null ? '—' : runPct + '%';
+}
+
+function hechoUpdateFastSolidityAction() {
+  const wrap = document.getElementById('hechoFastActions');
+  const valEl = document.getElementById('hechoFastSolValue');
+  if (!wrap || !valEl) return;
+  const base = _quickSolCurrentBase('hecho');
+  const targets = _quickSolBuildTargets(base);
+  const pct = targets.length ? _quickSolTargetValue(targets[0]) : null;
+  wrap.style.display = pct == null ? 'none' : '';
+  valEl.textContent = pct == null ? '—' : pct + '%';
 }
 
 // ── MODO CRONÓMETRO / TEMPORIZADOR ──────────────────────────────────────────

@@ -302,6 +302,13 @@
         </button>
       </div>
 
+      <div class="crono-quick-actions">
+        <button class="crono-solidity-btn" id="cronoQuickSolBtn" onclick="openQuickSolidez('idle')">
+          <span>Solidez</span>
+          <strong id="cronoQuickSolValue">—</strong>
+        </button>
+      </div>
+
       <!-- Indicador discreto del color de la obra seleccionada -->
       <div class="crono-idle-dot-wrap">
         <div class="crono-idle-dot" id="cronoIdleDot" style="display:none"></div>
@@ -336,6 +343,13 @@
       <!-- Tiempo gigante con outline (Forest-style) -->
       <div class="crono-display-wrap" id="cronoDisplayWrap">
         <div class="crono-display" id="cronoDisplay">00:00</div>
+      </div>
+
+      <div class="crono-run-quick-row">
+        <button class="crono-solidity-btn crono-solidity-btn-run" id="cronoRunSolBtn" onclick="openQuickSolidez('running')">
+          <span>Solidez</span>
+          <strong id="cronoRunSolValue">—</strong>
+        </button>
       </div>
 
       <!-- Controles circulares -->
@@ -541,6 +555,7 @@
 
 
 <div class="view" id="view-historial">
+  <div id="solidezSection" style="margin-bottom:20px"></div>
   <div id="eficienciaSection" style="margin-bottom:20px"></div>
   <div id="estadoSection" style="margin-bottom:20px"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border2)">
@@ -880,6 +895,13 @@
     <div class="modal-title" style="margin-bottom:4px">✓ Hecho</div>
     <div class="hecho-modal-obra" id="hechoObraName"></div>
 
+    <div class="hecho-fast-actions" id="hechoFastActions">
+      <button class="hecho-fast-sol-btn" onclick="openQuickSolidez('hecho')">
+        <span>Registrar solidez</span>
+        <strong id="hechoFastSolValue">—</strong>
+      </button>
+    </div>
+
     <!-- Minutos -->
     <div class="hecho-field-label">Minutos estudiados</div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
@@ -1017,6 +1039,37 @@
     <div class="hecho-modal-footer">
       <button class="modal-btn secondary" onclick="closeHechoDatos(false)">Cancelar</button>
       <button class="modal-btn primary" onclick="closeHechoDatos(true)">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: registro rápido de solidez desde el cronómetro -->
+<div class="modal-overlay" id="modalQuickSolidez">
+  <div class="modal quick-sol-modal">
+    <div class="quick-sol-kicker">Registro rápido</div>
+    <div class="modal-title quick-sol-title">Solidez</div>
+    <div class="quick-sol-entity" id="quickSolEntity">—</div>
+    <div class="quick-sol-targets" id="quickSolTargets"></div>
+
+    <div class="quick-sol-meter">
+      <div class="quick-sol-value" id="quickSolValue">70%</div>
+      <div class="quick-sol-label" id="quickSolLabel">Estable</div>
+    </div>
+    <input type="range" min="0" max="100" step="5" value="70" id="quickSolSlider"
+      class="sol-slider quick-sol-slider" style="color:#c8a030" oninput="updateQuickSolidez(this.value)">
+
+    <div class="quick-sol-presets">
+      <button onclick="quickSolidezPreset(35)">Frágil</button>
+      <button onclick="quickSolidezPreset(65)">Estable</button>
+      <button onclick="quickSolidezPreset(90)">Brillante</button>
+    </div>
+
+    <div class="quick-sol-context" id="quickSolContext"></div>
+    <input type="text" id="quickSolNote" class="modal-input quick-sol-note" placeholder="nota breve opcional...">
+
+    <div class="modal-buttons quick-sol-actions">
+      <button class="modal-btn secondary" onclick="closeModal('modalQuickSolidez')">Cancelar</button>
+      <button class="modal-btn primary" onclick="confirmQuickSolidez()">Guardar</button>
     </div>
   </div>
 </div>

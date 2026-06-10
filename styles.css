@@ -4337,3 +4337,557 @@
     margin-bottom: 2px;
   }
 
+  /* ── Cronómetro polish: viewport-safe overlays ───────────────────────────
+     El tamaño de texto de la app usa zoom/transform global. En modo
+     cronómetro eso descentraba los modales fixed en iPad y con tamaño Grande.
+     Neutralizamos ese escalado solo mientras el cronómetro está activo. */
+  html.crono-focus-root {
+    zoom: 1 !important;
+    font-size: 100% !important;
+  }
+  html.crono-focus-root body {
+    transform: none !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+  }
+  html.crono-focus-root body.crono-focus .modal-overlay.visible {
+    display: grid !important;
+    place-items: center !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+  html.crono-focus-root body.crono-focus #modalCronoObraPicker.keyboard-open.visible {
+    place-items: start center !important;
+    align-items: start !important;
+  }
+  html.crono-focus-root body.crono-focus .modal {
+    margin: 0 !important;
+  }
+  html.crono-focus-root body.crono-focus #modalCronoObraPicker .modal {
+    width: min(480px, calc(100vw - 32px)) !important;
+    height: min(70dvh, 620px) !important;
+    max-height: min(70dvh, 620px) !important;
+  }
+  html.crono-focus-root body.crono-focus .hecho-modal {
+    width: min(420px, calc(100vw - 32px)) !important;
+    max-height: min(85dvh, 680px) !important;
+  }
+
+  .crono-quick-actions {
+    display: flex;
+    justify-content: center;
+    margin: -10px auto 18px;
+  }
+  .crono-run-quick-row {
+    display: flex;
+    justify-content: center;
+    margin: -6px 0 22px;
+  }
+  .crono-solidity-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 36px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in oklab, var(--crono-color, var(--accent)) 42%, transparent);
+    background: color-mix(in oklab, var(--crono-color, var(--accent)) 10%, transparent);
+    color: var(--text2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+  }
+  .crono-solidity-btn strong {
+    color: var(--crono-color, var(--accent));
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .crono-solidity-btn:hover {
+    color: var(--text);
+    border-color: var(--crono-color, var(--accent));
+    background: color-mix(in oklab, var(--crono-color, var(--accent)) 15%, transparent);
+  }
+  .crono-solidity-btn:active { transform: scale(0.97); }
+  .crono-solidity-btn.is-empty {
+    border-style: dashed;
+    opacity: 0.72;
+  }
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    .crono-solidity-btn {
+      border-color: rgba(201,169,110,0.38);
+      background: rgba(201,169,110,0.10);
+    }
+    .crono-solidity-btn:hover {
+      border-color: var(--accent);
+      background: rgba(201,169,110,0.15);
+    }
+  }
+
+  .sol-dash-widget {
+    background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0)), var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .sol-dash-widget.empty {
+    padding: 16px 18px;
+  }
+  .sol-dash-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .sol-dash-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    line-height: 1.05;
+    color: var(--accent);
+    font-weight: 300;
+  }
+  .sol-dash-subtitle {
+    margin-top: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--text3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .sol-dash-primary,
+  .sol-dash-measure {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(201,169,110,0.42);
+    background: rgba(201,169,110,0.10);
+    color: var(--accent);
+    border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+  }
+  .sol-dash-primary {
+    padding: 8px 12px;
+  }
+  .sol-dash-measure {
+    padding: 5px 8px;
+  }
+  .sol-dash-primary:hover,
+  .sol-dash-measure:hover {
+    border-color: var(--accent);
+    background: rgba(201,169,110,0.16);
+  }
+  .sol-dash-primary:active,
+  .sol-dash-measure:active {
+    transform: scale(0.97);
+  }
+  .sol-dash-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .sol-dash-kpi {
+    min-width: 0;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 10px 9px;
+    background: var(--bg3);
+    text-align: center;
+  }
+  .sol-dash-kpi strong {
+    display: block;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--text);
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+  }
+  .sol-dash-kpi span {
+    display: block;
+    margin-top: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .sol-dash-distribution {
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 10px;
+    margin-bottom: 14px;
+    background: rgba(0,0,0,0.06);
+  }
+  .sol-dash-distribution.empty {
+    font-size: 10px;
+    color: var(--text3);
+    text-align: center;
+  }
+  .sol-dash-bar {
+    display: flex;
+    width: 100%;
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--bg3);
+  }
+  .sol-dash-segment {
+    min-width: 3px;
+    height: 100%;
+  }
+  .sol-dash-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--text3);
+  }
+  .sol-dash-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .sol-dash-legend i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .sol-dash-legend strong {
+    color: var(--text2);
+    font-weight: 500;
+  }
+  .sol-dash-columns {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .sol-dash-section-title {
+    margin-bottom: 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--text3);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .sol-dash-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    background: var(--bg);
+    margin-bottom: 7px;
+  }
+  .sol-dash-row.compact {
+    padding: 8px 9px;
+  }
+  .sol-dash-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1;
+  }
+  .sol-dash-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.04);
+  }
+  .sol-dash-name-wrap {
+    min-width: 0;
+  }
+  .sol-dash-name {
+    color: var(--text);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px;
+    line-height: 1.05;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sol-dash-sub {
+    margin-top: 2px;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sol-dash-meta {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .sol-dash-state {
+    border: 1px solid;
+    border-radius: 999px;
+    padding: 3px 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .sol-dash-age {
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+  }
+  .sol-dash-pct {
+    min-width: 38px;
+    text-align: right;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 19px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .sol-dash-delta {
+    min-width: 24px;
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+  }
+  .sol-dash-delta.up { color: var(--green); }
+  .sol-dash-delta.down { color: var(--orange); }
+  .sol-dash-delta.flat { color: var(--text3); }
+  .sol-dash-empty {
+    border: 1px dashed var(--border2);
+    border-radius: 8px;
+    padding: 14px;
+    color: var(--text3);
+    font-size: 10px;
+    line-height: 1.5;
+    text-align: center;
+  }
+  @media (max-width: 760px) {
+    .sol-dash-header {
+      align-items: stretch;
+      flex-direction: column;
+    }
+    .sol-dash-primary {
+      width: 100%;
+      justify-content: center;
+    }
+    .sol-dash-kpis {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .sol-dash-columns {
+      grid-template-columns: 1fr;
+    }
+    .sol-dash-row {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+    .sol-dash-main,
+    .sol-dash-meta {
+      width: 100%;
+    }
+    .sol-dash-meta {
+      justify-content: flex-start;
+    }
+    .sol-dash-measure {
+      margin-left: auto;
+    }
+  }
+
+  .quick-sol-modal {
+    width: min(430px, calc(100vw - 32px));
+    padding: 22px;
+  }
+  .quick-sol-kicker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    color: var(--text3);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .quick-sol-title {
+    margin-bottom: 4px !important;
+  }
+  .quick-sol-entity {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: var(--text);
+    margin-bottom: 14px;
+    line-height: 1.25;
+  }
+  .quick-sol-entity strong {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--accent);
+  }
+  .quick-sol-entity span {
+    font-size: 10px;
+    color: var(--text3);
+  }
+  .quick-sol-targets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin: 0 0 16px;
+  }
+  .quick-sol-section {
+    width: 100%;
+    margin: 6px 0 -2px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+  .quick-sol-target {
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text3);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .quick-sol-target.active {
+    color: var(--accent);
+    border-color: color-mix(in oklab, var(--accent) 55%, transparent);
+    background: color-mix(in oklab, var(--accent) 12%, transparent);
+  }
+  .quick-sol-meter {
+    text-align: center;
+    padding: 8px 0 2px;
+  }
+  .quick-sol-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 48px;
+    line-height: 1;
+    font-weight: 300;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .quick-sol-label {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--text2);
+    margin-top: 4px;
+  }
+  .quick-sol-slider {
+    width: 100%;
+    margin: 12px 0 10px !important;
+  }
+  .quick-sol-presets {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 7px;
+    margin-bottom: 12px;
+  }
+  .quick-sol-presets button {
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    background: var(--bg3);
+    color: var(--text2);
+    padding: 8px 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    cursor: pointer;
+  }
+  .quick-sol-context {
+    min-height: 15px;
+    font-size: 9px;
+    color: var(--text3);
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .quick-sol-note {
+    margin-bottom: 0 !important;
+  }
+  .quick-sol-actions {
+    margin-top: 14px !important;
+  }
+
+  .hecho-fast-actions {
+    margin: 0 0 14px;
+  }
+  .hecho-fast-sol-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid color-mix(in oklab, var(--accent) 38%, transparent);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(201,169,110,0.12), rgba(201,169,110,0.04));
+    color: var(--text2);
+    padding: 10px 12px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .hecho-fast-sol-btn strong {
+    color: var(--accent);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .hecho-fast-sol-btn:active {
+    transform: scale(0.99);
+  }
+  @supports not (background: color-mix(in oklab, red, blue)) {
+    .hecho-fast-sol-btn {
+      border-color: rgba(201,169,110,0.38);
+    }
+  }
+
+  /* Destellos queda visible en iPad: no pegado al borde inferior ni a la
+     barra de Safari/home indicator. */
+  body.crono-focus .crono-destellos-pill {
+    left: max(calc(env(safe-area-inset-left, 0px) + 22px), 22px);
+    bottom: max(calc(env(safe-area-inset-bottom, 0px) + 88px), 88px);
+    z-index: 75;
+  }
+  @media (max-width: 480px) {
+    body.crono-focus .crono-destellos-pill {
+      left: 14px;
+      bottom: max(calc(env(safe-area-inset-bottom, 0px) + 76px), 76px);
+      padding: 7px 11px;
+      font-size: 10px;
+    }
+  }
