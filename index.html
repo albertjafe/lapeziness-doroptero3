@@ -440,11 +440,32 @@
 
 <!-- OBRAS VIEW -->
 <div class="view" id="view-obras">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <div class="section-title" style="margin-bottom:0;border-bottom:none">Repertorio</div>
-    <select class="pack-selector" id="filtroEvento" onchange="renderObras()" style="font-size:10px">
-      <option value="">Todas las obras</option>
-    </select>
+  <div class="obras-workbench">
+    <div class="obras-topbar">
+      <div>
+        <div class="section-title" style="margin-bottom:0;border-bottom:none">Repertorio</div>
+        <div class="obras-count" id="obrasCount">0 obras</div>
+      </div>
+      <button class="obras-primary-add" onclick="openAddObra()">+ Añadir</button>
+    </div>
+    <div class="obras-toolbar">
+      <div class="obras-search-wrap">
+        <input id="obrasSearchInput" class="obras-search" type="search" placeholder="Buscar obra, compositor, movimiento o pasaje..."
+          autocomplete="off" oninput="setObrasSearch(this.value)">
+      </div>
+      <select class="pack-selector obras-event-filter" id="filtroEvento" onchange="renderObras()">
+        <option value="">Todas las obras</option>
+      </select>
+    </div>
+    <div class="obras-filter-row" id="obrasFilterBtns">
+      <button class="obras-filter-chip active" data-filter="all" onclick="setObrasFilter('all',this)">Todas</button>
+      <button class="obras-filter-chip" data-filter="learning" onclick="setObrasFilter('learning',this)">Aprendiendo</button>
+      <button class="obras-filter-chip" data-filter="consolidando" onclick="setObrasFilter('consolidando',this)">Consolidando</button>
+      <button class="obras-filter-chip" data-filter="mantenimiento" onclick="setObrasFilter('mantenimiento',this)">Mantenimiento</button>
+      <button class="obras-filter-chip" data-filter="pasajes" onclick="setObrasFilter('pasajes',this)">Con pasajes</button>
+      <button class="obras-filter-chip" data-filter="actividades" onclick="setObrasFilter('actividades',this)">Actividades</button>
+      <button class="obras-edit-toggle" id="obrasEditToggle" onclick="toggleObrasEditMode()">Editar</button>
+    </div>
   </div>
   <div id="obrasList"></div>
   <button class="add-obra-btn" onclick="openAddObra()">+ añadir obra</button>
@@ -505,8 +526,8 @@
 </div>
 
 <div class="modal-overlay" id="modalAddObra">
-  <div class="modal">
-    <div class="modal-title">Añadir</div>
+  <div class="modal add-obra-modal">
+    <div class="modal-title">Añadir estudio</div>
     <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Tipo</div>
     <div class="origen-selector" id="modalTipoSelector" style="margin-bottom:14px">
       <button class="origen-btn nueva active" data-tipo="obra" onclick="selectModalTipo(this,'obra')">Obra</button>
@@ -515,6 +536,20 @@
     <input class="modal-input" id="newObraName" placeholder="título" type="text">
     <input class="modal-input" id="newObraComposer" placeholder="compositor" type="text">
     <div id="modalTipoObraExtra">
+      <div class="add-obra-quick-grid">
+        <div>
+          <div class="hecho-field-label">Duración</div>
+          <input class="modal-input add-obra-mini-input" id="newObraDuracion" type="number" min="1" max="180" placeholder="min">
+        </div>
+        <div>
+          <div class="hecho-field-label">Compases</div>
+          <input class="modal-input add-obra-mini-input" id="newObraCompasesTotal" type="number" min="1" max="999" placeholder="total">
+        </div>
+        <div>
+          <div class="hecho-field-label">Dificultad</div>
+          <input class="modal-input add-obra-mini-input" id="newObraDificultad" type="number" min="1" max="10" value="3">
+        </div>
+      </div>
       <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px">Estado inicial</div>
       <div style="font-size:10px;color:var(--text3);margin-bottom:10px;line-height:1.5">Por defecto: <span style="color:var(--orange)">Aprendiendo — inicial</span>. Los compases se añaden después.</div>
       <label class="add-aprendida-row">

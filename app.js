@@ -5944,6 +5944,76 @@ function renderTrabajoItem(obra, i, minAsignado, energia, cargaTotal, paseAnalis
 
 // ─── OBRAS ───────────────────────────────────────────────────────────────────
 
+let obrasQuickFilter = 'all';
+let obrasSearch = '';
+let obrasEditMode = (() => {
+  try { return localStorage.getItem('obras_edit_mode') === 'true'; }
+  catch(e) { return false; }
+})();
+
+function setObrasSearch(value) {
+  obrasSearch = value || '';
+  renderObras();
+}
+
+function setObrasFilter(filter, btn) {
+  obrasQuickFilter = filter || 'all';
+  document.querySelectorAll('#obrasFilterBtns .obras-filter-chip').forEach(b => {
+    b.classList.toggle('active', b.dataset.filter === obrasQuickFilter);
+  });
+  if (btn) btn.classList.add('active');
+  renderObras();
+}
+
+function toggleObrasEditMode() {
+  obrasEditMode = !obrasEditMode;
+  try { localStorage.setItem('obras_edit_mode', String(obrasEditMode)); } catch(e) {}
+  renderObras();
+}
+
+function obrasSearchText(o) {
+  const parts = [o.name, o.composer, o.tipo];
+  (o.movimientos || []).forEach(m => parts.push(m.name));
+  (o.pasajes || []).forEach(p => parts.push(p.text));
+  return parts.filter(Boolean).join(' ').toLowerCase();
+}
+
+function obrasMatchesQuickFilter(o) {
+  if (obrasQuickFilter === 'all') return true;
+  if (obrasQuickFilter === 'actividades') return o.tipo === 'actividad';
+  if (obrasQuickFilter === 'pasajes') return (o.pasajes || []).some(p => p.status !== 'resuelto');
+  if (o.tipo === 'actividad') return false;
+  const eff = obraEffectiveStats(o);
+  const fase = obraFase(eff);
+  if (obrasQuickFilter === 'learning') {
+    const stage = aprendizajeStageFromEntity(eff);
+    return fase === 'digitando' || stage === 'lectura' || stage === 'digitando' || stage === 'manos';
+  }
+  if (obrasQuickFilter === 'consolidando') return fase === 'consolidando';
+  if (obrasQuickFilter === 'mantenimiento') return fase === 'mantenimiento';
+  return true;
+}
+
+function syncObrasToolbar(total, visible) {
+  const view = document.getElementById('view-obras');
+  if (view) view.classList.toggle('obras-edit-mode', obrasEditMode);
+  const countEl = document.getElementById('obrasCount');
+  if (countEl) {
+    const base = total === 1 ? '1 obra' : total + ' obras';
+    countEl.textContent = visible === total ? base : visible + ' de ' + base;
+  }
+  const editBtn = document.getElementById('obrasEditToggle');
+  if (editBtn) {
+    editBtn.classList.toggle('active', obrasEditMode);
+    editBtn.textContent = obrasEditMode ? 'Editando' : 'Editar';
+  }
+  const searchEl = document.getElementById('obrasSearchInput');
+  if (searchEl && searchEl.value !== obrasSearch) searchEl.value = obrasSearch;
+  document.querySelectorAll('#obrasFilterBtns .obras-filter-chip').forEach(b => {
+    b.classList.toggle('active', b.dataset.filter === obrasQuickFilter);
+  });
+}
+
 function renderObras() {
   const list = document.getElementById('obrasList');
   const filtroEl = document.getElementById('filtroEvento');
@@ -5959,14 +6029,20 @@ function renderObras() {
     filtroEl.value = filtroActual;
   }
 
+  const totalObras = (db.obras || []).length;
   let obras = db.obras || [];
   if (filtroActual) {
     const ev = db.eventos.find(e => e.id === filtroActual);
     if (ev) obras = obras.filter(o => ev.obras.includes(o.id));
   }
+  const q = (obrasSearch || '').trim().toLowerCase();
+  if (q) obras = obras.filter(o => obrasSearchText(o).includes(q));
+  obras = obras.filter(obrasMatchesQuickFilter);
+  syncObrasToolbar(totalObras, obras.length);
 
   if (!obras.length) {
-    list.innerHTML = '<div style="color:var(--text3);font-size:11px;padding:20px 0">No hay obras. Añade una.</div>';
+    const msg = totalObras ? 'No hay resultados con este filtro.' : 'No hay obras. Añade una.';
+    list.innerHTML = '<div class="obras-empty">' + msg + '</div>';
     return;
   }
   list.innerHTML = obras.map((o, idx) => renderObraCard(o, idx)).join('');
@@ -6000,8 +6076,8 @@ function renderActividadCard(o, idx) {
           <span style="font-size:8px;background:var(--bg3);color:var(--text3);border-radius:3px;padding:1px 5px;margin-left:6px;letter-spacing:0.04em;text-transform:uppercase">Actividad</span>
         </div>
         <span style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-right:8px">${tiempoTxt}</span>
-        <button class="obra-quick-btn edit" title="Editar nombre" onclick="event.stopPropagation();openEditObraNombre('${o.id}')">✎</button>
-        <button class="obra-quick-btn delete" title="Eliminar actividad" onclick="event.stopPropagation();confirmDeleteObra('${o.id}')">✕</button>
+        <button class="obra-quick-btn edit obra-edit-action" title="Editar nombre" onclick="event.stopPropagation();openEditObraNombre('${o.id}')">✎</button>
+        <button class="obra-quick-btn delete obra-edit-action" title="Eliminar actividad" onclick="event.stopPropagation();confirmDeleteObra('${o.id}')">✕</button>
       </div>
     </div>
   `;
@@ -6099,6 +6175,48 @@ function refreshObraMap(obraId) {
   if (next) current.replaceWith(next);
 }
 
+function obraHeaderProgress(entity) {
+  if (!entity || entity.tipo === 'actividad') return '';
+  const pct = compasPercent(entity);
+  if (pct != null) return pct + '%';
+  const apr = aprFromCompas(entity);
+  if (!entity.compasesTotal && apr <= 1) return '';
+  return Math.min(100, apr * 10) + '%';
+}
+
+function obraNextAction(o, eff) {
+  if (!o) return '';
+  if (o.tipo === 'actividad') return 'registrar tiempo';
+  const activePasajes = (o.pasajes || []).filter(p => p.status !== 'resuelto');
+  if (activePasajes.length) return activePasajes.length === 1 ? 'trabajar pasaje' : activePasajes.length + ' pasajes activos';
+  const fase = obraFase(eff || o);
+  if (fase === 'digitando') {
+    const pct = compasPercent(eff || o);
+    if (pct != null && pct < 100) return 'seguir avance';
+    return 'definir compases';
+  }
+  if (fase === 'consolidando') return 'pase en frio';
+  if (fase === 'mantenimiento') return 'mantener';
+  return 'revisar';
+}
+
+function renderObraDetailTabs(obraId) {
+  return '<div class="obra-detail-tabs">' +
+    '<button class="obra-tab-btn active" data-tab="resumen" onclick="setObraDetailTab(\'' + obraId + '\',\'resumen\',this)">Resumen</button>' +
+    '<button class="obra-tab-btn" data-tab="editar" onclick="setObraDetailTab(\'' + obraId + '\',\'editar\',this)">Editar</button>' +
+    '<button class="obra-tab-btn" data-tab="estructura" onclick="setObraDetailTab(\'' + obraId + '\',\'estructura\',this)">Estructura</button>' +
+    '<button class="obra-tab-btn" data-tab="seguimiento" onclick="setObraDetailTab(\'' + obraId + '\',\'seguimiento\',this)">Seguimiento</button>' +
+  '</div>';
+}
+
+function setObraDetailTab(obraId, tab, btn) {
+  const card = document.getElementById('obra-' + obraId);
+  if (!card) return;
+  card.querySelectorAll('.obra-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  card.querySelectorAll('.obra-tab-panel').forEach(p => p.classList.toggle('active', p.dataset.tab === tab));
+  if (btn) btn.classList.add('active');
+}
+
 function renderObraCard(o, idx) {
   // ── ACTIVIDADES: render simplificado ────────────────────────────────
   if (o.tipo === 'actividad') {
@@ -6142,6 +6260,12 @@ function renderObraCard(o, idx) {
   const duracion = eff.duracion || '';
 
   const hasMovs = o.movimientos && o.movimientos.length > 0;
+  const headerProgress = obraHeaderProgress(eff);
+  const headerZone = obraMapLatestZone(o);
+  const nextAction = obraNextAction(o, eff);
+  const composerLine = o.composer && o.composer !== '—'
+    ? '<span class="obra-composer">' + escapeHtmlSafe(o.composer) + '</span>'
+    : '';
 
   // Urgencia block (shared)
   const urgBlock = (() => {
@@ -6175,22 +6299,39 @@ function renderObraCard(o, idx) {
       onclick="setDificultadInline('${o.id}',${n},this)">${n}</button>`;
   }).join('');
 
+  const nextActionHtml = `
+    <div class="obra-next-card">
+      <span>Próxima acción</span>
+      <strong>${escapeHtmlSafe(nextAction || 'revisar')}</strong>
+      ${headerZone ? `<em>${escapeHtmlSafe(headerZone)}</em>` : `<em>sin zona registrada</em>`}
+    </div>`;
+
   return `
     <div class="obra-card" id="obra-${o.id}">
       <div class="obra-header" onclick="toggleObra('${o.id}')">
         <button class="obra-color-dot obra-fase-${obraFase(eff)}" title="Cambiar color"
           onclick="event.stopPropagation();openObraColorPicker('${o.id}')"
           style="background:${obraColorHex(o) || 'transparent'};border-color:${obraColorHex(o) || 'var(--border2)'}"></button>
-        <div class="obra-name" id="obra-name-display-${o.id}">${o.name}${origenTag}${difBadge}${tendencia} <span class="obra-composer">${o.composer}</span></div>
+        <div class="obra-name obra-name-stack" id="obra-name-display-${o.id}">
+          <div class="obra-title-line"><span>${escapeHtmlSafe(o.name)}</span>${origenTag}${difBadge}${tendencia}</div>
+          <div class="obra-card-meta">
+            ${composerLine}
+            ${headerProgress ? `<span>avance ${headerProgress}</span>` : ''}
+            ${headerZone ? `<span>${escapeHtmlSafe(headerZone)}</span>` : ''}
+            ${nextAction ? `<span>próx. ${escapeHtmlSafe(nextAction)}</span>` : ''}
+          </div>
+        </div>
         <div class="obra-scores">
           ${durDisplay ? `<span style="font-size:9px;color:var(--text3)">${durDisplay}m</span>` : ''}
           ${hasMovs ? `<span style="font-size:8px;color:var(--accent);background:var(--bg3);border-radius:3px;padding:1px 5px;margin-left:2px">${o.movimientos.length} mov</span>` : ''}
         </div>
-        <button class="obra-quick-btn edit" title="Editar nombre" onclick="event.stopPropagation();openEditObraNombre('${o.id}')">✎</button>
-        <button class="obra-quick-btn delete" title="Eliminar obra" onclick="event.stopPropagation();confirmDeleteObra('${o.id}')">✕</button>
+        <button class="obra-quick-btn edit obra-edit-action" title="Editar nombre" onclick="event.stopPropagation();openEditObraNombre('${o.id}')">✎</button>
+        <button class="obra-quick-btn delete obra-edit-action" title="Eliminar obra" onclick="event.stopPropagation();confirmDeleteObra('${o.id}')">✕</button>
         <div class="obra-chevron">▼</div>
       </div>
       <div class="obra-detail">
+        ${renderObraDetailTabs(o.id)}
+        <div class="obra-tab-panel active" data-tab="resumen">
 
         <!-- Estado derivado + evolución -->
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 12px">
@@ -6204,6 +6345,10 @@ function renderObraCard(o, idx) {
         </div>
 
         ${renderObraMap(o)}
+        ${nextActionHtml}
+        ${urgBlock}
+        </div>
+        <div class="obra-tab-panel" data-tab="editar">
 
         <!-- Dificultad + Duración (solo sin movimientos) -->
         ${!hasMovs ? `
@@ -6273,8 +6418,17 @@ function renderObraCard(o, idx) {
           </div>
         </div>`}
 
+        </div>
+        <div class="obra-tab-panel" data-tab="estructura">
         <!-- Movimientos -->
         ${movimientosHtml}
+        <!-- Pasajes -->
+        <div class="pasajes-section">
+          <div id="pasajes-${o.id}">${pasajosHtml}</div>
+          <button class="add-pasaje-btn" onclick="addPasaje('${o.id}')">+ añadir pasaje</button>
+        </div>
+        </div>
+        <div class="obra-tab-panel" data-tab="seguimiento">
         ${renderMinutosWidget(o.id)}
         ${renderRangoWidget(o.id, o)}
         ${renderDecayWidget(o.id)}
@@ -6286,13 +6440,7 @@ function renderObraCard(o, idx) {
             ${paseHistHtml ? `<div style="margin-top:8px">${paseHistHtml}</div>` : ''}
           </div>` : ''}
 
-        <!-- Pasajes -->
-        <div class="pasajes-section">
-          <div id="pasajes-${o.id}">${pasajosHtml}</div>
-          <button class="add-pasaje-btn" onclick="addPasaje('${o.id}')">+ añadir pasaje</button>
         </div>
-
-        ${urgBlock}
       </div>
     </div>`;
 }
@@ -6993,6 +7141,12 @@ function openAddObra() {
   document.getElementById('newObraComposer').value = '';
   const aprChk = document.getElementById('newObraAprendida');
   if (aprChk) aprChk.checked = false;
+  ['newObraDuracion', 'newObraCompasesTotal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const difInput = document.getElementById('newObraDificultad');
+  if (difInput) difInput.value = 3;
   modalFaseSelected = 'digitando';
   document.querySelectorAll('#modalFaseSelector .fase-btn').forEach(b => {
     b.classList.remove('active');
@@ -7034,6 +7188,10 @@ function addObra() {
   const newId = 'o' + Date.now();
   const isActividad = modalTipoSelected === 'actividad';
   const yaAprendida = !isActividad && !!document.getElementById('newObraAprendida')?.checked;
+  const duracionVal = parseInt(document.getElementById('newObraDuracion')?.value || '', 10);
+  const compasesTotalVal = parseInt(document.getElementById('newObraCompasesTotal')?.value || '', 10);
+  const dificultadRaw = parseInt(document.getElementById('newObraDificultad')?.value || '3', 10);
+  const dificultadVal = Math.max(1, Math.min(10, Number.isFinite(dificultadRaw) ? dificultadRaw : 3));
   const entry = {
     id: newId,
     name,
@@ -7045,9 +7203,15 @@ function addObra() {
     // aprendiendo-inicial. Los compases se pueden añadir después.
     estado: isActividad ? null : (yaAprendida ? 'consolidando' : 'aprendiendo-inicial'),
     origen: null,
-    dificultad: isActividad ? null : 3,
-    duracion: null,
-    apr: isActividad ? null : (yaAprendida ? 10 : 1),
+    dificultad: isActividad ? null : dificultadVal,
+    duracion: !isActividad && duracionVal > 0 ? duracionVal : null,
+    compasesTotal: !isActividad && compasesTotalVal > 0 ? compasesTotalVal : null,
+    compasActual: !isActividad && compasesTotalVal > 0 && yaAprendida ? compasesTotalVal : null,
+    apr: isActividad ? null : (yaAprendida || compasesTotalVal > 0 ? aprFromCompas({
+      compasActual: yaAprendida ? compasesTotalVal : null,
+      compasesTotal: compasesTotalVal > 0 ? compasesTotalVal : null,
+      apr: yaAprendida ? 10 : 1,
+    }) : 1),
     sol: isActividad ? null : 1,
     esc: isActividad ? null : 1,
     lastPase: null,
@@ -7072,6 +7236,12 @@ function addObra() {
   if (actExtra) actExtra.style.display = 'none';
   if (composerEl) composerEl.style.display = '';
   if (nameEl) nameEl.placeholder = 'título';
+  ['newObraDuracion', 'newObraCompasesTotal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const difInput = document.getElementById('newObraDificultad');
+  if (difInput) difInput.value = 3;
 }
 
 
