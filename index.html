@@ -121,7 +121,12 @@
 <div class="view active" id="view-session">
   <!-- Banner: "Hoy te has concentrado X" + opción discreta para día pasado -->
   <div class="session-concentrado-banner" id="sessionConcentradoBanner">
-    <span class="session-concentrado-icon">⏱</span>
+    <span class="session-concentrado-icon" aria-hidden="true">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="8" cy="8.5" r="5.5"/>
+        <path d="M8 3v2.1M6.2 1.8h3.6M8 8.5l2.4-2.2"/>
+      </svg>
+    </span>
     <span id="sessionConcentradoText" style="flex:1">Hoy te has concentrado 0 minutos</span>
     <button class="session-concentrado-past-btn" onclick="checkDayChange();showToast('Día actualizado')" title="Comprobar cambio de día (refrescar a hoy)">
       <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
@@ -138,6 +143,8 @@
       </svg>
     </button>
   </div>
+
+  <div class="session-insight-stack" id="sessionInsightStack" style="display:none"></div>
 
   <div class="session-hero">
     <div class="notes-deco" id="notesDeco"></div>
@@ -342,6 +349,14 @@
 
       <!-- Tiempo gigante con outline (Forest-style) -->
       <div class="crono-display-wrap" id="cronoDisplayWrap">
+        <svg class="crono-run-progress-svg" viewBox="0 0 220 220" aria-hidden="true">
+          <circle class="crono-run-progress-track" cx="110" cy="110" r="94"/>
+          <circle class="crono-run-progress-arc" id="cronoRunProgressArc"
+                  cx="110" cy="110" r="94"
+                  transform="rotate(-90 110 110)"
+                  stroke-dasharray="590.62"
+                  stroke-dashoffset="590.62"/>
+        </svg>
         <div class="crono-display" id="cronoDisplay">00:00</div>
       </div>
 
@@ -429,8 +444,17 @@
 
   <div class="crono-pause-overlay" id="cronoPauseOverlay" aria-hidden="true">
     <div class="crono-pause-overlay-inner">
-      <div class="crono-pause-overlay-label">Concentración en pausa · Reanuda en</div>
+      <svg class="crono-pause-ring" viewBox="0 0 120 120" aria-hidden="true">
+        <circle class="crono-pause-ring-track" cx="60" cy="60" r="52"/>
+        <circle class="crono-pause-ring-arc" id="cronoPauseRingArc"
+                cx="60" cy="60" r="52"
+                transform="rotate(-90 60 60)"
+                stroke-dasharray="326.73"
+                stroke-dashoffset="0"/>
+      </svg>
+      <div class="crono-pause-overlay-label">Concentración en pausa</div>
       <div class="crono-pause-overlay-time" id="cronoPauseOverlayTime">05:00</div>
+      <div class="crono-pause-overlay-note" id="cronoPauseOverlayNote">La sesión se reanudará sola cuando acabe la pausa.</div>
       <button class="crono-pause-overlay-play" onclick="cronoResume()" aria-label="Reanudar">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
       </button>
@@ -686,17 +710,27 @@
     <div style="font-size:9px;color:var(--text3);line-height:1.6;margin-bottom:8px">Tipo de sonidos que la app emite al interactuar.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
       <button class="theme-option sound-option" data-sound="piano" onclick="setSoundPack('piano');refreshSoundOptionUI()" style="flex:1;min-width:80px">
-        <div style="font-size:16px;padding:2px 0">🎹</div>
+        <div class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"/><path d="M7 6v12M10 6v12M14 6v12M17 6v12"/><path d="M4 10h16"/></svg></div>
         <div class="theme-option-name">Piano</div>
       </button>
       <button class="theme-option sound-option" data-sound="wood" onclick="setSoundPack('wood');refreshSoundOptionUI()" style="flex:1;min-width:80px">
-        <div style="font-size:16px;padding:2px 0">🪵</div>
+        <div class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7c3-3 11-3 14 0v10c-3 3-11 3-14 0V7z"/><path d="M8 8c2 1 6 1 8 0M8 16c2-1 6-1 8 0"/></svg></div>
         <div class="theme-option-name">Madera</div>
       </button>
       <button class="theme-option sound-option" data-sound="paper" onclick="setSoundPack('paper');refreshSoundOptionUI()" style="flex:1;min-width:80px">
-        <div style="font-size:16px;padding:2px 0">📄</div>
+        <div class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5"/><path d="M9.5 12h5M9.5 15h5M9.5 18h3"/></svg></div>
         <div class="theme-option-name">Papel</div>
       </button>
+    </div>
+    <div class="sound-master-row">
+      <button class="sound-mute-btn" id="soundMuteBtn" onclick="toggleSoundMute()" title="Silenciar sonidos">
+        <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7v4h3l4 3V4L6 7H3z"/>
+          <path d="M13 7.2c.6.6.9 1.2.9 1.8s-.3 1.2-.9 1.8"/>
+        </svg>
+      </button>
+      <input type="range" id="soundVolumeSlider" class="estado-slider sound-volume-slider" min="0" max="100" step="5" value="75" oninput="setSoundVolume(this.value)">
+      <span class="sound-volume-label" id="soundVolumeLabel">75%</span>
     </div>
     <div style="font-size:9px;color:var(--text3);font-style:italic;margin-top:4px">Toca para escuchar la prueba.</div>
 
@@ -723,6 +757,58 @@
 
     <div class="modal-buttons" style="margin-top:20px">
       <button class="modal-btn primary" onclick="closeModal('modalSettings')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REGISTRAR ESTUDIO UNIFICADO -->
+<div class="modal-overlay" id="modalStudyRegister">
+  <div class="modal study-register-modal">
+    <div class="modal-title" style="margin-bottom:4px">Registrar estudio</div>
+    <div class="study-register-sub" id="studyRegisterSub">Una sola entrada para apuntar o preparar estudio.</div>
+
+    <div class="study-mode-row" id="studyModeRow">
+      <button class="study-mode-btn active" data-mode="plan" onclick="setStudyRegisterMode('plan',this)">A la sesión</button>
+      <button class="study-mode-btn" data-mode="history" onclick="setStudyRegisterMode('history',this)">Al historial</button>
+    </div>
+
+    <div class="hecho-field-label">Obra o movimiento</div>
+    <select id="studyRegisterObra" class="modal-input" onchange="studyRegisterOnObraChange()"></select>
+
+    <div class="study-register-grid">
+      <div>
+        <div class="hecho-field-label">Minutos</div>
+        <input type="number" id="studyRegisterMinutos" min="1" max="480" step="5" class="modal-input study-register-number" placeholder="25">
+      </div>
+      <div id="studyRegisterDateWrap">
+        <div class="hecho-field-label">Fecha</div>
+        <input type="date" id="studyRegisterFecha" class="modal-input">
+      </div>
+    </div>
+
+    <div id="studyRegisterTickWrap">
+      <div class="hecho-field-label">Resultado</div>
+      <div class="study-tick-row">
+        <button class="study-tick-btn active hecho" data-tick="hecho" onclick="selectStudyRegisterTick('hecho',this)">Hecho</button>
+        <button class="study-tick-btn parcial" data-tick="parcial" onclick="selectStudyRegisterTick('parcial',this)">Parcial</button>
+      </div>
+    </div>
+
+    <div id="studyRegisterCompasSection" style="display:none">
+      <div class="hecho-field-label">Compás actual <span style="font-weight:normal;text-transform:none;letter-spacing:0;font-size:9px;color:var(--text3)">(opcional)</span></div>
+      <div class="study-compas-row">
+        <input type="number" id="studyRegisterCompasActual" class="modal-input" min="0" oninput="studyRegisterUpdateCompas()">
+        <span>de <strong id="studyRegisterCompasTotal">-</strong></span>
+        <em id="studyRegisterCompasPct"></em>
+      </div>
+    </div>
+
+    <div class="hecho-field-label" style="margin-top:12px">Nota</div>
+    <input type="text" id="studyRegisterNota" class="modal-input" placeholder="qué trabajaste...">
+
+    <div class="modal-buttons">
+      <button class="modal-btn secondary" onclick="closeModal('modalStudyRegister')">Cancelar</button>
+      <button class="modal-btn primary" id="studyRegisterSaveBtn" onclick="confirmStudyRegister()">Guardar</button>
     </div>
   </div>
 </div>

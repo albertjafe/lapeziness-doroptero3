@@ -222,7 +222,7 @@ function showView(name) {
   if (idx >= 0) btns[idx].classList.add('active');
   // Modo concentración: activar/desactivar al entrar/salir de cronometro
   if (name !== 'cronometro' && typeof cronoOnLeaveView === 'function') cronoOnLeaveView();
-  if (name === 'session')    { renderRacha(); if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI(); }
+  if (name === 'session')    { renderRacha(); if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI(); if (typeof renderSessionInsights === 'function') renderSessionInsights(); }
   if (name === 'cronometro') { cronoOnEnterView(); }
   if (name === 'obras')      renderObras();
   if (name === 'pasajes')    renderPasajesGlobal();
@@ -1117,6 +1117,8 @@ function setTick(planId, tick, btn, minPlan) {
 // Abre directamente la elección de fecha pasada (no "hoy" — para eso está
 // el autoguardado).
 function openSavePastDate() {
+  openStudyRegister('history');
+  return;
   if (!currentPlan.length) {
     showToast('No hay sesiones en el plan actual para registrar en otra fecha');
     return;
@@ -1591,6 +1593,8 @@ function closeRatingSesion(save) {
 // ── EXTRA OBRAS ───────────────────────────────────────────────────────────────
 
 function openAddExtra() {
+  openStudyRegister('plan');
+  return;
   const select = document.getElementById('extraObraSelect');
   const planIds = new Set(currentPlan.map(e => e._planId || e.id));
 
@@ -9199,6 +9203,8 @@ function confirmDeleteObra(obraId) {
 let manualTickSelected = null;
 
 function openSesionManual() {
+  openStudyRegister('history');
+  return;
   // Populate obra select
   const sel = document.getElementById('manualObraSelect');
   sel.innerHTML = '<option value="">— Selecciona una obra —</option>' +
@@ -9470,7 +9476,54 @@ function _scheduleCleanup(node, stopTime, ac) {
   }, ms);
 }
 
+let _soundVolume = (() => {
+  try {
+    const raw = parseInt(localStorage.getItem('alberto_sound_volume') || '75', 10);
+    return Math.max(0, Math.min(100, Number.isFinite(raw) ? raw : 75));
+  } catch(e) { return 75; }
+})();
+let _soundMuted = (() => {
+  try { return localStorage.getItem('alberto_sound_muted') === 'true'; }
+  catch(e) { return false; }
+})();
+
+function appSoundGain() {
+  if (_soundMuted) return 0;
+  return Math.max(0, Math.min(1, _soundVolume / 100));
+}
+
+function setSoundVolume(value) {
+  const v = Math.max(0, Math.min(100, parseInt(value, 10) || 0));
+  _soundVolume = v;
+  if (v > 0 && _soundMuted) _soundMuted = false;
+  try {
+    localStorage.setItem('alberto_sound_volume', String(_soundVolume));
+    localStorage.setItem('alberto_sound_muted', String(_soundMuted));
+  } catch(e) {}
+  refreshSoundVolumeUI();
+}
+
+function toggleSoundMute() {
+  _soundMuted = !_soundMuted;
+  try { localStorage.setItem('alberto_sound_muted', String(_soundMuted)); } catch(e) {}
+  refreshSoundVolumeUI();
+  if (!_soundMuted) {
+    try { SFX.tick(); } catch(e) {}
+  }
+}
+
+function refreshSoundVolumeUI() {
+  const slider = document.getElementById('soundVolumeSlider');
+  const label = document.getElementById('soundVolumeLabel');
+  const btn = document.getElementById('soundMuteBtn');
+  if (slider) slider.value = String(_soundVolume);
+  if (label) label.textContent = _soundMuted ? 'off' : _soundVolume + '%';
+  if (btn) btn.classList.toggle('active', _soundMuted || _soundVolume <= 0);
+}
+
 function playTone(freq, type = 'triangle', dur = 0.25, vol = 0.10, delay = 0) {
+  vol = vol * appSoundGain();
+  if (vol <= 0) return;
   const ac = getAC();
   if (!ac || ac.state === 'closed') return;
   const schedule = () => {
@@ -9502,6 +9555,11 @@ function playTone(freq, type = 'triangle', dur = 0.25, vol = 0.10, delay = 0) {
   else ac.resume().then(schedule).catch(() => { _acFailureCount++; });
 }
 
+function playPianoTone(freq, dur = 0.25, vol = 0.10, delay = 0) {
+  playTone(freq, 'triangle', dur, vol, delay);
+  playTone(freq * 2, 'sine', Math.max(0.12, dur * 0.82), vol * 0.15, delay + 0.004);
+}
+
 // Burst de noise filtrado: para clicks de madera, papel, botón.
 //   cutoff: frecuencia del paso-bajo (Hz). Más bajo = más sordo/leñoso.
 //   q: resonancia del filtro. Sutil bump = "cuerpo".
@@ -9509,6 +9567,8 @@ function playTone(freq, type = 'triangle', dur = 0.25, vol = 0.10, delay = 0) {
 //   vol: pico de amplitud.
 //   delay: offset desde "ahora".
 function playNoiseBurst(cutoff, q, dur, vol, delay = 0) {
+  vol = vol * appSoundGain();
+  if (vol <= 0) return;
   const ac = getAC();
   if (!ac || ac.state === 'closed') return;
   const schedule = () => {
@@ -9626,42 +9686,46 @@ const SFX_PACKS = {
       [[261.6, 0,    'triangle', 0.6,  0.11],
        [329.6, 0.05, 'triangle', 0.55, 0.09],
        [392.0, 0.10, 'triangle', 0.55, 0.08]
-      ].forEach(([f, d, t, dur, v]) => playTone(f, t, dur, v, d));
+      ].forEach(([f, d, t, dur, v]) => playPianoTone(f, dur, v, d));
     },
     tick() {
-      playTone(523.3, 'triangle', 0.35, 0.10, 0);
-      playTone(262.0, 'triangle', 0.18, 0.04, 0);
+      playPianoTone(523.3, 0.35, 0.10, 0);
+      playPianoTone(262.0, 0.18, 0.04, 0);
+    },
+    startSession() {
+      playPianoTone(261.6, 0.42, 0.09, 0);
+      playPianoTone(392.0, 0.52, 0.10, 0.09);
     },
     save() {
-      playTone(392.0, 'triangle', 0.45, 0.10, 0);
-      playTone(523.3, 'triangle', 0.50, 0.10, 0.10);
+      playPianoTone(392.0, 0.45, 0.10, 0);
+      playPianoTone(523.3, 0.50, 0.10, 0.10);
     },
     saveSession() {
       [[349.2, 0,    'triangle', 0.50, 0.09],
        [392.0, 0.08, 'triangle', 0.45, 0.09],
        [440.0, 0.16, 'triangle', 0.45, 0.09],
        [523.3, 0.26, 'triangle', 0.60, 0.11],
-      ].forEach(([f, d, t, dur, v]) => playTone(f, t, dur, v, d));
+      ].forEach(([f, d, t, dur, v]) => playPianoTone(f, dur, v, d));
     },
     skip() {
-      playTone(196.0, 'triangle', 0.20, 0.08, 0);
-      playTone(185.0, 'triangle', 0.15, 0.04, 0.04);
+      playPianoTone(196.0, 0.20, 0.08, 0);
+      playPianoTone(185.0, 0.15, 0.04, 0.04);
     },
-    open() { playTone(440, 'triangle', 0.18, 0.06, 0); },
+    open() { playPianoTone(440, 0.18, 0.06, 0); },
     pase() {
-      playTone(440.0, 'triangle', 0.30, 0.09, 0);
-      playTone(523.3, 'triangle', 0.35, 0.09, 0.12);
+      playPianoTone(440.0, 0.30, 0.09, 0);
+      playPianoTone(523.3, 0.35, 0.09, 0.12);
     },
     add() {
-      playTone(293.7, 'triangle', 0.28, 0.09, 0);
-      playTone(369.9, 'triangle', 0.32, 0.09, 0.10);
+      playPianoTone(293.7, 0.28, 0.09, 0);
+      playPianoTone(369.9, 0.32, 0.09, 0.10);
     },
     del() {
-      playTone(369.9, 'triangle', 0.18, 0.07, 0);
-      playTone(293.7, 'triangle', 0.18, 0.05, 0.05);
+      playPianoTone(369.9, 0.18, 0.07, 0);
+      playPianoTone(293.7, 0.18, 0.05, 0.05);
     },
-    nav() { playTone(523.3, 'triangle', 0.10, 0.04, 0); },
-    memlapse() { playTone(220, 'sine', 0.40, 0.06, 0); },
+    nav() { playPianoTone(523.3, 0.10, 0.04, 0); },
+    memlapse() { playPianoTone(220, 0.40, 0.06, 0); },
   },
 
   // ── MADERA ──
@@ -9678,6 +9742,10 @@ const SFX_PACKS = {
     tick() {
       // Knock corto, sordo
       playNoiseBurst(1200, 4, 0.05, 0.22, 0);
+    },
+    startSession() {
+      playNoiseBurst(900, 5, 0.07, 0.22, 0);
+      playNoiseBurst(700, 5, 0.10, 0.20, 0.10);
     },
     save() {
       playNoiseBurst(900, 5, 0.07, 0.25, 0);
@@ -9727,6 +9795,10 @@ const SFX_PACKS = {
     tick() {
       // "Fst" muy corto
       playNoiseBurst(4500, 0.5, 0.025, 0.10, 0);
+    },
+    startSession() {
+      playNoiseBurst(4200, 1, 0.04, 0.10, 0);
+      playNoiseBurst(3600, 1, 0.06, 0.10, 0.08);
     },
     save() {
       playNoiseBurst(4000, 1, 0.04, 0.10, 0);
@@ -9785,6 +9857,7 @@ function refreshSoundOptionUI() {
   document.querySelectorAll('.sound-option').forEach(b => {
     b.classList.toggle('active', b.dataset.sound === _activeSoundPack);
   });
+  refreshSoundVolumeUI();
 }
 
 // SFX como proxy al pack activo
@@ -9909,7 +9982,163 @@ function buildObraSelectOptions(selectId) {
   select.innerHTML = opts;
 }
 
+let studyRegisterMode = 'plan';
+let studyRegisterTick = 'hecho';
+
+function setStudyRegisterMode(mode, btn) {
+  studyRegisterMode = mode === 'today' ? 'history' : (mode === 'history' ? 'history' : 'plan');
+  document.querySelectorAll('#studyModeRow .study-mode-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === studyRegisterMode);
+  });
+  if (btn) btn.classList.add('active');
+  const isPlan = studyRegisterMode === 'plan';
+  const dateWrap = document.getElementById('studyRegisterDateWrap');
+  const tickWrap = document.getElementById('studyRegisterTickWrap');
+  const sub = document.getElementById('studyRegisterSub');
+  const saveBtn = document.getElementById('studyRegisterSaveBtn');
+  if (dateWrap) dateWrap.style.display = isPlan ? 'none' : '';
+  if (tickWrap) tickWrap.style.display = isPlan ? 'none' : '';
+  if (sub) sub.textContent = isPlan
+    ? 'Añade una obra al plan vivo de hoy y márcala después con calma.'
+    : 'Guarda estudio ya hecho en el historial, con fecha y nota.';
+  if (saveBtn) saveBtn.textContent = isPlan ? 'Añadir' : 'Guardar';
+}
+
+function selectStudyRegisterTick(tick, btn) {
+  studyRegisterTick = tick === 'parcial' ? 'parcial' : 'hecho';
+  document.querySelectorAll('#studyRegisterTickWrap .study-tick-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.tick === studyRegisterTick);
+  });
+  if (btn) btn.classList.add('active');
+}
+
+function openStudyRegister(mode) {
+  buildObraSelectOptions('studyRegisterObra');
+  studyRegisterTick = 'hecho';
+  const today = new Date().toISOString().split('T')[0];
+  const mins = document.getElementById('studyRegisterMinutos');
+  const fecha = document.getElementById('studyRegisterFecha');
+  const nota = document.getElementById('studyRegisterNota');
+  if (mins) mins.value = '';
+  if (fecha) fecha.value = today;
+  if (nota) nota.value = '';
+  const compas = document.getElementById('studyRegisterCompasSection');
+  if (compas) compas.style.display = 'none';
+  selectStudyRegisterTick('hecho');
+  setStudyRegisterMode(mode || 'plan');
+  openModal('modalStudyRegister');
+}
+
+function studyRegisterResolveValue(val) {
+  if (!val) return null;
+  if (val.startsWith('mov::')) {
+    const parts = val.split('::');
+    const obraId = parts[1];
+    const movId = parts[2];
+    const obra = findObra(obraId);
+    const mov = obra?.movimientos?.find(m => m.id === movId);
+    if (!obra || !mov) return null;
+    return { obraId, movId, obra, mov, entity: mov, name: obra.name + ' · ' + mov.name };
+  }
+  const obraId = val.replace('obra::', '');
+  const obra = findObra(obraId);
+  if (!obra) return null;
+  return { obraId, movId: null, obra, mov: null, entity: obra, name: obra.name };
+}
+
+function studyRegisterOnObraChange() {
+  const resolved = studyRegisterResolveValue(document.getElementById('studyRegisterObra')?.value || '');
+  const section = document.getElementById('studyRegisterCompasSection');
+  if (!section) return;
+  if (!resolved || !resolved.entity || !resolved.entity.compasesTotal) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  const actual = document.getElementById('studyRegisterCompasActual');
+  const total = document.getElementById('studyRegisterCompasTotal');
+  if (actual) actual.value = resolved.entity.compasActual || 0;
+  if (total) total.textContent = resolved.entity.compasesTotal;
+  studyRegisterUpdateCompas();
+}
+
+function studyRegisterUpdateCompas() {
+  const actual = parseInt(document.getElementById('studyRegisterCompasActual')?.value || '0', 10);
+  const total = parseInt(document.getElementById('studyRegisterCompasTotal')?.textContent || '0', 10);
+  const pct = document.getElementById('studyRegisterCompasPct');
+  if (pct) pct.textContent = total > 0 ? Math.round((actual / total) * 100) + '%' : '';
+}
+
+function studyRegisterSaveCompas(resolved) {
+  const section = document.getElementById('studyRegisterCompasSection');
+  if (!resolved || !resolved.entity || !section || section.style.display === 'none') return;
+  const newCompas = parseInt(document.getElementById('studyRegisterCompasActual')?.value || '', 10);
+  if (!Number.isFinite(newCompas)) return;
+  const entity = resolved.entity;
+  if (newCompas !== (entity.compasActual || 0)) {
+    entity.compasActual = Math.max(0, newCompas);
+    entity.apr = aprFromCompas(entity);
+  }
+}
+
+function confirmStudyRegister() {
+  const val = document.getElementById('studyRegisterObra')?.value || '';
+  const minutos = parseInt(document.getElementById('studyRegisterMinutos')?.value || '0', 10);
+  const fecha = document.getElementById('studyRegisterFecha')?.value || new Date().toISOString().split('T')[0];
+  const nota = document.getElementById('studyRegisterNota')?.value.trim() || '';
+  const resolved = studyRegisterResolveValue(val);
+  if (!resolved) { showToast('Selecciona una obra o movimiento'); return; }
+  if (!minutos || minutos < 1) { showToast('Indica los minutos estudiados'); return; }
+  studyRegisterSaveCompas(resolved);
+
+  if (studyRegisterMode === 'plan') {
+    buildObraSelectOptions('extraObraSelect');
+    const extraSel = document.getElementById('extraObraSelect');
+    const extraMin = document.getElementById('extraMinutos');
+    if (extraSel) extraSel.value = val;
+    if (extraMin) extraMin.value = String(minutos);
+    closeModal('modalStudyRegister');
+    confirmAddExtra();
+    return;
+  }
+
+  const date = new Date(fecha + 'T12:00:00');
+  const fechaStr = date.toDateString();
+  let sesion = db.sesiones.find(s => new Date(s.date).toDateString() === fechaStr);
+  if (!sesion) {
+    sesion = { date: date.toISOString(), energia: 'manual', items: [] };
+    db.sesiones.push(sesion);
+    db.sesiones.sort((a, b) => new Date(b.date) - new Date(a.date));
+  }
+  const item = {
+    obraId: resolved.obraId,
+    movId: resolved.movId,
+    obraName: resolved.name,
+    tick: studyRegisterTick || 'hecho',
+    note: nota,
+    objetivo: '',
+    manual: true,
+    minutosEstudiados: minutos,
+    minutosReales: minutos,
+  };
+  sesion.items.push(item);
+  const started = new Date(date);
+  started.setHours(12, Math.min(59, Math.max(0, sesion.items.length - 1)), 0, 0);
+  const ended = new Date(started.getTime() + minutos * 60000);
+  recordSessionPlant(resolved.obraId, resolved.movId, started.toISOString(), ended.toISOString(), minutos, { source: 'manual' });
+  if (db.sesiones.length > 365) db.sesiones = db.sesiones.slice(0, 365);
+  saveData();
+  closeModal('modalStudyRegister');
+  if (typeof renderSesionesHistorial === 'function') renderSesionesHistorial();
+  if (typeof renderRacha === 'function') renderRacha();
+  if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+  showToast(minutos + ' min registrados · ' + resolved.name);
+  if (typeof SFX !== 'undefined' && SFX.save) SFX.save();
+}
+
 function openRegistroDirecto() {
+  openStudyRegister('today');
+  return;
   buildObraSelectOptions('rdObraSelect');
   document.getElementById('rdMinutos').value = '';
   document.getElementById('rdNota').value = '';
@@ -10737,7 +10966,7 @@ if (window.ResizeObserver) {
 // Si dura <10 min, se descarta como fallida.
 // La vista activa el "modo concentración": oculta la topbar y muestra una X.
 
-const CRONO_STORAGE_KEY = 'pianoCrono_v1';
+const CRONO_STORAGE_KEY = 'pianoCrono_v2';
 const CRONO_MIN_MIN = 10;                  // mínimo de minutos para que cuente
 const CRONO_PAUSE_LIMIT_MS = 5 * 60 * 1000; // 5 minutos máx de pausa
 const CRONO_MAX_MIN = 120;                 // tope: en modo cronómetro se autodetiene a las 2h
@@ -10840,7 +11069,35 @@ const crono = {
   pauseStartTs: 0,       // ms del inicio de la pausa actual
   tickInterval: null,
   pauseInterval: null,
+  lastCountdownSecond: null,
 };
+
+let _cronoWakeLock = null;
+
+async function cronoAcquireWakeLock() {
+  if (!('wakeLock' in navigator) || crono.state !== 'running') return;
+  try {
+    if (_cronoWakeLock) return;
+    _cronoWakeLock = await navigator.wakeLock.request('screen');
+    _cronoWakeLock.addEventListener('release', () => { _cronoWakeLock = null; });
+  } catch(e) {
+    _cronoWakeLock = null;
+  }
+}
+
+async function cronoReleaseWakeLock() {
+  const lock = _cronoWakeLock;
+  _cronoWakeLock = null;
+  if (lock) {
+    try { await lock.release(); } catch(e) {}
+  }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && crono.state === 'running') {
+    cronoAcquireWakeLock();
+  }
+});
 
 // Pases registrados durante la sesión (drawer lateral) — se pre-rellenan en el modal Hecho
 let _cronoDraftPases = { antesActive: false, antesVal: 50, despuesActive: false, despuesVal: 60 };
@@ -11175,6 +11432,97 @@ function openDestellosModal() {
   openModal('modalDestellos');
 }
 
+function _weekStart(d) {
+  const x = new Date(d);
+  x.setHours(0,0,0,0);
+  const day = (x.getDay() + 6) % 7;
+  x.setDate(x.getDate() - day);
+  return x;
+}
+
+function _plantsInRange(start, end) {
+  return (db.sessionPlants || []).filter(p => {
+    if (!p || p.failed || p.tipo === 'descanso') return false;
+    const t = new Date(p.endedAt || p.startedAt).getTime();
+    return t >= start.getTime() && t < end.getTime();
+  });
+}
+
+function _fmtMinShort(min) {
+  min = Math.round(min || 0);
+  if (min < 60) return min + ' min';
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return h + 'h' + (m ? ' ' + m + 'm' : '');
+}
+
+function renderSessionInsights() {
+  const host = document.getElementById('sessionInsightStack');
+  if (!host) return;
+  const cards = [];
+  const now = new Date();
+
+  const upcoming = (db.eventos || [])
+    .map(ev => ({ ...ev, dias: Math.ceil((new Date(ev.fecha + 'T12:00:00') - now) / 86400000) }))
+    .filter(ev => ev.dias >= 0 && ev.dias <= 14 && !(ev.resultado && ev.resultado.scoreTotal != null))
+    .sort((a,b) => a.dias - b.dias)[0];
+  if (upcoming) {
+    const readiness = computeEventoReadiness(upcoming);
+    const weakest = readiness?.detalles?.slice().sort((a,b) => a.obraScore - b.obraScore).slice(0, 2).map(d => d.nombre).join(' · ');
+    cards.push('<div class="session-insight-card event">' +
+      '<div class="session-insight-kicker">Evento próximo</div>' +
+      '<div class="session-insight-main"><strong>' + escapeHtmlSafe(upcoming.nombre) + '</strong> · ' + (upcoming.dias === 0 ? 'hoy' : 'faltan ' + upcoming.dias + 'd') + '</div>' +
+      '<div class="session-insight-sub">Preparación ' + (readiness?.global ?? '—') + '%' + (weakest ? ' · foco: ' + escapeHtmlSafe(weakest) : '') + '</div>' +
+    '</div>');
+  }
+
+  const start = _weekStart(now);
+  const next = new Date(start); next.setDate(start.getDate() + 7);
+  const prev = new Date(start); prev.setDate(start.getDate() - 7);
+  const thisPlants = _plantsInRange(start, next);
+  const prevPlants = _plantsInRange(prev, start);
+  const thisMin = thisPlants.reduce((s,p) => s + (p.mins || 0), 0);
+  const prevMin = prevPlants.reduce((s,p) => s + (p.mins || 0), 0);
+  if (thisMin > 0 || prevMin > 0) {
+    const byObra = {};
+    thisPlants.forEach(p => { byObra[p.obraId] = (byObra[p.obraId] || 0) + (p.mins || 0); });
+    const topId = Object.keys(byObra).sort((a,b) => byObra[b] - byObra[a])[0];
+    const topObra = topId ? findObra(topId) : null;
+    const delta = thisMin - prevMin;
+    const deltaTxt = prevMin > 0 ? (delta >= 0 ? '+' : '') + _fmtMinShort(delta) + ' vs semana anterior' : 'sin comparación previa';
+    cards.push('<div class="session-insight-card">' +
+      '<div class="session-insight-kicker">Tu semana</div>' +
+      '<div class="session-insight-main"><strong>' + _fmtMinShort(thisMin) + '</strong> concentrados</div>' +
+      '<div class="session-insight-sub">' + escapeHtmlSafe(deltaTxt) + (topObra ? ' · más trabajada: ' + escapeHtmlSafe(topObra.name) : '') + '</div>' +
+    '</div>');
+  }
+
+  const bands = [
+    { label: 'mañana', from: 6, to: 12, min: 0 },
+    { label: 'mediodía', from: 12, to: 17, min: 0 },
+    { label: 'tarde', from: 17, to: 21, min: 0 },
+    { label: 'noche', from: 21, to: 30, min: 0 },
+  ];
+  (db.sessionPlants || []).forEach(p => {
+    if (!p || p.failed || p.tipo === 'descanso' || !p.startedAt) return;
+    const h = new Date(p.startedAt).getHours();
+    const h2 = h < 6 ? h + 24 : h;
+    const band = bands.find(b => h2 >= b.from && h2 < b.to);
+    if (band) band.min += p.mins || 0;
+  });
+  const best = bands.slice().sort((a,b) => b.min - a.min)[0];
+  if (best && best.min >= 60) {
+    cards.push('<div class="session-insight-card">' +
+      '<div class="session-insight-kicker">Mejor franja</div>' +
+      '<div class="session-insight-main">Sueles sostener más estudio por la <strong>' + best.label + '</strong></div>' +
+      '<div class="session-insight-sub">' + _fmtMinShort(best.min) + ' acumulados en esa franja</div>' +
+    '</div>');
+  }
+
+  host.innerHTML = cards.join('');
+  host.style.display = cards.length ? '' : 'none';
+}
+
 // Refresca todos los textos "hoy te has concentrado..." y el mini-resumen
 function refreshConcentradoUI() {
   const min = getMinutosConcentradoHoy();
@@ -11187,6 +11535,7 @@ function refreshConcentradoUI() {
 
   // Pill de destellos (abajo a la izquierda en el cronómetro en reposo)
   if (typeof refreshDestellosPill === 'function') refreshDestellosPill();
+  if (typeof renderSessionInsights === 'function') renderSessionInsights();
 
   // Mini-resumen lateral: HOY + AYER
   const resumenEl = document.getElementById('cronoResumenLateral');
@@ -11321,6 +11670,7 @@ function cronoRender() {
       else { info.style.display = 'none'; }
     }
     cronoUpdateStartBtn();
+    cronoUpdateTimerProgress();
     return;
   }
 
@@ -11364,6 +11714,7 @@ function cronoRender() {
       disp.classList.remove('paused');
       if (wrap) wrap.classList.remove('is-paused');
     }
+    cronoUpdateTimerProgress();
   }
 
   // Overlay de pausa: activar body.crono-paused para mostrarlo
@@ -11779,6 +12130,38 @@ const TIMER_MAX_MINUTES = 120;
 const TIMER_STEP_MINUTES = 5;
 const TIMER_RADIUS = 88;
 const TIMER_CIRC = 2 * Math.PI * TIMER_RADIUS; // ≈ 552.92
+const CRONO_RUN_PROGRESS_RADIUS = 94;
+const CRONO_RUN_PROGRESS_CIRC = 2 * Math.PI * CRONO_RUN_PROGRESS_RADIUS;
+
+function cronoUpdateTimerProgress(elapsedMs) {
+  const wrap = document.getElementById('cronoDisplayWrap');
+  const arc = document.getElementById('cronoRunProgressArc');
+  const display = document.getElementById('cronoDisplay');
+  const isTimer = crono.targetMinutes != null && crono.state !== 'idle';
+  if (wrap) wrap.classList.toggle('timer-active', isTimer);
+  if (!isTimer) {
+    if (arc) arc.setAttribute('stroke-dashoffset', String(CRONO_RUN_PROGRESS_CIRC));
+    if (display) display.classList.remove('last-seconds');
+    crono.lastCountdownSecond = null;
+    return;
+  }
+  const elapsed = elapsedMs != null ? elapsedMs : cronoCurrentMs();
+  const targetMs = crono.targetMinutes * 60000;
+  const remainingMs = Math.max(0, targetMs - elapsed);
+  const remainingPct = targetMs > 0 ? remainingMs / targetMs : 0;
+  if (arc) arc.setAttribute('stroke-dashoffset', String(CRONO_RUN_PROGRESS_CIRC * (1 - remainingPct)));
+  const lastSeconds = crono.state === 'running' && remainingMs > 0 && remainingMs <= 10000;
+  if (display) display.classList.toggle('last-seconds', lastSeconds);
+  if (lastSeconds) {
+    const sec = Math.ceil(remainingMs / 1000);
+    if (sec !== crono.lastCountdownSecond) {
+      crono.lastCountdownSecond = sec;
+      playTone(880, 'sine', 0.045, 0.025, 0);
+    }
+  } else {
+    crono.lastCountdownSecond = null;
+  }
+}
 
 // Shared AudioContext for the timer drag ticks — created lazily.
 let _tickAudioCtx = null;
@@ -12016,6 +12399,7 @@ function cronoStartTick() {
       const targetMs = crono.targetMinutes * 60000;
       const remainingMs = Math.max(0, targetMs - elapsedMs);
       if (disp) disp.textContent = cronoFmt(remainingMs);
+      cronoUpdateTimerProgress(elapsedMs);
       if (remainingMs <= 0) {
         clearInterval(crono.tickInterval);
         crono.tickInterval = null;
@@ -12039,6 +12423,7 @@ function cronoStartTick() {
         return;
       }
       if (disp) disp.textContent = cronoFmt(elapsedMs);
+      cronoUpdateTimerProgress(elapsedMs);
     }
     // Motivador de hito: muestra el tiempo total redondeado al múltiplo de 15min inferior
     const milestoneEl = document.getElementById('cronoMilestone');
@@ -12073,6 +12458,13 @@ function cronoStartPauseCountdown() {
     if (cd) cd.textContent = cronoFmt(remaining);
     const ovTime = document.getElementById('cronoPauseOverlayTime');
     if (ovTime) ovTime.textContent = cronoFmt(remaining);
+    const ring = document.getElementById('cronoPauseRingArc');
+    if (ring) {
+      const pct = CRONO_PAUSE_LIMIT_MS > 0 ? remaining / CRONO_PAUSE_LIMIT_MS : 0;
+      ring.setAttribute('stroke-dashoffset', String(326.73 * (1 - pct)));
+    }
+    const note = document.getElementById('cronoPauseOverlayNote');
+    if (note) note.textContent = 'La sesión se reanudará sola en ' + cronoFmt(remaining) + '.';
     if (remaining <= 0) {
       clearInterval(crono.pauseInterval);
       crono.pauseInterval = null;
@@ -12144,7 +12536,8 @@ function cronoStart() {
   cronoSaveState();
   cronoRender();
   cronoStartTick();
-  if (typeof SFX !== 'undefined' && SFX.tick) SFX.tick();
+  cronoAcquireWakeLock();
+  if (typeof SFX !== 'undefined' && SFX.startSession) SFX.startSession();
 }
 
 // Inicia un cronómetro de DESCANSO: cuenta el tiempo pero NO suma al tiempo
@@ -12170,12 +12563,14 @@ function cronoStartRest() {
   cronoSaveState();
   cronoRender();
   cronoStartTick();
-  if (typeof SFX !== 'undefined' && SFX.tick) SFX.tick();
+  cronoAcquireWakeLock();
+  if (typeof SFX !== 'undefined' && SFX.startSession) SFX.startSession();
 }
 
 function cronoPause() {
   if (crono.state !== 'running') return;
   cronoStopTick();
+  cronoReleaseWakeLock();
   crono.state = 'paused';
   crono.pauseStartTs = Date.now();
   cronoSaveState();
@@ -12193,6 +12588,7 @@ function cronoResume() {
   cronoSaveState();
   cronoRender();
   cronoStartTick();
+  cronoAcquireWakeLock();
 }
 
 function cronoStop() {
@@ -12247,9 +12643,26 @@ function cronoForcedFinish() {
   cronoFinish();
 }
 
+function cronoPlayHarvest(prevMin, totalMin, addedMin) {
+  if (!Number.isFinite(totalMin) || totalMin <= 0) return;
+  const burst = document.createElement('div');
+  burst.className = 'crono-harvest-burst';
+  burst.innerHTML = '<strong>+' + Math.max(1, addedMin || (totalMin - prevMin)) + 'm</strong><span>sesión guardada</span>';
+  document.body.appendChild(burst);
+  setTimeout(() => burst.remove(), 1600);
+  ['cronoConcentradoText', 'sessionConcentradoText'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('harvest-pop');
+    void el.offsetWidth;
+    el.classList.add('harvest-pop');
+  });
+}
+
 function cronoFinish() {
   cronoStopTick();
   cronoStopPauseCountdown();
+  cronoReleaseWakeLock();
 
   // Si el día cambió mientras el cronómetro corría, hacer reset del plan ANTES
   // de añadir esta sesión, para que cuente como sesión del día NUEVO. La
@@ -12294,6 +12707,7 @@ function cronoFinish() {
   const obraId = crono.obraId;
   const movId  = crono.movId;
   const displayName = crono.displayName;
+  const prevConcentradoMin = typeof getMinutosConcentradoHoy === 'function' ? getMinutosConcentradoHoy() : 0;
 
   if (minutos < CRONO_MIN_MIN) {
     cronoIncFallidas();
@@ -12416,6 +12830,11 @@ function cronoFinish() {
 
   cronoReset();
   cronoRender();
+  cronoPlayHarvest(
+    prevConcentradoMin,
+    typeof getMinutosConcentradoHoy === 'function' ? getMinutosConcentradoHoy() : prevConcentradoMin + minutos,
+    minutos
+  );
 
   // NO cambiamos a la pestaña sesión. El modal Hecho aparece encima del
   // cronómetro (z-index del overlay del modal está por encima). El usuario
@@ -12431,6 +12850,7 @@ function cronoFinish() {
 }
 
 function cronoReset() {
+  cronoReleaseWakeLock();
   crono.state = 'idle';
   crono.isRest = false;
   crono.targetMinutes = null;

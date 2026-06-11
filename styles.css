@@ -20,9 +20,28 @@
   :root {
     --ui-font: 'JetBrains Mono', monospace;
     --dot-opacity: 0.06;
+    --app-zoom: 1;
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-full: 999px;
+    --dur-fast: 150ms;
+    --dur-base: 250ms;
+    --dur-slow: 400ms;
+    --ease-out: cubic-bezier(0.32,0.72,0,1);
   }
   [data-font="serif"]  { --ui-font: 'Cormorant Garamond', serif; }
   [data-font="system"] { --ui-font: -apple-system, 'Helvetica Neue', sans-serif; }
+  html[data-size="small"] { --app-zoom: 0.82; }
+  html[data-size="normal"] { --app-zoom: 1; }
+  html[data-size="large"] { --app-zoom: 1.22; }
+  html[data-size="xlarge"] { --app-zoom: 1.5; }
 
   * { font-family: var(--ui-font); }
 
@@ -334,6 +353,64 @@
   }
   .session-concentrado-past-btn:active { transform: scale(0.92); }
   .session-concentrado-past-btn svg { width: 12px; height: 12px; }
+  .session-concentrado-icon {
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
+  }
+  .session-concentrado-icon svg { width: 15px; height: 15px; }
+  .session-concentrado-banner.harvest-pop,
+  .crono-concentrado.harvest-pop {
+    animation: harvestCountPop 0.7s var(--ease-out);
+  }
+  @keyframes harvestCountPop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.035); color: var(--accent); }
+    100% { transform: scale(1); }
+  }
+
+  .session-insight-stack {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .session-insight-card {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 11px 12px;
+    min-width: 0;
+  }
+  .session-insight-card.event { border-color: color-mix(in srgb, var(--accent) 45%, var(--border2)); }
+  .session-insight-kicker {
+    color: var(--text3);
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .session-insight-main {
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+  .session-insight-main strong {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .session-insight-sub {
+    margin-top: 4px;
+    color: var(--text3);
+    font-size: 9px;
+    line-height: 1.35;
+  }
+  @media (max-width: 760px) {
+    .session-insight-stack { grid-template-columns: 1fr; }
+  }
 
   .session-hero {
     background: var(--bg2);
@@ -970,8 +1047,8 @@
        las barras del navegador o el teclado aparecen/desaparecen. Sin esto,
        100vh se queda con la altura sin barras y el modal sobresale por
        debajo de la pantalla con el síntoma "no se puede hacer scroll". */
-    max-height: 90vh;
-    max-height: 90dvh;
+    max-height: calc(90vh / var(--app-zoom, 1));
+    max-height: calc(90dvh / var(--app-zoom, 1));
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
@@ -981,10 +1058,17 @@
        elemento centrado con flexbox puede crear contextos de transformación
        que descentran el contenido en algunos navegadores móviles. */
     opacity: 0;
-    transition: opacity 0.4s cubic-bezier(0.16,1,0.3,1);
+    transform: scale(0.985);
+    transform-origin: center center;
+    transition: opacity 0.28s var(--ease-out), transform 0.28s var(--ease-out);
   }
   .modal-overlay.visible .modal {
     opacity: 1;
+    transform: scale(1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .modal { transform: none; transition: opacity 0.18s ease; }
+    .modal-overlay.visible .modal { transform: none; }
   }
   /* Picker de obras/actividades del cronómetro.
      Por defecto se centra en el viewport y queda compacto (70dvh) para
@@ -1040,6 +1124,14 @@
   }
   .modal-input:focus { outline: none; border-color: var(--border); }
   .modal-buttons { display: flex; gap: 8px; margin-top: 16px; }
+  #modalSettings .modal-buttons {
+    position: sticky;
+    bottom: -24px;
+    margin: 18px -24px -24px;
+    padding: 12px 24px 18px;
+    background: linear-gradient(180deg, transparent, var(--bg2) 26%, var(--bg2));
+    border-top: 1px solid var(--border2);
+  }
   .modal-btn {
     flex: 1; padding: 10px;
     border-radius: 6px; border: none;
@@ -1049,6 +1141,127 @@
   }
   .modal-btn.primary { background: var(--accent); color: var(--bg); }
   .modal-btn.secondary { background: var(--bg3); color: var(--text3); border: 1px solid var(--border2); }
+
+  .settings-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 24px;
+    color: var(--text2);
+  }
+  .settings-icon svg { width: 20px; height: 20px; }
+  .sound-master-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 0 4px;
+    padding: 10px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+  }
+  .sound-mute-btn {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    background: var(--bg2);
+    color: var(--text3);
+    cursor: pointer;
+  }
+  .sound-mute-btn.active {
+    color: var(--red);
+    border-color: var(--red);
+  }
+  .sound-mute-btn svg { width: 17px; height: 17px; }
+  .sound-volume-slider { color: var(--accent); }
+  .sound-volume-label {
+    width: 42px;
+    text-align: right;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text3);
+  }
+
+  .study-register-modal { max-width: 460px; }
+  .study-register-sub {
+    color: var(--text3);
+    font-size: 10px;
+    line-height: 1.5;
+    margin-bottom: 14px;
+  }
+  .study-mode-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    padding: 3px;
+    margin-bottom: 14px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+  }
+  .study-mode-btn,
+  .study-tick-btn {
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text3);
+    padding: 8px 9px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+  }
+  .study-mode-btn.active {
+    background: var(--bg2);
+    color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--border2);
+  }
+  .study-register-grid {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 10px;
+    align-items: end;
+  }
+  .study-register-number {
+    text-align: center;
+    font-size: 17px;
+    color: var(--accent);
+  }
+  .study-tick-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .study-tick-btn {
+    flex: 1;
+    border: 1px solid var(--border2);
+  }
+  .study-tick-btn.active.hecho { background: var(--green); color: var(--bg); border-color: var(--green); }
+  .study-tick-btn.active.parcial { background: var(--orange); color: var(--bg); border-color: var(--orange); }
+  .study-compas-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text3);
+    font-size: 10px;
+    margin-bottom: 10px;
+  }
+  .study-compas-row input {
+    width: 82px;
+    text-align: center;
+    margin-bottom: 0;
+  }
+  .study-compas-row em {
+    color: var(--accent);
+    font-style: normal;
+  }
+  @media (max-width: 480px) {
+    .study-register-grid { grid-template-columns: 1fr; }
+  }
 
   .add-obra-modal {
     max-width: 460px;
@@ -3804,6 +4017,30 @@
     margin: 0 auto 60px;
     position: relative;
   }
+  .crono-run-progress-svg {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(230px, 62vw);
+    height: min(230px, 62vw);
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s var(--ease-out);
+  }
+  .crono-display-wrap.timer-active .crono-run-progress-svg { opacity: 0.82; }
+  .crono-run-progress-track,
+  .crono-run-progress-arc {
+    fill: none;
+    stroke-width: 3.5;
+  }
+  .crono-run-progress-track { stroke: var(--border2); opacity: 0.5; }
+  .crono-run-progress-arc {
+    stroke: var(--crono-color, var(--accent));
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.45s linear;
+    filter: drop-shadow(0 0 10px rgba(201,169,110,0.22));
+  }
   .crono-display-wrap::before {
     content: "";
     position: absolute;
@@ -3835,6 +4072,22 @@
     transition: color 0.5s ease, opacity 0.5s ease;
   }
   .crono-display.paused { color: var(--text3); opacity: 0.7; }
+  .crono-display.last-seconds {
+    animation: cronoLastSecondsPulse 1s ease-in-out infinite;
+  }
+  @keyframes cronoLastSecondsPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    45% { opacity: 0.84; transform: scale(0.992); }
+  }
+
+  body.crono-running:not(.crono-paused) .crono-enso-svg {
+    animation: cronoEnsoBreath 8s ease-in-out infinite;
+    transform-origin: center center;
+  }
+  @keyframes cronoEnsoBreath {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.015); opacity: 0.94; }
+  }
 
   /* Controles circulares */
   .crono-controls {
@@ -3922,6 +4175,25 @@
     opacity: 1;
     transform: translateY(0);
   }
+  .crono-pause-ring {
+    width: 126px;
+    height: 126px;
+    margin-bottom: 10px;
+    overflow: visible;
+  }
+  .crono-pause-ring-track,
+  .crono-pause-ring-arc {
+    fill: none;
+    stroke-width: 3.5;
+  }
+  .crono-pause-ring-track {
+    stroke: rgba(255,255,255,0.14);
+  }
+  .crono-pause-ring-arc {
+    stroke: var(--crono-color, var(--accent));
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.45s linear;
+  }
   .crono-pause-overlay-label {
     font-family: "Cormorant Garamond", serif;
     font-size: 15px;
@@ -3938,7 +4210,14 @@
     letter-spacing: 0.025em;
     line-height: 1;
     font-variant-numeric: tabular-nums;
-    margin-bottom: 32px;
+    margin-bottom: 12px;
+  }
+  .crono-pause-overlay-note {
+    max-width: 260px;
+    color: var(--text3);
+    font-size: 10px;
+    line-height: 1.45;
+    margin: 0 auto 20px;
   }
   .crono-pause-overlay-play {
     width: 64px; height: 64px;
@@ -4315,6 +4594,44 @@
   @keyframes cronoResumenLabelGlow {
     0%   { color: var(--accent); }
     100% { color: var(--text2); }
+  }
+
+  .crono-harvest-burst {
+    position: fixed;
+    left: 50%;
+    top: 42%;
+    transform: translate(-50%, -50%);
+    z-index: 260;
+    display: grid;
+    place-items: center;
+    min-width: 170px;
+    padding: 16px 22px;
+    border-radius: 18px;
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    background: color-mix(in srgb, var(--bg2) 88%, var(--accent) 12%);
+    box-shadow: 0 18px 60px -30px rgba(201,169,110,0.9);
+    color: var(--accent);
+    pointer-events: none;
+    animation: harvestBurst 1.45s var(--ease-out) forwards;
+  }
+  .crono-harvest-burst strong {
+    font-family: "Cormorant Garamond", serif;
+    font-size: 38px;
+    font-weight: 300;
+    line-height: 1;
+  }
+  .crono-harvest-burst span {
+    margin-top: 4px;
+    color: var(--text3);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  @keyframes harvestBurst {
+    0% { opacity: 0; transform: translate(-50%, -42%) scale(0.92); }
+    18% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    72% { opacity: 1; transform: translate(-50%, -58%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -78%) scale(0.86); }
   }
 
   /* ── Reloj analógico en el centro del cronómetro ─────────────────────────── */
