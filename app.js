@@ -286,6 +286,9 @@ function openModal(id) {
     // "se desenfoca la pantalla pero no aparece nada".
     void overlay.offsetWidth;
   }
+  overlay.scrollTop = 0;
+  const modalBox = overlay.querySelector('.modal');
+  if (modalBox) modalBox.scrollTop = 0;
   overlay.classList.add('visible');
   // Bloquear scroll del body para que el fondo no se desplace y el modal
   // quede correctamente centrado en el viewport
@@ -6241,7 +6244,9 @@ function renderObraCard(o, idx) {
     else if (last3.filter(t => t === 'saltado').length >= 2) tendencia = '<span class="obra-tendencia" style="color:var(--red)">↓ atención</span>';
   }
 
-  const origenTag = '';
+  const origenTag = o.origen === 'recuperacion'
+    ? '<span class="origen-tag recuperacion">Recuperación</span>'
+    : '';
 
   const tipoIcons = { solo: 'solo', informal: 'amigos', escena: '🎭', tecnico: 'tec', memoria: 'mem', concierto: '🎭' };
   const paseHistHtml = (o.paseHistory||[]).slice(0,5).map(p => {
@@ -7150,6 +7155,8 @@ function openAddObra() {
   });
   const difInput = document.getElementById('newObraDificultad');
   if (difInput) difInput.value = 3;
+  const tipoBtn = document.querySelector('#modalTipoSelector .origen-btn[data-tipo="obra"]');
+  if (tipoBtn) selectModalTipo(tipoBtn, 'obra');
   modalFaseSelected = 'digitando';
   document.querySelectorAll('#modalFaseSelector .fase-btn').forEach(b => {
     b.classList.remove('active');
@@ -7170,16 +7177,28 @@ function selectModalTipo(btn, tipo) {
   const actExtra = document.getElementById('modalTipoActividadExtra');
   const composer = document.getElementById('newObraComposer');
   const nameInput = document.getElementById('newObraName');
+  const aprChk = document.getElementById('newObraAprendida');
+  const aprRow = document.getElementById('addAprendidaRow');
+  const stateNote = document.getElementById('addObraStateNote');
   if (tipo === 'actividad') {
     if (obraExtra) obraExtra.style.display = 'none';
     if (actExtra) actExtra.style.display = '';
     if (composer) composer.style.display = 'none';
     if (nameInput) nameInput.placeholder = 'nombre de la actividad (ej. Lectura a primera vista)';
+    if (aprChk) aprChk.checked = false;
+    if (aprRow) aprRow.style.display = 'none';
   } else {
     if (obraExtra) obraExtra.style.display = '';
     if (actExtra) actExtra.style.display = 'none';
     if (composer) composer.style.display = '';
     if (nameInput) nameInput.placeholder = 'título';
+    if (aprChk) aprChk.checked = tipo === 'recuperacion';
+    if (aprRow) aprRow.style.display = tipo === 'recuperacion' ? 'none' : '';
+    if (stateNote) {
+      stateNote.textContent = tipo === 'recuperacion'
+        ? 'Funciona como una obra normal: tendrá compases, movimientos, pasajes, pases y solidez. Entra como aprendida para que puedas medir y recuperar desde el primer día.'
+        : 'Empieza como aprendizaje. Podrás añadir compases, movimientos, pasajes y solidez después.';
+    }
   }
 }
 
@@ -7190,7 +7209,8 @@ function addObra() {
   if (!db.obras) db.obras = [];
   const newId = 'o' + Date.now();
   const isActividad = modalTipoSelected === 'actividad';
-  const yaAprendida = !isActividad && !!document.getElementById('newObraAprendida')?.checked;
+  const isRecuperacion = modalTipoSelected === 'recuperacion';
+  const yaAprendida = !isActividad && (isRecuperacion || !!document.getElementById('newObraAprendida')?.checked);
   const duracionVal = parseInt(document.getElementById('newObraDuracion')?.value || '', 10);
   const compasesTotalVal = parseInt(document.getElementById('newObraCompasesTotal')?.value || '', 10);
   const dificultadRaw = parseInt(document.getElementById('newObraDificultad')?.value || '3', 10);
@@ -7199,13 +7219,13 @@ function addObra() {
     id: newId,
     name,
     composer: isActividad ? '' : (composer || '—'),
-    // Las actividades no tienen fase de aprendizaje, dificultad ni duración;
-    // tampoco origen "nueva/recuperación". Sólo nombre y tiempo.
+    // Las actividades no tienen fase de aprendizaje, dificultad ni duración.
+    // Recuperación sí es una obra normal: sólo cambia su estado inicial/origen.
     tipo: isActividad ? 'actividad' : 'obra',
     // Si se marca "ya me la sé", nace aprendida (consolidando) en vez de
     // aprendiendo-inicial. Los compases se pueden añadir después.
     estado: isActividad ? null : (yaAprendida ? 'consolidando' : 'aprendiendo-inicial'),
-    origen: null,
+    origen: isRecuperacion ? 'recuperacion' : null,
     dificultad: isActividad ? null : dificultadVal,
     duracion: !isActividad && duracionVal > 0 ? duracionVal : null,
     compasesTotal: !isActividad && compasesTotalVal > 0 ? compasesTotalVal : null,
@@ -7225,7 +7245,7 @@ function addObra() {
   saveData();
   closeModal('modalAddObra');
   renderObras();
-  showToast(isActividad ? 'Actividad añadida ✓' : 'Obra añadida ✓');
+  showToast(isActividad ? 'Actividad añadida ✓' : isRecuperacion ? 'Obra recuperada ✓' : 'Obra añadida ✓');
   // Reset por defecto a "obra" para próxima apertura
   modalTipoSelected = 'obra';
   const tipoBtns = document.querySelectorAll('#modalTipoSelector .origen-btn');

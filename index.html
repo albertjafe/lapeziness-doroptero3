@@ -493,10 +493,11 @@
 <div class="modal-overlay" id="modalAddObra">
   <div class="modal add-obra-modal">
     <div class="modal-title">Añadir estudio</div>
-    <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Tipo</div>
+    <div class="modal-section-label">Tipo</div>
     <div class="origen-selector" id="modalTipoSelector" style="margin-bottom:14px">
-      <button class="origen-btn nueva active" data-tipo="obra" onclick="selectModalTipo(this,'obra')">Obra</button>
-      <button class="origen-btn recuperacion" data-tipo="actividad" onclick="selectModalTipo(this,'actividad')">Actividad</button>
+      <button class="origen-btn nueva active" data-tipo="obra" onclick="selectModalTipo(this,'obra')">Obra nueva</button>
+      <button class="origen-btn recuperacion" data-tipo="recuperacion" onclick="selectModalTipo(this,'recuperacion')">Ya la tocaba</button>
+      <button class="origen-btn actividad" data-tipo="actividad" onclick="selectModalTipo(this,'actividad')">Actividad</button>
     </div>
     <input class="modal-input" id="newObraName" placeholder="título" type="text">
     <input class="modal-input" id="newObraComposer" placeholder="compositor" type="text">
@@ -515,11 +516,11 @@
           <input class="modal-input add-obra-mini-input" id="newObraDificultad" type="number" min="1" max="10" value="3">
         </div>
       </div>
-      <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px">Estado inicial</div>
-      <div style="font-size:10px;color:var(--text3);margin-bottom:10px;line-height:1.5">Por defecto: <span style="color:var(--orange)">Aprendiendo — inicial</span>. Los compases se añaden después.</div>
-      <label class="add-aprendida-row">
+      <div class="modal-section-label">Estado inicial</div>
+      <div class="add-obra-state-note" id="addObraStateNote">Empieza como aprendizaje. Podrás añadir compases, movimientos, pasajes y solidez después.</div>
+      <label class="add-aprendida-row" id="addAprendidaRow">
         <input type="checkbox" id="newObraAprendida">
-        <span>Ya me la sé · marcar como aprendida (sin contar compases)</span>
+        <span id="addAprendidaText">Marcar como aprendida si ya la tienes en dedos.</span>
       </label>
     </div>
     <div id="modalTipoActividadExtra" style="display:none;font-size:10px;color:var(--text3);margin-bottom:14px;line-height:1.5;font-style:italic">
