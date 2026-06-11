@@ -1017,6 +1017,9 @@
     display: none;
     position: fixed;
     inset: 0;
+    width: 100vw;
+    min-height: 100vh;
+    min-height: 100dvh;
     background: rgba(0,0,0,0.55);
     backdrop-filter: blur(6px) saturate(0.85);
     -webkit-backdrop-filter: blur(6px) saturate(0.85);
@@ -1025,7 +1028,10 @@
     justify-content: center;
     padding: 20px;
     box-sizing: border-box;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
     opacity: 0;
     transition: opacity 0.35s cubic-bezier(0.4,0,0.2,1);
   }
@@ -1033,7 +1039,8 @@
     .modal-overlay { background: rgba(0,0,0,0.7); }
   }
   .modal-overlay.visible {
-    display: flex;
+    display: grid;
+    place-items: center;
     opacity: 1;
   }
   .modal {
@@ -1053,6 +1060,7 @@
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     position: relative;
+    margin: auto;
     box-sizing: border-box;
     /* Entrada suave: opacity sólo, sin transform — el transform sobre un
        elemento centrado con flexbox puede crear contextos de transformación

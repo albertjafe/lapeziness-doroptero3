@@ -13858,7 +13858,6 @@ function cronoHydrate() {
 
 window.addEventListener('load', function() {
   setTimeout(cronoHydrate, 100);
-  setTimeout(_metroDrawerInit, 150);
   _swUpdateInit();
 });
 
