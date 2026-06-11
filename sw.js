@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v22';
+const CACHE = 'estudio-v25';
 const ASSETS = [
   './index.html',
   './styles.css',
@@ -10,7 +10,9 @@ const ASSETS = [
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE)
+      .then(c => c.addAll(ASSETS.map(asset => new Request(asset, { cache: 'reload' }))))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -37,7 +39,7 @@ self.addEventListener('fetch', e => {
   // Network-first for local files: always serve the freshest version when
   // online, and fall back to the cache when offline.
   e.respondWith(
-    fetch(e.request)
+    fetch(new Request(e.request, { cache: 'no-store' }))
       .then(res => {
         if (res && res.ok) {
           const clone = res.clone();

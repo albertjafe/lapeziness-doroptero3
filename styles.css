@@ -79,6 +79,15 @@
     --cozy-radius: 18px; --cozy-radius-sm: 12px; --cozy-radius-xs: 8px;
   }
 
+  /* TEMA: Velvet */
+  [data-theme="velvet"] {
+    --bg: #150b12; --bg2: #21131d; --bg3: #2b1b27;
+    --accent: #d2a66c; --accent2: #f0cf96;
+    --text: #f3eadf; --text2: #bfae9d; --text3: #75645b;
+    --green: #7fbe95; --orange: #d99662; --red: #d46c76;
+    --border: rgba(210,166,108,0.24); --border2: rgba(210,166,108,0.12);
+  }
+
   /* COZY SHAPE OVERRIDES */
   [data-theme="cozy"] .card { border-radius: var(--cozy-radius) !important; }
   [data-theme="cozy"] .obra-card { border-radius: var(--cozy-radius) !important; }
@@ -113,6 +122,23 @@
   [data-theme="cozy"] .estado-badge, [data-theme="cozy"] .urgencia-computed { border-radius: 10px !important; }
   [data-theme="cozy"] .mov-card { border-radius: var(--cozy-radius-sm) !important; }
   [data-theme="cozy"] body { background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239b6a3a' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
+  [data-theme="velvet"] .topbar,
+  [data-theme="velvet"] .header,
+  [data-theme="velvet"] .nav {
+    background: rgba(21,11,18,0.92);
+    backdrop-filter: blur(18px) saturate(1.2);
+    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  }
+  [data-theme="velvet"] .card,
+  [data-theme="velvet"] .obra-card,
+  [data-theme="velvet"] .modal,
+  [data-theme="velvet"] .sol-dash-widget,
+  [data-theme="velvet"] .efic-widget {
+    box-shadow: 0 18px 50px -36px rgba(0,0,0,0.85);
+  }
+  [data-theme="velvet"] body::before {
+    opacity: 0.75;
+  }
 
   /* Cozy piano decoration */
   .cozy-piano-deco { display: none; }
@@ -1017,16 +1043,16 @@
     display: none;
     position: fixed;
     inset: 0;
-    width: 100vw;
-    min-height: 100vh;
-    min-height: 100dvh;
+    width: calc(100vw / var(--app-zoom, 1));
+    min-height: calc(100vh / var(--app-zoom, 1));
+    min-height: calc(100dvh / var(--app-zoom, 1));
     background: rgba(0,0,0,0.55);
     backdrop-filter: blur(6px) saturate(0.85);
     -webkit-backdrop-filter: blur(6px) saturate(0.85);
     z-index: 200;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: calc(20px / var(--app-zoom, 1));
     box-sizing: border-box;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -2065,9 +2091,10 @@
 
   /* EFICIENCIA */
   .efic-widget { background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
-  .efic-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+  .efic-widget.compact-empty { padding: 13px 14px; }
+  .efic-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
   .efic-title { font-family: 'Cormorant Garamond', serif; font-size: 18px; color: var(--accent); font-weight: 300; }
-  .efic-subtitle { font-size: 8px; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px; }
+  .efic-subtitle { font-size: 9px; color: var(--text3); letter-spacing: 0.02em; text-transform: none; margin-top: 2px; }
   .efic-kpis { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
   .efic-kpi { flex: 1; min-width: 70px; background: var(--bg3); border: 1px solid var(--border2); border-radius: 7px; padding: 8px 10px; text-align: center; }
   .efic-kpi-val { font-family: 'Cormorant Garamond', serif; font-size: 20px; line-height: 1; margin-bottom: 3px; }
@@ -2084,6 +2111,28 @@
   .efic-obra-val { font-family: 'JetBrains Mono', monospace; color: var(--accent); min-width: 40px; text-align: right; }
   .efic-obra-bar-wrap { flex: 1; height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
   .efic-obra-bar { height: 100%; border-radius: 2px; }
+  .quiet-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border2);
+    border-radius: 999px;
+    padding: 4px 8px;
+    color: var(--text3);
+    background: var(--bg3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    white-space: nowrap;
+  }
+  .quiet-section-label {
+    margin: 10px 0 5px;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+  }
 
   /* EVENT READINESS */
   .evento-readiness {
@@ -4632,8 +4681,8 @@
     margin-top: 4px;
     color: var(--text3);
     font-size: 9px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    text-transform: none;
   }
   @keyframes harvestBurst {
     0% { opacity: 0; transform: translate(-50%, -42%) scale(0.92); }
@@ -4959,8 +5008,8 @@
     color: var(--text2);
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-transform: none;
     cursor: pointer;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -5022,10 +5071,10 @@
   .sol-dash-subtitle {
     margin-top: 3px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 8px;
+    font-size: 9px;
     color: var(--text3);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    text-transform: none;
   }
   .sol-dash-primary,
   .sol-dash-measure {
@@ -5038,8 +5087,8 @@
     border-radius: 999px;
     font-family: 'JetBrains Mono', monospace;
     font-size: 8px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-transform: none;
     cursor: pointer;
     white-space: nowrap;
     transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
@@ -5088,8 +5137,8 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 7px;
     color: var(--text3);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    text-transform: none;
   }
   .sol-dash-distribution {
     border: 1px solid var(--border2);

@@ -609,6 +609,10 @@
         <div class="theme-swatch" style="background:linear-gradient(135deg,#edf0f2 50%,#4a7068 100%)"></div>
         <div class="theme-option-name">🌿 Bruma</div>
       </div>
+      <div class="theme-option" data-theme="velvet" onclick="setTheme('velvet',this)">
+        <div class="theme-swatch" style="background:linear-gradient(135deg,#150b12 50%,#b88a5a 100%)"></div>
+        <div class="theme-option-name">Velvet</div>
+      </div>
     </div>
 
     <div class="settings-section">Fuente</div>
@@ -1433,7 +1437,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js').then(function(reg) {
+      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

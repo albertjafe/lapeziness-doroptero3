@@ -3058,9 +3058,8 @@ function renderEficienciaSection() {
   const N_MIN = 3;
   if (datos.length < N_MIN) {
     const faltan = N_MIN - datos.length;
-    el.innerHTML = '<div class="efic-widget"><div class="efic-header"><div><div class="efic-title">Evolución del aprendizaje</div><div class="efic-subtitle">Análisis de eficiencia normalizada por dificultad</div></div></div>' +
-      '<div class="efic-trend nodatos">📊 Necesitas <strong>' + faltan + ' obra' + (faltan!==1?'s':'') + ' completada' + (faltan!==1?'s':'') + '</strong> más con compases para activar este análisis.' +
-      (datos.length > 0 ? '<br>Ya tienes ' + datos.length + ' obra completada.' : '<br>Completa obras con compas actual = total.') + '</div></div>';
+    el.innerHTML = '<div class="efic-widget compact-empty"><div class="efic-header"><div><div class="efic-title">Aprendizaje</div><div class="efic-subtitle">Eficiencia por obra</div></div><span class="quiet-pill">' + datos.length + '/' + N_MIN + '</span></div>' +
+      '<div class="efic-trend nodatos">Faltan <strong>' + faltan + '</strong> obra' + (faltan!==1?'s':'') + ' completada' + (faltan!==1?'s':'') + ' con compases.</div></div>';
     return;
   }
   const puntos = datos.map(d => ({ x: new Date(d.fechaCompletado).getTime(), y: d.eficiencia, label: d.nombre }));
@@ -3120,7 +3119,7 @@ function renderEficienciaSection() {
     return '<div class="efic-obra-row"><span class="efic-obra-name">' + d.nombre + '</span><span style="font-size:7px;color:var(--text3);min-width:30px">' + fecha + '</span><span style="font-size:7px;color:var(--text3);min-width:20px">D' + d.dif + '</span><div class="efic-obra-bar-wrap"><div class="efic-obra-bar" style="width:' + pct + '%;background:' + col + '"></div></div><span class="efic-obra-val">' + fmtE(d.eficiencia) + '</span></div>';
   }).join('') + '</div>';
 
-  el.innerHTML = '<div class="efic-widget"><div class="efic-header"><div><div class="efic-title">Evolución del aprendizaje</div><div class="efic-subtitle">Eficiencia normalizada por dificultad y extensión</div></div><div style="font-size:8px;color:var(--text3);text-align:right">' + datos.length + ' obras analizadas</div></div><div class="efic-kpis">' + kpisHtml + '</div>' + interpHtml + svgHtml + '<div style="font-size:8px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin:10px 0 5px">Obras (menor = más eficiente)</div>' + obrasHtml + '</div>';
+  el.innerHTML = '<div class="efic-widget"><div class="efic-header"><div><div class="efic-title">Aprendizaje</div><div class="efic-subtitle">Eficiencia por obra</div></div><span class="quiet-pill">' + datos.length + ' obras</span></div><div class="efic-kpis">' + kpisHtml + '</div>' + interpHtml + svgHtml + '<div class="quiet-section-label">Menor = más eficiente</div>' + obrasHtml + '</div>';
 }
 
 // ── FOREST IMPORT ─────────────────────────────────────────────────────────────
@@ -3285,7 +3284,7 @@ function renderSolidezSection() {
   if (!el) return;
   const items = _solidezCollectTargets();
   if (!items.length) {
-    el.innerHTML = '<div class="sol-dash-widget empty"><div class="sol-dash-title">Seguimiento de solidez</div><div class="sol-dash-empty">Anade una obra para empezar a medir solidez sin salir del flujo de estudio.</div></div>';
+    el.innerHTML = '<div class="sol-dash-widget empty"><div class="sol-dash-title">Solidez</div><div class="sol-dash-empty">Anade una obra para empezar a medir sin salir del flujo de estudio.</div></div>';
     return;
   }
 
@@ -3310,9 +3309,9 @@ function renderSolidezSection() {
   const mainTarget = watchRows[0] || items[0];
 
   const kpis = '<div class="sol-dash-kpi"><strong>' + (avg == null ? '--' : avg + '%') + '</strong><span>media medida</span></div>' +
-    '<div class="sol-dash-kpi"><strong>' + fragiles + '</strong><span>a consolidar</span></div>' +
-    '<div class="sol-dash-kpi"><strong>' + recientes + '</strong><span>medidas 7d</span></div>' +
-    '<div class="sol-dash-kpi"><strong>' + stale + '</strong><span>sin tocar 14d</span></div>';
+    '<div class="sol-dash-kpi"><strong>' + fragiles + '</strong><span>frágiles</span></div>' +
+    '<div class="sol-dash-kpi"><strong>' + recientes + '</strong><span>7 días</span></div>' +
+    '<div class="sol-dash-kpi"><strong>' + stale + '</strong><span>pendientes</span></div>';
 
   const watchHtml = watchRows.length
     ? watchRows.map(i => _solidezRenderRow(i, false)).join('')
@@ -3323,14 +3322,14 @@ function renderSolidezSection() {
 
   el.innerHTML = '<div class="sol-dash-widget">' +
     '<div class="sol-dash-header">' +
-      '<div><div class="sol-dash-title">Seguimiento de solidez</div><div class="sol-dash-subtitle">Obras, movimientos y pasajes en una sola lectura</div></div>' +
+      '<div><div class="sol-dash-title">Solidez</div><div class="sol-dash-subtitle">Qué revisar ahora</div></div>' +
       '<button class="sol-dash-primary" onclick="openQuickSolidezTarget(' + _solidezOpenArgs(mainTarget) + ')">Registrar ahora</button>' +
     '</div>' +
     '<div class="sol-dash-kpis">' + kpis + '</div>' +
     _solidezDistribution(measured) +
     '<div class="sol-dash-columns">' +
-      '<div><div class="sol-dash-section-title">A vigilar</div>' + watchHtml + '</div>' +
-      '<div><div class="sol-dash-section-title">Ultimas mediciones</div>' + recentHtml + '</div>' +
+      '<div><div class="sol-dash-section-title">Prioridad</div>' + watchHtml + '</div>' +
+      '<div><div class="sol-dash-section-title">Reciente</div>' + recentHtml + '</div>' +
     '</div>' +
   '</div>';
 }
@@ -6274,7 +6273,7 @@ function renderObraCard(o, idx) {
   // Urgencia block (shared)
   const urgBlock = (() => {
     const urg = computeUrgencia(o.id);
-    if (urg.nivel === 'sin-evento') return '<div style="font-size:9px;color:var(--text3);margin-top:8px">Sin evento asignado en calendario</div>';
+    if (urg.nivel === 'sin-evento') return '';
     const ev = urg.evento;
     return `<div class="urgencia-computed ${urg.nivel}" style="margin-top:8px">
       <span style="font-weight:bold">${urg.label}</span>
@@ -6305,9 +6304,9 @@ function renderObraCard(o, idx) {
 
   const nextActionHtml = `
     <div class="obra-next-card">
-      <span>Próxima acción</span>
+      <span>Ahora</span>
       <strong>${escapeHtmlSafe(nextAction || 'revisar')}</strong>
-      ${headerZone ? `<em>${escapeHtmlSafe(headerZone)}</em>` : `<em>sin zona registrada</em>`}
+      ${headerZone ? `<em>${escapeHtmlSafe(headerZone)}</em>` : `<em>sin zona</em>`}
     </div>`;
 
   return `
@@ -6322,7 +6321,7 @@ function renderObraCard(o, idx) {
             ${composerLine}
             ${headerProgress ? `<span>avance ${headerProgress}</span>` : ''}
             ${headerZone ? `<span>${escapeHtmlSafe(headerZone)}</span>` : ''}
-            ${nextAction ? `<span>próx. ${escapeHtmlSafe(nextAction)}</span>` : ''}
+            ${nextAction ? `<span>${escapeHtmlSafe(nextAction)}</span>` : ''}
           </div>
         </div>
         <div class="obra-scores">
