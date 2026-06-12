@@ -61,31 +61,31 @@
   [data-font="system"] .obra-name,
   [data-font="system"] .modal-title { font-family: -apple-system, 'Helvetica Neue', sans-serif; }
 
-  /* TEMA: Noche (default) */
+  /* TEMA: Noche (default) — pizarra cálida con latón suave */
   :root {
-    --bg: #0f0f1a; --bg2: #16162a; --bg3: #1e1e38;
-    --accent: #c9a96e; --accent2: #e8c89a;
-    --text: #e8e4da; --text2: #9a9280; --text3: #5a5445;
-    --green: #6eb89a; --orange: #d4876a; --red: #c96e6e;
-    --border: rgba(201,169,110,0.15); --border2: rgba(201,169,110,0.08);
+    --bg: #11151c; --bg2: #181e27; --bg3: #212a36;
+    --accent: #d2b285; --accent2: #ead2a6;
+    --text: #ece7dc; --text2: #a59c89; --text3: #5f594c;
+    --green: #7cb89c; --orange: #d4906a; --red: #c97a74;
+    --border: rgba(210,178,133,0.16); --border2: rgba(210,178,133,0.08);
   }
   /* TEMA: Cozy */
   [data-theme="cozy"] {
-    --bg: #fdf6ee; --bg2: #f5ead8; --bg3: #ede0c8;
-    --accent: #9b6a3a; --accent2: #c08040;
+    --bg: #faf4ea; --bg2: #f2e8d6; --bg3: #e9dcc3;
+    --accent: #8a5c30; --accent2: #b3793c;
     --text: #2d1f0e; --text2: #6b4c2a; --text3: #a07848;
     --green: #5a8040; --orange: #c07020; --red: #b03030;
-    --border: rgba(155,106,58,0.25); --border2: rgba(155,106,58,0.13);
+    --border: rgba(138,92,48,0.25); --border2: rgba(138,92,48,0.13);
     --cozy-radius: 18px; --cozy-radius-sm: 12px; --cozy-radius-xs: 8px;
   }
 
-  /* TEMA: Velvet */
+  /* TEMA: Abeto (antes Velvet) — bosque de noche, verde profundo y salvia clara */
   [data-theme="velvet"] {
-    --bg: #150b12; --bg2: #21131d; --bg3: #2b1b27;
-    --accent: #d2a66c; --accent2: #f0cf96;
-    --text: #f3eadf; --text2: #bfae9d; --text3: #75645b;
-    --green: #7fbe95; --orange: #d99662; --red: #d46c76;
-    --border: rgba(210,166,108,0.24); --border2: rgba(210,166,108,0.12);
+    --bg: #131a15; --bg2: #19231c; --bg3: #233027;
+    --accent: #94c4a2; --accent2: #bedfc8;
+    --text: #e9f0e9; --text2: #a9bdac; --text3: #5c6f5f;
+    --green: #84ba92; --orange: #d0995f; --red: #cb7b71;
+    --border: rgba(148,196,162,0.2); --border2: rgba(148,196,162,0.1);
   }
 
   /* COZY SHAPE OVERRIDES */
@@ -103,14 +103,10 @@
   [data-theme="cozy"] .nav { border-radius: 0; background: var(--bg2); }
   [data-theme="cozy"] .header { border-bottom: 2px solid var(--border); background: var(--bg2); }
   [data-theme="cozy"] .topbar { background: var(--bg2); }
+  /* Caveat solo como firma (título y botones grandes); el resto del contenido
+     usa Cormorant para un acabado más profesional. */
   [data-theme="cozy"] .header-title { font-family: 'Caveat', cursive !important; font-size: 26px !important; font-style: italic; }
   [data-theme="cozy"] .session-hero-title { font-family: 'Caveat', cursive !important; font-size: 38px !important; }
-  [data-theme="cozy"] .modal-title { font-family: 'Caveat', cursive !important; font-size: 26px !important; }
-  [data-theme="cozy"] .plan-item-name { font-family: 'Caveat', cursive !important; font-size: 21px !important; }
-  [data-theme="cozy"] .obra-name { font-family: 'Caveat', cursive !important; font-size: 19px !important; }
-  [data-theme="cozy"] .evento-nombre { font-family: 'Caveat', cursive !important; font-size: 21px !important; }
-  [data-theme="cozy"] .pase-nombre { font-family: 'Caveat', cursive !important; }
-  [data-theme="cozy"] .mes-nav-label { font-family: 'Caveat', cursive !important; font-size: 24px !important; }
   [data-theme="cozy"] .break-card { border-radius: var(--cozy-radius) !important; border: 1px solid var(--border); }
   [data-theme="cozy"] .energy-btn { border-radius: 20px !important; }
   [data-theme="cozy"] .modal-btn { border-radius: 12px !important; }
@@ -125,7 +121,7 @@
   [data-theme="velvet"] .topbar,
   [data-theme="velvet"] .header,
   [data-theme="velvet"] .nav {
-    background: rgba(21,11,18,0.92);
+    background: rgba(19,26,21,0.92);
     backdrop-filter: blur(18px) saturate(1.2);
     -webkit-backdrop-filter: blur(18px) saturate(1.2);
   }
@@ -2933,20 +2929,21 @@
     display: none !important;
   }
   /* ── TEMA BRUMA ──────────────────────────────────────────────────────────── */
+  /* Bosque (antes Bruma) — claro y sereno, verde de día con crema cálida */
   [data-theme="bruma"] {
-    --bg:      #edf0f2;
-    --bg2:     #dde3e8;
-    --bg3:     #cdd6dd;
-    --accent:  #4a7068;
-    --accent2: #6a9a8a;
-    --text:    #1a2a28;
-    --text2:   #3a5250;
-    --text3:   #7a9896;
-    --green:   #4a7a5a;
-    --orange:  #b07040;
-    --red:     #a05050;
-    --border:  rgba(74,112,104,0.22);
-    --border2: rgba(74,112,104,0.11);
+    --bg:      #f3f4ec;
+    --bg2:     #e9ede0;
+    --bg3:     #dde4d1;
+    --accent:  #4e7d5b;
+    --accent2: #6fa07e;
+    --text:    #243029;
+    --text2:   #4b5f51;
+    --text3:   #8ba18d;
+    --green:   #4e8a5e;
+    --orange:  #c08442;
+    --red:     #b05c52;
+    --border:  rgba(78,125,91,0.25);
+    --border2: rgba(78,125,91,0.12);
     --cozy-radius: 20px; --cozy-radius-sm: 12px;
   }
   [data-theme="bruma"] .card,
@@ -2965,7 +2962,7 @@
   [data-theme="bruma"] .obra-card { border: 1px solid var(--border2); }
   [data-theme="bruma"] .evento-card { border-radius: 18px !important; }
   [data-theme="bruma"] .sesion-hist-item { border-radius: 12px !important; border: 1px solid var(--border2); padding: 12px; margin-bottom: 10px; background: var(--bg2); }
-  [data-theme="bruma"] .botanical-deco { opacity: 0.07; filter: hue-rotate(140deg) saturate(0.5); }
+  [data-theme="bruma"] .botanical-deco { opacity: 0.09; filter: hue-rotate(100deg) saturate(0.6); }
   [data-theme="bruma"] body { background-image: none; }
 
 
@@ -3666,15 +3663,15 @@
   }
   .crono-idle-message {
     font-family: "Cormorant Garamond", serif;
-    font-size: 19px;
-    color: var(--text2);
-    font-weight: 400;
+    font-size: 24px;
+    color: var(--text);
+    font-weight: 300;
     letter-spacing: 0.02em;
-    margin-bottom: 20px;
-    margin-top: 8px;
+    margin-bottom: 26px;
+    margin-top: 12px;
     line-height: 1.3;
     font-style: italic;
-    opacity: 0.85;
+    opacity: 0.92;
   }
 
   /* Pieza central: ensō (círculo zen) sobrio.
@@ -4000,22 +3997,34 @@
   .crono-plant-btn {
     display: block;
     margin: 0 auto;
-    padding: 13px 56px;
+    padding: 15px 64px;
     border-radius: 999px;
     border: 1px solid var(--crono-color, var(--accent));
     background: transparent;
     color: var(--crono-color, var(--accent));
     font-family: "Cormorant Garamond", serif;
-    font-size: 17px;
+    font-size: 18px;
     font-weight: 400;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
     -webkit-tap-highlight-color: transparent;
     position: relative;
   }
+  /* Invitación sutil: relleno tenue y respiración de luz muy lenta */
+  .crono-plant-btn:not(:disabled) {
+    background: color-mix(in oklab, var(--crono-color, var(--accent)) 9%, transparent);
+    animation: plantBreathe 5.5s ease-in-out infinite;
+  }
+  @keyframes plantBreathe {
+    0%, 100% { box-shadow: 0 0 16px -10px var(--crono-color, var(--accent)); }
+    50%      { box-shadow: 0 0 26px -7px var(--crono-color, var(--accent)); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .crono-plant-btn:not(:disabled) { animation: none; }
+  }
   .crono-plant-btn:not(:disabled):hover {
-    background: color-mix(in oklab, var(--crono-color, var(--accent)) 10%, transparent);
+    background: color-mix(in oklab, var(--crono-color, var(--accent)) 16%, transparent);
   }
   @supports not (background: color-mix(in oklab, red, blue)) {
     .crono-plant-btn:not(:disabled):hover { background: rgba(201,169,110,0.10); }
@@ -4029,8 +4038,9 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    margin: 14px auto 0;
+    margin: 16px auto 0;
     padding: 8px 18px;
+    opacity: 0.7;
     border-radius: 999px;
     border: 1px solid var(--border2);
     background: transparent;
@@ -6059,3 +6069,37 @@
   .hist-list-toggle:hover { color: var(--text2); border-color: var(--border); }
   [data-theme="cozy"] .stats-card { border-radius: var(--cozy-radius) !important; }
   [data-theme="cozy"] .stats-period-label { font-family: 'Caveat', cursive !important; font-size: 22px !important; }
+
+  /* Controles secundarios del cronómetro en reposo: presentes pero discretos */
+  .crono-rest-btn:hover { opacity: 1; }
+  .crono-quick-actions { opacity: 0.78; transition: opacity 0.25s; }
+  .crono-quick-actions:hover { opacity: 1; }
+
+  /* ─── EMPUJÓN "Te convendría" en la vista Sesión ─── */
+  .session-insight-card.nudge {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border2));
+    background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, var(--bg2)), var(--bg2));
+    transition: transform 0.2s var(--ease-out), box-shadow 0.2s;
+  }
+  @supports not (background: color-mix(in srgb, red, blue)) {
+    .session-insight-card.nudge { background: var(--bg2); border-color: var(--accent); }
+  }
+  .session-insight-card.nudge:hover { box-shadow: 0 10px 26px -20px rgba(0,0,0,0.6); }
+  .session-insight-card.nudge:active { transform: scale(0.99); }
+  .session-insight-nudge-cta {
+    flex-shrink: 0;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }

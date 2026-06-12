@@ -11850,11 +11850,94 @@ function _fmtMinShort(min) {
   return h + 'h' + (m ? ' ' + m + 'm' : '');
 }
 
+// ── EMPUJÓN DE ESTUDIO ────────────────────────────────────────────────────────
+// "Te convendría retomar X": detecta la obra activa más desatendida ponderando
+// días sin tocarla, urgencia de evento próximo que la incluya y dificultad.
+// La tarjeta lleva directo al cronómetro con la obra preseleccionada.
+function _nudgeLastStudyMap() {
+  const map = {}; // obraId → timestamp del último estudio
+  const mark = (obraId, t) => {
+    if (!obraId || !t || isNaN(t)) return;
+    if (!map[obraId] || t > map[obraId]) map[obraId] = t;
+  };
+  (db.sessionPlants || []).forEach(p => { if (p && !p.failed && p.startedAt) mark(p.obraId, new Date(p.startedAt).getTime()); });
+  (db.forestPlants || []).forEach(p => { if (p && !p.failed && p.startedAt) mark(p.obraId, new Date(p.startedAt).getTime()); });
+  (db.sesiones || []).forEach(s => {
+    const t = new Date(s.date).getTime();
+    (s.items || []).forEach(it => { if (_itemEstudiado(it)) mark(it.obraId, t); });
+  });
+  return map;
+}
+
+function computeStudyNudge() {
+  const obras = (db.obras || []).filter(o => o.tipo !== 'actividad');
+  if (!obras.length) return null;
+  const last = _nudgeLastStudyMap();
+  const now = Date.now();
+  const evByObra = {};
+  (db.eventos || []).forEach(ev => {
+    if (ev.resultado && ev.resultado.scoreTotal != null) return;
+    const dias = Math.ceil((new Date(ev.fecha + 'T12:00:00') - now) / 86400000);
+    if (dias < 0 || dias > 45) return;
+    (ev.obras || []).forEach(id => {
+      if (!evByObra[id] || evByObra[id].dias > dias) evByObra[id] = { nombre: ev.nombre, dias };
+    });
+  });
+  let best = null;
+  obras.forEach(o => {
+    const t = last[o.id];
+    const dias = t ? Math.floor((now - t) / 86400000) : null;
+    if (dias !== null && dias < 3) return; // tocada hace poco: no insistir
+    const ev = evByObra[o.id] || null;
+    if (dias === null && !ev) return;      // nunca tocada y sin evento: no urge
+    let score = dias === null ? 10 : Math.min(dias, 30);
+    if (ev) score += Math.max(0, 30 - ev.dias);
+    if ((o.dificultad || 3) >= 6) score += 4;
+    if (!best || score > best.score) best = { obraId: o.id, nombre: o.name, dias, ev, score };
+  });
+  if (!best) return null;
+  let motivo;
+  if (best.dias === null) motivo = 'Aún sin sesiones registradas';
+  else if (best.dias >= 30) motivo = 'Más de un mes sin tocarla';
+  else motivo = best.dias + ' día' + (best.dias === 1 ? '' : 's') + ' sin tocarla';
+  if (best.ev) motivo += ' · en «' + best.ev.nombre + '» ' + (best.ev.dias === 0 ? '(hoy)' : '(' + best.ev.dias + 'd)');
+  return { obraId: best.obraId, nombre: best.nombre, motivo };
+}
+
+function nudgeStudyNow(obraId) {
+  showView('cronometro');
+  const sel = document.getElementById('cronoObraSelect');
+  if (!sel) return;
+  if (typeof cronoFillSelectInto === 'function') cronoFillSelectInto(sel);
+  let v = 'obra::' + obraId;
+  if (!Array.from(sel.options).some(op => op.value === v)) {
+    const obra = findObra(obraId);
+    const m = obra && (obra.movimientos || []).find(x => x.name);
+    v = m ? ('mov::' + obraId + '::' + m.id) : '';
+  }
+  if (v) {
+    sel.value = v;
+    cronoUpdateStartBtn();
+  }
+}
+
 function renderSessionInsights() {
   const host = document.getElementById('sessionInsightStack');
   if (!host) return;
   const cards = [];
   const now = new Date();
+
+  const nudge = computeStudyNudge();
+  if (nudge) {
+    cards.push('<div class="session-insight-card nudge" onclick="nudgeStudyNow(\'' + nudge.obraId + '\')">' +
+      '<div style="min-width:0">' +
+        '<div class="session-insight-kicker">Te convendría</div>' +
+        '<div class="session-insight-main">Retomar <strong>' + escapeHtmlSafe(nudge.nombre) + '</strong></div>' +
+        '<div class="session-insight-sub">' + escapeHtmlSafe(nudge.motivo) + '</div>' +
+      '</div>' +
+      '<span class="session-insight-nudge-cta">▶ Estudiarla</span>' +
+    '</div>');
+  }
 
   const upcoming = (db.eventos || [])
     .map(ev => ({ ...ev, dias: Math.ceil((new Date(ev.fecha + 'T12:00:00') - now) / 86400000) }))
@@ -12607,13 +12690,29 @@ function cronoApplyModeUI() {
   if (crono.mode === 'timer') {
     cronoTimerRenderSlider();
   }
-  // Mensaje contextual
+  // Mensaje contextual: en cronómetro, una frase serena que rota con el día
   const msg = document.getElementById('cronoIdleMessage');
   if (msg) {
     msg.textContent = crono.mode === 'timer'
       ? 'Elige cuánto quieres concentrarte'
-      : 'Empieza tu sesión de hoy';
+      : _cronoIdlePhrase();
   }
+}
+
+const CRONO_IDLE_PHRASES = [
+  'Empieza donde lo dejaste',
+  'Un compás cada vez',
+  'Hoy también se construye',
+  'Lo difícil, despacio',
+  'La calma también ensaya',
+  'Manos, mente, música',
+  'Cada pase deja huella',
+  'Despacio se llega antes',
+];
+function _cronoIdlePhrase() {
+  const d = new Date();
+  const seed = d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate();
+  return CRONO_IDLE_PHRASES[seed % CRONO_IDLE_PHRASES.length];
 }
 
 function cronoMoveModeIndicator() {
