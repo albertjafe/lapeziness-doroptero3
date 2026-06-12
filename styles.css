@@ -100,9 +100,9 @@
   [data-theme="cozy"] .save-btn { border-radius: 14px !important; }
   [data-theme="cozy"] .nav-btn { border-radius: 10px !important; }
   [data-theme="cozy"] .nav-btn.active { background: var(--bg3) !important; }
-  [data-theme="cozy"] .nav { border-radius: 0; background: var(--bg2); }
-  [data-theme="cozy"] .header { border-bottom: 2px solid var(--border); background: var(--bg2); }
-  [data-theme="cozy"] .topbar { background: var(--bg2); }
+  [data-theme="cozy"] .nav { border-radius: 0; background: color-mix(in srgb, var(--bg2) 62%, transparent); }
+  [data-theme="cozy"] .header { border-bottom: 2px solid var(--border); background: transparent; }
+  [data-theme="cozy"] .topbar { background: var(--bg2); background: color-mix(in srgb, var(--bg2) 88%, transparent); }
   /* Caveat solo como firma (título y botones grandes); el resto del contenido
      usa Cormorant para un acabado más profesional. */
   [data-theme="cozy"] .header-title { font-family: 'Caveat', cursive !important; font-size: 26px !important; font-style: italic; }
@@ -206,7 +206,8 @@
     .plan-item-name { font-size: 21px !important; }
     .plan-item-detail { font-size: 13px !important; }
     .plan-item-time { font-size: 14px !important; }
-    .nav-btn { font-size: 13px !important; padding: 10px 14px !important; }
+    .nav-btn { font-size: 10px !important; padding: 9px 10px !important; }
+    .nav-btn svg { width: 21px !important; height: 21px !important; }
     .modal-input { font-size: 16px !important; padding: 12px 14px !important; }
     .modal-btn { font-size: 13px !important; padding: 12px 20px !important; }
     .modal-title { font-size: 22px !important; }
@@ -246,9 +247,12 @@
   .topbar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
     background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(16px) saturate(1.15);
+    -webkit-backdrop-filter: blur(16px) saturate(1.15);
   }
   .header {
-    background: var(--bg);
+    background: transparent;
     border-bottom: 1px solid var(--border);
     padding: calc(max(env(safe-area-inset-top, 12px), 12px) + 10px) 20px 14px;
     display: flex; align-items: center; justify-content: space-between;
@@ -267,7 +271,8 @@
   .nav {
     display: flex; gap: 2px;
     background: var(--bg2);
-    padding: 8px 6px;
+    background: color-mix(in srgb, var(--bg2) 62%, transparent);
+    padding: 7px 6px;
     border-bottom: 1px solid var(--border2);
     overflow-x: auto;
   }
@@ -276,18 +281,24 @@
     padding-top: 150px; /* fallback; overridden by JS */
   }
   .nav-btn {
-    flex: 1; min-width: 80px;
-    padding: 8px 12px;
+    flex: 1; min-width: 64px;
+    padding: 7px 8px 8px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 3px;
     background: transparent;
-    border: none; border-radius: 4px;
+    border: none; border-radius: 8px;
     color: var(--text3);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; letter-spacing: 0.08em;
+    font-size: 8.5px; letter-spacing: 0.06em;
     text-transform: uppercase; cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
     -webkit-tap-highlight-color: transparent;
     position: relative;
   }
+  .nav-btn svg { width: 18px; height: 18px; opacity: 0.85; flex-shrink: 0; }
+  .nav-btn.active svg { opacity: 1; }
+  .nav-btn span { white-space: nowrap; }
   .nav-btn:active { transform: scale(0.96); }
   .nav-btn:hover:not(.active) { color: var(--text2); }
   .nav-btn.active {
@@ -2955,9 +2966,9 @@
   [data-theme="bruma"] .save-session-btn { border-radius: 12px !important; }
   [data-theme="bruma"] .nav-btn { border-radius: 8px !important; }
   [data-theme="bruma"] .nav-btn.active { background: var(--bg3) !important; }
-  [data-theme="bruma"] .nav { background: var(--bg2); }
-  [data-theme="bruma"] .header { border-bottom: 1px solid var(--border); background: var(--bg); }
-  [data-theme="bruma"] .topbar { background: var(--bg); }
+  [data-theme="bruma"] .nav { background: color-mix(in srgb, var(--bg2) 62%, transparent); }
+  [data-theme="bruma"] .header { border-bottom: 1px solid var(--border); background: transparent; }
+  [data-theme="bruma"] .topbar { background: var(--bg); background: color-mix(in srgb, var(--bg) 88%, transparent); }
   [data-theme="bruma"] .modal-btn { border-radius: 10px !important; }
   [data-theme="bruma"] .obra-card { border: 1px solid var(--border2); }
   [data-theme="bruma"] .evento-card { border-radius: 18px !important; }
@@ -3684,6 +3695,17 @@
   /* En modo timer, ampliamos aún más para que el slider radial luzca */
   body.crono-timer-mode .crono-centerpiece {
     width: 320px; height: 320px;
+  }
+  /* Halo cálido tras la pieza central: llena la pantalla sin añadir ruido */
+  .crono-centerpiece::before {
+    content: "";
+    position: absolute;
+    inset: -44px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+      color-mix(in oklab, var(--crono-color, var(--accent)) 10%, transparent) 0%,
+      transparent 62%);
+    pointer-events: none;
   }
   /* Por defecto modo cronómetro: ensō visible, timer oculto.
      El SVG está estático; sólo el grupo del ensō respira. La decoración

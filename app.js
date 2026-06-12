@@ -286,6 +286,31 @@ function openModal(id) {
     // "se desenfoca la pantalla pero no aparece nada".
     void overlay.offsetWidth;
   }
+  // ★ Compensación del zoom iOS: applyZoom escala el body con transform,
+  // que convierte a body en el containing block de position:fixed. El
+  // overlay con inset:0 pasa a cubrir el DOCUMENTO entero y el modal se
+  // centra en el documento, no en la pantalla (con scroll queda fuera).
+  // Solución: posicionarlo en absoluto sobre el viewport visible actual,
+  // en coordenadas locales del body escalado. En modo concentración el
+  // transform ya se anula vía html.crono-focus-root, no hace falta.
+  const z = (typeof _appZoom === 'number' && _appZoom) || 1;
+  const bodyScaled = isIOS && z !== 1
+    && !document.documentElement.classList.contains('crono-focus-root');
+  if (bodyScaled) {
+    overlay.style.position = 'absolute';
+    overlay.style.top = (window.scrollY / z) + 'px';
+    overlay.style.left = (window.scrollX / z) + 'px';
+    overlay.style.width = (window.innerWidth / z) + 'px';
+    overlay.style.height = (window.innerHeight / z) + 'px';
+    overlay.style.minHeight = '0';
+  } else {
+    overlay.style.position = '';
+    overlay.style.top = '';
+    overlay.style.left = '';
+    overlay.style.width = '';
+    overlay.style.height = '';
+    overlay.style.minHeight = '';
+  }
   overlay.scrollTop = 0;
   const modalBox = overlay.querySelector('.modal');
   if (modalBox) modalBox.scrollTop = 0;
@@ -336,9 +361,11 @@ function closeModal(id) {
 
 function updateHeader() {
   const d = new Date();
-  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
   const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  document.getElementById('headerDate').textContent = `${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}`;
+  const h = d.getHours();
+  const saludo = h < 6 ? 'Buenas noches' : h < 13 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches';
+  document.getElementById('headerDate').textContent = `${saludo} · ${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}`;
   // Show nearest upcoming event
   const now = Date.now();
   const proxEvento = (db.eventos || [])
@@ -9710,7 +9737,9 @@ function setFontSize(size, btn) {
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+var _appZoom = 1; // var: hoisted, openModal puede leerlo aunque se defina después
 function applyZoom(z) {
+  _appZoom = z;
   if (isIOS) {
     const b = document.body;
     b.style.transformOrigin = 'top left';
