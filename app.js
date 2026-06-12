@@ -12029,6 +12029,100 @@ function renderSessionInsights() {
   host.style.display = cards.length ? '' : 'none';
 }
 
+// ── JARDÍN DEL DÍA (cronómetro en reposo) ────────────────────────────────────
+// Dibujo SVG generativo, sin assets externos: colinas, sol o luna según la
+// hora, y una flor por cada sesión de hoy en el color de su obra. Las flores
+// nuevas brotan con una animación de crecimiento; el resto se mece despacio.
+let _gardenPrevN = -1;
+let _gardenDay = '';
+
+function _gardenFlower(i, x, y, sz, color, isNew) {
+  const H = Math.round(15 * sz + 7);           // altura del tallo
+  const swayDelay = ((i * 0.83) % 5.5).toFixed(2);
+  const growDelay = (i * 0.07).toFixed(2);
+  let corola;
+  if (i % 2 === 0) {
+    // Nota-flor: cabeza de negra inclinada con un destello
+    const rx = (4.4 * sz).toFixed(1), ry = (3.3 * sz).toFixed(1);
+    corola = '<ellipse cx="0" cy="' + (-H - 2) + '" rx="' + rx + '" ry="' + ry + '"'
+      + ' transform="rotate(-18 0 ' + (-H - 2) + ')" fill="' + color + '"/>'
+      + '<circle cx="' + (1.4 * sz).toFixed(1) + '" cy="' + (-H - 3.2).toFixed(1) + '" r="' + (0.9 * sz).toFixed(1) + '" fill="var(--bg)" opacity="0.35"/>';
+  } else {
+    // Flor de tres pétalos con corazón claro
+    const p = (4.6 * sz).toFixed(1), q = (2.6 * sz).toFixed(1);
+    corola = [-38, 0, 38].map(a =>
+      '<ellipse cx="0" cy="' + (-H - 3.5) + '" rx="' + q + '" ry="' + p + '"'
+      + ' transform="rotate(' + a + ' 0 ' + (-H + 1) + ')" fill="' + color + '" opacity="0.92"/>'
+    ).join('')
+      + '<circle cx="0" cy="' + (-H - 1) + '" r="' + (1.3 * sz).toFixed(1) + '" fill="var(--accent2)" opacity="0.9"/>';
+  }
+  return '<g transform="translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ')">'
+    + '<g class="garden-grow"' + (isNew ? '' : ' style="animation:none"') + (isNew ? ' style="animation-delay:' + growDelay + 's"' : '') + '>'
+    + '<g class="garden-sway" style="animation-delay:-' + swayDelay + 's">'
+    + '<path d="M0 0 C ' + (-1.6 * sz).toFixed(1) + ' ' + (-H / 3).toFixed(1) + ' ' + (1.6 * sz).toFixed(1) + ' ' + (-2 * H / 3).toFixed(1) + ' 0 ' + (-H) + '" class="garden-tallo"/>'
+    + '<path d="M0 ' + (-H * 0.45).toFixed(1) + ' Q ' + (-7 * sz).toFixed(1) + ' ' + (-H * 0.55).toFixed(1) + ' ' + (-9 * sz).toFixed(1) + ' ' + (-H * 0.85).toFixed(1) + ' Q ' + (-2.5 * sz).toFixed(1) + ' ' + (-H * 0.72).toFixed(1) + ' 0 ' + (-H * 0.52).toFixed(1) + ' Z" class="garden-hoja"/>'
+    + corola
+    + '</g></g></g>';
+}
+
+function renderCronoGarden() {
+  const host = document.getElementById('cronoGarden');
+  if (!host) return;
+  const hoy = _statsISO(new Date());
+  const plantas = (db.sessionPlants || []).filter(p => {
+    if (!p || p.failed || p.tipo === 'descanso' || !p.startedAt || !(p.mins > 0)) return false;
+    const d = new Date(p.startedAt);
+    return !isNaN(d.getTime()) && _statsISO(d) === hoy;
+  }).slice(0, 14);
+  if (_gardenDay !== hoy) { _gardenPrevN = -1; _gardenDay = hoy; }
+  if (plantas.length === _gardenPrevN) return;
+  const animFrom = _gardenPrevN < 0 ? 0 : _gardenPrevN; // tras recargar, brotan todas una vez
+  _gardenPrevN = plantas.length;
+
+  const h = new Date().getHours();
+  const night = h >= 21 || h < 7;
+  let svg = '<svg class="crono-garden-svg" viewBox="0 0 360 120" xmlns="http://www.w3.org/2000/svg">';
+
+  // Cielo
+  if (night) {
+    svg += '<path d="M316 24 a13 13 0 1 0 11 20 a10.5 10.5 0 0 1 -11 -20 z" class="garden-luna"/>';
+    [[42, 18], [92, 30], [152, 12], [228, 26], [288, 10], [196, 38]].forEach((s, i) => {
+      svg += '<circle cx="' + s[0] + '" cy="' + s[1] + '" r="1.1" class="garden-star" style="animation-delay:' + (i * 0.6).toFixed(1) + 's"/>';
+    });
+  } else {
+    svg += '<circle cx="320" cy="28" r="11" class="garden-sol"/>'
+      + '<circle cx="320" cy="28" r="16" class="garden-sol-halo"/>';
+  }
+
+  // Colinas
+  svg += '<path d="M0 96 Q 90 72 180 88 T 360 82 L 360 120 L 0 120 Z" class="garden-colina1"/>'
+    + '<path d="M0 106 Q 120 88 250 102 T 360 98 L 360 120 L 0 120 Z" class="garden-colina2"/>'
+    + '<path d="M14 109 q 3 -7 5 -9 M30 112 q -2 -8 -6 -11 M338 108 q 3 -6 6 -8 M322 111 q -2 -7 -4 -9" class="garden-hierba"/>';
+
+  if (!plantas.length) {
+    // Brote solitario: invitación a plantar la primera sesión
+    svg += '<g transform="translate(180,96)"><g class="garden-grow"><g class="garden-sway">'
+      + '<path d="M0 0 C -1 -5 1 -10 0 -15" class="garden-tallo"/>'
+      + '<path d="M0 -9 Q -7 -11 -9 -17 Q -2 -16 0 -10 Z" class="garden-hoja"/>'
+      + '<path d="M0 -12 Q 7 -14 9 -20 Q 2 -19 0 -13 Z" class="garden-hoja"/>'
+      + '</g></g></g>';
+  } else {
+    const n = plantas.length;
+    const spread = Math.min(46, 312 / n);
+    plantas.forEach((p, i) => {
+      const obra = findObra(p.obraId);
+      const color = (obra && obraColorHex(obra)) || 'var(--accent)';
+      const seed = ((i * 2654435761) % 1000) / 1000;
+      const x = 180 + (i - (n - 1) / 2) * spread + (seed - 0.5) * 14;
+      const y = 95 + Math.sin(x / 47 + 1.3) * 6;
+      const sz = 1 + Math.min(p.mins || 0, 60) / 60 * 0.45;
+      svg += _gardenFlower(i, x, y, sz, color, i >= animFrom);
+    });
+  }
+  svg += '</svg>';
+  host.innerHTML = svg;
+}
+
 // Refresca todos los textos "hoy te has concentrado..." y el mini-resumen
 function refreshConcentradoUI() {
   const min = getMinutosConcentradoHoy();
@@ -12042,6 +12136,7 @@ function refreshConcentradoUI() {
   // Pill de destellos (abajo a la izquierda en el cronómetro en reposo)
   if (typeof refreshDestellosPill === 'function') refreshDestellosPill();
   if (typeof renderSessionInsights === 'function') renderSessionInsights();
+  if (typeof renderCronoGarden === 'function') renderCronoGarden();
 
   // Mini-resumen lateral: HOY + AYER
   const resumenEl = document.getElementById('cronoResumenLateral');
