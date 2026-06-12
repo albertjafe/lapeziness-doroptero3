@@ -228,7 +228,7 @@ function showView(name) {
   if (name === 'pasajes')    renderPasajesGlobal();
   if (name === 'pases')      renderPases();
   if (name === 'calendario') renderCalendario();
-  if (name === 'historial')  { renderSesionesHistorial(); renderSolidezSection(); renderEficienciaSection(); renderEstadoSection(); }
+  if (name === 'historial')  { renderStatsDashboard(); renderSesionesHistorial(); renderSolidezSection(); renderEficienciaSection(); renderEstadoSection(); _histListApplyPref(); }
 }
 
 function showToast(msg) {
@@ -8381,6 +8381,381 @@ function renderEstadoSection() {
     + '<div style="font-size:7px;color:var(--text3);display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;padding-left:28px">' + legend + '</div>'
     + patternNote
     + '</div>';
+}
+
+// ─── ESTADÍSTICAS · Dashboard de concentración ────────────────────────────────
+// Tarjetas con selector Semana/Mes/Año y flechas de periodo: tiempo total con
+// barras por día (o por mes en vista Año), día de la semana más fuerte,
+// momento del día (curva horaria) y reparto por obra (donut).
+// Fuentes de datos:
+//  - db.sessionPlants + db.forestPlants: timestamps reales → curva horaria,
+//    reparto por obra y días antiguos fuera del cap de db.sesiones.
+//  - db.sesiones: total diario (incluye registros manuales sin timestamp).
+//    Por día se toma el MÁXIMO de ambas fuentes para no contar doble.
+let _statsRange = localStorage.getItem('stats_range') || 'semana';
+if (['semana', 'mes', 'año'].indexOf(_statsRange) === -1) _statsRange = 'semana';
+let _statsOffset = 0; // 0 = periodo actual, -1 = anterior…
+
+function _statsAllPlants() {
+  const out = [];
+  const add = p => {
+    if (!p || p.failed || !p.startedAt) return;
+    const start = new Date(p.startedAt);
+    if (isNaN(start.getTime())) return;
+    const mins = Math.max(0, Math.round(p.mins || 0));
+    if (!mins) return;
+    out.push({ obraId: p.obraId || null, tag: p.tag || null, start, mins });
+  };
+  (db.sessionPlants || []).forEach(add);
+  (db.forestPlants || []).forEach(add);
+  return out;
+}
+
+function _statsISO(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function _statsPeriod() {
+  const now = new Date();
+  let start, end, label;
+  if (_statsRange === 'semana') {
+    const lunes = new Date(now);
+    lunes.setDate(now.getDate() - ((now.getDay() + 6) % 7) + _statsOffset * 7);
+    lunes.setHours(0, 0, 0, 0);
+    start = lunes;
+    end = new Date(lunes); end.setDate(lunes.getDate() + 7);
+    const dom = new Date(lunes); dom.setDate(lunes.getDate() + 6);
+    const mes = d => d.toLocaleDateString('es-ES', { month: 'short' });
+    label = lunes.getDate() + (lunes.getMonth() !== dom.getMonth() ? ' ' + mes(lunes) : '')
+      + ' – ' + dom.getDate() + ' ' + mes(dom) + ' ' + dom.getFullYear();
+  } else if (_statsRange === 'mes') {
+    start = new Date(now.getFullYear(), now.getMonth() + _statsOffset, 1);
+    end = new Date(now.getFullYear(), now.getMonth() + _statsOffset + 1, 1);
+    label = start.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  } else {
+    start = new Date(now.getFullYear() + _statsOffset, 0, 1);
+    end = new Date(now.getFullYear() + _statsOffset + 1, 0, 1);
+    label = String(start.getFullYear());
+  }
+  return { start, end, label };
+}
+
+// Minutos estudiados por día (clave local YYYY-MM-DD) dentro de [start, end).
+function _statsMinsPorDia(start, end) {
+  const plantas = {};
+  _statsAllPlants().forEach(p => {
+    if (p.start < start || p.start >= end) return;
+    const k = _statsISO(p.start);
+    plantas[k] = (plantas[k] || 0) + p.mins;
+  });
+  const sesiones = {};
+  (db.sesiones || []).forEach(s => {
+    const d = new Date(s.date);
+    if (isNaN(d.getTime()) || d < start || d >= end) return;
+    const k = _statsISO(d);
+    const min = (s.items || []).reduce((acc, it) => acc + _itemMinReal(it), 0);
+    sesiones[k] = (sesiones[k] || 0) + min;
+  });
+  const out = {};
+  Object.keys(plantas).concat(Object.keys(sesiones)).forEach(k => {
+    out[k] = Math.max(plantas[k] || 0, sesiones[k] || 0);
+  });
+  return out;
+}
+
+function _statsMinsPorDiaSemana(porDia) {
+  const arr = new Array(7).fill(0);
+  Object.keys(porDia).forEach(k => {
+    const d = new Date(k + 'T12:00:00');
+    if (!isNaN(d.getTime())) arr[(d.getDay() + 6) % 7] += porDia[k];
+  });
+  return arr;
+}
+
+// Minutos por hora del día (0-23). Cada planta reparte su duración entre las
+// horas que cruza, para que una sesión de 19:30 a 21:00 pese en 19, 20 y 21.
+function _statsMinsPorHora(start, end) {
+  const horas = new Array(24).fill(0);
+  _statsAllPlants().forEach(p => {
+    if (p.start < start || p.start >= end) return;
+    let t = new Date(p.start);
+    let restantes = p.mins;
+    let guard = 0;
+    while (restantes > 0 && guard < 64) {
+      guard++;
+      const finHora = new Date(t);
+      finHora.setMinutes(60, 0, 0);
+      const usa = Math.min(restantes, Math.max(1, Math.round((finHora - t) / 60000)));
+      horas[t.getHours()] += usa;
+      restantes -= usa;
+      t = finHora;
+    }
+  });
+  return horas;
+}
+
+// Reparto por obra dentro del periodo (solo tiempo con timestamp: cronómetro
+// + Forest). Devuelve [{id, name, mins}] ordenado de mayor a menor.
+function _statsMinsPorObra(start, end) {
+  const map = {};
+  _statsAllPlants().forEach(p => {
+    if (p.start < start || p.start >= end) return;
+    const key = p.obraId || ('tag:' + (p.tag || '?'));
+    if (!map[key]) {
+      const obra = (db.obras || []).find(o => o.id === p.obraId);
+      map[key] = { id: p.obraId, name: obra ? obra.name : (p.tag || 'Sin obra'), mins: 0 };
+    }
+    map[key].mins += p.mins;
+  });
+  return Object.values(map).sort((a, b) => b.mins - a.mins);
+}
+
+const _STATS_FALLBACK_COLORS = ['#c8a030', '#6a9ac8', '#7ba87a', '#c87878', '#9b7ac8', '#5ea8a0', '#d59060', '#8a8a8a'];
+function _statsObraColor(obraId, idx) {
+  const obra = (db.obras || []).find(o => o.id === obraId);
+  return (obra && obraColorHex(obra)) || _STATS_FALLBACK_COLORS[idx % _STATS_FALLBACK_COLORS.length];
+}
+
+// ── Construcción de gráficas SVG ──
+function _statsNiceStep(maxVal) {
+  const steps = [15, 30, 60, 120, 180, 240, 300, 360, 480, 600, 900, 1200, 1800, 2400, 3600];
+  for (let i = 0; i < steps.length; i++) { if (maxVal / steps[i] <= 4) return steps[i]; }
+  return 3600;
+}
+function _statsAxisLabel(min) {
+  if (min === 0) return '0';
+  return min >= 60 ? (Math.round(min / 60 * 10) / 10) + 'h' : min + 'm';
+}
+
+function _statsBarChartSVG(values, labels, hoyIdx) {
+  const W = 640, H = 190, padL = 38, padR = 8, padT = 10, padB = 24;
+  const n = values.length || 1;
+  const maxVal = Math.max.apply(null, values.concat([1]));
+  const step = _statsNiceStep(maxVal);
+  const top = Math.max(step, Math.ceil(maxVal / step) * step);
+  const iw = W - padL - padR, ih = H - padT - padB;
+  let svg = '<svg class="stats-chart" viewBox="0 0 ' + W + ' ' + H + '">';
+  for (let v = 0; v <= top; v += step) {
+    const y = padT + ih * (1 - v / top);
+    svg += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" class="stats-grid"/>'
+      + '<text x="' + (padL - 7) + '" y="' + (y + 3.5) + '" text-anchor="end" class="stats-axis">' + _statsAxisLabel(v) + '</text>';
+  }
+  const slot = iw / n;
+  const bw = Math.min(34, slot * 0.62);
+  values.forEach((v, i) => {
+    const x = padL + slot * i + (slot - bw) / 2;
+    const bh = ih * (v / top);
+    if (v > 0) {
+      svg += '<rect x="' + x + '" y="' + (padT + ih - Math.max(bh, 2.5)) + '" width="' + bw + '" height="' + Math.max(bh, 2.5)
+        + '" rx="' + Math.min(5, bw / 2) + '" class="stats-bar' + (i === hoyIdx ? ' hoy' : '') + '"/>';
+    }
+    if (labels[i]) {
+      svg += '<text x="' + (padL + slot * i + slot / 2) + '" y="' + (H - 7) + '" text-anchor="middle" class="stats-axis'
+        + (i === hoyIdx ? ' hoy' : '') + '">' + labels[i] + '</text>';
+    }
+  });
+  return svg + '</svg>';
+}
+
+function _statsLineChartSVG(values, labels) {
+  const W = 640, H = 170, padL = 38, padR = 14, padT = 14, padB = 24;
+  const n = values.length;
+  const maxVal = Math.max.apply(null, values.concat([1]));
+  const step = _statsNiceStep(maxVal);
+  const top = Math.max(step, Math.ceil(maxVal / step) * step);
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const px = i => padL + (n === 1 ? iw / 2 : iw * i / (n - 1));
+  const py = v => padT + ih * (1 - v / top);
+  let svg = '<svg class="stats-chart" viewBox="0 0 ' + W + ' ' + H + '">';
+  for (let v = 0; v <= top; v += step) {
+    const y = py(v);
+    svg += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" class="stats-grid"/>'
+      + '<text x="' + (padL - 7) + '" y="' + (y + 3.5) + '" text-anchor="end" class="stats-axis">' + _statsAxisLabel(v) + '</text>';
+  }
+  const pts = values.map((v, i) => px(i) + ',' + py(v)).join(' ');
+  svg += '<polygon points="' + padL + ',' + (padT + ih) + ' ' + pts + ' ' + (padL + iw) + ',' + (padT + ih) + '" class="stats-area"/>'
+    + '<polyline points="' + pts + '" class="stats-line"/>';
+  let peak = 0;
+  values.forEach((v, i) => { if (v > values[peak]) peak = i; });
+  if (values[peak] > 0) {
+    svg += '<line x1="' + px(peak) + '" y1="' + py(values[peak]) + '" x2="' + px(peak) + '" y2="' + (padT + ih) + '" class="stats-peak-line"/>'
+      + '<circle cx="' + px(peak) + '" cy="' + py(values[peak]) + '" r="4" class="stats-peak-dot"/>';
+  }
+  labels.forEach((lab, i) => {
+    if (lab) svg += '<text x="' + px(i) + '" y="' + (H - 7) + '" text-anchor="middle" class="stats-axis">' + lab + '</text>';
+  });
+  return svg + '</svg>';
+}
+
+function _statsDonutSVG(segs, totalMin) {
+  const R = 54, C = 2 * Math.PI * R;
+  let off = 0;
+  let svg = '<svg class="stats-donut" viewBox="0 0 140 140">'
+    + '<circle cx="70" cy="70" r="' + R + '" class="stats-donut-track"/>';
+  segs.forEach(s => {
+    const len = C * (s.mins / totalMin);
+    svg += '<circle cx="70" cy="70" r="' + R + '" stroke="' + s.color + '" stroke-dasharray="' + len + ' ' + (C - len)
+      + '" stroke-dashoffset="' + (-off) + '" transform="rotate(-90 70 70)" class="stats-donut-seg"/>';
+    off += len;
+  });
+  const centro = totalMin >= 60 ? Math.round(totalMin / 60) + ' h' : totalMin + ' m';
+  svg += '<text x="70" y="67" text-anchor="middle" class="stats-donut-big">' + centro + '</text>'
+    + '<text x="70" y="86" text-anchor="middle" class="stats-donut-sub">total</text>';
+  return svg + '</svg>';
+}
+
+// Barras del periodo: por día (semana/mes) o por mes (año).
+function _statsBarsData(porDia, start, end) {
+  const labels = [], values = [];
+  let hoyIdx = -1;
+  const hoyKey = _statsISO(new Date());
+  if (_statsRange === 'año') {
+    const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const porMes = new Array(12).fill(0);
+    Object.keys(porDia).forEach(k => { porMes[parseInt(k.slice(5, 7), 10) - 1] += porDia[k]; });
+    const now = new Date();
+    for (let m = 0; m < 12; m++) {
+      labels.push(meses[m]);
+      values.push(porMes[m]);
+      if (_statsOffset === 0 && m === now.getMonth()) hoyIdx = m;
+    }
+  } else {
+    const dias = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
+    const d = new Date(start);
+    let i = 0;
+    while (d < end) {
+      const k = _statsISO(d);
+      values.push(porDia[k] || 0);
+      labels.push(_statsRange === 'semana'
+        ? dias[i]
+        : (d.getDate() === 1 || d.getDate() % 5 === 0 ? String(d.getDate()) : ''));
+      if (k === hoyKey) hoyIdx = i;
+      d.setDate(d.getDate() + 1);
+      i++;
+    }
+  }
+  return { labels, values, hoyIdx };
+}
+
+function setStatsRange(r) {
+  _statsRange = r;
+  _statsOffset = 0;
+  localStorage.setItem('stats_range', r);
+  renderStatsDashboard();
+}
+function statsNav(dir) {
+  _statsOffset = Math.min(0, _statsOffset + dir);
+  renderStatsDashboard();
+}
+function statsResetOffset() {
+  if (_statsOffset === 0) return;
+  _statsOffset = 0;
+  renderStatsDashboard();
+}
+
+const _STATS_DIAS_LARGO = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+
+function renderStatsDashboard() {
+  const el = document.getElementById('statsDashboard');
+  if (!el) return;
+  const periodo = _statsPeriod();
+  const porDia = _statsMinsPorDia(periodo.start, periodo.end);
+  const total = Object.keys(porDia).reduce((a, k) => a + porDia[k], 0);
+
+  const seg = '<div class="stats-seg">'
+    + [['semana', 'Semana'], ['mes', 'Mes'], ['año', 'Año']].map(r =>
+        '<button class="stats-seg-btn' + (r[0] === _statsRange ? ' active' : '') + '" onclick="setStatsRange(\'' + r[0] + '\')">' + r[1] + '</button>'
+      ).join('')
+    + '</div>';
+
+  const navRow = '<div class="stats-period-row">'
+    + '<button class="stats-period-btn" onclick="statsNav(-1)" aria-label="Periodo anterior">‹</button>'
+    + '<div class="stats-period-label" onclick="statsResetOffset()" title="Volver al periodo actual">' + periodo.label
+    + (_statsOffset !== 0 ? ' <span class="stats-period-reset">⟲</span>' : '') + '</div>'
+    + '<button class="stats-period-btn" onclick="statsNav(1)"' + (_statsOffset === 0 ? ' disabled' : '') + ' aria-label="Periodo siguiente">›</button>'
+    + '</div>';
+
+  // Tarjeta 1: tiempo de concentración (barras)
+  const bars = _statsBarsData(porDia, periodo.start, periodo.end);
+  let cards = '<div class="stats-card">'
+    + '<div class="stats-card-title">Tiempo de concentración</div>'
+    + '<div class="stats-card-big">' + fmtMinutos(total) + '</div>'
+    + (total > 0
+        ? _statsBarChartSVG(bars.values, bars.labels, bars.hoyIdx)
+        : '<div class="stats-empty">Sin estudio en este periodo.</div>')
+    + '</div>';
+
+  if (total > 0) {
+    // Tarjeta 2: día de la semana (solo mes/año; en semana ya se ve en las barras)
+    if (_statsRange !== 'semana') {
+      const porSem = _statsMinsPorDiaSemana(porDia);
+      let mejor = 0;
+      porSem.forEach((v, i) => { if (v > porSem[mejor]) mejor = i; });
+      cards += '<div class="stats-card">'
+        + '<div class="stats-card-title">Día de la semana</div>'
+        + '<div class="stats-card-sub">Más concentración los <strong>' + _STATS_DIAS_LARGO[mejor] + '</strong></div>'
+        + _statsLineChartSVG(porSem, ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'])
+        + '</div>';
+    }
+
+    // Tarjeta 3: momento del día (curva horaria, solo tiempo con timestamp)
+    const porHora = _statsMinsPorHora(periodo.start, periodo.end);
+    if (porHora.some(v => v > 0)) {
+      let pico = 0;
+      porHora.forEach((v, i) => { if (v > porHora[pico]) pico = i; });
+      const horaLabels = porHora.map((_, h) =>
+        (h === 0 || h === 6 || h === 12 || h === 18 || h === 23) ? String(h).padStart(2, '0') + ':00' : '');
+      cards += '<div class="stats-card">'
+        + '<div class="stats-card-title">Momento del día</div>'
+        + '<div class="stats-card-sub">Pico a las <strong>' + String(pico).padStart(2, '0') + ':00</strong></div>'
+        + _statsLineChartSVG(porHora, horaLabels)
+        + '</div>';
+    }
+
+    // Tarjeta 4: reparto por obra (donut + leyenda)
+    const porObra = _statsMinsPorObra(periodo.start, periodo.end);
+    if (porObra.length) {
+      const totalObra = porObra.reduce((a, o) => a + o.mins, 0);
+      const top = porObra.slice(0, 6);
+      const resto = porObra.slice(6);
+      if (resto.length) {
+        top.push({ id: null, name: 'Otras (' + resto.length + ')', mins: resto.reduce((a, o) => a + o.mins, 0), _resto: true });
+      }
+      const segs = top.map((o, i) => ({
+        mins: o.mins,
+        color: o._resto ? 'var(--text3)' : _statsObraColor(o.id, i),
+      }));
+      const leyenda = top.map((o, i) =>
+        '<div class="stats-legend-row">'
+        + '<span class="stats-legend-dot" style="background:' + segs[i].color + '"></span>'
+        + '<span class="stats-legend-name">' + escapeHtmlSafe(o.name) + '</span>'
+        + '<span class="stats-legend-val">' + fmtMinutos(o.mins) + ' · ' + Math.round(o.mins / totalObra * 100) + '%</span>'
+        + '</div>').join('');
+      cards += '<div class="stats-card">'
+        + '<div class="stats-card-title">Por obra</div>'
+        + '<div class="stats-card-sub">Tiempo cronometrado del periodo</div>'
+        + '<div class="stats-donut-wrap">' + _statsDonutSVG(segs, totalObra)
+        + '<div class="stats-legend">' + leyenda + '</div></div>'
+        + '</div>';
+    }
+  }
+
+  el.innerHTML = seg + navRow + cards;
+}
+
+// Lista de sesiones plegable: las estadísticas son lo principal de la vista,
+// pero la lista sigue disponible para revisar/editar días concretos.
+function toggleHistList(force) {
+  const list = document.getElementById('sesionesHistorial');
+  const btn = document.getElementById('histListToggle');
+  if (!list) return;
+  const abrir = typeof force === 'boolean' ? force : list.style.display === 'none';
+  list.style.display = abrir ? '' : 'none';
+  if (btn) btn.textContent = abrir ? 'Ocultar' : 'Mostrar';
+  localStorage.setItem('hist_list_open', abrir ? '1' : '0');
+}
+function _histListApplyPref() {
+  toggleHistList(localStorage.getItem('hist_list_open') === '1');
 }
 
 function renderSesionesHistorial() {

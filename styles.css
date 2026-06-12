@@ -5910,3 +5910,152 @@
       max-width: 42vw;
     }
   }
+
+  /* ─── ESTADÍSTICAS · dashboard de concentración ─── */
+  .stats-seg {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 999px;
+    margin-bottom: 12px;
+  }
+  .stats-seg-btn {
+    flex: 1;
+    padding: 8px 0;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .stats-seg-btn.active {
+    background: var(--bg3);
+    color: var(--accent);
+    box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+  }
+  .stats-period-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .stats-period-btn {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text2);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .stats-period-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+  .stats-period-btn:active:not(:disabled) { transform: scale(0.92); }
+  .stats-period-btn:disabled { opacity: 0.3; cursor: default; }
+  .stats-period-label {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 17px;
+    color: var(--text);
+    min-width: 150px;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+  }
+  .stats-period-reset { font-size: 12px; color: var(--accent); }
+  .stats-card {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    box-shadow: 0 12px 32px -28px rgba(0,0,0,0.55);
+  }
+  .stats-card-title {
+    font-size: 10px;
+    color: var(--text2);
+    letter-spacing: 0.04em;
+    margin-bottom: 2px;
+  }
+  .stats-card-big {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 28px;
+    font-weight: 300;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .stats-card-sub {
+    font-size: 10px;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+  .stats-card-sub strong { color: var(--accent); font-weight: 600; }
+  .stats-empty { font-size: 10px; color: var(--text3); font-style: italic; padding: 6px 0 2px; }
+  .stats-chart { width: 100%; height: auto; display: block; }
+  .stats-grid { stroke: var(--border2); stroke-width: 1; }
+  .stats-axis {
+    fill: var(--text3);
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .stats-axis.hoy { fill: var(--accent); }
+  .stats-bar { fill: var(--accent); opacity: 0.55; }
+  .stats-bar.hoy { opacity: 0.95; }
+  .stats-line {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+  .stats-area { fill: var(--accent); opacity: 0.08; stroke: none; }
+  .stats-peak-line { stroke: var(--text3); stroke-width: 1; stroke-dasharray: 3 4; }
+  .stats-peak-dot { fill: var(--bg2); stroke: var(--accent); stroke-width: 2.5; }
+  .stats-donut { width: 132px; height: 132px; flex-shrink: 0; }
+  .stats-donut-track { fill: none; stroke: var(--bg3); stroke-width: 16; }
+  .stats-donut-seg { fill: none; stroke-width: 16; }
+  .stats-donut-big { fill: var(--text); font-family: 'Cormorant Garamond', serif; font-size: 24px; }
+  .stats-donut-sub { fill: var(--text3); font-size: 8px; letter-spacing: 0.18em; text-transform: uppercase; }
+  .stats-donut-wrap { display: flex; align-items: center; gap: 20px; }
+  .stats-legend { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+  .stats-legend-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .stats-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .stats-legend-name {
+    flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 14px;
+    color: var(--text);
+  }
+  .stats-legend-val {
+    font-size: 9px;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+  }
+  @media (max-width: 480px) {
+    .stats-donut-wrap { flex-direction: column; }
+    .stats-legend { width: 100%; }
+  }
+  .hist-list-toggle {
+    padding: 6px 14px;
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .hist-list-toggle:hover { color: var(--text2); border-color: var(--border); }
+  [data-theme="cozy"] .stats-card { border-radius: var(--cozy-radius) !important; }
+  [data-theme="cozy"] .stats-period-label { font-family: 'Caveat', cursive !important; font-size: 22px !important; }

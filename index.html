@@ -79,7 +79,7 @@
   <button class="nav-btn" onclick="showView('cronometro')">⏱ Cronómetro</button>
   <button class="nav-btn" onclick="showView('obras')">Obras</button>
   <button class="nav-btn" onclick="showView('calendario')">Calendario</button>
-  <button class="nav-btn" onclick="showView('historial')">Historial</button>
+  <button class="nav-btn" onclick="showView('historial')">Estadísticas</button>
 </div>
 </div><!-- end topbar -->
 
@@ -559,14 +559,18 @@
 
 
 <div class="view" id="view-historial">
+  <div id="statsDashboard" style="margin-bottom:22px"></div>
   <div id="solidezSection" style="margin-bottom:20px"></div>
   <div id="eficienciaSection" style="margin-bottom:20px"></div>
   <div id="estadoSection" style="margin-bottom:20px"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border2)">
-    <div class="history-section-label">Historial de sesiones</div>
-    <button class="add-manual-session-btn" onclick="openSesionManual()" style="padding:6px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:\'JetBrains Mono\',monospace;font-size:9px;letter-spacing:0.06em;cursor:pointer;transition:all 0.2s">+ añadir estudio</button>
+    <div class="history-section-label">Sesiones registradas</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="add-manual-session-btn" onclick="openSesionManual()" style="padding:6px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:\'JetBrains Mono\',monospace;font-size:9px;letter-spacing:0.06em;cursor:pointer;transition:all 0.2s">+ añadir estudio</button>
+      <button class="hist-list-toggle" id="histListToggle" onclick="toggleHistList()">Mostrar</button>
+    </div>
   </div>
-  <div id="sesionesHistorial"></div>
+  <div id="sesionesHistorial" style="display:none"></div>
 </div>
 
 <!-- MODAL: Recuperar datos de la nube (instalación nueva sin datos locales) -->
