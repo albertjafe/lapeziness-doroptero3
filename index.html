@@ -395,7 +395,7 @@
       </svg>
       <div class="crono-pause-overlay-label">Concentración en pausa</div>
       <div class="crono-pause-overlay-time" id="cronoPauseOverlayTime">05:00</div>
-      <div class="crono-pause-overlay-note" id="cronoPauseOverlayNote">La sesión se reanudará sola cuando acabe la pausa.</div>
+      <div class="crono-pause-overlay-note" id="cronoPauseOverlayNote">Se reanuda sola al acabar la pausa.</div>
       <button class="crono-pause-overlay-play" onclick="cronoResume()" aria-label="Reanudar">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
       </button>
@@ -415,7 +415,7 @@
     </div>
     <div class="obras-toolbar">
       <div class="obras-search-wrap">
-        <input id="obrasSearchInput" class="obras-search" type="search" placeholder="Buscar obra, compositor, movimiento o pasaje..."
+        <input id="obrasSearchInput" class="obras-search" type="search" placeholder="Buscar obra, compositor…"
           autocomplete="off" oninput="setObrasSearch(this.value)">
       </div>
       <select class="pack-selector obras-event-filter" id="filtroEvento" onchange="renderObras()">
@@ -517,15 +517,14 @@
         </div>
       </div>
       <div class="modal-section-label">Estado inicial</div>
-      <div class="add-obra-state-note" id="addObraStateNote">Empieza como aprendizaje. Podrás añadir compases, movimientos, pasajes y solidez después.</div>
+      <div class="add-obra-state-note" id="addObraStateNote">Empieza en aprendizaje. Compases, movimientos y pasajes se añaden después.</div>
       <label class="add-aprendida-row" id="addAprendidaRow">
         <input type="checkbox" id="newObraAprendida">
-        <span id="addAprendidaText">Marcar como aprendida si ya la tienes en dedos.</span>
+        <span id="addAprendidaText">Ya la tengo en dedos (marcar como aprendida)</span>
       </label>
     </div>
     <div id="modalTipoActividadExtra" style="display:none;font-size:10px;color:var(--text3);margin-bottom:14px;line-height:1.5;font-style:italic">
-      Una actividad es estudio sin estructura interna: lectura a primera vista, técnica, improvisación, etc.<br>
-      No tendrá compases, pasajes ni pases. Sólo tiempo.
+      Estudio libre: lectura, técnica, improvisación… Solo registra tiempo.
     </div>
     <div class="modal-buttons">
       <button class="modal-btn secondary" onclick="closeModal('modalAddObra')">Cancelar</button>
@@ -575,9 +574,7 @@
   <div class="modal" style="max-width:380px">
     <div class="modal-title" style="margin-bottom:6px">☁ Recuperar datos</div>
     <div style="font-size:10px;color:var(--text3);margin-bottom:14px;line-height:1.6">
-      Esta instalación está vacía. Si tienes una cuenta con datos en la nube, escribe tu email y contraseña para recuperarlos.
-      <br><br>
-      Si nunca usaste cuenta, puedes <span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="closeModal('modalCloudSync')">empezar desde cero</span>.
+      Inicia sesión para recuperar tus datos de la nube, o <span style="color:var(--accent);cursor:pointer;text-decoration:underline" onclick="closeModal('modalCloudSync')">empieza desde cero</span>.
     </div>
     <div class="hecho-field-label">Email</div>
     <input type="email" id="cloudEmail" class="modal-input" placeholder="tu@email.com" autocomplete="email" style="margin-bottom:10px">
@@ -653,7 +650,6 @@
     </div>
 
     <div class="settings-section" style="margin-top:16px">Sonidos</div>
-    <div style="font-size:9px;color:var(--text3);line-height:1.6;margin-bottom:8px">Tipo de sonidos que la app emite al interactuar.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
       <button class="theme-option sound-option" data-sound="piano" onclick="setSoundPack('piano');refreshSoundOptionUI()" style="flex:1;min-width:80px">
         <div class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"/><path d="M7 6v12M10 6v12M14 6v12M17 6v12"/><path d="M4 10h16"/></svg></div>
@@ -678,10 +674,10 @@
       <input type="range" id="soundVolumeSlider" class="estado-slider sound-volume-slider" min="0" max="100" step="5" value="75" oninput="setSoundVolume(this.value)">
       <span class="sound-volume-label" id="soundVolumeLabel">75%</span>
     </div>
-    <div style="font-size:9px;color:var(--text3);font-style:italic;margin-top:4px">Toca para escuchar la prueba.</div>
+    <div style="font-size:9px;color:var(--text3);font-style:italic;margin-top:4px">Toca una opción para escucharla.</div>
 
     <div class="settings-section" style="margin-top:16px">Forest App — Importar historial</div>
-    <div style="font-size:9px;color:var(--text3);line-height:1.6;margin-bottom:10px">Importa tu CSV de Forest para añadir horas previas a cada obra. Cada etiqueta aparece por separado — tú decides si juntarlas o no.</div>
+    <div style="font-size:9px;color:var(--text3);line-height:1.6;margin-bottom:10px">Importa tu CSV de Forest para sumar horas previas a tus obras.</div>
     <button class="modal-btn secondary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px" onclick="document.getElementById('forestCsvInput').click()">
       <span style="font-size:14px">🌲</span> Cargar CSV de Forest
     </button>
@@ -711,7 +707,7 @@
 <div class="modal-overlay" id="modalStudyRegister">
   <div class="modal study-register-modal">
     <div class="modal-title" style="margin-bottom:4px">Registrar estudio</div>
-    <div class="study-register-sub" id="studyRegisterSub">Una sola entrada para apuntar o preparar estudio.</div>
+    <div class="study-register-sub" id="studyRegisterSub">Apunta estudio hecho o prepáralo para hoy.</div>
 
     <div class="study-mode-row" id="studyModeRow">
       <button class="study-mode-btn active" data-mode="plan" onclick="setStudyRegisterMode('plan',this)">A la sesión</button>
@@ -763,7 +759,7 @@
 <div class="modal-overlay" id="modalRegistroDirecto">
   <div class="modal" style="max-width:420px;max-height:90vh;overflow-y:auto">
     <div class="modal-title" style="margin-bottom:4px">📝 Registro directo</div>
-    <div style="font-size:9px;color:var(--text3);margin-bottom:16px">Apunta lo que has estudiado hoy sin necesidad de generar un plan.</div>
+    <div style="font-size:9px;color:var(--text3);margin-bottom:16px">Apunta estudio de hoy sin generar plan.</div>
 
     <div class="hecho-field-label">Obra o movimiento</div>
     <select id="rdObraSelect" class="modal-input" style="margin-bottom:14px"></select>
@@ -825,7 +821,7 @@
   <div class="modal" style="max-width:380px">
     <div class="modal-title" style="margin-bottom:4px">＋ Añadir sesión</div>
     <div style="font-size:9px;color:var(--text3);margin-bottom:14px;line-height:1.6">
-      Selecciona la obra que vas a estudiar (o has estudiado) y los minutos. Aparecerá en la lista para marcarla como hecha o saltada.
+      Obra y minutos. Aparecerá en la lista para marcarla.
     </div>
     <div class="hecho-field-label">Obra</div>
     <select id="extraObraSelect" class="modal-input" style="margin-bottom:14px">
@@ -846,7 +842,7 @@
   <div class="modal" style="max-width:360px">
     <div class="modal-title" style="margin-bottom:6px">Sesión completada</div>
     <div style="font-size:9px;color:var(--text3);margin-bottom:18px;line-height:1.6">
-      Una última pregunta. Tu respuesta ayuda a correlacionar el estado previo con el rendimiento real.
+      Tu valoración afina el planificador.
     </div>
 
     <div class="hecho-field-label">¿Cómo fue la sesión de hoy?</div>
@@ -875,17 +871,17 @@
   <div class="modal" style="max-width:380px">
     <div class="modal-title" style="margin-bottom:4px">¿Para qué día?</div>
     <div style="font-size:9px;color:var(--text3);margin-bottom:16px;line-height:1.6">
-      Por defecto se guarda como sesión de hoy. Si te olvidaste de registrar otro día, elige una fecha pasada.
+      Se guarda como hoy, o elige una fecha pasada.
     </div>
 
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
       <button class="modal-btn primary" id="saveDateToday" onclick="confirmSaveDate('today')"
         style="width:100%;padding:14px;font-size:15px">
-        Guardar como sesión de HOY
+        Guardar como hoy
       </button>
       <button class="modal-btn secondary" onclick="document.getElementById('saveDatePast').style.display='block';this.style.display='none'"
         id="saveDateOtherBtn" style="width:100%;padding:10px;font-size:11px">
-        ↺ Otro día (olvidé registrarlo)
+        ↺ Otro día
       </button>
     </div>
 
@@ -893,7 +889,7 @@
       <div class="hecho-field-label">Fecha de la sesión</div>
       <input type="date" id="saveDateInput" class="modal-input" style="width:100%;font-size:14px">
       <div style="font-size:9px;color:var(--text3);margin-top:6px;line-height:1.5;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:8px 10px">
-        ℹ️ Solo se cambiará la fecha del registro de la sesión. Los avances de compases o solidez ya quedaron registrados con la fecha de hoy y no se mueven.
+        Solo cambia la fecha de la sesión; los avances de compases y solidez se quedan en hoy.
       </div>
       <div class="modal-buttons" style="margin-top:14px">
         <button class="modal-btn secondary" onclick="closeModal('modalSaveDate')">Cancelar</button>
@@ -921,7 +917,7 @@
 <div class="modal-overlay" id="modalChangePlanObra">
   <div class="modal" style="max-width:380px">
     <div class="modal-title" style="margin-bottom:4px">Cambiar obra</div>
-    <div style="font-size:11px;color:var(--text3);font-style:italic;margin-bottom:14px">El tiempo y los datos de esta tarjeta se moverán a la obra que elijas.</div>
+    <div style="font-size:11px;color:var(--text3);font-style:italic;margin-bottom:14px">La tarjeta y su tiempo pasan a la obra que elijas.</div>
     <select id="changePlanObraSelect" class="crono-change-select"></select>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button class="modal-btn secondary" onclick="closeModal('modalChangePlanObra')">Cancelar</button>
@@ -987,7 +983,7 @@
       <div class="hecho-zone-top">
         <div>
           <div class="hecho-field-label" style="margin-bottom:3px">Zona trabajada</div>
-          <div class="hecho-zone-head" id="hechoZoneHead">Que parte has trabajado hoy</div>
+          <div class="hecho-zone-head" id="hechoZoneHead">Qué parte has trabajado hoy</div>
         </div>
         <div class="hecho-zone-step" id="hechoZoneStep">avance</div>
       </div>
@@ -1004,7 +1000,7 @@
 
     <!-- Compases (solo si obra en aprendizaje) -->
     <div id="hechoCompasSection" style="display:none">
-      <div class="hecho-field-label">Compás por el que vas <span style="font-weight:normal;text-transform:none;letter-spacing:0;font-size:9px;color:var(--text3)">(ajusta si has avanzado hoy)</span></div>
+      <div class="hecho-field-label">Compás por el que vas</div>
       <!-- Position display -->
       <div id="compasPosMeta" style="text-align:center;background:var(--bg3);border-radius:8px;padding:12px;margin-bottom:10px;display:none">
         <div style="font-family:'Cormorant Garamond',serif;font-size:32px;color:var(--accent)" id="compasAbsVal">—</div>
@@ -1029,7 +1025,7 @@
 
     <!-- PASES (solo si obra aprendida) -->
     <div id="hechoPasesSection" style="display:none">
-      <div class="hecho-field-label" style="margin-bottom:8px">Pases de hoy <span style="font-weight:normal;text-transform:none;letter-spacing:0;color:var(--text3);font-size:8px">(añade los que hayas dado)</span></div>
+      <div class="hecho-field-label" style="margin-bottom:8px">Pases de hoy</div>
 
       <!-- Pase Antes -->
       <div class="pase-block" id="paseAntesBlock">
@@ -1068,7 +1064,7 @@
 
     <!-- PASAJES TRABAJADOS (solo si hay pasajes activos) -->
     <div id="hechoPasajesSection" style="display:none">
-      <div class="hecho-field-label" style="margin-bottom:8px">Pasajes trabajados <span style="font-weight:normal;text-transform:none;letter-spacing:0;color:var(--text3);font-size:8px">(marca los que hayas trabajado)</span></div>
+      <div class="hecho-field-label" style="margin-bottom:8px">Pasajes trabajados</div>
       <div id="hechoPasajesList"></div>
     </div>
 
@@ -1116,7 +1112,7 @@
             <span>guardar destello</span>
           </label>
         </div>
-        <div class="hecho-destello-prompt">¿Qué hizo especial esta sesión? La idea, el enfoque, el clic que llevabas tiempo buscando…</div>
+        <div class="hecho-destello-prompt">¿Qué hizo especial esta sesión?</div>
         <input type="text" id="hechoDestelloNota" class="modal-input hecho-destello-input" placeholder="lo que quieras recordar de hoy…">
       </div>
     </div>
@@ -1187,7 +1183,7 @@
       <button class="modal-btn secondary" onclick="closeModal('modalEventoResultado')" style="padding:4px 12px;font-size:10px;flex:none">✕</button>
     </div>
     <div style="font-size:9px;color:var(--text3);margin-bottom:16px;line-height:1.6">
-      Puntúa cómo fue cada obra. El programa calculará el resultado global del evento.
+      Puntúa cada obra; el resultado global se calcula solo.
     </div>
     <div id="eventoResObras" style="max-height:55vh;overflow-y:auto"></div>
     <div class="modal-buttons" style="margin-top:14px">
@@ -1375,7 +1371,7 @@
 <div class="modal-overlay" id="modalSesionManual">
   <div class="modal" style="max-width:420px">
     <div class="modal-title">Añadir estudio</div>
-    <div style="font-size:10px;color:var(--text3);margin-bottom:16px;line-height:1.6">Registra tiempo que estudiaste de forma espontánea, fuera de la sesión generada.</div>
+    <div style="font-size:10px;color:var(--text3);margin-bottom:16px;line-height:1.6">Estudio hecho fuera de la sesión generada.</div>
 
     <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Obra</div>
     <select class="modal-input" id="manualObraSelect" style="cursor:pointer"></select>

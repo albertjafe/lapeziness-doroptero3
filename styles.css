@@ -541,6 +541,8 @@
     transition: all 0.2s;
   }
   .generate-btn:hover { background: var(--accent2); }
+  .generate-btn { box-shadow: 0 12px 28px -16px color-mix(in srgb, var(--accent) 55%, transparent); }
+  .generate-btn:active { transform: translateY(1px) scale(0.995); }
 
   /* SESSION PLAN */
   .session-plan { display: block; }
@@ -1123,6 +1125,7 @@
     transform: scale(0.985);
     transform-origin: center center;
     transition: opacity 0.28s var(--ease-out), transform 0.28s var(--ease-out);
+    box-shadow: 0 24px 70px -28px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.18);
   }
   .modal-overlay.visible .modal {
     opacity: 1;
@@ -1185,6 +1188,21 @@
     font-size: 12px; margin-bottom: 10px;
   }
   .modal-input:focus { outline: none; border-color: var(--border); }
+  .modal-input:focus {
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+  }
+  /* Selects con flecha propia, coherentes con los inputs */
+  select.modal-input {
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23998a70' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    cursor: pointer;
+  }
+  select.modal-input option { background: var(--bg2); color: var(--text); }
   .modal-buttons { display: flex; gap: 8px; margin-top: 16px; }
   #modalSettings .modal-buttons {
     position: sticky;
@@ -1196,13 +1214,18 @@
   }
   .modal-btn {
     flex: 1; padding: 10px;
-    border-radius: 6px; border: none;
+    border-radius: 8px; border: none;
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px; cursor: pointer;
+    letter-spacing: 0.03em;
     transition: all 0.2s;
   }
+  .modal-btn:active { transform: scale(0.97); }
   .modal-btn.primary { background: var(--accent); color: var(--bg); }
+  .modal-btn.primary { box-shadow: 0 6px 18px -10px color-mix(in srgb, var(--accent) 60%, transparent); }
+  .modal-btn.primary:hover { background: var(--accent2); }
   .modal-btn.secondary { background: var(--bg3); color: var(--text3); border: 1px solid var(--border2); }
+  .modal-btn.secondary:hover { color: var(--text2); border-color: var(--border); }
 
   .settings-icon {
     display: flex;
@@ -1378,14 +1401,17 @@
 
   /* TOAST */
   .toast {
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    position: fixed; bottom: 20px; left: 50%;
+    transform: translateX(-50%) translateY(8px);
     background: var(--bg3); border: 1px solid var(--border);
     border-radius: 20px; padding: 10px 20px;
     font-size: 11px; color: var(--accent);
-    z-index: 300; opacity: 0; transition: opacity 0.3s;
+    z-index: 300; opacity: 0;
+    transition: opacity 0.3s, transform 0.3s var(--ease-out);
+    box-shadow: 0 10px 28px -12px rgba(0,0,0,0.55);
     pointer-events: none;
   }
-  .toast.visible { opacity: 1; }
+  .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   /* TOAST CON DESHACER */
   .undo-toast {

@@ -3287,7 +3287,7 @@ function renderSolidezSection() {
   if (!el) return;
   const items = _solidezCollectTargets();
   if (!items.length) {
-    el.innerHTML = '<div class="sol-dash-widget empty"><div class="sol-dash-title">Solidez</div><div class="sol-dash-empty">Anade una obra para empezar a medir sin salir del flujo de estudio.</div></div>';
+    el.innerHTML = '<div class="sol-dash-widget empty"><div class="sol-dash-title">Solidez</div><div class="sol-dash-empty">Añade una obra para empezar a medir.</div></div>';
     return;
   }
 
@@ -3321,7 +3321,7 @@ function renderSolidezSection() {
     : '<div class="sol-dash-empty">Nada urgente ahora.</div>';
   const recentHtml = recentRows.length
     ? recentRows.map(i => _solidezRenderRow(i, true)).join('')
-    : '<div class="sol-dash-empty">Aun no hay mediciones recientes.</div>';
+    : '<div class="sol-dash-empty">Aún no hay mediciones recientes.</div>';
 
   el.innerHTML = '<div class="sol-dash-widget">' +
     '<div class="sol-dash-header">' +
@@ -4035,7 +4035,7 @@ function hechoRenderZoneSection(obra, entity, pasajesActivos, isActividad) {
   const head = document.getElementById('hechoZoneHead');
   if (head) {
     const title = isMov ? entity.name : obra.name;
-    head.textContent = title ? ('Que parte de "' + title + '" has tocado') : 'Que parte has trabajado hoy';
+    head.textContent = title ? ('Qué parte de "' + title + '" has tocado') : 'Qué parte has trabajado hoy';
   }
   section.style.display = '';
   hechoRefreshZoneUi();
@@ -7196,8 +7196,8 @@ function selectModalTipo(btn, tipo) {
     if (aprRow) aprRow.style.display = tipo === 'recuperacion' ? 'none' : '';
     if (stateNote) {
       stateNote.textContent = tipo === 'recuperacion'
-        ? 'Funciona como una obra normal: tendrá compases, movimientos, pasajes, pases y solidez. Entra como aprendida para que puedas medir y recuperar desde el primer día.'
-        : 'Empieza como aprendizaje. Podrás añadir compases, movimientos, pasajes y solidez después.';
+        ? 'Entra como aprendida, lista para medir y recuperar desde el primer día.'
+        : 'Empieza en aprendizaje. Compases, movimientos y pasajes se añaden después.';
     }
   }
 }
@@ -10018,8 +10018,8 @@ function setStudyRegisterMode(mode, btn) {
   if (dateWrap) dateWrap.style.display = isPlan ? 'none' : '';
   if (tickWrap) tickWrap.style.display = isPlan ? 'none' : '';
   if (sub) sub.textContent = isPlan
-    ? 'Añade una obra al plan vivo de hoy y márcala después con calma.'
-    : 'Guarda estudio ya hecho en el historial, con fecha y nota.';
+    ? 'Se añade al plan de hoy; márcala cuando la trabajes.'
+    : 'Estudio ya hecho, al historial con fecha y nota.';
   if (saveBtn) saveBtn.textContent = isPlan ? 'Añadir' : 'Guardar';
 }
 
