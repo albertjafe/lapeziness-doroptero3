@@ -228,7 +228,16 @@ function showView(name) {
   if (name === 'pasajes')    renderPasajesGlobal();
   if (name === 'pases')      renderPases();
   if (name === 'calendario') renderCalendario();
-  if (name === 'historial')  { renderStatsDashboard(); renderSesionesHistorial(); renderSolidezSection(); renderEficienciaSection(); renderEstadoSection(); _histListApplyPref(); }
+  if (name === 'historial')  {
+    // Esqueleto inmediato; el cálculo pesado (todo el historial) corre en el
+    // siguiente frame para que la vista aparezca al instante.
+    const sd = document.getElementById('statsDashboard');
+    if (sd) sd.innerHTML = _statsSkeleton();
+    requestAnimationFrame(() => {
+      renderStatsDashboard(); renderSolidezSection(); renderEficienciaSection(); renderEstadoSection();
+    });
+    renderSesionesHistorial(); _histListApplyPref();
+  }
 }
 
 function showToast(msg) {
@@ -236,6 +245,19 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('visible');
   setTimeout(() => t.classList.remove('visible'), 2000);
+}
+
+// Confirmación visual de guardado: un check que se dibuja solo y se desvanece.
+// Para los momentos "¿se ha guardado?" (sesión, solidez, obra) — refuerza la
+// sensación de fiabilidad.
+function showSavedCheck() {
+  const el = document.getElementById('savedCheck');
+  if (!el) return;
+  el.classList.remove('show');
+  void el.offsetWidth; // reinicia la animación si se llama seguido
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 1150);
 }
 
 // ── TOAST DE DESHACER ─────────────────────────────────────────────────────────
@@ -1294,6 +1316,7 @@ function commitSession(targetDate) {
     const niceDate = targetDate.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'short' });
     showToast('Guardado en ' + niceDate);
   }
+  showSavedCheck();
   // Refrescar historial si está visible
   if (document.getElementById('view-historial')?.classList.contains('active')) {
     renderSesionesHistorial();
@@ -1617,6 +1640,7 @@ function closeRatingSesion(save) {
   renderRacha();
   refreshConcentradoUI();
   showToast('Sesión guardada ✓');
+  showSavedCheck();
 }
 
 
@@ -6104,8 +6128,8 @@ function renderActividadCard(o, idx) {
           <span style="font-size:8px;background:var(--bg3);color:var(--text3);border-radius:3px;padding:1px 5px;margin-left:6px;letter-spacing:0.04em;text-transform:uppercase">Actividad</span>
         </div>
         <span style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-right:8px">${tiempoTxt}</span>
-        <button class="obra-quick-btn edit obra-edit-action" title="Editar nombre" onclick="event.stopPropagation();openEditObraNombre('${o.id}')">✎</button>
-        <button class="obra-quick-btn delete obra-edit-action" title="Eliminar actividad" onclick="event.stopPropagation();confirmDeleteObra('${o.id}')">✕</button>
+        <button class="obra-quick-btn edit obra-edit-action" title="Editar nombre" onclick="event.stopPropagation();openEditObraNombre('${o.id}')">${ICON_EDIT}</button>
+        <button class="obra-quick-btn delete obra-edit-action" title="Eliminar actividad" onclick="event.stopPropagation();confirmDeleteObra('${o.id}')">${ICON_DELETE}</button>
       </div>
     </div>
   `;
@@ -6254,6 +6278,10 @@ function renderObraCard(o, idx) {
   return renderObraCardSimple(o);
 }
 
+// Iconos de trazo (reemplazan glifos emoji ✎/✕ — más limpios y coherentes)
+const ICON_EDIT = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.3 13.2 5.1a1.5 1.5 0 0 1 2.1 0l.6.6a1.5 1.5 0 0 1 0 2.1L6.7 17 3 17.5z"/><path d="M11.8 6.5 14.5 9.2"/></svg>';
+const ICON_DELETE = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M8 6V4.6A1.6 1.6 0 0 1 9.6 3h.8A1.6 1.6 0 0 1 12 4.6V6"/><path d="M6.5 6 7 15.6a1 1 0 0 0 1 .9h4a1 1 0 0 0 1-.9L13.5 6"/></svg>';
+
 // Tarjeta de obra minimalista: nombre, compositor, dificultad, duración y
 // SOLIDEZ (única métrica). Tocar la barra de solidez abre el medidor rápido.
 function renderObraCardSimple(o) {
@@ -6290,8 +6318,8 @@ function renderObraCardSimple(o) {
     +       '<div class="obra-title-line"><span class="obra-name">' + escapeHtmlSafe(o.name) + '</span>' + difBadge + '</div>'
     +       '<div class="obra-simple-meta">' + composer + (durTxt ? '<span>' + durTxt + '</span>' : '') + urgPill + '</div>'
     +     '</div>'
-    +     '<button class="obra-quick-btn edit obra-edit-action" title="Editar" onclick="openEditObraNombre(\'' + o.id + '\')">✎</button>'
-    +     '<button class="obra-quick-btn delete obra-edit-action" title="Eliminar" onclick="confirmDeleteObra(\'' + o.id + '\')">✕</button>'
+    +     '<button class="obra-quick-btn edit obra-edit-action" title="Editar" onclick="openEditObraNombre(\'' + o.id + '\')">' + ICON_EDIT + '</button>'
+    +     '<button class="obra-quick-btn delete obra-edit-action" title="Eliminar" onclick="confirmDeleteObra(\'' + o.id + '\')">' + ICON_DELETE + '</button>'
     +   '</div>'
     +   '<button class="obra-simple-sol" onclick="openQuickSolidezTarget(\'' + o.id + '\',null)">'
     +     '<div class="obra-sol-bar"><div class="obra-sol-fill" style="width:' + pct + '%;background:' + col + '"></div></div>'
@@ -7304,6 +7332,7 @@ function addObra() {
   closeModal('modalAddObra');
   renderObras();
   showToast(isActividad ? 'Actividad añadida ✓' : isRecuperacion ? 'Obra recuperada ✓' : 'Obra añadida ✓');
+  showSavedCheck();
   // Reset por defecto a "obra" para próxima apertura
   modalTipoSelected = 'obra';
   const tipoBtns = document.querySelectorAll('#modalTipoSelector .origen-btn');
@@ -8768,6 +8797,26 @@ function _statsComparisonCard() {
     + '<div class="stats-card-title">Tendencia</div>'
     + '<div class="stats-card-sub">' + trend + '</div>'
     + '<div class="stats-cmp">' + barRows + '</div>'
+    + '</div>';
+}
+
+// Esqueleto del dashboard de estadísticas: se pinta al instante mientras se
+// calcula sobre todo el historial (que puede ser grande con datos de Forest).
+function _statsSkeleton() {
+  const heights = [70, 90, 55, 80, 45, 95, 60];
+  const bars = heights.map(h => '<div class="skeleton" style="height:' + h + '%"></div>').join('');
+  return ''
+    + '<div class="skeleton" style="height:38px;border-radius:999px;margin-bottom:12px"></div>'
+    + '<div class="skeleton" style="height:24px;width:160px;border-radius:8px;margin:0 auto 14px"></div>'
+    + '<div class="skel-card">'
+    +   '<div class="skeleton skel-line" style="width:42%"></div>'
+    +   '<div class="skeleton skel-line" style="width:28%;height:22px"></div>'
+    +   '<div class="skel-bars">' + bars + '</div>'
+    + '</div>'
+    + '<div class="skel-card">'
+    +   '<div class="skeleton skel-line" style="width:34%"></div>'
+    +   '<div class="skeleton skel-line" style="width:60%"></div>'
+    +   '<div class="skeleton skel-line" style="width:50%"></div>'
     + '</div>';
 }
 
@@ -12761,6 +12810,7 @@ function confirmQuickSolidez() {
 
   closeModal('modalQuickSolidez');
   showToast('Solidez registrada · ' + val + '%');
+  showSavedCheck();
   cronoUpdateSolidityActions();
   hechoUpdateFastSolidityAction();
   if (typeof renderObras === 'function' && document.getElementById('view-obras')?.classList.contains('active')) renderObras();
