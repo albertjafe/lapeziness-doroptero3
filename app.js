@@ -1375,12 +1375,17 @@ function updateHechoProd(val) {
   }
 }
 
-// Activa/atenúa el campo de nota del destello según la casilla "guardar destello".
+// Muestra/oculta el campo de nota del destello según la casilla.
 function toggleHechoDestello(on) {
-  const nota = document.getElementById('hechoDestelloNota');
   const box = document.getElementById('hechoDestelloBox');
-  if (nota) nota.disabled = !on;
-  if (box) box.classList.toggle('off', !on);
+  if (!box) return;
+  if (on) {
+    box.style.display = 'block';
+    requestAnimationFrame(() => box.classList.add('on'));
+  } else {
+    box.classList.remove('on');
+    box.style.display = 'none';
+  }
 }
 
 // ── AUTO-SAVE DEL PLAN DE HOY ───────────────────────────────────────────────
@@ -4623,31 +4628,17 @@ function openHechoDatos(planId, minPlan, opts) {
 
   document.getElementById('hechoNota').value = document.getElementById('tnote-' + planId)?.value || '';
 
-  // Reset destello box, then init productivity slider (que decide si se muestra).
+  // Destello: casilla simple (sin productividad). Restaura el estado previo.
   const destBox = document.getElementById('hechoDestelloBox');
   const destChk = document.getElementById('hechoDestelloChk');
   const destNotaEl = document.getElementById('hechoDestelloNota');
-  if (destBox) { destBox.style.display = 'none'; destBox.classList.remove('on'); }
-  if (destChk) destChk.checked = true;
-  if (destNotaEl) { destNotaEl.value = ''; destNotaEl.disabled = false; }
-
-  // Initialize productivity slider — restore previous value or default to 70
-  const prevProd = sessionProductivityRatings[planId];
-  const prodInit = (prevProd != null) ? prevProd : 70;
-  const prodSlider = document.getElementById('hechoProdSlider');
-  if (prodSlider) { prodSlider.value = prodInit; }
-  if (typeof updateHechoProd === 'function') updateHechoProd(prodInit);
-
-  // Restaurar un destello previamente guardado para este planId (nota + casilla).
   const prevDest = sessionDestello[planId];
-  if (prevDest && destBox) {
-    if (destChk) destChk.checked = !!prevDest.on;
-    if (destNotaEl) destNotaEl.value = prevDest.nota || '';
-    if (prevDest.on || (prevDest.nota || '').length) {
-      destBox.style.display = 'block';
-      requestAnimationFrame(() => destBox.classList.add('on'));
-    }
-    toggleHechoDestello(destChk ? destChk.checked : true);
+  const destOnInit = !!(prevDest && prevDest.on);
+  if (destChk) destChk.checked = destOnInit;
+  if (destNotaEl) destNotaEl.value = (prevDest && prevDest.nota) || '';
+  if (destBox) {
+    destBox.style.display = destOnInit ? 'block' : 'none';
+    destBox.classList.toggle('on', destOnInit);
   }
 
   // ── EDIT MODE ──────────────────────────────────────────────────────────
@@ -4966,11 +4957,10 @@ function closeHechoDatos(save) {
   if (destOn) sessionDestello[planId] = { on: true, nota: destNota };
   else delete sessionDestello[planId];
 
-  // Capture productivity rating from the embedded slider.
-  // Si esta es una sub-sesión (tarjeta fusionada), añadimos esta sub-sesión al
-  // agregado y la productividad final es media ponderada por minutos.
-  const prodVal = parseInt(document.getElementById('hechoProdSlider')?.value);
-  if (!isNaN(prodVal)) {
+  // Registro de la sub-sesión (timestamps, minutos, zona, destello). La
+  // productividad se eliminó: prodVal queda null y no se puntúa la sesión.
+  const prodVal = null;
+  if (planId) {
     // Recogemos los pasajes trabajados en esta apertura (snapshot de _pasajeWork)
     const subPasajes = [];
     Object.entries(_pasajeWork).forEach(([pid, w]) => {
@@ -8578,20 +8568,29 @@ function _statsTotalMin(start, end) {
   return Object.keys(porDia).reduce((a, k) => a + porDia[k], 0);
 }
 
-// Compara el periodo actual con los dos anteriores (estilo Forest:
-// "Tendencia"). Devuelve filas con etiqueta relativa, total y, para los
-// pasados, su comparación con el actual.
+// Compara el periodo actual con los dos anteriores AL MISMO PUNTO temporal
+// (estilo Forest): si hoy es 14-jun y este año llevo 80h, lo comparo con las
+// horas que llevaba a 14-jun del año pasado, no con el total del año pasado.
+// Para un periodo en curso (offset 0) el corte es "ahora"; para uno ya
+// cerrado (offset < 0) el corte es el final del periodo (completo).
 function _statsComparison() {
   const rel = {
     semana: ['Esta semana', 'Semana pasada', 'Hace 2 semanas'],
     mes:    ['Este mes', 'Mes pasado', 'Hace 2 meses'],
     'año':  ['Este año', 'Año pasado', 'Hace 2 años'],
   }[_statsRange];
+  const cur = _statsPeriod(_statsOffset);
+  const fullMs = cur.end - cur.start;
+  const elapsedMs = _statsOffset < 0
+    ? fullMs
+    : Math.max(0, Math.min(Date.now() - cur.start, fullMs));
+  const partial = elapsedMs < fullMs - 1000; // periodo aún en curso
   const rows = [0, 1, 2].map(k => {
     const per = _statsPeriod(_statsOffset - k);
-    return { label: rel[k], min: _statsTotalMin(per.start, per.end) };
+    const end = new Date(per.start.getTime() + elapsedMs);
+    return { label: rel[k], min: _statsTotalMin(per.start, end) };
   });
-  return rows;
+  return { rows, partial };
 }
 
 // Minutos estudiados por día (clave local YYYY-MM-DD) dentro de [start, end).
@@ -8681,7 +8680,37 @@ function _statsAxisLabel(min) {
   return min >= 60 ? (Math.round(min / 60 * 10) / 10) + 'h' : min + 'm';
 }
 
-function _statsBarChartSVG(values, labels, hoyIdx) {
+// Tooltip interno al SVG (coordenadas del viewBox → inmune al zoom del body).
+function _statsTipMarkup() {
+  return '<g class="stats-tip" style="display:none">'
+    + '<rect class="stats-tip-bg" rx="5"></rect>'
+    + '<text class="stats-tip-txt" text-anchor="middle"></text></g>';
+}
+function statsChartTip(el, cx, text) {
+  const svg = el.ownerSVGElement || (el.closest && el.closest('svg'));
+  if (!svg) return;
+  const g = svg.querySelector('.stats-tip');
+  if (!g) return;
+  const txt = g.querySelector('.stats-tip-txt');
+  const bg = g.querySelector('.stats-tip-bg');
+  txt.textContent = text;
+  const cxC = Math.max(48, Math.min(cx, 592));
+  txt.setAttribute('x', cxC);
+  txt.setAttribute('y', 13);
+  g.style.display = '';
+  let b; try { b = txt.getBBox(); } catch (e) { b = { x: cxC - 24, y: 4, width: 48, height: 12 }; }
+  bg.setAttribute('x', b.x - 7);
+  bg.setAttribute('y', b.y - 4);
+  bg.setAttribute('width', b.width + 14);
+  bg.setAttribute('height', b.height + 8);
+  clearTimeout(svg._tipT);
+  svg._tipT = setTimeout(() => { g.style.display = 'none'; }, 2000);
+}
+function _statsTipText(label, minutes) {
+  return (label || '') + ' · ' + (minutes ? fmtMinutos(minutes) : '0 min');
+}
+
+function _statsBarChartSVG(values, labels, hoyIdx, tipLabels) {
   const W = 640, H = 190, padL = 38, padR = 8, padT = 10, padB = 24;
   const n = values.length || 1;
   const maxVal = Math.max.apply(null, values.concat([1]));
@@ -8696,22 +8725,27 @@ function _statsBarChartSVG(values, labels, hoyIdx) {
   }
   const slot = iw / n;
   const bw = Math.min(34, slot * 0.62);
+  let hits = '';
   values.forEach((v, i) => {
     const x = padL + slot * i + (slot - bw) / 2;
+    const cx = padL + slot * i + slot / 2;
     const bh = ih * (v / top);
     if (v > 0) {
       svg += '<rect x="' + x + '" y="' + (padT + ih - Math.max(bh, 2.5)) + '" width="' + bw + '" height="' + Math.max(bh, 2.5)
         + '" rx="' + Math.min(5, bw / 2) + '" class="stats-bar' + (i === hoyIdx ? ' hoy' : '') + '"/>';
     }
     if (labels[i]) {
-      svg += '<text x="' + (padL + slot * i + slot / 2) + '" y="' + (H - 7) + '" text-anchor="middle" class="stats-axis'
+      svg += '<text x="' + cx + '" y="' + (H - 7) + '" text-anchor="middle" class="stats-axis'
         + (i === hoyIdx ? ' hoy' : '') + '">' + labels[i] + '</text>';
     }
+    const tip = _statsTipText((tipLabels && tipLabels[i]) || labels[i], v);
+    hits += '<rect x="' + (padL + slot * i) + '" y="' + padT + '" width="' + slot + '" height="' + ih
+      + '" fill="rgba(0,0,0,0)" pointer-events="all" onclick="statsChartTip(this,' + cx.toFixed(1) + ',\'' + hechoJs(tip) + '\')"/>';
   });
-  return svg + '</svg>';
+  return svg + hits + _statsTipMarkup() + '</svg>';
 }
 
-function _statsLineChartSVG(values, labels) {
+function _statsLineChartSVG(values, labels, tipLabels) {
   const W = 640, H = 170, padL = 38, padR = 14, padT = 14, padB = 24;
   const n = values.length;
   const maxVal = Math.max.apply(null, values.concat([1]));
@@ -8738,7 +8772,16 @@ function _statsLineChartSVG(values, labels) {
   labels.forEach((lab, i) => {
     if (lab) svg += '<text x="' + px(i) + '" y="' + (H - 7) + '" text-anchor="middle" class="stats-axis">' + lab + '</text>';
   });
-  return svg + '</svg>';
+  // Zonas tocables por punto (muestran el valor)
+  const slotW = n > 1 ? iw / (n - 1) : iw;
+  let hits = '';
+  values.forEach((v, i) => {
+    const cx = px(i);
+    const tip = _statsTipText((tipLabels && tipLabels[i]) || labels[i], v);
+    hits += '<rect x="' + (cx - slotW / 2).toFixed(1) + '" y="' + padT + '" width="' + slotW.toFixed(1) + '" height="' + ih
+      + '" fill="rgba(0,0,0,0)" pointer-events="all" onclick="statsChartTip(this,' + cx.toFixed(1) + ',\'' + hechoJs(tip) + '\')"/>';
+  });
+  return svg + hits + _statsTipMarkup() + '</svg>';
 }
 
 function _statsDonutSVG(segs, totalMin) {
@@ -8760,16 +8803,18 @@ function _statsDonutSVG(segs, totalMin) {
 
 // Barras del periodo: por día (semana/mes) o por mes (año).
 function _statsBarsData(porDia, start, end) {
-  const labels = [], values = [];
+  const labels = [], values = [], tipLabels = [];
   let hoyIdx = -1;
   const hoyKey = _statsISO(new Date());
   if (_statsRange === 'año') {
     const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const mesesL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
     const porMes = new Array(12).fill(0);
     Object.keys(porDia).forEach(k => { porMes[parseInt(k.slice(5, 7), 10) - 1] += porDia[k]; });
     const now = new Date();
     for (let m = 0; m < 12; m++) {
       labels.push(meses[m]);
+      tipLabels.push(mesesL[m]);
       values.push(porMes[m]);
       if (_statsOffset === 0 && m === now.getMonth()) hoyIdx = m;
     }
@@ -8783,12 +8828,13 @@ function _statsBarsData(porDia, start, end) {
       labels.push(_statsRange === 'semana'
         ? dias[i]
         : (d.getDate() === 1 || d.getDate() % 5 === 0 ? String(d.getDate()) : ''));
+      tipLabels.push(d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' }));
       if (k === hoyKey) hoyIdx = i;
       d.setDate(d.getDate() + 1);
       i++;
     }
   }
-  return { labels, values, hoyIdx };
+  return { labels, values, hoyIdx, tipLabels };
 }
 
 function setStatsRange(r) {
@@ -8810,9 +8856,10 @@ function statsResetOffset() {
 const _STATS_DIAS_LARGO = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
 
 function _statsComparisonCard() {
-  const rows = _statsComparison();
+  const { rows, partial } = _statsComparison();
   const max = Math.max(1, rows[0].min, rows[1].min, rows[2].min);
-  // Línea de tendencia: actual vs anterior
+  // "a estas alturas" deja claro que se compara al mismo punto temporal
+  const mismoPunto = partial ? ' a estas alturas' : '';
   const cur = rows[0].min, prev = rows[1].min;
   let trend;
   if (prev === 0 && cur === 0) trend = 'Aún sin datos para comparar.';
@@ -8820,21 +8867,28 @@ function _statsComparisonCard() {
   else {
     const diff = cur - prev;
     const pct = Math.round(Math.abs(diff) / prev * 100);
-    if (diff === 0) trend = 'Igual que ' + rows[1].label.toLowerCase() + '.';
+    if (diff === 0) trend = 'Igual que ' + rows[1].label.toLowerCase() + mismoPunto + '.';
     else trend = '<strong>' + fmtMinutos(Math.abs(diff)) + (diff > 0 ? ' más' : ' menos')
-      + '</strong> que ' + rows[1].label.toLowerCase() + ' · ' + (diff > 0 ? '+' : '−') + pct + '%';
+      + '</strong> que ' + rows[1].label.toLowerCase() + mismoPunto + ' · ' + (diff > 0 ? '+' : '−') + pct + '%';
   }
   const barRows = rows.map((r, i) => {
     const w = Math.round(r.min / max * 100);
-    return '<div class="stats-cmp-row">'
+    const isCur = i === 0;
+    // Punto que marca "hasta hoy / mismo día" al final de cada barra
+    const dot = partial ? '<span class="stats-cmp-dot" title="al mismo día"></span>' : '';
+    const tipTxt = r.label + (partial ? ' a hoy' : '') + ': ' + (r.min ? fmtMinutos(r.min) : '0 min');
+    return '<div class="stats-cmp-row" onclick="showToast(\'' + hechoJs(tipTxt) + '\')">'
       + '<span class="stats-cmp-label">' + r.label + '</span>'
-      + '<div class="stats-cmp-track"><div class="stats-cmp-fill' + (i === 0 ? ' current' : '') + '" style="width:' + w + '%"></div></div>'
+      + '<div class="stats-cmp-track"><div class="stats-cmp-fill' + (isCur ? ' current' : '') + '" style="width:' + w + '%">' + dot + '</div></div>'
       + '<span class="stats-cmp-val">' + (r.min ? fmtMinutos(r.min) : '—') + '</span>'
       + '</div>';
   }).join('');
+  const sub = partial
+    ? 'Comparado al mismo día' + (mismoPunto ? '' : '') + ' · ' + trend
+    : trend;
   return '<div class="stats-card">'
     + '<div class="stats-card-title">Tendencia</div>'
-    + '<div class="stats-card-sub">' + trend + '</div>'
+    + '<div class="stats-card-sub">' + sub + '</div>'
     + '<div class="stats-cmp">' + barRows + '</div>'
     + '</div>';
 }
@@ -8921,7 +8975,7 @@ function renderStatsDashboard() {
     + '<div class="stats-card-title">Tiempo de concentración</div>'
     + '<div class="stats-card-big">' + fmtMinutos(total) + '</div>'
     + (total > 0
-        ? _statsBarChartSVG(bars.values, bars.labels, bars.hoyIdx)
+        ? _statsBarChartSVG(bars.values, bars.labels, bars.hoyIdx, bars.tipLabels)
         : '<div class="stats-empty">Sin estudio en este periodo.</div>')
     + '</div>';
 
@@ -8937,7 +8991,7 @@ function renderStatsDashboard() {
       cards += '<div class="stats-card">'
         + '<div class="stats-card-title">Día de la semana</div>'
         + '<div class="stats-card-sub">Más concentración los <strong>' + _STATS_DIAS_LARGO[mejor] + '</strong></div>'
-        + _statsLineChartSVG(porSem, ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'])
+        + _statsLineChartSVG(porSem, ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'], _STATS_DIAS_LARGO)
         + '</div>';
     }
 
@@ -8948,10 +9002,11 @@ function renderStatsDashboard() {
       porHora.forEach((v, i) => { if (v > porHora[pico]) pico = i; });
       const horaLabels = porHora.map((_, h) =>
         (h === 0 || h === 6 || h === 12 || h === 18 || h === 23) ? String(h).padStart(2, '0') + ':00' : '');
+      const horaTips = porHora.map((_, h) => String(h).padStart(2, '0') + ':00');
       cards += '<div class="stats-card">'
         + '<div class="stats-card-title">Momento del día</div>'
         + '<div class="stats-card-sub">Pico a las <strong>' + String(pico).padStart(2, '0') + ':00</strong></div>'
-        + _statsLineChartSVG(porHora, horaLabels)
+        + _statsLineChartSVG(porHora, horaLabels, horaTips)
         + '</div>';
     }
 

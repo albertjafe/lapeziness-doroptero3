@@ -1096,30 +1096,15 @@
       </div>
     </div>
 
-    <!-- ¿Cómo fue esta sesión? (productividad por sesión, no por día) -->
+    <!-- Destello: marcar la sesión como memorable (sin productividad) -->
     <div style="margin-top:6px;padding-top:14px;border-top:1px dashed var(--border2)">
-      <div class="hecho-field-label">¿Cómo fue esta sesión?</div>
-      <div class="sol-pct-display" id="hechoProdDisplay" style="font-size:30px;margin:2px 0">70</div>
-      <div class="sol-pct-label" id="hechoProdLabel" style="margin-bottom:8px">Sesión productiva</div>
-      <input type="range" min="0" max="100" step="5" value="70" id="hechoProdSlider"
-        class="sol-slider" style="color:#c8a030" oninput="updateHechoProd(this.value)">
-      <div class="sol-ref-row">
-        <span>0 perdida</span>
-        <span>50 normal</span>
-        <span>100 perfecta</span>
-      </div>
-
-      <!-- ✨ Destello: aparece solo si la sesión fue de excelencia (slider ≥ 80) -->
+      <label class="hecho-destello-toggle">
+        <input type="checkbox" id="hechoDestelloChk" onchange="toggleHechoDestello(this.checked)">
+        <span class="hecho-destello-toggle-track"><span class="hecho-destello-toggle-knob"></span></span>
+        <span class="hecho-destello-toggle-text"><span class="spark">✨</span> Marcar como destello</span>
+      </label>
       <div id="hechoDestelloBox" class="hecho-destello-box" style="display:none">
-        <div class="hecho-destello-head">
-          <span class="hecho-destello-title">✨ Sesión de excelencia</span>
-          <label class="hecho-destello-keep">
-            <input type="checkbox" id="hechoDestelloChk" checked onchange="toggleHechoDestello(this.checked)">
-            <span>guardar destello</span>
-          </label>
-        </div>
-        <div class="hecho-destello-prompt">¿Qué hizo especial esta sesión?</div>
-        <input type="text" id="hechoDestelloNota" class="modal-input hecho-destello-input" placeholder="lo que quieras recordar de hoy…">
+        <input type="text" id="hechoDestelloNota" class="modal-input hecho-destello-input" placeholder="¿Qué la hizo especial?">
       </div>
     </div>
 
@@ -1174,7 +1159,7 @@
       <div class="modal-title" style="margin-bottom:0">✨ Destellos</div>
       <button class="modal-btn secondary" onclick="closeModal('modalDestellos')" style="padding:4px 12px;font-size:10px;flex:none">✕</button>
     </div>
-    <div style="font-size:10px;color:var(--text3);padding:0 24px 12px;line-height:1.6">
+    <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15px;color:var(--text2);padding:0 24px 14px;line-height:1.5">
       Tus sesiones de excelencia. Vuelve aquí cuando necesites recordar de lo que eres capaz.
     </div>
     <div class="destellos-list" id="destellosList" style="overflow-y:auto;padding:0 24px 22px;flex:1;-webkit-overflow-scrolling:touch"></div>
