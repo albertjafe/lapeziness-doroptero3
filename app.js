@@ -8580,15 +8580,23 @@ function _statsComparison() {
     'año':  ['Este año', 'Año pasado', 'Hace 2 años'],
   }[_statsRange];
   const cur = _statsPeriod(_statsOffset);
+  const now = Date.now();
   const fullMs = cur.end - cur.start;
+  // Punto temporal "hoy" dentro del periodo en curso (corte del marcador).
   const elapsedMs = _statsOffset < 0
     ? fullMs
-    : Math.max(0, Math.min(Date.now() - cur.start, fullMs));
-  const partial = elapsedMs < fullMs - 1000; // periodo aún en curso
+    : Math.max(0, Math.min(now - cur.start, fullMs));
+  const partial = elapsedMs < fullMs - 1000;
   const rows = [0, 1, 2].map(k => {
     const per = _statsPeriod(_statsOffset - k);
-    const end = new Date(per.start.getTime() + elapsedMs);
-    return { label: rel[k], min: _statsTotalMin(per.start, end) };
+    // fullMin = tiempo ABSOLUTO del periodo (hasta su fin, o hasta ahora si
+    // aún no ha terminado). Es la longitud de la barra.
+    const fullEnd = new Date(Math.min(now, per.end.getTime()));
+    const fullMin = _statsTotalMin(per.start, fullEnd);
+    // pointMin = acumulado hasta el MISMO día (posición del punto marcador).
+    const pointEnd = new Date(per.start.getTime() + elapsedMs);
+    const pointMin = _statsTotalMin(per.start, pointEnd);
+    return { label: rel[k], fullMin, pointMin };
   });
   return { rows, partial };
 }
@@ -8857,10 +8865,10 @@ const _STATS_DIAS_LARGO = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes',
 
 function _statsComparisonCard() {
   const { rows, partial } = _statsComparison();
-  const max = Math.max(1, rows[0].min, rows[1].min, rows[2].min);
-  // "a estas alturas" deja claro que se compara al mismo punto temporal
+  const maxFull = Math.max(1, rows[0].fullMin, rows[1].fullMin, rows[2].fullMin);
+  // La comparación se lee EN EL PUNTO (mismo día): pointMin actual vs anterior.
+  const cur = rows[0].pointMin, prev = rows[1].pointMin;
   const mismoPunto = partial ? ' a estas alturas' : '';
-  const cur = rows[0].min, prev = rows[1].min;
   let trend;
   if (prev === 0 && cur === 0) trend = 'Aún sin datos para comparar.';
   else if (prev === 0) trend = 'Primer periodo con registro · ' + fmtMinutos(cur);
@@ -8872,20 +8880,27 @@ function _statsComparisonCard() {
       + '</strong> que ' + rows[1].label.toLowerCase() + mismoPunto + ' · ' + (diff > 0 ? '+' : '−') + pct + '%';
   }
   const barRows = rows.map((r, i) => {
-    const w = Math.round(r.min / max * 100);
-    const isCur = i === 0;
-    // Punto que marca "hasta hoy / mismo día" al final de cada barra
-    const dot = partial ? '<span class="stats-cmp-dot" title="al mismo día"></span>' : '';
-    const tipTxt = r.label + (partial ? ' a hoy' : '') + ': ' + (r.min ? fmtMinutos(r.min) : '0 min');
+    // Barra = tiempo absoluto (fullMin). Punto = posición del mismo día,
+    // en la MISMA escala (pointMin/maxFull), así el punto siempre cae dentro
+    // de la barra y se puede comparar su posición entre barras.
+    const fillW = Math.round(r.fullMin / maxFull * 100);
+    const dotLeft = Math.round(r.pointMin / maxFull * 100);
+    const showDot = partial && r.pointMin > 0;
+    const dot = showDot
+      ? '<span class="stats-cmp-dot" style="left:' + dotLeft + '%" title="al mismo día"></span>'
+      : '';
+    const tipTxt = r.label + ': ' + (r.fullMin ? fmtMinutos(r.fullMin) : '0 min')
+      + (partial ? ' · a hoy ' + fmtMinutos(r.pointMin) : '');
     return '<div class="stats-cmp-row" onclick="showToast(\'' + hechoJs(tipTxt) + '\')">'
       + '<span class="stats-cmp-label">' + r.label + '</span>'
-      + '<div class="stats-cmp-track"><div class="stats-cmp-fill' + (isCur ? ' current' : '') + '" style="width:' + w + '%">' + dot + '</div></div>'
-      + '<span class="stats-cmp-val">' + (r.min ? fmtMinutos(r.min) : '—') + '</span>'
+      + '<div class="stats-cmp-track">'
+      +   '<div class="stats-cmp-fill' + (i === 0 ? ' current' : '') + '" style="width:' + fillW + '%"></div>'
+      +   dot
+      + '</div>'
+      + '<span class="stats-cmp-val">' + (r.fullMin ? fmtMinutos(r.fullMin) : '—') + '</span>'
       + '</div>';
   }).join('');
-  const sub = partial
-    ? 'Comparado al mismo día' + (mismoPunto ? '' : '') + ' · ' + trend
-    : trend;
+  const sub = partial ? 'El punto marca hoy · ' + trend : trend;
   return '<div class="stats-card">'
     + '<div class="stats-card-title">Tendencia</div>'
     + '<div class="stats-card-sub">' + sub + '</div>'
@@ -12123,20 +12138,31 @@ function openDestellosModal() {
   if (list) {
     const destellos = getAllDestellos();
     if (!destellos.length) {
-      list.innerHTML = emptyStateHTML(ICON_STAR, 'Aún no hay destellos', 'Cuando una sesión sea de excelencia (80+), guárdala aquí para releerla en días flojos.');
+      list.innerHTML = emptyStateHTML(ICON_STAR, 'Aún no hay destellos', 'Cuando una sesión sea memorable, márcala como destello al guardarla.');
     } else {
-      list.innerHTML = destellos.map(d => {
-        const fecha = new Date(d.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+      // Agrupados por mes (cabecera pegajosa) para poder navegar muchos.
+      let html = '<div class="destellos-count">' + destellos.length
+        + (destellos.length === 1 ? ' destello' : ' destellos') + '</div>';
+      let lastGroup = '';
+      destellos.forEach(d => {
+        const dt = new Date(d.date);
+        const group = dt.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+        if (group !== lastGroup) {
+          lastGroup = group;
+          html += '<div class="destellos-group-label">' + group.charAt(0).toUpperCase() + group.slice(1) + '</div>';
+        }
+        const fecha = dt.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
         const notaHtml = d.nota
           ? '<div class="destello-card-nota">' + escapeHtmlSafe(d.nota) + '</div>'
           : '<div class="destello-card-nota destello-card-nota--vacia">— sin nota —</div>';
-        return '<div class="destello-card">' +
+        html += '<div class="destello-card">' +
           '<div class="destello-card-head">' +
             '<span class="destello-card-obra">' + escapeHtmlSafe(d.obra) + '</span>' +
             '<span class="destello-card-fecha">' + fecha + '</span>' +
           '</div>' + notaHtml +
         '</div>';
-      }).join('');
+      });
+      list.innerHTML = html;
     }
   }
   openModal('modalDestellos');
@@ -12757,25 +12783,18 @@ function _quickSolTargetValue(target) {
 }
 
 function _quickSolBuildTargets(base) {
+  // Solidez única por obra: ya no hay pasajes ni movimientos como objetivos.
   const obra = base ? findObra(base.obraId) : null;
   if (!obra || obra.tipo === 'actividad') return [];
-  if (base.movId) {
-    const mov = findMovimiento(base.obraId, base.movId);
-    return mov ? [{ key: 'mov:' + mov.id, type: 'mov', obraId: base.obraId, movId: mov.id, name: mov.name, section: 'Movimiento' }] : [];
-  }
-  const targets = [{ key: 'obra:' + obra.id, type: 'obra', obraId: obra.id, name: 'Obra completa', section: 'Obra' }];
-  (obra.movimientos || []).forEach(m => {
-    targets.push({ key: 'mov:' + m.id, type: 'mov', obraId: obra.id, movId: m.id, name: m.name, section: 'Movimientos' });
-  });
-  (obra.pasajes || []).filter(p => p.status !== 'resuelto').forEach(p => {
-    targets.push({ key: 'pasaje:' + p.id, type: 'pasaje', obraId: obra.id, pasajeId: p.id, name: p.text, section: 'Pasajes' });
-  });
-  return targets;
+  return [{ key: 'obra:' + obra.id, type: 'obra', obraId: obra.id, name: 'Obra completa', section: 'Obra' }];
 }
 
 function _quickSolRenderTargets() {
   const wrap = document.getElementById('quickSolTargets');
   if (!wrap) return;
+  // Con una sola opción (la obra) el selector sobra.
+  if (_quickSolTargets.length <= 1) { wrap.innerHTML = ''; wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
   let section = '';
   let html = '';
   _quickSolTargets.forEach(t => {

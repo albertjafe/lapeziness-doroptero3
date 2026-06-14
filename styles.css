@@ -6527,14 +6527,33 @@
   }
   .stats-chart { touch-action: pan-y; }
 
-  /* Punto "al mismo día" al final de cada barra comparativa */
+  /* Punto "al mismo día": marca la posición de hoy sobre cada barra (que
+     muestra el tiempo absoluto). Se compara por dónde cae el punto. */
   .stats-cmp-row { cursor: pointer; }
-  .stats-cmp-track { position: relative; }
+  .stats-cmp-track { position: relative; overflow: visible; }
   .stats-cmp-dot {
-    position: absolute; right: -3px; top: 50%;
-    width: 8px; height: 8px; margin-top: -4px;
+    position: absolute; top: 50%;
+    width: 10px; height: 10px; margin-top: -5px; margin-left: -5px;
     border-radius: 50%;
     background: var(--bg);
-    border: 2px solid var(--accent2);
-    box-shadow: 0 0 0 2px var(--bg2);
+    border: 2.5px solid var(--accent2);
+    box-shadow: 0 0 0 2px var(--bg2), 0 1px 3px rgba(0,0,0,0.3);
+    z-index: 2;
   }
+
+  /* ─── DESTELLOS · conteo y agrupación por mes (muchos destellos) ─── */
+  .destellos-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text3); margin: 2px 0 10px;
+  }
+  .destellos-group-label {
+    position: sticky; top: 0; z-index: 1;
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 15px; color: var(--accent);
+    padding: 10px 0 6px;
+    margin-top: 4px;
+    background: linear-gradient(180deg, var(--bg2) 70%, transparent);
+    backdrop-filter: blur(2px);
+  }
+  .destellos-group-label:first-of-type { margin-top: 0; }
