@@ -4689,68 +4689,63 @@
     84%  { opacity: 1; }
     100% { opacity: 0; }
   }
-  /* Insignia circular: el glow es un box-shadow sobre un div redondo, así que
-     siempre se recorta al círculo (sin el cuadrado fantasma del drop-shadow
-     de SVG en Safari/iOS). */
-  .crono-hecho-flash .cf-badge {
-    width: 132px;
-    height: 132px;
-    border-radius: 50%;
-    background: #2ada64;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    transform: scale(0.4);
+  /* Floración: una flor del color de la obra brota al terminar la sesión. */
+  .crono-hecho-flash .cf-bloom svg { width: 168px; height: 168px; overflow: visible; }
+  .crono-hecho-flash .cf-glow {
+    fill: var(--crono-color, var(--accent));
+    opacity: 0; transform-box: view-box; transform-origin: 70px 60px;
   }
-  .crono-hecho-flash.visible .cf-badge {
-    animation: cfBadgeIn 0.55s cubic-bezier(0.34,1.56,0.64,1) forwards,
-               cfBadgeGlow 2.0s ease-out forwards;
+  .crono-hecho-flash.visible .cf-glow { animation: cfGlow 2s ease-out forwards; }
+  @keyframes cfGlow {
+    0% { opacity: 0; transform: scale(0.5); }
+    24% { opacity: 0.3; }
+    100% { opacity: 0.16; transform: scale(1.15); }
   }
-  @keyframes cfBadgeIn {
-    0%   { opacity: 0; transform: scale(0.4); }
-    60%  { opacity: 1; transform: scale(1.08); }
-    100% { opacity: 1; transform: scale(1); }
+  .crono-hecho-flash .cf-stem-g {
+    transform-box: view-box; transform-origin: 70px 126px; transform: scaleY(0);
   }
-  @keyframes cfBadgeGlow {
-    0%   { box-shadow: 0 0 0 0 rgba(46,218,100,0.0); }
-    22%  { box-shadow: 0 0 46px 8px rgba(46,218,100,0.55), 0 10px 30px rgba(0,0,0,0.28); }
-    100% { box-shadow: 0 0 28px 3px rgba(46,218,100,0.30), 0 10px 30px rgba(0,0,0,0.22); }
+  .crono-hecho-flash.visible .cf-stem-g { animation: cfStem 0.5s cubic-bezier(0.16,1,0.3,1) forwards; }
+  @keyframes cfStem { to { transform: scaleY(1); } }
+  .crono-hecho-flash .cf-stem { fill: none; stroke: var(--green); stroke-width: 3; stroke-linecap: round; }
+  .crono-hecho-flash .cf-leaf { fill: var(--green); opacity: 0.55; }
+  .crono-hecho-flash .cf-petal { fill: var(--crono-color, var(--accent)); opacity: 0.92; }
+  .crono-hecho-flash .cf-petals {
+    transform-box: view-box; transform-origin: 70px 60px; transform: scale(0); opacity: 0;
   }
-  .crono-hecho-flash .cf-badge svg {
-    width: 80px;
-    height: 80px;
-    overflow: visible;
+  .crono-hecho-flash.visible .cf-petals {
+    animation: cfBloom 0.75s 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards;
   }
-  /* El check es un trazo BLANCO GRUESO sobre el círculo verde */
-  .crono-hecho-flash .cf-check {
-    fill: none;
-    stroke: #ffffff;
-    stroke-width: 5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-dasharray: 45;
-    stroke-dashoffset: 45;
+  @keyframes cfBloom {
+    0% { transform: scale(0) rotate(-28deg); opacity: 0; }
+    55% { opacity: 1; }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
   }
-  .crono-hecho-flash.visible .cf-check {
-    animation: cfCheckDraw 0.4s 0.42s cubic-bezier(0.65,0,0.35,1) forwards;
+  .crono-hecho-flash .cf-core {
+    fill: var(--accent2); opacity: 0;
+    transform-box: view-box; transform-origin: 70px 60px; transform: scale(0);
   }
-  @keyframes cfCheckDraw {
-    to { stroke-dashoffset: 0; }
+  .crono-hecho-flash.visible .cf-core {
+    animation: cfCore 0.4s 0.66s cubic-bezier(0.34,1.56,0.64,1) forwards;
   }
+  @keyframes cfCore { to { opacity: 1; transform: scale(1); } }
   .crono-hecho-flash-text {
     font-family: "Cormorant Garamond", serif;
     font-size: 32px;
     font-weight: 400;
-    color: #2ada64;
+    color: var(--crono-color, var(--accent));
     letter-spacing: 0.06em;
-    text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    text-shadow: 0 2px 16px rgba(0,0,0,0.45);
     opacity: 0;
     transform: translateY(8px);
-    animation: cfTextIn 0.55s 0.7s cubic-bezier(0.16,1,0.3,1) forwards;
+    animation: cfTextIn 0.55s 0.8s cubic-bezier(0.16,1,0.3,1) forwards;
   }
   @keyframes cfTextIn {
     to { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .crono-hecho-flash .cf-petals,
+    .crono-hecho-flash .cf-core,
+    .crono-hecho-flash .cf-stem-g { transform: none; opacity: 1; animation: none; }
   }
 
   /* Nuevo item del resumen lateral: entrada animada deslizándose y resaltado breve */
@@ -4871,9 +4866,11 @@
     flex-direction: column;
     pointer-events: none;
     opacity: 1;
-    transition: opacity 0.65s ease;
+    transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.4,0,0.2,1);
+    transform: scale(1);
   }
-  #splashScreen.fade-out { opacity: 0; }
+  /* Apertura tipo iOS: el splash se aclara y se "abre" hacia la app. */
+  #splashScreen.fade-out { opacity: 0; transform: scale(1.06); }
   #splashScreen.gone { display: none; }
   .splash-inner {
     display: flex;
@@ -6412,3 +6409,65 @@
   .skel-line { height: 10px; border-radius: 6px; margin-bottom: 10px; }
   .skel-bars { display: flex; align-items: flex-end; gap: 8px; height: 110px; margin-top: 12px; }
   .skel-bars > .skeleton { flex: 1; border-radius: 6px 6px 0 0; }
+
+  /* ─── ESTADO VACÍO CON ILUSTRACIÓN ─── */
+  .empty-state {
+    text-align: center;
+    padding: 46px 22px 40px;
+    animation: viewFadeIn 0.5s cubic-bezier(0.16,1,0.3,1);
+  }
+  .empty-state-icon { color: var(--accent); opacity: 0.5; margin-bottom: 14px; }
+  .empty-state-icon svg { width: 54px; height: 54px; }
+  .empty-state-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 21px; color: var(--text2); margin-bottom: 6px;
+  }
+  .empty-state-sub {
+    font-size: 11px; color: var(--text3); line-height: 1.6;
+    max-width: 280px; margin: 0 auto;
+  }
+
+  /* ─── RACHA (cabecera de Estadísticas) ─── */
+  .stats-streak {
+    display: flex; align-items: center; gap: 10px;
+    padding: 13px 16px; margin-bottom: 12px;
+    border-radius: 12px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+  }
+  .stats-streak.on {
+    border-color: color-mix(in srgb, var(--orange) 45%, var(--border2));
+    background: linear-gradient(135deg, color-mix(in srgb, var(--orange) 12%, var(--bg2)), var(--bg2));
+  }
+  .stats-streak-icon { display: inline-flex; color: var(--text3); }
+  .stats-streak-icon svg { width: 22px; height: 22px; }
+  .stats-streak.on .stats-streak-icon { color: var(--orange); animation: flameFlicker 2.2s ease-in-out infinite; }
+  @keyframes flameFlicker {
+    0%, 100% { transform: scale(1) rotate(-1deg); opacity: 0.9; }
+    50% { transform: scale(1.08) rotate(1deg); opacity: 1; }
+  }
+  .stats-streak-big {
+    font-family: 'Cormorant Garamond', serif; font-size: 20px; color: var(--text);
+  }
+  .stats-streak.on .stats-streak-big { color: var(--orange); }
+  .stats-streak-sub { font-size: 10px; color: var(--text3); margin-left: auto; text-align: right; }
+  @media (prefers-reduced-motion: reduce) { .stats-streak.on .stats-streak-icon { animation: none; } }
+
+  /* ─── PULSO DE LA BARRA DE SOLIDEZ al medir ─── */
+  .obra-sol-fill { transform-origin: left center; }
+  .obra-simple-sol.pulse .obra-sol-fill { animation: solFillGrow 0.8s cubic-bezier(0.22,1,0.36,1); }
+  @keyframes solFillGrow {
+    0% { transform: scaleX(0); filter: brightness(1.5); }
+    70% { transform: scaleX(1); filter: brightness(1.45); }
+    100% { transform: scaleX(1); filter: brightness(1); }
+  }
+  .obra-simple-sol.pulse .obra-sol-row strong { animation: solValPop 0.6s cubic-bezier(0.34,1.56,0.64,1); }
+  @keyframes solValPop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.22); }
+    100% { transform: scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .obra-simple-sol.pulse .obra-sol-fill,
+    .obra-simple-sol.pulse .obra-sol-row strong { animation: none; }
+  }

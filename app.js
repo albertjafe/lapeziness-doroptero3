@@ -5086,17 +5086,32 @@ function showCronoHechoFlash() {
     flash.id = 'cronoHechoFlash';
     // Usar la clase modal-overlay para heredar el backdrop blur + centrado
     flash.className = 'modal-overlay crono-hecho-flash';
+    const petals = [0, 60, 120, 180, 240, 300].map(a =>
+      '<ellipse class="cf-petal" cx="70" cy="40" rx="10.5" ry="20" transform="rotate(' + a + ' 70 60)"/>'
+    ).join('');
     flash.innerHTML =
       '<div class="crono-hecho-flash-inner">' +
-        '<div class="cf-badge">' +
-          '<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-            '<path class="cf-check" d="M 17 31 L 26 40 L 43 22"/>' +
+        '<div class="cf-bloom">' +
+          '<svg viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+            '<circle class="cf-glow" cx="70" cy="60" r="46"/>' +
+            '<g class="cf-stem-g">' +
+              '<path class="cf-stem" d="M70 126 C 66 102 74 90 70 72"/>' +
+              '<path class="cf-leaf" d="M70 104 Q 50 100 44 84 Q 64 88 70 102 Z"/>' +
+            '</g>' +
+            '<g class="cf-petals">' + petals + '</g>' +
+            '<circle class="cf-core" cx="70" cy="60" r="9"/>' +
           '</svg>' +
         '</div>' +
         '<div class="crono-hecho-flash-text">Hecho</div>' +
       '</div>';
     document.body.appendChild(flash);
   }
+  // La flor toma el color de la obra de la sesión. El flash cuelga de <body>,
+  // así que copiamos --crono-color (que vive en #view-cronometro) al propio flash.
+  const cronoRoot = document.getElementById('view-cronometro');
+  const cronoCol = cronoRoot ? getComputedStyle(cronoRoot).getPropertyValue('--crono-color').trim() : '';
+  if (cronoCol) flash.style.setProperty('--crono-color', cronoCol);
+  else flash.style.removeProperty('--crono-color');
   // Reset animación: quitar y volver a añadir clase tras un frame
   flash.classList.remove('visible');
   void flash.offsetWidth; // forzar reflow para reiniciar la animación
@@ -6093,8 +6108,12 @@ function renderObras() {
   syncObrasToolbar(totalObras, obras.length);
 
   if (!obras.length) {
-    const msg = totalObras ? 'No hay resultados con este filtro.' : 'No hay obras. Añade una.';
-    list.innerHTML = '<div class="obras-empty">' + msg + '</div>';
+    if (totalObras) {
+      list.innerHTML = emptyStateHTML(ICON_SEARCH_EMPTY, 'Nada por aquí', 'Prueba con otro filtro o búsqueda.');
+    } else {
+      list.innerHTML = emptyStateHTML(ICON_SPROUT, 'Tu repertorio está vacío',
+        'Añade tu primera obra para empezar a medir su solidez.');
+    }
     return;
   }
   list.innerHTML = obras.map((o, idx) => renderObraCard(o, idx)).join('');
@@ -6278,9 +6297,26 @@ function renderObraCard(o, idx) {
   return renderObraCardSimple(o);
 }
 
+// Obra recién medida: su barra de solidez hace un pulso al re-renderizar.
+let _justMeasuredObraId = null;
+
 // Iconos de trazo (reemplazan glifos emoji ✎/✕ — más limpios y coherentes)
 const ICON_EDIT = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.3 13.2 5.1a1.5 1.5 0 0 1 2.1 0l.6.6a1.5 1.5 0 0 1 0 2.1L6.7 17 3 17.5z"/><path d="M11.8 6.5 14.5 9.2"/></svg>';
 const ICON_DELETE = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M8 6V4.6A1.6 1.6 0 0 1 9.6 3h.8A1.6 1.6 0 0 1 12 4.6V6"/><path d="M6.5 6 7 15.6a1 1 0 0 0 1 .9h4a1 1 0 0 0 1-.9L13.5 6"/></svg>';
+
+// Ilustraciones de trazo para estados vacíos
+const ICON_SPROUT = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M24 42V22"/><path d="M24 28C24 22 19 17 12 17C12 23 17 28 24 28Z"/><path d="M24 24C24 18 29 13 36 13C36 19 31 24 24 24Z"/></svg>';
+const ICON_SEARCH_EMPTY = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="21" cy="21" r="12"/><path d="M30 30l8 8"/></svg>';
+const ICON_STAR = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M24 8l4.6 9.3 10.3 1.5-7.4 7.3 1.7 10.2L24 31.3l-9.2 4.8 1.7-10.2-7.4-7.3 10.3-1.5z"/></svg>';
+const ICON_CALENDAR_EMPTY = '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="11" width="30" height="29" rx="3"/><path d="M9 19h30M17 7v8M31 7v8"/></svg>';
+
+function emptyStateHTML(icon, title, sub) {
+  return '<div class="empty-state">'
+    + '<div class="empty-state-icon">' + icon + '</div>'
+    + '<div class="empty-state-title">' + escapeHtmlSafe(title) + '</div>'
+    + (sub ? '<div class="empty-state-sub">' + escapeHtmlSafe(sub) + '</div>' : '')
+    + '</div>';
+}
 
 // Tarjeta de obra minimalista: nombre, compositor, dificultad, duración y
 // SOLIDEZ (única métrica). Tocar la barra de solidez abre el medidor rápido.
@@ -6297,6 +6333,9 @@ function renderObraCardSimple(o) {
   const pct = Math.max(0, Math.min(100, Math.round(est.val || 0)));
   const col = solPctColor(pct);
   const hasHist = (o.solHistory || []).length > 0;
+  // Pulso de la barra si esta obra se acaba de medir
+  const pulse = (o.id === _justMeasuredObraId);
+  if (pulse) _justMeasuredObraId = null;
   const decayHint = (hasHist && est.decaying && est.diasGap >= 4)
     ? '<span class="obra-simple-decay" title="Estimada por el tiempo sin tocarla">▾ ' + est.diasGap + 'd</span>'
     : '';
@@ -6321,7 +6360,7 @@ function renderObraCardSimple(o) {
     +     '<button class="obra-quick-btn edit obra-edit-action" title="Editar" onclick="openEditObraNombre(\'' + o.id + '\')">' + ICON_EDIT + '</button>'
     +     '<button class="obra-quick-btn delete obra-edit-action" title="Eliminar" onclick="confirmDeleteObra(\'' + o.id + '\')">' + ICON_DELETE + '</button>'
     +   '</div>'
-    +   '<button class="obra-simple-sol" onclick="openQuickSolidezTarget(\'' + o.id + '\',null)">'
+    +   '<button class="obra-simple-sol' + (pulse ? ' pulse' : '') + '" onclick="openQuickSolidezTarget(\'' + o.id + '\',null)">'
     +     '<div class="obra-sol-bar"><div class="obra-sol-fill" style="width:' + pct + '%;background:' + col + '"></div></div>'
     +     '<div class="obra-sol-row">'
     +       '<strong style="color:' + col + '">' + (hasHist ? pct + '%' : '—') + '</strong>'
@@ -8026,7 +8065,7 @@ function renderCalendario() {
   const pasados = todos.filter(ev => !ev.completado && ev.dias < -1).reverse();
 
   if (!pendientes.length) {
-    list.innerHTML = '<div class="cal-empty">No hay eventos próximos.<br>Añade un concurso, concierto, grabación o clase.</div>';
+    list.innerHTML = emptyStateHTML(ICON_CALENDAR_EMPTY, 'Sin eventos próximos', 'Añade un concierto, concurso, grabación o clase.');
   } else {
     list.innerHTML = pendientes.map(ev => renderEventoCard(ev, false)).join('');
   }
@@ -8820,6 +8859,42 @@ function _statsSkeleton() {
     + '</div>';
 }
 
+// Días con estudio (unión de cronómetro, Forest y sesiones con minutos).
+function _statsStudyDays() {
+  const set = new Set();
+  _statsAllPlants().forEach(p => set.add(_statsISO(p.start)));
+  (db.sesiones || []).forEach(s => {
+    const d = new Date(s.date);
+    if (isNaN(d.getTime())) return;
+    const min = (s.items || []).reduce((a, it) => a + _itemMinReal(it), 0);
+    if (min > 0) set.add(_statsISO(d));
+  });
+  return set;
+}
+
+// Racha de días consecutivos con estudio (el día en curso no rompe la racha).
+function _statsStreak() {
+  const days = _statsStudyDays();
+  const d = new Date(); d.setHours(12, 0, 0, 0);
+  if (!days.has(_statsISO(d))) d.setDate(d.getDate() - 1);
+  let streak = 0;
+  while (days.has(_statsISO(d))) { streak++; d.setDate(d.getDate() - 1); }
+  return streak;
+}
+
+const ICON_FLAME = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1 3 4 4.5 4 8a4 4 0 0 1-8 0c0-1 .4-2 1-2.6C8.8 9.8 9 11 10 11.5 9.2 8 11 5 12 3Z"/></svg>';
+
+function _statsStreakHeader() {
+  const n = _statsStreak();
+  const big = n >= 1 ? n + (n === 1 ? ' día' : ' días') : 'Sin racha';
+  const sub = n >= 1 ? 'estudiando seguido' : 'estudia hoy para empezar';
+  return '<div class="stats-streak' + (n >= 1 ? ' on' : '') + '">'
+    + '<span class="stats-streak-icon">' + ICON_FLAME + '</span>'
+    + '<span class="stats-streak-big">' + big + '</span>'
+    + '<span class="stats-streak-sub">' + sub + '</span>'
+    + '</div>';
+}
+
 function renderStatsDashboard() {
   const el = document.getElementById('statsDashboard');
   if (!el) return;
@@ -8908,7 +8983,7 @@ function renderStatsDashboard() {
     }
   }
 
-  el.innerHTML = seg + navRow + cards;
+  el.innerHTML = _statsStreakHeader() + seg + navRow + cards;
 }
 
 // Lista de sesiones plegable: las estadísticas son lo principal de la vista,
@@ -8929,7 +9004,7 @@ function _histListApplyPref() {
 function renderSesionesHistorial() {
   const el = document.getElementById('sesionesHistorial');
   if (!db.sesiones || !db.sesiones.length) {
-    el.innerHTML = '<div class="sesion-hist-empty">Aún no hay sesiones guardadas.<br>Genera una sesión, márcala con ticks y pulsa Guardar.</div>';
+    el.innerHTML = emptyStateHTML(ICON_SEARCH_EMPTY, 'Aún no hay sesiones', 'Cuando estudies con el cronómetro, aparecerán aquí.');
     return;
   }
   const tickIcons = { hecho: '✓', parcial: '≈', saltado: '✗' };
@@ -11993,7 +12068,7 @@ function openDestellosModal() {
   if (list) {
     const destellos = getAllDestellos();
     if (!destellos.length) {
-      list.innerHTML = '<div class="destellos-empty">Aún no hay destellos. Cuando una sesión vaya de excelencia (80 o más), podrás guardarla aquí.</div>';
+      list.innerHTML = emptyStateHTML(ICON_STAR, 'Aún no hay destellos', 'Cuando una sesión sea de excelencia (80+), guárdala aquí para releerla en días flojos.');
     } else {
       list.innerHTML = destellos.map(d => {
         const fecha = new Date(d.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -12813,6 +12888,7 @@ function confirmQuickSolidez() {
   showSavedCheck();
   cronoUpdateSolidityActions();
   hechoUpdateFastSolidityAction();
+  _justMeasuredObraId = target.obraId || null;
   if (typeof renderObras === 'function' && document.getElementById('view-obras')?.classList.contains('active')) renderObras();
   if (document.getElementById('view-historial')?.classList.contains('active')) {
     if (typeof renderSolidezSection === 'function') renderSolidezSection();
