@@ -6305,3 +6305,25 @@
 
   /* Zona durante la sesión: sin compás ya no aplica; solidez queda sola */
   #cronoRunZoneBtn { display: none !important; }
+
+  /* ─── TACTO NATIVO (iPad Chrome) ─── */
+  /* Sin menú de copiar/compartir al mantener pulsado, sin selección de texto
+     accidental: la app deja de comportarse como una página web. Los campos de
+     texto y lo marcado .selectable conservan la selección. */
+  * { -webkit-touch-callout: none; }
+  html, body { overscroll-behavior: none; }
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  input, textarea, select, [contenteditable], .selectable {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+  /* Sin retardo de 300ms ni zoom por doble toque en controles */
+  button, .nav-btn, .obras-filter-chip, .stats-seg-btn, .stats-period-btn,
+  .modal-btn, .crono-plant-btn, .obra-simple-sol, .obra-quick-btn,
+  .obra-color-dot, .crono-destellos-pill, [onclick] {
+    touch-action: manipulation;
+  }

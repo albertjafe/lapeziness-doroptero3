@@ -9880,10 +9880,25 @@ function loadAppTitle() {
   }
 }
 
+// Color de fondo base de cada tema. Se usa para tintar la barra del
+// navegador (meta theme-color) y que la app no se sienta "una web".
+const THEME_BG = { '': '#11151c', cozy: '#faf4ea', bruma: '#f3f4ec', velvet: '#131a15' };
+function applyThemeColor(theme) {
+  const col = THEME_BG[theme] || THEME_BG[''];
+  let meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.setAttribute('name', 'theme-color');
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute('content', col);
+}
+
 function setTheme(theme, btn) {
   setTimeout(initEstadoSliders, 50); // re-fill after theme color change
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('alberto_theme', theme);
+  applyThemeColor(theme);
   document.querySelectorAll('.theme-option').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
 }
@@ -9913,6 +9928,7 @@ function loadTheme() {
   document.documentElement.setAttribute('data-theme', theme);
   document.documentElement.setAttribute('data-font', font);
   document.documentElement.setAttribute('data-size', size);
+  applyThemeColor(theme);
   applyZoom(z);
 
   document.querySelectorAll('.theme-option').forEach(b => {
