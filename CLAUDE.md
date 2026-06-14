@@ -2,7 +2,13 @@
 
 ## Proyecto
 
-App PWA para práctica de piano de Alberto. Sirve como planificador de estudio con cronómetro, metrónomo, registro de pases y sincronización con Supabase. UI completamente en **español**.
+App PWA para práctica de piano de Alberto. Sirve como planificador de estudio con cronómetro, metrónomo y sincronización con Supabase. UI completamente en **español**.
+
+## MÉTRICA ÚNICA: SOLIDEZ (refactor jun 2026)
+
+Una obra tiene SOLO: nombre, compositor, **dificultad**, **duración** y **solidez** (0-100, única métrica con historial `solHistory`). Solidez 100% = "la toco en público y sale perfecta". **Eliminados de la UI**: movimientos, compases (compasActual/Total), pasajes, pases, ejes apr/esc y fase "digitando". Los datos viejos NO se borran (se preservan en los objetos guardados para poder revertir); solo se dejan de usar/mostrar.
+
+Implementación segura: la tarjeta de obra es `renderObraCardSimple` (la antigua quedó como `renderObraCard_LEGACY`, código muerto). El modal Hecho oculta vía CSS `!important` las secciones `#hechoCompasSection/#hechoPasesSection/#hechoPasajesSection/#hechoMemSection/#hechoZoneSection`. Las vistas `view-pasajes`/`view-pases` siguen en el código pero ya no son alcanzables. Backup pre-refactor en rama `backup/pre-solidez-refactor`.
 
 ## CRÍTICO: Rama de desarrollo — SIEMPRE `main`
 

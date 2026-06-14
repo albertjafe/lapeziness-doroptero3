@@ -3894,11 +3894,11 @@ function solPctColor(pct) {
 }
 
 function solPctLabel(pct) {
-  if (pct >= 90) return 'Dominada · fluye sola';
-  if (pct >= 75) return 'Sólida · algún fallo menor';
-  if (pct >= 60) return 'Construyendo · varios fallos';
-  if (pct >= 40) return 'Frágil · muchos fallos';
-  if (pct >= 20) return 'Inicio de consolidación';
+  if (pct >= 90) return 'Lista para escenario';
+  if (pct >= 72) return 'Sólida';
+  if (pct >= 50) return 'Construyendo';
+  if (pct >= 28) return 'Frágil';
+  if (pct >= 10) return 'Empezando';
   return 'Sin solidez aún';
 }
 
@@ -6014,16 +6014,11 @@ function obrasSearchText(o) {
 function obrasMatchesQuickFilter(o) {
   if (obrasQuickFilter === 'all') return true;
   if (obrasQuickFilter === 'actividades') return o.tipo === 'actividad';
-  if (obrasQuickFilter === 'pasajes') return (o.pasajes || []).some(p => p.status !== 'resuelto');
   if (o.tipo === 'actividad') return false;
-  const eff = obraEffectiveStats(o);
-  const fase = obraFase(eff);
-  if (obrasQuickFilter === 'learning') {
-    const stage = aprendizajeStageFromEntity(eff);
-    return fase === 'digitando' || stage === 'lectura' || stage === 'digitando' || stage === 'manos';
-  }
-  if (obrasQuickFilter === 'consolidando') return fase === 'consolidando';
-  if (obrasQuickFilter === 'mantenimiento') return fase === 'mantenimiento';
+  // Filtros por solidez (única métrica)
+  const pct = Math.round((estimateSolActual(o).val) || 0);
+  if (obrasQuickFilter === 'fragiles') return pct < 50;
+  if (obrasQuickFilter === 'solidas') return pct >= 72;
   return true;
 }
 
@@ -6255,6 +6250,63 @@ function renderObraCard(o, idx) {
   if (o.tipo === 'actividad') {
     return renderActividadCard(o, idx);
   }
+  // ── TARJETA SIMPLE (solidez como única métrica) ─────────────────────
+  return renderObraCardSimple(o);
+}
+
+// Tarjeta de obra minimalista: nombre, compositor, dificultad, duración y
+// SOLIDEZ (única métrica). Tocar la barra de solidez abre el medidor rápido.
+function renderObraCardSimple(o) {
+  const dif = o.dificultad || 3;
+  const difBadge = '<span class="dif-badge d' + dif + '" title="Dificultad ' + dif + '/10">' + dif + '</span>';
+  const colorHex = obraColorHex(o);
+  const composer = (o.composer && o.composer !== '—')
+    ? '<span class="obra-simple-composer">' + escapeHtmlSafe(o.composer) + '</span>' : '';
+  const durTxt = o.duracion ? o.duracion + ' min' : '';
+
+  // Solidez actual estimada (con decaimiento si lleva días sin tocarse)
+  const est = estimateSolActual(o);
+  const pct = Math.max(0, Math.min(100, Math.round(est.val || 0)));
+  const col = solPctColor(pct);
+  const hasHist = (o.solHistory || []).length > 0;
+  const decayHint = (hasHist && est.decaying && est.diasGap >= 4)
+    ? '<span class="obra-simple-decay" title="Estimada por el tiempo sin tocarla">▾ ' + est.diasGap + 'd</span>'
+    : '';
+
+  // Urgencia por evento próximo (se conserva: es un empujón útil)
+  let urgPill = '';
+  const urg = computeUrgencia(o.id);
+  if (urg && urg.nivel && urg.nivel !== 'sin-evento') {
+    urgPill = '<span class="obra-simple-urg ' + urg.nivel + '">' + urg.dias + 'd · ' + escapeHtmlSafe(urg.evento.nombre) + '</span>';
+  }
+
+  return ''
+    + '<div class="obra-card obra-card-simple" id="obra-' + o.id + '">'
+    +   '<div class="obra-simple-head">'
+    +     '<button class="obra-color-dot" title="Color"'
+    +       ' onclick="openObraColorPicker(\'' + o.id + '\')"'
+    +       ' style="background:' + (colorHex || 'transparent') + ';border-color:' + (colorHex || 'var(--border2)') + '"></button>'
+    +     '<div class="obra-simple-id">'
+    +       '<div class="obra-title-line"><span class="obra-name">' + escapeHtmlSafe(o.name) + '</span>' + difBadge + '</div>'
+    +       '<div class="obra-simple-meta">' + composer + (durTxt ? '<span>' + durTxt + '</span>' : '') + urgPill + '</div>'
+    +     '</div>'
+    +     '<button class="obra-quick-btn edit obra-edit-action" title="Editar" onclick="openEditObraNombre(\'' + o.id + '\')">✎</button>'
+    +     '<button class="obra-quick-btn delete obra-edit-action" title="Eliminar" onclick="confirmDeleteObra(\'' + o.id + '\')">✕</button>'
+    +   '</div>'
+    +   '<button class="obra-simple-sol" onclick="openQuickSolidezTarget(\'' + o.id + '\',null)">'
+    +     '<div class="obra-sol-bar"><div class="obra-sol-fill" style="width:' + pct + '%;background:' + col + '"></div></div>'
+    +     '<div class="obra-sol-row">'
+    +       '<strong style="color:' + col + '">' + (hasHist ? pct + '%' : '—') + '</strong>'
+    +       '<span class="obra-sol-label">' + (hasHist ? solPctLabel(pct) : 'Mide tu solidez') + '</span>'
+    +       decayHint +
+        '<span class="obra-sol-medir">Medir ›</span>'
+    +     '</div>'
+    +   '</button>'
+    +   '<button class="obra-simple-graph" onclick="openGrafico(\'' + o.id + '\',null)">Evolución ↗</button>'
+    + '</div>';
+}
+
+function renderObraCard_LEGACY(o, idx) {
   const eff = obraEffectiveStats(o);  // use weighted stats if movimientos present
   const pasajosHtml = (o.pasajes || []).map(p => renderPasajeItem(o.id, p)).join('');
 
@@ -7174,21 +7226,18 @@ function saveMovScale(obraId, movId, key, value) {
 function openAddObra() {
   document.getElementById('newObraName').value = '';
   document.getElementById('newObraComposer').value = '';
-  const aprChk = document.getElementById('newObraAprendida');
-  if (aprChk) aprChk.checked = false;
-  ['newObraDuracion', 'newObraCompasesTotal'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
+  const durEl = document.getElementById('newObraDuracion');
+  if (durEl) durEl.value = '';
   const difInput = document.getElementById('newObraDificultad');
   if (difInput) difInput.value = 3;
+  const difVal = document.getElementById('newObraDificultadVal');
+  if (difVal) difVal.textContent = '3';
+  const solInput = document.getElementById('newObraSolidez');
+  if (solInput) solInput.value = 10;
+  const solVal = document.getElementById('newObraSolidezVal');
+  if (solVal) solVal.textContent = '10%';
   const tipoBtn = document.querySelector('#modalTipoSelector .origen-btn[data-tipo="obra"]');
   if (tipoBtn) selectModalTipo(tipoBtn, 'obra');
-  modalFaseSelected = 'digitando';
-  document.querySelectorAll('#modalFaseSelector .fase-btn').forEach(b => {
-    b.classList.remove('active');
-    if (b.classList.contains('digitando')) b.classList.add('active');
-  });
   openModal('modalAddObra');
 }
 
@@ -7204,28 +7253,22 @@ function selectModalTipo(btn, tipo) {
   const actExtra = document.getElementById('modalTipoActividadExtra');
   const composer = document.getElementById('newObraComposer');
   const nameInput = document.getElementById('newObraName');
-  const aprChk = document.getElementById('newObraAprendida');
-  const aprRow = document.getElementById('addAprendidaRow');
-  const stateNote = document.getElementById('addObraStateNote');
+  const solSlider = document.getElementById('newObraSolidez');
+  const solVal = document.getElementById('newObraSolidezVal');
   if (tipo === 'actividad') {
     if (obraExtra) obraExtra.style.display = 'none';
     if (actExtra) actExtra.style.display = '';
     if (composer) composer.style.display = 'none';
     if (nameInput) nameInput.placeholder = 'nombre de la actividad (ej. Lectura a primera vista)';
-    if (aprChk) aprChk.checked = false;
-    if (aprRow) aprRow.style.display = 'none';
   } else {
     if (obraExtra) obraExtra.style.display = '';
     if (actExtra) actExtra.style.display = 'none';
     if (composer) composer.style.display = '';
     if (nameInput) nameInput.placeholder = 'título';
-    if (aprChk) aprChk.checked = tipo === 'recuperacion';
-    if (aprRow) aprRow.style.display = tipo === 'recuperacion' ? 'none' : '';
-    if (stateNote) {
-      stateNote.textContent = tipo === 'recuperacion'
-        ? 'Entra como aprendida, lista para medir y recuperar desde el primer día.'
-        : 'Empieza en aprendizaje. Compases, movimientos y pasajes se añaden después.';
-    }
+    // "Ya la tocaba" arranca con una solidez de partida más alta.
+    const def = tipo === 'recuperacion' ? 55 : 10;
+    if (solSlider) solSlider.value = def;
+    if (solVal) solVal.textContent = def + '%';
   }
 }
 
@@ -7237,35 +7280,23 @@ function addObra() {
   const newId = 'o' + Date.now();
   const isActividad = modalTipoSelected === 'actividad';
   const isRecuperacion = modalTipoSelected === 'recuperacion';
-  const yaAprendida = !isActividad && (isRecuperacion || !!document.getElementById('newObraAprendida')?.checked);
   const duracionVal = parseInt(document.getElementById('newObraDuracion')?.value || '', 10);
-  const compasesTotalVal = parseInt(document.getElementById('newObraCompasesTotal')?.value || '', 10);
   const dificultadRaw = parseInt(document.getElementById('newObraDificultad')?.value || '3', 10);
   const dificultadVal = Math.max(1, Math.min(10, Number.isFinite(dificultadRaw) ? dificultadRaw : 3));
+  const solidezRaw = parseInt(document.getElementById('newObraSolidez')?.value || '10', 10);
+  const solidezPct = Math.max(0, Math.min(100, Number.isFinite(solidezRaw) ? solidezRaw : 10));
   const entry = {
     id: newId,
     name,
     composer: isActividad ? '' : (composer || '—'),
-    // Las actividades no tienen fase de aprendizaje, dificultad ni duración.
-    // Recuperación sí es una obra normal: sólo cambia su estado inicial/origen.
     tipo: isActividad ? 'actividad' : 'obra',
-    // Si se marca "ya me la sé", nace aprendida (consolidando) en vez de
-    // aprendiendo-inicial. Los compases se pueden añadir después.
-    estado: isActividad ? null : (yaAprendida ? 'consolidando' : 'aprendiendo-inicial'),
     origen: isRecuperacion ? 'recuperacion' : null,
     dificultad: isActividad ? null : dificultadVal,
     duracion: !isActividad && duracionVal > 0 ? duracionVal : null,
-    compasesTotal: !isActividad && compasesTotalVal > 0 ? compasesTotalVal : null,
-    compasActual: !isActividad && compasesTotalVal > 0 && yaAprendida ? compasesTotalVal : null,
-    apr: isActividad ? null : (yaAprendida || compasesTotalVal > 0 ? aprFromCompas({
-      compasActual: yaAprendida ? compasesTotalVal : null,
-      compasesTotal: compasesTotalVal > 0 ? compasesTotalVal : null,
-      apr: yaAprendida ? 10 : 1,
-    }) : 1),
-    sol: isActividad ? null : 1,
-    esc: isActividad ? null : 1,
-    lastPase: null,
-    pasajes: [],
+    // Solidez: única métrica. Se guarda como historial (0-100) y como `sol`
+    // 1-10 para los lectores antiguos que aún existan.
+    sol: isActividad ? null : Math.max(1, Math.round(solidezPct / 10)),
+    solHistory: isActividad ? [] : [{ date: new Date().toISOString(), val: solidezPct, context: 'inicial' }],
     notes: '',
   };
   db.obras.push(entry);
@@ -7285,13 +7316,18 @@ function addObra() {
   if (obraExtra) obraExtra.style.display = '';
   if (actExtra) actExtra.style.display = 'none';
   if (composerEl) composerEl.style.display = '';
-  if (nameEl) nameEl.placeholder = 'título';
-  ['newObraDuracion', 'newObraCompasesTotal'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
+  if (nameEl) { nameEl.placeholder = 'título'; nameEl.value = ''; }
+  if (composerEl) composerEl.value = '';
+  const durEl = document.getElementById('newObraDuracion');
+  if (durEl) durEl.value = '';
   const difInput = document.getElementById('newObraDificultad');
   if (difInput) difInput.value = 3;
+  const difValEl = document.getElementById('newObraDificultadVal');
+  if (difValEl) difValEl.textContent = '3';
+  const solInput = document.getElementById('newObraSolidez');
+  if (solInput) solInput.value = 10;
+  const solValEl = document.getElementById('newObraSolidezVal');
+  if (solValEl) solValEl.textContent = '10%';
 }
 
 

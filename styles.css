@@ -6216,3 +6216,92 @@
     font-family: 'JetBrains Mono', monospace;
     font-variant-numeric: tabular-nums;
   }
+
+  /* ─── OBRA · tarjeta simple (solo solidez) ─── */
+  .obra-card-simple {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 14px 15px 13px;
+    margin-bottom: 11px;
+    box-shadow: 0 10px 26px -26px rgba(0,0,0,0.5);
+  }
+  .obra-simple-head { display: flex; align-items: flex-start; gap: 10px; }
+  .obra-simple-head .obra-color-dot {
+    width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+    margin-top: 4px; border: 1px solid var(--border2); cursor: pointer; padding: 0;
+  }
+  .obra-simple-id { flex: 1; min-width: 0; }
+  .obra-simple-id .obra-title-line {
+    display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  }
+  .obra-simple-id .obra-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px; color: var(--text); line-height: 1.15;
+  }
+  .obra-simple-meta {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    margin-top: 3px;
+    font-size: 10px; color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .obra-simple-meta > span { white-space: nowrap; }
+  .obra-simple-composer { color: var(--text2); }
+  .obra-simple-urg {
+    border-radius: 999px; padding: 1px 8px;
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--accent); letter-spacing: 0.02em;
+  }
+  .obra-simple-urg.alta, .obra-simple-urg.critica {
+    background: color-mix(in srgb, var(--red) 18%, transparent); color: var(--red);
+  }
+  .obra-simple-head .obra-quick-btn {
+    flex-shrink: 0; background: transparent; border: 1px solid var(--border2);
+    border-radius: 7px; width: 28px; height: 28px; color: var(--text3);
+    cursor: pointer; font-size: 12px; transition: all 0.2s;
+  }
+  .obra-simple-head .obra-quick-btn:hover { color: var(--accent); border-color: var(--accent); }
+  /* Botón de solidez = barra grande tocable */
+  .obra-simple-sol {
+    display: block; width: 100%; text-align: left;
+    margin-top: 12px; padding: 0; border: none; background: transparent; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .obra-sol-bar {
+    height: 10px; border-radius: 999px; background: var(--bg3); overflow: hidden;
+  }
+  .obra-sol-fill { height: 100%; border-radius: 999px; transition: width 0.5s var(--ease-out); }
+  .obra-sol-row {
+    display: flex; align-items: baseline; gap: 8px; margin-top: 7px;
+  }
+  .obra-sol-row strong {
+    font-family: 'JetBrains Mono', monospace; font-size: 14px;
+    font-variant-numeric: tabular-nums; min-width: 38px;
+  }
+  .obra-sol-label { font-size: 11px; color: var(--text2); flex: 1; min-width: 0; }
+  .obra-simple-decay { font-size: 9px; color: var(--orange); font-family: 'JetBrains Mono', monospace; }
+  .obra-sol-medir {
+    font-size: 10px; color: var(--accent); font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.04em; white-space: nowrap;
+  }
+  .obra-simple-sol:active .obra-sol-medir { opacity: 0.6; }
+  .obra-simple-graph {
+    margin-top: 11px; width: 100%;
+    background: transparent; border: 1px solid var(--border2); border-radius: 8px;
+    color: var(--text3); padding: 7px; font-size: 10px;
+    font-family: 'JetBrains Mono', monospace; letter-spacing: 0.04em; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .obra-simple-graph:hover { color: var(--accent); border-color: var(--accent); }
+  .add-obra-quick-grid.two { grid-template-columns: 1fr 1fr; }
+
+  /* ─── HECHO · ocultar secciones eliminadas (compás, pases, pasajes,
+     memoria, zona). !important para que ningún JS las reactive. ─── */
+  #hechoCompasSection,
+  #hechoPasesSection,
+  #hechoPasajesSection,
+  #hechoMemSection,
+  #hechoZoneSection { display: none !important; }
+
+  /* Zona durante la sesión: sin compás ya no aplica; solidez queda sola */
+  #cronoRunZoneBtn { display: none !important; }
