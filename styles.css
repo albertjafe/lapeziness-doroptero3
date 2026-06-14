@@ -1968,33 +1968,38 @@
   /* Pill de Destellos: abajo a la izquierda en el cronómetro en reposo */
   .crono-destellos-pill {
     position: fixed;
-    left: 18px;
-    bottom: max(env(safe-area-inset-bottom, 14px), 18px);
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: max(env(safe-area-inset-bottom, 16px), 22px);
     z-index: 55;
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 8px 13px;
+    display: inline-flex; align-items: center; gap: 9px;
+    padding: 12px 20px;
     border-radius: 999px;
-    border: 1px solid rgba(201,169,110,0.4);
-    background: linear-gradient(180deg, rgba(201,169,110,0.16), rgba(201,169,110,0.06));
-    color: #d8b46a;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; letter-spacing: 0.08em;
+    border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+    background: linear-gradient(180deg,
+      color-mix(in srgb, var(--accent) 22%, var(--bg2)),
+      color-mix(in srgb, var(--accent) 10%, var(--bg2)));
+    color: var(--accent);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px; letter-spacing: 0.04em;
     cursor: pointer;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    box-shadow: 0 6px 20px -10px rgba(201,169,110,0.6);
+    box-shadow: 0 10px 28px -12px color-mix(in srgb, var(--accent) 70%, transparent);
     transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.3s ease;
   }
-  .crono-destellos-pill:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -10px rgba(201,169,110,0.7); }
-  .crono-destellos-pill:active { transform: scale(0.96); }
-  .crono-destellos-pill-spark { font-size: 13px; }
-  .crono-destellos-pill-text { text-transform: uppercase; }
+  .crono-destellos-pill:hover { transform: translateX(-50%) translateY(-2px); box-shadow: 0 14px 30px -12px color-mix(in srgb, var(--accent) 80%, transparent); }
+  .crono-destellos-pill:active { transform: translateX(-50%) scale(0.96); }
+  .crono-destellos-pill-spark { font-size: 17px; }
+  .crono-destellos-pill-text { text-transform: none; }
   .crono-destellos-pill-count {
     display: inline-flex; align-items: center; justify-content: center;
-    min-width: 17px; height: 17px; padding: 0 4px;
+    min-width: 22px; height: 22px; padding: 0 6px;
     border-radius: 999px;
-    background: rgba(201,169,110,0.28);
-    color: #f0d9a6; font-size: 9px; font-variant-numeric: tabular-nums;
+    background: color-mix(in srgb, var(--accent) 32%, transparent);
+    color: var(--accent2); font-size: 12px; font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
   }
   /* Ocultar el pill mientras el cronómetro corre/pausado (solo en reposo) */
   body.crono-running .crono-destellos-pill { display: none !important; }
@@ -3688,13 +3693,13 @@
   /* Pieza central: ensō (círculo zen) sobrio.
      Un solo trazo en el color accent del tema, respiración apenas perceptible. */
   .crono-centerpiece {
-    width: 280px; height: 280px;
-    margin: 0 auto 24px;
+    width: min(340px, 82vw); height: min(340px, 82vw);
+    margin: 0 auto 28px;
     position: relative;
   }
   /* En modo timer, ampliamos aún más para que el slider radial luzca */
   body.crono-timer-mode .crono-centerpiece {
-    width: 320px; height: 320px;
+    width: min(380px, 86vw); height: min(380px, 86vw);
   }
   /* Halo cálido tras la pieza central: llena la pantalla sin añadir ruido */
   .crono-centerpiece::before {
@@ -4246,7 +4251,7 @@
 
   .crono-display {
     font-family: "Cormorant Garamond", serif;
-    font-size: clamp(96px, 22vw, 150px);
+    font-size: clamp(108px, 25vw, 176px);
     font-weight: 300;
     color: var(--crono-color, var(--accent));
     letter-spacing: 0.02em;
@@ -6174,4 +6179,40 @@
   @media (prefers-reduced-motion: reduce) {
     .garden-sway, .garden-star { animation: none; }
     .garden-grow { animation: none; }
+  }
+
+  /* ─── ESTADÍSTICAS · tarjeta comparativa (Tendencia) ─── */
+  .stats-cmp { display: flex; flex-direction: column; gap: 11px; margin-top: 4px; }
+  .stats-cmp-row { display: flex; align-items: center; gap: 10px; }
+  .stats-cmp-label {
+    flex: 0 0 92px;
+    font-size: 10px;
+    color: var(--text2);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+  .stats-cmp-track {
+    flex: 1; min-width: 0;
+    height: 12px;
+    background: var(--bg3);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .stats-cmp-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 38%, var(--bg3));
+    transition: width 0.6s var(--ease-out);
+  }
+  .stats-cmp-fill.current {
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+  .stats-cmp-val {
+    flex: 0 0 auto;
+    min-width: 56px;
+    text-align: right;
+    font-size: 11px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
   }

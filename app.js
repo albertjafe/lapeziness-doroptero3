@@ -8442,12 +8442,13 @@ function _statsISO(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
-function _statsPeriod() {
+function _statsPeriod(offset) {
+  if (offset == null) offset = _statsOffset;
   const now = new Date();
   let start, end, label;
   if (_statsRange === 'semana') {
     const lunes = new Date(now);
-    lunes.setDate(now.getDate() - ((now.getDay() + 6) % 7) + _statsOffset * 7);
+    lunes.setDate(now.getDate() - ((now.getDay() + 6) % 7) + offset * 7);
     lunes.setHours(0, 0, 0, 0);
     start = lunes;
     end = new Date(lunes); end.setDate(lunes.getDate() + 7);
@@ -8456,15 +8457,37 @@ function _statsPeriod() {
     label = lunes.getDate() + (lunes.getMonth() !== dom.getMonth() ? ' ' + mes(lunes) : '')
       + ' – ' + dom.getDate() + ' ' + mes(dom) + ' ' + dom.getFullYear();
   } else if (_statsRange === 'mes') {
-    start = new Date(now.getFullYear(), now.getMonth() + _statsOffset, 1);
-    end = new Date(now.getFullYear(), now.getMonth() + _statsOffset + 1, 1);
+    start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    end = new Date(now.getFullYear(), now.getMonth() + offset + 1, 1);
     label = start.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
   } else {
-    start = new Date(now.getFullYear() + _statsOffset, 0, 1);
-    end = new Date(now.getFullYear() + _statsOffset + 1, 0, 1);
+    start = new Date(now.getFullYear() + offset, 0, 1);
+    end = new Date(now.getFullYear() + offset + 1, 0, 1);
     label = String(start.getFullYear());
   }
   return { start, end, label };
+}
+
+// Total de minutos estudiados en un periodo [start, end).
+function _statsTotalMin(start, end) {
+  const porDia = _statsMinsPorDia(start, end);
+  return Object.keys(porDia).reduce((a, k) => a + porDia[k], 0);
+}
+
+// Compara el periodo actual con los dos anteriores (estilo Forest:
+// "Tendencia"). Devuelve filas con etiqueta relativa, total y, para los
+// pasados, su comparación con el actual.
+function _statsComparison() {
+  const rel = {
+    semana: ['Esta semana', 'Semana pasada', 'Hace 2 semanas'],
+    mes:    ['Este mes', 'Mes pasado', 'Hace 2 meses'],
+    'año':  ['Este año', 'Año pasado', 'Hace 2 años'],
+  }[_statsRange];
+  const rows = [0, 1, 2].map(k => {
+    const per = _statsPeriod(_statsOffset - k);
+    return { label: rel[k], min: _statsTotalMin(per.start, per.end) };
+  });
+  return rows;
 }
 
 // Minutos estudiados por día (clave local YYYY-MM-DD) dentro de [start, end).
@@ -8682,6 +8705,36 @@ function statsResetOffset() {
 
 const _STATS_DIAS_LARGO = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
 
+function _statsComparisonCard() {
+  const rows = _statsComparison();
+  const max = Math.max(1, rows[0].min, rows[1].min, rows[2].min);
+  // Línea de tendencia: actual vs anterior
+  const cur = rows[0].min, prev = rows[1].min;
+  let trend;
+  if (prev === 0 && cur === 0) trend = 'Aún sin datos para comparar.';
+  else if (prev === 0) trend = 'Primer periodo con registro · ' + fmtMinutos(cur);
+  else {
+    const diff = cur - prev;
+    const pct = Math.round(Math.abs(diff) / prev * 100);
+    if (diff === 0) trend = 'Igual que ' + rows[1].label.toLowerCase() + '.';
+    else trend = '<strong>' + fmtMinutos(Math.abs(diff)) + (diff > 0 ? ' más' : ' menos')
+      + '</strong> que ' + rows[1].label.toLowerCase() + ' · ' + (diff > 0 ? '+' : '−') + pct + '%';
+  }
+  const barRows = rows.map((r, i) => {
+    const w = Math.round(r.min / max * 100);
+    return '<div class="stats-cmp-row">'
+      + '<span class="stats-cmp-label">' + r.label + '</span>'
+      + '<div class="stats-cmp-track"><div class="stats-cmp-fill' + (i === 0 ? ' current' : '') + '" style="width:' + w + '%"></div></div>'
+      + '<span class="stats-cmp-val">' + (r.min ? fmtMinutos(r.min) : '—') + '</span>'
+      + '</div>';
+  }).join('');
+  return '<div class="stats-card">'
+    + '<div class="stats-card-title">Tendencia</div>'
+    + '<div class="stats-card-sub">' + trend + '</div>'
+    + '<div class="stats-cmp">' + barRows + '</div>'
+    + '</div>';
+}
+
 function renderStatsDashboard() {
   const el = document.getElementById('statsDashboard');
   if (!el) return;
@@ -8711,6 +8764,9 @@ function renderStatsDashboard() {
         ? _statsBarChartSVG(bars.values, bars.labels, bars.hoyIdx)
         : '<div class="stats-empty">Sin estudio en este periodo.</div>')
     + '</div>';
+
+  // Tarjeta comparativa: este periodo vs los dos anteriores (estilo Forest)
+  cards += _statsComparisonCard();
 
   if (total > 0) {
     // Tarjeta 2: día de la semana (solo mes/año; en semana ya se ve en las barras)
@@ -12138,9 +12194,15 @@ function refreshConcentradoUI() {
   if (typeof renderSessionInsights === 'function') renderSessionInsights();
   if (typeof renderCronoGarden === 'function') renderCronoGarden();
 
-  // Mini-resumen lateral: HOY + AYER
+  // Mini-resumen lateral eliminado: el jardín del día ya muestra lo
+  // estudiado hoy de forma visual, y los Destellos guardan lo memorable.
+  // Se mantiene el contenedor oculto por compatibilidad.
   const resumenEl = document.getElementById('cronoResumenLateral');
   if (resumenEl) {
+    resumenEl.style.display = 'none';
+    resumenEl.innerHTML = '';
+    return;
+    /* eslint-disable no-unreachable */
     const itemsHoy = getResumenSesionesHoy();
     // Hasta 2 días previos con actividad (Ayer + Anteayer u otros si hubo huecos)
     const pasadas = getResumenSesionesPasadas(2);
