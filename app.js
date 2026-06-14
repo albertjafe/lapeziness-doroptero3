@@ -10596,6 +10596,79 @@ const SFX = new Proxy({}, {
 });
 
 
+// ─── HÁPTICA (vibración sutil) ────────────────────────────────────────────────
+// Feedback táctil para que cada acción "se sienta". Dos backends:
+//   1) navigator.vibrate(): Android / Chrome. Acepta patrones en ms.
+//   2) Truco del <input switch> de iOS: Safari de iPad/iPhone NO soporta
+//      navigator.vibrate, pero desde iOS 17.4 alternar un control "switch"
+//      mediante el click de su <label> produce un toque háptico nativo. Creamos
+//      un switch oculto y lo pulsamos. Solo funciona dentro de un gesto del
+//      usuario (igual que vibrate), por eso lo cableamos a taps/botones, no al
+//      pulso continuo del metrónomo.
+const Haptics = (() => {
+  let enabled = (() => {
+    try { return localStorage.getItem('alberto_haptics') !== 'off'; }
+    catch(e) { return true; }
+  })();
+  const canVibrate = typeof navigator !== 'undefined'
+    && typeof navigator.vibrate === 'function';
+  let swLabel = null;
+  function ensureSwitch() {
+    if (swLabel || canVibrate) return;
+    try {
+      swLabel = document.createElement('label');
+      swLabel.setAttribute('aria-hidden', 'true');
+      swLabel.style.cssText = 'position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.setAttribute('switch', '');   // atributo propio de iOS
+      input.tabIndex = -1;
+      swLabel.appendChild(input);
+      (document.body || document.documentElement).appendChild(swLabel);
+    } catch(e) { swLabel = null; }
+  }
+  function tapSwitch() {
+    ensureSwitch();
+    if (swLabel) { try { swLabel.click(); } catch(e) {} }
+  }
+  // pattern: ms o array de ms para la API vibrate. iosReps: nº de toques del
+  // switch para emular un patrón con énfasis en iOS (donde solo hay un toque fijo).
+  function fire(pattern, iosReps) {
+    if (!enabled) return;
+    if (canVibrate) { try { navigator.vibrate(pattern); } catch(e) {} return; }
+    tapSwitch();
+    const reps = iosReps || 1;
+    for (let i = 1; i < reps; i++) setTimeout(tapSwitch, i * 70);
+  }
+  return {
+    tick()    { fire(6); },                  // detente de rueda, blip mínimo
+    light()   { fire(9); },                  // tap suave: nav, abrir modal
+    medium()  { fire(15); },                 // confirmación: pase, play
+    heavy()   { fire(22); },                 // arranque de sesión
+    success() { fire([14, 45, 22], 2); },    // logro: hecho, sesión guardada
+    warn()    { fire([10, 35, 10], 2); },    // borrar, saltar, límite
+    isEnabled() { return enabled; },
+    set(on) {
+      enabled = !!on;
+      try { localStorage.setItem('alberto_haptics', enabled ? 'on' : 'off'); } catch(e) {}
+      if (enabled) this.medium();            // preview al activar
+      refreshHapticsUI();
+    },
+    toggle() { this.set(!enabled); return enabled; },
+  };
+})();
+
+function toggleHaptics() { Haptics.toggle(); }
+
+function refreshHapticsUI() {
+  const btn = document.getElementById('hapticsToggleBtn');
+  if (!btn) return;
+  const on = Haptics.isEnabled();
+  btn.classList.toggle('on', on);
+  btn.setAttribute('aria-checked', on ? 'true' : 'false');
+}
+
+
 // ─── RIPPLE ──────────────────────────────────────────────────────────────────
 
 function addRipple(el, e) {
@@ -11255,15 +11328,16 @@ saveSession = function() { _origSaveSession(); };
 // Rating confirm — the real "session saved" sound
 const _origCloseRatingSesion = closeRatingSesion;
 closeRatingSesion = function(save) {
-  if (save) SFX.saveSession(); else SFX.close();
+  if (save) { SFX.saveSession(); Haptics.success(); } else SFX.close();
   _origCloseRatingSesion(save);
 };
 
 // Tick buttons
 const _origSetTick = setTick;
 setTick = function(planId, tick, btn, minPlan) {
-  if (tick === 'saltado') SFX.skip();
-  else if (tick !== 'hecho') SFX.open();
+  if (tick === 'saltado') { SFX.skip(); Haptics.warn(); }
+  else if (tick === 'hecho') Haptics.success();
+  else { SFX.open(); Haptics.light(); }
   btn.classList.remove('tick-pop'); void btn.offsetWidth; btn.classList.add('tick-pop');
   _origSetTick(planId, tick, btn, minPlan);
 };
@@ -11271,14 +11345,14 @@ setTick = function(planId, tick, btn, minPlan) {
 // Hecho modal confirm
 const _origCloseHechoDatos = closeHechoDatos;
 closeHechoDatos = function(save) {
-  if (save) SFX.tick();
+  if (save) { SFX.tick(); Haptics.success(); }
   else SFX.close();
   _origCloseHechoDatos(save);
 };
 
 // Open modal — soft tap
 const _origOpenModal = openModal;
-openModal = function(id) { SFX.open(); _origOpenModal(id); };
+openModal = function(id) { SFX.open(); Haptics.light(); _origOpenModal(id); };
 
 // Close modal — subtle
 const _origCloseModal = closeModal;
@@ -11286,33 +11360,33 @@ closeModal = function(id) { SFX.close(); _origCloseModal(id); };
 
 // Pase confirm
 const _origConfirmPase = confirmPase;
-confirmPase = function() { SFX.pase(); _origConfirmPase(); };
+confirmPase = function() { SFX.pase(); Haptics.medium(); _origConfirmPase(); };
 
 // Tab navigation
 const _origShowView = showView;
-showView = function(name) { SFX.nav(); _origShowView(name); };
+showView = function(name) { SFX.nav(); Haptics.light(); _origShowView(name); };
 
 // Add obra / evento
 const _origOpenAddObra = openAddObra;
-openAddObra = function() { SFX.add(); _origOpenAddObra(); };
+openAddObra = function() { SFX.add(); Haptics.light(); _origOpenAddObra(); };
 
 // Confirm add obra (the real function is `addObra`)
 if (typeof addObra === 'function') {
   const _origAddObra = addObra;
-  addObra = function() { SFX.save(); _origAddObra(); };
+  addObra = function() { SFX.save(); Haptics.medium(); _origAddObra(); };
 }
 
 // Delete obra/pasaje — subtle descending
 const _origDeleteObra = deleteObra;
-deleteObra = function(id) { SFX.del(); _origDeleteObra(id); };
+deleteObra = function(id) { SFX.del(); Haptics.warn(); _origDeleteObra(id); };
 
 // Add pasaje
 const _origAddPasaje = addPasaje;
-addPasaje = function(obraId) { SFX.pasaje(); _origAddPasaje(obraId); };
+addPasaje = function(obraId) { SFX.pasaje(); Haptics.light(); _origAddPasaje(obraId); };
 
 // Event realizado — milestone arpeggio
 const _origConfirmEventoResultado = confirmEventoResultado;
-confirmEventoResultado = function() { SFX.milestone(); _origConfirmEventoResultado(); };
+confirmEventoResultado = function() { SFX.milestone(); Haptics.success(); _origConfirmEventoResultado(); };
 
 // Estado sliders — throttled blip
 let _sliderSfxTimeout = null;
@@ -11342,12 +11416,13 @@ setTimeFromSlider = function(minVal) {
 
 // Pase toggle (antes/despues in hecho modal)
 const _origTogglePaseBlock = togglePaseBlock;
-togglePaseBlock = function(cual) { SFX.toggle(); _origTogglePaseBlock(cual); };
+togglePaseBlock = function(cual) { SFX.toggle(); Haptics.light(); _origTogglePaseBlock(cual); };
 
 // Intensidad pasaje
 const _origSelectPasajeIntensidad = selectPasajeIntensidad;
 selectPasajeIntensidad = function(id, nivel, btn) {
   SFX.toggle();
+  Haptics.light();
   _origSelectPasajeIntensidad(id, nivel, btn);
 };
 
@@ -11407,6 +11482,7 @@ function openSettings() {
   openModal('modalSettings');
   if (typeof updateSyncStatusInfo === 'function') updateSyncStatusInfo();
   if (typeof refreshSoundOptionUI === 'function') refreshSoundOptionUI();
+  if (typeof refreshHapticsUI === 'function') refreshHapticsUI();
   if (typeof updateForestPendientesBtn === 'function') updateForestPendientesBtn();
 }
 
@@ -13469,6 +13545,7 @@ function cronoStart() {
   cronoStartTick();
   cronoAcquireWakeLock();
   if (typeof SFX !== 'undefined' && SFX.startSession) SFX.startSession();
+  try { Haptics.heavy(); } catch(e) {}
 }
 
 // Inicia un cronómetro de DESCANSO: cuenta el tiempo pero NO suma al tiempo
@@ -14456,6 +14533,8 @@ function _metroPlayWheelTick() {
     if (ctx.state !== 'running') ctx.resume().then(play).catch(() => {});
     else play();
   } catch (e) {}
+  // Detente táctil en cada paso de la ruleta de tempo (rueda / botones ±).
+  try { Haptics.tick(); } catch (e) {}
 }
 
 // Anima el número mostrado avanzando de uno en uno hasta `target`, como una
@@ -14639,6 +14718,7 @@ function _metroSchedule() {
 
 function metroToggle() {
   _metroRunning = !_metroRunning;
+  Haptics.medium();
   if (_metroRunning) {
     const ctx = _metroGetCtx();
     if (ctx.state !== 'running') ctx.resume().catch(() => {});
@@ -14673,6 +14753,7 @@ function metroTapTempo() {
   // Visual feedback on the tap button
   const btn = document.getElementById('metroTapBtn');
   if (btn) { btn.classList.add('tapped'); setTimeout(() => btn.classList.remove('tapped'), 120); }
+  Haptics.light();
   if (_metroTaps.length < 2) return;
   let total = 0;
   for (let i = 1; i < _metroTaps.length; i++) total += _metroTaps[i] - _metroTaps[i - 1];
