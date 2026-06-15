@@ -8824,16 +8824,32 @@ function _doneMinHoy() {
 // fuera como ese día, ¿el total (hecho + resto) alcanza la meta? La probabilidad
 // es la fracción de días históricos que lo lograrían. Cae sola según avanza la
 // hora (queda menos margen) y sube con los minutos ya hechos.
+//
+// Solo el AÑO EN CURSO: cada año Alberto es otra persona (años flojos y años de
+// mucho progreso no deben mezclarse). Si el año va muy al principio y hay pocos
+// días, cae a los últimos 12 meses, y como último recurso a todo el historial.
+function _recentPlants() {
+  const all = _statsAllPlants();
+  const now = new Date();
+  const countDays = arr => { const s = {}; arr.forEach(p => { s[_statsISO(p.start)] = 1; }); return Object.keys(s).length; };
+  const yearP = all.filter(p => p.start.getTime() >= new Date(now.getFullYear(), 0, 1).getTime());
+  if (countDays(yearP) >= 12) return { plants: yearP, scope: 'este año' };
+  const rollP = all.filter(p => p.start.getTime() >= now.getTime() - 365 * 86400000);
+  if (countDays(rollP) >= 12) return { plants: rollP, scope: 'últimos 12 meses' };
+  return { plants: all, scope: 'histórico' };
+}
+
 function _liveIntenseProb(nowMin, doneMin) {
   const todayIso = _statsISO(new Date());
+  const { plants, scope } = _recentPlants();
   const byDay = {};
-  _statsAllPlants().forEach(p => {
+  plants.forEach(p => {
     const iso = _statsISO(p.start);
     if (iso === todayIso) return; // hoy no entra en su propia predicción
     (byDay[iso] || (byDay[iso] = [])).push({ sm: p.start.getHours() * 60 + p.start.getMinutes(), mins: p.mins });
   });
   const days = Object.keys(byDay);
-  if (days.length < 20) return null; // pocos datos para fiarse
+  if (days.length < 8) return null; // pocos datos para fiarse
   let r4 = 0, r5 = 0;
   const projs = []; // total proyectado de hoy (hecho + lo que ese día se hizo tras esta hora)
   days.forEach(k => {
@@ -8850,9 +8866,22 @@ function _liveIntenseProb(nowMin, doneMin) {
     p4: Math.round(r4 / days.length * 100),
     p5: Math.round(r5 / days.length * 100),
     n: days.length,
+    scope,
     projMedian: q(0.5), // lo más probable que acabes estudiando hoy
     projP75: q(0.75),   // un buen día
   };
+}
+
+// Estado del día para premios: base del % de la mañana + si ya celebramos 4h/5h.
+function _probDayState() {
+  const today = _statsISO(new Date());
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem('prob_day_v1') || 'null'); } catch (e) { /* noop */ }
+  if (!s || s.date !== today) s = { date: today, base4: null, fired4: false, fired5: false };
+  return s;
+}
+function _probDaySave(s) {
+  try { localStorage.setItem('prob_day_v1', JSON.stringify(s)); } catch (e) { /* noop */ }
 }
 
 // Texto para mostrar la probabilidad de hoy. null si no hay datos suficientes.
@@ -8876,35 +8905,49 @@ function _probTextHoy() {
     projVal = 'rara vez sigues';
     if (p75 >= 30) projExtra = 'buen día ' + fmtMinutos(p75);
   }
-  // Mensaje de ánimo según el momento.
-  let tip;
-  if (done >= 300) tip = '5 h netas hoy ✦ ¡día de excelencia!';
-  else if (done >= 240) tip = '4 h logradas · a por las 5';
-  else tip = r.p4 >= 55 ? 'vas en buena hora' : (r.p4 >= 20 ? 'cuanto antes sigas, más sube' : 'hoy se hace cuesta arriba');
+  // Base del día: el primer % de 4h que vimos hoy, para medir cuánto has
+  // remontado y celebrar si lo logras saliendo de pocas probabilidades.
+  const dayS = _probDayState();
+  if (dayS.base4 == null) { dayS.base4 = r.p4; _probDaySave(dayS); }
+  const base4 = dayS.base4;
+  const delta = r.p4 - base4;
+
+  // Mensaje de ánimo / PREMIO según el momento.
+  let tip, reward = null, celebrate = null;
+  if (done >= 300) {
+    tip = '✦ ¡5 h netas! Día de excelencia'; reward = 'gold';
+    if (!dayS.fired5) celebrate = '5h';
+  } else if (done >= 240) {
+    tip = (base4 != null && base4 < 45) ? '🏆 ¡Contra pronóstico! 4 h saliendo del ' + base4 + '%' : '🏆 ¡4 h logradas! a por las 5';
+    reward = 'gold';
+    if (!dayS.fired4) celebrate = '4h';
+  } else if (delta >= 20) {
+    tip = '🔥 +' + delta + '% desde que arrancaste · ¡vas lanzado!'; reward = 'hot';
+  } else {
+    tip = r.p4 >= 55 ? 'vas en buena hora' : (r.p4 >= 20 ? 'cuanto antes sigas, más sube' : 'hoy se hace cuesta arriba');
+  }
 
   // Texto compacto (3 líneas) para el cronómetro.
   const proj = projMin >= 15
     ? ('Hoy ≈ <strong>' + fmtMinutos(projMin) + '</strong>' + ((p75 >= projMin + 30 && done < 240) ? ' · buen día ' + fmtMinutos(p75) : ''))
     : ('A esta hora rara vez sigues' + (p75 >= 30 ? ' · buen día ' + fmtMinutos(p75) : ''));
   let prob, sub;
-  if (done >= 300) {
-    prob = '5 h netas hoy ✦';
-    sub = 'día de excelencia · ' + hhmm;
-  } else if (done >= 240) {
-    prob = '4 h logradas · 5 h: <strong>' + r.p5 + '%</strong>';
-    sub = hhmm + ' · llevas ' + doneTxt;
+  if (done >= 240) {
+    prob = tip;
+    sub = (done < 300 ? '5 h: ' + r.p5 + '% · ' : '') + hhmm + ' · llevas ' + doneTxt;
   } else {
     prob = '4 h: <strong>' + r.p4 + '%</strong> · 5 h: <strong>' + r.p5 + '%</strong>';
     sub = hhmm + ' · llevas ' + doneTxt + ' · ' + tip;
   }
-  return { proj, prob, sub, p4: r.p4, p5: r.p5, done, projVal, projExtra, tip, hhmm, doneTxt };
+  return { proj, prob, sub, p4: r.p4, p5: r.p5, done, projVal, projExtra, tip, reward, celebrate, base4, scope: r.scope, hhmm, doneTxt };
 }
 
 // Tarjeta rica (coloreada, por bloques) para la pantalla de Sesión.
 function _probRichHTML(t) {
   const done240 = t.done >= 240, done300 = t.done >= 300;
   return '<div class="prob-head">'
-      + '<span class="prob-kicker">Hoy</span>'
+      + '<span class="prob-head-left"><span class="prob-kicker">Hoy</span>'
+        + '<span class="prob-scope">' + (t.scope || 'este año') + '</span></span>'
       + '<span class="prob-context">' + t.hhmm + ' · llevas <b>' + t.doneTxt + '</b></span>'
     + '</div>'
     + '<div class="prob-body">'
@@ -8926,7 +8969,7 @@ function _probRichHTML(t) {
         + '</div>'
       + '</div>'
     + '</div>'
-    + '<div class="prob-tip">' + t.tip + '</div>';
+    + '<div class="prob-tip' + (t.reward ? ' reward-' + t.reward : '') + '">' + t.tip + '</div>';
 }
 
 // Refresca los dos sitios donde vive la probabilidad de hoy: el cronómetro
@@ -8955,6 +8998,22 @@ function updateLiveProbabilityUI(force) {
   if (sCard) {
     if (!t) { sCard.style.display = 'none'; }
     else { sCard.style.display = ''; sCard.innerHTML = _probRichHTML(t); }
+  }
+  // PREMIO: celebra una sola vez al día al cruzar 4h / 5h.
+  if (t && t.celebrate) {
+    const s = _probDayState();
+    if (t.celebrate === '5h' && !s.fired5) {
+      s.fired5 = true; s.fired4 = true; _probDaySave(s);
+      if (typeof showToast === 'function') showToast('✦ ¡5 horas netas hoy! Día de excelencia');
+      if (typeof SFX !== 'undefined' && SFX.saveSession) SFX.saveSession();
+    } else if (t.celebrate === '4h' && !s.fired4) {
+      s.fired4 = true; _probDaySave(s);
+      const msg = (s.base4 != null && s.base4 < 45)
+        ? '🏆 ¡Contra pronóstico! 4 h saliendo del ' + s.base4 + '%'
+        : '🏆 ¡4 horas netas hoy!';
+      if (typeof showToast === 'function') showToast(msg);
+      if (typeof SFX !== 'undefined' && SFX.saveSession) SFX.saveSession();
+    }
   }
 }
 

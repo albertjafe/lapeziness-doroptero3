@@ -457,9 +457,17 @@
     display: flex; align-items: baseline; justify-content: space-between;
     gap: 8px; margin-bottom: 12px;
   }
+  .prob-head-left { display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; }
   .prob-kicker {
     font-size: 12px; font-weight: 800; letter-spacing: 0.16em;
     text-transform: uppercase; color: var(--accent);
+  }
+  .prob-scope {
+    font-size: 9.5px; letter-spacing: 0.04em;
+    color: var(--text3);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-radius: 20px; padding: 2px 8px;
+    white-space: nowrap;
   }
   .prob-context {
     font-size: 11.5px; color: var(--text3);
@@ -511,6 +519,15 @@
     margin-top: 12px; padding-top: 10px;
     border-top: 1px solid var(--border2);
     font-size: 12.5px; color: var(--text2, var(--text)); text-align: center;
+  }
+  .prob-tip.reward-hot { color: var(--orange); font-weight: 700; }
+  .prob-tip.reward-gold {
+    color: var(--accent); font-weight: 800; font-size: 13.5px;
+    animation: probRewardPulse 1.8s var(--ease-out) infinite;
+  }
+  @keyframes probRewardPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.62; }
   }
 
   @media (max-width: 760px) {
