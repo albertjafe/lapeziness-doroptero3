@@ -168,22 +168,7 @@
     <div id="rachaDisplay" style="display:none;margin-bottom:6px"></div>
     <div class="session-hero-title">¿Cómo estás hoy?</div>
 
-    <div class="estado-sliders">
-      <div class="estado-row">
-        <span class="estado-icon">🌿</span>
-        <span class="estado-label">Bienestar</span>
-        <input type="range" class="estado-slider" id="est-bienestar" min="0" max="100" step="5" value="70"
-          oninput="updateEstado('bienestar',this.value)" style="color:#c8a030">
-        <span class="estado-val" id="estval-bienestar" style="color:#c8a030">70</span>
-      </div>
-      <div class="estado-row">
-        <span class="estado-icon">😴</span>
-        <span class="estado-label">Sueño</span>
-        <input type="range" class="estado-slider" id="est-sueno" min="0" max="100" step="5" value="70"
-          oninput="updateEstado('sueno',this.value)" style="color:#a090e0">
-        <span class="estado-val" id="estval-sueno" style="color:#a090e0">70</span>
-      </div>
-    </div>
+    <div class="estado-faces" id="estadoFaces" role="radiogroup" aria-label="¿Cómo estás hoy?"></div>
 
     <div class="session-time-label">Tiempo disponible</div>
     <div class="time-slider-wrap">

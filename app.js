@@ -409,8 +409,73 @@ let selectedTime = 2;
 // Estado diario: bienestar (fusión de energía/calma) + sueño.
 // Para retrocompatibilidad con código antiguo que lee .energia/.claridad,
 // los exponemos como alias en el getter de actualización.
-let estadoDiario = { bienestar: 70, sueno: 70, energia: 70, claridad: 70 };
+// Estado diario: UNA sola métrica `estado` (0-100). Los demás campos
+// (bienestar/sueno/energia/claridad) se conservan como alias retrocompatibles,
+// siempre iguales a `estado`, para no romper datos ni lecturas antiguas.
+let estadoDiario = { estado: 70, bienestar: 70, sueno: 70, energia: 70, claridad: 70 };
 const ESTADO_COLORS = { bienestar: '#c8a030', sueno: '#a090e0', energia: '#c8a030', claridad: '#e08898' };
+
+// Las 5 caras del selector de estado. value = 0-100 que se guarda internamente.
+const ESTADO_FACES = [
+  { v: 12, emoji: '😣', label: 'Fatal' },
+  { v: 34, emoji: '😕', label: 'Flojo' },
+  { v: 56, emoji: '😐', label: 'Normal' },
+  { v: 78, emoji: '🙂', label: 'Bien' },
+  { v: 96, emoji: '😄', label: 'Pleno' },
+];
+
+// Valor canónico actual del estado (con migración perezosa desde el modelo viejo).
+function estadoActualVal() {
+  if (typeof estadoDiario.estado === 'number') return estadoDiario.estado;
+  if (typeof estadoDiario.bienestar === 'number' && typeof estadoDiario.sueno === 'number') {
+    return Math.round((estadoDiario.bienestar + estadoDiario.sueno) / 2);
+  }
+  if (typeof estadoDiario.bienestar === 'number') return estadoDiario.bienestar;
+  return 70;
+}
+
+function estadoToFaceIndex(val) {
+  let best = 0, bestD = Infinity;
+  ESTADO_FACES.forEach((f, i) => {
+    const d = Math.abs(f.v - val);
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  return best;
+}
+
+// Fija todos los alias a un mismo valor de estado.
+function _setEstadoAll(n) {
+  estadoDiario.estado = n;
+  estadoDiario.bienestar = n;
+  estadoDiario.sueno = n;
+  estadoDiario.energia = n;
+  estadoDiario.claridad = n;
+}
+
+// El usuario toca una cara: fija el estado, persiste y da feedback.
+function pickEstado(idx) {
+  const f = ESTADO_FACES[idx];
+  if (!f) return;
+  _setEstadoAll(f.v);
+  selectedEnergy = f.v >= 65 ? 'alta' : f.v >= 35 ? 'normal' : 'baja';
+  refreshEstadoFacesUI();
+  try { Haptics.medium(); } catch(e) {}
+  try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
+  clearTimeout(pickEstado._t);
+  pickEstado._t = setTimeout(() => {
+    saveEstadoDiario();
+    if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
+  }, 150);
+}
+
+function refreshEstadoFacesUI() {
+  const idx = estadoToFaceIndex(estadoActualVal());
+  document.querySelectorAll('#estadoFaces .estado-face').forEach((b, i) => {
+    const on = i === idx;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+}
 
 // Persiste estadoDiario en localStorage con marca de fecha.
 // La fecha permite que al cambiar de día el estado se reinicie a defaults
@@ -418,13 +483,15 @@ const ESTADO_COLORS = { bienestar: '#c8a030', sueno: '#a090e0', energia: '#c8a03
 function saveEstadoDiario() {
   try {
     const todayStr = new Date().toDateString();
+    const n = estadoActualVal();
     const payload = {
       date: todayStr,
-      bienestar: estadoDiario.bienestar,
-      sueno: estadoDiario.sueno,
-      // Alias retrocompatibles
-      energia: estadoDiario.bienestar,
-      claridad: estadoDiario.bienestar,
+      estado: n,
+      // Alias retrocompatibles (todos = estado)
+      bienestar: n,
+      sueno: n,
+      energia: n,
+      claridad: n,
     };
     // 1) localStorage (carga rápida sin esperar a nube en el arranque)
     localStorage.setItem('alberto_estado_v1', JSON.stringify(payload));
@@ -455,12 +522,8 @@ function persistEstadoToSession() {
   const idx = db.sesiones.findIndex(s => new Date(s.date).toDateString() === todayStr);
   if (idx < 0) return; // No hay sesión de hoy todavía
   const sesion = db.sesiones[idx];
-  sesion.estado = {
-    bienestar: estadoDiario.bienestar,
-    sueno: estadoDiario.sueno,
-    energia: estadoDiario.bienestar,
-    claridad: estadoDiario.bienestar,
-  };
+  const n = estadoActualVal();
+  sesion.estado = { estado: n, bienestar: n, sueno: n, energia: n, claridad: n };
 }
 
 // Carga el estado diario priorizando la fuente más fresca:
@@ -470,31 +533,31 @@ function persistEstadoToSession() {
 // Solo se considera válido si el campo `date` es hoy. En otro caso, defaults.
 function loadEstadoDiarioFromSources() {
   const todayStr = new Date().toDateString();
+  // Deriva el valor único `estado` de cualquier formato guardado (nuevo o viejo).
+  const deriveEstado = src => {
+    if (!src) return null;
+    if (typeof src.estado === 'number') return src.estado;
+    if (typeof src.bienestar === 'number' && typeof src.sueno === 'number') {
+      return Math.round((src.bienestar + src.sueno) / 2);
+    }
+    if (typeof src.bienestar === 'number') return src.bienestar;
+    if (typeof src.energia === 'number' && typeof src.claridad === 'number') {
+      return Math.round((src.energia + src.claridad) / 2);
+    }
+    if (typeof src.energia === 'number') return src.energia;
+    return null;
+  };
   // 1) db (la nube, si ya está cargada)
   if (db && db.estadoDiario && db.estadoDiario.date === todayStr) {
-    const e = db.estadoDiario;
-    if (typeof e.bienestar === 'number') estadoDiario.bienestar = e.bienestar;
-    if (typeof e.sueno === 'number')     estadoDiario.sueno = e.sueno;
-    estadoDiario.energia = estadoDiario.bienestar;
-    estadoDiario.claridad = estadoDiario.bienestar;
-    return true;
+    const v = deriveEstado(db.estadoDiario);
+    if (v != null) { _setEstadoAll(v); return true; }
   }
   // 2) localStorage
   try {
     const saved = JSON.parse(localStorage.getItem('alberto_estado_v1') || 'null');
-    if (saved && saved.date === todayStr) {
-      if (typeof saved.bienestar === 'number') estadoDiario.bienestar = saved.bienestar;
-      if (typeof saved.sueno === 'number')     estadoDiario.sueno = saved.sueno;
-      estadoDiario.energia = estadoDiario.bienestar;
-      estadoDiario.claridad = estadoDiario.bienestar;
-      return true;
-    } else if (saved && !saved.date && typeof saved.energia === 'number') {
-      // Migración: formato antiguo sin date
-      Object.assign(estadoDiario, saved);
-      if (estadoDiario.bienestar == null && estadoDiario.energia != null && estadoDiario.claridad != null) {
-        estadoDiario.bienestar = Math.round((estadoDiario.energia + estadoDiario.claridad) / 2);
-      }
-      return true;
+    if (saved && (saved.date === todayStr || !saved.date)) {
+      const v = deriveEstado(saved);
+      if (v != null) { _setEstadoAll(v); return true; }
     }
   } catch(e) {}
   // 3) Defaults — ya están en estadoDiario al declararlo (70/70)
@@ -555,25 +618,24 @@ function updateEstado(dim, val) {
   }, 250);
 }
 
+// (Conserva el nombre por compatibilidad con sus call sites: ahora monta las
+// 5 caras del estado en vez de sliders.)
 function initEstadoSliders() {
-  // Migración: si solo tiene energia/claridad antiguos, generar bienestar.
-  if (estadoDiario.bienestar == null) {
-    const e = estadoDiario.energia != null ? estadoDiario.energia : 70;
-    const c = estadoDiario.claridad != null ? estadoDiario.claridad : 70;
-    estadoDiario.bienestar = Math.round((e + c) / 2);
+  // Migración perezosa al modelo de una sola variable.
+  _setEstadoAll(estadoActualVal());
+  const host = document.getElementById('estadoFaces');
+  if (!host) return;
+  if (!host.dataset.built) {
+    host.innerHTML = ESTADO_FACES.map((f, i) =>
+      '<button type="button" class="estado-face" role="radio" aria-checked="false"' +
+      ' aria-label="' + f.label + '" title="' + f.label + '" onclick="pickEstado(' + i + ')">' +
+      '<span class="estado-face-emoji">' + f.emoji + '</span>' +
+      '<span class="estado-face-label">' + f.label + '</span>' +
+      '</button>'
+    ).join('');
+    host.dataset.built = '1';
   }
-  // Asegurar alias siempre sincronizados con bienestar
-  estadoDiario.energia = estadoDiario.bienestar;
-  estadoDiario.claridad = estadoDiario.bienestar;
-  ['bienestar','sueno'].forEach(dim => {
-    const slider = document.getElementById('est-' + dim);
-    const valEl  = document.getElementById('estval-' + dim);
-    if (!slider) return;
-    slider.value = estadoDiario[dim];
-    if (valEl) valEl.textContent = estadoDiario[dim];
-    slider.style.color = ESTADO_COLORS[dim];
-    fillEstadoSlider(slider, ESTADO_COLORS[dim]);
-  });
+  refreshEstadoFacesUI();
 }
 
 function selectEnergy(btn) {
@@ -1418,12 +1480,8 @@ function handleDayChange() {
     // Borrar el draft local (saveDraft pone date=hoy, así que loadDraft del día
     // siguiente lo descartaría — pero por limpieza lo borramos ahora)
     try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
-    // ★ Resetear sliders de estado a defaults (Bienestar/Sueño = 70).
-    // Los sliders sólo persisten DURANTE el día.
-    estadoDiario.bienestar = 70;
-    estadoDiario.sueno = 70;
-    estadoDiario.energia = 70;
-    estadoDiario.claridad = 70;
+    // ★ Resetear el estado del día a default (70). Sólo persiste DURANTE el día.
+    _setEstadoAll(70);
     saveEstadoDiario(); // guarda con la nueva fecha
     if (typeof initEstadoSliders === 'function') initEstadoSliders();
     // Limpiar el DOM del plan
@@ -1575,13 +1633,7 @@ function _autoSaveTodayPlanNow() {
       // Tomamos el valor más reciente conocido entre db.estadoDiario (nube)
       // y estadoDiario (memoria), pero priorizando la memoria por ser
       // posiblemente más fresca.
-      estado: {
-        bienestar: estadoDiario.bienestar,
-        sueno: estadoDiario.sueno,
-        // Alias retrocompat para código viejo que lea energia/claridad
-        energia: estadoDiario.bienestar,
-        claridad: estadoDiario.bienestar,
-      },
+      estado: (() => { const n = estadoActualVal(); return { estado: n, bienestar: n, sueno: n, energia: n, claridad: n }; })(),
       // Persistir el aggregate (sub-sesiones, pasajes) para reconstrucción
       _aggregate: JSON.parse(JSON.stringify(sessionAggregate || {})),
       _autoSaved: true,
@@ -8457,56 +8509,92 @@ function startBreakTimer(id, totalSecs) {
 // Cache for full-screen modal
 let _estadoSesionesCache = [];
 
+// Valor de ESTADO de una sesión, migrando cualquier formato antiguo
+// (bienestar/sueño/energia/claridad) a la única variable nueva.
+function _sesionEstadoVal(s) {
+  const e = s && s.estado;
+  if (!e) return null;
+  if (typeof e.estado === 'number') return e.estado;
+  if (typeof e.bienestar === 'number' && typeof e.sueno === 'number') return Math.round((e.bienestar + e.sueno) / 2);
+  if (typeof e.bienestar === 'number') return e.bienestar;
+  if (typeof e.energia === 'number' && typeof e.claridad === 'number') return Math.round((e.energia + e.claridad) / 2);
+  if (typeof e.energia === 'number') return e.energia;
+  return null;
+}
+
 // Shared SVG builder — called from inline section and from the full-screen modal.
+// Una sola serie protagonista "Estado" (área + línea con degradado) y, en
+// secundario, la valoración de la "Sesión" como línea fina punteada.
 function _buildEstadoChartSvg(W, H, sesiones) {
-  const pad = { l: 28, r: 12, t: 12, b: 30 };
+  const pad = { l: 30, r: 14, t: 20, b: 32 };
   const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
   const minT = new Date(sesiones[0].date).getTime();
   const maxT = new Date(sesiones[sesiones.length-1].date).getTime();
   const rangeT = maxT - minT || 1;
   const xOf = t => pad.l + ((t - minT) / rangeT) * cW;
   const yOf = v => pad.t + cH - (Math.max(0, Math.min(100, v)) / 100) * cH;
+  const baseY = pad.t + cH;
+  const id = 'se' + (++_statsGradSeq);
 
-  // Grid
-  const gridY = [0, 25, 50, 75, 100].map(v => {
+  const defs = '<defs>'
+    + '<linearGradient id="' + id + 'a" x1="0" y1="0" x2="0" y2="1">'
+    +   '<stop offset="0" style="stop-color:var(--accent2)" stop-opacity="0.42"/>'
+    +   '<stop offset="1" style="stop-color:var(--accent)" stop-opacity="0.02"/>'
+    + '</linearGradient>'
+    + '<linearGradient id="' + id + 'l" x1="0" y1="0" x2="1" y2="0">'
+    +   '<stop offset="0" style="stop-color:var(--accent)"/>'
+    +   '<stop offset="1" style="stop-color:var(--accent2)"/>'
+    + '</linearGradient>'
+    + '<filter id="' + id + 'g" x="-20%" y="-60%" width="140%" height="240%">'
+    +   '<feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="var(--accent)" flood-opacity="0.4"/>'
+    + '</filter>'
+    + '</defs>';
+
+  // Grid horizontal (0/50/100) con etiquetas legibles.
+  const gridY = [0, 50, 100].map(v => {
     const y = yOf(v);
     return '<line x1="' + pad.l + '" y1="' + y + '" x2="' + (W-pad.r) + '" y2="' + y
-      + '" stroke="var(--border2)" stroke-width="' + (v === 50 ? 1 : 0.5) + '" stroke-dasharray="2,3"/>'
-      + '<text x="' + (pad.l-3) + '" y="' + (y+3) + '" text-anchor="end" font-size="6.5" fill="var(--text3)">' + v + '</text>';
+      + '" stroke="var(--border2)" stroke-width="' + (v === 50 ? 0.8 : 0.6) + '" stroke-dasharray="2,3" opacity="0.6"/>'
+      + '<text x="' + (pad.l-4) + '" y="' + (y+3) + '" text-anchor="end" font-size="9" fill="var(--text3)" font-family="\'JetBrains Mono\',monospace">' + v + '</text>';
   }).join('');
 
-  const dims = [
-    { key: 'bienestar', color: '#c8a030', label: 'Bienestar', src: 'estado' },
-    { key: 'sueno',     color: '#a090e0', label: 'Sueño',     src: 'estado' },
-    { key: 'rating',    color: '#e07060', label: 'Sesión',    src: 'root'   },
-  ];
+  // Serie ESTADO (protagonista): área + línea + puntos.
+  const ePts = sesiones.map(s => {
+    const v = _sesionEstadoVal(s);
+    return v == null ? null : { x: xOf(new Date(s.date).getTime()), y: yOf(v), v, date: s.date };
+  }).filter(Boolean);
+  let estadoSvg = '';
+  if (ePts.length >= 2) {
+    const line = ePts.map((p,i) => (i===0?'M':'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+    const area = 'M' + ePts[0].x.toFixed(1) + ',' + baseY + ' '
+      + ePts.map(p => 'L' + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')
+      + ' L' + ePts[ePts.length-1].x.toFixed(1) + ',' + baseY + ' Z';
+    estadoSvg += '<path d="' + area + '" fill="url(#' + id + 'a)"/>'
+      + '<path d="' + line + '" fill="none" stroke="url(#' + id + 'l)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" filter="url(#' + id + 'g)"/>'
+      + ePts.map(p => '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3.2" fill="var(--accent2)" stroke="var(--bg2)" stroke-width="1.4"><title>Estado ' + p.v + ' · ' + new Date(p.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'}) + '</title></circle>').join('');
+  } else if (ePts.length === 1) {
+    const p = ePts[0];
+    estadoSvg += '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="3.6" fill="var(--accent2)" stroke="var(--bg2)" stroke-width="1.4"/>';
+  }
 
-  const lines = dims.map(d => {
-    const pts = sesiones
-      .filter(s => d.src === 'root' ? s.rating != null : true)
-      .map(s => {
-        let val;
-        if (d.src === 'root') {
-          val = s.rating;
-        } else if (d.key === 'bienestar') {
-          if (typeof s.estado?.bienestar === 'number') val = s.estado.bienestar;
-          else if (typeof s.estado?.energia === 'number' && typeof s.estado?.claridad === 'number') {
-            val = Math.round((s.estado.energia + s.estado.claridad) / 2);
-          } else val = 50;
-        } else {
-          val = s.estado?.[d.key] || 50;
-        }
-        return { x: xOf(new Date(s.date).getTime()), y: yOf(val), val, date: s.date };
-      });
-    if (pts.length < 2) return '';
-    const pathD = pts.map((p,i) => (i===0?'M':'L') + p.x + ',' + p.y).join(' ');
-    const dotsHtml = pts.map(p =>
-      '<circle cx="' + p.x + '" cy="' + p.y + '" r="3" fill="' + d.color + '" stroke="var(--bg2)" stroke-width="1" opacity="0.85">'
-      + '<title>' + d.label + ': ' + p.val + ' · ' + new Date(p.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'}) + '</title></circle>'
-    ).join('');
-    const dashAttr = d.src === 'root' ? ' stroke-dasharray="5,3"' : '';
-    return '<path d="' + pathD + '" fill="none" stroke="' + d.color + '" stroke-width="1.8" stroke-linejoin="round" opacity="0.85"' + dashAttr + '/>' + dotsHtml;
-  }).join('');
+  // Serie SESIÓN (secundaria): cómo fue la sesión, línea fina punteada.
+  const rPts = sesiones.filter(s => s.rating != null)
+    .map(s => ({ x: xOf(new Date(s.date).getTime()), y: yOf(s.rating) }));
+  let ratingSvg = '';
+  if (rPts.length >= 2) {
+    const line = rPts.map((p,i) => (i===0?'M':'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+    ratingSvg = '<path d="' + line + '" fill="none" stroke="var(--orange)" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="4,3" opacity="0.6"/>';
+  }
+
+  // Leyenda en la franja superior.
+  const legend = '<g font-family="\'JetBrains Mono\',monospace" font-size="9">'
+    + '<circle cx="' + (pad.l+5) + '" cy="10" r="3.2" fill="var(--accent2)"/>'
+    + '<text x="' + (pad.l+13) + '" y="13" fill="var(--text2)">Estado</text>'
+    + (rPts.length >= 2
+        ? '<line x1="' + (pad.l+62) + '" y1="10" x2="' + (pad.l+78) + '" y2="10" stroke="var(--orange)" stroke-width="1.5" stroke-dasharray="4,3"/>'
+          + '<text x="' + (pad.l+83) + '" y="13" fill="var(--text2)">Sesión</text>'
+        : '')
+    + '</g>';
 
   // X date labels — intervalos temporales con filtro de colisión en píxeles.
   // Evita el amontonamiento cuando hay muchas sesiones en poco tiempo.
@@ -8535,11 +8623,11 @@ function _buildEstadoChartSvg(W, H, sesiones) {
       const lbl = rangeDays > 90
         ? d.getDate() + '/' + (d.getMonth()+1) + '/' + String(d.getFullYear()).slice(2)
         : d.getDate() + '/' + (d.getMonth()+1);
-      return '<text x="' + xOf(t) + '" y="' + (H-5) + '" text-anchor="middle" font-size="6.5" fill="var(--text3)">' + lbl + '</text>';
+      return '<text x="' + xOf(t) + '" y="' + (H-6) + '" text-anchor="middle" font-size="9" fill="var(--text3)" font-family="\'JetBrains Mono\',monospace">' + lbl + '</text>';
     }).join('');
 
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block">'
-    + gridY + lines + xLabels + '</svg>';
+    + defs + gridY + ratingSvg + estadoSvg + legend + xLabels + '</svg>';
 }
 
 let _estadoChartRangeDays = null; // null = todo el histórico
@@ -8601,18 +8689,15 @@ function renderEstadoSection() {
 
   _estadoSesionesCache = sesionesConEstado; // for full-screen modal
 
-  // Detect pattern: cycles of low BIENESTAR.
+  // Detect pattern: cycles of low ESTADO.
   let patternNote = '';
-  const bienestarSeries = sesionesConEstado.map(s => {
-    if (typeof s.estado?.bienestar === 'number') return s.estado.bienestar;
-    if (typeof s.estado?.energia === 'number' && typeof s.estado?.claridad === 'number') {
-      return Math.round((s.estado.energia + s.estado.claridad) / 2);
-    }
-    return 50;
+  const estadoSeries = sesionesConEstado.map(s => {
+    const v = _sesionEstadoVal(s);
+    return v == null ? 50 : v;
   });
   const dips = [];
-  for (let i = 1; i < bienestarSeries.length-1; i++) {
-    if (bienestarSeries[i] < 40 && bienestarSeries[i-1] >= 40) dips.push(i);
+  for (let i = 1; i < estadoSeries.length-1; i++) {
+    if (estadoSeries[i] < 40 && estadoSeries[i-1] >= 40) dips.push(i);
   }
   if (dips.length >= 2) {
     const gaps = [];
@@ -8623,42 +8708,26 @@ function renderEstadoSection() {
     }
     const avgCycle = Math.round(gaps.reduce((s,g)=>s+g,0)/gaps.length);
     patternNote = '<div style="font-size:9px;color:var(--text3);background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:7px 10px;margin-top:8px">'
-      + '📊 Ciclo detectado: bajón de bienestar cada ~<strong style="color:var(--accent)">' + avgCycle + ' días</strong> de media'
+      + '📊 Ciclo detectado: bajón de estado cada ~<strong style="color:var(--accent)">' + avgCycle + ' días</strong> de media'
       + ' (' + dips.length + ' bajones registrados). Con más datos se afinará.</div>';
   } else if (sesionesConEstado.length >= 5) {
-    patternNote = '<div style="font-size:9px;color:var(--text3);margin-top:6px">Registra más sesiones para detectar tu ciclo de bienestar.</div>';
+    patternNote = '<div style="font-size:9px;color:var(--text3);margin-top:6px">Registra más sesiones para detectar tu ciclo de estado.</div>';
   }
 
-  // Dims definition (shared with helper — duplicated here for avgBlock)
-  const _statDims = [
-    { key: 'bienestar', color: '#c8a030', label: 'Bienestar', src: 'estado' },
-    { key: 'sueno',     color: '#a090e0', label: 'Sueño',     src: 'estado' },
-    { key: 'rating',    color: '#e07060', label: 'Sesión',    src: 'root'   },
-  ];
+  // Medias de los últimos 7 registros: Estado (la variable única) y Sesión.
   const recent = sesionesConEstado.slice(-7);
-  const avgBlock = _statDims.map(d => {
-    const vals = recent
-      .map(s => {
-        if (d.src === 'root') return s.rating;
-        if (d.key === 'bienestar') {
-          if (typeof s.estado?.bienestar === 'number') return s.estado.bienestar;
-          if (typeof s.estado?.energia === 'number' && typeof s.estado?.claridad === 'number') {
-            return Math.round((s.estado.energia + s.estado.claridad) / 2);
-          }
-          return null;
-        }
-        return s.estado?.[d.key];
-      })
-      .filter(v => v != null);
-    if (!vals.length) return '';
-    const avg = Math.round(vals.reduce((s,v)=>s+v,0)/vals.length);
-    return '<div style="text-align:center;flex:1">'
-      + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:18px;color:' + d.color + '">' + avg + '</div>'
-      + '<div style="font-size:7px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em">' + d.label + '</div>'
-      + '</div>';
-  }).join('');
-
-  const legend = _statDims.map(d => '<span style="color:' + d.color + '">— ' + d.label + '</span>').join(' ');
+  const _avgOf = fn => {
+    const vals = recent.map(fn).filter(v => v != null);
+    return vals.length ? Math.round(vals.reduce((s,v) => s+v, 0) / vals.length) : null;
+  };
+  const avgCols = [
+    { label: 'Estado', color: 'var(--accent)', val: _avgOf(_sesionEstadoVal) },
+    { label: 'Sesión', color: 'var(--orange)', val: _avgOf(s => s.rating) },
+  ].filter(c => c.val != null).map(c =>
+    '<div style="text-align:center;flex:1">'
+    + '<div style="font-family:\'Cormorant Garamond\',serif;font-size:22px;color:' + c.color + '">' + c.val + '</div>'
+    + '<div style="font-size:8px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em">' + c.label + '</div>'
+    + '</div>').join('');
 
   el.innerHTML = '<div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:14px 16px">'
     + '<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">'
@@ -8668,9 +8737,8 @@ function renderEstadoSection() {
     + '<div style="font-size:8px;color:var(--text3)">Media 7d</div>'
     + '<button onclick="openEstadoChartModal()" style="font-family:\'JetBrains Mono\',monospace;font-size:8px;padding:3px 9px;background:transparent;border:1px solid var(--border2);border-radius:5px;color:var(--text3);cursor:pointer">↗ ampliar</button>'
     + '</div></div>'
-    + '<div style="display:flex;gap:4px;margin-bottom:12px">' + avgBlock + '</div>'
-    + _buildEstadoChartSvg(340, 160, sesionesConEstado)
-    + '<div style="font-size:7px;color:var(--text3);display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;padding-left:28px">' + legend + '</div>'
+    + '<div style="display:flex;gap:10px;margin-bottom:12px">' + avgCols + '</div>'
+    + _buildEstadoChartSvg(340, 170, sesionesConEstado)
     + patternNote
     + '</div>';
 }
@@ -8893,6 +8961,17 @@ function _statsTipText(label, minutes) {
 }
 
 let _statsGradSeq = 0;
+// Rectángulo con SOLO las esquinas superiores redondeadas: las barras quedan
+// "asentadas" sobre el eje en vez de flotar como píldoras.
+function _barTopRectPath(x, y, w, h, r) {
+  r = Math.max(0, Math.min(r, w / 2, h));
+  return 'M' + x.toFixed(1) + ',' + (y + h).toFixed(1)
+    + ' L' + x.toFixed(1) + ',' + (y + r).toFixed(1)
+    + ' Q' + x.toFixed(1) + ',' + y.toFixed(1) + ' ' + (x + r).toFixed(1) + ',' + y.toFixed(1)
+    + ' L' + (x + w - r).toFixed(1) + ',' + y.toFixed(1)
+    + ' Q' + (x + w).toFixed(1) + ',' + y.toFixed(1) + ' ' + (x + w).toFixed(1) + ',' + (y + r).toFixed(1)
+    + ' L' + (x + w).toFixed(1) + ',' + (y + h).toFixed(1) + ' Z';
+}
 function _statsBarChartSVG(values, labels, hoyIdx, tipLabels) {
   const W = 640, H = 196, padL = 38, padR = 8, padT = 12, padB = 24;
   const n = values.length || 1;
@@ -8915,6 +8994,9 @@ function _statsBarChartSVG(values, labels, hoyIdx, tipLabels) {
     + '<filter id="' + id + 'g" x="-60%" y="-60%" width="220%" height="220%">'
     +   '<feDropShadow dx="0" dy="1.5" stdDeviation="3.2" flood-color="var(--orange)" flood-opacity="0.55"/>'
     + '</filter>'
+    + '<filter id="' + id + 's" x="-40%" y="-30%" width="180%" height="170%">'
+    +   '<feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.26"/>'
+    + '</filter>'
     + '</defs>';
   for (let v = 0; v <= top; v += step) {
     const y = padT + ih * (1 - v / top);
@@ -8932,13 +9014,11 @@ function _statsBarChartSVG(values, labels, hoyIdx, tipLabels) {
       const isHoy = i === hoyIdx;
       const h = Math.max(bh, 3);
       const yTop = padT + ih - h;
-      const r = Math.min(5, bw / 2);
-      svg += '<rect x="' + x.toFixed(1) + '" y="' + yTop.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1)
-        + '" rx="' + r + '" fill="url(#' + id + (isHoy ? 'h' : '') + ')" class="stats-bar' + (isHoy ? ' hoy' : '') + '"'
-        + (isHoy ? ' filter="url(#' + id + 'g)"' : '') + '/>';
+      const r = Math.min(6, bw / 2);
+      svg += '<path d="' + _barTopRectPath(x, yTop, bw, h, r) + '" fill="url(#' + id + (isHoy ? 'h' : '') + ')"'
+        + ' class="stats-bar' + (isHoy ? ' hoy' : '') + '" filter="url(#' + id + (isHoy ? 'g' : 's') + ')"/>';
       // Brillo superior: da relieve a la barra (efecto "satinado").
-      svg += '<rect x="' + x.toFixed(1) + '" y="' + yTop.toFixed(1) + '" width="' + bw.toFixed(1)
-        + '" height="' + Math.min(h, 5).toFixed(1) + '" rx="' + r + '" class="stats-bar-gloss"/>';
+      svg += '<path d="' + _barTopRectPath(x, yTop, bw, Math.min(h, 5), r) + '" class="stats-bar-gloss"/>';
     }
     if (labels[i]) {
       svg += '<text x="' + cx + '" y="' + (H - 7) + '" text-anchor="middle" class="stats-axis'
@@ -12510,34 +12590,67 @@ function computeStudyNudge() {
   if (!obras.length) return null;
   const last = _nudgeLastStudyMap();
   const now = Date.now();
+  // Eventos próximos (no resueltos) por obra; nos quedamos con el más cercano.
   const evByObra = {};
   (db.eventos || []).forEach(ev => {
     if (ev.resultado && ev.resultado.scoreTotal != null) return;
     const dias = Math.ceil((new Date(ev.fecha + 'T12:00:00') - now) / 86400000);
-    if (dias < 0 || dias > 45) return;
+    if (dias < 0 || dias > 60) return;
     (ev.obras || []).forEach(id => {
       if (!evByObra[id] || evByObra[id].dias > dias) evByObra[id] = { nombre: ev.nombre, dias };
     });
   });
+  const hayEventos = Object.keys(evByObra).length > 0;
+  const solOf = o => Math.max(0, Math.min(100, Math.round(estimateSolActual(o).val || 0)));
+
   let best = null;
   obras.forEach(o => {
     const t = last[o.id];
     const dias = t ? Math.floor((now - t) / 86400000) : null;
-    if (dias !== null && dias < 3) return; // tocada hace poco: no insistir
     const ev = evByObra[o.id] || null;
-    if (dias === null && !ev) return;      // nunca tocada y sin evento: no urge
-    let score = dias === null ? 10 : Math.min(dias, 30);
-    if (ev) score += Math.max(0, 30 - ev.dias);
-    if ((o.dificultad || 3) >= 6) score += 4;
-    if (!best || score > best.score) best = { obraId: o.id, nombre: o.name, dias, ev, score };
+    const sol = solOf(o);
+    const dif = o.dificultad || 3;        // 1-10
+    const dur = o.duracion || 8;          // minutos
+
+    let score, reason;
+    if (ev) {
+      // Una obra con evento próximo SIEMPRE manda. Entre ellas, prioriza la que
+      // más te juegas: menos sólida (menos aprendida) + más difícil + más larga,
+      // y cuanto más cerca el evento.
+      reason = 'evento';
+      score = 1000 + Math.max(0, 60 - ev.dias) * 8;   // proximidad del evento
+      score += (100 - sol) * 1.4;                      // menos aprendida → más (0-140)
+      score += dif * 6;                                // más difícil (6-60)
+      score += Math.min(dur, 40) * 0.9;                // más larga (hasta 36)
+      if (dias !== null) score += Math.min(dias, 14);  // y si llevas días sin tocarla
+    } else {
+      // Sin evento: solo entra como rotación, y NUNCA si hay eventos en juego
+      // (no inventamos obras sueltas cuando hay algo que preparar).
+      if (hayEventos) return;
+      if (dias === null) return;            // nunca tocada y sin evento: no urge
+      if (dias < 3) return;                 // tocada hace poco: no insistir
+      reason = 'rotacion';
+      score = Math.min(dias, 40) + (100 - sol) * 0.4;
+    }
+    if (!best || score > best.score) {
+      best = { obraId: o.id, nombre: o.name, dias, ev, sol, dif, reason, score };
+    }
   });
   if (!best) return null;
-  let motivo;
-  if (best.dias === null) motivo = 'Aún sin sesiones registradas';
-  else if (best.dias >= 30) motivo = 'Más de un mes sin tocarla';
-  else motivo = best.dias + ' día' + (best.dias === 1 ? '' : 's') + ' sin tocarla';
-  if (best.ev) motivo += ' · en «' + best.ev.nombre + '» ' + (best.ev.dias === 0 ? '(hoy)' : '(' + best.ev.dias + 'd)');
-  return { obraId: best.obraId, nombre: best.nombre, motivo };
+
+  let accion, motivo;
+  if (best.reason === 'evento') {
+    accion = 'Prepara';
+    const partes = ['en «' + best.ev.nombre + '» ' + (best.ev.dias <= 0 ? '(hoy)' : '(' + best.ev.dias + 'd)')];
+    if (best.sol < 70) partes.push(best.sol + '% sólida');
+    if (best.dif >= 6) partes.push('difícil');
+    motivo = partes.join(' · ');
+  } else {
+    accion = 'Retoma';
+    if (best.dias >= 30) motivo = 'Más de un mes sin tocarla';
+    else motivo = best.dias + ' día' + (best.dias === 1 ? '' : 's') + ' sin tocarla';
+  }
+  return { obraId: best.obraId, nombre: best.nombre, accion, motivo };
 }
 
 function nudgeStudyNow(obraId) {
@@ -12568,7 +12681,7 @@ function renderSessionInsights() {
     cards.push('<div class="session-insight-card nudge" onclick="nudgeStudyNow(\'' + nudge.obraId + '\')">' +
       '<div style="min-width:0">' +
         '<div class="session-insight-kicker">Te convendría</div>' +
-        '<div class="session-insight-main">Retomar <strong>' + escapeHtmlSafe(nudge.nombre) + '</strong></div>' +
+        '<div class="session-insight-main">' + (nudge.accion || 'Retomar') + ' <strong>' + escapeHtmlSafe(nudge.nombre) + '</strong></div>' +
         '<div class="session-insight-sub">' + escapeHtmlSafe(nudge.motivo) + '</div>' +
       '</div>' +
       '<span class="session-insight-nudge-cta">▶ Estudiarla</span>' +
@@ -12592,17 +12705,22 @@ function renderSessionInsights() {
   const start = _weekStart(now);
   const next = new Date(start); next.setDate(start.getDate() + 7);
   const prev = new Date(start); prev.setDate(start.getDate() - 7);
+  // Comparar contra lo que llevabas la semana PASADA A ESTAS ALTURAS (mismo
+  // momento de la semana), no contra su total. Así la comparación es justa.
+  const elapsedMs = now.getTime() - start.getTime();
+  const prevPoint = new Date(prev.getTime() + elapsedMs);
   const thisPlants = _plantsInRange(start, next);
-  const prevPlants = _plantsInRange(prev, start);
   const thisMin = thisPlants.reduce((s,p) => s + (p.mins || 0), 0);
-  const prevMin = prevPlants.reduce((s,p) => s + (p.mins || 0), 0);
+  const prevMin = _plantsInRange(prev, prevPoint).reduce((s,p) => s + (p.mins || 0), 0);
   if (thisMin > 0 || prevMin > 0) {
     const byObra = {};
     thisPlants.forEach(p => { byObra[p.obraId] = (byObra[p.obraId] || 0) + (p.mins || 0); });
     const topId = Object.keys(byObra).sort((a,b) => byObra[b] - byObra[a])[0];
     const topObra = topId ? findObra(topId) : null;
     const delta = thisMin - prevMin;
-    const deltaTxt = prevMin > 0 ? (delta >= 0 ? '+' : '') + _fmtMinShort(delta) + ' vs semana anterior' : 'sin comparación previa';
+    const deltaTxt = prevMin > 0
+      ? (delta >= 0 ? '+' : '−') + _fmtMinShort(Math.abs(delta)) + ' que la semana pasada a estas alturas'
+      : 'sin comparación previa';
     cards.push('<div class="session-insight-card">' +
       '<div class="session-insight-kicker">Tu semana</div>' +
       '<div class="session-insight-main"><strong>' + _fmtMinShort(thisMin) + '</strong> concentrados</div>' +

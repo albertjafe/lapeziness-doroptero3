@@ -516,6 +516,47 @@
     .estado-val { width: 24px; font-size: 10px; }
   }
 
+  /* ── Estado diario: 5 caras (una sola variable) ── */
+  .estado-faces {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    margin: 4px 0 18px;
+  }
+  .estado-face {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 9px 2px 7px;
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    background: var(--bg2);
+    cursor: pointer;
+    opacity: 0.5;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.18s var(--ease-out), border-color 0.2s, background 0.2s, opacity 0.2s, box-shadow 0.2s;
+  }
+  .estado-face-emoji { font-size: 24px; line-height: 1; filter: grayscale(0.45); transition: filter 0.2s, transform 0.18s var(--ease-out); }
+  .estado-face-label { font-size: 8.5px; color: var(--text3); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.02em; }
+  .estado-face:active { transform: scale(0.93); }
+  .estado-face.active {
+    opacity: 1;
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, var(--bg2));
+    transform: translateY(-2px);
+    box-shadow: 0 9px 20px -13px rgba(0,0,0,0.55);
+  }
+  .estado-face.active .estado-face-emoji { filter: grayscale(0); transform: scale(1.14); }
+  .estado-face.active .estado-face-label { color: var(--accent); }
+  @media (max-width: 480px) {
+    .estado-faces { gap: 5px; }
+    .estado-face { padding: 8px 1px 6px; border-radius: 10px; }
+    .estado-face-emoji { font-size: 21px; }
+    .estado-face-label { font-size: 8px; }
+  }
+
   .session-time-label {
     margin: 0 6px 8px;
     text-align: left;
