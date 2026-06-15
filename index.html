@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="Estudio">
 <title>Planificador de estudio</title>
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
@@ -19,9 +21,9 @@
 <div id="splashScreen">
   <div class="splash-inner">
     <svg class="splash-note" width="52" height="68" viewBox="0 0 52 68" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <ellipse cx="16" cy="56" rx="13.5" ry="9.5" transform="rotate(-20 16 56)"/>
-      <rect x="28" y="13" width="3" height="45" rx="1.5"/>
-      <path d="M 31 13 C 50 19 50 42 35 51 C 46 39 44 23 31 23 Z"/>
+      <ellipse cx="18" cy="55" rx="13" ry="9.3" transform="rotate(-23 18 55)"/>
+      <rect x="28.6" y="12" width="3.3" height="44" rx="1.6"/>
+      <path d="M 31 12.2 C 40.5 15.6 47.5 20.4 45.2 30.6 C 44.6 24.4 41.3 21 31 20.6 Z"/>
     </svg>
     <div class="splash-title">Planificador<br>de estudio</div>
     <div class="splash-sub">piano · práctica</div>
@@ -437,6 +439,19 @@
       <button class="obras-filter-chip" data-filter="solidas" onclick="setObrasFilter('solidas',this)">Sólidas</button>
       <button class="obras-filter-chip" data-filter="actividades" onclick="setObrasFilter('actividades',this)">Actividades</button>
       <button class="obras-edit-toggle" id="obrasEditToggle" onclick="toggleObrasEditMode()">Editar</button>
+    </div>
+    <div class="obras-sort-row">
+      <label class="obras-sort-wrap">
+        <span class="obras-sort-label">Ordenar</span>
+        <select class="obras-sort-select" id="obrasSortSelect" onchange="setObrasSort(this.value)">
+          <option value="reciente">Recientes</option>
+          <option value="solidez">Solidez</option>
+          <option value="horas">Más horas</option>
+        </select>
+      </label>
+      <button class="obras-density-toggle" id="obrasDensityToggle" onclick="toggleObrasDensity()" aria-pressed="false" title="Tamaño de las tarjetas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
     </div>
   </div>
   <div id="obrasList"></div>

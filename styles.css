@@ -694,9 +694,9 @@
     border-radius: 999px;
     background: var(--bg);
     color: var(--text3);
-    padding: 7px 10px;
+    padding: 7px 12px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 9px;
+    font-size: 11px;
     letter-spacing: 0.04em;
     cursor: pointer;
     transition: border-color 0.2s, color 0.2s, background 0.2s;
@@ -707,6 +707,92 @@
     background: var(--bg3);
     background: color-mix(in srgb, var(--accent) 13%, var(--bg));
     color: var(--accent);
+  }
+
+  /* Fila de orden + densidad */
+  .obras-sort-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 10px;
+  }
+  .obras-sort-wrap {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex: 1;
+    min-width: 0;
+  }
+  .obras-sort-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--text3);
+    flex: 0 0 auto;
+  }
+  .obras-sort-select {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    padding: 8px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .obras-density-toggle {
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text3);
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+  }
+  .obras-density-toggle svg { width: 19px; height: 19px; }
+  .obras-density-toggle.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 13%, var(--bg));
+  }
+
+  /* Sección colapsable: obras con menos de 10 h dedicadas */
+  .obras-minor-section { margin-top: 6px; }
+  .obras-minor-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    background: transparent;
+    border: 1px dashed var(--border2);
+    border-radius: 10px;
+    color: var(--text2);
+    padding: 11px 13px;
+    margin-bottom: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .obras-minor-header:hover,
+  .obras-minor-header.open { border-color: var(--accent); color: var(--accent); }
+  .obras-minor-caret { font-size: 11px; width: 12px; flex: 0 0 auto; }
+  .obras-minor-title { flex: 1; text-align: left; }
+  .obras-minor-count {
+    flex: 0 0 auto;
+    background: var(--bg3);
+    border-radius: 999px;
+    padding: 2px 9px;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
   }
   .obras-empty {
     color: var(--text3);
@@ -6014,14 +6100,14 @@
   }
   .stats-seg-btn {
     flex: 1;
-    padding: 8px 0;
+    padding: 11px 0;
     border: none;
     border-radius: 999px;
     background: transparent;
     color: var(--text3);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.06em;
+    font-size: 13px;
+    letter-spacing: 0.05em;
     cursor: pointer;
     transition: all 0.2s;
   }
@@ -6296,7 +6382,7 @@
   .obra-simple-meta {
     display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
     margin-top: 3px;
-    font-size: 10px; color: var(--text3);
+    font-size: 11.5px; color: var(--text3);
     font-family: 'JetBrains Mono', monospace;
   }
   .obra-simple-meta > span { white-space: nowrap; }
@@ -6347,6 +6433,24 @@
     transition: all 0.2s;
   }
   .obra-simple-graph:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ─── Densidad COMPACTA de las tarjetas de obra ─── */
+  #obrasList.compact .obra-card-simple {
+    padding: 9px 12px 9px;
+    margin-bottom: 7px;
+    border-radius: 10px;
+  }
+  #obrasList.compact .obra-simple-id .obra-name { font-size: 15px; }
+  #obrasList.compact .obra-simple-head .obra-color-dot { margin-top: 3px; }
+  #obrasList.compact .obra-simple-sol { margin-top: 8px; }
+  #obrasList.compact .obra-sol-bar { height: 7px; }
+  #obrasList.compact .obra-sol-row { margin-top: 5px; }
+  #obrasList.compact .obra-sol-row strong { font-size: 13px; }
+  /* En compacto, el botón de evolución se esconde para ganar espacio (sigue
+     accesible tocando la barra de solidez → abre la medición con historial). */
+  #obrasList.compact .obra-simple-graph { display: none; }
+  #obrasList.compact .actividad-card .obra-header { padding: 9px 12px !important; }
+
   .add-obra-quick-grid.two { grid-template-columns: 1fr 1fr; }
 
   /* ─── HECHO · ocultar secciones eliminadas (compás, pases, pasajes,
@@ -6574,7 +6678,8 @@
   .stats-tip-txt {
     fill: var(--text);
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 22px;
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
   .stats-chart { touch-action: pan-y; }

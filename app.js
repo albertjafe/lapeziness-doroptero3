@@ -6012,6 +6012,68 @@ let obrasEditMode = (() => {
   try { return localStorage.getItem('obras_edit_mode') === 'true'; }
   catch(e) { return false; }
 })();
+// Orden del listado: 'reciente' (orden de creación), 'solidez', 'horas'.
+let obrasSort = (() => {
+  try { return localStorage.getItem('obras_sort') || 'reciente'; }
+  catch(e) { return 'reciente'; }
+})();
+// Densidad de las tarjetas: 'comodo' (por defecto) o 'compacto'.
+let obrasDensity = (() => {
+  try { return localStorage.getItem('obras_density') || 'comodo'; }
+  catch(e) { return 'comodo'; }
+})();
+// ¿Está desplegada la sección de "menores de 10 h"?
+let obrasMinorOpen = (() => {
+  try { return localStorage.getItem('obras_minor_open') === 'true'; }
+  catch(e) { return false; }
+})();
+const OBRAS_MINOR_MIN = 600; // 10 horas en minutos
+
+function setObrasSort(value) {
+  obrasSort = value || 'reciente';
+  try { localStorage.setItem('obras_sort', obrasSort); } catch(e) {}
+  renderObras();
+}
+
+function toggleObrasDensity() {
+  obrasDensity = obrasDensity === 'compacto' ? 'comodo' : 'compacto';
+  try { localStorage.setItem('obras_density', obrasDensity); } catch(e) {}
+  renderObras();
+}
+
+function toggleObrasMinor() {
+  obrasMinorOpen = !obrasMinorOpen;
+  try { localStorage.setItem('obras_minor_open', String(obrasMinorOpen)); } catch(e) {}
+  renderObras();
+}
+
+// Mapa obraId → minutos totales dedicados, en UN solo pase sobre las sesiones
+// (misma contabilidad que getMinutosObra: minutosExtra + items hechos/manuales).
+function buildObraMinMap() {
+  const map = {};
+  (db.obras || []).forEach(o => { map[o.id] = o.minutosExtra || 0; });
+  (db.sesiones || []).forEach(s => {
+    (s.items || []).forEach(it => {
+      const id = it.obraId;
+      if (id == null || !(id in map)) return;
+      let add = 0;
+      if (it.manual && it.minutosEstudiados) add = it.minutosEstudiados;
+      else if (it.tick === 'hecho' && it.minutosReales) add = it.minutosReales;
+      else if (it.tick === 'hecho' && it.minutosPlan) add = it.minutosPlan;
+      if (add) map[id] += add;
+    });
+  });
+  // Las actividades acumulan su tiempo en sessionPlants (no en sesiones).
+  if (Array.isArray(db.sessionPlants)) {
+    db.sessionPlants.forEach(p => {
+      if (!p || p.failed || !p.obraId || !(p.obraId in map)) return;
+      // Sólo para entidades que no suman por sesiones (actividades).
+      const o = (db.obras || []).find(x => x.id === p.obraId);
+      if (o && o.tipo === 'actividad') map[p.obraId] += Math.max(0, Math.round(p.mins || 0));
+    });
+  }
+  return map;
+}
 
 function setObrasSearch(value) {
   obrasSearch = value || '';
@@ -6069,6 +6131,15 @@ function syncObrasToolbar(total, visible) {
   document.querySelectorAll('#obrasFilterBtns .obras-filter-chip').forEach(b => {
     b.classList.toggle('active', b.dataset.filter === obrasQuickFilter);
   });
+  const sortEl = document.getElementById('obrasSortSelect');
+  if (sortEl && sortEl.value !== obrasSort) sortEl.value = obrasSort;
+  const densEl = document.getElementById('obrasDensityToggle');
+  if (densEl) {
+    const compact = obrasDensity === 'compacto';
+    densEl.classList.toggle('active', compact);
+    densEl.title = compact ? 'Tarjetas compactas (toca para ampliar)' : 'Tarjetas cómodas (toca para compactar)';
+    densEl.setAttribute('aria-pressed', String(compact));
+  }
 }
 
 function renderObras() {
@@ -6097,6 +6168,9 @@ function renderObras() {
   obras = obras.filter(obrasMatchesQuickFilter);
   syncObrasToolbar(totalObras, obras.length);
 
+  // Densidad de las tarjetas (compacto/cómodo) como clase del contenedor.
+  list.classList.toggle('compact', obrasDensity === 'compacto');
+
   if (!obras.length) {
     if (totalObras) {
       list.innerHTML = emptyStateHTML(ICON_SEARCH_EMPTY, 'Nada por aquí', 'Prueba con otro filtro o búsqueda.');
@@ -6106,7 +6180,49 @@ function renderObras() {
     }
     return;
   }
-  list.innerHTML = obras.map((o, idx) => renderObraCard(o, idx)).join('');
+
+  const minMap = buildObraMinMap();
+
+  // Orden seleccionado (no muta db.obras: copia para ordenar).
+  if (obrasSort === 'horas') {
+    obras = obras.slice().sort((a, b) => (minMap[b.id] || 0) - (minMap[a.id] || 0));
+  } else if (obrasSort === 'solidez') {
+    obras = obras.slice().sort((a, b) =>
+      (estimateSolActual(b).val || 0) - (estimateSolActual(a).val || 0));
+  }
+
+  // Agrupar "menores de 10 h" en una sección colapsable al final. Se desactiva
+  // al buscar/filtrar (para no esconder resultados) y sólo se aplica si hay a la
+  // vez obras mayores y menores, para no dejar la lista principal vacía.
+  const grouping = !q && !filtroActual;
+  const isMinor = o => o.tipo !== 'actividad' && (minMap[o.id] || 0) < OBRAS_MINOR_MIN;
+  let mayores = obras, menores = [];
+  if (grouping) {
+    mayores = obras.filter(o => !isMinor(o));
+    menores = obras.filter(isMinor);
+    if (!mayores.length || !menores.length) { mayores = obras; menores = []; }
+  }
+
+  let html = mayores.map((o, idx) => renderObraCard(o, idx)).join('');
+
+  if (menores.length) {
+    const caret = obrasMinorOpen ? '▾' : '▸';
+    html += '<div class="obras-minor-section">'
+      + '<button class="obras-minor-header' + (obrasMinorOpen ? ' open' : '') + '"'
+      + ' onclick="toggleObrasMinor()" aria-expanded="' + obrasMinorOpen + '">'
+      +   '<span class="obras-minor-caret">' + caret + '</span>'
+      +   '<span class="obras-minor-title">Menores de 10 h</span>'
+      +   '<span class="obras-minor-count">' + menores.length + '</span>'
+      + '</button>';
+    if (obrasMinorOpen) {
+      html += '<div class="obras-minor-body">'
+        + menores.map((o, idx) => renderObraCard(o, idx)).join('')
+        + '</div>';
+    }
+    html += '</div>';
+  }
+
+  list.innerHTML = html;
 }
 
 // Render simplificado para actividades (lectura a primera vista, técnica, etc.)
@@ -8702,20 +8818,23 @@ function statsChartTip(el, cx, text) {
   const txt = g.querySelector('.stats-tip-txt');
   const bg = g.querySelector('.stats-tip-bg');
   txt.textContent = text;
-  const cxC = Math.max(48, Math.min(cx, 592));
+  // Margen amplio para que el número grande no se salga por los bordes del SVG.
+  const cxC = Math.max(72, Math.min(cx, 568));
   txt.setAttribute('x', cxC);
-  txt.setAttribute('y', 13);
+  txt.setAttribute('y', 26);
   g.style.display = '';
-  let b; try { b = txt.getBBox(); } catch (e) { b = { x: cxC - 24, y: 4, width: 48, height: 12 }; }
-  bg.setAttribute('x', b.x - 7);
-  bg.setAttribute('y', b.y - 4);
-  bg.setAttribute('width', b.width + 14);
-  bg.setAttribute('height', b.height + 8);
+  let b; try { b = txt.getBBox(); } catch (e) { b = { x: cxC - 30, y: 10, width: 60, height: 22 }; }
+  bg.setAttribute('x', b.x - 10);
+  bg.setAttribute('y', b.y - 6);
+  bg.setAttribute('width', b.width + 20);
+  bg.setAttribute('height', b.height + 12);
   clearTimeout(svg._tipT);
   svg._tipT = setTimeout(() => { g.style.display = 'none'; }, 2000);
 }
 function _statsTipText(label, minutes) {
-  return (label || '') + ' · ' + (minutes ? fmtMinutos(minutes) : '0 min');
+  // Solo el número (el tiempo), grande y legible. La etiqueta del día/mes ya
+  // se ve en el eje X, así que el tooltip muestra únicamente el valor.
+  return minutes ? fmtMinutos(minutes) : '0 min';
 }
 
 function _statsBarChartSVG(values, labels, hoyIdx, tipLabels) {
