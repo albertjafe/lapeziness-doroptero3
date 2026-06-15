@@ -627,6 +627,11 @@
       </div>
     </div>
 
+    <label class="settings-autonight" for="autoNightToggle">
+      <input type="checkbox" id="autoNightToggle" onchange="setAutoNight(this.checked)">
+      <span class="settings-autonight-txt">🌙 Modo noche automático<small>De 21:00 a 7:00 pasa al tema «Noche» solo.</small></span>
+    </label>
+
     <div class="settings-section">Fuente</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
       <button class="theme-option font-option" data-font="mono" onclick="setFont('mono',this)" style="flex:1;min-width:80px">

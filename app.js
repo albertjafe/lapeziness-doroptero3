@@ -10727,6 +10727,48 @@ function setTheme(theme, btn) {
   if (btn) btn.classList.add('active');
 }
 
+// ¿Es horario de noche? (de 21:00 a 7:00)
+function _isNightHour() {
+  const h = new Date().getHours();
+  return h >= 21 || h < 7;
+}
+
+// Aplica el tema visible teniendo en cuenta el modo noche automático: de noche
+// fuerza el tema «Noche» (data-theme="") sin tocar el tema de DÍA guardado.
+function refreshTheme() {
+  const day = localStorage.getItem('alberto_theme') || 'cozy';
+  const auto = localStorage.getItem('alberto_autonight') === '1';
+  const display = (auto && _isNightHour()) ? '' : day;
+  document.documentElement.setAttribute('data-theme', display);
+  applyThemeColor(display);
+  // Los botones reflejan el tema de DÍA elegido (no el forzado por la noche).
+  document.querySelectorAll('.theme-option[data-theme]').forEach(b => {
+    b.classList.toggle('active', (b.dataset.theme || '') === day);
+  });
+  const tog = document.getElementById('autoNightToggle');
+  if (tog) tog.checked = auto;
+  setTimeout(initEstadoSliders, 50); // re-fill tras cambio de color
+}
+
+function setTheme(theme, btn) {
+  localStorage.setItem('alberto_theme', theme); // tema de DÍA
+  const forcedNight = localStorage.getItem('alberto_autonight') === '1' && _isNightHour();
+  refreshTheme();
+  if (forcedNight && theme !== '' && typeof showToast === 'function') {
+    showToast('Se aplicará de día · ahora hay modo noche 🌙');
+  }
+}
+
+function setAutoNight(on) {
+  localStorage.setItem('alberto_autonight', on ? '1' : '0');
+  refreshTheme();
+  if (typeof showToast === 'function') {
+    showToast(on
+      ? (_isNightHour() ? '🌙 Modo noche activado (ahora es de noche)' : '🌙 Modo noche automático activado · de 21:00 a 7:00')
+      : 'Modo noche automático desactivado');
+  }
+}
+
 function loadTheme() {
   // Migration v2: noche → cozy
   if (!localStorage.getItem('alberto_theme_v2_migrated')) {
@@ -10749,21 +10791,27 @@ function loadTheme() {
   const zooms = { small: 0.82, normal: 1, large: 1.22, xlarge: 1.5 };
   const z = zooms[size] || 1;
 
-  document.documentElement.setAttribute('data-theme', theme);
   document.documentElement.setAttribute('data-font', font);
   document.documentElement.setAttribute('data-size', size);
-  applyThemeColor(theme);
   applyZoom(z);
 
-  document.querySelectorAll('.theme-option').forEach(b => {
-    b.classList.toggle('active', (b.dataset.theme || '') === theme);
-  });
+  // Tema (respetando el modo noche automático por hora).
+  refreshTheme();
+
   document.querySelectorAll('.font-option').forEach(b => {
     b.classList.toggle('active', b.dataset.font === font);
   });
   document.querySelectorAll('.size-option').forEach(b => {
     b.classList.toggle('active', b.dataset.size === size);
   });
+
+  // Revisar el modo noche cada minuto y al volver a la app, para cambiar solo
+  // al cruzar las 21:00 / 7:00 sin recargar.
+  if (!window._autoNightTimer) {
+    window._autoNightTimer = setInterval(refreshTheme, 60 * 1000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshTheme(); });
+    window.addEventListener('focus', refreshTheme);
+  }
 }
 
 // ─── AUDIO ENGINE ────────────────────────────────────────────────────────────

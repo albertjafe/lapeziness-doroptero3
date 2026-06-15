@@ -2618,6 +2618,15 @@
   .theme-option.active { border-color: var(--accent); }
   .theme-option-name { font-size: 10px; color: var(--text2); margin-top: 5px; font-family: 'JetBrains Mono', monospace; }
   .theme-swatch { height: 22px; border-radius: 4px; margin-bottom: 2px; }
+  .settings-autonight {
+    display: flex; align-items: center; gap: 12px;
+    margin-top: 10px; padding: 11px 13px;
+    border: 1px solid var(--border2); border-radius: 10px;
+    cursor: pointer; user-select: none;
+  }
+  .settings-autonight input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; cursor: pointer; }
+  .settings-autonight-txt { font-size: 13px; color: var(--text); display: flex; flex-direction: column; gap: 2px; }
+  .settings-autonight-txt small { font-size: 10px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
   .settings-section { font-size: 9px; color: var(--text3); letter-spacing: 0.2em; text-transform: uppercase; margin: 16px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border2); }
   /* HISTORIAL SESIONES */
   /* SESSION HISTORY — bigger, more visual */
