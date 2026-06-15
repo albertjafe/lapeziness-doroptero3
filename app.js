@@ -4793,9 +4793,10 @@ function closeHechoDatos(save) {
   if (save && _hechoObraId) {
     const inCronoView = document.body.classList.contains('crono-focus');
     if (inCronoView) {
-      // Marcar planId para animar resumen y disparar flash AHORA
+      // Marcar planId para animar resumen y disparar la animación de dinero
+      // AHORA (en vez de la flor): el total sube sumando lo recién ganado.
       _cronoLastAddedPlanId = _hechoPlanId;
-      showCronoHechoFlash();
+      showCronoMoneyFlash(_moneyAnimFrom, _daisyEuros());
     }
   }
   closeModal('modalHechoDatos');
@@ -13188,6 +13189,7 @@ function refreshConcentradoUI() {
 
   // Pill de destellos (abajo a la izquierda en el cronómetro en reposo)
   if (typeof refreshDestellosPill === 'function') refreshDestellosPill();
+  if (typeof refreshDaisyPill === 'function') refreshDaisyPill();
   if (typeof renderSessionInsights === 'function') renderSessionInsights();
   if (typeof renderCronoGarden === 'function') renderCronoGarden();
 
@@ -14317,6 +14319,155 @@ function cronoForcedFinish() {
   cronoFinish();
 }
 
+// ── MARGARITA DEL DINERO ─────────────────────────────────────────────────────
+// Alberto se premia: cada 4 h de estudio = 1 pegatina (circular) en una margarita
+// de 18 pétalos; se dan 3 vueltas (54 pegatinas). 18 pegatinas = 100 € → cada
+// pegatina ≈ 5,56 € (≈ 1,39 €/h de estudio).
+const DAISY_PETALS = 18;
+const DAISY_LAPS = 3;
+const DAISY_SLOTS = DAISY_PETALS * DAISY_LAPS;        // 54
+const DAISY_MIN_PER_STICKER = 240;                    // 4 h = 1 pegatina
+const DAISY_EUR_PER_STICKER = 100 / DAISY_PETALS;     // 18 pegatinas = 100 €
+const DAISY_EUR_PER_MIN = DAISY_EUR_PER_STICKER / DAISY_MIN_PER_STICKER;
+
+// Minutos netos de estudio de todo el historial (excluye descansos y fallidas).
+function _totalNetMins() {
+  let t = 0;
+  const add = p => { if (p && !p.failed && p.tipo !== 'descanso' && p.obraId !== '_rest_') t += Math.max(0, Math.round(p.mins || 0)); };
+  (db.sessionPlants || []).forEach(add);
+  (db.forestPlants || []).forEach(add);
+  return t;
+}
+function _daisyState() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem('daisy_v1') || 'null'); } catch (e) { /* noop */ }
+  if (!s || typeof s.offsetMins !== 'number') s = { offsetMins: 0, anchorMins: 0 };
+  return s;
+}
+function _daisySave(s) { try { localStorage.setItem('daisy_v1', JSON.stringify(s)); } catch (e) { /* noop */ } }
+// Minutos "en la cuenta de la margarita": base (pétalos ya puestos) + lo estudiado
+// desde que se fijó esa base. Por defecto cuenta todo el historial.
+function _daisyMins() {
+  const s = _daisyState();
+  return s.offsetMins + Math.max(0, _totalNetMins() - (s.anchorMins || 0));
+}
+function _daisyEuros() { return _daisyMins() * DAISY_EUR_PER_MIN; }
+function _daisyStickers() { return Math.floor(_daisyMins() / DAISY_MIN_PER_STICKER); }
+// Fija cuántas pegatinas tienes ya puestas y reancla: a partir de ahora suma lo nuevo.
+function setDaisyPetals(P) {
+  P = Math.max(0, Math.min(99999, Math.round(P || 0)));
+  _daisySave({ offsetMins: P * DAISY_MIN_PER_STICKER, anchorMins: _totalNetMins() });
+}
+function _fmtEuros(e) {
+  return (e || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+// SVG de la margarita: 18 pétalos, y sobre cada uno 3 pegatinas circulares (una
+// por vuelta, a radios crecientes). Se rellenan vuelta a vuelta (54 en total).
+function _daisySVG(stickers) {
+  const cur = ((stickers % DAISY_SLOTS) + DAISY_SLOTS) % DAISY_SLOTS; // pegatinas en la margarita actual
+  const cx = 100, cy = 100;
+  let petals = '', dots = '';
+  for (let i = 0; i < DAISY_PETALS; i++) {
+    const deg = (i / DAISY_PETALS) * 360;
+    const ang = (i / DAISY_PETALS) * Math.PI * 2 - Math.PI / 2;
+    petals += '<ellipse class="daisy-petal" cx="' + cx + '" cy="' + (cy - 58) + '" rx="11" ry="30" transform="rotate(' + deg + ' ' + cx + ' ' + cy + ')"/>';
+    for (let lap = 0; lap < DAISY_LAPS; lap++) {
+      const idx = lap * DAISY_PETALS + i;
+      const r = 41 + lap * 17;
+      const x = (cx + Math.cos(ang) * r).toFixed(1);
+      const y = (cy + Math.sin(ang) * r).toFixed(1);
+      dots += '<circle class="daisy-sticker' + (idx < cur ? ' on' : '') + '" cx="' + x + '" cy="' + y + '" r="6"/>';
+    }
+  }
+  return '<svg viewBox="0 0 200 200" class="daisy-svg" aria-hidden="true">'
+    + '<g class="daisy-petals">' + petals + '</g>'
+    + '<circle class="daisy-core" cx="' + cx + '" cy="' + cy + '" r="25"/>'
+    + dots + '</svg>';
+}
+
+function renderDaisyModalBody() {
+  const euros = _daisyEuros();
+  const stickers = _daisyStickers();
+  const cur = stickers % DAISY_SLOTS;
+  const daisiesDone = Math.floor(stickers / DAISY_SLOTS);
+  const minsToNext = DAISY_MIN_PER_STICKER - (_daisyMins() % DAISY_MIN_PER_STICKER);
+  return '<div class="daisy-total">' + _fmtEuros(euros) + '</div>'
+    + '<div class="daisy-sub">' + stickers + ' pegatinas · ' + cur + '/' + DAISY_SLOTS + ' en esta margarita'
+      + (daisiesDone ? ' · ' + daisiesDone + ' completada' + (daisiesDone > 1 ? 's' : '') : '') + '</div>'
+    + _daisySVG(stickers)
+    + '<div class="daisy-next">Te faltan <strong>' + minsToNext + ' min</strong> para la próxima pegatina (+' + _fmtEuros(DAISY_EUR_PER_STICKER) + ')</div>'
+    + '<button class="modal-btn secondary daisy-set-btn" onclick="daisySetPetalsPrompt()">Fijar pétalos que ya tengo</button>';
+}
+function openDaisyModal() {
+  const body = document.getElementById('daisyModalBody');
+  if (body) body.innerHTML = renderDaisyModalBody();
+  openModal('modalDaisy');
+}
+function daisySetPetalsPrompt() {
+  const cur = _daisyStickers() % DAISY_SLOTS;
+  const v = window.prompt('¿Cuántos pétalos (pegatinas) tienes ya puestos en la margarita actual? (0–' + DAISY_SLOTS + ')', String(cur));
+  if (v == null) return;
+  const n = parseInt(v, 10);
+  if (isNaN(n) || n < 0) { showToast('Número no válido'); return; }
+  setDaisyPetals(n);
+  const body = document.getElementById('daisyModalBody');
+  if (body) body.innerHTML = renderDaisyModalBody();
+  refreshDaisyPill();
+  showToast('Pétalos actualizados');
+}
+function refreshDaisyPill() {
+  const pill = document.getElementById('cronoDineroPill');
+  if (!pill) return;
+  const txt = document.getElementById('cronoDineroText');
+  if (txt) txt.textContent = _fmtEuros(_daisyEuros());
+  pill.style.display = '';
+}
+
+// Animación de dinero al darle a Hecho: el total sube sumando lo recién ganado.
+let _moneyAnimFrom = 0;
+function showCronoMoneyFlash(fromE, toE) {
+  let flash = document.getElementById('cronoMoneyFlash');
+  if (!flash) {
+    flash = document.createElement('div');
+    flash.id = 'cronoMoneyFlash';
+    flash.className = 'modal-overlay crono-money-flash';
+    flash.innerHTML = '<div class="cmf-inner">'
+      + '<div class="cmf-coin">🌼</div>'
+      + '<div class="cmf-total" id="cmfTotal">0 €</div>'
+      + '<div class="cmf-added" id="cmfAdded"></div>'
+      + '<div class="cmf-petals" id="cmfPetals"></div>'
+      + '</div>';
+    document.body.appendChild(flash);
+  }
+  const totalEl = flash.querySelector('#cmfTotal');
+  const addedEl = flash.querySelector('#cmfAdded');
+  const petalsEl = flash.querySelector('#cmfPetals');
+  const added = Math.max(0, toE - fromE);
+  addedEl.textContent = added >= 0.005 ? '+ ' + _fmtEuros(added) : '';
+  const stickers = _daisyStickers();
+  petalsEl.textContent = '🌼 ' + (stickers % DAISY_SLOTS) + '/' + DAISY_SLOTS + ' pétalos';
+  flash.classList.remove('visible');
+  void flash.offsetWidth;
+  flash.classList.add('visible');
+  document.body.classList.add('modal-open');
+  const t0 = performance.now(), dur = 1100;
+  function step(t) {
+    const k = Math.min(1, (t - t0) / dur);
+    const e = fromE + (toE - fromE) * (1 - Math.pow(1 - k, 3));
+    if (totalEl) totalEl.textContent = _fmtEuros(e);
+    if (k < 1) requestAnimationFrame(step);
+    else if (totalEl) totalEl.textContent = _fmtEuros(toE);
+  }
+  requestAnimationFrame(step);
+  clearTimeout(flash._t);
+  flash._t = setTimeout(() => {
+    flash.classList.remove('visible');
+    const anyOpen = document.querySelector('.modal-overlay.visible');
+    if (!anyOpen) document.body.classList.remove('modal-open');
+  }, 2400);
+}
+
 function cronoPlayHarvest(prevMin, totalMin, addedMin) {
   if (!Number.isFinite(totalMin) || totalMin <= 0) return;
   const burst = document.createElement('div');
@@ -14497,6 +14648,10 @@ function cronoFinish() {
   const endedAtIso = new Date().toISOString();
   if (!sessionAggregate[targetPlanId]) sessionAggregate[targetPlanId] = { subsessions: [] };
   sessionAggregate[targetPlanId]._pendingTimes = { startedAt: startedAtIso, endedAt: endedAtIso };
+
+  // Capturar el dinero ganado ANTES de registrar esta sesión, para que la
+  // animación de Hecho cuente desde el total previo hasta el nuevo.
+  _moneyAnimFrom = _daisyEuros();
 
   // ★ Registrar también la sub-sesión en db.sessionPlants[] (permanente,
   // sobrevive al cap de db.sesiones[]). Para estadísticas históricas.
