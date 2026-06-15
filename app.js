@@ -8775,11 +8775,12 @@ function _statsISO(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
-// Mapa de TODO el historial por día: minutos netos del día + primer inicio.
-// Sirve para detectar "días intensos" (4 h+/5 h+) y a qué hora arrancan.
-function _statsDayMap() {
+// Mapa por día: minutos netos del día + primer inicio. Sirve para detectar
+// "días intensos" (4 h+/5 h+) y a qué hora arrancan. Por defecto usa todo el
+// historial; se le puede pasar un subconjunto (p. ej. la ventana de 3 meses).
+function _statsDayMap(plants) {
   const map = {};
-  _statsAllPlants().forEach(p => {
+  (plants || _statsAllPlants()).forEach(p => {
     const iso = _statsISO(p.start);
     if (!map[iso]) map[iso] = { mins: 0, firstMs: Infinity, first: null };
     map[iso].mins += p.mins;
@@ -9555,22 +9556,33 @@ function _statsYearIntenseHeatmap(dayMap, year) {
 // Tarjeta "Estudio intenso": hora media a la que arrancas los días de 4 h+
 // (y 5 h+), con el mapa del año marcando esos días.
 function _statsIntenseCard() {
-  const dayMap = _statsDayMap();
-  const i4 = _statsIntenseStart(dayMap, 240);
-  if (!i4) return '';
-  const i5 = _statsIntenseStart(dayMap, 300);
+  const dayMapAll = _statsDayMap(); // para el mapa del año entero
+  const anyIntenseEver = Object.keys(dayMapAll).some(k => dayMapAll[k].mins >= 240);
+  if (!anyIntenseEver) return '';
+  // La hora de arranque refleja el HÁBITO actual: ventana deslizante de 3 meses.
+  const win = _recentPlants();
+  const dayMap3m = _statsDayMap(win.plants);
+  const i4 = _statsIntenseStart(dayMap3m, 240);
+  const i5 = _statsIntenseStart(dayMap3m, 300);
   const year = (_statsRange === 'año') ? _statsPeriod().start.getFullYear() : new Date().getFullYear();
-  const subParts = [i4.count + ' días de 4 h+'];
-  if (i5 && i5.count) subParts.push(i5.count + ' de 5 h+');
-  const cincoLine = (i5 && i5.count >= 3)
-    ? '<div class="stats-intense-row"><span class="stats-intense-dot h5"></span>Los de 5 h+ arrancan a las <strong>' + _fmtHourMin(i5.avgMin) + '</strong></div>'
-    : '';
+
+  let big, sub, cincoLine = '';
+  if (i4) {
+    const subParts = [i4.count + ' días de 4 h+'];
+    if (i5 && i5.count) subParts.push(i5.count + ' de 5 h+');
+    big = _fmtHourMin(i4.avgMin);
+    sub = 'Hora media a la que arrancas tus días de 4 h+ (' + win.scope + ') · ' + subParts.join(' · ') + '. Empezar mucho más tarde lo hace improbable.';
+    if (i5 && i5.count >= 3) cincoLine = '<div class="stats-intense-row"><span class="stats-intense-dot h5"></span>Los de 5 h+ arrancan a las <strong>' + _fmtHourMin(i5.avgMin) + '</strong></div>';
+  } else {
+    big = '—';
+    sub = 'Aún sin días de 4 h+ recientes (' + win.scope + '). El mapa marca los de todo el año.';
+  }
   return '<div class="stats-card">'
     + '<div class="stats-card-title">Estudio intenso · 4 h+</div>'
-    + '<div class="stats-card-big">' + _fmtHourMin(i4.avgMin) + '</div>'
-    + '<div class="stats-card-sub">Hora media a la que arrancas tus días de 4 h+ · ' + subParts.join(' · ') + '. Empezar mucho más tarde lo hace improbable.</div>'
+    + '<div class="stats-card-big">' + big + '</div>'
+    + '<div class="stats-card-sub">' + sub + '</div>'
     + cincoLine
-    + _statsYearIntenseHeatmap(dayMap, year)
+    + _statsYearIntenseHeatmap(dayMapAll, year)
     + '</div>';
 }
 
@@ -13046,16 +13058,16 @@ function renderSessionInsights() {
     '</div>');
   }
 
-  // Días de estudio intenso (4 h+): a qué hora sueles arrancar esos días.
-  // Insight clave de comportamiento: si empiezas mucho más tarde, es improbable
-  // que llegues a las 4 h netas.
-  const dayMap = _statsDayMap();
+  // Días de estudio intenso (4 h+): a qué hora sueles arrancar esos días, según
+  // tu hábito de los últimos 3 meses. Si empiezas mucho más tarde, es improbable.
+  const winIntense = _recentPlants();
+  const dayMap = _statsDayMap(winIntense.plants);
   const intense4 = _statsIntenseStart(dayMap, 240);
   if (intense4 && intense4.count >= 3) {
     const intense5 = _statsIntenseStart(dayMap, 300);
     const cinco = (intense5 && intense5.count >= 3) ? ' · 5 h+ a las ' + _fmtHourMin(intense5.avgMin) : '';
     cards.push('<div class="session-insight-card">' +
-      '<div class="session-insight-kicker">Días de 4 h+</div>' +
+      '<div class="session-insight-kicker">Días de 4 h+ · ' + winIntense.scope + '</div>' +
       '<div class="session-insight-main">Sueles arrancar hacia las <strong>' + _fmtHourMin(intense4.avgMin) + '</strong></div>' +
       '<div class="session-insight-sub">' + intense4.count + ' días intensos' + cinco + ' · empezar más tarde lo hace difícil</div>' +
     '</div>');
