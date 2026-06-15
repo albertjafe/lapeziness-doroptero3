@@ -12733,12 +12733,11 @@ function renderCronoGarden() {
 // Refresca todos los textos "hoy te has concentrado..." y el mini-resumen
 function refreshConcentradoUI() {
   const min = getMinutosConcentradoHoy();
-  const text = 'Hoy te has concentrado ' + fmtMinutosLargo(min);
-  const ids = ['cronoConcentradoText', 'sessionConcentradoText'];
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = text;
-  });
+  // Cronómetro: texto completo. Sesión: pill corto ("Hoy · 0 min").
+  const cronoEl = document.getElementById('cronoConcentradoText');
+  if (cronoEl) cronoEl.textContent = 'Hoy te has concentrado ' + fmtMinutosLargo(min);
+  const sessEl = document.getElementById('sessionConcentradoText');
+  if (sessEl) sessEl.textContent = 'Hoy · ' + fmtMinutos(min);
 
   // Pill de destellos (abajo a la izquierda en el cronómetro en reposo)
   if (typeof refreshDestellosPill === 'function') refreshDestellosPill();
