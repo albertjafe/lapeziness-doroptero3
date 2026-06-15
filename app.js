@@ -8835,14 +8835,24 @@ function _liveIntenseProb(nowMin, doneMin) {
   const days = Object.keys(byDay);
   if (days.length < 20) return null; // pocos datos para fiarse
   let r4 = 0, r5 = 0;
+  const projs = []; // total proyectado de hoy (hecho + lo que ese día se hizo tras esta hora)
   days.forEach(k => {
     let after = 0;
     byDay[k].forEach(p => { if (p.sm >= nowMin) after += p.mins; });
     const proj = doneMin + after;
+    projs.push(proj);
     if (proj >= 240) r4++;
     if (proj >= 300) r5++;
   });
-  return { p4: Math.round(r4 / days.length * 100), p5: Math.round(r5 / days.length * 100), n: days.length };
+  projs.sort((a, b) => a - b);
+  const q = f => projs[Math.min(projs.length - 1, Math.floor(f * projs.length))];
+  return {
+    p4: Math.round(r4 / days.length * 100),
+    p5: Math.round(r5 / days.length * 100),
+    n: days.length,
+    projMedian: q(0.5), // lo más probable que acabes estudiando hoy
+    projP75: q(0.75),   // un buen día
+  };
 }
 
 // Texto para mostrar la probabilidad de hoy. null si no hay datos suficientes.
@@ -8854,19 +8864,30 @@ function _probTextHoy() {
   if (!r) return null;
   const hhmm = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
   const doneTxt = done >= 60 ? Math.floor(done / 60) + ' h' + (done % 60 ? ' ' + (done % 60) + ' min' : '') : done + ' min';
-  let main, sub;
+  // Proyección: lo más probable que acabes estudiando hoy (mediana), a 5 min,
+  // con el "buen día" (p75) como margen al alza.
+  const projMin = Math.round(r.projMedian / 5) * 5;
+  const p75 = Math.round(r.projP75 / 5) * 5;
+  let proj;
+  if (projMin >= 15) {
+    proj = 'Hoy ≈ <strong>' + fmtMinutos(projMin) + '</strong>';
+    if (p75 >= projMin + 30 && done < 240) proj += ' · buen día ' + fmtMinutos(p75);
+  } else {
+    proj = 'A esta hora rara vez sigues' + (p75 >= 30 ? ' · buen día ' + fmtMinutos(p75) : '');
+  }
+  let prob, sub;
   if (done >= 300) {
-    main = '5 h netas hoy ✦';
+    prob = '5 h netas hoy ✦';
     sub = 'día de excelencia · ' + hhmm;
   } else if (done >= 240) {
-    main = '4 h logradas · 5 h: <strong>' + r.p5 + '%</strong>';
+    prob = '4 h logradas · 5 h: <strong>' + r.p5 + '%</strong>';
     sub = hhmm + ' · llevas ' + doneTxt;
   } else {
-    main = '4 h: <strong>' + r.p4 + '%</strong> · 5 h: <strong>' + r.p5 + '%</strong>';
+    prob = '4 h: <strong>' + r.p4 + '%</strong> · 5 h: <strong>' + r.p5 + '%</strong>';
     const tip = r.p4 >= 55 ? 'vas en buena hora' : (r.p4 >= 20 ? 'cuanto antes sigas, más sube' : 'hoy se hace cuesta arriba');
     sub = hhmm + ' · llevas ' + doneTxt + ' · ' + tip;
   }
-  return { main, sub, p4: r.p4, done };
+  return { proj, prob, sub, p4: r.p4, done };
 }
 
 // Refresca los dos sitios donde vive la probabilidad de hoy: el cronómetro
@@ -8888,11 +8909,12 @@ function updateLiveProbabilityUI(force) {
     else {
       cEl.style.display = '';
       cEl.classList.toggle('hot', t.p4 >= 55 || t.done >= 240);
-      cEl.innerHTML = '<span class="crono-prob-main">' + t.main + '</span>'
+      cEl.innerHTML = '<span class="crono-prob-proj">' + t.proj + '</span>'
+        + '<span class="crono-prob-main">' + t.prob + '</span>'
         + '<span class="crono-prob-sub">' + t.sub + '</span>';
     }
   }
-  if (sMain) { sMain.innerHTML = t ? t.main : ''; if (sSub) sSub.innerHTML = t ? t.sub : ''; }
+  if (sMain) { sMain.innerHTML = t ? (t.proj + ' · ' + t.prob) : ''; if (sSub) sSub.innerHTML = t ? t.sub : ''; }
 }
 
 function _statsPeriod(offset) {
@@ -12939,8 +12961,8 @@ function renderSessionInsights() {
   const prob = _probTextHoy();
   if (prob) {
     cards.unshift('<div class="session-insight-card session-insight-prob" id="sessionProbCard">' +
-      '<div class="session-insight-kicker">Probabilidad de hoy</div>' +
-      '<div class="session-insight-main">' + prob.main + '</div>' +
+      '<div class="session-insight-kicker">Hoy · proyección y probabilidad</div>' +
+      '<div class="session-insight-main">' + prob.proj + ' · ' + prob.prob + '</div>' +
       '<div class="session-insight-sub">' + prob.sub + '</div>' +
     '</div>');
   }

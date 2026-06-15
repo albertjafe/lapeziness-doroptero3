@@ -5188,13 +5188,21 @@
     gap: 1px;
     line-height: 1.25;
   }
+  .crono-prob-proj {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: var(--text2, var(--text3));
+  }
+  .crono-prob-proj strong { color: var(--text); font-weight: 700; }
+  .crono-prob.hot .crono-prob-proj strong { color: var(--accent); }
   .crono-prob-main {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
+    font-size: 11px;
     letter-spacing: 0.02em;
     color: var(--text3);
   }
-  .crono-prob-main strong { color: var(--text); font-weight: 700; }
+  .crono-prob-main strong { color: var(--text2, var(--text)); font-weight: 700; }
   .crono-prob.hot .crono-prob-main strong { color: var(--accent); }
   .crono-prob-sub {
     font-size: 10px;
