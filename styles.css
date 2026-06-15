@@ -419,6 +419,11 @@
     min-width: 0;
   }
   .session-insight-card.event { border-color: color-mix(in srgb, var(--accent) 45%, var(--border2)); }
+  .session-insight-card.session-insight-prob {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border2));
+    background: color-mix(in srgb, var(--accent) 7%, var(--bg2));
+  }
+  .session-insight-prob .session-insight-main { font-size: 14px; }
   .session-insight-kicker {
     color: var(--text3);
     font-size: 8px;
@@ -5172,6 +5177,30 @@
     display: none;
   }
   body.crono-focus .crono-milestone { display: block; }
+
+  /* Probabilidad en vivo de llegar hoy a 4h/5h (bajo el "Hoy te has concentrado") */
+  .crono-prob {
+    text-align: center;
+    margin: 2px auto 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    line-height: 1.25;
+  }
+  .crono-prob-main {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    color: var(--text3);
+  }
+  .crono-prob-main strong { color: var(--text); font-weight: 700; }
+  .crono-prob.hot .crono-prob-main strong { color: var(--accent); }
+  .crono-prob-sub {
+    font-size: 10px;
+    color: var(--text3);
+    opacity: 0.7;
+  }
 
   /* ── Drawer de pases ─────────────────────────────────────────────────────── */
   .crono-pase-drawer {

@@ -223,7 +223,7 @@ function showView(name) {
   // Modo concentración: activar/desactivar al entrar/salir de cronometro
   if (name !== 'cronometro' && typeof cronoOnLeaveView === 'function') cronoOnLeaveView();
   if (name === 'session')    { renderRacha(); if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI(); if (typeof renderSessionInsights === 'function') renderSessionInsights(); }
-  if (name === 'cronometro') { cronoOnEnterView(); }
+  if (name === 'cronometro') { cronoOnEnterView(); if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true); }
   if (name === 'obras')      renderObras();
   if (name === 'pasajes')    renderPasajesGlobal();
   if (name === 'pases')      renderPases();
@@ -8807,6 +8807,94 @@ function _fmtHourMin(min) {
   return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
 }
 
+// Minutos netos REALES de hoy en vivo: lo ya consolidado + la sesión en marcha.
+function _doneMinHoy() {
+  let m = (typeof getMinutosConcentradoHoy === 'function') ? getMinutosConcentradoHoy() : 0;
+  if (typeof crono !== 'undefined' && crono
+      && (crono.state === 'running' || crono.state === 'paused')
+      && typeof cronoCurrentMs === 'function') {
+    m += Math.floor(cronoCurrentMs() / 60000);
+  }
+  return m;
+}
+
+// Probabilidad EN VIVO de llegar hoy a 4 h / 5 h netas, dada la hora actual y
+// los minutos ya hechos. Modelo empírico: para cada día pasado miramos cuántos
+// minutos se estudiaron A PARTIR de esta hora del día; si lo que queda de hoy
+// fuera como ese día, ¿el total (hecho + resto) alcanza la meta? La probabilidad
+// es la fracción de días históricos que lo lograrían. Cae sola según avanza la
+// hora (queda menos margen) y sube con los minutos ya hechos.
+function _liveIntenseProb(nowMin, doneMin) {
+  const todayIso = _statsISO(new Date());
+  const byDay = {};
+  _statsAllPlants().forEach(p => {
+    const iso = _statsISO(p.start);
+    if (iso === todayIso) return; // hoy no entra en su propia predicción
+    (byDay[iso] || (byDay[iso] = [])).push({ sm: p.start.getHours() * 60 + p.start.getMinutes(), mins: p.mins });
+  });
+  const days = Object.keys(byDay);
+  if (days.length < 20) return null; // pocos datos para fiarse
+  let r4 = 0, r5 = 0;
+  days.forEach(k => {
+    let after = 0;
+    byDay[k].forEach(p => { if (p.sm >= nowMin) after += p.mins; });
+    const proj = doneMin + after;
+    if (proj >= 240) r4++;
+    if (proj >= 300) r5++;
+  });
+  return { p4: Math.round(r4 / days.length * 100), p5: Math.round(r5 / days.length * 100), n: days.length };
+}
+
+// Texto para mostrar la probabilidad de hoy. null si no hay datos suficientes.
+function _probTextHoy() {
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const done = _doneMinHoy();
+  const r = _liveIntenseProb(nowMin, done);
+  if (!r) return null;
+  const hhmm = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  const doneTxt = done >= 60 ? Math.floor(done / 60) + ' h' + (done % 60 ? ' ' + (done % 60) + ' min' : '') : done + ' min';
+  let main, sub;
+  if (done >= 300) {
+    main = '5 h netas hoy ✦';
+    sub = 'día de excelencia · ' + hhmm;
+  } else if (done >= 240) {
+    main = '4 h logradas · 5 h: <strong>' + r.p5 + '%</strong>';
+    sub = hhmm + ' · llevas ' + doneTxt;
+  } else {
+    main = '4 h: <strong>' + r.p4 + '%</strong> · 5 h: <strong>' + r.p5 + '%</strong>';
+    const tip = r.p4 >= 55 ? 'vas en buena hora' : (r.p4 >= 20 ? 'cuanto antes sigas, más sube' : 'hoy se hace cuesta arriba');
+    sub = hhmm + ' · llevas ' + doneTxt + ' · ' + tip;
+  }
+  return { main, sub, p4: r.p4, done };
+}
+
+// Refresca los dos sitios donde vive la probabilidad de hoy: el cronómetro
+// (#cronoProbabilidad) y la tarjeta de insight de la pantalla de Sesión.
+// Throttle por (minuto del día + minutos hechos): solo recalcula cuando cambian.
+let _probLastKey = '';
+function updateLiveProbabilityUI(force) {
+  const cEl = document.getElementById('cronoProbabilidad');
+  const sMain = document.querySelector('#sessionProbCard .session-insight-main');
+  const sSub = document.querySelector('#sessionProbCard .session-insight-sub');
+  if (!cEl && !sMain) return;
+  const now = new Date();
+  const key = (now.getHours() * 60 + now.getMinutes()) + '|' + _doneMinHoy();
+  if (!force && key === _probLastKey) return;
+  _probLastKey = key;
+  const t = _probTextHoy();
+  if (cEl) {
+    if (!t) { cEl.style.display = 'none'; }
+    else {
+      cEl.style.display = '';
+      cEl.classList.toggle('hot', t.p4 >= 55 || t.done >= 240);
+      cEl.innerHTML = '<span class="crono-prob-main">' + t.main + '</span>'
+        + '<span class="crono-prob-sub">' + t.sub + '</span>';
+    }
+  }
+  if (sMain) { sMain.innerHTML = t ? t.main : ''; if (sSub) sSub.innerHTML = t ? t.sub : ''; }
+}
+
 function _statsPeriod(offset) {
   if (offset == null) offset = _statsOffset;
   const now = new Date();
@@ -12043,6 +12131,9 @@ async function initApp() {
   // setTimeout falle por estar suspendido, en cuanto la tab despierta se
   // detecte el cambio de día en el siguiente intervalo.
   setInterval(checkDayChange, 60 * 1000);
+  // Probabilidad de hoy: refresco periódico para que baje sola con la hora
+  // aunque el cronómetro esté parado (recalcula solo si cambió el minuto/min hechos).
+  setInterval(() => { if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(); }, 30 * 1000);
 
   // Forest draft
   try {
@@ -12841,6 +12932,16 @@ function renderSessionInsights() {
       '<div class="session-insight-kicker">Días de 4 h+</div>' +
       '<div class="session-insight-main">Sueles arrancar hacia las <strong>' + _fmtHourMin(intense4.avgMin) + '</strong></div>' +
       '<div class="session-insight-sub">' + intense4.count + ' días intensos' + cinco + ' · empezar más tarde lo hace difícil</div>' +
+    '</div>');
+  }
+
+  // Probabilidad EN VIVO de llegar hoy a 4 h / 5 h (la estrella, va primera).
+  const prob = _probTextHoy();
+  if (prob) {
+    cards.unshift('<div class="session-insight-card session-insight-prob" id="sessionProbCard">' +
+      '<div class="session-insight-kicker">Probabilidad de hoy</div>' +
+      '<div class="session-insight-main">' + prob.main + '</div>' +
+      '<div class="session-insight-sub">' + prob.sub + '</div>' +
     '</div>');
   }
 
@@ -13878,6 +13979,8 @@ function cronoStartTick() {
         milestoneEl.style.display = 'none';
       }
     }
+    // Probabilidad en vivo de 4h/5h (recalcula solo al cambiar de minuto).
+    if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI();
   }, 1000);
 }
 
