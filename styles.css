@@ -6247,6 +6247,42 @@
   .stats-donut-seg { fill: none; stroke-width: 17; transition: stroke-width 0.2s; }
   .stats-donut-big { fill: var(--text); font-family: 'Cormorant Garamond', serif; font-size: 25px; font-weight: 600; }
   .stats-donut-sub { fill: var(--text3); font-size: 8px; letter-spacing: 0.18em; text-transform: uppercase; }
+
+  /* ── Estudio intenso: hora de 5h+ y mapa del año (heatmap de constancia) ── */
+  .stats-intense-row {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 11px; color: var(--text3);
+    margin: -4px 0 10px;
+  }
+  .stats-intense-row strong { color: var(--orange); }
+  .stats-intense-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .stats-intense-dot.h5 { background: var(--orange); }
+  .stats-heatmap-wrap {
+    overflow-x: auto;
+    margin-top: 12px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .stats-heatmap-wrap::-webkit-scrollbar { display: none; }
+  .stats-heatmap { display: block; }
+  .stats-heat { stroke: rgba(255,255,255,0.04); stroke-width: 0.5; }
+  .stats-heat.h0 { fill: var(--bg3); }
+  .stats-heat.h1 { fill: color-mix(in srgb, var(--accent) 30%, var(--bg3)); }
+  .stats-heat.h4 { fill: var(--accent); }
+  .stats-heat.h5 { fill: var(--orange); }
+  .stats-heat-mon { fill: var(--text3); font-size: 8.5px; font-family: 'JetBrains Mono', monospace; }
+  .stats-heat-legend {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-top: 8px;
+    font-size: 10px; color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .stats-heat-key { display: inline-flex; align-items: center; gap: 5px; }
+  .stats-heat-sq { width: 10px; height: 10px; border-radius: 2.5px; display: inline-block; }
+  .stats-heat-sq.h1 { background: color-mix(in srgb, var(--accent) 30%, var(--bg3)); }
+  .stats-heat-sq.h4 { background: var(--accent); }
+  .stats-heat-sq.h5 { background: var(--orange); }
+
   .stats-donut-wrap { display: flex; align-items: center; gap: 20px; }
   .stats-legend { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
   .stats-legend-row { display: flex; align-items: center; gap: 8px; min-width: 0; }

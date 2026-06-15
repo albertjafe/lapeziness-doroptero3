@@ -8775,6 +8775,38 @@ function _statsISO(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
+// Mapa de TODO el historial por día: minutos netos del día + primer inicio.
+// Sirve para detectar "días intensos" (4 h+/5 h+) y a qué hora arrancan.
+function _statsDayMap() {
+  const map = {};
+  _statsAllPlants().forEach(p => {
+    const iso = _statsISO(p.start);
+    if (!map[iso]) map[iso] = { mins: 0, firstMs: Infinity, first: null };
+    map[iso].mins += p.mins;
+    const ms = p.start.getTime();
+    if (ms < map[iso].firstMs) { map[iso].firstMs = ms; map[iso].first = p.start; }
+  });
+  return map;
+}
+
+// Hora media de inicio (minutos desde medianoche) y nº de días que superan
+// `thresholdMin` minutos netos. null si no hay ninguno con hora de inicio.
+function _statsIntenseStart(dayMap, thresholdMin) {
+  const starts = [];
+  Object.keys(dayMap).forEach(k => {
+    const d = dayMap[k];
+    if (d.mins >= thresholdMin && d.first) starts.push(d.first.getHours() * 60 + d.first.getMinutes());
+  });
+  if (!starts.length) return null;
+  const avg = Math.round(starts.reduce((a, b) => a + b, 0) / starts.length);
+  return { avgMin: avg, count: starts.length };
+}
+
+function _fmtHourMin(min) {
+  const h = Math.floor(min / 60), m = min % 60;
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+
 function _statsPeriod(offset) {
   if (offset == null) offset = _statsOffset;
   const now = new Date();
@@ -9262,6 +9294,72 @@ function _statsStreakHeader() {
     + '</div>';
 }
 
+// Mapa del año marcando los días de estudio intenso (4 h+ / 5 h+), estilo
+// "heatmap" de constancia. Un cuadradito por día; color según minutos netos.
+function _statsYearIntenseHeatmap(dayMap, year) {
+  const jan1 = new Date(year, 0, 1), dec31 = new Date(year, 11, 31);
+  const start = new Date(jan1);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); // lunes de la 1ª semana
+  const cell = 11, gap = 3, step = cell + gap;
+  const padL = 6, padT = 16, padB = 4;
+  const weeks = Math.ceil(((dec31 - start) / 86400000 + 1) / 7);
+  const W = padL + weeks * step + 2;
+  const H = padT + 7 * step + padB;
+  const monNames = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  let rects = '', months = '', lastMonth = -1;
+  const d = new Date(start);
+  for (let w = 0; w < weeks; w++) {
+    for (let row = 0; row < 7; row++) {
+      if (d.getFullYear() === year) {
+        const iso = _statsISO(d);
+        const mins = dayMap[iso] ? dayMap[iso].mins : 0;
+        let cls = 'h0';
+        if (mins >= 300) cls = 'h5';
+        else if (mins >= 240) cls = 'h4';
+        else if (mins > 0) cls = 'h1';
+        const x = padL + w * step, y = padT + row * step;
+        rects += '<rect x="' + x + '" y="' + y + '" width="' + cell + '" height="' + cell + '" rx="2.5" class="stats-heat ' + cls + '">'
+          + '<title>' + d.getDate() + ' ' + monNames[d.getMonth()].toLowerCase() + (mins ? ' · ' + fmtMinutos(mins) : ' · sin estudio') + '</title></rect>';
+        if (d.getDate() <= 7 && d.getMonth() !== lastMonth) {
+          lastMonth = d.getMonth();
+          months += '<text x="' + x + '" y="' + (padT - 5) + '" class="stats-heat-mon">' + monNames[d.getMonth()] + '</text>';
+        }
+      }
+      d.setDate(d.getDate() + 1);
+    }
+  }
+  const legend = '<div class="stats-heat-legend">'
+    + '<span>' + year + '</span>'
+    + '<span class="stats-heat-key"><i class="stats-heat-sq h1"></i> algo</span>'
+    + '<span class="stats-heat-key"><i class="stats-heat-sq h4"></i> 4 h+</span>'
+    + '<span class="stats-heat-key"><i class="stats-heat-sq h5"></i> 5 h+</span>'
+    + '</div>';
+  return '<div class="stats-heatmap-wrap"><svg class="stats-heatmap" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">'
+    + months + rects + '</svg></div>' + legend;
+}
+
+// Tarjeta "Estudio intenso": hora media a la que arrancas los días de 4 h+
+// (y 5 h+), con el mapa del año marcando esos días.
+function _statsIntenseCard() {
+  const dayMap = _statsDayMap();
+  const i4 = _statsIntenseStart(dayMap, 240);
+  if (!i4) return '';
+  const i5 = _statsIntenseStart(dayMap, 300);
+  const year = (_statsRange === 'año') ? _statsPeriod().start.getFullYear() : new Date().getFullYear();
+  const subParts = [i4.count + ' días de 4 h+'];
+  if (i5 && i5.count) subParts.push(i5.count + ' de 5 h+');
+  const cincoLine = (i5 && i5.count >= 3)
+    ? '<div class="stats-intense-row"><span class="stats-intense-dot h5"></span>Los de 5 h+ arrancan a las <strong>' + _fmtHourMin(i5.avgMin) + '</strong></div>'
+    : '';
+  return '<div class="stats-card">'
+    + '<div class="stats-card-title">Estudio intenso · 4 h+</div>'
+    + '<div class="stats-card-big">' + _fmtHourMin(i4.avgMin) + '</div>'
+    + '<div class="stats-card-sub">Hora media a la que arrancas tus días de 4 h+ · ' + subParts.join(' · ') + '. Empezar mucho más tarde lo hace improbable.</div>'
+    + cincoLine
+    + _statsYearIntenseHeatmap(dayMap, year)
+    + '</div>';
+}
+
 function renderStatsDashboard() {
   const el = document.getElementById('statsDashboard');
   if (!el) return;
@@ -9294,6 +9392,9 @@ function renderStatsDashboard() {
 
   // Tarjeta comparativa: este periodo vs los dos anteriores (estilo Forest)
   cards += _statsComparisonCard();
+
+  // Tarjeta "Estudio intenso" (4 h+): hora de arranque + mapa del año.
+  cards += _statsIntenseCard();
 
   if (total > 0) {
     // Tarjeta 2: día de la semana (solo mes/año; en semana ya se ve en las barras)
@@ -12728,25 +12829,18 @@ function renderSessionInsights() {
     '</div>');
   }
 
-  const bands = [
-    { label: 'mañana', from: 6, to: 12, min: 0 },
-    { label: 'mediodía', from: 12, to: 17, min: 0 },
-    { label: 'tarde', from: 17, to: 21, min: 0 },
-    { label: 'noche', from: 21, to: 30, min: 0 },
-  ];
-  (db.sessionPlants || []).forEach(p => {
-    if (!p || p.failed || p.tipo === 'descanso' || !p.startedAt) return;
-    const h = new Date(p.startedAt).getHours();
-    const h2 = h < 6 ? h + 24 : h;
-    const band = bands.find(b => h2 >= b.from && h2 < b.to);
-    if (band) band.min += p.mins || 0;
-  });
-  const best = bands.slice().sort((a,b) => b.min - a.min)[0];
-  if (best && best.min >= 60) {
+  // Días de estudio intenso (4 h+): a qué hora sueles arrancar esos días.
+  // Insight clave de comportamiento: si empiezas mucho más tarde, es improbable
+  // que llegues a las 4 h netas.
+  const dayMap = _statsDayMap();
+  const intense4 = _statsIntenseStart(dayMap, 240);
+  if (intense4 && intense4.count >= 3) {
+    const intense5 = _statsIntenseStart(dayMap, 300);
+    const cinco = (intense5 && intense5.count >= 3) ? ' · 5 h+ a las ' + _fmtHourMin(intense5.avgMin) : '';
     cards.push('<div class="session-insight-card">' +
-      '<div class="session-insight-kicker">Mejor franja</div>' +
-      '<div class="session-insight-main">Sueles sostener más estudio por la <strong>' + best.label + '</strong></div>' +
-      '<div class="session-insight-sub">' + _fmtMinShort(best.min) + ' acumulados en esa franja</div>' +
+      '<div class="session-insight-kicker">Días de 4 h+</div>' +
+      '<div class="session-insight-main">Sueles arrancar hacia las <strong>' + _fmtHourMin(intense4.avgMin) + '</strong></div>' +
+      '<div class="session-insight-sub">' + intense4.count + ' días intensos' + cinco + ' · empezar más tarde lo hace difícil</div>' +
     '</div>');
   }
 
