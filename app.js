@@ -6017,11 +6017,14 @@ let obrasSort = (() => {
   try { return localStorage.getItem('obras_sort') || 'reciente'; }
   catch(e) { return 'reciente'; }
 })();
-// Densidad de las tarjetas: 'comodo' (por defecto) o 'compacto'.
+// Densidad de las tarjetas: 'comodo' (por defecto), 'compacto' o 'mini'.
 let obrasDensity = (() => {
-  try { return localStorage.getItem('obras_density') || 'comodo'; }
-  catch(e) { return 'comodo'; }
+  try {
+    const v = localStorage.getItem('obras_density') || 'comodo';
+    return ['comodo', 'compacto', 'mini'].includes(v) ? v : 'comodo';
+  } catch(e) { return 'comodo'; }
 })();
+const OBRAS_DENSITIES = ['comodo', 'compacto', 'mini'];
 // ¿Está desplegada la sección de "menores de 10 h"?
 let obrasMinorOpen = (() => {
   try { return localStorage.getItem('obras_minor_open') === 'true'; }
@@ -6036,9 +6039,18 @@ function setObrasSort(value) {
 }
 
 function toggleObrasDensity() {
-  obrasDensity = obrasDensity === 'compacto' ? 'comodo' : 'compacto';
+  const i = OBRAS_DENSITIES.indexOf(obrasDensity);
+  obrasDensity = OBRAS_DENSITIES[(i + 1) % OBRAS_DENSITIES.length];
   try { localStorage.setItem('obras_density', obrasDensity); } catch(e) {}
   renderObras();
+}
+
+// Icono del botón de densidad: nº de líneas crece según lo compacto que es.
+function _obrasDensityIcon(level) {
+  const rows = level === 'mini' ? [5, 9, 13, 17, 21] : level === 'compacto' ? [6, 12, 18] : [8, 16];
+  const sw = level === 'mini' ? 1.4 : level === 'compacto' ? 1.7 : 2.1;
+  const lines = rows.map(y => '<path d="M4 ' + y + 'h16"/>').join('');
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + sw + '" stroke-linecap="round">' + lines + '</svg>';
 }
 
 function toggleObrasMinor() {
@@ -6135,10 +6147,11 @@ function syncObrasToolbar(total, visible) {
   if (sortEl && sortEl.value !== obrasSort) sortEl.value = obrasSort;
   const densEl = document.getElementById('obrasDensityToggle');
   if (densEl) {
-    const compact = obrasDensity === 'compacto';
-    densEl.classList.toggle('active', compact);
-    densEl.title = compact ? 'Tarjetas compactas (toca para ampliar)' : 'Tarjetas cómodas (toca para compactar)';
-    densEl.setAttribute('aria-pressed', String(compact));
+    densEl.classList.toggle('active', obrasDensity !== 'comodo');
+    const next = { comodo: 'compactar', compacto: 'minimizar', mini: 'ampliar' }[obrasDensity];
+    const cur = { comodo: 'cómodas', compacto: 'compactas', mini: 'mini' }[obrasDensity];
+    densEl.title = 'Tarjetas ' + cur + ' · toca para ' + next;
+    densEl.innerHTML = _obrasDensityIcon(obrasDensity);
   }
 }
 
@@ -6168,8 +6181,12 @@ function renderObras() {
   obras = obras.filter(obrasMatchesQuickFilter);
   syncObrasToolbar(totalObras, obras.length);
 
-  // Densidad de las tarjetas (compacto/cómodo) como clase del contenedor.
+  // Densidad de las tarjetas como clase del contenedor.
   list.classList.toggle('compact', obrasDensity === 'compacto');
+  list.classList.toggle('mini', obrasDensity === 'mini');
+  const renderCard = obrasDensity === 'mini'
+    ? (o) => renderObraCardMini(o)
+    : (o, idx) => renderObraCard(o, idx);
 
   if (!obras.length) {
     if (totalObras) {
@@ -6203,7 +6220,7 @@ function renderObras() {
     if (!mayores.length || !menores.length) { mayores = obras; menores = []; }
   }
 
-  let html = mayores.map((o, idx) => renderObraCard(o, idx)).join('');
+  let html = mayores.map((o, idx) => renderCard(o, idx)).join('');
 
   if (menores.length) {
     const caret = obrasMinorOpen ? '▾' : '▸';
@@ -6216,7 +6233,7 @@ function renderObras() {
       + '</button>';
     if (obrasMinorOpen) {
       html += '<div class="obras-minor-body">'
-        + menores.map((o, idx) => renderObraCard(o, idx)).join('')
+        + menores.map((o, idx) => renderCard(o, idx)).join('')
         + '</div>';
     }
     html += '</div>';
@@ -6401,6 +6418,44 @@ function renderObraCard(o, idx) {
   }
   // ── TARJETA SIMPLE (solidez como única métrica) ─────────────────────
   return renderObraCardSimple(o);
+}
+
+// ── TARJETA MINI (densidad máxima) ──────────────────────────────────────
+// Una sola fila: color · título · compositor · barra de solidez · %.
+// Sin dificultad, duración, urgencia, etiquetas ni botón de evolución.
+function renderObraCardMini(o) {
+  const colorHex = obraColorHex(o);
+  const dot = '<button class="obra-color-dot" title="Color"'
+    + ' onclick="event.stopPropagation();openObraColorPicker(\'' + o.id + '\')"'
+    + ' style="background:' + (colorHex || 'transparent') + ';border-color:' + (colorHex || 'var(--border2)') + '"></button>';
+  const del = '<button class="obra-quick-btn delete obra-edit-action" title="Eliminar"'
+    + ' onclick="event.stopPropagation();confirmDeleteObra(\'' + o.id + '\')">' + ICON_DELETE + '</button>';
+
+  if (o.tipo === 'actividad') {
+    return '<div class="obra-card obra-card-mini" id="obra-' + o.id + '">'
+      + dot
+      + '<span class="obra-mini-name" style="flex:1">' + escapeHtmlSafe(o.name) + '</span>'
+      + '<span class="obra-mini-comp">actividad</span>'
+      + del
+      + '</div>';
+  }
+
+  const composer = (o.composer && o.composer !== '—')
+    ? '<span class="obra-mini-comp">' + escapeHtmlSafe(o.composer) + '</span>' : '';
+  const est = estimateSolActual(o);
+  const pct = Math.max(0, Math.min(100, Math.round(est.val || 0)));
+  const col = solPctColor(pct);
+  const hasHist = (o.solHistory || []).length > 0;
+  return '<div class="obra-card obra-card-mini" id="obra-' + o.id + '">'
+    + dot
+    + '<button class="obra-mini-main" onclick="openQuickSolidezTarget(\'' + o.id + '\',null)">'
+    +   '<span class="obra-mini-name">' + escapeHtmlSafe(o.name) + '</span>'
+    +   composer
+    +   '<span class="obra-mini-bar"><span class="obra-mini-fill" style="width:' + pct + '%;background:' + col + '"></span></span>'
+    +   '<span class="obra-mini-pct" style="color:' + (hasHist ? col : 'var(--text3)') + '">' + (hasHist ? pct : '—') + '</span>'
+    + '</button>'
+    + del
+    + '</div>';
 }
 
 // Obra recién medida: su barra de solidez hace un pulso al re-renderizar.
@@ -8837,14 +8892,30 @@ function _statsTipText(label, minutes) {
   return minutes ? fmtMinutos(minutes) : '0 min';
 }
 
+let _statsGradSeq = 0;
 function _statsBarChartSVG(values, labels, hoyIdx, tipLabels) {
-  const W = 640, H = 190, padL = 38, padR = 8, padT = 10, padB = 24;
+  const W = 640, H = 196, padL = 38, padR = 8, padT = 12, padB = 24;
   const n = values.length || 1;
   const maxVal = Math.max.apply(null, values.concat([1]));
   const step = _statsNiceStep(maxVal);
   const top = Math.max(step, Math.ceil(maxVal / step) * step);
   const iw = W - padL - padR, ih = H - padT - padB;
+  const id = 'sb' + (++_statsGradSeq);
   let svg = '<svg class="stats-chart" viewBox="0 0 ' + W + ' ' + H + '">';
+  // Gradientes: barra normal (oro vertical) y barra "hoy" (ámbar cálido) + halo.
+  svg += '<defs>'
+    + '<linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1">'
+    +   '<stop offset="0" style="stop-color:var(--accent2)"/>'
+    +   '<stop offset="1" style="stop-color:var(--accent)" stop-opacity="0.68"/>'
+    + '</linearGradient>'
+    + '<linearGradient id="' + id + 'h" x1="0" y1="0" x2="0" y2="1">'
+    +   '<stop offset="0" style="stop-color:var(--orange)"/>'
+    +   '<stop offset="1" style="stop-color:var(--accent2)"/>'
+    + '</linearGradient>'
+    + '<filter id="' + id + 'g" x="-60%" y="-60%" width="220%" height="220%">'
+    +   '<feDropShadow dx="0" dy="1.5" stdDeviation="3.2" flood-color="var(--orange)" flood-opacity="0.55"/>'
+    + '</filter>'
+    + '</defs>';
   for (let v = 0; v <= top; v += step) {
     const y = padT + ih * (1 - v / top);
     svg += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" class="stats-grid"/>'
@@ -8858,8 +8929,16 @@ function _statsBarChartSVG(values, labels, hoyIdx, tipLabels) {
     const cx = padL + slot * i + slot / 2;
     const bh = ih * (v / top);
     if (v > 0) {
-      svg += '<rect x="' + x + '" y="' + (padT + ih - Math.max(bh, 2.5)) + '" width="' + bw + '" height="' + Math.max(bh, 2.5)
-        + '" rx="' + Math.min(5, bw / 2) + '" class="stats-bar' + (i === hoyIdx ? ' hoy' : '') + '"/>';
+      const isHoy = i === hoyIdx;
+      const h = Math.max(bh, 3);
+      const yTop = padT + ih - h;
+      const r = Math.min(5, bw / 2);
+      svg += '<rect x="' + x.toFixed(1) + '" y="' + yTop.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1)
+        + '" rx="' + r + '" fill="url(#' + id + (isHoy ? 'h' : '') + ')" class="stats-bar' + (isHoy ? ' hoy' : '') + '"'
+        + (isHoy ? ' filter="url(#' + id + 'g)"' : '') + '/>';
+      // Brillo superior: da relieve a la barra (efecto "satinado").
+      svg += '<rect x="' + x.toFixed(1) + '" y="' + yTop.toFixed(1) + '" width="' + bw.toFixed(1)
+        + '" height="' + Math.min(h, 5).toFixed(1) + '" rx="' + r + '" class="stats-bar-gloss"/>';
     }
     if (labels[i]) {
       svg += '<text x="' + cx + '" y="' + (H - 7) + '" text-anchor="middle" class="stats-axis'
@@ -8873,7 +8952,7 @@ function _statsBarChartSVG(values, labels, hoyIdx, tipLabels) {
 }
 
 function _statsLineChartSVG(values, labels, tipLabels) {
-  const W = 640, H = 170, padL = 38, padR = 14, padT = 14, padB = 24;
+  const W = 640, H = 176, padL = 38, padR = 14, padT = 16, padB = 24;
   const n = values.length;
   const maxVal = Math.max.apply(null, values.concat([1]));
   const step = _statsNiceStep(maxVal);
@@ -8881,19 +8960,36 @@ function _statsLineChartSVG(values, labels, tipLabels) {
   const iw = W - padL - padR, ih = H - padT - padB;
   const px = i => padL + (n === 1 ? iw / 2 : iw * i / (n - 1));
   const py = v => padT + ih * (1 - v / top);
+  const id = 'sl' + (++_statsGradSeq);
   let svg = '<svg class="stats-chart" viewBox="0 0 ' + W + ' ' + H + '">';
+  // Área con degradado vertical, línea con degradado oro→verde y sombra.
+  svg += '<defs>'
+    + '<linearGradient id="' + id + 'a" x1="0" y1="0" x2="0" y2="1">'
+    +   '<stop offset="0" style="stop-color:var(--accent2)" stop-opacity="0.36"/>'
+    +   '<stop offset="1" style="stop-color:var(--accent)" stop-opacity="0.02"/>'
+    + '</linearGradient>'
+    + '<linearGradient id="' + id + 'l" x1="0" y1="0" x2="1" y2="0">'
+    +   '<stop offset="0" style="stop-color:var(--accent)"/>'
+    +   '<stop offset="0.55" style="stop-color:var(--accent2)"/>'
+    +   '<stop offset="1" style="stop-color:var(--green)"/>'
+    + '</linearGradient>'
+    + '<filter id="' + id + 'g" x="-30%" y="-60%" width="160%" height="240%">'
+    +   '<feDropShadow dx="0" dy="1.5" stdDeviation="2.4" flood-color="var(--accent)" flood-opacity="0.45"/>'
+    + '</filter>'
+    + '</defs>';
   for (let v = 0; v <= top; v += step) {
     const y = py(v);
     svg += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" class="stats-grid"/>'
       + '<text x="' + (padL - 7) + '" y="' + (y + 3.5) + '" text-anchor="end" class="stats-axis">' + _statsAxisLabel(v) + '</text>';
   }
   const pts = values.map((v, i) => px(i) + ',' + py(v)).join(' ');
-  svg += '<polygon points="' + padL + ',' + (padT + ih) + ' ' + pts + ' ' + (padL + iw) + ',' + (padT + ih) + '" class="stats-area"/>'
-    + '<polyline points="' + pts + '" class="stats-line"/>';
+  svg += '<polygon points="' + padL + ',' + (padT + ih) + ' ' + pts + ' ' + (padL + iw) + ',' + (padT + ih) + '" fill="url(#' + id + 'a)" class="stats-area"/>'
+    + '<polyline points="' + pts + '" fill="none" stroke="url(#' + id + 'l)" class="stats-line" filter="url(#' + id + 'g)"/>';
   let peak = 0;
   values.forEach((v, i) => { if (v > values[peak]) peak = i; });
   if (values[peak] > 0) {
     svg += '<line x1="' + px(peak) + '" y1="' + py(values[peak]) + '" x2="' + px(peak) + '" y2="' + (padT + ih) + '" class="stats-peak-line"/>'
+      + '<circle cx="' + px(peak) + '" cy="' + py(values[peak]) + '" r="5.5" class="stats-peak-halo"/>'
       + '<circle cx="' + px(peak) + '" cy="' + py(values[peak]) + '" r="4" class="stats-peak-dot"/>';
   }
   labels.forEach((lab, i) => {
@@ -8913,14 +9009,17 @@ function _statsLineChartSVG(values, labels, tipLabels) {
 
 function _statsDonutSVG(segs, totalMin) {
   const R = 54, C = 2 * Math.PI * R;
+  // Hueco fino entre segmentos (solo si hay más de uno) para separarlos.
+  const GAP = segs.length > 1 ? 2.5 : 0;
   let off = 0;
   let svg = '<svg class="stats-donut" viewBox="0 0 140 140">'
     + '<circle cx="70" cy="70" r="' + R + '" class="stats-donut-track"/>';
   segs.forEach(s => {
-    const len = C * (s.mins / totalMin);
+    const full = C * (s.mins / totalMin);
+    const len = Math.max(0.5, full - GAP);
     svg += '<circle cx="70" cy="70" r="' + R + '" stroke="' + s.color + '" stroke-dasharray="' + len + ' ' + (C - len)
       + '" stroke-dashoffset="' + (-off) + '" transform="rotate(-90 70 70)" class="stats-donut-seg"/>';
-    off += len;
+    off += full;
   });
   const centro = totalMin >= 60 ? Math.round(totalMin / 60) + ' h' : totalMin + ' m';
   svg += '<text x="70" y="67" text-anchor="middle" class="stats-donut-big">' + centro + '</text>'

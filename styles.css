@@ -6148,57 +6148,62 @@
   }
   .stats-period-reset { font-size: 12px; color: var(--accent); }
   .stats-card {
-    background: var(--bg2);
+    background: linear-gradient(180deg, var(--bg2), color-mix(in srgb, var(--bg2) 86%, var(--bg)));
     border: 1px solid var(--border2);
-    border-radius: 12px;
+    border-radius: 14px;
     padding: 16px 18px;
     margin-bottom: 12px;
-    box-shadow: 0 12px 32px -28px rgba(0,0,0,0.55);
+    box-shadow: 0 16px 34px -26px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
   }
   .stats-card-title {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text2);
-    letter-spacing: 0.04em;
-    margin-bottom: 2px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
   }
   .stats-card-big {
     font-family: 'Cormorant Garamond', serif;
-    font-size: 28px;
-    font-weight: 300;
+    font-size: 30px;
+    font-weight: 400;
     color: var(--accent);
+    background: linear-gradient(95deg, var(--accent2), var(--accent) 65%, var(--orange));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
     margin-bottom: 10px;
   }
   .stats-card-sub {
-    font-size: 10px;
+    font-size: 11px;
     color: var(--text3);
     margin-bottom: 10px;
   }
   .stats-card-sub strong { color: var(--accent); font-weight: 600; }
   .stats-empty { font-size: 10px; color: var(--text3); font-style: italic; padding: 6px 0 2px; }
   .stats-chart { width: 100%; height: auto; display: block; }
-  .stats-grid { stroke: var(--border2); stroke-width: 1; }
+  .stats-grid { stroke: var(--border2); stroke-width: 1; opacity: 0.5; }
   .stats-axis {
     fill: var(--text3);
     font-size: 11px;
     font-family: 'JetBrains Mono', monospace;
   }
-  .stats-axis.hoy { fill: var(--accent); }
-  .stats-bar { fill: var(--accent); opacity: 0.55; }
-  .stats-bar.hoy { opacity: 0.95; }
+  .stats-axis.hoy { fill: var(--orange); font-weight: 600; }
+  /* El color de las barras viene del degradado inline (fill="url(...)"). No
+     declarar fill/stroke aquí: el CSS ganaría al atributo y mataría el degradado. */
+  .stats-bar { transition: opacity 0.2s; }
+  .stats-bar-gloss { fill: #fff; opacity: 0.16; pointer-events: none; }
   .stats-line {
-    fill: none;
-    stroke: var(--accent);
-    stroke-width: 2.5;
+    stroke-width: 3;
     stroke-linejoin: round;
     stroke-linecap: round;
   }
-  .stats-area { fill: var(--accent); opacity: 0.08; stroke: none; }
-  .stats-peak-line { stroke: var(--text3); stroke-width: 1; stroke-dasharray: 3 4; }
-  .stats-peak-dot { fill: var(--bg2); stroke: var(--accent); stroke-width: 2.5; }
-  .stats-donut { width: 132px; height: 132px; flex-shrink: 0; }
-  .stats-donut-track { fill: none; stroke: var(--bg3); stroke-width: 16; }
-  .stats-donut-seg { fill: none; stroke-width: 16; }
-  .stats-donut-big { fill: var(--text); font-family: 'Cormorant Garamond', serif; font-size: 24px; }
+  .stats-peak-line { stroke: var(--orange); stroke-width: 1.2; stroke-dasharray: 3 4; opacity: 0.7; }
+  .stats-peak-halo { fill: var(--orange); opacity: 0.22; }
+  .stats-peak-dot { fill: var(--orange); stroke: var(--bg2); stroke-width: 2.5; }
+  .stats-donut { width: 132px; height: 132px; flex-shrink: 0; filter: drop-shadow(0 6px 14px rgba(0,0,0,0.28)); }
+  .stats-donut-track { fill: none; stroke: var(--bg3); stroke-width: 15; }
+  .stats-donut-seg { fill: none; stroke-width: 17; transition: stroke-width 0.2s; }
+  .stats-donut-big { fill: var(--text); font-family: 'Cormorant Garamond', serif; font-size: 25px; font-weight: 600; }
   .stats-donut-sub { fill: var(--text3); font-size: 8px; letter-spacing: 0.18em; text-transform: uppercase; }
   .stats-donut-wrap { display: flex; align-items: center; gap: 20px; }
   .stats-legend { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
@@ -6333,19 +6338,21 @@
   }
   .stats-cmp-track {
     flex: 1; min-width: 0;
-    height: 12px;
+    height: 13px;
     background: var(--bg3);
     border-radius: 999px;
     overflow: hidden;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.18);
   }
   .stats-cmp-fill {
     height: 100%;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--accent) 38%, var(--bg3));
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 55%, var(--bg3)), color-mix(in srgb, var(--accent2) 70%, var(--bg3)));
     transition: width 0.6s var(--ease-out);
   }
   .stats-cmp-fill.current {
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    background: linear-gradient(90deg, var(--orange), var(--accent2));
+    box-shadow: 0 0 10px -1px color-mix(in srgb, var(--orange) 70%, transparent);
   }
   .stats-cmp-val {
     flex: 0 0 auto;
@@ -6450,6 +6457,55 @@
      accesible tocando la barra de solidez → abre la medición con historial). */
   #obrasList.compact .obra-simple-graph { display: none; }
   #obrasList.compact .actividad-card .obra-header { padding: 9px 12px !important; }
+
+  /* ─── Densidad MINI: una sola fila por obra ─── */
+  .obra-card-mini {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 9px;
+    padding: 7px 11px;
+    margin-bottom: 5px;
+  }
+  .obra-card-mini .obra-color-dot {
+    width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto;
+    border: 1px solid var(--border2); cursor: pointer; padding: 0;
+  }
+  .obra-mini-main {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center; gap: 9px;
+    background: transparent; border: none; padding: 0; cursor: pointer;
+    text-align: left; -webkit-tap-highlight-color: transparent;
+  }
+  .obra-mini-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 16px; line-height: 1.1; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    flex: 0 1 auto; max-width: 60%;
+  }
+  .obra-mini-comp {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--text3);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    flex: 0 1 auto;
+  }
+  .obra-mini-bar {
+    flex: 1 1 40px; min-width: 32px; height: 6px;
+    border-radius: 999px; background: var(--bg3); overflow: hidden;
+  }
+  .obra-mini-fill { display: block; height: 100%; border-radius: 999px; transition: width 0.5s var(--ease-out); }
+  .obra-mini-pct {
+    flex: 0 0 auto; min-width: 22px; text-align: right;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .obra-card-mini .obra-quick-btn {
+    flex: 0 0 auto; background: transparent; border: 1px solid var(--border2);
+    border-radius: 6px; width: 26px; height: 26px; color: var(--text3);
+    cursor: pointer; font-size: 11px;
+  }
 
   .add-obra-quick-grid.two { grid-template-columns: 1fr 1fr; }
 
