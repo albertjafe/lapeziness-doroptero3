@@ -8825,17 +8825,21 @@ function _doneMinHoy() {
 // es la fracción de días históricos que lo lograrían. Cae sola según avanza la
 // hora (queda menos margen) y sube con los minutos ya hechos.
 //
-// Solo el AÑO EN CURSO: cada año Alberto es otra persona (años flojos y años de
-// mucho progreso no deben mezclarse). Si el año va muy al principio y hay pocos
-// días, cae a los últimos 12 meses, y como último recurso a todo el historial.
+// Ventana DESLIZANTE de 3 meses (los últimos ~90 días hasta hoy), que se corre
+// cada día. Refleja el hábito actual: bastante larga para no ser aleatoria, pero
+// reciente, así que el comportamiento de hace años ya no cuenta. Si hay pocos
+// días en la ventana, la amplía (6m → 12m → histórico) para no quedarse en blanco.
 function _recentPlants() {
   const all = _statsAllPlants();
-  const now = new Date();
+  const now = Date.now();
   const countDays = arr => { const s = {}; arr.forEach(p => { s[_statsISO(p.start)] = 1; }); return Object.keys(s).length; };
-  const yearP = all.filter(p => p.start.getTime() >= new Date(now.getFullYear(), 0, 1).getTime());
-  if (countDays(yearP) >= 12) return { plants: yearP, scope: 'este año' };
-  const rollP = all.filter(p => p.start.getTime() >= now.getTime() - 365 * 86400000);
-  if (countDays(rollP) >= 12) return { plants: rollP, scope: 'últimos 12 meses' };
+  const win = d => all.filter(p => p.start.getTime() >= now - d * 86400000);
+  const p90 = win(90);
+  if (countDays(p90) >= 10) return { plants: p90, scope: '3 meses' };
+  const p180 = win(180);
+  if (countDays(p180) >= 10) return { plants: p180, scope: '6 meses' };
+  const p365 = win(365);
+  if (countDays(p365) >= 10) return { plants: p365, scope: '12 meses' };
   return { plants: all, scope: 'histórico' };
 }
 
@@ -8947,7 +8951,7 @@ function _probRichHTML(t) {
   const done240 = t.done >= 240, done300 = t.done >= 300;
   return '<div class="prob-head">'
       + '<span class="prob-head-left"><span class="prob-kicker">Hoy</span>'
-        + '<span class="prob-scope">' + (t.scope || 'este año') + '</span></span>'
+        + '<span class="prob-scope">' + (t.scope || '3 meses') + '</span></span>'
       + '<span class="prob-context">' + t.hhmm + ' · llevas <b>' + t.doneTxt + '</b></span>'
     + '</div>'
     + '<div class="prob-body">'
