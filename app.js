@@ -14333,33 +14333,51 @@ const DAISY_MIN_PER_STICKER = 240;                    // 4 h = 1 pegatina
 const DAISY_EUR_PER_STICKER = 100 / DAISY_PETALS;     // 18 pegatinas = 100 €
 const DAISY_EUR_PER_MIN = DAISY_EUR_PER_STICKER / DAISY_MIN_PER_STICKER;
 
-// Minutos netos de estudio de todo el historial (excluye descansos y fallidas).
-function _totalNetMins() {
-  let t = 0;
-  const add = p => { if (p && !p.failed && p.tipo !== 'descanso' && p.obraId !== '_rest_') t += Math.max(0, Math.round(p.mins || 0)); };
+// Minutos netos estudiados POR DÍA (todo el historial; excluye descansos/fallidas).
+// Clave: la pegatina solo se gana al alcanzar 4 h DENTRO de un mismo día; lo que
+// sobra de cada día NO arrastra al siguiente.
+function _daisyDayMins() {
+  const map = {};
+  const add = p => {
+    if (!p || p.failed || p.tipo === 'descanso' || p.obraId === '_rest_' || !p.startedAt) return;
+    const d = new Date(p.startedAt);
+    if (isNaN(d.getTime())) return;
+    const iso = _statsISO(d);
+    map[iso] = (map[iso] || 0) + Math.max(0, Math.round(p.mins || 0));
+  };
   (db.sessionPlants || []).forEach(add);
   (db.forestPlants || []).forEach(add);
-  return t;
+  return map;
+}
+// Pegatinas GANADAS por estudio: suma, día a día, floor(minutosDelDía / 240).
+function _earnedStickers() {
+  const map = _daisyDayMins();
+  let s = 0;
+  Object.keys(map).forEach(k => { s += Math.floor(map[k] / DAISY_MIN_PER_STICKER); });
+  return s;
 }
 function _daisyState() {
   let s = null;
-  try { s = JSON.parse(localStorage.getItem('daisy_v1') || 'null'); } catch (e) { /* noop */ }
-  if (!s || typeof s.offsetMins !== 'number') s = { offsetMins: 0, anchorMins: 0 };
+  try { s = JSON.parse(localStorage.getItem('daisy_v2') || 'null'); } catch (e) { /* noop */ }
+  if (!s || typeof s.baseStickers !== 'number') s = { baseStickers: 0, anchorStickers: 0 };
   return s;
 }
-function _daisySave(s) { try { localStorage.setItem('daisy_v1', JSON.stringify(s)); } catch (e) { /* noop */ } }
-// Minutos "en la cuenta de la margarita": base (pétalos ya puestos) + lo estudiado
-// desde que se fijó esa base. Por defecto cuenta todo el historial.
-function _daisyMins() {
+function _daisySave(s) { try { localStorage.setItem('daisy_v2', JSON.stringify(s)); } catch (e) { /* noop */ } }
+// Pegatinas totales = base (ya puestas) + las ganadas desde que se fijó esa base.
+function _daisyStickers() {
   const s = _daisyState();
-  return s.offsetMins + Math.max(0, _totalNetMins() - (s.anchorMins || 0));
+  return (s.baseStickers || 0) + Math.max(0, _earnedStickers() - (s.anchorStickers || 0));
 }
-function _daisyEuros() { return _daisyMins() * DAISY_EUR_PER_MIN; }
-function _daisyStickers() { return Math.floor(_daisyMins() / DAISY_MIN_PER_STICKER); }
+function _daisyEuros() { return _daisyStickers() * DAISY_EUR_PER_STICKER; }
+// Minutos estudiados HOY (para "cuánto falta para la próxima pegatina de hoy").
+function _daisyTodayMins() {
+  const map = _daisyDayMins();
+  return map[_statsISO(new Date())] || 0;
+}
 // Fija cuántas pegatinas tienes ya puestas y reancla: a partir de ahora suma lo nuevo.
 function setDaisyPetals(P) {
   P = Math.max(0, Math.min(99999, Math.round(P || 0)));
-  _daisySave({ offsetMins: P * DAISY_MIN_PER_STICKER, anchorMins: _totalNetMins() });
+  _daisySave({ baseStickers: P, anchorStickers: _earnedStickers() });
 }
 function _fmtEuros(e) {
   return (e || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
@@ -14395,12 +14413,14 @@ function renderDaisyModalBody() {
   const stickers = _daisyStickers();
   const cur = stickers % DAISY_SLOTS;
   const daisiesDone = Math.floor(stickers / DAISY_SLOTS);
-  const minsToNext = DAISY_MIN_PER_STICKER - (_daisyMins() % DAISY_MIN_PER_STICKER);
+  // Una pegatina se gana al llegar a 4 h EN UN DÍA; cuenta lo de HOY.
+  const todayMins = _daisyTodayMins();
+  const minsToNext = DAISY_MIN_PER_STICKER - (todayMins % DAISY_MIN_PER_STICKER);
   return '<div class="daisy-total">' + _fmtEuros(euros) + '</div>'
     + '<div class="daisy-sub">' + stickers + ' pegatinas · ' + cur + '/' + DAISY_SLOTS + ' en esta margarita'
       + (daisiesDone ? ' · ' + daisiesDone + ' completada' + (daisiesDone > 1 ? 's' : '') : '') + '</div>'
     + _daisySVG(stickers)
-    + '<div class="daisy-next">Te faltan <strong>' + minsToNext + ' min</strong> para la próxima pegatina (+' + _fmtEuros(DAISY_EUR_PER_STICKER) + ')</div>'
+    + '<div class="daisy-next">Hoy llevas <strong>' + fmtMinutos(todayMins) + '</strong> · te faltan <strong>' + minsToNext + ' min</strong> hoy para la pegatina (+' + _fmtEuros(DAISY_EUR_PER_STICKER) + ')</div>'
     + '<div class="daisy-btns">'
       + '<button class="modal-btn secondary daisy-set-btn" onclick="daisySetPetalsPrompt()">Fijar pétalos</button>'
       + '<button class="modal-btn secondary daisy-reset-btn" onclick="daisyResetZero()">Poner a 0 €</button>'
@@ -14459,7 +14479,17 @@ function showCronoMoneyFlash(fromE, toE) {
   const addedEl = flash.querySelector('#cmfAdded');
   const petalsEl = flash.querySelector('#cmfPetals');
   const added = Math.max(0, toE - fromE);
-  addedEl.textContent = added >= 0.005 ? '+ ' + _fmtEuros(added) : '';
+  const won = added >= 0.005; // ¿esta sesión ha completado una pegatina (4 h hoy)?
+  if (won) {
+    addedEl.textContent = '+ ' + _fmtEuros(added);
+    addedEl.classList.remove('muted');
+  } else {
+    // No se gana dinero hasta llegar a 4 h en el día: mostramos cuánto falta.
+    const toNext = DAISY_MIN_PER_STICKER - (_daisyTodayMins() % DAISY_MIN_PER_STICKER);
+    addedEl.innerHTML = 'aún +0 € · faltan <b>' + toNext + ' min</b> hoy para +' + _fmtEuros(DAISY_EUR_PER_STICKER);
+    addedEl.classList.add('muted');
+  }
+  flash.classList.toggle('nowin', !won);
   const stickers = _daisyStickers();
   petalsEl.textContent = '🌼 ' + (stickers % DAISY_SLOTS) + '/' + DAISY_SLOTS + ' pétalos';
   flash.classList.remove('visible');
