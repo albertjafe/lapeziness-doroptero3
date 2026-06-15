@@ -8945,7 +8945,12 @@ function _probTextHoy() {
     prob = '4 h: <strong>' + r.p4 + '%</strong> · 5 h: <strong>' + r.p5 + '%</strong>';
     sub = hhmm + ' · llevas ' + doneTxt + ' · ' + tip;
   }
-  return { proj, prob, sub, p4: r.p4, p5: r.p5, done, projVal, projExtra, tip, reward, celebrate, base4, scope: r.scope, hhmm, doneTxt };
+  // Una sola línea compacta para el cronómetro (menos texto arriba en reposo).
+  let cronoLine;
+  if (done >= 300) cronoLine = '<strong>5 h netas hoy</strong> ✦';
+  else if (done >= 240) cronoLine = '<strong>4 h hechas</strong> · 5 h ' + r.p5 + '%';
+  else cronoLine = '<strong>' + projVal + '</strong> · 4 h ' + r.p4 + '% · 5 h ' + r.p5 + '%';
+  return { proj, prob, sub, cronoLine, p4: r.p4, p5: r.p5, done, projVal, projExtra, tip, reward, celebrate, base4, scope: r.scope, hhmm, doneTxt };
 }
 
 // Tarjeta rica (coloreada, por bloques) para la pantalla de Sesión.
@@ -8996,9 +9001,7 @@ function updateLiveProbabilityUI(force) {
     else {
       cEl.style.display = '';
       cEl.classList.toggle('hot', t.p4 >= 55 || t.done >= 240);
-      cEl.innerHTML = '<span class="crono-prob-proj">' + t.proj + '</span>'
-        + '<span class="crono-prob-main">' + t.prob + '</span>'
-        + '<span class="crono-prob-sub">' + t.sub + '</span>';
+      cEl.innerHTML = '<span class="crono-prob-line">' + t.cronoLine + '</span>';
     }
   }
   if (sCard) {
@@ -14374,7 +14377,8 @@ function _daisySVG(stickers) {
     petals += '<ellipse class="daisy-petal" cx="' + cx + '" cy="' + (cy - 58) + '" rx="11" ry="30" transform="rotate(' + deg + ' ' + cx + ' ' + cy + ')"/>';
     for (let lap = 0; lap < DAISY_LAPS; lap++) {
       const idx = lap * DAISY_PETALS + i;
-      const r = 41 + lap * 17;
+      // Se rellena de FUERA hacia el centro: la 1ª vuelta es el anillo exterior.
+      const r = 41 + (DAISY_LAPS - 1 - lap) * 17;
       const x = (cx + Math.cos(ang) * r).toFixed(1);
       const y = (cy + Math.sin(ang) * r).toFixed(1);
       dots += '<circle class="daisy-sticker' + (idx < cur ? ' on' : '') + '" cx="' + x + '" cy="' + y + '" r="6"/>';
@@ -14397,7 +14401,10 @@ function renderDaisyModalBody() {
       + (daisiesDone ? ' · ' + daisiesDone + ' completada' + (daisiesDone > 1 ? 's' : '') : '') + '</div>'
     + _daisySVG(stickers)
     + '<div class="daisy-next">Te faltan <strong>' + minsToNext + ' min</strong> para la próxima pegatina (+' + _fmtEuros(DAISY_EUR_PER_STICKER) + ')</div>'
-    + '<button class="modal-btn secondary daisy-set-btn" onclick="daisySetPetalsPrompt()">Fijar pétalos que ya tengo</button>';
+    + '<div class="daisy-btns">'
+      + '<button class="modal-btn secondary daisy-set-btn" onclick="daisySetPetalsPrompt()">Fijar pétalos</button>'
+      + '<button class="modal-btn secondary daisy-reset-btn" onclick="daisyResetZero()">Poner a 0 €</button>'
+    + '</div>';
 }
 function openDaisyModal() {
   const body = document.getElementById('daisyModalBody');
@@ -14415,6 +14422,14 @@ function daisySetPetalsPrompt() {
   if (body) body.innerHTML = renderDaisyModalBody();
   refreshDaisyPill();
   showToast('Pétalos actualizados');
+}
+function daisyResetZero() {
+  if (!window.confirm('¿Poner el dinero a 0 € y empezar de nuevo? (no borra tu historial de estudio)')) return;
+  setDaisyPetals(0);
+  const body = document.getElementById('daisyModalBody');
+  if (body) body.innerHTML = renderDaisyModalBody();
+  refreshDaisyPill();
+  showToast('Margarita reiniciada a 0 €');
 }
 function refreshDaisyPill() {
   const pill = document.getElementById('cronoDineroPill');
