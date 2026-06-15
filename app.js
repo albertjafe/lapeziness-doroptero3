@@ -8868,13 +8868,24 @@ function _probTextHoy() {
   // con el "buen día" (p75) como margen al alza.
   const projMin = Math.round(r.projMedian / 5) * 5;
   const p75 = Math.round(r.projP75 / 5) * 5;
-  let proj;
+  let projVal, projExtra = '';
   if (projMin >= 15) {
-    proj = 'Hoy ≈ <strong>' + fmtMinutos(projMin) + '</strong>';
-    if (p75 >= projMin + 30 && done < 240) proj += ' · buen día ' + fmtMinutos(p75);
+    projVal = '≈ ' + fmtMinutos(projMin);
+    if (p75 >= projMin + 30 && done < 240) projExtra = 'buen día ' + fmtMinutos(p75);
   } else {
-    proj = 'A esta hora rara vez sigues' + (p75 >= 30 ? ' · buen día ' + fmtMinutos(p75) : '');
+    projVal = 'rara vez sigues';
+    if (p75 >= 30) projExtra = 'buen día ' + fmtMinutos(p75);
   }
+  // Mensaje de ánimo según el momento.
+  let tip;
+  if (done >= 300) tip = '5 h netas hoy ✦ ¡día de excelencia!';
+  else if (done >= 240) tip = '4 h logradas · a por las 5';
+  else tip = r.p4 >= 55 ? 'vas en buena hora' : (r.p4 >= 20 ? 'cuanto antes sigas, más sube' : 'hoy se hace cuesta arriba');
+
+  // Texto compacto (3 líneas) para el cronómetro.
+  const proj = projMin >= 15
+    ? ('Hoy ≈ <strong>' + fmtMinutos(projMin) + '</strong>' + ((p75 >= projMin + 30 && done < 240) ? ' · buen día ' + fmtMinutos(p75) : ''))
+    : ('A esta hora rara vez sigues' + (p75 >= 30 ? ' · buen día ' + fmtMinutos(p75) : ''));
   let prob, sub;
   if (done >= 300) {
     prob = '5 h netas hoy ✦';
@@ -8884,10 +8895,38 @@ function _probTextHoy() {
     sub = hhmm + ' · llevas ' + doneTxt;
   } else {
     prob = '4 h: <strong>' + r.p4 + '%</strong> · 5 h: <strong>' + r.p5 + '%</strong>';
-    const tip = r.p4 >= 55 ? 'vas en buena hora' : (r.p4 >= 20 ? 'cuanto antes sigas, más sube' : 'hoy se hace cuesta arriba');
     sub = hhmm + ' · llevas ' + doneTxt + ' · ' + tip;
   }
-  return { proj, prob, sub, p4: r.p4, done };
+  return { proj, prob, sub, p4: r.p4, p5: r.p5, done, projVal, projExtra, tip, hhmm, doneTxt };
+}
+
+// Tarjeta rica (coloreada, por bloques) para la pantalla de Sesión.
+function _probRichHTML(t) {
+  const done240 = t.done >= 240, done300 = t.done >= 300;
+  return '<div class="prob-head">'
+      + '<span class="prob-kicker">Hoy</span>'
+      + '<span class="prob-context">' + t.hhmm + ' · llevas <b>' + t.doneTxt + '</b></span>'
+    + '</div>'
+    + '<div class="prob-body">'
+      + '<div class="prob-proj">'
+        + '<div class="prob-proj-label">Proyección</div>'
+        + '<div class="prob-proj-val">' + t.projVal + '</div>'
+        + (t.projExtra ? '<div class="prob-proj-extra">' + t.projExtra + '</div>' : '')
+      + '</div>'
+      + '<div class="prob-tiles">'
+        + '<div class="prob-tile p4' + (done240 ? ' done' : '') + '">'
+          + '<div class="prob-tile-pct">' + (done240 ? '✓' : t.p4 + '<span>%</span>') + '</div>'
+          + '<div class="prob-tile-label">4 horas</div>'
+          + '<div class="prob-bar"><i style="width:' + (done240 ? 100 : t.p4) + '%"></i></div>'
+        + '</div>'
+        + '<div class="prob-tile p5' + (done300 ? ' done' : '') + '">'
+          + '<div class="prob-tile-pct">' + (done300 ? '✓' : t.p5 + '<span>%</span>') + '</div>'
+          + '<div class="prob-tile-label">5 horas</div>'
+          + '<div class="prob-bar"><i style="width:' + (done300 ? 100 : t.p5) + '%"></i></div>'
+        + '</div>'
+      + '</div>'
+    + '</div>'
+    + '<div class="prob-tip">' + t.tip + '</div>';
 }
 
 // Refresca los dos sitios donde vive la probabilidad de hoy: el cronómetro
@@ -8896,9 +8935,8 @@ function _probTextHoy() {
 let _probLastKey = '';
 function updateLiveProbabilityUI(force) {
   const cEl = document.getElementById('cronoProbabilidad');
-  const sMain = document.querySelector('#sessionProbCard .session-insight-main');
-  const sSub = document.querySelector('#sessionProbCard .session-insight-sub');
-  if (!cEl && !sMain) return;
+  const sCard = document.getElementById('sessionProbCard');
+  if (!cEl && !sCard) return;
   const now = new Date();
   const key = (now.getHours() * 60 + now.getMinutes()) + '|' + _doneMinHoy();
   if (!force && key === _probLastKey) return;
@@ -8914,7 +8952,10 @@ function updateLiveProbabilityUI(force) {
         + '<span class="crono-prob-sub">' + t.sub + '</span>';
     }
   }
-  if (sMain) { sMain.innerHTML = t ? (t.proj + ' · ' + t.prob) : ''; if (sSub) sSub.innerHTML = t ? t.sub : ''; }
+  if (sCard) {
+    if (!t) { sCard.style.display = 'none'; }
+    else { sCard.style.display = ''; sCard.innerHTML = _probRichHTML(t); }
+  }
 }
 
 function _statsPeriod(offset) {
@@ -12960,11 +13001,7 @@ function renderSessionInsights() {
   // Probabilidad EN VIVO de llegar hoy a 4 h / 5 h (la estrella, va primera).
   const prob = _probTextHoy();
   if (prob) {
-    cards.unshift('<div class="session-insight-card session-insight-prob" id="sessionProbCard">' +
-      '<div class="session-insight-kicker">Hoy · proyección y probabilidad</div>' +
-      '<div class="session-insight-main">' + prob.proj + ' · ' + prob.prob + '</div>' +
-      '<div class="session-insight-sub">' + prob.sub + '</div>' +
-    '</div>');
+    cards.unshift('<div class="session-insight-card prob-card" id="sessionProbCard">' + _probRichHTML(prob) + '</div>');
   }
 
   host.innerHTML = cards.join('');
