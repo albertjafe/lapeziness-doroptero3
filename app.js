@@ -8982,56 +8982,68 @@ function _subtractBlocks(a, b, blocks) {
   return out;
 }
 
-// ¿A qué HORA FÍSICA de hoy llegaría a `target` minutos netos? Reproduce, día a
-// día de la ventana de 3 meses, cómo se acumula el neto a partir de la hora
-// actual (a las horas reales en que ese día se estudió), descontando las franjas
-// bloqueadas de hoy, y busca el instante en que el acumulado alcanza lo que falta.
-// La mediana de esos instantes (entre los días que lo logran) es "la hora a la
-// que sueles llegar". Cambia en vivo con los minutos hechos y la hora actual.
-function _liveTargetETA(nowMin, doneMin, target) {
-  const remaining = target - doneMin;
-  if (remaining <= 0) return { reached: true };
-  const todayIso = _statsISO(new Date());
+// Eficiencia de estudio = minutos netos / minutos brutos "enganchado", sobre la
+// ventana de 3 meses. Para cada día se agrupan las prácticas en bloques (huecos
+// ≤ GAP cuentan como pausa dentro del bloque; huecos mayores = te desenganchaste
+// y no cuentan). bruto = suma de los tramos de bloque; neto = suma de minutos
+// practicados. Es tu ritmo real: cuánto neto sacas por hora de estar a ello,
+// pausas cortas incluidas. Base para predecir la hora de llegada a 4 h / 5 h.
+function _studyEfficiency() {
   const { plants, scope } = _recentPlants();
+  const todayIso = _statsISO(new Date());
   const byDay = {};
   plants.forEach(p => {
     const iso = _statsISO(p.start);
     if (iso === todayIso) return;
-    (byDay[iso] || (byDay[iso] = [])).push({ sm: p.start.getHours() * 60 + p.start.getMinutes(), mins: p.mins });
+    (byDay[iso] || (byDay[iso] = [])).push({ a: p.start.getHours() * 60 + p.start.getMinutes(), m: p.mins });
   });
   const days = Object.keys(byDay);
   if (days.length < 8) return null;
-  const blocks = _getBlockedRangesToday();
-  const cutoff = _horaTopeMin(); // como muy tarde paro a esta hora
-  const etas = [];
+  const GAP = 30; // hueco máx (min) que se considera pausa dentro de la misma sesión
+  let totNet = 0, totGross = 0;
   days.forEach(k => {
-    const segs = byDay[k]
-      .map(p => ({ a: Math.max(p.sm, nowMin), b: Math.min(p.sm + p.mins, cutoff) }))
-      .filter(s => s.b > s.a)
-      .sort((x, y) => x.a - y.a);
-    let acc = 0, eta = null;
-    for (const s of segs) {
-      for (const [fa, fb] of _subtractBlocks(s.a, s.b, blocks)) {
-        const need = remaining - acc;
-        const len = fb - fa;
-        if (len >= need) { eta = fa + need; break; }
-        acc += len;
-      }
-      if (eta != null) break;
-    }
-    if (eta != null) etas.push(eta);
+    const ps = byDay[k].slice().sort((x, y) => x.a - y.a);
+    let bStart = null, bEnd = null;
+    const close = () => { if (bStart != null) totGross += (bEnd - bStart); };
+    ps.forEach(p => {
+      const s = p.a, e = p.a + p.m;
+      totNet += p.m;
+      if (bStart == null) { bStart = s; bEnd = e; }
+      else if (s - bEnd <= GAP) { bEnd = Math.max(bEnd, e); }
+      else { close(); bStart = s; bEnd = e; }
+    });
+    close();
   });
-  if (!etas.length) return { scope, none: true, n: days.length };
-  etas.sort((a, b) => a - b);
-  const etaMin = etas[Math.floor(etas.length / 2)]; // mediana de la hora de llegada
-  // Margen de pausa: el hueco entre ahora y esa hora que NO es estudio neto ni
-  // franja bloqueada. Es decir, cuánto puedes descansar y aún llegar a esa hora.
-  const breakMin = Math.max(0, (etaMin - nowMin) - remaining - _blockOverlapMin(nowMin, etaMin, blocks));
-  return {
-    scope, etaMin, breakMin,
-    share: Math.round(etas.length / days.length * 100),
-    n: days.length,
-  };
+  if (totGross <= 0) return null;
+  let ratio = totNet / totGross;
+  if (ratio > 1) ratio = 1;
+  if (ratio < 0.25) ratio = 0.25; // suelo de seguridad ante datos raros
+  return { ratio, scope, days: days.length };
+}
+
+// ¿A qué HORA FÍSICA de hoy llegaría a `target` minutos netos? A tu ritmo real
+// (eficiencia neta/bruta), para sumar lo que falta necesitas remaining/eficiencia
+// minutos brutos "enganchado"; se avanza desde ahora consumiendo solo tiempo
+// libre (saltando franjas bloqueadas) hasta tu hora tope. Siempre definida (no
+// depende de cuántos días llegaste). Cambia en vivo con minutos, hora y bloqueos.
+function _liveTargetETA(nowMin, doneMin, target) {
+  const remaining = target - doneMin;
+  if (remaining <= 0) return { reached: true };
+  const eff = _studyEfficiency();
+  if (!eff) return null;
+  const grossNeeded = remaining / eff.ratio; // minutos brutos "enganchado" que faltan
+  const blocks = _getBlockedRangesToday();
+  const cutoff = _horaTopeMin();
+  let acc = 0, eta = null;
+  for (const [fa, fb] of _subtractBlocks(nowMin, cutoff, blocks)) {
+    const len = fb - fa;
+    if (acc + len >= grossNeeded) { eta = fa + (grossNeeded - acc); break; }
+    acc += len;
+  }
+  if (eta == null) return { none: true, scope: eff.scope, eff: eff.ratio };
+  // Margen de pausa que tu propio ritmo incluye en ese tramo (bruto − neto).
+  const breakMin = Math.max(0, Math.round(grossNeeded - remaining));
+  return { etaMin: Math.round(eta), breakMin, scope: eff.scope, eff: eff.ratio };
 }
 
 // Estado del día para premios: base del % de la mañana + si ya celebramos 4h/5h.
@@ -9171,7 +9183,8 @@ function _probEtaLine(t) {
       const remaining = target - t.done;
       const nBreaks = Math.max(1, Math.round(remaining / 50));
       const each = Math.round(eta.breakMin / nBreaks);
-      tip = ' title="Puedes descansar ' + eta.breakMin + ' min en total y aún llegar a esa hora — p.ej. ' + nBreaks + ' pausas de ~' + each + ' min"';
+      const ritmo = eta.eff ? ' · ritmo ' + Math.round(eta.eff * 100) + '% (neto/bruto)' : '';
+      tip = ' title="A tu ritmo llegarías a ' + label + ' hacia las ' + _probEtaFmt(eta.etaMin) + '. Margen de pausa ' + eta.breakMin + ' min — p.ej. ' + nBreaks + ' pausas de ~' + each + ' min' + ritmo + '"';
       pausa = '<i class="prob-eta-rest">☕ ' + _fmtBreakShort(eta.breakMin) + '</i>';
     }
     return '<span class="prob-eta-item"' + tip + '><b style="color:' + color + '">' + label + '</b><span>'
