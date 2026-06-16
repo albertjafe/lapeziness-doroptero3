@@ -148,6 +148,73 @@
     letter-spacing: 0.03em;
     border-radius: 6px !important;
   }
+  /* TEMA: Botánico — pliego de herbario, papel cálido, salvia y terracota */
+  [data-theme="botanico"] {
+    --bg: #f4f1e6; --bg2: #fbf9f0; --bg3: #ece7d4;
+    --accent: #5b7f5a; --accent2: #7aa06f;
+    --text: #33402f; --text2: #5e6b50; --text3: #8a9277;
+    --green: #5b7f5a; --orange: #c08a4e; --red: #b5654a;
+    --border: rgba(91,127,90,0.30); --border2: rgba(91,127,90,0.15);
+  }
+  /* BOTÁNICO — tarjetas tipo lámina de herbario: papel + doble filete fino */
+  [data-theme="botanico"] .card,
+  [data-theme="botanico"] .obra-card,
+  [data-theme="botanico"] .session-insight-card,
+  [data-theme="botanico"] .stats-card,
+  [data-theme="botanico"] .prob-card {
+    background: var(--bg2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 4px !important;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.45);
+  }
+  [data-theme="botanico"] .session-hero {
+    background: var(--bg2) !important;
+    border: 1px solid var(--accent) !important;
+    border-radius: 4px !important;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4);
+  }
+  /* BOTÁNICO — etiquetas en serif cursiva (como nombres latinos de un herbario) */
+  [data-theme="botanico"] .obra-name,
+  [data-theme="botanico"] .modal-title,
+  [data-theme="botanico"] .session-hero-title,
+  [data-theme="botanico"] .stats-card-title,
+  [data-theme="botanico"] .section-title,
+  [data-theme="botanico"] #headerTitle {
+    font-family: 'Cormorant Garamond', serif !important;
+    font-style: italic;
+    letter-spacing: 0.01em;
+  }
+  [data-theme="botanico"] .nav-btn span {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+  }
+  [data-theme="botanico"] .nav-btn.active { color: var(--accent); }
+  [data-theme="botanico"] .nav-btn.active svg { stroke: var(--accent); }
+  [data-theme="botanico"] .generate-btn,
+  [data-theme="botanico"] .save-session-btn {
+    font-family: 'Cormorant Garamond', serif !important;
+    font-style: italic;
+    font-size: 21px !important;
+    letter-spacing: 0.03em;
+    border-radius: 4px !important;
+  }
+  /* BOTÁNICO — medidor de solidez: tallo con una hoja en la punta del relleno */
+  [data-theme="botanico"] .obra-sol-bar {
+    height: 5px; border-radius: 999px; background: var(--bg3);
+    border: 1px solid var(--border2); overflow: visible;
+  }
+  [data-theme="botanico"] .obra-sol-fill { position: relative; overflow: visible; }
+  [data-theme="botanico"] .obra-sol-fill::after {
+    content: ''; position: absolute; right: -3px; top: 50%;
+    width: 11px; height: 11px;
+    transform: translateY(-50%) rotate(45deg);
+    background: var(--accent2);
+    border-radius: 0 100% 0 100%;
+    box-shadow: 0 1px 2px rgba(51,64,47,0.22);
+  }
+  [data-theme="botanico"] #obrasList.compact .obra-sol-bar { height: 4px; }
+
   /* COZY SHAPE OVERRIDES */
   [data-theme="cozy"] .card { border-radius: var(--cozy-radius) !important; }
   [data-theme="cozy"] .obra-card { border-radius: var(--cozy-radius) !important; }
