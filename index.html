@@ -519,7 +519,11 @@
 <div class="modal-overlay" id="modalMuseo">
   <div class="modal" style="max-width:560px">
     <div class="modal-title">🏛 Museo · catedrales por mes</div>
-    <div style="font-size:11.5px;color:var(--text2);line-height:1.5;margin-bottom:12px">Cada mes construyes una catedral con tus sesiones. Al acabar el mes queda aquí para siempre.</div>
+    <div style="font-size:11.5px;color:var(--text2);line-height:1.5;margin-bottom:10px">Cada catedral se levanta con tus sesiones. Al juntar las horas necesarias se completa y queda aquí para siempre (da igual si tarda uno o dos meses).</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;font-size:12.5px;color:var(--text2)">
+      <span>Horas por catedral</span>
+      <input class="modal-input" id="catedralHoras" type="number" min="5" max="300" step="1" style="margin:0;width:96px;flex:0 0 auto" onchange="setCatedralHoras(this.value)">
+    </div>
     <div id="museoList" class="museo-grid"></div>
     <div class="modal-buttons">
       <button class="modal-btn secondary" onclick="closeModal('modalMuseo')">Cerrar</button>
