@@ -8913,6 +8913,19 @@ function _blockOverlapMin(s, e, ranges) {
 function _blockedMinAfter(nowMin) {
   return _getBlockedRangesToday().reduce((t, r) => t + Math.max(0, r.e - Math.max(r.s, nowMin)), 0);
 }
+// Hora tope: como muy tarde paro a esta hora (minutos desde medianoche).
+// Por defecto medianoche (1440). Preferencia estable, no por día.
+function _horaTopeMin() {
+  const v = localStorage.getItem('alberto_hora_tope');
+  if (!v) return 1440;
+  const m = _blkHmToMin(v);
+  return (m > 0 && m <= 1440) ? m : 1440;
+}
+function setHoraTope(v) {
+  if (v) localStorage.setItem('alberto_hora_tope', v);
+  else localStorage.removeItem('alberto_hora_tope');
+  _afterBlockedChange();
+}
 
 function _liveIntenseProb(nowMin, doneMin) {
   const todayIso = _statsISO(new Date());
@@ -8989,10 +9002,11 @@ function _liveTargetETA(nowMin, doneMin, target) {
   const days = Object.keys(byDay);
   if (days.length < 8) return null;
   const blocks = _getBlockedRangesToday();
+  const cutoff = _horaTopeMin(); // como muy tarde paro a esta hora
   const etas = [];
   days.forEach(k => {
     const segs = byDay[k]
-      .map(p => ({ a: Math.max(p.sm, nowMin), b: p.sm + p.mins }))
+      .map(p => ({ a: Math.max(p.sm, nowMin), b: Math.min(p.sm + p.mins, cutoff) }))
       .filter(s => s.b > s.a)
       .sort((x, y) => x.a - y.a);
     let acc = 0, eta = null;
@@ -9180,6 +9194,8 @@ function openHorasBloqueadas(ev) {
   if (ev && ev.stopPropagation) ev.stopPropagation();
   openModal('modalHorasBloqueadas');
   renderHorasBloqueadasList();
+  const tope = document.getElementById('horaTope');
+  if (tope) tope.value = localStorage.getItem('alberto_hora_tope') || '';
 }
 function renderHorasBloqueadasList() {
   const cont = document.getElementById('horasBloqueadasList');

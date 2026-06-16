@@ -497,6 +497,11 @@
       <input class="modal-input" id="bloqHasta" type="time" style="margin:0;flex:1">
       <button class="modal-btn primary" style="flex:0 0 auto;padding:10px 15px" onclick="addHoraBloqueada()">+</button>
     </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border2);font-size:12.5px;color:var(--text2)">
+      <span>Como muy tarde, paro a las</span>
+      <input class="modal-input" id="horaTope" type="time" style="margin:0;width:118px;flex:0 0 auto" onchange="setHoraTope(this.value)">
+    </div>
+    <div style="font-size:10.5px;color:var(--text3);margin-top:6px">Tope para estimar la hora de 4&nbsp;h&nbsp;/&nbsp;5&nbsp;h. Vacío = medianoche.</div>
     <div class="modal-buttons">
       <button class="modal-btn secondary" onclick="closeModal('modalHorasBloqueadas')">Listo</button>
     </div>
