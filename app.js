@@ -213,6 +213,7 @@ if (!db.sessionPlants) db.sessionPlants = [];
 // ─── UI HELPERS ─────────────────────────────────────────────────────────────
 
 function showView(name) {
+  document.body.setAttribute('data-view', name);
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
@@ -238,6 +239,21 @@ function showView(name) {
     });
     renderSesionesHistorial(); _histListApplyPref();
   }
+}
+
+// Modo limpio de la pantalla Sesión: oculta los textos pequeños de apoyo
+// (subtítulos de insights, contexto/ánimo de la proyección) para quitar ruido.
+// El botón ℹ alterna entre limpio y detallado; la preferencia se persiste.
+function _applySessionClean() {
+  const clean = localStorage.getItem('alberto_session_clean') !== '0';
+  document.body.classList.toggle('session-clean', clean);
+  const btn = document.getElementById('sessionInfoBtn');
+  if (btn) btn.classList.toggle('active', !clean);
+}
+function toggleSessionInfo() {
+  const clean = localStorage.getItem('alberto_session_clean') !== '0';
+  localStorage.setItem('alberto_session_clean', clean ? '0' : '1');
+  _applySessionClean();
 }
 
 function showToast(msg) {
@@ -3968,7 +3984,7 @@ let _hechoZoneEnd = null;
 
 function solPctColor(pct) {
   if (pct >= 85) return 'var(--green)';
-  if (pct >= 60) return '#8aaa30';
+  if (pct >= 60) return 'var(--sol-mid, #8aaa30)';
   if (pct >= 40) return 'var(--accent)';
   if (pct >= 20) return 'var(--orange)';
   return 'var(--red)';
@@ -8095,7 +8111,7 @@ function computeUrgencia(obraId) {
 
 function readinessColor(pct) {
   if (pct >= 80) return 'var(--green)';
-  if (pct >= 60) return '#8aaa30';
+  if (pct >= 60) return 'var(--sol-mid, #8aaa30)';
   if (pct >= 40) return 'var(--accent)';
   if (pct >= 20) return 'var(--orange)';
   return 'var(--red)';
@@ -10706,7 +10722,7 @@ function loadAppTitle() {
 
 // Color de fondo base de cada tema. Se usa para tintar la barra del
 // navegador (meta theme-color) y que la app no se sienta "una web".
-const THEME_BG = { '': '#11151c', cozy: '#faf4ea', bruma: '#f3f4ec', velvet: '#131a15', concierto: '#160d10', botanico: '#f4f1e6' };
+const THEME_BG = { '': '#11151c', cozy: '#faf4ea', bruma: '#f3f4ec', velvet: '#131a15', concierto: '#160d10', botanico: '#f4f1e6', swiss: '#fbfaf8' };
 function applyThemeColor(theme) {
   const col = THEME_BG[theme] || THEME_BG[''];
   let meta = document.querySelector('meta[name="theme-color"]');
@@ -12437,6 +12453,8 @@ function adjustTopPadding() {
 }
 // Run immediately, after 100ms, and on resize/orientation change
 adjustTopPadding();
+if (!document.body.getAttribute('data-view')) document.body.setAttribute('data-view', 'session');
+_applySessionClean();
 setTimeout(adjustTopPadding, 100);
 setTimeout(adjustTopPadding, 500);
 setTimeout(initEstadoSliders, 300);

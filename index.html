@@ -72,32 +72,11 @@
   </div>
   <div style="display:flex;align-items:center;gap:8px">
     <div style="font-size:10px;color:var(--text3)" id="packNameHeader"></div>
+    <button class="settings-icon" id="sessionInfoBtn" onclick="toggleSessionInfo()" title="Mostrar/ocultar detalles">ℹ</button>
     <button class="settings-icon" onclick="openSettings()" title="Ajustes">⚙</button>
   </div>
 </div>
 
-<div class="nav">
-  <button class="nav-btn active" onclick="showView('session')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>
-    <span>Sesión</span>
-  </button>
-  <button class="nav-btn" onclick="showView('cronometro')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M10 2.5h4M12 2.5V6"/></svg>
-    <span>Cronómetro</span>
-  </button>
-  <button class="nav-btn" onclick="showView('obras')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="17.5" r="2.6"/><circle cx="17.5" cy="15" r="2.6"/><path d="M9.6 17.5V6.5l10.5-2.5V15"/></svg>
-    <span>Obras</span>
-  </button>
-  <button class="nav-btn" onclick="showView('calendario')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
-    <span>Calendario</span>
-  </button>
-  <button class="nav-btn" onclick="showView('historial')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg>
-    <span>Estadísticas</span>
-  </button>
-</div>
 </div><!-- end topbar -->
 
 <div class="app-content">
@@ -616,6 +595,10 @@
       <div class="theme-option" data-theme="botanico" onclick="setTheme('botanico',this)">
         <div class="theme-swatch" style="background:linear-gradient(135deg,#f4f1e6 45%,#5b7f5a 100%)"></div>
         <div class="theme-option-name">🌿 Botánico</div>
+      </div>
+      <div class="theme-option" data-theme="swiss" onclick="setTheme('swiss',this)">
+        <div class="theme-swatch" style="background:linear-gradient(135deg,#ffffff 45%,#e8492b 100%)"></div>
+        <div class="theme-option-name">◼ Swiss</div>
       </div>
       <div class="theme-option" data-theme="" onclick="setTheme('',this)">
         <div class="theme-swatch" style="background:linear-gradient(135deg,#11151c 50%,#d2b285 100%)"></div>
@@ -1436,6 +1419,29 @@
 </div>
 
 </div> <!-- end app-content -->
+
+<nav class="nav nav-bottom">
+  <button class="nav-btn active" onclick="showView('session')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>
+    <span>Sesión</span>
+  </button>
+  <button class="nav-btn" onclick="showView('cronometro')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M10 2.5h4M12 2.5V6"/></svg>
+    <span>Cronómetro</span>
+  </button>
+  <button class="nav-btn" onclick="showView('obras')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="17.5" r="2.6"/><circle cx="17.5" cy="15" r="2.6"/><path d="M9.6 17.5V6.5l10.5-2.5V15"/></svg>
+    <span>Obras</span>
+  </button>
+  <button class="nav-btn" onclick="showView('calendario')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
+    <span>Calendario</span>
+  </button>
+  <button class="nav-btn" onclick="showView('historial')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg>
+    <span>Estadísticas</span>
+  </button>
+</nav>
 
 <div class="toast" id="toast"></div>
 
