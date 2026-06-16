@@ -774,6 +774,22 @@
   .prob-tile.p5 .prob-bar i { background: var(--orange); }
   .prob-tile.done .prob-tile-pct { color: var(--green); }
   .prob-tile.done .prob-bar i { background: var(--green); }
+  .prob-eta {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 7px 14px;
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border2);
+  }
+  .prob-eta-cap {
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text3); font-weight: 700;
+  }
+  .prob-eta-item { display: inline-flex; align-items: baseline; gap: 6px; }
+  .prob-eta-item b { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; }
+  .prob-eta-item > span {
+    font-family: 'JetBrains Mono', monospace; font-weight: 700;
+    font-size: 14px; color: var(--text);
+  }
+  .prob-eta-item.none > span { color: var(--text3); font-family: inherit; font-weight: 600; font-size: 11px; }
+  .prob-eta-item.done > span { color: var(--green); }
   .prob-tip {
     margin-top: 12px; padding-top: 10px;
     border-top: 1px solid var(--border2);

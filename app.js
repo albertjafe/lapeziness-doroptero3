@@ -8954,6 +8954,69 @@ function _liveIntenseProb(nowMin, doneMin) {
   };
 }
 
+// Devuelve los sub-tramos LIBRES de [a,b] tras quitar las franjas bloqueadas.
+function _subtractBlocks(a, b, blocks) {
+  if (!blocks || !blocks.length) return [[a, b]];
+  const out = [];
+  let cur = a;
+  for (const r of blocks) {
+    if (r.e <= cur || r.s >= b) continue;
+    if (r.s > cur) out.push([cur, Math.min(r.s, b)]);
+    cur = Math.max(cur, r.e);
+    if (cur >= b) break;
+  }
+  if (cur < b) out.push([cur, b]);
+  return out;
+}
+
+// ¿A qué HORA FÍSICA de hoy llegaría a `target` minutos netos? Reproduce, día a
+// día de la ventana de 3 meses, cómo se acumula el neto a partir de la hora
+// actual (a las horas reales en que ese día se estudió), descontando las franjas
+// bloqueadas de hoy, y busca el instante en que el acumulado alcanza lo que falta.
+// La mediana de esos instantes (entre los días que lo logran) es "la hora a la
+// que sueles llegar". Cambia en vivo con los minutos hechos y la hora actual.
+function _liveTargetETA(nowMin, doneMin, target) {
+  const remaining = target - doneMin;
+  if (remaining <= 0) return { reached: true };
+  const todayIso = _statsISO(new Date());
+  const { plants, scope } = _recentPlants();
+  const byDay = {};
+  plants.forEach(p => {
+    const iso = _statsISO(p.start);
+    if (iso === todayIso) return;
+    (byDay[iso] || (byDay[iso] = [])).push({ sm: p.start.getHours() * 60 + p.start.getMinutes(), mins: p.mins });
+  });
+  const days = Object.keys(byDay);
+  if (days.length < 8) return null;
+  const blocks = _getBlockedRangesToday();
+  const etas = [];
+  days.forEach(k => {
+    const segs = byDay[k]
+      .map(p => ({ a: Math.max(p.sm, nowMin), b: p.sm + p.mins }))
+      .filter(s => s.b > s.a)
+      .sort((x, y) => x.a - y.a);
+    let acc = 0, eta = null;
+    for (const s of segs) {
+      for (const [fa, fb] of _subtractBlocks(s.a, s.b, blocks)) {
+        const need = remaining - acc;
+        const len = fb - fa;
+        if (len >= need) { eta = fa + need; break; }
+        acc += len;
+      }
+      if (eta != null) break;
+    }
+    if (eta != null) etas.push(eta);
+  });
+  if (!etas.length) return { scope, none: true, n: days.length };
+  etas.sort((a, b) => a - b);
+  return {
+    scope,
+    etaMin: etas[Math.floor(etas.length / 2)], // mediana de la hora de llegada
+    share: Math.round(etas.length / days.length * 100),
+    n: days.length,
+  };
+}
+
 // Estado del día para premios: base del % de la mañana + si ya celebramos 4h/5h.
 function _probDayState() {
   const today = _statsISO(new Date());
@@ -9026,7 +9089,11 @@ function _probTextHoy() {
   if (done >= 300) cronoLine = '<strong>5 h netas hoy</strong> ✦';
   else if (done >= 240) cronoLine = '<strong>4 h hechas</strong> · 5 h ' + r.p5 + '%';
   else cronoLine = '<strong>' + projVal + '</strong> · 4 h ' + r.p4 + '% · 5 h ' + r.p5 + '%';
-  return { proj, prob, sub, cronoLine, p4: r.p4, p5: r.p5, done, projVal, projExtra, tip, reward, celebrate, base4, scope: r.scope, hhmm, doneTxt };
+  // Hora física a la que sueles llegar a 4 h / 5 h (mediana de la ventana de 3 meses,
+  // contando lo ya hecho, la hora actual y los bloqueos). Se recalcula en vivo.
+  const eta4 = done >= 240 ? { reached: true } : _liveTargetETA(nowMin, done, 240);
+  const eta5 = done >= 300 ? { reached: true } : _liveTargetETA(nowMin, done, 300);
+  return { proj, prob, sub, cronoLine, p4: r.p4, p5: r.p5, done, projVal, projExtra, tip, reward, celebrate, base4, scope: r.scope, hhmm, doneTxt, eta4, eta5 };
 }
 
 // Tarjeta rica (coloreada, por bloques) para la pantalla de Sesión.
@@ -9063,7 +9130,26 @@ function _probRichHTML(t) {
         + '</div>'
       + '</div>'
     + '</div>'
+    + _probEtaLine(t)
     + '<div class="prob-tip' + (t.reward ? ' reward-' + t.reward : '') + '">' + t.tip + '</div>';
+}
+
+// Línea "¿hasta qué hora?": hora física de hoy a la que llegarías a 4 h / 5 h.
+function _probEtaFmt(min) {
+  if (min >= 1440) return _fmtHourMin(min - 1440) + ' (mñn)';
+  return _fmtHourMin(min);
+}
+function _probEtaLine(t) {
+  const item = (eta, label, color) => {
+    if (!eta) return '';
+    if (eta.reached) return '<span class="prob-eta-item done"><b>' + label + '</b><span>✓</span></span>';
+    if (eta.none) return '<span class="prob-eta-item none"><b>' + label + '</b><span>fuera de alcance</span></span>';
+    return '<span class="prob-eta-item"><b style="color:' + color + '">' + label + '</b><span>' + _probEtaFmt(eta.etaMin) + '</span></span>';
+  };
+  const a = item(t.eta4, '4 h', 'var(--accent)');
+  const b = item(t.eta5, '5 h', 'var(--orange)');
+  if (!a && !b) return '';
+  return '<div class="prob-eta"><span class="prob-eta-cap">Quédate hasta</span>' + a + b + '</div>';
 }
 
 // ── UI de horas bloqueadas ────────────────────────────────────────────────────
