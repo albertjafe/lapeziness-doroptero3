@@ -484,6 +484,25 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modalHorasBloqueadas">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title">Horas bloqueadas hoy</div>
+    <div style="font-size:11.5px;color:var(--text2);line-height:1.5;margin-bottom:12px">
+      Marca las franjas en las que <b>no</b> podrás estudiar (cita, clase…). La probabilidad de llegar a 4&nbsp;h&nbsp;/&nbsp;5&nbsp;h se recalcula contando solo el tiempo que te queda libre.
+    </div>
+    <div id="horasBloqueadasList"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
+      <input class="modal-input" id="bloqDesde" type="time" style="margin:0;flex:1">
+      <span style="color:var(--text3)">→</span>
+      <input class="modal-input" id="bloqHasta" type="time" style="margin:0;flex:1">
+      <button class="modal-btn primary" style="flex:0 0 auto;padding:10px 15px" onclick="addHoraBloqueada()">+</button>
+    </div>
+    <div class="modal-buttons">
+      <button class="modal-btn secondary" onclick="closeModal('modalHorasBloqueadas')">Listo</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalAddObra">
   <div class="modal add-obra-modal">
     <div class="modal-title">Añadir estudio</div>

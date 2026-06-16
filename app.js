@@ -6551,6 +6551,28 @@ function emptyStateHTML(icon, title, sub) {
 
 // Tarjeta de obra minimalista: nombre, compositor, dificultad, duración y
 // SOLIDEZ (única métrica). Tocar la barra de solidez abre el medidor rápido.
+// Anillo de progreso reutilizable (medidor circular). Usado por el tema Swiss
+// en la solidez de las obras y en los tiles de proyección 4 h / 5 h.
+function _ringMeterSVG(pct, col, opts) {
+  opts = opts || {};
+  const size = opts.size || 60, sw = opts.stroke || 6;
+  const r = (size - sw) / 2, cx = size / 2;
+  const c = 2 * Math.PI * r;
+  const p = Math.max(0, Math.min(100, pct || 0));
+  const off = c * (1 - p / 100);
+  const fs = opts.centerSize || Math.round(size * 0.30);
+  const center = (opts.center != null) ? opts.center : String(Math.round(p));
+  return '<svg class="ring-meter" viewBox="0 0 ' + size + ' ' + size + '" width="' + size + '" height="' + size + '" aria-hidden="true">'
+    + '<circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke="var(--bg3)" stroke-width="' + sw + '"/>'
+    + '<circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="' + sw + '"'
+    + ' stroke-linecap="round" stroke-dasharray="' + c.toFixed(2) + '" stroke-dashoffset="' + off.toFixed(2) + '"'
+    + ' transform="rotate(-90 ' + cx + ' ' + cx + ')"/>'
+    + '<text x="' + cx + '" y="' + (cx + fs * 0.34) + '" text-anchor="middle" font-size="' + fs + '"'
+    + ' font-weight="800" fill="' + (opts.textColor || 'var(--text)') + '"'
+    + ' font-family="-apple-system,Helvetica Neue,Arial,sans-serif">' + center + '</text>'
+    + '</svg>';
+}
+
 function renderObraCardSimple(o) {
   const dif = o.dificultad || 3;
   const difBadge = '<span class="dif-badge d' + dif + '" title="Dificultad ' + dif + '/10">' + dif + '</span>';
@@ -6592,6 +6614,7 @@ function renderObraCardSimple(o) {
     +     '<button class="obra-quick-btn delete obra-edit-action" title="Eliminar" onclick="confirmDeleteObra(\'' + o.id + '\')">' + ICON_DELETE + '</button>'
     +   '</div>'
     +   '<button class="obra-simple-sol' + (pulse ? ' pulse' : '') + '" onclick="openQuickSolidezTarget(\'' + o.id + '\',null)">'
+    +     '<div class="obra-sol-ring">' + _ringMeterSVG(pct, col, { size: 62, stroke: 6, center: hasHist ? Math.round(pct) : '–', textColor: col }) + '</div>'
     +     '<div class="obra-sol-bar"><div class="obra-sol-fill" style="width:' + pct + '%;background:' + col + '"></div></div>'
     +     '<div class="obra-sol-row">'
     +       '<strong style="color:' + col + '">' + (hasHist ? pct + '%' : '—') + '</strong>'
@@ -8862,6 +8885,35 @@ function _recentPlants() {
   return { plants: all, scope: 'histórico' };
 }
 
+// ── HORAS BLOQUEADAS HOY ──────────────────────────────────────────────────────
+// Franjas en las que Alberto sabe que NO podrá estudiar (cita, clase, etc.).
+// Se guardan solo para el día de hoy (se resetean en cuanto cambia la fecha) y
+// el modelo de probabilidad descuenta el tiempo histórico que caería en ellas.
+function _blkHmToMin(hm) { const a = String(hm).split(':'); return (parseInt(a[0], 10) || 0) * 60 + (parseInt(a[1], 10) || 0); }
+function _blockedDayState() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem('alberto_blocked_hoy') || 'null'); } catch (e) {}
+  const today = _statsISO(new Date());
+  if (!s || s.date !== today || !Array.isArray(s.blocks)) s = { date: today, blocks: [] };
+  return s;
+}
+function _blockedDaySave(s) { try { localStorage.setItem('alberto_blocked_hoy', JSON.stringify(s)); } catch (e) {} }
+function _getBlockedRangesToday() {
+  return _blockedDayState().blocks
+    .map(b => ({ s: _blkHmToMin(b.start), e: _blkHmToMin(b.end) }))
+    .filter(r => r.e > r.s)
+    .sort((a, b) => a.s - b.s);
+}
+function _blockOverlapMin(s, e, ranges) {
+  let o = 0;
+  for (const r of ranges) { const a = Math.max(s, r.s), b = Math.min(e, r.e); if (b > a) o += b - a; }
+  return o;
+}
+// Minutos bloqueados que aún quedan por delante (a partir de nowMin).
+function _blockedMinAfter(nowMin) {
+  return _getBlockedRangesToday().reduce((t, r) => t + Math.max(0, r.e - Math.max(r.s, nowMin)), 0);
+}
+
 function _liveIntenseProb(nowMin, doneMin) {
   const todayIso = _statsISO(new Date());
   const { plants, scope } = _recentPlants();
@@ -8874,10 +8926,17 @@ function _liveIntenseProb(nowMin, doneMin) {
   const days = Object.keys(byDay);
   if (days.length < 8) return null; // pocos datos para fiarse
   let r4 = 0, r5 = 0;
+  const blocks = _getBlockedRangesToday(); // franjas de hoy en las que no estudiaré
   const projs = []; // total proyectado de hoy (hecho + lo que ese día se hizo tras esta hora)
   days.forEach(k => {
     let after = 0;
-    byDay[k].forEach(p => { if (p.sm >= nowMin) after += p.mins; });
+    byDay[k].forEach(p => {
+      if (p.sm < nowMin) return;
+      let m = p.mins;
+      // Descuenta el tiempo de esa práctica histórica que hoy caería en una franja bloqueada.
+      if (blocks.length) m -= _blockOverlapMin(p.sm, p.sm + p.mins, blocks);
+      if (m > 0) after += m;
+    });
     const proj = doneMin + after;
     projs.push(proj);
     if (proj >= 240) r4++;
@@ -8973,10 +9032,15 @@ function _probTextHoy() {
 // Tarjeta rica (coloreada, por bloques) para la pantalla de Sesión.
 function _probRichHTML(t) {
   const done240 = t.done >= 240, done300 = t.done >= 300;
+  const blkTotal = _fmtBlockedTotal();
+  const blkBtn = '<button class="prob-bloqueo-btn' + (blkTotal ? ' on' : '') + '"'
+    + ' onclick="openHorasBloqueadas(event)" title="Horas que hoy no podrás estudiar">⊘'
+    + (blkTotal ? ' ' + blkTotal : '') + '</button>';
   return '<div class="prob-head">'
       + '<span class="prob-head-left"><span class="prob-kicker">Hoy</span>'
         + '<span class="prob-scope">' + (t.scope || '3 meses') + '</span></span>'
       + '<span class="prob-context">' + t.hhmm + ' · llevas <b>' + t.doneTxt + '</b></span>'
+      + blkBtn
     + '</div>'
     + '<div class="prob-body">'
       + '<div class="prob-proj">'
@@ -8986,11 +9050,13 @@ function _probRichHTML(t) {
       + '</div>'
       + '<div class="prob-tiles">'
         + '<div class="prob-tile p4' + (done240 ? ' done' : '') + '">'
+          + '<div class="prob-tile-ring">' + _ringMeterSVG(done240 ? 100 : t.p4, done240 ? 'var(--green)' : 'var(--accent)', { size: 58, stroke: 6, center: done240 ? '✓' : Math.round(t.p4), centerSize: done240 ? 24 : 18, textColor: done240 ? 'var(--green)' : 'var(--accent)' }) + '</div>'
           + '<div class="prob-tile-pct">' + (done240 ? '✓' : t.p4 + '<span>%</span>') + '</div>'
           + '<div class="prob-tile-label">4 horas</div>'
           + '<div class="prob-bar"><i style="width:' + (done240 ? 100 : t.p4) + '%"></i></div>'
         + '</div>'
         + '<div class="prob-tile p5' + (done300 ? ' done' : '') + '">'
+          + '<div class="prob-tile-ring">' + _ringMeterSVG(done300 ? 100 : t.p5, done300 ? 'var(--green)' : 'var(--orange)', { size: 58, stroke: 6, center: done300 ? '✓' : Math.round(t.p5), centerSize: done300 ? 24 : 18, textColor: done300 ? 'var(--green)' : 'var(--orange)' }) + '</div>'
           + '<div class="prob-tile-pct">' + (done300 ? '✓' : t.p5 + '<span>%</span>') + '</div>'
           + '<div class="prob-tile-label">5 horas</div>'
           + '<div class="prob-bar"><i style="width:' + (done300 ? 100 : t.p5) + '%"></i></div>'
@@ -8998,6 +9064,56 @@ function _probRichHTML(t) {
       + '</div>'
     + '</div>'
     + '<div class="prob-tip' + (t.reward ? ' reward-' + t.reward : '') + '">' + t.tip + '</div>';
+}
+
+// ── UI de horas bloqueadas ────────────────────────────────────────────────────
+function _fmtBlockedTotal() {
+  const tot = _getBlockedRangesToday().reduce((t, r) => t + (r.e - r.s), 0);
+  if (!tot) return '';
+  const h = Math.floor(tot / 60), m = tot % 60;
+  return h ? (m ? h + 'h' + m : h + 'h') : m + 'min';
+}
+function openHorasBloqueadas(ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  openModal('modalHorasBloqueadas');
+  renderHorasBloqueadasList();
+}
+function renderHorasBloqueadasList() {
+  const cont = document.getElementById('horasBloqueadasList');
+  if (!cont) return;
+  const s = _blockedDayState();
+  if (!s.blocks.length) {
+    cont.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:6px 0">Sin franjas bloqueadas. Añade abajo las horas que tienes ocupadas hoy.</div>';
+    return;
+  }
+  cont.innerHTML = s.blocks.slice()
+    .sort((a, b) => _blkHmToMin(a.start) - _blkHmToMin(b.start))
+    .map((b, i) => '<div class="bloq-chip"><span>' + b.start + ' → ' + b.end + '</span>'
+      + '<button onclick="removeHoraBloqueada(' + i + ')" title="Quitar">✕</button></div>').join('');
+}
+function addHoraBloqueada() {
+  const d = document.getElementById('bloqDesde'), h = document.getElementById('bloqHasta');
+  if (!d || !h || !d.value || !h.value) { showToast('Indica desde y hasta'); return; }
+  if (_blkHmToMin(h.value) <= _blkHmToMin(d.value)) { showToast('«Hasta» debe ser posterior a «Desde»'); return; }
+  const s = _blockedDayState();
+  s.blocks.push({ start: d.value, end: h.value });
+  _blockedDaySave(s);
+  d.value = ''; h.value = '';
+  renderHorasBloqueadasList();
+  _afterBlockedChange();
+}
+function removeHoraBloqueada(i) {
+  const s = _blockedDayState();
+  const sorted = s.blocks.slice().sort((a, b) => _blkHmToMin(a.start) - _blkHmToMin(b.start));
+  const target = sorted[i];
+  s.blocks = s.blocks.filter(b => b !== target);
+  _blockedDaySave(s);
+  renderHorasBloqueadasList();
+  _afterBlockedChange();
+}
+function _afterBlockedChange() {
+  if (typeof renderSessionInsights === 'function') renderSessionInsights();
+  if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true);
 }
 
 // Refresca los dos sitios donde vive la probabilidad de hoy: el cronómetro

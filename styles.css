@@ -283,10 +283,24 @@
     font-weight: 800 !important; font-style: normal !important;
     border-radius: 0 !important; letter-spacing: 0.01em;
   }
-  /* SWISS — barra de solidez fina y recta (sin redondear) */
+  /* Anillos de progreso: ocultos por defecto, el tema Swiss los activa */
+  .obra-sol-ring, .prob-tile-ring { display: none; }
+  .ring-meter { display: block; }
+  /* SWISS — solidez como anillo (sustituye barra + fila de texto) */
+  [data-theme="swiss"] .obra-sol-ring {
+    display: flex; justify-content: flex-end;
+  }
   [data-theme="swiss"] .obra-sol-bar,
-  [data-theme="swiss"] .obra-sol-fill { border-radius: 0 !important; }
-  [data-theme="swiss"] .obra-sol-bar { height: 6px; }
+  [data-theme="swiss"] .obra-sol-row { display: none; }
+  [data-theme="swiss"] .obra-simple-sol { margin-top: 8px; }
+  /* SWISS — proyección 4h/5h como donuts (sustituye %+barra) */
+  [data-theme="swiss"] .prob-tile {
+    background: transparent !important; padding: 0; width: auto;
+  }
+  [data-theme="swiss"] .prob-tile-ring { display: flex; justify-content: center; }
+  [data-theme="swiss"] .prob-tile-pct,
+  [data-theme="swiss"] .prob-bar { display: none; }
+  [data-theme="swiss"] .prob-tile-label { margin-top: 6px; }
 
   /* MODO LIMPIO en Sesión: oculta textos pequeños de apoyo (botón ℹ los revela) */
   #sessionInfoBtn { display: none; }
@@ -696,6 +710,29 @@
     font-family: 'JetBrains Mono', monospace;
   }
   .prob-context b { color: var(--text2, var(--text)); font-weight: 700; }
+  .prob-bloqueo-btn {
+    flex: 0 0 auto; background: transparent; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 20px;
+    color: var(--text3); font-size: 11px; padding: 2px 9px;
+    font-family: 'JetBrains Mono', monospace; white-space: nowrap;
+    -webkit-tap-highlight-color: transparent; line-height: 1.6;
+  }
+  .prob-bloqueo-btn.on {
+    color: var(--orange); border-color: var(--orange);
+    background: color-mix(in srgb, var(--orange) 12%, transparent);
+    font-weight: 700;
+  }
+  .bloq-chip {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 8px 6px 8px 12px;
+    border-bottom: 1px solid var(--border2);
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text);
+  }
+  .bloq-chip button {
+    background: transparent; border: none; color: var(--text3);
+    font-size: 14px; cursor: pointer; padding: 4px 6px; line-height: 1;
+  }
+  .bloq-chip button:hover { color: var(--red); }
   .prob-body { display: flex; align-items: stretch; gap: 14px; }
   .prob-proj {
     flex: 1 1 0; min-width: 0;
