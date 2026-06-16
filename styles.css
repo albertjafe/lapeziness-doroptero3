@@ -790,6 +790,10 @@
   }
   .prob-eta-item.none > span { color: var(--text3); font-family: inherit; font-weight: 600; font-size: 11px; }
   .prob-eta-item.done > span { color: var(--green); }
+  .prob-eta-rest {
+    font-style: normal; font-size: 10.5px; color: var(--text3);
+    font-family: 'JetBrains Mono', monospace; margin-left: 1px;
+  }
   .prob-tip {
     margin-top: 12px; padding-top: 10px;
     border-top: 1px solid var(--border2);

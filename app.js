@@ -9009,9 +9009,12 @@ function _liveTargetETA(nowMin, doneMin, target) {
   });
   if (!etas.length) return { scope, none: true, n: days.length };
   etas.sort((a, b) => a - b);
+  const etaMin = etas[Math.floor(etas.length / 2)]; // mediana de la hora de llegada
+  // Margen de pausa: el hueco entre ahora y esa hora que NO es estudio neto ni
+  // franja bloqueada. Es decir, cuánto puedes descansar y aún llegar a esa hora.
+  const breakMin = Math.max(0, (etaMin - nowMin) - remaining - _blockOverlapMin(nowMin, etaMin, blocks));
   return {
-    scope,
-    etaMin: etas[Math.floor(etas.length / 2)], // mediana de la hora de llegada
+    scope, etaMin, breakMin,
     share: Math.round(etas.length / days.length * 100),
     n: days.length,
   };
@@ -9139,15 +9142,29 @@ function _probEtaFmt(min) {
   if (min >= 1440) return _fmtHourMin(min - 1440) + ' (mñn)';
   return _fmtHourMin(min);
 }
+function _fmtBreakShort(min) {
+  if (min >= 60) { const h = Math.floor(min / 60), m = min % 60; return m ? h + 'h' + m : h + 'h'; }
+  return min + 'm';
+}
 function _probEtaLine(t) {
-  const item = (eta, label, color) => {
+  const item = (eta, label, target, color) => {
     if (!eta) return '';
     if (eta.reached) return '<span class="prob-eta-item done"><b>' + label + '</b><span>✓</span></span>';
     if (eta.none) return '<span class="prob-eta-item none"><b>' + label + '</b><span>fuera de alcance</span></span>';
-    return '<span class="prob-eta-item"><b style="color:' + color + '">' + label + '</b><span>' + _probEtaFmt(eta.etaMin) + '</span></span>';
+    let pausa = '', tip = '';
+    if (eta.breakMin > 0) {
+      // Sugerencia de reparto: una pausa por cada ~50 min de estudio restante.
+      const remaining = target - t.done;
+      const nBreaks = Math.max(1, Math.round(remaining / 50));
+      const each = Math.round(eta.breakMin / nBreaks);
+      tip = ' title="Puedes descansar ' + eta.breakMin + ' min en total y aún llegar a esa hora — p.ej. ' + nBreaks + ' pausas de ~' + each + ' min"';
+      pausa = '<i class="prob-eta-rest">☕ ' + _fmtBreakShort(eta.breakMin) + '</i>';
+    }
+    return '<span class="prob-eta-item"' + tip + '><b style="color:' + color + '">' + label + '</b><span>'
+      + _probEtaFmt(eta.etaMin) + '</span>' + pausa + '</span>';
   };
-  const a = item(t.eta4, '4 h', 'var(--accent)');
-  const b = item(t.eta5, '5 h', 'var(--orange)');
+  const a = item(t.eta4, '4 h', 240, 'var(--accent)');
+  const b = item(t.eta5, '5 h', 300, 'var(--orange)');
   if (!a && !b) return '';
   return '<div class="prob-eta"><span class="prob-eta-cap">Quédate hasta</span>' + a + b + '</div>';
 }
