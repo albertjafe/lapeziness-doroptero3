@@ -575,9 +575,9 @@ function resolveThemeBg2() {
     parent.removeChild(tmp);
     if (bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)') return bg;
   } catch(e) {}
-  // Fallback based on current theme
-  var t = document.documentElement.getAttribute('data-theme') || 'cozy';
-  return (t === 'noche' || t === 'estudio') ? '#2a2520' : '#e8ddd0';
+  // Fallback based on current theme (oscuros: Noche '', Abeto, Concierto)
+  var t = document.documentElement.getAttribute('data-theme') || '';
+  return (t === '' || t === 'velvet' || t === 'concierto' || t === 'noche' || t === 'estudio') ? '#2a2520' : '#e8ddd0';
 }
 
 function fillEstadoSlider(slider, color) {
@@ -10706,7 +10706,7 @@ function loadAppTitle() {
 
 // Color de fondo base de cada tema. Se usa para tintar la barra del
 // navegador (meta theme-color) y que la app no se sienta "una web".
-const THEME_BG = { '': '#11151c', cozy: '#faf4ea', bruma: '#f3f4ec', velvet: '#131a15' };
+const THEME_BG = { '': '#11151c', cozy: '#faf4ea', bruma: '#f3f4ec', velvet: '#131a15', concierto: '#160d10' };
 function applyThemeColor(theme) {
   const col = THEME_BG[theme] || THEME_BG[''];
   let meta = document.querySelector('meta[name="theme-color"]');
@@ -10736,7 +10736,7 @@ function _isNightHour() {
 // Aplica el tema visible teniendo en cuenta el modo noche automático: de noche
 // fuerza el tema «Noche» (data-theme="") sin tocar el tema de DÍA guardado.
 function refreshTheme() {
-  const day = localStorage.getItem('alberto_theme') || 'cozy';
+  const day = localStorage.getItem('alberto_theme') || 'concierto';
   const auto = localStorage.getItem('alberto_autonight') === '1';
   const display = (auto && _isNightHour()) ? '' : day;
   document.documentElement.setAttribute('data-theme', display);
@@ -10785,7 +10785,12 @@ function loadTheme() {
     localStorage.setItem('alberto_theme_v3_migrated', '1');
     localStorage.setItem('alberto_theme', 'cozy');
   }
-  const theme = localStorage.getItem('alberto_theme') || 'cozy';
+  // Migration v4: nuevo tema por defecto «Concierto» (recital nocturno).
+  if (!localStorage.getItem('alberto_theme_v4_concierto')) {
+    localStorage.setItem('alberto_theme_v4_concierto', '1');
+    localStorage.setItem('alberto_theme', 'concierto');
+  }
+  const theme = localStorage.getItem('alberto_theme') || 'concierto';
   const font  = localStorage.getItem('alberto_font')  || 'mono';
   const size  = localStorage.getItem('alberto_size')  || 'large';
   const zooms = { small: 0.82, normal: 1, large: 1.22, xlarge: 1.5 };

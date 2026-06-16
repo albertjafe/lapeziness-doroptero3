@@ -88,6 +88,66 @@
     --border: rgba(148,196,162,0.2); --border2: rgba(148,196,162,0.1);
   }
 
+  /* TEMA: Concierto — recital nocturno, terciopelo oscuro y oro (DEFECTO) */
+  [data-theme="concierto"] {
+    --bg: #160d10; --bg2: #1f1418; --bg3: #2a1c20;
+    --accent: #cba85f; --accent2: #e7cf94;
+    --text: #efe6d6; --text2: #b7a79e; --text3: #8c7c77;
+    --green: #9db98a; --orange: #d8a85a; --red: #c07a6e;
+    --border: rgba(203,168,95,0.30); --border2: rgba(203,168,95,0.14);
+  }
+  /* CONCIERTO — forma de tarjetas: marco fino dorado, esquinas sobrias */
+  [data-theme="concierto"] .card,
+  [data-theme="concierto"] .obra-card,
+  [data-theme="concierto"] .session-insight-card,
+  [data-theme="concierto"] .stats-card,
+  [data-theme="concierto"] .destellos-modal,
+  [data-theme="concierto"] .prob-card {
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+    background: var(--bg2);
+  }
+  [data-theme="concierto"] .session-insight-card.prob-card {
+    background:
+      radial-gradient(circle at 50% 0%, color-mix(in srgb, #3a2230 65%, transparent), transparent 62%),
+      var(--bg2);
+  }
+  [data-theme="concierto"] .session-hero {
+    border: 1px solid var(--accent) !important;
+    border-radius: 6px !important;
+    background:
+      radial-gradient(circle at 50% 0%, color-mix(in srgb, #3a2230 70%, transparent), transparent 60%),
+      var(--bg2) !important;
+  }
+  /* CONCIERTO — tipografía de recital: serif en cursiva para títulos y nav */
+  [data-theme="concierto"] .obra-name,
+  [data-theme="concierto"] .modal-title,
+  [data-theme="concierto"] .session-hero-title,
+  [data-theme="concierto"] .stats-card-title,
+  [data-theme="concierto"] .section-title,
+  [data-theme="concierto"] #headerTitle {
+    font-family: 'Cormorant Garamond', serif !important;
+    font-style: italic;
+    letter-spacing: 0.01em;
+  }
+  [data-theme="concierto"] .nav-btn span {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 12px;
+    letter-spacing: 0.02em;
+  }
+  [data-theme="concierto"] .nav-btn.active { color: var(--accent2); }
+  [data-theme="concierto"] .nav-btn.active svg { stroke: var(--accent2); }
+  /* Solidez: barra fina y elegante (dorada / vino) ya sale del color del tema */
+  /* Botones grandes con aire de programa de concierto */
+  [data-theme="concierto"] .generate-btn,
+  [data-theme="concierto"] .save-session-btn {
+    font-family: 'Cormorant Garamond', serif !important;
+    font-style: italic;
+    font-size: 21px !important;
+    letter-spacing: 0.03em;
+    border-radius: 6px !important;
+  }
   /* COZY SHAPE OVERRIDES */
   [data-theme="cozy"] .card { border-radius: var(--cozy-radius) !important; }
   [data-theme="cozy"] .obra-card { border-radius: var(--cozy-radius) !important; }
