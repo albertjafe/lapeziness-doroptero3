@@ -235,7 +235,7 @@ function showView(name) {
     const sd = document.getElementById('statsDashboard');
     if (sd) sd.innerHTML = _statsSkeleton();
     requestAnimationFrame(() => {
-      renderStatsDashboard(); renderSolidezSection(); renderEficienciaSection(); renderEstadoSection();
+      renderStatsDashboard(); renderMantenimientoSection(); renderSolidezSection(); renderEficienciaSection(); renderEstadoSection();
     });
     renderSesionesHistorial(); _histListApplyPref();
   }
@@ -3459,6 +3459,80 @@ function renderSolidezSection() {
       '<div><div class="sol-dash-section-title">Reciente</div>' + recentHtml + '</div>' +
     '</div>' +
   '</div>';
+}
+
+// ── RADAR DE MANTENIMIENTO ────────────────────────────────────────────────────
+// Repertorio que ya alcanzaste sólido (≥70%) y que, si no lo tocas, irá cayendo.
+// El decaimiento es lineal (drop/día = rate·stabilityFactor), así que podemos
+// estimar en cuántos días caería por debajo del 70% y antes de qué fecha repasar.
+const MAINT_FLOOR = 70;   // umbral "listo para tocar"
+const MAINT_LEARNED = 70; // solo cuenta como repertorio si llegó a este nivel
+
+function _mantenimientoItems() {
+  const out = [];
+  (db.obras || []).forEach(o => {
+    if (!o || o.tipo === 'actividad') return;
+    const hist = o.solHistory || [];
+    if (!hist.length) return;
+    const est = estimateSolActual(o);
+    const lastKnown = (est.lastKnown != null) ? est.lastKnown : normalizeSolVal(hist[0].val);
+    if (lastKnown < MAINT_LEARNED) return; // aún en construcción, no es mantenimiento
+    const rate = (est.rate != null) ? est.rate : computeDecayRate(o).rate;
+    const sf = 0.5 + (lastKnown / 100) * 0.5;
+    const daily = Math.max(0.05, rate * sf); // puntos de solidez que pierde al día
+    const cur = (est.val != null) ? est.val : lastKnown;
+    const daysUntil = (cur - MAINT_FLOOR) / daily; // negativo = ya por debajo
+    out.push({
+      obraId: o.id, name: o.name || 'Obra', composer: o.composer || '',
+      color: obraColorHex(o) || 'var(--accent)',
+      cur, lastKnown, daysUntil, diasGap: est.diasGap || 0,
+    });
+  });
+  out.sort((a, b) => a.daysUntil - b.daysUntil);
+  return out;
+}
+
+function _maintFecha(daysFromNow) {
+  const dt = new Date(Date.now() + Math.max(0, daysFromNow) * 86400000);
+  return 'antes del ' + dt.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
+function _maintRow(it) {
+  const cur = Math.max(0, Math.min(100, Math.round(it.cur)));
+  const col = solPctColor(cur);
+  const d = it.daysUntil;
+  let lvl, txt;
+  if (cur <= MAINT_FLOOR || d <= 0) { lvl = 'urgent'; txt = 'Por debajo de 70% · repásala ya'; }
+  else if (d <= 5) { lvl = 'urgent'; txt = 'Cae de 70% en ~' + Math.round(d) + 'd · ' + _maintFecha(d); }
+  else if (d <= 14) { lvl = 'warn'; txt = 'Cae de 70% en ~' + Math.round(d) + 'd · ' + _maintFecha(d); }
+  else { lvl = 'ok'; txt = d >= 60 ? 'Estable · +2 meses de margen' : 'Estable · ~' + Math.round(d) + 'd de margen'; }
+  return '<div class="maint-row ' + lvl + '">'
+    + '<span class="maint-dot" style="background:' + it.color + '"></span>'
+    + '<div class="maint-id"><div class="maint-name">' + escapeHtmlSafe(it.name) + '</div>'
+    + '<div class="maint-sub">' + (it.composer ? escapeHtmlSafe(it.composer) + ' · ' : '') + txt + '</div></div>'
+    + '<strong class="maint-pct" style="color:' + col + '">' + cur + '</strong>'
+    + '<button class="maint-go" onclick="nudgeStudyNow(\'' + it.obraId + '\')" title="Repasar ahora">▶</button>'
+    + '</div>';
+}
+
+function renderMantenimientoSection() {
+  const el = document.getElementById('mantenimientoSection');
+  if (!el) return;
+  const items = _mantenimientoItems();
+  if (!items.length) {
+    el.innerHTML = '<div class="stats-card maint-card"><div class="stats-card-title">Mantenimiento del repertorio</div>'
+      + '<div class="maint-empty">Cuando tengas obras consolidadas (medidas ≥ 70%), aquí te aviso antes de que se oxiden y la fecha límite para repasarlas.</div></div>';
+    return;
+  }
+  const urgent = items.filter(i => i.cur <= MAINT_FLOOR || i.daysUntil <= 5).length;
+  const head = urgent
+    ? '<span class="maint-badge urgent">' + urgent + ' por repasar</span>'
+    : '<span class="maint-badge ok">Todo al día</span>';
+  const rows = items.slice(0, 8).map(_maintRow).join('');
+  el.innerHTML = '<div class="stats-card maint-card">'
+    + '<div class="maint-head"><div class="stats-card-title">Mantenimiento del repertorio</div>' + head + '</div>'
+    + '<div class="maint-help">Antes de qué fecha repasar cada obra para que no baje del 70%.</div>'
+    + rows + '</div>';
 }
 
 let forestTagData = [];
