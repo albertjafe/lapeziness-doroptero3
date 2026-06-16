@@ -316,9 +316,17 @@
         <span class="n" id="cronoFallidasN">0</span> · fallidas hoy
       </div>
 
-      <!-- Jardín del día: dibujo SVG generativo. Cada sesión de hoy florece
-           como una nota-flor del color de su obra. Render en renderCronoGarden(). -->
-      <div class="crono-garden" id="cronoGarden" aria-hidden="true"></div>
+      <!-- Catedral del mes: construcción procedural que crece con cada sesión.
+           Render en renderCronoBuild(); se puede cambiar por el jardín de flores. -->
+      <div class="crono-build" id="cronoBuild" aria-hidden="true"></div>
+      <div class="crono-build-bar" id="cronoBuildBar"></div>
+      <div class="crono-build-controls">
+        <button class="crono-build-btn" id="cronoBuildToggle" onclick="toggleCronoVisual()">🌼 Flores</button>
+        <button class="crono-build-btn" onclick="openMuseo()">🏛 Museo</button>
+      </div>
+
+      <!-- Jardín del día (alternativa a la catedral). Render en renderCronoGarden(). -->
+      <div class="crono-garden" id="cronoGarden" aria-hidden="true" style="display:none"></div>
     </div>
 
     <!-- FASE B/C: RUNNING / PAUSED -->
@@ -504,6 +512,17 @@
     <div style="font-size:10.5px;color:var(--text3);margin-top:6px">Tope para estimar la hora de 4&nbsp;h&nbsp;/&nbsp;5&nbsp;h. Vacío = medianoche.</div>
     <div class="modal-buttons">
       <button class="modal-btn secondary" onclick="closeModal('modalHorasBloqueadas')">Listo</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalMuseo">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title">🏛 Museo · catedrales por mes</div>
+    <div style="font-size:11.5px;color:var(--text2);line-height:1.5;margin-bottom:12px">Cada mes construyes una catedral con tus sesiones. Al acabar el mes queda aquí para siempre.</div>
+    <div id="museoList" class="museo-grid"></div>
+    <div class="modal-buttons">
+      <button class="modal-btn secondary" onclick="closeModal('modalMuseo')">Cerrar</button>
     </div>
   </div>
 </div>

@@ -6924,6 +6924,43 @@
     white-space: nowrap;
   }
 
+  /* ─── CATEDRAL DEL MES (cronómetro en reposo) ─── */
+  .crono-build {
+    max-width: 280px; margin: 14px auto 0; pointer-events: none;
+  }
+  .cathedral-svg { width: 100%; height: auto; display: block; animation: catRise 0.5s var(--ease-out); }
+  @keyframes catRise { from { opacity: 0.5; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+  .cat-ground { stroke: var(--border); stroke-width: 1; }
+  .cat-plan { fill: var(--border2); }
+  .cat-stone { fill: var(--bg3); stroke: var(--border); stroke-width: 1; }
+  .cat-door { fill: var(--bg); opacity: 0.85; }
+  .cat-roof { fill: var(--accent); opacity: 0.7; }
+  .cat-spire { fill: var(--accent); opacity: 0.82; }
+  .cat-cross { stroke: var(--accent2); stroke-width: 2; stroke-linecap: round; fill: none; }
+  .cat-rose-ring { fill: none; stroke: var(--accent); stroke-width: 1.5; opacity: 0.8; }
+  .crono-build-bar { max-width: 300px; margin: 8px auto 0; }
+  .cbar-track { height: 5px; border-radius: 999px; background: var(--bg3); overflow: hidden; }
+  .cbar-track i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.5s var(--ease-out); }
+  .cbar-txt { font-size: 10.5px; color: var(--text3); text-align: center; margin-top: 5px; text-transform: capitalize; letter-spacing: 0.02em; }
+  .crono-build-controls { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+  .crono-build-btn {
+    background: transparent; border: 1px solid var(--border); border-radius: 20px;
+    color: var(--text2); font-size: 11px; padding: 5px 13px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .crono-build-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .museo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; overflow-y: auto; }
+  .museo-item {
+    border: 1px solid var(--border); border-radius: 10px; padding: 8px;
+    background: var(--bg2); text-align: center;
+  }
+  .museo-item.current { border-color: var(--accent); }
+  .museo-art { max-width: 130px; margin: 0 auto; }
+  .museo-art .cathedral-svg { animation: none; }
+  .museo-month { font-size: 12px; font-weight: 700; color: var(--text); margin-top: 4px; text-transform: capitalize; }
+  .museo-stats { font-size: 10px; color: var(--text3); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
+  .museo-empty { grid-column: 1 / -1; font-size: 12px; color: var(--text3); line-height: 1.5; padding: 8px 0; }
+
   /* ─── JARDÍN DEL DÍA (cronómetro en reposo) ─── */
   .crono-garden {
     max-width: 560px;

@@ -13575,6 +13575,159 @@ function renderCronoGarden() {
   host.innerHTML = svg;
 }
 
+// ── CATEDRAL DEL MES (construcción que crece con cada sesión) ─────────────────
+// Se deriva por completo de db.sessionPlants: cada sesión válida del mes levanta
+// la catedral; al cambiar de mes, la del mes anterior queda en el Museo. Sin
+// almacenamiento nuevo: el Museo es simplemente el histórico re-dibujado.
+function _ym(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function _monthName(d) { return d.toLocaleDateString('es-ES', { month: 'long' }); }
+
+function _validPlants() {
+  return (db.sessionPlants || []).filter(p =>
+    p && !p.failed && p.tipo !== 'descanso' && p.startedAt && p.mins > 0 && !isNaN(new Date(p.startedAt).getTime()));
+}
+function _plantsByMonth() {
+  const m = {};
+  _validPlants().forEach(p => {
+    const k = _ym(new Date(p.startedAt));
+    (m[k] || (m[k] = { mins: 0, sess: [] }));
+    m[k].mins += p.mins; m[k].sess.push(p);
+  });
+  Object.values(m).forEach(v => v.sess.sort((a, b) => new Date(a.startedAt) - new Date(b.startedAt)));
+  return m;
+}
+function _monthlyGoalHours() {
+  const byMonth = _plantsByMonth();
+  const curK = _ym(new Date());
+  const past = Object.keys(byMonth).filter(k => k !== curK).map(k => byMonth[k].mins / 60);
+  if (!past.length) return 40;
+  past.sort((a, b) => a - b);
+  return Math.max(20, Math.min(90, Math.round(past[Math.floor(past.length / 2)])));
+}
+function _monthTiles(sess) {
+  return sess.map(x => { const o = findObra(x.obraId); return (o && obraColorHex(o)) || 'var(--accent)'; });
+}
+
+// Vitral (rosetón): hasta 8 teselas que se encienden con el color de cada obra.
+function _roseWindow(cx, cy, r, tiles) {
+  let s = '<g class="cat-rose"><circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" class="cat-rose-ring"/>';
+  const N = 8;
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2 - Math.PI / 2;
+    const px = (cx + Math.cos(a) * r * 0.55).toFixed(1);
+    const py = (cy + Math.sin(a) * r * 0.55).toFixed(1);
+    const lit = i < tiles.length;
+    s += '<circle cx="' + px + '" cy="' + py + '" r="' + (r * 0.27).toFixed(1) + '" fill="'
+      + (lit ? tiles[i] : 'var(--bg3)') + '" opacity="' + (lit ? 0.95 : 0.3) + '"/>';
+  }
+  s += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r * 0.2).toFixed(1) + '" fill="'
+    + (tiles.length ? tiles[tiles.length - 1] : 'var(--accent2)') + '" opacity="0.95"/></g>';
+  return s;
+}
+
+// Catedral procedural: se revela por etapas según el progreso p (0..1) del mes.
+function _cathedralSVG(p, tiles) {
+  tiles = tiles || [];
+  const g = 186;
+  const sh = th => p >= th ? '' : ' style="display:none"';
+  const wallTop = g - 7;
+  let s = '<svg class="cathedral-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">';
+  s += '<line x1="22" y1="' + g + '" x2="178" y2="' + g + '" class="cat-ground"/>';
+  s += '<rect x="48" y="' + (g - 2) + '" width="104" height="2" class="cat-plan"/>';
+  s += '<rect x="48" y="' + (g - 7) + '" width="104" height="7" class="cat-stone"' + sh(0.05) + '/>';
+  // nave
+  s += '<rect x="76" y="96" width="48" height="' + (wallTop - 96) + '" class="cat-stone"' + sh(0.16) + '/>';
+  // portal
+  s += '<path d="M90 ' + wallTop + ' L90 158 Q100 146 110 158 L110 ' + wallTop + ' Z" class="cat-door"' + sh(0.22) + '/>';
+  // torres (base)
+  s += '<rect x="50" y="76" width="24" height="' + (wallTop - 76) + '" class="cat-stone"' + sh(0.30) + '/>';
+  s += '<rect x="126" y="76" width="24" height="' + (wallTop - 76) + '" class="cat-stone"' + sh(0.30) + '/>';
+  // tejado de la nave
+  s += '<path d="M74 96 L100 64 L126 96 Z" class="cat-roof"' + sh(0.50) + '/>';
+  // rosetón
+  if (p >= 0.42) s += _roseWindow(100, 84, 13, tiles);
+  // torres (cuerpo alto + vanos)
+  s += '<rect x="50" y="48" width="24" height="28" class="cat-stone"' + sh(0.62) + '/>';
+  s += '<rect x="126" y="48" width="24" height="28" class="cat-stone"' + sh(0.62) + '/>';
+  s += '<rect x="58" y="55" width="8" height="15" rx="4" class="cat-door"' + sh(0.66) + '/>';
+  s += '<rect x="134" y="55" width="8" height="15" rx="4" class="cat-door"' + sh(0.66) + '/>';
+  // agujas de las torres
+  s += '<path d="M50 48 L62 14 L74 48 Z" class="cat-spire"' + sh(0.74) + '/>';
+  s += '<path d="M126 48 L138 14 L150 48 Z" class="cat-spire"' + sh(0.74) + '/>';
+  // flecha central
+  s += '<path d="M94 64 L100 28 L106 64 Z" class="cat-spire"' + sh(0.86) + '/>';
+  // cruz
+  s += '<path d="M100 28 L100 18 M96 22 L104 22" class="cat-cross"' + sh(0.96) + '/>';
+  s += '</svg>';
+  return s;
+}
+
+function renderCronoBuild() {
+  const host = document.getElementById('cronoBuild');
+  if (!host) return;
+  const visual = localStorage.getItem('alberto_crono_visual') || 'catedral';
+  const bar = document.getElementById('cronoBuildBar');
+  const gar = document.getElementById('cronoGarden');
+  const toggle = document.getElementById('cronoBuildToggle');
+  if (visual === 'flores') {
+    host.style.display = 'none';
+    if (bar) bar.style.display = 'none';
+    if (gar) gar.style.display = '';
+    if (toggle) toggle.textContent = '🏛 Catedral';
+    renderCronoGarden();
+    return;
+  }
+  host.style.display = '';
+  if (bar) bar.style.display = '';
+  if (gar) gar.style.display = 'none';
+  if (toggle) toggle.textContent = '🌼 Flores';
+  const now = new Date();
+  const byMonth = _plantsByMonth();
+  const cur = byMonth[_ym(now)] || { mins: 0, sess: [] };
+  const goalH = _monthlyGoalHours();
+  const p = Math.max(0, Math.min(1, (cur.mins / 60) / goalH));
+  host.innerHTML = _cathedralSVG(p, _monthTiles(cur.sess));
+  if (bar) {
+    const h = Math.floor(cur.mins / 60), m = cur.mins % 60;
+    bar.innerHTML = '<div class="cbar-track"><i style="width:' + Math.round(p * 100) + '%"></i></div>'
+      + '<div class="cbar-txt">' + _monthName(now) + ' · ' + h + 'h' + (m ? ' ' + m + 'm' : '')
+      + ' / ' + goalH + 'h · ' + cur.sess.length + ' sesiones</div>';
+  }
+}
+
+function toggleCronoVisual() {
+  const cur = localStorage.getItem('alberto_crono_visual') || 'catedral';
+  localStorage.setItem('alberto_crono_visual', cur === 'catedral' ? 'flores' : 'catedral');
+  renderCronoBuild();
+}
+
+function openMuseo() { openModal('modalMuseo'); renderMuseo(); }
+function renderMuseo() {
+  const el = document.getElementById('museoList');
+  if (!el) return;
+  const byMonth = _plantsByMonth();
+  const keys = Object.keys(byMonth).sort().reverse();
+  if (!keys.length) {
+    el.innerHTML = '<div class="museo-empty">Aún no hay meses construidos. Cada sesión levanta una piedra de tu catedral.</div>';
+    return;
+  }
+  const goalH = _monthlyGoalHours();
+  const curK = _ym(new Date());
+  el.innerHTML = keys.map(k => {
+    const d = byMonth[k];
+    const p = Math.max(0, Math.min(1, (d.mins / 60) / goalH));
+    const parts = k.split('-');
+    const label = new Date(+parts[0], +parts[1] - 1, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    const h = Math.floor(d.mins / 60), m = d.mins % 60;
+    const tag = k === curK ? ' · en obra' : (p >= 1 ? ' · completada' : '');
+    return '<div class="museo-item' + (k === curK ? ' current' : '') + '">'
+      + '<div class="museo-art">' + _cathedralSVG(p, _monthTiles(d.sess)) + '</div>'
+      + '<div class="museo-month">' + label + tag + '</div>'
+      + '<div class="museo-stats">' + h + 'h' + (m ? ' ' + m + 'm' : '') + ' · ' + d.sess.length + ' ses · ' + Math.round(p * 100) + '%</div>'
+      + '</div>';
+  }).join('');
+}
+
 // Refresca todos los textos "hoy te has concentrado..." y el mini-resumen
 function refreshConcentradoUI() {
   const min = getMinutosConcentradoHoy();
@@ -13588,7 +13741,8 @@ function refreshConcentradoUI() {
   if (typeof refreshDestellosPill === 'function') refreshDestellosPill();
   if (typeof refreshDaisyPill === 'function') refreshDaisyPill();
   if (typeof renderSessionInsights === 'function') renderSessionInsights();
-  if (typeof renderCronoGarden === 'function') renderCronoGarden();
+  if (typeof renderCronoBuild === 'function') renderCronoBuild();
+  else if (typeof renderCronoGarden === 'function') renderCronoGarden();
 
   // Mini-resumen lateral eliminado: el jardín del día ya muestra lo
   // estudiado hoy de forma visual, y los Destellos guardan lo memorable.
