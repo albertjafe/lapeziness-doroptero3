@@ -13459,41 +13459,41 @@ function renderCronoGarden() {
 
   const h = new Date().getHours();
   const night = h >= 21 || h < 7;
-  let svg = '<svg class="crono-garden-svg" viewBox="0 0 360 120" xmlns="http://www.w3.org/2000/svg">';
+  let svg = '<svg class="crono-garden-svg" viewBox="0 0 360 150" xmlns="http://www.w3.org/2000/svg">';
 
   // Cielo
   if (night) {
     svg += '<path d="M316 24 a13 13 0 1 0 11 20 a10.5 10.5 0 0 1 -11 -20 z" class="garden-luna"/>';
     [[42, 18], [92, 30], [152, 12], [228, 26], [288, 10], [196, 38]].forEach((s, i) => {
-      svg += '<circle cx="' + s[0] + '" cy="' + s[1] + '" r="1.1" class="garden-star" style="animation-delay:' + (i * 0.6).toFixed(1) + 's"/>';
+      svg += '<circle cx="' + s[0] + '" cy="' + s[1] + '" r="1.2" class="garden-star" style="animation-delay:' + (i * 0.6).toFixed(1) + 's"/>';
     });
   } else {
     svg += '<circle cx="320" cy="28" r="11" class="garden-sol"/>'
       + '<circle cx="320" cy="28" r="16" class="garden-sol-halo"/>';
   }
 
-  // Colinas
-  svg += '<path d="M0 96 Q 90 72 180 88 T 360 82 L 360 120 L 0 120 Z" class="garden-colina1"/>'
-    + '<path d="M0 106 Q 120 88 250 102 T 360 98 L 360 120 L 0 120 Z" class="garden-colina2"/>'
-    + '<path d="M14 109 q 3 -7 5 -9 M30 112 q -2 -8 -6 -11 M338 108 q 3 -6 6 -8 M322 111 q -2 -7 -4 -9" class="garden-hierba"/>';
+  // Colinas (suelo bajado para dar altura al campo)
+  svg += '<path d="M0 120 Q 90 96 180 112 T 360 106 L 360 150 L 0 150 Z" class="garden-colina1"/>'
+    + '<path d="M0 132 Q 120 114 250 128 T 360 124 L 360 150 L 0 150 Z" class="garden-colina2"/>'
+    + '<path d="M14 137 q 3 -8 5 -11 M30 140 q -2 -9 -6 -13 M338 136 q 3 -7 6 -10 M322 139 q -2 -8 -4 -11" class="garden-hierba"/>';
 
   if (!plantas.length) {
     // Brote solitario: invitación a plantar la primera sesión
-    svg += '<g transform="translate(180,96)"><g class="garden-grow"><g class="garden-sway">'
-      + '<path d="M0 0 C -1 -5 1 -10 0 -15" class="garden-tallo"/>'
-      + '<path d="M0 -9 Q -7 -11 -9 -17 Q -2 -16 0 -10 Z" class="garden-hoja"/>'
-      + '<path d="M0 -12 Q 7 -14 9 -20 Q 2 -19 0 -13 Z" class="garden-hoja"/>'
+    svg += '<g transform="translate(180,124)"><g class="garden-grow"><g class="garden-sway">'
+      + '<path d="M0 0 C -1 -6 1 -12 0 -18" class="garden-tallo"/>'
+      + '<path d="M0 -11 Q -8 -13 -11 -20 Q -2 -19 0 -12 Z" class="garden-hoja"/>'
+      + '<path d="M0 -14 Q 8 -16 11 -24 Q 2 -22 0 -15 Z" class="garden-hoja"/>'
       + '</g></g></g>';
   } else {
     const n = plantas.length;
-    const spread = Math.min(46, 312 / n);
+    const spread = Math.min(48, 320 / n);
     plantas.forEach((p, i) => {
       const obra = findObra(p.obraId);
       const color = (obra && obraColorHex(obra)) || 'var(--accent)';
       const seed = ((i * 2654435761) % 1000) / 1000;
       const x = 180 + (i - (n - 1) / 2) * spread + (seed - 0.5) * 14;
-      const y = 95 + Math.sin(x / 47 + 1.3) * 6;
-      const sz = 1 + Math.min(p.mins || 0, 60) / 60 * 0.45;
+      const y = 124 + Math.sin(x / 47 + 1.3) * 6;
+      const sz = 1.5 + Math.min(p.mins || 0, 60) / 60 * 0.75;
       svg += _gardenFlower(i, x, y, sz, color, i >= animFrom);
     });
   }

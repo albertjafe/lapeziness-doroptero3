@@ -6908,9 +6908,9 @@
 
   /* ─── JARDÍN DEL DÍA (cronómetro en reposo) ─── */
   .crono-garden {
-    max-width: 430px;
-    margin: 26px auto 0;
-    opacity: 0.95;
+    max-width: 560px;
+    margin: 18px auto 0;
+    opacity: 1;
     pointer-events: none;
   }
   .crono-garden-svg { width: 100%; height: auto; display: block; }
