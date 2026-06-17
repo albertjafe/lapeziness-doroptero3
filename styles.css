@@ -723,6 +723,12 @@
     font-weight: 700;
   }
   .prob-head-btns { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+  .prob-estado-chip {
+    font-size: 10px; font-weight: 700; color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-radius: 20px; padding: 1px 7px; margin-left: 6px;
+    white-space: nowrap; vertical-align: middle;
+  }
   .prob-start-btn.on {
     color: var(--accent); border-color: var(--accent);
     background: color-mix(in srgb, var(--accent) 12%, transparent);

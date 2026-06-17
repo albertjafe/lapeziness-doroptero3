@@ -429,6 +429,10 @@ let selectedTime = 2;
 // (bienestar/sueno/energia/claridad) se conservan como alias retrocompatibles,
 // siempre iguales a `estado`, para no romper datos ni lecturas antiguas.
 let estadoDiario = { estado: 70, bienestar: 70, sueno: 70, energia: 70, claridad: 70 };
+// ¿Ha introducido Alberto su estado HOY (de forma explícita)? Solo entonces la
+// predicción se condiciona a cómo está. El reset de día y los guardados de fondo
+// lo dejan en false; pickEstado/updateEstado lo ponen en true.
+let _estadoUserSet = false;
 const ESTADO_COLORS = { bienestar: '#c8a030', sueno: '#a090e0', energia: '#c8a030', claridad: '#e08898' };
 
 // Las 5 caras del selector de estado. value = 0-100 que se guarda internamente.
@@ -472,6 +476,7 @@ function _setEstadoAll(n) {
 function pickEstado(idx) {
   const f = ESTADO_FACES[idx];
   if (!f) return;
+  _estadoUserSet = true;
   _setEstadoAll(f.v);
   selectedEnergy = f.v >= 65 ? 'alta' : f.v >= 35 ? 'normal' : 'baja';
   refreshEstadoFacesUI();
@@ -481,6 +486,8 @@ function pickEstado(idx) {
   pickEstado._t = setTimeout(() => {
     saveEstadoDiario();
     if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
+    // La predicción de hoy se ajusta a cómo estás → recalcular ya.
+    if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true);
   }, 150);
 }
 
@@ -503,6 +510,7 @@ function saveEstadoDiario() {
     const payload = {
       date: todayStr,
       estado: n,
+      userSet: _estadoUserSet, // true solo si Alberto lo introdujo hoy
       // Alias retrocompatibles (todos = estado)
       bienestar: n,
       sueno: n,
@@ -566,14 +574,14 @@ function loadEstadoDiarioFromSources() {
   // 1) db (la nube, si ya está cargada)
   if (db && db.estadoDiario && db.estadoDiario.date === todayStr) {
     const v = deriveEstado(db.estadoDiario);
-    if (v != null) { _setEstadoAll(v); return true; }
+    if (v != null) { _estadoUserSet = !!db.estadoDiario.userSet; _setEstadoAll(v); return true; }
   }
   // 2) localStorage
   try {
     const saved = JSON.parse(localStorage.getItem('alberto_estado_v1') || 'null');
     if (saved && (saved.date === todayStr || !saved.date)) {
       const v = deriveEstado(saved);
-      if (v != null) { _setEstadoAll(v); return true; }
+      if (v != null) { _estadoUserSet = !!(saved.date === todayStr && saved.userSet); _setEstadoAll(v); return true; }
     }
   } catch(e) {}
   // 3) Defaults — ya están en estadoDiario al declararlo (70/70)
@@ -609,6 +617,7 @@ function fillEstadoSlider(slider, color) {
 
 function updateEstado(dim, val) {
   const n = parseInt(val);
+  _estadoUserSet = true;
   estadoDiario[dim] = n;
   // Mantener alias retrocompat: bienestar refleja energia y claridad a la vez
   if (dim === 'bienestar') {
@@ -1497,6 +1506,7 @@ function handleDayChange() {
     // siguiente lo descartaría — pero por limpieza lo borramos ahora)
     try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
     // ★ Resetear el estado del día a default (70). Sólo persiste DURANTE el día.
+    _estadoUserSet = false; // nuevo día: aún no lo ha introducido
     _setEstadoAll(70);
     saveEstadoDiario(); // guarda con la nueva fecha
     if (typeof initEstadoSliders === 'function') initEstadoSliders();
@@ -9012,33 +9022,110 @@ function _liveIntenseProb(nowMin, doneMin) {
   });
   const days = Object.keys(byDay);
   if (days.length < 8) return null; // pocos datos para fiarse
-  let r4 = 0, r5 = 0;
   const blocks = _getBlockedRangesToday(); // franjas de hoy en las que no estudiaré
-  const projs = []; // total proyectado de hoy (hecho + lo que ese día se hizo tras esta hora)
-  days.forEach(k => {
+  // Proyección por día: hecho hoy + lo que ESE día se hizo tras esta hora.
+  const rows = days.map(k => {
     let after = 0;
     byDay[k].forEach(p => {
       if (p.sm < nowMin) return;
       let m = p.mins;
-      // Descuenta el tiempo de esa práctica histórica que hoy caería en una franja bloqueada.
       if (blocks.length) m -= _blockOverlapMin(p.sm, p.sm + p.mins, blocks);
       if (m > 0) after += m;
     });
-    const proj = doneMin + after;
-    projs.push(proj);
-    if (proj >= 240) r4++;
-    if (proj >= 300) r5++;
+    return { iso: k, proj: doneMin + after };
   });
-  projs.sort((a, b) => a - b);
-  const q = f => projs[Math.min(projs.length - 1, Math.floor(f * projs.length))];
+
+  // Estadística base (todos los días por igual).
+  const base = _projStats(rows.map(r => ({ proj: r.proj, w: 1 })));
+
+  // Si Alberto ha introducido HOY su estado, condicionamos: pesamos cada día
+  // pasado por la similitud de su estado con el de hoy (kernel gaussiano) y
+  // mezclamos con la base por shrinkage (más peso a lo condicionado cuanta más
+  // muestra parecida haya), para que no sea ruido con pocos días.
+  const eToday = _estadoHoySet();
+  let estadoInfo = null, out = { p4: base.p4, p5: base.p5, median: base.median, p75: base.p75 };
+  if (eToday != null) {
+    const estadoByDay = _estadoByDay();
+    const sigma = 18; // ~un paso de cara
+    let sumW = 0, sumW2 = 0, matched = 0;
+    const wrows = rows.map(r => {
+      const e = estadoByDay[r.iso];
+      let w;
+      if (e == null) { w = 0.15; } // días sin estado registrado: cuentan poco
+      else { const d = e - eToday; w = Math.exp(-(d * d) / (2 * sigma * sigma)); if (w >= 0.5) matched++; }
+      sumW += w; sumW2 += w * w;
+      return { proj: r.proj, w };
+    });
+    const effN = sumW2 > 0 ? (sumW * sumW) / sumW2 : 0; // tamaño de muestra efectivo
+    const cond = _projStats(wrows);
+    const K = 6;
+    const alpha = effN / (effN + K); // 0..1: cuánto pesa lo condicionado
+    out = {
+      p4: alpha * cond.p4 + (1 - alpha) * base.p4,
+      p5: alpha * cond.p5 + (1 - alpha) * base.p5,
+      median: alpha * cond.median + (1 - alpha) * base.median,
+      p75: alpha * cond.p75 + (1 - alpha) * base.p75,
+    };
+    const fi = estadoToFaceIndex(eToday);
+    estadoInfo = {
+      val: eToday, matched, effN: Math.round(effN), alpha,
+      emoji: (ESTADO_FACES[fi] || {}).emoji, label: (ESTADO_FACES[fi] || {}).label,
+      baseP4: Math.round(base.p4),
+    };
+  }
   return {
-    p4: Math.round(r4 / days.length * 100),
-    p5: Math.round(r5 / days.length * 100),
+    p4: Math.round(out.p4),
+    p5: Math.round(out.p5),
     n: days.length,
     scope,
-    projMedian: q(0.5), // lo más probable que acabes estudiando hoy
-    projP75: q(0.75),   // un buen día
+    projMedian: Math.round(out.median),
+    projP75: Math.round(out.p75),
+    estado: estadoInfo,
   };
+}
+
+// Estadística de proyección con pesos: % de días (ponderado) que llegan a 4h/5h
+// y cuantiles ponderados (mediana, p75).
+function _projStats(rows) {
+  const totW = rows.reduce((s, r) => s + r.w, 0) || 1;
+  let w4 = 0, w5 = 0;
+  rows.forEach(r => { if (r.proj >= 240) w4 += r.w; if (r.proj >= 300) w5 += r.w; });
+  const sorted = rows.slice().sort((a, b) => a.proj - b.proj);
+  const wq = f => {
+    const target = f * totW; let acc = 0;
+    for (const r of sorted) { acc += r.w; if (acc >= target) return r.proj; }
+    return sorted.length ? sorted[sorted.length - 1].proj : 0;
+  };
+  return { p4: w4 / totW * 100, p5: w5 / totW * 100, median: wq(0.5), p75: wq(0.75) };
+}
+
+// Valor de estado (0-100) desde cualquier formato (número u objeto).
+function _estadoVal(src) {
+  if (src == null) return null;
+  if (typeof src === 'number') return src;
+  if (typeof src.estado === 'number') return src.estado;
+  if (typeof src.bienestar === 'number' && typeof src.sueno === 'number') return Math.round((src.bienestar + src.sueno) / 2);
+  if (typeof src.bienestar === 'number') return src.bienestar;
+  if (typeof src.energia === 'number' && typeof src.claridad === 'number') return Math.round((src.energia + src.claridad) / 2);
+  if (typeof src.energia === 'number') return src.energia;
+  return null;
+}
+// Estado introducido HOY (o null si aún no lo ha tocado hoy).
+function _estadoHoySet() {
+  const today = new Date().toDateString();
+  try { if (db && db.estadoDiario && db.estadoDiario.date === today && db.estadoDiario.userSet) { const v = _estadoVal(db.estadoDiario); if (v != null) return v; } } catch (e) { /* noop */ }
+  try { const s = JSON.parse(localStorage.getItem('alberto_estado_v1') || 'null'); if (s && s.date === today && s.userSet) { const v = _estadoVal(s); if (v != null) return v; } } catch (e) { /* noop */ }
+  return null;
+}
+// Mapa iso-día -> estado registrado ese día (de db.sesiones).
+function _estadoByDay() {
+  const m = {};
+  (db.sesiones || []).forEach(s => {
+    if (!s || !s.date) return;
+    const v = _estadoVal(s.estado);
+    if (v != null) m[_statsISO(new Date(s.date))] = v;
+  });
+  return m;
 }
 
 // Devuelve los sub-tramos LIBRES de [a,b] tras quitar las franjas bloqueadas.
@@ -9221,7 +9308,15 @@ function _probTextHoy() {
   const fromMin = startedLater ? startOv : nowMin;
   const eta4 = done >= 240 ? { reached: true } : _liveTargetETA(fromMin, done, 240);
   const eta5 = done >= 300 ? { reached: true } : _liveTargetETA(fromMin, done, 300);
-  return { proj, prob, sub, cronoLine, p4: r.p4, p5: r.p5, done, projVal, projExtra, tip, reward, celebrate, base4, scope: r.scope, hhmm, doneTxt, eta4, eta5, startMin: startOv, startedLater };
+  return { proj, prob, sub, cronoLine, p4: r.p4, p5: r.p5, done, projVal, projExtra, tip, reward, celebrate, base4, scope: r.scope, hhmm, doneTxt, eta4, eta5, startMin: startOv, startedLater, estadoAdj: r.estado };
+}
+
+// Chip "ajustado a cómo estás hoy": solo si hay señal real (≥3 días parecidos).
+function _probEstadoChip(e) {
+  if (!e || e.matched < 3) return '';
+  const tip = 'Proyección ajustada a días en que te sentías como hoy (' + (e.label || '') + '): ~'
+    + e.matched + ' días parecidos. Sin ajustar, 4 h saldría al ' + e.baseP4 + '%.';
+  return ' <span class="prob-estado-chip" title="' + tip + '">' + (e.emoji || '') + ' como hoy</span>';
 }
 
 // Tarjeta rica (coloreada, por bloques) para la pantalla de Sesión.
@@ -9242,7 +9337,7 @@ function _probRichHTML(t) {
     + '</div>'
     + '<div class="prob-body">'
       + '<div class="prob-proj">'
-        + '<div class="prob-proj-label">Proyección</div>'
+        + '<div class="prob-proj-label">Proyección' + _probEstadoChip(t.estadoAdj) + '</div>'
         + '<div class="prob-proj-val">' + t.projVal + '</div>'
         + (t.projExtra ? '<div class="prob-proj-extra">' + t.projExtra + '</div>' : '')
       + '</div>'
