@@ -14263,10 +14263,15 @@ function _quickSolTargetValue(target) {
 }
 
 function _quickSolBuildTargets(base) {
-  // Solidez única por obra: ya no hay pasajes ni movimientos como objetivos.
   const obra = base ? findObra(base.obraId) : null;
   if (!obra || obra.tipo === 'actividad') return [];
-  return [{ key: 'obra:' + obra.id, type: 'obra', obraId: obra.id, name: 'Obra completa', section: 'Obra' }];
+  // Solidez de la obra completa + (si tiene) de cada movimiento por separado.
+  const targets = [{ key: 'obra:' + obra.id, type: 'obra', obraId: obra.id, name: 'Obra completa', section: 'Obra' }];
+  (obra.movimientos || []).forEach(mov => {
+    if (!mov || !mov.id) return;
+    targets.push({ key: 'mov:' + mov.id, type: 'mov', obraId: obra.id, movId: mov.id, name: mov.name || 'Movimiento', section: 'Movimientos' });
+  });
+  return targets;
 }
 
 function _quickSolRenderTargets() {
@@ -14361,7 +14366,10 @@ function openQuickSolidez(source) {
   }
   _quickSolBase = base;
   _quickSolTargets = _quickSolBuildTargets(base);
-  _quickSolTargetKey = _quickSolTargets[0]?.key || null;
+  // Por defecto, el movimiento del contexto si lo hay; si no, la obra completa.
+  _quickSolTargetKey = (base.movId && _quickSolTargets.some(t => t.key === 'mov:' + base.movId))
+    ? 'mov:' + base.movId
+    : (_quickSolTargets[0]?.key || null);
 
   const entity = document.getElementById('quickSolEntity');
   if (entity) {
