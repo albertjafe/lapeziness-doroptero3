@@ -316,17 +316,8 @@
         <span class="n" id="cronoFallidasN">0</span> · fallidas hoy
       </div>
 
-      <!-- Catedral del mes: construcción procedural que crece con cada sesión.
-           Render en renderCronoBuild(); se puede cambiar por el jardín de flores. -->
-      <div class="crono-build" id="cronoBuild" aria-hidden="true"></div>
-      <div class="crono-build-bar" id="cronoBuildBar"></div>
-      <div class="crono-build-controls">
-        <button class="crono-build-btn" id="cronoBuildToggle" onclick="toggleCronoVisual()">🌼 Flores</button>
-        <button class="crono-build-btn" onclick="openMuseo()">🏛 Museo</button>
-      </div>
-
-      <!-- Jardín del día (alternativa a la catedral). Render en renderCronoGarden(). -->
-      <div class="crono-garden" id="cronoGarden" aria-hidden="true" style="display:none"></div>
+      <!-- Jardín del día: única visualización del cronómetro en reposo. Render en renderCronoGarden(). -->
+      <div class="crono-garden" id="cronoGarden" aria-hidden="true"></div>
     </div>
 
     <!-- FASE B/C: RUNNING / PAUSED -->
@@ -530,20 +521,6 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="modalMuseo">
-  <div class="modal" style="max-width:560px">
-    <div class="modal-title">🏛 Museo · catedrales por mes</div>
-    <div style="font-size:11.5px;color:var(--text2);line-height:1.5;margin-bottom:10px">Cada catedral se levanta con tus sesiones. Al juntar las horas necesarias se completa y queda aquí para siempre (da igual si tarda uno o dos meses).</div>
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;font-size:12.5px;color:var(--text2)">
-      <span>Horas por catedral</span>
-      <input class="modal-input" id="catedralHoras" type="number" min="5" max="300" step="1" style="margin:0;width:96px;flex:0 0 auto" onchange="setCatedralHoras(this.value)">
-    </div>
-    <div id="museoList" class="museo-grid"></div>
-    <div class="modal-buttons">
-      <button class="modal-btn secondary" onclick="closeModal('modalMuseo')">Cerrar</button>
-    </div>
-  </div>
-</div>
 
 <div class="modal-overlay" id="modalAddObra">
   <div class="modal add-obra-modal">
@@ -583,29 +560,6 @@
   </div>
 </div>
 
-<!-- PASAJES VIEW -->
-<div class="view" id="view-pasajes">
-  <div class="pasajes-view-controls">
-    <div class="pasajes-sort-row" id="pasajesSortBtns">
-      <button class="sort-btn active" data-sort="obra"   onclick="setPasajesSort('obra',this)">Por obra</button>
-      <button class="sort-btn"        data-sort="estado" onclick="setPasajesSort('estado',this)">Por estado</button>
-      <button class="sort-btn"        data-sort="score"  onclick="setPasajesSort('score',this)">Más imperfectos</button>
-      <button class="sort-btn"        data-sort="reciente" onclick="setPasajesSort('reciente',this)">Más trabajados</button>
-    </div>
-  </div>
-  <div id="pasajesGlobalList"></div>
-</div>
-
-<div class="view" id="view-pases">
-  <div style="display:flex;gap:8px;margin-bottom:4px">
-    <button class="obras-chart-btn" onclick="openObrasChart()" style="flex:1">
-      <span>Evolución global de obras</span>
-      <span style="font-size:12px;font-family:\'JetBrains Mono\',monospace;color:var(--text3)">↗ gráfico</span>
-    </button>
-    <button onclick="openPasePicker()" style="padding:10px 14px;background:var(--bg2);border:1px solid var(--accent);border-radius:8px;color:var(--accent);font-family:\'JetBrains Mono\',monospace;font-size:10px;cursor:pointer;white-space:nowrap;transition:all 0.2s">+ Añadir pase</button>
-  </div>
-  <div id="pasesList"></div>
-</div>
 
 
 <div class="view" id="view-historial">
@@ -643,145 +597,164 @@
   </div>
 </div>
 
-<!-- MODAL SETTINGS -->
-<div class="modal-overlay" id="modalSettings">
-  <div class="modal">
-    <div class="modal-title">Ajustes</div>
-
-    <div class="settings-section">Tema visual</div>
-    <div class="theme-grid">
-      <div class="theme-option" data-theme="concierto" onclick="setTheme('concierto',this)">
-        <div class="theme-swatch" style="background:linear-gradient(135deg,#160d10 45%,#cba85f 100%)"></div>
-        <div class="theme-option-name">🎭 Concierto</div>
-      </div>
-      <div class="theme-option" data-theme="botanico" onclick="setTheme('botanico',this)">
-        <div class="theme-swatch" style="background:linear-gradient(135deg,#f4f1e6 45%,#5b7f5a 100%)"></div>
-        <div class="theme-option-name">🌿 Botánico</div>
-      </div>
-      <div class="theme-option" data-theme="swiss" onclick="setTheme('swiss',this)">
-        <div class="theme-swatch" style="background:linear-gradient(135deg,#ffffff 45%,#e8492b 100%)"></div>
-        <div class="theme-option-name">◼ Swiss</div>
-      </div>
-      <div class="theme-option" data-theme="" onclick="setTheme('',this)">
-        <div class="theme-swatch" style="background:linear-gradient(135deg,#11151c 50%,#d2b285 100%)"></div>
-        <div class="theme-option-name">Noche</div>
-      </div>
-      <div class="theme-option" data-theme="cozy" onclick="setTheme('cozy',this)">
-        <div class="theme-swatch" style="background:linear-gradient(135deg,#faf4ea 50%,#8a5c30 100%)"></div>
-        <div class="theme-option-name">☕ Cozy</div>
-      </div>
-      <div class="theme-option" data-theme="bruma" onclick="setTheme('bruma',this)">
-        <div class="theme-swatch" style="background:linear-gradient(135deg,#f3f4ec 50%,#4e7d5b 100%)"></div>
-        <div class="theme-option-name">🌿 Bosque</div>
-      </div>
-      <div class="theme-option" data-theme="velvet" onclick="setTheme('velvet',this)">
-        <div class="theme-swatch" style="background:linear-gradient(135deg,#131a15 50%,#94c4a2 100%)"></div>
-        <div class="theme-option-name">🌲 Abeto</div>
-      </div>
-    </div>
-
-    <label class="settings-autonight" for="autoNightToggle">
-      <input type="checkbox" id="autoNightToggle" onchange="setAutoNight(this.checked)">
-      <span class="settings-autonight-txt">🌙 Modo noche automático<small>De 21:00 a 7:00 pasa al tema «Noche» solo.</small></span>
-    </label>
-
-    <div class="settings-section">Fuente</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-      <button class="theme-option font-option" data-font="mono" onclick="setFont('mono',this)" style="flex:1;min-width:80px">
-        <div style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--text2);padding:4px 0">Aa</div>
-        <div class="theme-option-name">Mono</div>
-      </button>
-      <button class="theme-option font-option" data-font="serif" onclick="setFont('serif',this)" style="flex:1;min-width:80px">
-        <div style="font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--text2);padding:4px 0">Aa</div>
-        <div class="theme-option-name">Serif</div>
-      </button>
-      <button class="theme-option font-option" data-font="system" onclick="setFont('system',this)" style="flex:1;min-width:80px">
-        <div style="font-family:-apple-system,sans-serif;font-size:14px;color:var(--text2);padding:4px 0">Aa</div>
-        <div class="theme-option-name">Sistema</div>
-      </button>
-    </div>
-
-    <div class="settings-section">Tamaño de texto</div>
-    <div style="display:flex;gap:8px;margin-bottom:4px">
-      <button class="theme-option size-option" data-size="small" onclick="setFontSize('small',this)" style="flex:1">
-        <div style="font-size:11px;color:var(--text2);padding:4px 0">A</div>
-        <div class="theme-option-name">Pequeño</div>
-      </button>
-      <button class="theme-option size-option" data-size="normal" onclick="setFontSize('normal',this)" style="flex:1">
-        <div style="font-size:14px;color:var(--text2);padding:4px 0">A</div>
-        <div class="theme-option-name">Normal</div>
-      </button>
-      <button class="theme-option size-option" data-size="large" onclick="setFontSize('large',this)" style="flex:1">
-        <div style="font-size:18px;color:var(--text2);padding:4px 0">A</div>
-        <div class="theme-option-name">Grande</div>
-      </button>
-      <button class="theme-option size-option" data-size="xlarge" onclick="setFontSize('xlarge',this)" style="flex:1">
-        <div style="font-size:22px;color:var(--text2);padding:4px 0">A</div>
-        <div class="theme-option-name">XL</div>
-      </button>
-    </div>
-
-    <div class="settings-section" style="margin-top:16px">Sonidos</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-      <button class="theme-option sound-option" data-sound="piano" onclick="setSoundPack('piano');refreshSoundOptionUI()" style="flex:1;min-width:80px">
-        <div class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"/><path d="M7 6v12M10 6v12M14 6v12M17 6v12"/><path d="M4 10h16"/></svg></div>
-        <div class="theme-option-name">Piano</div>
-      </button>
-      <button class="theme-option sound-option" data-sound="wood" onclick="setSoundPack('wood');refreshSoundOptionUI()" style="flex:1;min-width:80px">
-        <div class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7c3-3 11-3 14 0v10c-3 3-11 3-14 0V7z"/><path d="M8 8c2 1 6 1 8 0M8 16c2-1 6-1 8 0"/></svg></div>
-        <div class="theme-option-name">Madera</div>
-      </button>
-      <button class="theme-option sound-option" data-sound="paper" onclick="setSoundPack('paper');refreshSoundOptionUI()" style="flex:1;min-width:80px">
-        <div class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5"/><path d="M9.5 12h5M9.5 15h5M9.5 18h3"/></svg></div>
-        <div class="theme-option-name">Papel</div>
-      </button>
-    </div>
-    <div class="sound-master-row">
-      <button class="sound-mute-btn" id="soundMuteBtn" onclick="toggleSoundMute()" title="Silenciar sonidos">
-        <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 7v4h3l4 3V4L6 7H3z"/>
-          <path d="M13 7.2c.6.6.9 1.2.9 1.8s-.3 1.2-.9 1.8"/>
-        </svg>
-      </button>
-      <input type="range" id="soundVolumeSlider" class="estado-slider sound-volume-slider" min="0" max="100" step="5" value="75" oninput="setSoundVolume(this.value)">
-      <span class="sound-volume-label" id="soundVolumeLabel">75%</span>
-    </div>
-    <div style="font-size:9px;color:var(--text3);font-style:italic;margin-top:4px">Toca una opción para escucharla.</div>
-
-    <div class="haptics-row">
-      <div class="haptics-label">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 9v6M21 9v6"/></svg>
-        <span>Vibración</span>
-      </div>
-      <button class="haptics-toggle" id="hapticsToggleBtn" role="switch" aria-checked="true" onclick="toggleHaptics()" title="Activar/desactivar vibración">
-        <span class="haptics-toggle-knob"></span>
-      </button>
-    </div>
-
-    <div class="settings-section" style="margin-top:16px">Forest App — Importar historial</div>
-    <div style="font-size:9px;color:var(--text3);line-height:1.6;margin-bottom:10px">Importa tu CSV de Forest para sumar horas previas a tus obras.</div>
-    <button class="modal-btn secondary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px" onclick="document.getElementById('forestCsvInput').click()">
-      <span style="font-size:14px">🌲</span> Cargar CSV de Forest
+<!-- AJUSTES VIEW (pantalla completa) -->
+<div class="view" id="view-ajustes">
+  <div class="ajustes-header">
+    <button class="ajustes-back" onclick="closeAjustes()" aria-label="Volver">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
     </button>
-    <button class="modal-btn secondary" id="forestReopenBtn" style="width:100%;display:none;margin-bottom:4px" onclick="closeModal('modalSettings');openForestMapper()">
-      Retomar importación anterior →
-    </button>
-    <button class="modal-btn secondary" id="forestPendientesBtn" style="width:100%;display:none;margin-bottom:4px" onclick="closeModal('modalSettings');openForestPendientes()">
-      🗂 <span id="forestPendientesBtnLabel">Etiquetas pendientes (0)</span>
-    </button>
-    <input type="file" id="forestCsvInput" accept=".csv" style="display:none" onchange="loadForestCSV(this)">
-    <div id="forestFeedback" style="font-size:9px;color:var(--green);margin-top:4px;display:none"></div>
+    <div class="ajustes-title">Ajustes</div>
+  </div>
 
-    <div class="settings-section" style="margin-top:16px">Sincronización</div>
-    <div id="syncStatusInfo" style="font-size:10px;color:var(--text3);margin-bottom:8px;line-height:1.5">Comprobando...</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="modal-btn secondary" onclick="forceCloudResync()" style="flex:1;font-size:11px">↺ Re-sincronizar con la nube</button>
-      <button class="modal-btn secondary" onclick="openModal('modalCloudSync')" style="flex:1;font-size:11px">Cuenta diferente</button>
+  <div class="ajustes-body">
+
+    <!-- ── APARIENCIA ── -->
+    <div class="ajustes-group-label">Apariencia</div>
+    <div class="ajustes-card">
+      <div class="ajustes-card-head">Tema</div>
+      <div class="theme-grid">
+        <button class="theme-option" data-theme="concierto" onclick="setTheme('concierto')" aria-label="Concierto">
+          <span class="theme-glyph" style="background:#160d10;color:#cba85f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4c1.7 1.7 1.7 3.7 0 4.8-1.7-1.1-1.7-3.1 0-4.8z"/><rect x="9.6" y="8.8" width="4.8" height="8.4" rx="1"/><path d="M7.8 20.4h8.4"/></svg></span>
+          <span class="theme-option-name">Concierto</span>
+        </button>
+        <button class="theme-option" data-theme="botanico" onclick="setTheme('botanico')" aria-label="Botánico">
+          <span class="theme-glyph" style="background:#f4f1e6;color:#5b7f5a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18.5C6 11.2 10.6 6.5 18.2 6c.4 7.4-4.4 12.5-12.2 12.5z"/><path d="M9.5 15C11.6 11.8 14.2 9.6 17.4 8"/></svg></span>
+          <span class="theme-option-name">Botánico</span>
+        </button>
+        <button class="theme-option" data-theme="swiss" onclick="setTheme('swiss')" aria-label="Swiss">
+          <span class="theme-glyph" style="background:#fbfaf8;color:#e8492b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14"/><path d="M5 12h14M12 5v14"/></svg></span>
+          <span class="theme-option-name">Swiss</span>
+        </button>
+        <button class="theme-option" data-theme="" onclick="setTheme('')" aria-label="Noche">
+          <span class="theme-glyph" style="background:#11151c;color:#d2b285"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17.2 13.6A6 6 0 1 1 10.4 6.8a4.8 4.8 0 0 0 6.8 6.8z"/></svg></span>
+          <span class="theme-option-name">Noche</span>
+        </button>
+        <button class="theme-option" data-theme="cozy" onclick="setTheme('cozy')" aria-label="Cozy">
+          <span class="theme-glyph" style="background:#faf4ea;color:#8a5c30"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5h9.6V13a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4z"/><path d="M15.6 10.6h1.7a2 2 0 0 1 0 4h-1.7"/><path d="M8.6 4.4c-.6.9.6 1.7 0 2.7M11.4 4.4c-.6.9.6 1.7 0 2.7"/></svg></span>
+          <span class="theme-option-name">Cozy</span>
+        </button>
+        <button class="theme-option" data-theme="bruma" onclick="setTheme('bruma')" aria-label="Bruma">
+          <span class="theme-glyph" style="background:#f3f4ec;color:#4e7d5b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9c2-1.4 4-1.4 6 0s4 1.4 6 0"/><path d="M5 13c2-1.4 4-1.4 6 0s4 1.4 6 0"/><path d="M7 17c1.4-1 3-1 4.5 0s3 1 4.5 0"/></svg></span>
+          <span class="theme-option-name">Bruma</span>
+        </button>
+        <button class="theme-option" data-theme="velvet" onclick="setTheme('velvet')" aria-label="Abeto">
+          <span class="theme-glyph" style="background:#131a15;color:#94c4a2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 8 9h2.3L7 13.5h2.6L7 18h10l-2.6-4.5H17L13.7 9H16z"/><path d="M12 18v2.6"/></svg></span>
+          <span class="theme-option-name">Abeto</span>
+        </button>
+      </div>
+      <label class="settings-autonight" for="autoNightToggle">
+        <input type="checkbox" id="autoNightToggle" onchange="setAutoNight(this.checked)">
+        <span class="settings-autonight-txt">🌙 Modo noche automático<small>De 21:00 a 7:00 pasa al tema «Noche» solo.</small></span>
+      </label>
     </div>
 
-    <div class="modal-buttons" style="margin-top:20px">
-      <button class="modal-btn primary" onclick="closeModal('modalSettings')">Cerrar</button>
+    <div class="ajustes-card">
+      <div class="ajustes-card-head">Fuente</div>
+      <div class="ajustes-seg">
+        <button class="theme-option font-option" data-font="mono" onclick="setFont('mono',this)">
+          <div style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--text2);padding:4px 0">Aa</div>
+          <div class="theme-option-name">Mono</div>
+        </button>
+        <button class="theme-option font-option" data-font="serif" onclick="setFont('serif',this)">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--text2);padding:4px 0">Aa</div>
+          <div class="theme-option-name">Serif</div>
+        </button>
+        <button class="theme-option font-option" data-font="system" onclick="setFont('system',this)">
+          <div style="font-family:-apple-system,sans-serif;font-size:14px;color:var(--text2);padding:4px 0">Aa</div>
+          <div class="theme-option-name">Sistema</div>
+        </button>
+      </div>
+      <div class="ajustes-card-head" style="margin-top:16px">Tamaño de texto</div>
+      <div class="ajustes-seg">
+        <button class="theme-option size-option" data-size="small" onclick="setFontSize('small',this)">
+          <div style="font-size:11px;color:var(--text2);padding:4px 0">A</div>
+          <div class="theme-option-name">Pequeño</div>
+        </button>
+        <button class="theme-option size-option" data-size="normal" onclick="setFontSize('normal',this)">
+          <div style="font-size:14px;color:var(--text2);padding:4px 0">A</div>
+          <div class="theme-option-name">Normal</div>
+        </button>
+        <button class="theme-option size-option" data-size="large" onclick="setFontSize('large',this)">
+          <div style="font-size:18px;color:var(--text2);padding:4px 0">A</div>
+          <div class="theme-option-name">Grande</div>
+        </button>
+        <button class="theme-option size-option" data-size="xlarge" onclick="setFontSize('xlarge',this)">
+          <div style="font-size:22px;color:var(--text2);padding:4px 0">A</div>
+          <div class="theme-option-name">XL</div>
+        </button>
+      </div>
     </div>
+
+    <!-- ── SONIDO ── -->
+    <div class="ajustes-group-label">Sonido</div>
+    <div class="ajustes-card">
+      <div class="ajustes-card-head">Paquete de sonidos</div>
+      <div class="ajustes-seg">
+        <button class="theme-option sound-option" data-sound="piano" onclick="setSoundPack('piano');refreshSoundOptionUI()">
+          <div class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"/><path d="M7 6v12M10 6v12M14 6v12M17 6v12"/><path d="M4 10h16"/></svg></div>
+          <div class="theme-option-name">Piano</div>
+        </button>
+        <button class="theme-option sound-option" data-sound="wood" onclick="setSoundPack('wood');refreshSoundOptionUI()">
+          <div class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7c3-3 11-3 14 0v10c-3 3-11 3-14 0V7z"/><path d="M8 8c2 1 6 1 8 0M8 16c2-1 6-1 8 0"/></svg></div>
+          <div class="theme-option-name">Madera</div>
+        </button>
+        <button class="theme-option sound-option" data-sound="paper" onclick="setSoundPack('paper');refreshSoundOptionUI()">
+          <div class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5"/><path d="M9.5 12h5M9.5 15h5M9.5 18h3"/></svg></div>
+          <div class="theme-option-name">Papel</div>
+        </button>
+      </div>
+      <div class="sound-master-row">
+        <button class="sound-mute-btn" id="soundMuteBtn" onclick="toggleSoundMute()" title="Silenciar sonidos">
+          <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7v4h3l4 3V4L6 7H3z"/>
+            <path d="M13 7.2c.6.6.9 1.2.9 1.8s-.3 1.2-.9 1.8"/>
+          </svg>
+        </button>
+        <input type="range" id="soundVolumeSlider" class="estado-slider sound-volume-slider" min="0" max="100" step="5" value="75" oninput="setSoundVolume(this.value)">
+        <span class="sound-volume-label" id="soundVolumeLabel">75%</span>
+      </div>
+      <div class="ajustes-hint">Toca una opción para escucharla.</div>
+      <div class="haptics-row">
+        <div class="haptics-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 9v6M21 9v6"/></svg>
+          <span>Vibración</span>
+        </div>
+        <button class="haptics-toggle" id="hapticsToggleBtn" role="switch" aria-checked="true" onclick="toggleHaptics()" title="Activar/desactivar vibración">
+          <span class="haptics-toggle-knob"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── DATOS ── -->
+    <div class="ajustes-group-label">Datos</div>
+    <div class="ajustes-card">
+      <div class="ajustes-card-head">Forest · importar historial</div>
+      <div class="ajustes-hint" style="margin-bottom:12px">Importa tu CSV de Forest para sumar horas previas a tus obras.</div>
+      <button class="modal-btn secondary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px" onclick="document.getElementById('forestCsvInput').click()">
+        <span style="font-size:14px">🌲</span> Cargar CSV de Forest
+      </button>
+      <button class="modal-btn secondary" id="forestReopenBtn" style="width:100%;display:none;margin-bottom:4px" onclick="openForestMapper()">
+        Retomar importación anterior →
+      </button>
+      <button class="modal-btn secondary" id="forestPendientesBtn" style="width:100%;display:none;margin-bottom:4px" onclick="openForestPendientes()">
+        🗂 <span id="forestPendientesBtnLabel">Etiquetas pendientes (0)</span>
+      </button>
+      <input type="file" id="forestCsvInput" accept=".csv" style="display:none" onchange="loadForestCSV(this)">
+      <div id="forestFeedback" style="font-size:9px;color:var(--green);margin-top:4px;display:none"></div>
+    </div>
+
+    <!-- ── CUENTA ── -->
+    <div class="ajustes-group-label">Cuenta</div>
+    <div class="ajustes-card">
+      <div class="ajustes-card-head">Sincronización</div>
+      <div id="syncStatusInfo" style="font-size:10px;color:var(--text3);margin-bottom:12px;line-height:1.5">Comprobando...</div>
+      <div class="ajustes-btn-row">
+        <button class="modal-btn secondary" onclick="forceCloudResync()" style="flex:1;font-size:11px">↺ Re-sincronizar</button>
+        <button class="modal-btn secondary" onclick="openModal('modalCloudSync')" style="flex:1;font-size:11px">Cuenta diferente</button>
+      </div>
+    </div>
+
+    <div class="ajustes-foot">Planificador de estudio · con calma</div>
   </div>
 </div>
 

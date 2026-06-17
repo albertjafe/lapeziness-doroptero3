@@ -226,8 +226,6 @@ function showView(name) {
   if (name === 'session')    { renderRacha(); if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI(); if (typeof renderSessionInsights === 'function') renderSessionInsights(); }
   if (name === 'cronometro') { cronoOnEnterView(); if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true); }
   if (name === 'obras')      renderObras();
-  if (name === 'pasajes')    renderPasajesGlobal();
-  if (name === 'pases')      renderPases();
   if (name === 'calendario') renderCalendario();
   if (name === 'historial')  {
     // Esqueleto inmediato; el cálculo pesado (todo el historial) corre en el
@@ -7323,8 +7321,6 @@ function confirmPasajeScore() {
   // Re-render the pasaje item in obras view if visible
   const el = document.getElementById(`pitem-${psObraId}-${psPasajeId}`);
   if (el) el.outerHTML = renderPasajeItem(psObraId, p);
-  // Re-render global pasajes view if active
-  if (document.getElementById('view-pasajes').classList.contains('active')) renderPasajesGlobal();
 }
 
 function registerPase(obraId) {
@@ -12665,12 +12661,35 @@ async function doCloudSync() {
 }
 
 // Abre Ajustes y refresca el panel de estado de sincronización
+// Ajustes es una pantalla completa (#view-ajustes), no un modal. Guardamos la
+// vista anterior para que la flecha ← devuelva a donde estaba el usuario.
+let _ajustesPrevView = 'session';
 function openSettings() {
-  openModal('modalSettings');
+  const cur = document.body.getAttribute('data-view');
+  if (cur && cur !== 'ajustes') _ajustesPrevView = cur;
+  showView('ajustes');
+  const sc = document.querySelector('.app-content');
+  if (sc) sc.scrollTop = 0;
+  if (typeof refreshTheme === 'function') refreshTheme();          // marca el tema activo
+  _syncAjustesActiveOptions();                                      // marca fuente/tamaño activos
   if (typeof updateSyncStatusInfo === 'function') updateSyncStatusInfo();
   if (typeof refreshSoundOptionUI === 'function') refreshSoundOptionUI();
   if (typeof refreshHapticsUI === 'function') refreshHapticsUI();
   if (typeof updateForestPendientesBtn === 'function') updateForestPendientesBtn();
+}
+
+// Vuelve a la pantalla desde la que se abrió Ajustes.
+function closeAjustes() {
+  showView(_ajustesPrevView || 'session');
+}
+
+// Re-marca como activas las opciones de fuente y tamaño según lo guardado
+// (el tema lo marca refreshTheme). Necesario al abrir la pantalla de Ajustes.
+function _syncAjustesActiveOptions() {
+  const font = localStorage.getItem('alberto_font') || 'mono';
+  const size = localStorage.getItem('alberto_size') || 'large';
+  document.querySelectorAll('.font-option').forEach(b => b.classList.toggle('active', b.dataset.font === font));
+  document.querySelectorAll('.size-option').forEach(b => b.classList.toggle('active', b.dataset.size === size));
 }
 
 // Refresca la información de estado en Ajustes
@@ -13741,185 +13760,6 @@ function renderCronoGarden() {
   host.innerHTML = svg;
 }
 
-// ── CATEDRAL DEL MES (construcción que crece con cada sesión) ─────────────────
-// Se deriva por completo de db.sessionPlants: cada sesión válida del mes levanta
-// la catedral; al cambiar de mes, la del mes anterior queda en el Museo. Sin
-// almacenamiento nuevo: el Museo es simplemente el histórico re-dibujado.
-function _ym(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
-function _monthName(d) { return d.toLocaleDateString('es-ES', { month: 'long' }); }
-
-function _validPlants() {
-  return (db.sessionPlants || []).filter(p =>
-    p && !p.failed && p.tipo !== 'descanso' && p.startedAt && p.mins > 0 && !isNaN(new Date(p.startedAt).getTime()));
-}
-// Horas necesarias para completar una catedral (configurable; por defecto 40).
-function _catedralGoalMin() {
-  const v = parseFloat(localStorage.getItem('alberto_catedral_horas'));
-  const h = (v && v > 0) ? v : 40;
-  return Math.max(5, Math.min(300, h)) * 60;
-}
-// Catedrales = "cubos" de GOAL minutos acumulados, en orden cronológico. Cada
-// sesión cae en la catedral correspondiente a las horas acumuladas hasta ella;
-// da igual si una catedral tarda uno o dos meses: se completa al llegar a las
-// horas. La última de la lista es la que está en obra. Todo derivado del histórico.
-function _cathedrals() {
-  const plants = _validPlants().sort((a, b) => new Date(a.startedAt) - new Date(b.startedAt));
-  const GOAL = _catedralGoalMin();
-  const list = [];
-  let cum = 0;
-  const ensure = i => { while (list.length <= i) list.push({ mins: 0, sess: [], start: null, end: null }); return list[i]; };
-  plants.forEach(p => {
-    const c = ensure(Math.floor(cum / GOAL));
-    c.mins += p.mins; c.sess.push(p);
-    const d = new Date(p.startedAt);
-    if (!c.start || d < c.start) c.start = d;
-    if (!c.end || d > c.end) c.end = d;
-    cum += p.mins;
-  });
-  if (!list.length) list.push({ mins: 0, sess: [], start: null, end: null });
-  return { list, goal: GOAL };
-}
-function _monthTiles(sess) {
-  return sess.map(x => { const o = findObra(x.obraId); return (o && obraColorHex(o)) || 'var(--accent)'; });
-}
-
-// Vitral (rosetón): hasta 8 teselas que se encienden con el color de cada obra.
-function _roseWindow(cx, cy, r, tiles) {
-  let s = '<g class="cat-rose"><circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" class="cat-rose-ring"/>';
-  const N = 8;
-  for (let i = 0; i < N; i++) {
-    const a = (i / N) * Math.PI * 2 - Math.PI / 2;
-    const px = (cx + Math.cos(a) * r * 0.55).toFixed(1);
-    const py = (cy + Math.sin(a) * r * 0.55).toFixed(1);
-    const lit = i < tiles.length;
-    s += '<circle cx="' + px + '" cy="' + py + '" r="' + (r * 0.27).toFixed(1) + '" fill="'
-      + (lit ? tiles[i] : 'var(--bg3)') + '" opacity="' + (lit ? 0.95 : 0.3) + '"/>';
-  }
-  s += '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r * 0.2).toFixed(1) + '" fill="'
-    + (tiles.length ? tiles[tiles.length - 1] : 'var(--accent2)') + '" opacity="0.95"/></g>';
-  return s;
-}
-
-// Dibuja las partes de la catedral. `ghost=true` → silueta completa tenue
-// (andamio/plano, siempre visible). `ghost=false` → solo lo construido según p.
-function _cathShape(p, tiles, ghost) {
-  const g = 186, wallTop = g - 7;
-  const inc = th => ghost || p >= th;
-  const k = base => ghost ? 'cat-ghost' : base;
-  const R = (x, y, w, h, c, extra) => '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" class="' + c + '"' + (extra || '') + '/>';
-  const P = (d, c) => '<path d="' + d + '" class="' + c + '"/>';
-  let s = '';
-  if (inc(0.05)) s += R(48, g - 7, 104, 7, k('cat-stone'));
-  if (inc(0.16)) s += R(76, 96, 48, (wallTop - 96), k('cat-stone'));
-  if (inc(0.22)) s += P('M90 ' + wallTop + ' L90 158 Q100 146 110 158 L110 ' + wallTop + ' Z', ghost ? 'cat-ghost' : 'cat-door');
-  if (inc(0.30)) s += R(50, 76, 24, (wallTop - 76), k('cat-stone'));
-  if (inc(0.30)) s += R(126, 76, 24, (wallTop - 76), k('cat-stone'));
-  if (inc(0.50)) s += P('M74 96 L100 64 L126 96 Z', k('cat-roof'));
-  if (inc(0.62)) s += R(50, 48, 24, 28, k('cat-stone'));
-  if (inc(0.62)) s += R(126, 48, 24, 28, k('cat-stone'));
-  if (inc(0.66)) s += R(58, 55, 8, 15, ghost ? 'cat-ghost' : 'cat-door', ' rx="4"');
-  if (inc(0.66)) s += R(134, 55, 8, 15, ghost ? 'cat-ghost' : 'cat-door', ' rx="4"');
-  if (inc(0.74)) s += P('M50 48 L62 14 L74 48 Z', k('cat-spire'));
-  if (inc(0.74)) s += P('M126 48 L138 14 L150 48 Z', k('cat-spire'));
-  if (inc(0.86)) s += P('M94 64 L100 28 L106 64 Z', k('cat-spire'));
-  if (inc(0.96)) s += P('M100 28 L100 18 M96 22 L104 22', ghost ? 'cat-ghost-line' : 'cat-cross');
-  // rosetón: en el fantasma solo el aro; construido, las teselas de color
-  if (ghost) s += '<circle cx="100" cy="84" r="13" class="cat-ghost-line" fill="none"/>';
-  else if (p >= 0.42) s += _roseWindow(100, 84, 13, tiles);
-  return s;
-}
-
-// Catedral procedural: silueta fantasma completa + lo construido según p (0..1).
-function _cathedralSVG(p, tiles) {
-  tiles = tiles || [];
-  let s = '<svg class="cathedral-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">';
-  s += '<line x1="22" y1="186" x2="178" y2="186" class="cat-ground"/>';
-  s += _cathShape(1, [], true);       // andamio/plano completo, tenue
-  s += _cathShape(p, tiles, false);   // lo ya construido
-  s += '</svg>';
-  return s;
-}
-
-function _catFechas(c) {
-  if (!c.start) return '';
-  const f = d => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-  const a = f(c.start), b = c.end ? f(c.end) : a;
-  return a === b ? a : a + ' – ' + b;
-}
-
-function renderCronoBuild() {
-  const host = document.getElementById('cronoBuild');
-  if (!host) return;
-  const visual = localStorage.getItem('alberto_crono_visual') || 'catedral';
-  const bar = document.getElementById('cronoBuildBar');
-  const gar = document.getElementById('cronoGarden');
-  const toggle = document.getElementById('cronoBuildToggle');
-  if (visual === 'flores') {
-    host.style.display = 'none';
-    if (bar) bar.style.display = 'none';
-    if (gar) gar.style.display = '';
-    if (toggle) toggle.textContent = '🏛 Catedral';
-    renderCronoGarden();
-    return;
-  }
-  host.style.display = '';
-  if (bar) bar.style.display = '';
-  if (gar) gar.style.display = 'none';
-  if (toggle) toggle.textContent = '🌼 Flores';
-  const { list, goal } = _cathedrals();
-  const cur = list[list.length - 1];
-  const goalH = Math.round(goal / 60);
-  const p = Math.max(0, Math.min(1, cur.mins / goal));
-  host.innerHTML = _cathedralSVG(p, _monthTiles(cur.sess));
-  if (bar) {
-    const h = Math.floor(cur.mins / 60), m = cur.mins % 60;
-    bar.innerHTML = '<div class="cbar-track"><i style="width:' + Math.round(p * 100) + '%"></i></div>'
-      + '<div class="cbar-txt">Catedral nº' + list.length + ' · ' + h + 'h' + (m ? ' ' + m + 'm' : '')
-      + ' / ' + goalH + 'h · ' + Math.round(p * 100) + '%</div>';
-  }
-}
-
-function toggleCronoVisual() {
-  const cur = localStorage.getItem('alberto_crono_visual') || 'catedral';
-  localStorage.setItem('alberto_crono_visual', cur === 'catedral' ? 'flores' : 'catedral');
-  renderCronoBuild();
-}
-function setCatedralHoras(v) {
-  const n = parseFloat(v);
-  if (n && n > 0) localStorage.setItem('alberto_catedral_horas', String(Math.max(5, Math.min(300, Math.round(n)))));
-  else localStorage.removeItem('alberto_catedral_horas');
-  renderMuseo();
-  renderCronoBuild();
-}
-
-function openMuseo() {
-  openModal('modalMuseo');
-  const inp = document.getElementById('catedralHoras');
-  if (inp) inp.value = Math.round(_catedralGoalMin() / 60);
-  renderMuseo();
-}
-function renderMuseo() {
-  const el = document.getElementById('museoList');
-  if (!el) return;
-  const { list, goal } = _cathedrals();
-  const goalH = Math.round(goal / 60);
-  const hasAny = list.some(c => c.sess.length);
-  if (!hasAny) {
-    el.innerHTML = '<div class="museo-empty">Aún no hay catedrales. Cada sesión levanta una piedra; al juntar ' + goalH + ' h tendrás la primera.</div>';
-    return;
-  }
-  el.innerHTML = list.map((c, i) => {
-    const last = i === list.length - 1;
-    const p = Math.max(0, Math.min(1, c.mins / goal));
-    const h = Math.floor(c.mins / 60), m = c.mins % 60;
-    const tag = (last && p < 1) ? ' · en obra' : ' · completada';
-    return '<div class="museo-item' + (last && p < 1 ? ' current' : '') + '">'
-      + '<div class="museo-art">' + _cathedralSVG(p, _monthTiles(c.sess)) + '</div>'
-      + '<div class="museo-month">Catedral nº' + (i + 1) + tag + '</div>'
-      + '<div class="museo-stats">' + _catFechas(c) + ' · ' + h + 'h' + (m ? ' ' + m + 'm' : '') + ' · ' + Math.round(p * 100) + '%</div>'
-      + '</div>';
-  }).reverse().join('');
-}
 
 // Refresca todos los textos "hoy te has concentrado..." y el mini-resumen
 function refreshConcentradoUI() {
@@ -13934,8 +13774,7 @@ function refreshConcentradoUI() {
   if (typeof refreshDestellosPill === 'function') refreshDestellosPill();
   if (typeof refreshDaisyPill === 'function') refreshDaisyPill();
   if (typeof renderSessionInsights === 'function') renderSessionInsights();
-  if (typeof renderCronoBuild === 'function') renderCronoBuild();
-  else if (typeof renderCronoGarden === 'function') renderCronoGarden();
+  if (typeof renderCronoGarden === 'function') renderCronoGarden();
 
   // Mini-resumen lateral eliminado: el jardín del día ya muestra lo
   // estudiado hoy de forma visual, y los Destellos guardan lo memorable.

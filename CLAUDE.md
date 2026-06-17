@@ -8,7 +8,7 @@ App PWA para práctica de piano de Alberto. Sirve como planificador de estudio c
 
 Una obra tiene SOLO: nombre, compositor, **dificultad**, **duración** y **solidez** (0-100, única métrica con historial `solHistory`). Solidez 100% = "la toco en público y sale perfecta". **Eliminados de la UI**: movimientos, compases (compasActual/Total), pasajes, pases, ejes apr/esc y fase "digitando". Los datos viejos NO se borran (se preservan en los objetos guardados para poder revertir); solo se dejan de usar/mostrar.
 
-Implementación segura: la tarjeta de obra es `renderObraCardSimple` (la antigua quedó como `renderObraCard_LEGACY`, código muerto). El modal Hecho oculta vía CSS `!important` las secciones `#hechoCompasSection/#hechoPasesSection/#hechoPasajesSection/#hechoMemSection/#hechoZoneSection`. Las vistas `view-pasajes`/`view-pases` siguen en el código pero ya no son alcanzables. Backup pre-refactor en rama `backup/pre-solidez-refactor`.
+Implementación segura: la tarjeta de obra es `renderObraCardSimple` (la antigua quedó como `renderObraCard_LEGACY`, código muerto). El modal Hecho oculta vía CSS `!important` las secciones `#hechoCompasSection/#hechoPasesSection/#hechoPasajesSection/#hechoMemSection/#hechoZoneSection`. El marcado de las vistas `view-pasajes`/`view-pases` se **eliminó de `index.html`** (jun 2026), igual que sus ramas en `showView` y su CSS; las funciones `renderPasajesGlobal`/`renderPases`/`setPasajesSort` quedan como código muerto inalcanzable (los helpers `renderPasajeItem`/`renderPasajeMiniGraph`/`renderPasajeSolChart` siguen vivos porque los usa `renderObraCard_LEGACY`). Backup pre-refactor en rama `backup/pre-solidez-refactor`.
 
 ## CRÍTICO: Rama de desarrollo — SIEMPRE `main`
 
@@ -101,7 +101,7 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v15`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v78`.
 
 ### Modales que nunca quedan invisibles ni descentrados
 
@@ -161,6 +161,20 @@ Cuando el slider "¿Cómo fue esta sesión?" del modal Hecho llega a **≥ `DEST
 ### Fix de zoom en modales sobre el cronómetro
 
 `body.crono-focus` usa `touch-action: none` (bloquea pellizco). Los modales sobre el cronómetro ahora usan `touch-action: pan-y` (antes `auto`): permiten scroll vertical pero **no** pinch-zoom, evitando que la pantalla quede ampliada al cerrar el modal.
+
+### Ajustes es una PANTALLA, no un modal (jun 2026)
+
+Antes Ajustes era `#modalSettings` (un modal monolítico con 15 controles apilados). Ahora es una **vista a pantalla completa** `#view-ajustes`, igual que Sesión/Obras/etc., pero **no** está en la barra de navegación inferior: se abre con el ⚙ del topbar (`openSettings()` → `showView('ajustes')`) y se cierra con la flecha ← de su cabecera (`closeAjustes()` → `showView(_ajustesPrevView)`, que recuerda la vista de origen). `openSettings` además llama `refreshTheme()` y `_syncAjustesActiveOptions()` para re-marcar tema/fuente/tamaño activos al entrar.
+
+El contenido se agrupa en tarjetas (`.ajustes-card`) bajo etiquetas de grupo (`.ajustes-group-label`): **Apariencia** (tema, modo noche, fuente, tamaño), **Sonido** (paquete, volumen+mute, vibración), **Datos** (importar Forest), **Cuenta** (sincronización). Cabecera con `.ajustes-back` (botón circular ←) + `.ajustes-title` (Cormorant 30px). Todos los ids/handlers originales se conservaron (solo cambió el envoltorio), así que el JS de sonido/forest/sync sigue igual. Quedan 3 `closeModal('modalSettings')` en `app.js` como no-ops inofensivos (closeModal es null-safe).
+
+### Selector de temas con glifo por tema (no swatch de color)
+
+Cada `.theme-option` ya no muestra un `.theme-swatch` (gradiente plano) sino un `.theme-glyph`: un cuadro redondeado con el `--bg` del tema de fondo y, encima, un **glifo SVG a trazo fino** teñido con el `--accent` del tema (vía `style="background:#bg;color:#accent"` + `stroke="currentColor"`). Glifos: Concierto=vela, Botánico=hoja, Swiss=retícula, Noche=luna, Cozy=taza, Bruma=niebla, Abeto=abeto. Los `.theme-option` ahora son `<button>` (reset `font/color/background`), en grid `auto-fill minmax(74px,1fr)`. El activo: `border-color: var(--accent)` + ring interno. `refreshTheme` sigue marcando `.active` por `data-theme`. `.theme-swatch` queda en CSS como legacy sin uso.
+
+### Catedral del mes — ELIMINADA
+
+La visualización "Catedral del mes" del cronómetro en reposo (con su Museo y el toggle catedral/flores) **se eliminó** (jun 2026). El **jardín de flores** (`renderCronoGarden`) es ahora la única visualización en reposo; `refreshConcentradoUI` lo llama directamente. Se borró el bloque completo en `app.js` (`_cathedral*`, `_roseWindow`, `renderCronoBuild`, `toggleCronoVisual`, `openMuseo`, `renderMuseo`, `setCatedralHoras`, helpers `_ym/_monthName/_validPlants/_monthTiles/_catFechas`), el DOM en `index.html` (`#cronoBuild`, controles, `#modalMuseo`) y el CSS (`.crono-build*`, `.cat-*`, `.cbar-*`, `.museo-*`). localStorage `alberto_crono_visual`/`alberto_catedral_horas` quedan obsoletos.
 
 ### Algoritmo de generación (`generateSession` / `scoreEntity`)
 

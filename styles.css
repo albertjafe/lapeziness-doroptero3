@@ -2922,11 +2922,26 @@
   .settings-icon { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--text3); font-size: 18px; cursor: pointer; padding: 5px 10px; transition: all 0.2s; }
   .settings-icon:hover { border-color: var(--border); color: var(--accent); }
   /* SETTINGS MODAL THEMES */
-  .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
-  .theme-option { padding: 10px; border: 1px solid var(--border2); border-radius: 8px; cursor: pointer; transition: all 0.2s; text-align: center; }
-  .theme-option.active { border-color: var(--accent); }
-  .theme-option-name { font-size: 10px; color: var(--text2); margin-top: 5px; font-family: 'JetBrains Mono', monospace; }
-  .theme-swatch { height: 22px; border-radius: 4px; margin-bottom: 2px; }
+  /* ── Selector de temas: un glifo a trazo por tema, teñido con su propio --accent ── */
+  .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 9px; margin-bottom: 2px; }
+  .theme-option {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 9px 6px 8px; border: 1px solid var(--border2); border-radius: 12px;
+    background: transparent; color: inherit; font: inherit; cursor: pointer; text-align: center;
+    -webkit-tap-highlight-color: transparent;
+    transition: border-color 0.2s, transform 0.12s, box-shadow 0.2s;
+  }
+  .theme-option:active { transform: scale(0.96); }
+  .theme-option.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .theme-option-name { font-size: 10px; color: var(--text2); font-family: 'JetBrains Mono', monospace; }
+  .theme-option.active .theme-option-name { color: var(--text); }
+  .theme-glyph {
+    width: 100%; max-width: 54px; aspect-ratio: 1 / 1;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 11px; border: 1px solid var(--border);
+  }
+  .theme-glyph svg { width: 56%; height: 56%; }
+  .theme-swatch { height: 22px; border-radius: 4px; margin-bottom: 2px; } /* legacy, sin uso */
   .settings-autonight {
     display: flex; align-items: center; gap: 12px;
     margin-top: 10px; padding: 11px 13px;
@@ -2937,6 +2952,31 @@
   .settings-autonight-txt { font-size: 13px; color: var(--text); display: flex; flex-direction: column; gap: 2px; }
   .settings-autonight-txt small { font-size: 10px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
   .settings-section { font-size: 9px; color: var(--text3); letter-spacing: 0.2em; text-transform: uppercase; margin: 16px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border2); }
+
+  /* ════════ PANTALLA DE AJUSTES (vista completa #view-ajustes) ════════ */
+  #view-ajustes { padding-bottom: 44px; }
+  .ajustes-header { display: flex; align-items: center; gap: 11px; margin: 2px 0 18px; max-width: 560px; margin-left: auto; margin-right: auto; }
+  .ajustes-back {
+    width: 38px; height: 38px; flex: none; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border2); border-radius: 50%; background: var(--bg2); color: var(--text2);
+    cursor: pointer; -webkit-tap-highlight-color: transparent; transition: border-color 0.18s, color 0.18s, transform 0.12s;
+  }
+  .ajustes-back:hover { border-color: var(--accent); color: var(--accent); }
+  .ajustes-back:active { transform: scale(0.92); }
+  .ajustes-back svg { width: 19px; height: 19px; }
+  .ajustes-title { font-family: 'Cormorant Garamond', serif; font-size: 30px; font-weight: 500; color: var(--text); letter-spacing: 0.01em; line-height: 1; }
+  .ajustes-body { max-width: 560px; margin: 0 auto; }
+  .ajustes-group-label { font-size: 9px; color: var(--text3); letter-spacing: 0.22em; text-transform: uppercase; margin: 24px 4px 9px; font-family: 'JetBrains Mono', monospace; }
+  .ajustes-group-label:first-child { margin-top: 2px; }
+  .ajustes-card { background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px; padding: 16px 16px 17px; margin-bottom: 12px; }
+  .ajustes-card-head { font-size: 12px; color: var(--text2); font-weight: 600; margin-bottom: 11px; letter-spacing: 0.01em; }
+  .ajustes-hint { font-size: 10px; color: var(--text3); font-style: italic; margin-top: 8px; line-height: 1.5; }
+  .ajustes-seg { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ajustes-seg .theme-option { flex: 1 1 0; min-width: 72px; }
+  .ajustes-btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ajustes-card .settings-autonight { margin-top: 14px; }
+  .ajustes-foot { text-align: center; font-size: 10px; color: var(--text3); font-style: italic; margin: 26px 0 8px; opacity: 0.7; }
+
   /* HISTORIAL SESIONES */
   /* SESSION HISTORY — bigger, more visual */
   .sesion-hist-item {
@@ -3472,14 +3512,7 @@
   .tempo-field::placeholder { color: var(--text3); }
   .tempo-sep { font-size: 9px; color: var(--text3); }
 
-  /* PASAJES VIEW GLOBAL */
-  .pasajes-view-controls {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 14px; gap: 8px; flex-wrap: wrap;
-  }
-  .pasajes-sort-row {
-    display: flex; gap: 4px; flex-wrap: wrap;
-  }
+  /* Botones de orden/rango (modales de gráficas) */
   .sort-btn {
     padding: 5px 10px; border: 1px solid var(--border2);
     border-radius: 20px; background: transparent;
@@ -6709,50 +6742,9 @@
     white-space: nowrap;
   }
 
-  /* ─── CATEDRAL DEL MES (cronómetro en reposo) ─── */
-  .crono-build {
-    max-width: 280px; margin: 14px auto 0; pointer-events: none;
-  }
-  .cathedral-svg { width: 100%; height: auto; display: block; animation: catRise 0.5s var(--ease-out); }
-  @keyframes catRise { from { opacity: 0.5; transform: translateY(5px); } to { opacity: 1; transform: none; } }
-  .cat-ground { stroke: var(--border); stroke-width: 1; }
-  .cat-plan { fill: var(--border2); }
-  .cat-stone { fill: var(--bg3); stroke: var(--border); stroke-width: 1; }
-  .cat-door { fill: var(--bg); opacity: 0.85; }
-  .cat-roof { fill: var(--accent); opacity: 0.7; }
-  .cat-spire { fill: var(--accent); opacity: 0.82; }
-  .cat-cross { stroke: var(--accent2); stroke-width: 2; stroke-linecap: round; fill: none; }
-  .cat-rose-ring { fill: none; stroke: var(--accent); stroke-width: 1.5; opacity: 0.8; }
-  .cat-ghost { fill: none; stroke: var(--border); stroke-width: 1; opacity: 0.4; stroke-dasharray: 2.5 3; }
-  .cat-ghost-line { fill: none; stroke: var(--border); stroke-width: 1; opacity: 0.4; stroke-dasharray: 2.5 3; }
-  .crono-build-bar { max-width: 300px; margin: 8px auto 0; }
-  .cbar-track { height: 5px; border-radius: 999px; background: var(--bg3); overflow: hidden; }
-  .cbar-track i { display: block; height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.5s var(--ease-out); }
-  .cbar-txt { font-size: 10.5px; color: var(--text3); text-align: center; margin-top: 5px; text-transform: capitalize; letter-spacing: 0.02em; }
-  .crono-build-controls { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
-  .crono-build-btn {
-    background: transparent; border: 1px solid var(--border); border-radius: 20px;
-    color: var(--text2); font-size: 11px; padding: 5px 13px; cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .crono-build-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .museo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; overflow-y: auto; }
-  .museo-item {
-    border: 1px solid var(--border); border-radius: 10px; padding: 8px;
-    background: var(--bg2); text-align: center;
-  }
-  .museo-item.current { border-color: var(--accent); }
-  .museo-art { max-width: 130px; margin: 0 auto; }
-  .museo-art .cathedral-svg { animation: none; }
-  .museo-month { font-size: 12px; font-weight: 700; color: var(--text); margin-top: 4px; text-transform: capitalize; }
-  .museo-stats { font-size: 10px; color: var(--text3); font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
-  .museo-empty { grid-column: 1 / -1; font-size: 12px; color: var(--text3); line-height: 1.5; padding: 8px 0; }
   @media (max-width: 480px) {
-    .crono-build { max-width: 210px; margin-top: 10px; }
-    .crono-build-bar { max-width: 240px; }
     /* Píldoras a esquinas opuestas para que no se solapen en pantallas estrechas */
     .crono-destellos-pill { left: max(env(safe-area-inset-left, 0px), 14px); right: auto; margin: 0; }
-    .museo-grid { grid-template-columns: 1fr; }
   }
 
   /* ─── JARDÍN DEL DÍA (cronómetro en reposo) ─── */
@@ -7266,10 +7258,6 @@
     .crono-centerpiece { width: 200px; height: 200px; margin: 2px auto 14px; }
     body.crono-timer-mode .crono-centerpiece { width: 220px; height: 220px; }
     .crono-plant-btn { margin-top: 4px; padding: 13px 56px; font-size: 17px; }
-    /* Catedral compacta para que quepa como cabía el jardín. */
-    .crono-build { max-width: 116px; margin-top: 8px; }
-    .crono-build-bar { max-width: 220px; margin-top: 4px; }
-    .crono-build-controls { margin-top: 6px; }
   }
 
   /* La barra de pestañas inferior está fija SOBRE el contenido, así que debe ser
