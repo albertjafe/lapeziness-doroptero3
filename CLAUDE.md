@@ -2,7 +2,7 @@
 
 ## Proyecto
 
-App PWA para práctica de piano de Alberto. Sirve como planificador de estudio con cronómetro, metrónomo y sincronización con Supabase. UI completamente en **español**.
+App PWA para práctica de piano de Alberto. Sirve como planificador de estudio con cronómetro y sincronización con Supabase. UI completamente en **español**.
 
 ## MÉTRICA ÚNICA: SOLIDEZ (refactor jun 2026)
 
@@ -67,27 +67,9 @@ El mecanismo de actualización automática (`_swUpdateInit`) ya está implementa
 - Al abrir el modal "Hecho", pre-rellena los campos de pase con los valores del drawer
 - Estado en `_cronoDraftPases`, reset al iniciar nueva sesión en `cronoStart`
 
-### Metrónomo (`#metroDrawer`)
-- Drawer lateral derecho colapsable, posición fija `top: 120px`
-- Se puede anclar abierto (pin) — estado guardado en `localStorage` key `metro_pinned`
-- **Pin = fusión**: al fijar, la tarjeta del drawer se disuelve (fondo/borde transparentes vía `.metro-drawer.pinned`) y la pestaña lateral desaparece; el metrónomo queda integrado en la pantalla. El botón 📌 sigue visible para desfijar.
-- Punto parpadeante en la pestaña indica beat mientras corre
-- Animación ring-buffer 3-slots: los tres números (anterior, actual, siguiente) hacen efecto slot-machine al cambiar BPM
-- **Ruleta de tempo** (`_metroAnimateDisplayTo`): rueda/botones ± avanzan número a número (los ±5 también se animan, no saltan) con un **tick de rueda discreto** (`_metroPlayWheelTick`) en cada paso. Arrastre táctil a `STEP_PX = 26` px por paso (más lento y controlable). El slider y los cambios programáticos no hacen tick.
-- Sin etiqueta de tempo (Andante, Allegro, etc. — eliminada)
-- **Sin acento de compás**: todos los golpes suenan igual (`_metroPlayTick(false, when)` siempre; no hay contador de beats)
-- Botón TAP grande + botón Play/Pause explícito
-- Al cambiar BPM mientras corre, el planificador adopta el nuevo tempo en la siguiente ventana de lookahead (`metroSetBpm` ya **no** toca el timer; hacerlo paraba el bucle)
-- **Volumen muy alto a propósito**: el golpe usa ganancias > 1 (click 2.8, grave 2.2) empujadas contra un limitador (`DynamicsCompressor` threshold −10, ratio 20) para sonar fortísimo sin crackeo digital
+### Metrónomo — ELIMINADO
 
-### Planificador del metrónomo (fix de clicks perdidos)
-- `_metroSchedule()` usa **lookahead sobre el reloj de Web Audio** (Chris Wilson): cada 25 ms pre-programa todos los golpes que caen dentro de los próximos `_METRO_LOOKAHEAD = 0.1` s, pasando su timestamp exacto a `_metroPlayTick(false, when)`.
-- `_metroNextTime` está en **segundos del reloj de audio** (`ctx.currentTime`), no en `Date.now()`. Si la pestaña se duerme y queda atrás, reengancha a `currentTime` sin disparar una ráfaga.
-- Esto arregla el bug de iPad por el que 1 de cada 3-4 clicks no sonaba (antes el golpe se creaba en el instante impreciso del `setTimeout`, con envolvente tan corta que se truncaba).
-
-### Corrección de audio
-- `_metroGetCtx()`: recrea el `AudioContext` si está cerrado o nulo
-- `_metroPlayTick()` y el planificador llaman `ctx.resume()` si el contexto está suspendido (fix para el bug de silencio tras uso prolongado en iOS)
+El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahead, golpes fortísimos) **se eliminó a propósito** al simplificar la pantalla del cronómetro (commit `dda1a33`). El marcado de `index.html` y el CSS se quitaron entonces; el JS huérfano (`_metro*`) y el CSS `.metro-*` se borraron después en la limpieza. **No existe metrónomo en la app.** Si se quisiera recuperar, habría que reintroducir marcado + init desde cero.
 
 ### Banner de actualización SW
 - `_swUpdateInit()` se llama en `window load`
