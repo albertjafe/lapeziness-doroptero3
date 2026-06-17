@@ -332,7 +332,9 @@ function openModal(id) {
   // en coordenadas locales del body escalado. En modo concentración el
   // transform ya se anula vía html.crono-focus-root, no hace falta.
   const z = (typeof _appZoom === 'number' && _appZoom) || 1;
-  const bodyScaled = isIOS && z !== 1
+  // Solo compensamos cuando body está escalado con transform (fallback legacy).
+  // Con CSS zoom no hace falta: position:fixed se centra en el viewport normal.
+  const bodyScaled = _iosTransformZoom
     && !document.documentElement.classList.contains('crono-focus-root');
   if (bodyScaled) {
     overlay.style.position = 'absolute';
@@ -11136,10 +11138,23 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 var _appZoom = 1; // var: hoisted, openModal puede leerlo aunque se defina después
+var _iosTransformZoom = false; // true solo en el fallback legacy (transform en body)
 function applyZoom(z) {
   _appZoom = z;
-  if (isIOS) {
-    const b = document.body;
+  const b = document.body, h = document.documentElement;
+  // CSS `zoom` (soportado en iOS 16.4+) NO rompe position:fixed → la barra de
+  // navegación inferior se queda fija al hacer scroll. El `transform: scale` en
+  // body sí la rompía (convertía body en containing block de los fixed).
+  const canZoom = !!(window.CSS && CSS.supports && CSS.supports('zoom', '1.5'));
+  if (isIOS && canZoom) {
+    _iosTransformZoom = false;
+    b.style.transform = ''; b.style.width = ''; b.style.minHeight = ''; b.style.transformOrigin = '';
+    h.style.zoom = (z === 1 ? '' : z);
+    h.style.fontSize = '';
+  } else if (isIOS) {
+    // Fallback legacy (iOS < 16.4 sin CSS zoom): escalar body con transform.
+    _iosTransformZoom = (z !== 1);
+    h.style.zoom = '';
     b.style.transformOrigin = 'top left';
     if (z === 1) {
       b.style.transform = '';
@@ -11151,8 +11166,9 @@ function applyZoom(z) {
       b.style.minHeight = (100 / z).toFixed(3) + 'vh';
     }
   } else {
-    document.documentElement.style.zoom = z;
-    document.documentElement.style.fontSize = Math.round(z * 100) + '%';
+    _iosTransformZoom = false;
+    h.style.zoom = z;
+    h.style.fontSize = Math.round(z * 100) + '%';
   }
 }
 
