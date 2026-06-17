@@ -4006,9 +4006,6 @@
       max-width: calc(100vw - 60px);
       top: max(calc(env(safe-area-inset-top, 14px) + 62px), 82px);
     }
-    /* El header fijo (concentrado + probabilidad) baja hasta ~155px; el
-       contenido debe arrancar por debajo para no solaparse en móvil. */
-    .crono-wrap { padding: 172px 18px 30px; }
   }
 
   /* Contenedor principal */
@@ -4020,6 +4017,12 @@
     max-width: 520px; margin: 0 auto;
     padding: 130px 24px 40px;
     position: relative;
+  }
+  /* En móvil el header fijo (concentrado + probabilidad) baja hasta ~155px, así
+     que el contenido debe arrancar por debajo para no solaparse. Esta media query
+     va DESPUÉS de la base a propósito: misma especificidad → gana la última. */
+  @media (max-width: 480px) {
+    .crono-wrap { padding: 178px 18px 30px; }
   }
   .crono-stage {
     width: 100%;
@@ -7468,3 +7471,25 @@
     backdrop-filter: blur(2px);
   }
   .destellos-group-label:first-of-type { margin-top: 0; }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     CRONÓMETRO EN MÓVIL — compactado autoritativo.
+     Este bloque va al FINAL del archivo a propósito: el cronómetro en reposo es
+     overflow:hidden (pantalla fija sin scroll) y, al sumar la catedral, el
+     contenido no cabía en móvil y se recortaba/solapaba. Aquí, como es la última
+     media query del archivo, gana en cascada a las reglas previas dispersas.
+     ───────────────────────────────────────────────────────────────────────── */
+  @media (max-width: 480px) {
+    /* El header fijo (concentrado + probabilidad) baja hasta ~155px → el
+       contenido arranca por debajo para no solaparse con el toggle. */
+    .crono-wrap { padding-top: 166px; padding-bottom: 22px; }
+    .crono-idle-message { margin-bottom: 14px; margin-top: 6px; }
+    .crono-mode-toggle { margin-bottom: 14px; }
+    .crono-centerpiece { width: 200px; height: 200px; margin: 2px auto 14px; }
+    body.crono-timer-mode .crono-centerpiece { width: 220px; height: 220px; }
+    .crono-plant-btn { margin-top: 4px; padding: 13px 56px; font-size: 17px; }
+    /* Catedral compacta para que quepa como cabía el jardín. */
+    .crono-build { max-width: 116px; margin-top: 8px; }
+    .crono-build-bar { max-width: 220px; margin-top: 4px; }
+    .crono-build-controls { margin-top: 6px; }
+  }
