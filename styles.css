@@ -4006,7 +4006,9 @@
       max-width: calc(100vw - 60px);
       top: max(calc(env(safe-area-inset-top, 14px) + 62px), 82px);
     }
-    .crono-wrap { padding: 118px 18px 30px; }
+    /* El header fijo (concentrado + probabilidad) baja hasta ~155px; el
+       contenido debe arrancar por debajo para no solaparse en móvil. */
+    .crono-wrap { padding: 172px 18px 30px; }
   }
 
   /* Contenedor principal */
