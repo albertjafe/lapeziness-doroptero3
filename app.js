@@ -9132,6 +9132,28 @@ function _probDaySave(s) {
   try { localStorage.setItem('prob_day_v1', JSON.stringify(s)); } catch (e) { /* noop */ }
 }
 
+// Hora de comienzo opcional: si Alberto va a empezar más tarde, la fija y el
+// "quédate hasta…" se calcula desde esa hora en vez de desde ahora. Se guarda con
+// la fecha para limpiarse sola al día siguiente.
+function _horaComienzoState() {
+  const today = _statsISO(new Date());
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem('alberto_hora_comienzo_v1') || 'null'); } catch (e) { /* noop */ }
+  if (!s || s.date !== today) s = { date: today, hm: '' };
+  return s;
+}
+function _horaComienzoMin() {
+  const s = _horaComienzoState();
+  if (!s.hm) return null;
+  const m = _blkHmToMin(s.hm);
+  return (m == null) ? null : m;
+}
+function setHoraComienzo(hm) {
+  const s = _horaComienzoState();
+  s.hm = hm || '';
+  try { localStorage.setItem('alberto_hora_comienzo_v1', JSON.stringify(s)); } catch (e) { /* noop */ }
+}
+
 // Texto para mostrar la probabilidad de hoy. null si no hay datos suficientes.
 function _probTextHoy() {
   const now = new Date();
@@ -9194,9 +9216,12 @@ function _probTextHoy() {
   else cronoLine = '<strong>' + projVal + '</strong> · 4 h ' + r.p4 + '% · 5 h ' + r.p5 + '%';
   // Hora física a la que sueles llegar a 4 h / 5 h (mediana de la ventana de 3 meses,
   // contando lo ya hecho, la hora actual y los bloqueos). Se recalcula en vivo.
-  const eta4 = done >= 240 ? { reached: true } : _liveTargetETA(nowMin, done, 240);
-  const eta5 = done >= 300 ? { reached: true } : _liveTargetETA(nowMin, done, 300);
-  return { proj, prob, sub, cronoLine, p4: r.p4, p5: r.p5, done, projVal, projExtra, tip, reward, celebrate, base4, scope: r.scope, hhmm, doneTxt, eta4, eta5 };
+  const startOv = _horaComienzoMin();
+  const startedLater = startOv != null && startOv > nowMin;
+  const fromMin = startedLater ? startOv : nowMin;
+  const eta4 = done >= 240 ? { reached: true } : _liveTargetETA(fromMin, done, 240);
+  const eta5 = done >= 300 ? { reached: true } : _liveTargetETA(fromMin, done, 300);
+  return { proj, prob, sub, cronoLine, p4: r.p4, p5: r.p5, done, projVal, projExtra, tip, reward, celebrate, base4, scope: r.scope, hhmm, doneTxt, eta4, eta5, startMin: startOv, startedLater };
 }
 
 // Tarjeta rica (coloreada, por bloques) para la pantalla de Sesión.
@@ -9206,11 +9231,14 @@ function _probRichHTML(t) {
   const blkBtn = '<button class="prob-bloqueo-btn' + (blkTotal ? ' on' : '') + '"'
     + ' onclick="openHorasBloqueadas(event)" title="Horas que hoy no podrás estudiar">⊘'
     + (blkTotal ? ' ' + blkTotal : '') + '</button>';
+  const startBtn = '<button class="prob-bloqueo-btn prob-start-btn' + (t.startedLater ? ' on' : '') + '"'
+    + ' onclick="openHoraComienzo(event)" title="Hora a la que vas a empezar (calcula el «quédate hasta» desde esa hora)">▷'
+    + (t.startedLater ? ' ' + _fmtHourMin(t.startMin) : '') + '</button>';
   return '<div class="prob-head">'
       + '<span class="prob-head-left"><span class="prob-kicker">Hoy</span>'
         + '<span class="prob-scope">' + (t.scope || '3 meses') + '</span></span>'
       + '<span class="prob-context">' + t.hhmm + ' · llevas <b>' + t.doneTxt + '</b></span>'
-      + blkBtn
+      + '<span class="prob-head-btns">' + startBtn + blkBtn + '</span>'
     + '</div>'
     + '<div class="prob-body">'
       + '<div class="prob-proj">'
@@ -9267,7 +9295,8 @@ function _probEtaLine(t) {
   const a = item(t.eta4, '4 h', 240, 'var(--accent)');
   const b = item(t.eta5, '5 h', 300, 'var(--orange)');
   if (!a && !b) return '';
-  return '<div class="prob-eta"><span class="prob-eta-cap">Quédate hasta</span>' + a + b + '</div>';
+  const cap = t.startedLater ? ('Empiezas ' + _fmtHourMin(t.startMin) + ' · quédate hasta') : 'Quédate hasta';
+  return '<div class="prob-eta"><span class="prob-eta-cap">' + cap + '</span>' + a + b + '</div>';
 }
 
 // ── UI de horas bloqueadas ────────────────────────────────────────────────────
@@ -9283,6 +9312,26 @@ function openHorasBloqueadas(ev) {
   renderHorasBloqueadasList();
   const tope = document.getElementById('horaTope');
   if (tope) tope.value = localStorage.getItem('alberto_hora_tope') || '';
+}
+
+function openHoraComienzo(ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  openModal('modalHoraComienzo');
+  const i = document.getElementById('horaComienzoInput');
+  if (i) i.value = _horaComienzoState().hm || '';
+}
+function applyHoraComienzo() {
+  const i = document.getElementById('horaComienzoInput');
+  setHoraComienzo(i ? i.value : '');
+  closeModal('modalHoraComienzo');
+  if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true);
+}
+function clearHoraComienzo() {
+  setHoraComienzo('');
+  const i = document.getElementById('horaComienzoInput');
+  if (i) i.value = '';
+  closeModal('modalHoraComienzo');
+  if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true);
 }
 function renderHorasBloqueadasList() {
   const cont = document.getElementById('horasBloqueadasList');
