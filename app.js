@@ -11446,8 +11446,11 @@ function playTone(freq, type = 'triangle', dur = 0.25, vol = 0.10, delay = 0) {
       const t0 = ac.currentTime + delay;
       osc.frequency.setValueAtTime(freq, t0);
       gain.gain.setValueAtTime(0, t0);
-      gain.gain.linearRampToValueAtTime(vol, t0 + 0.002);
-      gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+      // Ataque suave (evita clicks) + cola de release en dos tramos para que el
+      // tono suene "dibujado" y no cortado en seco.
+      gain.gain.linearRampToValueAtTime(vol, t0 + 0.004);
+      gain.gain.exponentialRampToValueAtTime(Math.max(0.0008, vol * 0.18), t0 + dur * 0.7);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
       const stopAt = t0 + dur + 0.01;
       osc.start(t0);
       osc.stop(stopAt);
@@ -11462,8 +11465,11 @@ function playTone(freq, type = 'triangle', dur = 0.25, vol = 0.10, delay = 0) {
 }
 
 function playPianoTone(freq, dur = 0.25, vol = 0.10, delay = 0) {
+  // Fundamental + octava + un toque de doceava (3x) muy tenue: da cuerpo y
+  // brillo sin sonar sintético ni metálico.
   playTone(freq, 'triangle', dur, vol, delay);
   playTone(freq * 2, 'sine', Math.max(0.12, dur * 0.82), vol * 0.15, delay + 0.004);
+  playTone(freq * 3, 'sine', Math.max(0.08, dur * 0.6), vol * 0.06, delay + 0.008);
 }
 
 // Burst de noise filtrado: para clicks de madera, papel, botón.
@@ -11494,7 +11500,7 @@ function playNoiseBurst(cutoff, q, dur, vol, delay = 0) {
       src.connect(filt); filt.connect(gain); gain.connect(ac.destination);
       const t0 = ac.currentTime + delay;
       gain.gain.setValueAtTime(0, t0);
-      gain.gain.linearRampToValueAtTime(vol, t0 + 0.001);
+      gain.gain.linearRampToValueAtTime(vol, t0 + 0.003);
       gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
       const stopAt = t0 + dur + 0.02;
       src.start(t0);

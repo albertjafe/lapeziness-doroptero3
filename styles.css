@@ -65,15 +65,15 @@
   :root {
     --bg: #11151c; --bg2: #181e27; --bg3: #212a36;
     --accent: #d2b285; --accent2: #ead2a6;
-    --text: #ece7dc; --text2: #a59c89; --text3: #5f594c;
+    --text: #ece7dc; --text2: #a59c89; --text3: #786f5e;
     --green: #7cb89c; --orange: #d4906a; --red: #c97a74;
-    --border: rgba(210,178,133,0.16); --border2: rgba(210,178,133,0.08);
+    --border: rgba(210,178,133,0.18); --border2: rgba(210,178,133,0.12);
   }
   /* TEMA: Cozy */
   [data-theme="cozy"] {
     --bg: #faf4ea; --bg2: #f2e8d6; --bg3: #e9dcc3;
-    --accent: #8a5c30; --accent2: #b3793c;
-    --text: #2d1f0e; --text2: #6b4c2a; --text3: #a07848;
+    --accent: #8a5c30; --accent2: #cf8c43;
+    --text: #2d1f0e; --text2: #6b4c2a; --text3: #94703f;
     --green: #5a8040; --orange: #c07020; --red: #b03030;
     --border: rgba(138,92,48,0.25); --border2: rgba(138,92,48,0.13);
     --cozy-radius: 18px; --cozy-radius-sm: 12px; --cozy-radius-xs: 8px;
@@ -92,9 +92,9 @@
   [data-theme="concierto"] {
     --bg: #160d10; --bg2: #1f1418; --bg3: #2a1c20;
     --accent: #cba85f; --accent2: #e7cf94;
-    --text: #efe6d6; --text2: #b7a79e; --text3: #8c7c77;
+    --text: #efe6d6; --text2: #bcaca0; --text3: #a08f84;
     --green: #9db98a; --orange: #d8a85a; --red: #c07a6e;
-    --border: rgba(203,168,95,0.30); --border2: rgba(203,168,95,0.14);
+    --border: rgba(203,168,95,0.40); --border2: rgba(203,168,95,0.16);
   }
   /* CONCIERTO — forma de tarjetas: marco fino dorado, esquinas sobrias */
   [data-theme="concierto"] .card,
@@ -151,10 +151,10 @@
   /* TEMA: Botánico — pliego de herbario, papel cálido, salvia y terracota */
   [data-theme="botanico"] {
     --bg: #f4f1e6; --bg2: #fbf9f0; --bg3: #ece7d4;
-    --accent: #5b7f5a; --accent2: #7aa06f;
-    --text: #33402f; --text2: #5e6b50; --text3: #8a9277;
+    --accent: #5b7f5a; --accent2: #8fb983;
+    --text: #33402f; --text2: #5e6b50; --text3: #79836a;
     --green: #5b7f5a; --orange: #c08a4e; --red: #b5654a;
-    --border: rgba(91,127,90,0.30); --border2: rgba(91,127,90,0.15);
+    --border: rgba(91,127,90,0.34); --border2: rgba(91,127,90,0.17);
   }
   /* BOTÁNICO — tarjetas tipo lámina de herbario: papel + doble filete fino */
   [data-theme="botanico"] .card,
@@ -221,7 +221,7 @@
     --accent: #e8492b; --accent2: #1a1a1a;
     --text: #141414; --text2: #6b6b6b; --text3: #9a9a9a;
     --green: #1a1a1a; --orange: #e8492b; --red: #e8492b;
-    --border: rgba(20,20,20,0.16); --border2: rgba(20,20,20,0.08);
+    --border: rgba(20,20,20,0.22); --border2: rgba(20,20,20,0.11);
     --sol-mid: #1a1a1a;
   }
   /* SWISS — tipografía grotesca, fuerte; etiquetas en mayúsculas espaciadas */
@@ -3551,7 +3551,7 @@
     --accent2: #6fa07e;
     --text:    #243029;
     --text2:   #4b5f51;
-    --text3:   #8ba18d;
+    --text3:   #7a9080;
     --green:   #4e8a5e;
     --orange:  #c08442;
     --red:     #b05c52;
