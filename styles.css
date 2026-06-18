@@ -302,6 +302,101 @@
   [data-theme="swiss"] .prob-bar { display: none; }
   [data-theme="swiss"] .prob-tile-label { margin-top: 6px; }
 
+  /* ════════════════════════════════════════════════════════════════════════
+     TEMA: Brutalista (experimental) — la ANTÍTESIS del diseño "de IA".
+     Sin Inter, sin degradados azul→morado, sin esquinas redondeadas, sin
+     sombras suaves. En su lugar: papel hueso + tinta negra + un único tinte
+     riso magenta, bordes negros gruesos, sombras DURAS macizas (offset sólido,
+     sin blur), esquinas a 0 y tipografía mono pesada en mayúsculas. Decisiones
+     deliberadas, no la media estadística de un modelo.
+     ════════════════════════════════════════════════════════════════════════ */
+  [data-theme="brutalista"] {
+    --bg: #ece6d6; --bg2: #f7f2e6; --bg3: #ded6c2;
+    --accent: #e11d5c; --accent2: #14110c;
+    --text: #14110c; --text2: #463f33; --text3: #756c5b;
+    --green: #1f7a4d; --orange: #e1591d; --red: #d11919;
+    --border: #14110c; --border2: rgba(20,17,12,0.30);
+    --sol-mid: #14110c;
+  }
+  /* BRUTALISTA — superficies: marco negro grueso + sombra dura maciza, 0 radio */
+  [data-theme="brutalista"] .card,
+  [data-theme="brutalista"] .obra-card,
+  [data-theme="brutalista"] .obra-card-simple,
+  [data-theme="brutalista"] .session-insight-card,
+  [data-theme="brutalista"] .stats-card,
+  [data-theme="brutalista"] .ajustes-card,
+  [data-theme="brutalista"] .prob-card,
+  [data-theme="brutalista"] .destellos-modal,
+  [data-theme="brutalista"] .sesion-hist-item,
+  [data-theme="brutalista"] .evento-card {
+    background: var(--bg2) !important;
+    border: 2px solid var(--text) !important;
+    border-radius: 0 !important;
+    box-shadow: 4px 4px 0 0 var(--text) !important;
+  }
+  [data-theme="brutalista"] .session-hero {
+    background: var(--bg2) !important;
+    border: 3px solid var(--text) !important;
+    border-radius: 0 !important;
+    box-shadow: 6px 6px 0 0 var(--accent) !important;
+  }
+  [data-theme="brutalista"] .modal {
+    border: 3px solid var(--text) !important;
+    border-radius: 0 !important;
+    box-shadow: 8px 8px 0 0 var(--text) !important;
+  }
+  /* BRUTALISTA — tipografía mono pesada; etiquetas en mayúsculas espaciadas */
+  [data-theme="brutalista"] .obra-name,
+  [data-theme="brutalista"] .session-hero-title,
+  [data-theme="brutalista"] .modal-title,
+  [data-theme="brutalista"] #headerTitle {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-style: normal !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.03em;
+  }
+  [data-theme="brutalista"] .section-title,
+  [data-theme="brutalista"] .stats-card-title,
+  [data-theme="brutalista"] .obra-simple-meta,
+  [data-theme="brutalista"] .prob-kicker,
+  [data-theme="brutalista"] .ajustes-group-label,
+  [data-theme="brutalista"] .ajustes-card-head {
+    font-family: 'JetBrains Mono', monospace !important;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 700;
+  }
+  /* BRUTALISTA — botones-bloque: relleno negro, texto papel, sombra dura */
+  [data-theme="brutalista"] .generate-btn,
+  [data-theme="brutalista"] .save-session-btn {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-style: normal !important;
+    font-weight: 800 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: 2px solid var(--text) !important;
+    border-radius: 0 !important;
+    box-shadow: 4px 4px 0 0 var(--text) !important;
+  }
+  /* BRUTALISTA — nav inferior en mono compacto, activo en magenta */
+  [data-theme="brutalista"] .nav-btn span {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  [data-theme="brutalista"] .nav-btn.active { color: var(--accent); }
+  [data-theme="brutalista"] .nav-btn.active svg { stroke: var(--accent); }
+  [data-theme="brutalista"] .nav-btn.active span { color: var(--accent); }
+  [data-theme="brutalista"] .nav { border-top: 2px solid var(--text); background: var(--bg); }
+  [data-theme="brutalista"] .header { border-bottom: 2px solid var(--text); }
+  /* BRUTALISTA — barra de solidez recta, tinta plena sobre papel */
+  [data-theme="brutalista"] .obra-sol-bar {
+    border-radius: 0 !important;
+    border: 1px solid var(--text);
+    background: var(--bg3);
+  }
+  [data-theme="brutalista"] .obra-sol-fill { border-radius: 0 !important; }
+
   /* MODO LIMPIO en Sesión: oculta textos pequeños de apoyo (botón ℹ los revela) */
   #sessionInfoBtn { display: none; }
   body[data-view="session"] #sessionInfoBtn { display: inline-flex; }

@@ -11235,7 +11235,7 @@ function loadAppTitle() {
 
 // Color de fondo base de cada tema. Se usa para tintar la barra del
 // navegador (meta theme-color) y que la app no se sienta "una web".
-const THEME_BG = { '': '#11151c', cozy: '#faf4ea', bruma: '#f3f4ec', velvet: '#131a15', concierto: '#160d10', botanico: '#f4f1e6', swiss: '#fbfaf8' };
+const THEME_BG = { '': '#11151c', cozy: '#faf4ea', bruma: '#f3f4ec', velvet: '#131a15', concierto: '#160d10', botanico: '#f4f1e6', swiss: '#fbfaf8', brutalista: '#ece6d6' };
 function applyThemeColor(theme) {
   const col = THEME_BG[theme] || THEME_BG[''];
   let meta = document.querySelector('meta[name="theme-color"]');

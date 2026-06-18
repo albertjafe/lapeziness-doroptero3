@@ -101,7 +101,11 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v79`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v80`.
+
+### Tema Brutalista (experimental, anti-"slop de IA")
+
+`[data-theme="brutalista"]` es un tema diseñado a propósito como la **antítesis del diseño genérico de IA** (sin Inter, sin degradados azul→morado, sin esquinas redondeadas, sin sombras suaves). En su lugar: papel hueso (`--bg #ece6d6`) + tinta negra + un único tinte riso magenta (`--accent #e11d5c`); `--border` es **negro sólido**; bordes de 2-3px, **sombras duras macizas** (`box-shadow: 4px 4px 0 0` sin blur), `border-radius:0` en todas las superficies, y tipografía **JetBrains Mono** pesada con etiquetas en mayúsculas espaciadas. Overrides en `styles.css` (tras el bloque Swiss): `.card/.obra-card/.stats-card/.ajustes-card/.session-hero/.modal`, botones, nav, barra de solidez. Registrado en `THEME_BG.brutalista` (`#ece6d6`) y con su botón+glifo (bloque con sombra desplazada) en el selector de `#view-ajustes`. El sistema de temas es data-driven (`refreshTheme` solo lee localStorage y marca `.active`), así que no hay lista blanca de temas que actualizar.
 
 ### Meta para superar el periodo anterior (estadísticas)
 
