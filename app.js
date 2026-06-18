@@ -9935,6 +9935,41 @@ function _statsComparisonCard() {
     + '<div class="stats-card-title">Tendencia</div>'
     + '<div class="stats-card-sub">' + sub + '</div>'
     + '<div class="stats-cmp">' + barRows + '</div>'
+    + _statsMetaSuperar(rows, partial)
+    + '</div>';
+}
+
+// Meta para superar el periodo anterior. Solo en el periodo EN CURSO (partial):
+// si ya vas por encima del total del periodo anterior (cerrado), muestra el
+// margen; si aún no, calcula cuánto necesitas estudiar AL DÍA de media en los
+// días que quedan para superarlo.
+function _statsMetaSuperar(rows, partial) {
+  if (!partial) return '';
+  const prevTotal = rows[1].fullMin;   // total del periodo anterior (ya cerrado)
+  if (prevTotal <= 0) return '';
+  const hechoAhora = rows[0].fullMin;  // acumulado este periodo hasta ahora
+  const unidad = {
+    semana: 'la semana pasada',
+    mes: 'el mes pasado',
+    'año': 'el año pasado',
+  }[_statsRange] || rows[1].label.toLowerCase();
+  if (hechoAhora >= prevTotal) {
+    const margen = hechoAhora - prevTotal;
+    return '<div class="stats-meta-super ahead">'
+      + '<span class="stats-meta-ico">✓</span>'
+      + '<span>Ya superas ' + unidad + ' · <strong>+' + fmtMinutos(margen) + '</strong> de margen</span>'
+      + '</div>';
+  }
+  const cur = _statsPeriod(_statsOffset);
+  const msRest = cur.end.getTime() - Date.now();
+  const diasRest = Math.max(1, Math.ceil(msRest / 86400000));
+  const falta = prevTotal - hechoAhora;
+  const porDia = Math.ceil(falta / diasRest);
+  return '<div class="stats-meta-super">'
+    + '<span class="stats-meta-ico">▲</span>'
+    + '<span>Para superar ' + unidad + ': <strong>' + fmtMinutos(porDia) + '/día</strong>'
+    + ' <span class="stats-meta-sub">· faltan ' + fmtMinutos(falta) + ' en ' + diasRest
+    + ' día' + (diasRest === 1 ? '' : 's') + '</span></span>'
     + '</div>';
 }
 

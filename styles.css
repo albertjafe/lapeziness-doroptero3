@@ -6834,6 +6834,37 @@
     font-family: 'JetBrains Mono', monospace;
     font-variant-numeric: tabular-nums;
   }
+  /* Meta para superar el periodo anterior (horas/día necesarias o margen). */
+  .stats-meta-super {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 13px;
+    padding: 10px 12px;
+    border-radius: 11px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    font-size: 11.5px;
+    line-height: 1.45;
+    color: var(--text2);
+  }
+  .stats-meta-super strong {
+    color: var(--accent);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .stats-meta-super .stats-meta-sub { color: var(--text3); font-size: 10.5px; }
+  .stats-meta-ico {
+    flex: 0 0 auto;
+    color: var(--accent);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .stats-meta-super.ahead {
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+    background: color-mix(in srgb, var(--accent) 9%, var(--bg3));
+  }
+  .stats-meta-super.ahead strong { color: var(--accent); }
 
   /* ─── OBRA · tarjeta simple (solo solidez) ─── */
   .obra-card-simple {

@@ -101,7 +101,11 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v78`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v79`.
+
+### Meta para superar el periodo anterior (estadísticas)
+
+La tarjeta **"Tendencia"** del dashboard de estadísticas (`_statsComparisonCard`) añade, solo en el periodo EN CURSO (`partial`), una línea-meta (`_statsMetaSuperar`, caja `.stats-meta-super`): si ya vas por encima del total del periodo anterior cerrado, muestra el **margen** (`✓ Ya superas la semana pasada · +Xh de margen`); si aún no, calcula cuánto necesitas estudiar **al día de media** en los días que quedan del periodo para superarlo (`▲ Para superar la semana pasada: Xh Ym/día · faltan Zh en N días`). `objetivo = rows[1].fullMin` (total del periodo anterior, ya cerrado), `hecho = rows[0].fullMin`, `diasRest = ceil((cur.end - now)/día)`, `porDia = ceil(falta / diasRest)`. La unidad textual ("la semana pasada/el mes pasado/el año pasado") sale de `_statsRange`. La variante "ya superas" usa `.stats-meta-super.ahead` (borde y fondo teñidos con `--accent`).
 
 ### Modales que nunca quedan invisibles ni descentrados
 
