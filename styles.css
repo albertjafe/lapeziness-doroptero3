@@ -2980,6 +2980,29 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px; font-weight: bold;
   }
+  /* Meta de estudio del evento: horas para todo al 80% */
+  .evento-meta80 {
+    margin: 7px 16px 2px;
+    padding: 7px 10px;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border2));
+    background: color-mix(in srgb, var(--accent) 7%, var(--bg3));
+    font-size: 10px;
+    color: var(--text2);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    justify-content: space-between;
+  }
+  .evento-meta80 strong { color: var(--accent); font-weight: 600; font-size: 12px; }
+  .evento-meta80-n { color: var(--text3); }
+  .evento-meta80-sub { color: var(--text3); font-size: 9px; }
+  .evento-meta80.ok {
+    color: var(--green);
+    border-color: color-mix(in srgb, var(--green) 40%, transparent);
+    background: color-mix(in srgb, var(--green) 9%, var(--bg3));
+  }
   /* EVENT DONE BUTTON */
   .evento-done-btn {
     padding: 5px 14px; border-radius: 4px;

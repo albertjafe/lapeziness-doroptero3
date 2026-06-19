@@ -101,7 +101,11 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v82`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v83`.
+
+### Meta de estudio por evento (horas para todo al 80%)
+
+`renderEventoCard`, en eventos próximos no completados con obras, añade bajo "Preparación" una caja `.evento-meta80` (`_eventoHorasA80(ev, ev.dias)`): suma las horas para llevar **todas** las obras del evento al 80% desde su solidez actual estimada (`estimateSolActual` + `predictSolidez`), muestra el total (`Para todo al 80%: ~Xh`), cuántas obras faltan si no son todas, y el ritmo sugerido `~Y h/día hasta el evento` (= horas / `ev.dias`). Si todas ya ≥80% → `Todas tus obras ≥ 80% ✓` (`.evento-meta80.ok`, verde).
 
 ### Predictor de solidez (cuánto tardaré en tenerla sólida)
 

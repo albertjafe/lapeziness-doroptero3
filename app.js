@@ -8465,6 +8465,25 @@ function renderEventoCard(ev, isPast, isCompletado) {
         '<span style="font-size:7px">' + r.detalles.map(d => d.nombre.split(' ')[0] + ' ' + Math.round(d.obraScore) + '%').join(' · ') + '</span></div>' +
         '</div>';
     }
+    // Meta de estudio: horas para llevar TODAS las obras al 80% de solidez.
+    const ha = _eventoHorasA80(ev, ev.dias);
+    if (ha) {
+      const fH = h => h >= 10 ? Math.round(h) + ' h' : (Math.round(h * 2) / 2) + ' h';
+      if (ha.faltan === 0) {
+        readinessHtml += '<div class="evento-meta80 ok">Todas tus obras ≥ 80% ✓</div>';
+      } else {
+        let perDia = '';
+        if (ha.porDia != null) {
+          const pd = ha.porDia;
+          const pdTxt = pd >= 1 ? (Math.round(pd * 10) / 10) + ' h/día' : Math.round(pd * 60) + ' min/día';
+          perDia = '<span class="evento-meta80-sub">~' + pdTxt + ' hasta el evento</span>';
+        }
+        const cuantas = ha.faltan < ha.total ? ' <span class="evento-meta80-n">(' + ha.faltan + '/' + ha.total + ')</span>' : '';
+        readinessHtml += '<div class="evento-meta80">' +
+          '<span>Para todo al 80%: <strong>' + fH(ha.horas) + '</strong>' + cuantas + '</span>' +
+          perDia + '</div>';
+      }
+    }
   }
 
   // Resultado detail for completed
@@ -9774,6 +9793,22 @@ function _obraMantenimientoHsem(o, pctActual) {
   const estab = 0.5 + Math.min(100, pctActual || 0) / 100 * 0.5; // a más solidez, decae algo menos
   const puntosSemana = rate * 7 * estab;
   return Math.max(0, puntosSemana * fit.beta * carga);
+}
+
+// Total de horas para llevar TODAS las obras de un evento al 80%, desde su
+// solidez actual estimada. diasRest opcional para el ritmo diario sugerido.
+function _eventoHorasA80(ev, diasRest) {
+  const obras = (ev.obras || []).map(id => findObra(id)).filter(Boolean);
+  if (!obras.length) return null;
+  let horas = 0, faltan = 0;
+  obras.forEach(o => {
+    const pct = estimateSolActual(o).val;
+    const p = predictSolidez(o.dificultad, o.duracion, pct, 80);
+    if (!p.yaListo && p.horas > 0) { horas += p.horas; faltan++; }
+  });
+  const out = { horas, faltan, total: obras.length };
+  if (diasRest != null && diasRest > 0 && horas > 0) out.porDia = horas / diasRest;
+  return out;
 }
 
 // Línea breve para la tarjeta de obra: "→ 80%: ~12 h · 4 sem" si aún no es
