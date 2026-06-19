@@ -8564,11 +8564,45 @@ function renderObraCheckList(selectedIds) {
   const container = document.getElementById('obraCheckList');
   container.innerHTML = (db.obras || []).map(o => `
     <label class="obra-check-item">
-      <input type="checkbox" value="${o.id}" ${selectedIds.includes(o.id) ? 'checked' : ''}>
+      <input type="checkbox" value="${o.id}" ${selectedIds.includes(o.id) ? 'checked' : ''} onchange="updateEventoModalPred()">
       <div class="obra-fase ${o.fase}" style="width:7px;height:7px;border-radius:50%;flex-shrink:0"></div>
       <span class="obra-check-name">${o.name}</span>
       <span class="obra-check-composer">${o.composer}</span>
     </label>`).join('');
+  updateEventoModalPred();
+}
+
+// Caja viva en el modal de evento: horas para llevar las obras marcadas al 80%,
+// con ritmo diario si hay fecha. Refleja la selección actual en tiempo real.
+function updateEventoModalPred() {
+  const box = document.getElementById('eventoMetaPred');
+  if (!box) return;
+  const ids = [...document.querySelectorAll('#obraCheckList input:checked')].map(el => el.value);
+  if (!ids.length) { box.style.display = 'none'; return; }
+  const fecha = (document.getElementById('eventoFecha') || {}).value;
+  let dias = null;
+  if (fecha) {
+    const d = new Date(fecha + 'T12:00:00');
+    if (!isNaN(d.getTime())) dias = Math.max(0, Math.ceil((d - Date.now()) / 86400000));
+  }
+  const ha = _eventoHorasA80({ obras: ids }, dias);
+  if (!ha) { box.style.display = 'none'; return; }
+  box.style.display = '';
+  const fH = h => h >= 10 ? Math.round(h) + ' h' : (Math.round(h * 2) / 2) + ' h';
+  if (ha.faltan === 0) {
+    box.className = 'evento-meta80 ok';
+    box.innerHTML = 'Todas estas obras ya están ≥ 80% ✓';
+    return;
+  }
+  box.className = 'evento-meta80';
+  let perDia = '';
+  if (ha.porDia != null) {
+    const pd = ha.porDia;
+    const pdTxt = pd >= 1 ? (Math.round(pd * 10) / 10) + ' h/día' : Math.round(pd * 60) + ' min/día';
+    perDia = '<span class="evento-meta80-sub">~' + pdTxt + ' hasta el evento</span>';
+  }
+  const cuantas = ha.faltan < ha.total ? ' <span class="evento-meta80-n">(' + ha.faltan + '/' + ha.total + ')</span>' : '';
+  box.innerHTML = '<span>Para todo al 80%: <strong>' + fH(ha.horas) + '</strong>' + cuantas + '</span>' + perDia;
 }
 
 function saveEvento() {

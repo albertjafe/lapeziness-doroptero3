@@ -473,9 +473,10 @@
       <button class="evento-tipo-btn audicion" onclick="selectEventoTipo('audicion',this)">Audición</button>
     </div>
     <input class="modal-input" id="eventoNombre" placeholder="nombre del evento (ej: Concurso ARD)" type="text">
-    <input class="modal-input" id="eventoFecha" type="date">
+    <input class="modal-input" id="eventoFecha" type="date" onchange="updateEventoModalPred()">
     <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin:10px 0 6px">Obras asignadas</div>
     <div class="obra-check-list" id="obraCheckList"></div>
+    <div class="evento-meta80" id="eventoMetaPred" style="display:none;margin-left:0;margin-right:0;margin-top:11px"></div>
     <div class="modal-buttons">
       <button class="modal-btn secondary" onclick="closeModal('modalAddEvento')">Cancelar</button>
       <button class="modal-btn primary" onclick="saveEvento()">Guardar</button>
