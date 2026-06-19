@@ -2068,6 +2068,48 @@
     padding: 9px 10px;
     margin-bottom: 10px;
   }
+  /* Predicción viva: horas/semanas para llegar al 80% de solidez. */
+  .add-obra-prediccion {
+    border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border2));
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg3));
+    padding: 11px 12px;
+    margin-bottom: 12px;
+  }
+  .add-obra-pred-head {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 4px;
+  }
+  .add-obra-pred-main {
+    font-size: 13px;
+    color: var(--text);
+  }
+  .add-obra-pred-main strong {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-right: 2px;
+  }
+  .add-obra-pred-sem {
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 3px;
+  }
+  .add-obra-pred-conf {
+    font-size: 9.5px;
+    color: var(--text3);
+    margin-top: 6px;
+  }
+  .add-obra-pred-note {
+    font-size: 9.5px;
+    color: var(--accent);
+    font-style: italic;
+    margin-top: 5px;
+  }
   .add-obra-mini-input {
     margin-bottom: 0;
     text-align: center;

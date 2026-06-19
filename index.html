@@ -538,17 +538,18 @@
         <div>
           <div class="hecho-field-label">Dificultad <span id="newObraDificultadVal" style="color:var(--accent);font-weight:600">3</span>/10</div>
           <input type="range" class="estado-slider" id="newObraDificultad" min="1" max="10" step="1" value="3"
-            style="color:var(--accent)" oninput="document.getElementById('newObraDificultadVal').textContent=this.value">
+            style="color:var(--accent)" oninput="document.getElementById('newObraDificultadVal').textContent=this.value;updateAddObraPrediccion()">
         </div>
         <div>
           <div class="hecho-field-label">Duración (min)</div>
-          <input class="modal-input add-obra-mini-input" id="newObraDuracion" type="number" min="1" max="180" placeholder="opcional">
+          <input class="modal-input add-obra-mini-input" id="newObraDuracion" type="number" min="1" max="180" placeholder="opcional" oninput="updateAddObraPrediccion()">
         </div>
       </div>
       <div class="hecho-field-label" style="margin-top:4px">Solidez ahora · <span id="newObraSolidezVal" style="color:var(--accent);font-weight:600">10%</span></div>
       <input type="range" class="estado-slider" id="newObraSolidez" min="0" max="100" step="5" value="10"
-        style="color:var(--accent)" oninput="document.getElementById('newObraSolidezVal').textContent=this.value+'%'">
+        style="color:var(--accent)" oninput="document.getElementById('newObraSolidezVal').textContent=this.value+'%';updateAddObraPrediccion()">
       <div class="add-obra-state-note" id="addObraStateNote">0% = recién empezada · 100% = la tocas en público y sale perfecta.</div>
+      <div class="add-obra-prediccion" id="addObraPrediccion" style="display:none"></div>
     </div>
     <div id="modalTipoActividadExtra" style="display:none;font-size:10px;color:var(--text3);margin-bottom:14px;line-height:1.5;font-style:italic">
       Estudio libre: lectura, técnica, improvisación… Solo registra tiempo.

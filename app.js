@@ -7673,6 +7673,7 @@ function selectModalTipo(btn, tipo) {
     if (solSlider) solSlider.value = def;
     if (solVal) solVal.textContent = def + '%';
   }
+  if (typeof updateAddObraPrediccion === 'function') updateAddObraPrediccion();
 }
 
 function addObra() {
@@ -9640,6 +9641,143 @@ function _statsMinsPorObra(start, end) {
     map[key].mins += p.mins;
   });
   return Object.values(map).sort((a, b) => b.mins - a.mins);
+}
+
+// ── PREDICTOR DE SOLIDEZ ──────────────────────────────────────────────────────
+// Estima cuántas HORAS de estudio (y cuántas semanas) faltan para que una obra
+// llegue a una solidez objetivo (80% = "sólida"), a partir del comportamiento
+// histórico del propio usuario. Idea: cruzar solHistory (cómo subió la solidez)
+// con las horas reales invertidas (plantas) para medir "horas por punto de
+// solidez", escalado por la carga de la pieza (dificultad × duración, el mismo
+// proxy que ya usa el resto de la app).
+
+// Todas las plantas agrupadas por obraId (una sola pasada).
+function _plantsByObra() {
+  const map = {};
+  _statsAllPlants().forEach(p => {
+    if (!p.obraId) return;
+    (map[p.obraId] = map[p.obraId] || []).push(p);
+  });
+  return map;
+}
+
+// Horas de estudio en una obra dentro de [desde, hasta] (ms epoch).
+function _obraHorasEnVentana(byObra, obraId, desde, hasta) {
+  let min = 0;
+  (byObra[obraId] || []).forEach(p => {
+    const t = p.start.getTime();
+    if (t >= desde && t <= hasta) min += p.mins;
+  });
+  return min / 60;
+}
+
+// Carga de una obra = dificultad × duración (duración ausente → 8 min).
+function _obraCarga(dificultad, duracion) {
+  return (dificultad || 3) * (duracion || 8);
+}
+
+function _mediana(arr) {
+  if (!arr.length) return null;
+  const s = arr.slice().sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+// Ajusta el modelo personal: beta = horas necesarias por (punto de solidez ×
+// carga). Devuelve { beta, n } con n = nº de obras que aportaron una muestra.
+function _solidezModelFit() {
+  const byObra = _plantsByObra();
+  const samples = [];
+  (db.obras || []).forEach(o => {
+    const hist = (o.solHistory || [])
+      .map(h => ({ d: new Date(h.date).getTime(), v: normalizeSolVal(h.val) }))
+      .filter(h => !isNaN(h.d))
+      .sort((a, b) => a.d - b.d);
+    if (hist.length < 2) return;
+    const firstV = hist[0].v, firstD = hist[0].d;
+    let peakV = firstV, peakD = firstD;
+    hist.forEach(h => { if (h.v > peakV) { peakV = h.v; peakD = h.d; } });
+    const dSol = peakV - firstV;
+    if (dSol < 10 || peakD <= firstD) return;            // necesita una subida real
+    const horas = _obraHorasEnVentana(byObra, o.id, firstD, peakD);
+    if (horas < 0.3) return;                              // <20 min: ruido
+    const carga = _obraCarga(o.dificultad, o.duracion);
+    if (carga <= 0) return;
+    samples.push(horas / dSol / carga);
+  });
+  const beta = samples.length ? _mediana(samples) : 0.011; // 0.011 = arranque razonable
+  return { beta, n: samples.length };
+}
+
+// Horas que suele recibir UNA obra por semana mientras está activa (mediana).
+function _horasPorSemanaPorObra() {
+  const byObra = _plantsByObra();
+  const tasas = [];
+  Object.keys(byObra).forEach(id => {
+    let min = 0, t0 = Infinity, t1 = -Infinity;
+    byObra[id].forEach(p => {
+      min += p.mins;
+      const t = p.start.getTime();
+      if (t < t0) t0 = t;
+      if (t > t1) t1 = t;
+    });
+    if (min < 30) return;
+    const semanas = Math.max(1, (t1 - t0) / (7 * 86400000));
+    tasas.push((min / 60) / semanas);
+  });
+  return _mediana(tasas);
+}
+
+// Predicción para una obra (nueva o existente).
+function predictSolidez(dificultad, duracion, solInicial, objetivo) {
+  objetivo = objetivo || 80;
+  const puntos = Math.max(0, objetivo - (solInicial || 0));
+  if (puntos <= 0) return { yaListo: true };
+  const fit = _solidezModelFit();
+  const horas = fit.beta * _obraCarga(dificultad, duracion) * puntos;
+  const pace = _horasPorSemanaPorObra();
+  return {
+    yaListo: false,
+    horas,
+    semanas: pace ? horas / pace : null,
+    pace,
+    n: fit.n,
+    objetivo,
+  };
+}
+
+// Pinta la cajita viva de estimación en el modal "Añadir estudio".
+function updateAddObraPrediccion() {
+  const box = document.getElementById('addObraPrediccion');
+  if (!box) return;
+  const dif = parseInt((document.getElementById('newObraDificultad') || {}).value || '3', 10);
+  const durRaw = (document.getElementById('newObraDuracion') || {}).value;
+  const dur = durRaw ? parseInt(durRaw, 10) : 0;
+  const sol = parseInt((document.getElementById('newObraSolidez') || {}).value || '10', 10);
+  const p = predictSolidez(dif, dur, sol, 80);
+  box.style.display = '';
+  if (p.yaListo) {
+    box.innerHTML = '<div class="add-obra-pred-main">Ya la marcas como sólida 👍</div>';
+    return;
+  }
+  const fH = h => h >= 10 ? Math.round(h) + ' h' : (Math.round(h * 2) / 2) + ' h';
+  const conf = p.n >= 5 ? 'alta' : p.n >= 3 ? 'media' : p.n >= 1 ? 'baja' : 'sin datos todavía';
+  let semTxt = '';
+  if (p.semanas != null) {
+    const sem = p.semanas;
+    const semR = sem < 1 ? 'menos de 1 semana'
+      : sem < 8 ? (Math.round(sem * 2) / 2) + ' semanas'
+      : Math.round(sem) + ' semanas';
+    semTxt = '<div class="add-obra-pred-sem">≈ ' + semR + ' a tu ritmo · ~'
+      + (Math.round((p.pace || 0) * 2) / 2) + ' h/sem en esta obra</div>';
+  }
+  const durNota = dur ? '' : '<div class="add-obra-pred-note">Pon la duración para afinar la estimación.</div>';
+  box.innerHTML =
+    '<div class="add-obra-pred-head">⌛ Para llegar al 80% (sólida)</div>' +
+    '<div class="add-obra-pred-main"><strong>' + fH(p.horas) + '</strong> de estudio</div>' +
+    semTxt +
+    '<div class="add-obra-pred-conf">Según tus obras pasadas · confianza ' + conf + '</div>' +
+    durNota;
 }
 
 const _STATS_FALLBACK_COLORS = ['#c8a030', '#6a9ac8', '#7ba87a', '#c87878', '#9b7ac8', '#5ea8a0', '#d59060', '#8a8a8a'];
