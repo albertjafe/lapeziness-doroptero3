@@ -7080,6 +7080,18 @@
   }
   .obra-simple-graph:hover { color: var(--accent); border-color: var(--accent); }
 
+  /* Estimación a tu ritmo: cuánto falta para 80% o dosis de mantenimiento. */
+  .obra-pred-hint {
+    margin-top: 9px;
+    font-size: 10.5px;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.02em;
+  }
+  .obra-pred-hint strong { color: var(--accent); font-weight: 600; }
+  .obra-pred-hint.hold strong { color: var(--green); }
+  #obrasList.compact .obra-pred-hint { margin-top: 6px; font-size: 9.5px; }
+
   /* ─── Densidad COMPACTA de las tarjetas de obra ─── */
   #obrasList.compact .obra-card-simple {
     padding: 9px 12px 9px;

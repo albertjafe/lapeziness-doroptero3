@@ -6707,6 +6707,7 @@ function renderObraCardSimple(o) {
         '<span class="obra-sol-medir">Medir ›</span>'
     +     '</div>'
     +   '</button>'
+    +   (hasHist ? _obraPredHint(o, pct) : '')
     +   '<button class="obra-simple-graph" onclick="openGrafico(\'' + o.id + '\',null)">Evolución ↗</button>'
     + '</div>';
 }
@@ -9733,9 +9734,8 @@ function predictSolidez(dificultad, duracion, solInicial, objetivo) {
   objetivo = objetivo || 80;
   const puntos = Math.max(0, objetivo - (solInicial || 0));
   if (puntos <= 0) return { yaListo: true };
-  const fit = _solidezModelFit();
+  const { fit, pace } = _solidezFitCached();
   const horas = fit.beta * _obraCarga(dificultad, duracion) * puntos;
-  const pace = _horasPorSemanaPorObra();
   return {
     yaListo: false,
     horas,
@@ -9744,6 +9744,58 @@ function predictSolidez(dificultad, duracion, solInicial, objetivo) {
     n: fit.n,
     objetivo,
   };
+}
+
+// Caché del ajuste: recalcular es O(obras × plantas). La firma cambia cuando
+// cambian las obras, el solHistory o las plantas, así que se reutiliza dentro
+// de un mismo render (todas las tarjetas) y se refresca solo al variar datos.
+let _solFitCache = null, _solFitSig = '';
+function _solFitSignature() {
+  let solN = 0;
+  (db.obras || []).forEach(o => solN += (o.solHistory || []).length);
+  const plN = (db.sessionPlants || []).length + (db.forestPlants || []).length;
+  return (db.obras || []).length + ':' + solN + ':' + plN;
+}
+function _solidezFitCached() {
+  const sig = _solFitSignature();
+  if (_solFitCache && _solFitSig === sig) return _solFitCache;
+  _solFitSig = sig;
+  _solFitCache = { fit: _solidezModelFit(), pace: _horasPorSemanaPorObra() };
+  return _solFitCache;
+}
+
+// Horas/semana para MANTENER una obra a su nivel: compensar el decaimiento.
+// puntos_perdidos_semana × (horas por punto) = horas/semana. Usa el modelo de
+// decaimiento personal (computeDecayRate) y el mismo β del predictor.
+function _obraMantenimientoHsem(o, pctActual) {
+  const { rate } = computeDecayRate(o);            // puntos/día
+  const { fit } = _solidezFitCached();
+  const carga = _obraCarga(o.dificultad, o.duracion);
+  const estab = 0.5 + Math.min(100, pctActual || 0) / 100 * 0.5; // a más solidez, decae algo menos
+  const puntosSemana = rate * 7 * estab;
+  return Math.max(0, puntosSemana * fit.beta * carga);
+}
+
+// Línea breve para la tarjeta de obra: "→ 80%: ~12 h · 4 sem" si aún no es
+// sólida, o "Mantener: ~1,5 h/sem" si ya pasa de 80%.
+function _obraPredHint(o, pctActual) {
+  const fH = h => h >= 10 ? Math.round(h) + ' h' : (Math.round(h * 2) / 2) + ' h';
+  if (pctActual >= 80) {
+    const hsem = _obraMantenimientoHsem(o, pctActual);
+    if (!(hsem > 0)) return '';
+    const v = hsem < 1 ? (Math.round(hsem * 10) / 10) : (Math.round(hsem * 2) / 2);
+    return '<div class="obra-pred-hint hold" title="A tu ritmo, para que no baje del 80%">'
+      + 'Mantener · <strong>~' + v + ' h/sem</strong></div>';
+  }
+  const p = predictSolidez(o.dificultad, o.duracion, pctActual, 80);
+  if (p.yaListo || !(p.horas > 0)) return '';
+  let sem = '';
+  if (p.semanas != null) {
+    const s = p.semanas;
+    sem = ' · ' + (s < 1 ? '<1 sem' : s < 8 ? (Math.round(s * 2) / 2) + ' sem' : Math.round(s) + ' sem');
+  }
+  return '<div class="obra-pred-hint" title="A tu ritmo, estimado por tus obras pasadas">'
+    + '→ 80%: <strong>' + fH(p.horas) + '</strong>' + sem + '</div>';
 }
 
 // Pinta la cajita viva de estimación en el modal "Añadir estudio".

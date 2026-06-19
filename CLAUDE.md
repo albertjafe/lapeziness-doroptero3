@@ -101,13 +101,15 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v81`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v82`.
 
 ### Predictor de solidez (cuánto tardaré en tenerla sólida)
 
 En el modal "Añadir estudio", bajo el slider de solidez, una caja viva (`#addObraPrediccion`, `updateAddObraPrediccion`) estima **cuántas horas de estudio y cuántas semanas** faltan para llegar al **80% de solidez** ("sólida"), según el comportamiento histórico del propio usuario. Se actualiza al mover dificultad/duración/solidez (oninput) y al cambiar de tipo (`selectModalTipo`).
 
-Modelo (`predictSolidez` y helpers en app.js, junto a los `_stats*`): cruza `solHistory` (subida de solidez) con las horas reales por obra (`_plantsByObra` sobre `_statsAllPlants`) para medir **horas por punto de solidez**, escalado por la **carga** de la pieza (`dificultad × duración`, proxy ya usado en la app; duración ausente → 8). `_solidezModelFit` saca, por cada obra con subida real (Δsol ≥ 10), la muestra `horas / Δsol / carga` y toma la **mediana** → `β` personal (defecto 0.011 si no hay datos). Predicción: `horas = β × carga × (80 − solInicial)`. Las semanas salen de `_horasPorSemanaPorObra` (mediana de horas/semana que recibe una obra activa). Confianza por nº de obras que informan (`n`): ≥5 alta, ≥3 media, ≥1 baja. Los antiguos estimadores `renderRangoWidget`/`computeEficienciaObras` dependen de `compasesTotal`/`compasHistory` (métricas eliminadas) y no aplican a obras nuevas.
+Modelo (`predictSolidez` y helpers en app.js, junto a los `_stats*`): cruza `solHistory` (subida de solidez) con las horas reales por obra (`_plantsByObra` sobre `_statsAllPlants`) para medir **horas por punto de solidez**, escalado por la **carga** de la pieza (`dificultad × duración`, proxy ya usado en la app; duración ausente → 8). `_solidezModelFit` saca, por cada obra con subida real (Δsol ≥ 10), la muestra `horas / Δsol / carga` (ventana entre la PRIMERA medida y el PICO de solidez; las horas se cuentan en esa ventana, da igual cuándo se anote la solidez) y toma la **mediana** → `β` personal (defecto 0.011 si no hay datos). Predicción: `horas = β × carga × (80 − solInicial)`. Las semanas salen de `_horasPorSemanaPorObra` (mediana de horas/semana que recibe una obra activa). Confianza por nº de obras que informan (`n`): ≥5 alta, ≥3 media, ≥1 baja. El ajuste se cachea por firma de datos (`_solidezFitCached`/`_solFitSignature`) para no recalcular en cada tarjeta. Los antiguos estimadores `renderRangoWidget`/`computeEficienciaObras` dependen de `compasesTotal`/`compasHistory` (métricas eliminadas) y no aplican a obras nuevas.
+
+Cada **tarjeta de obra** (`renderObraCardSimple`, solo si `hasHist`) muestra `_obraPredHint(o, pct)`: si la solidez estimada (`estimateSolActual`, con decaimiento) < 80% → `→ 80%: ~Xh · Y sem`; si ≥ 80% → dosis de **mantenimiento** `Mantener · ~Z h/sem` (`_obraMantenimientoHsem`), calculada como `puntos_perdidos_semana × β × carga`, usando el decaimiento personal de `computeDecayRate` (puntos/día) con factor de estabilidad por solidez. El acento verde distingue mantenimiento de progreso.
 
 ### Tema Brutalista (experimental, anti-"slop de IA")
 
