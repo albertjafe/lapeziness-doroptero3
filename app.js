@@ -8474,9 +8474,7 @@ function renderEventoCard(ev, isPast, isCompletado) {
       } else {
         let perDia = '';
         if (ha.porDia != null) {
-          const pd = ha.porDia;
-          const pdTxt = pd >= 1 ? (Math.round(pd * 10) / 10) + ' h/día' : Math.round(pd * 60) + ' min/día';
-          perDia = '<span class="evento-meta80-sub">~' + pdTxt + ' hasta el evento</span>';
+          perDia = '<span class="evento-meta80-sub">' + _eventoRitmoSub(ha.porDia) + '</span>';
         }
         const cuantas = ha.faltan < ha.total ? ' <span class="evento-meta80-n">(' + ha.faltan + '/' + ha.total + ')</span>' : '';
         readinessHtml += '<div class="evento-meta80">' +
@@ -8597,9 +8595,7 @@ function updateEventoModalPred() {
   box.className = 'evento-meta80';
   let perDia = '';
   if (ha.porDia != null) {
-    const pd = ha.porDia;
-    const pdTxt = pd >= 1 ? (Math.round(pd * 10) / 10) + ' h/día' : Math.round(pd * 60) + ' min/día';
-    perDia = '<span class="evento-meta80-sub">~' + pdTxt + ' hasta el evento</span>';
+    perDia = '<span class="evento-meta80-sub">' + _eventoRitmoSub(ha.porDia) + '</span>';
   }
   const cuantas = ha.faltan < ha.total ? ' <span class="evento-meta80-n">(' + ha.faltan + '/' + ha.total + ')</span>' : '';
   box.innerHTML = '<span>Para todo al 80%: <strong>' + fH(ha.horas) + '</strong>' + cuantas + '</span>' + perDia;
@@ -9843,6 +9839,30 @@ function _eventoHorasA80(ev, diasRest) {
   const out = { horas, faltan, total: obras.length };
   if (diasRest != null && diasRest > 0 && horas > 0) out.porDia = horas / diasRest;
   return out;
+}
+
+// Media real de horas estudiadas por día (últimos `dias` días de calendario,
+// contando los días en blanco). Sirve para contextualizar un ritmo sugerido.
+function _mediaHorasDiaReal(dias) {
+  dias = dias || 28;
+  const end = new Date();
+  const start = new Date(end.getTime() - dias * 86400000);
+  const porDia = _statsMinsPorDia(start, end);
+  let tot = 0;
+  Object.keys(porDia).forEach(k => tot += porDia[k]);
+  return (tot / 60) / dias;
+}
+
+// Texto del ritmo sugerido de un evento + tu media real de h/día como ancla.
+function _eventoRitmoSub(porDia) {
+  const pdTxt = porDia >= 1 ? (Math.round(porDia * 10) / 10) + ' h/día' : Math.round(porDia * 60) + ' min/día';
+  const media = _mediaHorasDiaReal(28);
+  let ctx = '';
+  if (media > 0.05) {
+    const mTxt = media >= 1 ? (Math.round(media * 10) / 10) + ' h' : Math.round(media * 60) + ' min';
+    ctx = ' · tu media ~' + mTxt + '/día';
+  }
+  return '~' + pdTxt + ' hasta el evento' + ctx;
 }
 
 // Línea breve para la tarjeta de obra: "→ 80%: ~12 h · 4 sem" si aún no es
