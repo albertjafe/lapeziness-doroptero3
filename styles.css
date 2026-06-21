@@ -610,6 +610,36 @@
   }
   [data-theme="marmol"] .haptics-toggle.on { background: var(--green); border: none; }
   [data-theme="marmol"] .haptics-toggle.on .haptics-toggle-knob { transform: translateX(18px); background: #fff; }
+  /* Control segmentado iOS para Fuente / Tamaño / Paquete de sonidos: track gris
+     con la opción activa como pastilla blanca elevada */
+  [data-theme="marmol"] .ajustes-seg {
+    background: var(--bg3);
+    border-radius: 9px;
+    padding: 2px;
+    gap: 2px;
+    flex-wrap: nowrap;
+  }
+  [data-theme="marmol"] .ajustes-seg .theme-option {
+    flex: 1 1 0; min-width: 0;
+    border: none !important;
+    border-radius: 7px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 6px 4px 7px !important;
+    gap: 3px;
+    transition: background 0.18s ease;
+  }
+  [data-theme="marmol"] .ajustes-seg .theme-option.active {
+    background: #fff !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.13), 0 0 1px rgba(0,0,0,0.05) !important;
+  }
+  [data-theme="marmol"] .ajustes-seg .theme-option-name {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-size: 11px; color: var(--text2);
+  }
+  [data-theme="marmol"] .ajustes-seg .theme-option.active .theme-option-name { color: var(--text); font-weight: 600; }
+  [data-theme="marmol"] .ajustes-seg .settings-icon { color: var(--text2); }
+  [data-theme="marmol"] .ajustes-seg .theme-option.active .settings-icon { color: var(--accent); }
 
   /* MODO LIMPIO en Sesión: oculta textos pequeños de apoyo (botón ℹ los revela) */
   #sessionInfoBtn { display: none; }
