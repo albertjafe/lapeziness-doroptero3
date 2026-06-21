@@ -10578,6 +10578,70 @@ function renderSesionesHistorial() {
   }).join('');
 }
 
+// Modal de sesiones individuales con su rango horario (HH:MM–HH:MM), agrupadas
+// por día (todos los días, más recientes arriba, con scroll). Lee las plantas
+// del cronómetro + Forest (cada planta es un tramo real de estudio). Excluye
+// descansos y tramos fallidos.
+function openSesionesDetalle() {
+  const cont = document.getElementById('sesionesDetalleBody');
+  if (!cont) return;
+  const plants = [];
+  const add = p => {
+    if (!p || p.failed || !p.startedAt) return;
+    if (p.tipo === 'descanso' || p.obraId === '_rest_') return;
+    const start = new Date(p.startedAt);
+    if (isNaN(start.getTime())) return;
+    const mins = Math.max(0, Math.round(p.mins || 0));
+    if (!mins) return;
+    const end = p.endedAt ? new Date(p.endedAt) : new Date(start.getTime() + mins * 60000);
+    plants.push({ start, end, mins, obraId: p.obraId || null, tag: p.tag || null });
+  };
+  (db.sessionPlants || []).forEach(add);
+  (db.forestPlants || []).forEach(add);
+  plants.sort((a, b) => b.start - a.start); // más recientes primero
+
+  if (!plants.length) {
+    cont.innerHTML = '<div class="sesdet-empty">Aún no hay sesiones con hora registrada.<br>Estudia con el cronómetro y aparecerán aquí.</div>';
+    openModal('modalSesionesDetalle');
+    return;
+  }
+
+  const fmtH = d => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  const groups = [];
+  let curKey = null, cur = null;
+  plants.forEach(p => {
+    const key = _statsISO(p.start);
+    if (key !== curKey) { curKey = key; cur = { date: p.start, items: [], total: 0 }; groups.push(cur); }
+    cur.items.push(p);
+    cur.total += p.mins;
+  });
+
+  const hoyKey = _statsISO(new Date());
+  cont.innerHTML = groups.map(g => {
+    let label = g.date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+    if (_statsISO(g.date) === hoyKey) label = 'Hoy · ' + label;
+    const rows = g.items.map(p => {
+      const obra = p.obraId ? findObra(p.obraId) : null;
+      const color = (obra && obraColorHex(obra)) || 'var(--text3)';
+      const name = obra ? obra.name : (p.tag || 'Estudio');
+      return '<div class="sesdet-row">' +
+        '<span class="sesdet-dot" style="background:' + color + '"></span>' +
+        '<span class="sesdet-time">' + fmtH(p.start) + '–' + fmtH(p.end) + '</span>' +
+        '<span class="sesdet-name">' + escapeHtmlSafe(name) + '</span>' +
+        '<span class="sesdet-min">' + p.mins + ' min</span>' +
+      '</div>';
+    }).join('');
+    return '<div class="sesdet-day">' +
+      '<div class="sesdet-day-head">' +
+        '<span class="sesdet-day-label">' + label + '</span>' +
+        '<span class="sesdet-day-total">' + fmtMinutos(g.total) + '</span>' +
+      '</div>' +
+      rows +
+    '</div>';
+  }).join('');
+  openModal('modalSesionesDetalle');
+}
+
 // Lightweight HTML escape used in renderSesionesHistorial — avoid corrupting names with quotes/HTML
 function escapeHtmlSafe(s) {
   if (s == null) return '';

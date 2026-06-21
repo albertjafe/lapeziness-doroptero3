@@ -101,7 +101,11 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v85`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v86`.
+
+### Modal "Sesiones por horas" (tramos individuales con hora inicio/fin)
+
+En la cabecera de "Sesiones registradas" (vista historial), junto a "Mostrar", el botón **"↗ Por horas"** abre `#modalSesionesDetalle` (`openSesionesDetalle`): lista cada tramo de estudio individual con su rango horario `HH:MM–HH:MM`, agrupado por día (todos los días, más recientes arriba, con scroll; hoy marcado "Hoy · …"). Lee `db.sessionPlants` + `db.forestPlants` (cada planta = un tramo real con `startedAt`/`endedAt`), excluye descansos (`tipo:'descanso'`/`obraId:'_rest_'`) y fallidos; el fin se deriva de `endedAt` o `startedAt + mins`. Punto de color de la obra + nombre + minutos. El modal `.sesdet-modal` usa el patrón scroll (`height:84dvh; overflow:hidden` + `.sesdet-body{flex:1 1 0;min-height:0;overflow-y:auto}`). Es distinto del historial inline (`renderSesionesHistorial`), que agrupa por día con obras/minutos y permite editar/borrar.
 
 ### Meta de estudio por evento (horas para todo al 80%)
 

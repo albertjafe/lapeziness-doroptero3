@@ -574,10 +574,22 @@
     <div class="history-section-label">Sesiones registradas</div>
     <div style="display:flex;gap:8px;align-items:center">
       <button class="add-manual-session-btn" onclick="openSesionManual()" style="padding:6px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:\'JetBrains Mono\',monospace;font-size:9px;letter-spacing:0.06em;cursor:pointer;transition:all 0.2s">+ añadir estudio</button>
+      <button class="hist-list-toggle" onclick="openSesionesDetalle()" title="Ver cada sesión con su hora">↗ Por horas</button>
       <button class="hist-list-toggle" id="histListToggle" onclick="toggleHistList()">Mostrar</button>
     </div>
   </div>
   <div id="sesionesHistorial" style="display:none"></div>
+</div>
+
+<!-- MODAL: sesiones individuales con hora de inicio/fin, por día -->
+<div class="modal-overlay" id="modalSesionesDetalle">
+  <div class="modal sesdet-modal">
+    <div class="sesdet-header">
+      <div class="modal-title" style="margin:0">Sesiones por horas</div>
+      <button class="sesdet-close" onclick="closeModal('modalSesionesDetalle')" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="sesdet-body" id="sesionesDetalleBody"></div>
+  </div>
 </div>
 
 <!-- MODAL: Recuperar datos de la nube (instalación nueva sin datos locales) -->
