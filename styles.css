@@ -425,14 +425,19 @@
     font-weight: 600 !important;
     letter-spacing: -0.01em;
   }
-  /* MÁRMOL — etiquetas de grupo en gris, como cabeceras de lista iOS */
-  [data-theme="marmol"] .stats-card-title,
-  [data-theme="marmol"] .section-title,
+  /* MÁRMOL — etiquetas de grupo en gris mayúsculas, como cabeceras de lista iOS */
   [data-theme="marmol"] .ajustes-group-label,
   [data-theme="marmol"] .history-section-label {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif !important;
     text-transform: uppercase; letter-spacing: 0.04em;
     font-weight: 600; color: var(--text3);
+  }
+  /* MÁRMOL — título de tarjeta oscuro en frase (estilo Forest), no mayúsculas */
+  [data-theme="marmol"] .stats-card-title,
+  [data-theme="marmol"] .section-title {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif !important;
+    text-transform: none; letter-spacing: -0.01em;
+    font-weight: 600; color: var(--text); font-size: 14px;
   }
   /* MÁRMOL — tarjetas blancas redondeadas con sombra muy suave (sin bordes duros) */
   [data-theme="marmol"] .card,
@@ -504,6 +509,67 @@
     font-weight: 600;
   }
   [data-theme="marmol"] .stats-axis { fill: var(--text3); }
+
+  /* MÁRMOL — pulido fino estilo iOS: modales, inputs, botones e interruptores */
+  /* Título de modal centrado con hairline (solo títulos de primer nivel) */
+  [data-theme="marmol"] .modal > .modal-title {
+    text-align: center;
+    font-size: 17px !important;
+    font-weight: 600 !important;
+    color: var(--text) !important;
+    padding-bottom: 13px;
+    margin: 2px 0 15px;
+    border-bottom: 1px solid var(--border2);
+  }
+  /* Inputs rellenos en gris claro, sin borde (campos tipo iOS) */
+  [data-theme="marmol"] .modal-input {
+    background: var(--bg3) !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif !important;
+    font-size: 15px;
+    padding: 11px 13px;
+  }
+  [data-theme="marmol"] .modal-input:focus {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent) !important;
+  }
+  /* Botones de modal: acción rellena, cancelar plano en azul (texto), redondeados */
+  [data-theme="marmol"] .modal-btn {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif !important;
+    font-size: 14px; font-weight: 600; letter-spacing: -0.01em;
+    border-radius: 11px; padding: 12px;
+  }
+  [data-theme="marmol"] .modal-btn.primary {
+    color: #fff !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08) !important;
+  }
+  [data-theme="marmol"] .modal-btn.secondary {
+    background: var(--bg3) !important;
+    color: var(--accent) !important;
+    border: none !important;
+  }
+  /* Interruptor tipo iOS (pill verde) para el toggle de modo noche */
+  [data-theme="marmol"] .settings-autonight input[type="checkbox"] {
+    -webkit-appearance: none; appearance: none;
+    width: 44px; height: 26px; flex: none;
+    border-radius: 999px; border: none;
+    background: #d6d6db; position: relative; cursor: pointer;
+    transition: background 0.25s ease;
+  }
+  [data-theme="marmol"] .settings-autonight input[type="checkbox"]::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.28);
+    transition: transform 0.25s ease;
+  }
+  [data-theme="marmol"] .settings-autonight input[type="checkbox"]:checked { background: var(--green); }
+  [data-theme="marmol"] .settings-autonight input[type="checkbox"]:checked::after { transform: translateX(18px); }
+  /* Separadores con sangría entre obras del historial (filas de lista iOS) */
+  [data-theme="marmol"] .sesion-hist-obra {
+    border-top: 1px solid var(--border2);
+    padding-top: 9px; margin-top: 9px;
+  }
+  [data-theme="marmol"] .sesion-hist-obra:first-child { border-top: none; padding-top: 0; margin-top: 0; }
 
   /* MODO LIMPIO en Sesión: oculta textos pequeños de apoyo (botón ℹ los revela) */
   #sessionInfoBtn { display: none; }
