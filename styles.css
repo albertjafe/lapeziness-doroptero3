@@ -397,6 +397,99 @@
   }
   [data-theme="brutalista"] .obra-sol-fill { border-radius: 0 !important; }
 
+  /* ════════════════════════════════════════════════════════════════════════
+     TEMA: Mármol — iOS/iPadOS nativo premium (estilo forScore / Ajustes de
+     iOS). Fondo gris claro del sistema, tarjetas blancas redondeadas con
+     sombra muy suave, tipografía del sistema (SF Pro), acento azul discreto.
+     Profesional, sereno, sin complicaciones.
+     ════════════════════════════════════════════════════════════════════════ */
+  [data-theme="marmol"] {
+    --bg: #f2f2f7; --bg2: #ffffff; --bg3: #e7e7ec;
+    --accent: #2c7be5; --accent2: #1a5fc4;
+    --text: #1c1c1e; --text2: #6c6c70; --text3: #a6a6ab;
+    --green: #34a853; --orange: #f0922f; --red: #e0524a;
+    --border: rgba(60,60,67,0.16); --border2: rgba(60,60,67,0.08);
+    --ui-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+  }
+  /* MÁRMOL — tipografía del sistema también en los títulos decorativos */
+  [data-theme="marmol"] .session-hero-title,
+  [data-theme="marmol"] .plan-item-name,
+  [data-theme="marmol"] .obra-name,
+  [data-theme="marmol"] .evento-nombre,
+  [data-theme="marmol"] .modal-title,
+  [data-theme="marmol"] .header-title,
+  [data-theme="marmol"] #headerTitle,
+  [data-theme="marmol"] .mes-nav-label {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif !important;
+    font-style: normal !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.01em;
+  }
+  /* MÁRMOL — etiquetas de grupo en gris, como cabeceras de lista iOS */
+  [data-theme="marmol"] .stats-card-title,
+  [data-theme="marmol"] .section-title,
+  [data-theme="marmol"] .ajustes-group-label,
+  [data-theme="marmol"] .history-section-label {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif !important;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    font-weight: 600; color: var(--text3);
+  }
+  /* MÁRMOL — tarjetas blancas redondeadas con sombra muy suave (sin bordes duros) */
+  [data-theme="marmol"] .card,
+  [data-theme="marmol"] .obra-card,
+  [data-theme="marmol"] .obra-card-simple,
+  [data-theme="marmol"] .session-insight-card,
+  [data-theme="marmol"] .stats-card,
+  [data-theme="marmol"] .ajustes-card,
+  [data-theme="marmol"] .prob-card,
+  [data-theme="marmol"] .sesion-hist-item,
+  [data-theme="marmol"] .evento-card,
+  [data-theme="marmol"] .destellos-modal {
+    background: var(--bg2) !important;
+    border: 1px solid var(--border2) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 6px 16px rgba(0,0,0,0.03) !important;
+  }
+  [data-theme="marmol"] .session-hero {
+    background: var(--bg2) !important;
+    border: 1px solid var(--border2) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 8px 20px rgba(0,0,0,0.04) !important;
+  }
+  [data-theme="marmol"] .modal,
+  [data-theme="marmol"] .sesdet-modal {
+    border-radius: 18px !important;
+    border: none !important;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.18) !important;
+  }
+  /* MÁRMOL — botones de acción azules tipo iOS, redondeados y sobrios */
+  [data-theme="marmol"] .generate-btn,
+  [data-theme="marmol"] .save-session-btn {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif !important;
+    font-style: normal !important;
+    font-weight: 600 !important;
+    font-size: 16px !important;
+    letter-spacing: -0.01em;
+    border-radius: 12px !important;
+    background: var(--accent) !important;
+    color: #fff !important;
+    border: none !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08) !important;
+  }
+  /* MÁRMOL — nav inferior limpia, activo en azul */
+  [data-theme="marmol"] .nav-btn span {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-weight: 500; font-size: 10px; letter-spacing: 0;
+  }
+  [data-theme="marmol"] .nav-btn.active { color: var(--accent); }
+  [data-theme="marmol"] .nav-btn.active svg { stroke: var(--accent); }
+  [data-theme="marmol"] .nav-btn.active span { color: var(--accent); }
+  [data-theme="marmol"] .nav { border-top: 1px solid var(--border2); }
+  [data-theme="marmol"] .header { border-bottom: 1px solid var(--border2); }
+  /* MÁRMOL — inputs y barra de solidez con redondeo suave */
+  [data-theme="marmol"] .modal-input { border-radius: 10px !important; }
+  [data-theme="marmol"] .obra-sol-bar { background: var(--bg3); }
+
   /* MODO LIMPIO en Sesión: oculta textos pequeños de apoyo (botón ℹ los revela) */
   #sessionInfoBtn { display: none; }
   body[data-view="session"] #sessionInfoBtn { display: inline-flex; }
