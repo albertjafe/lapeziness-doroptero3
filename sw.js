@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v87';
+const CACHE = 'estudio-v88';
 const ASSETS = [
   './index.html',
   './styles.css',

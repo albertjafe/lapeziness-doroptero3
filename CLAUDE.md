@@ -101,11 +101,11 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v87`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v88`.
 
 ### Tema Mármol (iOS/iPadOS nativo premium)
 
-`[data-theme="marmol"]` imita el look nativo de iPad (estilo forScore / Ajustes de iOS): fondo gris del sistema (`--bg #f2f2f7`), tarjetas **blancas redondeadas** (`border-radius:14px`) con **sombra muy suave**, **tipografía del sistema** (SF Pro vía `--ui-font: -apple-system…`, que también sustituye los títulos Cormorant) y **acento azul discreto** (`#2c7be5`). Overrides en `styles.css` (tras el bloque Brutalista): superficies `.card/.obra-card/.stats-card/.ajustes-card/.session-hero/.modal`, botones de acción azules tipo iOS, nav/inferior limpia con activo azul, etiquetas de grupo en gris mayúsculas. Registrado en `THEME_BG.marmol` (`#f2f2f7`) y con botón+glifo (dos filas de lista redondeadas) en el selector de `#view-ajustes`.
+`[data-theme="marmol"]` imita el look nativo de iPad (estilo forScore / Ajustes de iOS): fondo gris del sistema (`--bg #f2f2f7`), tarjetas **blancas redondeadas** (`border-radius:14px`) con **sombra muy suave**, **tipografía del sistema** (SF Pro vía `--ui-font: -apple-system…`, que también sustituye los títulos Cormorant) y **acento azul acero discreto** (`#5b82a6`, desaturado para que no cante). Overrides en `styles.css` (tras el bloque Brutalista): superficies `.card/.obra-card/.stats-card/.ajustes-card/.session-hero/.modal`, botones de acción azules tipo iOS, nav/inferior limpia con activo azul, etiquetas de grupo en gris mayúsculas. **Gráficas suaves**: sin brillo en barras (`.stats-bar-gloss` oculto), líneas y rejilla finas, número grande en un solo tono calmado (sin degradado tricolor). Registrado en `THEME_BG.marmol` (`#f2f2f7`) y con botón+glifo (dos filas de lista redondeadas) en el selector de `#view-ajustes`.
 
 ### Modal "Sesiones por horas" (tramos individuales con hora inicio/fin)
 

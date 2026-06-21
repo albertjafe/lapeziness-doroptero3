@@ -405,10 +405,10 @@
      ════════════════════════════════════════════════════════════════════════ */
   [data-theme="marmol"] {
     --bg: #f2f2f7; --bg2: #ffffff; --bg3: #e7e7ec;
-    --accent: #2c7be5; --accent2: #1a5fc4;
+    --accent: #5b82a6; --accent2: #3f6184;
     --text: #1c1c1e; --text2: #6c6c70; --text3: #a6a6ab;
-    --green: #34a853; --orange: #f0922f; --red: #e0524a;
-    --border: rgba(60,60,67,0.16); --border2: rgba(60,60,67,0.08);
+    --green: #57a374; --orange: #dd9450; --red: #d4675d;
+    --border: rgba(60,60,67,0.14); --border2: rgba(60,60,67,0.07);
     --ui-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
   }
   /* MÁRMOL — tipografía del sistema también en los títulos decorativos */
@@ -489,6 +489,21 @@
   /* MÁRMOL — inputs y barra de solidez con redondeo suave */
   [data-theme="marmol"] .modal-input { border-radius: 10px !important; }
   [data-theme="marmol"] .obra-sol-bar { background: var(--bg3); }
+  /* MÁRMOL — gráficas suaves estilo iOS: sin brillos, líneas y rejilla finas,
+     número grande en un solo tono calmado (sin degradado tricolor) */
+  [data-theme="marmol"] .stats-bar-gloss { display: none; }
+  [data-theme="marmol"] .stats-line { stroke-width: 2.4; }
+  [data-theme="marmol"] .stats-grid { stroke: var(--border2); opacity: 0.85; }
+  [data-theme="marmol"] .stats-peak-line { opacity: 0.32; }
+  [data-theme="marmol"] .stats-peak-halo { opacity: 0.13; }
+  [data-theme="marmol"] .stats-peak-dot { stroke-width: 2; }
+  [data-theme="marmol"] .stats-card-big {
+    background: none !important;
+    -webkit-text-fill-color: currentColor !important;
+    color: var(--accent) !important;
+    font-weight: 600;
+  }
+  [data-theme="marmol"] .stats-axis { fill: var(--text3); }
 
   /* MODO LIMPIO en Sesión: oculta textos pequeños de apoyo (botón ℹ los revela) */
   #sessionInfoBtn { display: none; }
