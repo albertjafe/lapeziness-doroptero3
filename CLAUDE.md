@@ -101,9 +101,9 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v89`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v90`.
 
-**Pulido Mármol (acabado iOS):** título de modal centrado con hairline (`.modal > .modal-title`), inputs rellenos gris claro sin borde, botones de modal redondeados (acción rellena, cancelar plano en azul), **interruptor pill verde estilo iOS** para `#autoNightToggle`, separadores con sangría entre obras del historial, y títulos de tarjeta oscuros en frase (no mayúsculas; las mayúsculas grises quedan solo para etiquetas de grupo `.ajustes-group-label`/`.history-section-label`).
+**Pulido Mármol (acabado iOS):** título de modal centrado con hairline (`.modal > .modal-title`), inputs rellenos gris claro sin borde, botones de modal redondeados (acción rellena, cancelar plano en azul), **interruptores pill verde estilo iOS** (modo noche `#autoNightToggle` y vibración `.haptics-toggle`), filas de Ajustes tipo iOS (etiqueta izq · control der con hairline superior, `.settings-autonight` en `row-reverse`), **cabeceras de grupo en frase con icono fino** (`.ajustes-group-icon`, oculto fuera de Mármol; iconos en `#view-ajustes`: Apariencia=paleta, Sonido=altavoz, Datos=carpeta, Cuenta=persona), separadores con sangría entre obras del historial, y títulos de tarjeta oscuros en frase (las mayúsculas grises quedan solo para `.ajustes-group-label`/`.history-section-label` en otros temas).
 
 ### Tema Mármol (iOS/iPadOS nativo premium)
 

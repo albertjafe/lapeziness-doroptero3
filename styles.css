@@ -571,6 +571,46 @@
   }
   [data-theme="marmol"] .sesion-hist-obra:first-child { border-top: none; padding-top: 0; margin-top: 0; }
 
+  /* #2 — Cabeceras de grupo en frase con icono fino (estilo Forest/iOS) */
+  .ajustes-group-icon { display: none; }
+  [data-theme="marmol"] .ajustes-group-label {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif !important;
+    display: flex; align-items: center; gap: 6px;
+    text-transform: none; letter-spacing: 0;
+    font-size: 12px; font-weight: 600; color: var(--text3);
+    margin: 26px 8px 8px;
+  }
+  [data-theme="marmol"] .ajustes-group-icon { display: inline-flex; align-items: center; color: var(--text3); }
+  [data-theme="marmol"] .ajustes-group-icon svg { width: 14px; height: 14px; }
+  /* #1 — Filas tipo iOS: etiqueta a la izquierda · control a la derecha, con
+     hairline superior (en vez de cajas independientes con borde) */
+  [data-theme="marmol"] .settings-autonight,
+  [data-theme="marmol"] .haptics-row {
+    background: transparent !important;
+    border: none !important;
+    border-top: 1px solid var(--border2) !important;
+    border-radius: 0 !important;
+    padding: 13px 2px 5px !important;
+    margin: 8px 0 0 !important;
+  }
+  [data-theme="marmol"] .settings-autonight {
+    flex-direction: row-reverse;
+    justify-content: space-between;
+  }
+  [data-theme="marmol"] .settings-autonight-txt small {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  }
+  /* #4 — Interruptor de vibración como pill verde iOS (igual que modo noche) */
+  [data-theme="marmol"] .haptics-toggle {
+    width: 44px; height: 26px; border: none; background: #d6d6db;
+  }
+  [data-theme="marmol"] .haptics-toggle-knob {
+    width: 22px; height: 22px; background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.28);
+  }
+  [data-theme="marmol"] .haptics-toggle.on { background: var(--green); border: none; }
+  [data-theme="marmol"] .haptics-toggle.on .haptics-toggle-knob { transform: translateX(18px); background: #fff; }
+
   /* MODO LIMPIO en Sesión: oculta textos pequeños de apoyo (botón ℹ los revela) */
   #sessionInfoBtn { display: none; }
   body[data-view="session"] #sessionInfoBtn { display: inline-flex; }
