@@ -101,7 +101,15 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v93`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v94`.
+
+### Margarita del dinero — ELIMINADA
+
+La "margarita del dinero" (premio: 4 h = 1 pegatina, 18 pegatinas = 100 €) se **eliminó por completo** (jun 2026): el pill `#cronoDineroPill`, el modal `#modalDaisy`, todo el bloque JS (`DAISY_*`, `_daisy*`, `openDaisyModal`, `renderDaisyModalBody`, `refreshDaisyPill`, `showCronoMoneyFlash` y su animación de céntimos) y su CSS (`.crono-dinero-pill`, `.crono-money-*`/`.cmf-*`, `.daisy-*`). En `cronoFinish` se quitó la captura `_moneyBankedFrom/_moneyTodayFrom`; `closeHechoDatos` ya no llama a `showCronoMoneyFlash` (conserva `_cronoLastAddedPlanId` para animar el resumen). `cronoPlayHarvest` (burst "+Xm sesión guardada") **se mantiene**. localStorage `daisy_v2` queda obsoleto.
+
+### Cronómetro · estilo "A · Foco sereno" (solo Mármol)
+
+En el tema Mármol, el cronómetro se reviste como el mockup A elegido por Alberto: cada fase (`.crono-run-stage`/`.crono-idle-wrap`) vive en una **tarjeta blanca redondeada centrada** con sombra suave; el tiempo (`.crono-display`) es calmado en **fuente del sistema** dentro de un **anillo fino siempre visible** (`.crono-run-progress-svg` opacity 1, track gris + arco accent, `.crono-display-wrap` con altura fija y flex-center, sin el halo difuminado); obra como fila limpia; **Plantar** y control primario como **botón relleno accent tipo iOS**; **sin jardín** (`.crono-garden` oculto) para foco minimalista. Todo scoped `[data-theme^="marmol"]` (aplica a Acero y Bosque); los demás temas no cambian.
 
 ### Mármol · variantes de color (subtemas: Acero / Bosque)
 

@@ -4893,11 +4893,8 @@ function closeHechoDatos(save) {
   if (save && _hechoObraId) {
     const inCronoView = document.body.classList.contains('crono-focus');
     if (inCronoView) {
-      // Marcar planId para animar resumen y disparar la animación de dinero
-      // AHORA (en vez de la flor): el dinero de hoy sube en céntimos y, si se
-      // completan 4 h, salta a la hucha.
+      // Marcar planId para animar el resumen lateral al guardar.
       _cronoLastAddedPlanId = _hechoPlanId;
-      showCronoMoneyFlash();
     }
   }
   closeModal('modalHechoDatos');
@@ -14193,7 +14190,6 @@ function refreshConcentradoUI() {
 
   // Pill de destellos (abajo a la izquierda en el cronómetro en reposo)
   if (typeof refreshDestellosPill === 'function') refreshDestellosPill();
-  if (typeof refreshDaisyPill === 'function') refreshDaisyPill();
   if (typeof renderSessionInsights === 'function') renderSessionInsights();
   if (typeof renderCronoGarden === 'function') renderCronoGarden();
 
@@ -15331,230 +15327,6 @@ function cronoForcedFinish() {
   cronoFinish();
 }
 
-// ── MARGARITA DEL DINERO ─────────────────────────────────────────────────────
-// Alberto se premia: cada 4 h de estudio = 1 pegatina (circular) en una margarita
-// de 18 pétalos; se dan 3 vueltas (54 pegatinas). 18 pegatinas = 100 € → cada
-// pegatina ≈ 5,56 € (≈ 1,39 €/h de estudio).
-const DAISY_PETALS = 18;
-const DAISY_LAPS = 3;
-const DAISY_SLOTS = DAISY_PETALS * DAISY_LAPS;        // 54
-const DAISY_MIN_PER_STICKER = 240;                    // 4 h = 1 pegatina
-const DAISY_EUR_PER_STICKER = 100 / DAISY_PETALS;     // 18 pegatinas = 100 €
-const DAISY_EUR_PER_MIN = DAISY_EUR_PER_STICKER / DAISY_MIN_PER_STICKER;
-
-// Minutos netos estudiados POR DÍA (todo el historial; excluye descansos/fallidas).
-// Clave: la pegatina solo se gana al alcanzar 4 h DENTRO de un mismo día; lo que
-// sobra de cada día NO arrastra al siguiente.
-function _daisyDayMins() {
-  const map = {};
-  const add = p => {
-    if (!p || p.failed || p.tipo === 'descanso' || p.obraId === '_rest_' || !p.startedAt) return;
-    const d = new Date(p.startedAt);
-    if (isNaN(d.getTime())) return;
-    const iso = _statsISO(d);
-    map[iso] = (map[iso] || 0) + Math.max(0, Math.round(p.mins || 0));
-  };
-  (db.sessionPlants || []).forEach(add);
-  (db.forestPlants || []).forEach(add);
-  return map;
-}
-// Pegatinas GANADAS por estudio: suma, día a día, floor(minutosDelDía / 240).
-function _earnedStickers() {
-  const map = _daisyDayMins();
-  let s = 0;
-  Object.keys(map).forEach(k => { s += Math.floor(map[k] / DAISY_MIN_PER_STICKER); });
-  return s;
-}
-function _daisyState() {
-  let s = null;
-  try { s = JSON.parse(localStorage.getItem('daisy_v2') || 'null'); } catch (e) { /* noop */ }
-  if (!s || typeof s.baseStickers !== 'number') s = { baseStickers: 0, anchorStickers: 0 };
-  return s;
-}
-function _daisySave(s) { try { localStorage.setItem('daisy_v2', JSON.stringify(s)); } catch (e) { /* noop */ } }
-// Pegatinas totales = base (ya puestas) + las ganadas desde que se fijó esa base.
-function _daisyStickers() {
-  const s = _daisyState();
-  return (s.baseStickers || 0) + Math.max(0, _earnedStickers() - (s.anchorStickers || 0));
-}
-function _daisyEuros() { return _daisyStickers() * DAISY_EUR_PER_STICKER; }
-// Minutos estudiados HOY (para "cuánto falta para la próxima pegatina de hoy").
-function _daisyTodayMins() {
-  const map = _daisyDayMins();
-  return map[_statsISO(new Date())] || 0;
-}
-// Fija cuántas pegatinas tienes ya puestas y reancla: a partir de ahora suma lo nuevo.
-function setDaisyPetals(P) {
-  P = Math.max(0, Math.min(99999, Math.round(P || 0)));
-  _daisySave({ baseStickers: P, anchorStickers: _earnedStickers() });
-}
-function _fmtEuros(e) {
-  return (e || 0).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-}
-
-// SVG de la margarita: 18 pétalos, y sobre cada uno 3 pegatinas circulares (una
-// por vuelta, a radios crecientes). Se rellenan vuelta a vuelta (54 en total).
-function _daisySVG(stickers) {
-  const cur = ((stickers % DAISY_SLOTS) + DAISY_SLOTS) % DAISY_SLOTS; // pegatinas en la margarita actual
-  const cx = 100, cy = 100;
-  let petals = '', dots = '';
-  for (let i = 0; i < DAISY_PETALS; i++) {
-    const deg = (i / DAISY_PETALS) * 360;
-    const ang = (i / DAISY_PETALS) * Math.PI * 2 - Math.PI / 2;
-    petals += '<ellipse class="daisy-petal" cx="' + cx + '" cy="' + (cy - 58) + '" rx="11" ry="30" transform="rotate(' + deg + ' ' + cx + ' ' + cy + ')"/>';
-    for (let lap = 0; lap < DAISY_LAPS; lap++) {
-      const idx = lap * DAISY_PETALS + i;
-      // Se rellena de FUERA hacia el centro: la 1ª vuelta es el anillo exterior.
-      const r = 41 + (DAISY_LAPS - 1 - lap) * 17;
-      const x = (cx + Math.cos(ang) * r).toFixed(1);
-      const y = (cy + Math.sin(ang) * r).toFixed(1);
-      dots += '<circle class="daisy-sticker' + (idx < cur ? ' on' : '') + '" cx="' + x + '" cy="' + y + '" r="6"/>';
-    }
-  }
-  return '<svg viewBox="0 0 200 200" class="daisy-svg" aria-hidden="true">'
-    + '<g class="daisy-petals">' + petals + '</g>'
-    + '<circle class="daisy-core" cx="' + cx + '" cy="' + cy + '" r="25"/>'
-    + dots + '</svg>';
-}
-
-function renderDaisyModalBody() {
-  const euros = _daisyEuros();
-  const stickers = _daisyStickers();
-  const cur = stickers % DAISY_SLOTS;
-  const daisiesDone = Math.floor(stickers / DAISY_SLOTS);
-  // Una pegatina se gana al llegar a 4 h EN UN DÍA; cuenta lo de HOY.
-  const todayMins = _daisyTodayMins();
-  const minsToNext = DAISY_MIN_PER_STICKER - (todayMins % DAISY_MIN_PER_STICKER);
-  const enJuego = (todayMins % DAISY_MIN_PER_STICKER) * DAISY_EUR_PER_MIN;
-  return '<div class="daisy-total-label">Hucha</div>'
-    + '<div class="daisy-total">' + _fmtEuros(euros) + '</div>'
-    + '<div class="daisy-sub">' + stickers + ' pegatinas · ' + cur + '/' + DAISY_SLOTS + ' en esta margarita'
-      + (daisiesDone ? ' · ' + daisiesDone + ' completada' + (daisiesDone > 1 ? 's' : '') : '') + '</div>'
-    + _daisySVG(stickers)
-    + '<div class="daisy-next">Hoy llevas <strong>' + fmtMinutos(todayMins) + '</strong> (<strong>' + _fmtEuros(enJuego) + '</strong> en juego) · faltan <strong>' + minsToNext + ' min</strong> para sumarlos a la hucha</div>'
-    + '<div class="daisy-btns">'
-      + '<button class="modal-btn secondary daisy-set-btn" onclick="daisySetPetalsPrompt()">Fijar pétalos</button>'
-      + '<button class="modal-btn secondary daisy-reset-btn" onclick="daisyResetZero()">Poner a 0 €</button>'
-    + '</div>';
-}
-function openDaisyModal() {
-  const body = document.getElementById('daisyModalBody');
-  if (body) body.innerHTML = renderDaisyModalBody();
-  openModal('modalDaisy');
-}
-function daisySetPetalsPrompt() {
-  const cur = _daisyStickers() % DAISY_SLOTS;
-  const v = window.prompt('¿Cuántos pétalos (pegatinas) tienes ya puestos en la margarita actual? (0–' + DAISY_SLOTS + ')', String(cur));
-  if (v == null) return;
-  const n = parseInt(v, 10);
-  if (isNaN(n) || n < 0) { showToast('Número no válido'); return; }
-  setDaisyPetals(n);
-  const body = document.getElementById('daisyModalBody');
-  if (body) body.innerHTML = renderDaisyModalBody();
-  refreshDaisyPill();
-  showToast('Pétalos actualizados');
-}
-function daisyResetZero() {
-  if (!window.confirm('¿Poner el dinero a 0 € y empezar de nuevo? (no borra tu historial de estudio)')) return;
-  setDaisyPetals(0);
-  const body = document.getElementById('daisyModalBody');
-  if (body) body.innerHTML = renderDaisyModalBody();
-  refreshDaisyPill();
-  showToast('Margarita reiniciada a 0 €');
-}
-function refreshDaisyPill() {
-  const pill = document.getElementById('cronoDineroPill');
-  if (!pill) return;
-  const txt = document.getElementById('cronoDineroText');
-  if (txt) txt.textContent = _fmtEuros(_daisyEuros());
-  pill.style.display = '';
-}
-
-// Animación de dinero al darle a Hecho. Muestra el dinero de HOY subiendo en
-// céntimos hacia los 5,56 € (1 pegatina = 4 h); si esta sesión completa las 4 h,
-// esos 5,56 € saltan a la HUCHA (total confirmado) con celebración. Si no llega,
-// el dinero de hoy sigue "en juego" y NO se suma a la hucha.
-let _moneyBankedFrom = 0;
-let _moneyTodayFrom = 0;
-function showCronoMoneyFlash() {
-  let flash = document.getElementById('cronoMoneyFlash');
-  if (!flash) {
-    flash = document.createElement('div');
-    flash.id = 'cronoMoneyFlash';
-    flash.className = 'modal-overlay crono-money-flash';
-    flash.innerHTML = '<div class="cmf-inner">'
-      + '<div class="cmf-coin">🌼</div>'
-      + '<div class="cmf-prog"><span class="cmf-big" id="cmfBig">0,00 €</span>'
-        + '<span class="cmf-goal"> / ' + _fmtEuros(DAISY_EUR_PER_STICKER) + ' hoy</span></div>'
-      + '<div class="cmf-bar"><i id="cmfBarFill"></i></div>'
-      + '<div class="cmf-total" id="cmfTotal"></div>'
-      + '<div class="cmf-added" id="cmfAdded"></div>'
-      + '</div>';
-    document.body.appendChild(flash);
-  }
-  const bigEl = flash.querySelector('#cmfBig');
-  const barEl = flash.querySelector('#cmfBarFill');
-  const totalEl = flash.querySelector('#cmfTotal');
-  const addedEl = flash.querySelector('#cmfAdded');
-
-  const STK = DAISY_EUR_PER_STICKER;
-  const todayNow = _daisyTodayMins();
-  const bankedNow = _daisyEuros();
-  const won = bankedNow > _moneyBankedFrom + 0.001; // ¿esta sesión completó las 4 h?
-  const provFrom = (_moneyTodayFrom % DAISY_MIN_PER_STICKER) * DAISY_EUR_PER_MIN;
-  const provNow = (todayNow % DAISY_MIN_PER_STICKER) * DAISY_EUR_PER_MIN;
-  // Si se completó pegatina, animamos el "de hoy" llenándose hasta los 5,56 €.
-  const bigTo = won ? STK : provNow;
-
-  totalEl.innerHTML = 'Hucha: <strong>' + _fmtEuros(_moneyBankedFrom) + '</strong>';
-  if (won) {
-    addedEl.innerHTML = '🏆 +' + _fmtEuros(STK) + ' a la hucha';
-    addedEl.classList.remove('muted');
-  } else {
-    const toNext = DAISY_MIN_PER_STICKER - (todayNow % DAISY_MIN_PER_STICKER);
-    addedEl.innerHTML = 'en juego · faltan <b>' + toNext + ' min</b> hoy para sumarlo';
-    addedEl.classList.add('muted');
-  }
-  flash.classList.toggle('nowin', !won);
-
-  flash.classList.remove('visible');
-  void flash.offsetWidth;
-  flash.classList.add('visible');
-  document.body.classList.add('modal-open');
-
-  // Fase 1: el dinero de hoy sube en céntimos (provFrom → bigTo).
-  const t0 = performance.now(), dur = 1100;
-  function step(t) {
-    const k = Math.min(1, (t - t0) / dur);
-    const e = provFrom + (bigTo - provFrom) * (1 - Math.pow(1 - k, 3));
-    if (bigEl) bigEl.textContent = _fmtEuros(e);
-    if (barEl) barEl.style.width = Math.min(100, (e / STK) * 100) + '%';
-    if (k < 1) requestAnimationFrame(step);
-    else {
-      if (bigEl) bigEl.textContent = _fmtEuros(bigTo);
-      if (barEl) barEl.style.width = Math.min(100, (bigTo / STK) * 100) + '%';
-      // Fase 2: si se ganó, la hucha sube +5,56 €.
-      if (won && totalEl) {
-        const b0 = performance.now();
-        (function bank(tt) {
-          const kk = Math.min(1, (tt - b0) / 700);
-          const be = _moneyBankedFrom + (bankedNow - _moneyBankedFrom) * (1 - Math.pow(1 - kk, 3));
-          totalEl.innerHTML = 'Hucha: <strong>' + _fmtEuros(be) + '</strong>';
-          if (kk < 1) requestAnimationFrame(bank);
-          else totalEl.innerHTML = 'Hucha: <strong>' + _fmtEuros(bankedNow) + '</strong>';
-        })(b0);
-      }
-    }
-  }
-  requestAnimationFrame(step);
-
-  clearTimeout(flash._t);
-  flash._t = setTimeout(() => {
-    flash.classList.remove('visible');
-    const anyOpen = document.querySelector('.modal-overlay.visible');
-    if (!anyOpen) document.body.classList.remove('modal-open');
-  }, won ? 2800 : 2300);
-}
 
 function cronoPlayHarvest(prevMin, totalMin, addedMin) {
   if (!Number.isFinite(totalMin) || totalMin <= 0) return;
@@ -15736,12 +15508,6 @@ function cronoFinish() {
   const endedAtIso = new Date().toISOString();
   if (!sessionAggregate[targetPlanId]) sessionAggregate[targetPlanId] = { subsessions: [] };
   sessionAggregate[targetPlanId]._pendingTimes = { startedAt: startedAtIso, endedAt: endedAtIso };
-
-  // Capturar el estado ANTES de registrar esta sesión, para que la animación de
-  // Hecho muestre el dinero de hoy subiendo y, si se completan 4 h, el salto a
-  // la hucha.
-  _moneyBankedFrom = _daisyEuros();
-  _moneyTodayFrom = _daisyTodayMins();
 
   // ★ Registrar también la sub-sesión en db.sessionPlants[] (permanente,
   // sobrevive al cap de db.sesiones[]). Para estadísticas históricas.
