@@ -101,7 +101,11 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v97`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v98`.
+
+### Cronómetro Mármol · estilo "B · full-bleed" (iPad 13")
+
+El cronómetro en Mármol se rediseñó al mockup B: **sin tarjeta blanca** (`.crono-run-stage`/`.crono-idle-wrap` transparentes), **anillo grande** (`min(540px,88vw)`, tiempo `clamp(62px,16vw,110px)`), contenido **anclado arriba** (`.crono-wrap justify-content:flex-start`, no centrado vertical, para que el hueco quede abajo). El **pill de Destellos** vuelve, arriba a la derecha (a la izq de la X de cerrar) y visible también en marcha: reglas Marmol con `!important` en `position/top/right/left/bottom` para ganar a `body.crono-focus .crono-destellos-pill` (que si no lo estiraba a toda la altura); `refreshDestellosPill` oculta el badge cuando el contador es 0. La tarjeta "Esta semana" se oculta en marcha (`body.crono-focus`). Verificado en Chromium real a 1024×1366 (iPad 13") y 390px (móvil).
 
 ### Cronómetro Mármol · ancho responsive (iPad amplio)
 

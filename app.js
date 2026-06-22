@@ -13834,7 +13834,7 @@ function refreshDestellosPill() {
   if (!pill) return;
   const n = getAllDestellos().length;
   const countEl = document.getElementById('cronoDestellosCount');
-  if (countEl) countEl.textContent = n;
+  if (countEl) { countEl.textContent = n; countEl.style.display = n > 0 ? '' : 'none'; }
   pill.style.display = n > 0 ? '' : 'none';
 }
 
