@@ -13051,6 +13051,7 @@ function openSettings() {
   if (typeof refreshTheme === 'function') refreshTheme();          // marca el tema activo
   _syncAjustesActiveOptions();                                      // marca fuente/tamaño activos
   if (typeof updateSyncStatusInfo === 'function') updateSyncStatusInfo();
+  if (typeof updateAjustesAccountRow === 'function') updateAjustesAccountRow();
   if (typeof refreshSoundOptionUI === 'function') refreshSoundOptionUI();
   if (typeof refreshHapticsUI === 'function') refreshHapticsUI();
   if (typeof updateForestPendientesBtn === 'function') updateForestPendientesBtn();
@@ -13087,6 +13088,41 @@ async function updateSyncStatusInfo() {
   } catch(e) {
     el.innerHTML = '<span style="color:var(--text3)">Sincronización no disponible (sin red o sin cuenta).</span>';
   }
+}
+
+// Fila de cuenta destacada de Ajustes (estilo iOS/Forest): avatar con la
+// inicial del email, el correo y el estado de sincronización. Toca → baja a la
+// tarjeta de Sincronización (con sus acciones).
+async function updateAjustesAccountRow() {
+  const av = document.getElementById('ajustesAccountAvatar');
+  const nm = document.getElementById('ajustesAccountName');
+  const sb2 = document.getElementById('ajustesAccountSub');
+  if (!av || !nm || !sb2) return;
+  try {
+    const sb = getSB();
+    const { data: { user } } = await sb.auth.getUser();
+    if (user && user.email) {
+      av.textContent = user.email.charAt(0).toUpperCase();
+      nm.textContent = user.email;
+      sb2.textContent = 'Sincronizado en la nube';
+      sb2.style.color = '';
+    } else {
+      av.textContent = '·';
+      nm.textContent = 'Sin sesión';
+      sb2.textContent = 'Solo en este dispositivo · toca para conectar';
+      sb2.style.color = 'var(--orange)';
+    }
+  } catch(e) {
+    av.textContent = '·';
+    nm.textContent = 'Cuenta';
+    sb2.textContent = 'Sincronización no disponible';
+    sb2.style.color = '';
+  }
+}
+
+function ajustesAccountTap() {
+  const card = document.getElementById('syncStatusInfo');
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // Fuerza una re-sincronización con la nube. Útil si los datos locales se han
