@@ -403,7 +403,7 @@
      sombra muy suave, tipografía del sistema (SF Pro), acento azul discreto.
      Profesional, sereno, sin complicaciones.
      ════════════════════════════════════════════════════════════════════════ */
-  [data-theme="marmol"] {
+  [data-theme^="marmol"] {
     --bg: #f2f2f7; --bg2: #ffffff; --bg3: #e7e7ec;
     --accent: #5b82a6; --accent2: #3f6184;
     --text: #1c1c1e; --text2: #6c6c70; --text3: #a6a6ab;
@@ -411,65 +411,72 @@
     --border: rgba(60,60,67,0.14); --border2: rgba(60,60,67,0.07);
     --ui-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
   }
+  /* MÁRMOL · BOSQUE — subtema verde estilo Forest. Misma estructura iOS, solo
+     cambia la paleta de acento a verde bosque; todo (gráficas, segmentado,
+     avatar, degradado de cabecera, nav activa) se reviste solo vía var(--accent). */
+  [data-theme="marmol-bosque"] {
+    --accent: #57a07a; --accent2: #3c7d5c;
+    --green: #57a07a;
+  }
   /* MÁRMOL — tipografía del sistema también en los títulos decorativos */
-  [data-theme="marmol"] .session-hero-title,
-  [data-theme="marmol"] .plan-item-name,
-  [data-theme="marmol"] .obra-name,
-  [data-theme="marmol"] .evento-nombre,
-  [data-theme="marmol"] .modal-title,
-  [data-theme="marmol"] .header-title,
-  [data-theme="marmol"] #headerTitle,
-  [data-theme="marmol"] .mes-nav-label {
+  [data-theme^="marmol"] .session-hero-title,
+  [data-theme^="marmol"] .plan-item-name,
+  [data-theme^="marmol"] .obra-name,
+  [data-theme^="marmol"] .evento-nombre,
+  [data-theme^="marmol"] .modal-title,
+  [data-theme^="marmol"] .header-title,
+  [data-theme^="marmol"] #headerTitle,
+  [data-theme^="marmol"] .mes-nav-label {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif !important;
     font-style: normal !important;
     font-weight: 600 !important;
     letter-spacing: -0.01em;
   }
   /* MÁRMOL — etiquetas de grupo en gris mayúsculas, como cabeceras de lista iOS */
-  [data-theme="marmol"] .ajustes-group-label,
-  [data-theme="marmol"] .history-section-label {
+  [data-theme^="marmol"] .ajustes-group-label,
+  [data-theme^="marmol"] .history-section-label {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif !important;
     text-transform: uppercase; letter-spacing: 0.04em;
     font-weight: 600; color: var(--text3);
   }
   /* MÁRMOL — título de tarjeta oscuro en frase (estilo Forest), no mayúsculas */
-  [data-theme="marmol"] .stats-card-title,
-  [data-theme="marmol"] .section-title {
+  [data-theme^="marmol"] .stats-card-title,
+  [data-theme^="marmol"] .section-title {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif !important;
     text-transform: none; letter-spacing: -0.01em;
     font-weight: 600; color: var(--text); font-size: 14px;
   }
   /* MÁRMOL — tarjetas blancas redondeadas con sombra muy suave (sin bordes duros) */
-  [data-theme="marmol"] .card,
-  [data-theme="marmol"] .obra-card,
-  [data-theme="marmol"] .obra-card-simple,
-  [data-theme="marmol"] .session-insight-card,
-  [data-theme="marmol"] .stats-card,
-  [data-theme="marmol"] .ajustes-card,
-  [data-theme="marmol"] .prob-card,
-  [data-theme="marmol"] .sesion-hist-item,
-  [data-theme="marmol"] .evento-card,
-  [data-theme="marmol"] .destellos-modal {
+  [data-theme^="marmol"] .card,
+  [data-theme^="marmol"] .obra-card,
+  [data-theme^="marmol"] .obra-card-simple,
+  [data-theme^="marmol"] .session-insight-card,
+  [data-theme^="marmol"] .stats-card,
+  [data-theme^="marmol"] .ajustes-card,
+  [data-theme^="marmol"] .prob-card,
+  [data-theme^="marmol"] .sesion-hist-item,
+  [data-theme^="marmol"] .evento-card,
+  [data-theme^="marmol"] .destellos-modal {
     background: var(--bg2) !important;
     border: 1px solid var(--border2) !important;
     border-radius: 14px !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 6px 16px rgba(0,0,0,0.03) !important;
   }
-  [data-theme="marmol"] .session-hero {
+  [data-theme^="marmol"] .session-hero {
     background: var(--bg2) !important;
     border: 1px solid var(--border2) !important;
     border-radius: 16px !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 8px 20px rgba(0,0,0,0.04) !important;
   }
-  [data-theme="marmol"] .modal,
-  [data-theme="marmol"] .sesdet-modal {
+  [data-theme^="marmol"] .modal,
+  [data-theme^="marmol"] .sesdet-modal {
     border-radius: 18px !important;
     border: none !important;
     box-shadow: 0 12px 40px rgba(0,0,0,0.18) !important;
   }
   /* MÁRMOL — botones de acción azules tipo iOS, redondeados y sobrios */
-  [data-theme="marmol"] .generate-btn,
-  [data-theme="marmol"] .save-session-btn {
+  [data-theme^="marmol"] .generate-btn,
+  [data-theme^="marmol"] .save-session-btn {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif !important;
     font-style: normal !important;
     font-weight: 600 !important;
@@ -482,37 +489,37 @@
     box-shadow: 0 1px 2px rgba(0,0,0,0.08) !important;
   }
   /* MÁRMOL — nav inferior limpia, activo en azul */
-  [data-theme="marmol"] .nav-btn span {
+  [data-theme^="marmol"] .nav-btn span {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
     font-weight: 500; font-size: 10px; letter-spacing: 0;
   }
-  [data-theme="marmol"] .nav-btn.active { color: var(--accent); }
-  [data-theme="marmol"] .nav-btn.active svg { stroke: var(--accent); }
-  [data-theme="marmol"] .nav-btn.active span { color: var(--accent); }
-  [data-theme="marmol"] .nav { border-top: 1px solid var(--border2); }
-  [data-theme="marmol"] .header { border-bottom: 1px solid var(--border2); }
+  [data-theme^="marmol"] .nav-btn.active { color: var(--accent); }
+  [data-theme^="marmol"] .nav-btn.active svg { stroke: var(--accent); }
+  [data-theme^="marmol"] .nav-btn.active span { color: var(--accent); }
+  [data-theme^="marmol"] .nav { border-top: 1px solid var(--border2); }
+  [data-theme^="marmol"] .header { border-bottom: 1px solid var(--border2); }
   /* MÁRMOL — inputs y barra de solidez con redondeo suave */
-  [data-theme="marmol"] .modal-input { border-radius: 10px !important; }
-  [data-theme="marmol"] .obra-sol-bar { background: var(--bg3); }
+  [data-theme^="marmol"] .modal-input { border-radius: 10px !important; }
+  [data-theme^="marmol"] .obra-sol-bar { background: var(--bg3); }
   /* MÁRMOL — gráficas suaves estilo iOS: sin brillos, líneas y rejilla finas,
      número grande en un solo tono calmado (sin degradado tricolor) */
-  [data-theme="marmol"] .stats-bar-gloss { display: none; }
-  [data-theme="marmol"] .stats-line { stroke-width: 2.4; }
-  [data-theme="marmol"] .stats-grid { stroke: var(--border2); opacity: 0.85; }
-  [data-theme="marmol"] .stats-peak-line { opacity: 0.32; }
-  [data-theme="marmol"] .stats-peak-halo { opacity: 0.13; }
-  [data-theme="marmol"] .stats-peak-dot { stroke-width: 2; }
-  [data-theme="marmol"] .stats-card-big {
+  [data-theme^="marmol"] .stats-bar-gloss { display: none; }
+  [data-theme^="marmol"] .stats-line { stroke-width: 2.4; }
+  [data-theme^="marmol"] .stats-grid { stroke: var(--border2); opacity: 0.85; }
+  [data-theme^="marmol"] .stats-peak-line { opacity: 0.32; }
+  [data-theme^="marmol"] .stats-peak-halo { opacity: 0.13; }
+  [data-theme^="marmol"] .stats-peak-dot { stroke-width: 2; }
+  [data-theme^="marmol"] .stats-card-big {
     background: none !important;
     -webkit-text-fill-color: currentColor !important;
     color: var(--accent) !important;
     font-weight: 600;
   }
-  [data-theme="marmol"] .stats-axis { fill: var(--text3); }
+  [data-theme^="marmol"] .stats-axis { fill: var(--text3); }
 
   /* MÁRMOL — pulido fino estilo iOS: modales, inputs, botones e interruptores */
   /* Título de modal centrado con hairline (solo títulos de primer nivel) */
-  [data-theme="marmol"] .modal > .modal-title {
+  [data-theme^="marmol"] .modal > .modal-title {
     text-align: center;
     font-size: 17px !important;
     font-weight: 600 !important;
@@ -522,7 +529,7 @@
     border-bottom: 1px solid var(--border2);
   }
   /* Inputs rellenos en gris claro, sin borde (campos tipo iOS) */
-  [data-theme="marmol"] .modal-input {
+  [data-theme^="marmol"] .modal-input {
     background: var(--bg3) !important;
     border: none !important;
     border-radius: 10px !important;
@@ -530,62 +537,62 @@
     font-size: 15px;
     padding: 11px 13px;
   }
-  [data-theme="marmol"] .modal-input:focus {
+  [data-theme^="marmol"] .modal-input:focus {
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent) !important;
   }
   /* Botones de modal: acción rellena, cancelar plano en azul (texto), redondeados */
-  [data-theme="marmol"] .modal-btn {
+  [data-theme^="marmol"] .modal-btn {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif !important;
     font-size: 14px; font-weight: 600; letter-spacing: -0.01em;
     border-radius: 11px; padding: 12px;
   }
-  [data-theme="marmol"] .modal-btn.primary {
+  [data-theme^="marmol"] .modal-btn.primary {
     color: #fff !important;
     box-shadow: 0 1px 2px rgba(0,0,0,0.08) !important;
   }
-  [data-theme="marmol"] .modal-btn.secondary {
+  [data-theme^="marmol"] .modal-btn.secondary {
     background: var(--bg3) !important;
     color: var(--accent) !important;
     border: none !important;
   }
   /* Interruptor tipo iOS (pill verde) para el toggle de modo noche */
-  [data-theme="marmol"] .settings-autonight input[type="checkbox"] {
+  [data-theme^="marmol"] .settings-autonight input[type="checkbox"] {
     -webkit-appearance: none; appearance: none;
     width: 44px; height: 26px; flex: none;
     border-radius: 999px; border: none;
     background: #d6d6db; position: relative; cursor: pointer;
     transition: background 0.25s ease;
   }
-  [data-theme="marmol"] .settings-autonight input[type="checkbox"]::after {
+  [data-theme^="marmol"] .settings-autonight input[type="checkbox"]::after {
     content: ''; position: absolute; top: 2px; left: 2px;
     width: 22px; height: 22px; border-radius: 50%;
     background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.28);
     transition: transform 0.25s ease;
   }
-  [data-theme="marmol"] .settings-autonight input[type="checkbox"]:checked { background: var(--green); }
-  [data-theme="marmol"] .settings-autonight input[type="checkbox"]:checked::after { transform: translateX(18px); }
+  [data-theme^="marmol"] .settings-autonight input[type="checkbox"]:checked { background: var(--green); }
+  [data-theme^="marmol"] .settings-autonight input[type="checkbox"]:checked::after { transform: translateX(18px); }
   /* Separadores con sangría entre obras del historial (filas de lista iOS) */
-  [data-theme="marmol"] .sesion-hist-obra {
+  [data-theme^="marmol"] .sesion-hist-obra {
     border-top: 1px solid var(--border2);
     padding-top: 9px; margin-top: 9px;
   }
-  [data-theme="marmol"] .sesion-hist-obra:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+  [data-theme^="marmol"] .sesion-hist-obra:first-child { border-top: none; padding-top: 0; margin-top: 0; }
 
   /* #2 — Cabeceras de grupo en frase con icono fino (estilo Forest/iOS) */
   .ajustes-group-icon { display: none; }
-  [data-theme="marmol"] .ajustes-group-label {
+  [data-theme^="marmol"] .ajustes-group-label {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif !important;
     display: flex; align-items: center; gap: 6px;
     text-transform: none; letter-spacing: 0;
     font-size: 12px; font-weight: 600; color: var(--text3);
     margin: 26px 8px 8px;
   }
-  [data-theme="marmol"] .ajustes-group-icon { display: inline-flex; align-items: center; color: var(--text3); }
-  [data-theme="marmol"] .ajustes-group-icon svg { width: 14px; height: 14px; }
+  [data-theme^="marmol"] .ajustes-group-icon { display: inline-flex; align-items: center; color: var(--text3); }
+  [data-theme^="marmol"] .ajustes-group-icon svg { width: 14px; height: 14px; }
   /* #1 — Filas tipo iOS: etiqueta a la izquierda · control a la derecha, con
      hairline superior (en vez de cajas independientes con borde) */
-  [data-theme="marmol"] .settings-autonight,
-  [data-theme="marmol"] .haptics-row {
+  [data-theme^="marmol"] .settings-autonight,
+  [data-theme^="marmol"] .haptics-row {
     background: transparent !important;
     border: none !important;
     border-top: 1px solid var(--border2) !important;
@@ -593,33 +600,33 @@
     padding: 13px 2px 5px !important;
     margin: 8px 0 0 !important;
   }
-  [data-theme="marmol"] .settings-autonight {
+  [data-theme^="marmol"] .settings-autonight {
     flex-direction: row-reverse;
     justify-content: space-between;
   }
-  [data-theme="marmol"] .settings-autonight-txt small {
+  [data-theme^="marmol"] .settings-autonight-txt small {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
   }
   /* #4 — Interruptor de vibración como pill verde iOS (igual que modo noche) */
-  [data-theme="marmol"] .haptics-toggle {
+  [data-theme^="marmol"] .haptics-toggle {
     width: 44px; height: 26px; border: none; background: #d6d6db;
   }
-  [data-theme="marmol"] .haptics-toggle-knob {
+  [data-theme^="marmol"] .haptics-toggle-knob {
     width: 22px; height: 22px; background: #fff;
     box-shadow: 0 1px 3px rgba(0,0,0,0.28);
   }
-  [data-theme="marmol"] .haptics-toggle.on { background: var(--green); border: none; }
-  [data-theme="marmol"] .haptics-toggle.on .haptics-toggle-knob { transform: translateX(18px); background: #fff; }
+  [data-theme^="marmol"] .haptics-toggle.on { background: var(--green); border: none; }
+  [data-theme^="marmol"] .haptics-toggle.on .haptics-toggle-knob { transform: translateX(18px); background: #fff; }
   /* Control segmentado iOS para Fuente / Tamaño / Paquete de sonidos: track gris
      con la opción activa como pastilla blanca elevada */
-  [data-theme="marmol"] .ajustes-seg {
+  [data-theme^="marmol"] .ajustes-seg {
     background: var(--bg3);
     border-radius: 9px;
     padding: 2px;
     gap: 2px;
     flex-wrap: nowrap;
   }
-  [data-theme="marmol"] .ajustes-seg .theme-option {
+  [data-theme^="marmol"] .ajustes-seg .theme-option {
     flex: 1 1 0; min-width: 0;
     border: none !important;
     border-radius: 7px !important;
@@ -629,21 +636,21 @@
     gap: 3px;
     transition: background 0.18s ease;
   }
-  [data-theme="marmol"] .ajustes-seg .theme-option.active {
+  [data-theme^="marmol"] .ajustes-seg .theme-option.active {
     background: #fff !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.13), 0 0 1px rgba(0,0,0,0.05) !important;
   }
-  [data-theme="marmol"] .ajustes-seg .theme-option-name {
+  [data-theme^="marmol"] .ajustes-seg .theme-option-name {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
     font-size: 11px; color: var(--text2);
   }
-  [data-theme="marmol"] .ajustes-seg .theme-option.active .theme-option-name { color: var(--text); font-weight: 600; }
-  [data-theme="marmol"] .ajustes-seg .settings-icon { color: var(--text2); }
-  [data-theme="marmol"] .ajustes-seg .theme-option.active .settings-icon { color: var(--accent); }
+  [data-theme^="marmol"] .ajustes-seg .theme-option.active .theme-option-name { color: var(--text); font-weight: 600; }
+  [data-theme^="marmol"] .ajustes-seg .settings-icon { color: var(--text2); }
+  [data-theme^="marmol"] .ajustes-seg .theme-option.active .settings-icon { color: var(--accent); }
 
   /* Fila de cuenta destacada arriba de Ajustes (solo Mármol) */
   .ajustes-account { display: none; }
-  [data-theme="marmol"] .ajustes-account {
+  [data-theme^="marmol"] .ajustes-account {
     display: flex; align-items: center; gap: 13px; width: 100%;
     background: var(--bg2); border: 1px solid var(--border2);
     border-radius: 14px; padding: 12px 14px; margin-bottom: 18px;
@@ -652,27 +659,36 @@
     -webkit-tap-highlight-color: transparent;
     transition: transform 0.12s ease;
   }
-  [data-theme="marmol"] .ajustes-account:active { transform: scale(0.99); }
-  [data-theme="marmol"] .ajustes-account-avatar {
+  [data-theme^="marmol"] .ajustes-account:active { transform: scale(0.99); }
+  [data-theme^="marmol"] .ajustes-account-avatar {
     width: 46px; height: 46px; border-radius: 50%; flex: none;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
     color: #fff; display: flex; align-items: center; justify-content: center;
     font-size: 20px; font-weight: 600;
   }
-  [data-theme="marmol"] .ajustes-account-info {
+  [data-theme^="marmol"] .ajustes-account-info {
     flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 2px;
   }
-  [data-theme="marmol"] .ajustes-account-name {
+  [data-theme^="marmol"] .ajustes-account-name {
     font-size: 15px; font-weight: 600; color: var(--text);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  [data-theme="marmol"] .ajustes-account-sub { font-size: 12px; color: var(--text3); }
-  [data-theme="marmol"] .ajustes-account-chevron { color: var(--text3); font-size: 22px; flex: none; line-height: 1; }
+  [data-theme^="marmol"] .ajustes-account-sub { font-size: 12px; color: var(--text3); }
+  [data-theme^="marmol"] .ajustes-account-chevron { color: var(--text3); font-size: 22px; flex: none; line-height: 1; }
   /* Cabecera con degradado azul muy sutil que se funde con el contenido */
-  [data-theme="marmol"] #view-ajustes {
+  [data-theme^="marmol"] #view-ajustes {
     background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 13%, var(--bg)) 0%, var(--bg) 150px);
   }
-  [data-theme="marmol"] .ajustes-title { color: var(--text); }
+  [data-theme^="marmol"] .ajustes-title { color: var(--text); }
+
+  /* Selector de variante de color de Mármol (Acero / Bosque), solo visible en
+     la familia Mármol. Reutiliza el segmentado iOS. */
+  .marmol-variant-row { display: none; }
+  [data-theme^="marmol"] .marmol-variant-row { display: block; margin-top: 16px; }
+  .marmol-variant-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+  }
 
   /* MODO LIMPIO en Sesión: oculta textos pequeños de apoyo (botón ℹ los revela) */
   #sessionInfoBtn { display: none; }

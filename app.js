@@ -11578,7 +11578,7 @@ function loadAppTitle() {
 
 // Color de fondo base de cada tema. Se usa para tintar la barra del
 // navegador (meta theme-color) y que la app no se sienta "una web".
-const THEME_BG = { '': '#11151c', cozy: '#faf4ea', bruma: '#f3f4ec', velvet: '#131a15', concierto: '#160d10', botanico: '#f4f1e6', swiss: '#fbfaf8', brutalista: '#ece6d6', marmol: '#f2f2f7' };
+const THEME_BG = { '': '#11151c', cozy: '#faf4ea', bruma: '#f3f4ec', velvet: '#131a15', concierto: '#160d10', botanico: '#f4f1e6', swiss: '#fbfaf8', brutalista: '#ece6d6', marmol: '#f2f2f7', 'marmol-bosque': '#f2f2f7' };
 function applyThemeColor(theme) {
   const col = THEME_BG[theme] || THEME_BG[''];
   let meta = document.querySelector('meta[name="theme-color"]');
@@ -11614,8 +11614,15 @@ function refreshTheme() {
   document.documentElement.setAttribute('data-theme', display);
   applyThemeColor(display);
   // Los botones reflejan el tema de DÍA elegido (no el forzado por la noche).
+  // La pastilla "Mármol" queda activa para cualquier variante (marmol-*).
   document.querySelectorAll('.theme-option[data-theme]').forEach(b => {
-    b.classList.toggle('active', (b.dataset.theme || '') === day);
+    const t = b.dataset.theme || '';
+    const on = t === day || (t === 'marmol' && day.indexOf('marmol') === 0);
+    b.classList.toggle('active', on);
+  });
+  // Variante de color de Mármol (Acero / Bosque).
+  document.querySelectorAll('.marmol-variant').forEach(b => {
+    b.classList.toggle('active', b.dataset.variant === day);
   });
   const tog = document.getElementById('autoNightToggle');
   if (tog) tog.checked = auto;
