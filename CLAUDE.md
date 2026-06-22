@@ -101,7 +101,11 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v95`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v96`.
+
+### Sesión · estilo "B · secciones iOS" (solo Mármol)
+
+En Mármol, la pestaña Sesión se reorganiza como el mockup B: **tarjeta resumen del día** (`#sessionResumenCard`, `renderSessionResumen()`: anillo concentrado/objetivo 120 min + minutos + racha de `computeRacha`), que sustituye al banner `.session-concentrado-banner` (oculto en Mármol); el `.session-hero` se vuelve **transparente** y sus partes pasan a **secciones con etiqueta de grupo**: `.session-hero-title` y `.session-time-label` como cabeceras grises en mayúsculas, las **caras** (`.estado-faces`) y el **slider** (`.time-slider-wrap`) en tarjetas blancas, y `.generate-btn` ancho. `#headerTitle` en color texto (no azul). Scoped `[data-theme^="marmol"] #view-session ...`; el resumen está oculto por defecto fuera de Mármol.
 
 ### Cronómetro A · estructura real (Mármol) + verificación con WeasyPrint
 

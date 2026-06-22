@@ -865,6 +865,76 @@
   [data-theme^="marmol"] .crono-run-quick-row { display: none !important; }
   [data-theme^="marmol"] .crono-wrap { padding-top: 84px; }
 
+  /* ── SESIÓN · estilo "B · secciones iOS" (solo Mármol) ── */
+  [data-theme^="marmol"] #headerTitle { color: var(--text); }
+  /* Resumen del día con anillo (sustituye al banner "Hoy") */
+  .session-resumen-card { display: none; }
+  [data-theme^="marmol"] .session-concentrado-banner { display: none !important; }
+  [data-theme^="marmol"] .session-resumen-card {
+    display: flex; align-items: center; gap: 18px;
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 8px 20px rgba(0,0,0,0.04);
+    padding: 16px 20px; margin-bottom: 18px;
+  }
+  [data-theme^="marmol"] .session-resumen-ring { width: 76px; height: 76px; flex: none; }
+  [data-theme^="marmol"] .session-resumen-pct {
+    fill: var(--text2); font-size: 19px; font-weight: 600;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  }
+  [data-theme^="marmol"] .session-resumen-info { flex: 1 1 0; min-width: 0; }
+  [data-theme^="marmol"] .session-resumen-lbl {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.05em; color: var(--text3);
+  }
+  [data-theme^="marmol"] .session-resumen-big {
+    font-size: 26px; font-weight: 600; color: var(--text); margin-top: 2px;
+  }
+  [data-theme^="marmol"] .session-resumen-sub { font-size: 13px; color: var(--text3); margin-top: 2px; }
+  [data-theme^="marmol"] .session-resumen-racha {
+    font-size: 14px; font-weight: 600; color: var(--green); flex: none; align-self: flex-start;
+  }
+  /* Hero → secciones limpias (caras / tiempo) con etiquetas de grupo */
+  [data-theme^="marmol"] #view-session .session-hero {
+    background: transparent !important; border: none !important; box-shadow: none !important;
+    padding: 0 !important;
+  }
+  [data-theme^="marmol"] #view-session .notes-deco,
+  [data-theme^="marmol"] #view-session #rachaDisplay { display: none !important; }
+  [data-theme^="marmol"] #view-session .session-hero-title {
+    text-align: left; font-size: 12px !important; font-weight: 600 !important;
+    letter-spacing: 0.05em; text-transform: uppercase; color: var(--text3) !important;
+    margin: 4px 2px 10px; font-style: normal !important;
+  }
+  [data-theme^="marmol"] #view-session .estado-faces {
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    padding: 16px 12px; margin: 0 0 20px;
+  }
+  [data-theme^="marmol"] #view-session .estado-face {
+    border: none; background: transparent; opacity: 1; border-radius: 12px; padding: 8px 2px;
+  }
+  [data-theme^="marmol"] #view-session .estado-face.active {
+    background: color-mix(in srgb, var(--accent) 12%, var(--bg2));
+    box-shadow: none; transform: none; border: none;
+  }
+  [data-theme^="marmol"] #view-session .estado-face-label {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-size: 11px;
+  }
+  [data-theme^="marmol"] #view-session .session-time-label {
+    font-size: 12px !important; font-weight: 600; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--text3); margin: 0 2px 10px;
+  }
+  [data-theme^="marmol"] #view-session .time-slider-wrap {
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    padding: 18px; margin: 0 0 20px;
+  }
+  [data-theme^="marmol"] #view-session .time-slider-val {
+    color: var(--accent);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  }
+  [data-theme^="marmol"] #view-session .generate-btn { border-radius: 16px; }
+
   /* MODO LIMPIO en Sesión: oculta textos pequeños de apoyo (botón ℹ los revela) */
   #sessionInfoBtn { display: none; }
   body[data-view="session"] #sessionInfoBtn { display: inline-flex; }

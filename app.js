@@ -14211,8 +14211,38 @@ function renderCronoWeekCard() {
     '<div class="crono-week-bars">' + cols + '</div>';
 }
 
+// Tarjeta resumen del día de la pestaña Sesión (visible solo en Mármol):
+// anillo (concentrado vs objetivo de 2 h) + minutos + racha.
+function renderSessionResumen() {
+  const el = document.getElementById('sessionResumenCard');
+  if (!el) return;
+  const done = (typeof getMinutosConcentradoHoy === 'function') ? getMinutosConcentradoHoy() : 0;
+  const goal = 120;
+  const pct = Math.max(0, Math.min(100, Math.round(done / goal * 100)));
+  const C = 2 * Math.PI * 34;
+  const dash = (C * pct / 100).toFixed(1);
+  let racha = 0;
+  try { racha = (typeof computeRacha === 'function') ? (computeRacha().racha || 0) : 0; } catch (e) {}
+  const rachaHtml = racha > 0
+    ? '<div class="session-resumen-racha">racha ' + racha + (racha === 1 ? ' día' : ' días') + '</div>'
+    : '';
+  el.innerHTML =
+    '<svg class="session-resumen-ring" viewBox="0 0 80 80" aria-hidden="true">' +
+      '<circle cx="40" cy="40" r="34" fill="none" stroke="var(--bg3)" stroke-width="8"/>' +
+      '<circle cx="40" cy="40" r="34" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + C.toFixed(1) + '" transform="rotate(-90 40 40)"/>' +
+      '<text x="40" y="46" text-anchor="middle" class="session-resumen-pct">' + pct + '%</text>' +
+    '</svg>' +
+    '<div class="session-resumen-info">' +
+      '<div class="session-resumen-lbl">HOY</div>' +
+      '<div class="session-resumen-big">' + fmtMinutos(done) + '</div>' +
+      '<div class="session-resumen-sub">de tu objetivo de 2 h</div>' +
+    '</div>' +
+    rachaHtml;
+}
+
 function refreshConcentradoUI() {
   const min = getMinutosConcentradoHoy();
+  if (typeof renderSessionResumen === 'function') renderSessionResumen();
   // Cronómetro: texto completo. Sesión: pill corto ("Hoy · 0 min").
   const cronoEl = document.getElementById('cronoConcentradoText');
   if (cronoEl) cronoEl.textContent = 'Hoy te has concentrado ' + fmtMinutosLargo(min);
