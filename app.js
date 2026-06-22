@@ -14180,6 +14180,37 @@ function renderCronoGarden() {
 
 
 // Refresca todos los textos "hoy te has concentrado..." y el mini-resumen
+// Tarjeta "Esta semana" del cronómetro (visible solo en Mármol): total de la
+// semana en curso + barras por día (hoy resaltado).
+function renderCronoWeekCard() {
+  const el = document.getElementById('cronoWeekCard');
+  if (!el) return;
+  const now = new Date();
+  const start = (typeof _weekStart === 'function')
+    ? _weekStart(now)
+    : (() => { const d = new Date(now); d.setHours(0,0,0,0); d.setDate(d.getDate() - ((d.getDay()+6)%7)); return d; })();
+  const next = new Date(start); next.setDate(start.getDate() + 7);
+  const porDia = (typeof _statsMinsPorDia === 'function') ? _statsMinsPorDia(start, next) : {};
+  let total = 0; Object.keys(porDia).forEach(k => total += porDia[k]);
+  const arr = (typeof _statsMinsPorDiaSemana === 'function') ? _statsMinsPorDiaSemana(porDia) : new Array(7).fill(0);
+  const todayIdx = (now.getDay() + 6) % 7;
+  const max = Math.max(1, Math.max.apply(null, arr));
+  const letters = ['L','M','X','J','V','S','D'];
+  let cols = '';
+  arr.forEach((v, i) => {
+    const h = v > 0 ? Math.max(8, Math.round(v / max * 100)) : 4;
+    cols += '<div class="crono-week-col">'
+      + '<div class="crono-week-bar' + (i === todayIdx ? ' today' : '') + '" style="height:' + h + '%"></div>'
+      + '<span class="crono-week-day">' + letters[i] + '</span></div>';
+  });
+  el.innerHTML =
+    '<div class="crono-week-info">' +
+      '<div class="crono-week-lbl">ESTA SEMANA</div>' +
+      '<div class="crono-week-big">' + fmtMinutos(total) + '</div>' +
+    '</div>' +
+    '<div class="crono-week-bars">' + cols + '</div>';
+}
+
 function refreshConcentradoUI() {
   const min = getMinutosConcentradoHoy();
   // Cronómetro: texto completo. Sesión: pill corto ("Hoy · 0 min").
@@ -14192,6 +14223,7 @@ function refreshConcentradoUI() {
   if (typeof refreshDestellosPill === 'function') refreshDestellosPill();
   if (typeof renderSessionInsights === 'function') renderSessionInsights();
   if (typeof renderCronoGarden === 'function') renderCronoGarden();
+  if (typeof renderCronoWeekCard === 'function') renderCronoWeekCard();
 
   // Mini-resumen lateral eliminado: el jardín del día ya muestra lo
   // estudiado hoy de forma visual, y los Destellos guardan lo memorable.
@@ -14401,9 +14433,19 @@ function cronoRender() {
       '<button class="crono-ctrl-btn primary" onclick="cronoResume()" aria-label="Reanudar">' + CRONO_ICONS.play + '</button>';
   }
   cronoUpdateSolidityActions();
-}
 
-// Habilitar/deshabilitar botón start según haya selección
+  // Estado "En marcha / En pausa" (pill de la cabecera, Mármol)
+  const stTxt = document.getElementById('cronoRunStatusText');
+  const stEl = document.getElementById('cronoRunStatus');
+  if (stTxt) stTxt.textContent = crono.state === 'paused' ? 'En pausa' : 'En marcha';
+  if (stEl) stEl.classList.toggle('paused', crono.state === 'paused');
+  // Subtítulo de objetivo (solo en modo temporizador)
+  const tgt = document.getElementById('cronoRunTarget');
+  if (tgt) {
+    if (crono.targetMinutes) { tgt.textContent = 'de ' + fmtMinutos(crono.targetMinutes); tgt.style.display = ''; }
+    else tgt.style.display = 'none';
+  }
+}
 function cronoUpdateStartBtn() {
   const btn = document.getElementById('cronoStartBtn');
   const sel = document.getElementById('cronoObraSelect');
@@ -15119,8 +15161,15 @@ function cronoStartTick() {
         const t = h > 0 ? (h + 'h' + (m > 0 ? ' ' + m + 'min' : '')) : (m + 'min');
         milestoneEl.textContent = 'si paras ahora · ' + t;
         milestoneEl.style.display = '';
+        const rm = document.getElementById('cronoRunMilestone');
+        if (rm) {
+          rm.innerHTML = '<span class="crono-run-ms-star">★</span> si paras ahora · ' + t;
+          rm.style.display = '';
+        }
       } else {
         milestoneEl.style.display = 'none';
+        const rm = document.getElementById('cronoRunMilestone');
+        if (rm) rm.style.display = 'none';
       }
     }
     // Probabilidad en vivo de 4h/5h (recalcula solo al cambiar de minuto).

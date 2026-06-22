@@ -173,6 +173,9 @@
     </svg>
   </button>
 
+  <!-- Título de pantalla (visible solo en Mármol) -->
+  <div class="crono-screen-title">Cronómetro</div>
+
   <!-- Mini-resumen lateral (visible siempre que haya tarjetas) -->
   <div class="crono-resumen-lateral" id="cronoResumenLateral" style="display:none"></div>
 
@@ -316,24 +319,36 @@
     <!-- FASE B/C: RUNNING / PAUSED -->
     <div class="crono-stage crono-run-stage" id="cronoStageRun" style="display:none">
 
-      <!-- Pildora de obra (clickable, en lugar de card) -->
-      <div class="crono-obra-pill" id="cronoObraPill" onclick="cronoOpenChangeObra()">
-        <div class="crono-obra-pill-dot" id="cronoObraDot"></div>
-        <div class="crono-obra-pill-name" id="cronoRunName">—</div>
+      <!-- Cabecera: obra a la izquierda · estado a la derecha (estilo Mármol) -->
+      <div class="crono-run-head">
+        <div class="crono-obra-pill" id="cronoObraPill" onclick="cronoOpenChangeObra()">
+          <div class="crono-obra-pill-dot" id="cronoObraDot"></div>
+          <div class="crono-obra-pill-name" id="cronoRunName">—</div>
+        </div>
+        <div class="crono-run-status" id="cronoRunStatus">
+          <span class="crono-run-status-dot"></span>
+          <span id="cronoRunStatusText">En marcha</span>
+        </div>
       </div>
 
       <!-- Tiempo gigante con outline (Forest-style) -->
       <div class="crono-display-wrap" id="cronoDisplayWrap">
         <svg class="crono-run-progress-svg" viewBox="0 0 220 220" aria-hidden="true">
-          <circle class="crono-run-progress-track" cx="110" cy="110" r="94"/>
+          <circle class="crono-run-progress-track" cx="110" cy="110" r="94" fill="none"/>
           <circle class="crono-run-progress-arc" id="cronoRunProgressArc"
-                  cx="110" cy="110" r="94"
+                  cx="110" cy="110" r="94" fill="none"
                   transform="rotate(-90 110 110)"
                   stroke-dasharray="590.62"
                   stroke-dashoffset="590.62"/>
         </svg>
-        <div class="crono-display" id="cronoDisplay">00:00</div>
+        <div class="crono-display-inner">
+          <div class="crono-display" id="cronoDisplay">00:00</div>
+          <div class="crono-run-target" id="cronoRunTarget" style="display:none"></div>
+        </div>
       </div>
+
+      <!-- Hito "si paras ahora" como cápsula dentro de la tarjeta (Mármol) -->
+      <div class="crono-run-milestone" id="cronoRunMilestone" style="display:none"></div>
 
       <div class="crono-run-quick-row">
         <button class="crono-zone-btn" id="cronoRunZoneBtn" onclick="showToast('La zona se registra al pulsar Hecho')">
@@ -352,6 +367,9 @@
       </div>
 
     </div>
+
+    <!-- Tarjeta "Esta semana" (visible solo en Mármol) -->
+    <div class="crono-week-card" id="cronoWeekCard"></div>
 
   </div>
 

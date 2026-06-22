@@ -101,7 +101,11 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v94`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v95`.
+
+### Cronómetro A · estructura real (Mármol) + verificación con WeasyPrint
+
+El look A se implementó con **DOM real** (no solo CSS) reusando los IDs del JS: cabecera `.crono-run-head` (obra a la izq con nombre truncado · pill `#cronoRunStatus` "En marcha/En pausa" a la der, actualizado en `cronoRender`), `.crono-display-inner` (tiempo `#cronoDisplay` + subtítulo `#cronoRunTarget` "de Xh" solo en modo temporizador), cápsula `#cronoRunMilestone` con estrella (espejo del `#cronoMilestone` fijo, actualizado en el tick), controles convertidos por CSS en **"Pausar" ancho** (`.crono-ctrl-btn.primary::after { content: attr(aria-label) }`, sin icono) + **"Terminar y guardar"** (`.stop::after`), y tarjeta **"Esta semana"** `#cronoWeekCard` (`renderCronoWeekCard()` con `_statsMinsPorDia`/`_statsMinsPorDiaSemana`, barras por día, hoy en accent). En Mármol se ocultan `.crono-concentrado/.crono-milestone/.crono-prob/.crono-run-quick-row/.crono-garden` y se muestra `.crono-screen-title` ("Cronómetro"). Los `<circle>` del anillo llevan `fill="none"` como atributo (robustez). Todo `[data-theme^="marmol"]`; los elementos nuevos están ocultos por defecto fuera de la familia. Verificado renderizando con **WeasyPrint** (`/tmp/verify_app.py` → PDF) el marcado real + `styles.css`.
 
 ### Margarita del dinero — ELIMINADA
 

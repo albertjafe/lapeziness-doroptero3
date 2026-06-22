@@ -756,6 +756,115 @@
   }
   [data-theme^="marmol"] .crono-garden { display: none !important; }
 
+  /* Elementos nuevos del cronómetro A: ocultos por defecto, visibles en Mármol */
+  .crono-run-status, .crono-run-target, .crono-run-milestone,
+  .crono-week-card, .crono-screen-title { display: none; }
+
+  /* Cabecera del run: obra a la izquierda · estado a la derecha */
+  [data-theme^="marmol"] .crono-run-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 4px;
+  }
+  [data-theme^="marmol"] .crono-run-head .crono-obra-pill { margin: 0; min-width: 0; }
+  [data-theme^="marmol"] .crono-run-head .crono-obra-pill-name {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  [data-theme^="marmol"] .crono-run-status {
+    display: inline-flex; align-items: center; gap: 8px; flex: none;
+    background: var(--bg3); color: var(--text2);
+    font-size: 13px; font-weight: 600; white-space: nowrap;
+    padding: 7px 14px; border-radius: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  }
+  [data-theme^="marmol"] .crono-run-status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+  }
+  [data-theme^="marmol"] .crono-run-status.paused .crono-run-status-dot { background: var(--orange); }
+
+  /* Tiempo + objetivo apilados dentro del anillo */
+  [data-theme^="marmol"] .crono-display-inner {
+    display: flex; flex-direction: column; align-items: center; gap: 2px; position: relative;
+  }
+  [data-theme^="marmol"] .crono-run-target {
+    display: block; font-size: 15px; color: var(--text3);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  }
+
+  /* Cápsula del hito con estrella, dentro de la tarjeta */
+  [data-theme^="marmol"] .crono-run-milestone {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: max-content; max-width: 100%; margin: 0 auto 22px; white-space: nowrap;
+    background: var(--bg3); color: var(--accent);
+    font-size: 14px; font-weight: 500;
+    padding: 10px 18px; border-radius: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  }
+  [data-theme^="marmol"] .crono-run-ms-star { color: var(--accent); }
+
+  /* Controles: "Pausar" ancho relleno + "Terminar" discreto debajo */
+  [data-theme^="marmol"] .crono-controls {
+    flex-direction: column-reverse; align-items: center;
+    width: 100%; gap: 12px; margin-top: 4px;
+  }
+  [data-theme^="marmol"] .crono-ctrl-btn.primary {
+    width: 100%; height: 64px; border-radius: 32px;
+    background: var(--accent); border: none; color: #fff;
+  }
+  [data-theme^="marmol"] .crono-ctrl-btn.primary svg { display: none; }
+  [data-theme^="marmol"] .crono-ctrl-btn.primary::after {
+    content: attr(aria-label); font-size: 18px; font-weight: 600;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  }
+  [data-theme^="marmol"] .crono-ctrl-btn.stop {
+    width: auto; height: auto; min-width: 0; border: none; background: transparent;
+    border-radius: 0; color: var(--text3);
+  }
+  [data-theme^="marmol"] .crono-ctrl-btn.stop svg { display: none; }
+  [data-theme^="marmol"] .crono-ctrl-btn.stop::after {
+    content: "Terminar y guardar"; font-size: 14px;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  }
+
+  /* Tarjeta "Esta semana" */
+  [data-theme^="marmol"] .crono-week-card {
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+    width: 100%; margin: 16px auto 0;
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: 22px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 8px 20px rgba(0,0,0,0.04);
+    padding: 18px 22px;
+  }
+  [data-theme^="marmol"] .crono-week-lbl {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: var(--text3);
+  }
+  [data-theme^="marmol"] .crono-week-big {
+    font-size: 28px; font-weight: 600; color: var(--text); margin-top: 4px;
+  }
+  [data-theme^="marmol"] .crono-week-bars {
+    display: flex; align-items: flex-end; gap: 12px; height: 70px;
+  }
+  [data-theme^="marmol"] .crono-week-col {
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    height: 100%; gap: 6px;
+  }
+  [data-theme^="marmol"] .crono-week-bar {
+    width: 18px; background: #d3dbe6; border-radius: 5px; min-height: 5px;
+  }
+  [data-theme^="marmol"] .crono-week-bar.today { background: var(--accent); }
+  [data-theme^="marmol"] .crono-week-day { font-size: 11px; color: var(--text3); }
+
+  /* Título de pantalla + ocultar la cabecera flotante en Mármol */
+  [data-theme^="marmol"] .crono-screen-title {
+    display: block; position: fixed;
+    top: max(calc(env(safe-area-inset-top, 14px) + 12px), 38px); left: 28px;
+    font-size: 26px; font-weight: 600; color: var(--text); z-index: 50;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  }
+  [data-theme^="marmol"] .crono-concentrado,
+  [data-theme^="marmol"] .crono-milestone,
+  [data-theme^="marmol"] .crono-prob,
+  [data-theme^="marmol"] .crono-run-quick-row { display: none !important; }
+  [data-theme^="marmol"] .crono-wrap { padding-top: 84px; }
+
   /* MODO LIMPIO en Sesión: oculta textos pequeños de apoyo (botón ℹ los revela) */
   #sessionInfoBtn { display: none; }
   body[data-view="session"] #sessionInfoBtn { display: inline-flex; }
