@@ -101,7 +101,11 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v96`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v97`.
+
+### Cronómetro Mármol · ancho responsive (iPad amplio)
+
+En modo concentración `#view-cronometro` es `display:flex` y `.crono-wrap` era un flex item que se **encogía al contenido** (~400px) → en iPad la tarjeta salía diminuta. Fix (solo Mármol): `[data-theme^="marmol"] #view-cronometro { max-width: 860px }` + `.crono-wrap { width:100%; max-width:760px }` → tarjeta ~712px en iPad (amplia, como el mockup) y a ancho completo en móvil. La cabecera `.crono-run-head` lleva `width:100%` (para que el nombre de obra trunque y el pill "En marcha" no se salga) y `.crono-week-lbl/big` `white-space:nowrap`. Verificado en Chromium real a 834px (iPad) y 390px (móvil).
 
 ### Sesión · estilo "B · secciones iOS" (solo Mármol)
 

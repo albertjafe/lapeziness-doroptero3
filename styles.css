@@ -763,7 +763,7 @@
   /* Cabecera del run: obra a la izquierda · estado a la derecha */
   [data-theme^="marmol"] .crono-run-head {
     display: flex; align-items: center; justify-content: space-between;
-    gap: 12px; margin-bottom: 4px;
+    gap: 12px; margin-bottom: 4px; width: 100%;
   }
   [data-theme^="marmol"] .crono-run-head .crono-obra-pill { margin: 0; min-width: 0; }
   [data-theme^="marmol"] .crono-run-head .crono-obra-pill-name {
@@ -833,11 +833,14 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 8px 20px rgba(0,0,0,0.04);
     padding: 18px 22px;
   }
+  [data-theme^="marmol"] .crono-week-info { flex: 0 0 auto; }
   [data-theme^="marmol"] .crono-week-lbl {
     font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: var(--text3);
+    white-space: nowrap;
   }
   [data-theme^="marmol"] .crono-week-big {
     font-size: 28px; font-weight: 600; color: var(--text); margin-top: 4px;
+    white-space: nowrap;
   }
   [data-theme^="marmol"] .crono-week-bars {
     display: flex; align-items: flex-end; gap: 12px; height: 70px;
@@ -863,7 +866,10 @@
   [data-theme^="marmol"] .crono-milestone,
   [data-theme^="marmol"] .crono-prob,
   [data-theme^="marmol"] .crono-run-quick-row { display: none !important; }
-  [data-theme^="marmol"] .crono-wrap { padding-top: 84px; }
+  /* iPad: la vista del cronómetro y el wrap se ensanchan (en móvil se adaptan
+     al ancho disponible). Antes el wrap se encogía al contenido (~400px). */
+  [data-theme^="marmol"] #view-cronometro { max-width: 860px; }
+  [data-theme^="marmol"] .crono-wrap { padding-top: 84px; width: 100%; max-width: 760px; }
 
   /* ── SESIÓN · estilo "B · secciones iOS" (solo Mármol) ── */
   [data-theme^="marmol"] #headerTitle { color: var(--text); }
