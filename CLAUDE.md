@@ -101,7 +101,11 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v104`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v105`.
+
+### Pasajes difíciles (panel del cronómetro)
+
+Feature NUEVA e independiente del antiguo sistema de "pasajes" (eliminado): panel `#cronoPasajesSection` (render `renderCronoPasajes`, llamado en `refreshConcentradoUI`) con hasta **4 pasajes activos** en rejilla 2×2 + tile "Añadir pasaje". Datos en `db.cronoPasajes = [{id, name, createdAt, graduatedAt, solHistory:[{date,val}]}]`. Cada tarjeta: nombre + barra de solidez (`solPctColor`) + días. Tocar → `openPasaje(id)`: modal con gráfica de evolución (`_pasajeChartSVG`, línea + meta 85%) + slider para registrar solidez (`savePasajeSolidez`) + "Quitar" (`removePasaje`). Constantes `PASAJE_MAX=4`, `PASAJE_GRAD=85`: al registrar ≥85% el pasaje se **gradúa** (`graduatedAt`, "a punto"), sale de los activos y libera hueco. `_pasajesMediaDias()` muestra la media de días hasta graduar. Solo se puede añadir si hay <4 activos (graduar o quitar libera). Visible en todos los temas (estilos con variables; las tarjetas semana/destellos de arriba siguen siendo solo Mármol).
 
 ### Sincronización · fusión segura (no perder sesiones) — CRÍTICO
 

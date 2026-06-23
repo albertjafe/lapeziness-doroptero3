@@ -14301,6 +14301,175 @@ function renderCronoDestellosCard() {
     '<div class="crono-dest-cta">Ver ›</div>';
 }
 
+// ── PASAJES DIFÍCILES ─────────────────────────────────────────────────────────
+// Panel de hasta 4 pasajes difíciles del repertorio que se estudian a diario.
+// Cada uno guarda su solidez en el tiempo (solHistory) para ver la evolución y
+// cuántos días cuesta ponerlo a punto. Al llegar a ≥85% se gradúa ("a punto") y
+// libera hueco; también se puede quitar a mano.
+const PASAJE_MAX = 4;
+const PASAJE_GRAD = 85;
+function _cronoPasajes() {
+  if (!Array.isArray(db.cronoPasajes)) db.cronoPasajes = [];
+  return db.cronoPasajes;
+}
+function _activeCronoPasajes() { return _cronoPasajes().filter(p => !p.graduatedAt); }
+function _pasajeSolActual(p) {
+  const h = p.solHistory || [];
+  return h.length ? (h[h.length - 1].val || 0) : 0;
+}
+function _pasajeDias(p) {
+  const t0 = p.createdAt ? new Date(p.createdAt).getTime() : Date.now();
+  const t1 = p.graduatedAt ? new Date(p.graduatedAt).getTime() : Date.now();
+  return Math.max(0, Math.round((t1 - t0) / 86400000));
+}
+function _pasajesMediaDias() {
+  const grad = _cronoPasajes().filter(p => p.graduatedAt && p.createdAt);
+  if (!grad.length) return null;
+  const dias = grad.map(p => _pasajeDias(p));
+  return Math.round(dias.reduce((a, b) => a + b, 0) / dias.length);
+}
+
+let _pasajeOpenId = null;
+
+function renderCronoPasajes() {
+  const el = document.getElementById('cronoPasajesSection');
+  if (!el) return;
+  const activos = _activeCronoPasajes();
+  const media = _pasajesMediaDias();
+  const mediaTxt = media != null
+    ? '<span class="crono-pasajes-media">media · ~' + media + (media === 1 ? ' día' : ' días') + ' a punto</span>'
+    : '';
+  let cards = activos.map(p => {
+    const sol = _pasajeSolActual(p);
+    const col = (typeof solPctColor === 'function') ? solPctColor(sol) : 'var(--accent)';
+    const dias = _pasajeDias(p);
+    return '<button class="crono-pasaje-card" onclick="openPasaje(\'' + p.id + '\')">' +
+      '<div class="crono-pasaje-name">' + escapeHtmlSafe(p.name) + '</div>' +
+      '<div class="crono-pasaje-bar"><div class="crono-pasaje-fill" style="width:' + sol + '%;background:' + col + '"></div></div>' +
+      '<div class="crono-pasaje-meta"><span style="color:' + col + ';font-weight:600">' + sol + '%</span>' +
+        '<span>' + dias + 'd</span></div>' +
+    '</button>';
+  }).join('');
+  if (activos.length < PASAJE_MAX) {
+    cards += '<button class="crono-pasaje-card crono-pasaje-add" onclick="openPasajeNuevo()">' +
+      '<span class="crono-pasaje-add-plus">+</span><span>Añadir pasaje</span></button>';
+  }
+  el.innerHTML =
+    '<div class="crono-pasajes-head"><span class="crono-week-lbl">PASAJES DIFÍCILES</span>' + mediaTxt + '</div>' +
+    '<div class="crono-pasajes-grid">' + cards + '</div>';
+}
+
+function openPasajeNuevo() {
+  if (_activeCronoPasajes().length >= PASAJE_MAX) {
+    showToast('Ya tienes 4 pasajes · termina uno (≥85%) o quita uno');
+    return;
+  }
+  const nom = document.getElementById('pasajeNuevoNombre');
+  const sol = document.getElementById('pasajeNuevoSol');
+  const solV = document.getElementById('pasajeNuevoSolVal');
+  if (nom) nom.value = '';
+  if (sol) sol.value = 10;
+  if (solV) solV.textContent = '10%';
+  openModal('modalPasajeNuevo');
+}
+
+function confirmPasajeNuevo() {
+  const nom = (document.getElementById('pasajeNuevoNombre')?.value || '').trim();
+  if (!nom) { showToast('Escribe el nombre del pasaje'); return; }
+  if (_activeCronoPasajes().length >= PASAJE_MAX) { showToast('Ya tienes 4 pasajes'); return; }
+  const sol = Math.max(0, Math.min(100, parseInt(document.getElementById('pasajeNuevoSol')?.value || '10', 10)));
+  const now = new Date().toISOString();
+  _cronoPasajes().push({
+    id: 'pj' + Date.now(),
+    name: nom,
+    createdAt: now,
+    graduatedAt: null,
+    solHistory: [{ date: now, val: sol }],
+  });
+  saveData();
+  closeModal('modalPasajeNuevo');
+  renderCronoPasajes();
+  showToast('Pasaje añadido');
+}
+
+function openPasaje(id) {
+  const p = _cronoPasajes().find(x => x.id === id);
+  if (!p) return;
+  _pasajeOpenId = id;
+  const title = document.getElementById('pasajeModalTitle');
+  const sub = document.getElementById('pasajeModalSub');
+  const chart = document.getElementById('pasajeModalChart');
+  const sol = _pasajeSolActual(p);
+  if (title) title.textContent = p.name;
+  if (sub) sub.innerHTML = (p.solHistory || []).length +
+    ' registro' + ((p.solHistory || []).length === 1 ? '' : 's') + ' · ' + _pasajeDias(p) + ' días · ahora ' + sol + '%';
+  if (chart) chart.innerHTML = _pasajeChartSVG(p);
+  const reg = document.getElementById('pasajeRegSol');
+  const regV = document.getElementById('pasajeRegSolVal');
+  if (reg) reg.value = sol;
+  if (regV) regV.textContent = sol + '%';
+  openModal('modalPasaje');
+}
+
+function savePasajeSolidez() {
+  const p = _cronoPasajes().find(x => x.id === _pasajeOpenId);
+  if (!p) return;
+  const val = Math.max(0, Math.min(100, parseInt(document.getElementById('pasajeRegSol')?.value || '0', 10)));
+  if (!Array.isArray(p.solHistory)) p.solHistory = [];
+  p.solHistory.push({ date: new Date().toISOString(), val });
+  if (p.solHistory.length > 200) p.solHistory = p.solHistory.slice(-200);
+  let graduado = false;
+  if (val >= PASAJE_GRAD && !p.graduatedAt) { p.graduatedAt = new Date().toISOString(); graduado = true; }
+  saveData();
+  closeModal('modalPasaje');
+  renderCronoPasajes();
+  if (graduado) {
+    showToast('🎉 ¡Pasaje a punto en ' + _pasajeDias(p) + ' días! Hueco liberado');
+    if (typeof SFX !== 'undefined' && SFX.milestone) SFX.milestone();
+  } else {
+    showToast('Solidez registrada · ' + val + '%');
+  }
+}
+
+function removePasaje() {
+  const p = _cronoPasajes().find(x => x.id === _pasajeOpenId);
+  if (!p) return;
+  if (!confirm('¿Quitar el pasaje "' + p.name + '"?\n\nSe borra su historial de solidez.')) return;
+  db.cronoPasajes = _cronoPasajes().filter(x => x.id !== p.id);
+  saveData();
+  closeModal('modalPasaje');
+  renderCronoPasajes();
+  showToast('Pasaje quitado');
+}
+
+// Gráfica simple de la evolución de solidez del pasaje (línea + línea de meta 85%).
+function _pasajeChartSVG(p) {
+  const hist = (p.solHistory || []).slice();
+  if (hist.length < 2) {
+    return '<div class="pasaje-chart-empty">Registra la solidez unos cuantos días y aquí verás cómo evoluciona.</div>';
+  }
+  const W = 412, H = 150, padL = 30, padR = 10, padT = 12, padB = 22;
+  const cW = W - padL - padR, cH = H - padT - padB;
+  const t0 = new Date(hist[0].date).getTime();
+  const t1 = new Date(hist[hist.length - 1].date).getTime();
+  const span = Math.max(1, t1 - t0);
+  const xOf = d => padL + ((new Date(d).getTime() - t0) / span) * cW;
+  const yOf = v => padT + (1 - Math.max(0, Math.min(100, v)) / 100) * cH;
+  // rejilla y línea de meta
+  let g = '';
+  [0, 50, 100].forEach(v => {
+    const y = yOf(v);
+    g += '<line x1="' + padL + '" y1="' + y + '" x2="' + (W - padR) + '" y2="' + y + '" stroke="var(--border2)" stroke-width="1"/>';
+    g += '<text x="' + (padL - 6) + '" y="' + (y + 3) + '" text-anchor="end" font-size="8" fill="var(--text3)">' + v + '</text>';
+  });
+  const yMeta = yOf(PASAJE_GRAD);
+  g += '<line x1="' + padL + '" y1="' + yMeta + '" x2="' + (W - padR) + '" y2="' + yMeta + '" stroke="var(--green)" stroke-width="1" stroke-dasharray="3 3" opacity="0.7"/>';
+  const pts = hist.map(h => xOf(h.date).toFixed(1) + ',' + yOf(h.val).toFixed(1));
+  const line = '<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>';
+  const dots = hist.map(h => '<circle cx="' + xOf(h.date).toFixed(1) + '" cy="' + yOf(h.val).toFixed(1) + '" r="2.6" fill="var(--accent)"/>').join('');
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="pasaje-chart-svg">' + g + line + dots + '</svg>';
+}
+
 // Tarjeta resumen del día de la pestaña Sesión (visible solo en Mármol):
 // anillo (concentrado vs objetivo de 2 h) + minutos + racha.
 function renderSessionResumen() {
@@ -14345,6 +14514,7 @@ function refreshConcentradoUI() {
   if (typeof renderCronoGarden === 'function') renderCronoGarden();
   if (typeof renderCronoWeekCard === 'function') renderCronoWeekCard();
   if (typeof renderCronoDestellosCard === 'function') renderCronoDestellosCard();
+  if (typeof renderCronoPasajes === 'function') renderCronoPasajes();
 
   // Mini-resumen lateral eliminado: el jardín del día ya muestra lo
   // estudiado hoy de forma visual, y los Destellos guardan lo memorable.

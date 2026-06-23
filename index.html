@@ -377,6 +377,9 @@
       <button type="button" class="crono-destellos-card" id="cronoDestellosCard" onclick="openDestellosModal()"></button>
     </div>
 
+    <!-- Pasajes difíciles: 2×2, barra de solidez, registro y gráfica -->
+    <div class="crono-pasajes-section" id="cronoPasajesSection"></div>
+
   </div>
 
   <!-- Overlay de pausa: difumina toda la pantalla con backdrop y muestra el
@@ -606,6 +609,38 @@
       <button class="sesdet-close" onclick="closeModal('modalSesionesDetalle')" aria-label="Cerrar">✕</button>
     </div>
     <div class="sesdet-body" id="sesionesDetalleBody"></div>
+  </div>
+</div>
+
+<!-- MODAL: añadir pasaje difícil -->
+<div class="modal-overlay" id="modalPasajeNuevo">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title">Nuevo pasaje</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5">Un pasaje difícil de tu repertorio que estudias casi a diario. Máximo 4 a la vez.</div>
+    <input class="modal-input" id="pasajeNuevoNombre" type="text" placeholder="ej. Chopin Balada · coda (cc. 200-208)" maxlength="80">
+    <div class="hecho-field-label" style="margin-top:4px">Solidez ahora · <span id="pasajeNuevoSolVal" style="color:var(--accent);font-weight:600">10%</span></div>
+    <input type="range" class="estado-slider" id="pasajeNuevoSol" min="0" max="100" step="5" value="10"
+      style="color:var(--accent)" oninput="document.getElementById('pasajeNuevoSolVal').textContent=this.value+'%'">
+    <div class="modal-buttons">
+      <button class="modal-btn secondary" onclick="closeModal('modalPasajeNuevo')">Cancelar</button>
+      <button class="modal-btn primary" onclick="confirmPasajeNuevo()">Añadir</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: pasaje · registrar solidez + gráfica -->
+<div class="modal-overlay" id="modalPasaje">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-title" id="pasajeModalTitle" style="margin-bottom:4px">Pasaje</div>
+    <div class="pasaje-modal-sub" id="pasajeModalSub"></div>
+    <div class="pasaje-modal-chart" id="pasajeModalChart"></div>
+    <div class="hecho-field-label" style="margin-top:6px">Solidez de hoy · <span id="pasajeRegSolVal" style="color:var(--accent);font-weight:600">50%</span></div>
+    <input type="range" class="estado-slider" id="pasajeRegSol" min="0" max="100" step="5" value="50"
+      style="color:var(--accent)" oninput="document.getElementById('pasajeRegSolVal').textContent=this.value+'%'">
+    <div class="modal-buttons">
+      <button class="modal-btn secondary pasaje-remove-btn" onclick="removePasaje()">Quitar</button>
+      <button class="modal-btn primary" onclick="savePasajeSolidez()">Guardar solidez</button>
+    </div>
   </div>
 </div>
 
