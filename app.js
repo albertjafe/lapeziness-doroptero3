@@ -12418,10 +12418,12 @@ function setStudyRegisterMode(mode, btn) {
   if (btn) btn.classList.add('active');
   const isPlan = studyRegisterMode === 'plan';
   const dateWrap = document.getElementById('studyRegisterDateWrap');
+  const horaWrap = document.getElementById('studyRegisterHoraWrap');
   const tickWrap = document.getElementById('studyRegisterTickWrap');
   const sub = document.getElementById('studyRegisterSub');
   const saveBtn = document.getElementById('studyRegisterSaveBtn');
   if (dateWrap) dateWrap.style.display = isPlan ? 'none' : '';
+  if (horaWrap) horaWrap.style.display = isPlan ? 'none' : '';
   if (tickWrap) tickWrap.style.display = isPlan ? 'none' : '';
   if (sub) sub.textContent = isPlan
     ? 'Se añade al plan de hoy; márcala cuando la trabajes.'
@@ -12444,9 +12446,11 @@ function openStudyRegister(mode) {
   const mins = document.getElementById('studyRegisterMinutos');
   const fecha = document.getElementById('studyRegisterFecha');
   const nota = document.getElementById('studyRegisterNota');
+  const hora = document.getElementById('studyRegisterHora');
   if (mins) mins.value = '';
   if (fecha) fecha.value = today;
   if (nota) nota.value = '';
+  if (hora) hora.value = '';
   const compas = document.getElementById('studyRegisterCompasSection');
   if (compas) compas.style.display = 'none';
   selectStudyRegisterTick('hecho');
@@ -12547,8 +12551,17 @@ function confirmStudyRegister() {
     minutosReales: minutos,
   };
   sesion.items.push(item);
-  const started = new Date(date);
-  started.setHours(12, Math.min(59, Math.max(0, sesion.items.length - 1)), 0, 0);
+  // Hora de inicio real (opcional): si se indica, el tramo se registra a esa
+  // hora exacta y aparece en el modal "Por horas"; si no, se coloca al mediodía.
+  const hora = (document.getElementById('studyRegisterHora')?.value || '').trim();
+  let started;
+  if (/^\d{1,2}:\d{2}$/.test(hora)) {
+    started = new Date(fecha + 'T' + (hora.length === 4 ? '0' + hora : hora) + ':00');
+    if (isNaN(started.getTime())) { started = new Date(date); started.setHours(12, 0, 0, 0); }
+  } else {
+    started = new Date(date);
+    started.setHours(12, Math.min(59, Math.max(0, sesion.items.length - 1)), 0, 0);
+  }
   const ended = new Date(started.getTime() + minutos * 60000);
   recordSessionPlant(resolved.obraId, resolved.movId, started.toISOString(), ended.toISOString(), minutos, { source: 'manual' });
   if (db.sesiones.length > 365) db.sesiones = db.sesiones.slice(0, 365);
