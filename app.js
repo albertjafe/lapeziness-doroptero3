@@ -45,11 +45,59 @@ function loadData() {
 }
 
 function saveData() {
+  // 0. Marca de modificación LOCAL: imprescindible para que loadFromCloud no
+  //    confunda "datos locales recién guardados" con "datos viejos" y sobreescriba
+  //    con una nube desactualizada (causa de pérdidas de sesiones).
+  db._savedAt = new Date().toISOString();
   // 1. Save to localStorage immediately (always works offline)
   localStorage.setItem(DB_KEY, JSON.stringify(db));
   // 2. Debounced save to Supabase
   clearTimeout(_saveTimeout);
   _saveTimeout = setTimeout(function() { syncToCloud(); }, 1500);
+}
+
+// ── FUSIÓN SEGURA DE HISTORIAL DE ESTUDIO ─────────────────────────────────────
+// Une el tiempo de estudio de dos copias de la BD (local y nube) para que la
+// sincronización NUNCA borre sesiones: las plantas (cronómetro/Forest) se unen
+// por su timestamp y, por cada día, la sesión que se conserva es la que más
+// minutos reales tiene. El resto de datos (obras, eventos…) viene de `base`.
+function _plantKey(p) { return (p.obraId || p.tag || '') + '|' + (p.startedAt || '') + '|' + (p.endedAt || ''); }
+function _mergePlants(a, b) {
+  const out = [], seen = new Set();
+  (a || []).concat(b || []).forEach(p => {
+    if (!p || !p.startedAt) return;
+    const k = _plantKey(p);
+    if (seen.has(k)) return;
+    seen.add(k); out.push(p);
+  });
+  out.sort((x, y) => (x.startedAt < y.startedAt ? -1 : 1));
+  return out;
+}
+function _sesionRealMin(s) {
+  return (s.items || []).reduce((acc, it) =>
+    acc + (typeof _itemMinReal === 'function' ? _itemMinReal(it) : (it.minutosReales || 0)), 0);
+}
+function _mergeSesiones(a, b) {
+  const map = {};
+  const add = s => {
+    if (!s || !s.date) return;
+    const k = new Date(s.date).toDateString();
+    const cur = map[k];
+    if (!cur) { map[k] = s; return; }
+    const ms = _sesionRealMin(s), mc = _sesionRealMin(cur);
+    if (ms > mc || (ms === mc && (s.items || []).length > (cur.items || []).length)) map[k] = s;
+  };
+  (a || []).forEach(add); (b || []).forEach(add);
+  return Object.values(map).sort((x, y) => new Date(y.date) - new Date(x.date)).slice(0, 365);
+}
+function _mergeStudyHistory(base, other) {
+  if (!base) return other;
+  if (!other) return base;
+  const merged = Object.assign({}, base);
+  merged.sessionPlants = _mergePlants(base.sessionPlants, other.sessionPlants);
+  merged.forestPlants  = _mergePlants(base.forestPlants, other.forestPlants);
+  merged.sesiones      = _mergeSesiones(base.sesiones, other.sesiones);
+  return merged;
 }
 
 async function syncToCloud() {
@@ -109,25 +157,39 @@ async function loadFromCloud() {
     // Cloud has data — compare timestamps
     const cloudDate = new Date(data.updated_at).getTime();
     const localRaw = localStorage.getItem(DB_KEY);
+    let localDb = null;
     let useCloud = true;
     if (localRaw) {
       try {
-        const local = JSON.parse(localRaw);
-        const localDate = local._savedAt ? new Date(local._savedAt).getTime() : 0;
-        // Only use local if it's more than 60 seconds newer (avoid race conditions)
+        localDb = JSON.parse(localRaw);
+        const localDate = localDb._savedAt ? new Date(localDb._savedAt).getTime() : 0;
+        // Only use cloud if it isn't OLDER than local (60s de tolerancia).
         useCloud = cloudDate >= (localDate - 60000);
       } catch(e) {}
     }
 
     if (useCloud) {
-      db = data.data;
-      db._savedAt = data.updated_at;
+      // Aunque la nube "gane", FUSIONAMOS el historial de estudio local para no
+      // perder sesiones que la nube no tuviera (p. ej. subida nocturna fallida).
+      db = _mergeStudyHistory(data.data, localDb);
+      db._savedAt = new Date().toISOString();
       localStorage.setItem(DB_KEY, JSON.stringify(db));
+      // Si la fusión añadió estudio que la nube no tenía, devolvérselo.
+      try {
+        const localMin = localDb ? (localDb.sessionPlants || []).length + (localDb.forestPlants || []).length : 0;
+        const cloudMin = (data.data.sessionPlants || []).length + (data.data.forestPlants || []).length;
+        if (localMin > cloudMin) {
+          sb.from('user_data').upsert({ id: user.id, data: db, updated_at: new Date().toISOString() });
+        }
+      } catch(e) {}
       showSyncIndicator('✓ sincronizado');
       return true;
     }
 
-    // Local is newer — upload it
+    // Local is newer — fusiona el estudio de la nube por si tuviera algo y sube.
+    db = _mergeStudyHistory(db, data.data);
+    db._savedAt = new Date().toISOString();
+    localStorage.setItem(DB_KEY, JSON.stringify(db));
     showSyncIndicator('↑ local más reciente, subiendo…');
     await sb.from('user_data').upsert({
       id: user.id,

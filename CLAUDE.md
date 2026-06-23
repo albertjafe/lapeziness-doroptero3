@@ -101,7 +101,11 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v100`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v102`.
+
+### Sincronización · fusión segura (no perder sesiones) — CRÍTICO
+
+Hubo pérdida de datos: `saveData()` **no actualizaba `db._savedAt`**, así que la marca "local" era la del último *load* (no la última modificación). En `loadFromCloud`, `useCloud = cloudDate >= localDate - 60000` daba `true` con una nube **vieja** (p. ej. subida nocturna fallida) y **sobrescribía** el local bueno. Arreglo: (1) `saveData` fija `db._savedAt = now`; (2) `loadFromCloud` ya **no hace `db = data.data` a ciegas**: usa `_mergeStudyHistory(base, other)` que **une plantas** (`sessionPlants`/`forestPlants` por `obraId|startedAt|endedAt`) y, por día, conserva la `sesiones` con **más minutos reales** (`_sesionRealMin`/`_itemMinReal`). Se fusiona en ambas ramas (nube gana / local gana) y, si el local tenía más estudio que la nube, se re-sube. Así la sincronización **nunca borra estudio** y puede **recuperar** datos si alguna copia (local de cualquier dispositivo) aún los tiene.
 
 ### Cronómetro Mármol · estilo "tarjeta + anillo grande" (iPad)
 
