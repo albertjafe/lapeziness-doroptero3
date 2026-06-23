@@ -101,11 +101,11 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v98`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v99`.
 
-### Cronómetro Mármol · estilo "B · full-bleed" (iPad 13")
+### Cronómetro Mármol · estilo "tarjeta + anillo grande" (iPad)
 
-El cronómetro en Mármol se rediseñó al mockup B: **sin tarjeta blanca** (`.crono-run-stage`/`.crono-idle-wrap` transparentes), **anillo grande** (`min(540px,88vw)`, tiempo `clamp(62px,16vw,110px)`), contenido **anclado arriba** (`.crono-wrap justify-content:flex-start`, no centrado vertical, para que el hueco quede abajo). El **pill de Destellos** vuelve, arriba a la derecha (a la izq de la X de cerrar) y visible también en marcha: reglas Marmol con `!important` en `position/top/right/left/bottom` para ganar a `body.crono-focus .crono-destellos-pill` (que si no lo estiraba a toda la altura); `refreshDestellosPill` oculta el badge cuando el contador es 0. La tarjeta "Esta semana" se oculta en marcha (`body.crono-focus`). Verificado en Chromium real a 1024×1366 (iPad 13") y 390px (móvil).
+Alberto prefirió la versión **con tarjeta** (mockup A), no el full-bleed: `.crono-run-stage`/`.crono-idle-wrap` son **tarjetas blancas redondeadas** (`bg2`, `border-radius:26px`, sombra suave, `padding:30px 24px 32px`), **anillo grande** (`min(460px,84vw)`, tiempo `clamp(58px,14vw,98px)`, stroke 9), contenido anclado arriba (`.crono-wrap justify-content:flex-start; padding-top:84px; width:100%; max-width:760px` → tarjeta ~712px en iPad). Debajo, la tarjeta **"Esta semana"** (`#cronoWeekCard`) **siempre visible** (también en marcha). El **pill de Destellos** va arriba a la derecha (a la izq de la X), visible en reposo y en marcha: reglas Marmol con `!important` en `position/top/right/left/bottom` para ganar a `body.crono-focus .crono-destellos-pill` (que si no lo estiraba a toda la altura); `refreshDestellosPill` oculta el badge cuando el contador es 0. Verificado en Chromium real a 1024×1366 (iPad 13") y 390px (móvil).
 
 ### Cronómetro Mármol · ancho responsive (iPad amplio)
 
