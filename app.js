@@ -14211,6 +14211,21 @@ function renderCronoWeekCard() {
     '<div class="crono-week-bars">' + cols + '</div>';
 }
 
+// Tarjeta de Destellos (paralela a "Esta semana", solo Mármol): nº de sesiones
+// de excelencia + acceso a la lista.
+function renderCronoDestellosCard() {
+  const el = document.getElementById('cronoDestellosCard');
+  if (!el) return;
+  let n = 0;
+  try { n = (typeof getAllDestellos === 'function') ? getAllDestellos().length : 0; } catch (e) {}
+  el.innerHTML =
+    '<div class="crono-week-info">' +
+      '<div class="crono-week-lbl">DESTELLOS</div>' +
+      '<div class="crono-dest-big"><span class="crono-dest-star">★</span> ' + n + '</div>' +
+    '</div>' +
+    '<div class="crono-dest-cta">Ver ›</div>';
+}
+
 // Tarjeta resumen del día de la pestaña Sesión (visible solo en Mármol):
 // anillo (concentrado vs objetivo de 2 h) + minutos + racha.
 function renderSessionResumen() {
@@ -14254,6 +14269,7 @@ function refreshConcentradoUI() {
   if (typeof renderSessionInsights === 'function') renderSessionInsights();
   if (typeof renderCronoGarden === 'function') renderCronoGarden();
   if (typeof renderCronoWeekCard === 'function') renderCronoWeekCard();
+  if (typeof renderCronoDestellosCard === 'function') renderCronoDestellosCard();
 
   // Mini-resumen lateral eliminado: el jardín del día ya muestra lo
   // estudiado hoy de forma visual, y los Destellos guardan lo memorable.

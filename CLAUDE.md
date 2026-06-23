@@ -101,11 +101,11 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v99`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v100`.
 
 ### Cronómetro Mármol · estilo "tarjeta + anillo grande" (iPad)
 
-Alberto prefirió la versión **con tarjeta** (mockup A), no el full-bleed: `.crono-run-stage`/`.crono-idle-wrap` son **tarjetas blancas redondeadas** (`bg2`, `border-radius:26px`, sombra suave, `padding:30px 24px 32px`), **anillo grande** (`min(460px,84vw)`, tiempo `clamp(58px,14vw,98px)`, stroke 9), contenido anclado arriba (`.crono-wrap justify-content:flex-start; padding-top:84px; width:100%; max-width:760px` → tarjeta ~712px en iPad). Debajo, la tarjeta **"Esta semana"** (`#cronoWeekCard`) **siempre visible** (también en marcha). El **pill de Destellos** va arriba a la derecha (a la izq de la X), visible en reposo y en marcha: reglas Marmol con `!important` en `position/top/right/left/bottom` para ganar a `body.crono-focus .crono-destellos-pill` (que si no lo estiraba a toda la altura); `refreshDestellosPill` oculta el badge cuando el contador es 0. Verificado en Chromium real a 1024×1366 (iPad 13") y 390px (móvil).
+Alberto prefirió la versión **con tarjeta** (mockup A), no el full-bleed: `.crono-run-stage`/`.crono-idle-wrap` son **tarjetas blancas redondeadas** (`bg2`, `border-radius:26px`, sombra suave, `padding:30px 24px 32px`), **anillo grande** (`min(460px,84vw)`, tiempo `clamp(58px,14vw,98px)`, stroke 9), contenido anclado arriba (`.crono-wrap justify-content:flex-start; padding-top:84px; width:100%; max-width:824px` → tarjeta ~772px en iPad). **Fila inferior** `.crono-bottom-row` (flex) con **dos tarjetas en paralelo**: "Esta semana" (`#cronoWeekCard`) + "Destellos" (`#cronoDestellosCard`/`renderCronoDestellosCard`: `★ N` + "Ver ›", abre `openDestellosModal`); en móvil (`max-width:560px`) se apilan en columna. El **pill flotante de Destellos** se **oculta en Mármol** (`.crono-destellos-pill { display:none !important }`) porque lo sustituye la tarjeta. Verificado en Chromium real a 1024×1366 (iPad 13") y 390px (móvil).
 
 ### Cronómetro Mármol · ancho responsive (iPad amplio)
 
