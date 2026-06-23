@@ -15371,6 +15371,9 @@ function cronoStart() {
   const resolved = cronoResolveSelectValue(sel.value);
   if (!resolved) { showToast('Elige una obra o movimiento'); return; }
 
+  // Marcar como la última usada (para que sea el default la próxima vez).
+  if (typeof bumpCronoPickRecency === 'function') bumpCronoPickRecency(resolved.obraId);
+
   _cronoPaseDrawerReset();
 
   crono.state = 'running';
@@ -15989,6 +15992,28 @@ function cronoFillObraSelect() {
   cronoUpdateSelectBtn();
 }
 
+// Por defecto, deja seleccionada la ÚLTIMA obra/actividad usada (la de mayor
+// recencia), aunque se entre otro día. Solo si no hay nada ya seleccionado y el
+// cronómetro está en reposo; el usuario puede cambiarla cuando quiera.
+function cronoSelectLastUsed() {
+  if (crono && (crono.state === 'running' || crono.state === 'paused')) return;
+  const sel = document.getElementById('cronoObraSelect');
+  if (!sel || sel.value) return;
+  const recency = getCronoPickRecency();
+  let bestVal = '', bestT = -1;
+  Array.from(sel.options).forEach(opt => {
+    if (!opt.value) return;
+    const obraId = opt.value.split('::')[1];
+    const t = recency[obraId] || 0;
+    if (t > bestT) { bestT = t; bestVal = opt.value; }
+  });
+  if (bestVal && bestT > 0) {
+    sel.value = bestVal;
+    cronoUpdateSelectBtn();
+    if (typeof cronoUpdateStartBtn === 'function') cronoUpdateStartBtn();
+  }
+}
+
 // Sincroniza el botón custom con el valor actual del <select> nativo.
 // Muestra el dot del color de la obra y su nombre + composer.
 function cronoUpdateSelectBtn() {
@@ -16278,6 +16303,7 @@ function _stopCronoClock() {
 function cronoOnEnterView() {
   cronoEnterFocus();
   cronoFillObraSelect();
+  cronoSelectLastUsed();
   cronoApplyModeUI();
   cronoTimerInitDrag();
   cronoRender();
