@@ -16034,17 +16034,13 @@ function renderCronoObraPicker() {
   });
   const currentValue = sel?.value || '';
 
-  // Separar actividades de obras para mostrarlas agrupadas
-  const obrasNormales = [];
-  const actividades = [];
-  obras.forEach(o => {
+  // Obras y actividades MEZCLADAS en una sola lista, en orden de uso reciente
+  // (lo último que tocaste arriba del todo, sin separar por tipo).
+  const items = obras.filter(o => {
+    if (!q) return true;
     const composerTxt = (o.composer && o.composer !== '—') ? o.composer : '';
-    if (q && !(o.name + ' ' + composerTxt).toLowerCase().includes(q)) {
-      // Si la obra no matchea, comprobar si algún movimiento sí matchea
-      const movMatches = (o.movimientos || []).some(m => m.name && m.name.toLowerCase().includes(q));
-      if (!movMatches) return;
-    }
-    (o.tipo === 'actividad' ? actividades : obrasNormales).push(o);
+    if ((o.name + ' ' + composerTxt).toLowerCase().includes(q)) return true;
+    return (o.movimientos || []).some(m => m.name && m.name.toLowerCase().includes(q));
   });
 
   function obraButtonHTML(o, isActivity) {
@@ -16081,15 +16077,7 @@ function renderCronoObraPicker() {
     return html;
   }
 
-  let html = '';
-  if (obrasNormales.length) {
-    html += '<div class="crono-picker-section">Obras</div>';
-    html += obrasNormales.map(o => obraButtonHTML(o, false)).join('');
-  }
-  if (actividades.length) {
-    html += '<div class="crono-picker-section">Actividades</div>';
-    html += actividades.map(o => obraButtonHTML(o, true)).join('');
-  }
+  let html = items.map(o => obraButtonHTML(o, o.tipo === 'actividad')).join('');
   if (!html) {
     html = '<div class="crono-picker-empty">' +
       (q ? 'Sin resultados para "' + escapeHtmlSafe(q) + '"' : 'No hay obras todavía') +
