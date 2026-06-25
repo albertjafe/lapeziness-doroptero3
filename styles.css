@@ -5510,7 +5510,12 @@
     pointer-events: none;
     transition: opacity 0.35s var(--ease-out);
   }
-  .crono-display-wrap.timer-active .crono-run-progress-svg { opacity: 0.82; }
+  .crono-display-wrap.progress-active .crono-run-progress-svg { opacity: 0.82; }
+  .crono-run-progress-track,
+  .crono-run-progress-arc,
+  .crono-run-progress-handle {
+    transition: stroke 0.5s ease, fill 0.5s ease;
+  }
   .crono-run-progress-track,
   .crono-run-progress-arc {
     fill: none;
@@ -5522,6 +5527,15 @@
     stroke-linecap: round;
     transition: stroke-dashoffset 0.45s linear;
     filter: drop-shadow(0 0 10px rgba(201,169,110,0.22));
+  }
+  .crono-run-progress-handle {
+    fill: var(--crono-color, var(--accent));
+    stroke: var(--bg);
+    stroke-width: 2.5;
+    filter: drop-shadow(0 0 8px color-mix(in oklab, var(--crono-color, var(--accent)) 42%, transparent));
+  }
+  @supports not (filter: drop-shadow(0 0 8px color-mix(in oklab, red 42%, transparent))) {
+    .crono-run-progress-handle { filter: drop-shadow(0 0 8px rgba(201,169,110,0.35)); }
   }
   .crono-display-wrap::before {
     content: "";

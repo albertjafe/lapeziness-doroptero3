@@ -15134,21 +15134,37 @@ const CRONO_RUN_PROGRESS_CIRC = 2 * Math.PI * CRONO_RUN_PROGRESS_RADIUS;
 function cronoUpdateTimerProgress(elapsedMs) {
   const wrap = document.getElementById('cronoDisplayWrap');
   const arc = document.getElementById('cronoRunProgressArc');
+  const handle = document.getElementById('cronoRunProgressHandle');
   const display = document.getElementById('cronoDisplay');
-  const isTimer = crono.targetMinutes != null && crono.state !== 'idle';
+  const isActive = crono.state !== 'idle';
+  const isTimer = crono.targetMinutes != null && isActive;
+  if (wrap) wrap.classList.toggle('progress-active', isActive);
   if (wrap) wrap.classList.toggle('timer-active', isTimer);
-  if (!isTimer) {
+  if (!isActive) {
     if (arc) arc.setAttribute('stroke-dashoffset', String(CRONO_RUN_PROGRESS_CIRC));
+    if (handle) {
+      handle.setAttribute('cx', '110');
+      handle.setAttribute('cy', String(110 - CRONO_RUN_PROGRESS_RADIUS));
+    }
     if (display) display.classList.remove('last-seconds');
     crono.lastCountdownSecond = null;
     return;
   }
+
   const elapsed = elapsedMs != null ? elapsedMs : cronoCurrentMs();
-  const targetMs = crono.targetMinutes * 60000;
-  const remainingMs = Math.max(0, targetMs - elapsed);
-  const remainingPct = targetMs > 0 ? remainingMs / targetMs : 0;
-  if (arc) arc.setAttribute('stroke-dashoffset', String(CRONO_RUN_PROGRESS_CIRC * (1 - remainingPct)));
-  const lastSeconds = crono.state === 'running' && remainingMs > 0 && remainingMs <= 10000;
+  const targetMs = isTimer ? crono.targetMinutes * 60000 : CRONO_MAX_MS;
+  const progressPct = targetMs > 0 ? Math.min(1, Math.max(0, elapsed / targetMs)) : 0;
+  if (arc) arc.setAttribute('stroke-dashoffset', String(CRONO_RUN_PROGRESS_CIRC * (1 - progressPct)));
+  if (handle) {
+    const theta = progressPct * 2 * Math.PI;
+    const cx = 110 + CRONO_RUN_PROGRESS_RADIUS * Math.sin(theta);
+    const cy = 110 - CRONO_RUN_PROGRESS_RADIUS * Math.cos(theta);
+    handle.setAttribute('cx', String(cx));
+    handle.setAttribute('cy', String(cy));
+  }
+
+  const remainingMs = isTimer ? Math.max(0, targetMs - elapsed) : null;
+  const lastSeconds = isTimer && crono.state === 'running' && remainingMs > 0 && remainingMs <= 10000;
   if (display) display.classList.toggle('last-seconds', lastSeconds);
   if (lastSeconds) {
     const sec = Math.ceil(remainingMs / 1000);
