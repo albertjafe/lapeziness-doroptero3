@@ -14331,6 +14331,20 @@ function _pasajesMediaDias() {
 
 let _pasajeOpenId = null;
 
+function updatePasajeSolSlider(slider, valueId) {
+  const el = typeof slider === 'string' ? document.getElementById(slider) : slider;
+  if (!el) return;
+  const raw = parseInt(el.value || '0', 10);
+  const val = Math.max(0, Math.min(100, Number.isFinite(raw) ? raw : 0));
+  const label = valueId ? document.getElementById(valueId) : null;
+  const color = (typeof solPctColor === 'function') ? solPctColor(val) : 'var(--accent)';
+  if (label) {
+    label.textContent = val + '%';
+    label.style.color = color;
+  }
+  if (typeof fillSlider === 'function') fillSlider(el, color);
+}
+
 function renderCronoPasajes() {
   const el = document.getElementById('cronoPasajesSection');
   if (!el) return;
@@ -14370,6 +14384,7 @@ function openPasajeNuevo() {
   if (nom) nom.value = '';
   if (sol) sol.value = 10;
   if (solV) solV.textContent = '10%';
+  updatePasajeSolSlider(sol, 'pasajeNuevoSolVal');
   openModal('modalPasajeNuevo');
 }
 
@@ -14408,6 +14423,7 @@ function openPasaje(id) {
   const regV = document.getElementById('pasajeRegSolVal');
   if (reg) reg.value = sol;
   if (regV) regV.textContent = sol + '%';
+  updatePasajeSolSlider(reg, 'pasajeRegSolVal');
   openModal('modalPasaje');
 }
 
@@ -15227,7 +15243,7 @@ function cronoApplyModeUI() {
   if (crono.mode === 'timer') {
     cronoTimerRenderSlider();
   }
-  // Mensaje contextual: en cronómetro, una frase serena que rota con el día
+  // Mensaje contextual: frases concretas sobre práctica deliberada y aprendizaje.
   const msg = document.getElementById('cronoIdleMessage');
   if (msg) {
     msg.textContent = crono.mode === 'timer'
@@ -15237,14 +15253,16 @@ function cronoApplyModeUI() {
 }
 
 const CRONO_IDLE_PHRASES = [
-  'Empieza donde lo dejaste',
-  'Un compás cada vez',
-  'Hoy también se construye',
-  'Lo difícil, despacio',
-  'La calma también ensaya',
-  'Manos, mente, música',
-  'Cada pase deja huella',
-  'Despacio se llega antes',
+  'Cada repetición precisa le enseña al cerebro por dónde ir',
+  'La atención cambia el circuito: toca lento, toca claro',
+  'No repitas el fallo: redibújalo despacio',
+  'La memoria aparece antes cuando la ruta está limpia',
+  'Pocas repeticiones exactas valen más que muchas borrosas',
+  'El sistema nervioso aprende lo que haces, no lo que querías hacer',
+  'Hoy no peleas con la obra: diseñas reflejos',
+  'La concentración convierte esfuerzo en camino disponible',
+  'Si lo puedes oír antes de tocarlo, ya estás cambiando la respuesta',
+  'La seguridad nace cuando el cuerpo reconoce el camino',
 ];
 function _cronoIdlePhrase() {
   const d = new Date();

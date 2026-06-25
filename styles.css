@@ -3994,20 +3994,35 @@
     padding: 26px 10px; background: var(--bg3); border-radius: 10px;
   }
   .pasaje-remove-btn { color: var(--red) !important; }
-  /* Slider de solidez del pasaje: más grande y fácil de arrastrar */
-  #pasajeRegSol, #pasajeNuevoSol { height: 34px; margin: 8px 0 6px; }
+  /* Slider de solidez del pasaje: grande y estable para dedo/iPad. */
+  #pasajeRegSol,
+  #pasajeNuevoSol,
+  .pasaje-sol-slider {
+    width: 100%;
+    height: 46px;
+    margin: 12px 0 10px;
+    padding: 0;
+    touch-action: none;
+  }
+  #modalPasaje .hecho-field-label,
+  #modalPasajeNuevo .hecho-field-label {
+    font-size: 11px;
+    color: var(--text2);
+    letter-spacing: 0.02em;
+    text-transform: none;
+  }
   #pasajeRegSol::-webkit-slider-runnable-track,
-  #pasajeNuevoSol::-webkit-slider-runnable-track { height: 12px; border-radius: 6px; }
+  #pasajeNuevoSol::-webkit-slider-runnable-track { height: 16px; border-radius: 999px; }
   #pasajeRegSol::-moz-range-track,
-  #pasajeNuevoSol::-moz-range-track { height: 12px; border-radius: 6px; }
+  #pasajeNuevoSol::-moz-range-track { height: 16px; border-radius: 999px; }
   #pasajeRegSol::-webkit-slider-thumb,
   #pasajeNuevoSol::-webkit-slider-thumb {
-    width: 32px; height: 32px; margin-top: -10px;
-    border: 3px solid var(--bg2); box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    width: 38px; height: 38px; margin-top: -11px;
+    border: 4px solid var(--bg2); box-shadow: 0 3px 12px rgba(0,0,0,0.28);
   }
   #pasajeRegSol::-moz-range-thumb,
   #pasajeNuevoSol::-moz-range-thumb {
-    width: 30px; height: 30px; border: 3px solid var(--bg2); box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    width: 36px; height: 36px; border: 4px solid var(--bg2); box-shadow: 0 3px 12px rgba(0,0,0,0.28);
   }
   /* PASE QUALITY */
   .pase-q-row { display: flex; gap: 6px; margin-top: 8px; }
