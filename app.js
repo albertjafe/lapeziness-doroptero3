@@ -889,6 +889,21 @@ const sessionProductivityRatings = {}; // per-item productivity rating (0-100)
 // sessionDestello[planId] = { on: true, nota: 'lo que la hizo especial' }
 const sessionDestello = {};
 const DESTELLO_UMBRAL = 80; // a partir de aquí el modal ofrece marcar la sesión como destello
+const CRONO_DESTELLO_ROTATE_MS = 7 * 60 * 1000;
+const CRONO_LONG_SESSION_BREAK_MIN = 90;
+const CRONO_BREATH_DEFAULT_MIN = 3;
+const CRONO_BREATH_PATTERN = [
+  { key: 'inhale', label: 'Inhala', secs: 4 },
+  { key: 'hold', label: 'Mantén', secs: 7 },
+  { key: 'exhale', label: 'Exhala', secs: 8 },
+];
+let _destellosModalEntries = [];
+let _destellosEditIndex = null;
+let _cronoLastRunDestelloKey = '';
+let _cronoBreathInterval = null;
+let _cronoBreathStartedAt = 0;
+let _cronoBreathEndsAt = 0;
+let _cronoBreathPhaseKey = '';
 // Para tarjetas fusionadas (varias sub-sesiones de la misma obra/movimiento).
 // Cada planId puede acumular sub-sesiones: para productividad media ponderada
 // por minutos, y para listar pasajes trabajados acumulados.
@@ -4112,6 +4127,7 @@ let _hechoMovId = null;
 let _hechoPlanId = null;
 let _hechoMinPlan = 0;
 let _hechoEditMode = false;
+let _hechoSubSession = false;
 let _hechoShowSol = false;
 let _hechoShowCompas = false;
 let _hechoShowMem = false;
@@ -4640,6 +4656,7 @@ function openHechoDatos(planId, minPlan, opts) {
   _hechoMovId = movId;
   _hechoMinPlan = minPlan || 0;
   _hechoEditMode = isEditMode;
+  _hechoSubSession = isSubSession;
   _hechoCompasStep = 0;
   _memLapseYes = false;
   _memPasajeSelected = null;
@@ -4968,6 +4985,7 @@ function closeHechoDatos(save) {
   const obra = findObra(obraId);
   const entity = movId ? findMovimiento(obraId, movId) : obra;
   const minutos = parseInt(document.getElementById('hechoMinutos').value) || _hechoMinPlan || null;
+  const shouldOfferBreak = !!(save && _hechoSubSession && !_hechoEditMode && minutos >= CRONO_LONG_SESSION_BREAK_MIN);
   const nota = document.getElementById('hechoNota').value.trim();
   const zoneSnapshot = obra && obra.tipo !== 'actividad' ? hechoCurrentZoneSnapshot(true) : null;
   if (zoneSnapshot && entity) hechoStoreZoneSnapshot(entity, zoneSnapshot);
@@ -5268,6 +5286,7 @@ function closeHechoDatos(save) {
   // El flash de "Hecho" y la marca de planId nuevo se disparan al INICIO de
   // closeHechoDatos para que el backdrop difuminado del modal nunca se rompa.
   refreshConcentradoUI();
+  if (typeof cronoRefreshDestelloPhrase === 'function') cronoRefreshDestelloPhrase(true);
   autoSaveTodayPlan();
   // Refrescar el render de eventos: el pase que acabamos de guardar afecta
   // a la solidez de la obra, y por tanto a la "preparación" del evento que
@@ -5277,6 +5296,7 @@ function closeHechoDatos(save) {
   if (typeof renderCalendario === 'function') {
     try { renderCalendario(); } catch(e) {}
   }
+  if (shouldOfferBreak) cronoMaybeShowLongSessionBreak(minutos);
 }
 
 // Flash de éxito al guardar la sesión: aparece sobre el cronómetro con el
@@ -5328,6 +5348,148 @@ function showCronoHechoFlash() {
     const anyOpen = document.querySelector('.modal-overlay.visible');
     if (!anyOpen) document.body.classList.remove('modal-open');
   }, 2000);
+}
+
+function cronoMaybeShowLongSessionBreak(minutos) {
+  if (!Number.isFinite(minutos) || minutos < CRONO_LONG_SESSION_BREAK_MIN) return;
+  if (!document.body.classList.contains('crono-focus')) return;
+  setTimeout(() => cronoOpenBreakPrompt(minutos), 650);
+}
+
+function cronoEnsureBreakOverlay() {
+  let overlay = document.getElementById('cronoBreakOverlay');
+  if (overlay) return overlay;
+  overlay = document.createElement('div');
+  overlay.id = 'cronoBreakOverlay';
+  overlay.className = 'crono-break-overlay';
+  overlay.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function cronoBreakMinutesInput() {
+  const input = document.getElementById('cronoBreakBreathMin');
+  const raw = parseInt(input ? input.value : CRONO_BREATH_DEFAULT_MIN, 10);
+  return Math.max(1, Math.min(20, Number.isFinite(raw) ? raw : CRONO_BREATH_DEFAULT_MIN));
+}
+
+function cronoOpenBreakPrompt(minutos) {
+  cronoStopBreathing();
+  const overlay = cronoEnsureBreakOverlay();
+  overlay.innerHTML =
+    '<div class="crono-break-panel">' +
+      '<div class="crono-break-kicker">Cierre de sesión larga</div>' +
+      '<div class="crono-break-title">Llevas ' + fmtMinutosLargo(minutos) + ' estudiando.</div>' +
+      '<div class="crono-break-copy">Tu cerebro ya ha hecho trabajo real. Un descanso breve ahora ayuda a que lo aprendido se asiente mejor.</div>' +
+      '<label class="crono-break-minutes">' +
+        '<span>Respiración</span>' +
+        '<input id="cronoBreakBreathMin" type="number" min="1" max="20" step="1" value="' + CRONO_BREATH_DEFAULT_MIN + '">' +
+        '<span>min</span>' +
+      '</label>' +
+      '<div class="crono-break-actions">' +
+        '<button class="crono-break-btn subtle" onclick="closeCronoBreakOverlay()">Ahora no</button>' +
+        '<button class="crono-break-btn secondary" onclick="cronoBreakWalk()">Paseo</button>' +
+        '<button class="crono-break-btn primary" onclick="cronoStartBreathing()">Respiración 4-7-8</button>' +
+      '</div>' +
+    '</div>';
+  overlay.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('modal-open');
+  requestAnimationFrame(() => overlay.classList.add('visible'));
+}
+
+function closeCronoBreakOverlay() {
+  cronoStopBreathing();
+  const overlay = document.getElementById('cronoBreakOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('visible');
+  overlay.setAttribute('aria-hidden', 'true');
+  setTimeout(() => {
+    const anyOpen = document.querySelector('.modal-overlay.visible, .crono-break-overlay.visible');
+    if (!anyOpen) document.body.classList.remove('modal-open');
+  }, 360);
+}
+
+function cronoBreakWalk() {
+  closeCronoBreakOverlay();
+  showToast('Buen momento para caminar 3-5 minutos y volver con el oído fresco');
+}
+
+function cronoStartBreathing() {
+  const min = cronoBreakMinutesInput();
+  const overlay = cronoEnsureBreakOverlay();
+  cronoStopBreathing();
+  _cronoBreathStartedAt = Date.now();
+  _cronoBreathEndsAt = _cronoBreathStartedAt + min * 60000;
+  _cronoBreathPhaseKey = '';
+  overlay.innerHTML =
+    '<div class="crono-break-panel crono-breath-panel">' +
+      '<div class="crono-break-kicker">Respiración 4-7-8</div>' +
+      '<div class="crono-breath-circle" id="cronoBreathCircle">' +
+        '<div class="crono-breath-phase" id="cronoBreathPhase">Inhala</div>' +
+        '<div class="crono-breath-count" id="cronoBreathCount">4</div>' +
+      '</div>' +
+      '<div class="crono-breath-total" id="cronoBreathTotal"></div>' +
+      '<div class="crono-break-copy">Inhala 4, mantén 7, exhala 8. Deja que la sesión baje al cuerpo.</div>' +
+      '<div class="crono-break-actions">' +
+        '<button class="crono-break-btn subtle" onclick="closeCronoBreakOverlay()">Cerrar</button>' +
+      '</div>' +
+    '</div>';
+  overlay.setAttribute('aria-hidden', 'false');
+  overlay.classList.add('visible');
+  document.body.classList.add('modal-open');
+  cronoBreathTick();
+  _cronoBreathInterval = setInterval(cronoBreathTick, 250);
+}
+
+function cronoBreathPhase(elapsedMs) {
+  const cycleMs = CRONO_BREATH_PATTERN.reduce((s, p) => s + p.secs, 0) * 1000;
+  let t = elapsedMs % cycleMs;
+  for (const phase of CRONO_BREATH_PATTERN) {
+    const phaseMs = phase.secs * 1000;
+    if (t < phaseMs) return { ...phase, remaining: Math.max(1, Math.ceil((phaseMs - t) / 1000)) };
+    t -= phaseMs;
+  }
+  const first = CRONO_BREATH_PATTERN[0];
+  return { ...first, remaining: first.secs };
+}
+
+function cronoBreathTick() {
+  const now = Date.now();
+  const remainingTotal = Math.max(0, _cronoBreathEndsAt - now);
+  if (remainingTotal <= 0) {
+    cronoStopBreathing();
+    const panel = document.querySelector('#cronoBreakOverlay .crono-break-panel');
+    if (panel) {
+      panel.innerHTML =
+        '<div class="crono-break-kicker">Listo</div>' +
+        '<div class="crono-break-title">Descanso completado.</div>' +
+        '<div class="crono-break-copy">Vuelve sólo si la atención vuelve contigo.</div>' +
+        '<div class="crono-break-actions"><button class="crono-break-btn primary" onclick="closeCronoBreakOverlay()">Volver</button></div>';
+    }
+    return;
+  }
+  const phase = cronoBreathPhase(now - _cronoBreathStartedAt);
+  const circle = document.getElementById('cronoBreathCircle');
+  const phaseEl = document.getElementById('cronoBreathPhase');
+  const countEl = document.getElementById('cronoBreathCount');
+  const totalEl = document.getElementById('cronoBreathTotal');
+  if (circle && phase.key !== _cronoBreathPhaseKey) {
+    _cronoBreathPhaseKey = phase.key;
+    circle.classList.remove('inhale', 'hold', 'exhale');
+    circle.style.transitionDuration = phase.secs + 's';
+    circle.classList.add(phase.key);
+  }
+  if (phaseEl) phaseEl.textContent = phase.label;
+  if (countEl) countEl.textContent = phase.remaining;
+  if (totalEl) totalEl.textContent = cronoFmt(remainingTotal) + ' restantes';
+}
+
+function cronoStopBreathing() {
+  if (_cronoBreathInterval) {
+    clearInterval(_cronoBreathInterval);
+    _cronoBreathInterval = null;
+  }
+  _cronoBreathPhaseKey = '';
 }
 
 let _cronoLastAddedPlanId = null;
@@ -13861,16 +14023,22 @@ function getAllDestellos() {
         ? (entity._parentName || '') + ' — ' + entity.name
         : (entity._displayName || entity.name || 'Sesión');
     }
-    out.push({ date: new Date().toISOString(), obra: obraName, nota: (d.nota || '').trim() });
+    out.push({
+      date: new Date().toISOString(),
+      obra: obraName,
+      nota: (d.nota || '').trim(),
+      source: 'today',
+      planId,
+    });
   });
 
   // DÍAS PASADOS — desde db.sesiones
   if (Array.isArray(db.sesiones)) {
-    db.sesiones.forEach(sesion => {
+    db.sesiones.forEach((sesion, sesionIdx) => {
       if (!sesion || !Array.isArray(sesion.items)) return;
       if (new Date(sesion.date).toDateString() === todayStr) return; // hoy ya cubierto por memoria
       const aggregate = sesion._aggregate || {};
-      sesion.items.forEach(it => {
+      sesion.items.forEach((it, itemIdx) => {
         if (!it) return;
         const planId = it._planId || (it.obraId + '::' + (it.movId || ''));
         let on = !!it.destello;
@@ -13895,7 +14063,15 @@ function getAllDestellos() {
             }
           }
         }
-        out.push({ date: sesion.date, obra: obraName || 'Sesión', nota });
+        out.push({
+          date: sesion.date,
+          obra: obraName || 'Sesión',
+          nota,
+          source: 'history',
+          sesionIdx,
+          itemIdx,
+          planId,
+        });
       });
     });
   }
@@ -13913,38 +14089,127 @@ function refreshDestellosPill() {
   pill.style.display = n > 0 ? '' : 'none';
 }
 
-function openDestellosModal() {
-  const list = document.getElementById('destellosList');
-  if (list) {
-    const destellos = getAllDestellos();
-    if (!destellos.length) {
-      list.innerHTML = emptyStateHTML(ICON_STAR, 'Aún no hay destellos', 'Cuando una sesión sea memorable, márcala como destello al guardarla.');
-    } else {
-      // Agrupados por mes (cabecera pegajosa) para poder navegar muchos.
-      let html = '<div class="destellos-count">' + destellos.length
-        + (destellos.length === 1 ? ' destello' : ' destellos') + '</div>';
-      let lastGroup = '';
-      destellos.forEach(d => {
-        const dt = new Date(d.date);
-        const group = dt.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-        if (group !== lastGroup) {
-          lastGroup = group;
-          html += '<div class="destellos-group-label">' + group.charAt(0).toUpperCase() + group.slice(1) + '</div>';
-        }
-        const fecha = dt.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-        const notaHtml = d.nota
-          ? '<div class="destello-card-nota">' + escapeHtmlSafe(d.nota) + '</div>'
-          : '<div class="destello-card-nota destello-card-nota--vacia">— sin nota —</div>';
-        html += '<div class="destello-card">' +
-          '<div class="destello-card-head">' +
-            '<span class="destello-card-obra">' + escapeHtmlSafe(d.obra) + '</span>' +
-            '<span class="destello-card-fecha">' + fecha + '</span>' +
-          '</div>' + notaHtml +
-        '</div>';
-      });
-      list.innerHTML = html;
-    }
+function _destelloTextForCrono(d) {
+  const nota = (d && d.nota ? String(d.nota) : '').trim();
+  if (nota) return nota;
+  const obra = (d && d.obra ? String(d.obra) : '').trim();
+  return obra ? 'Recuerda esa sesión clara en ' + obra : '';
+}
+
+function getCronoDestelloPhrases() {
+  return getAllDestellos()
+    .map(_destelloTextForCrono)
+    .map(s => s.trim())
+    .filter(s => s.length >= 4);
+}
+
+function _syncDestelloSubNota(aggregate, planId, nota) {
+  const subs = aggregate && planId && aggregate[planId] && aggregate[planId].subsessions;
+  if (!Array.isArray(subs) || !subs.length) return;
+  const destSubs = subs.filter(s => s && s.destello);
+  const target = destSubs.length ? destSubs[destSubs.length - 1] : subs[subs.length - 1];
+  if (target) {
+    target.destello = true;
+    target.destelloNota = nota;
   }
+}
+
+function updateDestelloNota(entry, nota) {
+  if (!entry) return false;
+  if (entry.source === 'today') {
+    sessionDestello[entry.planId] = { on: true, nota };
+    _syncDestelloSubNota(sessionAggregate, entry.planId, nota);
+    if (typeof saveDraft === 'function') saveDraft();
+    if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
+    return true;
+  }
+  if (entry.source === 'history' && Array.isArray(db.sesiones)) {
+    const sesion = db.sesiones[entry.sesionIdx];
+    const item = sesion && Array.isArray(sesion.items) ? sesion.items[entry.itemIdx] : null;
+    if (!item) return false;
+    item.destello = true;
+    item.destelloNota = nota;
+    _syncDestelloSubNota(sesion._aggregate, entry.planId, nota);
+    saveData();
+    return true;
+  }
+  return false;
+}
+
+function renderDestellosList(editIndex) {
+  const list = document.getElementById('destellosList');
+  if (!list) return;
+  const destellos = getAllDestellos();
+  _destellosModalEntries = destellos;
+  _destellosEditIndex = Number.isInteger(editIndex) ? editIndex : null;
+  if (!destellos.length) {
+    list.innerHTML = emptyStateHTML(ICON_STAR, 'Aún no hay destellos', 'Cuando una sesión sea memorable, márcala como destello al guardarla.');
+    return;
+  }
+  let html = '<div class="destellos-count">' + destellos.length
+    + (destellos.length === 1 ? ' destello' : ' destellos') + '</div>';
+  let lastGroup = '';
+  destellos.forEach((d, idx) => {
+    const dt = new Date(d.date);
+    const group = dt.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    if (group !== lastGroup) {
+      lastGroup = group;
+      html += '<div class="destellos-group-label">' + group.charAt(0).toUpperCase() + group.slice(1) + '</div>';
+    }
+    const fecha = dt.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    const isEditing = idx === _destellosEditIndex;
+    const notaHtml = isEditing
+      ? '<div class="destello-edit-wrap">' +
+          '<textarea class="destello-edit-input" id="destelloEditNota' + idx + '" rows="3" placeholder="Escribe la frase que quieres releer en el cronómetro...">' + escapeHtmlSafe(d.nota || '') + '</textarea>' +
+          '<div class="destello-edit-actions">' +
+            '<button class="destello-edit-btn secondary" onclick="cancelDestelloEdit()">Cancelar</button>' +
+            '<button class="destello-edit-btn primary" onclick="saveDestelloNota(' + idx + ')">Guardar</button>' +
+          '</div>' +
+        '</div>'
+      : (d.nota
+          ? '<div class="destello-card-nota">' + escapeHtmlSafe(d.nota) + '</div>'
+          : '<div class="destello-card-nota destello-card-nota--vacia">sin frase todavía</div>');
+    html += '<div class="destello-card">' +
+      '<div class="destello-card-head">' +
+        '<span class="destello-card-obra">' + escapeHtmlSafe(d.obra) + '</span>' +
+        '<span class="destello-card-fecha">' + fecha + '</span>' +
+      '</div>' +
+      notaHtml +
+      (!isEditing ? '<button class="destello-card-edit" onclick="editDestelloNota(' + idx + ')">' + (d.nota ? 'Editar frase' : 'Escribir frase') + '</button>' : '') +
+    '</div>';
+  });
+  list.innerHTML = html;
+}
+
+function editDestelloNota(idx) {
+  renderDestellosList(idx);
+  setTimeout(() => {
+    const input = document.getElementById('destelloEditNota' + idx);
+    if (input) { input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+  }, 60);
+}
+
+function cancelDestelloEdit() {
+  renderDestellosList(null);
+}
+
+function saveDestelloNota(idx) {
+  const entry = _destellosModalEntries[idx];
+  const input = document.getElementById('destelloEditNota' + idx);
+  const nota = (input ? input.value : '').trim();
+  if (!updateDestelloNota(entry, nota)) {
+    showToast('No he podido guardar el destello');
+    return;
+  }
+  renderDestellosList(null);
+  refreshDestellosPill();
+  if (typeof renderCronoDestellosCard === 'function') renderCronoDestellosCard();
+  if (typeof cronoRefreshDestelloPhrase === 'function') cronoRefreshDestelloPhrase(true);
+  showToast('Destello actualizado');
+}
+
+function openDestellosModal() {
+  renderDestellosList(null);
   openModal('modalDestellos');
 }
 
@@ -14716,6 +14981,7 @@ function cronoRender() {
       if (wrap) wrap.classList.remove('is-paused');
     }
     cronoUpdateTimerProgress();
+    cronoUpdateRunDestello(cronoCurrentMs(), true);
   }
 
   // Overlay de pausa: activar body.crono-paused para mostrarlo
@@ -15243,13 +15509,9 @@ function cronoApplyModeUI() {
   if (crono.mode === 'timer') {
     cronoTimerRenderSlider();
   }
-  // Mensaje contextual: frases concretas sobre práctica deliberada y aprendizaje.
+  // Mensaje contextual: primero destellos propios, luego frases de respaldo.
   const msg = document.getElementById('cronoIdleMessage');
-  if (msg) {
-    msg.textContent = crono.mode === 'timer'
-      ? 'Elige cuánto quieres concentrarte'
-      : _cronoIdlePhrase();
-  }
+  if (msg) msg.textContent = _cronoIdlePhrase();
 }
 
 const CRONO_IDLE_PHRASES = [
@@ -15267,7 +15529,52 @@ const CRONO_IDLE_PHRASES = [
 function _cronoIdlePhrase() {
   const d = new Date();
   const seed = d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate();
-  return CRONO_IDLE_PHRASES[seed % CRONO_IDLE_PHRASES.length];
+  return _cronoPhraseForSeed(seed);
+}
+
+function _cronoPhrasePool() {
+  const destellos = (typeof getCronoDestelloPhrases === 'function') ? getCronoDestelloPhrases() : [];
+  return destellos.length ? destellos : CRONO_IDLE_PHRASES;
+}
+
+function _cronoPhraseForSeed(seed) {
+  const pool = _cronoPhrasePool();
+  if (!pool.length) return '';
+  return pool[Math.abs(seed) % pool.length];
+}
+
+function _cronoRunPhrase(elapsedMs) {
+  const bucket = Math.floor(Math.max(0, elapsedMs || 0) / CRONO_DESTELLO_ROTATE_MS);
+  const startSeed = Math.floor((crono.startTs || Date.now()) / CRONO_DESTELLO_ROTATE_MS);
+  return _cronoPhraseForSeed(startSeed + bucket);
+}
+
+function cronoUpdateRunDestello(elapsedMs, force) {
+  const el = document.getElementById('cronoRunDestello');
+  if (!el) return;
+  if (crono.state === 'idle') {
+    el.textContent = '';
+    el.style.display = 'none';
+    _cronoLastRunDestelloKey = '';
+    return;
+  }
+  const bucket = Math.floor(Math.max(0, elapsedMs || 0) / CRONO_DESTELLO_ROTATE_MS);
+  const text = _cronoRunPhrase(elapsedMs);
+  const key = bucket + '::' + text;
+  if (force || key !== _cronoLastRunDestelloKey) {
+    _cronoLastRunDestelloKey = key;
+    el.classList.remove('is-changing');
+    void el.offsetWidth;
+    el.textContent = text;
+    el.style.display = text ? '' : 'none';
+    el.classList.add('is-changing');
+  }
+}
+
+function cronoRefreshDestelloPhrase(force) {
+  const msg = document.getElementById('cronoIdleMessage');
+  if (msg && crono.state === 'idle') msg.textContent = _cronoIdlePhrase();
+  if (crono.state !== 'idle') cronoUpdateRunDestello(cronoCurrentMs(), !!force);
 }
 
 function cronoMoveModeIndicator() {
@@ -15442,6 +15749,7 @@ function cronoStartTick() {
   crono.tickInterval = setInterval(() => {
     const disp = document.getElementById('cronoDisplay');
     const elapsedMs = cronoCurrentMs();
+    cronoUpdateRunDestello(elapsedMs);
     // En modo timer: mostrar cuenta atrás y auto-finalizar al llegar a 0
     if (crono.targetMinutes != null) {
       const targetMs = crono.targetMinutes * 60000;
@@ -15579,6 +15887,7 @@ function cronoStart() {
   if (typeof bumpCronoPickRecency === 'function') bumpCronoPickRecency(resolved.obraId);
 
   _cronoPaseDrawerReset();
+  _cronoLastRunDestelloKey = '';
 
   crono.state = 'running';
   crono.isRest = false;
@@ -15609,6 +15918,7 @@ function cronoStartRest() {
     showToast('Termina la sesión actual antes de descansar');
     return;
   }
+  _cronoLastRunDestelloKey = '';
   crono.state = 'running';
   crono.isRest = true;
   crono.obraId = '_rest_';        // marca interna; no apunta a obra real
@@ -15924,6 +16234,7 @@ function cronoReset() {
   crono.startTs = 0;
   crono.pausedMs = 0;
   crono.pauseStartTs = 0;
+  _cronoLastRunDestelloKey = '';
   // NB: NO reseteamos mode ni timerMinutes — son preferencias persistentes.
   // Las guardamos en localStorage para la próxima sesión.
   cronoSaveState();
