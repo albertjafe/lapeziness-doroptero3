@@ -862,10 +862,125 @@
 
   /* Título de pantalla + ocultar la cabecera flotante en Mármol */
   [data-theme^="marmol"] .crono-screen-title {
-    display: block; position: fixed;
+    display: flex; align-items: center; gap: 10px; position: fixed;
     top: max(calc(env(safe-area-inset-top, 14px) + 12px), 38px); left: 28px;
     font-size: 26px; font-weight: 600; color: var(--text); z-index: 50;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  }
+  .crono-ayer-btn,
+  .crono-ayer-panel { display: none; }
+  [data-theme^="marmol"] .crono-ayer-btn {
+    display: inline-flex;
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--text3);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    padding: 6px 9px;
+    border-radius: 999px;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    opacity: 0.82;
+    margin-top: 3px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  [data-theme^="marmol"] .crono-ayer-btn:hover,
+  [data-theme^="marmol"] .crono-ayer-btn.open {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--accent);
+    opacity: 1;
+  }
+  [data-theme^="marmol"] .crono-ayer-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--accent); opacity: 0.58;
+  }
+  [data-theme^="marmol"] .crono-ayer-chev {
+    font-size: 12px; opacity: 0.62; transform: translateY(-1px);
+  }
+  [data-theme^="marmol"] .crono-ayer-btn.open .crono-ayer-chev {
+    transform: rotate(180deg) translateY(1px);
+  }
+  [data-theme^="marmol"] .crono-ayer-panel {
+    position: fixed;
+    left: 28px;
+    top: 78px;
+    z-index: 70;
+    width: min(430px, calc(100vw - 56px));
+    max-height: 420px;
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: 14px 16px 15px;
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--bg2) 97%, white);
+    border: 1px solid var(--border);
+    box-shadow: 0 24px 70px -34px rgba(0,0,0,0.42);
+    text-align: left;
+    -webkit-overflow-scrolling: touch;
+  }
+  [data-theme^="marmol"] .crono-ayer-panel.open {
+    display: block;
+    animation: cronoAyerIn 0.18s ease-out;
+  }
+  @keyframes cronoAyerIn {
+    from { opacity: 0; transform: translateY(-5px) scale(0.99); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  [data-theme^="marmol"] .crono-ayer-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; margin-bottom: 10px;
+  }
+  [data-theme^="marmol"] .crono-ayer-head strong {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-size: 12px; line-height: 1.2; color: var(--text);
+  }
+  [data-theme^="marmol"] .crono-ayer-head span {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-size: 11px; color: var(--text3); white-space: nowrap;
+  }
+  [data-theme^="marmol"] .crono-ayer-item {
+    padding: 10px 0; border-top: 1px solid var(--border2);
+  }
+  [data-theme^="marmol"] .crono-ayer-item:first-of-type { border-top: 0; padding-top: 2px; }
+  [data-theme^="marmol"] .crono-ayer-line {
+    display: flex; align-items: baseline; gap: 10px;
+  }
+  [data-theme^="marmol"] .crono-ayer-name {
+    flex: 1; min-width: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-size: 14px; font-weight: 600; line-height: 1.25; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  [data-theme^="marmol"] .crono-ayer-min {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600; color: var(--text3);
+    white-space: nowrap;
+  }
+  [data-theme^="marmol"] .crono-ayer-note {
+    margin-top: 5px;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 15px; line-height: 1.35; color: var(--text2);
+    font-style: italic;
+  }
+  [data-theme^="marmol"] .crono-ayer-destello {
+    margin-top: 6px;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-size: 12px; font-weight: 600; line-height: 1.35; color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 9%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
+    border-radius: 10px;
+    padding: 7px 9px;
+  }
+  @media (max-width: 560px) {
+    [data-theme^="marmol"] .crono-ayer-panel {
+      left: 12px; top: 64px;
+      width: calc(100vw - 24px);
+      max-height: 52dvh;
+    }
+    [data-theme^="marmol"] .crono-ayer-btn { font-size: 11px; padding: 5px 7px; }
   }
   [data-theme^="marmol"] .crono-concentrado,
   [data-theme^="marmol"] .crono-milestone,
@@ -3411,6 +3526,12 @@
   }
   .destello-edit-btn.secondary { background: transparent; color: var(--text3); }
   .destello-edit-btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+  .destello-edit-btn.danger {
+    margin-right: auto;
+    background: transparent;
+    color: #b05a48;
+    border-color: rgba(176,90,72,0.35);
+  }
 
   /* COMPAS STEPPER */
   .compas-stepper { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }

@@ -177,7 +177,17 @@
   </button>
 
   <!-- Título de pantalla (visible solo en Mármol) -->
-  <div class="crono-screen-title">Cronómetro</div>
+  <div class="crono-screen-title">
+    <span>Cronómetro</span>
+    <button type="button" class="crono-ayer-btn" id="cronoAyerBtn"
+      onclick="toggleCronoAyerPanel()" aria-expanded="false" aria-controls="cronoAyerPanel"
+      style="display:none">
+      <span class="crono-ayer-dot"></span>
+      <span id="cronoAyerBtnText">Ayer</span>
+      <span class="crono-ayer-chev">⌄</span>
+    </button>
+  </div>
+  <div class="crono-ayer-panel" id="cronoAyerPanel" style="display:none"></div>
 
   <!-- Mini-resumen lateral (visible siempre que haya tarjetas) -->
   <div class="crono-resumen-lateral" id="cronoResumenLateral" style="display:none"></div>

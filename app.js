@@ -14002,6 +14002,92 @@ function getResumenSesionesAyer() {
   return resultados[0] || null;
 }
 
+function _cronoAyerMinText(min) {
+  min = Math.max(0, parseInt(min || 0, 10));
+  if (min >= 60) {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return h + 'h' + (m ? ' ' + m + 'm' : '');
+  }
+  return min + ' min';
+}
+
+function getResumenComentariosAyer() {
+  if (!Array.isArray(db.sesiones) || !db.sesiones.length) return null;
+  const ayer = new Date();
+  ayer.setDate(ayer.getDate() - 1);
+  const ayerStr = ayer.toDateString();
+  const sesion = db.sesiones.find(s => s && s.date && new Date(s.date).toDateString() === ayerStr);
+  const resumen = sesion ? _procesarSesionParaResumen(sesion) : null;
+  if (!resumen || !Array.isArray(resumen.items)) return null;
+  const items = resumen.items.filter(it =>
+    (it.nota && it.nota.trim()) || (it.destelloNota && it.destelloNota.trim())
+  );
+  if (!items.length) return null;
+  return {
+    etiquetaDia: 'Ayer',
+    totalMinutos: items.reduce((sum, it) => sum + (it.minutos || 0), 0),
+    items,
+  };
+}
+
+function setCronoAyerOpen(open) {
+  const btn = document.getElementById('cronoAyerBtn');
+  const panel = document.getElementById('cronoAyerPanel');
+  if (!btn || !panel) return;
+  btn.classList.toggle('open', !!open);
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  panel.classList.toggle('open', !!open);
+  panel.style.display = open ? '' : 'none';
+}
+
+function toggleCronoAyerPanel() {
+  const panel = document.getElementById('cronoAyerPanel');
+  setCronoAyerOpen(!(panel && panel.classList.contains('open')));
+}
+
+function closeCronoAyerPanel() {
+  setCronoAyerOpen(false);
+}
+
+function renderCronoAyerPanel() {
+  const btn = document.getElementById('cronoAyerBtn');
+  const btnText = document.getElementById('cronoAyerBtnText');
+  const panel = document.getElementById('cronoAyerPanel');
+  if (!btn || !panel) return;
+  const resumen = getResumenComentariosAyer();
+  if (!resumen) {
+    btn.style.display = 'none';
+    panel.innerHTML = '';
+    setCronoAyerOpen(false);
+    return;
+  }
+  const wasOpen = panel.classList.contains('open');
+  btn.style.display = '';
+  if (btnText) btnText.textContent = 'Ayer · ' + resumen.items.length;
+  panel.innerHTML =
+    '<div class="crono-ayer-head">' +
+      '<strong>Lo escrito ayer</strong>' +
+      '<span>' + _cronoAyerMinText(resumen.totalMinutos) + '</span>' +
+    '</div>' +
+    resumen.items.map(it => {
+      const nota = it.nota
+        ? '<div class="crono-ayer-note">' + escapeHtmlSafe(it.nota) + '</div>'
+        : '';
+      const destello = it.destelloNota
+        ? '<div class="crono-ayer-destello">✨ ' + escapeHtmlSafe(it.destelloNota) + '</div>'
+        : '';
+      return '<div class="crono-ayer-item">' +
+        '<div class="crono-ayer-line">' +
+          '<span class="crono-ayer-name">' + escapeHtmlSafe(it.label) + '</span>' +
+          '<span class="crono-ayer-min">' + _cronoAyerMinText(it.minutos) + '</span>' +
+        '</div>' +
+        nota + destello +
+      '</div>';
+    }).join('');
+  setCronoAyerOpen(wasOpen);
+}
+
 // ── DESTELLOS ────────────────────────────────────────────────────────────────
 // Recopila todas las sesiones de excelencia marcadas, de todo el historial,
 // más recientes primero. Cada entrada: { date, obra, nota }.
@@ -14114,6 +14200,16 @@ function _syncDestelloSubNota(aggregate, planId, nota) {
   }
 }
 
+function _clearDestelloSubs(aggregate, planId) {
+  const subs = aggregate && planId && aggregate[planId] && aggregate[planId].subsessions;
+  if (!Array.isArray(subs) || !subs.length) return;
+  subs.forEach(sub => {
+    if (!sub) return;
+    sub.destello = false;
+    sub.destelloNota = null;
+  });
+}
+
 function updateDestelloNota(entry, nota) {
   if (!entry) return false;
   if (entry.source === 'today') {
@@ -14130,6 +14226,28 @@ function updateDestelloNota(entry, nota) {
     item.destello = true;
     item.destelloNota = nota;
     _syncDestelloSubNota(sesion._aggregate, entry.planId, nota);
+    saveData();
+    return true;
+  }
+  return false;
+}
+
+function clearDestello(entry) {
+  if (!entry) return false;
+  if (entry.source === 'today') {
+    delete sessionDestello[entry.planId];
+    _clearDestelloSubs(sessionAggregate, entry.planId);
+    if (typeof saveDraft === 'function') saveDraft();
+    if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
+    return true;
+  }
+  if (entry.source === 'history' && Array.isArray(db.sesiones)) {
+    const sesion = db.sesiones[entry.sesionIdx];
+    const item = sesion && Array.isArray(sesion.items) ? sesion.items[entry.itemIdx] : null;
+    if (!item) return false;
+    item.destello = false;
+    item.destelloNota = null;
+    _clearDestelloSubs(sesion._aggregate, entry.planId);
     saveData();
     return true;
   }
@@ -14162,6 +14280,7 @@ function renderDestellosList(editIndex) {
       ? '<div class="destello-edit-wrap">' +
           '<textarea class="destello-edit-input" id="destelloEditNota' + idx + '" rows="3" placeholder="Escribe la frase que quieres releer en el cronómetro...">' + escapeHtmlSafe(d.nota || '') + '</textarea>' +
           '<div class="destello-edit-actions">' +
+            '<button class="destello-edit-btn danger" onclick="removeDestelloNota(' + idx + ')">Quitar destello</button>' +
             '<button class="destello-edit-btn secondary" onclick="cancelDestelloEdit()">Cancelar</button>' +
             '<button class="destello-edit-btn primary" onclick="saveDestelloNota(' + idx + ')">Guardar</button>' +
           '</div>' +
@@ -14206,6 +14325,21 @@ function saveDestelloNota(idx) {
   if (typeof renderCronoDestellosCard === 'function') renderCronoDestellosCard();
   if (typeof cronoRefreshDestelloPhrase === 'function') cronoRefreshDestelloPhrase(true);
   showToast('Destello actualizado');
+}
+
+function removeDestelloNota(idx) {
+  const entry = _destellosModalEntries[idx];
+  if (!entry) return;
+  if (!confirm('¿Quitar este destello?\n\nLa sesión se conserva; solo deja de aparecer como destello.')) return;
+  if (!clearDestello(entry)) {
+    showToast('No he podido quitar el destello');
+    return;
+  }
+  renderDestellosList(null);
+  refreshDestellosPill();
+  if (typeof renderCronoDestellosCard === 'function') renderCronoDestellosCard();
+  if (typeof cronoRefreshDestelloPhrase === 'function') cronoRefreshDestelloPhrase(true);
+  showToast('Destello quitado');
 }
 
 function openDestellosModal() {
@@ -14796,6 +14930,7 @@ function refreshConcentradoUI() {
   if (typeof renderCronoWeekCard === 'function') renderCronoWeekCard();
   if (typeof renderCronoDestellosCard === 'function') renderCronoDestellosCard();
   if (typeof renderCronoPasajes === 'function') renderCronoPasajes();
+  if (typeof renderCronoAyerPanel === 'function') renderCronoAyerPanel();
 
   // Mini-resumen lateral eliminado: el jardín del día ya muestra lo
   // estudiado hoy de forma visual, y los Destellos guardan lo memorable.
@@ -16833,6 +16968,7 @@ function cronoOnEnterView() {
 // Se llama desde showView cuando se cambia a OTRA vista que no es cronometro
 function cronoOnLeaveView() {
   _stopCronoClock();
+  if (typeof closeCronoAyerPanel === 'function') closeCronoAyerPanel();
   cronoExitFocus();
   document.body.classList.remove('crono-timer-mode');
   document.body.classList.remove('crono-running');
