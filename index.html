@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="marmol">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#1a1612">
+<meta name="theme-color" content="#f2f2f7">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Estudio">
@@ -699,62 +699,18 @@
 
     <!-- ── APARIENCIA ── -->
     <div class="ajustes-group-label"><span class="ajustes-group-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".7"/><circle cx="17" cy="10.5" r=".7"/><circle cx="8.5" cy="7" r=".7"/><circle cx="6.5" cy="12" r=".7"/><path d="M12 2a10 10 0 1 0 0 20 2 2 0 0 0 2-2c0-.5-.2-.9-.5-1.3-.3-.3-.5-.8-.5-1.2a2 2 0 0 1 2-2h2.3A3.7 3.7 0 0 0 21 11.7C21 5.6 16.9 2 12 2z"/></svg></span>Apariencia</div>
-    <div class="ajustes-card">
+    <div class="ajustes-card theme-identity-card">
       <div class="ajustes-card-head">Tema</div>
-      <div class="theme-grid">
-        <button class="theme-option" data-theme="concierto" onclick="setTheme('concierto')" aria-label="Concierto">
-          <span class="theme-glyph" style="background:#160d10;color:#cba85f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4c1.7 1.7 1.7 3.7 0 4.8-1.7-1.1-1.7-3.1 0-4.8z"/><rect x="9.6" y="8.8" width="4.8" height="8.4" rx="1"/><path d="M7.8 20.4h8.4"/></svg></span>
-          <span class="theme-option-name">Concierto</span>
-        </button>
-        <button class="theme-option" data-theme="botanico" onclick="setTheme('botanico')" aria-label="Botánico">
-          <span class="theme-glyph" style="background:#f4f1e6;color:#5b7f5a"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18.5C6 11.2 10.6 6.5 18.2 6c.4 7.4-4.4 12.5-12.2 12.5z"/><path d="M9.5 15C11.6 11.8 14.2 9.6 17.4 8"/></svg></span>
-          <span class="theme-option-name">Botánico</span>
-        </button>
-        <button class="theme-option" data-theme="swiss" onclick="setTheme('swiss')" aria-label="Swiss">
-          <span class="theme-glyph" style="background:#fbfaf8;color:#e8492b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14"/><path d="M5 12h14M12 5v14"/></svg></span>
-          <span class="theme-option-name">Swiss</span>
-        </button>
-        <button class="theme-option" data-theme="" onclick="setTheme('')" aria-label="Noche">
-          <span class="theme-glyph" style="background:#11151c;color:#d2b285"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17.2 13.6A6 6 0 1 1 10.4 6.8a4.8 4.8 0 0 0 6.8 6.8z"/></svg></span>
-          <span class="theme-option-name">Noche</span>
-        </button>
-        <button class="theme-option" data-theme="cozy" onclick="setTheme('cozy')" aria-label="Cozy">
-          <span class="theme-glyph" style="background:#faf4ea;color:#8a5c30"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5h9.6V13a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4z"/><path d="M15.6 10.6h1.7a2 2 0 0 1 0 4h-1.7"/><path d="M8.6 4.4c-.6.9.6 1.7 0 2.7M11.4 4.4c-.6.9.6 1.7 0 2.7"/></svg></span>
-          <span class="theme-option-name">Cozy</span>
-        </button>
-        <button class="theme-option" data-theme="bruma" onclick="setTheme('bruma')" aria-label="Bruma">
-          <span class="theme-glyph" style="background:#f3f4ec;color:#4e7d5b"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9c2-1.4 4-1.4 6 0s4 1.4 6 0"/><path d="M5 13c2-1.4 4-1.4 6 0s4 1.4 6 0"/><path d="M7 17c1.4-1 3-1 4.5 0s3 1 4.5 0"/></svg></span>
-          <span class="theme-option-name">Bruma</span>
-        </button>
-        <button class="theme-option" data-theme="velvet" onclick="setTheme('velvet')" aria-label="Abeto">
-          <span class="theme-glyph" style="background:#131a15;color:#94c4a2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 8 9h2.3L7 13.5h2.6L7 18h10l-2.6-4.5H17L13.7 9H16z"/><path d="M12 18v2.6"/></svg></span>
-          <span class="theme-option-name">Abeto</span>
-        </button>
-        <button class="theme-option" data-theme="brutalista" onclick="setTheme('brutalista')" aria-label="Brutalista">
-          <span class="theme-glyph" style="background:#ece6d6;color:#e11d5c"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"><path d="M10 10h8v8"/><rect x="6" y="6" width="9" height="9"/></svg></span>
-          <span class="theme-option-name">Brutalista</span>
-        </button>
-        <button class="theme-option" data-theme="marmol" onclick="setTheme('marmol')" aria-label="Mármol">
-          <span class="theme-glyph" style="background:#f2f2f7;color:#5b82a6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5" width="15" height="5" rx="2"/><rect x="4.5" y="14" width="15" height="5" rx="2"/></svg></span>
-          <span class="theme-option-name">Mármol</span>
-        </button>
-      </div>
-      <div class="marmol-variant-row">
-        <div class="ajustes-card-head">Color</div>
-        <div class="ajustes-seg">
-          <button class="theme-option marmol-variant" data-variant="marmol" onclick="setTheme('marmol')">
-            <span class="marmol-variant-dot" style="background:#5b82a6"></span>
-            <span class="theme-option-name">Acero</span>
-          </button>
-          <button class="theme-option marmol-variant" data-variant="marmol-bosque" onclick="setTheme('marmol-bosque')">
-            <span class="marmol-variant-dot" style="background:#57a07a"></span>
-            <span class="theme-option-name">Bosque</span>
-          </button>
-        </div>
+      <div class="theme-identity-row" aria-label="Tema fijo: Mármol">
+        <span class="theme-glyph" style="background:#f2f2f7;color:#5b82a6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5" width="15" height="5" rx="2"/><rect x="4.5" y="14" width="15" height="5" rx="2"/></svg></span>
+        <span class="theme-identity-copy">
+          <strong>Mármol</strong>
+          <small>Una sola identidad visual. El modo noche conserva la misma estructura en oscuro.</small>
+        </span>
       </div>
       <label class="settings-autonight" for="autoNightToggle">
         <input type="checkbox" id="autoNightToggle" onchange="setAutoNight(this.checked)">
-        <span class="settings-autonight-txt">🌙 Modo noche automático<small>De 21:00 a 7:00 pasa al tema «Noche» solo.</small></span>
+        <span class="settings-autonight-txt">Modo noche automático<small>De 21:00 a 7:00 usa Mármol noche.</small></span>
       </label>
     </div>
 

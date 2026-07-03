@@ -411,6 +411,13 @@
     --border: rgba(60,60,67,0.14); --border2: rgba(60,60,67,0.07);
     --ui-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
   }
+  [data-theme="marmol-night"] {
+    --bg: #101114; --bg2: #1b1f27; --bg3: #252b35;
+    --accent: #8fb3d8; --accent2: #b3cdea;
+    --text: #f3f5f8; --text2: #b5bdc8; --text3: #77808e;
+    --green: #72b891; --orange: #d7a063; --red: #d4746d;
+    --border: rgba(220,230,242,0.18); --border2: rgba(220,230,242,0.10);
+  }
   /* MÁRMOL · BOSQUE — subtema verde estilo Forest. Misma estructura iOS, solo
      cambia la paleta de acento a verde bosque; todo (gráficas, segmentado,
      avatar, degradado de cabecera, nav activa) se reviste solo vía var(--accent). */
@@ -560,7 +567,7 @@
     -webkit-appearance: none; appearance: none;
     width: 44px; height: 26px; flex: none;
     border-radius: 999px; border: none;
-    background: #d6d6db; position: relative; cursor: pointer;
+    background: color-mix(in srgb, var(--text3) 34%, var(--bg3)); position: relative; cursor: pointer;
     transition: background 0.25s ease;
   }
   [data-theme^="marmol"] .settings-autonight input[type="checkbox"]::after {
@@ -609,7 +616,7 @@
   }
   /* #4 — Interruptor de vibración como pill verde iOS (igual que modo noche) */
   [data-theme^="marmol"] .haptics-toggle {
-    width: 44px; height: 26px; border: none; background: #d6d6db;
+    width: 44px; height: 26px; border: none; background: color-mix(in srgb, var(--text3) 34%, var(--bg3));
   }
   [data-theme^="marmol"] .haptics-toggle-knob {
     width: 22px; height: 22px; background: #fff;
@@ -637,7 +644,7 @@
     transition: background 0.18s ease;
   }
   [data-theme^="marmol"] .ajustes-seg .theme-option.active {
-    background: #fff !important;
+    background: var(--bg2) !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.13), 0 0 1px rgba(0,0,0,0.05) !important;
   }
   [data-theme^="marmol"] .ajustes-seg .theme-option-name {
@@ -855,7 +862,7 @@
     height: 100%; gap: 6px;
   }
   [data-theme^="marmol"] .crono-week-bar {
-    width: 18px; background: #d3dbe6; border-radius: 5px; min-height: 5px;
+    width: 18px; background: color-mix(in srgb, var(--accent) 20%, var(--bg3)); border-radius: 5px; min-height: 5px;
   }
   [data-theme^="marmol"] .crono-week-bar.today { background: var(--accent); }
   [data-theme^="marmol"] .crono-week-day { font-size: 11px; color: var(--text3); }
@@ -3871,6 +3878,22 @@
     border-radius: 11px; border: 1px solid var(--border);
   }
   .theme-glyph svg { width: 56%; height: 56%; }
+  .theme-identity-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 2px 14px;
+  }
+  .theme-identity-row .theme-glyph {
+    width: 44px; max-width: 44px; flex: none;
+  }
+  .theme-identity-copy {
+    display: flex; flex-direction: column; gap: 3px; min-width: 0;
+  }
+  .theme-identity-copy strong {
+    color: var(--text); font-size: 15px; font-weight: 600;
+  }
+  .theme-identity-copy small {
+    color: var(--text3); font-size: 11px; line-height: 1.45;
+  }
   .theme-swatch { height: 22px; border-radius: 4px; margin-bottom: 2px; } /* legacy, sin uso */
   .settings-autonight {
     display: flex; align-items: center; gap: 12px;

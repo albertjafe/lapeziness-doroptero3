@@ -661,9 +661,9 @@ function resolveThemeBg2() {
     parent.removeChild(tmp);
     if (bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)') return bg;
   } catch(e) {}
-  // Fallback based on current theme (oscuros: Noche '', Abeto, Concierto)
+  // Fallback based on current theme.
   var t = document.documentElement.getAttribute('data-theme') || '';
-  return (t === '' || t === 'velvet' || t === 'concierto' || t === 'noche' || t === 'estudio') ? '#2a2520' : '#e8ddd0';
+  return t === 'marmol-night' ? '#1b1f27' : '#e8ddd0';
 }
 
 function fillEstadoSlider(slider, color) {
@@ -11799,9 +11799,11 @@ function loadAppTitle() {
 
 // Color de fondo base de cada tema. Se usa para tintar la barra del
 // navegador (meta theme-color) y que la app no se sienta "una web".
-const THEME_BG = { '': '#11151c', cozy: '#faf4ea', bruma: '#f3f4ec', velvet: '#131a15', concierto: '#160d10', botanico: '#f4f1e6', swiss: '#fbfaf8', brutalista: '#ece6d6', marmol: '#f2f2f7', 'marmol-bosque': '#f2f2f7' };
+const THEME_BG = { marmol: '#f2f2f7', 'marmol-night': '#101114' };
+const THEME_DAY = 'marmol';
+const THEME_NIGHT = 'marmol-night';
 function applyThemeColor(theme) {
-  const col = THEME_BG[theme] || THEME_BG[''];
+  const col = THEME_BG[theme] || THEME_BG[THEME_DAY];
   let meta = document.querySelector('meta[name="theme-color"]');
   if (!meta) {
     meta = document.createElement('meta');
@@ -11811,52 +11813,29 @@ function applyThemeColor(theme) {
   meta.setAttribute('content', col);
 }
 
-function setTheme(theme, btn) {
-  setTimeout(initEstadoSliders, 50); // re-fill after theme color change
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('alberto_theme', theme);
-  applyThemeColor(theme);
-  document.querySelectorAll('.theme-option').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-}
-
 // ¿Es horario de noche? (de 21:00 a 7:00)
 function _isNightHour() {
   const h = new Date().getHours();
   return h >= 21 || h < 7;
 }
 
-// Aplica el tema visible teniendo en cuenta el modo noche automático: de noche
-// fuerza el tema «Noche» (data-theme="") sin tocar el tema de DÍA guardado.
+// Aplica Mármol claro u oscuro. Ya no hay temas alternativos activables.
 function refreshTheme() {
-  const day = localStorage.getItem('alberto_theme') || 'concierto';
+  const day = THEME_DAY;
+  localStorage.setItem('alberto_theme', THEME_DAY);
   const auto = localStorage.getItem('alberto_autonight') === '1';
-  const display = (auto && _isNightHour()) ? '' : day;
+  const display = (auto && _isNightHour()) ? THEME_NIGHT : day;
   document.documentElement.setAttribute('data-theme', display);
   applyThemeColor(display);
-  // Los botones reflejan el tema de DÍA elegido (no el forzado por la noche).
-  // La pastilla "Mármol" queda activa para cualquier variante (marmol-*).
-  document.querySelectorAll('.theme-option[data-theme]').forEach(b => {
-    const t = b.dataset.theme || '';
-    const on = t === day || (t === 'marmol' && day.indexOf('marmol') === 0);
-    b.classList.toggle('active', on);
-  });
-  // Variante de color de Mármol (Acero / Bosque).
-  document.querySelectorAll('.marmol-variant').forEach(b => {
-    b.classList.toggle('active', b.dataset.variant === day);
-  });
   const tog = document.getElementById('autoNightToggle');
   if (tog) tog.checked = auto;
   setTimeout(initEstadoSliders, 50); // re-fill tras cambio de color
 }
 
-function setTheme(theme, btn) {
-  localStorage.setItem('alberto_theme', theme); // tema de DÍA
-  const forcedNight = localStorage.getItem('alberto_autonight') === '1' && _isNightHour();
+function setTheme() {
+  localStorage.setItem('alberto_theme', THEME_DAY);
   refreshTheme();
-  if (forcedNight && theme !== '' && typeof showToast === 'function') {
-    showToast('Se aplicará de día · ahora hay modo noche 🌙');
-  }
+  if (typeof showToast === 'function') showToast('Tema fijado en Mármol');
 }
 
 function setAutoNight(on) {
@@ -11864,7 +11843,7 @@ function setAutoNight(on) {
   refreshTheme();
   if (typeof showToast === 'function') {
     showToast(on
-      ? (_isNightHour() ? '🌙 Modo noche activado (ahora es de noche)' : '🌙 Modo noche automático activado · de 21:00 a 7:00')
+      ? (_isNightHour() ? 'Modo noche activo' : 'Modo noche automático activo · 21:00-7:00')
       : 'Modo noche automático desactivado');
   }
 }
@@ -11890,7 +11869,7 @@ function loadTheme() {
     localStorage.setItem('alberto_theme_v4_concierto', '1');
     localStorage.setItem('alberto_theme', 'concierto');
   }
-  const theme = localStorage.getItem('alberto_theme') || 'concierto';
+  localStorage.setItem('alberto_theme', THEME_DAY);
   const font  = localStorage.getItem('alberto_font')  || 'mono';
   const size  = localStorage.getItem('alberto_size')  || 'large';
   const zooms = { small: 0.82, normal: 1, large: 1.22, xlarge: 1.5 };
