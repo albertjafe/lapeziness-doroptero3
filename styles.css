@@ -4146,43 +4146,168 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* ── PASAJES DIFÍCILES (cronómetro) ── */
+  /* ── PASAJES · bolitas mínimas (cronómetro) ── */
   .crono-pasajes-section { width: 100%; margin-top: 16px; }
   .crono-pasajes-head {
     display: flex; align-items: baseline; justify-content: space-between;
     margin: 0 4px 8px;
   }
-  .crono-pasajes-media { font-size: 11px; color: var(--green); font-weight: 600; }
-  .crono-pasajes-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  .crono-pasajes-progress {
+    font-size: 12px; color: var(--text3); font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }
-  .crono-pasaje-card {
-    display: flex; flex-direction: column; gap: 9px; text-align: left;
-    background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    padding: 14px 16px; cursor: pointer; min-height: 86px;
-    font-family: inherit; -webkit-tap-highlight-color: transparent;
-    transition: transform 0.12s ease, border-color 0.2s;
+  .crono-pasajes-card {
+    width: 100%;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 22px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 8px 20px rgba(0,0,0,0.04);
+    padding: 20px 24px;
+    box-sizing: border-box;
+    transition: min-height 0.24s ease, border-color 0.2s ease;
   }
-  .crono-pasaje-card:active { transform: scale(0.98); }
-  .crono-pasaje-name {
-    font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.3;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-  }
-  .crono-pasaje-bar {
-    height: 7px; border-radius: 999px; background: var(--bg3); overflow: hidden; margin-top: auto;
-  }
-  .crono-pasaje-fill { height: 100%; border-radius: 999px; transition: width 0.4s; }
-  .crono-pasaje-meta {
+  .crono-pasajes-card.is-expanded { border-color: color-mix(in srgb, var(--accent) 16%, var(--border2)); }
+  .crono-pasajes-summary {
     display: flex; align-items: center; justify-content: space-between;
-    font-size: 11px; color: var(--text3); font-variant-numeric: tabular-nums;
+    gap: 18px; min-height: 42px;
   }
-  .crono-pasaje-add {
-    align-items: center; justify-content: center; flex-direction: column; gap: 4px;
-    color: var(--text3); border-style: dashed; box-shadow: none; cursor: pointer;
+  .crono-pasajes-copy { min-width: 0; text-align: left; }
+  .crono-pasajes-title {
+    font-size: 15px; line-height: 1.2; font-weight: 650; color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
   }
-  .crono-pasaje-add:hover { color: var(--accent); border-color: var(--accent); }
-  .crono-pasaje-add-plus { font-size: 22px; line-height: 1; }
+  .crono-pasajes-sub {
+    margin-top: 5px; font-size: 12px; line-height: 1.25; color: var(--text3);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .crono-pasajes-dots {
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 10px; flex: none;
+  }
+  .crono-pasaje-dot {
+    width: 34px; height: 34px; border: 0; background: transparent;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 999px; cursor: pointer; padding: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .crono-pasaje-dot span {
+    width: 14px; height: 14px; border-radius: 50%;
+    display: block; box-sizing: border-box;
+    background: color-mix(in srgb, var(--bg2) 86%, white);
+    border: 2px solid color-mix(in srgb, var(--pasaje-tier-color) 72%, var(--bg2));
+    transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+  }
+  .crono-pasaje-dot.is-done span {
+    background: color-mix(in srgb, var(--pasaje-tier-color) 28%, var(--bg2));
+    box-shadow: inset 0 0 0 3px var(--bg2);
+  }
+  .crono-pasaje-dot.is-open span {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--pasaje-tier-color) 14%, transparent), inset 0 0 0 3px var(--bg2);
+  }
+  .crono-pasaje-dot:active span { transform: scale(0.92); }
+  .crono-pasaje-dot-add {
+    border: 1px solid var(--border2);
+    background: var(--bg3);
+  }
+  .crono-pasaje-dot-add span {
+    width: auto; height: auto; border: 0; background: transparent;
+    color: var(--text3); font-size: 16px; line-height: 1; font-weight: 600;
+    transform: translateY(-1px);
+  }
+  .crono-pasajes-legend {
+    display: flex; gap: 26px; padding-top: 12px; margin-top: 8px;
+    font-size: 11px; color: var(--text3);
+  }
+  .crono-pasajes-legend .tier-red { color: color-mix(in srgb, var(--red) 70%, var(--text3)); }
+  .crono-pasajes-legend .tier-amber { color: color-mix(in srgb, var(--orange) 70%, var(--text3)); }
+  .crono-pasajes-legend .tier-pearl { color: var(--text3); }
+  .crono-pasaje-expanded {
+    margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border2);
+    display: grid; grid-template-columns: minmax(170px, 1fr) minmax(320px, 1.5fr);
+    gap: 18px 24px; align-items: start;
+  }
+  .crono-pasaje-expanded-info {
+    display: flex; align-items: center; gap: 10px; min-width: 0;
+  }
+  .crono-pasaje-expanded-name {
+    min-width: 0; flex: 1;
+    font-size: 15px; line-height: 1.3; font-weight: 650; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    text-align: left;
+  }
+  .crono-pasaje-tier-chip,
+  .crono-pasaje-suggestion,
+  .crono-pasaje-remove-mini {
+    border: 1px solid color-mix(in srgb, var(--pasaje-tier-color, var(--accent)) 28%, var(--border2));
+    background: color-mix(in srgb, var(--pasaje-tier-color, var(--accent)) 9%, var(--bg2));
+    color: var(--pasaje-tier-color, var(--accent));
+    border-radius: 999px; padding: 5px 12px;
+    font-size: 11px; line-height: 1; font-weight: 650;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    cursor: pointer; white-space: nowrap;
+  }
+  .crono-pasaje-remove-mini {
+    --pasaje-tier-color: var(--text3);
+    background: transparent; color: var(--text3); border-color: transparent;
+    padding-left: 4px; padding-right: 4px;
+  }
+  .crono-pasaje-score-wrap { display: flex; flex-direction: column; gap: 12px; }
+  .crono-pasaje-score-row {
+    display: grid; grid-template-columns: 72px auto 76px;
+    align-items: center; gap: 14px;
+  }
+  .crono-pasaje-score-label {
+    font-size: 12px; font-weight: 650; color: var(--text2); text-align: left;
+  }
+  .crono-pasaje-score-dots { display: flex; align-items: center; gap: 14px; }
+  .crono-pasaje-score-dot {
+    width: 22px; height: 22px; border: 0; border-radius: 50%;
+    background: transparent; display: inline-flex; align-items: center; justify-content: center;
+    padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .crono-pasaje-score-dot span {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--text3));
+    background: var(--bg2); display: block; box-sizing: border-box;
+  }
+  .crono-pasaje-score-dot.active span {
+    background: var(--accent); border-color: var(--accent);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 13%, transparent);
+  }
+  .crono-pasaje-score-out {
+    font-size: 11px; color: var(--accent); text-align: left; white-space: nowrap;
+  }
+  .crono-pasaje-expanded-foot {
+    grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between;
+    min-height: 18px; color: var(--text3); font-size: 11px; text-align: left;
+  }
+  .crono-pasaje-suggestion {
+    --pasaje-tier-color: var(--green);
+    padding: 6px 12px;
+  }
+  @media (max-width: 720px) {
+    .crono-pasajes-summary { align-items: flex-start; flex-direction: column; }
+    .crono-pasajes-dots { justify-content: flex-start; flex-wrap: wrap; }
+    .crono-pasaje-expanded { grid-template-columns: 1fr; }
+    .crono-pasaje-score-row { grid-template-columns: 64px auto 72px; gap: 10px; }
+  }
+  .pasaje-tier-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
+  .pasaje-tier-option {
+    border: 1px solid var(--border2); background: var(--bg2); color: var(--text2);
+    border-radius: 14px; padding: 10px 8px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  }
+  .pasaje-tier-option strong { font-size: 13px; color: var(--text); }
+  .pasaje-tier-option span { font-size: 10px; color: var(--text3); }
+  .pasaje-tier-option.active {
+    border-color: color-mix(in srgb, var(--pasaje-tier-color, var(--accent)) 44%, var(--border2));
+    background: color-mix(in srgb, var(--pasaje-tier-color, var(--accent)) 9%, var(--bg2));
+  }
+  .pasaje-tier-option.tier-red { --pasaje-tier-color: var(--red); }
+  .pasaje-tier-option.tier-amber { --pasaje-tier-color: var(--orange); }
+  .pasaje-tier-option.tier-pearl { --pasaje-tier-color: var(--text3); }
   /* Modal de pasaje */
   .pasaje-modal-sub { font-size: 11px; color: var(--text3); margin-bottom: 12px; }
   .pasaje-modal-chart { margin-bottom: 6px; }

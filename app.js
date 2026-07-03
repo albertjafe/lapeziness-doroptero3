@@ -14680,14 +14680,53 @@ function renderCronoDestellosCard() {
 }
 
 // ── PASAJES DIFÍCILES ─────────────────────────────────────────────────────────
-// Panel de hasta 4 pasajes difíciles del repertorio que se estudian a diario.
-// Cada uno guarda su solidez en el tiempo (solHistory) para ver la evolución y
-// cuántos días cuesta ponerlo a punto. Al llegar a ≥85% se gradúa ("a punto") y
-// libera hueco; también se puede quitar a mano.
-const PASAJE_MAX = 4;
+// Panel de hasta 5 focos de pasaje del repertorio.
+// En cronómetro se registran como bolitas: categoría (rojo/ámbar/perla) y
+// dos valoraciones rápidas del día: frío y después. solHistory se conserva
+// para que las gráficas existentes puedan seguir leyendo evolución.
+const PASAJE_MAX = 5;
 const PASAJE_GRAD = 85;
+const PASAJE_TIERS = {
+  red:   { label: 'Rojo',  color: 'var(--red)',    next: 'amber' },
+  amber: { label: 'Ámbar', color: 'var(--orange)', next: 'pearl' },
+  pearl: { label: 'Perla', color: 'var(--text3)',  next: 'red' },
+};
+const PASAJE_SCORE_LABELS = ['', 'Muy mal', 'Mal', 'Normal', 'Bien', 'Excelente'];
+let _pasajeNuevoTier = 'red';
+
+function _pasajeDateKey(date) {
+  const d = date ? new Date(date) : new Date();
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
+function _pasajeTierFromSol(sol) {
+  if (sol >= 75) return 'pearl';
+  if (sol >= 45) return 'amber';
+  return 'red';
+}
+
+function _normalizePasajeTier(tier) {
+  if (tier === 'orange') return 'amber';
+  return PASAJE_TIERS[tier] ? tier : 'red';
+}
+
+function _normalizeCronoPasaje(p, i) {
+  if (!p || typeof p !== 'object') return null;
+  if (!p.id) p.id = 'pj' + Date.now() + '_' + i;
+  if (!p.name) p.name = p.text || p.nombre || 'Pasaje';
+  if (!p.createdAt) p.createdAt = new Date().toISOString();
+  if (!Array.isArray(p.solHistory)) p.solHistory = [];
+  if (!Array.isArray(p.focusHistory)) p.focusHistory = [];
+  p.tier = _normalizePasajeTier(p.tier || _pasajeTierFromSol(_pasajeSolActual(p)));
+  return p;
+}
 function _cronoPasajes() {
   if (!Array.isArray(db.cronoPasajes)) db.cronoPasajes = [];
+  db.cronoPasajes.forEach(_normalizeCronoPasaje);
   return db.cronoPasajes;
 }
 function _activeCronoPasajes() { return _cronoPasajes().filter(p => !p.graduatedAt); }
@@ -14727,57 +14766,53 @@ function renderCronoPasajes() {
   const el = document.getElementById('cronoPasajesSection');
   if (!el) return;
   const activos = _activeCronoPasajes();
-  const media = _pasajesMediaDias();
-  const mediaTxt = media != null
-    ? '<span class="crono-pasajes-media">media · ~' + media + (media === 1 ? ' día' : ' días') + ' a punto</span>'
-    : '';
-  let cards = activos.map(p => {
-    const sol = _pasajeSolActual(p);
-    const col = (typeof solPctColor === 'function') ? solPctColor(sol) : 'var(--accent)';
-    const dias = _pasajeDias(p);
-    return '<button class="crono-pasaje-card" onclick="openPasaje(\'' + p.id + '\')">' +
-      '<div class="crono-pasaje-name">' + escapeHtmlSafe(p.name) + '</div>' +
-      '<div class="crono-pasaje-bar"><div class="crono-pasaje-fill" style="width:' + sol + '%;background:' + col + '"></div></div>' +
-      '<div class="crono-pasaje-meta"><span style="color:' + col + ';font-weight:600">' + sol + '%</span>' +
-        '<span>' + dias + 'd</span></div>' +
-    '</button>';
-  }).join('');
-  if (activos.length < PASAJE_MAX) {
-    cards += '<button class="crono-pasaje-card crono-pasaje-add" onclick="openPasajeNuevo()">' +
-      '<span class="crono-pasaje-add-plus">+</span><span>Añadir pasaje</span></button>';
-  }
+  if (_pasajeOpenId && !activos.some(p => p.id === _pasajeOpenId)) _pasajeOpenId = null;
+  const abierto = activos.find(p => p.id === _pasajeOpenId);
+  const hoy = _pasajeDateKey();
+  const hechosHoy = activos.filter(p => (p.focusHistory || []).some(h => h.key === hoy || _pasajeDateKey(h.date) === hoy)).length;
+  const dots = activos.map(p => _renderPasajeDot(p, abierto && abierto.id === p.id)).join('') +
+    (activos.length < PASAJE_MAX ? _renderPasajeAddDot() : '');
+  const sub = activos.length
+    ? 'Toca una bolita para registrar frío / después'
+    : 'Añade hasta 5 focos mínimos de estudio';
   el.innerHTML =
-    '<div class="crono-pasajes-head"><span class="crono-week-lbl">PASAJES DIFÍCILES</span>' + mediaTxt + '</div>' +
-    '<div class="crono-pasajes-grid">' + cards + '</div>';
+    '<div class="crono-pasajes-head"><span class="crono-week-lbl">PASAJES</span><span class="crono-pasajes-progress">' + hechosHoy + '/' + PASAJE_MAX + ' hoy</span></div>' +
+    '<div class="crono-pasajes-card' + (abierto ? ' is-expanded' : '') + '">' +
+      '<div class="crono-pasajes-summary">' +
+        '<div class="crono-pasajes-copy">' +
+          '<div class="crono-pasajes-title">Focos de estudio</div>' +
+          '<div class="crono-pasajes-sub">' + sub + '</div>' +
+        '</div>' +
+        '<div class="crono-pasajes-dots" aria-label="Pasajes">' + dots + '</div>' +
+      '</div>' +
+      (abierto ? _renderPasajeExpanded(abierto) : _renderPasajesLegend()) +
+    '</div>';
 }
 
 function openPasajeNuevo() {
   if (_activeCronoPasajes().length >= PASAJE_MAX) {
-    showToast('Ya tienes 4 pasajes · termina uno (≥85%) o quita uno');
+    showToast('Ya tienes 5 pasajes activos');
     return;
   }
   const nom = document.getElementById('pasajeNuevoNombre');
-  const sol = document.getElementById('pasajeNuevoSol');
-  const solV = document.getElementById('pasajeNuevoSolVal');
   if (nom) nom.value = '';
-  if (sol) sol.value = 10;
-  if (solV) solV.textContent = '10%';
-  updatePasajeSolSlider(sol, 'pasajeNuevoSolVal');
+  selectPasajeNuevoTier('red');
   openModal('modalPasajeNuevo');
 }
 
 function confirmPasajeNuevo() {
   const nom = (document.getElementById('pasajeNuevoNombre')?.value || '').trim();
   if (!nom) { showToast('Escribe el nombre del pasaje'); return; }
-  if (_activeCronoPasajes().length >= PASAJE_MAX) { showToast('Ya tienes 4 pasajes'); return; }
-  const sol = Math.max(0, Math.min(100, parseInt(document.getElementById('pasajeNuevoSol')?.value || '10', 10)));
+  if (_activeCronoPasajes().length >= PASAJE_MAX) { showToast('Ya tienes 5 pasajes'); return; }
   const now = new Date().toISOString();
   _cronoPasajes().push({
     id: 'pj' + Date.now(),
     name: nom,
+    tier: _normalizePasajeTier(_pasajeNuevoTier),
     createdAt: now,
     graduatedAt: null,
-    solHistory: [{ date: now, val: sol }],
+    focusHistory: [],
+    solHistory: [],
   });
   saveData();
   closeModal('modalPasajeNuevo');
@@ -14788,21 +14823,149 @@ function confirmPasajeNuevo() {
 function openPasaje(id) {
   const p = _cronoPasajes().find(x => x.id === id);
   if (!p) return;
+  _pasajeOpenId = _pasajeOpenId === id ? null : id;
+  renderCronoPasajes();
+}
+
+function _renderPasajeDot(p, isOpen) {
+  const tier = PASAJE_TIERS[_normalizePasajeTier(p.tier)];
+  const today = _pasajeTodayLog(p);
+  const done = !!(today && (today.cold || today.after));
+  const cls = 'crono-pasaje-dot tier-' + p.tier + (done ? ' is-done' : '') + (isOpen ? ' is-open' : '');
+  return '<button type="button" class="' + cls + '" style="--pasaje-tier-color:' + tier.color + '" onclick="openPasaje(\'' + p.id + '\')" aria-label="' + escapeHtmlSafe(p.name) + '">' +
+    '<span></span>' +
+  '</button>';
+}
+
+function _renderPasajeAddDot() {
+  return '<button type="button" class="crono-pasaje-dot crono-pasaje-dot-add" onclick="openPasajeNuevo()" aria-label="Añadir pasaje"><span>+</span></button>';
+}
+
+function _renderPasajesLegend() {
+  return '<div class="crono-pasajes-legend">' +
+    '<span class="tier-red">rojo</span>' +
+    '<span class="tier-amber">ámbar</span>' +
+    '<span class="tier-pearl">perla</span>' +
+  '</div>';
+}
+
+function _renderPasajeExpanded(p) {
+  const today = _pasajeTodayLog(p) || {};
+  const tier = PASAJE_TIERS[_normalizePasajeTier(p.tier)];
+  const suggestion = _pasajeSuggestion(p);
+  const suggestionHtml = suggestion
+    ? '<button type="button" class="crono-pasaje-suggestion" onclick="applyCronoPasajeSuggestion(\'' + p.id + '\')">' + escapeHtmlSafe(suggestion.label) + '</button>'
+    : '<span class="crono-pasaje-note">Se guarda al tocar. Sin modal.</span>';
+  return '<div class="crono-pasaje-expanded">' +
+    '<div class="crono-pasaje-expanded-info">' +
+      '<div class="crono-pasaje-expanded-name">' + escapeHtmlSafe(p.name) + '</div>' +
+      '<button type="button" class="crono-pasaje-tier-chip tier-' + p.tier + '" style="--pasaje-tier-color:' + tier.color + '" onclick="cycleCronoPasajeTier(\'' + p.id + '\')">' + tier.label + '</button>' +
+      '<button type="button" class="crono-pasaje-remove-mini" onclick="removeCronoPasaje(\'' + p.id + '\')" aria-label="Quitar pasaje">Quitar</button>' +
+    '</div>' +
+    '<div class="crono-pasaje-score-wrap">' +
+      _renderPasajeScoreRow(p.id, 'cold', 'Frío', today.cold || 0) +
+      _renderPasajeScoreRow(p.id, 'after', 'Después', today.after || 0) +
+    '</div>' +
+    '<div class="crono-pasaje-expanded-foot">' + suggestionHtml + '</div>' +
+  '</div>';
+}
+
+function _renderPasajeScoreRow(id, phase, label, selected) {
+  let dots = '';
+  for (let i = 1; i <= 5; i++) {
+    dots += '<button type="button" class="crono-pasaje-score-dot' + (selected === i ? ' active' : '') + '" onclick="saveCronoPasajeScore(\'' + id + '\',\'' + phase + '\',' + i + ')" aria-label="' + label + ' ' + PASAJE_SCORE_LABELS[i] + '"><span></span></button>';
+  }
+  const out = selected ? PASAJE_SCORE_LABELS[selected] : '-';
+  return '<div class="crono-pasaje-score-row">' +
+    '<span class="crono-pasaje-score-label">' + label + '</span>' +
+    '<div class="crono-pasaje-score-dots">' + dots + '</div>' +
+    '<span class="crono-pasaje-score-out">' + out + '</span>' +
+  '</div>';
+}
+
+function _pasajeTodayLog(p) {
+  const today = _pasajeDateKey();
+  return (p.focusHistory || []).find(h => h.key === today || _pasajeDateKey(h.date) === today) || null;
+}
+
+function _scoreToSol(score) {
+  return Math.max(0, Math.min(100, Math.round(score * 20)));
+}
+
+function saveCronoPasajeScore(id, phase, score) {
+  const p = _cronoPasajes().find(x => x.id === id);
+  if (!p || (phase !== 'cold' && phase !== 'after')) return;
+  const val = Math.max(1, Math.min(5, parseInt(score, 10) || 1));
+  const now = new Date();
+  const key = _pasajeDateKey(now);
+  if (!Array.isArray(p.focusHistory)) p.focusHistory = [];
+  let log = _pasajeTodayLog(p);
+  if (!log) {
+    log = { date: now.toISOString(), key };
+    p.focusHistory.push(log);
+  }
+  log[phase] = val;
+  log.updatedAt = now.toISOString();
+  p.lastStudiedAt = now.toISOString();
+  if (phase === 'after') _upsertPasajeSolToday(p, _scoreToSol(val), now);
+  if (p.focusHistory.length > 160) p.focusHistory = p.focusHistory.slice(-160);
+  saveData();
+  if (typeof showSavedCheck === 'function') showSavedCheck();
+  renderCronoPasajes();
+}
+
+function _upsertPasajeSolToday(p, val, date) {
+  if (!Array.isArray(p.solHistory)) p.solHistory = [];
+  const key = _pasajeDateKey(date);
+  const hit = p.solHistory.find(h => h.context === 'bolitas' && _pasajeDateKey(h.date) === key);
+  if (hit) {
+    hit.val = val;
+    hit.date = date.toISOString();
+  } else {
+    p.solHistory.push({ date: date.toISOString(), val, context: 'bolitas' });
+  }
+  if (p.solHistory.length > 200) p.solHistory = p.solHistory.slice(-200);
+}
+
+function _pasajeSuggestion(p) {
+  const tier = _normalizePasajeTier(p.tier);
+  if (tier === 'pearl') return null;
+  const recent = (p.focusHistory || []).filter(h => h.after).slice(-3);
+  if (recent.length < 3 || recent.some(h => h.after < 4)) return null;
+  const next = PASAJE_TIERS[tier].next;
+  return {
+    tier: next,
+    label: next === 'amber' ? 'Puede bajar a ámbar' : 'Puede pasar a perla',
+  };
+}
+
+function cycleCronoPasajeTier(id) {
+  const p = _cronoPasajes().find(x => x.id === id);
+  if (!p) return;
+  p.tier = PASAJE_TIERS[_normalizePasajeTier(p.tier)].next;
+  saveData();
+  renderCronoPasajes();
+}
+
+function applyCronoPasajeSuggestion(id) {
+  const p = _cronoPasajes().find(x => x.id === id);
+  const suggestion = p ? _pasajeSuggestion(p) : null;
+  if (!p || !suggestion) return;
+  p.tier = suggestion.tier;
+  saveData();
+  renderCronoPasajes();
+}
+
+function removeCronoPasaje(id) {
   _pasajeOpenId = id;
-  const title = document.getElementById('pasajeModalTitle');
-  const sub = document.getElementById('pasajeModalSub');
-  const chart = document.getElementById('pasajeModalChart');
-  const sol = _pasajeSolActual(p);
-  if (title) title.textContent = p.name;
-  if (sub) sub.innerHTML = (p.solHistory || []).length +
-    ' registro' + ((p.solHistory || []).length === 1 ? '' : 's') + ' · ' + _pasajeDias(p) + ' días · ahora ' + sol + '%';
-  if (chart) chart.innerHTML = _pasajeChartSVG(p);
-  const reg = document.getElementById('pasajeRegSol');
-  const regV = document.getElementById('pasajeRegSolVal');
-  if (reg) reg.value = sol;
-  if (regV) regV.textContent = sol + '%';
-  updatePasajeSolSlider(reg, 'pasajeRegSolVal');
-  openModal('modalPasaje');
+  removePasaje();
+}
+
+function selectPasajeNuevoTier(tier) {
+  _pasajeNuevoTier = _normalizePasajeTier(tier);
+  document.querySelectorAll('#modalPasajeNuevo .pasaje-tier-option').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tier === _pasajeNuevoTier);
+  });
 }
 
 function savePasajeSolidez() {
@@ -14828,8 +14991,9 @@ function savePasajeSolidez() {
 function removePasaje() {
   const p = _cronoPasajes().find(x => x.id === _pasajeOpenId);
   if (!p) return;
-  if (!confirm('¿Quitar el pasaje "' + p.name + '"?\n\nSe borra su historial de solidez.')) return;
+  if (!confirm('¿Quitar el pasaje "' + p.name + '"?\n\nSe borra su historial de bolitas y solidez.')) return;
   db.cronoPasajes = _cronoPasajes().filter(x => x.id !== p.id);
+  _pasajeOpenId = null;
   saveData();
   closeModal('modalPasaje');
   renderCronoPasajes();
