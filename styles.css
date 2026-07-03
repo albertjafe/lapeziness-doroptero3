@@ -7188,7 +7188,9 @@
   }
 
   .quick-sol-modal {
-    width: min(430px, calc(100vw - 32px));
+    width: min(430px, calc((100vw - 32px) / var(--app-zoom, 1)));
+    max-width: calc((100vw - 32px) / var(--app-zoom, 1));
+    box-sizing: border-box;
     padding: 22px;
   }
   .quick-sol-kicker {
@@ -7274,25 +7276,81 @@
     color: var(--text2);
     margin-top: 4px;
   }
-  .quick-sol-slider {
-    width: 100%;
-    margin: 12px 0 10px !important;
+  .quick-sol-help {
+    margin: 8px 0 10px;
+    text-align: center;
+    color: var(--text3);
+    font-size: 10px;
+    line-height: 1.45;
   }
-  .quick-sol-presets {
+  .quick-sol-rubric {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 7px;
-    margin-bottom: 12px;
+    margin: 0 0 12px;
   }
-  .quick-sol-presets button {
+  .quick-sol-rubric-btn {
+    min-width: 0;
+    min-height: 76px;
+    padding: 9px 6px;
     border: 1px solid var(--border2);
     border-radius: 8px;
     background: var(--bg3);
     color: var(--text2);
-    padding: 8px 6px;
+    cursor: pointer;
+    text-align: center;
+    transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+  }
+  .quick-sol-rubric-btn strong,
+  .quick-sol-rubric-btn span {
+    display: block;
+    min-width: 0;
+  }
+  .quick-sol-rubric-btn strong {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 17px;
+    font-weight: 400;
+    line-height: 1.05;
+    color: var(--text);
+  }
+  .quick-sol-rubric-btn span {
+    margin-top: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    line-height: 1.3;
+    color: var(--text3);
+  }
+  .quick-sol-rubric-btn:hover {
+    border-color: color-mix(in oklab, var(--accent) 52%, transparent);
+    background: color-mix(in oklab, var(--accent) 10%, var(--bg3));
+  }
+  .quick-sol-rubric-btn:active {
+    transform: scale(0.98);
+  }
+  .quick-sol-rubric-btn.active {
+    border-color: var(--accent);
+    background: color-mix(in oklab, var(--accent) 17%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 22%, transparent) inset;
+  }
+  .quick-sol-rubric-btn.active strong {
+    color: var(--accent);
+  }
+  .quick-sol-fine {
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 9px 10px;
+    background: rgba(0,0,0,0.04);
+  }
+  .quick-sol-fine summary {
+    cursor: pointer;
+    color: var(--text3);
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
-    cursor: pointer;
+    list-style-position: outside;
+  }
+  .quick-sol-slider {
+    width: 100%;
+    margin: 12px 0 10px !important;
   }
   .quick-sol-context {
     min-height: 15px;
@@ -7306,6 +7364,14 @@
   }
   .quick-sol-actions {
     margin-top: 14px !important;
+  }
+  @media (max-width: 460px) {
+    .quick-sol-rubric {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .quick-sol-rubric-btn {
+      min-height: 66px;
+    }
   }
 
   .hecho-fast-actions {

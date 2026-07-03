@@ -1296,21 +1296,42 @@
       <div class="quick-sol-value" id="quickSolValue">70%</div>
       <div class="quick-sol-label" id="quickSolLabel">Estable</div>
     </div>
-    <input type="range" min="0" max="100" step="5" value="70" id="quickSolSlider"
-      class="sol-slider quick-sol-slider" style="color:#c8a030" oninput="updateQuickSolidez(this.value)">
+    <div class="quick-sol-help">Toca la frase que describe el pase de hoy.</div>
 
-    <div class="quick-sol-presets">
-      <button onclick="quickSolidezPreset(35)">Frágil</button>
-      <button onclick="quickSolidezPreset(65)">Estable</button>
-      <button onclick="quickSolidezPreset(90)">Brillante</button>
+    <div class="quick-sol-rubric" id="quickSolRubric">
+      <button type="button" class="quick-sol-rubric-btn" data-val="25" onclick="quickSolidezPreset(25)">
+        <strong>Se cae</strong>
+        <span>pierdo el hilo</span>
+      </button>
+      <button type="button" class="quick-sol-rubric-btn" data-val="45" onclick="quickSolidezPreset(45)">
+        <strong>Frágil</strong>
+        <span>sale con paradas</span>
+      </button>
+      <button type="button" class="quick-sol-rubric-btn" data-val="65" onclick="quickSolidezPreset(65)">
+        <strong>Estable</strong>
+        <span>sale con atención</span>
+      </button>
+      <button type="button" class="quick-sol-rubric-btn" data-val="80" onclick="quickSolidezPreset(80)">
+        <strong>Segura</strong>
+        <span>sale entera</span>
+      </button>
+      <button type="button" class="quick-sol-rubric-btn" data-val="95" onclick="quickSolidezPreset(95)">
+        <strong>Brillante</strong>
+        <span>lista para exponer</span>
+      </button>
     </div>
 
     <div class="quick-sol-context" id="quickSolContext"></div>
-    <input type="text" id="quickSolNote" class="modal-input quick-sol-note" placeholder="nota breve opcional...">
+    <details class="quick-sol-fine">
+      <summary>Ajuste fino y nota</summary>
+      <input type="range" min="0" max="100" step="5" value="70" id="quickSolSlider"
+        class="sol-slider quick-sol-slider" style="color:#c8a030" oninput="updateQuickSolidez(this.value)">
+      <input type="text" id="quickSolNote" class="modal-input quick-sol-note" placeholder="nota breve opcional...">
+    </details>
 
     <div class="modal-buttons quick-sol-actions">
       <button class="modal-btn secondary" onclick="closeModal('modalQuickSolidez')">Cancelar</button>
-      <button class="modal-btn primary" onclick="confirmQuickSolidez()">Guardar</button>
+      <button class="modal-btn primary" id="quickSolSaveLabel" onclick="confirmQuickSolidez()">Guardar 70%</button>
     </div>
   </div>
 </div>

@@ -15344,6 +15344,24 @@ function selectQuickSolTarget(key) {
   if (context) context.textContent = _quickSolContextText(target);
 }
 
+const QUICK_SOL_RUBRIC_VALUES = [25, 45, 65, 80, 95];
+
+function _quickSolClosestRubricValue(pct) {
+  return QUICK_SOL_RUBRIC_VALUES.reduce((best, v) =>
+    Math.abs(v - pct) < Math.abs(best - pct) ? v : best
+  , QUICK_SOL_RUBRIC_VALUES[0]);
+}
+
+function _quickSolSyncRubric(pct) {
+  const closest = _quickSolClosestRubricValue(pct);
+  document.querySelectorAll('#quickSolRubric .quick-sol-rubric-btn').forEach(btn => {
+    const val = parseInt(btn.getAttribute('data-val') || 0);
+    btn.classList.toggle('active', val === closest);
+  });
+  const save = document.getElementById('quickSolSaveLabel');
+  if (save) save.textContent = 'Guardar ' + pct + '%';
+}
+
 function updateQuickSolidez(val) {
   const pct = parseInt(val) || 0;
   const value = document.getElementById('quickSolValue');
@@ -15356,6 +15374,7 @@ function updateQuickSolidez(val) {
   }
   if (label) label.textContent = solPctLabel(pct);
   fillSlider(slider, color);
+  _quickSolSyncRubric(pct);
 }
 
 function quickSolidezPreset(val) {
