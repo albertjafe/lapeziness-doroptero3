@@ -991,8 +991,22 @@
   }
   [data-theme^="marmol"] .crono-concentrado,
   [data-theme^="marmol"] .crono-milestone,
-  [data-theme^="marmol"] .crono-prob,
-  [data-theme^="marmol"] .crono-run-quick-row { display: none !important; }
+  [data-theme^="marmol"] .crono-prob { display: none !important; }
+  [data-theme^="marmol"] .crono-run-quick-row {
+    display: flex;
+    justify-content: center;
+    margin: -8px auto 22px;
+  }
+  [data-theme^="marmol"] .crono-run-quick-row .crono-zone-btn {
+    display: none !important;
+  }
+  [data-theme^="marmol"] .crono-solidity-btn-run {
+    min-height: 34px;
+    padding: 7px 13px;
+    background: color-mix(in srgb, var(--accent) 7%, var(--bg2));
+    border-color: color-mix(in srgb, var(--accent) 18%, var(--border2));
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
   /* iPad: la vista del cronómetro y el wrap se ensanchan (en móvil se adaptan
      al ancho disponible). Antes el wrap se encogía al contenido (~400px). */
   [data-theme^="marmol"] #view-cronometro { max-width: 900px; }

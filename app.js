@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-04-bolitas-timer-v3';
+const APP_VERSION = '2026-07-04-solidez-fast-v4';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -15551,10 +15551,16 @@ function updateQuickSolidez(val) {
   _quickSolSyncRubric(pct);
 }
 
-function quickSolidezPreset(val) {
+function quickSolidezPreset(val, autoSave) {
   const slider = document.getElementById('quickSolSlider');
   if (slider) slider.value = val;
   updateQuickSolidez(val);
+  if (autoSave) {
+    window.setTimeout(() => {
+      const modal = document.getElementById('modalQuickSolidez');
+      if (modal && modal.classList.contains('visible')) confirmQuickSolidez();
+    }, 90);
+  }
 }
 
 function openQuickSolidez(source) {
@@ -15691,6 +15697,7 @@ function cronoUpdateSolidityActions() {
   const idleVal = document.getElementById('cronoQuickSolValue');
   const runBtn = document.getElementById('cronoRunSolBtn');
   const runVal = document.getElementById('cronoRunSolValue');
+  const runRow = document.querySelector('.crono-run-quick-row');
   const runZoneBtn = document.getElementById('cronoRunZoneBtn');
   const runZoneVal = document.getElementById('cronoRunZoneValue');
 
@@ -15712,6 +15719,7 @@ function cronoUpdateSolidityActions() {
   if (runBtn) runBtn.style.display = runPct == null ? 'none' : '';
   if (runVal) runVal.textContent = runPct == null ? '—' : runPct + '%';
   const zonePreview = cronoZonePreviewForBase(runBase);
+  if (runRow) runRow.style.display = (runPct == null && !zonePreview) ? 'none' : '';
   if (runZoneBtn) runZoneBtn.style.display = zonePreview ? '' : 'none';
   if (runZoneVal) runZoneVal.textContent = zonePreview || 'al terminar';
 }
