@@ -5381,9 +5381,10 @@
     -webkit-user-select: none;
     touch-action: none;
   }
-  /* En modo timer: ocultar ensō, mostrar slider */
+  /* En modo timer/hasta hora: ocultar ensō, mostrar aro de duración */
   body.crono-timer-mode .crono-centerpiece .crono-enso-svg { display: none; }
   body.crono-timer-mode .crono-centerpiece .crono-timer-svg { display: block; }
+  body.crono-until-mode .crono-centerpiece .crono-timer-svg { pointer-events: none; }
 
   @keyframes cronoEnsoBreathe {
     0%, 100% { transform: scale(1);    opacity: 0.85; }
@@ -5478,6 +5479,45 @@
     pointer-events: none;
   }
 
+  .crono-until-row {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: max-content;
+    max-width: min(360px, 88%);
+    margin: -18px auto 18px;
+    padding: 8px 11px 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border2);
+    background: var(--bg2);
+    color: var(--text3);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-size: 12px;
+    line-height: 1;
+  }
+  body.crono-until-mode .crono-until-row { display: flex; }
+  .crono-until-row span {
+    font-weight: 600;
+    color: var(--text2);
+  }
+  .crono-until-row input {
+    border: 0;
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg3));
+    color: var(--text);
+    border-radius: 999px;
+    padding: 6px 8px;
+    font: inherit;
+    font-weight: 700;
+    min-width: 86px;
+  }
+  .crono-until-row input:focus { outline: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+  .crono-until-row strong {
+    color: var(--accent);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
   /* Toggle Cronómetro / Temporizador */
   .crono-mode-toggle {
     display: inline-flex;
@@ -5488,6 +5528,7 @@
     padding: 3px;
     margin: 0 auto 24px;
     gap: 0;
+    max-width: 100%;
   }
   .crono-mode-opt {
     background: transparent;
@@ -5516,6 +5557,9 @@
     transition: all 0.45s cubic-bezier(0.4,0,0.2,1);
     z-index: 1;
     box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  @media (max-width: 560px) {
+    .crono-mode-opt { padding: 7px 11px; font-size: 12px; }
   }
 
   /* Selector de obra: integrado al tema */

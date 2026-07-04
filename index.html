@@ -216,6 +216,7 @@
       <div class="crono-mode-toggle" id="cronoModeToggle">
         <button class="crono-mode-opt active" data-mode="stopwatch" onclick="cronoSetMode('stopwatch')">Cronómetro</button>
         <button class="crono-mode-opt" data-mode="timer" onclick="cronoSetMode('timer')">Temporizador</button>
+        <button class="crono-mode-opt" data-mode="until" onclick="cronoSetMode('until')">Hasta hora</button>
         <span class="crono-mode-indicator" id="cronoModeIndicator"></span>
       </div>
 
@@ -288,6 +289,12 @@
                 text-anchor="middle"
                 dominant-baseline="central">min</text>
         </svg>
+      </div>
+
+      <div class="crono-until-row" id="cronoUntilRow">
+        <span>Hasta</span>
+        <input type="time" id="cronoUntilTime" onchange="cronoSetUntilTime(this.value)" oninput="cronoSetUntilTime(this.value)">
+        <strong id="cronoUntilInfo">elige una hora</strong>
       </div>
 
       <div class="crono-select-wrap">

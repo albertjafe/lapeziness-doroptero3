@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-04-solidez-fast-v4';
+const APP_VERSION = '2026-07-04-until-time-v5';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -13703,8 +13703,9 @@ function setObraColor(obraId, colorId) {
 
 const crono = {
   state: 'idle',         // 'idle' | 'running' | 'paused'
-  mode: 'stopwatch',     // 'stopwatch' | 'timer'
+  mode: 'stopwatch',     // 'stopwatch' | 'timer' | 'until'
   timerMinutes: 25,      // minutos seleccionados en modo timer (5..120, step 5)
+  untilTime: '',         // HH:MM seleccionado en modo "hasta hora"
   targetMinutes: null,   // minutos objetivo de la sesión en curso (timer mode); null en stopwatch
   isRest: false,         // true si la sesión actual es un DESCANSO (no cuenta como estudio)
   obraId: null,
@@ -13764,6 +13765,7 @@ function cronoSaveState() {
       state: crono.state,
       mode: crono.mode,
       timerMinutes: crono.timerMinutes,
+      untilTime: crono.untilTime,
       targetMinutes: crono.targetMinutes,
       isRest: crono.isRest,
       obraId: crono.obraId,
@@ -13784,10 +13786,11 @@ function cronoLoadState() {
     if (!raw) return false;
     const s = JSON.parse(raw);
     // Cargar siempre la preferencia de mode + timerMinutes (independiente del state)
-    if (s.mode === 'stopwatch' || s.mode === 'timer') crono.mode = s.mode;
+    if (s.mode === 'stopwatch' || s.mode === 'timer' || s.mode === 'until') crono.mode = s.mode;
     if (typeof s.timerMinutes === 'number' && s.timerMinutes >= 5 && s.timerMinutes <= 120) {
       crono.timerMinutes = s.timerMinutes;
     }
+    if (typeof s.untilTime === 'string') crono.untilTime = s.untilTime;
     if (s.state !== 'running' && s.state !== 'paused') return false;
     if (!s.obraId || !s.startTs) return false;
     crono.state = s.state;
@@ -15296,7 +15299,10 @@ function cronoRender() {
   // Subtítulo de objetivo (solo en modo temporizador)
   const tgt = document.getElementById('cronoRunTarget');
   if (tgt) {
-    if (crono.targetMinutes) { tgt.textContent = 'de ' + fmtMinutos(crono.targetMinutes); tgt.style.display = ''; }
+    if (crono.targetMinutes) {
+      tgt.textContent = (crono.mode === 'until' && crono.untilTime) ? ('hasta ' + crono.untilTime) : ('de ' + fmtMinutos(crono.targetMinutes));
+      tgt.style.display = '';
+    }
     else tgt.style.display = 'none';
   }
 }
@@ -15304,12 +15310,16 @@ function cronoUpdateStartBtn() {
   const btn = document.getElementById('cronoStartBtn');
   const sel = document.getElementById('cronoObraSelect');
   if (!btn || !sel) return;
-  btn.disabled = !sel.value;
+  if (crono.mode === 'until') cronoEnsureUntilTime();
+  const untilMinutes = crono.mode === 'until' ? cronoUntilMinutes() : null;
+  btn.disabled = !sel.value || (crono.mode === 'until' && !untilMinutes);
   // Mantener el botón custom sincronizado (dot de color + nombre)
   if (typeof cronoUpdateSelectBtn === 'function') cronoUpdateSelectBtn();
   // Texto del botón según modo
   if (crono.mode === 'timer') {
     btn.textContent = 'Plantar · ' + crono.timerMinutes + ' min';
+  } else if (crono.mode === 'until') {
+    btn.textContent = untilMinutes ? ('Plantar · hasta ' + crono.untilTime) : 'Elige hora futura';
   } else {
     btn.textContent = 'Plantar';
   }
@@ -15339,7 +15349,8 @@ function cronoUpdateTimerProjection() {
   const sel = document.getElementById('cronoObraSelect');
   if (!el || !sel) return;
 
-  if (crono.state !== 'idle' || crono.mode !== 'timer' || !sel.value) {
+  const isTimedMode = crono.mode === 'timer' || crono.mode === 'until';
+  if (crono.state !== 'idle' || !isTimedMode || !sel.value) {
     el.style.display = 'none';
     el.innerHTML = '';
     return;
@@ -15355,9 +15366,18 @@ function cronoUpdateTimerProjection() {
   const currentMin = resolved.movId
     ? getMinutosMovimiento(resolved.obraId, resolved.movId)
     : getMinutosObra(resolved.obraId);
-  const projectedMin = Math.max(0, currentMin) + Math.max(0, crono.timerMinutes || 0);
+  const addMin = crono.mode === 'until' ? cronoUntilMinutes() : crono.timerMinutes;
+  if (!addMin) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+  const projectedMin = Math.max(0, currentMin) + Math.max(0, addMin || 0);
   const name = escapeHtmlSafe(resolved.displayName || 'esta obra');
-  el.innerHTML = 'Si terminas ' + crono.timerMinutes + ' min, <strong>' + name + '</strong> llevará <strong>' + fmtMinutos(projectedMin) + '</strong>';
+  const prefix = crono.mode === 'until'
+    ? ('Si llegas hasta ' + crono.untilTime)
+    : ('Si terminas ' + addMin + ' min');
+  el.innerHTML = prefix + ', <strong>' + name + '</strong> llevará <strong>' + fmtMinutos(projectedMin) + '</strong>';
   el.style.display = '';
 }
 
@@ -15821,13 +15841,14 @@ function _playCronoTick() {
 }
 
 function cronoSetMode(mode) {
-  if (mode !== 'stopwatch' && mode !== 'timer') return;
+  if (mode !== 'stopwatch' && mode !== 'timer' && mode !== 'until') return;
   if (crono.state !== 'idle') {
     // No permitir cambiar de modo mientras corre una sesión
     showToast('Termina la sesión actual antes de cambiar de modo');
     return;
   }
   crono.mode = mode;
+  if (mode === 'until') cronoEnsureUntilTime();
   cronoSaveState();
   cronoApplyModeUI();
   cronoUpdateStartBtn();
@@ -15835,14 +15856,17 @@ function cronoSetMode(mode) {
 
 function cronoApplyModeUI() {
   // Toggle visual
-  document.body.classList.toggle('crono-timer-mode', crono.mode === 'timer');
+  const timedMode = crono.mode === 'timer' || crono.mode === 'until';
+  document.body.classList.toggle('crono-timer-mode', timedMode);
+  document.body.classList.toggle('crono-until-mode', crono.mode === 'until');
   document.querySelectorAll('.crono-mode-opt').forEach(b => {
     b.classList.toggle('active', b.dataset.mode === crono.mode);
   });
   // Mover indicador
   cronoMoveModeIndicator();
   // Si timer mode, actualizar el slider visualmente y el botón "Plantar"
-  if (crono.mode === 'timer') {
+  if (timedMode) {
+    if (crono.mode === 'until') cronoEnsureUntilTime();
     cronoTimerRenderSlider();
   }
   // Mensaje contextual: primero destellos propios, luego frases de respaldo.
@@ -15923,6 +15947,58 @@ function cronoMoveModeIndicator() {
   indicator.style.left = active.offsetLeft + 'px';
 }
 
+function _cronoPad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function cronoDefaultUntilTime() {
+  const now = new Date();
+  const d = new Date(now);
+  d.setHours(d.getHours() + 1, 0, 0, 0);
+  if (d.toDateString() !== now.toDateString()) d.setHours(23, 59, 0, 0);
+  return _cronoPad2(d.getHours()) + ':' + _cronoPad2(d.getMinutes());
+}
+
+function cronoEnsureUntilTime() {
+  if (!/^\d{2}:\d{2}$/.test(crono.untilTime || '')) crono.untilTime = cronoDefaultUntilTime();
+  const input = document.getElementById('cronoUntilTime');
+  if (input && input.value !== crono.untilTime) input.value = crono.untilTime;
+}
+
+function cronoUntilTargetDate() {
+  if (!/^\d{2}:\d{2}$/.test(crono.untilTime || '')) return null;
+  const parts = crono.untilTime.split(':').map(n => parseInt(n, 10));
+  if (!Number.isFinite(parts[0]) || !Number.isFinite(parts[1])) return null;
+  const target = new Date();
+  target.setHours(parts[0], parts[1], 0, 0);
+  return target;
+}
+
+function cronoUntilMinutes() {
+  const target = cronoUntilTargetDate();
+  if (!target) return null;
+  const diff = target.getTime() - Date.now();
+  if (diff <= 30000) return null;
+  return Math.max(1, Math.ceil(diff / 60000));
+}
+
+function cronoUntilInfoText() {
+  const min = cronoUntilMinutes();
+  if (!min) return 'hora ya pasada';
+  return 'quedan ' + fmtMinutos(min);
+}
+
+function cronoSetUntilTime(value) {
+  crono.untilTime = value || '';
+  cronoSaveState();
+  cronoTimerRenderSlider();
+}
+
+function cronoTimerEffectiveMinutes() {
+  if (crono.mode === 'until') return cronoUntilMinutes();
+  return crono.timerMinutes;
+}
+
 // Renderiza el slider radial con crono.timerMinutes
 function cronoTimerRenderSlider() {
   const arc = document.getElementById('cronoTimerArc');
@@ -15930,8 +16006,8 @@ function cronoTimerRenderSlider() {
   const text = document.getElementById('cronoTimerText');
   if (!arc || !handle || !text) return;
 
-  const m = crono.timerMinutes;
-  const pct = m / TIMER_MAX_MINUTES; // 0..1
+  const m = cronoTimerEffectiveMinutes();
+  const pct = Math.min(m || 0, TIMER_MAX_MINUTES) / TIMER_MAX_MINUTES; // 0..1
   // Arc: stroke-dashoffset = circ - circ*pct
   arc.setAttribute('stroke-dashoffset', String(TIMER_CIRC * (1 - pct)));
 
@@ -15945,7 +16021,14 @@ function cronoTimerRenderSlider() {
   handle.setAttribute('cy', String(cy));
 
   // Texto
-  text.textContent = String(m);
+  text.textContent = String(m || '—');
+  const untilInput = document.getElementById('cronoUntilTime');
+  if (untilInput && crono.mode === 'until') {
+    cronoEnsureUntilTime();
+    untilInput.value = crono.untilTime;
+  }
+  const untilInfo = document.getElementById('cronoUntilInfo');
+  if (untilInfo) untilInfo.textContent = crono.mode === 'until' ? cronoUntilInfoText() : '';
   // Actualizar el botón "Plantar · N min"
   cronoUpdateStartBtn();
 }
@@ -16235,8 +16318,19 @@ function cronoStart() {
   crono.startTs = Date.now();
   crono.pausedMs = 0;
   crono.pauseStartTs = 0;
-  // Si modo timer, fijar el objetivo de minutos para auto-finalizar al llegar
-  crono.targetMinutes = (crono.mode === 'timer') ? crono.timerMinutes : null;
+  if (crono.mode === 'until') {
+    const untilMin = cronoUntilMinutes();
+    if (!untilMin) {
+      crono.state = 'idle';
+      showToast('Elige una hora futura');
+      cronoUpdateStartBtn();
+      return;
+    }
+    crono.targetMinutes = untilMin;
+  } else {
+    // Si modo timer, fijar el objetivo de minutos para auto-finalizar al llegar
+    crono.targetMinutes = (crono.mode === 'timer') ? crono.timerMinutes : null;
+  }
 
   cronoSaveState();
   cronoRender();
@@ -16265,7 +16359,18 @@ function cronoStartRest() {
   crono.startTs = Date.now();
   crono.pausedMs = 0;
   crono.pauseStartTs = 0;
-  crono.targetMinutes = (crono.mode === 'timer') ? crono.timerMinutes : null;
+  if (crono.mode === 'until') {
+    const untilMin = cronoUntilMinutes();
+    if (!untilMin) {
+      crono.state = 'idle';
+      showToast('Elige una hora futura');
+      cronoUpdateStartBtn();
+      return;
+    }
+    crono.targetMinutes = untilMin;
+  } else {
+    crono.targetMinutes = (crono.mode === 'timer') ? crono.timerMinutes : null;
+  }
 
   cronoSaveState();
   cronoRender();
@@ -17142,6 +17247,7 @@ function _startCronoClock() {
       const min = typeof getMinutosConcentradoHoy === 'function' ? getMinutosConcentradoHoy() : 0;
       hoyEl.textContent = 'hoy · ' + min + ' min';
     }
+    if (crono.state === 'idle' && crono.mode === 'until') cronoTimerRenderSlider();
   }
   _tick();
   if (_cronoClockInterval) clearInterval(_cronoClockInterval);
@@ -17172,6 +17278,7 @@ function cronoOnLeaveView() {
   if (typeof closeCronoAyerPanel === 'function') closeCronoAyerPanel();
   cronoExitFocus();
   document.body.classList.remove('crono-timer-mode');
+  document.body.classList.remove('crono-until-mode');
   document.body.classList.remove('crono-running');
 }
 
