@@ -1,6 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
+const APP_VERSION = '2026-07-04-bolitas-v2';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -13275,6 +13276,7 @@ function openSettings() {
   if (typeof refreshSoundOptionUI === 'function') refreshSoundOptionUI();
   if (typeof refreshHapticsUI === 'function') refreshHapticsUI();
   if (typeof updateForestPendientesBtn === 'function') updateForestPendientesBtn();
+  if (typeof updateAppVersionInfo === 'function') updateAppVersionInfo();
 }
 
 // Vuelve a la pantalla desde la que se abrió Ajustes.
@@ -17163,6 +17165,13 @@ window.addEventListener('load', function() {
 
 // ── Service Worker update detection ──────────────────────────────────────────
 let _swReg = null;
+let _appUpdateChecking = false;
+
+function updateAppVersionInfo(text) {
+  const el = document.getElementById('appVersionInfo');
+  if (!el) return;
+  el.textContent = text || ('Versión local: ' + APP_VERSION);
+}
 
 function _swUpdateInit() {
   if (!('serviceWorker' in navigator)) return;
@@ -17187,6 +17196,59 @@ function _swShowBanner() {
 
 function swDoUpdate() {
   if (_swReg && _swReg.waiting) _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+}
+
+async function checkForAppUpdate(manual) {
+  if (_appUpdateChecking) return;
+  _appUpdateChecking = true;
+  const btn = document.getElementById('appUpdateCheckBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Buscando...';
+  }
+  updateAppVersionInfo('Buscando actualización...');
+
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        _swReg = reg;
+        await reg.update().catch(() => {});
+        if (reg.waiting) {
+          _swShowBanner();
+          updateAppVersionInfo('Nueva versión lista. Pulsa Actualizar.');
+          if (manual) showToast('Nueva versión disponible');
+          return;
+        }
+      }
+    }
+
+    const res = await fetch('./app.js?update=' + Date.now(), { cache: 'no-store' });
+    const txt = await res.text();
+    const markerA = "APP_VERSION = '" + APP_VERSION + "'";
+    const markerB = 'APP_VERSION = "' + APP_VERSION + '"';
+    if (txt && !txt.includes(markerA) && !txt.includes(markerB)) {
+      updateAppVersionInfo('Hay una versión distinta. Recargando...');
+      if (manual) showToast('Nueva versión encontrada · recargando');
+      setTimeout(() => {
+        const base = window.location.pathname || './';
+        window.location.href = base + '?v=' + Date.now();
+      }, 650);
+      return;
+    }
+
+    updateAppVersionInfo('Versión local: ' + APP_VERSION + ' · al día');
+    if (manual) showToast('No hay actualización pendiente');
+  } catch (err) {
+    updateAppVersionInfo('No se pudo comprobar. Revisa conexión.');
+    if (manual) showToast('No pude comprobar actualizaciones');
+  } finally {
+    _appUpdateChecking = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Buscar actualización';
+    }
+  }
 }
 
 // Boot the app — runs auth, theme, draft restore, racha, etc.
