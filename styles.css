@@ -796,6 +796,14 @@
     display: block; font-size: 15px; color: var(--text3);
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
   }
+  [data-theme^="marmol"] .crono-run-target.is-extended {
+    animation: cronoTargetExtended 0.55s cubic-bezier(0.16,1,0.3,1);
+  }
+  @keyframes cronoTargetExtended {
+    0%   { color: var(--accent); transform: translateY(0) scale(1); }
+    45%  { color: var(--accent); transform: translateY(-1px) scale(1.045); }
+    100% { color: var(--text3); transform: translateY(0) scale(1); }
+  }
 
   /* Cápsula del hito con estrella, dentro de la tarjeta */
   [data-theme^="marmol"] .crono-run-milestone {
@@ -835,6 +843,21 @@
   [data-theme^="marmol"] .crono-ctrl-btn.stop::after {
     content: "Terminar y guardar"; font-size: 14px;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  }
+  [data-theme^="marmol"] .crono-ctrl-btn.extend {
+    width: auto;
+    height: 42px;
+    min-width: 112px;
+    padding: 0 20px;
+    border-radius: 999px;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--accent);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.035);
+  }
+  [data-theme^="marmol"] .crono-ctrl-btn.extend:hover {
+    background: color-mix(in oklab, var(--accent) 9%, var(--bg3));
+    border-color: color-mix(in oklab, var(--accent) 28%, var(--border2));
   }
 
   /* Tarjeta "Esta semana" */
@@ -6071,6 +6094,18 @@
     color: var(--text3);
   }
   .crono-ctrl-btn.stop:hover { color: var(--text2); border-color: var(--border); }
+  .crono-ctrl-btn.extend {
+    width: auto;
+    min-width: 74px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border-color: color-mix(in oklab, var(--crono-color, var(--accent)) 34%, var(--border2));
+    color: var(--crono-color, var(--accent));
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
 
   /* Overlay de pausa: cubre toda la pantalla, difumina el fondo, y muestra el
      cronómetro de pausa en primer plano. Estilo Forest, transición lenta. */

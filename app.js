@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-04-day-projection-v6';
+const APP_VERSION = '2026-07-04-extend-timer-v7';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -15281,8 +15281,12 @@ function cronoRender() {
   const ctrl = document.getElementById('cronoControls');
   if (!ctrl) return;
   if (crono.state === 'running') {
+    const extendBtn = crono.targetMinutes != null && !crono.isRest
+      ? '<button class="crono-ctrl-btn extend" onclick="cronoExtendTimer(5)" aria-label="Añadir 5 minutos">+5 min</button>'
+      : '';
     ctrl.innerHTML =
       '<button class="crono-ctrl-btn stop" onclick="cronoStop()" aria-label="Parar">' + CRONO_ICONS.stop + '</button>' +
+      extendBtn +
       '<button class="crono-ctrl-btn primary" onclick="cronoPause()" aria-label="Pausar">' + CRONO_ICONS.pause + '</button>';
   } else if (crono.state === 'paused') {
     ctrl.innerHTML =
@@ -16366,6 +16370,36 @@ function cronoStartRest() {
   cronoStartTick();
   cronoAcquireWakeLock();
   if (typeof SFX !== 'undefined' && SFX.startSession) SFX.startSession();
+}
+
+function cronoTargetEndClock() {
+  if (crono.targetMinutes == null) return '';
+  const remainingMs = Math.max(0, crono.targetMinutes * 60000 - cronoCurrentMs());
+  const end = new Date(Date.now() + remainingMs);
+  return _cronoPad2(end.getHours()) + ':' + _cronoPad2(end.getMinutes());
+}
+
+function cronoExtendTimer(minutes) {
+  if (crono.state !== 'running' || crono.targetMinutes == null || crono.isRest) {
+    showToast('Solo durante un temporizador activo');
+    return;
+  }
+  const extra = Math.max(1, Math.round(Number(minutes) || TIMER_STEP_MINUTES));
+  crono.targetMinutes += extra;
+  if (crono.mode === 'until') crono.untilTime = cronoTargetEndClock();
+  crono.lastCountdownSecond = null;
+  cronoSaveState();
+  cronoRender();
+  if (!crono.tickInterval) cronoStartTick();
+  cronoUpdateTimerProgress();
+  const targetEl = document.getElementById('cronoRunTarget');
+  if (targetEl) {
+    targetEl.classList.remove('is-extended');
+    void targetEl.offsetWidth;
+    targetEl.classList.add('is-extended');
+  }
+  try { Haptics.light(); } catch(e) {}
+  try { _playCronoTick(); } catch(e) {}
 }
 
 function cronoPause() {
