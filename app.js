@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-04-until-time-v5';
+const APP_VERSION = '2026-07-04-day-projection-v6';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -15346,38 +15346,27 @@ function cronoUpdateStartBtn() {
 
 function cronoUpdateTimerProjection() {
   const el = document.getElementById('cronoTimerProjection');
-  const sel = document.getElementById('cronoObraSelect');
-  if (!el || !sel) return;
+  if (!el) return;
 
   const isTimedMode = crono.mode === 'timer' || crono.mode === 'until';
-  if (crono.state !== 'idle' || !isTimedMode || !sel.value) {
+  if (crono.state !== 'idle' || !isTimedMode) {
     el.style.display = 'none';
     el.innerHTML = '';
     return;
   }
 
-  const resolved = cronoResolveSelectValue(sel.value);
-  if (!resolved) {
-    el.style.display = 'none';
-    el.innerHTML = '';
-    return;
-  }
-
-  const currentMin = resolved.movId
-    ? getMinutosMovimiento(resolved.obraId, resolved.movId)
-    : getMinutosObra(resolved.obraId);
   const addMin = crono.mode === 'until' ? cronoUntilMinutes() : crono.timerMinutes;
   if (!addMin) {
     el.style.display = 'none';
     el.innerHTML = '';
     return;
   }
-  const projectedMin = Math.max(0, currentMin) + Math.max(0, addMin || 0);
-  const name = escapeHtmlSafe(resolved.displayName || 'esta obra');
+  const todayMin = typeof getMinutosConcentradoHoy === 'function' ? getMinutosConcentradoHoy() : 0;
+  const projectedMin = Math.max(0, todayMin) + Math.max(0, addMin || 0);
   const prefix = crono.mode === 'until'
     ? ('Si llegas hasta ' + crono.untilTime)
     : ('Si terminas ' + addMin + ' min');
-  el.innerHTML = prefix + ', <strong>' + name + '</strong> llevará <strong>' + fmtMinutos(projectedMin) + '</strong>';
+  el.innerHTML = prefix + ', <strong>hoy llevarás ' + fmtMinutos(projectedMin) + '</strong>';
   el.style.display = '';
 }
 
