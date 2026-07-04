@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-04-bolitas-v2';
+const APP_VERSION = '2026-07-04-bolitas-timer-v3';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -14911,6 +14911,7 @@ function saveCronoPasajeScore(id, phase, score) {
   p.lastStudiedAt = now.toISOString();
   if (phase === 'after') _upsertPasajeSolToday(p, _scoreToSol(val), now);
   if (p.focusHistory.length > 160) p.focusHistory = p.focusHistory.slice(-160);
+  if (log.cold && log.after) _pasajeOpenId = null;
   saveData();
   if (typeof showSavedCheck === 'function') showSavedCheck();
   renderCronoPasajes();
@@ -15330,6 +15331,34 @@ function cronoUpdateStartBtn() {
     }
   }
   cronoUpdateSolidityActions();
+  cronoUpdateTimerProjection();
+}
+
+function cronoUpdateTimerProjection() {
+  const el = document.getElementById('cronoTimerProjection');
+  const sel = document.getElementById('cronoObraSelect');
+  if (!el || !sel) return;
+
+  if (crono.state !== 'idle' || crono.mode !== 'timer' || !sel.value) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+
+  const resolved = cronoResolveSelectValue(sel.value);
+  if (!resolved) {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+
+  const currentMin = resolved.movId
+    ? getMinutosMovimiento(resolved.obraId, resolved.movId)
+    : getMinutosObra(resolved.obraId);
+  const projectedMin = Math.max(0, currentMin) + Math.max(0, crono.timerMinutes || 0);
+  const name = escapeHtmlSafe(resolved.displayName || 'esta obra');
+  el.innerHTML = 'Si terminas ' + crono.timerMinutes + ' min, <strong>' + name + '</strong> llevará <strong>' + fmtMinutos(projectedMin) + '</strong>';
+  el.style.display = '';
 }
 
 // Aplica un color (hex o null) a todos los elementos del cronómetro que deben
