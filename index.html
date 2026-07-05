@@ -145,21 +145,27 @@
 
   <div class="session-insight-stack" id="sessionInsightStack" style="display:none"></div>
 
-  <div class="session-hero">
+  <div class="session-hero session-ritmo-panel">
     <div class="notes-deco" id="notesDeco"></div>
     <div id="rachaDisplay" style="display:none;margin-bottom:6px"></div>
-    <div class="session-hero-title">¿Cómo estás hoy?</div>
 
-    <div class="estado-faces" id="estadoFaces" role="radiogroup" aria-label="¿Cómo estás hoy?"></div>
+    <section class="ritmo-card ritmo-card-bienestar" aria-label="Bienestar">
+      <div class="ritmo-card-head">
+        <h2>Bienestar</h2>
+        <button type="button" class="ritmo-info" onclick="showToast('El ánimo se registra como momentos con hora')">i</button>
+      </div>
+      <div class="estado-faces ritmo-scale" id="estadoFaces" role="radiogroup" aria-label="Bienestar actual"></div>
+    </section>
 
-    <div class="session-time-label">Tiempo disponible</div>
-    <div class="time-slider-wrap">
-      <input type="range" class="estado-slider time-slider" id="timeSlider" min="15" max="300" step="15" value="120"
-        oninput="setTimeFromSlider(this.value)">
-      <span class="time-slider-val" id="timeSliderVal">2 h</span>
-    </div>
+    <section class="ritmo-card ritmo-card-sueno" aria-label="Sueño">
+      <div class="ritmo-card-head">
+        <h2>Sueño</h2>
+        <button type="button" class="ritmo-info" onclick="showToast('El sueño se guarda para el día y puedes corregirlo')">i</button>
+      </div>
+      <div class="estado-faces ritmo-scale" id="suenoFaces" role="radiogroup" aria-label="Sueño de hoy"></div>
+    </section>
 
-    <button class="generate-btn" onclick="generateSession()">Generar sesión</button>
+    <div class="ritmo-moment-summary" id="estadoEventSummary"></div>
   </div>
 
   <div class="session-plan" id="sessionPlan"></div>

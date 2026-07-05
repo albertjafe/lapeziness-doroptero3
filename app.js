@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-04-extend-timer-v7';
+const APP_VERSION = '2026-07-05-ritmo-cards-v8';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -74,6 +74,18 @@ function _mergePlants(a, b) {
   out.sort((x, y) => (x.startedAt < y.startedAt ? -1 : 1));
   return out;
 }
+function _estadoEventKey(e) { return (e && (e.id || ((e.at || '') + '|' + (e.value || '') + '|' + (e.label || '')))) || ''; }
+function _mergeEstadoEventos(a, b) {
+  const out = [], seen = new Set();
+  (a || []).concat(b || []).forEach(e => {
+    const k = _estadoEventKey(e);
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    out.push(e);
+  });
+  out.sort((x, y) => (x.at || '').localeCompare(y.at || ''));
+  return out.slice(-2000);
+}
 function _sesionRealMin(s) {
   return (s.items || []).reduce((acc, it) =>
     acc + (typeof _itemMinReal === 'function' ? _itemMinReal(it) : (it.minutosReales || 0)), 0);
@@ -98,6 +110,7 @@ function _mergeStudyHistory(base, other) {
   merged.sessionPlants = _mergePlants(base.sessionPlants, other.sessionPlants);
   merged.forestPlants  = _mergePlants(base.forestPlants, other.forestPlants);
   merged.sesiones      = _mergeSesiones(base.sesiones, other.sesiones);
+  merged.estadoEventos = _mergeEstadoEventos(base.estadoEventos, other.estadoEventos);
   return merged;
 }
 
@@ -179,7 +192,9 @@ async function loadFromCloud() {
       try {
         const localMin = localDb ? (localDb.sessionPlants || []).length + (localDb.forestPlants || []).length : 0;
         const cloudMin = (data.data.sessionPlants || []).length + (data.data.forestPlants || []).length;
-        if (localMin > cloudMin) {
+        const localEstadoN = localDb ? (localDb.estadoEventos || []).length : 0;
+        const cloudEstadoN = (data.data.estadoEventos || []).length;
+        if (localMin > cloudMin || localEstadoN > cloudEstadoN) {
           sb.from('user_data').upsert({ id: user.id, data: db, updated_at: new Date().toISOString() });
         }
       } catch(e) {}
@@ -229,6 +244,7 @@ if (!db.sesiones) db.sesiones = [];
 if (!db.eventos) db.eventos = [];
 if (!db.obras) db.obras = [];
 if (!db.forestPlants) db.forestPlants = [];
+if (!db.estadoEventos) db.estadoEventos = [];
 // db.sessionPlants[]: array paralelo a forestPlants con UN registro por sub-sesión
 // del cronómetro. Persiste los timestamps detallados aunque la sesión en
 // db.sesiones[] sea descartada por el cap. Estructura por entrada:
@@ -485,35 +501,46 @@ function updateHeader() {
 
 let selectedEnergy = 'normal';
 let selectedTime = 2;
-// Estado diario: bienestar (fusión de energía/calma) + sueño.
-// Para retrocompatibilidad con código antiguo que lee .energia/.claridad,
-// los exponemos como alias en el getter de actualización.
-// Estado diario: UNA sola métrica `estado` (0-100). Los demás campos
-// (bienestar/sueno/energia/claridad) se conservan como alias retrocompatibles,
-// siempre iguales a `estado`, para no romper datos ni lecturas antiguas.
+// Estado diario: `estado`/`bienestar` es el ánimo actual; `sueno` es una métrica
+// diaria independiente. energia/claridad quedan como alias para código antiguo.
 let estadoDiario = { estado: 70, bienestar: 70, sueno: 70, energia: 70, claridad: 70 };
 // ¿Ha introducido Alberto su estado HOY (de forma explícita)? Solo entonces la
 // predicción se condiciona a cómo está. El reset de día y los guardados de fondo
 // lo dejan en false; pickEstado/updateEstado lo ponen en true.
 let _estadoUserSet = false;
+let _suenoUserSet = false;
 const ESTADO_COLORS = { bienestar: '#c8a030', sueno: '#a090e0', energia: '#c8a030', claridad: '#e08898' };
 
 // Las 5 caras del selector de estado. value = 0-100 que se guarda internamente.
 const ESTADO_FACES = [
-  { v: 12, emoji: '😣', label: 'Fatal' },
-  { v: 34, emoji: '😕', label: 'Flojo' },
-  { v: 56, emoji: '😐', label: 'Normal' },
-  { v: 78, emoji: '🙂', label: 'Bien' },
-  { v: 96, emoji: '😄', label: 'Pleno' },
+  { v: 12, emoji: '😣', label: 'Muy mal', icon: 'face-very-bad' },
+  { v: 34, emoji: '😕', label: 'Mal', icon: 'face-bad' },
+  { v: 56, emoji: '😐', label: 'Regular', icon: 'face-neutral' },
+  { v: 78, emoji: '🙂', label: 'Bien', icon: 'face-good' },
+  { v: 96, emoji: '😄', label: 'Muy bien', icon: 'face-great' },
+];
+
+const SUENO_FACES = [
+  { v: 12, label: 'Muy poco', icon: 'moon-lowest' },
+  { v: 34, label: 'Poco', icon: 'moon-low' },
+  { v: 56, label: 'Normal', icon: 'moon-mid' },
+  { v: 78, label: 'Bien', icon: 'moon-good' },
+  { v: 96, label: 'Muy bien', icon: 'moon-best' },
 ];
 
 // Valor canónico actual del estado (con migración perezosa desde el modelo viejo).
 function estadoActualVal() {
   if (typeof estadoDiario.estado === 'number') return estadoDiario.estado;
-  if (typeof estadoDiario.bienestar === 'number' && typeof estadoDiario.sueno === 'number') {
-    return Math.round((estadoDiario.bienestar + estadoDiario.sueno) / 2);
-  }
   if (typeof estadoDiario.bienestar === 'number') return estadoDiario.bienestar;
+  if (typeof estadoDiario.energia === 'number' && typeof estadoDiario.claridad === 'number') {
+    return Math.round((estadoDiario.energia + estadoDiario.claridad) / 2);
+  }
+  if (typeof estadoDiario.energia === 'number') return estadoDiario.energia;
+  return 70;
+}
+
+function suenoActualVal() {
+  if (typeof estadoDiario.sueno === 'number') return estadoDiario.sueno;
   return 70;
 }
 
@@ -526,11 +553,19 @@ function estadoToFaceIndex(val) {
   return best;
 }
 
-// Fija todos los alias a un mismo valor de estado.
+function suenoToFaceIndex(val) {
+  let best = 0, bestD = Infinity;
+  SUENO_FACES.forEach((f, i) => {
+    const d = Math.abs(f.v - val);
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  return best;
+}
+
+// Fija los alias de ánimo sin tocar sueño.
 function _setEstadoAll(n) {
   estadoDiario.estado = n;
   estadoDiario.bienestar = n;
-  estadoDiario.sueno = n;
   estadoDiario.energia = n;
   estadoDiario.claridad = n;
 }
@@ -541,6 +576,7 @@ function pickEstado(idx) {
   if (!f) return;
   _estadoUserSet = true;
   _setEstadoAll(f.v);
+  recordEstadoEvent(f);
   selectedEnergy = f.v >= 65 ? 'alta' : f.v >= 35 ? 'normal' : 'baja';
   refreshEstadoFacesUI();
   try { Haptics.medium(); } catch(e) {}
@@ -554,6 +590,62 @@ function pickEstado(idx) {
   }, 150);
 }
 
+function pickSueno(idx) {
+  const f = SUENO_FACES[idx];
+  if (!f) return;
+  _suenoUserSet = true;
+  estadoDiario.sueno = f.v;
+  refreshSuenoFacesUI();
+  try { Haptics.light(); } catch(e) {}
+  try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
+  clearTimeout(pickSueno._t);
+  pickSueno._t = setTimeout(() => {
+    saveEstadoDiario();
+    if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
+  }, 150);
+}
+
+function _estadoEventosLocal() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('alberto_estado_eventos_v1') || '[]');
+    return Array.isArray(raw) ? raw : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function _saveEstadoEventosLocal(items) {
+  try {
+    localStorage.setItem('alberto_estado_eventos_v1', JSON.stringify((items || []).slice(-2000)));
+  } catch(e) {}
+}
+
+function ensureEstadoEventos() {
+  if (typeof db !== 'object' || !db) return _estadoEventosLocal();
+  if (!Array.isArray(db.estadoEventos)) db.estadoEventos = _estadoEventosLocal();
+  return db.estadoEventos;
+}
+
+function recordEstadoEvent(face) {
+  const arr = ensureEstadoEventos();
+  const now = new Date();
+  const entry = {
+    id: 'estado_' + now.getTime() + '_' + Math.random().toString(36).slice(2, 7),
+    at: now.toISOString(),
+    date: now.toDateString(),
+    value: face.v,
+    label: face.label,
+  };
+  arr.push(entry);
+  if (arr.length > 2000) arr.splice(0, arr.length - 2000);
+  _saveEstadoEventosLocal(arr);
+  refreshEstadoEventSummary();
+  clearTimeout(recordEstadoEvent._t);
+  recordEstadoEvent._t = setTimeout(() => {
+    if (typeof saveData === 'function') saveData();
+  }, 600);
+}
+
 function refreshEstadoFacesUI() {
   const idx = estadoToFaceIndex(estadoActualVal());
   document.querySelectorAll('#estadoFaces .estado-face').forEach((b, i) => {
@@ -563,6 +655,32 @@ function refreshEstadoFacesUI() {
   });
 }
 
+function refreshSuenoFacesUI() {
+  const idx = suenoToFaceIndex(suenoActualVal());
+  document.querySelectorAll('#suenoFaces .estado-face').forEach((b, i) => {
+    const on = i === idx;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+}
+
+function refreshEstadoEventSummary() {
+  const el = document.getElementById('estadoEventSummary');
+  if (!el) return;
+  const today = new Date().toDateString();
+  const todayEvents = ensureEstadoEventos().filter(e => e && e.date === today);
+  if (!todayEvents.length) {
+    el.textContent = 'El ánimo se registra por momentos: toca una cara cuando cambie.';
+    return;
+  }
+  const last = todayEvents[todayEvents.length - 1];
+  let hour = '';
+  try {
+    hour = new Date(last.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch(e) {}
+  el.textContent = 'Último ánimo: ' + last.label + (hour ? ' · ' + hour : '') + ' · ' + todayEvents.length + ' registros hoy';
+}
+
 // Persiste estadoDiario en localStorage con marca de fecha.
 // La fecha permite que al cambiar de día el estado se reinicie a defaults
 // (70/70) en lugar de heredar el del día anterior.
@@ -570,13 +688,15 @@ function saveEstadoDiario() {
   try {
     const todayStr = new Date().toDateString();
     const n = estadoActualVal();
+    const sueno = suenoActualVal();
     const payload = {
       date: todayStr,
       estado: n,
       userSet: _estadoUserSet, // true solo si Alberto lo introdujo hoy
-      // Alias retrocompatibles (todos = estado)
+      suenoUserSet: _suenoUserSet,
+      // Alias retrocompatibles de ánimo + sueño independiente
       bienestar: n,
-      sueno: n,
+      sueno,
       energia: n,
       claridad: n,
     };
@@ -610,7 +730,7 @@ function persistEstadoToSession() {
   if (idx < 0) return; // No hay sesión de hoy todavía
   const sesion = db.sesiones[idx];
   const n = estadoActualVal();
-  sesion.estado = { estado: n, bienestar: n, sueno: n, energia: n, claridad: n };
+  sesion.estado = { estado: n, bienestar: n, sueno: suenoActualVal(), energia: n, claridad: n };
 }
 
 // Carga el estado diario priorizando la fuente más fresca:
@@ -624,9 +744,6 @@ function loadEstadoDiarioFromSources() {
   const deriveEstado = src => {
     if (!src) return null;
     if (typeof src.estado === 'number') return src.estado;
-    if (typeof src.bienestar === 'number' && typeof src.sueno === 'number') {
-      return Math.round((src.bienestar + src.sueno) / 2);
-    }
     if (typeof src.bienestar === 'number') return src.bienestar;
     if (typeof src.energia === 'number' && typeof src.claridad === 'number') {
       return Math.round((src.energia + src.claridad) / 2);
@@ -634,17 +751,36 @@ function loadEstadoDiarioFromSources() {
     if (typeof src.energia === 'number') return src.energia;
     return null;
   };
+  const deriveSueno = src => {
+    if (!src) return null;
+    if (typeof src.sueno === 'number') return src.sueno;
+    return null;
+  };
   // 1) db (la nube, si ya está cargada)
   if (db && db.estadoDiario && db.estadoDiario.date === todayStr) {
     const v = deriveEstado(db.estadoDiario);
-    if (v != null) { _estadoUserSet = !!db.estadoDiario.userSet; _setEstadoAll(v); return true; }
+    const sleep = deriveSueno(db.estadoDiario);
+    if (v != null) {
+      _estadoUserSet = !!db.estadoDiario.userSet;
+      _suenoUserSet = !!db.estadoDiario.suenoUserSet;
+      _setEstadoAll(v);
+      if (sleep != null) estadoDiario.sueno = sleep;
+      return true;
+    }
   }
   // 2) localStorage
   try {
     const saved = JSON.parse(localStorage.getItem('alberto_estado_v1') || 'null');
     if (saved && (saved.date === todayStr || !saved.date)) {
       const v = deriveEstado(saved);
-      if (v != null) { _estadoUserSet = !!(saved.date === todayStr && saved.userSet); _setEstadoAll(v); return true; }
+      const sleep = deriveSueno(saved);
+      if (v != null) {
+        _estadoUserSet = !!(saved.date === todayStr && saved.userSet);
+        _suenoUserSet = !!(saved.date === todayStr && saved.suenoUserSet);
+        _setEstadoAll(v);
+        if (sleep != null) estadoDiario.sueno = sleep;
+        return true;
+      }
     }
   } catch(e) {}
   // 3) Defaults — ya están en estadoDiario al declararlo (70/70)
@@ -680,10 +816,16 @@ function fillEstadoSlider(slider, color) {
 
 function updateEstado(dim, val) {
   const n = parseInt(val);
-  _estadoUserSet = true;
-  estadoDiario[dim] = n;
+  if (dim === 'sueno') {
+    _suenoUserSet = true;
+    estadoDiario.sueno = n;
+  } else {
+    _estadoUserSet = true;
+    estadoDiario[dim] = n;
+  }
   // Mantener alias retrocompat: bienestar refleja energia y claridad a la vez
   if (dim === 'bienestar') {
+    estadoDiario.estado = n;
     estadoDiario.energia = n;
     estadoDiario.claridad = n;
   }
@@ -692,10 +834,10 @@ function updateEstado(dim, val) {
   const slider = document.getElementById('est-' + dim);
   fillEstadoSlider(slider, ESTADO_COLORS[dim]);
   // alias para algoritmo de sesión
-  const ref = (estadoDiario.bienestar != null)
-    ? estadoDiario.bienestar
-    : Math.round((estadoDiario.energia + estadoDiario.claridad) / 2);
-  selectedEnergy = ref >= 65 ? 'alta' : ref >= 35 ? 'normal' : 'baja';
+  if (dim !== 'sueno') {
+    const ref = estadoActualVal();
+    selectedEnergy = ref >= 65 ? 'alta' : ref >= 35 ? 'normal' : 'baja';
+  }
   // Persistir cada cambio (debounce ligero para no martillear al arrastrar)
   clearTimeout(updateEstado._t);
   updateEstado._t = setTimeout(() => {
@@ -706,24 +848,64 @@ function updateEstado(dim, val) {
   }, 250);
 }
 
+function ritmoIconSvg(icon) {
+  const faceMouth = {
+    'face-very-bad': '<path d="M23 47 Q32 36 41 47"/>',
+    'face-bad': '<path d="M24 45 Q32 39 40 45"/>',
+    'face-neutral': '<path d="M24 43 H40"/>',
+    'face-good': '<path d="M24 41 Q32 49 40 41"/>',
+    'face-great': '<path d="M22 40 Q32 52 42 40"/>',
+  };
+  if (faceMouth[icon]) {
+    const happyEyes = icon === 'face-great'
+      ? '<path d="M20 27 Q24 24 28 27"/><path d="M36 27 Q40 24 44 27"/>'
+      : '<circle cx="24" cy="27" r="1.8"/><circle cx="40" cy="27" r="1.8"/>';
+    return '<svg class="ritmo-icon-svg" viewBox="0 0 64 64" aria-hidden="true">' +
+      '<circle cx="32" cy="32" r="24"/>' + happyEyes + faceMouth[icon] + '</svg>';
+  }
+  const moonTilt = {
+    'moon-lowest': -18,
+    'moon-low': -8,
+    'moon-mid': 0,
+    'moon-good': 10,
+    'moon-best': 18,
+  }[icon] || 0;
+  return '<svg class="ritmo-icon-svg ritmo-moon-svg" viewBox="0 0 64 64" aria-hidden="true">' +
+    '<g transform="rotate(' + moonTilt + ' 32 32)">' +
+      '<path d="M42 12 C31 16 24 27 27 39 C30 51 42 56 53 50 C48 58 38 62 28 59 C15 55 8 42 12 29 C16 16 29 8 42 12 Z"/>' +
+      (icon === 'moon-best' ? '<path d="M22 33 Q26 30 30 33"/><path d="M36 33 Q40 30 44 33"/><path d="M29 42 Q34 47 40 42"/>' : '') +
+    '</g></svg>';
+}
+
+function ritmoChoiceHTML(item, idx, fnName, groupName) {
+  return '<button type="button" class="estado-face ritmo-choice" role="radio" aria-checked="false"' +
+    ' aria-label="' + item.label + '" title="' + item.label + '" onclick="' + fnName + '(' + idx + ')">' +
+    '<span class="estado-face-emoji ritmo-icon">' + ritmoIconSvg(item.icon) + '</span>' +
+    '<span class="estado-face-label">' + item.label + '</span>' +
+    '<span class="ritmo-dot" aria-hidden="true"></span>' +
+    '</button>';
+}
+
 // (Conserva el nombre por compatibilidad con sus call sites: ahora monta las
-// 5 caras del estado en vez de sliders.)
+// tarjetas de bienestar/sueño en vez de sliders.)
 function initEstadoSliders() {
   // Migración perezosa al modelo de una sola variable.
   _setEstadoAll(estadoActualVal());
   const host = document.getElementById('estadoFaces');
-  if (!host) return;
-  if (!host.dataset.built) {
-    host.innerHTML = ESTADO_FACES.map((f, i) =>
-      '<button type="button" class="estado-face" role="radio" aria-checked="false"' +
-      ' aria-label="' + f.label + '" title="' + f.label + '" onclick="pickEstado(' + i + ')">' +
-      '<span class="estado-face-emoji">' + f.emoji + '</span>' +
-      '<span class="estado-face-label">' + f.label + '</span>' +
-      '</button>'
-    ).join('');
+  if (host && !host.dataset.built) {
+    host.innerHTML = ESTADO_FACES.map((f, i) => ritmoChoiceHTML(f, i, 'pickEstado', 'bienestar')).join('');
+    host.classList.add('ritmo-scale');
     host.dataset.built = '1';
   }
+  const sleepHost = document.getElementById('suenoFaces');
+  if (sleepHost && !sleepHost.dataset.built) {
+    sleepHost.innerHTML = SUENO_FACES.map((f, i) => ritmoChoiceHTML(f, i, 'pickSueno', 'sueno')).join('');
+    sleepHost.classList.add('ritmo-scale');
+    sleepHost.dataset.built = '1';
+  }
   refreshEstadoFacesUI();
+  refreshSuenoFacesUI();
+  refreshEstadoEventSummary();
 }
 
 function selectEnergy(btn) {
@@ -1583,9 +1765,11 @@ function handleDayChange() {
     // Borrar el draft local (saveDraft pone date=hoy, así que loadDraft del día
     // siguiente lo descartaría — pero por limpieza lo borramos ahora)
     try { localStorage.removeItem(DRAFT_KEY); } catch(e) {}
-    // ★ Resetear el estado del día a default (70). Sólo persiste DURANTE el día.
+    // ★ Resetear estado/sueño del día a default (70). Sólo persiste DURANTE el día.
     _estadoUserSet = false; // nuevo día: aún no lo ha introducido
+    _suenoUserSet = false;
     _setEstadoAll(70);
+    estadoDiario.sueno = 70;
     saveEstadoDiario(); // guarda con la nueva fecha
     if (typeof initEstadoSliders === 'function') initEstadoSliders();
     // Limpiar el DOM del plan
@@ -1737,7 +1921,7 @@ function _autoSaveTodayPlanNow() {
       // Tomamos el valor más reciente conocido entre db.estadoDiario (nube)
       // y estadoDiario (memoria), pero priorizando la memoria por ser
       // posiblemente más fresca.
-      estado: (() => { const n = estadoActualVal(); return { estado: n, bienestar: n, sueno: n, energia: n, claridad: n }; })(),
+      estado: (() => { const n = estadoActualVal(); return { estado: n, bienestar: n, sueno: suenoActualVal(), energia: n, claridad: n }; })(),
       // Persistir el aggregate (sub-sesiones, pasajes) para reconstrucción
       _aggregate: JSON.parse(JSON.stringify(sessionAggregate || {})),
       _autoSaved: true,
@@ -8911,7 +9095,6 @@ function _sesionEstadoVal(s) {
   const e = s && s.estado;
   if (!e) return null;
   if (typeof e.estado === 'number') return e.estado;
-  if (typeof e.bienestar === 'number' && typeof e.sueno === 'number') return Math.round((e.bienestar + e.sueno) / 2);
   if (typeof e.bienestar === 'number') return e.bienestar;
   if (typeof e.energia === 'number' && typeof e.claridad === 'number') return Math.round((e.energia + e.claridad) / 2);
   if (typeof e.energia === 'number') return e.energia;
@@ -8921,6 +9104,26 @@ function _sesionEstadoVal(s) {
 // Shared SVG builder — called from inline section and from the full-screen modal.
 // Una sola serie protagonista "Estado" (área + línea con degradado) y, en
 // secundario, la valoración de la "Sesión" como línea fina punteada.
+function _smoothSvgPath(pts) {
+  if (!pts || !pts.length) return '';
+  if (pts.length === 1) return 'M' + pts[0].x.toFixed(1) + ',' + pts[0].y.toFixed(1);
+  let d = 'M' + pts[0].x.toFixed(1) + ',' + pts[0].y.toFixed(1);
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] || p2;
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ' C' + c1x.toFixed(1) + ',' + c1y.toFixed(1) + ' '
+      + c2x.toFixed(1) + ',' + c2y.toFixed(1) + ' '
+      + p2.x.toFixed(1) + ',' + p2.y.toFixed(1);
+  }
+  return d;
+}
+
 function _buildEstadoChartSvg(W, H, sesiones) {
   const pad = { l: 30, r: 14, t: 20, b: 32 };
   const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
@@ -8961,9 +9164,10 @@ function _buildEstadoChartSvg(W, H, sesiones) {
   }).filter(Boolean);
   let estadoSvg = '';
   if (ePts.length >= 2) {
-    const line = ePts.map((p,i) => (i===0?'M':'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+    const line = _smoothSvgPath(ePts);
+    const curveRest = line.replace(/^M[^C]+/, '');
     const area = 'M' + ePts[0].x.toFixed(1) + ',' + baseY + ' '
-      + ePts.map(p => 'L' + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')
+      + 'L' + ePts[0].x.toFixed(1) + ',' + ePts[0].y.toFixed(1) + ' ' + curveRest
       + ' L' + ePts[ePts.length-1].x.toFixed(1) + ',' + baseY + ' Z';
     estadoSvg += '<path d="' + area + '" fill="url(#' + id + 'a)"/>'
       + '<path d="' + line + '" fill="none" stroke="url(#' + id + 'l)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" filter="url(#' + id + 'g)"/>'
@@ -8978,7 +9182,7 @@ function _buildEstadoChartSvg(W, H, sesiones) {
     .map(s => ({ x: xOf(new Date(s.date).getTime()), y: yOf(s.rating) }));
   let ratingSvg = '';
   if (rPts.length >= 2) {
-    const line = rPts.map((p,i) => (i===0?'M':'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+    const line = _smoothSvgPath(rPts);
     ratingSvg = '<path d="' + line + '" fill="none" stroke="var(--orange)" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="4,3" opacity="0.6"/>';
   }
 
@@ -9048,7 +9252,7 @@ function openEstadoChartModal() {
 
 function _renderEstadoChartModal() {
   const all = (db.sesiones || [])
-    .filter(s => s.estado && (typeof s.estado.bienestar === 'number' || typeof s.estado.energia === 'number'))
+    .filter(s => s.estado && (typeof s.estado.estado === 'number' || typeof s.estado.bienestar === 'number' || typeof s.estado.energia === 'number'))
     .slice()
     .sort((a, b) => new Date(a.date) - new Date(b.date));
   const sesiones = _estadoChartRangeDays
@@ -9071,7 +9275,7 @@ function renderEstadoSection() {
   // Aceptamos sesiones con bienestar (nuevas) o con energia (antiguas, que
   // se migran al vuelo para mostrar coherente en la gráfica).
   const sesionesConEstado = (db.sesiones || [])
-    .filter(s => s.estado && (typeof s.estado.bienestar === 'number' || typeof s.estado.energia === 'number'))
+    .filter(s => s.estado && (typeof s.estado.estado === 'number' || typeof s.estado.bienestar === 'number' || typeof s.estado.energia === 'number'))
     .slice()
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -9375,7 +9579,6 @@ function _estadoVal(src) {
   if (src == null) return null;
   if (typeof src === 'number') return src;
   if (typeof src.estado === 'number') return src.estado;
-  if (typeof src.bienestar === 'number' && typeof src.sueno === 'number') return Math.round((src.bienestar + src.sueno) / 2);
   if (typeof src.bienestar === 'number') return src.bienestar;
   if (typeof src.energia === 'number' && typeof src.claridad === 'number') return Math.round((src.energia + src.claridad) / 2);
   if (typeof src.energia === 'number') return src.energia;
@@ -12465,11 +12668,8 @@ document.addEventListener('visibilitychange', function() {
     _restoreSessionIfNeeded();
     // Restore estado sliders
     try {
-      const saved = JSON.parse(localStorage.getItem('alberto_estado_v1') || 'null');
-      if (saved && typeof saved.energia === 'number') {
-        Object.assign(estadoDiario, saved);
-        initEstadoSliders();
-      }
+      loadEstadoDiarioFromSources();
+      initEstadoSliders();
     } catch(e) {}
   }
 });
