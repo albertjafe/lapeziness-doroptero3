@@ -1186,6 +1186,12 @@
     gap: 12px;
     margin-bottom: 8px;
   }
+  #view-session .ritmo-card-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    flex: none;
+  }
   #view-session .ritmo-card-head h2 {
     margin: 0;
     color: var(--text);
@@ -1210,6 +1216,27 @@
     font-weight: 700;
     line-height: 1;
     cursor: pointer;
+  }
+  #view-session .ritmo-nap-btn {
+    min-height: 24px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, #a090e0 48%, var(--border2));
+    background: color-mix(in srgb, #a090e0 12%, transparent);
+    color: color-mix(in srgb, #a090e0 80%, var(--text2));
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    line-height: 1;
+    cursor: pointer;
+    transition: transform 0.16s ease, background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+  }
+  #view-session .ritmo-nap-btn:hover {
+    border-color: #a090e0;
+    background: color-mix(in srgb, #a090e0 18%, transparent);
+    color: var(--text);
+  }
+  #view-session .ritmo-nap-btn:active {
+    transform: scale(0.96);
   }
   #view-session .estado-faces.ritmo-scale {
     display: grid !important;
@@ -1388,6 +1415,13 @@
     line-height: 1.35;
     text-align: center;
     padding: 2px 10px 0;
+  }
+  #view-session .siesta-summary {
+    margin-top: -8px;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    text-align: right;
   }
 
   /* MODO LIMPIO en Sesión: oculta textos pequeños de apoyo (botón ℹ los revela) */

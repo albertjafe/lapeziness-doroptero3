@@ -160,9 +160,13 @@
     <section class="ritmo-card ritmo-card-sueno" aria-label="Sueño">
       <div class="ritmo-card-head">
         <h2>Sueño</h2>
-        <button type="button" class="ritmo-info" onclick="showToast('El sueño se guarda para el día y puedes corregirlo')">i</button>
+        <div class="ritmo-card-actions">
+          <button type="button" class="ritmo-nap-btn" id="siestaBtn" onclick="recordSiesta()" title="Registrar siesta">Siesta</button>
+          <button type="button" class="ritmo-info" onclick="showToast('El sueño se guarda para el día y puedes corregirlo')">i</button>
+        </div>
       </div>
       <div class="estado-faces ritmo-scale" id="suenoFaces" role="radiogroup" aria-label="Sueño de hoy"></div>
+      <div class="siesta-summary" id="siestaSummary">sin siesta hoy</div>
     </section>
 
     <section class="ritmo-card ritmo-card-deporte" aria-label="Deporte">

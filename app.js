@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-05-deporte-session-v10';
+const APP_VERSION = '2026-07-05-siesta-session-v11';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -98,6 +98,18 @@ function _mergeDeporteEventos(a, b) {
   out.sort((x, y) => (x.at || '').localeCompare(y.at || ''));
   return out.slice(-2000);
 }
+function _suenoEventKey(e) { return (e && (e.id || ((e.at || '') + '|' + (e.kind || 'siesta')))) || ''; }
+function _mergeSuenoEventos(a, b) {
+  const out = [], seen = new Set();
+  (a || []).concat(b || []).forEach(e => {
+    const k = _suenoEventKey(e);
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    out.push(e);
+  });
+  out.sort((x, y) => (x.at || '').localeCompare(y.at || ''));
+  return out.slice(-2000);
+}
 function _sesionRealMin(s) {
   return (s.items || []).reduce((acc, it) =>
     acc + (typeof _itemMinReal === 'function' ? _itemMinReal(it) : (it.minutosReales || 0)), 0);
@@ -124,6 +136,7 @@ function _mergeStudyHistory(base, other) {
   merged.sesiones      = _mergeSesiones(base.sesiones, other.sesiones);
   merged.estadoEventos = _mergeEstadoEventos(base.estadoEventos, other.estadoEventos);
   merged.deporteEventos = _mergeDeporteEventos(base.deporteEventos, other.deporteEventos);
+  merged.suenoEventos = _mergeSuenoEventos(base.suenoEventos, other.suenoEventos);
   return merged;
 }
 
@@ -209,7 +222,9 @@ async function loadFromCloud() {
         const cloudEstadoN = (data.data.estadoEventos || []).length;
         const localDeporteN = localDb ? (localDb.deporteEventos || []).length : 0;
         const cloudDeporteN = (data.data.deporteEventos || []).length;
-        if (localMin > cloudMin || localEstadoN > cloudEstadoN || localDeporteN > cloudDeporteN) {
+        const localSuenoN = localDb ? (localDb.suenoEventos || []).length : 0;
+        const cloudSuenoN = (data.data.suenoEventos || []).length;
+        if (localMin > cloudMin || localEstadoN > cloudEstadoN || localDeporteN > cloudDeporteN || localSuenoN > cloudSuenoN) {
           sb.from('user_data').upsert({ id: user.id, data: db, updated_at: new Date().toISOString() });
         }
       } catch(e) {}
@@ -252,7 +267,8 @@ function getDefaultData() {
     sesiones: [],
     registro: [],
     estadoEventos: [],
-    deporteEventos: []
+    deporteEventos: [],
+    suenoEventos: []
   };
 }
 
@@ -263,6 +279,7 @@ if (!db.obras) db.obras = [];
 if (!db.forestPlants) db.forestPlants = [];
 if (!db.estadoEventos) db.estadoEventos = [];
 if (!db.deporteEventos) db.deporteEventos = [];
+if (!db.suenoEventos) db.suenoEventos = [];
 // db.sessionPlants[]: array paralelo a forestPlants con UN registro por sub-sesión
 // del cronómetro. Persiste los timestamps detallados aunque la sesión en
 // db.sesiones[] sea descartada por el cap. Estructura por entrada:
@@ -683,6 +700,41 @@ function ensureDeporteEventos() {
   return db.deporteEventos;
 }
 
+function _suenoEventosLocal() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('alberto_sueno_eventos_v1') || '[]');
+    return Array.isArray(raw) ? raw : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function _saveSuenoEventosLocal(items) {
+  try {
+    localStorage.setItem('alberto_sueno_eventos_v1', JSON.stringify((items || []).slice(-2000)));
+  } catch(e) {}
+}
+
+function ensureSuenoEventos() {
+  if (typeof db !== 'object' || !db) return _suenoEventosLocal();
+  if (!Array.isArray(db.suenoEventos)) db.suenoEventos = _suenoEventosLocal();
+  return db.suenoEventos;
+}
+
+function siestaEventsToday() {
+  const today = new Date().toDateString();
+  return ensureSuenoEventos().filter(e => e && e.date === today && (e.kind || 'siesta') === 'siesta');
+}
+
+function siestaTodaySummary() {
+  const arr = siestaEventsToday();
+  const last = arr.length ? arr[arr.length - 1] : null;
+  return {
+    count: arr.length,
+    lastAt: last ? last.at : null,
+  };
+}
+
 function deporteEventsToday(kind) {
   const today = new Date().toDateString();
   return ensureDeporteEventos().filter(e => e && e.date === today && (!kind || e.kind === kind));
@@ -715,8 +767,10 @@ function deporteTodaySummary() {
 function estadoSnapshot() {
   const n = estadoActualVal();
   const deporte = deporteTodaySummary();
+  const siestas = siestaTodaySummary();
   estadoDiario.deporte = deporte;
-  return { estado: n, bienestar: n, sueno: suenoActualVal(), energia: n, claridad: n, deporte };
+  estadoDiario.siestas = siestas;
+  return { estado: n, bienestar: n, sueno: suenoActualVal(), energia: n, claridad: n, deporte, siestas };
 }
 
 function recordEstadoEvent(face) {
@@ -763,6 +817,33 @@ function recordDeporteEvent(kind, level) {
   }, 600);
 }
 
+function recordSiesta() {
+  const arr = ensureSuenoEventos();
+  const now = new Date();
+  const entry = {
+    id: 'siesta_' + now.getTime() + '_' + Math.random().toString(36).slice(2, 7),
+    at: now.toISOString(),
+    date: now.toDateString(),
+    kind: 'siesta',
+  };
+  arr.push(entry);
+  if (arr.length > 2000) arr.splice(0, arr.length - 2000);
+  _saveSuenoEventosLocal(arr);
+  estadoDiario.siestas = siestaTodaySummary();
+  refreshSiestaSummary();
+  try { Haptics.light(); } catch(e) {}
+  try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
+  let hour = '';
+  try { hour = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch(e) {}
+  showToast('Siesta registrada' + (hour ? ' · ' + hour : ''));
+  clearTimeout(recordSiesta._t);
+  recordSiesta._t = setTimeout(() => {
+    saveEstadoDiario();
+    if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
+    if (typeof saveData === 'function') saveData();
+  }, 180);
+}
+
 function refreshEstadoFacesUI() {
   const idx = estadoToFaceIndex(estadoActualVal());
   document.querySelectorAll('#estadoFaces .estado-face').forEach((b, i) => {
@@ -779,6 +860,22 @@ function refreshSuenoFacesUI() {
     b.classList.toggle('active', on);
     b.setAttribute('aria-checked', on ? 'true' : 'false');
   });
+}
+
+function refreshSiestaSummary() {
+  const el = document.getElementById('siestaSummary');
+  if (!el) return;
+  const arr = siestaEventsToday();
+  if (!arr.length) {
+    el.textContent = 'sin siesta hoy';
+    return;
+  }
+  const last = arr[arr.length - 1];
+  let hour = '';
+  try { hour = new Date(last.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch(e) {}
+  el.textContent = arr.length === 1
+    ? ('siesta' + (hour ? ' · ' + hour : ''))
+    : (arr.length + ' siestas' + (hour ? ' · última ' + hour : ''));
 }
 
 function refreshDeporteFacesUI() {
@@ -873,6 +970,7 @@ function saveEstadoDiario() {
       energia: snap.energia,
       claridad: snap.claridad,
       deporte: snap.deporte,
+      siestas: snap.siestas,
     };
     // 1) localStorage (carga rápida sin esperar a nube en el arranque)
     localStorage.setItem('alberto_estado_v1', JSON.stringify(payload));
@@ -939,6 +1037,7 @@ function loadEstadoDiarioFromSources() {
       _setEstadoAll(v);
       if (sleep != null) estadoDiario.sueno = sleep;
       estadoDiario.deporte = db.estadoDiario.deporte || null;
+      estadoDiario.siestas = db.estadoDiario.siestas || null;
       return true;
     }
   }
@@ -954,6 +1053,7 @@ function loadEstadoDiarioFromSources() {
         _setEstadoAll(v);
         if (sleep != null) estadoDiario.sueno = sleep;
         estadoDiario.deporte = saved.deporte || null;
+        estadoDiario.siestas = saved.siestas || null;
         return true;
       }
     }
@@ -1122,6 +1222,7 @@ function initEstadoSliders() {
   }
   refreshEstadoFacesUI();
   refreshSuenoFacesUI();
+  refreshSiestaSummary();
   refreshDeporteFacesUI();
   refreshEstadoEventSummary();
   refreshDeporteEventSummary();
@@ -1990,6 +2091,7 @@ function handleDayChange() {
     _setEstadoAll(70);
     estadoDiario.sueno = 70;
     estadoDiario.deporte = null;
+    estadoDiario.siestas = null;
     saveEstadoDiario(); // guarda con la nueva fecha
     if (typeof initEstadoSliders === 'function') initEstadoSliders();
     // Limpiar el DOM del plan
