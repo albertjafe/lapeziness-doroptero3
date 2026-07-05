@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-05-ritmo-cards-v8';
+const APP_VERSION = '2026-07-05-crono-quick-pass-v9';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1831,7 +1831,7 @@ function recordSessionPlant(obraId, movId, startedAt, endedAt, mins, opts) {
     startedAt,
     endedAt,
     mins: Math.max(0, Math.floor(mins || 0)),
-    source: 'app',
+    source: (opts && opts.source) || 'app',
   };
   // Si la sesión es fallida (<10 min, abortada), marcarla como tal. Esto
   // permite distinguir en estadísticas las sesiones exitosas de las fallidas.
@@ -2132,6 +2132,22 @@ function ensureSessionPlanScaffold() {
   }
 }
 
+function promotePlanEntityToExtra(entity, obra, mov, obraId, movId, displayName, planId) {
+  const idx = currentPlan.indexOf(entity);
+  const extra = Object.assign({}, entity, {
+    _planId: planId,
+    _obraId: obraId,
+    _movId: movId || null,
+    _isMovimiento: !!movId,
+    _isExtra: true,
+    _displayName: displayName || (mov ? mov.name : (obra?.name || entity.name || 'Obra')),
+  });
+  if (mov && !extra._parentName) extra._parentName = obra?.name || '';
+  if (obra?.composer && !extra.composer) extra.composer = obra.composer;
+  if (idx >= 0) currentPlan[idx] = extra;
+  return extra;
+}
+
 function confirmAddExtra() {
   const val = document.getElementById('extraObraSelect')?.value;
   const minutos = parseInt(document.getElementById('extraMinutos')?.value) || 0;
@@ -2168,10 +2184,11 @@ function confirmAddExtra() {
   if (existing) {
     const targetPlanId = existing._planId || existing.id;
     const addMin = minutos || (mov?.duracion || obra?.duracion || 20);
-    if (!existing._isExtra) {
+    const wasExtra = !!existing._isExtra;
+    const promoted = promotePlanEntityToExtra(existing, obra, mov, obraId, movId, displayName, targetPlanId);
+    if (!wasExtra) {
       // Tarjeta planificada: reemplazar la estimación por el tiempo real.
       sessionMinPlan[targetPlanId] = addMin;
-      existing._isExtra = true;
     } else {
       sessionMinPlan[targetPlanId] = (sessionMinPlan[targetPlanId] || 0) + addMin;
     }
@@ -2179,7 +2196,7 @@ function confirmAddExtra() {
     const planEl = document.getElementById('plan-' + targetPlanId);
     if (planEl) {
       const wrapper = document.createElement('div');
-      wrapper.innerHTML = renderExtraItem(existing, sessionMinPlan[targetPlanId]);
+      wrapper.innerHTML = renderExtraItem(promoted, sessionMinPlan[targetPlanId]);
       if (wrapper.firstChild) planEl.replaceWith(wrapper.firstChild);
       // Conservar marca de "hecho" si la tenía
       if (sessionTicks[targetPlanId] === 'hecho') {
@@ -11540,6 +11557,289 @@ function confirmPase() {
   renderObras();
 }
 
+// ─── PASE RÁPIDO DESDE CRONÓMETRO ───────────────────────────────────────────
+
+let cronoPaseDraft = [];
+const CRONO_PASE_SCORE_CHOICES = [
+  { score: 2, label: 'Mal' },
+  { score: 4, label: 'Flojo' },
+  { score: 6, label: 'OK' },
+  { score: 8, label: 'Bien' },
+  { score: 10, label: 'Muy bien' },
+];
+
+function cronoPaseDefaultMinutes(resolved) {
+  if (!resolved) return 8;
+  const direct = parseInt(resolved.entity?.duracion || 0, 10);
+  if (direct > 0) return direct;
+  if (!resolved.mov && Array.isArray(resolved.obra?.movimientos)) {
+    const sum = resolved.obra.movimientos.reduce((s, m) => s + (parseInt(m.duracion || 0, 10) || 0), 0);
+    if (sum > 0) return sum;
+  }
+  return 8;
+}
+
+function cronoPaseDraftKey(obraId, movId) {
+  return obraId + '::' + (movId || '');
+}
+
+function cronoPaseResolveSelect() {
+  const val = document.getElementById('cronoPaseObraSelect')?.value || '';
+  return studyRegisterResolveValue(val);
+}
+
+function cronoPaseSeedCurrentSelection() {
+  let val = '';
+  if (crono.state !== 'idle' && crono.obraId && crono.obraId !== '_rest_') {
+    val = crono.movId ? ('mov::' + crono.obraId + '::' + crono.movId) : ('obra::' + crono.obraId);
+  } else {
+    val = document.getElementById('cronoObraSelect')?.value || '';
+  }
+  if (!val) return;
+  const sel = document.getElementById('cronoPaseObraSelect');
+  if (sel) sel.value = val;
+  cronoPaseAddSelected({ silent: true });
+}
+
+function openCronoPaseRapido() {
+  buildObraSelectOptions('cronoPaseObraSelect');
+  cronoPaseDraft = [];
+  cronoPaseSeedCurrentSelection();
+  cronoPasePreviewSelected();
+  cronoPaseRender();
+  openModal('modalCronoPaseRapido');
+}
+
+function cronoPasePreviewSelected() {
+  const el = document.getElementById('cronoPasePreview');
+  if (!el) return;
+  const resolved = cronoPaseResolveSelect();
+  if (!resolved) {
+    el.textContent = 'Selecciona una obra';
+    return;
+  }
+  el.textContent = 'Duración: ' + cronoPaseDefaultMinutes(resolved) + ' min';
+}
+
+function cronoPaseAddSelected(opts) {
+  const resolved = cronoPaseResolveSelect();
+  if (!resolved) {
+    if (!opts || !opts.silent) showToast('Selecciona una obra o movimiento');
+    return;
+  }
+  const key = cronoPaseDraftKey(resolved.obraId, resolved.movId);
+  if (cronoPaseDraft.some(it => it.key === key)) {
+    if (!opts || !opts.silent) showToast('Ya está añadida');
+    return;
+  }
+  cronoPaseDraft.push({
+    key,
+    obraId: resolved.obraId,
+    movId: resolved.movId || null,
+    name: resolved.name,
+    minutes: cronoPaseDefaultMinutes(resolved),
+    score: 8,
+  });
+  cronoPaseRender();
+  if (!opts || !opts.silent) {
+    try { Haptics.light(); } catch(e) {}
+  }
+}
+
+function cronoPaseSetScore(key, score) {
+  const item = cronoPaseDraft.find(it => it.key === key);
+  if (!item) return;
+  item.score = score;
+  cronoPaseRender();
+}
+
+function cronoPaseSetMinutes(key, value) {
+  const item = cronoPaseDraft.find(it => it.key === key);
+  if (!item) return;
+  const n = Math.max(1, Math.min(180, parseInt(value || '0', 10) || item.minutes || 1));
+  item.minutes = n;
+  cronoPaseUpdateTotal();
+}
+
+function cronoPaseRemove(key) {
+  cronoPaseDraft = cronoPaseDraft.filter(it => it.key !== key);
+  cronoPaseRender();
+}
+
+function cronoPaseUpdateTotal() {
+  const el = document.getElementById('cronoPaseTotal');
+  if (!el) return;
+  const total = cronoPaseDraft.reduce((s, it) => s + (parseInt(it.minutes || 0, 10) || 0), 0);
+  el.textContent = total ? ('Total: ' + total + ' min') : '0 min';
+}
+
+function cronoPaseRender() {
+  const host = document.getElementById('cronoPaseItems');
+  if (!host) return;
+  if (!cronoPaseDraft.length) {
+    host.innerHTML = '<div class="crono-pase-empty">Añade una o varias obras tocadas en el pase.</div>';
+    cronoPaseUpdateTotal();
+    return;
+  }
+  host.innerHTML = cronoPaseDraft.map(it => {
+    const scoreBtns = CRONO_PASE_SCORE_CHOICES.map(ch =>
+      '<button type="button" class="crono-pase-score ' + (it.score === ch.score ? 'active' : '') + '" onclick="cronoPaseSetScore(\'' + it.key + '\',' + ch.score + ')">' +
+        escapeHtmlSafe(ch.label) +
+      '</button>'
+    ).join('');
+    return '<div class="crono-pase-item">' +
+      '<div class="crono-pase-item-top">' +
+        '<div class="crono-pase-item-name">' + escapeHtmlSafe(it.name) + '</div>' +
+        '<input class="crono-pase-min" type="number" min="1" max="180" step="1" value="' + it.minutes + '" onchange="cronoPaseSetMinutes(\'' + it.key + '\',this.value)" oninput="cronoPaseSetMinutes(\'' + it.key + '\',this.value)" aria-label="Minutos">' +
+        '<span class="crono-pase-min-label">min</span>' +
+        '<button type="button" class="crono-pase-remove" onclick="cronoPaseRemove(\'' + it.key + '\')" aria-label="Quitar">×</button>' +
+      '</div>' +
+      '<div class="crono-pase-score-row">' + scoreBtns + '</div>' +
+    '</div>';
+  }).join('');
+  cronoPaseUpdateTotal();
+}
+
+function cronoPaseRecordQuality(item, dateIso) {
+  const paseEntry = {
+    date: dateIso,
+    score: item.score,
+    quality: scoreToQuality(item.score),
+    tipo: 'solo',
+    note: 'pase rápido',
+  };
+  if (item.movId) {
+    const mov = findMovimiento(item.obraId, item.movId);
+    if (!mov) return;
+    mov.lastPase = paseEntry.date;
+    if (!mov.paseHistory) mov.paseHistory = [];
+    mov.paseHistory.unshift(paseEntry);
+    if (mov.paseHistory.length > 20) mov.paseHistory = mov.paseHistory.slice(0, 20);
+    return;
+  }
+  const obra = findObra(item.obraId);
+  if (!obra) return;
+  obra.lastPase = paseEntry.date;
+  if (!obra.paseHistory) obra.paseHistory = [];
+  obra.paseHistory.unshift(paseEntry);
+  if (obra.paseHistory.length > 20) obra.paseHistory = obra.paseHistory.slice(0, 20);
+  linkPaseToHistory(item.obraId, item.score, 'solo');
+}
+
+function cronoPaseAddToStudy(item, startedAtIso, endedAtIso) {
+  const obra = findObra(item.obraId);
+  if (!obra) return null;
+  const mov = item.movId ? findMovimiento(item.obraId, item.movId) : null;
+  const minutes = Math.max(1, parseInt(item.minutes || 0, 10) || cronoPaseDefaultMinutes({ obra, mov, entity: mov || obra }));
+  const existing = currentPlan.find(e =>
+    (e._obraId || e.id) === item.obraId &&
+    (e._movId || null) === (item.movId || null)
+  );
+  let targetPlanId, entity;
+  if (existing) {
+    targetPlanId = existing._planId || existing.id;
+    const wasExtra = !!existing._isExtra;
+    entity = promotePlanEntityToExtra(existing, obra, mov, item.obraId, item.movId, item.name, targetPlanId);
+    if (!wasExtra) {
+      sessionMinPlan[targetPlanId] = minutes;
+    } else {
+      sessionMinPlan[targetPlanId] = (sessionMinPlan[targetPlanId] || 0) + minutes;
+    }
+  } else {
+    targetPlanId = 'pase_' + item.obraId + (item.movId ? '_' + item.movId : '') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
+    const baseEntity = item.movId
+      ? Object.assign({}, mov, { _parentName: obra.name, composer: obra.composer })
+      : Object.assign({}, obra);
+    entity = Object.assign({}, baseEntity, {
+      _planId: targetPlanId,
+      _obraId: item.obraId,
+      _movId: item.movId || null,
+      _isMovimiento: !!item.movId,
+      _isExtra: true,
+      _displayName: item.name,
+    });
+    currentPlan.push(entity);
+    sessionMinPlan[targetPlanId] = minutes;
+  }
+
+  sessionTicks[targetPlanId] = 'hecho';
+  sessionProductivityRatings[targetPlanId] = Math.max(0, Math.min(100, item.score * 10));
+  if (!sessionAggregate[targetPlanId]) sessionAggregate[targetPlanId] = { subsessions: [] };
+  sessionAggregate[targetPlanId].subsessions.push({
+    min: minutes,
+    prod: item.score * 10,
+    timestamp: endedAtIso,
+    startedAt: startedAtIso,
+    endedAt: endedAtIso,
+    pase: true,
+    score: item.score,
+    tipo: 'pase-rapido',
+  });
+
+  ensureSessionPlanScaffold();
+  const planDiv = document.getElementById('sessionPlan');
+  const planEl = document.getElementById('plan-' + targetPlanId);
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = renderExtraItem(entity, sessionMinPlan[targetPlanId]);
+  const node = wrapper.firstElementChild;
+  if (node) {
+    if (planEl) planEl.replaceWith(node);
+    else if (planDiv) {
+      const addBtn = planDiv.querySelector('.add-extra-btn');
+      const saveBtn = planDiv.querySelector('.save-session-btn');
+      planDiv.insertBefore(node, addBtn || saveBtn || null);
+    }
+    const doneBtn = node.querySelector('.tick-btn');
+    if (doneBtn) doneBtn.classList.add('hecho');
+    if (typeof updateProductivityBadge === 'function') updateProductivityBadge(targetPlanId);
+  }
+  recordSessionPlant(item.obraId, item.movId, startedAtIso, endedAtIso, minutes, { source: 'pase' });
+  return { planId: targetPlanId, minutes };
+}
+
+function confirmCronoPaseRapido() {
+  if (!cronoPaseDraft.length) {
+    showToast('Añade al menos una obra');
+    return;
+  }
+  const total = cronoPaseDraft.reduce((s, it) => s + (parseInt(it.minutes || 0, 10) || 0), 0);
+  if (total < 1) {
+    showToast('No hay minutos que sumar');
+    return;
+  }
+  const prevConcentradoMin = typeof getMinutosConcentradoHoy === 'function' ? getMinutosConcentradoHoy() : 0;
+  let cursor = new Date(Date.now() - total * 60000);
+  let added = 0;
+  const dateIso = new Date().toISOString();
+  cronoPaseDraft.forEach(item => {
+    const minutes = Math.max(1, parseInt(item.minutes || 0, 10) || 1);
+    const started = new Date(cursor);
+    const ended = new Date(cursor.getTime() + minutes * 60000);
+    cursor = ended;
+    cronoPaseRecordQuality(item, dateIso);
+    const res = cronoPaseAddToStudy(item, started.toISOString(), ended.toISOString());
+    if (res) added += res.minutes;
+  });
+  if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
+  if (typeof saveDraft === 'function') saveDraft();
+  if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+  if (typeof renderRacha === 'function') renderRacha();
+  if (typeof _autoSaveTodayPlanNow === 'function') _autoSaveTodayPlanNow();
+  else saveData();
+  closeModal('modalCronoPaseRapido');
+  cronoPaseDraft = [];
+  if (typeof cronoPlayHarvest === 'function') {
+    cronoPlayHarvest(
+      prevConcentradoMin,
+      typeof getMinutosConcentradoHoy === 'function' ? getMinutosConcentradoHoy() : prevConcentradoMin + added,
+      added
+    );
+  }
+  showToast('Pase guardado · +' + added + ' min');
+  try { if (typeof SFX !== 'undefined' && SFX.pase) SFX.pase(); } catch(e) {}
+  try { Haptics.medium(); } catch(e) {}
+}
+
 // Save draft on any note/objetivo input in the session plan
 document.addEventListener('input', function(e) {
   if (e.target.matches('#sessionPlan .tick-note')) {
@@ -16786,13 +17086,14 @@ function cronoFinish() {
   if (existing) {
     targetPlanId = existing._planId || existing.id;
     isFusion = true;
-    if (!existing._isExtra) {
+    const wasExtra = !!existing._isExtra;
+    const promoted = promotePlanEntityToExtra(existing, obra, mov, obraId, movId, displayName, targetPlanId);
+    if (!wasExtra) {
       // Primera vez que se estudia una tarjeta PLANIFICADA: el valor que tenía
       // era una estimación (p.ej. 10 min). Lo reemplazamos por los minutos
       // REALES estudiados (p.ej. 20). A partir de aquí pasa a ser tarjeta de
       // tiempo real y las siguientes sesiones SÍ suman.
       sessionMinPlan[targetPlanId] = minutos;
-      existing._isExtra = true;
     } else {
       // Tarjeta de tiempo real: acumular.
       sessionMinPlan[targetPlanId] = (sessionMinPlan[targetPlanId] || 0) + minutos;
@@ -16801,7 +17102,7 @@ function cronoFinish() {
     const planEl = document.getElementById('plan-' + targetPlanId);
     if (planEl) {
       const wrapper = document.createElement('div');
-      wrapper.innerHTML = renderExtraItem(existing, sessionMinPlan[targetPlanId]);
+      wrapper.innerHTML = renderExtraItem(promoted, sessionMinPlan[targetPlanId]);
       if (wrapper.firstChild) {
         planEl.replaceWith(wrapper.firstChild);
       }

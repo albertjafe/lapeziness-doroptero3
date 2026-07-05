@@ -321,6 +321,10 @@
       </div>
 
       <div class="crono-quick-actions">
+        <button class="crono-solidity-btn crono-pase-quick-btn" id="cronoQuickPaseBtn" onclick="openCronoPaseRapido()">
+          <span>Pase</span>
+          <strong>＋</strong>
+        </button>
         <button class="crono-solidity-btn" id="cronoQuickSolBtn" onclick="openQuickSolidez('idle')">
           <span>Solidez</span>
           <strong id="cronoQuickSolValue">—</strong>
@@ -1419,6 +1423,28 @@
     <div class="modal-buttons">
       <button class="modal-btn secondary" onclick="closeModal('modalPaseQuality')">Cancelar</button>
       <button class="modal-btn primary" onclick="confirmPase()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PASE RÁPIDO DESDE CRONÓMETRO -->
+<div class="modal-overlay" id="modalCronoPaseRapido">
+  <div class="modal crono-pase-rapido-modal">
+    <div class="modal-title">Pase rápido</div>
+    <div class="crono-pase-rapido-sub">Añade las obras tocadas. Se sumará automáticamente la duración de cada una al estudio de hoy.</div>
+
+    <div class="crono-pase-add-row">
+      <select class="modal-input" id="cronoPaseObraSelect" onchange="cronoPasePreviewSelected()"></select>
+      <button type="button" class="crono-pase-add-btn" onclick="cronoPaseAddSelected()">Añadir</button>
+    </div>
+    <div class="crono-pase-preview" id="cronoPasePreview"></div>
+
+    <div class="crono-pase-items" id="cronoPaseItems"></div>
+    <div class="crono-pase-total" id="cronoPaseTotal">0 min</div>
+
+    <div class="modal-buttons">
+      <button class="modal-btn secondary" onclick="closeModal('modalCronoPaseRapido')">Cancelar</button>
+      <button class="modal-btn primary" onclick="confirmCronoPaseRapido()">Guardar pase</button>
     </div>
   </div>
 </div>
