@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-05-pages-deploy-v13';
+const APP_VERSION = '2026-07-05-ritmo-icons-v14';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1124,57 +1124,94 @@ function updateEstado(dim, val) {
 }
 
 function ritmoIconSvg(icon) {
-  const faceMouth = {
-    'face-very-bad': '<path d="M23 47 Q32 36 41 47"/>',
-    'face-bad': '<path d="M24 45 Q32 39 40 45"/>',
-    'face-neutral': '<path d="M24 43 H40"/>',
-    'face-good': '<path d="M24 41 Q32 49 40 41"/>',
-    'face-great': '<path d="M22 40 Q32 52 42 40"/>',
+  const faceParts = {
+    'face-very-bad': {
+      eyes: '<path d="M20 28 Q24 25 28 28"/><path d="M36 28 Q40 25 44 28"/>',
+      brows: '<path d="M18 22 L28 24"/><path d="M36 24 L46 22"/>',
+      mouth: '<path d="M23 47 Q32 36 41 47"/>'
+    },
+    'face-bad': {
+      eyes: '<circle cx="24" cy="28" r="1.7"/><circle cx="40" cy="28" r="1.7"/>',
+      brows: '<path d="M20 23 L28 24"/><path d="M36 24 L44 23"/>',
+      mouth: '<path d="M24 45 Q32 39 40 45"/>'
+    },
+    'face-neutral': {
+      eyes: '<circle cx="24" cy="28" r="1.7"/><circle cx="40" cy="28" r="1.7"/>',
+      brows: '',
+      mouth: '<path d="M24 43 H40"/>'
+    },
+    'face-good': {
+      eyes: '<circle cx="24" cy="28" r="1.7"/><circle cx="40" cy="28" r="1.7"/>',
+      brows: '',
+      mouth: '<path d="M24 40 Q32 48 40 40"/>'
+    },
+    'face-great': {
+      eyes: '<path d="M20 27 Q24 24 28 27"/><path d="M36 27 Q40 24 44 27"/>',
+      brows: '<path d="M18 21 Q24 18 30 21"/><path d="M34 21 Q40 18 46 21"/>',
+      mouth: '<path d="M22 39 Q32 52 42 39"/>'
+    },
   };
-  if (faceMouth[icon]) {
-    const happyEyes = icon === 'face-great'
-      ? '<path d="M20 27 Q24 24 28 27"/><path d="M36 27 Q40 24 44 27"/>'
-      : '<circle cx="24" cy="27" r="1.8"/><circle cx="40" cy="27" r="1.8"/>';
+  if (faceParts[icon]) {
+    const f = faceParts[icon];
     return '<svg class="ritmo-icon-svg" viewBox="0 0 64 64" aria-hidden="true">' +
-      '<circle cx="32" cy="32" r="24"/>' + happyEyes + faceMouth[icon] + '</svg>';
+      '<circle cx="32" cy="32" r="24"/>' + f.brows + f.eyes + f.mouth + '</svg>';
   }
   if (icon && icon.startsWith('cardio-')) {
     const level = parseInt(icon.replace('cardio-', ''), 10) || 1;
     const pulse = level >= 3
-      ? '<path d="M13 36 H22 L26 27 L32 44 L38 31 L42 36 H51"/>'
-      : '<path d="M17 36 H25 L29 31 L34 40 L38 36 H47"/>';
-    const rays = level >= 4
-      ? '<path d="M32 8 V13"/><path d="M52 23 L48 26"/><path d="M12 23 L16 26"/>'
-      : '';
+      ? '<path d="M14 35 H22 L26 27 L32 44 L38 29 L42 35 H50"/>'
+      : '<path d="M17 35 H24 L28 31 L33 39 L38 35 H47"/>';
+    const rays = [
+      level >= 4 ? '<path d="M32 8 V13"/>' : '',
+      level >= 4 ? '<path d="M51 22 L47 25"/><path d="M13 22 L17 25"/>' : '',
+      level >= 5 ? '<path d="M54 37 L49 36"/><path d="M10 37 L15 36"/>' : ''
+    ].join('');
     return '<svg class="ritmo-icon-svg" viewBox="0 0 64 64" aria-hidden="true">' +
-      '<path d="M32 53 C20 43 12 35 12 25 C12 18 17 14 23 14 C27 14 30 16 32 20 C34 16 37 14 41 14 C47 14 52 18 52 25 C52 35 44 43 32 53 Z"/>' +
+      '<path d="M32 52 C20 42 13 34 13 25 C13 18 18 14 24 14 C28 14 31 17 32 21 C33 17 36 14 40 14 C46 14 51 18 51 25 C51 34 44 42 32 52 Z"/>' +
       pulse + rays + '</svg>';
   }
   if (icon && icon.startsWith('fuerza-')) {
     const level = parseInt(icon.replace('fuerza-', ''), 10) || 1;
-    const extra = level >= 4
-      ? '<path d="M7 24 V40"/><path d="M57 24 V40"/>'
-      : '';
-    const heavy = level >= 3
-      ? '<path d="M15 22 V42"/><path d="M49 22 V42"/>'
-      : '<path d="M17 25 V39"/><path d="M47 25 V39"/>';
+    const inner = level >= 1 ? '<path d="M23 28 V36"/><path d="M41 28 V36"/>' : '';
+    const mid = level >= 2 ? '<path d="M18 25 V39"/><path d="M46 25 V39"/>' : '<path d="M19 28 V36"/><path d="M45 28 V36"/>';
+    const outer = level >= 4 ? '<path d="M13 23 V41"/><path d="M51 23 V41"/>' : '';
+    const end = level >= 5 ? '<path d="M9 27 V37"/><path d="M55 27 V37"/>' : '';
+    const lift = level >= 3 ? '<path d="M28 39 Q32 42 36 39"/>' : '';
     return '<svg class="ritmo-icon-svg" viewBox="0 0 64 64" aria-hidden="true">' +
-      '<path d="M22 32 H42"/>' + heavy + extra +
-      '<path d="M11 27 V37"/><path d="M53 27 V37"/>' +
-      '<path d="M26 27 L38 37"/><path d="M38 27 L26 37"/>' +
+      '<path d="M16 32 H48"/>' + inner + mid + outer + end + lift +
       '</svg>';
   }
-  const moonTilt = {
-    'moon-lowest': -18,
-    'moon-low': -8,
-    'moon-mid': 0,
-    'moon-good': 10,
-    'moon-best': 18,
-  }[icon] || 0;
+  const moon = {
+    'moon-lowest': {
+      tilt: -14,
+      face: '<path d="M24 34 Q27 37 30 34"/><path d="M37 34 Q40 37 43 34"/><path d="M28 45 Q34 39 40 45"/>',
+      extra: '<path d="M18 16 Q20 14 22 16"/>'
+    },
+    'moon-low': {
+      tilt: -7,
+      face: '<path d="M24 34 Q27 36 30 34"/><path d="M37 34 Q40 36 43 34"/><path d="M28 44 H40"/>',
+      extra: ''
+    },
+    'moon-mid': {
+      tilt: 0,
+      face: '<circle cx="28" cy="34" r="1.6"/><circle cx="40" cy="34" r="1.6"/><path d="M29 43 H39"/>',
+      extra: ''
+    },
+    'moon-good': {
+      tilt: 7,
+      face: '<path d="M24 33 Q27 31 30 33"/><path d="M37 33 Q40 31 43 33"/><path d="M29 42 Q34 46 39 42"/>',
+      extra: ''
+    },
+    'moon-best': {
+      tilt: 14,
+      face: '<path d="M24 33 Q27 30 30 33"/><path d="M37 33 Q40 30 43 33"/><path d="M28 41 Q34 48 41 41"/>',
+      extra: '<path d="M51 14 V19"/><path d="M48.5 16.5 H53.5"/>'
+    },
+  }[icon] || { tilt: 0, face: '', extra: '' };
   return '<svg class="ritmo-icon-svg ritmo-moon-svg" viewBox="0 0 64 64" aria-hidden="true">' +
-    '<g transform="rotate(' + moonTilt + ' 32 32)">' +
-      '<path d="M42 12 C31 16 24 27 27 39 C30 51 42 56 53 50 C48 58 38 62 28 59 C15 55 8 42 12 29 C16 16 29 8 42 12 Z"/>' +
-      (icon === 'moon-best' ? '<path d="M22 33 Q26 30 30 33"/><path d="M36 33 Q40 30 44 33"/><path d="M29 42 Q34 47 40 42"/>' : '') +
+    '<g transform="rotate(' + moon.tilt + ' 32 32)">' +
+      '<path d="M42 11 C33 14 26 23 26 34 C26 45 35 54 47 54 C42 59 35 61 28 59 C16 56 8 45 9 32 C10 18 21 9 35 9 C38 9 40 10 42 11 Z"/>' +
+      moon.face + moon.extra +
     '</g></svg>';
 }
 
