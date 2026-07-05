@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v121';
+const CACHE = 'estudio-v122';
 const ASSETS = [
   './index.html',
   './styles.css',
@@ -35,6 +35,12 @@ self.addEventListener('fetch', e => {
 
   // External requests (Supabase, CDN, Google Fonts) pass straight through.
   if (url.origin !== self.location.origin) return;
+
+  // Emergency updater must always come from the network.
+  if (url.pathname.endsWith('/update.html') || url.searchParams.has('forceUpdate')) {
+    e.respondWith(fetch(new Request(e.request, { cache: 'reload' })));
+    return;
+  }
 
   // Network-first for local files: always serve the freshest version when
   // online, and fall back to the cache when offline.

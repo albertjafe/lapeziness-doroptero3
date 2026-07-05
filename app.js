@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-05-siesta-session-v11';
+const APP_VERSION = '2026-07-05-force-update-v12';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -18184,8 +18184,28 @@ function _swShowBanner() {
   if (b) b.style.display = 'flex';
 }
 
+async function swHardRefresh() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(reg => reg.unregister().catch(() => false)));
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k).catch(() => false)));
+    }
+  } catch(e) {}
+  const url = new URL(window.location.href);
+  url.searchParams.set('v', APP_VERSION + '-' + Date.now());
+  window.location.replace(url.toString());
+}
+
 function swDoUpdate() {
-  if (_swReg && _swReg.waiting) _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+  if (_swReg && _swReg.waiting) {
+    _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    return;
+  }
+  swHardRefresh();
 }
 
 async function checkForAppUpdate(manual) {
@@ -18220,10 +18240,7 @@ async function checkForAppUpdate(manual) {
     if (txt && !txt.includes(markerA) && !txt.includes(markerB)) {
       updateAppVersionInfo('Hay una versión distinta. Recargando...');
       if (manual) showToast('Nueva versión encontrada · recargando');
-      setTimeout(() => {
-        const base = window.location.pathname || './';
-        window.location.href = base + '?v=' + Date.now();
-      }, 650);
+      setTimeout(() => { swHardRefresh(); }, 650);
       return;
     }
 

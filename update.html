@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <title>Actualizando</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #e8ddd0;
+      --text: #26231f;
+      --muted: #7d756c;
+      --accent: #b28a3b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #14161d;
+        --text: #eee7dd;
+        --muted: #a69d92;
+        --accent: #d2b16a;
+      }
+    }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.18), transparent 42%), var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+    }
+    main {
+      width: min(360px, calc(100vw - 40px));
+      text-align: center;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      font-weight: 800;
+    }
+    p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    button {
+      border: 1px solid var(--accent);
+      border-radius: 999px;
+      background: var(--accent);
+      color: var(--bg);
+      padding: 11px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .status {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Actualizando app</h1>
+    <p>Estoy limpiando la caché de la aplicación. Tus datos guardados no se borran.</p>
+    <button type="button" onclick="forceUpdate()">Actualizar ahora</button>
+    <div class="status" id="status">preparando...</div>
+  </main>
+  <script>
+    async function forceUpdate() {
+      var status = document.getElementById('status');
+      try {
+        status.textContent = 'quitando service worker...';
+        if ('serviceWorker' in navigator) {
+          var regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(function(reg) { return reg.unregister().catch(function() { return false; }); }));
+        }
+        status.textContent = 'limpiando cache...';
+        if ('caches' in window) {
+          var keys = await caches.keys();
+          await Promise.all(keys.map(function(k) { return caches.delete(k).catch(function() { return false; }); }));
+        }
+        status.textContent = 'abriendo version nueva...';
+      } catch (e) {
+        status.textContent = 'recargando igualmente...';
+      }
+      location.replace('./?v=force-update-' + Date.now());
+    }
+    window.addEventListener('load', function() {
+      setTimeout(forceUpdate, 350);
+    });
+  </script>
+</body>
+</html>
