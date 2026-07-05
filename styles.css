@@ -1285,21 +1285,101 @@
     transition: background 0.2s ease, width 0.2s ease, height 0.2s ease, box-shadow 0.2s ease;
   }
   #view-session .estado-face.ritmo-choice.active {
-    color: var(--accent) !important;
+    color: var(--ritmo-accent, var(--accent)) !important;
   }
   #view-session .estado-face.ritmo-choice.active .ritmo-icon {
     transform: translateY(-1px);
     box-shadow:
       0 0 0 2px var(--bg2),
-      0 0 0 4px color-mix(in srgb, var(--accent) 72%, transparent),
-      0 0 0 7px color-mix(in srgb, var(--accent) 20%, transparent);
+      0 0 0 4px color-mix(in srgb, var(--ritmo-accent, var(--accent)) 72%, transparent),
+      0 0 0 7px color-mix(in srgb, var(--ritmo-accent, var(--accent)) 20%, transparent);
   }
   #view-session .estado-face.ritmo-choice.active .ritmo-dot {
     width: 18px;
     height: 18px;
     bottom: -21px;
-    background: var(--accent);
+    background: var(--ritmo-accent, var(--accent));
     box-shadow: 0 0 0 3px var(--bg2);
+  }
+  #view-session .ritmo-card-deporte {
+    padding-bottom: 12px;
+  }
+  #view-session .deporte-row {
+    --ritmo-accent: var(--accent);
+  }
+  #view-session .deporte-row + .deporte-row {
+    margin-top: 11px;
+    padding-top: 10px;
+    border-top: 1px solid color-mix(in srgb, var(--border2) 78%, transparent);
+  }
+  #view-session .deporte-row-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 3px;
+  }
+  #view-session .deporte-row-title {
+    color: var(--text2);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  #view-session .deporte-row-meta {
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    white-space: nowrap;
+  }
+  #view-session .deporte-cardio-scale {
+    --ritmo-accent: var(--orange);
+  }
+  #view-session .deporte-fuerza-scale {
+    --ritmo-accent: var(--green);
+  }
+  #view-session .deporte-scale {
+    padding-bottom: 20px !important;
+  }
+  #view-session .deporte-scale::after {
+    bottom: 8px;
+  }
+  #view-session .deporte-scale .ritmo-icon {
+    width: 44px;
+    height: 44px;
+  }
+  #view-session .deporte-scale .ritmo-icon-svg {
+    width: 39px;
+    height: 39px;
+  }
+  #view-session .deporte-scale .ritmo-dot {
+    bottom: -14px;
+    width: 8px;
+    height: 8px;
+  }
+  #view-session .deporte-scale .estado-face.ritmo-choice.active .ritmo-dot {
+    bottom: -18px;
+    width: 16px;
+    height: 16px;
+  }
+  #view-session .deporte-summary {
+    padding-top: 0;
+    font-size: 11px;
+  }
+  @media (max-width: 480px) {
+    #view-session .deporte-row-head {
+      margin-bottom: 1px;
+    }
+    #view-session .deporte-scale .ritmo-icon {
+      width: 39px;
+      height: 39px;
+    }
+    #view-session .deporte-scale .ritmo-icon-svg {
+      width: 35px;
+      height: 35px;
+    }
+    #view-session .deporte-row-meta {
+      font-size: 8px;
+    }
   }
   #view-session .ritmo-moment-summary {
     color: var(--text3);

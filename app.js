@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-05-crono-quick-pass-v9';
+const APP_VERSION = '2026-07-05-deporte-session-v10';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -86,6 +86,18 @@ function _mergeEstadoEventos(a, b) {
   out.sort((x, y) => (x.at || '').localeCompare(y.at || ''));
   return out.slice(-2000);
 }
+function _deporteEventKey(e) { return (e && (e.id || ((e.at || '') + '|' + (e.kind || '') + '|' + (e.value || '') + '|' + (e.label || '')))) || ''; }
+function _mergeDeporteEventos(a, b) {
+  const out = [], seen = new Set();
+  (a || []).concat(b || []).forEach(e => {
+    const k = _deporteEventKey(e);
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    out.push(e);
+  });
+  out.sort((x, y) => (x.at || '').localeCompare(y.at || ''));
+  return out.slice(-2000);
+}
 function _sesionRealMin(s) {
   return (s.items || []).reduce((acc, it) =>
     acc + (typeof _itemMinReal === 'function' ? _itemMinReal(it) : (it.minutosReales || 0)), 0);
@@ -111,6 +123,7 @@ function _mergeStudyHistory(base, other) {
   merged.forestPlants  = _mergePlants(base.forestPlants, other.forestPlants);
   merged.sesiones      = _mergeSesiones(base.sesiones, other.sesiones);
   merged.estadoEventos = _mergeEstadoEventos(base.estadoEventos, other.estadoEventos);
+  merged.deporteEventos = _mergeDeporteEventos(base.deporteEventos, other.deporteEventos);
   return merged;
 }
 
@@ -194,7 +207,9 @@ async function loadFromCloud() {
         const cloudMin = (data.data.sessionPlants || []).length + (data.data.forestPlants || []).length;
         const localEstadoN = localDb ? (localDb.estadoEventos || []).length : 0;
         const cloudEstadoN = (data.data.estadoEventos || []).length;
-        if (localMin > cloudMin || localEstadoN > cloudEstadoN) {
+        const localDeporteN = localDb ? (localDb.deporteEventos || []).length : 0;
+        const cloudDeporteN = (data.data.deporteEventos || []).length;
+        if (localMin > cloudMin || localEstadoN > cloudEstadoN || localDeporteN > cloudDeporteN) {
           sb.from('user_data').upsert({ id: user.id, data: db, updated_at: new Date().toISOString() });
         }
       } catch(e) {}
@@ -235,7 +250,9 @@ function getDefaultData() {
     obras: [],
     eventos: [],
     sesiones: [],
-    registro: []
+    registro: [],
+    estadoEventos: [],
+    deporteEventos: []
   };
 }
 
@@ -245,6 +262,7 @@ if (!db.eventos) db.eventos = [];
 if (!db.obras) db.obras = [];
 if (!db.forestPlants) db.forestPlants = [];
 if (!db.estadoEventos) db.estadoEventos = [];
+if (!db.deporteEventos) db.deporteEventos = [];
 // db.sessionPlants[]: array paralelo a forestPlants con UN registro por sub-sesión
 // del cronómetro. Persiste los timestamps detallados aunque la sesión en
 // db.sesiones[] sea descartada por el cap. Estructura por entrada:
@@ -503,7 +521,7 @@ let selectedEnergy = 'normal';
 let selectedTime = 2;
 // Estado diario: `estado`/`bienestar` es el ánimo actual; `sueno` es una métrica
 // diaria independiente. energia/claridad quedan como alias para código antiguo.
-let estadoDiario = { estado: 70, bienestar: 70, sueno: 70, energia: 70, claridad: 70 };
+let estadoDiario = { estado: 70, bienestar: 70, sueno: 70, energia: 70, claridad: 70, deporte: null };
 // ¿Ha introducido Alberto su estado HOY (de forma explícita)? Solo entonces la
 // predicción se condiciona a cómo está. El reset de día y los guardados de fondo
 // lo dejan en false; pickEstado/updateEstado lo ponen en true.
@@ -528,6 +546,14 @@ const SUENO_FACES = [
   { v: 96, label: 'Muy bien', icon: 'moon-best' },
 ];
 
+const DEPORTE_LEVELS = [
+  { v: 20, level: 1, label: 'Suave', icon: 'sport-1' },
+  { v: 40, level: 2, label: 'Ligero', icon: 'sport-2' },
+  { v: 60, level: 3, label: 'Medio', icon: 'sport-3' },
+  { v: 80, level: 4, label: 'Fuerte', icon: 'sport-4' },
+  { v: 100, level: 5, label: 'Muy fuerte', icon: 'sport-5' },
+];
+
 // Valor canónico actual del estado (con migración perezosa desde el modelo viejo).
 function estadoActualVal() {
   if (typeof estadoDiario.estado === 'number') return estadoDiario.estado;
@@ -542,6 +568,16 @@ function estadoActualVal() {
 function suenoActualVal() {
   if (typeof estadoDiario.sueno === 'number') return estadoDiario.sueno;
   return 70;
+}
+
+function deporteLevelIndex(val) {
+  if (typeof val !== 'number') return -1;
+  let best = 0, bestD = Infinity;
+  DEPORTE_LEVELS.forEach((f, i) => {
+    const d = Math.abs(f.v - val);
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  return best;
 }
 
 function estadoToFaceIndex(val) {
@@ -626,6 +662,63 @@ function ensureEstadoEventos() {
   return db.estadoEventos;
 }
 
+function _deporteEventosLocal() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('alberto_deporte_eventos_v1') || '[]');
+    return Array.isArray(raw) ? raw : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function _saveDeporteEventosLocal(items) {
+  try {
+    localStorage.setItem('alberto_deporte_eventos_v1', JSON.stringify((items || []).slice(-2000)));
+  } catch(e) {}
+}
+
+function ensureDeporteEventos() {
+  if (typeof db !== 'object' || !db) return _deporteEventosLocal();
+  if (!Array.isArray(db.deporteEventos)) db.deporteEventos = _deporteEventosLocal();
+  return db.deporteEventos;
+}
+
+function deporteEventsToday(kind) {
+  const today = new Date().toDateString();
+  return ensureDeporteEventos().filter(e => e && e.date === today && (!kind || e.kind === kind));
+}
+
+function deporteLastToday(kind) {
+  const arr = deporteEventsToday(kind);
+  return arr.length ? arr[arr.length - 1] : null;
+}
+
+function deporteTodaySummary() {
+  const summary = { cardio: null, fuerza: null, total: 0 };
+  ['cardio', 'fuerza'].forEach(kind => {
+    const arr = deporteEventsToday(kind);
+    summary.total += arr.length;
+    if (arr.length) {
+      const last = arr[arr.length - 1];
+      summary[kind] = {
+        value: last.value,
+        level: last.level,
+        label: last.label,
+        at: last.at,
+        count: arr.length,
+      };
+    }
+  });
+  return summary;
+}
+
+function estadoSnapshot() {
+  const n = estadoActualVal();
+  const deporte = deporteTodaySummary();
+  estadoDiario.deporte = deporte;
+  return { estado: n, bienestar: n, sueno: suenoActualVal(), energia: n, claridad: n, deporte };
+}
+
 function recordEstadoEvent(face) {
   const arr = ensureEstadoEventos();
   const now = new Date();
@@ -642,6 +735,30 @@ function recordEstadoEvent(face) {
   refreshEstadoEventSummary();
   clearTimeout(recordEstadoEvent._t);
   recordEstadoEvent._t = setTimeout(() => {
+    if (typeof saveData === 'function') saveData();
+  }, 600);
+}
+
+function recordDeporteEvent(kind, level) {
+  const arr = ensureDeporteEventos();
+  const now = new Date();
+  const entry = {
+    id: 'deporte_' + kind + '_' + now.getTime() + '_' + Math.random().toString(36).slice(2, 7),
+    at: now.toISOString(),
+    date: now.toDateString(),
+    kind,
+    value: level.v,
+    level: level.level,
+    label: level.label,
+  };
+  arr.push(entry);
+  if (arr.length > 2000) arr.splice(0, arr.length - 2000);
+  _saveDeporteEventosLocal(arr);
+  estadoDiario.deporte = deporteTodaySummary();
+  refreshDeporteFacesUI();
+  refreshDeporteEventSummary();
+  clearTimeout(recordDeporteEvent._t);
+  recordDeporteEvent._t = setTimeout(() => {
     if (typeof saveData === 'function') saveData();
   }, 600);
 }
@@ -664,6 +781,31 @@ function refreshSuenoFacesUI() {
   });
 }
 
+function refreshDeporteFacesUI() {
+  [
+    { kind: 'cardio', host: '#cardioFaces', meta: 'deporteCardioMeta' },
+    { kind: 'fuerza', host: '#fuerzaFaces', meta: 'deporteFuerzaMeta' },
+  ].forEach(cfg => {
+    const last = deporteLastToday(cfg.kind);
+    const idx = last ? deporteLevelIndex(last.value) : -1;
+    document.querySelectorAll(cfg.host + ' .estado-face').forEach((b, i) => {
+      const on = i === idx;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+    const meta = document.getElementById(cfg.meta);
+    if (meta) {
+      if (!last) {
+        meta.textContent = 'sin registro hoy';
+      } else {
+        let hour = '';
+        try { hour = new Date(last.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch(e) {}
+        meta.textContent = last.label + (hour ? ' · ' + hour : '');
+      }
+    }
+  });
+}
+
 function refreshEstadoEventSummary() {
   const el = document.getElementById('estadoEventSummary');
   if (!el) return;
@@ -681,24 +823,56 @@ function refreshEstadoEventSummary() {
   el.textContent = 'Último ánimo: ' + last.label + (hour ? ' · ' + hour : '') + ' · ' + todayEvents.length + ' registros hoy';
 }
 
+function refreshDeporteEventSummary() {
+  const el = document.getElementById('deporteEventSummary');
+  if (!el) return;
+  const cardio = deporteEventsToday('cardio');
+  const fuerza = deporteEventsToday('fuerza');
+  const total = cardio.length + fuerza.length;
+  if (!total) {
+    el.textContent = 'Toca una intensidad cuando hagas cardio o fuerza.';
+    return;
+  }
+  const parts = [];
+  if (cardio.length) parts.push('cardio ' + cardio[cardio.length - 1].label.toLowerCase());
+  if (fuerza.length) parts.push('fuerza ' + fuerza[fuerza.length - 1].label.toLowerCase());
+  el.textContent = 'Deporte hoy: ' + parts.join(' · ') + ' · ' + total + ' registros';
+}
+
+function pickDeporte(kind, idx) {
+  const level = DEPORTE_LEVELS[idx];
+  if (!level || (kind !== 'cardio' && kind !== 'fuerza')) return;
+  recordDeporteEvent(kind, level);
+  try { Haptics.light(); } catch(e) {}
+  try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
+  clearTimeout(pickDeporte._t);
+  pickDeporte._t = setTimeout(() => {
+    saveEstadoDiario();
+    if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
+  }, 150);
+}
+
+function pickDeporteCardio(idx) { pickDeporte('cardio', idx); }
+function pickDeporteFuerza(idx) { pickDeporte('fuerza', idx); }
+
 // Persiste estadoDiario en localStorage con marca de fecha.
 // La fecha permite que al cambiar de día el estado se reinicie a defaults
 // (70/70) en lugar de heredar el del día anterior.
 function saveEstadoDiario() {
   try {
     const todayStr = new Date().toDateString();
-    const n = estadoActualVal();
-    const sueno = suenoActualVal();
+    const snap = estadoSnapshot();
     const payload = {
       date: todayStr,
-      estado: n,
+      estado: snap.estado,
       userSet: _estadoUserSet, // true solo si Alberto lo introdujo hoy
       suenoUserSet: _suenoUserSet,
       // Alias retrocompatibles de ánimo + sueño independiente
-      bienestar: n,
-      sueno,
-      energia: n,
-      claridad: n,
+      bienestar: snap.bienestar,
+      sueno: snap.sueno,
+      energia: snap.energia,
+      claridad: snap.claridad,
+      deporte: snap.deporte,
     };
     // 1) localStorage (carga rápida sin esperar a nube en el arranque)
     localStorage.setItem('alberto_estado_v1', JSON.stringify(payload));
@@ -729,8 +903,7 @@ function persistEstadoToSession() {
   const idx = db.sesiones.findIndex(s => new Date(s.date).toDateString() === todayStr);
   if (idx < 0) return; // No hay sesión de hoy todavía
   const sesion = db.sesiones[idx];
-  const n = estadoActualVal();
-  sesion.estado = { estado: n, bienestar: n, sueno: suenoActualVal(), energia: n, claridad: n };
+  sesion.estado = estadoSnapshot();
 }
 
 // Carga el estado diario priorizando la fuente más fresca:
@@ -765,6 +938,7 @@ function loadEstadoDiarioFromSources() {
       _suenoUserSet = !!db.estadoDiario.suenoUserSet;
       _setEstadoAll(v);
       if (sleep != null) estadoDiario.sueno = sleep;
+      estadoDiario.deporte = db.estadoDiario.deporte || null;
       return true;
     }
   }
@@ -779,6 +953,7 @@ function loadEstadoDiarioFromSources() {
         _suenoUserSet = !!(saved.date === todayStr && saved.suenoUserSet);
         _setEstadoAll(v);
         if (sleep != null) estadoDiario.sueno = sleep;
+        estadoDiario.deporte = saved.deporte || null;
         return true;
       }
     }
@@ -863,6 +1038,32 @@ function ritmoIconSvg(icon) {
     return '<svg class="ritmo-icon-svg" viewBox="0 0 64 64" aria-hidden="true">' +
       '<circle cx="32" cy="32" r="24"/>' + happyEyes + faceMouth[icon] + '</svg>';
   }
+  if (icon && icon.startsWith('cardio-')) {
+    const level = parseInt(icon.replace('cardio-', ''), 10) || 1;
+    const pulse = level >= 3
+      ? '<path d="M13 36 H22 L26 27 L32 44 L38 31 L42 36 H51"/>'
+      : '<path d="M17 36 H25 L29 31 L34 40 L38 36 H47"/>';
+    const rays = level >= 4
+      ? '<path d="M32 8 V13"/><path d="M52 23 L48 26"/><path d="M12 23 L16 26"/>'
+      : '';
+    return '<svg class="ritmo-icon-svg" viewBox="0 0 64 64" aria-hidden="true">' +
+      '<path d="M32 53 C20 43 12 35 12 25 C12 18 17 14 23 14 C27 14 30 16 32 20 C34 16 37 14 41 14 C47 14 52 18 52 25 C52 35 44 43 32 53 Z"/>' +
+      pulse + rays + '</svg>';
+  }
+  if (icon && icon.startsWith('fuerza-')) {
+    const level = parseInt(icon.replace('fuerza-', ''), 10) || 1;
+    const extra = level >= 4
+      ? '<path d="M7 24 V40"/><path d="M57 24 V40"/>'
+      : '';
+    const heavy = level >= 3
+      ? '<path d="M15 22 V42"/><path d="M49 22 V42"/>'
+      : '<path d="M17 25 V39"/><path d="M47 25 V39"/>';
+    return '<svg class="ritmo-icon-svg" viewBox="0 0 64 64" aria-hidden="true">' +
+      '<path d="M22 32 H42"/>' + heavy + extra +
+      '<path d="M11 27 V37"/><path d="M53 27 V37"/>' +
+      '<path d="M26 27 L38 37"/><path d="M38 27 L26 37"/>' +
+      '</svg>';
+  }
   const moonTilt = {
     'moon-lowest': -18,
     'moon-low': -8,
@@ -903,9 +1104,27 @@ function initEstadoSliders() {
     sleepHost.classList.add('ritmo-scale');
     sleepHost.dataset.built = '1';
   }
+  const cardioHost = document.getElementById('cardioFaces');
+  if (cardioHost && !cardioHost.dataset.built) {
+    cardioHost.innerHTML = DEPORTE_LEVELS.map((f, i) =>
+      ritmoChoiceHTML(Object.assign({}, f, { icon: 'cardio-' + f.level }), i, 'pickDeporteCardio', 'cardio')
+    ).join('');
+    cardioHost.classList.add('ritmo-scale', 'deporte-scale');
+    cardioHost.dataset.built = '1';
+  }
+  const fuerzaHost = document.getElementById('fuerzaFaces');
+  if (fuerzaHost && !fuerzaHost.dataset.built) {
+    fuerzaHost.innerHTML = DEPORTE_LEVELS.map((f, i) =>
+      ritmoChoiceHTML(Object.assign({}, f, { icon: 'fuerza-' + f.level }), i, 'pickDeporteFuerza', 'fuerza')
+    ).join('');
+    fuerzaHost.classList.add('ritmo-scale', 'deporte-scale');
+    fuerzaHost.dataset.built = '1';
+  }
   refreshEstadoFacesUI();
   refreshSuenoFacesUI();
+  refreshDeporteFacesUI();
   refreshEstadoEventSummary();
+  refreshDeporteEventSummary();
 }
 
 function selectEnergy(btn) {
@@ -1637,7 +1856,7 @@ function commitSession(targetDate) {
     const sesionObj = {
       date: targetDate.toISOString(),
       energia: selectedEnergy,
-      estado: { ...estadoDiario },
+      estado: estadoSnapshot(),
       rating: avgRating,
       items,
       _aggregate: JSON.parse(JSON.stringify(sessionAggregate || {}))
@@ -1770,6 +1989,7 @@ function handleDayChange() {
     _suenoUserSet = false;
     _setEstadoAll(70);
     estadoDiario.sueno = 70;
+    estadoDiario.deporte = null;
     saveEstadoDiario(); // guarda con la nueva fecha
     if (typeof initEstadoSliders === 'function') initEstadoSliders();
     // Limpiar el DOM del plan
@@ -1921,7 +2141,7 @@ function _autoSaveTodayPlanNow() {
       // Tomamos el valor más reciente conocido entre db.estadoDiario (nube)
       // y estadoDiario (memoria), pero priorizando la memoria por ser
       // posiblemente más fresca.
-      estado: (() => { const n = estadoActualVal(); return { estado: n, bienestar: n, sueno: suenoActualVal(), energia: n, claridad: n }; })(),
+      estado: estadoSnapshot(),
       // Persistir el aggregate (sub-sesiones, pasajes) para reconstrucción
       _aggregate: JSON.parse(JSON.stringify(sessionAggregate || {})),
       _autoSaved: true,
@@ -13292,7 +13512,7 @@ function confirmRegistroDirecto() {
   const today = new Date().toDateString();
   let sesion = db.sesiones.find(s => new Date(s.date).toDateString() === today);
   if (!sesion) {
-    sesion = { date: new Date().toISOString(), energia: selectedEnergy, estado: { ...estadoDiario }, items: [] };
+    sesion = { date: new Date().toISOString(), energia: selectedEnergy, estado: estadoSnapshot(), items: [] };
     db.sesiones.unshift(sesion);
   }
   sesion.items.push({

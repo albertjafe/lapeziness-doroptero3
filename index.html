@@ -165,6 +165,28 @@
       <div class="estado-faces ritmo-scale" id="suenoFaces" role="radiogroup" aria-label="Sueño de hoy"></div>
     </section>
 
+    <section class="ritmo-card ritmo-card-deporte" aria-label="Deporte">
+      <div class="ritmo-card-head">
+        <h2>Deporte</h2>
+        <button type="button" class="ritmo-info" onclick="showToast('Cardio y fuerza se registran con hora e intensidad')">i</button>
+      </div>
+      <div class="deporte-row">
+        <div class="deporte-row-head">
+          <span class="deporte-row-title">Cardio</span>
+          <span class="deporte-row-meta" id="deporteCardioMeta">sin registro hoy</span>
+        </div>
+        <div class="estado-faces ritmo-scale deporte-scale deporte-cardio-scale" id="cardioFaces" role="radiogroup" aria-label="Cardio de hoy"></div>
+      </div>
+      <div class="deporte-row">
+        <div class="deporte-row-head">
+          <span class="deporte-row-title">Fuerza</span>
+          <span class="deporte-row-meta" id="deporteFuerzaMeta">sin registro hoy</span>
+        </div>
+        <div class="estado-faces ritmo-scale deporte-scale deporte-fuerza-scale" id="fuerzaFaces" role="radiogroup" aria-label="Fuerza de hoy"></div>
+      </div>
+      <div class="ritmo-moment-summary deporte-summary" id="deporteEventSummary"></div>
+    </section>
+
     <div class="ritmo-moment-summary" id="estadoEventSummary"></div>
   </div>
 
