@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-05-ritmo-icons-v14';
+const APP_VERSION = '2026-07-06-pase-solidez-v15';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1940,7 +1940,7 @@ function commitSession(targetDate) {
       minutosPlan: sessionMinPlan[planId] || null,
       minutosReales: estudiado ? minRealInput : null,
       estudiado,
-      solRating: sessionSolRatings[planId] || null,
+      solRating: null,
       rating: sessionProductivityRatings[planId] != null ? sessionProductivityRatings[planId] : null,
       note: document.getElementById('tnote-' + planId)?.value || '',
       destello: sessionDestello[planId]?.on ? true : false,
@@ -1950,18 +1950,7 @@ function commitSession(targetDate) {
       objetivo: ''
     };
   });
-  // Solo registrar solHistory cuando la sesión es para HOY — si se está
-  // backdateando un día pasado, no queremos pintar registros de solidez con
-  // la fecha equivocada.
-  const isToday = targetDate.toDateString() === new Date().toDateString();
-  if (isToday) {
-    items.forEach(it => {
-      if (it.tick === 'hecho' && it.solRating != null) {
-        if (it.movId) recordMovSolHistory(it.obraId, it.movId, it.solRating, 'sesion');
-        else recordSolHistory(it.obraId, it.solRating, 'sesion');
-      }
-    });
-  }
+  // La solidez ya no se registra como dato suelto de sesión: entra por pases.
 
   const targetStr = targetDate.toDateString();
   const existingIdx = db.sesiones.findIndex(s => new Date(s.date).toDateString() === targetStr);
@@ -2900,47 +2889,69 @@ function renderMinutosWidget(obraId) {
 
 // ── SOL / ESC HISTORY ─────────────────────────────────────────────────────────
 
-function recordSolHistory(obraId, val, context) {
+function recordSolHistory(obraId, val, context, dateIso) {
   const obra = findObra(obraId);
   if (!obra || !val) return;
+  const stamp = dateIso || new Date().toISOString();
   if (!obra.solHistory) obra.solHistory = [];
-  const today = new Date().toDateString();
+  const today = new Date(stamp).toDateString();
   const last = obra.solHistory[0];
   if (last && new Date(last.date).toDateString() === today && last.context === context) {
-    obra.solHistory[0] = { date: new Date().toISOString(), val: parseInt(val), context };
+    obra.solHistory[0] = { date: stamp, val: parseInt(val), context };
   } else {
-    obra.solHistory.unshift({ date: new Date().toISOString(), val: parseInt(val), context });
+    obra.solHistory.unshift({ date: stamp, val: parseInt(val), context });
     if (obra.solHistory.length > 80) obra.solHistory = obra.solHistory.slice(0, 80);
   }
   obra.sol = parseInt(val);
   saveData();
 }
 
-function recordEscHistory(obraId, val, context) {
+function recordEscHistory(obraId, val, context, dateIso) {
   const obra = findObra(obraId);
   if (!obra || !val) return;
+  const stamp = dateIso || new Date().toISOString();
   if (!obra.escHistory) obra.escHistory = [];
-  const today = new Date().toDateString();
+  const today = new Date(stamp).toDateString();
   const last = obra.escHistory[0];
   if (last && new Date(last.date).toDateString() === today && last.context === context) {
-    obra.escHistory[0] = { date: new Date().toISOString(), val: parseInt(val), context };
+    obra.escHistory[0] = { date: stamp, val: parseInt(val), context };
   } else {
-    obra.escHistory.unshift({ date: new Date().toISOString(), val: parseInt(val), context });
+    obra.escHistory.unshift({ date: stamp, val: parseInt(val), context });
     if (obra.escHistory.length > 80) obra.escHistory = obra.escHistory.slice(0, 80);
   }
   obra.esc = parseInt(val);
   saveData();
 }
 
-function linkPaseToHistory(obraId, score, tipo) {
-  // Pase scores are 1-10, convert to 0-100 for solHistory
-  const pct = Math.round((score - 1) / 9 * 100);
-  if (tipo === 'informal' || tipo === 'solo') recordSolHistory(obraId, pct, 'pase-' + tipo);
-  if (tipo === 'escena' || tipo === 'concierto') {
-    recordEscHistory(obraId, pct, 'pase-escena');
-    const obra = findObra(obraId);
-    if (obra && pct > (obra.solHistory?.[0]?.val || 0)) recordSolHistory(obraId, pct, 'pase-escena');
-  }
+function normalizePaseTipo(tipo) {
+  if (tipo === 'evento' || tipo === 'escena' || tipo === 'concierto' || tipo === 'concurso' || tipo === 'audicion') return 'evento';
+  if (tipo === 'informal') return 'informal';
+  return 'solo';
+}
+
+function paseTipoShort(tipo) {
+  const t = normalizePaseTipo(tipo);
+  if (t === 'evento') return 'evento';
+  if (t === 'informal') return 'amigos';
+  return 'solo';
+}
+
+function paseScoreToPct(score) {
+  const s = Math.max(1, Math.min(10, parseInt(score || 0, 10) || 1));
+  return Math.round((s - 1) / 9 * 100);
+}
+
+function linkPaseToTargetHistory(obraId, movId, score, tipo, dateIso) {
+  const t = normalizePaseTipo(tipo);
+  const pct = paseScoreToPct(score);
+  const context = 'pase-' + t;
+  if (movId) recordMovSolHistory(obraId, movId, pct, context, dateIso);
+  else recordSolHistory(obraId, pct, context, dateIso);
+  if (t === 'evento') recordEscHistory(obraId, pct, 'pase-evento', dateIso);
+}
+
+function linkPaseToHistory(obraId, score, tipo, dateIso) {
+  linkPaseToTargetHistory(obraId, null, score, tipo, dateIso);
 }
 
 // ── DECAY MODEL ───────────────────────────────────────────────────────────────
@@ -3056,7 +3067,7 @@ function computeRobustness(obra) {
 
   // Pases en escena/concierto (cada uno reduce el decaimiento ~5%, máx 5)
   const pasesEscena = (obra.solHistory || []).filter(h =>
-    h.context === 'pase-escena' || h.context === 'pase-concierto'
+    h.context === 'pase-escena' || h.context === 'pase-concierto' || h.context === 'pase-evento'
   ).length;
   m *= Math.pow(0.95, Math.min(pasesEscena, 5));
 
@@ -4028,7 +4039,7 @@ function _solidezRenderRow(item, compact) {
       '<span class="sol-dash-age">' + _solidezAgeLabel(item.days) + '</span>' +
       '<span class="sol-dash-pct" style="color:' + valueColor + '">' + valueHtml + '</span>' +
       deltaHtml +
-      '<button class="sol-dash-measure" onclick="openQuickSolidezTarget(' + _solidezOpenArgs(item) + ')">medir</button>' +
+      '<button class="sol-dash-measure" onclick="registerPase(\'' + _quickSolJs(item.obraId || '') + '\'' + (item.movId ? ',\'' + _quickSolJs(item.movId) + '\'' : '') + ')">pase</button>' +
     '</div>' +
   '</div>';
 }
@@ -4041,7 +4052,7 @@ function _solidezDistribution(measured) {
     { label: '80-100', count: measured.filter(i => i.value >= 80).length, color: 'var(--green)' },
   ];
   if (!measured.length) {
-    return '<div class="sol-dash-distribution empty"><span>Registra una primera solidez para activar el mapa.</span></div>';
+    return '<div class="sol-dash-distribution empty"><span>Registra un primer pase para activar el mapa.</span></div>';
   }
   const total = measured.length;
   const bar = buckets.map(b => {
@@ -4098,7 +4109,7 @@ function renderSolidezSection() {
   el.innerHTML = '<div class="sol-dash-widget">' +
     '<div class="sol-dash-header">' +
       '<div><div class="sol-dash-title">Solidez</div><div class="sol-dash-subtitle">Qué revisar ahora</div></div>' +
-      '<button class="sol-dash-primary" onclick="openQuickSolidezTarget(' + _solidezOpenArgs(mainTarget) + ')">Registrar ahora</button>' +
+      '<button class="sol-dash-primary" onclick="registerPase(\'' + _quickSolJs(mainTarget.obraId || '') + '\'' + (mainTarget.movId ? ',\'' + _quickSolJs(mainTarget.movId) + '\'' : '') + ')">Registrar pase</button>' +
     '</div>' +
     '<div class="sol-dash-kpis">' + kpis + '</div>' +
     _solidezDistribution(measured) +
@@ -5247,7 +5258,7 @@ function openHechoDatos(planId, minPlan, opts) {
   // para hacer pases). En fase digitando no tiene sentido aún.
   // En actividades, nunca.
   _hechoShowMem = !isActividad && (fase === 'consolidando' || fase === 'mantenimiento');
-  const showPases = !isActividad && (fase === 'consolidando' || fase === 'mantenimiento');
+  const showPases = false; // La solidez oficial se registra desde "Añadir pase".
   const showPasajes = !isActividad;
 
   // Title
@@ -5549,6 +5560,7 @@ function closeHechoDatos(save) {
   const shouldOfferBreak = !!(save && _hechoSubSession && !_hechoEditMode && minutos >= CRONO_LONG_SESSION_BREAK_MIN);
   const nota = document.getElementById('hechoNota').value.trim();
   const zoneSnapshot = obra && obra.tipo !== 'actividad' ? hechoCurrentZoneSnapshot(true) : null;
+  const legacyPaseSlidersEnabled = false;
   if (zoneSnapshot && entity) hechoStoreZoneSnapshot(entity, zoneSnapshot);
 
   // ★ Aplicar el cambio de minutos al estado en memoria.
@@ -5585,7 +5597,7 @@ function closeHechoDatos(save) {
     // sesgado al alza.
     let solAntesVal = null;
     let solDespuesVal = null;
-    if (_paseAntesActive) {
+    if (legacyPaseSlidersEnabled && _paseAntesActive) {
       const sol = parseInt(document.getElementById('paseAntesSlider')?.value || 50);
       const paseNota = document.getElementById('paseAntesNota')?.value.trim() || '';
       if (!target.paseHistory) target.paseHistory = [];
@@ -5596,7 +5608,7 @@ function closeHechoDatos(save) {
       else recordSolHistory(obraId, sol, 'pase-antes');
       solAntesVal = sol;
     }
-    if (_paseDespuesActive) {
+    if (legacyPaseSlidersEnabled && _paseDespuesActive) {
       const sol = parseInt(document.getElementById('paseDespuesSlider')?.value || 60);
       const paseNota = document.getElementById('paseDespuesNota')?.value.trim() || '';
       if (!target.paseHistory) target.paseHistory = [];
@@ -5786,13 +5798,16 @@ function closeHechoDatos(save) {
 
     // Snapshot de pases/memoria de ESTA apertura del modal, para poder
     // reabrir la tarjeta y editar tras varias sub-sesiones.
-    const subPases = {};
-    if (_paseAntesActive) {
+    const prevSubForPases = _hechoEditMode
+      ? (sessionAggregate[planId].subsessions || [])[Math.max(0, (sessionAggregate[planId].subsessions || []).length - 1)]
+      : null;
+    const subPases = legacyPaseSlidersEnabled ? {} : Object.assign({}, prevSubForPases?.pases || {});
+    if (legacyPaseSlidersEnabled && _paseAntesActive) {
       subPases.antes = parseInt(document.getElementById('paseAntesSlider')?.value || 50);
       const n = document.getElementById('paseAntesNota')?.value.trim();
       if (n) subPases.notaAntes = n;
     }
-    if (_paseDespuesActive) {
+    if (legacyPaseSlidersEnabled && _paseDespuesActive) {
       subPases.despues = parseInt(document.getElementById('paseDespuesSlider')?.value || 60);
       const n = document.getElementById('paseDespuesNota')?.value.trim();
       if (n) subPases.notaDespues = n;
@@ -6322,16 +6337,17 @@ function getRecentTicksForEntity(planId, n) {
 }
 
 // Record solidez for a movement (0-100 scale, same as obras)
-function recordMovSolHistory(obraId, movId, val, context) {
+function recordMovSolHistory(obraId, movId, val, context, dateIso) {
   const mov = findMovimiento(obraId, movId);
   if (!mov || val == null) return;
+  const stamp = dateIso || new Date().toISOString();
   if (!mov.solHistory) mov.solHistory = [];
-  const today = new Date().toDateString();
+  const today = new Date(stamp).toDateString();
   const last = mov.solHistory[0];
   if (last && new Date(last.date).toDateString() === today && last.context === context) {
-    mov.solHistory[0] = { date: new Date().toISOString(), val: parseInt(val), context };
+    mov.solHistory[0] = { date: stamp, val: parseInt(val), context };
   } else {
-    mov.solHistory.unshift({ date: new Date().toISOString(), val: parseInt(val), context });
+    mov.solHistory.unshift({ date: stamp, val: parseInt(val), context });
     if (mov.solHistory.length > 80) mov.solHistory = mov.solHistory.slice(0, 80);
   }
   // Also keep the 1-10 .sol field in sync
@@ -7384,7 +7400,7 @@ function renderObraCardMini(o) {
   const hasHist = (o.solHistory || []).length > 0;
   return '<div class="obra-card obra-card-mini" id="obra-' + o.id + '">'
     + dot
-    + '<button class="obra-mini-main" onclick="openQuickSolidezTarget(\'' + o.id + '\',null)">'
+    + '<button class="obra-mini-main" onclick="registerPase(\'' + o.id + '\',null)">'
     +   '<span class="obra-mini-name">' + escapeHtmlSafe(o.name) + '</span>'
     +   composer
     +   '<span class="obra-mini-bar"><span class="obra-mini-fill" style="width:' + pct + '%;background:' + col + '"></span></span>'
@@ -7479,14 +7495,14 @@ function renderObraCardSimple(o) {
     +     '<button class="obra-quick-btn edit obra-edit-action" title="Editar" onclick="openEditObraNombre(\'' + o.id + '\')">' + ICON_EDIT + '</button>'
     +     '<button class="obra-quick-btn delete obra-edit-action" title="Eliminar" onclick="confirmDeleteObra(\'' + o.id + '\')">' + ICON_DELETE + '</button>'
     +   '</div>'
-    +   '<button class="obra-simple-sol' + (pulse ? ' pulse' : '') + '" onclick="openQuickSolidezTarget(\'' + o.id + '\',null)">'
+    +   '<button class="obra-simple-sol' + (pulse ? ' pulse' : '') + '" onclick="registerPase(\'' + o.id + '\',null)">'
     +     '<div class="obra-sol-ring">' + _ringMeterSVG(pct, col, { size: 62, stroke: 6, center: hasHist ? Math.round(pct) : '–', textColor: col }) + '</div>'
     +     '<div class="obra-sol-bar"><div class="obra-sol-fill" style="width:' + pct + '%;background:' + col + '"></div></div>'
     +     '<div class="obra-sol-row">'
     +       '<strong style="color:' + col + '">' + (hasHist ? pct + '%' : '—') + '</strong>'
-    +       '<span class="obra-sol-label">' + (hasHist ? solPctLabel(pct) : 'Mide tu solidez') + '</span>'
+    +       '<span class="obra-sol-label">' + (hasHist ? solPctLabel(pct) : 'Primer pase pendiente') + '</span>'
     +       decayHint +
-        '<span class="obra-sol-medir">Medir ›</span>'
+        '<span class="obra-sol-medir">Pase ›</span>'
     +     '</div>'
     +   '</button>'
     +   (hasHist ? _obraPredHint(o, pct) : '')
@@ -7515,7 +7531,7 @@ function renderObraCard_LEGACY(o, idx) {
     ? '<span class="origen-tag recuperacion">Recuperación</span>'
     : '';
 
-  const tipoIcons = { solo: 'solo', informal: 'amigos', escena: '🎭', tecnico: 'tec', memoria: 'mem', concierto: '🎭' };
+  const tipoIcons = { solo: 'solo', informal: 'amigos', evento: 'evento', escena: 'evento', tecnico: 'tec', memoria: 'mem', concierto: 'evento' };
   const paseHistHtml = (o.paseHistory||[]).slice(0,5).map(p => {
     const d = new Date(p.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
     const sc = p.score ?? null;
@@ -8235,7 +8251,7 @@ function renderMovimientoCard(obraId, mov) {
     ? `Último: ${new Date(mov.lastPase).toLocaleDateString('es-ES')}`
     : 'Sin pase';
 
-  const tipoIcons = { solo: 'solo', informal: 'amigos', escena: '🎭', tecnico: 'tec', memoria: 'mem', concierto: '🎭' };
+  const tipoIcons = { solo: 'solo', informal: 'amigos', evento: 'evento', escena: 'evento', tecnico: 'tec', memoria: 'mem', concierto: 'evento' };
   const paseHistHtml = (mov.paseHistory||[]).slice(0,3).map(p => {
     const d = new Date(p.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
     const sc = p.score ?? null;
@@ -8419,9 +8435,17 @@ function openAddObra() {
   const difVal = document.getElementById('newObraDificultadVal');
   if (difVal) difVal.textContent = '3';
   const solInput = document.getElementById('newObraSolidez');
-  if (solInput) solInput.value = 10;
+  if (solInput) {
+    solInput.value = 10;
+    solInput.type = 'hidden';
+    solInput.style.display = 'none';
+    const solLabel = solInput.previousElementSibling;
+    if (solLabel) solLabel.style.display = 'none';
+  }
   const solVal = document.getElementById('newObraSolidezVal');
   if (solVal) solVal.textContent = '10%';
+  const stateNote = document.getElementById('addObraStateNote');
+  if (stateNote) stateNote.textContent = 'La solidez real se registra con el primer pase.';
   const tipoBtn = document.querySelector('#modalTipoSelector .origen-btn[data-tipo="obra"]');
   if (tipoBtn) selectModalTipo(tipoBtn, 'obra');
   openModal('modalAddObra');
@@ -8441,6 +8465,12 @@ function selectModalTipo(btn, tipo) {
   const nameInput = document.getElementById('newObraName');
   const solSlider = document.getElementById('newObraSolidez');
   const solVal = document.getElementById('newObraSolidezVal');
+  if (solSlider) {
+    solSlider.type = 'hidden';
+    solSlider.style.display = 'none';
+    const solLabel = solSlider.previousElementSibling;
+    if (solLabel) solLabel.style.display = 'none';
+  }
   if (tipo === 'actividad') {
     if (obraExtra) obraExtra.style.display = 'none';
     if (actExtra) actExtra.style.display = '';
@@ -8480,10 +8510,9 @@ function addObra() {
     origen: isRecuperacion ? 'recuperacion' : null,
     dificultad: isActividad ? null : dificultadVal,
     duracion: !isActividad && duracionVal > 0 ? duracionVal : null,
-    // Solidez: única métrica. Se guarda como historial (0-100) y como `sol`
-    // 1-10 para los lectores antiguos que aún existan.
+    // Prior interno para lectores antiguos: el historial real nace con pases.
     sol: isActividad ? null : Math.max(1, Math.round(solidezPct / 10)),
-    solHistory: isActividad ? [] : [{ date: new Date().toISOString(), val: solidezPct, context: 'inicial' }],
+    solHistory: [],
     notes: '',
   };
   db.obras.push(entry);
@@ -11808,8 +11837,17 @@ function renderPasajeRowGlobal(item, STATUS_LABEL, STATUS_COLOR, STATUS_BAR, sho
 
 let paseQualityObraId = null;
 let paseQualityMovId = null;
-let paseQualitySelected = null; // now a number 1-10
-let paseTipoSelected = 'tecnico';
+let paseQualitySelected = null; // number 1-10, chosen from 5 coarse levels
+let paseTipoSelected = 'solo';
+let cronoPaseTipoSelected = 'solo';
+
+const PASE_SCORE_CHOICES = [
+  { score: 2, label: 'Se cae', sub: 'pierdo el hilo' },
+  { score: 4, label: 'Frágil', sub: 'sale con paradas' },
+  { score: 6, label: 'Sale', sub: 'con control' },
+  { score: 8, label: 'Sólido', sub: 'entero y estable' },
+  { score: 10, label: 'Listo', sub: 'para exponer' },
+];
 
 function scoreToQuality(n) {
   if (n === null || n === undefined) return null;
@@ -11827,8 +11865,11 @@ function scoreColor(n) {
 function buildPaseScoreBtns() {
   const row = document.getElementById('paseQScoreBtns');
   if (!row) return;
-  row.innerHTML = [1,2,3,4,5,6,7,8,9,10].map(n =>
-    `<button class="pscore-modal-btn" onclick="selectPaseQ(${n},this)">${n}</button>`
+  row.innerHTML = PASE_SCORE_CHOICES.map(ch =>
+    `<button class="pscore-modal-btn pase-quality-chip" onclick="selectPaseQ(${ch.score},this)">
+      <strong>${escapeHtmlSafe(ch.label)}</strong>
+      <span>${escapeHtmlSafe(ch.sub)}</span>
+    </button>`
   ).join('');
 }
 
@@ -11846,15 +11887,16 @@ function registerPase(obraId, movId) {
   document.getElementById('paseQNote').value = '';
   document.getElementById('paseQFecha').value = new Date().toISOString().split('T')[0];
   buildPaseScoreBtns();
-  document.querySelectorAll('.pase-tipo-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('.pase-tipo-btn.solo').classList.add('active');
+  document.querySelectorAll('#modalPaseQuality .pase-tipo-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('#modalPaseQuality .pase-tipo-btn.solo')?.classList.add('active');
   openModal('modalPaseQuality');
 }
 
 function selectPaseTipo(tipo, btn) {
-  paseTipoSelected = tipo;
-  document.querySelectorAll('.pase-tipo-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active', tipo);
+  paseTipoSelected = normalizePaseTipo(tipo);
+  const row = btn?.closest('.pase-tipo-row') || document;
+  row.querySelectorAll('.pase-tipo-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active', paseTipoSelected);
 }
 
 function selectPaseQ(n, btn) {
@@ -11872,9 +11914,9 @@ function confirmPase() {
   const note = document.getElementById('paseQNote').value.trim();
   const fechaStr = document.getElementById('paseQFecha').value;
   const paseDate = fechaStr ? new Date(fechaStr + 'T12:00:00').toISOString() : new Date().toISOString();
-  const tipo = paseTipoSelected || 'tecnico';
+  const tipo = normalizePaseTipo(paseTipoSelected);
   const quality = scoreToQuality(paseQualitySelected);
-  const paseEntry = { date: paseDate, score: paseQualitySelected, quality, tipo, note };
+  const paseEntry = { date: paseDate, score: paseQualitySelected, solidezPct: paseScoreToPct(paseQualitySelected), quality, tipo, note };
 
   if (paseQualityMovId) {
     const mov = findMovimiento(paseQualityObraId, paseQualityMovId);
@@ -11883,6 +11925,7 @@ function confirmPase() {
     if (!mov.paseHistory) mov.paseHistory = [];
     mov.paseHistory.unshift(paseEntry);
     if (mov.paseHistory.length > 20) mov.paseHistory = mov.paseHistory.slice(0, 20);
+    linkPaseToTargetHistory(paseQualityObraId, paseQualityMovId, paseQualitySelected, tipo, paseDate);
     saveData();
     closeModal('modalPaseQuality');
     showToast('Pase registrado ✓');
@@ -11891,7 +11934,7 @@ function confirmPase() {
       const lastSpan = movCard.querySelector('.mov-actions span');
       if (lastSpan) lastSpan.textContent = 'Último pase: ' + new Date(paseEntry.date).toLocaleDateString('es-ES');
       const histDiv = movCard.querySelector('.mov-pase-hist');
-      const tipoIcons = { solo: 'solo', informal: 'amigos', escena: '🎭', tecnico: 'tec', memoria: 'mem', concierto: '🎭' };
+      const tipoIcons = { solo: 'solo', informal: 'amigos', evento: 'evento', escena: 'evento', tecnico: 'tec', memoria: 'mem', concierto: 'evento' };
       const d = new Date(paseEntry.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
       const tipoLabel = paseEntry.tipo ? `<span style="color:var(--text3);font-size:8px;background:var(--bg2);border-radius:3px;padding:1px 4px;margin-left:2px">${tipoIcons[paseEntry.tipo]||paseEntry.tipo}</span>` : '';
       const newRow = `<div style="display:flex;gap:8px;font-size:9px;color:var(--text3);padding:3px 0;align-items:center">
@@ -11909,7 +11952,7 @@ function confirmPase() {
   if (!obra.paseHistory) obra.paseHistory = [];
   obra.paseHistory.unshift(paseEntry);
   if (obra.paseHistory.length > 20) obra.paseHistory = obra.paseHistory.slice(0, 20);
-  linkPaseToHistory(paseQualityObraId, paseQualitySelected, tipo);
+  linkPaseToHistory(paseQualityObraId, paseQualitySelected, tipo, paseDate);
   saveData();
   closeModal('modalPaseQuality');
   showToast('Pase registrado ✓');
@@ -11920,11 +11963,11 @@ function confirmPase() {
 
 let cronoPaseDraft = [];
 const CRONO_PASE_SCORE_CHOICES = [
-  { score: 2, label: 'Mal' },
-  { score: 4, label: 'Flojo' },
-  { score: 6, label: 'OK' },
-  { score: 8, label: 'Bien' },
-  { score: 10, label: 'Muy bien' },
+  { score: 2, label: 'Se cae' },
+  { score: 4, label: 'Frágil' },
+  { score: 6, label: 'Sale' },
+  { score: 8, label: 'Sólido' },
+  { score: 10, label: 'Listo' },
 ];
 
 function cronoPaseDefaultMinutes(resolved) {
@@ -11963,10 +12006,20 @@ function cronoPaseSeedCurrentSelection() {
 function openCronoPaseRapido() {
   buildObraSelectOptions('cronoPaseObraSelect');
   cronoPaseDraft = [];
+  cronoPaseTipoSelected = 'solo';
+  document.querySelectorAll('#modalCronoPaseRapido .pase-tipo-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('#modalCronoPaseRapido .pase-tipo-btn.solo')?.classList.add('active');
   cronoPaseSeedCurrentSelection();
   cronoPasePreviewSelected();
   cronoPaseRender();
   openModal('modalCronoPaseRapido');
+}
+
+function selectCronoPaseTipo(tipo, btn) {
+  cronoPaseTipoSelected = normalizePaseTipo(tipo);
+  const row = btn?.closest('.pase-tipo-row') || document;
+  row.querySelectorAll('.pase-tipo-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active', cronoPaseTipoSelected);
 }
 
 function cronoPasePreviewSelected() {
@@ -12060,11 +12113,13 @@ function cronoPaseRender() {
 }
 
 function cronoPaseRecordQuality(item, dateIso) {
+  const tipo = normalizePaseTipo(cronoPaseTipoSelected);
   const paseEntry = {
     date: dateIso,
     score: item.score,
+    solidezPct: paseScoreToPct(item.score),
     quality: scoreToQuality(item.score),
-    tipo: 'solo',
+    tipo,
     note: 'pase rápido',
   };
   if (item.movId) {
@@ -12074,6 +12129,7 @@ function cronoPaseRecordQuality(item, dateIso) {
     if (!mov.paseHistory) mov.paseHistory = [];
     mov.paseHistory.unshift(paseEntry);
     if (mov.paseHistory.length > 20) mov.paseHistory = mov.paseHistory.slice(0, 20);
+    linkPaseToTargetHistory(item.obraId, item.movId, item.score, tipo, dateIso);
     return;
   }
   const obra = findObra(item.obraId);
@@ -12082,7 +12138,7 @@ function cronoPaseRecordQuality(item, dateIso) {
   if (!obra.paseHistory) obra.paseHistory = [];
   obra.paseHistory.unshift(paseEntry);
   if (obra.paseHistory.length > 20) obra.paseHistory = obra.paseHistory.slice(0, 20);
-  linkPaseToHistory(item.obraId, item.score, 'solo');
+  linkPaseToHistory(item.obraId, item.score, tipo, dateIso);
 }
 
 function cronoPaseAddToStudy(item, startedAtIso, endedAtIso) {
@@ -12132,7 +12188,7 @@ function cronoPaseAddToStudy(item, startedAtIso, endedAtIso) {
     endedAt: endedAtIso,
     pase: true,
     score: item.score,
-    tipo: 'pase-rapido',
+    tipo: normalizePaseTipo(cronoPaseTipoSelected),
   });
 
   ensureSessionPlanScaffold();
@@ -16573,6 +16629,17 @@ function cronoUpdateSolidityActions() {
   const runZoneBtn = document.getElementById('cronoRunZoneBtn');
   const runZoneVal = document.getElementById('cronoRunZoneValue');
 
+  if (idleBtn) idleBtn.style.display = 'none';
+  if (idleVal) idleVal.textContent = 'â€”';
+  if (runBtn) runBtn.style.display = 'none';
+  if (runVal) runVal.textContent = 'â€”';
+  const paseRunBase = crono.obraId ? _quickSolCurrentBase('running') : null;
+  const paseZonePreview = cronoZonePreviewForBase(paseRunBase);
+  if (runRow) runRow.style.display = paseZonePreview ? '' : 'none';
+  if (runZoneBtn) runZoneBtn.style.display = paseZonePreview ? '' : 'none';
+  if (runZoneVal) runZoneVal.textContent = paseZonePreview || 'al terminar';
+  return;
+
   const idleBase = _quickSolCurrentBase('idle');
   const runBase = crono.obraId ? _quickSolCurrentBase('running') : null;
 
@@ -16600,6 +16667,8 @@ function hechoUpdateFastSolidityAction() {
   const wrap = document.getElementById('hechoFastActions');
   const valEl = document.getElementById('hechoFastSolValue');
   const labelEl = document.getElementById('hechoFastSolLabel');
+  if (wrap) wrap.style.display = 'none';
+  return;
   if (!wrap || !valEl) return;
   const base = _quickSolCurrentBase('hecho');
   const targets = _quickSolBuildTargets(base);

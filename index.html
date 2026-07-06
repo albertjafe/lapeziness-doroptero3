@@ -351,7 +351,7 @@
           <span>Pase</span>
           <strong>＋</strong>
         </button>
-        <button class="crono-solidity-btn" id="cronoQuickSolBtn" onclick="openQuickSolidez('idle')">
+        <button class="crono-solidity-btn" id="cronoQuickSolBtn" onclick="openQuickSolidez('idle')" style="display:none">
           <span>Solidez</span>
           <strong id="cronoQuickSolValue">—</strong>
         </button>
@@ -416,7 +416,7 @@
           <span>Zona</span>
           <strong id="cronoRunZoneValue">al terminar</strong>
         </button>
-        <button class="crono-solidity-btn crono-solidity-btn-run" id="cronoRunSolBtn" onclick="openQuickSolidez('running')">
+        <button class="crono-solidity-btn crono-solidity-btn-run" id="cronoRunSolBtn" onclick="openQuickSolidez('running')" style="display:none">
           <span>Solidez</span>
           <strong id="cronoRunSolValue">—</strong>
         </button>
@@ -624,9 +624,9 @@
           <input class="modal-input add-obra-mini-input" id="newObraDuracion" type="number" min="1" max="180" placeholder="opcional" oninput="updateAddObraPrediccion()">
         </div>
       </div>
-      <div class="hecho-field-label" style="margin-top:4px">Solidez ahora · <span id="newObraSolidezVal" style="color:var(--accent);font-weight:600">10%</span></div>
+      <div class="hecho-field-label legacy-solidez-field" style="margin-top:4px;display:none">Solidez inicial · <span id="newObraSolidezVal" style="color:var(--accent);font-weight:600">10%</span></div>
       <input type="range" class="estado-slider" id="newObraSolidez" min="0" max="100" step="5" value="10"
-        style="color:var(--accent)" oninput="document.getElementById('newObraSolidezVal').textContent=this.value+'%';updateAddObraPrediccion()">
+        style="color:var(--accent);display:none" oninput="document.getElementById('newObraSolidezVal').textContent=this.value+'%';updateAddObraPrediccion()">
       <div class="add-obra-state-note" id="addObraStateNote">0% = recién empezada · 100% = la tocas en público y sale perfecta.</div>
       <div class="add-obra-prediccion" id="addObraPrediccion" style="display:none"></div>
     </div>
@@ -1149,7 +1149,7 @@
     <div class="modal-title" style="margin-bottom:4px">✓ Hecho</div>
     <div class="hecho-modal-obra" id="hechoObraName"></div>
 
-    <div class="hecho-fast-actions" id="hechoFastActions">
+    <div class="hecho-fast-actions" id="hechoFastActions" style="display:none">
       <button class="hecho-fast-sol-btn" onclick="openQuickSolidez('hecho')">
         <span id="hechoFastSolLabel">Registrar solidez</span>
         <strong id="hechoFastSolValue">—</strong>
@@ -1438,10 +1438,10 @@
     <div class="pase-tipo-label">Contexto</div>
     <div class="pase-tipo-row">
       <button class="pase-tipo-btn solo active" onclick="selectPaseTipo('solo',this)">Solo</button>
-      <button class="pase-tipo-btn informal" onclick="selectPaseTipo('informal',this)">Amigos / informal</button>
-      <button class="pase-tipo-btn escena" onclick="selectPaseTipo('escena',this)">Concierto / concurso</button>
+      <button class="pase-tipo-btn informal" onclick="selectPaseTipo('informal',this)">Informal</button>
+      <button class="pase-tipo-btn evento" onclick="selectPaseTipo('evento',this)">Evento</button>
     </div>
-    <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Calidad (1 = muy mal · 10 = perfecto)</div>
+    <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Resultado del pase</div>
     <div class="pscore-modal-row" id="paseQScoreBtns"></div>
     <input class="modal-input" id="paseQNote" placeholder="nota rápida (opcional)" type="text" style="margin-top:4px">
     <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin:10px 0 6px">Fecha del pase</div>
@@ -1458,6 +1458,13 @@
   <div class="modal crono-pase-rapido-modal">
     <div class="modal-title">Pase rápido</div>
     <div class="crono-pase-rapido-sub">Añade las obras tocadas. Se sumará automáticamente la duración de cada una al estudio de hoy.</div>
+
+    <div class="pase-tipo-label">Tipo de pase</div>
+    <div class="pase-tipo-row crono-pase-tipo-row">
+      <button class="pase-tipo-btn solo active" onclick="selectCronoPaseTipo('solo',this)">Solo</button>
+      <button class="pase-tipo-btn informal" onclick="selectCronoPaseTipo('informal',this)">Informal</button>
+      <button class="pase-tipo-btn evento" onclick="selectCronoPaseTipo('evento',this)">Evento</button>
+    </div>
 
     <div class="crono-pase-add-row">
       <select class="modal-input" id="cronoPaseObraSelect" onchange="cronoPasePreviewSelected()"></select>
