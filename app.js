@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-06-pase-solidez-v15';
+const APP_VERSION = '2026-07-06-crono-wakelock-v16';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -14637,30 +14637,103 @@ const crono = {
 };
 
 let _cronoWakeLock = null;
+let _cronoWakeRetryTimer = null;
+let _cronoWakeRetryCount = 0;
+let _cronoWakeManualReleaseUntil = 0;
+let _cronoWakeLastError = '';
+
+function cronoWakeLockSupported() {
+  return !!(navigator && navigator.wakeLock && typeof navigator.wakeLock.request === 'function');
+}
+
+function cronoShouldKeepAwake() {
+  return crono.state === 'running' && document.visibilityState === 'visible';
+}
+
+function cronoClearWakeRetry() {
+  if (_cronoWakeRetryTimer) {
+    clearTimeout(_cronoWakeRetryTimer);
+    _cronoWakeRetryTimer = null;
+  }
+}
+
+function cronoMarkWakeStatus(status) {
+  try { document.body.dataset.cronoWake = status || 'off'; } catch(e) {}
+}
+
+function cronoScheduleWakeLockRetry(delayMs) {
+  cronoClearWakeRetry();
+  if (!cronoShouldKeepAwake() || !cronoWakeLockSupported()) return;
+  const delay = Math.max(600, Math.min(delayMs || 1500, 12000));
+  _cronoWakeRetryTimer = setTimeout(() => {
+    _cronoWakeRetryTimer = null;
+    cronoAcquireWakeLock();
+  }, delay);
+}
 
 async function cronoAcquireWakeLock() {
-  if (!('wakeLock' in navigator) || crono.state !== 'running') return;
+  if (!cronoShouldKeepAwake()) return;
+  if (!cronoWakeLockSupported()) {
+    _cronoWakeLastError = 'unsupported';
+    cronoMarkWakeStatus('unsupported');
+    return;
+  }
+  if (_cronoWakeLock) {
+    cronoMarkWakeStatus('on');
+    return;
+  }
+
   try {
-    if (_cronoWakeLock) return;
-    _cronoWakeLock = await navigator.wakeLock.request('screen');
-    _cronoWakeLock.addEventListener('release', () => { _cronoWakeLock = null; });
+    cronoClearWakeRetry();
+    const lock = await navigator.wakeLock.request('screen');
+    if (!cronoShouldKeepAwake()) {
+      try { await lock.release(); } catch(e) {}
+      return;
+    }
+
+    _cronoWakeLock = lock;
+    _cronoWakeRetryCount = 0;
+    _cronoWakeLastError = '';
+    cronoMarkWakeStatus('on');
+    lock.addEventListener('release', () => {
+      if (_cronoWakeLock === lock) _cronoWakeLock = null;
+      cronoMarkWakeStatus('off');
+      if (Date.now() < _cronoWakeManualReleaseUntil) return;
+      if (cronoShouldKeepAwake()) cronoScheduleWakeLockRetry(900);
+    });
   } catch(e) {
     _cronoWakeLock = null;
+    _cronoWakeLastError = (e && (e.name || e.message)) ? (e.name || e.message) : 'WakeLockError';
+    cronoMarkWakeStatus('blocked');
+    _cronoWakeRetryCount += 1;
+    if (_cronoWakeRetryCount <= 8) {
+      cronoScheduleWakeLockRetry(1200 + (_cronoWakeRetryCount * 900));
+    }
   }
 }
 
 async function cronoReleaseWakeLock() {
+  cronoClearWakeRetry();
+  _cronoWakeRetryCount = 0;
+  _cronoWakeManualReleaseUntil = Date.now() + 2000;
   const lock = _cronoWakeLock;
   _cronoWakeLock = null;
+  cronoMarkWakeStatus('off');
   if (lock) {
     try { await lock.release(); } catch(e) {}
   }
 }
 
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && crono.state === 'running') {
-    cronoAcquireWakeLock();
-  }
+function cronoRefreshWakeLock() {
+  if (cronoShouldKeepAwake()) cronoAcquireWakeLock();
+  else if (document.visibilityState !== 'visible') cronoClearWakeRetry();
+}
+
+document.addEventListener('visibilitychange', cronoRefreshWakeLock);
+window.addEventListener('focus', cronoRefreshWakeLock);
+window.addEventListener('pageshow', cronoRefreshWakeLock);
+['pointerdown', 'touchstart', 'click', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, cronoRefreshWakeLock, evt === 'keydown' ? false : { passive: true });
 });
 
 // Pases registrados durante la sesión (drawer lateral) — se pre-rellenan en el modal Hecho
