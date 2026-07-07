@@ -3862,6 +3862,20 @@
     font-size: 10px; color: var(--text3); white-space: nowrap; flex-shrink: 0;
     letter-spacing: 0.04em;
   }
+  .destello-card-level {
+    display: inline-flex;
+    width: fit-content;
+    margin: -2px 0 8px;
+    padding: 3px 7px;
+    border: 1px solid color-mix(in oklab, var(--accent) 26%, var(--border2));
+    border-radius: 999px;
+    color: var(--accent);
+    background: color-mix(in oklab, var(--accent) 7%, transparent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
   /* Nota legible: serif elegante (no manuscrita), tamaño cómodo de leer. */
   .destello-card-nota {
     font-family: 'Cormorant Garamond', Georgia, serif;
@@ -3884,6 +3898,25 @@
     cursor: pointer;
   }
   .destello-card-edit:active { transform: scale(0.98); }
+  .destello-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .destello-card-actions .destello-card-edit { margin-top: 0; }
+  .destello-card-help {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+  }
+  .destello-card-help:hover { color: var(--accent); }
+  .destello-card-help:active { transform: scale(0.98); }
   .destello-edit-wrap { margin-top: 10px; }
   .destello-edit-input {
     width: 100%;
@@ -6596,6 +6629,33 @@
   .crono-run-destello.is-changing {
     animation: cronoDestelloIn 1.1s cubic-bezier(0.16,1,0.3,1);
   }
+  .crono-run-destello-btn {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-style: inherit;
+    line-height: inherit;
+    text-align: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .crono-run-destello-btn:active { transform: scale(0.985); }
+  .crono-run-destello-level {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-style: normal;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--crono-color, var(--accent));
+    opacity: 0.78;
+  }
   @keyframes cronoDestelloIn {
     from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
     to   { opacity: 0.86; transform: translateY(0); filter: blur(0); }
@@ -7738,6 +7798,37 @@
   .crono-note-btn-run.has-notes strong {
     color: var(--crono-color, var(--accent));
   }
+  .crono-observation-box {
+    width: min(520px, 100%);
+    margin: 8px auto 0;
+    padding: 11px 13px;
+    border: 1px solid color-mix(in oklab, var(--border2) 86%, transparent);
+    border-radius: 14px;
+    background: color-mix(in oklab, var(--bg2) 78%, transparent);
+    color: var(--text2);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-size: 13px;
+    line-height: 1.38;
+    resize: none;
+    outline: none;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  }
+  .crono-observation-box::placeholder { color: var(--text3); opacity: 0.72; }
+  .crono-observation-box:focus {
+    border-color: color-mix(in oklab, var(--crono-color, var(--accent)) 45%, var(--border));
+    background: color-mix(in oklab, var(--bg3) 86%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--crono-color, var(--accent)) 10%, transparent);
+  }
+  .crono-observation-box-idle {
+    min-height: 48px;
+    max-height: 76px;
+  }
+  .crono-observation-box-run {
+    min-height: 52px;
+    max-height: 84px;
+    margin-top: -8px;
+  }
   .crono-note-modal {
     width: min(420px, calc(100vw - 32px));
   }
@@ -7803,6 +7894,11 @@
   .hecho-crono-final-note {
     min-height: 72px;
     resize: vertical;
+  }
+  .hecho-session-note {
+    min-height: 86px;
+    resize: vertical;
+    line-height: 1.45;
   }
   .crono-pase-rapido-modal {
     width: min(440px, calc(100vw - 32px));

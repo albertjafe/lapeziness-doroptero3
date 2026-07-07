@@ -379,6 +379,10 @@
         </button>
       </div>
 
+      <textarea id="cronoIdleObservation" class="crono-observation-box crono-observation-box-idle"
+        rows="2" maxlength="1600" placeholder="Objetivo u observacion de esta sesion..."
+        oninput="cronoSetObservation(this.value)"></textarea>
+
       <div class="crono-timer-projection" id="cronoTimerProjection" style="display:none"></div>
 
       <!-- Indicador discreto del color de la obra seleccionada -->
@@ -432,6 +436,10 @@
       <!-- Hito "si paras ahora" como cápsula dentro de la tarjeta (Mármol) -->
       <div class="crono-run-milestone" id="cronoRunMilestone" style="display:none"></div>
       <div class="crono-run-destello" id="cronoRunDestello" aria-live="polite"></div>
+
+      <textarea id="cronoRunObservation" class="crono-observation-box crono-observation-box-run"
+        rows="2" maxlength="1600" placeholder="Observacion de la sesion..."
+        oninput="cronoSetObservation(this.value)"></textarea>
 
       <div class="crono-run-quick-row">
         <button class="crono-zone-btn" id="cronoRunZoneBtn" onclick="showToast('La zona se registra al pulsar Hecho')">
@@ -1331,9 +1339,9 @@
 
     <!-- Notas de cronometro / temporizador -->
     <div id="hechoCronoNotesSection" class="hecho-crono-notes-section" style="display:none">
-      <div class="hecho-field-label">Notas de la sesion</div>
+      <div class="hecho-field-label">Notas rapidas de la sesion</div>
       <div id="hechoCronoNotesList" class="hecho-crono-notes-list"></div>
-      <textarea id="hechoCronoFinalNote" class="modal-input hecho-crono-final-note" rows="2" placeholder="nota final dictada o escrita..."></textarea>
+      <textarea id="hechoCronoFinalNote" class="modal-input hecho-crono-final-note" rows="2" placeholder="nota final dictada o escrita..." style="display:none"></textarea>
     </div>
 
     <!-- Destello: marcar la sesión como memorable (sin productividad) -->
@@ -1348,9 +1356,9 @@
       </div>
     </div>
 
-    <!-- Nota general -->
-    <div class="hecho-field-label">Nota general (opcional)</div>
-    <input type="text" id="hechoNota" class="modal-input" placeholder="observaciones generales...">
+    <!-- Observacion unica -->
+    <div class="hecho-field-label">Observacion de la sesion</div>
+    <textarea id="hechoNota" class="modal-input hecho-session-note" rows="3" maxlength="1600" placeholder="Una sola observacion: objetivo, sensacion, ajuste o cierre..."></textarea>
 
     </div><!-- /.hecho-modal-body -->
 

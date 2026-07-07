@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-07-crono-session-notes-v25';
+const APP_VERSION = '2026-07-07-crono-destello-notes-v26';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1769,6 +1769,7 @@ const CRONO_BREATH_PATTERN = [
 let _destellosModalEntries = [];
 let _destellosEditIndex = null;
 let _cronoLastRunDestelloKey = '';
+let _cronoCurrentDestelloEntry = null;
 let _cronoBreathInterval = null;
 let _cronoBreathStartedAt = 0;
 let _cronoBreathEndsAt = 0;
@@ -1896,6 +1897,9 @@ function restoreSessionFromDbToday(opts) {
         note: it.note || '',
         destello: !!it.destello,
         destelloNota: it.destelloNota || null,
+        destelloBoosts: destelloBoosts(it),
+        destelloHelpLog: destelloHelpLog(it),
+        destelloHelpedAt: it.destelloHelpedAt || null,
       };
     }
     groups[planIdKey].planMin += parseInt(it.minutosPlan || it.minutosReales || 0) || 0;
@@ -1906,7 +1910,14 @@ function restoreSessionFromDbToday(opts) {
     if (it.tick === 'hecho') groups[planIdKey].tick = 'hecho';
     if (it.rating != null) groups[planIdKey].rating = it.rating;
     if (it.solRating != null) groups[planIdKey].solRating = it.solRating;
-    if (it.destello) { groups[planIdKey].destello = true; groups[planIdKey].destelloNota = it.destelloNota || groups[planIdKey].destelloNota || null; }
+    if (it.destello) {
+      groups[planIdKey].destello = true;
+      groups[planIdKey].destelloNota = it.destelloNota || groups[planIdKey].destelloNota || null;
+      groups[planIdKey].destelloBoosts = Math.max(groups[planIdKey].destelloBoosts || 0, destelloBoosts(it));
+      const log = destelloHelpLog(it);
+      if (log.length) groups[planIdKey].destelloHelpLog = log;
+      groups[planIdKey].destelloHelpedAt = it.destelloHelpedAt || groups[planIdKey].destelloHelpedAt || null;
+    }
   });
 
   Object.values(groups).forEach(g => {
@@ -1937,7 +1948,14 @@ function restoreSessionFromDbToday(opts) {
     if (g.tick) sessionTicks[planId] = g.tick;
     if (g.rating != null) sessionProductivityRatings[planId] = g.rating;
     if (g.solRating != null) sessionSolRatings[planId] = g.solRating;
-    if (g.destello) sessionDestello[planId] = { on: true, nota: g.destelloNota || '' };
+    if (g.destello) sessionDestello[planId] = {
+      on: true,
+      nota: g.destelloNota || '',
+      boosts: g.destelloBoosts || 0,
+      level: destelloLevelFromBoosts(g.destelloBoosts || 0),
+      helpLog: Array.isArray(g.destelloHelpLog) ? g.destelloHelpLog : [],
+      helpedAt: g.destelloHelpedAt || null,
+    };
   });
 
   // Restaurar aggregate completo si está disponible
@@ -2274,6 +2292,10 @@ function commitSession(targetDate) {
       note: document.getElementById('tnote-' + planId)?.value || '',
       destello: sessionDestello[planId]?.on ? true : false,
       destelloNota: sessionDestello[planId]?.nota || null,
+      destelloBoosts: destelloBoosts(sessionDestello[planId]),
+      destelloLevel: destelloLevelFromBoosts(destelloBoosts(sessionDestello[planId])),
+      destelloHelpLog: destelloHelpLog(sessionDestello[planId]),
+      destelloHelpedAt: sessionDestello[planId]?.helpedAt || null,
       zone: latestZone,
       zona: zoneSummaryText(latestZone),
       objetivo: ''
@@ -2572,6 +2594,10 @@ function _autoSaveTodayPlanNow() {
         note: document.getElementById('tnote-' + planId)?.value || '',
         destello: sessionDestello[planId]?.on ? true : false,
         destelloNota: sessionDestello[planId]?.nota || null,
+        destelloBoosts: destelloBoosts(sessionDestello[planId]),
+        destelloLevel: destelloLevelFromBoosts(destelloBoosts(sessionDestello[planId])),
+        destelloHelpLog: destelloHelpLog(sessionDestello[planId]),
+        destelloHelpedAt: sessionDestello[planId]?.helpedAt || null,
         startedAt: firstStartedAt,
         endedAt: lastEndedAt,
         zone: latestZone,
@@ -5567,16 +5593,13 @@ function hechoRenderCronoNotes(planId, isEditMode) {
   const list = document.getElementById('hechoCronoNotesList');
   const finalInput = document.getElementById('hechoCronoFinalNote');
   if (!section || !list) return;
-  const notes = hechoCronoNotesForPlan(planId, isEditMode);
-  const shouldShow = notes.length > 0 || _hechoSubSession;
+  const notes = hechoCronoNotesForPlan(planId, isEditMode)
+    .filter(note => note && note.source !== 'observation');
+  const shouldShow = notes.length > 0;
   section.style.display = shouldShow ? 'block' : 'none';
-  if (finalInput) finalInput.value = '';
+  if (finalInput) { finalInput.value = ''; finalInput.style.display = 'none'; }
   if (!shouldShow) {
     list.innerHTML = '';
-    return;
-  }
-  if (!notes.length) {
-    list.innerHTML = '<div class="hecho-crono-notes-empty">Sin notas durante el crono. Puedes dictar una nota final.</div>';
     return;
   }
   list.innerHTML = notes.map(note => {
@@ -5806,7 +5829,10 @@ function openHechoDatos(planId, minPlan, opts) {
     }
   }
 
-  document.getElementById('hechoNota').value = document.getElementById('tnote-' + planId)?.value || '';
+  const hechoNotaEl = document.getElementById('hechoNota');
+  const savedPlanNote = document.getElementById('tnote-' + planId)?.value || '';
+  const cronoObservation = cronoObservationTextForPlan(planId, isEditMode);
+  if (hechoNotaEl) hechoNotaEl.value = savedPlanNote || cronoObservation || '';
   hechoRenderCronoNotes(planId, isEditMode);
 
   // Destello: casilla simple (sin productividad). Restaura el estado previo.
@@ -5958,7 +5984,7 @@ function closeHechoDatos(save) {
   const minInp = document.getElementById('tmin-' + planId);
   if (minInp && minutos) { minInp.value = minutos; minInp._touched = true; }
   const noteInp = document.getElementById('tnote-' + planId);
-  if (noteInp && nota) noteInp.value = nota;
+  if (noteInp) noteInp.value = nota;
 
   // Save pases to paseHistory + solHistory.
   // En editMode no duplicamos paseHistory; ya está registrado de la primera vez.
@@ -6136,7 +6162,10 @@ function closeHechoDatos(save) {
   const destChk = document.getElementById('hechoDestelloChk');
   const destOn = !!(destBox && destBox.style.display !== 'none' && destChk && destChk.checked);
   const destNota = destOn ? (document.getElementById('hechoDestelloNota')?.value || '').trim() : '';
-  if (destOn) sessionDestello[planId] = { on: true, nota: destNota };
+  if (destOn) {
+    const prevDest = sessionDestello[planId] || {};
+    sessionDestello[planId] = Object.assign({}, prevDest, { on: true, nota: destNota });
+  }
   else delete sessionDestello[planId];
 
   // Registro de la sub-sesión (timestamps, minutos, zona, destello). La
@@ -6175,20 +6204,20 @@ function closeHechoDatos(save) {
     const baseSessionNotes = pending && Array.isArray(pending.notes)
       ? pending.notes
       : hechoCronoNotesForPlan(planId, _hechoEditMode);
-    const sessionNotes = Array.isArray(baseSessionNotes)
+    let sessionNotes = Array.isArray(baseSessionNotes)
       ? baseSessionNotes.map(cronoNormalizeSessionNote).filter(Boolean)
       : [];
-    const finalNoteText = (document.getElementById('hechoCronoFinalNote')?.value || '').trim();
-    if (finalNoteText) {
+    sessionNotes = sessionNotes.filter(note => note && note.source !== 'observation');
+    if (nota && _hechoSubSession) {
       const finalMin = subMin || minutos || totalAcum || 0;
       const display = entity ? entity.name : (obra ? obra.name : '');
       const sub = movId && obra ? obra.name + (obra.composer ? ' · ' + obra.composer : '') : (obra?.composer || '');
       const finalNote = cronoNormalizeSessionNote({
         id: cronoNoteId(),
-        text: finalNoteText,
+        text: nota,
         at: new Date().toISOString(),
         phase: 'after',
-        phaseLabel: 'despues',
+        phaseLabel: 'observacion',
         minute: finalMin,
         elapsedMs: finalMin * 60000,
         state: 'hecho',
@@ -6197,7 +6226,7 @@ function closeHechoDatos(save) {
         movId,
         displayName: display,
         subName: sub,
-        source: 'hecho',
+        source: 'observation',
       });
       if (finalNote) sessionNotes.push(finalNote);
     }
@@ -6229,6 +6258,10 @@ function closeHechoDatos(save) {
       zone: zoneSnapshot,
       destello: destOn,
       destelloNota: destOn ? destNota : null,
+      destelloBoosts: destOn ? destelloBoosts(sessionDestello[planId]) : 0,
+      destelloLevel: destOn ? destelloLevelFromBoosts(destelloBoosts(sessionDestello[planId])) : 0,
+      destelloHelpLog: destOn ? destelloHelpLog(sessionDestello[planId]) : [],
+      destelloHelpedAt: destOn ? (sessionDestello[planId]?.helpedAt || null) : null,
       sessionNotes: sessionNotes.length ? sessionNotes : null,
       notes: sessionNotes.length ? sessionNotes : null,
       startedAt: startedAt,
@@ -6251,6 +6284,10 @@ function closeHechoDatos(save) {
       previous.prod = justAdded.prod;
       previous.destello = justAdded.destello;
       previous.destelloNota = justAdded.destelloNota;
+      previous.destelloBoosts = justAdded.destelloBoosts;
+      previous.destelloLevel = justAdded.destelloLevel;
+      previous.destelloHelpLog = justAdded.destelloHelpLog;
+      previous.destelloHelpedAt = justAdded.destelloHelpedAt;
       previous.sessionNotes = justAdded.sessionNotes;
       previous.notes = justAdded.notes;
       // Si el usuario editó los minutos del modal, propagar a la sub-sesión
@@ -16119,6 +16156,7 @@ const crono = {
   pauseInterval: null,
   lastCountdownSecond: null,
   notes: [],
+  observation: '',
 };
 
 let _cronoWakeLock = null;
@@ -16250,6 +16288,7 @@ function cronoSaveState() {
       pausedMs: crono.pausedMs,
       pauseStartTs: crono.pauseStartTs,
       notes: Array.isArray(crono.notes) ? crono.notes.slice(-80) : [],
+      observation: crono.observation || '',
     }));
   } catch(e) {}
 }
@@ -16266,6 +16305,7 @@ function cronoLoadState() {
     }
     if (typeof s.untilTime === 'string') crono.untilTime = s.untilTime;
     crono.notes = Array.isArray(s.notes) ? s.notes.slice(-80).map(cronoNormalizeSessionNote).filter(Boolean) : [];
+    crono.observation = typeof s.observation === 'string' ? s.observation.slice(0, 1600) : '';
     if (s.state !== 'running' && s.state !== 'paused') return false;
     if (!s.obraId || !s.startTs) return false;
     crono.state = s.state;
@@ -16421,8 +16461,42 @@ function cronoRenderNoteCounts() {
   });
 }
 
+function cronoSetObservation(value) {
+  crono.observation = String(value || '').slice(0, 1600);
+  cronoSaveState();
+}
+
+function cronoSyncObservationInputs() {
+  const value = crono.observation || '';
+  ['cronoIdleObservation', 'cronoRunObservation'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || document.activeElement === el) return;
+    if (el.value !== value) el.value = value;
+  });
+}
+
+function cronoObservationTextForPlan(planId, isEditMode) {
+  const agg = planId ? sessionAggregate[planId] : null;
+  const pending = agg && agg._pendingTimes ? agg._pendingTimes : null;
+  if (pending && typeof pending.observation === 'string') return pending.observation.trim();
+  const notes = hechoCronoNotesForPlan(planId, isEditMode)
+    .filter(note => note && note.source === 'observation');
+  if (notes.length) return (notes[notes.length - 1].text || '').trim();
+  return '';
+}
+
+function cronoCreateObservationNote(text, phase, opts) {
+  const clean = String(text || '').trim();
+  if (!clean) return null;
+  const note = cronoCreateSessionNote(clean, phase || 'during', Object.assign({}, opts || {}, {
+    source: 'observation'
+  }));
+  if (note) note.kind = 'session-observation';
+  return note;
+}
+
 function cronoBuildSessionNotes(totalMs, minutos) {
-  return (Array.isArray(crono.notes) ? crono.notes : [])
+  const notes = (Array.isArray(crono.notes) ? crono.notes : [])
     .map(note => cronoNormalizeSessionNote(Object.assign({
       fallbackMin: minutos,
       obraId: crono.obraId,
@@ -16440,6 +16514,21 @@ function cronoBuildSessionNotes(totalMs, minutos) {
       }
       return note;
     });
+  const observationText = (crono.observation || '').trim();
+  if (observationText) {
+    const phase = crono.state === 'idle' ? 'before' : 'during';
+    const observation = cronoCreateObservationNote(observationText, phase, {
+      fallbackMin: minutos,
+      elapsedMs: Math.min(Math.max(0, totalMs || 0), Math.max(0, cronoCurrentMs ? cronoCurrentMs() : 0)),
+      obraId: crono.obraId,
+      movId: crono.movId,
+      displayName: crono.displayName,
+      subName: crono.subName,
+      mode: crono.mode,
+    });
+    if (observation) notes.push(observation);
+  }
+  return notes;
 }
 
 // ── Resumen de minutos concentrado HOY ──────────────────────────────────────
@@ -16698,6 +16787,43 @@ function renderCronoAyerPanel() {
 // Los días pasados se leen de db.sesiones; HOY se lee del estado en memoria
 // (sessionDestello) para que un destello recién marcado aparezca al instante,
 // sin esperar al autoguardado (que va con debounce de 800ms).
+function destelloBoosts(raw) {
+  if (!raw) return 0;
+  return Math.max(0, Math.round(Number(raw.boosts ?? raw.destelloBoosts ?? raw.helpCount ?? 0) || 0));
+}
+
+function destelloHelpLog(raw) {
+  const list = raw && (raw.helpLog || raw.destelloHelpLog || raw.helpedLog);
+  return Array.isArray(list) ? list.filter(Boolean).slice(-120) : [];
+}
+
+function destelloLevelFromBoosts(boosts) {
+  const n = Math.max(0, Math.round(Number(boosts) || 0));
+  if (n >= 25) return 5;
+  if (n >= 14) return 4;
+  if (n >= 7) return 3;
+  if (n >= 3) return 2;
+  if (n >= 1) return 1;
+  return 0;
+}
+
+function destelloLevelLabel(boosts) {
+  const level = destelloLevelFromBoosts(boosts);
+  return level ? ('Nivel ' + level + ' · ' + boosts + (boosts === 1 ? ' ayuda' : ' ayudas')) : 'Sin ayudas todavia';
+}
+
+function _syncDestelloSubMeta(aggregate, planId, meta) {
+  const subs = aggregate && planId && aggregate[planId] && aggregate[planId].subsessions;
+  if (!Array.isArray(subs) || !subs.length) return;
+  const destSubs = subs.filter(s => s && s.destello);
+  const target = destSubs.length ? destSubs[destSubs.length - 1] : subs[subs.length - 1];
+  if (!target) return;
+  target.destelloBoosts = meta.boosts || 0;
+  target.destelloLevel = destelloLevelFromBoosts(meta.boosts || 0);
+  target.destelloHelpLog = Array.isArray(meta.helpLog) ? meta.helpLog.slice(-120) : [];
+  target.destelloHelpedAt = meta.helpedAt || null;
+}
+
 function getAllDestellos() {
   const out = [];
   const todayStr = new Date().toDateString();
@@ -16717,6 +16843,10 @@ function getAllDestellos() {
       date: new Date().toISOString(),
       obra: obraName,
       nota: (d.nota || '').trim(),
+      boosts: destelloBoosts(d),
+      level: destelloLevelFromBoosts(destelloBoosts(d)),
+      helpLog: destelloHelpLog(d),
+      helpedAt: d.helpedAt || null,
       source: 'today',
       planId,
     });
@@ -16733,11 +16863,11 @@ function getAllDestellos() {
         const planId = it._planId || (it.obraId + '::' + (it.movId || ''));
         let on = !!it.destello;
         let nota = (it.destelloNota || '').trim();
+        const subs = aggregate[planId]?.subsessions || [];
+        const destSub = subs.find(s => s && s.destello) || null;
         // Respaldo: destello guardado solo en alguna sub-sesión.
         if (!on) {
-          const subs = aggregate[planId]?.subsessions || [];
-          const sub = subs.find(s => s && s.destello);
-          if (sub) { on = true; if (!nota) nota = (sub.destelloNota || '').trim(); }
+          if (destSub) { on = true; if (!nota) nota = (destSub.destelloNota || '').trim(); }
         }
         if (!on) return;
         // Nombre de la obra: del item guardado o reconstruido desde db.obras.
@@ -16753,10 +16883,16 @@ function getAllDestellos() {
             }
           }
         }
+        const boosts = destelloBoosts(it) || destelloBoosts(destSub);
+        const helpLog = destelloHelpLog(it).length ? destelloHelpLog(it) : destelloHelpLog(destSub);
         out.push({
           date: sesion.date,
           obra: obraName || 'Sesión',
           nota,
+          boosts,
+          level: destelloLevelFromBoosts(boosts),
+          helpLog,
+          helpedAt: it.destelloHelpedAt || destSub?.destelloHelpedAt || null,
           source: 'history',
           sesionIdx,
           itemIdx,
@@ -16787,10 +16923,17 @@ function _destelloTextForCrono(d) {
 }
 
 function getCronoDestelloPhrases() {
+  return getCronoDestelloPhraseEntries().map(x => x.text);
+}
+
+function getCronoDestelloPhraseEntries() {
   return getAllDestellos()
-    .map(_destelloTextForCrono)
-    .map(s => s.trim())
-    .filter(s => s.length >= 4);
+    .map(d => ({
+      text: _destelloTextForCrono(d).trim(),
+      entry: d,
+      isDestello: true,
+    }))
+    .filter(x => x.text.length >= 4);
 }
 
 function _syncDestelloSubNota(aggregate, planId, nota) {
@@ -16817,8 +16960,10 @@ function _clearDestelloSubs(aggregate, planId) {
 function updateDestelloNota(entry, nota) {
   if (!entry) return false;
   if (entry.source === 'today') {
-    sessionDestello[entry.planId] = { on: true, nota };
+    const prev = sessionDestello[entry.planId] || {};
+    sessionDestello[entry.planId] = Object.assign({}, prev, { on: true, nota });
     _syncDestelloSubNota(sessionAggregate, entry.planId, nota);
+    _syncDestelloSubMeta(sessionAggregate, entry.planId, sessionDestello[entry.planId]);
     if (typeof saveDraft === 'function') saveDraft();
     if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
     return true;
@@ -16830,6 +16975,11 @@ function updateDestelloNota(entry, nota) {
     item.destello = true;
     item.destelloNota = nota;
     _syncDestelloSubNota(sesion._aggregate, entry.planId, nota);
+    _syncDestelloSubMeta(sesion._aggregate, entry.planId, {
+      boosts: destelloBoosts(item),
+      helpLog: destelloHelpLog(item),
+      helpedAt: item.destelloHelpedAt || null,
+    });
     saveData();
     return true;
   }
@@ -16858,6 +17008,73 @@ function clearDestello(entry) {
   return false;
 }
 
+function boostDestello(entry) {
+  if (!entry) return null;
+  const now = new Date().toISOString();
+  if (entry.source === 'today') {
+    const prev = sessionDestello[entry.planId] || { on: true, nota: entry.nota || '' };
+    const helpLog = destelloHelpLog(prev).concat(now).slice(-120);
+    const boosts = destelloBoosts(prev) + 1;
+    sessionDestello[entry.planId] = Object.assign({}, prev, {
+      on: true,
+      nota: prev.nota || entry.nota || '',
+      boosts,
+      level: destelloLevelFromBoosts(boosts),
+      helpLog,
+      helpedAt: now,
+    });
+    _syncDestelloSubMeta(sessionAggregate, entry.planId, sessionDestello[entry.planId]);
+    if (typeof saveDraft === 'function') saveDraft();
+    if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
+    entry.boosts = boosts;
+    entry.level = destelloLevelFromBoosts(boosts);
+    entry.helpLog = helpLog;
+    entry.helpedAt = now;
+    return { boosts, level: entry.level };
+  }
+  if (entry.source === 'history' && Array.isArray(db.sesiones)) {
+    const sesion = db.sesiones[entry.sesionIdx];
+    const item = sesion && Array.isArray(sesion.items) ? sesion.items[entry.itemIdx] : null;
+    if (!item) return null;
+    const helpLog = destelloHelpLog(item).concat(now).slice(-120);
+    const boosts = destelloBoosts(item) + 1;
+    item.destello = true;
+    item.destelloNota = item.destelloNota || entry.nota || '';
+    item.destelloBoosts = boosts;
+    item.destelloLevel = destelloLevelFromBoosts(boosts);
+    item.destelloHelpLog = helpLog;
+    item.destelloHelpedAt = now;
+    _syncDestelloSubMeta(sesion._aggregate, entry.planId, {
+      boosts,
+      helpLog,
+      helpedAt: now,
+    });
+    saveData();
+    entry.boosts = boosts;
+    entry.level = destelloLevelFromBoosts(boosts);
+    entry.helpLog = helpLog;
+    entry.helpedAt = now;
+    return { boosts, level: entry.level };
+  }
+  return null;
+}
+
+function cronoBoostCurrentDestello(ev) {
+  if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+  if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
+  const result = boostDestello(_cronoCurrentDestelloEntry);
+  if (!result) {
+    showToast('Este texto aun no es un destello guardado');
+    return;
+  }
+  if (typeof SFX !== 'undefined' && SFX.tick) SFX.tick();
+  try { Haptics.light(); } catch(e) {}
+  cronoUpdateRunDestello(cronoCurrentMs(), true);
+  refreshDestellosPill();
+  if (typeof renderCronoDestellosCard === 'function') renderCronoDestellosCard();
+  showToast('Destello +' + 1 + ' · nivel ' + result.level);
+}
+
 function renderDestellosList(editIndex) {
   const list = document.getElementById('destellosList');
   if (!list) return;
@@ -16880,6 +17097,8 @@ function renderDestellosList(editIndex) {
     }
     const fecha = dt.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
     const isEditing = idx === _destellosEditIndex;
+    const boosts = destelloBoosts(d);
+    const levelHtml = '<span class="destello-card-level">' + escapeHtmlSafe(destelloLevelLabel(boosts)) + '</span>';
     const notaHtml = isEditing
       ? '<div class="destello-edit-wrap">' +
           '<textarea class="destello-edit-input" id="destelloEditNota' + idx + '" rows="3" placeholder="Escribe la frase que quieres releer en el cronómetro...">' + escapeHtmlSafe(d.nota || '') + '</textarea>' +
@@ -16897,11 +17116,28 @@ function renderDestellosList(editIndex) {
         '<span class="destello-card-obra">' + escapeHtmlSafe(d.obra) + '</span>' +
         '<span class="destello-card-fecha">' + fecha + '</span>' +
       '</div>' +
+      levelHtml +
       notaHtml +
-      (!isEditing ? '<button class="destello-card-edit" onclick="editDestelloNota(' + idx + ')">' + (d.nota ? 'Editar frase' : 'Escribir frase') + '</button>' : '') +
+      (!isEditing ? '<div class="destello-card-actions">' +
+        '<button class="destello-card-edit" onclick="editDestelloNota(' + idx + ')">' + (d.nota ? 'Editar frase' : 'Escribir frase') + '</button>' +
+        '<button class="destello-card-help" onclick="boostDestelloFromList(' + idx + ')">Me ayuda +1</button>' +
+      '</div>' : '') +
     '</div>';
   });
   list.innerHTML = html;
+}
+
+function boostDestelloFromList(idx) {
+  const entry = _destellosModalEntries[idx];
+  const result = boostDestello(entry);
+  if (!result) {
+    showToast('No he podido actualizar el destello');
+    return;
+  }
+  renderDestellosList(null);
+  refreshDestellosPill();
+  if (typeof cronoRefreshDestelloPhrase === 'function') cronoRefreshDestelloPhrase(true);
+  showToast('Destello · nivel ' + result.level);
 }
 
 function editDestelloNota(idx) {
@@ -17842,6 +18078,7 @@ function cronoRender() {
     cronoUpdateStartBtn();
     cronoUpdateTimerProgress();
     cronoRenderNoteCounts();
+    cronoSyncObservationInputs();
     return;
   }
 
@@ -17916,6 +18153,7 @@ function cronoRender() {
   }
   cronoUpdateSolidityActions();
   cronoRenderNoteCounts();
+  cronoSyncObservationInputs();
 
   // Estado "En marcha / En pausa" (pill de la cabecera, Mármol)
   const stTxt = document.getElementById('cronoRunStatusText');
@@ -18526,16 +18764,30 @@ function _cronoPhrasePool() {
   return destellos.length ? destellos : CRONO_IDLE_PHRASES;
 }
 
-function _cronoPhraseForSeed(seed) {
-  const pool = _cronoPhrasePool();
-  if (!pool.length) return '';
+function _cronoPhrasePoolEntries() {
+  const destellos = (typeof getCronoDestelloPhraseEntries === 'function') ? getCronoDestelloPhraseEntries() : [];
+  if (destellos.length) return destellos;
+  return CRONO_IDLE_PHRASES.map(text => ({ text, entry: null, isDestello: false }));
+}
+
+function _cronoPhraseForSeedEntry(seed) {
+  const pool = _cronoPhrasePoolEntries();
+  if (!pool.length) return { text: '', entry: null, isDestello: false };
   return pool[Math.abs(seed) % pool.length];
 }
 
+function _cronoPhraseForSeed(seed) {
+  return _cronoPhraseForSeedEntry(seed).text || '';
+}
+
 function _cronoRunPhrase(elapsedMs) {
+  return _cronoRunPhraseEntry(elapsedMs).text || '';
+}
+
+function _cronoRunPhraseEntry(elapsedMs) {
   const bucket = Math.floor(Math.max(0, elapsedMs || 0) / CRONO_DESTELLO_ROTATE_MS);
   const startSeed = Math.floor((crono.startTs || Date.now()) / CRONO_DESTELLO_ROTATE_MS);
-  return _cronoPhraseForSeed(startSeed + bucket);
+  return _cronoPhraseForSeedEntry(startSeed + bucket);
 }
 
 function cronoUpdateRunDestello(elapsedMs, force) {
@@ -18545,16 +18797,29 @@ function cronoUpdateRunDestello(elapsedMs, force) {
     el.textContent = '';
     el.style.display = 'none';
     _cronoLastRunDestelloKey = '';
+    _cronoCurrentDestelloEntry = null;
     return;
   }
   const bucket = Math.floor(Math.max(0, elapsedMs || 0) / CRONO_DESTELLO_ROTATE_MS);
-  const text = _cronoRunPhrase(elapsedMs);
-  const key = bucket + '::' + text;
+  const phrase = _cronoRunPhraseEntry(elapsedMs);
+  const text = phrase.text || '';
+  const entry = phrase.entry || null;
+  const boosts = entry ? destelloBoosts(entry) : 0;
+  const key = bucket + '::' + text + '::' + boosts;
   if (force || key !== _cronoLastRunDestelloKey) {
     _cronoLastRunDestelloKey = key;
+    _cronoCurrentDestelloEntry = entry;
     el.classList.remove('is-changing');
     void el.offsetWidth;
-    el.textContent = text;
+    if (entry) {
+      el.innerHTML =
+        '<button type="button" class="crono-run-destello-btn" onclick="cronoBoostCurrentDestello(event)" aria-label="Este destello me ayuda">' +
+          '<span>' + escapeHtmlSafe(text) + '</span>' +
+          '<span class="crono-run-destello-level">' + escapeHtmlSafe(destelloLevelLabel(boosts)) + '</span>' +
+        '</button>';
+    } else {
+      el.textContent = text;
+    }
     el.style.display = text ? '' : 'none';
     el.classList.add('is-changing');
   }
@@ -19300,7 +19565,12 @@ function cronoFinish() {
   const startedAtIso = new Date(crono.startTs).toISOString();
   const endedAtIso = new Date().toISOString();
   if (!sessionAggregate[targetPlanId]) sessionAggregate[targetPlanId] = { subsessions: [] };
-  sessionAggregate[targetPlanId]._pendingTimes = { startedAt: startedAtIso, endedAt: endedAtIso, notes: cronoSessionNotes };
+  sessionAggregate[targetPlanId]._pendingTimes = {
+    startedAt: startedAtIso,
+    endedAt: endedAtIso,
+    notes: cronoSessionNotes,
+    observation: crono.observation || ''
+  };
 
   // ★ Registrar también la sub-sesión en db.sessionPlants[] (permanente,
   // sobrevive al cap de db.sesiones[]). Para estadísticas históricas.
@@ -19341,6 +19611,7 @@ function cronoReset() {
   crono.pausedMs = 0;
   crono.pauseStartTs = 0;
   crono.notes = [];
+  crono.observation = '';
   _cronoLastRunDestelloKey = '';
   // NB: NO reseteamos mode ni timerMinutes — son preferencias persistentes.
   // Las guardamos en localStorage para la próxima sesión.
