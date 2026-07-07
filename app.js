@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-07-ai-data-export-v17';
+const APP_VERSION = '2026-07-07-ai-guide-pasajes-v18';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -12653,6 +12653,91 @@ function aiBuildObraRows() {
   }));
 }
 
+function aiBuildPasajeRows() {
+  const rows = [];
+  const pushRow = (row) => {
+    if (!row || !row.date) return;
+    rows.push(Object.assign({
+      day: aiLocalDateKey(row.date),
+      time: aiTimeLabel(row.date),
+    }, row));
+  };
+
+  (db.obras || []).forEach(obra => {
+    (obra.pasajes || []).forEach(p => {
+      const currentSol = (p.solHistory || [])[0]?.val ?? null;
+      const base = {
+        obraId: obra.id,
+        obra: obra.name,
+        compositor: obra.composer || '',
+        pasajeId: p.id,
+        pasaje: p.text || p.id,
+        estadoActual: p.status || 'activo',
+        solidezActualPct: currentSol,
+      };
+
+      (p.workHistory || []).forEach(w => pushRow(Object.assign({}, base, {
+        date: w.date,
+        source: 'workHistory',
+        tipoEntrada: 'trabajo',
+        intensidad: w.intensidad || '',
+        solAntes: w.solAntes ?? null,
+        solDespues: w.solDespues ?? null,
+        raw: w,
+      })));
+
+      (p.sesiones || []).forEach(s => pushRow(Object.assign({}, base, {
+        date: s.date,
+        source: 'pasaje.sesiones',
+        tipoEntrada: 'sesion-pasaje',
+        score: s.score ?? null,
+        tempoAct: s.tempoAct ?? s.tempo ?? null,
+        tempoObj: s.tempoObj ?? null,
+        nota: s.nota || s.note || '',
+        raw: s,
+      })));
+
+      (p.memLapses || []).forEach(m => pushRow(Object.assign({}, base, {
+        date: m.date,
+        source: 'memLapses',
+        tipoEntrada: 'fallo-memoria',
+        nota: m.nota || m.note || '',
+        raw: m,
+      })));
+    });
+  });
+
+  (db.sesiones || []).forEach(sesion => {
+    const aggregate = sesion._aggregate || {};
+    Object.values(aggregate).forEach(agg => {
+      (agg && agg.subsessions || []).forEach(sub => {
+        (sub.pasajes || []).forEach(p => {
+          const date = sub.endedAt || sub.timestamp || sesion.date;
+          const obra = (db.obras || []).find(o => (o.pasajes || []).some(pp => pp.id === p.id));
+          const pasaje = obra ? (obra.pasajes || []).find(pp => pp.id === p.id) : null;
+          pushRow({
+            date,
+            source: 'sesion._aggregate',
+            tipoEntrada: 'subsesion',
+            obraId: obra ? obra.id : null,
+            obra: obra ? obra.name : '',
+            compositor: obra ? (obra.composer || '') : '',
+            pasajeId: p.id,
+            pasaje: p.nombre || (pasaje ? pasaje.text : p.id),
+            estadoActual: pasaje ? (pasaje.status || 'activo') : '',
+            solidezActualPct: pasaje && (pasaje.solHistory || [])[0] ? pasaje.solHistory[0].val : null,
+            intensidad: p.intensidad || '',
+            minutes: sub.min || null,
+            raw: p,
+          });
+        });
+      });
+    });
+  });
+
+  return rows.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+}
+
 function aiBuildEventosRows() {
   const now = new Date();
   return (db.eventos || []).map(ev => {
@@ -12674,11 +12759,12 @@ function aiBuildDailyRows() {
   const studyRows = aiBuildStudyRows();
   const sessionCards = aiBuildSessionCards();
   const paseRows = aiBuildPaseRows();
+  const pasajeRows = aiBuildPasajeRows();
   const estadoEventos = ensureEstadoEventos ? ensureEstadoEventos() : (db.estadoEventos || []);
   const deporteEventos = ensureDeporteEventos ? ensureDeporteEventos() : (db.deporteEventos || []);
   const suenoEventos = ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || []);
   const keys = new Set();
-  [studyRows, sessionCards, paseRows, estadoEventos, deporteEventos, suenoEventos].forEach(arr => {
+  [studyRows, sessionCards, paseRows, pasajeRows, estadoEventos, deporteEventos, suenoEventos].forEach(arr => {
     (arr || []).forEach(x => {
       const k = x.day || aiLocalDateKey(x.date || x.at || x.start || x.startedAt);
       if (k) keys.add(k);
@@ -12694,6 +12780,7 @@ function aiBuildDailyRows() {
       studyBlocks: dayStudies,
       sessionCards: sessionCards.filter(x => x.day === day),
       pases: paseRows.filter(x => x.day === day),
+      pasajes: pasajeRows.filter(x => x.day === day),
       estadoEventos: (estadoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       deporteEventos: (deporteEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       suenoEventos: (suenoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
@@ -12718,6 +12805,7 @@ function buildAiDataPackage() {
       sesiones: (db.sesiones || []).length,
       studyBlocks: (db.sessionPlants || []).length + (db.forestPlants || []).length,
       pases: aiBuildPaseRows().length,
+      pasajeEntries: aiBuildPasajeRows().length,
       estadoEventos: (ensureEstadoEventos ? ensureEstadoEventos() : (db.estadoEventos || [])).length,
       deporteEventos: (ensureDeporteEventos ? ensureDeporteEventos() : (db.deporteEventos || [])).length,
       suenoEventos: (ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || [])).length,
@@ -12745,13 +12833,22 @@ function buildAiTextReport(maxDays) {
   lines.push('Exportado: ' + aiDateLabel(pkg.exportDate) + ' ' + aiTimeLabel(pkg.exportDate));
   lines.push('Versión app: ' + APP_VERSION);
   lines.push('');
-  lines.push('Regla de interpretación: usa sólo los datos registrados por mí. Si propones prioridades, deriva cada una de notas, pases, eventos, sueño, ánimo, deporte o tiempo registrado. No trates inferencias como hechos.');
+  lines.push('GUÍA DE LECTURA PARA LA IA');
+  lines.push('- Esta app registra estudio de piano. No presupongas contexto externo: interpreta sólo lo que aparece aquí.');
+  lines.push('- Bloque con hora: tramo real registrado por cronómetro/temporizador/Forest. Es el dato más fiable para saber cuándo estudié y cuánto tiempo.');
+  lines.push('- Tarjeta/sesión guardada: resumen diario o tarjeta de estudio. Puede incluir obra, minutos, tick, nota, destello y datos agregados de sub-sesiones.');
+  lines.push('- Pase: ejecución de una obra o movimiento. Es la medida principal de solidez. Tipos: solo = para mí; informal = ante pareja/amigos; evento = audición/concurso/concierto o situación formal. Resultado: Se cae, Frágil, Sale, Sólido o Listo.');
+  lines.push('- Pasaje: fragmento concreto dentro de una obra. Puede tener estado actual, intensidad de trabajo, solidez antes/después, fallos de memoria o entradas de seguimiento. Si un pasaje aparece varias veces el mismo día, trátalo como foco recurrente, no como duplicado irrelevante.');
+  lines.push('- Estado/sueño/deporte/siesta: contexto corporal y mental registrado por mí. Úsalo como contexto, no como diagnóstico clínico ni como causa segura.');
+  lines.push('- Eventos próximos: compromisos futuros. Pueden aumentar la relevancia de obras/pasajes, pero no inventes prioridades si no están apoyadas por datos registrados.');
+  lines.push('- Regla de interpretación: distingue HECHOS registrados de LECTURAS derivadas. Si propones prioridades, deriva cada una de notas, pases, pasajes, eventos, sueño, ánimo, deporte o tiempo registrado. No trates inferencias como hechos.');
   lines.push('');
   lines.push('RESUMEN GLOBAL');
   lines.push('- Obras: ' + pkg.counts.obras);
   lines.push('- Sesiones guardadas: ' + pkg.counts.sesiones);
   lines.push('- Bloques con hora: ' + pkg.counts.studyBlocks);
   lines.push('- Pases registrados: ' + pkg.counts.pases);
+  lines.push('- Entradas de pasajes: ' + pkg.counts.pasajeEntries);
   lines.push('- Eventos próximos/pasados: ' + pkg.counts.eventos);
   lines.push('');
   if (upcoming.length) {
@@ -12796,6 +12893,32 @@ function buildAiTextReport(maxDays) {
         });
       });
     }
+    if (day.pasajes.length) {
+      lines.push('Pasajes trabajados / registrados:');
+      const seenPasajes = new Set();
+      day.pasajes.forEach(p => {
+        const key = [p.pasajeId, p.tipoEntrada, p.date, p.intensidad || '', p.score ?? '', p.solAntes ?? '', p.solDespues ?? ''].join('|');
+        if (seenPasajes.has(key)) return;
+        seenPasajes.add(key);
+        const parts = [];
+        if (p.time) parts.push(p.time);
+        if (p.obra) parts.push(p.obra);
+        parts.push(p.pasaje || p.pasajeId || 'pasaje');
+        parts.push('estado actual: ' + (p.estadoActual || 'sin estado'));
+        if (p.intensidad) parts.push('intensidad: ' + p.intensidad);
+        if (p.solAntes != null || p.solDespues != null) {
+          parts.push('solidez pasaje: ' + (p.solAntes != null ? p.solAntes + '%' : '?') + '→' + (p.solDespues != null ? p.solDespues + '%' : '?'));
+        } else if (p.solidezActualPct != null) {
+          parts.push('solidez pasaje actual: ' + p.solidezActualPct + '%');
+        }
+        if (p.score != null) parts.push('score pasaje: ' + p.score);
+        if (p.tempoAct != null || p.tempoObj != null) parts.push('tempo: ' + (p.tempoAct || '?') + '/' + (p.tempoObj || '?'));
+        if (p.minutes != null) parts.push(aiMinutesLabel(p.minutes));
+        if (p.tipoEntrada === 'fallo-memoria') parts.push('fallo de memoria');
+        if (p.nota) parts.push('nota: "' + p.nota + '"');
+        lines.push('- ' + parts.join(' · '));
+      });
+    }
     if (day.pases.length) {
       lines.push('Pases:');
       day.pases.forEach(p => {
@@ -12805,12 +12928,19 @@ function buildAiTextReport(maxDays) {
       });
     }
     const fragilePases = day.pases.filter(p => p.score != null && p.score <= 4);
+    const fragilePasajes = day.pasajes.filter(p =>
+      p.tipoEntrada === 'fallo-memoria' ||
+      (p.score != null && p.score <= 4) ||
+      /fragil|frágil|activo|memoria|fall/i.test(p.estadoActual || '') ||
+      /cae|fr[aá]gil|insegur|duda|tensi[oó]n|mal|memoria|fall/i.test(p.nota || '')
+    );
     const notes = [];
     day.sessionCards.forEach(s => s.items.forEach(it => { if (it.note) notes.push(it.note); }));
     const weakNotes = notes.filter(n => /cae|fr[aá]gil|insegur|duda|tensi[oó]n|mal|memoria|fall/i.test(n));
-    if (fragilePases.length || weakNotes.length) {
+    if (fragilePases.length || fragilePasajes.length || weakNotes.length) {
       lines.push('Lectura derivada de mis datos:');
       fragilePases.forEach(p => lines.push('- Pase frágil: ' + p.obra + (p.movimiento ? ' · ' + p.movimiento : '') + ' (' + (p.resultado || p.score) + ').'));
+      fragilePasajes.slice(0, 8).forEach(p => lines.push('- Pasaje a vigilar: ' + (p.obra ? p.obra + ' · ' : '') + (p.pasaje || p.pasajeId) + ' (' + (p.estadoActual || p.tipoEntrada || 'registrado') + ').'));
       weakNotes.slice(0, 5).forEach(n => lines.push('- Nota sensible: "' + n + '"'));
     }
   });
