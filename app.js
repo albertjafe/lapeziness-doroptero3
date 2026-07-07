@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-06-crono-wakelock-v16';
+const APP_VERSION = '2026-07-07-ai-data-export-v17';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -12438,6 +12438,422 @@ function exportarDatos() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   showToast('Datos exportados ✓');
+}
+
+function aiLocalDateKey(value) {
+  const d = value ? new Date(value) : new Date();
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
+function aiDateLabel(value) {
+  const d = value ? new Date(value) : new Date();
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function aiTimeLabel(value) {
+  const d = value ? new Date(value) : null;
+  if (!d || Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+
+function aiMinutesLabel(mins) {
+  const n = Math.max(0, Math.round(Number(mins) || 0));
+  const h = Math.floor(n / 60);
+  const m = n % 60;
+  if (h && m) return h + ' h ' + m + ' min';
+  if (h) return h + ' h';
+  return m + ' min';
+}
+
+function aiPaseResultLabel(score) {
+  const n = Number(score);
+  if (n >= 9) return 'Listo';
+  if (n >= 8) return 'Sólido';
+  if (n >= 6) return 'Sale';
+  if (n >= 4) return 'Frágil';
+  if (n > 0) return 'Se cae';
+  return '';
+}
+
+function aiObraName(obraId, movId) {
+  const obra = findObra(obraId);
+  if (!obra) return { obra: obraId || 'sin obra', movimiento: movId || null, label: obraId || 'sin obra' };
+  const mov = movId ? findMovimiento(obraId, movId) : null;
+  const base = obra.name + (obra.composer && obra.composer !== '—' ? ' · ' + obra.composer : '');
+  return {
+    obra: obra.name,
+    compositor: obra.composer || '',
+    movimiento: mov ? mov.name : null,
+    label: mov ? base + ' · ' + mov.name : base,
+  };
+}
+
+function aiDownloadText(filename, text, type) {
+  const blob = new Blob([text], { type: type || 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function aiExportFeedback(text, color) {
+  const el = document.getElementById('aiExportFeedback');
+  if (el) {
+    el.textContent = text;
+    el.style.color = color || 'var(--green)';
+    el.style.display = 'block';
+  }
+  showToast(text);
+}
+
+function aiReadLocalJson(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) { return []; }
+}
+
+function aiStudyMinutesFromSession(sesion) {
+  return (sesion.items || []).reduce((sum, it) => {
+    const val = it.minutosReales != null ? it.minutosReales : (it.minReal != null ? it.minReal : it.minutosPlan);
+    return sum + (Number(val) || 0);
+  }, 0);
+}
+
+function aiBuildPaseRows() {
+  const rows = [];
+  (db.obras || []).forEach(obra => {
+    (obra.paseHistory || []).forEach(p => {
+      rows.push({
+        date: p.date || p.at || null,
+        day: aiLocalDateKey(p.date || p.at),
+        time: aiTimeLabel(p.date || p.at),
+        obraId: obra.id,
+        movId: null,
+        obra: obra.name,
+        compositor: obra.composer || '',
+        movimiento: null,
+        tipo: typeof normalizePaseTipo === 'function' ? normalizePaseTipo(p.tipo) : (p.tipo || ''),
+        score: p.score != null ? p.score : null,
+        resultado: aiPaseResultLabel(p.score),
+        solidezPct: p.solidezPct != null ? p.solidezPct : (p.score != null && typeof paseScoreToPct === 'function' ? paseScoreToPct(p.score) : null),
+        nota: p.note || p.nota || '',
+        raw: p,
+      });
+    });
+    (obra.movimientos || []).forEach(mov => {
+      (mov.paseHistory || []).forEach(p => {
+        rows.push({
+          date: p.date || p.at || null,
+          day: aiLocalDateKey(p.date || p.at),
+          time: aiTimeLabel(p.date || p.at),
+          obraId: obra.id,
+          movId: mov.id,
+          obra: obra.name,
+          compositor: obra.composer || '',
+          movimiento: mov.name,
+          tipo: typeof normalizePaseTipo === 'function' ? normalizePaseTipo(p.tipo) : (p.tipo || ''),
+          score: p.score != null ? p.score : null,
+          resultado: aiPaseResultLabel(p.score),
+          solidezPct: p.solidezPct != null ? p.solidezPct : (p.score != null && typeof paseScoreToPct === 'function' ? paseScoreToPct(p.score) : null),
+          nota: p.note || p.nota || '',
+          raw: p,
+        });
+      });
+    });
+  });
+  return rows.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+}
+
+function aiBuildStudyRows() {
+  const rows = [];
+  const addPlant = (p, sourceName) => {
+    if (!p || !p.startedAt) return;
+    const names = aiObraName(p.obraId, p.movId);
+    rows.push({
+      day: aiLocalDateKey(p.startedAt),
+      start: p.startedAt,
+      end: p.endedAt || null,
+      timeRange: aiTimeLabel(p.startedAt) + (p.endedAt ? '-' + aiTimeLabel(p.endedAt) : ''),
+      minutes: Number(p.mins || p.min || p.minutes || 0) || 0,
+      obraId: p.obraId || null,
+      movId: p.movId || null,
+      obra: names.obra,
+      compositor: names.compositor || '',
+      movimiento: names.movimiento,
+      label: names.label,
+      source: p.source || sourceName,
+      failed: !!p.failed,
+      rest: p.obraId === '_rest_' || p.tipo === 'descanso',
+      raw: p,
+    });
+  };
+  (db.sessionPlants || []).forEach(p => addPlant(p, 'sessionPlants'));
+  (db.forestPlants || []).forEach(p => addPlant(p, 'forestPlants'));
+  return rows.sort((a, b) => new Date(a.start || 0) - new Date(b.start || 0));
+}
+
+function aiBuildSessionCards() {
+  return (db.sesiones || []).map(s => ({
+    date: s.date,
+    day: aiLocalDateKey(s.date),
+    label: aiDateLabel(s.date),
+    totalMinutes: aiStudyMinutesFromSession(s),
+    estado: s.estado || null,
+    sueno: s.sueno != null ? s.sueno : null,
+    rating: s.rating != null ? s.rating : null,
+    items: (s.items || []).map(it => ({
+      obraId: it.obraId || it._obraId || null,
+      movId: it.movId || it._movId || null,
+      obraName: it.obraName || it.name || '',
+      tick: it.tick || '',
+      minutes: it.minutosReales != null ? it.minutosReales : (it.minReal != null ? it.minReal : it.minutosPlan),
+      rating: it.rating != null ? it.rating : null,
+      note: it.note || '',
+      destello: !!it.destello,
+      destelloNota: it.destelloNota || it.destelloTexto || '',
+      raw: it,
+    })),
+    raw: s,
+  })).sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+}
+
+function aiBuildObraRows() {
+  return (db.obras || []).map(obra => ({
+    id: obra.id,
+    name: obra.name,
+    composer: obra.composer || '',
+    tipo: obra.tipo || 'obra',
+    fase: typeof obraFase === 'function' ? obraFase(obra) : null,
+    minutesTotal: typeof getTotalMinutosObra === 'function' ? getTotalMinutosObra(obra.id) : null,
+    lastPase: obra.lastPase || null,
+    paseCount: (obra.paseHistory || []).length,
+    lastSolHistory: (obra.solHistory || []).slice(0, 12),
+    movimientos: (obra.movimientos || []).map(mov => ({
+      id: mov.id,
+      name: mov.name,
+      lastPase: mov.lastPase || null,
+      paseCount: (mov.paseHistory || []).length,
+      lastSolHistory: (mov.solHistory || []).slice(0, 12),
+    })),
+    pasajes: (obra.pasajes || []).map(p => ({
+      id: p.id,
+      text: p.text,
+      status: p.status || '',
+      sesiones: p.sesiones || [],
+      workHistory: p.workHistory || [],
+      solHistory: p.solHistory || [],
+    })),
+  }));
+}
+
+function aiBuildEventosRows() {
+  const now = new Date();
+  return (db.eventos || []).map(ev => {
+    const d = ev.fecha ? new Date(ev.fecha + 'T12:00:00') : null;
+    return {
+      id: ev.id,
+      nombre: ev.nombre || '',
+      tipo: ev.tipo || '',
+      fecha: ev.fecha || '',
+      dias: d && !Number.isNaN(d.getTime()) ? Math.ceil((d - now) / 86400000) : null,
+      completado: !!ev.completado,
+      obras: (ev.obras || []).map(id => aiObraName(id).label),
+      raw: ev,
+    };
+  }).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
+}
+
+function aiBuildDailyRows() {
+  const studyRows = aiBuildStudyRows();
+  const sessionCards = aiBuildSessionCards();
+  const paseRows = aiBuildPaseRows();
+  const estadoEventos = ensureEstadoEventos ? ensureEstadoEventos() : (db.estadoEventos || []);
+  const deporteEventos = ensureDeporteEventos ? ensureDeporteEventos() : (db.deporteEventos || []);
+  const suenoEventos = ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || []);
+  const keys = new Set();
+  [studyRows, sessionCards, paseRows, estadoEventos, deporteEventos, suenoEventos].forEach(arr => {
+    (arr || []).forEach(x => {
+      const k = x.day || aiLocalDateKey(x.date || x.at || x.start || x.startedAt);
+      if (k) keys.add(k);
+    });
+  });
+  return Array.from(keys).sort().map(day => {
+    const dayStudies = studyRows.filter(x => x.day === day);
+    const totalStudy = dayStudies.filter(x => !x.failed && !x.rest).reduce((s, x) => s + (Number(x.minutes) || 0), 0);
+    return {
+      day,
+      label: aiDateLabel(day + 'T12:00:00'),
+      totalStudyMinutes: totalStudy,
+      studyBlocks: dayStudies,
+      sessionCards: sessionCards.filter(x => x.day === day),
+      pases: paseRows.filter(x => x.day === day),
+      estadoEventos: (estadoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
+      deporteEventos: (deporteEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
+      suenoEventos: (suenoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
+    };
+  });
+}
+
+function buildAiDataPackage() {
+  const daily = aiBuildDailyRows();
+  const packageData = {
+    schema: 'alberto-piano-ai-context-v1',
+    appVersion: APP_VERSION,
+    exportDate: new Date().toISOString(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+    guidance: {
+      purpose: 'Paquete para que una IA o Codex pueda analizar el estudio sin acceder directamente al localStorage.',
+      priorityRule: 'Las prioridades deben derivarse de datos introducidos por el usuario: notas, pases, eventos, sueño, ánimo, deporte y tiempo registrado. No inventar recomendaciones como si fueran datos.',
+      privacy: 'Incluye notas privadas y datos personales de estudio.',
+    },
+    counts: {
+      obras: (db.obras || []).length,
+      sesiones: (db.sesiones || []).length,
+      studyBlocks: (db.sessionPlants || []).length + (db.forestPlants || []).length,
+      pases: aiBuildPaseRows().length,
+      estadoEventos: (ensureEstadoEventos ? ensureEstadoEventos() : (db.estadoEventos || [])).length,
+      deporteEventos: (ensureDeporteEventos ? ensureDeporteEventos() : (db.deporteEventos || [])).length,
+      suenoEventos: (ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || [])).length,
+      eventos: (db.eventos || []).length,
+    },
+    daily,
+    obras: aiBuildObraRows(),
+    eventos: aiBuildEventosRows(),
+    rawData: db,
+    localMirrors: {
+      estadoEventos: aiReadLocalJson('alberto_estado_eventos_v1'),
+      deporteEventos: aiReadLocalJson('alberto_deporte_eventos_v1'),
+      suenoEventos: aiReadLocalJson('alberto_sueno_eventos_v1'),
+    },
+  };
+  return packageData;
+}
+
+function buildAiTextReport(maxDays) {
+  const pkg = buildAiDataPackage();
+  const days = pkg.daily.slice().sort((a, b) => b.day.localeCompare(a.day)).slice(0, maxDays || 14);
+  const upcoming = pkg.eventos.filter(ev => !ev.completado && ev.dias != null && ev.dias >= 0).slice(0, 8);
+  const lines = [];
+  lines.push('PAQUETE DE CONTEXTO PARA IA / CODEX');
+  lines.push('Exportado: ' + aiDateLabel(pkg.exportDate) + ' ' + aiTimeLabel(pkg.exportDate));
+  lines.push('Versión app: ' + APP_VERSION);
+  lines.push('');
+  lines.push('Regla de interpretación: usa sólo los datos registrados por mí. Si propones prioridades, deriva cada una de notas, pases, eventos, sueño, ánimo, deporte o tiempo registrado. No trates inferencias como hechos.');
+  lines.push('');
+  lines.push('RESUMEN GLOBAL');
+  lines.push('- Obras: ' + pkg.counts.obras);
+  lines.push('- Sesiones guardadas: ' + pkg.counts.sesiones);
+  lines.push('- Bloques con hora: ' + pkg.counts.studyBlocks);
+  lines.push('- Pases registrados: ' + pkg.counts.pases);
+  lines.push('- Eventos próximos/pasados: ' + pkg.counts.eventos);
+  lines.push('');
+  if (upcoming.length) {
+    lines.push('EVENTOS PRÓXIMOS');
+    upcoming.forEach(ev => {
+      lines.push('- ' + ev.fecha + ' · ' + ev.nombre + ' · ' + ev.tipo + ' · faltan ' + ev.dias + ' días');
+      if (ev.obras.length) lines.push('  Obras: ' + ev.obras.join(' | '));
+    });
+    lines.push('');
+  }
+  lines.push('DÍAS RECIENTES');
+  days.forEach(day => {
+    lines.push('');
+    lines.push('## ' + day.label + ' · total estudio: ' + aiMinutesLabel(day.totalStudyMinutes));
+    if (day.estadoEventos.length) {
+      lines.push('Ánimo/bienestar:');
+      day.estadoEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.label || e.value)));
+    }
+    if (day.suenoEventos.length) {
+      lines.push('Sueño/siestas:');
+      day.suenoEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.kind || 'siesta')));
+    }
+    if (day.deporteEventos.length) {
+      lines.push('Deporte:');
+      day.deporteEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.kind || '') + ' · ' + (e.label || e.level || e.value)));
+    }
+    if (day.studyBlocks.length) {
+      lines.push('Bloques de estudio con hora:');
+      day.studyBlocks.forEach(b => {
+        const flags = b.failed ? ' · fallida' : (b.rest ? ' · descanso' : '');
+        lines.push('- ' + (b.timeRange || '') + ' · ' + b.label + ' · ' + aiMinutesLabel(b.minutes) + flags);
+      });
+    }
+    if (day.sessionCards.length) {
+      lines.push('Tarjetas/sesiones guardadas:');
+      day.sessionCards.forEach(s => {
+        lines.push('- Sesión · ' + aiMinutesLabel(s.totalMinutes) + (s.rating != null ? ' · productividad ' + s.rating : ''));
+        s.items.forEach(it => {
+          const note = it.note ? ' · nota: "' + it.note + '"' : '';
+          const dest = it.destelloNota ? ' · destello: "' + it.destelloNota + '"' : '';
+          lines.push('  - ' + (it.obraName || aiObraName(it.obraId, it.movId).label) + ' · ' + (it.tick || 'sin tick') + ' · ' + aiMinutesLabel(it.minutes) + note + dest);
+        });
+      });
+    }
+    if (day.pases.length) {
+      lines.push('Pases:');
+      day.pases.forEach(p => {
+        const mov = p.movimiento ? ' · ' + p.movimiento : '';
+        const note = p.nota ? ' · nota: "' + p.nota + '"' : '';
+        lines.push('- ' + (p.time || '') + ' · ' + p.obra + mov + ' · tipo ' + (p.tipo || 'sin tipo') + ' · ' + (p.resultado || ('score ' + p.score)) + note);
+      });
+    }
+    const fragilePases = day.pases.filter(p => p.score != null && p.score <= 4);
+    const notes = [];
+    day.sessionCards.forEach(s => s.items.forEach(it => { if (it.note) notes.push(it.note); }));
+    const weakNotes = notes.filter(n => /cae|fr[aá]gil|insegur|duda|tensi[oó]n|mal|memoria|fall/i.test(n));
+    if (fragilePases.length || weakNotes.length) {
+      lines.push('Lectura derivada de mis datos:');
+      fragilePases.forEach(p => lines.push('- Pase frágil: ' + p.obra + (p.movimiento ? ' · ' + p.movimiento : '') + ' (' + (p.resultado || p.score) + ').'));
+      weakNotes.slice(0, 5).forEach(n => lines.push('- Nota sensible: "' + n + '"'));
+    }
+  });
+  lines.push('');
+  lines.push('PETICIÓN SUGERIDA A LA IA');
+  lines.push('Con esta información, ayúdame a preparar mañana. Basa las prioridades sólo en mis datos registrados: pases, notas, bloques de estudio, sueño, ánimo, deporte, siestas y eventos próximos. Distingue hechos de inferencias.');
+  return lines.join('\n');
+}
+
+function exportarDatosIA() {
+  const payload = buildAiDataPackage();
+  const fecha = new Date().toISOString().slice(0, 10);
+  aiDownloadText('alberto-piano-ia-codex-' + fecha + '.json', JSON.stringify(payload, null, 2), 'application/json;charset=utf-8');
+  aiExportFeedback('JSON para IA descargado');
+}
+
+function descargarResumenIA() {
+  const fecha = new Date().toISOString().slice(0, 10);
+  aiDownloadText('alberto-piano-resumen-ia-' + fecha + '.txt', buildAiTextReport(21), 'text/plain;charset=utf-8');
+  aiExportFeedback('Resumen TXT descargado');
+}
+
+async function copiarDatosIA() {
+  const text = buildAiTextReport(14);
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    aiExportFeedback('Texto IA copiado');
+  } catch(e) {
+    descargarResumenIA();
+    aiExportFeedback('No se pudo copiar; he descargado el TXT', 'var(--orange)');
+  }
 }
 
 function importarDatos(input) {
