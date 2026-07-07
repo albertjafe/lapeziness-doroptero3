@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-07-edit-obras-pases-v19';
+const APP_VERSION = '2026-07-07-ai-export-events-v20';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -12480,6 +12480,73 @@ function aiPaseResultLabel(score) {
   return '';
 }
 
+function aiTodayKey() {
+  return aiLocalDateKey(new Date());
+}
+
+function aiDaysUntil(fecha) {
+  if (!fecha) return null;
+  const target = new Date(fecha + 'T00:00:00');
+  if (Number.isNaN(target.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((target - today) / 86400000);
+}
+
+function aiLatestPaseForObra(obra) {
+  if (!obra) return null;
+  const pases = [];
+  (obra.paseHistory || []).forEach(p => pases.push({ ...p, target: 'obra completa', movimiento: null }));
+  (obra.movimientos || []).forEach(mov => {
+    (mov.paseHistory || []).forEach(p => pases.push({ ...p, target: mov.name || 'movimiento', movimiento: mov.name || '' }));
+  });
+  const sorted = pases
+    .filter(p => p && (p.date || p.at))
+    .sort((a, b) => new Date(b.date || b.at || 0) - new Date(a.date || a.at || 0));
+  const p = sorted[0];
+  if (!p) return null;
+  const date = p.date || p.at;
+  return {
+    date,
+    day: aiLocalDateKey(date),
+    time: aiTimeLabel(date),
+    target: p.target || 'obra completa',
+    movimiento: p.movimiento || null,
+    tipo: typeof normalizePaseTipo === 'function' ? normalizePaseTipo(p.tipo) : (p.tipo || ''),
+    score: p.score != null ? p.score : null,
+    resultado: aiPaseResultLabel(p.score),
+    nota: p.note || p.nota || '',
+  };
+}
+
+function aiBuildEventoObraStatus(obra, readinessDetail) {
+  if (!obra) return null;
+  const effective = typeof obraEffectiveStats === 'function' ? obraEffectiveStats(obra) : obra;
+  const fase = typeof obraFaseLabel === 'function' ? obraFaseLabel(effective) : null;
+  const aprPct = typeof compasPercent === 'function' ? compasPercent(effective) : null;
+  const sol = typeof estimateSolActual === 'function' ? estimateSolActual(effective) : null;
+  const lastPase = aiLatestPaseForObra(obra);
+  const activePasajes = (obra.pasajes || []).filter(p => (p.status || 'activo') !== 'resuelto');
+  return {
+    obraId: obra.id,
+    nombre: obra.name || '',
+    compositor: obra.composer || '',
+    estadoGeneral: fase ? fase.label : '',
+    aprendidoPct: aprPct,
+    solidezEstimadaPct: sol ? sol.val : null,
+    diasSinMedirSolidez: sol && sol.diasGap != null ? sol.diasGap : null,
+    preparacionEventoPct: readinessDetail && readinessDetail.obraScore != null ? Math.round(readinessDetail.obraScore) : null,
+    ultimoPase: lastPase,
+    pasesRegistrados: (obra.paseHistory || []).length + (obra.movimientos || []).reduce((s, m) => s + ((m.paseHistory || []).length), 0),
+    pasajesActivos: activePasajes.map(p => ({
+      id: p.id,
+      texto: p.text || p.name || p.id,
+      estado: p.status || 'activo',
+      solidezPct: (p.solHistory || [])[0]?.val ?? null,
+    })),
+  };
+}
+
 function aiObraName(obraId, movId) {
   const obra = findObra(obraId);
   if (!obra) return { obra: obraId || 'sin obra', movimiento: movId || null, label: obraId || 'sin obra' };
@@ -12739,17 +12806,24 @@ function aiBuildPasajeRows() {
 }
 
 function aiBuildEventosRows() {
-  const now = new Date();
   return (db.eventos || []).map(ev => {
-    const d = ev.fecha ? new Date(ev.fecha + 'T12:00:00') : null;
+    const readiness = typeof computeEventoReadiness === 'function' ? computeEventoReadiness(ev) : null;
+    const detailById = new Map((readiness?.detalles || []).map(d => [d.obraId, d]));
+    const obrasDetalle = (ev.obras || [])
+      .map(id => findObra(id))
+      .filter(Boolean)
+      .map(obra => aiBuildEventoObraStatus(obra, detailById.get(obra.id)))
+      .filter(Boolean);
     return {
       id: ev.id,
       nombre: ev.nombre || '',
       tipo: ev.tipo || '',
       fecha: ev.fecha || '',
-      dias: d && !Number.isNaN(d.getTime()) ? Math.ceil((d - now) / 86400000) : null,
+      dias: aiDaysUntil(ev.fecha),
       completado: !!ev.completado,
       obras: (ev.obras || []).map(id => aiObraName(id).label),
+      obrasDetalle,
+      preparacionGlobalPct: readiness?.global ?? null,
       raw: ev,
     };
   }).sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
@@ -12824,9 +12898,66 @@ function buildAiDataPackage() {
   return packageData;
 }
 
-function buildAiTextReport(maxDays) {
+function aiNormalizeTextReportOptions(input) {
+  if (typeof input === 'number') return { mode: 'recent', days: input };
+  const opts = input || {};
+  if (opts.mode === 'today') return { mode: 'today', date: aiTodayKey(), label: 'Hoy hasta ahora' };
+  if (opts.mode === 'day') return { mode: 'day', date: opts.date || aiTodayKey(), label: 'Dia concreto' };
+  return { mode: 'recent', days: Math.max(1, parseInt(opts.days || opts.maxDays || 14, 10) || 14), label: 'Ultimos dias' };
+}
+
+function aiGetSelectedTextReportOptions() {
+  const sel = document.getElementById('aiExportRange');
+  const dateInput = document.getElementById('aiExportDate');
+  const val = sel ? sel.value : '14';
+  if (val === 'today') return { mode: 'today' };
+  if (val === 'day') return { mode: 'day', date: dateInput?.value || aiTodayKey() };
+  return { mode: 'recent', days: parseInt(val || '14', 10) || 14 };
+}
+
+function aiRangeFileSuffix(opts) {
+  opts = aiNormalizeTextReportOptions(opts);
+  if (opts.mode === 'today') return 'hoy-' + aiTodayKey();
+  if (opts.mode === 'day') return 'dia-' + (opts.date || aiTodayKey());
+  return 'ultimos-' + opts.days + 'd-' + aiTodayKey();
+}
+
+function updateAiExportControls() {
+  const sel = document.getElementById('aiExportRange');
+  const dateInput = document.getElementById('aiExportDate');
+  if (!dateInput) return;
+  if (!dateInput.value) dateInput.value = aiTodayKey();
+  dateInput.style.display = sel && sel.value === 'day' ? '' : 'none';
+}
+
+function aiDayHasReportableActivity(day) {
+  if (!day) return false;
+  return !!(
+    day.totalStudyMinutes ||
+    day.studyBlocks.length ||
+    day.sessionCards.length ||
+    day.pases.length ||
+    day.pasajes.length ||
+    day.estadoEventos.length ||
+    day.deporteEventos.length ||
+    day.suenoEventos.length
+  );
+}
+
+function aiSelectReportDays(daily, opts) {
+  opts = aiNormalizeTextReportOptions(opts);
+  const desc = daily.slice().sort((a, b) => b.day.localeCompare(a.day));
+  if (opts.mode === 'today' || opts.mode === 'day') {
+    const date = opts.date || aiTodayKey();
+    return desc.filter(day => day.day === date && aiDayHasReportableActivity(day));
+  }
+  return desc.filter(aiDayHasReportableActivity).slice(0, opts.days || 14);
+}
+
+function buildAiTextReport(options) {
+  const opts = aiNormalizeTextReportOptions(options);
   const pkg = buildAiDataPackage();
-  const days = pkg.daily.slice().sort((a, b) => b.day.localeCompare(a.day)).slice(0, maxDays || 14);
+  const days = aiSelectReportDays(pkg.daily, opts);
   const upcoming = pkg.eventos.filter(ev => !ev.completado && ev.dias != null && ev.dias >= 0).slice(0, 8);
   const lines = [];
   lines.push('PAQUETE DE CONTEXTO PARA IA / CODEX');
@@ -12850,16 +12981,52 @@ function buildAiTextReport(maxDays) {
   lines.push('- Pases registrados: ' + pkg.counts.pases);
   lines.push('- Entradas de pasajes: ' + pkg.counts.pasajeEntries);
   lines.push('- Eventos próximos/pasados: ' + pkg.counts.eventos);
+  lines.push('- Rango diario exportado: ' + (opts.mode === 'today' ? 'hoy hasta ahora' : opts.mode === 'day' ? ('día ' + (opts.date || aiTodayKey())) : ('últimos ' + opts.days + ' días')));
   lines.push('');
   if (upcoming.length) {
     lines.push('EVENTOS PRÓXIMOS');
     upcoming.forEach(ev => {
-      lines.push('- ' + ev.fecha + ' · ' + ev.nombre + ' · ' + ev.tipo + ' · faltan ' + ev.dias + ' días');
-      if (ev.obras.length) lines.push('  Obras: ' + ev.obras.join(' | '));
+      const prep = ev.preparacionGlobalPct != null ? ' · preparación global ' + ev.preparacionGlobalPct + '%' : '';
+      lines.push('- ' + ev.fecha + ' · ' + ev.nombre + ' · ' + ev.tipo + ' · faltan ' + ev.dias + ' días' + prep);
+      if (ev.obrasDetalle && ev.obrasDetalle.length) {
+        ev.obrasDetalle.forEach(o => {
+          const bits = [];
+          bits.push('estado: ' + (o.estadoGeneral || 'sin estado'));
+          if (o.aprendidoPct != null) bits.push('aprendido ' + o.aprendidoPct + '%');
+          if (o.solidezEstimadaPct != null) bits.push('solidez estimada ' + o.solidezEstimadaPct + '%');
+          if (o.preparacionEventoPct != null) bits.push('preparación evento ' + o.preparacionEventoPct + '%');
+          if (o.pasajesActivos && o.pasajesActivos.length) bits.push('pasajes activos ' + o.pasajesActivos.length);
+          lines.push('  - ' + o.nombre + (o.compositor && o.compositor !== '—' ? ' · ' + o.compositor : '') + ' · ' + bits.join(' · '));
+          if (o.ultimoPase) {
+            const up = o.ultimoPase;
+            const score = up.score != null ? ' (' + up.score + '/10)' : '';
+            const target = up.target && up.target !== 'obra completa' ? ' · ' + up.target : '';
+            const note = up.nota ? ' · nota: "' + up.nota + '"' : '';
+            lines.push('    Último pase: ' + aiDateLabel(up.date) + (up.time ? ' ' + up.time : '') + target + ' · tipo ' + (up.tipo || 'sin tipo') + ' · ' + (up.resultado || 'sin resultado') + score + note);
+          } else {
+            lines.push('    Último pase: sin pase registrado');
+          }
+        });
+      } else if (ev.obras.length) {
+        lines.push('  Obras: ' + ev.obras.join(' | '));
+      }
     });
     lines.push('');
   }
-  lines.push('DÍAS RECIENTES');
+  if (!upcoming.length) {
+    lines.push('EVENTOS PRÓXIMOS');
+    lines.push('- No hay eventos futuros registrados.');
+    lines.push('');
+  }
+  lines.push(opts.mode === 'recent' ? 'DÍAS RECIENTES' : 'DÍA SELECCIONADO');
+  if (!days.length) {
+    lines.push('');
+    lines.push(opts.mode === 'today'
+      ? 'No hay actividad registrada hoy hasta ahora.'
+      : opts.mode === 'day'
+        ? 'No hay actividad registrada para el día seleccionado.'
+        : 'No hay actividad registrada en el rango seleccionado.');
+  }
   days.forEach(day => {
     lines.push('');
     lines.push('## ' + day.label + ' · total estudio: ' + aiMinutesLabel(day.totalStudyMinutes));
@@ -12958,13 +13125,14 @@ function exportarDatosIA() {
 }
 
 function descargarResumenIA() {
-  const fecha = new Date().toISOString().slice(0, 10);
-  aiDownloadText('alberto-piano-resumen-ia-' + fecha + '.txt', buildAiTextReport(21), 'text/plain;charset=utf-8');
+  const opts = aiGetSelectedTextReportOptions();
+  aiDownloadText('alberto-piano-resumen-ia-' + aiRangeFileSuffix(opts) + '.txt', buildAiTextReport(opts), 'text/plain;charset=utf-8');
   aiExportFeedback('Resumen TXT descargado');
 }
 
 async function copiarDatosIA() {
-  const text = buildAiTextReport(14);
+  const opts = aiGetSelectedTextReportOptions();
+  const text = buildAiTextReport(opts);
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(text);
@@ -14899,6 +15067,7 @@ function openSettings() {
   if (typeof refreshHapticsUI === 'function') refreshHapticsUI();
   if (typeof updateForestPendientesBtn === 'function') updateForestPendientesBtn();
   if (typeof updateAppVersionInfo === 'function') updateAppVersionInfo();
+  if (typeof updateAiExportControls === 'function') updateAiExportControls();
 }
 
 // Vuelve a la pantalla desde la que se abrió Ajustes.

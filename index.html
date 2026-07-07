@@ -850,6 +850,18 @@
     <div class="ajustes-card">
       <div class="ajustes-card-head">IA / Codex · exportar contexto</div>
       <div class="ajustes-hint" style="margin-bottom:12px">Genera un paquete con sesiones, pases, notas, sueño, ánimo, deporte, siestas y eventos. Incluye datos privados: úsalo sólo para pegarlo o adjuntarlo donde quieras.</div>
+      <div class="ai-export-controls">
+        <select class="modal-input ai-export-select" id="aiExportRange" onchange="updateAiExportControls()">
+          <option value="today" selected>Hoy hasta ahora</option>
+          <option value="day">Un día concreto</option>
+          <option value="3">Últimos 3 días</option>
+          <option value="7">Últimos 7 días</option>
+          <option value="14">Últimos 14 días</option>
+          <option value="21">Últimos 21 días</option>
+          <option value="30">Últimos 30 días</option>
+        </select>
+        <input class="modal-input ai-export-date" id="aiExportDate" type="date" style="display:none" onchange="updateAiExportControls()">
+      </div>
       <div class="ajustes-btn-row" style="margin-bottom:6px">
         <button class="modal-btn secondary" onclick="copiarDatosIA()" style="flex:1;font-size:11px">Copiar texto IA</button>
         <button class="modal-btn secondary" onclick="descargarResumenIA()" style="flex:1;font-size:11px">TXT</button>
