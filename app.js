@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-07-ai-export-today-guidance-v23';
+const APP_VERSION = '2026-07-07-daily-available-time-v24';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -122,6 +122,17 @@ function _mergeTriggerEventos(a, b) {
   out.sort((x, y) => (x.at || '').localeCompare(y.at || ''));
   return out.slice(-2000);
 }
+function _tiempoDisponibleKey(e) { return (e && (e.date || e.day || (e.at ? new Date(e.at).toDateString() : ''))) || ''; }
+function _mergeTiempoDisponibleEventos(a, b) {
+  const map = {};
+  (a || []).concat(b || []).forEach(e => {
+    const k = _tiempoDisponibleKey(e);
+    if (!k) return;
+    const cur = map[k];
+    if (!cur || String(e.at || '').localeCompare(String(cur.at || '')) >= 0) map[k] = e;
+  });
+  return Object.values(map).sort((x, y) => (x.at || x.date || '').localeCompare(y.at || y.date || '')).slice(-2000);
+}
 function _sesionRealMin(s) {
   return (s.items || []).reduce((acc, it) =>
     acc + (typeof _itemMinReal === 'function' ? _itemMinReal(it) : (it.minutosReales || 0)), 0);
@@ -150,6 +161,7 @@ function _mergeStudyHistory(base, other) {
   merged.deporteEventos = _mergeDeporteEventos(base.deporteEventos, other.deporteEventos);
   merged.suenoEventos = _mergeSuenoEventos(base.suenoEventos, other.suenoEventos);
   merged.triggerEventos = _mergeTriggerEventos(base.triggerEventos, other.triggerEventos);
+  merged.tiempoDisponibleEventos = _mergeTiempoDisponibleEventos(base.tiempoDisponibleEventos, other.tiempoDisponibleEventos);
   return merged;
 }
 
@@ -239,7 +251,9 @@ async function loadFromCloud() {
         const cloudSuenoN = (data.data.suenoEventos || []).length;
         const localTriggerN = localDb ? (localDb.triggerEventos || []).length : 0;
         const cloudTriggerN = (data.data.triggerEventos || []).length;
-        if (localMin > cloudMin || localEstadoN > cloudEstadoN || localDeporteN > cloudDeporteN || localSuenoN > cloudSuenoN || localTriggerN > cloudTriggerN) {
+        const localTiempoN = localDb ? (localDb.tiempoDisponibleEventos || []).length : 0;
+        const cloudTiempoN = (data.data.tiempoDisponibleEventos || []).length;
+        if (localMin > cloudMin || localEstadoN > cloudEstadoN || localDeporteN > cloudDeporteN || localSuenoN > cloudSuenoN || localTriggerN > cloudTriggerN || localTiempoN > cloudTiempoN) {
           sb.from('user_data').upsert({ id: user.id, data: db, updated_at: new Date().toISOString() });
         }
       } catch(e) {}
@@ -284,7 +298,8 @@ function getDefaultData() {
     estadoEventos: [],
     deporteEventos: [],
     suenoEventos: [],
-    triggerEventos: []
+    triggerEventos: [],
+    tiempoDisponibleEventos: []
   };
 }
 
@@ -297,6 +312,7 @@ if (!db.estadoEventos) db.estadoEventos = [];
 if (!db.deporteEventos) db.deporteEventos = [];
 if (!db.suenoEventos) db.suenoEventos = [];
 if (!db.triggerEventos) db.triggerEventos = [];
+if (!db.tiempoDisponibleEventos) db.tiempoDisponibleEventos = [];
 // db.sessionPlants[]: array paralelo a forestPlants con UN registro por sub-sesión
 // del cronómetro. Persiste los timestamps detallados aunque la sesión en
 // db.sesiones[] sea descartada por el cap. Estructura por entrada:
@@ -555,7 +571,7 @@ let selectedEnergy = 'normal';
 let selectedTime = 2;
 // Estado diario: `estado`/`bienestar` es el ánimo actual; `sueno` es una métrica
 // diaria independiente. energia/claridad quedan como alias para código antiguo.
-let estadoDiario = { estado: 70, bienestar: 70, sueno: 70, energia: 70, claridad: 70, deporte: null, triggers: null };
+let estadoDiario = { estado: 70, bienestar: 70, sueno: 70, energia: 70, claridad: 70, deporte: null, triggers: null, tiempoDisponible: null };
 // ¿Ha introducido Alberto su estado HOY (de forma explícita)? Solo entonces la
 // predicción se condiciona a cómo está. El reset de día y los guardados de fondo
 // lo dejan en false; pickEstado/updateEstado lo ponen en true.
@@ -596,6 +612,14 @@ const TRIGGER_LEVELS = [
   { v: 100, level: 5, label: 'Crítico', icon: 'trigger-5' },
 ];
 
+const TIEMPO_DISPONIBLE_LEVELS = [
+  { v: 20, level: 1, label: 'Poquísimo', range: '0-1 h brutas', icon: 'tiempo-1' },
+  { v: 40, level: 2, label: 'Poco', range: '1-2 h brutas', icon: 'tiempo-2' },
+  { v: 60, level: 3, label: 'Medio', range: '2-3.5 h brutas', icon: 'tiempo-3' },
+  { v: 80, level: 4, label: 'Mucho', range: '3.5-4.5 h brutas', icon: 'tiempo-4' },
+  { v: 100, level: 5, label: 'Muchísimo', range: '5 h+ brutas', icon: 'tiempo-5' },
+];
+
 // Valor canónico actual del estado (con migración perezosa desde el modelo viejo).
 function estadoActualVal() {
   if (typeof estadoDiario.estado === 'number') return estadoDiario.estado;
@@ -626,6 +650,16 @@ function triggerLevelIndex(val) {
   if (typeof val !== 'number') return -1;
   let best = 0, bestD = Infinity;
   TRIGGER_LEVELS.forEach((f, i) => {
+    const d = Math.abs(f.v - val);
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  return best;
+}
+
+function tiempoDisponibleLevelIndex(val) {
+  if (typeof val !== 'number') return -1;
+  let best = 0, bestD = Infinity;
+  TIEMPO_DISPONIBLE_LEVELS.forEach((f, i) => {
     const d = Math.abs(f.v - val);
     if (d < bestD) { bestD = d; best = i; }
   });
@@ -777,6 +811,27 @@ function ensureTriggerEventos() {
   return db.triggerEventos;
 }
 
+function _tiempoDisponibleEventosLocal() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('alberto_tiempo_disponible_v1') || '[]');
+    return Array.isArray(raw) ? raw : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function _saveTiempoDisponibleEventosLocal(items) {
+  try {
+    localStorage.setItem('alberto_tiempo_disponible_v1', JSON.stringify((items || []).slice(-2000)));
+  } catch(e) {}
+}
+
+function ensureTiempoDisponibleEventos() {
+  if (typeof db !== 'object' || !db) return _tiempoDisponibleEventosLocal();
+  if (!Array.isArray(db.tiempoDisponibleEventos)) db.tiempoDisponibleEventos = _tiempoDisponibleEventosLocal();
+  return db.tiempoDisponibleEventos;
+}
+
 function siestaEventsToday() {
   const today = new Date().toDateString();
   return ensureSuenoEventos().filter(e => e && e.date === today && (e.kind || 'siesta') === 'siesta');
@@ -842,15 +897,34 @@ function triggerTodaySummary() {
   };
 }
 
+function tiempoDisponibleToday() {
+  const today = new Date().toDateString();
+  const arr = ensureTiempoDisponibleEventos().filter(e => e && e.date === today);
+  return arr.length ? arr[arr.length - 1] : null;
+}
+
+function tiempoDisponibleTodaySummary() {
+  const current = tiempoDisponibleToday();
+  return current ? {
+    value: current.value,
+    level: current.level,
+    label: current.label,
+    range: current.range,
+    at: current.at,
+  } : null;
+}
+
 function estadoSnapshot() {
   const n = estadoActualVal();
   const deporte = deporteTodaySummary();
   const siestas = siestaTodaySummary();
   const triggers = triggerTodaySummary();
+  const tiempoDisponible = tiempoDisponibleTodaySummary();
   estadoDiario.deporte = deporte;
   estadoDiario.siestas = siestas;
   estadoDiario.triggers = triggers;
-  return { estado: n, bienestar: n, sueno: suenoActualVal(), energia: n, claridad: n, deporte, siestas, triggers };
+  estadoDiario.tiempoDisponible = tiempoDisponible;
+  return { estado: n, bienestar: n, sueno: suenoActualVal(), energia: n, claridad: n, deporte, siestas, triggers, tiempoDisponible };
 }
 
 function recordEstadoEvent(face) {
@@ -916,6 +990,34 @@ function recordTriggerEvent(level) {
   refreshTriggerEventSummary();
   clearTimeout(recordTriggerEvent._t);
   recordTriggerEvent._t = setTimeout(() => {
+    if (typeof saveData === 'function') saveData();
+  }, 600);
+}
+
+function recordTiempoDisponible(level) {
+  const arr = ensureTiempoDisponibleEventos();
+  const now = new Date();
+  const today = now.toDateString();
+  const existingIdx = arr.findIndex(e => e && e.date === today);
+  const previous = existingIdx >= 0 ? arr[existingIdx] : null;
+  const entry = {
+    id: previous?.id || ('tiempo_' + now.getTime() + '_' + Math.random().toString(36).slice(2, 7)),
+    at: now.toISOString(),
+    date: today,
+    value: level.v,
+    level: level.level,
+    label: level.label,
+    range: level.range,
+  };
+  if (existingIdx >= 0) arr[existingIdx] = entry;
+  else arr.push(entry);
+  if (arr.length > 2000) arr.splice(0, arr.length - 2000);
+  _saveTiempoDisponibleEventosLocal(arr);
+  estadoDiario.tiempoDisponible = tiempoDisponibleTodaySummary();
+  refreshTiempoDisponibleFacesUI();
+  refreshTiempoDisponibleSummary();
+  clearTimeout(recordTiempoDisponible._t);
+  recordTiempoDisponible._t = setTimeout(() => {
     if (typeof saveData === 'function') saveData();
   }, 600);
 }
@@ -1016,6 +1118,16 @@ function refreshTriggerFacesUI() {
   });
 }
 
+function refreshTiempoDisponibleFacesUI() {
+  const current = tiempoDisponibleToday();
+  const idx = current ? tiempoDisponibleLevelIndex(current.value) : -1;
+  document.querySelectorAll('#tiempoDisponibleFaces .estado-face').forEach((b, i) => {
+    const on = i === idx;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+}
+
 function refreshEstadoEventSummary() {
   const el = document.getElementById('estadoEventSummary');
   if (!el) return;
@@ -1063,6 +1175,19 @@ function refreshTriggerEventSummary() {
   el.textContent = 'Gatillos hoy: ' + arr.length + ' · último ' + (last.label || last.level || '') + (hour ? ' · ' + hour : '');
 }
 
+function refreshTiempoDisponibleSummary() {
+  const el = document.getElementById('tiempoDisponibleSummary');
+  if (!el) return;
+  const current = tiempoDisponibleToday();
+  if (!current) {
+    el.textContent = 'Tiempo bruto disponible para tocar hoy. Se guarda una vez por día.';
+    return;
+  }
+  let hour = '';
+  try { hour = new Date(current.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch(e) {}
+  el.textContent = (current.label || '') + (current.range ? ' · ' + current.range : '') + (hour ? ' · ' + hour : '');
+}
+
 function pickDeporte(kind, idx) {
   const level = DEPORTE_LEVELS[idx];
   if (!level || (kind !== 'cardio' && kind !== 'fuerza')) return;
@@ -1092,6 +1217,19 @@ function pickTrigger(idx) {
   }, 150);
 }
 
+function pickTiempoDisponible(idx) {
+  const level = TIEMPO_DISPONIBLE_LEVELS[idx];
+  if (!level) return;
+  recordTiempoDisponible(level);
+  try { Haptics.light(); } catch(e) {}
+  try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
+  clearTimeout(pickTiempoDisponible._t);
+  pickTiempoDisponible._t = setTimeout(() => {
+    saveEstadoDiario();
+    if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
+  }, 150);
+}
+
 // Persiste estadoDiario en localStorage con marca de fecha.
 // La fecha permite que al cambiar de día el estado se reinicie a defaults
 // (70/70) en lugar de heredar el del día anterior.
@@ -1112,6 +1250,7 @@ function saveEstadoDiario() {
       deporte: snap.deporte,
       siestas: snap.siestas,
       triggers: snap.triggers,
+      tiempoDisponible: snap.tiempoDisponible,
     };
     // 1) localStorage (carga rápida sin esperar a nube en el arranque)
     localStorage.setItem('alberto_estado_v1', JSON.stringify(payload));
@@ -1180,6 +1319,7 @@ function loadEstadoDiarioFromSources() {
       estadoDiario.deporte = db.estadoDiario.deporte || null;
       estadoDiario.siestas = db.estadoDiario.siestas || null;
       estadoDiario.triggers = db.estadoDiario.triggers || null;
+      estadoDiario.tiempoDisponible = db.estadoDiario.tiempoDisponible || null;
       return true;
     }
   }
@@ -1197,6 +1337,7 @@ function loadEstadoDiarioFromSources() {
         estadoDiario.deporte = saved.deporte || null;
         estadoDiario.siestas = saved.siestas || null;
         estadoDiario.triggers = saved.triggers || null;
+        estadoDiario.tiempoDisponible = saved.tiempoDisponible || null;
         return true;
       }
     }
@@ -1337,6 +1478,22 @@ function ritmoIconSvg(icon) {
       '<circle cx="32" cy="32" r="5"/>' + ring2 + ring3 + rays +
       '</svg>';
   }
+  if (icon && icon.startsWith('tiempo-')) {
+    const level = parseInt(icon.replace('tiempo-', ''), 10) || 1;
+    const marks = [
+      '<path d="M32 13 V18"/>',
+      level >= 2 ? '<path d="M51 32 H46"/>' : '',
+      level >= 3 ? '<path d="M32 51 V46"/>' : '',
+      level >= 4 ? '<path d="M13 32 H18"/>' : '',
+      level >= 5 ? '<path d="M45 19 L41.5 22.5"/><path d="M45 45 L41.5 41.5"/><path d="M19 45 L22.5 41.5"/><path d="M19 19 L22.5 22.5"/>' : ''
+    ].join('');
+    const hand = level <= 2 ? '<path d="M32 32 V23"/><path d="M32 32 H39"/>'
+      : level <= 4 ? '<path d="M32 32 V21"/><path d="M32 32 H43"/>'
+        : '<path d="M32 32 V18"/><path d="M32 32 H46"/>';
+    return '<svg class="ritmo-icon-svg ritmo-tiempo-svg" viewBox="0 0 64 64" aria-hidden="true">' +
+      '<circle cx="32" cy="32" r="22"/>' + marks + hand + '<circle cx="32" cy="32" r="2.2"/>' +
+      '</svg>';
+  }
   const moon = {
     'moon-lowest': {
       tilt: -14,
@@ -1397,6 +1554,12 @@ function initEstadoSliders() {
     sleepHost.classList.add('ritmo-scale');
     sleepHost.dataset.built = '1';
   }
+  const tiempoHost = document.getElementById('tiempoDisponibleFaces');
+  if (tiempoHost && !tiempoHost.dataset.built) {
+    tiempoHost.innerHTML = TIEMPO_DISPONIBLE_LEVELS.map((f, i) => ritmoChoiceHTML(f, i, 'pickTiempoDisponible', 'tiempo')).join('');
+    tiempoHost.classList.add('ritmo-scale', 'tiempo-scale');
+    tiempoHost.dataset.built = '1';
+  }
   const cardioHost = document.getElementById('cardioFaces');
   if (cardioHost && !cardioHost.dataset.built) {
     cardioHost.innerHTML = DEPORTE_LEVELS.map((f, i) =>
@@ -1422,6 +1585,8 @@ function initEstadoSliders() {
   refreshEstadoFacesUI();
   refreshSuenoFacesUI();
   refreshSiestaSummary();
+  refreshTiempoDisponibleFacesUI();
+  refreshTiempoDisponibleSummary();
   refreshDeporteFacesUI();
   refreshTriggerFacesUI();
   refreshEstadoEventSummary();
@@ -2283,6 +2448,7 @@ function handleDayChange() {
     estadoDiario.deporte = null;
     estadoDiario.siestas = null;
     estadoDiario.triggers = null;
+    estadoDiario.tiempoDisponible = null;
     saveEstadoDiario(); // guarda con la nueva fecha
     if (typeof initEstadoSliders === 'function') initEstadoSliders();
     // Limpiar el DOM del plan
@@ -13039,8 +13205,9 @@ function aiBuildDailyRows() {
   const deporteEventos = ensureDeporteEventos ? ensureDeporteEventos() : (db.deporteEventos || []);
   const suenoEventos = ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || []);
   const triggerEventos = ensureTriggerEventos ? ensureTriggerEventos() : (db.triggerEventos || []);
+  const tiempoDisponibleEventos = ensureTiempoDisponibleEventos ? ensureTiempoDisponibleEventos() : (db.tiempoDisponibleEventos || []);
   const keys = new Set();
-  [studyRows, sessionCards, paseRows, pasajeRows, estadoEventos, deporteEventos, suenoEventos, triggerEventos].forEach(arr => {
+  [studyRows, sessionCards, paseRows, pasajeRows, estadoEventos, deporteEventos, suenoEventos, triggerEventos, tiempoDisponibleEventos].forEach(arr => {
     (arr || []).forEach(x => {
       const k = x.day || aiLocalDateKey(x.date || x.at || x.start || x.startedAt);
       if (k) keys.add(k);
@@ -13049,6 +13216,9 @@ function aiBuildDailyRows() {
   return Array.from(keys).sort().map(day => {
     const dayStudies = studyRows.filter(x => x.day === day);
     const totalStudy = dayStudies.filter(x => !x.failed && !x.rest).reduce((s, x) => s + (Number(x.minutes) || 0), 0);
+    const tiempoDia = (tiempoDisponibleEventos || [])
+      .filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day)
+      .sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')));
     return {
       day,
       label: aiDateLabel(day + 'T12:00:00'),
@@ -13061,6 +13231,7 @@ function aiBuildDailyRows() {
       deporteEventos: (deporteEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       suenoEventos: (suenoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       triggerEventos: (triggerEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
+      tiempoDisponible: tiempoDia.length ? tiempoDia[tiempoDia.length - 1] : null,
     };
   });
 }
@@ -13074,7 +13245,7 @@ function buildAiDataPackage() {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
     guidance: {
       purpose: 'Paquete para que una IA o Codex pueda analizar el estudio sin acceder directamente al localStorage.',
-      priorityRule: 'Las prioridades deben derivarse de datos introducidos por el usuario: notas, pases, eventos, sueño, ánimo, deporte, gatillos y tiempo registrado. No inventar recomendaciones como si fueran datos.',
+      priorityRule: 'Las prioridades deben derivarse de datos introducidos por el usuario: notas, pases, eventos, sueño, ánimo, deporte, gatillos, tiempo disponible bruto y tiempo registrado. No inventar recomendaciones como si fueran datos.',
       privacy: 'Incluye notas privadas y datos personales de estudio.',
     },
     counts: {
@@ -13087,6 +13258,7 @@ function buildAiDataPackage() {
       deporteEventos: (ensureDeporteEventos ? ensureDeporteEventos() : (db.deporteEventos || [])).length,
       suenoEventos: (ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || [])).length,
       triggerEventos: (ensureTriggerEventos ? ensureTriggerEventos() : (db.triggerEventos || [])).length,
+      tiempoDisponibleDias: (ensureTiempoDisponibleEventos ? ensureTiempoDisponibleEventos() : (db.tiempoDisponibleEventos || [])).length,
       eventos: (db.eventos || []).length,
     },
     daily,
@@ -13098,6 +13270,7 @@ function buildAiDataPackage() {
       deporteEventos: aiReadLocalJson('alberto_deporte_eventos_v1'),
       suenoEventos: aiReadLocalJson('alberto_sueno_eventos_v1'),
       triggerEventos: aiReadLocalJson('alberto_trigger_eventos_v1'),
+      tiempoDisponibleEventos: aiReadLocalJson('alberto_tiempo_disponible_v1'),
     },
   };
   return packageData;
@@ -13225,7 +13398,8 @@ function aiDayHasReportableActivity(day) {
     day.estadoEventos.length ||
     day.deporteEventos.length ||
     day.suenoEventos.length ||
-    (day.triggerEventos || []).length
+    (day.triggerEventos || []).length ||
+    !!day.tiempoDisponible
   );
 }
 
@@ -13270,9 +13444,10 @@ function buildAiTextReport(options) {
   lines.push('- Tarjeta/sesión guardada: resumen diario o tarjeta de estudio. Puede incluir obra, minutos, tick, nota, destello y datos agregados de sub-sesiones.');
   lines.push('- Pase: ejecución de una obra o movimiento. Es la medida principal de solidez. Tipos: solo = para mí; informal = ante pareja/amigos; evento = audición/concurso/concierto o situación formal. Resultado: Se cae, Frágil, Sale, Sólido o Listo.');
   lines.push('- Pasaje: fragmento concreto dentro de una obra. Puede tener estado actual, intensidad de trabajo, solidez antes/después, fallos de memoria o entradas de seguimiento. Si un pasaje aparece varias veces el mismo día, trátalo como foco recurrente, no como duplicado irrelevante.');
-  lines.push('- Estado/sueño/deporte/siesta/gatillos TOC: contexto corporal y mental registrado por mí. Úsalo como contexto, no como diagnóstico clínico ni como causa segura.');
+  lines.push('- Estado/sueño/deporte/siesta/gatillos TOC/tiempo disponible: contexto corporal, mental y logístico registrado por mí. Úsalo como contexto, no como diagnóstico clínico ni como causa segura.');
+  lines.push('- Tiempo disponible bruto: estimación diaria de cuánto margen teórico tuve para tocar. No equivale a horas estudiadas ni a obligación; sirve para distinguir falta real de tiempo de baja ejecución con tiempo disponible.');
   lines.push('- Eventos próximos: compromisos futuros. Pueden aumentar la relevancia de obras/pasajes, pero no inventes prioridades si no están apoyadas por datos registrados.');
-  lines.push('- Regla de interpretación: distingue HECHOS registrados de LECTURAS derivadas. Si propones prioridades, deriva cada una de notas, pases, pasajes, eventos, sueño, ánimo, deporte, gatillos o tiempo registrado. No trates inferencias como hechos.');
+  lines.push('- Regla de interpretación: distingue HECHOS registrados de LECTURAS derivadas. Si propones prioridades, deriva cada una de notas, pases, pasajes, eventos, sueño, ánimo, deporte, gatillos, tiempo disponible o tiempo registrado. No trates inferencias como hechos.');
   lines.push('- Si el último día solicitado aparece como HOY, entiende que el día puede seguir abierto y que la orientación puede ser para terminar hoy o preparar mañana según la hora y la carga ya registrada.');
   lines.push('');
   lines.push('RESUMEN GLOBAL');
@@ -13282,6 +13457,7 @@ function buildAiTextReport(options) {
   lines.push('- Pases registrados: ' + pkg.counts.pases);
   lines.push('- Entradas de pasajes: ' + pkg.counts.pasajeEntries);
   lines.push('- Gatillos registrados: ' + (pkg.counts.triggerEventos || 0));
+  lines.push('- Días con tiempo disponible estimado: ' + (pkg.counts.tiempoDisponibleDias || 0));
   lines.push('- Eventos próximos/pasados: ' + pkg.counts.eventos);
   lines.push('- Rango diario exportado: ' + aiReportRangeLabel(opts));
   lines.push('');
@@ -13346,6 +13522,12 @@ function buildAiTextReport(options) {
     if (day.deporteEventos.length) {
       lines.push('Deporte:');
       day.deporteEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.kind || '') + ' · ' + (e.label || e.level || e.value)));
+    }
+    if (day.tiempoDisponible) {
+      const t = day.tiempoDisponible;
+      const hour = t.at ? (' · registrado ' + aiTimeLabel(t.at)) : '';
+      lines.push('Tiempo disponible bruto:');
+      lines.push('- nivel ' + (t.level || '') + ' · ' + (t.label || t.value || 'sin etiqueta') + (t.range ? ' · ' + t.range : '') + hour);
     }
     if ((day.triggerEventos || []).length) {
       lines.push('Gatillos TOC:');
@@ -13424,10 +13606,10 @@ function buildAiTextReport(options) {
   lines.push('PETICIÓN SUGERIDA A LA IA');
   if (reportIncludesToday) {
     lines.push('Con esta información, ayúdame primero a decidir qué hacer con lo que queda de HOY. No asumas que el día está cerrado sólo porque el texto sea un resumen.');
-    lines.push('Si por la hora actual, la carga ya registrada, el sueño, el ánimo, el deporte, los gatillos o las notas parece que aún queda margen razonable, propón un cierre o continuación breve para hoy: obras/pasajes/pases concretos, duración aproximada, criterio de cierre y cuándo parar.');
+    lines.push('Si por la hora actual, el tiempo disponible bruto, la carga ya registrada, el sueño, el ánimo, el deporte, los gatillos o las notas parece que aún queda margen razonable, propón un cierre o continuación breve para hoy: obras/pasajes/pases concretos, duración aproximada, criterio de cierre y cuándo parar.');
     lines.push('Si por la hora o por la carga parece que probablemente ya he terminado, entonces sugiere una forma de cerrar el día y preparar mañana. En ambos casos, basa las prioridades sólo en mis datos registrados y distingue hechos de inferencias.');
   } else {
-    lines.push('Con esta información, ayúdame a preparar mañana. Basa las prioridades sólo en mis datos registrados: pases, notas, bloques de estudio, sueño, ánimo, deporte, siestas, gatillos y eventos próximos. Distingue hechos de inferencias.');
+    lines.push('Con esta información, ayúdame a preparar mañana. Basa las prioridades sólo en mis datos registrados: pases, notas, bloques de estudio, sueño, ánimo, deporte, tiempo disponible, siestas, gatillos y eventos próximos. Distingue hechos de inferencias.');
   }
   return lines.join('\n');
 }

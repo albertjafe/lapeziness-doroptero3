@@ -169,6 +169,15 @@
       <div class="siesta-summary" id="siestaSummary">sin siesta hoy</div>
     </section>
 
+    <section class="ritmo-card ritmo-card-tiempo" aria-label="Tiempo disponible hoy">
+      <div class="ritmo-card-head">
+        <h2>Tiempo hoy</h2>
+        <button type="button" class="ritmo-info" onclick="showToast('Tiempo bruto disponible para tocar hoy; se guarda una vez por día')">i</button>
+      </div>
+      <div class="estado-faces ritmo-scale tiempo-scale" id="tiempoDisponibleFaces" role="radiogroup" aria-label="Tiempo disponible hoy"></div>
+      <div class="ritmo-moment-summary tiempo-summary" id="tiempoDisponibleSummary"></div>
+    </section>
+
     <section class="ritmo-card ritmo-card-deporte" aria-label="Deporte">
       <div class="ritmo-card-head">
         <h2>Deporte</h2>
@@ -858,7 +867,7 @@
     <div class="ajustes-group-label"><span class="ajustes-group-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h3.5l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></span>Datos</div>
     <div class="ajustes-card">
       <div class="ajustes-card-head">IA / Codex · exportar contexto</div>
-      <div class="ajustes-hint" style="margin-bottom:12px">Genera un paquete con sesiones, pases, notas, sueño, ánimo, deporte, siestas, gatillos y eventos. Incluye datos privados: úsalo sólo para pegarlo o adjuntarlo donde quieras.</div>
+      <div class="ajustes-hint" style="margin-bottom:12px">Genera un paquete con sesiones, pases, notas, sueño, ánimo, deporte, tiempo disponible, siestas, gatillos y eventos. Incluye datos privados: úsalo sólo para pegarlo o adjuntarlo donde quieras.</div>
       <div class="ai-export-controls">
         <select class="modal-input ai-export-select" id="aiExportRange" onchange="updateAiExportControls()">
           <option value="today" selected>Hoy hasta ahora</option>
