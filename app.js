@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-07-ai-guide-pasajes-v18';
+const APP_VERSION = '2026-07-07-edit-obras-pases-v19';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -13025,37 +13025,198 @@ function importarDatos(input) {
   reader.readAsText(file);
 }
 
-// ─── EDIT OBRA NOMBRE ────────────────────────────────────────────────────────
+// ─── EDIT OBRA COMPLETA ──────────────────────────────────────────────────────
+
+let editObraMovDraft = [];
+let editObraMovDraftObraId = null;
+
+function editObraNumberFromInput(inputOrId, min, max) {
+  const el = typeof inputOrId === 'string' ? document.getElementById(inputOrId) : inputOrId;
+  if (!el) return null;
+  const raw = String(el.value || '').trim();
+  if (!raw) return null;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(min, max != null ? Math.min(max, n) : n);
+}
+
+function editObraCloneMovement(mov) {
+  try {
+    return JSON.parse(JSON.stringify(mov || {}));
+  } catch (err) {
+    return { ...(mov || {}) };
+  }
+}
+
+function editObraJsArg(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function editObraSyncMovDraftFromDom() {
+  const list = document.getElementById('editObraMovimientosList');
+  if (!list) return;
+  const previous = new Map(editObraMovDraft.map(m => [String(m.id), m]));
+  editObraMovDraft = Array.from(list.querySelectorAll('.edit-obra-mov-row')).map((row, idx) => {
+    const id = row.dataset.movId || ('mv' + Date.now() + '_' + idx);
+    const base = previous.get(String(id)) || {};
+    const out = {
+      ...base,
+      id,
+      name: (row.querySelector('.edit-mov-name')?.value || '').trim() || ('Movimiento ' + (idx + 1)),
+      duracion: editObraNumberFromInput(row.querySelector('.edit-mov-duracion'), 1, 240),
+      dificultad: editObraNumberFromInput(row.querySelector('.edit-mov-dificultad'), 1, 10),
+      compasActual: editObraNumberFromInput(row.querySelector('.edit-mov-compas-actual'), 0, 99999),
+      compasesTotal: editObraNumberFromInput(row.querySelector('.edit-mov-compases-total'), 1, 99999),
+    };
+    if (out.compasesTotal && out.compasActual != null && out.compasActual > out.compasesTotal) {
+      out.compasActual = out.compasesTotal;
+    }
+    out.apr = aprFromCompas(out);
+    if (!Array.isArray(out.paseHistory)) out.paseHistory = [];
+    if (!Array.isArray(out.solHistory)) out.solHistory = [];
+    return out;
+  });
+}
+
+function renderEditObraMovimientos() {
+  const list = document.getElementById('editObraMovimientosList');
+  if (!list) return;
+  if (!editObraMovDraft.length) {
+    list.innerHTML = '<div class="edit-obra-empty">Sin movimientos. Puedes dejar la obra completa o añadirlos aquí.</div>';
+    return;
+  }
+  list.innerHTML = editObraMovDraft.map((mov, idx) => {
+    const id = mov.id || ('mv' + Date.now() + '_' + idx);
+    const jsId = editObraJsArg(id);
+    return `
+      <div class="edit-obra-mov-row" data-mov-id="${escapeHtmlSafe(id)}">
+        <div class="edit-obra-mov-top">
+          <input class="modal-input edit-obra-mov-name edit-mov-name" type="text" value="${escapeHtmlSafe(mov.name || ('Movimiento ' + (idx + 1)))}" placeholder="Movimiento ${idx + 1}">
+          <div class="edit-obra-mov-actions">
+            <button type="button" onclick="editObraRegisterPase('${jsId}')">Pase con fecha</button>
+            <button type="button" class="danger" onclick="editObraDeleteMovimiento('${jsId}')">Quitar</button>
+          </div>
+        </div>
+        <div class="edit-obra-mov-grid">
+          <div>
+            <div class="edit-obra-label">Duración</div>
+            <input class="modal-input edit-obra-mini edit-mov-duracion" type="number" min="1" max="240" value="${mov.duracion || ''}" placeholder="min">
+          </div>
+          <div>
+            <div class="edit-obra-label">Dificultad</div>
+            <input class="modal-input edit-obra-mini edit-mov-dificultad" type="number" min="1" max="10" step="1" value="${mov.dificultad || ''}" placeholder="1-10">
+          </div>
+          <div>
+            <div class="edit-obra-label">Compás actual</div>
+            <input class="modal-input edit-obra-mini edit-mov-compas-actual" type="number" min="0" value="${mov.compasActual || ''}" placeholder="0">
+          </div>
+          <div>
+            <div class="edit-obra-label">Compases total</div>
+            <input class="modal-input edit-obra-mini edit-mov-compases-total" type="number" min="1" value="${mov.compasesTotal || ''}" placeholder="total">
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
 
 function openEditObraNombre(obraId) {
   const obra = findObra(obraId);
   if (!obra) return;
+  editObraMovDraftObraId = obraId;
+  editObraMovDraft = (obra.movimientos || []).map(editObraCloneMovement);
   document.getElementById('editObraId').value = obraId;
-  document.getElementById('editObraNombreInput').value = obra.name;
+  document.getElementById('editObraNombreInput').value = obra.name || '';
   document.getElementById('editObraComposerInput').value = obra.composer === '—' ? '' : (obra.composer || '');
+  document.getElementById('editObraDuracionInput').value = obra.duracion || '';
+  document.getElementById('editObraDificultadInput').value = obra.dificultad || '';
+  document.getElementById('editObraCompasActualInput').value = obra.compasActual || '';
+  document.getElementById('editObraCompasesTotalInput').value = obra.compasesTotal || '';
+  renderEditObraMovimientos();
   openModal('modalEditObraNombre');
   setTimeout(() => document.getElementById('editObraNombreInput').focus(), 100);
 }
 
-function saveEditObraNombre() {
+function editObraAddMovimiento() {
+  editObraSyncMovDraftFromDom();
+  const obra = findObra(editObraMovDraftObraId || document.getElementById('editObraId')?.value);
+  const num = editObraMovDraft.length + 1;
+  editObraMovDraft.push({
+    id: 'mv' + Date.now(),
+    name: 'Movimiento ' + num,
+    duracion: null,
+    dificultad: obra?.dificultad || 3,
+    apr: obra?.apr || 1,
+    sol: obra?.sol || 1,
+    esc: obra?.esc || 1,
+    lastPase: null,
+    paseHistory: [],
+    solHistory: [],
+    compasHistory: [],
+  });
+  renderEditObraMovimientos();
+}
+
+function editObraDeleteMovimiento(movId) {
+  editObraSyncMovDraftFromDom();
+  editObraMovDraft = editObraMovDraft.filter(m => String(m.id) !== String(movId));
+  renderEditObraMovimientos();
+}
+
+function applyEditObraModalChanges(opts) {
+  opts = opts || {};
   const obraId = document.getElementById('editObraId').value;
   const nombre = document.getElementById('editObraNombreInput').value.trim();
   const composer = document.getElementById('editObraComposerInput').value.trim();
-  if (!nombre) { showToast('El título no puede estar vacío'); return; }
+  if (!nombre) { showToast('El titulo no puede estar vacio'); return false; }
   const obra = findObra(obraId);
-  if (!obra) return;
+  if (!obra) return false;
+
+  editObraSyncMovDraftFromDom();
   obra.name = nombre;
-  obra.composer = composer || '—';
-  // Update also in sesiones history
+  obra.composer = obra.tipo === 'actividad' ? composer : (composer || '\u2014');
+  obra.duracion = editObraNumberFromInput('editObraDuracionInput', 1, 240);
+  obra.dificultad = editObraNumberFromInput('editObraDificultadInput', 1, 10);
+  obra.compasActual = editObraNumberFromInput('editObraCompasActualInput', 0, 99999);
+  obra.compasesTotal = editObraNumberFromInput('editObraCompasesTotalInput', 1, 99999);
+  if (obra.compasesTotal && obra.compasActual != null && obra.compasActual > obra.compasesTotal) {
+    obra.compasActual = obra.compasesTotal;
+  }
+  obra.apr = aprFromCompas(obra);
+  obra.movimientos = editObraMovDraft.map((mov, idx) => ({
+    ...mov,
+    id: mov.id || ('mv' + Date.now() + '_' + idx),
+    name: (mov.name || '').trim() || ('Movimiento ' + (idx + 1)),
+  }));
+
   (db.sesiones || []).forEach(s => {
     (s.items || []).forEach(it => {
-      if (it.obraId === obraId) it.obraName = nombre;
+      if (it.obraId !== obraId) return;
+      if (it.movId) {
+        const mov = obra.movimientos.find(m => m.id === it.movId);
+        it.obraName = mov ? (nombre + ' \u00b7 ' + mov.name) : nombre;
+      } else {
+        it.obraName = nombre;
+      }
     });
   });
+
   saveData();
-  closeModal('modalEditObraNombre');
   rerenderObraCard(obraId);
-  showToast('Obra actualizada ✓');
+  if (opts.close) closeModal('modalEditObraNombre');
+  if (opts.toast) showToast('Obra actualizada');
+  return true;
+}
+
+function editObraRegisterPase(movId) {
+  const obraId = document.getElementById('editObraId').value;
+  if (!applyEditObraModalChanges({ close: false, toast: false })) return;
+  closeModal('modalEditObraNombre');
+  registerPase(obraId, movId || null);
+}
+
+function saveEditObraNombre() {
+  applyEditObraModalChanges({ close: true, toast: true });
 }
 
 function confirmDeleteObra(obraId) {

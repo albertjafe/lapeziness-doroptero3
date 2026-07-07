@@ -4754,6 +4754,124 @@
     transition: all 0.2s; text-transform: uppercase;
   }
   .edit-obra-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .edit-obra-modal {
+    max-width: 560px;
+    width: min(560px, calc(100vw - 28px));
+    max-height: min(86vh, 760px);
+    overflow-y: auto;
+  }
+  .edit-obra-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin: 2px 0 10px;
+  }
+  .edit-obra-label {
+    font-size: 8px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .edit-obra-mini {
+    margin-bottom: 0;
+    text-align: center;
+  }
+  .edit-obra-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin: 4px 0 14px;
+  }
+  .edit-obra-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 14px 0 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border2);
+    font-size: 9px;
+    color: var(--text3);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .edit-obra-section-head button,
+  .edit-obra-mov-actions button {
+    background: transparent;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .edit-obra-section-head button {
+    padding: 5px 9px;
+    text-transform: none;
+    letter-spacing: 0.02em;
+  }
+  .edit-obra-section-head button:hover,
+  .edit-obra-mov-actions button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .edit-obra-mov-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .edit-obra-empty {
+    border: 1px dashed var(--border2);
+    border-radius: 8px;
+    padding: 12px;
+    color: var(--text3);
+    font-size: 10px;
+    text-align: center;
+  }
+  .edit-obra-mov-row {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .edit-obra-mov-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .edit-obra-mov-name {
+    flex: 1;
+    min-width: 0;
+    margin-bottom: 0;
+  }
+  .edit-obra-mov-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .edit-obra-mov-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .edit-obra-mov-actions button {
+    padding: 5px 8px;
+  }
+  .edit-obra-mov-actions .danger:hover {
+    border-color: var(--red);
+    color: var(--red);
+  }
+  @media (max-width: 540px) {
+    .edit-obra-grid,
+    .edit-obra-mov-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .edit-obra-mov-top { align-items: stretch; flex-direction: column; }
+    .edit-obra-mov-actions { justify-content: flex-end; }
+  }
+
   .dif-num-btn {
     width: 28px; height: 28px; border: 1px solid var(--border2);
     border-radius: 4px; background: transparent; color: var(--text3);

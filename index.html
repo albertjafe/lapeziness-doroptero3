@@ -1455,7 +1455,7 @@
     <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Resultado del pase</div>
     <div class="pscore-modal-row" id="paseQScoreBtns"></div>
     <input class="modal-input" id="paseQNote" placeholder="nota rápida (opcional)" type="text" style="margin-top:4px">
-    <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin:10px 0 6px">Fecha del pase</div>
+    <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin:10px 0 6px">Fecha del pase · puede ser otro día</div>
     <input class="modal-input" id="paseQFecha" type="date" style="margin-bottom:0">
     <div class="modal-buttons">
       <button class="modal-btn secondary" onclick="closeModal('modalPaseQuality')">Cancelar</button>
@@ -1584,15 +1584,41 @@
   </div>
 </div>
 
-<!-- MODAL EDITAR NOMBRE OBRA -->
+<!-- MODAL EDITAR OBRA -->
 <div class="modal-overlay" id="modalEditObraNombre">
-  <div class="modal" style="max-width:380px">
+  <div class="modal edit-obra-modal">
     <div class="modal-title">Editar obra</div>
     <input type="hidden" id="editObraId">
     <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px">Título</div>
     <input class="modal-input" id="editObraNombreInput" type="text" placeholder="Título de la obra">
     <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px">Compositor</div>
     <input class="modal-input" id="editObraComposerInput" type="text" placeholder="Compositor">
+    <div class="edit-obra-grid">
+      <div>
+        <div class="edit-obra-label">Duración</div>
+        <input class="modal-input edit-obra-mini" id="editObraDuracionInput" type="number" min="1" max="240" placeholder="min">
+      </div>
+      <div>
+        <div class="edit-obra-label">Dificultad</div>
+        <input class="modal-input edit-obra-mini" id="editObraDificultadInput" type="number" min="1" max="10" step="1" placeholder="1-10">
+      </div>
+      <div>
+        <div class="edit-obra-label">Compás actual</div>
+        <input class="modal-input edit-obra-mini" id="editObraCompasActualInput" type="number" min="0" placeholder="0">
+      </div>
+      <div>
+        <div class="edit-obra-label">Compases total</div>
+        <input class="modal-input edit-obra-mini" id="editObraCompasesTotalInput" type="number" min="1" placeholder="total">
+      </div>
+    </div>
+    <div class="edit-obra-actions">
+      <button class="modal-btn secondary" type="button" onclick="editObraRegisterPase()">Añadir pase con fecha</button>
+    </div>
+    <div class="edit-obra-section-head">
+      <span>Movimientos</span>
+      <button type="button" onclick="editObraAddMovimiento()">+ añadir</button>
+    </div>
+    <div class="edit-obra-mov-list" id="editObraMovimientosList"></div>
     <div class="modal-buttons">
       <button class="modal-btn secondary" onclick="closeModal('modalEditObraNombre')">Cancelar</button>
       <button class="modal-btn primary" onclick="saveEditObraNombre()">Guardar</button>
