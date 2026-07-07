@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-07-ai-export-events-v20';
+const APP_VERSION = '2026-07-07-movements-export-calendar-v21';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -8342,6 +8342,40 @@ function rerenderObraCard(obraId) {
   card.replaceWith(newCard);
 }
 
+function romanNumeral(n) {
+  let num = Math.max(1, Math.floor(Number(n) || 1));
+  const map = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+    [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
+  ];
+  let out = '';
+  map.forEach(([value, glyph]) => {
+    while (num >= value) {
+      out += glyph;
+      num -= value;
+    }
+  });
+  return out;
+}
+
+function defaultMovimientoName(index) {
+  return romanNumeral(index) + '.';
+}
+
+function markMovimientoLearnedIfNoCompases(mov) {
+  if (!mov) return mov;
+  const hasCompas = mov.compasActual != null || mov.compasesTotal != null;
+  mov.apr = hasCompas ? aprFromCompas(mov) : 10;
+  return mov;
+}
+
+function syncObraDurationFromMovimientos(obra) {
+  if (!obra || !Array.isArray(obra.movimientos) || !obra.movimientos.length) return;
+  const sum = obra.movimientos.reduce((total, mov) => total + (parseInt(mov.duracion || 0, 10) || 0), 0);
+  if (sum > 0) obra.duracion = sum;
+}
+
 function addMovimiento(obraId) {
   const obra = findObra(obraId);
   if (!obra) return;
@@ -8349,9 +8383,9 @@ function addMovimiento(obraId) {
   const id  = 'mv' + Date.now();
   const num = obra.movimientos.length + 1;
   obra.movimientos.push({
-    id, name: `Movimiento ${num}`,
+    id, name: defaultMovimientoName(num),
     duracion: null, dificultad: obra.dificultad || 3,
-    apr: obra.apr || 1, sol: obra.sol || 1, esc: obra.esc || 1,
+    apr: 10, sol: obra.sol || 1, esc: obra.esc || 1,
     lastPase: null, paseHistory: []
   });
   saveData();
@@ -8366,6 +8400,7 @@ function deleteMovimiento(obraId, movId) {
   const label = mov ? (mov.name || 'este movimiento') : 'este movimiento';
   if (!confirm('¿Eliminar "' + label + '" de "' + obra.name + '"?\n\nEsta acción no se puede deshacer.')) return;
   obra.movimientos = (obra.movimientos || []).filter(m => m.id !== movId);
+  syncObraDurationFromMovimientos(obra);
   saveData();
   rerenderObraCard(obraId);
   showToast('Movimiento eliminado');
@@ -8380,6 +8415,7 @@ function setMovDuracion(obraId, movId, val) {
   const mov = findMovimiento(obraId, movId);
   if (!mov) return;
   mov.duracion = val ? parseInt(val) : null;
+  syncObraDurationFromMovimientos(findObra(obraId));
   saveData();
   // Update obra duracion display
   rerenderObraCard(obraId);
@@ -12898,12 +12934,44 @@ function buildAiDataPackage() {
   return packageData;
 }
 
+let aiExportSelectedDays = [];
+
+function aiUniqueSortedDates(dates) {
+  return Array.from(new Set((dates || [])
+    .map(d => String(d || '').trim())
+    .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d))))
+    .sort();
+}
+
 function aiNormalizeTextReportOptions(input) {
   if (typeof input === 'number') return { mode: 'recent', days: input };
   const opts = input || {};
   if (opts.mode === 'today') return { mode: 'today', date: aiTodayKey(), label: 'Hoy hasta ahora' };
   if (opts.mode === 'day') return { mode: 'day', date: opts.date || aiTodayKey(), label: 'Dia concreto' };
+  if (opts.mode === 'selected') {
+    const dates = aiUniqueSortedDates((opts.dates && opts.dates.length) ? opts.dates : [opts.date || aiTodayKey()]);
+    return { mode: 'selected', dates: dates.length ? dates : [aiTodayKey()], label: 'Dias seleccionados' };
+  }
   return { mode: 'recent', days: Math.max(1, parseInt(opts.days || opts.maxDays || 14, 10) || 14), label: 'Ultimos dias' };
+}
+
+function aiRequestedReportDates(opts) {
+  opts = aiNormalizeTextReportOptions(opts);
+  if (opts.mode === 'today') return [aiTodayKey()];
+  if (opts.mode === 'day') return [opts.date || aiTodayKey()];
+  if (opts.mode === 'selected') return aiUniqueSortedDates(opts.dates);
+  return [];
+}
+
+function aiReportRangeLabel(opts) {
+  opts = aiNormalizeTextReportOptions(opts);
+  if (opts.mode === 'today') return 'hoy hasta ahora';
+  if (opts.mode === 'day') return 'día ' + (opts.date || aiTodayKey());
+  if (opts.mode === 'selected') {
+    const dates = aiUniqueSortedDates(opts.dates);
+    return dates.length ? ('días seleccionados: ' + dates.join(', ')) : 'días seleccionados';
+  }
+  return 'últimos ' + opts.days + ' días';
 }
 
 function aiGetSelectedTextReportOptions() {
@@ -12912,6 +12980,7 @@ function aiGetSelectedTextReportOptions() {
   const val = sel ? sel.value : '14';
   if (val === 'today') return { mode: 'today' };
   if (val === 'day') return { mode: 'day', date: dateInput?.value || aiTodayKey() };
+  if (val === 'selected') return { mode: 'selected', dates: aiExportSelectedDays.length ? aiExportSelectedDays.slice() : [dateInput?.value || aiTodayKey()] };
   return { mode: 'recent', days: parseInt(val || '14', 10) || 14 };
 }
 
@@ -12919,15 +12988,61 @@ function aiRangeFileSuffix(opts) {
   opts = aiNormalizeTextReportOptions(opts);
   if (opts.mode === 'today') return 'hoy-' + aiTodayKey();
   if (opts.mode === 'day') return 'dia-' + (opts.date || aiTodayKey());
+  if (opts.mode === 'selected') {
+    const dates = aiUniqueSortedDates(opts.dates);
+    if (!dates.length) return 'dias-seleccionados-' + aiTodayKey();
+    return 'dias-' + dates[0] + (dates.length > 1 ? '_a_' + dates[dates.length - 1] + '-' + dates.length + 'd' : '');
+  }
   return 'ultimos-' + opts.days + 'd-' + aiTodayKey();
+}
+
+function aiFormatSelectedDateChip(date) {
+  return date === aiTodayKey() ? 'Hoy · ' + date : aiDateLabel(date + 'T12:00:00');
+}
+
+function renderAiExportSelectedDays() {
+  const box = document.getElementById('aiExportSelectedDays');
+  if (!box) return;
+  if (!aiExportSelectedDays.length) {
+    box.innerHTML = '<span class="ai-export-day-empty">Añade días desde el calendario.</span>';
+    return;
+  }
+  box.innerHTML = aiExportSelectedDays.map(date => `
+    <span class="ai-export-day-chip">
+      ${escapeHtmlSafe(aiFormatSelectedDateChip(date))}
+      <button type="button" onclick="removeAiExportSelectedDate('${date}')" aria-label="Quitar ${date}">×</button>
+    </span>
+  `).join('');
+}
+
+function addAiExportSelectedDate(date) {
+  const input = document.getElementById('aiExportDate');
+  const selected = date || input?.value || aiTodayKey();
+  aiExportSelectedDays = aiUniqueSortedDates(aiExportSelectedDays.concat(selected));
+  if (input) input.value = selected;
+  renderAiExportSelectedDays();
+}
+
+function removeAiExportSelectedDate(date) {
+  aiExportSelectedDays = aiExportSelectedDays.filter(d => d !== date);
+  renderAiExportSelectedDays();
 }
 
 function updateAiExportControls() {
   const sel = document.getElementById('aiExportRange');
   const dateInput = document.getElementById('aiExportDate');
+  const addBtn = document.getElementById('aiExportAddDayBtn');
+  const selectedBox = document.getElementById('aiExportSelectedDays');
   if (!dateInput) return;
   if (!dateInput.value) dateInput.value = aiTodayKey();
-  dateInput.style.display = sel && sel.value === 'day' ? '' : 'none';
+  const mode = sel ? sel.value : '';
+  const showDate = mode === 'day' || mode === 'selected';
+  const showSelected = mode === 'selected';
+  dateInput.style.display = showDate ? '' : 'none';
+  if (addBtn) addBtn.style.display = showSelected ? '' : 'none';
+  if (selectedBox) selectedBox.style.display = showSelected ? '' : 'none';
+  if (showSelected && !aiExportSelectedDays.length) aiExportSelectedDays = [dateInput.value || aiTodayKey()];
+  if (showSelected) renderAiExportSelectedDays();
 }
 
 function aiDayHasReportableActivity(day) {
@@ -12951,6 +13066,12 @@ function aiSelectReportDays(daily, opts) {
     const date = opts.date || aiTodayKey();
     return desc.filter(day => day.day === date && aiDayHasReportableActivity(day));
   }
+  if (opts.mode === 'selected') {
+    const wanted = new Set(aiUniqueSortedDates(opts.dates));
+    return daily.slice()
+      .sort((a, b) => a.day.localeCompare(b.day))
+      .filter(day => wanted.has(day.day) && aiDayHasReportableActivity(day));
+  }
   return desc.filter(aiDayHasReportableActivity).slice(0, opts.days || 14);
 }
 
@@ -12958,11 +13079,19 @@ function buildAiTextReport(options) {
   const opts = aiNormalizeTextReportOptions(options);
   const pkg = buildAiDataPackage();
   const days = aiSelectReportDays(pkg.daily, opts);
+  const todayKey = aiTodayKey();
+  const requestedDates = aiRequestedReportDates(opts);
+  const lastRequestedDate = requestedDates.length ? requestedDates[requestedDates.length - 1] : '';
   const upcoming = pkg.eventos.filter(ev => !ev.completado && ev.dias != null && ev.dias >= 0).slice(0, 8);
   const lines = [];
   lines.push('PAQUETE DE CONTEXTO PARA IA / CODEX');
   lines.push('Exportado: ' + aiDateLabel(pkg.exportDate) + ' ' + aiTimeLabel(pkg.exportDate));
   lines.push('Versión app: ' + APP_VERSION);
+  lines.push('Fecha actual real: ' + aiDateLabel(todayKey + 'T12:00:00') + ' · ' + aiTimeLabel(pkg.exportDate));
+  if (requestedDates.length) {
+    lines.push('Días solicitados: ' + requestedDates.map(d => d === todayKey ? 'HOY (' + d + ')' : d).join(', '));
+    lines.push('Último día solicitado: ' + (lastRequestedDate === todayKey ? 'HOY · ' : '') + aiDateLabel(lastRequestedDate + 'T12:00:00'));
+  }
   lines.push('');
   lines.push('GUÍA DE LECTURA PARA LA IA');
   lines.push('- Esta app registra estudio de piano. No presupongas contexto externo: interpreta sólo lo que aparece aquí.');
@@ -12973,6 +13102,7 @@ function buildAiTextReport(options) {
   lines.push('- Estado/sueño/deporte/siesta: contexto corporal y mental registrado por mí. Úsalo como contexto, no como diagnóstico clínico ni como causa segura.');
   lines.push('- Eventos próximos: compromisos futuros. Pueden aumentar la relevancia de obras/pasajes, pero no inventes prioridades si no están apoyadas por datos registrados.');
   lines.push('- Regla de interpretación: distingue HECHOS registrados de LECTURAS derivadas. Si propones prioridades, deriva cada una de notas, pases, pasajes, eventos, sueño, ánimo, deporte o tiempo registrado. No trates inferencias como hechos.');
+  lines.push('- Si el último día solicitado aparece como HOY, entiende que el día puede seguir abierto y que la orientación puede ser para terminar hoy o preparar mañana según la hora y la carga ya registrada.');
   lines.push('');
   lines.push('RESUMEN GLOBAL');
   lines.push('- Obras: ' + pkg.counts.obras);
@@ -12981,7 +13111,7 @@ function buildAiTextReport(options) {
   lines.push('- Pases registrados: ' + pkg.counts.pases);
   lines.push('- Entradas de pasajes: ' + pkg.counts.pasajeEntries);
   lines.push('- Eventos próximos/pasados: ' + pkg.counts.eventos);
-  lines.push('- Rango diario exportado: ' + (opts.mode === 'today' ? 'hoy hasta ahora' : opts.mode === 'day' ? ('día ' + (opts.date || aiTodayKey())) : ('últimos ' + opts.days + ' días')));
+  lines.push('- Rango diario exportado: ' + aiReportRangeLabel(opts));
   lines.push('');
   if (upcoming.length) {
     lines.push('EVENTOS PRÓXIMOS');
@@ -13018,18 +13148,21 @@ function buildAiTextReport(options) {
     lines.push('- No hay eventos futuros registrados.');
     lines.push('');
   }
-  lines.push(opts.mode === 'recent' ? 'DÍAS RECIENTES' : 'DÍA SELECCIONADO');
+  lines.push(opts.mode === 'recent' ? 'DÍAS RECIENTES' : opts.mode === 'selected' ? 'DÍAS SELECCIONADOS' : 'DÍA SELECCIONADO');
   if (!days.length) {
     lines.push('');
     lines.push(opts.mode === 'today'
       ? 'No hay actividad registrada hoy hasta ahora.'
       : opts.mode === 'day'
         ? 'No hay actividad registrada para el día seleccionado.'
-        : 'No hay actividad registrada en el rango seleccionado.');
+        : opts.mode === 'selected'
+          ? 'No hay actividad registrada en los días seleccionados.'
+          : 'No hay actividad registrada en el rango seleccionado.');
   }
   days.forEach(day => {
+    const dayTitle = day.day === todayKey ? 'HOY · ' + day.label : day.label;
     lines.push('');
-    lines.push('## ' + day.label + ' · total estudio: ' + aiMinutesLabel(day.totalStudyMinutes));
+    lines.push('## ' + dayTitle + ' · total estudio: ' + aiMinutesLabel(day.totalStudyMinutes));
     if (day.estadoEventos.length) {
       lines.push('Ánimo/bienestar:');
       day.estadoEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.label || e.value)));
@@ -13230,7 +13363,7 @@ function editObraSyncMovDraftFromDom() {
     const out = {
       ...base,
       id,
-      name: (row.querySelector('.edit-mov-name')?.value || '').trim() || ('Movimiento ' + (idx + 1)),
+      name: (row.querySelector('.edit-mov-name')?.value || '').trim() || defaultMovimientoName(idx + 1),
       duracion: editObraNumberFromInput(row.querySelector('.edit-mov-duracion'), 1, 240),
       dificultad: editObraNumberFromInput(row.querySelector('.edit-mov-dificultad'), 1, 10),
       compasActual: editObraNumberFromInput(row.querySelector('.edit-mov-compas-actual'), 0, 99999),
@@ -13239,7 +13372,7 @@ function editObraSyncMovDraftFromDom() {
     if (out.compasesTotal && out.compasActual != null && out.compasActual > out.compasesTotal) {
       out.compasActual = out.compasesTotal;
     }
-    out.apr = aprFromCompas(out);
+    markMovimientoLearnedIfNoCompases(out);
     if (!Array.isArray(out.paseHistory)) out.paseHistory = [];
     if (!Array.isArray(out.solHistory)) out.solHistory = [];
     return out;
@@ -13259,7 +13392,7 @@ function renderEditObraMovimientos() {
     return `
       <div class="edit-obra-mov-row" data-mov-id="${escapeHtmlSafe(id)}">
         <div class="edit-obra-mov-top">
-          <input class="modal-input edit-obra-mov-name edit-mov-name" type="text" value="${escapeHtmlSafe(mov.name || ('Movimiento ' + (idx + 1)))}" placeholder="Movimiento ${idx + 1}">
+          <input class="modal-input edit-obra-mov-name edit-mov-name" type="text" value="${escapeHtmlSafe(mov.name || defaultMovimientoName(idx + 1))}" placeholder="${defaultMovimientoName(idx + 1)}">
           <div class="edit-obra-mov-actions">
             <button type="button" onclick="editObraRegisterPase('${jsId}')">Pase con fecha</button>
             <button type="button" class="danger" onclick="editObraDeleteMovimiento('${jsId}')">Quitar</button>
@@ -13311,10 +13444,10 @@ function editObraAddMovimiento() {
   const num = editObraMovDraft.length + 1;
   editObraMovDraft.push({
     id: 'mv' + Date.now(),
-    name: 'Movimiento ' + num,
+    name: defaultMovimientoName(num),
     duracion: null,
     dificultad: obra?.dificultad || 3,
-    apr: obra?.apr || 1,
+    apr: 10,
     sol: obra?.sol || 1,
     esc: obra?.esc || 1,
     lastPase: null,
@@ -13351,11 +13484,12 @@ function applyEditObraModalChanges(opts) {
     obra.compasActual = obra.compasesTotal;
   }
   obra.apr = aprFromCompas(obra);
-  obra.movimientos = editObraMovDraft.map((mov, idx) => ({
+  obra.movimientos = editObraMovDraft.map((mov, idx) => markMovimientoLearnedIfNoCompases({
     ...mov,
     id: mov.id || ('mv' + Date.now() + '_' + idx),
-    name: (mov.name || '').trim() || ('Movimiento ' + (idx + 1)),
+    name: (mov.name || '').trim() || defaultMovimientoName(idx + 1),
   }));
+  syncObraDurationFromMovimientos(obra);
 
   (db.sesiones || []).forEach(s => {
     (s.items || []).forEach(it => {

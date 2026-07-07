@@ -854,6 +854,7 @@
         <select class="modal-input ai-export-select" id="aiExportRange" onchange="updateAiExportControls()">
           <option value="today" selected>Hoy hasta ahora</option>
           <option value="day">Un día concreto</option>
+          <option value="selected">Días seleccionados</option>
           <option value="3">Últimos 3 días</option>
           <option value="7">Últimos 7 días</option>
           <option value="14">Últimos 14 días</option>
@@ -861,7 +862,9 @@
           <option value="30">Últimos 30 días</option>
         </select>
         <input class="modal-input ai-export-date" id="aiExportDate" type="date" style="display:none" onchange="updateAiExportControls()">
+        <button class="modal-btn secondary ai-export-add-day" id="aiExportAddDayBtn" type="button" onclick="addAiExportSelectedDate()" style="display:none">Añadir</button>
       </div>
+      <div class="ai-export-selected-days" id="aiExportSelectedDays" style="display:none"></div>
       <div class="ajustes-btn-row" style="margin-bottom:6px">
         <button class="modal-btn secondary" onclick="copiarDatosIA()" style="flex:1;font-size:11px">Copiar texto IA</button>
         <button class="modal-btn secondary" onclick="descargarResumenIA()" style="flex:1;font-size:11px">TXT</button>

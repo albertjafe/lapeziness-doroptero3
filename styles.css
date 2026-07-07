@@ -4222,9 +4222,49 @@
   }
   .ai-export-select { flex: 1 1 auto; min-width: 0; }
   .ai-export-date { flex: 0 0 142px; }
+  .ai-export-add-day {
+    flex: 0 0 auto;
+    height: 36px;
+    min-height: 36px;
+    padding: 0 12px;
+    margin: 0;
+    font-size: 10px;
+  }
+  .ai-export-selected-days {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: -2px 0 10px;
+  }
+  .ai-export-day-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 9px;
+    border: 1px solid var(--border2);
+    border-radius: 999px;
+    background: var(--bg3);
+    color: var(--text2);
+    font-size: 10px;
+    line-height: 1;
+  }
+  .ai-export-day-chip button {
+    border: 0;
+    background: transparent;
+    color: var(--text3);
+    font-size: 13px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+  }
+  .ai-export-day-empty {
+    color: var(--text3);
+    font-size: 10px;
+    padding: 2px 0 6px;
+  }
   @media (max-width: 430px) {
     .ai-export-controls { flex-direction: column; align-items: stretch; }
-    .ai-export-date { flex-basis: auto; width: 100%; }
+    .ai-export-date, .ai-export-add-day { flex-basis: auto; width: 100%; }
   }
 
   /* ════════ PANTALLA DE AJUSTES (vista completa #view-ajustes) ════════ */
