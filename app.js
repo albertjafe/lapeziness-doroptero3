@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-07-movements-export-calendar-v21';
+const APP_VERSION = '2026-07-07-trigger-events-v22';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -110,6 +110,18 @@ function _mergeSuenoEventos(a, b) {
   out.sort((x, y) => (x.at || '').localeCompare(y.at || ''));
   return out.slice(-2000);
 }
+function _triggerEventKey(e) { return (e && (e.id || ((e.at || '') + '|' + (e.value || '') + '|' + (e.label || '')))) || ''; }
+function _mergeTriggerEventos(a, b) {
+  const out = [], seen = new Set();
+  (a || []).concat(b || []).forEach(e => {
+    const k = _triggerEventKey(e);
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    out.push(e);
+  });
+  out.sort((x, y) => (x.at || '').localeCompare(y.at || ''));
+  return out.slice(-2000);
+}
 function _sesionRealMin(s) {
   return (s.items || []).reduce((acc, it) =>
     acc + (typeof _itemMinReal === 'function' ? _itemMinReal(it) : (it.minutosReales || 0)), 0);
@@ -137,6 +149,7 @@ function _mergeStudyHistory(base, other) {
   merged.estadoEventos = _mergeEstadoEventos(base.estadoEventos, other.estadoEventos);
   merged.deporteEventos = _mergeDeporteEventos(base.deporteEventos, other.deporteEventos);
   merged.suenoEventos = _mergeSuenoEventos(base.suenoEventos, other.suenoEventos);
+  merged.triggerEventos = _mergeTriggerEventos(base.triggerEventos, other.triggerEventos);
   return merged;
 }
 
@@ -224,7 +237,9 @@ async function loadFromCloud() {
         const cloudDeporteN = (data.data.deporteEventos || []).length;
         const localSuenoN = localDb ? (localDb.suenoEventos || []).length : 0;
         const cloudSuenoN = (data.data.suenoEventos || []).length;
-        if (localMin > cloudMin || localEstadoN > cloudEstadoN || localDeporteN > cloudDeporteN || localSuenoN > cloudSuenoN) {
+        const localTriggerN = localDb ? (localDb.triggerEventos || []).length : 0;
+        const cloudTriggerN = (data.data.triggerEventos || []).length;
+        if (localMin > cloudMin || localEstadoN > cloudEstadoN || localDeporteN > cloudDeporteN || localSuenoN > cloudSuenoN || localTriggerN > cloudTriggerN) {
           sb.from('user_data').upsert({ id: user.id, data: db, updated_at: new Date().toISOString() });
         }
       } catch(e) {}
@@ -268,7 +283,8 @@ function getDefaultData() {
     registro: [],
     estadoEventos: [],
     deporteEventos: [],
-    suenoEventos: []
+    suenoEventos: [],
+    triggerEventos: []
   };
 }
 
@@ -280,6 +296,7 @@ if (!db.forestPlants) db.forestPlants = [];
 if (!db.estadoEventos) db.estadoEventos = [];
 if (!db.deporteEventos) db.deporteEventos = [];
 if (!db.suenoEventos) db.suenoEventos = [];
+if (!db.triggerEventos) db.triggerEventos = [];
 // db.sessionPlants[]: array paralelo a forestPlants con UN registro por sub-sesión
 // del cronómetro. Persiste los timestamps detallados aunque la sesión en
 // db.sesiones[] sea descartada por el cap. Estructura por entrada:
@@ -538,7 +555,7 @@ let selectedEnergy = 'normal';
 let selectedTime = 2;
 // Estado diario: `estado`/`bienestar` es el ánimo actual; `sueno` es una métrica
 // diaria independiente. energia/claridad quedan como alias para código antiguo.
-let estadoDiario = { estado: 70, bienestar: 70, sueno: 70, energia: 70, claridad: 70, deporte: null };
+let estadoDiario = { estado: 70, bienestar: 70, sueno: 70, energia: 70, claridad: 70, deporte: null, triggers: null };
 // ¿Ha introducido Alberto su estado HOY (de forma explícita)? Solo entonces la
 // predicción se condiciona a cómo está. El reset de día y los guardados de fondo
 // lo dejan en false; pickEstado/updateEstado lo ponen en true.
@@ -571,6 +588,14 @@ const DEPORTE_LEVELS = [
   { v: 100, level: 5, label: 'Muy fuerte', icon: 'sport-5' },
 ];
 
+const TRIGGER_LEVELS = [
+  { v: 20, level: 1, label: 'Leve', icon: 'trigger-1' },
+  { v: 40, level: 2, label: 'Notable', icon: 'trigger-2' },
+  { v: 60, level: 3, label: 'Intenso', icon: 'trigger-3' },
+  { v: 80, level: 4, label: 'Fuerte', icon: 'trigger-4' },
+  { v: 100, level: 5, label: 'Crítico', icon: 'trigger-5' },
+];
+
 // Valor canónico actual del estado (con migración perezosa desde el modelo viejo).
 function estadoActualVal() {
   if (typeof estadoDiario.estado === 'number') return estadoDiario.estado;
@@ -591,6 +616,16 @@ function deporteLevelIndex(val) {
   if (typeof val !== 'number') return -1;
   let best = 0, bestD = Infinity;
   DEPORTE_LEVELS.forEach((f, i) => {
+    const d = Math.abs(f.v - val);
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  return best;
+}
+
+function triggerLevelIndex(val) {
+  if (typeof val !== 'number') return -1;
+  let best = 0, bestD = Infinity;
+  TRIGGER_LEVELS.forEach((f, i) => {
     const d = Math.abs(f.v - val);
     if (d < bestD) { bestD = d; best = i; }
   });
@@ -721,6 +756,27 @@ function ensureSuenoEventos() {
   return db.suenoEventos;
 }
 
+function _triggerEventosLocal() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('alberto_trigger_eventos_v1') || '[]');
+    return Array.isArray(raw) ? raw : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function _saveTriggerEventosLocal(items) {
+  try {
+    localStorage.setItem('alberto_trigger_eventos_v1', JSON.stringify((items || []).slice(-2000)));
+  } catch(e) {}
+}
+
+function ensureTriggerEventos() {
+  if (typeof db !== 'object' || !db) return _triggerEventosLocal();
+  if (!Array.isArray(db.triggerEventos)) db.triggerEventos = _triggerEventosLocal();
+  return db.triggerEventos;
+}
+
 function siestaEventsToday() {
   const today = new Date().toDateString();
   return ensureSuenoEventos().filter(e => e && e.date === today && (e.kind || 'siesta') === 'siesta');
@@ -764,13 +820,37 @@ function deporteTodaySummary() {
   return summary;
 }
 
+function triggerEventsToday() {
+  const today = new Date().toDateString();
+  return ensureTriggerEventos().filter(e => e && e.date === today);
+}
+
+function triggerLastToday() {
+  const arr = triggerEventsToday();
+  return arr.length ? arr[arr.length - 1] : null;
+}
+
+function triggerTodaySummary() {
+  const arr = triggerEventsToday();
+  const last = arr.length ? arr[arr.length - 1] : null;
+  return {
+    count: arr.length,
+    lastAt: last ? last.at : null,
+    lastLevel: last ? last.level : null,
+    lastLabel: last ? last.label : null,
+    lastValue: last ? last.value : null,
+  };
+}
+
 function estadoSnapshot() {
   const n = estadoActualVal();
   const deporte = deporteTodaySummary();
   const siestas = siestaTodaySummary();
+  const triggers = triggerTodaySummary();
   estadoDiario.deporte = deporte;
   estadoDiario.siestas = siestas;
-  return { estado: n, bienestar: n, sueno: suenoActualVal(), energia: n, claridad: n, deporte, siestas };
+  estadoDiario.triggers = triggers;
+  return { estado: n, bienestar: n, sueno: suenoActualVal(), energia: n, claridad: n, deporte, siestas, triggers };
 }
 
 function recordEstadoEvent(face) {
@@ -813,6 +893,29 @@ function recordDeporteEvent(kind, level) {
   refreshDeporteEventSummary();
   clearTimeout(recordDeporteEvent._t);
   recordDeporteEvent._t = setTimeout(() => {
+    if (typeof saveData === 'function') saveData();
+  }, 600);
+}
+
+function recordTriggerEvent(level) {
+  const arr = ensureTriggerEventos();
+  const now = new Date();
+  const entry = {
+    id: 'trigger_' + now.getTime() + '_' + Math.random().toString(36).slice(2, 7),
+    at: now.toISOString(),
+    date: now.toDateString(),
+    value: level.v,
+    level: level.level,
+    label: level.label,
+  };
+  arr.push(entry);
+  if (arr.length > 2000) arr.splice(0, arr.length - 2000);
+  _saveTriggerEventosLocal(arr);
+  estadoDiario.triggers = triggerTodaySummary();
+  refreshTriggerFacesUI();
+  refreshTriggerEventSummary();
+  clearTimeout(recordTriggerEvent._t);
+  recordTriggerEvent._t = setTimeout(() => {
     if (typeof saveData === 'function') saveData();
   }, 600);
 }
@@ -903,6 +1006,16 @@ function refreshDeporteFacesUI() {
   });
 }
 
+function refreshTriggerFacesUI() {
+  const last = triggerLastToday();
+  const idx = last ? triggerLevelIndex(last.value) : -1;
+  document.querySelectorAll('#triggerFaces .estado-face').forEach((b, i) => {
+    const on = i === idx;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+}
+
 function refreshEstadoEventSummary() {
   const el = document.getElementById('estadoEventSummary');
   if (!el) return;
@@ -936,6 +1049,20 @@ function refreshDeporteEventSummary() {
   el.textContent = 'Deporte hoy: ' + parts.join(' · ') + ' · ' + total + ' registros';
 }
 
+function refreshTriggerEventSummary() {
+  const el = document.getElementById('triggerEventSummary');
+  if (!el) return;
+  const arr = triggerEventsToday();
+  if (!arr.length) {
+    el.textContent = 'Toca un nivel cuando aparezca un gatillo. Cada toque suma un registro.';
+    return;
+  }
+  const last = arr[arr.length - 1];
+  let hour = '';
+  try { hour = new Date(last.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch(e) {}
+  el.textContent = 'Gatillos hoy: ' + arr.length + ' · último ' + (last.label || last.level || '') + (hour ? ' · ' + hour : '');
+}
+
 function pickDeporte(kind, idx) {
   const level = DEPORTE_LEVELS[idx];
   if (!level || (kind !== 'cardio' && kind !== 'fuerza')) return;
@@ -951,6 +1078,19 @@ function pickDeporte(kind, idx) {
 
 function pickDeporteCardio(idx) { pickDeporte('cardio', idx); }
 function pickDeporteFuerza(idx) { pickDeporte('fuerza', idx); }
+
+function pickTrigger(idx) {
+  const level = TRIGGER_LEVELS[idx];
+  if (!level) return;
+  recordTriggerEvent(level);
+  try { Haptics.light(); } catch(e) {}
+  try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
+  clearTimeout(pickTrigger._t);
+  pickTrigger._t = setTimeout(() => {
+    saveEstadoDiario();
+    if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
+  }, 150);
+}
 
 // Persiste estadoDiario en localStorage con marca de fecha.
 // La fecha permite que al cambiar de día el estado se reinicie a defaults
@@ -971,6 +1111,7 @@ function saveEstadoDiario() {
       claridad: snap.claridad,
       deporte: snap.deporte,
       siestas: snap.siestas,
+      triggers: snap.triggers,
     };
     // 1) localStorage (carga rápida sin esperar a nube en el arranque)
     localStorage.setItem('alberto_estado_v1', JSON.stringify(payload));
@@ -1038,6 +1179,7 @@ function loadEstadoDiarioFromSources() {
       if (sleep != null) estadoDiario.sueno = sleep;
       estadoDiario.deporte = db.estadoDiario.deporte || null;
       estadoDiario.siestas = db.estadoDiario.siestas || null;
+      estadoDiario.triggers = db.estadoDiario.triggers || null;
       return true;
     }
   }
@@ -1054,6 +1196,7 @@ function loadEstadoDiarioFromSources() {
         if (sleep != null) estadoDiario.sueno = sleep;
         estadoDiario.deporte = saved.deporte || null;
         estadoDiario.siestas = saved.siestas || null;
+        estadoDiario.triggers = saved.triggers || null;
         return true;
       }
     }
@@ -1181,6 +1324,19 @@ function ritmoIconSvg(icon) {
       '<path d="M16 32 H48"/>' + inner + mid + outer + end + lift +
       '</svg>';
   }
+  if (icon && icon.startsWith('trigger-')) {
+    const level = parseInt(icon.replace('trigger-', ''), 10) || 1;
+    const ring2 = level >= 2 ? '<circle cx="32" cy="32" r="13"/>' : '';
+    const ring3 = level >= 4 ? '<circle cx="32" cy="32" r="20"/>' : '';
+    const rays = [
+      level >= 3 ? '<path d="M32 7 V13"/><path d="M32 51 V57"/>' : '',
+      level >= 4 ? '<path d="M7 32 H13"/><path d="M51 32 H57"/>' : '',
+      level >= 5 ? '<path d="M14 14 L18 18"/><path d="M50 14 L46 18"/><path d="M14 50 L18 46"/><path d="M50 50 L46 46"/>' : ''
+    ].join('');
+    return '<svg class="ritmo-icon-svg ritmo-trigger-svg" viewBox="0 0 64 64" aria-hidden="true">' +
+      '<circle cx="32" cy="32" r="5"/>' + ring2 + ring3 + rays +
+      '</svg>';
+  }
   const moon = {
     'moon-lowest': {
       tilt: -14,
@@ -1257,12 +1413,20 @@ function initEstadoSliders() {
     fuerzaHost.classList.add('ritmo-scale', 'deporte-scale');
     fuerzaHost.dataset.built = '1';
   }
+  const triggerHost = document.getElementById('triggerFaces');
+  if (triggerHost && !triggerHost.dataset.built) {
+    triggerHost.innerHTML = TRIGGER_LEVELS.map((f, i) => ritmoChoiceHTML(f, i, 'pickTrigger', 'trigger')).join('');
+    triggerHost.classList.add('ritmo-scale', 'trigger-scale');
+    triggerHost.dataset.built = '1';
+  }
   refreshEstadoFacesUI();
   refreshSuenoFacesUI();
   refreshSiestaSummary();
   refreshDeporteFacesUI();
+  refreshTriggerFacesUI();
   refreshEstadoEventSummary();
   refreshDeporteEventSummary();
+  refreshTriggerEventSummary();
 }
 
 function selectEnergy(btn) {
@@ -2118,6 +2282,7 @@ function handleDayChange() {
     estadoDiario.sueno = 70;
     estadoDiario.deporte = null;
     estadoDiario.siestas = null;
+    estadoDiario.triggers = null;
     saveEstadoDiario(); // guarda con la nueva fecha
     if (typeof initEstadoSliders === 'function') initEstadoSliders();
     // Limpiar el DOM del plan
@@ -12873,8 +13038,9 @@ function aiBuildDailyRows() {
   const estadoEventos = ensureEstadoEventos ? ensureEstadoEventos() : (db.estadoEventos || []);
   const deporteEventos = ensureDeporteEventos ? ensureDeporteEventos() : (db.deporteEventos || []);
   const suenoEventos = ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || []);
+  const triggerEventos = ensureTriggerEventos ? ensureTriggerEventos() : (db.triggerEventos || []);
   const keys = new Set();
-  [studyRows, sessionCards, paseRows, pasajeRows, estadoEventos, deporteEventos, suenoEventos].forEach(arr => {
+  [studyRows, sessionCards, paseRows, pasajeRows, estadoEventos, deporteEventos, suenoEventos, triggerEventos].forEach(arr => {
     (arr || []).forEach(x => {
       const k = x.day || aiLocalDateKey(x.date || x.at || x.start || x.startedAt);
       if (k) keys.add(k);
@@ -12894,6 +13060,7 @@ function aiBuildDailyRows() {
       estadoEventos: (estadoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       deporteEventos: (deporteEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       suenoEventos: (suenoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
+      triggerEventos: (triggerEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
     };
   });
 }
@@ -12907,7 +13074,7 @@ function buildAiDataPackage() {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
     guidance: {
       purpose: 'Paquete para que una IA o Codex pueda analizar el estudio sin acceder directamente al localStorage.',
-      priorityRule: 'Las prioridades deben derivarse de datos introducidos por el usuario: notas, pases, eventos, sueño, ánimo, deporte y tiempo registrado. No inventar recomendaciones como si fueran datos.',
+      priorityRule: 'Las prioridades deben derivarse de datos introducidos por el usuario: notas, pases, eventos, sueño, ánimo, deporte, gatillos y tiempo registrado. No inventar recomendaciones como si fueran datos.',
       privacy: 'Incluye notas privadas y datos personales de estudio.',
     },
     counts: {
@@ -12919,6 +13086,7 @@ function buildAiDataPackage() {
       estadoEventos: (ensureEstadoEventos ? ensureEstadoEventos() : (db.estadoEventos || [])).length,
       deporteEventos: (ensureDeporteEventos ? ensureDeporteEventos() : (db.deporteEventos || [])).length,
       suenoEventos: (ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || [])).length,
+      triggerEventos: (ensureTriggerEventos ? ensureTriggerEventos() : (db.triggerEventos || [])).length,
       eventos: (db.eventos || []).length,
     },
     daily,
@@ -12929,6 +13097,7 @@ function buildAiDataPackage() {
       estadoEventos: aiReadLocalJson('alberto_estado_eventos_v1'),
       deporteEventos: aiReadLocalJson('alberto_deporte_eventos_v1'),
       suenoEventos: aiReadLocalJson('alberto_sueno_eventos_v1'),
+      triggerEventos: aiReadLocalJson('alberto_trigger_eventos_v1'),
     },
   };
   return packageData;
@@ -13055,7 +13224,8 @@ function aiDayHasReportableActivity(day) {
     day.pasajes.length ||
     day.estadoEventos.length ||
     day.deporteEventos.length ||
-    day.suenoEventos.length
+    day.suenoEventos.length ||
+    (day.triggerEventos || []).length
   );
 }
 
@@ -13099,9 +13269,9 @@ function buildAiTextReport(options) {
   lines.push('- Tarjeta/sesión guardada: resumen diario o tarjeta de estudio. Puede incluir obra, minutos, tick, nota, destello y datos agregados de sub-sesiones.');
   lines.push('- Pase: ejecución de una obra o movimiento. Es la medida principal de solidez. Tipos: solo = para mí; informal = ante pareja/amigos; evento = audición/concurso/concierto o situación formal. Resultado: Se cae, Frágil, Sale, Sólido o Listo.');
   lines.push('- Pasaje: fragmento concreto dentro de una obra. Puede tener estado actual, intensidad de trabajo, solidez antes/después, fallos de memoria o entradas de seguimiento. Si un pasaje aparece varias veces el mismo día, trátalo como foco recurrente, no como duplicado irrelevante.');
-  lines.push('- Estado/sueño/deporte/siesta: contexto corporal y mental registrado por mí. Úsalo como contexto, no como diagnóstico clínico ni como causa segura.');
+  lines.push('- Estado/sueño/deporte/siesta/gatillos TOC: contexto corporal y mental registrado por mí. Úsalo como contexto, no como diagnóstico clínico ni como causa segura.');
   lines.push('- Eventos próximos: compromisos futuros. Pueden aumentar la relevancia de obras/pasajes, pero no inventes prioridades si no están apoyadas por datos registrados.');
-  lines.push('- Regla de interpretación: distingue HECHOS registrados de LECTURAS derivadas. Si propones prioridades, deriva cada una de notas, pases, pasajes, eventos, sueño, ánimo, deporte o tiempo registrado. No trates inferencias como hechos.');
+  lines.push('- Regla de interpretación: distingue HECHOS registrados de LECTURAS derivadas. Si propones prioridades, deriva cada una de notas, pases, pasajes, eventos, sueño, ánimo, deporte, gatillos o tiempo registrado. No trates inferencias como hechos.');
   lines.push('- Si el último día solicitado aparece como HOY, entiende que el día puede seguir abierto y que la orientación puede ser para terminar hoy o preparar mañana según la hora y la carga ya registrada.');
   lines.push('');
   lines.push('RESUMEN GLOBAL');
@@ -13110,6 +13280,7 @@ function buildAiTextReport(options) {
   lines.push('- Bloques con hora: ' + pkg.counts.studyBlocks);
   lines.push('- Pases registrados: ' + pkg.counts.pases);
   lines.push('- Entradas de pasajes: ' + pkg.counts.pasajeEntries);
+  lines.push('- Gatillos registrados: ' + (pkg.counts.triggerEventos || 0));
   lines.push('- Eventos próximos/pasados: ' + pkg.counts.eventos);
   lines.push('- Rango diario exportado: ' + aiReportRangeLabel(opts));
   lines.push('');
@@ -13174,6 +13345,10 @@ function buildAiTextReport(options) {
     if (day.deporteEventos.length) {
       lines.push('Deporte:');
       day.deporteEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.kind || '') + ' · ' + (e.label || e.level || e.value)));
+    }
+    if ((day.triggerEventos || []).length) {
+      lines.push('Gatillos TOC:');
+      day.triggerEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · nivel ' + (e.level || '') + ' · ' + (e.label || e.value || 'gatillo')));
     }
     if (day.studyBlocks.length) {
       lines.push('Bloques de estudio con hora:');
@@ -13246,7 +13421,7 @@ function buildAiTextReport(options) {
   });
   lines.push('');
   lines.push('PETICIÓN SUGERIDA A LA IA');
-  lines.push('Con esta información, ayúdame a preparar mañana. Basa las prioridades sólo en mis datos registrados: pases, notas, bloques de estudio, sueño, ánimo, deporte, siestas y eventos próximos. Distingue hechos de inferencias.');
+  lines.push('Con esta información, ayúdame a preparar mañana. Basa las prioridades sólo en mis datos registrados: pases, notas, bloques de estudio, sueño, ánimo, deporte, siestas, gatillos y eventos próximos. Distingue hechos de inferencias.');
   return lines.join('\n');
 }
 
