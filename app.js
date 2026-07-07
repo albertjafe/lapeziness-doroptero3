@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-07-trigger-events-v22';
+const APP_VERSION = '2026-07-07-ai-export-today-guidance-v23';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -13252,6 +13252,7 @@ function buildAiTextReport(options) {
   const todayKey = aiTodayKey();
   const requestedDates = aiRequestedReportDates(opts);
   const lastRequestedDate = requestedDates.length ? requestedDates[requestedDates.length - 1] : '';
+  const reportIncludesToday = requestedDates.includes(todayKey) || days.some(day => day.day === todayKey);
   const upcoming = pkg.eventos.filter(ev => !ev.completado && ev.dias != null && ev.dias >= 0).slice(0, 8);
   const lines = [];
   lines.push('PAQUETE DE CONTEXTO PARA IA / CODEX');
@@ -13421,7 +13422,13 @@ function buildAiTextReport(options) {
   });
   lines.push('');
   lines.push('PETICIÓN SUGERIDA A LA IA');
-  lines.push('Con esta información, ayúdame a preparar mañana. Basa las prioridades sólo en mis datos registrados: pases, notas, bloques de estudio, sueño, ánimo, deporte, siestas, gatillos y eventos próximos. Distingue hechos de inferencias.');
+  if (reportIncludesToday) {
+    lines.push('Con esta información, ayúdame primero a decidir qué hacer con lo que queda de HOY. No asumas que el día está cerrado sólo porque el texto sea un resumen.');
+    lines.push('Si por la hora actual, la carga ya registrada, el sueño, el ánimo, el deporte, los gatillos o las notas parece que aún queda margen razonable, propón un cierre o continuación breve para hoy: obras/pasajes/pases concretos, duración aproximada, criterio de cierre y cuándo parar.');
+    lines.push('Si por la hora o por la carga parece que probablemente ya he terminado, entonces sugiere una forma de cerrar el día y preparar mañana. En ambos casos, basa las prioridades sólo en mis datos registrados y distingue hechos de inferencias.');
+  } else {
+    lines.push('Con esta información, ayúdame a preparar mañana. Basa las prioridades sólo en mis datos registrados: pases, notas, bloques de estudio, sueño, ánimo, deporte, siestas, gatillos y eventos próximos. Distingue hechos de inferencias.');
+  }
   return lines.join('\n');
 }
 
