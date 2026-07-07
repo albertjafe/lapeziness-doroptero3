@@ -7716,6 +7716,94 @@
     font-size: 17px;
     line-height: 1;
   }
+  .crono-note-btn,
+  .crono-note-btn-run {
+    border-style: solid;
+    border-color: color-mix(in oklab, var(--text3) 30%, transparent);
+    background: rgba(255,255,255,0.025);
+  }
+  .crono-note-btn.has-notes,
+  .crono-note-btn-run.has-notes {
+    border-color: color-mix(in oklab, var(--crono-color, var(--accent)) 45%, transparent);
+    background: color-mix(in oklab, var(--crono-color, var(--accent)) 9%, transparent);
+  }
+  .crono-note-btn strong,
+  .crono-note-btn-run strong {
+    min-width: 18px;
+    text-align: center;
+    color: var(--text2);
+    font-size: 15px;
+  }
+  .crono-note-btn.has-notes strong,
+  .crono-note-btn-run.has-notes strong {
+    color: var(--crono-color, var(--accent));
+  }
+  .crono-note-modal {
+    width: min(420px, calc(100vw - 32px));
+  }
+  .crono-note-kicker {
+    margin-bottom: 5px;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .crono-note-title {
+    margin-bottom: 12px !important;
+  }
+  .crono-note-input {
+    min-height: 118px;
+    resize: vertical;
+    line-height: 1.45;
+  }
+  .crono-note-hint {
+    margin: -4px 0 16px;
+    color: var(--text3);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .hecho-crono-notes-section {
+    margin-top: 6px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--border2);
+  }
+  .hecho-crono-notes-list {
+    display: grid;
+    gap: 7px;
+    margin-bottom: 10px;
+  }
+  .hecho-crono-note-row {
+    padding: 9px 10px;
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.025);
+  }
+  .hecho-crono-note-row span {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .hecho-crono-note-row p {
+    margin: 0;
+    color: var(--text2);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .hecho-crono-notes-empty {
+    margin-bottom: 8px;
+    color: var(--text3);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .hecho-crono-final-note {
+    min-height: 72px;
+    resize: vertical;
+  }
   .crono-pase-rapido-modal {
     width: min(440px, calc(100vw - 32px));
     max-height: min(84dvh, 680px);

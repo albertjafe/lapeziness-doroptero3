@@ -369,6 +369,10 @@
           <span>Pase</span>
           <strong>＋</strong>
         </button>
+        <button class="crono-solidity-btn crono-note-btn" id="cronoQuickNoteBtn" onclick="openCronoNote('before')">
+          <span>Nota</span>
+          <strong id="cronoQuickNoteCount">0</strong>
+        </button>
         <button class="crono-solidity-btn" id="cronoQuickSolBtn" onclick="openQuickSolidez('idle')" style="display:none">
           <span>Solidez</span>
           <strong id="cronoQuickSolValue">—</strong>
@@ -433,6 +437,10 @@
         <button class="crono-zone-btn" id="cronoRunZoneBtn" onclick="showToast('La zona se registra al pulsar Hecho')">
           <span>Zona</span>
           <strong id="cronoRunZoneValue">al terminar</strong>
+        </button>
+        <button class="crono-zone-btn crono-note-btn-run" id="cronoRunNoteBtn" onclick="openCronoNote('during')">
+          <span>Nota</span>
+          <strong id="cronoRunNoteCount">0</strong>
         </button>
         <button class="crono-solidity-btn crono-solidity-btn-run" id="cronoRunSolBtn" onclick="openQuickSolidez('running')" style="display:none">
           <span>Solidez</span>
@@ -1321,6 +1329,13 @@
       </div>
     </div>
 
+    <!-- Notas de cronometro / temporizador -->
+    <div id="hechoCronoNotesSection" class="hecho-crono-notes-section" style="display:none">
+      <div class="hecho-field-label">Notas de la sesion</div>
+      <div id="hechoCronoNotesList" class="hecho-crono-notes-list"></div>
+      <textarea id="hechoCronoFinalNote" class="modal-input hecho-crono-final-note" rows="2" placeholder="nota final dictada o escrita..."></textarea>
+    </div>
+
     <!-- Destello: marcar la sesión como memorable (sin productividad) -->
     <div style="margin-top:6px;padding-top:14px;border-top:1px dashed var(--border2)">
       <label class="hecho-destello-toggle">
@@ -1342,6 +1357,20 @@
     <div class="hecho-modal-footer">
       <button class="modal-btn secondary" onclick="closeHechoDatos(false)">Cancelar</button>
       <button class="modal-btn primary" onclick="closeHechoDatos(true)">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: nota rapida de cronometro -->
+<div class="modal-overlay" id="modalCronoNote">
+  <div class="modal crono-note-modal">
+    <div class="crono-note-kicker" id="cronoNoteContext">Nota de sesion</div>
+    <div class="modal-title crono-note-title">Observacion</div>
+    <textarea class="modal-input crono-note-input" id="cronoNoteInput" rows="4" placeholder="Dicta o escribe una observacion..."></textarea>
+    <div class="crono-note-hint">En iPad, toca el microfono del teclado para dictar.</div>
+    <div class="modal-buttons">
+      <button class="modal-btn secondary" onclick="closeModal('modalCronoNote')">Cancelar</button>
+      <button class="modal-btn primary" onclick="confirmCronoNote()">Guardar nota</button>
     </div>
   </div>
 </div>

@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-07-daily-available-time-v24';
+const APP_VERSION = '2026-07-07-crono-session-notes-v25';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -2515,6 +2515,11 @@ function recordSessionPlant(obraId, movId, startedAt, endedAt, mins, opts) {
   // Si la sesión es fallida (<10 min, abortada), marcarla como tal. Esto
   // permite distinguir en estadísticas las sesiones exitosas de las fallidas.
   if (opts && opts.failed) entry.failed = true;
+  const rawNotes = opts && (opts.notes || opts.sessionNotes);
+  if (Array.isArray(rawNotes) && rawNotes.length) {
+    const notes = rawNotes.map(cronoNormalizeSessionNote).filter(Boolean);
+    if (notes.length) entry.notes = notes;
+  }
   db.sessionPlants.push(entry);
   // Mantener orden cronológico
   db.sessionPlants.sort((a, b) => (a.startedAt < b.startedAt ? -1 : 1));
@@ -5543,6 +5548,47 @@ function updatePasajeSolSlider(pasajeId, momento, val) {
   fillSlider(slider, SOL_COLOR);
 }
 
+function hechoCronoNotesForPlan(planId, isEditMode) {
+  const agg = sessionAggregate[planId] || null;
+  const pending = agg && agg._pendingTimes ? agg._pendingTimes : null;
+  if (pending && Array.isArray(pending.notes)) {
+    return pending.notes.map(cronoNormalizeSessionNote).filter(Boolean);
+  }
+  if (isEditMode && agg && Array.isArray(agg.subsessions) && agg.subsessions.length) {
+    const lastSub = agg.subsessions[agg.subsessions.length - 1];
+    const raw = lastSub.sessionNotes || lastSub.notes || [];
+    return Array.isArray(raw) ? raw.map(cronoNormalizeSessionNote).filter(Boolean) : [];
+  }
+  return [];
+}
+
+function hechoRenderCronoNotes(planId, isEditMode) {
+  const section = document.getElementById('hechoCronoNotesSection');
+  const list = document.getElementById('hechoCronoNotesList');
+  const finalInput = document.getElementById('hechoCronoFinalNote');
+  if (!section || !list) return;
+  const notes = hechoCronoNotesForPlan(planId, isEditMode);
+  const shouldShow = notes.length > 0 || _hechoSubSession;
+  section.style.display = shouldShow ? 'block' : 'none';
+  if (finalInput) finalInput.value = '';
+  if (!shouldShow) {
+    list.innerHTML = '';
+    return;
+  }
+  if (!notes.length) {
+    list.innerHTML = '<div class="hecho-crono-notes-empty">Sin notas durante el crono. Puedes dictar una nota final.</div>';
+    return;
+  }
+  list.innerHTML = notes.map(note => {
+    const label = note.phaseLabel || cronoNotePhaseLabel(note.phase, note.elapsedMs, note.minute);
+    const time = note.at ? aiTimeLabel(note.at) : '';
+    return '<div class="hecho-crono-note-row">' +
+      '<span>' + escapeHtmlSafe([label, time].filter(Boolean).join(' · ')) + '</span>' +
+      '<p>' + escapeHtmlSafe(note.text) + '</p>' +
+    '</div>';
+  }).join('');
+}
+
 function openHechoDatos(planId, minPlan, opts) {
   opts = opts || {};
   const isSubSession = !!opts.subSession;
@@ -5761,6 +5807,7 @@ function openHechoDatos(planId, minPlan, opts) {
   }
 
   document.getElementById('hechoNota').value = document.getElementById('tnote-' + planId)?.value || '';
+  hechoRenderCronoNotes(planId, isEditMode);
 
   // Destello: casilla simple (sin productividad). Restaura el estado previo.
   const destBox = document.getElementById('hechoDestelloBox');
@@ -6125,6 +6172,35 @@ function closeHechoDatos(save) {
     const pending = sessionAggregate[planId]._pendingTimes || null;
     const startedAt = pending ? pending.startedAt : null;
     const endedAt   = pending ? pending.endedAt   : new Date().toISOString();
+    const baseSessionNotes = pending && Array.isArray(pending.notes)
+      ? pending.notes
+      : hechoCronoNotesForPlan(planId, _hechoEditMode);
+    const sessionNotes = Array.isArray(baseSessionNotes)
+      ? baseSessionNotes.map(cronoNormalizeSessionNote).filter(Boolean)
+      : [];
+    const finalNoteText = (document.getElementById('hechoCronoFinalNote')?.value || '').trim();
+    if (finalNoteText) {
+      const finalMin = subMin || minutos || totalAcum || 0;
+      const display = entity ? entity.name : (obra ? obra.name : '');
+      const sub = movId && obra ? obra.name + (obra.composer ? ' · ' + obra.composer : '') : (obra?.composer || '');
+      const finalNote = cronoNormalizeSessionNote({
+        id: cronoNoteId(),
+        text: finalNoteText,
+        at: new Date().toISOString(),
+        phase: 'after',
+        phaseLabel: 'despues',
+        minute: finalMin,
+        elapsedMs: finalMin * 60000,
+        state: 'hecho',
+        mode: 'final',
+        obraId,
+        movId,
+        displayName: display,
+        subName: sub,
+        source: 'hecho',
+      });
+      if (finalNote) sessionNotes.push(finalNote);
+    }
     delete sessionAggregate[planId]._pendingTimes;
 
     // Snapshot de pases/memoria de ESTA apertura del modal, para poder
@@ -6153,6 +6229,8 @@ function closeHechoDatos(save) {
       zone: zoneSnapshot,
       destello: destOn,
       destelloNota: destOn ? destNota : null,
+      sessionNotes: sessionNotes.length ? sessionNotes : null,
+      notes: sessionNotes.length ? sessionNotes : null,
       startedAt: startedAt,
       endedAt: endedAt,
       timestamp: endedAt, // legacy compat
@@ -6173,10 +6251,24 @@ function closeHechoDatos(save) {
       previous.prod = justAdded.prod;
       previous.destello = justAdded.destello;
       previous.destelloNota = justAdded.destelloNota;
+      previous.sessionNotes = justAdded.sessionNotes;
+      previous.notes = justAdded.notes;
       // Si el usuario editó los minutos del modal, propagar a la sub-sesión
       // previa también para que la edición se refleje en su .min.
       if (minDelta !== 0 && previous.min != null) {
         previous.min = Math.max(0, previous.min + minDelta);
+      }
+    }
+
+    if (sessionNotes.length && startedAt) {
+      const plant = (db.sessionPlants || []).find(p =>
+        p.startedAt === startedAt &&
+        p.obraId === obraId &&
+        (p.movId || null) === (movId || null)
+      );
+      if (plant) {
+        plant.notes = sessionNotes.map(cronoNormalizeSessionNote).filter(Boolean);
+        saveData();
       }
     }
 
@@ -13025,12 +13117,24 @@ function aiBuildStudyRows() {
       source: p.source || sourceName,
       failed: !!p.failed,
       rest: p.obraId === '_rest_' || p.tipo === 'descanso',
+      notes: Array.isArray(p.notes) ? p.notes.map(cronoNormalizeSessionNote).filter(Boolean) : [],
       raw: p,
     });
   };
   (db.sessionPlants || []).forEach(p => addPlant(p, 'sessionPlants'));
   (db.forestPlants || []).forEach(p => addPlant(p, 'forestPlants'));
   return rows.sort((a, b) => new Date(a.start || 0) - new Date(b.start || 0));
+}
+
+function aiSessionNoteLabel(note) {
+  if (!note) return 'nota';
+  const bits = [];
+  if (note.at) bits.push(aiTimeLabel(note.at));
+  if (note.phase === 'before') bits.push('antes de empezar');
+  else if (note.phase === 'after') bits.push('despues de terminar');
+  else if (note.minute != null) bits.push('minuto ' + note.minute);
+  else if (note.phaseLabel) bits.push(note.phaseLabel);
+  return bits.filter(Boolean).join(' · ') || 'nota';
 }
 
 function aiBuildSessionCards() {
@@ -13441,6 +13545,7 @@ function buildAiTextReport(options) {
   lines.push('GUÍA DE LECTURA PARA LA IA');
   lines.push('- Esta app registra estudio de piano. No presupongas contexto externo: interpreta sólo lo que aparece aquí.');
   lines.push('- Bloque con hora: tramo real registrado por cronómetro/temporizador/Forest. Es el dato más fiable para saber cuándo estudié y cuánto tiempo.');
+  lines.push('- Nota de sesión: observación escrita o dictada antes de empezar, en un minuto concreto del cronómetro/temporizador, o después de terminar. Es input directo del usuario; úsalo como contexto prioritario.');
   lines.push('- Tarjeta/sesión guardada: resumen diario o tarjeta de estudio. Puede incluir obra, minutos, tick, nota, destello y datos agregados de sub-sesiones.');
   lines.push('- Pase: ejecución de una obra o movimiento. Es la medida principal de solidez. Tipos: solo = para mí; informal = ante pareja/amigos; evento = audición/concurso/concierto o situación formal. Resultado: Se cae, Frágil, Sale, Sólido o Listo.');
   lines.push('- Pasaje: fragmento concreto dentro de una obra. Puede tener estado actual, intensidad de trabajo, solidez antes/después, fallos de memoria o entradas de seguimiento. Si un pasaje aparece varias veces el mismo día, trátalo como foco recurrente, no como duplicado irrelevante.');
@@ -13537,7 +13642,12 @@ function buildAiTextReport(options) {
       lines.push('Bloques de estudio con hora:');
       day.studyBlocks.forEach(b => {
         const flags = b.failed ? ' · fallida' : (b.rest ? ' · descanso' : '');
-        lines.push('- ' + (b.timeRange || '') + ' · ' + b.label + ' · ' + aiMinutesLabel(b.minutes) + flags);
+        const notes = Array.isArray(b.notes) ? b.notes : [];
+        lines.push('- ' + (b.timeRange || '') + ' · ' + b.label + ' · ' + aiMinutesLabel(b.minutes) + flags + (notes.length ? ' · notas ' + notes.length : ''));
+        notes.forEach(note => {
+          if (!note || !note.text) return;
+          lines.push('  - nota ' + aiSessionNoteLabel(note) + ': "' + note.text + '"');
+        });
       });
     }
     if (day.sessionCards.length) {
@@ -16008,6 +16118,7 @@ const crono = {
   tickInterval: null,
   pauseInterval: null,
   lastCountdownSecond: null,
+  notes: [],
 };
 
 let _cronoWakeLock = null;
@@ -16138,6 +16249,7 @@ function cronoSaveState() {
       startTs: crono.startTs,
       pausedMs: crono.pausedMs,
       pauseStartTs: crono.pauseStartTs,
+      notes: Array.isArray(crono.notes) ? crono.notes.slice(-80) : [],
     }));
   } catch(e) {}
 }
@@ -16153,6 +16265,7 @@ function cronoLoadState() {
       crono.timerMinutes = s.timerMinutes;
     }
     if (typeof s.untilTime === 'string') crono.untilTime = s.untilTime;
+    crono.notes = Array.isArray(s.notes) ? s.notes.slice(-80).map(cronoNormalizeSessionNote).filter(Boolean) : [];
     if (s.state !== 'running' && s.state !== 'paused') return false;
     if (!s.obraId || !s.startTs) return false;
     crono.state = s.state;
@@ -16182,6 +16295,151 @@ function cronoFmt(ms) {
   const pad = n => String(n).padStart(2, '0');
   if (h > 0) return h + ':' + pad(m) + ':' + pad(s);
   return pad(m) + ':' + pad(s);
+}
+
+let _cronoNoteDraftPhase = 'during';
+
+function cronoNoteId() {
+  return 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+}
+
+function cronoNoteMinuteFromElapsed(phase, elapsedMs, fallbackMin) {
+  if (phase === 'before') return 0;
+  if (phase === 'after') return fallbackMin != null ? Math.max(0, Math.round(Number(fallbackMin) || 0)) : null;
+  const ms = Math.max(0, Number(elapsedMs) || 0);
+  return Math.max(1, Math.ceil(ms / 60000));
+}
+
+function cronoNotePhaseLabel(phase, elapsedMs, fallbackMin) {
+  if (phase === 'before') return 'antes';
+  if (phase === 'after') return 'despues';
+  const minute = cronoNoteMinuteFromElapsed('during', elapsedMs, fallbackMin);
+  return 'minuto ' + minute;
+}
+
+function cronoNormalizeSessionNote(note) {
+  if (!note) return null;
+  const text = String(note.text || note.nota || '').trim();
+  if (!text) return null;
+  const phaseRaw = note.phase || note.momento || 'during';
+  const phase = phaseRaw === 'before' || phaseRaw === 'after' || phaseRaw === 'during' ? phaseRaw : 'during';
+  const elapsedMs = note.elapsedMs != null ? Math.max(0, Math.round(Number(note.elapsedMs) || 0)) : null;
+  const minute = note.minute != null ? Math.max(0, Math.round(Number(note.minute) || 0)) : cronoNoteMinuteFromElapsed(phase, elapsedMs, note.fallbackMin);
+  return {
+    id: note.id || cronoNoteId(),
+    text: text.slice(0, 1600),
+    at: note.at || note.date || new Date().toISOString(),
+    phase,
+    phaseLabel: note.phaseLabel || cronoNotePhaseLabel(phase, elapsedMs, minute),
+    minute,
+    elapsedMs,
+    state: note.state || null,
+    mode: note.mode || null,
+    obraId: note.obraId || null,
+    movId: note.movId || null,
+    displayName: note.displayName || note.obra || '',
+    subName: note.subName || note.movimiento || '',
+    source: note.source || 'crono',
+  };
+}
+
+function cronoCreateSessionNote(text, phase, opts) {
+  opts = opts || {};
+  const realPhase = phase === 'before' || phase === 'after' || phase === 'during' ? phase : 'during';
+  const elapsedMs = opts.elapsedMs != null
+    ? Math.max(0, Number(opts.elapsedMs) || 0)
+    : (crono.state === 'idle' ? 0 : cronoCurrentMs());
+  const minute = opts.minute != null ? opts.minute : cronoNoteMinuteFromElapsed(realPhase, elapsedMs, opts.fallbackMin);
+  const selected = crono.state === 'idle'
+    ? cronoResolveSelectValue(document.getElementById('cronoObraSelect')?.value || '')
+    : null;
+  return cronoNormalizeSessionNote({
+    id: cronoNoteId(),
+    text,
+    at: opts.at || new Date().toISOString(),
+    phase: realPhase,
+    phaseLabel: opts.phaseLabel || cronoNotePhaseLabel(realPhase, elapsedMs, minute),
+    minute,
+    elapsedMs,
+    state: crono.state,
+    mode: crono.mode,
+    obraId: opts.obraId || crono.obraId || selected?.obraId || null,
+    movId: opts.movId || crono.movId || selected?.movId || null,
+    displayName: opts.displayName || crono.displayName || selected?.displayName || '',
+    subName: opts.subName || crono.subName || selected?.subName || '',
+    source: opts.source || 'crono',
+  });
+}
+
+function cronoNoteContextText(phase) {
+  if (phase === 'before' || crono.state === 'idle') return 'Objetivo antes de empezar';
+  const elapsed = cronoCurrentMs();
+  return (crono.state === 'paused' ? 'En pausa' : 'En marcha') + ' · ' + cronoNotePhaseLabel('during', elapsed);
+}
+
+function openCronoNote(phase) {
+  const effectivePhase = (crono.state === 'idle' || phase === 'before') ? 'before' : 'during';
+  _cronoNoteDraftPhase = effectivePhase;
+  const ctx = document.getElementById('cronoNoteContext');
+  const input = document.getElementById('cronoNoteInput');
+  if (ctx) ctx.textContent = cronoNoteContextText(effectivePhase);
+  if (input) input.value = '';
+  openModal('modalCronoNote');
+  setTimeout(() => {
+    const el = document.getElementById('cronoNoteInput');
+    if (el) el.focus();
+  }, 140);
+}
+
+function confirmCronoNote() {
+  const input = document.getElementById('cronoNoteInput');
+  const text = (input?.value || '').trim();
+  if (!text) {
+    showToast('Escribe o dicta una nota');
+    return;
+  }
+  if (!Array.isArray(crono.notes)) crono.notes = [];
+  const note = cronoCreateSessionNote(text, _cronoNoteDraftPhase);
+  if (note) crono.notes.push(note);
+  crono.notes = crono.notes.slice(-80);
+  cronoSaveState();
+  cronoRenderNoteCounts();
+  closeModal('modalCronoNote');
+  showToast(_cronoNoteDraftPhase === 'before' ? 'Objetivo guardado' : 'Nota guardada');
+}
+
+function cronoRenderNoteCounts() {
+  const count = Array.isArray(crono.notes) ? crono.notes.length : 0;
+  const label = count ? String(count) : '+';
+  ['cronoQuickNoteCount', 'cronoRunNoteCount'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = label;
+  });
+  ['cronoQuickNoteBtn', 'cronoRunNoteBtn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.classList.toggle('has-notes', count > 0);
+  });
+}
+
+function cronoBuildSessionNotes(totalMs, minutos) {
+  return (Array.isArray(crono.notes) ? crono.notes : [])
+    .map(note => cronoNormalizeSessionNote(Object.assign({
+      fallbackMin: minutos,
+      obraId: crono.obraId,
+      movId: crono.movId,
+      displayName: crono.displayName,
+      subName: crono.subName,
+      mode: crono.mode,
+    }, note)))
+    .filter(Boolean)
+    .map(note => {
+      if (note.phase === 'during' && note.elapsedMs != null && totalMs != null) {
+        note.elapsedMs = Math.min(note.elapsedMs, Math.max(0, totalMs));
+        note.minute = cronoNoteMinuteFromElapsed('during', note.elapsedMs, minutos);
+        note.phaseLabel = cronoNotePhaseLabel('during', note.elapsedMs, minutos);
+      }
+      return note;
+    });
 }
 
 // ── Resumen de minutos concentrado HOY ──────────────────────────────────────
@@ -17583,6 +17841,7 @@ function cronoRender() {
     }
     cronoUpdateStartBtn();
     cronoUpdateTimerProgress();
+    cronoRenderNoteCounts();
     return;
   }
 
@@ -17656,6 +17915,7 @@ function cronoRender() {
       '<button class="crono-ctrl-btn primary" onclick="cronoResume()" aria-label="Reanudar">' + CRONO_ICONS.play + '</button>';
   }
   cronoUpdateSolidityActions();
+  cronoRenderNoteCounts();
 
   // Estado "En marcha / En pausa" (pill de la cabecera, Mármol)
   const stTxt = document.getElementById('cronoRunStatusText');
@@ -17708,6 +17968,7 @@ function cronoUpdateStartBtn() {
   }
   cronoUpdateSolidityActions();
   cronoUpdateTimerProjection();
+  cronoRenderNoteCounts();
 }
 
 function cronoUpdateTimerProjection() {
@@ -18675,6 +18936,7 @@ function cronoStart() {
 
   _cronoPaseDrawerReset();
   _cronoLastRunDestelloKey = '';
+  if (!Array.isArray(crono.notes)) crono.notes = [];
 
   crono.state = 'running';
   crono.isRest = false;
@@ -18717,6 +18979,7 @@ function cronoStartRest() {
     return;
   }
   _cronoLastRunDestelloKey = '';
+  crono.notes = [];
   crono.state = 'running';
   crono.isRest = true;
   crono.obraId = '_rest_';        // marca interna; no apunta a obra real
@@ -18888,13 +19151,14 @@ function cronoFinish() {
   // el objetivo ya limita la duración.
   const ms = (crono.targetMinutes == null) ? Math.min(cronoCurrentMs(), CRONO_MAX_MS) : cronoCurrentMs();
   const minutos = Math.floor(ms / 60000);
+  const cronoSessionNotes = cronoBuildSessionNotes(ms, minutos);
 
   // ── DESCANSO: no añade tarjeta, no llama al modal hecho, no suma minutos
   // al "concentrado hoy". Solo registra en db.sessionPlants con tipo descanso.
   if (crono.isRest) {
     if (crono.startTs && minutos >= 1) {
       if (!Array.isArray(db.sessionPlants)) db.sessionPlants = [];
-      db.sessionPlants.push({
+      const restEntry = {
         obraId: '_rest_',
         movId: null,
         startedAt: new Date(crono.startTs).toISOString(),
@@ -18902,7 +19166,9 @@ function cronoFinish() {
         mins: minutos,
         source: 'app',
         tipo: 'descanso',
-      });
+      };
+      if (cronoSessionNotes.length) restEntry.notes = cronoSessionNotes;
+      db.sessionPlants.push(restEntry);
       saveData();
     }
     cronoReset();
@@ -18928,7 +19194,7 @@ function cronoFinish() {
     if (obraId && crono.startTs) {
       const startedAtIso = new Date(crono.startTs).toISOString();
       const endedAtIso = new Date().toISOString();
-      recordSessionPlant(obraId, movId, startedAtIso, endedAtIso, minutos, { failed: true });
+      recordSessionPlant(obraId, movId, startedAtIso, endedAtIso, minutos, { failed: true, notes: cronoSessionNotes });
       saveData();
     }
     cronoReset();
@@ -19034,11 +19300,11 @@ function cronoFinish() {
   const startedAtIso = new Date(crono.startTs).toISOString();
   const endedAtIso = new Date().toISOString();
   if (!sessionAggregate[targetPlanId]) sessionAggregate[targetPlanId] = { subsessions: [] };
-  sessionAggregate[targetPlanId]._pendingTimes = { startedAt: startedAtIso, endedAt: endedAtIso };
+  sessionAggregate[targetPlanId]._pendingTimes = { startedAt: startedAtIso, endedAt: endedAtIso, notes: cronoSessionNotes };
 
   // ★ Registrar también la sub-sesión en db.sessionPlants[] (permanente,
   // sobrevive al cap de db.sesiones[]). Para estadísticas históricas.
-  recordSessionPlant(obraId, movId, startedAtIso, endedAtIso, minutos);
+  recordSessionPlant(obraId, movId, startedAtIso, endedAtIso, minutos, { notes: cronoSessionNotes });
 
   cronoReset();
   cronoRender();
@@ -19074,6 +19340,7 @@ function cronoReset() {
   crono.startTs = 0;
   crono.pausedMs = 0;
   crono.pauseStartTs = 0;
+  crono.notes = [];
   _cronoLastRunDestelloKey = '';
   // NB: NO reseteamos mode ni timerMinutes — son preferencias persistentes.
   // Las guardamos en localStorage para la próxima sesión.
