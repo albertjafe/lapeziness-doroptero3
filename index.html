@@ -145,6 +145,22 @@
 
   <div class="session-insight-stack" id="sessionInsightStack" style="display:none"></div>
 
+  <section class="session-journal-card" aria-label="Diario del dÃ­a">
+    <div class="session-journal-head">
+      <div>
+        <h2>Diario</h2>
+        <span id="sessionJournalMeta">Hoy</span>
+      </div>
+      <button type="button" class="session-journal-clear" onclick="clearSessionJournalInput()" title="Vaciar texto">Limpiar</button>
+    </div>
+    <textarea id="sessionJournalInput" class="session-journal-input" rows="4" maxlength="2400" placeholder="Dicta o escribe una entrada general del dÃ­a: plan, sensaciones, prioridades, algo que quieras recordar..."></textarea>
+    <div class="session-journal-actions">
+      <span id="sessionJournalHint">Se guarda con fecha y hora.</span>
+      <button type="button" class="session-journal-submit" onclick="saveSessionJournalEntry()">Subir entrada</button>
+    </div>
+    <div class="session-journal-list" id="sessionJournalList"></div>
+  </section>
+
   <div class="session-hero session-ritmo-panel">
     <div class="notes-deco" id="notesDeco"></div>
     <div id="rachaDisplay" style="display:none;margin-bottom:6px"></div>
@@ -884,6 +900,17 @@
     <div class="ajustes-card">
       <div class="ajustes-card-head">IA / Codex · exportar contexto</div>
       <div class="ajustes-hint" style="margin-bottom:12px">Genera un paquete con sesiones, pases, notas, sueño, ánimo, deporte, tiempo disponible, siestas, gatillos y eventos. Incluye datos privados: úsalo sólo para pegarlo o adjuntarlo donde quieras.</div>
+      <div class="ai-export-mode-row" id="aiExportModeRow">
+        <button type="button" class="ai-export-mode active" data-range="today" onclick="setAiExportRange('today')">Hoy</button>
+        <button type="button" class="ai-export-mode" data-range="yesterday" onclick="setAiExportRange('yesterday')">Ayer</button>
+        <button type="button" class="ai-export-mode" data-range="today_yesterday" onclick="setAiExportRange('today_yesterday')">Hoy + ayer</button>
+        <button type="button" class="ai-export-mode" data-range="3" onclick="setAiExportRange('3')">3 dÃ­as</button>
+        <button type="button" class="ai-export-mode" data-range="selected" onclick="setAiExportRange('selected')">Elegir</button>
+      </div>
+      <div class="ai-export-context-row" id="aiExportContextRow">
+        <button type="button" class="ai-export-context active" data-context="context" onclick="setAiExportContext('context')">Con contexto</button>
+        <button type="button" class="ai-export-context" data-context="data" onclick="setAiExportContext('data')">SÃ³lo datos</button>
+      </div>
       <div class="ai-export-controls">
         <select class="modal-input ai-export-select" id="aiExportRange" onchange="updateAiExportControls()">
           <option value="today" selected>Hoy hasta ahora</option>

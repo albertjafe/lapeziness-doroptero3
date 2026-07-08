@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-07-crono-destello-notes-v26';
+const APP_VERSION = '2026-07-08-session-diary-export-v27';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -133,6 +133,18 @@ function _mergeTiempoDisponibleEventos(a, b) {
   });
   return Object.values(map).sort((x, y) => (x.at || x.date || '').localeCompare(y.at || y.date || '')).slice(-2000);
 }
+function _dailyJournalKey(e) { return (e && (e.id || ((e.at || '') + '|' + (e.text || '').slice(0, 80)))) || ''; }
+function _mergeDailyJournalEntries(a, b) {
+  const out = [], seen = new Set();
+  (a || []).concat(b || []).forEach(e => {
+    const k = _dailyJournalKey(e);
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    out.push(e);
+  });
+  out.sort((x, y) => (x.at || '').localeCompare(y.at || ''));
+  return out.slice(-3000);
+}
 function _sesionRealMin(s) {
   return (s.items || []).reduce((acc, it) =>
     acc + (typeof _itemMinReal === 'function' ? _itemMinReal(it) : (it.minutosReales || 0)), 0);
@@ -162,6 +174,7 @@ function _mergeStudyHistory(base, other) {
   merged.suenoEventos = _mergeSuenoEventos(base.suenoEventos, other.suenoEventos);
   merged.triggerEventos = _mergeTriggerEventos(base.triggerEventos, other.triggerEventos);
   merged.tiempoDisponibleEventos = _mergeTiempoDisponibleEventos(base.tiempoDisponibleEventos, other.tiempoDisponibleEventos);
+  merged.dailyJournalEntries = _mergeDailyJournalEntries(base.dailyJournalEntries, other.dailyJournalEntries);
   return merged;
 }
 
@@ -299,7 +312,8 @@ function getDefaultData() {
     deporteEventos: [],
     suenoEventos: [],
     triggerEventos: [],
-    tiempoDisponibleEventos: []
+    tiempoDisponibleEventos: [],
+    dailyJournalEntries: []
   };
 }
 
@@ -313,6 +327,7 @@ if (!db.deporteEventos) db.deporteEventos = [];
 if (!db.suenoEventos) db.suenoEventos = [];
 if (!db.triggerEventos) db.triggerEventos = [];
 if (!db.tiempoDisponibleEventos) db.tiempoDisponibleEventos = [];
+if (!db.dailyJournalEntries) db.dailyJournalEntries = [];
 // db.sessionPlants[]: array paralelo a forestPlants con UN registro por sub-sesión
 // del cronómetro. Persiste los timestamps detallados aunque la sesión en
 // db.sesiones[] sea descartada por el cap. Estructura por entrada:
@@ -370,7 +385,7 @@ function showView(name) {
   if (idx >= 0) btns[idx].classList.add('active');
   // Modo concentración: activar/desactivar al entrar/salir de cronometro
   if (name !== 'cronometro' && typeof cronoOnLeaveView === 'function') cronoOnLeaveView();
-  if (name === 'session')    { renderRacha(); if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI(); if (typeof renderSessionInsights === 'function') renderSessionInsights(); }
+  if (name === 'session')    { renderRacha(); if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI(); if (typeof renderSessionInsights === 'function') renderSessionInsights(); if (typeof renderSessionJournal === 'function') renderSessionJournal(); }
   if (name === 'cronometro') { cronoOnEnterView(); if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true); }
   if (name === 'obras')      renderObras();
   if (name === 'calendario') renderCalendario();
@@ -830,6 +845,92 @@ function ensureTiempoDisponibleEventos() {
   if (typeof db !== 'object' || !db) return _tiempoDisponibleEventosLocal();
   if (!Array.isArray(db.tiempoDisponibleEventos)) db.tiempoDisponibleEventos = _tiempoDisponibleEventosLocal();
   return db.tiempoDisponibleEventos;
+}
+
+function ensureDailyJournalEntries() {
+  if (typeof db !== 'object' || !db) return [];
+  if (!Array.isArray(db.dailyJournalEntries)) db.dailyJournalEntries = [];
+  return db.dailyJournalEntries;
+}
+
+function sessionJournalDayKey(value) {
+  const d = value ? new Date(value) : new Date();
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
+function sessionJournalTodayEntries() {
+  const today = sessionJournalDayKey(new Date());
+  return ensureDailyJournalEntries()
+    .filter(e => e && ((e.day || sessionJournalDayKey(e.at)) === today))
+    .sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')));
+}
+
+function clearSessionJournalInput() {
+  const input = document.getElementById('sessionJournalInput');
+  if (input) input.value = '';
+}
+
+function saveSessionJournalEntry() {
+  const input = document.getElementById('sessionJournalInput');
+  const text = (input?.value || '').trim();
+  if (!text) {
+    showToast('Escribe una entrada primero');
+    return;
+  }
+  const arr = ensureDailyJournalEntries();
+  const now = new Date();
+  arr.push({
+    id: 'journal_' + now.getTime() + '_' + Math.random().toString(36).slice(2, 7),
+    at: now.toISOString(),
+    day: sessionJournalDayKey(now),
+    date: now.toDateString(),
+    text: text.slice(0, 2400),
+  });
+  if (arr.length > 3000) arr.splice(0, arr.length - 3000);
+  if (input) input.value = '';
+  saveData();
+  renderSessionJournal();
+  try { Haptics.light(); } catch(e) {}
+  showToast('Entrada guardada');
+}
+
+function deleteSessionJournalEntry(id) {
+  const arr = ensureDailyJournalEntries();
+  const idx = arr.findIndex(e => e && e.id === id);
+  if (idx < 0) return;
+  arr.splice(idx, 1);
+  saveData();
+  renderSessionJournal();
+  showToast('Entrada eliminada');
+}
+
+function renderSessionJournal() {
+  const meta = document.getElementById('sessionJournalMeta');
+  const list = document.getElementById('sessionJournalList');
+  const input = document.getElementById('sessionJournalInput');
+  if (input) input.placeholder = 'Dicta o escribe una entrada general del dia: plan, sensaciones, prioridades, algo que quieras recordar...';
+  if (!meta && !list) return;
+  const entries = sessionJournalTodayEntries();
+  if (meta) meta.textContent = entries.length ? ('Hoy · ' + entries.length + (entries.length === 1 ? ' entrada' : ' entradas')) : 'Hoy';
+  if (!list) return;
+  if (!entries.length) {
+    list.innerHTML = '<div class="session-journal-empty">Aun no hay entradas hoy.</div>';
+    return;
+  }
+  list.innerHTML = entries.slice().reverse().slice(0, 8).map(entry => {
+    const at = entry.at || '';
+    return '<article class="session-journal-entry">' +
+      '<div class="session-journal-entry-head">' +
+        '<span>' + escapeHtmlSafe(aiTimeLabel(at) || '--:--') + '</span>' +
+        '<button type="button" onclick="deleteSessionJournalEntry(\'' + escapeHtmlSafe(entry.id || '') + '\')" aria-label="Eliminar entrada">×</button>' +
+      '</div>' +
+      '<p>' + escapeHtmlSafe(entry.text || '') + '</p>' +
+    '</article>';
+  }).join('');
 }
 
 function siestaEventsToday() {
@@ -13347,8 +13448,9 @@ function aiBuildDailyRows() {
   const suenoEventos = ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || []);
   const triggerEventos = ensureTriggerEventos ? ensureTriggerEventos() : (db.triggerEventos || []);
   const tiempoDisponibleEventos = ensureTiempoDisponibleEventos ? ensureTiempoDisponibleEventos() : (db.tiempoDisponibleEventos || []);
+  const dailyJournalEntries = ensureDailyJournalEntries ? ensureDailyJournalEntries() : (db.dailyJournalEntries || []);
   const keys = new Set();
-  [studyRows, sessionCards, paseRows, pasajeRows, estadoEventos, deporteEventos, suenoEventos, triggerEventos, tiempoDisponibleEventos].forEach(arr => {
+  [studyRows, sessionCards, paseRows, pasajeRows, estadoEventos, deporteEventos, suenoEventos, triggerEventos, tiempoDisponibleEventos, dailyJournalEntries].forEach(arr => {
     (arr || []).forEach(x => {
       const k = x.day || aiLocalDateKey(x.date || x.at || x.start || x.startedAt);
       if (k) keys.add(k);
@@ -13373,6 +13475,9 @@ function aiBuildDailyRows() {
       suenoEventos: (suenoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       triggerEventos: (triggerEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       tiempoDisponible: tiempoDia.length ? tiempoDia[tiempoDia.length - 1] : null,
+      journalEntries: (dailyJournalEntries || [])
+        .filter(x => (x.day || aiLocalDateKey(x.at || x.date)) === day)
+        .sort((a, b) => String(a.at || '').localeCompare(String(b.at || ''))),
     };
   });
 }
@@ -13400,6 +13505,7 @@ function buildAiDataPackage() {
       suenoEventos: (ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || [])).length,
       triggerEventos: (ensureTriggerEventos ? ensureTriggerEventos() : (db.triggerEventos || [])).length,
       tiempoDisponibleDias: (ensureTiempoDisponibleEventos ? ensureTiempoDisponibleEventos() : (db.tiempoDisponibleEventos || [])).length,
+      dailyJournalEntries: (ensureDailyJournalEntries ? ensureDailyJournalEntries() : (db.dailyJournalEntries || [])).length,
       eventos: (db.eventos || []).length,
     },
     daily,
@@ -13418,6 +13524,12 @@ function buildAiDataPackage() {
 }
 
 let aiExportSelectedDays = [];
+let aiExportRangeMode = (function() {
+  try { return localStorage.getItem('alberto_ai_export_range_v1') || 'today'; } catch(e) { return 'today'; }
+})();
+let aiExportContextMode = (function() {
+  try { return localStorage.getItem('alberto_ai_export_context_v1') || 'context'; } catch(e) { return 'context'; }
+})();
 
 function aiUniqueSortedDates(dates) {
   return Array.from(new Set((dates || [])
@@ -13426,16 +13538,46 @@ function aiUniqueSortedDates(dates) {
     .sort();
 }
 
+function aiDateKeyOffset(offset) {
+  const d = new Date();
+  d.setDate(d.getDate() + (Number(offset) || 0));
+  return aiLocalDateKey(d);
+}
+
+function aiContextModeValue(value) {
+  return value === 'data' ? 'data' : 'context';
+}
+
+function setAiExportRange(range) {
+  const allowed = ['today', 'yesterday', 'today_yesterday', '3', 'selected'];
+  aiExportRangeMode = allowed.includes(String(range)) ? String(range) : 'today';
+  try { localStorage.setItem('alberto_ai_export_range_v1', aiExportRangeMode); } catch(e) {}
+  if (aiExportRangeMode === 'selected' && !aiExportSelectedDays.length) {
+    const input = document.getElementById('aiExportDate');
+    aiExportSelectedDays = [input?.value || aiTodayKey()];
+  }
+  updateAiExportControls();
+}
+
+function setAiExportContext(mode) {
+  aiExportContextMode = aiContextModeValue(mode);
+  try { localStorage.setItem('alberto_ai_export_context_v1', aiExportContextMode); } catch(e) {}
+  updateAiExportControls();
+}
+
 function aiNormalizeTextReportOptions(input) {
-  if (typeof input === 'number') return { mode: 'recent', days: input };
+  if (typeof input === 'number') return { mode: 'recent', days: input, contextMode: aiContextModeValue(aiExportContextMode) };
   const opts = input || {};
-  if (opts.mode === 'today') return { mode: 'today', date: aiTodayKey(), label: 'Hoy hasta ahora' };
-  if (opts.mode === 'day') return { mode: 'day', date: opts.date || aiTodayKey(), label: 'Dia concreto' };
+  const contextMode = aiContextModeValue(opts.contextMode || opts.context || aiExportContextMode);
+  if (opts.mode === 'today') return { mode: 'today', date: aiTodayKey(), label: opts.label || 'Hoy hasta ahora', contextMode };
+  if (opts.mode === 'yesterday') return { mode: 'selected', dates: [aiDateKeyOffset(-1)], label: opts.label || 'Ayer', contextMode };
+  if (opts.mode === 'today_yesterday') return { mode: 'selected', dates: [aiDateKeyOffset(-1), aiTodayKey()], label: opts.label || 'Hoy + ayer', contextMode };
+  if (opts.mode === 'day') return { mode: 'day', date: opts.date || aiTodayKey(), label: opts.label || 'Dia concreto', contextMode };
   if (opts.mode === 'selected') {
     const dates = aiUniqueSortedDates((opts.dates && opts.dates.length) ? opts.dates : [opts.date || aiTodayKey()]);
-    return { mode: 'selected', dates: dates.length ? dates : [aiTodayKey()], label: 'Dias seleccionados' };
+    return { mode: 'selected', dates: dates.length ? dates : [aiTodayKey()], label: opts.label || 'Dias seleccionados', contextMode };
   }
-  return { mode: 'recent', days: Math.max(1, parseInt(opts.days || opts.maxDays || 14, 10) || 14), label: 'Ultimos dias' };
+  return { mode: 'recent', days: Math.max(1, parseInt(opts.days || opts.maxDays || 14, 10) || 14), label: opts.label || 'Ultimos dias', contextMode };
 }
 
 function aiRequestedReportDates(opts) {
@@ -13448,6 +13590,7 @@ function aiRequestedReportDates(opts) {
 
 function aiReportRangeLabel(opts) {
   opts = aiNormalizeTextReportOptions(opts);
+  if (opts.label) return opts.label;
   if (opts.mode === 'today') return 'hoy hasta ahora';
   if (opts.mode === 'day') return 'día ' + (opts.date || aiTodayKey());
   if (opts.mode === 'selected') {
@@ -13460,11 +13603,15 @@ function aiReportRangeLabel(opts) {
 function aiGetSelectedTextReportOptions() {
   const sel = document.getElementById('aiExportRange');
   const dateInput = document.getElementById('aiExportDate');
-  const val = sel ? sel.value : '14';
-  if (val === 'today') return { mode: 'today' };
-  if (val === 'day') return { mode: 'day', date: dateInput?.value || aiTodayKey() };
-  if (val === 'selected') return { mode: 'selected', dates: aiExportSelectedDays.length ? aiExportSelectedDays.slice() : [dateInput?.value || aiTodayKey()] };
-  return { mode: 'recent', days: parseInt(val || '14', 10) || 14 };
+  const contextMode = aiContextModeValue(aiExportContextMode);
+  const val = aiExportRangeMode || (sel ? sel.value : 'today');
+  if (val === 'today') return { mode: 'today', contextMode, label: 'Hoy hasta ahora' };
+  if (val === 'yesterday') return { mode: 'selected', dates: [aiDateKeyOffset(-1)], contextMode, label: 'Ayer' };
+  if (val === 'today_yesterday') return { mode: 'selected', dates: [aiDateKeyOffset(-1), aiTodayKey()], contextMode, label: 'Hoy + ayer' };
+  if (val === 'selected') return { mode: 'selected', dates: aiExportSelectedDays.length ? aiExportSelectedDays.slice() : [dateInput?.value || aiTodayKey()], contextMode, label: 'Dias elegidos' };
+  if (val === 'day') return { mode: 'day', date: dateInput?.value || aiTodayKey(), contextMode, label: 'Dia concreto' };
+  const n = parseInt(val || '3', 10) || 3;
+  return { mode: 'recent', days: n, contextMode, label: 'Ultimos ' + n + ' dias' };
 }
 
 function aiRangeFileSuffix(opts) {
@@ -13501,9 +13648,10 @@ function renderAiExportSelectedDays() {
 function addAiExportSelectedDate(date) {
   const input = document.getElementById('aiExportDate');
   const selected = date || input?.value || aiTodayKey();
+  aiExportRangeMode = 'selected';
   aiExportSelectedDays = aiUniqueSortedDates(aiExportSelectedDays.concat(selected));
   if (input) input.value = selected;
-  renderAiExportSelectedDays();
+  updateAiExportControls();
 }
 
 function removeAiExportSelectedDate(date) {
@@ -13518,14 +13666,30 @@ function updateAiExportControls() {
   const selectedBox = document.getElementById('aiExportSelectedDays');
   if (!dateInput) return;
   if (!dateInput.value) dateInput.value = aiTodayKey();
-  const mode = sel ? sel.value : '';
-  const showDate = mode === 'day' || mode === 'selected';
+  let mode = aiExportRangeMode || 'today';
+  if (!['today', 'yesterday', 'today_yesterday', '3', 'selected'].includes(mode)) {
+    mode = 'today';
+    aiExportRangeMode = mode;
+  }
+  if (sel) {
+    sel.style.display = 'none';
+    if (['today', 'day', 'selected', '3', '7', '14', '21', '30'].includes(mode)) sel.value = mode;
+  }
   const showSelected = mode === 'selected';
+  const showDate = showSelected;
   dateInput.style.display = showDate ? '' : 'none';
   if (addBtn) addBtn.style.display = showSelected ? '' : 'none';
   if (selectedBox) selectedBox.style.display = showSelected ? '' : 'none';
   if (showSelected && !aiExportSelectedDays.length) aiExportSelectedDays = [dateInput.value || aiTodayKey()];
   if (showSelected) renderAiExportSelectedDays();
+  document.querySelectorAll('.ai-export-mode').forEach(btn => {
+    if (btn.dataset.range === '3') btn.textContent = '3 dias';
+    btn.classList.toggle('active', btn.dataset.range === mode);
+  });
+  document.querySelectorAll('.ai-export-context').forEach(btn => {
+    if (btn.dataset.context === 'data') btn.textContent = 'Solo datos';
+    btn.classList.toggle('active', btn.dataset.context === aiContextModeValue(aiExportContextMode));
+  });
 }
 
 function aiDayHasReportableActivity(day) {
@@ -13540,6 +13704,7 @@ function aiDayHasReportableActivity(day) {
     day.deporteEventos.length ||
     day.suenoEventos.length ||
     (day.triggerEventos || []).length ||
+    (day.journalEntries || []).length ||
     !!day.tiempoDisponible
   );
 }
@@ -13569,8 +13734,15 @@ function buildAiTextReport(options) {
   const lastRequestedDate = requestedDates.length ? requestedDates[requestedDates.length - 1] : '';
   const reportIncludesToday = requestedDates.includes(todayKey) || days.some(day => day.day === todayKey);
   const upcoming = pkg.eventos.filter(ev => !ev.completado && ev.dias != null && ev.dias >= 0).slice(0, 8);
+  const includeContext = opts.contextMode !== 'data';
+  const journalEntries = days.flatMap(day => (day.journalEntries || []).map(entry => ({
+    day: day.day,
+    dayLabel: day.day === todayKey ? 'HOY' : day.label,
+    at: entry.at || '',
+    text: entry.text || '',
+  })));
   const lines = [];
-  lines.push('PAQUETE DE CONTEXTO PARA IA / CODEX');
+  lines.push(includeContext ? 'PAQUETE DE CONTEXTO PARA IA / CODEX' : 'DATOS DE ESTUDIO PARA IA / CODEX');
   lines.push('Exportado: ' + aiDateLabel(pkg.exportDate) + ' ' + aiTimeLabel(pkg.exportDate));
   lines.push('Versión app: ' + APP_VERSION);
   lines.push('Fecha actual real: ' + aiDateLabel(todayKey + 'T12:00:00') + ' · ' + aiTimeLabel(pkg.exportDate));
@@ -13598,11 +13770,20 @@ function buildAiTextReport(options) {
   lines.push('- Bloques con hora: ' + pkg.counts.studyBlocks);
   lines.push('- Pases registrados: ' + pkg.counts.pases);
   lines.push('- Entradas de pasajes: ' + pkg.counts.pasajeEntries);
+  lines.push('- Entradas de diario: ' + (pkg.counts.dailyJournalEntries || 0));
   lines.push('- Gatillos registrados: ' + (pkg.counts.triggerEventos || 0));
   lines.push('- Días con tiempo disponible estimado: ' + (pkg.counts.tiempoDisponibleDias || 0));
   lines.push('- Eventos próximos/pasados: ' + pkg.counts.eventos);
   lines.push('- Rango diario exportado: ' + aiReportRangeLabel(opts));
   lines.push('');
+  if (journalEntries.length) {
+    lines.push('ENTRADAS DEL DIARIO');
+    journalEntries.forEach(entry => {
+      const when = (entry.dayLabel || entry.day || '') + (entry.at ? ' · ' + aiTimeLabel(entry.at) : '');
+      lines.push('- ' + when + ': "' + entry.text + '"');
+    });
+    lines.push('');
+  }
   if (upcoming.length) {
     lines.push('EVENTOS PRÓXIMOS');
     upcoming.forEach(ev => {
@@ -13653,6 +13834,9 @@ function buildAiTextReport(options) {
     const dayTitle = day.day === todayKey ? 'HOY · ' + day.label : day.label;
     lines.push('');
     lines.push('## ' + dayTitle + ' · total estudio: ' + aiMinutesLabel(day.totalStudyMinutes));
+    if ((day.journalEntries || []).length) {
+      lines.push('Diario general: ' + day.journalEntries.length + (day.journalEntries.length === 1 ? ' entrada' : ' entradas') + ' (detalle arriba).');
+    }
     if (day.estadoEventos.length) {
       lines.push('Ánimo/bienestar:');
       day.estadoEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.label || e.value)));
@@ -13758,7 +13942,12 @@ function buildAiTextReport(options) {
   } else {
     lines.push('Con esta información, ayúdame a preparar mañana. Basa las prioridades sólo en mis datos registrados: pases, notas, bloques de estudio, sueño, ánimo, deporte, tiempo disponible, siestas, gatillos y eventos próximos. Distingue hechos de inferencias.');
   }
-  return lines.join('\n');
+  let text = lines.join('\n');
+  if (!includeContext) {
+    text = text.replace(/\nGU[\s\S]*?\nRESUMEN GLOBAL/, '\nRESUMEN GLOBAL');
+    text = text.replace(/\nPETICI[\s\S]*$/, '');
+  }
+  return text.trimEnd();
 }
 
 function exportarDatosIA() {
@@ -15905,6 +16094,8 @@ async function initApp() {
   spawnNotes();
   if (typeof renderRacha === 'function') renderRacha();
   if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+  if (typeof renderSessionJournal === 'function') renderSessionJournal();
+  if (typeof updateAiExportControls === 'function') updateAiExportControls();
   // Programar el chequeo de medianoche y escuchar visibilitychange por si el
   // setTimeout falla (móviles que duermen tabs en background)
   scheduleNextMidnightCheck();

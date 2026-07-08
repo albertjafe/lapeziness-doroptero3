@@ -1506,6 +1506,151 @@
     text-align: right;
   }
 
+  #view-session .ritmo-card-tiempo,
+  #view-session #sessionPlan {
+    display: none !important;
+  }
+
+  #view-session .session-journal-card {
+    max-width: 560px;
+    margin: 12px auto 14px;
+    padding: 15px 16px 14px;
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--bg2) 96%, white 4%), var(--bg2)),
+      var(--bg2);
+    box-shadow: 0 14px 34px -28px rgba(0,0,0,0.32);
+  }
+
+  #view-session .session-journal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  #view-session .session-journal-head h2 {
+    margin: 0 0 3px;
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  #view-session .session-journal-head span,
+  #view-session .session-journal-actions span {
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+  }
+
+  #view-session .session-journal-clear,
+  #view-session .session-journal-submit,
+  #view-session .session-journal-entry-head button {
+    border: 1px solid var(--border2);
+    background: color-mix(in srgb, var(--bg2) 86%, var(--accent) 14%);
+    color: var(--text2);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #view-session .session-journal-clear {
+    min-height: 30px;
+    padding: 0 11px;
+    border-radius: 999px;
+    font-size: 10px;
+  }
+
+  #view-session .session-journal-input {
+    width: 100%;
+    min-height: 96px;
+    resize: vertical;
+    border: 1px solid var(--border2);
+    border-radius: 13px;
+    background: color-mix(in srgb, var(--bg3) 68%, transparent);
+    color: var(--text);
+    padding: 12px 13px;
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    outline: none;
+  }
+
+  #view-session .session-journal-input:focus {
+    border-color: color-mix(in srgb, var(--accent) 60%, var(--border2));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  }
+
+  #view-session .session-journal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  #view-session .session-journal-submit {
+    min-height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--bg);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  #view-session .session-journal-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  #view-session .session-journal-empty {
+    color: var(--text3);
+    font-size: 12px;
+    font-style: italic;
+    padding: 2px 0;
+  }
+
+  #view-session .session-journal-entry {
+    border: 1px solid color-mix(in srgb, var(--border2) 82%, transparent);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg3) 58%, transparent);
+    padding: 10px 11px;
+  }
+
+  #view-session .session-journal-entry-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+  }
+
+  #view-session .session-journal-entry-head span {
+    color: var(--accent);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+  }
+
+  #view-session .session-journal-entry-head button {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    padding: 0;
+    line-height: 1;
+    color: var(--text3);
+  }
+
+  #view-session .session-journal-entry p {
+    margin: 0;
+    color: var(--text2);
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
   /* MODO LIMPIO en Sesión: oculta textos pequeños de apoyo (botón ℹ los revela) */
   #sessionInfoBtn { display: none; }
   body[data-view="session"] #sessionInfoBtn { display: inline-flex; }
@@ -4331,11 +4476,42 @@
     align-items: center;
     margin-bottom: 8px;
   }
+  .ai-export-mode-row,
+  .ai-export-context-row {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+  .ai-export-mode-row {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+  .ai-export-context-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ai-export-mode,
+  .ai-export-context {
+    min-height: 34px;
+    border: 1px solid var(--border2);
+    border-radius: 999px;
+    background: var(--bg3);
+    color: var(--text3);
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ai-export-mode.active,
+  .ai-export-context.active {
+    border-color: color-mix(in srgb, var(--accent) 62%, var(--border2));
+    background: color-mix(in srgb, var(--accent) 16%, var(--bg2));
+    color: var(--text);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 10%, transparent);
+  }
   .ai-export-controls .modal-input {
     margin-bottom: 0;
     font-size: 11px;
   }
-  .ai-export-select { flex: 1 1 auto; min-width: 0; }
+  .ai-export-select { display: none !important; flex: 1 1 auto; min-width: 0; }
   .ai-export-date { flex: 0 0 142px; }
   .ai-export-add-day {
     flex: 0 0 auto;
@@ -4378,6 +4554,7 @@
     padding: 2px 0 6px;
   }
   @media (max-width: 430px) {
+    .ai-export-mode-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .ai-export-controls { flex-direction: column; align-items: stretch; }
     .ai-export-date, .ai-export-add-day { flex-basis: auto; width: 100%; }
   }
