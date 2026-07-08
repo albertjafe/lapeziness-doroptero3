@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-08-session-diary-export-v27';
+const APP_VERSION = '2026-07-08-ai-export-no-glossary-v28';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -13687,7 +13687,7 @@ function updateAiExportControls() {
     btn.classList.toggle('active', btn.dataset.range === mode);
   });
   document.querySelectorAll('.ai-export-context').forEach(btn => {
-    if (btn.dataset.context === 'data') btn.textContent = 'Solo datos';
+    if (btn.dataset.context === 'data') btn.textContent = 'Sin glosario';
     btn.classList.toggle('active', btn.dataset.context === aiContextModeValue(aiExportContextMode));
   });
 }
@@ -13742,7 +13742,7 @@ function buildAiTextReport(options) {
     text: entry.text || '',
   })));
   const lines = [];
-  lines.push(includeContext ? 'PAQUETE DE CONTEXTO PARA IA / CODEX' : 'DATOS DE ESTUDIO PARA IA / CODEX');
+  lines.push(includeContext ? 'PAQUETE DE CONTEXTO PARA IA / CODEX' : 'INFORME DE ESTUDIO PARA IA / SIN GLOSARIO');
   lines.push('Exportado: ' + aiDateLabel(pkg.exportDate) + ' ' + aiTimeLabel(pkg.exportDate));
   lines.push('Versión app: ' + APP_VERSION);
   lines.push('Fecha actual real: ' + aiDateLabel(todayKey + 'T12:00:00') + ' · ' + aiTimeLabel(pkg.exportDate));
@@ -13945,7 +13945,6 @@ function buildAiTextReport(options) {
   let text = lines.join('\n');
   if (!includeContext) {
     text = text.replace(/\nGU[\s\S]*?\nRESUMEN GLOBAL/, '\nRESUMEN GLOBAL');
-    text = text.replace(/\nPETICI[\s\S]*$/, '');
   }
   return text.trimEnd();
 }
