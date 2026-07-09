@@ -453,30 +453,54 @@
       <div class="crono-run-milestone" id="cronoRunMilestone" style="display:none"></div>
       <div class="crono-run-destello" id="cronoRunDestello" aria-live="polite"></div>
 
-      <textarea id="cronoRunObservation" class="crono-observation-box crono-observation-box-run"
-        rows="2" maxlength="1600" placeholder="Observacion de la sesion..."
-        oninput="cronoSetObservation(this.value)"></textarea>
+    </div>
 
-      <div class="crono-run-quick-row">
-        <button class="crono-zone-btn" id="cronoRunZoneBtn" onclick="showToast('La zona se registra al pulsar Hecho')">
-          <span>Zona</span>
-          <strong id="cronoRunZoneValue">al terminar</strong>
+    <!-- Bandeja inferior compacta: pasajes / nota / pase. No ocupa altura en la columna central. -->
+    <div class="crono-run-drawer" id="cronoRunDrawer" data-tab="pasajes" aria-label="Herramientas de estudio">
+      <div class="crono-run-drawer-handle" aria-hidden="true"></div>
+      <div class="crono-run-drawer-tabs" role="tablist" aria-label="Herramientas">
+        <button type="button" class="crono-run-drawer-tab active" data-tab="pasajes" role="tab" aria-selected="true" onclick="cronoSetRunDrawerTab('pasajes')">Pasajes</button>
+        <button type="button" class="crono-run-drawer-tab" data-tab="nota" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('nota')">
+          Nota <span id="cronoDrawerNoteTabCount">+</span>
         </button>
-        <button class="crono-zone-btn crono-note-btn-run" id="cronoRunNoteBtn" onclick="openCronoNote('during')">
-          <span>Nota</span>
-          <strong id="cronoRunNoteCount">0</strong>
-        </button>
-        <button class="crono-solidity-btn crono-solidity-btn-run" id="cronoRunSolBtn" onclick="openQuickSolidez('running')" style="display:none">
-          <span>Solidez</span>
-          <strong id="cronoRunSolValue">—</strong>
-        </button>
+        <button type="button" class="crono-run-drawer-tab" data-tab="pase" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('pase')">Pase</button>
       </div>
 
-      <!-- Controles circulares -->
+      <div class="crono-run-drawer-panels">
+        <div class="crono-run-drawer-panel active" data-panel="pasajes" role="tabpanel">
+          <div class="crono-pasajes-section" id="cronoPasajesSection"></div>
+        </div>
+        <div class="crono-run-drawer-panel" data-panel="nota" role="tabpanel">
+          <textarea id="cronoRunObservation" class="crono-observation-box crono-observation-box-run"
+            rows="2" maxlength="1600" placeholder="Observacion de la sesion..."
+            oninput="cronoSetObservation(this.value)"></textarea>
+          <div class="crono-drawer-note-actions">
+            <button class="crono-zone-btn crono-drawer-zone" id="cronoRunZoneBtn" onclick="showToast('La zona se registra al pulsar Hecho')">
+              <span>Zona</span>
+              <strong id="cronoRunZoneValue">al terminar</strong>
+            </button>
+            <button class="crono-zone-btn crono-note-btn-run" id="cronoRunNoteBtn" onclick="openCronoNote('during')">
+              <span>Nota con hora</span>
+              <strong id="cronoRunNoteCount">+</strong>
+            </button>
+            <button class="crono-solidity-btn crono-solidity-btn-run" id="cronoRunSolBtn" onclick="openQuickSolidez('running')" style="display:none">
+              <span>Solidez</span>
+              <strong id="cronoRunSolValue">—</strong>
+            </button>
+          </div>
+        </div>
+        <div class="crono-run-drawer-panel" data-panel="pase" role="tabpanel">
+          <button type="button" class="crono-drawer-pase-btn" onclick="openCronoPaseRapido()">
+            <span>Añadir pase</span>
+            <strong>＋</strong>
+          </button>
+          <div class="crono-drawer-pase-hint">Selecciona obras, tipo de pase y resultado. Se suman minutos al estudio de hoy.</div>
+        </div>
+      </div>
+
       <div class="crono-controls" id="cronoControls">
         <!-- Se rellenan dinámicamente -->
       </div>
-
     </div>
 
     <!-- Fila inferior (solo Mármol): "Esta semana" + "Destellos" en paralelo -->
@@ -484,9 +508,6 @@
       <div class="crono-week-card" id="cronoWeekCard"></div>
       <button type="button" class="crono-destellos-card" id="cronoDestellosCard" onclick="openDestellosModal()"></button>
     </div>
-
-    <!-- Pasajes difíciles: 2×2, barra de solidez, registro y gráfica -->
-    <div class="crono-pasajes-section" id="cronoPasajesSection"></div>
 
   </div>
 

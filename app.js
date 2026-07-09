@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-09-crono-destello-pasajes-v29';
+const APP_VERSION = '2026-07-09-crono-bottom-drawer-v30';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -16453,6 +16453,7 @@ window.addEventListener('pageshow', cronoRefreshWakeLock);
 // Pases registrados durante la sesión (drawer lateral) — se pre-rellenan en el modal Hecho
 let _cronoDraftPases = { antesActive: false, antesVal: 50, despuesActive: false, despuesVal: 60 };
 let _cronoPaseDrawerOpen = false;
+let _cronoRunDrawerTab = 'pasajes';
 
 // Iconos SVG inline (currentColor para integrarse con la paleta)
 const CRONO_ICONS = {
@@ -16646,9 +16647,35 @@ function cronoRenderNoteCounts() {
     const el = document.getElementById(id);
     if (el) el.textContent = label;
   });
+  const tabBadge = document.getElementById('cronoDrawerNoteTabCount');
+  if (tabBadge) tabBadge.textContent = label;
   ['cronoQuickNoteBtn', 'cronoRunNoteBtn'].forEach(id => {
     const btn = document.getElementById(id);
     if (btn) btn.classList.toggle('has-notes', count > 0);
+  });
+  const tabBtn = document.querySelector('.crono-run-drawer-tab[data-tab="nota"]');
+  if (tabBtn) tabBtn.classList.toggle('has-notes', count > 0);
+}
+
+function cronoSetRunDrawerTab(tab) {
+  const valid = tab === 'nota' || tab === 'pase' || tab === 'pasajes' ? tab : 'pasajes';
+  _cronoRunDrawerTab = valid;
+  cronoUpdateRunDrawer();
+  try { Haptics.light(); } catch(e) {}
+}
+
+function cronoUpdateRunDrawer() {
+  const drawer = document.getElementById('cronoRunDrawer');
+  if (!drawer) return;
+  const tab = _cronoRunDrawerTab === 'nota' || _cronoRunDrawerTab === 'pase' ? _cronoRunDrawerTab : 'pasajes';
+  drawer.dataset.tab = tab;
+  drawer.querySelectorAll('.crono-run-drawer-tab').forEach(btn => {
+    const active = btn.dataset.tab === tab;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  drawer.querySelectorAll('.crono-run-drawer-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.dataset.panel === tab);
   });
 }
 
@@ -18289,6 +18316,7 @@ function cronoRender() {
     cronoUpdateStartBtn();
     cronoUpdateTimerProgress();
     cronoRenderNoteCounts();
+    cronoUpdateRunDrawer();
     cronoSyncObservationInputs();
     return;
   }
@@ -18364,6 +18392,7 @@ function cronoRender() {
   }
   cronoUpdateSolidityActions();
   cronoRenderNoteCounts();
+  cronoUpdateRunDrawer();
   cronoSyncObservationInputs();
 
   // Estado "En marcha / En pausa" (pill de la cabecera, Mármol)
@@ -19429,6 +19458,7 @@ function cronoStart() {
   if (typeof bumpCronoPickRecency === 'function') bumpCronoPickRecency(resolved.obraId);
 
   _cronoPaseDrawerReset();
+  _cronoRunDrawerTab = 'pasajes';
   _cronoLastRunDestelloKey = '';
   if (!Array.isArray(crono.notes)) crono.notes = [];
 
@@ -19472,6 +19502,7 @@ function cronoStartRest() {
     showToast('Termina la sesión actual antes de descansar');
     return;
   }
+  _cronoRunDrawerTab = 'pasajes';
   _cronoLastRunDestelloKey = '';
   crono.notes = [];
   crono.state = 'running';
@@ -19831,6 +19862,7 @@ function cronoReset() {
   crono.state = 'idle';
   crono.isRest = false;
   crono.targetMinutes = null;
+  _cronoRunDrawerTab = 'pasajes';
   crono.obraId = null;
   crono.movId = null;
   crono.displayName = '';

@@ -9954,10 +9954,296 @@
     .crono-plant-btn { margin-top: 4px; padding: 13px 56px; font-size: 17px; }
   }
 
-  /* La barra de pestañas inferior está fija SOBRE el contenido, así que debe ser
-     OPACA (si no, se leen las letras de debajo al hacer scroll). Esta regla va al
-     final y usa .nav.nav-bottom (misma especificidad que las reglas de tema, pero
-     posterior) para ganar en todos los temas. */
+  /* Cronómetro · bandeja inferior compacta (opción B) */
+  .crono-run-drawer {
+    display: none;
+    position: fixed;
+    left: 50%;
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    z-index: 72;
+    width: min(620px, calc(100vw - 24px));
+    padding: 10px 12px 12px;
+    border: 1px solid color-mix(in srgb, var(--border2) 86%, transparent);
+    border-radius: 24px;
+    background: color-mix(in srgb, var(--bg2) 90%, transparent);
+    box-shadow: 0 -18px 54px -34px rgba(0,0,0,0.55), 0 1px 3px rgba(0,0,0,0.08);
+    backdrop-filter: blur(18px) saturate(1.04);
+    -webkit-backdrop-filter: blur(18px) saturate(1.04);
+  }
+  body.crono-running .crono-run-drawer { display: block; }
+  body.crono-paused .crono-run-drawer {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .crono-run-drawer-handle {
+    width: 42px;
+    height: 4px;
+    margin: 0 auto 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text3) 28%, transparent);
+  }
+  .crono-run-drawer-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    margin-bottom: 9px;
+  }
+  .crono-run-drawer-tab {
+    min-width: 0;
+    height: 30px;
+    border: 0;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg3) 82%, transparent);
+    color: var(--text3);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .crono-run-drawer-tab.active {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 10px 24px -18px var(--accent);
+  }
+  .crono-run-drawer-tab.has-notes:not(.active) { color: var(--text2); }
+  .crono-run-drawer-tab span {
+    margin-left: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .crono-run-drawer-panels { min-height: 94px; }
+  .crono-run-drawer-panel {
+    display: none;
+    max-height: min(24dvh, 156px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .crono-run-drawer-panel.active { display: block; }
+
+  body.crono-running .crono-bottom-row { display: none !important; }
+  [data-theme^="marmol"] body.crono-running #view-cronometro { justify-content: flex-start; }
+  [data-theme^="marmol"] body.crono-running .crono-wrap {
+    width: 100%;
+    max-width: 700px;
+    min-height: 100dvh;
+    padding-top: max(58px, calc(env(safe-area-inset-top, 0px) + 52px));
+    padding-bottom: 232px;
+    justify-content: flex-start;
+  }
+  [data-theme^="marmol"] body.crono-running .crono-run-stage {
+    width: min(640px, 100%);
+    padding: 20px 20px 16px;
+    border-radius: 24px;
+  }
+  [data-theme^="marmol"] body.crono-running .crono-run-head { margin-bottom: 2px; }
+  [data-theme^="marmol"] body.crono-running .crono-run-status {
+    padding: 6px 11px;
+    border-radius: 14px;
+    font-size: 12px;
+  }
+  [data-theme^="marmol"] body.crono-running .crono-display-wrap {
+    width: 100%;
+    height: min(330px, 42dvh, 72vw);
+    margin: 2px auto 10px;
+  }
+  [data-theme^="marmol"] body.crono-running .crono-run-progress-svg {
+    width: min(330px, 42dvh, 72vw);
+    height: min(330px, 42dvh, 72vw);
+  }
+  [data-theme^="marmol"] body.crono-running .crono-display { font-size: clamp(52px, 10vw, 84px); }
+  [data-theme^="marmol"] body.crono-running .crono-run-target { font-size: 13px; }
+  [data-theme^="marmol"] body.crono-running .crono-run-milestone {
+    margin: 0 auto 8px;
+    padding: 7px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+  }
+  [data-theme^="marmol"] body.crono-running .crono-run-destello {
+    height: 52px;
+    margin: 0 auto;
+    max-width: min(520px, 94%);
+  }
+  [data-theme^="marmol"] body.crono-running .crono-run-destello-text { -webkit-line-clamp: 2; }
+
+  .crono-run-drawer .crono-pasajes-section { margin: 0; }
+  .crono-run-drawer .crono-pasajes-head { display: none; }
+  .crono-run-drawer .crono-pasajes-card {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .crono-run-drawer .crono-pasajes-summary {
+    min-height: 0;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .crono-run-drawer .crono-pasajes-copy { display: none; }
+  .crono-run-drawer .crono-pasajes-dots {
+    width: 100%;
+    min-width: 0;
+    flex-basis: auto;
+    gap: 4px;
+  }
+  .crono-run-drawer .crono-pasajes-dot-row {
+    justify-content: flex-start;
+    min-height: 23px;
+    gap: 8px;
+  }
+  .crono-run-drawer .crono-pasajes-row-label {
+    width: 48px;
+    text-align: left;
+    font-size: 8px;
+  }
+  .crono-run-drawer .crono-pasajes-row-dots {
+    justify-content: flex-start;
+    gap: 3px;
+  }
+  .crono-run-drawer .crono-pasaje-dot {
+    width: 24px;
+    height: 24px;
+  }
+  .crono-run-drawer .crono-pasaje-dot span {
+    width: 12px;
+    height: 12px;
+  }
+  .crono-run-drawer .crono-pasaje-expanded {
+    margin-top: 9px;
+    padding-top: 9px;
+  }
+
+  .crono-run-drawer .crono-observation-box-run {
+    width: 100%;
+    min-height: 58px;
+    max-height: 76px;
+    margin: 0;
+    resize: none;
+  }
+  .crono-drawer-note-actions {
+    display: flex;
+    gap: 7px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .crono-drawer-note-actions .crono-zone-btn,
+  .crono-drawer-note-actions .crono-solidity-btn {
+    min-height: 32px;
+    padding: 7px 10px;
+    font-size: 8px;
+    letter-spacing: 0.08em;
+  }
+  .crono-drawer-note-actions .crono-zone-btn strong,
+  .crono-drawer-note-actions .crono-solidity-btn strong {
+    font-size: 14px;
+    max-width: min(42vw, 190px);
+  }
+  .crono-drawer-pase-btn {
+    width: 100%;
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 15px;
+    border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border2));
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--accent) 9%, var(--bg3));
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .crono-drawer-pase-btn strong {
+    color: var(--accent);
+    font-size: 18px;
+    line-height: 1;
+  }
+  .crono-drawer-pase-hint {
+    margin-top: 8px;
+    color: var(--text3);
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  [data-theme^="marmol"] .crono-run-drawer .crono-controls {
+    flex-direction: row;
+    align-items: center;
+    justify-content: stretch;
+    width: 100%;
+    gap: 8px;
+    margin: 10px 0 0;
+  }
+  [data-theme^="marmol"] .crono-run-drawer .crono-ctrl-btn {
+    height: 42px;
+    min-width: 0;
+    border-radius: 15px;
+    box-shadow: none;
+  }
+  [data-theme^="marmol"] .crono-run-drawer .crono-ctrl-btn.primary {
+    order: 2;
+    flex: 1 1 0;
+    height: 42px;
+    border-radius: 15px;
+  }
+  [data-theme^="marmol"] .crono-run-drawer .crono-ctrl-btn.primary::after { font-size: 13px; }
+  [data-theme^="marmol"] .crono-run-drawer .crono-ctrl-btn.extend {
+    order: 1;
+    flex: 0 0 auto;
+    height: 42px;
+    min-width: 80px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+  [data-theme^="marmol"] .crono-run-drawer .crono-ctrl-btn.stop {
+    order: 3;
+    flex: 1 1 0;
+    height: 42px;
+    border: 1px solid var(--border2);
+    border-radius: 15px;
+    background: var(--bg3);
+    color: var(--text2);
+  }
+  [data-theme^="marmol"] .crono-run-drawer .crono-ctrl-btn.stop::after {
+    content: "Hecho";
+    font-size: 13px;
+    font-weight: 700;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  }
+
+  @media (max-width: 520px) {
+    .crono-run-drawer {
+      width: calc(100vw - 20px);
+      padding: 9px 10px 10px;
+      border-radius: 22px;
+    }
+    .crono-run-drawer-panel { max-height: min(23dvh, 142px); }
+    [data-theme^="marmol"] body.crono-running .crono-wrap {
+      padding-top: max(48px, calc(env(safe-area-inset-top, 0px) + 40px));
+      padding-bottom: 218px;
+    }
+    [data-theme^="marmol"] body.crono-running .crono-run-stage {
+      padding: 17px 16px 14px;
+      border-radius: 22px;
+    }
+    [data-theme^="marmol"] body.crono-running .crono-display-wrap {
+      height: min(282px, 39dvh, 74vw);
+      margin-bottom: 6px;
+    }
+    [data-theme^="marmol"] body.crono-running .crono-run-progress-svg {
+      width: min(282px, 39dvh, 74vw);
+      height: min(282px, 39dvh, 74vw);
+    }
+    [data-theme^="marmol"] body.crono-running .crono-display { font-size: clamp(48px, 14vw, 70px); }
+    [data-theme^="marmol"] body.crono-running .crono-run-destello { height: 46px; }
+  }
+
+  /* Nav inferior: opaca para que no se lea contenido debajo al hacer scroll. */
   .nav.nav-bottom {
     background: var(--bg2);
     backdrop-filter: none;
