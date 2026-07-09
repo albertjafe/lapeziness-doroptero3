@@ -10249,34 +10249,97 @@
     .crono-run-drawer {
       position: static;
       transform: none;
-      width: min(620px, 100%);
+      width: min(700px, calc(100vw - 72px));
       margin: 14px auto 0;
+      padding: 12px 14px 14px;
+      border-radius: 26px;
       box-shadow: 0 22px 58px -42px rgba(0,0,0,0.48), 0 1px 3px rgba(0,0,0,0.08);
     }
+    .crono-run-drawer-tabs { gap: 7px; margin-bottom: 11px; }
+    .crono-run-drawer-tab {
+      height: 36px;
+      border-radius: 14px;
+      font-size: 13px;
+    }
+    .crono-run-drawer-panels { min-height: 112px; }
     .crono-run-drawer-panel {
-      max-height: 150px;
+      max-height: 168px;
     }
     [data-theme^="marmol"] body.crono-running .crono-wrap {
-      max-width: 700px;
+      max-width: 760px;
       padding-top: max(56px, calc(env(safe-area-inset-top, 0px) + 48px));
       padding-bottom: max(28px, env(safe-area-inset-bottom, 0px));
       justify-content: flex-start;
     }
     [data-theme^="marmol"] body.crono-running .crono-run-stage {
-      width: min(620px, 100%);
-      padding-bottom: 20px;
+      width: min(700px, calc(100vw - 72px));
+      padding: 24px 28px 24px;
+      border-radius: 26px;
+    }
+    [data-theme^="marmol"] body.crono-running .crono-run-head { margin-bottom: 8px; }
+    [data-theme^="marmol"] body.crono-running .crono-run-head .crono-obra-pill-name { font-size: 16px; }
+    [data-theme^="marmol"] body.crono-running .crono-run-status {
+      padding: 7px 12px;
+      font-size: 13px;
     }
     [data-theme^="marmol"] body.crono-running .crono-display-wrap {
-      height: min(320px, 36dvh, 58vw);
-      margin-bottom: 8px;
+      height: min(380px, 40dvh, 62vw);
+      margin-bottom: 10px;
     }
     [data-theme^="marmol"] body.crono-running .crono-run-progress-svg {
-      width: min(320px, 36dvh, 58vw);
-      height: min(320px, 36dvh, 58vw);
+      width: min(380px, 40dvh, 62vw);
+      height: min(380px, 40dvh, 62vw);
+    }
+    [data-theme^="marmol"] body.crono-running .crono-display { font-size: clamp(78px, 11vw, 104px); }
+    [data-theme^="marmol"] body.crono-running .crono-run-target { font-size: 14px; }
+    [data-theme^="marmol"] body.crono-running .crono-run-milestone {
+      margin-bottom: 10px;
+      padding: 8px 13px;
+      font-size: 13px;
     }
     [data-theme^="marmol"] body.crono-running .crono-run-destello {
-      height: 58px;
-      max-width: min(520px, 92%);
+      height: 66px;
+      max-width: min(590px, 92%);
+    }
+    [data-theme^="marmol"] body.crono-running .crono-run-destello.size-short { font-size: 27px; }
+    [data-theme^="marmol"] body.crono-running .crono-run-destello.size-medium { font-size: 23px; }
+    [data-theme^="marmol"] body.crono-running .crono-run-destello.size-long { font-size: 21px; }
+    [data-theme^="marmol"] body.crono-running .crono-run-destello.size-xlong { font-size: 18px; }
+    .crono-run-drawer .crono-pasajes-dot-row {
+      min-height: 28px;
+      gap: 10px;
+    }
+    .crono-run-drawer .crono-pasajes-row-label {
+      width: 58px;
+      font-size: 9px;
+    }
+    .crono-run-drawer .crono-pasajes-row-dots { gap: 5px; }
+    .crono-run-drawer .crono-pasaje-dot {
+      width: 29px;
+      height: 29px;
+    }
+    .crono-run-drawer .crono-pasaje-dot span {
+      width: 14px;
+      height: 14px;
+    }
+    [data-theme^="marmol"] .crono-run-drawer .crono-controls {
+      gap: 10px;
+      margin-top: 12px;
+    }
+    [data-theme^="marmol"] .crono-run-drawer .crono-ctrl-btn,
+    [data-theme^="marmol"] .crono-run-drawer .crono-ctrl-btn.primary,
+    [data-theme^="marmol"] .crono-run-drawer .crono-ctrl-btn.stop {
+      height: 48px;
+      border-radius: 17px;
+    }
+    [data-theme^="marmol"] .crono-run-drawer .crono-ctrl-btn.extend {
+      height: 48px;
+      min-width: 94px;
+      font-size: 14px;
+    }
+    [data-theme^="marmol"] .crono-run-drawer .crono-ctrl-btn.primary::after,
+    [data-theme^="marmol"] .crono-run-drawer .crono-ctrl-btn.stop::after {
+      font-size: 14px;
     }
   }
 
