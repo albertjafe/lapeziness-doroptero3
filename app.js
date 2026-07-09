@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-09-crono-ipad-scale-v32';
+const APP_VERSION = '2026-07-09-crono-tareas-destellos-v33';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1872,6 +1872,8 @@ let _destellosModalEntries = [];
 let _destellosEditIndex = null;
 let _cronoLastRunDestelloKey = '';
 let _cronoCurrentDestelloEntry = null;
+let _pendingDestelloBoostEntry = null;
+let _pendingDestelloBoostSource = null;
 let _cronoBreathInterval = null;
 let _cronoBreathStartedAt = 0;
 let _cronoBreathEndsAt = 0;
@@ -16657,8 +16659,95 @@ function cronoRenderNoteCounts() {
   if (tabBtn) tabBtn.classList.toggle('has-notes', count > 0);
 }
 
+function cronoTasks() {
+  if (!Array.isArray(db.cronoTasks)) db.cronoTasks = [];
+  db.cronoTasks = db.cronoTasks.filter(t => t && typeof t.text === 'string');
+  return db.cronoTasks;
+}
+
+function cronoActiveTaskCount() {
+  return cronoTasks().filter(t => !t.done).length;
+}
+
+function cronoRenderTaskCount() {
+  const count = cronoActiveTaskCount();
+  const badge = document.getElementById('cronoDrawerTaskTabCount');
+  if (badge) badge.textContent = count ? String(count) : '+';
+  const tabBtn = document.querySelector('.crono-run-drawer-tab[data-tab="tareas"]');
+  if (tabBtn) tabBtn.classList.toggle('has-notes', count > 0);
+}
+
+function renderCronoTasks() {
+  const el = document.getElementById('cronoTasksPanel');
+  if (!el) return;
+  const activeInput = document.activeElement && document.activeElement.id === 'cronoTaskInput';
+  const currentDraft = activeInput ? (document.getElementById('cronoTaskInput')?.value || '') : '';
+  const tasks = cronoTasks();
+  const pending = tasks.filter(t => !t.done).slice(-12).reverse();
+  const done = tasks.filter(t => t.done).slice(-5).reverse();
+  const row = t => {
+    const cls = 'crono-task-row' + (t.done ? ' is-done' : '');
+    return '<button type="button" class="' + cls + '" onclick="toggleCronoTask(\'' + hechoJs(t.id) + '\')" aria-label="Marcar tarea">' +
+      '<span class="crono-task-check"></span>' +
+      '<span class="crono-task-text">' + escapeHtmlSafe(t.text) + '</span>' +
+    '</button>';
+  };
+  el.innerHTML =
+    '<div class="crono-task-add">' +
+      '<input id="cronoTaskInput" class="crono-task-input" type="text" maxlength="140" placeholder="Algo por hacer..." onkeydown="cronoTaskInputKey(event)">' +
+      '<button type="button" class="crono-task-add-btn" onclick="addCronoTask()">+</button>' +
+    '</div>' +
+    '<div class="crono-task-list">' +
+      (pending.length ? pending.map(row).join('') : '<div class="crono-task-empty">Sin tareas pendientes</div>') +
+      (done.length ? '<div class="crono-task-done-label">hechas</div>' + done.map(row).join('') : '') +
+    '</div>';
+  const input = document.getElementById('cronoTaskInput');
+  if (input && activeInput) {
+    input.value = currentDraft;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+  cronoRenderTaskCount();
+}
+
+function cronoTaskInputKey(ev) {
+  if (!ev) return;
+  if (ev.key === 'Enter') {
+    ev.preventDefault();
+    addCronoTask();
+  }
+}
+
+function addCronoTask() {
+  const input = document.getElementById('cronoTaskInput');
+  const text = (input?.value || '').replace(/\s+/g, ' ').trim();
+  if (!text) {
+    showToast('Escribe una tarea');
+    return;
+  }
+  cronoTasks().push({
+    id: 'ct' + Date.now(),
+    text,
+    done: false,
+    createdAt: new Date().toISOString(),
+  });
+  saveData();
+  if (input) input.value = '';
+  renderCronoTasks();
+  showToast('Tarea añadida');
+}
+
+function toggleCronoTask(id) {
+  const task = cronoTasks().find(t => t.id === id);
+  if (!task) return;
+  task.done = !task.done;
+  task.doneAt = task.done ? new Date().toISOString() : null;
+  saveData();
+  renderCronoTasks();
+}
+
 function cronoSetRunDrawerTab(tab) {
-  const valid = tab === 'nota' || tab === 'pase' || tab === 'pasajes' ? tab : 'pasajes';
+  const valid = tab === 'nota' || tab === 'pase' || tab === 'pasajes' || tab === 'tareas' ? tab : 'pasajes';
   _cronoRunDrawerTab = valid;
   cronoUpdateRunDrawer();
   try { Haptics.light(); } catch(e) {}
@@ -16667,7 +16756,7 @@ function cronoSetRunDrawerTab(tab) {
 function cronoUpdateRunDrawer() {
   const drawer = document.getElementById('cronoRunDrawer');
   if (!drawer) return;
-  const tab = _cronoRunDrawerTab === 'nota' || _cronoRunDrawerTab === 'pase' ? _cronoRunDrawerTab : 'pasajes';
+  const tab = _cronoRunDrawerTab === 'nota' || _cronoRunDrawerTab === 'pase' || _cronoRunDrawerTab === 'tareas' ? _cronoRunDrawerTab : 'pasajes';
   drawer.dataset.tab = tab;
   drawer.querySelectorAll('.crono-run-drawer-tab').forEach(btn => {
     const active = btn.dataset.tab === tab;
@@ -16677,6 +16766,8 @@ function cronoUpdateRunDrawer() {
   drawer.querySelectorAll('.crono-run-drawer-panel').forEach(panel => {
     panel.classList.toggle('active', panel.dataset.panel === tab);
   });
+  if (tab === 'tareas') renderCronoTasks();
+  else cronoRenderTaskCount();
 }
 
 function cronoSetObservation(value) {
@@ -17277,20 +17368,53 @@ function boostDestello(entry) {
   return null;
 }
 
-function cronoBoostCurrentDestello(ev) {
-  if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
-  if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
-  const result = boostDestello(_cronoCurrentDestelloEntry);
-  if (!result) {
+function openDestelloHelpConfirm(entry, source) {
+  if (!entry) {
     showToast('Este texto aun no es un destello guardado');
     return;
   }
+  _pendingDestelloBoostEntry = entry;
+  _pendingDestelloBoostSource = source || 'run';
+  const txt = document.getElementById('destelloHelpConfirmText');
+  if (txt) {
+    const phrase = _destelloTextForCrono(entry) || entry.nota || entry.obra || 'Destello';
+    const boosts = destelloBoosts(entry);
+    txt.innerHTML =
+      '<div class="destello-help-confirm-quote">' + escapeHtmlSafe(_cronoClampDestelloText(phrase)) + '</div>' +
+      '<div class="destello-help-confirm-level">' + escapeHtmlSafe(destelloLevelLabel(boosts)) + '</div>';
+  }
+  openModal('modalDestelloHelpConfirm');
+}
+
+function closeDestelloHelpConfirm() {
+  _pendingDestelloBoostEntry = null;
+  _pendingDestelloBoostSource = null;
+  closeModal('modalDestelloHelpConfirm');
+}
+
+function confirmDestelloHelp() {
+  const source = _pendingDestelloBoostSource;
+  const result = boostDestello(_pendingDestelloBoostEntry);
+  if (!result) {
+    closeDestelloHelpConfirm();
+    showToast('No he podido actualizar el destello');
+    return;
+  }
+  closeDestelloHelpConfirm();
   if (typeof SFX !== 'undefined' && SFX.tick) SFX.tick();
   try { Haptics.light(); } catch(e) {}
   cronoUpdateRunDestello(cronoCurrentMs(), true);
   refreshDestellosPill();
   if (typeof renderCronoDestellosCard === 'function') renderCronoDestellosCard();
-  showToast('Destello +' + 1 + ' · nivel ' + result.level);
+  if (typeof cronoRefreshDestelloPhrase === 'function') cronoRefreshDestelloPhrase(true);
+  if (source === 'list') renderDestellosList(null);
+  showToast('Destello +1 · nivel ' + result.level);
+}
+
+function cronoBoostCurrentDestello(ev) {
+  if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+  if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
+  openDestelloHelpConfirm(_cronoCurrentDestelloEntry, 'run');
 }
 
 function renderDestellosList(editIndex) {
@@ -17329,7 +17453,8 @@ function renderDestellosList(editIndex) {
       : (d.nota
           ? '<div class="destello-card-nota">' + escapeHtmlSafe(d.nota) + '</div>'
           : '<div class="destello-card-nota destello-card-nota--vacia">sin frase todavía</div>');
-    html += '<div class="destello-card">' +
+    const level = destelloLevelFromBoosts(boosts);
+    html += '<div class="destello-card destello-level-' + level + '">' +
       '<div class="destello-card-head">' +
         '<span class="destello-card-obra">' + escapeHtmlSafe(d.obra) + '</span>' +
         '<span class="destello-card-fecha">' + fecha + '</span>' +
@@ -17347,15 +17472,7 @@ function renderDestellosList(editIndex) {
 
 function boostDestelloFromList(idx) {
   const entry = _destellosModalEntries[idx];
-  const result = boostDestello(entry);
-  if (!result) {
-    showToast('No he podido actualizar el destello');
-    return;
-  }
-  renderDestellosList(null);
-  refreshDestellosPill();
-  if (typeof cronoRefreshDestelloPhrase === 'function') cronoRefreshDestelloPhrase(true);
-  showToast('Destello · nivel ' + result.level);
+  openDestelloHelpConfirm(entry, 'list');
 }
 
 function editDestelloNota(idx) {
@@ -17842,8 +17959,10 @@ function updatePasajeSolSlider(slider, valueId) {
 }
 
 function renderCronoPasajes() {
-  const el = document.getElementById('cronoPasajesSection');
-  if (!el) return;
+  const targets = ['cronoPasajesSection', 'cronoIdlePasajesSection']
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
+  if (!targets.length) return;
   const activos = _activeCronoPasajes();
   if (_pasajeOpenId && !activos.some(p => p.id === _pasajeOpenId)) _pasajeOpenId = null;
   const abierto = activos.find(p => p.id === _pasajeOpenId);
@@ -17853,7 +17972,7 @@ function renderCronoPasajes() {
   const sub = activos.length
     ? 'Toca una bolita para registrar frío / después'
     : 'Añade hasta 5 focos mínimos de estudio';
-  el.innerHTML =
+  const html =
     '<div class="crono-pasajes-head"><span class="crono-week-lbl">PASAJES</span><span class="crono-pasajes-progress">' + hechosHoy + '/' + PASAJE_MAX + ' hoy</span></div>' +
     '<div class="crono-pasajes-card' + (abierto ? ' is-expanded' : '') + '">' +
       '<div class="crono-pasajes-summary">' +
@@ -17865,6 +17984,7 @@ function renderCronoPasajes() {
       '</div>' +
       (abierto ? _renderPasajeExpanded(abierto) : _renderPasajesLegend()) +
     '</div>';
+  targets.forEach(el => { el.innerHTML = html; });
 }
 
 function _renderPasajeDotRows(activos, abierto) {
@@ -18316,6 +18436,7 @@ function cronoRender() {
     cronoUpdateStartBtn();
     cronoUpdateTimerProgress();
     cronoRenderNoteCounts();
+    cronoRenderTaskCount();
     cronoUpdateRunDrawer();
     cronoSyncObservationInputs();
     return;
@@ -18392,6 +18513,7 @@ function cronoRender() {
   }
   cronoUpdateSolidityActions();
   cronoRenderNoteCounts();
+  cronoRenderTaskCount();
   cronoUpdateRunDrawer();
   cronoSyncObservationInputs();
 
@@ -19050,7 +19172,7 @@ function cronoUpdateRunDestello(elapsedMs, force) {
   if (crono.state === 'idle') {
     el.textContent = '';
     el.style.display = 'none';
-    el.classList.remove('size-short', 'size-medium', 'size-long', 'size-xlong');
+    el.classList.remove('size-short', 'size-medium', 'size-long', 'size-xlong', 'is-destello', 'destello-level-0', 'destello-level-1', 'destello-level-2', 'destello-level-3', 'destello-level-4', 'destello-level-5');
     _cronoLastRunDestelloKey = '';
     _cronoCurrentDestelloEntry = null;
     return;
@@ -19066,8 +19188,10 @@ function cronoUpdateRunDestello(elapsedMs, force) {
     _cronoLastRunDestelloKey = key;
     _cronoCurrentDestelloEntry = entry;
     el.classList.remove('is-changing');
-    el.classList.remove('size-short', 'size-medium', 'size-long', 'size-xlong');
+    el.classList.remove('size-short', 'size-medium', 'size-long', 'size-xlong', 'is-destello', 'destello-level-0', 'destello-level-1', 'destello-level-2', 'destello-level-3', 'destello-level-4', 'destello-level-5');
     el.classList.add(_cronoDestelloSizeClass(text));
+    const level = destelloLevelFromBoosts(boosts);
+    if (entry) el.classList.add('is-destello', 'destello-level-' + level);
     void el.offsetWidth;
     if (entry) {
       el.innerHTML =

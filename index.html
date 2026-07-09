@@ -400,6 +400,9 @@
         oninput="cronoSetObservation(this.value)"></textarea>
 
       <div class="crono-timer-projection" id="cronoTimerProjection" style="display:none"></div>
+      <div class="crono-idle-pasajes-shell">
+        <div class="crono-pasajes-section crono-pasajes-section-idle" id="cronoIdlePasajesSection"></div>
+      </div>
 
       <!-- Indicador discreto del color de la obra seleccionada -->
       <div class="crono-idle-dot-wrap">
@@ -463,6 +466,9 @@
         <button type="button" class="crono-run-drawer-tab" data-tab="nota" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('nota')">
           Nota <span id="cronoDrawerNoteTabCount">+</span>
         </button>
+        <button type="button" class="crono-run-drawer-tab" data-tab="tareas" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('tareas')">
+          Tareas <span id="cronoDrawerTaskTabCount">+</span>
+        </button>
         <button type="button" class="crono-run-drawer-tab" data-tab="pase" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('pase')">Pase</button>
       </div>
 
@@ -488,6 +494,9 @@
               <strong id="cronoRunSolValue">—</strong>
             </button>
           </div>
+        </div>
+        <div class="crono-run-drawer-panel" data-panel="tareas" role="tabpanel">
+          <div class="crono-tasks-panel" id="cronoTasksPanel"></div>
         </div>
         <div class="crono-run-drawer-panel" data-panel="pase" role="tabpanel">
           <button type="button" class="crono-drawer-pase-btn" onclick="openCronoPaseRapido()">
@@ -1494,6 +1503,17 @@
       Tus sesiones de excelencia. Vuelve aquí cuando necesites recordar de lo que eres capaz.
     </div>
     <div class="destellos-list" id="destellosList" style="overflow-y:auto;padding:0 24px 22px;flex:1;-webkit-overflow-scrolling:touch"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalDestelloHelpConfirm">
+  <div class="modal destello-help-confirm-modal" style="max-width:390px">
+    <div class="modal-title">¿Este destello te ayuda?</div>
+    <div class="destello-help-confirm-text" id="destelloHelpConfirmText"></div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="modal-btn secondary" onclick="closeDestelloHelpConfirm()">Ahora no</button>
+      <button class="modal-btn primary" onclick="confirmDestelloHelp()">Sí, subir nivel</button>
+    </div>
   </div>
 </div>
 
