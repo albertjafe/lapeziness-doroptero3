@@ -817,7 +817,8 @@
   [data-theme^="marmol"] .crono-run-ms-star { color: var(--accent); }
 
   [data-theme^="marmol"] .crono-run-destello {
-    margin: -8px auto 22px;
+    height: 76px;
+    margin: -12px auto 14px;
     max-width: min(560px, 92%);
   }
 
@@ -4801,7 +4802,7 @@
   }
 
   /* ── PASAJES · bolitas mínimas (cronómetro) ── */
-  .crono-pasajes-section { width: 100%; margin-top: 16px; }
+  .crono-pasajes-section { width: 100%; margin-top: 12px; }
   .crono-pasajes-head {
     display: flex; align-items: baseline; justify-content: space-between;
     margin: 0 4px 8px;
@@ -4816,7 +4817,7 @@
     border: 1px solid var(--border2);
     border-radius: 22px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 8px 20px rgba(0,0,0,0.04);
-    padding: 20px 24px;
+    padding: 16px 20px;
     box-sizing: border-box;
     transition: min-height 0.24s ease, border-color 0.2s ease;
   }
@@ -4835,11 +4836,42 @@
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .crono-pasajes-dots {
-    display: flex; align-items: center; justify-content: flex-end;
-    gap: 10px; flex: none;
+    display: grid;
+    gap: 7px;
+    flex: 0 0 min(320px, 46%);
+    min-width: 236px;
+  }
+  .crono-pasajes-dot-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 9px;
+    min-height: 28px;
+  }
+  .crono-pasajes-row-label {
+    width: 46px;
+    flex: none;
+    text-align: right;
+    color: color-mix(in srgb, var(--pasaje-tier-color, var(--text3)) 74%, var(--text3));
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .crono-pasajes-row-dots {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    min-width: 0;
+  }
+  .crono-pasajes-dot-row-add .crono-pasajes-row-label {
+    color: var(--text3);
   }
   .crono-pasaje-dot {
-    width: 34px; height: 34px; border: 0; background: transparent;
+    width: 28px; height: 28px; border: 0; background: transparent;
     display: inline-flex; align-items: center; justify-content: center;
     border-radius: 999px; cursor: pointer; padding: 0;
     -webkit-tap-highlight-color: transparent;
@@ -4942,7 +4974,10 @@
   }
   @media (max-width: 720px) {
     .crono-pasajes-summary { align-items: flex-start; flex-direction: column; }
-    .crono-pasajes-dots { justify-content: flex-start; flex-wrap: wrap; }
+    .crono-pasajes-dots { width: 100%; min-width: 0; flex-basis: auto; }
+    .crono-pasajes-dot-row { justify-content: flex-start; }
+    .crono-pasajes-row-label { text-align: left; width: 50px; }
+    .crono-pasajes-row-dots { justify-content: flex-start; }
     .crono-pasaje-expanded { grid-template-columns: 1fr; }
     .crono-pasaje-score-row { grid-template-columns: 64px auto 72px; gap: 10px; }
   }
@@ -6790,10 +6825,12 @@
   .crono-run-destello {
     display: none;
     max-width: 520px;
-    margin: -38px auto 28px;
+    height: 82px;
+    margin: -30px auto 18px;
     padding: 0 18px;
+    box-sizing: border-box;
     font-family: "Cormorant Garamond", Georgia, serif;
-    font-size: clamp(18px, 3.8vw, 25px);
+    font-size: clamp(18px, 3.4vw, 24px);
     font-style: italic;
     font-weight: 300;
     line-height: 1.36;
@@ -6801,17 +6838,34 @@
     text-align: center;
     text-wrap: balance;
     opacity: 0.86;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
   }
-  body.crono-running .crono-run-destello:not(:empty) { display: block; }
+  body.crono-running .crono-run-destello:not(:empty) { display: flex; }
+  .crono-run-destello.size-short { font-size: clamp(18px, 3.4vw, 24px); }
+  .crono-run-destello.size-medium { font-size: clamp(16px, 2.9vw, 21px); line-height: 1.31; }
+  .crono-run-destello.size-long { font-size: clamp(14px, 2.35vw, 18px); line-height: 1.25; }
+  .crono-run-destello.size-xlong { font-size: clamp(12px, 2vw, 16px); line-height: 1.18; }
   .crono-run-destello.is-changing {
     animation: cronoDestelloIn 1.1s cubic-bezier(0.16,1,0.3,1);
+  }
+  .crono-run-destello-text {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    max-width: 100%;
   }
   .crono-run-destello-btn {
     display: inline-flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 4px;
     max-width: 100%;
+    max-height: 100%;
+    overflow: hidden;
     border: 0;
     background: transparent;
     color: inherit;
@@ -6823,9 +6877,13 @@
     -webkit-tap-highlight-color: transparent;
   }
   .crono-run-destello-btn:active { transform: scale(0.985); }
+  .crono-run-destello-btn .crono-run-destello-text {
+    -webkit-line-clamp: 2;
+  }
   .crono-run-destello-level {
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
+    line-height: 1;
     font-style: normal;
     font-weight: 600;
     letter-spacing: 0.08em;

@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-08-ai-export-no-glossary-v28';
+const APP_VERSION = '2026-07-09-crono-destello-pasajes-v29';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1860,6 +1860,7 @@ const sessionProductivityRatings = {}; // per-item productivity rating (0-100)
 const sessionDestello = {};
 const DESTELLO_UMBRAL = 80; // a partir de aquí el modal ofrece marcar la sesión como destello
 const CRONO_DESTELLO_ROTATE_MS = 7 * 60 * 1000;
+const CRONO_DESTELLO_MAX_CHARS = 180;
 const CRONO_LONG_SESSION_BREAK_MIN = 90;
 const CRONO_BREATH_DEFAULT_MIN = 3;
 const CRONO_BREATH_PATTERN = [
@@ -17821,8 +17822,7 @@ function renderCronoPasajes() {
   const abierto = activos.find(p => p.id === _pasajeOpenId);
   const hoy = _pasajeDateKey();
   const hechosHoy = activos.filter(p => (p.focusHistory || []).some(h => h.key === hoy || _pasajeDateKey(h.date) === hoy)).length;
-  const dots = activos.map(p => _renderPasajeDot(p, abierto && abierto.id === p.id)).join('') +
-    (activos.length < PASAJE_MAX ? _renderPasajeAddDot() : '');
+  const dots = _renderPasajeDotRows(activos, abierto);
   const sub = activos.length
     ? 'Toca una bolita para registrar frío / después'
     : 'Añade hasta 5 focos mínimos de estudio';
@@ -17838,6 +17838,27 @@ function renderCronoPasajes() {
       '</div>' +
       (abierto ? _renderPasajeExpanded(abierto) : _renderPasajesLegend()) +
     '</div>';
+}
+
+function _renderPasajeDotRows(activos, abierto) {
+  const rows = ['red', 'amber', 'pearl'].map(tierKey => {
+    const tier = PASAJE_TIERS[tierKey];
+    const items = activos.filter(p => _normalizePasajeTier(p.tier) === tierKey);
+    if (!items.length) return '';
+    return '<div class="crono-pasajes-dot-row tier-' + tierKey + '" style="--pasaje-tier-color:' + tier.color + '">' +
+      '<span class="crono-pasajes-row-label">' + tier.label + '</span>' +
+      '<div class="crono-pasajes-row-dots">' +
+        items.map(p => _renderPasajeDot(p, abierto && abierto.id === p.id)).join('') +
+      '</div>' +
+    '</div>';
+  }).join('');
+  const add = activos.length < PASAJE_MAX
+    ? '<div class="crono-pasajes-dot-row crono-pasajes-dot-row-add">' +
+        '<span class="crono-pasajes-row-label">A&ntilde;adir</span>' +
+        '<div class="crono-pasajes-row-dots">' + _renderPasajeAddDot() + '</div>' +
+      '</div>'
+    : '';
+  return (rows || add) ? rows + add : '';
 }
 
 function openPasajeNuevo() {
@@ -18980,35 +19001,53 @@ function _cronoRunPhraseEntry(elapsedMs) {
   return _cronoPhraseForSeedEntry(startSeed + bucket);
 }
 
+function _cronoClampDestelloText(text) {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  if (clean.length <= CRONO_DESTELLO_MAX_CHARS) return clean;
+  return clean.slice(0, CRONO_DESTELLO_MAX_CHARS - 1).trimEnd() + '…';
+}
+
+function _cronoDestelloSizeClass(text) {
+  const n = String(text || '').length;
+  if (n > 145) return 'size-xlong';
+  if (n > 105) return 'size-long';
+  if (n > 68) return 'size-medium';
+  return 'size-short';
+}
+
 function cronoUpdateRunDestello(elapsedMs, force) {
   const el = document.getElementById('cronoRunDestello');
   if (!el) return;
   if (crono.state === 'idle') {
     el.textContent = '';
     el.style.display = 'none';
+    el.classList.remove('size-short', 'size-medium', 'size-long', 'size-xlong');
     _cronoLastRunDestelloKey = '';
     _cronoCurrentDestelloEntry = null;
     return;
   }
   const bucket = Math.floor(Math.max(0, elapsedMs || 0) / CRONO_DESTELLO_ROTATE_MS);
   const phrase = _cronoRunPhraseEntry(elapsedMs);
-  const text = phrase.text || '';
+  const rawText = phrase.text || '';
+  const text = _cronoClampDestelloText(rawText);
   const entry = phrase.entry || null;
   const boosts = entry ? destelloBoosts(entry) : 0;
-  const key = bucket + '::' + text + '::' + boosts;
+  const key = bucket + '::' + rawText + '::' + boosts;
   if (force || key !== _cronoLastRunDestelloKey) {
     _cronoLastRunDestelloKey = key;
     _cronoCurrentDestelloEntry = entry;
     el.classList.remove('is-changing');
+    el.classList.remove('size-short', 'size-medium', 'size-long', 'size-xlong');
+    el.classList.add(_cronoDestelloSizeClass(text));
     void el.offsetWidth;
     if (entry) {
       el.innerHTML =
         '<button type="button" class="crono-run-destello-btn" onclick="cronoBoostCurrentDestello(event)" aria-label="Este destello me ayuda">' +
-          '<span>' + escapeHtmlSafe(text) + '</span>' +
+          '<span class="crono-run-destello-text">' + escapeHtmlSafe(text) + '</span>' +
           '<span class="crono-run-destello-level">' + escapeHtmlSafe(destelloLevelLabel(boosts)) + '</span>' +
         '</button>';
     } else {
-      el.textContent = text;
+      el.innerHTML = '<span class="crono-run-destello-text">' + escapeHtmlSafe(text) + '</span>';
     }
     el.style.display = text ? '' : 'none';
     el.classList.add('is-changing');
