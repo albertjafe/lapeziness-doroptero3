@@ -10067,6 +10067,7 @@
     max-width: min(520px, 94%);
   }
   [data-theme^="marmol"] body.crono-running .crono-run-destello-text { -webkit-line-clamp: 2; }
+  [data-theme^="marmol"] body.crono-running .crono-run-destello-level { display: none; }
 
   .crono-run-drawer .crono-pasajes-section { margin: 0; }
   .crono-run-drawer .crono-pasajes-head { display: none; }
@@ -10083,6 +10084,7 @@
     gap: 8px;
   }
   .crono-run-drawer .crono-pasajes-copy { display: none; }
+  .crono-run-drawer .crono-pasajes-legend { display: none; }
   .crono-run-drawer .crono-pasajes-dots {
     width: 100%;
     min-width: 0;
@@ -10241,6 +10243,41 @@
     }
     [data-theme^="marmol"] body.crono-running .crono-display { font-size: clamp(48px, 14vw, 70px); }
     [data-theme^="marmol"] body.crono-running .crono-run-destello { height: 46px; }
+  }
+
+  @media (min-width: 700px) and (min-height: 760px) {
+    .crono-run-drawer {
+      position: static;
+      transform: none;
+      width: min(620px, 100%);
+      margin: 14px auto 0;
+      box-shadow: 0 22px 58px -42px rgba(0,0,0,0.48), 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .crono-run-drawer-panel {
+      max-height: 150px;
+    }
+    [data-theme^="marmol"] body.crono-running .crono-wrap {
+      max-width: 700px;
+      padding-top: max(56px, calc(env(safe-area-inset-top, 0px) + 48px));
+      padding-bottom: max(28px, env(safe-area-inset-bottom, 0px));
+      justify-content: flex-start;
+    }
+    [data-theme^="marmol"] body.crono-running .crono-run-stage {
+      width: min(620px, 100%);
+      padding-bottom: 20px;
+    }
+    [data-theme^="marmol"] body.crono-running .crono-display-wrap {
+      height: min(320px, 36dvh, 58vw);
+      margin-bottom: 8px;
+    }
+    [data-theme^="marmol"] body.crono-running .crono-run-progress-svg {
+      width: min(320px, 36dvh, 58vw);
+      height: min(320px, 36dvh, 58vw);
+    }
+    [data-theme^="marmol"] body.crono-running .crono-run-destello {
+      height: 58px;
+      max-width: min(520px, 92%);
+    }
   }
 
   /* Nav inferior: opaca para que no se lea contenido debajo al hacer scroll. */
