@@ -278,6 +278,9 @@
     <!-- FASE A: IDLE -->
     <div class="crono-stage crono-idle-wrap" id="cronoStageIdle">
 
+      <div class="crono-idle-console">
+      <section class="crono-idle-main" aria-label="Modo y duración">
+
       <!-- Toggle Cronómetro / Temporizador, arriba sutil -->
       <div class="crono-mode-toggle" id="cronoModeToggle">
         <button class="crono-mode-opt active" data-mode="stopwatch" onclick="cronoSetMode('stopwatch')">Cronómetro</button>
@@ -363,6 +366,14 @@
         <strong id="cronoUntilInfo">elige una hora</strong>
       </div>
 
+      </section>
+
+      <aside class="crono-idle-panel" aria-label="Preparar sesión">
+      <div class="crono-idle-panel-head">
+        <span>Preparar sesión</span>
+        <strong>Trabajo de hoy</strong>
+      </div>
+
       <div class="crono-select-wrap">
         <!-- Select nativo OCULTO: preserva compatibilidad con todo el código
              que lee/escribe select.value. El usuario interactúa con el
@@ -400,6 +411,9 @@
         oninput="cronoSetObservation(this.value)"></textarea>
 
       <div class="crono-timer-projection" id="cronoTimerProjection" style="display:none"></div>
+
+      <button class="crono-plant-btn" id="cronoStartBtn" onclick="cronoStart()" disabled>Plantar</button>
+
       <div class="crono-idle-pasajes-shell">
         <div class="crono-pasajes-section crono-pasajes-section-idle" id="cronoIdlePasajesSection"></div>
       </div>
@@ -409,10 +423,11 @@
         <div class="crono-idle-dot" id="cronoIdleDot" style="display:none"></div>
       </div>
 
-      <button class="crono-plant-btn" id="cronoStartBtn" onclick="cronoStart()" disabled>Plantar</button>
-
       <div class="crono-fallidas-info" id="cronoFallidasInfo" style="display:none">
         <span class="n" id="cronoFallidasN">0</span> · fallidas hoy
+      </div>
+
+      </aside>
       </div>
 
       <!-- Jardín del día: única visualización del cronómetro en reposo. Render en renderCronoGarden(). -->
@@ -461,6 +476,10 @@
     <!-- Bandeja inferior compacta: pasajes / nota / pase. No ocupa altura en la columna central. -->
     <div class="crono-run-drawer" id="cronoRunDrawer" data-tab="pasajes" aria-label="Herramientas de estudio">
       <div class="crono-run-drawer-handle" aria-hidden="true"></div>
+      <div class="crono-run-drawer-head">
+        <span>Durante la sesión</span>
+        <strong>Herramientas</strong>
+      </div>
       <div class="crono-run-drawer-tabs" role="tablist" aria-label="Herramientas">
         <button type="button" class="crono-run-drawer-tab active" data-tab="pasajes" role="tab" aria-selected="true" onclick="cronoSetRunDrawerTab('pasajes')">Pasajes</button>
         <button type="button" class="crono-run-drawer-tab" data-tab="nota" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('nota')">
