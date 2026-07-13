@@ -20,7 +20,8 @@
   :root {
     --ui-font: 'JetBrains Mono', monospace;
     --dot-opacity: 0.06;
-    --app-zoom: 1;
+    --type-scale: 1;
+    --line-scale: 1;
     --space-1: 4px;
     --space-2: 8px;
     --space-3: 12px;
@@ -36,13 +37,6 @@
     --dur-slow: 400ms;
     --ease-out: cubic-bezier(0.32,0.72,0,1);
   }
-  [data-font="serif"]  { --ui-font: 'Cormorant Garamond', serif; }
-  [data-font="system"] { --ui-font: -apple-system, 'Helvetica Neue', sans-serif; }
-  html[data-size="small"] { --app-zoom: 0.82; }
-  html[data-size="normal"] { --app-zoom: 1; }
-  html[data-size="large"] { --app-zoom: 1.22; }
-  html[data-size="xlarge"] { --app-zoom: 1.5; }
-
   * { font-family: var(--ui-font); }
 
   /* Cormorant sigue usándose para títulos decorativos */
@@ -1743,8 +1737,8 @@
     min-height: 100vh;
     overflow-x: hidden;
     font-size: 13px;
-    -webkit-text-size-adjust: none;
-    text-size-adjust: none;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
     position: relative;
   }
   /* Gradiente sutil animado de fondo, no intrusivo */
@@ -2960,16 +2954,16 @@
     display: none;
     position: fixed;
     inset: 0;
-    width: calc(100vw / var(--app-zoom, 1));
-    min-height: calc(100vh / var(--app-zoom, 1));
-    min-height: calc(100dvh / var(--app-zoom, 1));
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
     background: rgba(0,0,0,0.55);
     backdrop-filter: blur(6px) saturate(0.85);
     -webkit-backdrop-filter: blur(6px) saturate(0.85);
     z-index: 200;
     align-items: center;
     justify-content: center;
-    padding: calc(20px / var(--app-zoom, 1));
+    padding: 20px;
     box-sizing: border-box;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
@@ -2997,8 +2991,8 @@
        las barras del navegador o el teclado aparecen/desaparecen. Sin esto,
        100vh se queda con la altura sin barras y el modal sobresale por
        debajo de la pantalla con el síntoma "no se puede hacer scroll". */
-    max-height: calc(90vh / var(--app-zoom, 1));
-    max-height: calc(90dvh / var(--app-zoom, 1));
+    max-height: 90vh;
+    max-height: 90dvh;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
@@ -7976,7 +7970,6 @@
      cronómetro eso descentraba los modales fixed en iPad y con tamaño Grande.
      Neutralizamos ese escalado solo mientras el cronómetro está activo. */
   html.crono-focus-root {
-    zoom: 1 !important;
     font-size: 100% !important;
   }
   html.crono-focus-root body {
@@ -8668,8 +8661,8 @@
   }
 
   .quick-sol-modal {
-    width: min(430px, calc((100vw - 32px) / var(--app-zoom, 1)));
-    max-width: calc((100vw - 32px) / var(--app-zoom, 1));
+      width: min(430px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
     box-sizing: border-box;
     padding: 22px;
   }
@@ -8930,9 +8923,6 @@
   }
   html[data-size="large"] #modalHechoDatos .hecho-modal {
     max-height: min(72dvh, 560px) !important;
-  }
-  html[data-size="xlarge"] #modalHechoDatos .hecho-modal {
-    max-height: min(58dvh, 440px) !important;
   }
   .hecho-zone-top {
     display: flex;
@@ -10856,7 +10846,7 @@ body.crono-paused .crono-pause-overlay-inner {
     }
     [data-theme^="marmol"] .crono-wrap,
     [data-theme^="marmol"] body.crono-running .crono-wrap {
-      width: min(920px, calc((100vw - 48px) / var(--app-zoom, 1)));
+      width: min(920px, calc(100vw - 48px));
       max-width: none;
       min-height: 100dvh;
       padding: max(76px, calc(env(safe-area-inset-top, 0px) + 66px)) 0 max(24px, env(safe-area-inset-bottom, 0px));
@@ -10998,4 +10988,187 @@ body.crono-paused .crono-pause-overlay-inner {
       border-top: 1px solid var(--border2);
     }
     [data-theme^="marmol"] body.crono-running .crono-bottom-row { display: none !important; }
+  }
+
+  /* LOTE 2 · sistema tipográfico, cabecera contextual, responsive y foco */
+  :root {
+    --font-system: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-serif: "Cormorant Garamond", Georgia, serif;
+    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --type-body-base: 13px;
+    --type-body-size: calc(var(--type-body-base) * var(--type-scale));
+    --type-body-line: calc(1.48 * var(--line-scale));
+    --type-view-size: calc(26px * var(--type-scale));
+    --type-section-size: calc(16px * var(--type-scale));
+    --type-label-size: calc(11px * var(--type-scale));
+    --type-data-size: calc(28px * var(--type-scale));
+    --type-meta-size: calc(11px * var(--type-scale));
+    --focus: #2f6b99;
+  }
+  html[data-size="small"] { --type-scale: 0.92; --line-scale: 0.98; }
+  html[data-size="normal"] { --type-scale: 1; --line-scale: 1; }
+  html[data-size="large"] { --type-scale: 1.14; --line-scale: 1.06; }
+
+  [data-theme="marmol"] {
+    --text3: #626b78;
+    --border: rgba(60,60,67,0.22);
+    --border2: rgba(60,60,67,0.13);
+    --accent: #2f6b99;
+    --accent2: #245477;
+    --focus: #2f6b99;
+  }
+  [data-theme="marmol-night"] {
+    --text3: #aab4c1;
+    --border: rgba(220,230,242,0.28);
+    --border2: rgba(220,230,242,0.16);
+    --accent: #a8d2f3;
+    --accent2: #c7e1f7;
+    --focus: #b7ddff;
+  }
+
+  body {
+    font-family: var(--font-system);
+    font-size: var(--type-body-size);
+    line-height: var(--type-body-line);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  button, input, textarea, select, option { font-family: var(--font-system); }
+  .header-title, .header-eyebrow, .header-date, .nav-btn,
+  .view-local-label, .view-local-subtitle, .ajustes-card-head,
+  .ajustes-group-label, .history-section-label { font-family: var(--font-system) !important; }
+  .session-hero-title, .plan-item-name, .obra-name, .evento-nombre,
+  .pase-nombre, .mov-name-input, .stats-legend-name,
+  .session-resumen-title, .session-journal-title { font-family: var(--font-serif) !important; }
+  .crono-display, .crono-pause-overlay-time, .crono-pase-val,
+  .stats-card-big, .stats-donut-big, .prob-proj-val, .prob-tile-pct,
+  .session-concentrado-banner, .header-date, .obras-count,
+  .maint-pct, .stats-axis, .stats-heat-mon, .stats-heat-legend,
+  .stats-legend-val, .event-date, .evento-dias {
+    font-family: var(--font-mono) !important;
+    font-variant-numeric: tabular-nums;
+  }
+  .session-hero-title { font-size: var(--type-view-size) !important; }
+  .section-title, .stats-card-title { font-size: var(--type-section-size) !important; }
+  .header-date, .view-local-subtitle, .type-system-copy, .theme-mode-note { font-size: var(--type-meta-size); }
+
+  /* Cabecera contextual: un solo contrato para todas las vistas. */
+  .topbar { background: color-mix(in srgb, var(--bg) 94%, transparent); }
+  .header {
+    min-height: 76px;
+    padding: calc(max(env(safe-area-inset-top, 12px), 12px) + 8px)
+      max(16px, env(safe-area-inset-left, 16px)) 11px
+      max(16px, env(safe-area-inset-right, 16px));
+    gap: 12px;
+  }
+  .cozy-piano-deco { display: none !important; }
+  .header-context { display: flex; align-items: center; min-width: 0; }
+  .header-copy { min-width: 0; }
+  .header-eyebrow {
+    color: var(--text3); font-size: 10px; line-height: 1.15;
+    letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600;
+  }
+  .header-title {
+    color: var(--text) !important; font-size: var(--type-view-size) !important;
+    line-height: 1.05; letter-spacing: -0.025em; font-weight: 700 !important;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .header-date {
+    color: var(--text2); font-size: var(--type-meta-size) !important;
+    letter-spacing: 0.01em; line-height: 1.25; text-transform: none;
+  }
+  .header-actions { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  #packNameHeader { max-width: min(34vw, 220px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .settings-icon {
+    width: 44px !important; min-width: 44px; min-height: 44px !important; height: 44px !important;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 12px; color: var(--text2); background: transparent;
+  }
+  body[data-view="ajustes"] #headerSettingsBtn { display: none; }
+
+  /* Acciones principales y subtítulos siempre debajo de la cabecera de vista. */
+  .view-action-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    margin: 0 0 16px; padding: 0 0 12px;
+    border-bottom: 1px solid var(--border2);
+  }
+  .view-local-label { color: var(--text); font-size: var(--type-section-size); font-weight: 650; line-height: 1.2; }
+  .view-local-subtitle { color: var(--text2); margin-top: 3px; line-height: 1.4; }
+  .obras-topbar { align-items: center; }
+  .obras-topbar .view-local-label { font-size: var(--type-section-size); }
+  .calendar-action-row, .stats-action-row { margin-top: 12px; }
+  #view-obras > .add-obra-btn,
+  #calPanelEventos > .add-evento-btn { display: none !important; }
+  .stats-primary-add, .calendar-action-row .add-evento-btn, .obras-primary-add {
+    min-height: 44px !important; padding: 10px 14px !important; white-space: nowrap;
+  }
+
+  /* Contenedores por tipo de vista, con ancho de lectura controlado. */
+  .view { width: 100%; max-width: 920px; padding: 24px clamp(16px, 3vw, 32px); }
+  #view-session { max-width: 960px; }
+  #view-cronometro { max-width: 1120px; }
+  #view-obras, #view-calendario { max-width: 960px; }
+  #view-historial { max-width: 1120px; }
+  #view-ajustes { max-width: 1040px; }
+  .session-journal-card { max-width: 74ch; }
+  .session-journal-input, .session-journal-text { max-width: 74ch; }
+
+  /* El cambio de vista comunica estado sin desplazar toda la página. */
+  .view.active { animation: viewFadeInOpacity 180ms ease-out; }
+  @keyframes viewFadeInOpacity { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Las opciones segmentadas tienen una semántica clara y no dependen del color. */
+  .theme-mode-control { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .theme-mode-option { min-height: 44px !important; font-size: var(--type-meta-size); }
+  .theme-mode-option.active { color: var(--accent) !important; font-weight: 700; box-shadow: inset 0 0 0 2px var(--accent); }
+  .theme-mode-note { color: var(--text2); margin-top: 9px; line-height: 1.45; }
+  .type-system-copy { color: var(--text2); line-height: 1.5; margin-bottom: 2px; max-width: 62ch; }
+
+  /* Ajustes aprovecha el ancho de iPad sin convertirlo en una lista infinita. */
+  .ajustes-body { width: 100%; max-width: 920px; }
+  .ajustes-body > .ajustes-account, .ajustes-body > .ajustes-group-label { grid-column: 1 / -1; }
+  .ajustes-body > .ajustes-card { min-width: 0; }
+
+  /* Foco unificado: aparece al navegar con teclado, no después de un toque. */
+  :where(button, input, textarea, select, a, [tabindex]):focus:not(:focus-visible) { outline: none !important; }
+  :where(button, input, textarea, select, a, [tabindex]):focus-visible {
+    outline: 3px solid var(--focus) !important;
+    outline-offset: 3px !important;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus) 18%, transparent) !important;
+  }
+  button, [role="button"] { min-height: 44px; }
+  .nav-btn { min-height: 56px !important; }
+
+  /* Movimiento reducido global, incluidos fondo, shimmer y efectos continuos. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    body::before, .header-title, .view.active, .nav-btn.active::after,
+    .session-hero *, .crono-garden *, .splash-inner, .splash-note {
+      animation: none !important; transform: none !important;
+    }
+    .view.active { opacity: 1 !important; }
+    .modal, .modal-overlay, .modal-overlay.visible .modal { transform: none !important; }
+  }
+
+  @media (min-width: 768px) {
+    #view-historial { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; align-items: start; }
+    #view-historial > .view-action-row, #view-historial > #statsDashboard,
+    #view-historial > div[style*="border-bottom"] { grid-column: 1 / -1; }
+    #view-session .session-insight-stack { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    #view-ajustes .ajustes-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; align-items: start; }
+  }
+  @media (max-width: 767px) {
+    #view-historial { display: block; }
+    .view-action-row { align-items: flex-start; }
+  }
+  @media (max-width: 390px) {
+    .header { padding-left: 12px; padding-right: 12px; }
+    .header-actions #packNameHeader { display: none; }
+    .view-action-row { gap: 8px; }
+    .view-action-row button { padding-left: 10px !important; padding-right: 10px !important; }
   }

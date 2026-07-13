@@ -46,7 +46,7 @@
 
 <div class="topbar">
 <div class="header">
-  <div style="display:flex;align-items:center;gap:10px">
+  <div class="header-context">
     <svg class="cozy-piano-deco" width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="2" y="10" width="34" height="22" rx="4" fill="var(--bg3)" stroke="var(--border)" stroke-width="1.5"/>
       <!-- White keys -->
@@ -65,15 +65,16 @@
       <text x="14" y="8" font-size="8" fill="var(--accent)" opacity="0.7" font-family="serif">♪</text>
       <text x="22" y="7" font-size="7" fill="var(--accent2)" opacity="0.5" font-family="serif">♩</text>
     </svg>
-    <div>
-      <div class="header-title" id="headerTitle" onclick="editHeaderTitle()" title="Pulsa para editar" style="cursor:pointer"><span style="color:var(--accent);margin-right:5px">♩</span>Planificador de estudio</div>
+    <div class="header-copy">
+      <div class="header-eyebrow" id="headerEyebrow">Estudio</div>
+      <div class="header-title" id="headerTitle">Hoy</div>
       <div class="header-date" id="headerDate"></div>
     </div>
   </div>
-  <div style="display:flex;align-items:center;gap:8px">
+  <div class="header-actions">
     <div style="font-size:10px;color:var(--text3)" id="packNameHeader"></div>
-    <button class="settings-icon" id="sessionInfoBtn" onclick="toggleSessionInfo()" title="Mostrar/ocultar detalles">ℹ</button>
-    <button class="settings-icon" onclick="openSettings()" title="Ajustes">⚙</button>
+    <button class="settings-icon" id="sessionInfoBtn" onclick="toggleSessionInfo()" title="Mostrar u ocultar detalles" aria-label="Mostrar u ocultar detalles">ℹ</button>
+    <button class="settings-icon" id="headerSettingsBtn" onclick="openSettings()" title="Ajustes" aria-label="Abrir ajustes">⚙</button>
   </div>
 </div>
 
@@ -577,7 +578,7 @@
   <div class="obras-workbench">
     <div class="obras-topbar">
       <div>
-        <div class="section-title" style="margin-bottom:0;border-bottom:none">Repertorio</div>
+        <div class="view-local-label">Tu repertorio</div>
         <div class="obras-count" id="obrasCount">0 obras</div>
       </div>
       <button class="obras-primary-add" onclick="openAddObra()">+ Añadir</button>
@@ -621,6 +622,10 @@
   <div class="cal-tabs">
     <button class="cal-tab active" id="calTabEventos" onclick="switchCalTab('eventos',this)">Eventos</button>
     <button class="cal-tab" id="calTabMes" onclick="switchCalTab('mes',this)">Mes</button>
+  </div>
+  <div class="view-action-row calendar-action-row">
+    <div class="view-local-label">Próximos eventos</div>
+    <button class="add-evento-btn" onclick="openAddEvento()">+ añadir evento</button>
   </div>
 
   <!-- Pestaña Eventos -->
@@ -752,6 +757,13 @@
 
 
 <div class="view" id="view-historial">
+  <div class="view-action-row stats-action-row">
+    <div>
+      <div class="view-local-label">Evolución de tu práctica</div>
+      <div class="view-local-subtitle">Resumen, tendencias y sesiones registradas</div>
+    </div>
+    <button class="add-manual-session-btn stats-primary-add" onclick="openSesionManual()">+ registrar estudio</button>
+  </div>
   <div id="statsDashboard" style="margin-bottom:22px"></div>
   <div id="mantenimientoSection" style="margin-bottom:20px"></div>
   <div id="solidezSection" style="margin-bottom:20px"></div>
@@ -760,7 +772,6 @@
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border2)">
     <div class="history-section-label">Sesiones registradas</div>
     <div style="display:flex;gap:8px;align-items:center">
-      <button class="add-manual-session-btn" onclick="openSesionManual()" style="padding:6px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--accent);font-family:\'JetBrains Mono\',monospace;font-size:9px;letter-spacing:0.06em;cursor:pointer;transition:all 0.2s">+ añadir estudio</button>
       <button class="hist-list-toggle" onclick="openSesionesDetalle()" title="Ver cada sesión con su hora">↗ Por horas</button>
       <button class="hist-list-toggle" id="histListToggle" onclick="toggleHistList()">Mostrar</button>
     </div>
@@ -871,30 +882,20 @@
           <small>Una sola identidad visual. El modo noche conserva la misma estructura en oscuro.</small>
         </span>
       </div>
-      <label class="settings-autonight" for="autoNightToggle">
-        <input type="checkbox" id="autoNightToggle" onchange="setAutoNight(this.checked)">
-        <span class="settings-autonight-txt">Modo noche automático<small>De 21:00 a 7:00 usa Mármol noche.</small></span>
-      </label>
+      <div class="ajustes-card-head theme-mode-label">Modo de color</div>
+      <div class="ajustes-seg theme-mode-control" role="radiogroup" aria-label="Modo de color">
+        <button class="theme-option theme-mode-option" data-theme-mode="light" role="radio" aria-checked="false" onclick="setThemeMode('light')">Claro</button>
+        <button class="theme-option theme-mode-option" data-theme-mode="auto" role="radio" aria-checked="false" onclick="setThemeMode('auto')">Automático</button>
+        <button class="theme-option theme-mode-option" data-theme-mode="dark" role="radio" aria-checked="false" onclick="setThemeMode('dark')">Oscuro</button>
+      </div>
+      <div class="theme-mode-note">Automático usa Mármol noche entre las 21:00 y las 7:00.</div>
     </div>
 
-    <div class="ajustes-card">
-      <div class="ajustes-card-head">Fuente</div>
-      <div class="ajustes-seg">
-        <button class="theme-option font-option" data-font="mono" onclick="setFont('mono',this)">
-          <div style="font-family:\'JetBrains Mono\',monospace;font-size:13px;color:var(--text2);padding:4px 0">Aa</div>
-          <div class="theme-option-name">Mono</div>
-        </button>
-        <button class="theme-option font-option" data-font="serif" onclick="setFont('serif',this)">
-          <div style="font-family:'Cormorant Garamond',serif;font-size:17px;color:var(--text2);padding:4px 0">Aa</div>
-          <div class="theme-option-name">Serif</div>
-        </button>
-        <button class="theme-option font-option" data-font="system" onclick="setFont('system',this)">
-          <div style="font-family:-apple-system,sans-serif;font-size:14px;color:var(--text2);padding:4px 0">Aa</div>
-          <div class="theme-option-name">Sistema</div>
-        </button>
-      </div>
+    <div class="ajustes-card type-system-card">
+      <div class="ajustes-card-head">Tipografía</div>
+      <p class="type-system-copy">La interfaz usa la fuente del sistema para leer, navegar y editar. Los nombres de obras conservan una serif discreta y los tiempos, porcentajes y metadatos usan monoespaciada.</p>
       <div class="ajustes-card-head" style="margin-top:16px">Tamaño de texto</div>
-      <div class="ajustes-seg">
+      <div class="ajustes-seg" role="radiogroup" aria-label="Tamaño de texto">
         <button class="theme-option size-option" data-size="small" onclick="setFontSize('small',this)">
           <div style="font-size:11px;color:var(--text2);padding:4px 0">A</div>
           <div class="theme-option-name">Pequeño</div>
@@ -906,10 +907,6 @@
         <button class="theme-option size-option" data-size="large" onclick="setFontSize('large',this)">
           <div style="font-size:18px;color:var(--text2);padding:4px 0">A</div>
           <div class="theme-option-name">Grande</div>
-        </button>
-        <button class="theme-option size-option" data-size="xlarge" onclick="setFontSize('xlarge',this)">
-          <div style="font-size:22px;color:var(--text2);padding:4px 0">A</div>
-          <div class="theme-option-name">XL</div>
         </button>
       </div>
     </div>
@@ -1525,7 +1522,7 @@
 
 <!-- MODAL DESTELLOS — lista de sesiones de excelencia para releer en días flojos -->
 <div class="modal-overlay" id="modalDestellos">
-  <div class="modal destellos-modal" style="max-width:460px;max-height:calc(88dvh / var(--app-zoom, 1));display:flex;flex-direction:column;padding:0;overflow:hidden">
+  <div class="modal destellos-modal" style="max-width:460px;max-height:88dvh;display:flex;flex-direction:column;padding:0;overflow:hidden">
     <div style="display:flex;align-items:baseline;justify-content:space-between;padding:22px 24px 6px">
       <div class="modal-title" style="margin-bottom:0">✨ Destellos</div>
       <button class="modal-btn secondary" onclick="closeModal('modalDestellos')" style="padding:4px 12px;font-size:10px;flex:none">✕</button>
@@ -1833,23 +1830,23 @@
 </div> <!-- end app-content -->
 
 <nav class="nav nav-bottom">
-  <button class="nav-btn active" aria-label="Sesión" data-short="Sesión" onclick="showView('session')">
+  <button class="nav-btn active" aria-label="Sesión" data-view="session" data-short="Sesión" aria-current="page" onclick="showView('session')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>
     <span>Sesión</span>
   </button>
-  <button class="nav-btn" aria-label="Cronómetro" data-short="Crono" onclick="showView('cronometro')">
+  <button class="nav-btn" aria-label="Cronómetro" data-view="cronometro" data-short="Crono" onclick="showView('cronometro')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M10 2.5h4M12 2.5V6"/></svg>
     <span>Cronómetro</span>
   </button>
-  <button class="nav-btn" aria-label="Obras" data-short="Obras" onclick="showView('obras')">
+  <button class="nav-btn" aria-label="Obras" data-view="obras" data-short="Obras" onclick="showView('obras')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="17.5" r="2.6"/><circle cx="17.5" cy="15" r="2.6"/><path d="M9.6 17.5V6.5l10.5-2.5V15"/></svg>
     <span>Obras</span>
   </button>
-  <button class="nav-btn" aria-label="Calendario" data-short="Calend." onclick="showView('calendario')">
+  <button class="nav-btn" aria-label="Calendario" data-view="calendario" data-short="Calend." onclick="showView('calendario')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
     <span>Calendario</span>
   </button>
-  <button class="nav-btn" aria-label="Estadísticas" data-short="Estad." onclick="showView('historial')">
+  <button class="nav-btn" aria-label="Estadísticas" data-view="historial" data-short="Estad." onclick="showView('historial')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg>
     <span>Estadísticas</span>
   </button>

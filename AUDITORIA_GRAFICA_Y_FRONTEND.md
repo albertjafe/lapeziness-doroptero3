@@ -151,14 +151,14 @@ No todo necesita rediseño. Estas piezas son una buena base:
 | ID | Prioridad | Tamaño | Propuesta | Estado |
 |---|---:|---:|---|---|
 | G-SYS-01 | P1 | L | Consolidar Marmol y retirar capas de temas antiguos | PENDIENTE |
-| G-SYS-02 | P1 | M | Definir roles tipograficos reales y quitar el selector falso | PENDIENTE |
-| G-SYS-03 | P1 | L | Sustituir `zoom` por tamaño tipografico accesible | PENDIENTE |
-| G-SYS-04 | P1 | M | Unificar contraste, foco y modo claro/automatico/oscuro | PENDIENTE |
-| G-SYS-05 | P1 | L | Crear un sistema responsive para movil, iPad y escritorio | PENDIENTE |
-| G-NAV-01 | P1 | M | Sustituir el encabezado global por una barra contextual compacta | PENDIENTE |
+| G-SYS-02 | P1 | M | Definir roles tipograficos reales y quitar el selector falso | IMPLEMENTADO |
+| G-SYS-03 | P1 | L | Sustituir `zoom` por tamaño tipografico accesible | IMPLEMENTADO |
+| G-SYS-04 | P1 | M | Unificar contraste, foco y modo claro/automatico/oscuro | IMPLEMENTADO |
+| G-SYS-05 | P1 | L | Crear un sistema responsive para movil, iPad y escritorio | IMPLEMENTADO |
+| G-NAV-01 | P1 | M | Sustituir el encabezado global por una barra contextual compacta | IMPLEMENTADO |
 | G-NAV-02 | P1 | S | Corregir definitivamente la navegacion inferior movil | IMPLEMENTADO |
-| G-NAV-03 | P1 | M | Dar a todas las pestañas la misma estructura de titulo y acciones | PENDIENTE |
-| G-FLU-01 | P1 | M | Reducir transiciones y completar movimiento reducido | PENDIENTE |
+| G-NAV-03 | P1 | M | Dar a todas las pestañas la misma estructura de titulo y acciones | IMPLEMENTADO |
+| G-FLU-01 | P1 | M | Reducir transiciones y completar movimiento reducido | IMPLEMENTADO |
 | G-FLU-02 | P2 | M | Unificar toasts, guardado y estado de sincronizacion | PENDIENTE |
 | G-HOY-01 | P1 | M | Renombrar Sesion a Hoy y reordenar su proposito | PENDIENTE |
 | G-HOY-02 | P1 | M | Hacer honestos los estados sin registrar y el objetivo diario | IMPLEMENTADO |
@@ -223,7 +223,8 @@ P1 indica friccion importante, incoherencia visible o fallo funcional reproducib
 
 ### G-SYS-02. Definir roles tipograficos reales y quitar el selector falso
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
+- **Implementacion:** Se retiro el selector de familias y se fijaron roles de sistema, serif y monoespaciada con tres niveles de tamaño.
 - **Prioridad:** P1
 - **Tamaño:** M
 - **Tipo:** Coherencia visual
@@ -257,7 +258,8 @@ Ajustes ofrece Mono, Serif y Sistema. Al elegir Serif, Marmol sigue forzando la 
 
 ### G-SYS-03. Sustituir `zoom` por tamaño tipografico accesible
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
+- **Implementacion:** Se elimino el zoom del lienzo y el fallback por transform; el tamaño modifica tokens tipograficos y conserva objetivos tactiles de 44 px.
 - **Prioridad:** P1
 - **Tamaño:** L
 - **Tipo:** Responsive y accesibilidad
@@ -292,7 +294,8 @@ Ajustes ofrece Mono, Serif y Sistema. Al elegir Serif, Marmol sigue forzando la 
 
 ### G-SYS-04. Unificar contraste, foco y modo claro/automatico/oscuro
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
+- **Implementacion:** Se añadio el segmento Claro/Automatico/Oscuro, tokens de contraste y un foco comun visible solo con navegacion por teclado.
 - **Prioridad:** P1
 - **Tamaño:** M
 - **Tipo:** Accesibilidad y preferencias
@@ -326,7 +329,8 @@ Etiquetas, ejes, pestañas inactivas y metadatos usan grises muy tenues. El foco
 
 ### G-SYS-05. Crear un sistema responsive para movil, iPad y escritorio
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
+- **Implementacion:** Se definieron anchos por vista, grids de dos columnas desde 768 px, lectura estrecha para el diario y comprobaciones de overflow en tamaños objetivo.
 - **Prioridad:** P1
 - **Tamaño:** L
 - **Tipo:** Layout
@@ -362,7 +366,8 @@ La regla base de `.view` limita casi todo a 700 px. Con el zoom predeterminado, 
 
 ### G-NAV-01. Sustituir el encabezado global por una barra contextual compacta
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
+- **Implementacion:** La cabecera muestra el contexto y titulo de la vista actual, reserva la fecha para Hoy/Calendario, elimina la edicion directa y mantiene el engranaje accesible.
 - **Prioridad:** P1
 - **Tamaño:** M
 - **Tipo:** Navegacion y jerarquia
@@ -430,7 +435,8 @@ A 390 px, la navegacion tiene 307 px de ancho util y 340 px de contenido. Usa `o
 
 ### G-NAV-03. Dar a todas las pestañas la misma estructura de titulo y acciones
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
+- **Implementacion:** Se normalizo la zona de acciones de Calendario y Estadisticas, se mantuvo Cronometro como excepcion y se ocultaron acciones duplicadas inferiores.
 - **Prioridad:** P1
 - **Tamaño:** M
 - **Tipo:** Coherencia transversal
@@ -463,7 +469,8 @@ Sesion no tiene titulo propio; Obras introduce `Repertorio` dentro de una barra;
 
 ### G-FLU-01. Reducir transiciones y completar movimiento reducido
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
+- **Implementacion:** El cambio de vista usa solo una entrada de opacidad de 180 ms, vuelve al inicio y la regla global reduced-motion anula animaciones, transiciones y transformaciones decorativas.
 - **Prioridad:** P1
 - **Tamaño:** M
 - **Tipo:** Fluidez y accesibilidad

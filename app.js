@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-13-grafico-lote1-v36';
+const APP_VERSION = '2026-07-13-grafico-lote2-v37';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -484,15 +484,45 @@ if (!db.sessionPlants) db.sessionPlants = [];
 
 // ─── UI HELPERS ─────────────────────────────────────────────────────────────
 
+const VIEW_CONTEXT = {
+  session: { eyebrow: 'Estudio', title: 'Hoy' },
+  cronometro: { eyebrow: 'Práctica', title: 'Cronómetro' },
+  obras: { eyebrow: 'Repertorio', title: 'Obras' },
+  calendario: { eyebrow: 'Planificación', title: 'Calendario' },
+  historial: { eyebrow: 'Resumen', title: 'Estadísticas' },
+  ajustes: { eyebrow: 'Planificador de estudio', title: 'Ajustes' }
+};
+
+function updateContextHeader(name) {
+  const context = VIEW_CONTEXT[name] || VIEW_CONTEXT.session;
+  const eyebrow = document.getElementById('headerEyebrow');
+  const title = document.getElementById('headerTitle');
+  const date = document.getElementById('headerDate');
+  if (eyebrow) eyebrow.textContent = context.eyebrow;
+  if (title) title.textContent = context.title;
+  if (date) {
+    const showsDate = name === 'session' || name === 'calendario';
+    date.hidden = !showsDate;
+    if (!showsDate) date.textContent = '';
+  }
+  document.title = `${context.title} · Planificador de estudio`;
+}
+
 function showView(name) {
   document.body.setAttribute('data-view', name);
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.remove('active');
+    b.removeAttribute('aria-current');
+  });
   document.getElementById('view-' + name).classList.add('active');
-  const btns = document.querySelectorAll('.nav-btn');
-  const names = ['session','cronometro','obras','calendario','historial'];
-  const idx = names.indexOf(name);
-  if (idx >= 0) btns[idx].classList.add('active');
+  const activeButton = document.querySelector(`.nav-btn[data-view="${name}"]`);
+  if (activeButton) {
+    activeButton.classList.add('active');
+    activeButton.setAttribute('aria-current', 'page');
+  }
+  updateContextHeader(name);
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   // Modo concentración: activar/desactivar al entrar/salir de cronometro
   if (name !== 'cronometro' && typeof cronoOnLeaveView === 'function') cronoOnLeaveView();
   if (name === 'session')    { renderRacha(); if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI(); if (typeof renderSessionInsights === 'function') renderSessionInsights(); if (typeof renderSessionJournal === 'function') renderSessionJournal(); }
@@ -594,33 +624,6 @@ function openModal(id) {
     // "se desenfoca la pantalla pero no aparece nada".
     void overlay.offsetWidth;
   }
-  // ★ Compensación del zoom iOS: applyZoom escala el body con transform,
-  // que convierte a body en el containing block de position:fixed. El
-  // overlay con inset:0 pasa a cubrir el DOCUMENTO entero y el modal se
-  // centra en el documento, no en la pantalla (con scroll queda fuera).
-  // Solución: posicionarlo en absoluto sobre el viewport visible actual,
-  // en coordenadas locales del body escalado. En modo concentración el
-  // transform ya se anula vía html.crono-focus-root, no hace falta.
-  const z = (typeof _appZoom === 'number' && _appZoom) || 1;
-  // Solo compensamos cuando body está escalado con transform (fallback legacy).
-  // Con CSS zoom no hace falta: position:fixed se centra en el viewport normal.
-  const bodyScaled = _iosTransformZoom
-    && !document.documentElement.classList.contains('crono-focus-root');
-  if (bodyScaled) {
-    overlay.style.position = 'absolute';
-    overlay.style.top = (window.scrollY / z) + 'px';
-    overlay.style.left = (window.scrollX / z) + 'px';
-    overlay.style.width = (window.innerWidth / z) + 'px';
-    overlay.style.height = (window.innerHeight / z) + 'px';
-    overlay.style.minHeight = '0';
-  } else {
-    overlay.style.position = '';
-    overlay.style.top = '';
-    overlay.style.left = '';
-    overlay.style.width = '';
-    overlay.style.height = '';
-    overlay.style.minHeight = '';
-  }
   overlay.scrollTop = 0;
   const modalBox = overlay.querySelector('.modal');
   if (modalBox) modalBox.scrollTop = 0;
@@ -673,16 +676,23 @@ function updateHeader() {
   const d = new Date();
   const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
   const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const currentView = document.body.getAttribute('data-view') || 'session';
+  updateContextHeader(currentView);
   const h = d.getHours();
   const saludo = h < 6 ? 'Buenas noches' : h < 13 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches';
-  document.getElementById('headerDate').textContent = `${saludo} · ${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}`;
+  const dateEl = document.getElementById('headerDate');
+  if (dateEl) {
+    dateEl.textContent = currentView === 'calendario'
+      ? `${meses[d.getMonth()]} ${d.getFullYear()}`
+      : `${saludo} · ${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}`;
+  }
   // Show nearest upcoming event
   const now = Date.now();
   const proxEvento = (db.eventos || [])
     .filter(ev => new Date(ev.fecha) > now)
     .sort((a,b) => new Date(a.fecha) - new Date(b.fecha))[0];
   const headerSub = document.getElementById('packNameHeader');
-  if (proxEvento) {
+  if (proxEvento && (currentView === 'session' || currentView === 'calendario')) {
     const dias2 = Math.ceil((new Date(proxEvento.fecha) - now) / 86400000);
     headerSub.textContent = proxEvento.nombre + ' · ' + dias2 + 'd';
   } else {
@@ -14503,90 +14513,24 @@ function saveSesionManual() {
 
 // ─── THEMES ─────────────────────────────────────────────────────────────────
 
-function setFont(font, btn) {
-  document.documentElement.setAttribute('data-font', font);
-  localStorage.setItem('alberto_font', font);
-  document.querySelectorAll('.font-option').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
+function normalizeTextSizePreference(size) {
+  if (size === 'small' || size === 'normal' || size === 'large') return size;
+  // The former XL level was a canvas zoom. Keep existing users at the largest
+  // text level without bringing back the global zoom behaviour.
+  if (size === 'xlarge') return 'large';
+  return 'normal';
 }
 
 function setFontSize(size, btn) {
-  const zooms = { small: 0.82, normal: 1, large: 1.22, xlarge: 1.5 };
-  const z = zooms[size] || 1;
-  applyZoom(z);
-  document.documentElement.setAttribute('data-size', size);
-  localStorage.setItem('alberto_size', size);
-  document.querySelectorAll('.size-option').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-}
-
-// Detect iOS Safari (doesn't support CSS zoom)
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-var _appZoom = 1; // var: hoisted, openModal puede leerlo aunque se defina después
-var _iosTransformZoom = false; // true solo en el fallback legacy (transform en body)
-function applyZoom(z) {
-  _appZoom = z;
-  const b = document.body, h = document.documentElement;
-  // CSS `zoom` (soportado en iOS 16.4+) NO rompe position:fixed → la barra de
-  // navegación inferior se queda fija al hacer scroll. El `transform: scale` en
-  // body sí la rompía (convertía body en containing block de los fixed).
-  const canZoom = !!(window.CSS && CSS.supports && CSS.supports('zoom', '1.5'));
-  if (isIOS && canZoom) {
-    _iosTransformZoom = false;
-    b.style.transform = ''; b.style.width = ''; b.style.minHeight = ''; b.style.transformOrigin = '';
-    h.style.zoom = (z === 1 ? '' : z);
-    h.style.fontSize = '';
-  } else if (isIOS) {
-    // Fallback legacy (iOS < 16.4 sin CSS zoom): escalar body con transform.
-    _iosTransformZoom = (z !== 1);
-    h.style.zoom = '';
-    b.style.transformOrigin = 'top left';
-    if (z === 1) {
-      b.style.transform = '';
-      b.style.width = '';
-      b.style.minHeight = '';
-    } else {
-      b.style.transform = 'scale(' + z + ')';
-      b.style.width = (100 / z).toFixed(3) + '%';
-      b.style.minHeight = (100 / z).toFixed(3) + 'vh';
-    }
-  } else {
-    _iosTransformZoom = false;
-    h.style.zoom = z;
-    h.style.fontSize = Math.round(z * 100) + '%';
-  }
-}
-
-function editHeaderTitle() {
-  const el = document.getElementById('headerTitle');
-  if (!el) return;
-  const current = localStorage.getItem('alberto_app_title') || 'Planificador de estudio';
-  const input = document.createElement('input');
-  input.value = current;
-  input.style.cssText = 'background:transparent;border:none;border-bottom:1px solid var(--border);color:inherit;font:inherit;width:180px;outline:none;text-align:center;padding:0';
-  el.textContent = '';
-  el.appendChild(input);
-  input.focus();
-  input.select();
-  const save = () => {
-    const val = input.value.trim() || 'Planificador de estudio';
-    localStorage.setItem('alberto_app_title', val);
-    document.title = val;
-    el.textContent = val;
-  };
-  input.onblur = save;
-  input.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } if (e.key === 'Escape') { el.textContent = current; } };
-}
-
-function loadAppTitle() {
-  const saved = localStorage.getItem('alberto_app_title');
-  if (saved) {
-    const el = document.getElementById('headerTitle');
-    if (el) el.textContent = saved;
-    document.title = saved;
-  }
+  const normalized = normalizeTextSizePreference(size);
+  document.documentElement.setAttribute('data-size', normalized);
+  localStorage.setItem('alberto_size', normalized);
+  document.querySelectorAll('.size-option').forEach(b => {
+    const isActive = b.dataset.size === normalized;
+    b.classList.toggle('active', isActive);
+    b.setAttribute('aria-checked', isActive ? 'true' : 'false');
+  });
+  if (btn && btn.dataset.size !== normalized) btn = null;
 }
 
 // Color de fondo base de cada tema. Se usa para tintar la barra del
@@ -14613,72 +14557,51 @@ function _isNightHour() {
 
 // Aplica Mármol claro u oscuro. Ya no hay temas alternativos activables.
 function refreshTheme() {
-  const day = THEME_DAY;
-  localStorage.setItem('alberto_theme', THEME_DAY);
-  const auto = localStorage.getItem('alberto_autonight') === '1';
-  const display = (auto && _isNightHour()) ? THEME_NIGHT : day;
+  const storedMode = localStorage.getItem('alberto_theme_mode');
+  const legacyAuto = localStorage.getItem('alberto_autonight') === '1';
+  const mode = storedMode === 'dark' || storedMode === 'auto' || storedMode === 'light'
+    ? storedMode
+    : (legacyAuto ? 'auto' : 'light');
+  const display = mode === 'dark' || (mode === 'auto' && _isNightHour()) ? THEME_NIGHT : THEME_DAY;
+  localStorage.setItem('alberto_theme_mode', mode);
+  localStorage.setItem('alberto_theme', display);
   document.documentElement.setAttribute('data-theme', display);
   applyThemeColor(display);
-  const tog = document.getElementById('autoNightToggle');
-  if (tog) tog.checked = auto;
+  document.querySelectorAll('.theme-mode-option').forEach(button => {
+    const active = button.dataset.themeMode === mode;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-checked', active ? 'true' : 'false');
+  });
   setTimeout(initEstadoSliders, 50); // re-fill tras cambio de color
 }
 
-function setTheme() {
-  localStorage.setItem('alberto_theme', THEME_DAY);
+function setThemeMode(mode) {
+  const normalized = mode === 'dark' || mode === 'auto' ? mode : 'light';
+  localStorage.setItem('alberto_theme_mode', normalized);
   refreshTheme();
-  if (typeof showToast === 'function') showToast('Tema fijado en Mármol');
+  if (typeof showToast === 'function') {
+    showToast(normalized === 'dark' ? 'Modo oscuro fijado' : normalized === 'auto' ? 'Modo automático activo' : 'Modo claro fijado');
+  }
 }
 
 function setAutoNight(on) {
-  localStorage.setItem('alberto_autonight', on ? '1' : '0');
-  refreshTheme();
-  if (typeof showToast === 'function') {
-    showToast(on
-      ? (_isNightHour() ? 'Modo noche activo' : 'Modo noche automático activo · 21:00-7:00')
-      : 'Modo noche automático desactivado');
-  }
+  setThemeMode(on ? 'auto' : 'light');
 }
 
 function loadTheme() {
-  // Migration v2: noche → cozy
-  if (!localStorage.getItem('alberto_theme_v2_migrated')) {
-    localStorage.setItem('alberto_theme_v2_migrated', '1');
-    if (!localStorage.getItem('alberto_theme') || localStorage.getItem('alberto_theme') === 'noche') {
-      localStorage.setItem('alberto_theme', 'cozy');
-    }
-    if (!localStorage.getItem('alberto_size') || localStorage.getItem('alberto_size') === 'normal') {
-      localStorage.setItem('alberto_size', 'large');
-    }
-  }
-  // Migration v3: force cozy default for everyone (one-time reset)
-  if (!localStorage.getItem('alberto_theme_v3_migrated')) {
-    localStorage.setItem('alberto_theme_v3_migrated', '1');
-    localStorage.setItem('alberto_theme', 'cozy');
-  }
-  // Migration v4: nuevo tema por defecto «Concierto» (recital nocturno).
-  if (!localStorage.getItem('alberto_theme_v4_concierto')) {
-    localStorage.setItem('alberto_theme_v4_concierto', '1');
-    localStorage.setItem('alberto_theme', 'concierto');
-  }
-  localStorage.setItem('alberto_theme', THEME_DAY);
-  const font  = localStorage.getItem('alberto_font')  || 'mono';
-  const size  = localStorage.getItem('alberto_size')  || 'large';
-  const zooms = { small: 0.82, normal: 1, large: 1.22, xlarge: 1.5 };
-  const z = zooms[size] || 1;
-
-  document.documentElement.setAttribute('data-font', font);
+  const storedSize = localStorage.getItem('alberto_size');
+  const size = normalizeTextSizePreference(storedSize);
+  // New installations start at Normal. Existing values are normalized
+  // conservatively so a previous XL preference becomes Grande.
+  localStorage.setItem('alberto_size', size);
   document.documentElement.setAttribute('data-size', size);
-  applyZoom(z);
 
   // Tema (respetando el modo noche automático por hora).
   refreshTheme();
 
-  document.querySelectorAll('.font-option').forEach(b => {
-    b.classList.toggle('active', b.dataset.font === font);
-  });
   document.querySelectorAll('.size-option').forEach(b => {
     b.classList.toggle('active', b.dataset.size === size);
+    b.setAttribute('aria-checked', b.dataset.size === size ? 'true' : 'false');
   });
 
   // Revisar el modo noche cada minuto y al volver a la app, para cambiar solo
@@ -16131,10 +16054,12 @@ function closeAjustes() {
 // Re-marca como activas las opciones de fuente y tamaño según lo guardado
 // (el tema lo marca refreshTheme). Necesario al abrir la pantalla de Ajustes.
 function _syncAjustesActiveOptions() {
-  const font = localStorage.getItem('alberto_font') || 'mono';
-  const size = localStorage.getItem('alberto_size') || 'large';
-  document.querySelectorAll('.font-option').forEach(b => b.classList.toggle('active', b.dataset.font === font));
-  document.querySelectorAll('.size-option').forEach(b => b.classList.toggle('active', b.dataset.size === size));
+  const size = normalizeTextSizePreference(localStorage.getItem('alberto_size'));
+  document.querySelectorAll('.size-option').forEach(b => {
+    const active = b.dataset.size === size;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-checked', active ? 'true' : 'false');
+  });
 }
 
 // Refresca la información de estado en Ajustes
@@ -16299,7 +16224,6 @@ async function initApp() {
 
   // Init UI
   loadTheme();
-  loadAppTitle();
   loadEstadoDiarioFromSources();
   initEstadoSliders();
   initTimeSlider();
