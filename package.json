@@ -1,0 +1,18 @@
+{
+  "name": "lapeziness-doroptero3",
+  "private": true,
+  "version": "2026.07.13",
+  "description": "Planificador de estudio y cronómetro PWA",
+  "scripts": {
+    "check": "node --check app.js",
+    "test": "npm run check && npm run test:unit && npm run test:e2e",
+    "test:unit": "vitest run tests/unit",
+    "test:e2e": "playwright test tests/e2e",
+    "test:visual": "playwright test tests/visual --project=chromium",
+    "test:all": "npm run check && npm run test:unit && npm run test:e2e && npm run test:visual"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "vitest": "^3.2.4"
+  }
+}

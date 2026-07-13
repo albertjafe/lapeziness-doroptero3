@@ -1,11 +1,15 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-10-crono-console-ipad-v34';
+const APP_VERSION = '2026-07-13-lote1-v35';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
 var _saveTimeout = null;
+const SYNC_META_KEY = 'alberto_sync_v1';
+let _syncTimer = null;
+let _syncInFlight = false;
+let _syncPromise = null;
 const SUPABASE_URL = 'https://fexfeekifzgszluemihs.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Elra9S5SZVWELp6MvKSyoA_iBW5KqD2';
 
@@ -45,16 +49,55 @@ function loadData() {
   return getDefaultData();
 }
 
-function saveData() {
-  // 0. Marca de modificación LOCAL: imprescindible para que loadFromCloud no
-  //    confunda "datos locales recién guardados" con "datos viejos" y sobreescriba
-  //    con una nube desactualizada (causa de pérdidas de sesiones).
+function _readSyncMeta() {
+  try {
+    const raw = localStorage.getItem(SYNC_META_KEY);
+    return typeof SyncCore !== 'undefined' ? SyncCore.normalizeMeta(raw ? JSON.parse(raw) : null) : {
+      localRevision: 0, dirtyRevision: 0, lastSyncedRevision: 0
+    };
+  } catch(e) {
+    return { localRevision: 0, dirtyRevision: 0, lastSyncedRevision: 0 };
+  }
+}
+
+function _writeSyncMeta(meta) {
+  const normalized = typeof SyncCore !== 'undefined' ? SyncCore.normalizeMeta(meta) : meta;
+  localStorage.setItem(SYNC_META_KEY, JSON.stringify(normalized));
+  return normalized;
+}
+
+function _writeLocalSnapshot(markDirty) {
+  const currentMeta = _readSyncMeta();
+  const nextMeta = markDirty && typeof SyncCore !== 'undefined'
+    ? SyncCore.markDirty(currentMeta)
+    : currentMeta;
   db._savedAt = new Date().toISOString();
-  // 1. Save to localStorage immediately (always works offline)
+  if (nextMeta.localRevision) db._localRevision = nextMeta.localRevision;
   localStorage.setItem(DB_KEY, JSON.stringify(db));
-  // 2. Debounced save to Supabase
-  clearTimeout(_saveTimeout);
-  _saveTimeout = setTimeout(function() { syncToCloud(); }, 1500);
+  _writeSyncMeta(nextMeta);
+  return nextMeta;
+}
+
+// Persistencia local síncrona: ninguna operación lógica debe depender de la red.
+function saveLocalNow() {
+  try {
+    return _writeLocalSnapshot(true);
+  } catch(e) {
+    showSyncIndicator('⚠ error al guardar en este dispositivo');
+    console.error('[sync] no se pudo guardar localmente', e);
+    throw e;
+  }
+}
+
+function saveData() {
+  try {
+    saveLocalNow();
+  } catch(e) {
+    // Los datos siguen en memoria para que el usuario pueda reintentar.
+    return false;
+  }
+  enqueueCloudSync();
+  return true;
 }
 
 // ── FUSIÓN SEGURA DE HISTORIAL DE ESTUDIO ─────────────────────────────────────
@@ -163,6 +206,9 @@ function _mergeSesiones(a, b) {
   return Object.values(map).sort((x, y) => new Date(y.date) - new Date(x.date)).slice(0, 365);
 }
 function _mergeStudyHistory(base, other) {
+  if (typeof DataCore !== 'undefined' && typeof DataCore.mergeStudyHistory === 'function') {
+    return DataCore.mergeStudyHistory(base, other);
+  }
   if (!base) return other;
   if (!other) return base;
   const merged = Object.assign({}, base);
@@ -178,22 +224,67 @@ function _mergeStudyHistory(base, other) {
   return merged;
 }
 
-async function syncToCloud() {
+async function syncToCloud(snapshotDb, revision) {
   try {
     const sb = getSB();
     const { data: { user } } = await sb.auth.getUser();
-    if (!user) return;
-    showSyncIndicator('↑ guardando…');
+    if (!user) {
+      showSyncIndicator('Guardado en este dispositivo');
+      return false;
+    }
+    showSyncIndicator('Sincronizando…');
     const { error } = await sb.from('user_data').upsert({
       id: user.id,
-      data: db,
+      data: snapshotDb || db,
       updated_at: new Date().toISOString()
     });
     if (error) throw error;
-    showSyncIndicator('✓ guardado');
+    const meta = _readSyncMeta();
+    _writeSyncMeta(typeof SyncCore !== 'undefined' ? SyncCore.markSynced(meta, revision || meta.dirtyRevision) : meta);
+    const after = _readSyncMeta();
+    showSyncIndicator(typeof SyncCore !== 'undefined' && SyncCore.isDirty(after) ? 'Sincronizando…' : '✓ sincronizado');
+    return true;
   } catch(e) {
-    showSyncIndicator('⚠ sin conexión');
+    showSyncIndicator('⚠ Sin conexión · pendiente');
+    return false;
   }
+}
+
+function enqueueCloudSync(options) {
+  const immediate = !!(options && options.immediate);
+  if (_syncTimer) clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(() => {
+    _syncTimer = null;
+    syncPendingCloudChanges();
+  }, immediate ? 0 : 300);
+  return _syncPromise || Promise.resolve();
+}
+
+async function syncPendingCloudChanges() {
+  if (_syncInFlight) return _syncPromise;
+  _syncInFlight = true;
+  _syncPromise = (async () => {
+    try {
+      while (true) {
+        const meta = _readSyncMeta();
+        if (typeof SyncCore === 'undefined' || !SyncCore.isDirty(meta)) break;
+        const revision = meta.dirtyRevision;
+        let snapshot = db;
+        try {
+          const raw = localStorage.getItem(DB_KEY);
+          if (raw) snapshot = JSON.parse(raw);
+        } catch(e) {}
+        const ok = await syncToCloud(snapshot, revision);
+        if (!ok) break;
+        const after = _readSyncMeta();
+        if (!SyncCore.isDirty(after)) break;
+      }
+    } finally {
+      _syncInFlight = false;
+      _syncPromise = null;
+    }
+  })();
+  return _syncPromise;
 }
 
 async function loadFromCloud() {
@@ -218,11 +309,7 @@ async function loadFromCloud() {
           const hasLocalData = (localDb.obras?.length > 0 || localDb.sesiones?.length > 0);
           if (hasLocalData) {
             showSyncIndicator('↑ subiendo datos locales…');
-            await sb.from('user_data').upsert({
-              id: user.id,
-              data: localDb,
-              updated_at: new Date().toISOString()
-            });
+            await syncToCloud(localDb, _readSyncMeta().dirtyRevision);
             showSyncIndicator('✓ datos subidos a la nube');
             return false; // local is already loaded
           }
@@ -249,9 +336,9 @@ async function loadFromCloud() {
     if (useCloud) {
       // Aunque la nube "gane", FUSIONAMOS el historial de estudio local para no
       // perder sesiones que la nube no tuviera (p. ej. subida nocturna fallida).
+      const beforeMeta = _readSyncMeta();
       db = _mergeStudyHistory(data.data, localDb);
-      db._savedAt = new Date().toISOString();
-      localStorage.setItem(DB_KEY, JSON.stringify(db));
+      _writeLocalSnapshot(false);
       // Si la fusión añadió estudio que la nube no tenía, devolvérselo.
       try {
         const localMin = localDb ? (localDb.sessionPlants || []).length + (localDb.forestPlants || []).length : 0;
@@ -266,8 +353,10 @@ async function loadFromCloud() {
         const cloudTriggerN = (data.data.triggerEventos || []).length;
         const localTiempoN = localDb ? (localDb.tiempoDisponibleEventos || []).length : 0;
         const cloudTiempoN = (data.data.tiempoDisponibleEventos || []).length;
-        if (localMin > cloudMin || localEstadoN > cloudEstadoN || localDeporteN > cloudDeporteN || localSuenoN > cloudSuenoN || localTriggerN > cloudTriggerN || localTiempoN > cloudTiempoN) {
-          sb.from('user_data').upsert({ id: user.id, data: db, updated_at: new Date().toISOString() });
+        const localHasMore = localMin > cloudMin || localEstadoN > cloudEstadoN || localDeporteN > cloudDeporteN || localSuenoN > cloudSuenoN || localTriggerN > cloudTriggerN || localTiempoN > cloudTiempoN;
+        if (localHasMore || (typeof SyncCore !== 'undefined' && SyncCore.isDirty(beforeMeta))) {
+          if (typeof SyncCore !== 'undefined' && !SyncCore.isDirty(_readSyncMeta())) _writeLocalSnapshot(true);
+          await syncPendingCloudChanges();
         }
       } catch(e) {}
       showSyncIndicator('✓ sincronizado');
@@ -276,14 +365,9 @@ async function loadFromCloud() {
 
     // Local is newer — fusiona el estudio de la nube por si tuviera algo y sube.
     db = _mergeStudyHistory(db, data.data);
-    db._savedAt = new Date().toISOString();
-    localStorage.setItem(DB_KEY, JSON.stringify(db));
+    _writeLocalSnapshot(true);
     showSyncIndicator('↑ local más reciente, subiendo…');
-    await sb.from('user_data').upsert({
-      id: user.id,
-      data: db,
-      updated_at: new Date().toISOString()
-    });
+    await syncPendingCloudChanges();
     showSyncIndicator('✓ sincronizado');
     return false;
 
@@ -2622,26 +2706,32 @@ function checkDayChange() {
 // hacer estadísticas históricas (horas por mes, picos diarios, etc.) sin
 // perder timestamps cuando una sesión antigua sale de db.sesiones por edad.
 function recordSessionPlant(obraId, movId, startedAt, endedAt, mins, opts) {
-  if (!obraId || !startedAt || !endedAt) return;
+  if (!obraId || !startedAt || !endedAt) return null;
   if (!Array.isArray(db.sessionPlants)) db.sessionPlants = [];
-  // Dedup defensivo: si ya existe una entrada con el mismo startedAt+obraId,
-  // no la duplicamos. Improbable pero protege contra dobles llamadas.
+  const options = opts || {};
+  const entryId = options.id || (options.runId ? 'run_' + options.runId : 'plant_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
+  // Dedup por ID/runId y, para datos antiguos, por obra + inicio.
+  const byId = db.sessionPlants.find(p => p && (p.id === entryId || (options.runId && p.runId === options.runId)));
+  if (byId) return byId;
   const exists = db.sessionPlants.some(p =>
     p.obraId === obraId && p.startedAt === startedAt
   );
-  if (exists) return;
+  if (exists) return db.sessionPlants.find(p => p.obraId === obraId && p.startedAt === startedAt) || null;
   const entry = {
+    id: entryId,
     obraId,
     movId: movId || null,
     startedAt,
     endedAt,
     mins: Math.max(0, Math.floor(mins || 0)),
-    source: (opts && opts.source) || 'app',
+    source: options.source || 'app',
   };
-  // Si la sesión es fallida (<10 min, abortada), marcarla como tal. Esto
+  if (options.runId) entry.runId = options.runId;
+  if (options.tipo) entry.tipo = options.tipo;
+  // Si la sesión es fallida, marcarla como tal. Esto
   // permite distinguir en estadísticas las sesiones exitosas de las fallidas.
-  if (opts && opts.failed) entry.failed = true;
-  const rawNotes = opts && (opts.notes || opts.sessionNotes);
+  if (options.failed) entry.failed = true;
+  const rawNotes = options.notes || options.sessionNotes;
   if (Array.isArray(rawNotes) && rawNotes.length) {
     const notes = rawNotes.map(cronoNormalizeSessionNote).filter(Boolean);
     if (notes.length) entry.notes = notes;
@@ -2649,6 +2739,29 @@ function recordSessionPlant(obraId, movId, startedAt, endedAt, mins, opts) {
   db.sessionPlants.push(entry);
   // Mantener orden cronológico
   db.sessionPlants.sort((a, b) => (a.startedAt < b.startedAt ? -1 : 1));
+  return entry;
+}
+
+// Transacción de finalización: crea el bloque, lo persiste localmente y sólo
+// después permite abrir el modal de detalles. La red se encola aparte.
+function finishStudyBlock(details) {
+  const entry = recordSessionPlant(
+    details.obraId,
+    details.movId,
+    details.startedAt,
+    details.endedAt,
+    details.mins,
+    Object.assign({}, details.opts || {}, { runId: details.runId })
+  );
+  if (!entry) return { entry: null, persisted: false };
+  try {
+    saveLocalNow();
+    enqueueCloudSync();
+    return { entry, persisted: true };
+  } catch(e) {
+    showToast('No se pudo guardar el tiempo en este dispositivo. Puedes reintentarlo.');
+    return { entry, persisted: false, error: e };
+  }
 }
 function _autoSaveTodayPlanNow() {
   try {
@@ -10418,8 +10531,8 @@ function _doneMinHoy() {
   let m = (typeof getMinutosConcentradoHoy === 'function') ? getMinutosConcentradoHoy() : 0;
   if (typeof crono !== 'undefined' && crono
       && (crono.state === 'running' || crono.state === 'paused')
-      && typeof cronoCurrentMs === 'function') {
-    m += Math.floor(cronoCurrentMs() / 60000);
+      && typeof cronoEffectiveElapsedMs === 'function') {
+    m += Math.floor(cronoEffectiveElapsedMs() / 60000);
   }
   return m;
 }
@@ -15088,7 +15201,7 @@ document.addEventListener('visibilitychange', function() {
     // Save draft + estado immediately when going to background
     saveDraft();
     saveEstadoDiario();
-    syncToCloud();
+    enqueueCloudSync({ immediate: true });
   } else if (document.visibilityState === 'visible') {
     // Came back to foreground — always try to refresh session first
     _restoreSessionIfNeeded();
@@ -15116,18 +15229,7 @@ async function _restoreSessionIfNeeded() {
       return;
     }
 
-    // 3. Auto-login silencioso con credenciales guardadas
-    const creds = _loadStoredCredentials();
-    if (creds) {
-      showSyncIndicator('↺ reconectando…');
-      const { data, error } = await sb.auth.signInWithPassword({
-        email: creds.email, password: creds.password
-      });
-      if (!error && data.session) {
-        showSyncIndicator('✓ reconectado');
-        return;
-      }
-    }
+    // 3. No se guardan contraseñas: el usuario decide cuándo volver a entrar.
   } catch(e) {
     // Sin red — la app sigue funcionando en local
   }
@@ -15849,7 +15951,64 @@ document.addEventListener('click', function(e) {
 
 function toggleAuthMode() {}
 async function doAuth() {}
-async function doLogout() {}
+function _clearLocalAccountData() {
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    if (raw) localStorage.setItem('alberto_local_backup_v1', raw);
+    localStorage.removeItem(DB_KEY);
+    localStorage.removeItem(SYNC_META_KEY);
+    localStorage.removeItem('pianoCrono_v2');
+    localStorage.removeItem('alberto_forest_draft');
+  } catch(e) {}
+  db = getDefaultData();
+  if (typeof currentPlan !== 'undefined' && Array.isArray(currentPlan)) currentPlan.length = 0;
+  [typeof sessionTicks !== 'undefined' ? sessionTicks : null,
+   typeof sessionMinPlan !== 'undefined' ? sessionMinPlan : null,
+   typeof sessionAggregate !== 'undefined' ? sessionAggregate : null,
+   typeof sessionSolRatings !== 'undefined' ? sessionSolRatings : null,
+   typeof sessionProductivityRatings !== 'undefined' ? sessionProductivityRatings : null,
+   typeof sessionDestello !== 'undefined' ? sessionDestello : null]
+    .forEach(map => { if (map) Object.keys(map).forEach(key => delete map[key]); });
+  if (typeof cronoReset === 'function') cronoReset();
+  try {
+    if (typeof renderObras === 'function') renderObras();
+    if (typeof renderCalendario === 'function') renderCalendario();
+    if (typeof renderSesionesHistorial === 'function') renderSesionesHistorial();
+    if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+    if (typeof updateHeader === 'function') updateHeader();
+  } catch(e) {}
+}
+
+async function doLogout(options) {
+  options = options || {};
+  const meta = _readSyncMeta();
+  if (typeof SyncCore !== 'undefined' && SyncCore.isDirty(meta)) {
+    const retry = options.silent || confirm('Hay cambios locales pendientes de sincronizar. ¿Reintentar ahora?');
+    if (retry) await syncPendingCloudChanges();
+    const stillDirty = typeof SyncCore !== 'undefined' && SyncCore.isDirty(_readSyncMeta());
+    if (stillDirty && !options.silent && !confirm('La nube no responde. Puedes cerrar sesión conservando una copia local. ¿Continuar?')) return false;
+  }
+  let signOutError = null;
+  try {
+    const sb = getSB();
+    const result = await sb.auth.signOut();
+    if (result && result.error) signOutError = result.error;
+  } catch(e) {
+    signOutError = e;
+  }
+  _clearLocalAccountData();
+  showView('session');
+  updateSyncStatusInfo();
+  updateAjustesAccountRow();
+  if (signOutError) showToast('Sesión cerrada en este dispositivo; no se pudo contactar con la nube.');
+  else if (!options.silent) showToast('Sesión cerrada');
+  return true;
+}
+
+async function switchAccount() {
+  const ok = await doLogout();
+  if (ok) openModal('modalCloudSync');
+}
 
 // Llamado desde el modal "Recuperar datos" cuando una instalación nueva no
 // tiene datos locales y el usuario quiere bajárselos de la nube.
@@ -15863,6 +16022,16 @@ async function doCloudSync() {
   if (btn) { btn.disabled = true; btn.textContent = '…'; }
   try {
     const sb = getSB();
+    const { data: { session: currentSession } } = await sb.auth.getSession();
+    if (currentSession && currentSession.user && currentSession.user.email &&
+        currentSession.user.email.toLowerCase() !== email.toLowerCase()) {
+      const switched = await doLogout({ silent: true });
+      if (!switched) {
+        if (errEl) errEl.textContent = 'No se pudo cambiar de cuenta';
+        if (btn) { btn.disabled = false; btn.textContent = 'Recuperar'; }
+        return;
+      }
+    }
     const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
     if (error) {
       const msgs = {
@@ -15874,7 +16043,6 @@ async function doCloudSync() {
       return;
     }
     if (data.session) {
-      _saveStoredCredentials(email, pass);
       await onAuthSuccess();
       closeModal('modalCloudSync');
       showToast('Datos sincronizados ✓');
@@ -15924,12 +16092,13 @@ function _syncAjustesActiveOptions() {
 async function updateSyncStatusInfo() {
   const el = document.getElementById('syncStatusInfo');
   if (!el) return;
+  const pending = typeof SyncCore !== 'undefined' && SyncCore.isDirty(_readSyncMeta());
   try {
     const sb = getSB();
     const { data: { user } } = await sb.auth.getUser();
     if (user) {
       el.innerHTML = '✓ Conectado como <span style="color:var(--accent)">' + user.email + '</span><br>'
-        + '<span style="font-size:9px">Tus datos se guardan también en la nube y se sincronizan al iniciar.</span>';
+        + '<span style="font-size:9px">' + (pending ? 'Hay cambios locales pendientes de sincronizar.' : 'Tus datos se guardan también en la nube.') + '</span>';
     } else {
       el.innerHTML = '<span style="color:var(--orange)">⚠ Sin sesión activa</span><br>'
         + '<span style="font-size:9px">La app está funcionando solo en este dispositivo. Pulsa "Re-sincronizar" para conectar con tu cuenta.</span>';
@@ -16137,7 +16306,9 @@ async function initApp() {
   const _hayObras = (db.obras || []).length > 0;
   const _haySesiones = (db.sesiones || []).length > 0;
   const _instalacionVacia = !_hayObras && !_haySesiones;
-  const _credsGuardadas = !!_loadStoredCredentials();
+  // Migración de seguridad: las versiones antiguas guardaban la contraseña
+  // completa en localStorage. La sesión persistida de Supabase es suficiente.
+  try { localStorage.removeItem('piano_auto_creds'); } catch(e) {}
 
   // ── SUPABASE AUTO-SYNC ─────────────────────────────────────────────────────
   // Estrategia:
@@ -16159,18 +16330,6 @@ async function initApp() {
       return;
     }
 
-    if (_credsGuardadas) {
-      const creds = _loadStoredCredentials();
-      showSyncIndicator('↺ reconectando…');
-      const { data, error } = await sb.auth.signInWithPassword({
-        email: creds.email, password: creds.password
-      });
-      if (!error && data.session) {
-        await onAuthSuccess();
-        return;
-      }
-    }
-
     // Si la instalación está vacía y no hay credenciales válidas, ofrecer
     // recuperación cloud
     if (_instalacionVacia) {
@@ -16188,30 +16347,11 @@ async function initApp() {
     console.warn('Auth/sync no disponible, modo local:', e.message);
     // Si Supabase falló pero la instalación está vacía, igual abrimos el modal
     // (el usuario podrá reintentar cuando vuelva la red)
-    if (_instalacionVacia && !_credsGuardadas) {
+    if (_instalacionVacia) {
       setTimeout(() => openModal('modalCloudSync'), 400);
     }
   }
 }
-
-function _loadStoredCredentials() {
-  try {
-    const raw = localStorage.getItem('piano_auto_creds');
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch(e) { return null; }
-}
-
-function _saveStoredCredentials(email, password) {
-  try {
-    localStorage.setItem('piano_auto_creds', JSON.stringify({ email, password }));
-  } catch(e) {}
-}
-
-function _clearStoredCredentials() {
-  localStorage.removeItem('piano_auto_creds');
-}
-
 
 // Adjust app-content top padding - measure after layout settles
 function adjustTopPadding() {
@@ -16246,8 +16386,6 @@ if (window.ResizeObserver) {
 const CRONO_STORAGE_KEY = 'pianoCrono_v2';
 const CRONO_MIN_MIN = 10;                  // mínimo de minutos para que cuente
 const CRONO_PAUSE_LIMIT_MS = 5 * 60 * 1000; // 5 minutos máx de pausa
-const CRONO_MAX_MIN = 120;                 // tope: en modo cronómetro se autodetiene a las 2h
-const CRONO_MAX_MS = CRONO_MAX_MIN * 60 * 1000;
 
 // ── PALETA DE COLORES PERSONALIZABLES PARA OBRAS ────────────────────────────
 // 8 colores cuidados, calmados, distinguibles. Cada obra puede tener uno.
@@ -16336,6 +16474,8 @@ const crono = {
   timerMinutes: 25,      // minutos seleccionados en modo timer (5..120, step 5)
   untilTime: '',         // HH:MM seleccionado en modo "hasta hora"
   targetMinutes: null,   // minutos objetivo de la sesión en curso (timer mode); null en stopwatch
+  targetDurationMs: null,// objetivo persistido en ms; null en cronómetro libre
+  runId: null,           // identificador estable de la ejecución actual
   isRest: false,         // true si la sesión actual es un DESCANSO (no cuenta como estudio)
   obraId: null,
   movId: null,
@@ -16351,6 +16491,9 @@ const crono = {
   notes: [],
   observation: '',
 };
+
+let _cronoPendingFinishRunId = null;
+let _cronoFinalizingRunId = null;
 
 let _cronoWakeLock = null;
 let _cronoWakeRetryTimer = null;
@@ -16445,9 +16588,9 @@ function cronoRefreshWakeLock() {
   else if (document.visibilityState !== 'visible') cronoClearWakeRetry();
 }
 
-document.addEventListener('visibilitychange', cronoRefreshWakeLock);
+document.addEventListener('visibilitychange', cronoHandleLifecycleResume);
 window.addEventListener('focus', cronoRefreshWakeLock);
-window.addEventListener('pageshow', cronoRefreshWakeLock);
+window.addEventListener('pageshow', cronoHandleLifecycleResume);
 ['pointerdown', 'touchstart', 'click', 'keydown'].forEach(evt => {
   document.addEventListener(evt, cronoRefreshWakeLock, evt === 'keydown' ? false : { passive: true });
 });
@@ -16472,6 +16615,8 @@ function cronoSaveState() {
       timerMinutes: crono.timerMinutes,
       untilTime: crono.untilTime,
       targetMinutes: crono.targetMinutes,
+      targetDurationMs: crono.targetDurationMs,
+      runId: crono.runId,
       isRest: crono.isRest,
       obraId: crono.obraId,
       movId: crono.movId,
@@ -16504,6 +16649,10 @@ function cronoLoadState() {
     if (!s.obraId || !s.startTs) return false;
     crono.state = s.state;
     crono.targetMinutes = s.targetMinutes || null;
+    crono.targetDurationMs = Number.isFinite(s.targetDurationMs) && s.targetDurationMs > 0
+      ? s.targetDurationMs
+      : (crono.targetMinutes != null ? crono.targetMinutes * 60000 : null);
+    crono.runId = s.runId || (typeof TimerCore !== 'undefined' ? TimerCore.createRunId() : ('run_' + Date.now()));
     crono.isRest = !!s.isRest;
     crono.obraId = s.obraId;
     crono.movId = s.movId || null;
@@ -16582,7 +16731,7 @@ function cronoCreateSessionNote(text, phase, opts) {
   const realPhase = phase === 'before' || phase === 'after' || phase === 'during' ? phase : 'during';
   const elapsedMs = opts.elapsedMs != null
     ? Math.max(0, Number(opts.elapsedMs) || 0)
-    : (crono.state === 'idle' ? 0 : cronoCurrentMs());
+    : (crono.state === 'idle' ? 0 : cronoEffectiveElapsedMs());
   const minute = opts.minute != null ? opts.minute : cronoNoteMinuteFromElapsed(realPhase, elapsedMs, opts.fallbackMin);
   const selected = crono.state === 'idle'
     ? cronoResolveSelectValue(document.getElementById('cronoObraSelect')?.value || '')
@@ -16607,7 +16756,7 @@ function cronoCreateSessionNote(text, phase, opts) {
 
 function cronoNoteContextText(phase) {
   if (phase === 'before' || crono.state === 'idle') return 'Objetivo antes de empezar';
-  const elapsed = cronoCurrentMs();
+  const elapsed = cronoEffectiveElapsedMs();
   return (crono.state === 'paused' ? 'En pausa' : 'En marcha') + ' · ' + cronoNotePhaseLabel('during', elapsed);
 }
 
@@ -16828,7 +16977,7 @@ function cronoBuildSessionNotes(totalMs, minutos) {
     const phase = crono.state === 'idle' ? 'before' : 'during';
     const observation = cronoCreateObservationNote(observationText, phase, {
       fallbackMin: minutos,
-      elapsedMs: Math.min(Math.max(0, totalMs || 0), Math.max(0, cronoCurrentMs ? cronoCurrentMs() : 0)),
+      elapsedMs: Math.min(Math.max(0, totalMs || 0), Math.max(0, typeof cronoEffectiveElapsedMs === 'function' ? cronoEffectiveElapsedMs() : 0)),
       obraId: crono.obraId,
       movId: crono.movId,
       displayName: crono.displayName,
@@ -17403,7 +17552,7 @@ function confirmDestelloHelp() {
   closeDestelloHelpConfirm();
   if (typeof SFX !== 'undefined' && SFX.tick) SFX.tick();
   try { Haptics.light(); } catch(e) {}
-  cronoUpdateRunDestello(cronoCurrentMs(), true);
+  cronoUpdateRunDestello(cronoEffectiveElapsedMs(), true);
   refreshDestellosPill();
   if (typeof renderCronoDestellosCard === 'function') renderCronoDestellosCard();
   if (typeof cronoRefreshDestelloPhrase === 'function') cronoRefreshDestelloPhrase(true);
@@ -18379,11 +18528,44 @@ function refreshConcentradoUI() {
 
 // ms reales estudiados (sin contar pausa)
 function cronoCurrentMs() {
-  if (!crono.startTs) return 0;
-  if (crono.state === 'paused') {
-    return Math.max(0, crono.pauseStartTs - crono.startTs - crono.pausedMs);
+  if (typeof TimerCore !== 'undefined') {
+    return TimerCore.activeElapsedMs(crono, Date.now());
   }
-  return Math.max(0, Date.now() - crono.startTs - crono.pausedMs);
+  if (!crono.startTs) return 0;
+  const end = crono.state === 'paused' && crono.pauseStartTs ? crono.pauseStartTs : Date.now();
+  return Math.max(0, end - crono.startTs - crono.pausedMs);
+}
+
+function cronoEffectiveElapsedMs() {
+  if (typeof TimerCore !== 'undefined') return TimerCore.effectiveElapsedMs(crono, Date.now());
+  const active = cronoCurrentMs();
+  return crono.targetDurationMs ? Math.min(active, crono.targetDurationMs) : active;
+}
+
+function cronoTargetReached() {
+  if (typeof TimerCore !== 'undefined') return TimerCore.isTargetReached(crono, Date.now());
+  return !!crono.targetDurationMs && cronoCurrentMs() >= crono.targetDurationMs;
+}
+
+function cronoQueueFinish(runId) {
+  if (!runId || _cronoPendingFinishRunId === runId || _cronoFinalizingRunId === runId) return;
+  _cronoPendingFinishRunId = runId;
+  setTimeout(() => {
+    if (_cronoPendingFinishRunId === runId) _cronoPendingFinishRunId = null;
+    if (crono.runId === runId) cronoFinish(runId);
+  }, 0);
+}
+
+function cronoHandleLifecycleResume() {
+  cronoRefreshWakeLock();
+  if (crono.state !== 'running') return;
+  if (cronoTargetReached()) {
+    cronoStopTick();
+    cronoQueueFinish(crono.runId);
+  } else if (!crono.tickInterval) {
+    cronoStartTick();
+    cronoRender();
+  }
 }
 
 // ms restantes de pausa antes de auto-cierre
@@ -18470,10 +18652,10 @@ function cronoRender() {
   const wrap = document.getElementById('cronoDisplayWrap');
   if (disp) {
     if (crono.targetMinutes != null) {
-      const remainingMs = Math.max(0, crono.targetMinutes * 60000 - cronoCurrentMs());
+      const remainingMs = Math.max(0, (crono.targetDurationMs || crono.targetMinutes * 60000) - cronoEffectiveElapsedMs());
       disp.textContent = cronoFmt(remainingMs);
     } else {
-      disp.textContent = cronoFmt(cronoCurrentMs());
+      disp.textContent = cronoFmt(cronoEffectiveElapsedMs());
     }
     if (crono.state === 'paused') {
       disp.classList.add('paused');
@@ -18483,7 +18665,7 @@ function cronoRender() {
       if (wrap) wrap.classList.remove('is-paused');
     }
     cronoUpdateTimerProgress();
-    cronoUpdateRunDestello(cronoCurrentMs(), true);
+    cronoUpdateRunDestello(cronoEffectiveElapsedMs(), true);
   }
 
   // Overlay de pausa: activar body.crono-paused para mostrarlo
@@ -19018,8 +19200,8 @@ function cronoUpdateTimerProgress(elapsedMs) {
     return;
   }
 
-  const elapsed = elapsedMs != null ? elapsedMs : cronoCurrentMs();
-  const targetMs = isTimer ? crono.targetMinutes * 60000 : CRONO_MAX_MS;
+  const elapsed = elapsedMs != null ? elapsedMs : cronoEffectiveElapsedMs();
+  const targetMs = isTimer ? (crono.targetDurationMs || crono.targetMinutes * 60000) : null;
   const progressPct = targetMs > 0 ? Math.min(1, Math.max(0, elapsed / targetMs)) : 0;
   if (arc) arc.setAttribute('stroke-dashoffset', String(CRONO_RUN_PROGRESS_CIRC * (1 - progressPct)));
   if (handle) {
@@ -19210,7 +19392,7 @@ function cronoUpdateRunDestello(elapsedMs, force) {
 function cronoRefreshDestelloPhrase(force) {
   const msg = document.getElementById('cronoIdleMessage');
   if (msg && crono.state === 'idle') msg.textContent = _cronoIdlePhrase();
-  if (crono.state !== 'idle') cronoUpdateRunDestello(cronoCurrentMs(), !!force);
+  if (crono.state !== 'idle') cronoUpdateRunDestello(cronoEffectiveElapsedMs(), !!force);
 }
 
 function cronoMoveModeIndicator() {
@@ -19443,36 +19625,21 @@ function cronoStartTick() {
   if (crono.tickInterval) clearInterval(crono.tickInterval);
   crono.tickInterval = setInterval(() => {
     const disp = document.getElementById('cronoDisplay');
-    const elapsedMs = cronoCurrentMs();
+    const elapsedMs = cronoEffectiveElapsedMs();
     cronoUpdateRunDestello(elapsedMs);
     // En modo timer: mostrar cuenta atrás y auto-finalizar al llegar a 0
-    if (crono.targetMinutes != null) {
-      const targetMs = crono.targetMinutes * 60000;
+    if (crono.targetDurationMs != null || crono.targetMinutes != null) {
+      const targetMs = crono.targetDurationMs || crono.targetMinutes * 60000;
       const remainingMs = Math.max(0, targetMs - elapsedMs);
       if (disp) disp.textContent = cronoFmt(remainingMs);
       cronoUpdateTimerProgress(elapsedMs);
       if (remainingMs <= 0) {
         clearInterval(crono.tickInterval);
         crono.tickInterval = null;
-        setTimeout(() => {
-          if (typeof SFX !== 'undefined' && SFX.saveSession) SFX.saveSession();
-          cronoFinish();
-        }, 150);
+        cronoQueueFinish(crono.runId);
       }
     } else {
-      // Modo cronómetro (sin objetivo): tope de 2h. Si se olvida apagar, se
-      // autodetiene y guarda la sesión en lugar de correr indefinidamente.
-      if (elapsedMs >= CRONO_MAX_MS) {
-        if (disp) disp.textContent = cronoFmt(CRONO_MAX_MS);
-        clearInterval(crono.tickInterval);
-        crono.tickInterval = null;
-        setTimeout(() => {
-          showToast('Tope de 2h alcanzado · sesión guardada');
-          if (typeof SFX !== 'undefined' && SFX.saveSession) SFX.saveSession();
-          cronoFinish();
-        }, 150);
-        return;
-      }
+      // El cronómetro libre no tiene objetivo ni límite artificial.
       if (disp) disp.textContent = cronoFmt(elapsedMs);
       cronoUpdateTimerProgress(elapsedMs);
     }
@@ -19605,10 +19772,14 @@ function cronoStart() {
       return;
     }
     crono.targetMinutes = untilMin;
+    const untilTarget = cronoUntilTargetDate();
+    crono.targetDurationMs = untilTarget ? Math.max(1, untilTarget.getTime() - crono.startTs) : untilMin * 60000;
   } else {
     // Si modo timer, fijar el objetivo de minutos para auto-finalizar al llegar
     crono.targetMinutes = (crono.mode === 'timer') ? crono.timerMinutes : null;
+    crono.targetDurationMs = crono.targetMinutes == null ? null : crono.targetMinutes * 60000;
   }
+  crono.runId = typeof TimerCore !== 'undefined' ? TimerCore.createRunId() : ('run_' + Date.now() + '_' + Math.random().toString(36).slice(2));
 
   cronoSaveState();
   cronoRender();
@@ -19648,9 +19819,13 @@ function cronoStartRest() {
       return;
     }
     crono.targetMinutes = untilMin;
+    const untilTarget = cronoUntilTargetDate();
+    crono.targetDurationMs = untilTarget ? Math.max(1, untilTarget.getTime() - crono.startTs) : untilMin * 60000;
   } else {
     crono.targetMinutes = (crono.mode === 'timer') ? crono.timerMinutes : null;
+    crono.targetDurationMs = crono.targetMinutes == null ? null : crono.targetMinutes * 60000;
   }
+  crono.runId = typeof TimerCore !== 'undefined' ? TimerCore.createRunId() : ('run_' + Date.now() + '_' + Math.random().toString(36).slice(2));
 
   cronoSaveState();
   cronoRender();
@@ -19661,7 +19836,7 @@ function cronoStartRest() {
 
 function cronoTargetEndClock() {
   if (crono.targetMinutes == null) return '';
-  const remainingMs = Math.max(0, crono.targetMinutes * 60000 - cronoCurrentMs());
+  const remainingMs = Math.max(0, (crono.targetDurationMs || crono.targetMinutes * 60000) - cronoEffectiveElapsedMs());
   const end = new Date(Date.now() + remainingMs);
   return _cronoPad2(end.getHours()) + ':' + _cronoPad2(end.getMinutes());
 }
@@ -19672,7 +19847,9 @@ function cronoExtendTimer(minutes) {
     return;
   }
   const extra = Math.max(1, Math.round(Number(minutes) || TIMER_STEP_MINUTES));
+  const previousTargetDuration = crono.targetDurationMs || crono.targetMinutes * 60000;
   crono.targetMinutes += extra;
+  crono.targetDurationMs = previousTargetDuration + extra * 60000;
   if (crono.mode === 'until') crono.untilTime = cronoTargetEndClock();
   crono.lastCountdownSecond = null;
   cronoSaveState();
@@ -19714,7 +19891,7 @@ function cronoResume() {
 }
 
 function cronoStop() {
-  const ms = cronoCurrentMs();
+  const ms = cronoEffectiveElapsedMs();
   const min = Math.floor(ms / 60000);
   if (min >= CRONO_MIN_MIN) {
     // Sesión válida: confirmación simple inline (sin modal, es seguro)
@@ -19782,7 +19959,19 @@ function cronoPlayHarvest(prevMin, totalMin, addedMin) {
   });
 }
 
-function cronoFinish() {
+function cronoEffectiveEndedAtIso(elapsedMs) {
+  if (!crono.startTs) return new Date().toISOString();
+  if (crono.state === 'paused' && crono.pauseStartTs) return new Date(crono.pauseStartTs).toISOString();
+  if (crono.targetDurationMs != null) {
+    return new Date(crono.startTs + (crono.pausedMs || 0) + elapsedMs).toISOString();
+  }
+  return new Date().toISOString();
+}
+
+function cronoFinish(expectedRunId) {
+  const runId = crono.runId;
+  if (crono.state === 'idle' || !runId || (expectedRunId && expectedRunId !== runId) || _cronoFinalizingRunId === runId) return;
+  _cronoFinalizingRunId = runId;
   cronoStopTick();
   cronoStopPauseCountdown();
   cronoReleaseWakeLock();
@@ -19795,10 +19984,9 @@ function cronoFinish() {
     handleDayChange();
   }
 
-  // En modo cronómetro capamos a 2h: si la app estuvo cerrada mucho tiempo con
-  // una sesión corriendo, no queremos grabar 5h de golpe. En modo temporizador
-  // el objetivo ya limita la duración.
-  const ms = (crono.targetMinutes == null) ? Math.min(cronoCurrentMs(), CRONO_MAX_MS) : cronoCurrentMs();
+  // Los objetivos se aplican también si el navegador despierta tarde. El modo
+  // libre conserva todo el tiempo activo, sin un límite artificial.
+  const ms = cronoEffectiveElapsedMs();
   const minutos = Math.floor(ms / 60000);
   const cronoSessionNotes = cronoBuildSessionNotes(ms, minutos);
 
@@ -19806,19 +19994,15 @@ function cronoFinish() {
   // al "concentrado hoy". Solo registra en db.sessionPlants con tipo descanso.
   if (crono.isRest) {
     if (crono.startTs && minutos >= 1) {
-      if (!Array.isArray(db.sessionPlants)) db.sessionPlants = [];
-      const restEntry = {
+      finishStudyBlock({
         obraId: '_rest_',
         movId: null,
         startedAt: new Date(crono.startTs).toISOString(),
-        endedAt: new Date().toISOString(),
+        endedAt: cronoEffectiveEndedAtIso(ms),
         mins: minutos,
-        source: 'app',
-        tipo: 'descanso',
-      };
-      if (cronoSessionNotes.length) restEntry.notes = cronoSessionNotes;
-      db.sessionPlants.push(restEntry);
-      saveData();
+        runId,
+        opts: { source: 'app', notes: cronoSessionNotes, tipo: 'descanso' }
+      });
     }
     cronoReset();
     cronoRender();
@@ -19842,9 +20026,15 @@ function cronoFinish() {
     // (igual que los "árboles marchitos" del CSV de Forest).
     if (obraId && crono.startTs) {
       const startedAtIso = new Date(crono.startTs).toISOString();
-      const endedAtIso = new Date().toISOString();
-      recordSessionPlant(obraId, movId, startedAtIso, endedAtIso, minutos, { failed: true, notes: cronoSessionNotes });
-      saveData();
+      finishStudyBlock({
+        obraId,
+        movId,
+        startedAt: startedAtIso,
+        endedAt: cronoEffectiveEndedAtIso(ms),
+        mins: minutos,
+        runId,
+        opts: { failed: true, notes: cronoSessionNotes }
+      });
     }
     cronoReset();
     cronoRender();
@@ -19862,6 +20052,23 @@ function cronoFinish() {
     return;
   }
   const mov = movId && obra.movimientos ? obra.movimientos.find(m => m.id === movId) : null;
+  const startedAtIso = new Date(crono.startTs).toISOString();
+  const endedAtIso = cronoEffectiveEndedAtIso(ms);
+  const blockResult = finishStudyBlock({
+    obraId,
+    movId,
+    startedAt: startedAtIso,
+    endedAt: endedAtIso,
+    mins: minutos,
+    runId,
+    opts: { notes: cronoSessionNotes }
+  });
+  if (!blockResult.persisted) {
+    cronoReset();
+    cronoRender();
+    refreshConcentradoUI();
+    return;
+  }
 
   // ── FUSIÓN: buscar tarjeta existente para la misma obra/movimiento ───────
   // Si ya hay una tarjeta de esta misma obra y movimiento en el plan, sumamos
@@ -19946,8 +20153,6 @@ function cronoFinish() {
   // Capturar timestamps reales de inicio/fin para que closeHechoDatos los
   // grabe en la sub-sesión. Se guardan en un slot temporal del aggregate
   // antes de hacer reset.
-  const startedAtIso = new Date(crono.startTs).toISOString();
-  const endedAtIso = new Date().toISOString();
   if (!sessionAggregate[targetPlanId]) sessionAggregate[targetPlanId] = { subsessions: [] };
   sessionAggregate[targetPlanId]._pendingTimes = {
     startedAt: startedAtIso,
@@ -19955,10 +20160,6 @@ function cronoFinish() {
     notes: cronoSessionNotes,
     observation: crono.observation || ''
   };
-
-  // ★ Registrar también la sub-sesión en db.sessionPlants[] (permanente,
-  // sobrevive al cap de db.sesiones[]). Para estadísticas históricas.
-  recordSessionPlant(obraId, movId, startedAtIso, endedAtIso, minutos, { notes: cronoSessionNotes });
 
   cronoReset();
   cronoRender();
@@ -19986,6 +20187,10 @@ function cronoReset() {
   crono.state = 'idle';
   crono.isRest = false;
   crono.targetMinutes = null;
+  crono.targetDurationMs = null;
+  crono.runId = null;
+  _cronoPendingFinishRunId = null;
+  _cronoFinalizingRunId = null;
   _cronoRunDrawerTab = 'pasajes';
   crono.obraId = null;
   crono.movId = null;
@@ -20617,7 +20822,12 @@ function cronoHydrate() {
       cronoSaveState();
       cronoStartTick();
     } else if (crono.state === 'running') {
-      cronoStartTick();
+      if (cronoTargetReached()) {
+        cronoStopTick();
+        cronoQueueFinish(crono.runId);
+      } else {
+        cronoStartTick();
+      }
     } else if (crono.state === 'paused') {
       cronoStartPauseCountdown();
     }

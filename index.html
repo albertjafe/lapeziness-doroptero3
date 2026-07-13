@@ -1006,8 +1006,9 @@
       <div id="syncStatusInfo" style="font-size:10px;color:var(--text3);margin-bottom:12px;line-height:1.5">Comprobando...</div>
       <div class="ajustes-btn-row">
         <button class="modal-btn secondary" onclick="forceCloudResync()" style="flex:1;font-size:11px">↺ Re-sincronizar</button>
-        <button class="modal-btn secondary" onclick="openModal('modalCloudSync')" style="flex:1;font-size:11px">Cuenta diferente</button>
+        <button class="modal-btn secondary" onclick="switchAccount()" style="flex:1;font-size:11px">Cuenta diferente</button>
       </div>
+      <button class="modal-btn secondary" onclick="doLogout()" style="width:100%;font-size:11px;margin-top:8px">Cerrar sesión</button>
     </div>
 
     <div class="ajustes-card">
@@ -1433,13 +1434,14 @@
     </div>
 
     <!-- Observacion unica -->
+    <div style="font-size:9px;color:var(--text3);margin:4px 0 10px">El tiempo ya está guardado; aquí puedes añadir detalles.</div>
     <div class="hecho-field-label">Observacion de la sesion</div>
     <textarea id="hechoNota" class="modal-input hecho-session-note" rows="3" maxlength="1600" placeholder="Una sola observacion: objetivo, sensacion, ajuste o cierre..."></textarea>
 
     </div><!-- /.hecho-modal-body -->
 
     <div class="hecho-modal-footer">
-      <button class="modal-btn secondary" onclick="closeHechoDatos(false)">Cancelar</button>
+      <button class="modal-btn secondary" onclick="closeHechoDatos(false)">Ahora no</button>
       <button class="modal-btn primary" onclick="closeHechoDatos(true)">Guardar</button>
     </div>
   </div>
@@ -1861,6 +1863,9 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
+<script src="timer-core.js"></script>
+<script src="data-core.js"></script>
+<script src="sync-core.js"></script>
 <script src="app.js"></script>
 
 </body>

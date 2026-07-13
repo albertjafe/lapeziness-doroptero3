@@ -68,17 +68,17 @@ La pantalla de cronómetro rediseñada funciona visualmente bien en general. Los
 
 | ID | Prioridad | Tamaño | Propuesta | Estado |
 |---|---:|---:|---|---|
-| QUA-01 | P0 | L | Crear pruebas automáticas y CI mínimos | PENDIENTE |
+| QUA-01 | P0 | L | Crear pruebas automáticas y CI mínimos | IMPLEMENTADO |
 | ARC-01 | P0 | XL | Retirar organizador y sugerencias sin romper el registro | PENDIENTE |
-| CRN-01 | P0 | M | Impedir minutos de más en temporizadores | PENDIENTE |
+| CRN-01 | P0 | M | Impedir minutos de más en temporizadores | IMPLEMENTADO |
 | CRN-02 | P1 | M | Unificar el mínimo de sesión y borrar fallos de verdad | PENDIENTE |
-| CRN-03 | P0 | M | Guardar una sesión de forma atómica antes de confirmarla | PENDIENTE |
+| CRN-03 | P0 | M | Guardar una sesión de forma atómica antes de confirmarla | IMPLEMENTADO |
 | CRN-04 | P1 | M | Mostrar y recuperar siempre el cronómetro activo | PENDIENTE |
 | CRN-05 | P1 | M | Dividir el tiempo al cambiar de obra en marcha | PENDIENTE |
 | CRN-06 | P1 | M | Hacer fiable y accesible la duración y el modo Hasta | PENDIENTE |
 | SYN-01 | P0 | XL | Sustituir la sincronización global por mezcla por entidad | PENDIENTE |
-| SYN-02 | P0 | M | Escritura local inmediata, cola de nube y estado visible | PENDIENTE |
-| SEC-01 | P0 | M | Eliminar la contraseña en texto plano y crear logout real | PENDIENTE |
+| SYN-02 | P0 | M | Escritura local inmediata, cola de nube y estado visible | IMPLEMENTADO |
+| SEC-01 | P0 | M | Eliminar la contraseña en texto plano y crear logout real | IMPLEMENTADO |
 | SEC-02 | P0 | L | Eliminar las vías de inyección HTML | PENDIENTE |
 | DAT-01 | P1 | L | Usar fechas civiles estables entre zonas horarias | PENDIENTE |
 | NAV-01 | P1 | S | Corregir la posición de scroll al cambiar de pantalla | PENDIENTE |
@@ -102,7 +102,7 @@ P0 significa riesgo de pérdida de datos, seguridad o registro incorrecto. P1 si
 
 ### QUA-01. Crear pruebas automáticas y CI mínimos
 
-**Estado:** PENDIENTE
+**Estado:** IMPLEMENTADO
 **Prioridad:** P0
 **Tamaño:** L
 **Tipo:** Calidad y red de seguridad
@@ -195,7 +195,7 @@ No se rediseñará el organizador ni se sustituirá por otro sistema de recomend
 
 ### CRN-01. Impedir minutos de más en temporizadores
 
-**Estado:** PENDIENTE
+**Estado:** IMPLEMENTADO
 **Prioridad:** P0
 **Tamaño:** M
 **Tipo:** Error funcional y de datos
@@ -273,7 +273,7 @@ Aceptar cinco minutos como sesión válida, porque la interfaz ya los ofrece de 
 
 ### CRN-03. Guardar una sesión de forma atómica antes de confirmarla
 
-**Estado:** PENDIENTE
+**Estado:** IMPLEMENTADO
 **Prioridad:** P0
 **Tamaño:** M
 **Tipo:** Riesgo de pérdida de datos
@@ -477,7 +477,7 @@ No desplegar este punto como una reescritura sin fixtures de datos reales anonim
 
 ### SYN-02. Escritura local inmediata, cola de nube y estado visible
 
-**Estado:** PENDIENTE
+**Estado:** IMPLEMENTADO
 **Prioridad:** P0
 **Tamaño:** M
 **Tipo:** Persistencia
@@ -517,7 +517,7 @@ La subida está diferida aproximadamente 1,5 segundos y no existe un flush fiabl
 
 ### SEC-01. Eliminar la contraseña en texto plano y crear logout real
 
-**Estado:** PENDIENTE
+**Estado:** IMPLEMENTADO
 **Prioridad:** P0
 **Tamaño:** M
 **Tipo:** Seguridad y cuentas
