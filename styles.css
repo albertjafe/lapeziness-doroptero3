@@ -10516,6 +10516,172 @@
     -webkit-backdrop-filter: none;
   }
 
+/* Lote gráfico 1: navegación móvil, estados honestos y pausa accesible. */
+.nav.nav-bottom {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+  padding-left: max(4px, env(safe-area-inset-left, 0px));
+  padding-right: max(4px, env(safe-area-inset-right, 0px));
+}
+.nav.nav-bottom .nav-btn {
+  min-width: 0;
+  width: 100%;
+  min-height: 48px;
+  padding: 7px 4px 8px;
+  font-size: clamp(7px, 2.15vw, 8.5px);
+  letter-spacing: 0.025em;
+}
+.nav.nav-bottom .nav-btn span {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nav.nav-bottom .nav-btn svg { width: 18px; height: 18px; }
+
+.session-resumen-card.is-neutral .session-resumen-neutral {
+  width: 76px;
+  height: 76px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--border2);
+  border-radius: 50%;
+  color: var(--text3);
+  font-size: 28px;
+  line-height: 1;
+}
+.ritmo-card-status {
+  margin-top: 7px;
+  color: var(--text3);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  line-height: 1.35;
+  text-align: center;
+}
+.ritmo-card-status.is-unset { color: var(--text3); }
+
+.crono-pause-overlay {
+  z-index: 140;
+  background: color-mix(in oklab, var(--bg) 90%, transparent);
+  backdrop-filter: blur(8px) saturate(0.85);
+  -webkit-backdrop-filter: blur(8px) saturate(0.85);
+  transition: opacity 180ms ease, backdrop-filter 180ms ease,
+              -webkit-backdrop-filter 180ms ease;
+}
+@supports not (background: color-mix(in oklab, red, blue)) {
+  .crono-pause-overlay { background: rgba(242, 242, 247, 0.94); }
+}
+[data-theme="marmol-night"] .crono-pause-overlay {
+  background: color-mix(in oklab, var(--bg) 94%, transparent);
+}
+.crono-pause-overlay-inner {
+  width: min(420px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 28px 24px 24px;
+  border: 1px solid var(--border2);
+  border-radius: 28px;
+  background: var(--bg2);
+  box-shadow: 0 24px 70px -32px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.08);
+  transform: translateY(8px) scale(0.985);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+body.crono-paused .crono-pause-overlay-inner {
+  transform: translateY(0) scale(1);
+}
+.crono-pause-overlay-kicker {
+  margin-bottom: 4px;
+  color: var(--crono-color, var(--accent));
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.crono-pause-overlay-label {
+  margin-bottom: 10px;
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+.crono-pause-overlay-time {
+  margin-bottom: 8px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(58px, 16vw, 88px);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+.crono-pause-overlay-session {
+  margin-bottom: 9px;
+  color: var(--text2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+.crono-pause-overlay-note {
+  margin: 0 auto 20px;
+  max-width: 290px;
+  color: var(--text3);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.crono-pause-overlay-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 9px;
+}
+.crono-pause-overlay-play,
+.crono-pause-overlay-stop {
+  min-height: 48px;
+  border-radius: 15px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+.crono-pause-overlay-play {
+  width: auto;
+  flex: 1 1 auto;
+  gap: 8px;
+  border-color: var(--crono-color, var(--accent));
+  background: var(--crono-color, var(--accent));
+  color: #fff;
+}
+.crono-pause-overlay-play:hover {
+  background: color-mix(in srgb, var(--crono-color, var(--accent)) 82%, #000);
+  color: #fff;
+}
+.crono-pause-overlay-play svg { width: 18px; height: 18px; margin-left: 0; }
+.crono-pause-overlay-stop {
+  flex: 0 0 auto;
+  padding: 0 18px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+}
+.crono-pause-overlay-stop:hover { background: var(--bg3); color: var(--text); }
+
+@media (max-width: 360px) {
+  .nav.nav-bottom .nav-btn {
+    padding-left: 2px;
+    padding-right: 2px;
+    font-size: 7px;
+    letter-spacing: 0;
+  }
+  .nav.nav-bottom .nav-btn svg { width: 17px; height: 17px; }
+  .crono-pause-overlay-inner { padding: 24px 18px 18px; }
+  .crono-pause-overlay-actions { flex-direction: column; }
+  .crono-pause-overlay-stop { min-height: 44px; }
+}
+
   /* ─── CRONÓMETRO · consola coherente en reposo y en marcha ─────────── */
   .crono-idle-console,
   .crono-idle-main,

@@ -156,16 +156,16 @@ No todo necesita rediseño. Estas piezas son una buena base:
 | G-SYS-04 | P1 | M | Unificar contraste, foco y modo claro/automatico/oscuro | PENDIENTE |
 | G-SYS-05 | P1 | L | Crear un sistema responsive para movil, iPad y escritorio | PENDIENTE |
 | G-NAV-01 | P1 | M | Sustituir el encabezado global por una barra contextual compacta | PENDIENTE |
-| G-NAV-02 | P1 | S | Corregir definitivamente la navegacion inferior movil | PENDIENTE |
+| G-NAV-02 | P1 | S | Corregir definitivamente la navegacion inferior movil | IMPLEMENTADO |
 | G-NAV-03 | P1 | M | Dar a todas las pestañas la misma estructura de titulo y acciones | PENDIENTE |
 | G-FLU-01 | P1 | M | Reducir transiciones y completar movimiento reducido | PENDIENTE |
 | G-FLU-02 | P2 | M | Unificar toasts, guardado y estado de sincronizacion | PENDIENTE |
 | G-HOY-01 | P1 | M | Renombrar Sesion a Hoy y reordenar su proposito | PENDIENTE |
-| G-HOY-02 | P1 | M | Hacer honestos los estados sin registrar y el objetivo diario | PENDIENTE |
+| G-HOY-02 | P1 | M | Hacer honestos los estados sin registrar y el objetivo diario | IMPLEMENTADO |
 | G-HOY-03 | P1 | L | Compactar el registro diario y usar dos columnas en iPad | PENDIENTE |
 | G-CRO-01 | P1 | M | Simplificar el cronometro en reposo sin perder funciones | PENDIENTE |
 | G-CRO-02 | P1 | M | Ordenar herramientas y acciones durante el estudio | PENDIENTE |
-| G-CRO-03 | P1 | M | Rediseñar la pausa como un estado legible y accesible | PENDIENTE |
+| G-CRO-03 | P1 | M | Rediseñar la pausa como un estado legible y accesible | IMPLEMENTADO |
 | G-REP-01 | P1 | M | Simplificar el vacio y la barra de herramientas de Obras | PENDIENTE |
 | G-REP-02 | P1 | M | Rehacer la jerarquia de la tarjeta de obra | PENDIENTE |
 | G-SOL-01 | P1 | M | Convertir Registrar pase en un flujo rapido y fiable | PENDIENTE |
@@ -175,11 +175,11 @@ No todo necesita rediseño. Estas piezas son una buena base:
 | G-EST-02 | P1 | M | Eliminar recomendaciones y ocultar paneles sin datos | PENDIENTE |
 | G-EST-03 | P1 | L | Mejorar las graficas de tiempo y comparacion | PENDIENTE |
 | G-EST-04 | P1 | M | Aplicar umbrales a graficas de distribucion y patrones | PENDIENTE |
-| G-EST-05 | P1 | S | Refrescar todas las vistas afectadas despues de guardar | PENDIENTE |
+| G-EST-05 | P1 | S | Refrescar todas las vistas afectadas despues de guardar | IMPLEMENTADO |
 | G-AJU-01 | P1 | M | Simplificar Ajustes y aprovechar iPad horizontal | PENDIENTE |
 | G-AJU-02 | P2 | M | Mover importacion y exportacion avanzada a otra pantalla | PENDIENTE |
 | G-LIM-01 | P1 | L | Retirar componentes visuales ocultos que siguen ejecutandose | PENDIENTE |
-| G-QA-01 | P1 | L | Añadir una matriz de regresion visual y usabilidad | PENDIENTE |
+| G-QA-01 | P1 | L | Añadir una matriz de regresion visual y usabilidad | IMPLEMENTADO |
 
 P1 indica friccion importante, incoherencia visible o fallo funcional reproducible. P2 indica simplificacion o acabado que puede esperar a que la estructura principal sea estable.
 
@@ -396,7 +396,7 @@ La regla base de `.view` limita casi todo a 700 px. Con el zoom predeterminado, 
 
 ### G-NAV-02. Corregir definitivamente la navegacion inferior movil
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
 - **Prioridad:** P1
 - **Tamaño:** S
 - **Tipo:** Bug responsive
@@ -563,7 +563,7 @@ La pestaña `Sesion` no es la sesion de estudio: contiene diario, bienestar, sue
 
 ### G-HOY-02. Hacer honestos los estados sin registrar y el objetivo diario
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
 - **Prioridad:** P1
 - **Tamaño:** M
 - **Tipo:** Estado y confianza
@@ -700,7 +700,7 @@ La escena en marcha es el area mas solida, pero el cajon derecho queda casi vaci
 
 ### G-CRO-03. Rediseñar la pausa como un estado legible y accesible
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
 - **Prioridad:** P1
 - **Tamaño:** M
 - **Tipo:** Estado critico
@@ -1057,7 +1057,7 @@ Un unico bloque a las 10:00 produce una curva de `Momento del dia` y afirma `Pic
 
 ### G-EST-05. Refrescar todas las vistas afectadas despues de guardar
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
 - **Prioridad:** P1
 - **Tamaño:** S
 - **Tipo:** Bug funcional visible
@@ -1193,7 +1193,7 @@ Hay componentes ocultos que siguen conectados o renderizandose: `sessionPlan`, `
 
 ### G-QA-01. Añadir una matriz de regresion visual y usabilidad
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
 - **Prioridad:** P1
 - **Tamaño:** L
 - **Tipo:** Calidad
@@ -1202,6 +1202,10 @@ Hay componentes ocultos que siguen conectados o renderizandose: `sessionPlan`, `
 **Evidencia**
 
 Ya existe una base de pruebas, pero esta auditoria encontro problemas que requieren estados visuales concretos: barra movil, pausa, datos vacios, una unica muestra, dos pases el mismo dia, texto grande y modo oscuro. Un smoke test de carga no detecta esas incoherencias.
+
+**Alcance implementado en el Lote 1**
+
+Se añade la cobertura determinista de barra movil, estados diarios vacios, objetivo no configurado, pausa accesible y actualizacion inmediata tras guardar, junto con la matriz responsive de 320 a 430 px y las capturas estables de las vistas principales. La cobertura de temas, texto grande, movimiento reducido, umbrales de graficas y Safari queda reservada para el Lote 5.
 
 **Instruccion exacta**
 

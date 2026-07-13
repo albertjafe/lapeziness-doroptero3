@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-13-lote1-v35';
+const APP_VERSION = '2026-07-13-grafico-lote1-v36';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -96,8 +96,34 @@ function saveData() {
     // Los datos siguen en memoria para que el usuario pueda reintentar.
     return false;
   }
+  refreshStudyViews();
   enqueueCloudSync();
   return true;
+}
+
+// Una mutación de estudio debe actualizar todas las superficies que muestran
+// ese dato, aunque la vista activa no sea la que originó el guardado. Se
+// agrupa en un frame para evitar renders repetidos cuando una operación llama
+// a varias funciones de persistencia consecutivas.
+let _studyViewsRefreshFrame = null;
+function refreshStudyViews() {
+  if (_studyViewsRefreshFrame != null) return;
+  const render = () => {
+    _studyViewsRefreshFrame = null;
+    if (typeof renderRacha === 'function') renderRacha();
+    if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+    if (typeof renderStatsDashboard === 'function') renderStatsDashboard();
+    if (typeof renderMantenimientoSection === 'function') renderMantenimientoSection();
+    if (typeof renderSolidezSection === 'function') renderSolidezSection();
+    if (typeof renderEficienciaSection === 'function') renderEficienciaSection();
+    if (typeof renderEstadoSection === 'function') renderEstadoSection();
+    if (typeof renderSesionesHistorial === 'function') renderSesionesHistorial();
+  };
+  if (typeof requestAnimationFrame === 'function' && document.visibilityState !== 'hidden') {
+    _studyViewsRefreshFrame = requestAnimationFrame(render);
+  } else {
+    _studyViewsRefreshFrame = setTimeout(render, 0);
+  }
 }
 
 // ── FUSIÓN SEGURA DE HISTORIAL DE ESTUDIO ─────────────────────────────────────
@@ -1235,21 +1261,31 @@ function recordSiesta() {
 }
 
 function refreshEstadoFacesUI() {
-  const idx = estadoToFaceIndex(estadoActualVal());
+  const idx = _estadoUserSet ? estadoToFaceIndex(estadoActualVal()) : -1;
   document.querySelectorAll('#estadoFaces .estado-face').forEach((b, i) => {
     const on = i === idx;
     b.classList.toggle('active', on);
     b.setAttribute('aria-checked', on ? 'true' : 'false');
   });
+  const status = document.getElementById('estadoStatus');
+  if (status) {
+    status.textContent = _estadoUserSet ? 'Registrado hoy' : 'Sin registrar hoy · toca una opción';
+    status.classList.toggle('is-unset', !_estadoUserSet);
+  }
 }
 
 function refreshSuenoFacesUI() {
-  const idx = suenoToFaceIndex(suenoActualVal());
+  const idx = _suenoUserSet ? suenoToFaceIndex(suenoActualVal()) : -1;
   document.querySelectorAll('#suenoFaces .estado-face').forEach((b, i) => {
     const on = i === idx;
     b.classList.toggle('active', on);
     b.setAttribute('aria-checked', on ? 'true' : 'false');
   });
+  const status = document.getElementById('suenoStatus');
+  if (status) {
+    status.textContent = _suenoUserSet ? 'Registrado hoy' : 'Sin registrar hoy · toca una opción';
+    status.classList.toggle('is-unset', !_suenoUserSet);
+  }
 }
 
 function refreshSiestaSummary() {
@@ -1301,6 +1337,12 @@ function refreshTriggerFacesUI() {
     b.classList.toggle('active', on);
     b.setAttribute('aria-checked', on ? 'true' : 'false');
   });
+  const status = document.getElementById('triggerStatus');
+  if (status) {
+    const registered = !!last;
+    status.textContent = registered ? 'Registrado hoy' : 'Sin registrar hoy · toca un nivel';
+    status.classList.toggle('is-unset', !registered);
+  }
 }
 
 function refreshTiempoDisponibleFacesUI() {
@@ -1311,6 +1353,12 @@ function refreshTiempoDisponibleFacesUI() {
     b.classList.toggle('active', on);
     b.setAttribute('aria-checked', on ? 'true' : 'false');
   });
+  const status = document.getElementById('tiempoDisponibleStatus');
+  if (status) {
+    const registered = !!current;
+    status.textContent = registered ? 'Registrado hoy' : 'Sin registrar hoy';
+    status.classList.toggle('is-unset', !registered);
+  }
 }
 
 function refreshEstadoEventSummary() {
@@ -1319,7 +1367,7 @@ function refreshEstadoEventSummary() {
   const today = new Date().toDateString();
   const todayEvents = ensureEstadoEventos().filter(e => e && e.date === today);
   if (!todayEvents.length) {
-    el.textContent = 'El ánimo se registra por momentos: toca una cara cuando cambie.';
+    el.textContent = 'Sin registrar hoy · elige una cara cuando quieras guardar tu estado.';
     return;
   }
   const last = todayEvents[todayEvents.length - 1];
@@ -1337,7 +1385,7 @@ function refreshDeporteEventSummary() {
   const fuerza = deporteEventsToday('fuerza');
   const total = cardio.length + fuerza.length;
   if (!total) {
-    el.textContent = 'Toca una intensidad cuando hagas cardio o fuerza.';
+    el.textContent = 'Sin registrar hoy · toca una intensidad cuando hagas cardio o fuerza.';
     return;
   }
   const parts = [];
@@ -1351,7 +1399,7 @@ function refreshTriggerEventSummary() {
   if (!el) return;
   const arr = triggerEventsToday();
   if (!arr.length) {
-    el.textContent = 'Toca un nivel cuando aparezca un gatillo. Cada toque suma un registro.';
+    el.textContent = 'Sin registrar hoy · toca un nivel cuando aparezca un gatillo.';
     return;
   }
   const last = arr[arr.length - 1];
@@ -2756,6 +2804,7 @@ function finishStudyBlock(details) {
   if (!entry) return { entry: null, persisted: false };
   try {
     saveLocalNow();
+    refreshStudyViews();
     enqueueCloudSync();
     return { entry, persisted: true };
   } catch(e) {
@@ -16232,6 +16281,7 @@ async function onAuthSuccess() {
         if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
       }
     }
+    refreshStudyViews();
   }
 }
 
@@ -18398,30 +18448,49 @@ function _pasajeChartSVG(p) {
 }
 
 // Tarjeta resumen del día de la pestaña Sesión (visible solo en Mármol):
-// anillo (concentrado vs objetivo de 2 h) + minutos + racha.
+function getExplicitDailyGoalMinutes() {
+  const candidates = [
+    db && db.dailyGoalMinutes,
+    db && db.settings && db.settings.dailyGoalMinutes,
+  ];
+  try {
+    const saved = JSON.parse(localStorage.getItem('alberto_daily_goal_v1') || 'null');
+    candidates.push(saved && (saved.minutes ?? saved.dailyGoalMinutes));
+  } catch(e) {}
+  const goal = candidates.map(Number).find(n => Number.isFinite(n) && n > 0);
+  return goal ? Math.round(goal) : null;
+}
+
+// Resumen neutral cuando no existe una meta diaria explícita; nunca presenta
+// una cifra predeterminada como si fuera una decisión del usuario.
 function renderSessionResumen() {
   const el = document.getElementById('sessionResumenCard');
   if (!el) return;
   const done = (typeof getMinutosConcentradoHoy === 'function') ? getMinutosConcentradoHoy() : 0;
-  const goal = 120;
-  const pct = Math.max(0, Math.min(100, Math.round(done / goal * 100)));
-  const C = 2 * Math.PI * 34;
-  const dash = (C * pct / 100).toFixed(1);
+  const goal = getExplicitDailyGoalMinutes();
+  const goalMarkup = goal
+    ? (() => {
+        const pct = Math.max(0, Math.min(100, Math.round(done / goal * 100)));
+        const C = 2 * Math.PI * 34;
+        const dash = (C * pct / 100).toFixed(1);
+        return '<svg class="session-resumen-ring" viewBox="0 0 80 80" aria-hidden="true">' +
+          '<circle cx="40" cy="40" r="34" fill="none" stroke="var(--bg3)" stroke-width="8"/>' +
+          '<circle cx="40" cy="40" r="34" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + C.toFixed(1) + '" transform="rotate(-90 40 40)"/>' +
+          '<text x="40" y="46" text-anchor="middle" class="session-resumen-pct">' + pct + '%</text>' +
+        '</svg>';
+      })()
+    : '<div class="session-resumen-neutral" aria-hidden="true">·</div>';
   let racha = 0;
   try { racha = (typeof computeRacha === 'function') ? (computeRacha().racha || 0) : 0; } catch (e) {}
   const rachaHtml = racha > 0
     ? '<div class="session-resumen-racha">racha ' + racha + (racha === 1 ? ' día' : ' días') + '</div>'
     : '';
-  el.innerHTML =
-    '<svg class="session-resumen-ring" viewBox="0 0 80 80" aria-hidden="true">' +
-      '<circle cx="40" cy="40" r="34" fill="none" stroke="var(--bg3)" stroke-width="8"/>' +
-      '<circle cx="40" cy="40" r="34" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + C.toFixed(1) + '" transform="rotate(-90 40 40)"/>' +
-      '<text x="40" y="46" text-anchor="middle" class="session-resumen-pct">' + pct + '%</text>' +
-    '</svg>' +
+  el.classList.toggle('is-neutral', !goal);
+  el.innerHTML = goalMarkup +
     '<div class="session-resumen-info">' +
       '<div class="session-resumen-lbl">HOY</div>' +
       '<div class="session-resumen-big">' + fmtMinutos(done) + '</div>' +
-      '<div class="session-resumen-sub">de tu objetivo de 2 h</div>' +
+      '<div class="session-resumen-sub">' + (goal ? ('de tu objetivo de ' + fmtMinutos(goal)) : 'sin objetivo configurado') + '</div>' +
     '</div>' +
     rachaHtml;
 }
@@ -18669,12 +18738,25 @@ function cronoRender() {
   }
 
   // Overlay de pausa: activar body.crono-paused para mostrarlo
+  const pauseOverlay = document.getElementById('cronoPauseOverlay');
+  const runStage = document.getElementById('cronoStageRun');
   if (crono.state === 'paused') {
     document.body.classList.add('crono-paused');
+    if (pauseOverlay) pauseOverlay.setAttribute('aria-hidden', 'false');
+    if (runStage) runStage.setAttribute('inert', '');
     const ovTime = document.getElementById('cronoPauseOverlayTime');
     if (ovTime) ovTime.textContent = cronoFmt(cronoPauseRemainingMs());
+    const ovSession = document.getElementById('cronoPauseOverlaySession');
+    if (ovSession) ovSession.textContent = 'Sesión pausada en ' + cronoFmt(cronoEffectiveElapsedMs());
+    if (!cronoRender._pauseFocusSet) {
+      cronoRender._pauseFocusSet = true;
+      setTimeout(() => document.querySelector('#cronoPauseOverlay .crono-pause-overlay-play')?.focus(), 0);
+    }
   } else {
     document.body.classList.remove('crono-paused');
+    if (pauseOverlay) pauseOverlay.setAttribute('aria-hidden', 'true');
+    if (runStage) runStage.removeAttribute('inert');
+    cronoRender._pauseFocusSet = false;
   }
 
   // Controles según estado
@@ -19685,6 +19767,8 @@ function cronoStartPauseCountdown() {
     if (cd) cd.textContent = cronoFmt(remaining);
     const ovTime = document.getElementById('cronoPauseOverlayTime');
     if (ovTime) ovTime.textContent = cronoFmt(remaining);
+    const ovSession = document.getElementById('cronoPauseOverlaySession');
+    if (ovSession) ovSession.textContent = 'Sesión pausada en ' + cronoFmt(cronoEffectiveElapsedMs());
     const ring = document.getElementById('cronoPauseRingArc');
     if (ring) {
       const pct = CRONO_PAUSE_LIMIT_MS > 0 ? remaining / CRONO_PAUSE_LIMIT_MS : 0;

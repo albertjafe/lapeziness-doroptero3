@@ -82,7 +82,7 @@ La pantalla de cronómetro rediseñada funciona visualmente bien en general. Los
 | SEC-02 | P0 | L | Eliminar las vías de inyección HTML | PENDIENTE |
 | DAT-01 | P1 | L | Usar fechas civiles estables entre zonas horarias | PENDIENTE |
 | NAV-01 | P1 | S | Corregir la posición de scroll al cambiar de pantalla | PENDIENTE |
-| NAV-02 | P1 | S | Eliminar el desbordamiento de la barra móvil | PENDIENTE |
+| NAV-02 | P1 | S | Eliminar el desbordamiento de la barra móvil | IMPLEMENTADO |
 | UI-01 | P1 | M | Llevar los controles táctiles a un mínimo cómodo | PENDIENTE |
 | UI-02 | P2 | M | Reorganizar Sesión para iPad | PENDIENTE |
 | UI-03 | P2 | M | Reorganizar Ajustes para iPad | PENDIENTE |
@@ -671,7 +671,7 @@ showView cambia la vista sin gestionar scroll. openSettings pone app-content.scr
 
 ### NAV-02. Eliminar el desbordamiento de la barra móvil
 
-**Estado:** PENDIENTE
+**Estado:** IMPLEMENTADO
 **Prioridad:** P1
 **Tamaño:** S
 **Tipo:** Responsive

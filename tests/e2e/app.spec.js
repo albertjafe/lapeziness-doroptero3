@@ -24,8 +24,12 @@ async function prepare(page) {
 
 test('opens every main view without page exceptions', async ({ page }) => {
   const errors = [];
-  page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  const recordError = message => {
+    const text = typeof message === 'string' ? message : message.message;
+    if (text && !text.includes('ERR_NETWORK_ACCESS_DENIED')) errors.push(text);
+  };
+  page.on('pageerror', error => recordError(error.message));
+  page.on('console', message => { if (message.type() === 'error') recordError(message.text()); });
   await prepare(page);
 
   for (const view of ['session', 'cronometro', 'obras', 'calendario', 'historial', 'ajustes']) {
@@ -48,6 +52,83 @@ test('keeps the app inside the viewport at the four target widths', async ({ bro
     }
     await context.close();
   }
+});
+
+test('keeps mobile navigation visible and marks empty daily states honestly', async ({ browser }) => {
+  for (const viewport of [
+    { width: 320, height: 844 },
+    { width: 360, height: 844 },
+    { width: 375, height: 844 },
+    { width: 390, height: 844 },
+    { width: 430, height: 844 },
+  ]) {
+    const context = await browser.newContext({ viewport });
+    const page = await context.newPage();
+    await prepare(page);
+    await page.evaluate(() => showView('session'));
+    const state = await page.evaluate(() => ({
+      navFits: document.querySelector('.nav.nav-bottom').scrollWidth <= document.querySelector('.nav.nav-bottom').clientWidth,
+      documentFits: document.documentElement.scrollWidth <= window.innerWidth + 1,
+      navButtons: [...document.querySelectorAll('.nav.nav-bottom .nav-btn')].map(btn => ({
+        width: btn.getBoundingClientRect().width,
+        height: btn.getBoundingClientRect().height,
+        label: btn.getAttribute('aria-label'),
+      })),
+      wellbeingActive: document.querySelectorAll('#estadoFaces .estado-face.active').length,
+      sleepActive: document.querySelectorAll('#suenoFaces .estado-face.active').length,
+      wellbeingStatus: document.getElementById('estadoStatus')?.textContent,
+      sleepStatus: document.getElementById('suenoStatus')?.textContent,
+      summary: document.getElementById('sessionResumenCard')?.textContent,
+    }));
+    expect(state.navFits).toBe(true);
+    expect(state.documentFits).toBe(true);
+    expect(state.navButtons).toHaveLength(5);
+    expect(state.navButtons.every(btn => btn.width > 0 && btn.height >= 44 && btn.label)).toBe(true);
+    expect(state.wellbeingActive).toBe(0);
+    expect(state.sleepActive).toBe(0);
+    expect(state.wellbeingStatus).toContain('Sin registrar hoy');
+    expect(state.sleepStatus).toContain('Sin registrar hoy');
+    expect(state.summary).toContain('sin objetivo configurado');
+    await context.close();
+  }
+});
+
+test('refreshes statistics immediately after a local study save', async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => showView('historial'));
+  await expect(page.locator('#statsDashboard')).toContainText('0 min');
+  await page.evaluate(() => {
+    const end = Date.now();
+    const start = end - 45 * 60 * 1000;
+    recordSessionPlant('obra_1', null, new Date(start).toISOString(), new Date(end).toISOString(), 45, { source: 'e2e' });
+    saveData();
+  });
+  await expect(page.locator('#statsDashboard')).toContainText('45 min');
+});
+
+test('shows pause as an accessible rest state', async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => showView('cronometro'));
+  await page.evaluate(() => {
+    crono.state = 'paused';
+    crono.mode = 'stopwatch';
+    crono.isRest = false;
+    crono.displayName = 'Bach · Preludio';
+    crono.startTs = Date.now() - 25 * 60 * 1000;
+    crono.pauseStartTs = Date.now();
+    crono.pausedMs = 0;
+    crono.targetMinutes = null;
+    crono.targetDurationMs = null;
+    crono.runId = 'e2e-pause-run';
+    document.body.classList.add('crono-focus');
+    cronoRender();
+  });
+  const overlay = page.locator('#cronoPauseOverlay');
+  await expect(overlay).toHaveAttribute('aria-hidden', 'false');
+  await expect(overlay.locator('#cronoPauseOverlayTitle')).toHaveText('Descanso');
+  await expect(overlay.locator('#cronoPauseOverlaySession')).toContainText('Sesión pausada en');
+  await expect(overlay.getByRole('button', { name: 'Reanudar' })).toBeVisible();
+  await expect(page.locator('#cronoStageRun')).toHaveAttribute('inert', '');
 });
 
 test('can reload after going offline', async ({ browser }) => {
