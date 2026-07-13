@@ -171,6 +171,7 @@
         <button type="button" class="ritmo-info" onclick="showToast('El ánimo se registra como momentos con hora')">i</button>
       </div>
       <div class="estado-faces ritmo-scale" id="estadoFaces" role="radiogroup" aria-label="Bienestar actual"></div>
+      <div class="ritmo-card-status is-unset" id="estadoStatus">Sin registrar hoy · toca una opción</div>
     </section>
 
     <section class="ritmo-card ritmo-card-sueno" aria-label="Sueño">
@@ -182,6 +183,7 @@
         </div>
       </div>
       <div class="estado-faces ritmo-scale" id="suenoFaces" role="radiogroup" aria-label="Sueño de hoy"></div>
+      <div class="ritmo-card-status is-unset" id="suenoStatus">Sin registrar hoy · toca una opción</div>
       <div class="siesta-summary" id="siestaSummary">sin siesta hoy</div>
     </section>
 
@@ -191,6 +193,7 @@
         <button type="button" class="ritmo-info" onclick="showToast('Tiempo bruto disponible para tocar hoy; se guarda una vez por día')">i</button>
       </div>
       <div class="estado-faces ritmo-scale tiempo-scale" id="tiempoDisponibleFaces" role="radiogroup" aria-label="Tiempo disponible hoy"></div>
+      <div class="ritmo-card-status is-unset" id="tiempoDisponibleStatus">Sin registrar hoy</div>
       <div class="ritmo-moment-summary tiempo-summary" id="tiempoDisponibleSummary"></div>
     </section>
 
@@ -222,6 +225,7 @@
         <button type="button" class="ritmo-info" onclick="showToast('Cada toque añade un gatillo con hora e intensidad')">i</button>
       </div>
       <div class="estado-faces ritmo-scale trigger-scale" id="triggerFaces" role="radiogroup" aria-label="Gatillo TOC"></div>
+      <div class="ritmo-card-status is-unset" id="triggerStatus">Sin registrar hoy · toca un nivel</div>
       <div class="ritmo-moment-summary trigger-summary" id="triggerEventSummary"></div>
     </section>
 
@@ -539,10 +543,10 @@
 
   </div>
 
-  <!-- Overlay de pausa: difumina toda la pantalla con backdrop y muestra el
-       cronómetro de pausa en primer plano. Estilo Forest. -->
-
-  <div class="crono-pause-overlay" id="cronoPauseOverlay" aria-hidden="true">
+  <!-- Pausa: el descanso ocupa el primer plano y la escena queda inerte. -->
+  <div class="crono-pause-overlay" id="cronoPauseOverlay" aria-hidden="true"
+       role="dialog" aria-modal="true" aria-labelledby="cronoPauseOverlayTitle"
+       aria-describedby="cronoPauseOverlayNote">
     <div class="crono-pause-overlay-inner">
       <svg class="crono-pause-ring" viewBox="0 0 120 120" aria-hidden="true">
         <circle class="crono-pause-ring-track" cx="60" cy="60" r="52"/>
@@ -552,12 +556,18 @@
                 stroke-dasharray="326.73"
                 stroke-dashoffset="0"/>
       </svg>
-      <div class="crono-pause-overlay-label">Concentración en pausa</div>
+      <div class="crono-pause-overlay-kicker">En pausa</div>
+      <div class="crono-pause-overlay-label" id="cronoPauseOverlayTitle">Descanso</div>
       <div class="crono-pause-overlay-time" id="cronoPauseOverlayTime">05:00</div>
+      <div class="crono-pause-overlay-session" id="cronoPauseOverlaySession">Sesión pausada en 00:00</div>
       <div class="crono-pause-overlay-note" id="cronoPauseOverlayNote">Se reanuda sola al acabar la pausa.</div>
-      <button class="crono-pause-overlay-play" onclick="cronoResume()" aria-label="Reanudar">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-      </button>
+      <div class="crono-pause-overlay-actions">
+        <button class="crono-pause-overlay-play" onclick="cronoResume()" aria-label="Reanudar">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          <span>Reanudar</span>
+        </button>
+        <button class="crono-pause-overlay-stop" onclick="cronoStop()">Terminar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1823,23 +1833,23 @@
 </div> <!-- end app-content -->
 
 <nav class="nav nav-bottom">
-  <button class="nav-btn active" onclick="showView('session')">
+  <button class="nav-btn active" aria-label="Sesión" data-short="Sesión" onclick="showView('session')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>
     <span>Sesión</span>
   </button>
-  <button class="nav-btn" onclick="showView('cronometro')">
+  <button class="nav-btn" aria-label="Cronómetro" data-short="Crono" onclick="showView('cronometro')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M10 2.5h4M12 2.5V6"/></svg>
     <span>Cronómetro</span>
   </button>
-  <button class="nav-btn" onclick="showView('obras')">
+  <button class="nav-btn" aria-label="Obras" data-short="Obras" onclick="showView('obras')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="17.5" r="2.6"/><circle cx="17.5" cy="15" r="2.6"/><path d="M9.6 17.5V6.5l10.5-2.5V15"/></svg>
     <span>Obras</span>
   </button>
-  <button class="nav-btn" onclick="showView('calendario')">
+  <button class="nav-btn" aria-label="Calendario" data-short="Calend." onclick="showView('calendario')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
     <span>Calendario</span>
   </button>
-  <button class="nav-btn" onclick="showView('historial')">
+  <button class="nav-btn" aria-label="Estadísticas" data-short="Estad." onclick="showView('historial')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg>
     <span>Estadísticas</span>
   </button>
