@@ -116,6 +116,13 @@
   <path d="M40 420 Q44 400 48 382" stroke="var(--accent)" stroke-width="1" fill="none"/>
 </svg>
 <div class="view active" id="view-session">
+  <div class="view-action-row hoy-action-row">
+    <div>
+      <div class="view-local-label">Resumen de hoy</div>
+      <div class="view-local-subtitle">Minutos, estado y diario en un solo lugar</div>
+    </div>
+    <button type="button" class="hoy-start-study-btn" id="sessionStartStudyBtn" onclick="showView('cronometro')">Empezar a estudiar</button>
+  </div>
   <!-- Banner: "Hoy te has concentrado X" + opción discreta para día pasado -->
   <div class="session-concentrado-banner" id="sessionConcentradoBanner">
     <span class="session-concentrado-icon" aria-hidden="true">
@@ -157,7 +164,7 @@
     <textarea id="sessionJournalInput" class="session-journal-input" rows="4" maxlength="2400" placeholder="Dicta o escribe una entrada general del dÃ­a: plan, sensaciones, prioridades, algo que quieras recordar..."></textarea>
     <div class="session-journal-actions">
       <span id="sessionJournalHint">Se guarda con fecha y hora.</span>
-      <button type="button" class="session-journal-submit" onclick="saveSessionJournalEntry()">Subir entrada</button>
+      <button type="button" class="session-journal-submit" onclick="saveSessionJournalEntry()">Guardar entrada</button>
     </div>
     <div class="session-journal-list" id="sessionJournalList"></div>
   </section>
@@ -165,6 +172,10 @@
   <div class="session-hero session-ritmo-panel">
     <div class="notes-deco" id="notesDeco"></div>
     <div id="rachaDisplay" style="display:none;margin-bottom:6px"></div>
+    <div class="session-state-heading">
+      <div class="view-local-label">Estado de hoy</div>
+      <div class="view-local-subtitle">Registra solo lo que quieras conservar; lo demás queda sin datos.</div>
+    </div>
 
     <section class="ritmo-card ritmo-card-bienestar" aria-label="Bienestar">
       <div class="ritmo-card-head">
@@ -398,12 +409,8 @@
 
       <div class="crono-quick-actions">
         <button class="crono-solidity-btn crono-pase-quick-btn" id="cronoQuickPaseBtn" onclick="openCronoPaseRapido()">
-          <span>Pase</span>
+          <span>Registrar pase</span>
           <strong>＋</strong>
-        </button>
-        <button class="crono-solidity-btn crono-note-btn" id="cronoQuickNoteBtn" onclick="openCronoNote('before')">
-          <span>Nota</span>
-          <strong id="cronoQuickNoteCount">0</strong>
         </button>
         <button class="crono-solidity-btn" id="cronoQuickSolBtn" onclick="openQuickSolidez('idle')" style="display:none">
           <span>Solidez</span>
@@ -417,7 +424,7 @@
 
       <div class="crono-timer-projection" id="cronoTimerProjection" style="display:none"></div>
 
-      <button class="crono-plant-btn" id="cronoStartBtn" onclick="cronoStart()" disabled>Plantar</button>
+      <button class="crono-plant-btn" id="cronoStartBtn" onclick="cronoStart()" disabled>Iniciar</button>
 
       <div class="crono-idle-pasajes-shell">
         <div class="crono-pasajes-section crono-pasajes-section-idle" id="cronoIdlePasajesSection"></div>
@@ -488,12 +495,11 @@
       <div class="crono-run-drawer-tabs" role="tablist" aria-label="Herramientas">
         <button type="button" class="crono-run-drawer-tab active" data-tab="pasajes" role="tab" aria-selected="true" onclick="cronoSetRunDrawerTab('pasajes')">Pasajes</button>
         <button type="button" class="crono-run-drawer-tab" data-tab="nota" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('nota')">
-          Nota <span id="cronoDrawerNoteTabCount">+</span>
+          Notas <span id="cronoDrawerNoteTabCount">+</span>
         </button>
         <button type="button" class="crono-run-drawer-tab" data-tab="tareas" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('tareas')">
           Tareas <span id="cronoDrawerTaskTabCount">+</span>
         </button>
-        <button type="button" class="crono-run-drawer-tab" data-tab="pase" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('pase')">Pase</button>
       </div>
 
       <div class="crono-run-drawer-panels">
@@ -581,7 +587,10 @@
         <div class="view-local-label">Tu repertorio</div>
         <div class="obras-count" id="obrasCount">0 obras</div>
       </div>
-      <button class="obras-primary-add" onclick="openAddObra()">+ Añadir</button>
+      <div class="obras-topbar-actions">
+        <button class="obras-more-toggle" id="obrasMoreToggle" onclick="toggleObrasMore()" aria-expanded="false">Más</button>
+        <button class="obras-primary-add" onclick="openAddObra()">+ Añadir</button>
+      </div>
     </div>
     <div class="obras-toolbar">
       <div class="obras-search-wrap">
@@ -1612,20 +1621,23 @@
   <div class="modal">
     <div class="modal-title">¿Cómo fue el pase?</div>
     <div id="paseQualityName" style="font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text2);margin-bottom:14px"></div>
-    <div class="pase-tipo-label">Contexto</div>
-    <div class="pase-tipo-row">
-      <button class="pase-tipo-btn solo active" onclick="selectPaseTipo('solo',this)">Solo</button>
-      <button class="pase-tipo-btn informal" onclick="selectPaseTipo('informal',this)">Informal</button>
-      <button class="pase-tipo-btn evento" onclick="selectPaseTipo('evento',this)">Evento</button>
-    </div>
     <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Resultado del pase</div>
     <div class="pscore-modal-row" id="paseQScoreBtns"></div>
-    <input class="modal-input" id="paseQNote" placeholder="nota rápida (opcional)" type="text" style="margin-top:4px">
-    <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin:10px 0 6px">Fecha del pase · puede ser otro día</div>
-    <input class="modal-input" id="paseQFecha" type="date" style="margin-bottom:0">
+    <details class="pase-advanced-details">
+      <summary>Añadir detalles</summary>
+      <div class="pase-tipo-label">Contexto</div>
+      <div class="pase-tipo-row">
+        <button class="pase-tipo-btn solo active" onclick="selectPaseTipo('solo',this)">Solo</button>
+        <button class="pase-tipo-btn informal" onclick="selectPaseTipo('informal',this)">Informal</button>
+        <button class="pase-tipo-btn evento" onclick="selectPaseTipo('evento',this)">Evento</button>
+      </div>
+      <input class="modal-input" id="paseQNote" placeholder="nota rápida (opcional)" type="text" style="margin-top:4px">
+      <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin:10px 0 6px">Fecha del pase · puede ser otro día</div>
+      <input class="modal-input" id="paseQFecha" type="date" style="margin-bottom:0">
+    </details>
     <div class="modal-buttons">
       <button class="modal-btn secondary" onclick="closeModal('modalPaseQuality')">Cancelar</button>
-      <button class="modal-btn primary" onclick="confirmPase()">Guardar</button>
+      <button class="modal-btn primary" id="paseQSaveBtn" onclick="confirmPase()">Guardar</button>
     </div>
   </div>
 </div>
@@ -1683,7 +1695,8 @@
       <button class="modal-btn secondary" onclick="closeModal('modalGrafico')" style="padding:4px 12px;font-size:10px">✕</button>
     </div>
     <div id="graficoMovTabs" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px"></div>
-    <div id="graficoSvgWrap"></div>
+<div id="graficoSvgWrap"></div>
+    <div id="graficoAccessibleList" class="grafico-accessible-list"></div>
     <div id="graficoLeyenda" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px"></div>
   </div>
 </div>
@@ -1830,9 +1843,9 @@
 </div> <!-- end app-content -->
 
 <nav class="nav nav-bottom">
-  <button class="nav-btn active" aria-label="Sesión" data-view="session" data-short="Sesión" aria-current="page" onclick="showView('session')">
+  <button class="nav-btn active" aria-label="Hoy" data-view="session" data-short="Hoy" aria-current="page" onclick="showView('session')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>
-    <span>Sesión</span>
+    <span>Hoy</span>
   </button>
   <button class="nav-btn" aria-label="Cronómetro" data-view="cronometro" data-short="Crono" onclick="showView('cronometro')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M10 2.5h4M12 2.5V6"/></svg>

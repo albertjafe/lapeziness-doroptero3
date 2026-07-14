@@ -160,16 +160,16 @@ No todo necesita rediseño. Estas piezas son una buena base:
 | G-NAV-03 | P1 | M | Dar a todas las pestañas la misma estructura de titulo y acciones | IMPLEMENTADO |
 | G-FLU-01 | P1 | M | Reducir transiciones y completar movimiento reducido | IMPLEMENTADO |
 | G-FLU-02 | P2 | M | Unificar toasts, guardado y estado de sincronizacion | PENDIENTE |
-| G-HOY-01 | P1 | M | Renombrar Sesion a Hoy y reordenar su proposito | PENDIENTE |
+| G-HOY-01 | P1 | M | Renombrar Sesion a Hoy y reordenar su proposito | IMPLEMENTADO |
 | G-HOY-02 | P1 | M | Hacer honestos los estados sin registrar y el objetivo diario | IMPLEMENTADO |
-| G-HOY-03 | P1 | L | Compactar el registro diario y usar dos columnas en iPad | PENDIENTE |
-| G-CRO-01 | P1 | M | Simplificar el cronometro en reposo sin perder funciones | PENDIENTE |
-| G-CRO-02 | P1 | M | Ordenar herramientas y acciones durante el estudio | PENDIENTE |
+| G-HOY-03 | P1 | L | Compactar el registro diario y usar dos columnas en iPad | IMPLEMENTADO |
+| G-CRO-01 | P1 | M | Simplificar el cronometro en reposo sin perder funciones | IMPLEMENTADO |
+| G-CRO-02 | P1 | M | Ordenar herramientas y acciones durante el estudio | IMPLEMENTADO |
 | G-CRO-03 | P1 | M | Rediseñar la pausa como un estado legible y accesible | IMPLEMENTADO |
-| G-REP-01 | P1 | M | Simplificar el vacio y la barra de herramientas de Obras | PENDIENTE |
-| G-REP-02 | P1 | M | Rehacer la jerarquia de la tarjeta de obra | PENDIENTE |
-| G-SOL-01 | P1 | M | Convertir Registrar pase en un flujo rapido y fiable | PENDIENTE |
-| G-SOL-02 | P1 | L | Rediseñar Evolucion con escala y muestras honestas | PENDIENTE |
+| G-REP-01 | P1 | M | Simplificar el vacio y la barra de herramientas de Obras | IMPLEMENTADO |
+| G-REP-02 | P1 | M | Rehacer la jerarquia de la tarjeta de obra | IMPLEMENTADO |
+| G-SOL-01 | P1 | M | Convertir Registrar pase en un flujo rapido y fiable | IMPLEMENTADO |
+| G-SOL-02 | P1 | L | Rediseñar Evolucion con escala y muestras honestas | IMPLEMENTADO |
 | G-CAL-01 | P2 | L | Integrar mes interactivo y agenda del dia | PENDIENTE |
 | G-EST-01 | P1 | L | Separar Estadisticas por dominios con alcance claro | PENDIENTE |
 | G-EST-02 | P1 | M | Eliminar recomendaciones y ocultar paneles sin datos | PENDIENTE |
@@ -537,7 +537,7 @@ La app puede mostrar a la vez indicador fijo de sincronizacion, toast, check de 
 
 ### G-HOY-01. Renombrar Sesion a Hoy y reordenar su proposito
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
 - **Prioridad:** P1
 - **Tamaño:** M
 - **Tipo:** Arquitectura de producto
@@ -603,7 +603,7 @@ Una instalacion vacia muestra `Bien` para bienestar y sueño antes de que el usu
 
 ### G-HOY-03. Compactar el registro diario y usar dos columnas en iPad
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
 - **Prioridad:** P1
 - **Tamaño:** L
 - **Tipo:** Densidad y layout
@@ -637,7 +637,7 @@ Sesion supera 1800 px de alto en iPad horizontal y usa tarjetas de casi todo el 
 
 ### G-CRO-01. Simplificar el cronometro en reposo sin perder funciones
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
 - **Prioridad:** P1
 - **Tamaño:** M
 - **Tipo:** Flujo principal
@@ -672,7 +672,7 @@ El cronometro en reposo tiene una buena escena, pero mezcla selector de modo, re
 
 ### G-CRO-02. Ordenar herramientas y acciones durante el estudio
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
 - **Prioridad:** P1
 - **Tamaño:** M
 - **Tipo:** Estado en marcha
@@ -743,7 +743,7 @@ En pausa, el overlay blanquea casi toda la escena. Se muestran a la vez el tiemp
 
 ### G-REP-01. Simplificar el vacio y la barra de herramientas de Obras
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
 - **Prioridad:** P1
 - **Tamaño:** M
 - **Tipo:** Reduccion de ruido
@@ -777,7 +777,7 @@ Con cero obras se muestran buscador, selector `Todas las obras`, chips `Todas / 
 
 ### G-REP-02. Rehacer la jerarquia de la tarjeta de obra
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
 - **Prioridad:** P1
 - **Tamaño:** M
 - **Tipo:** Componente central
@@ -813,7 +813,7 @@ La tarjeta combina color, dificultad, fase, minutos, solidez, estimacion hacia 8
 
 ### G-SOL-01. Convertir Registrar pase en un flujo rapido y fiable
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
 - **Prioridad:** P1
 - **Tamaño:** M
 - **Tipo:** Friccion de entrada
@@ -853,7 +853,7 @@ El modal actual formula bien la pregunta, pero obliga a pasar por contexto, fech
 
 ### G-SOL-02. Rediseñar Evolucion con escala y muestras honestas
 
-- **Estado:** PENDIENTE
+- **Estado:** IMPLEMENTADO
 - **Prioridad:** P1
 - **Tamaño:** L
 - **Tipo:** Visualizacion de datos

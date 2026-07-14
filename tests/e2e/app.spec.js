@@ -234,3 +234,99 @@ test('can reload after going offline', async ({ browser }) => {
   await expect(page.locator('body')).toBeVisible();
   await context.close();
 });
+
+test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) => {
+  await prepare(page);
+  const state = await page.evaluate(() => {
+    showView('session');
+    const hoy = {
+      nav: document.querySelector('.nav-btn[data-view="session"]')?.textContent.trim(),
+      action: document.getElementById('sessionStartStudyBtn')?.textContent.trim(),
+      summary: document.getElementById('sessionResumenCard')?.textContent || '',
+      journal: [...document.querySelectorAll('#view-session button')].find(button => /Guardar entrada/.test(button.textContent))?.textContent.trim(),
+      nudge: document.querySelector('.session-insight-card.nudge'),
+    };
+    showView('cronometro');
+    return {
+      hoy,
+      cronoStart: document.getElementById('cronoStartBtn')?.textContent.trim(),
+      quickNoteButtons: document.querySelectorAll('#cronoQuickNoteBtn').length,
+      runTabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab),
+      bottomDisplay: getComputedStyle(document.querySelector('#view-cronometro .crono-bottom-row')).display,
+    };
+  });
+  expect(state.hoy.nav).toBe('Hoy');
+  expect(state.hoy.action).toBe('Empezar a estudiar');
+  expect(state.hoy.summary).toContain('Aún sin actividad registrada');
+  expect(state.hoy.journal).toBe('Guardar entrada');
+  expect(state.hoy.nudge).toBeNull();
+  expect(state.cronoStart).toBe('Iniciar');
+  expect(state.quickNoteButtons).toBe(0);
+  expect(state.runTabs).toEqual(['pasajes', 'nota', 'tareas']);
+  expect(state.bottomDisplay).toBe('none');
+});
+
+test('progressively reveals Obras tools and keeps evolution samples honest', async ({ page }) => {
+  await prepare(page);
+  const sparse = await page.evaluate(() => {
+    showView('obras');
+    const view = document.getElementById('view-obras');
+    return {
+      sparse: view.classList.contains('obras-sparse'),
+      toolbar: getComputedStyle(view.querySelector('.obras-toolbar')).display,
+      primaryText: view.querySelector('.obra-primary-pase')?.textContent || '',
+      hasEstimate: /80%|mantenimiento recomendado|horas sugeridas/i.test(view.textContent),
+    };
+  });
+  expect(sparse.sparse).toBe(true);
+  expect(sparse.toolbar).toBe('none');
+  expect(sparse.primaryText).toContain('Registrar pase');
+  expect(sparse.hasEstimate).toBe(false);
+
+  const rich = await page.evaluate(() => {
+    db.obras.push(
+      { id: 'obra_2', name: 'Obra dos', composer: 'Compositor', tipo: 'obra', movimientos: [], sol: 50, solHistory: [], paseHistory: [] },
+      { id: 'obra_3', name: 'Obra tres', composer: 'Compositor', tipo: 'obra', movimientos: [], sol: 50, solHistory: [], paseHistory: [] },
+    );
+    renderObras();
+    document.getElementById('obrasMoreToggle')?.click();
+    const view = document.getElementById('view-obras');
+    return {
+      sparse: view.classList.contains('obras-sparse'),
+      moreOpen: view.classList.contains('obras-more-open'),
+      sortDisplay: getComputedStyle(view.querySelector('.obras-sort-row')).display,
+      moreText: document.getElementById('obrasMoreToggle')?.textContent.trim(),
+    };
+  });
+  expect(rich.sparse).toBe(false);
+  expect(rich.moreOpen).toBe(true);
+  expect(rich.sortDisplay).toBe('flex');
+  expect(rich.moreText).toBe('Menos');
+
+  const graph = await page.evaluate(() => {
+    const now = Date.now();
+    db.obras[0].paseHistory = [
+      { date: new Date(now - 3 * 86400000).toISOString(), score: 4, tipo: 'solo', note: 'uno' },
+      { date: new Date(now - 2 * 86400000).toISOString(), score: 6, tipo: 'informal', note: 'dos' },
+    ];
+    openGrafico('obra_1', null);
+    renderGraficoSvg();
+    const short = {
+      list: document.getElementById('graficoAccessibleList')?.textContent || '',
+      svg: !!document.querySelector('#graficoSvgWrap svg'),
+      insufficient: !!document.querySelector('.grafico-insufficient'),
+    };
+    db.obras[0].paseHistory.push(
+      { date: new Date(now - 1 * 86400000).toISOString(), score: 7, tipo: 'solo' },
+      { date: new Date(now - 12 * 3600000).toISOString(), score: 8, tipo: 'solo' },
+      { date: new Date(now - 6 * 3600000).toISOString(), score: 9, tipo: 'evento' },
+    );
+    renderGraficoSvg();
+    return { short, long: { svg: !!document.querySelector('#graficoSvgWrap svg'), scale: document.getElementById('graficoSvgWrap')?.textContent.includes('%') } };
+  });
+  expect(graph.short.list).toContain('uno');
+  expect(graph.short.svg).toBe(false);
+  expect(graph.short.insufficient).toBe(true);
+  expect(graph.long.svg).toBe(true);
+  expect(graph.long.scale).toBe(true);
+});

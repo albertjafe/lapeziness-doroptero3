@@ -11172,3 +11172,251 @@ body.crono-paused .crono-pause-overlay-inner {
     .view-action-row { gap: 8px; }
     .view-action-row button { padding-left: 10px !important; padding-right: 10px !important; }
   }
+
+  /* LOTE 3A · Hoy y Cronómetro: una entrada principal y menos ruido */
+  #view-session .hoy-action-row {
+    margin-top: 0;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+  }
+  .hoy-start-study-btn {
+    min-height: 44px !important;
+    padding: 10px 14px !important;
+    border: 1px solid var(--accent);
+    border-radius: 13px;
+    background: var(--accent);
+    color: #fff;
+    font-size: var(--type-meta-size);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  #view-session .session-concentrado-banner { display: none !important; }
+  #view-session .session-state-heading {
+    grid-column: 1 / -1;
+    padding: 2px 2px 4px;
+  }
+  #view-session .session-state-heading .view-local-subtitle { max-width: 60ch; }
+  [data-theme^="marmol"] .session-resumen-last {
+    margin-top: 5px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1.3;
+  }
+  @media (min-width: 768px) {
+    #view-session .session-ritmo-panel {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px 16px;
+      align-items: start;
+    }
+    #view-session .session-ritmo-panel .ritmo-card { min-width: 0; margin: 0; }
+    #view-session .session-ritmo-panel .session-state-heading { margin-bottom: -2px; }
+    #view-session .session-journal-card { margin-left: 0; margin-right: 0; }
+  }
+  @media (max-width: 520px) {
+    #view-session .hoy-action-row { align-items: center; }
+    .hoy-start-study-btn { padding-left: 11px !important; padding-right: 11px !important; }
+    [data-theme^="marmol"] .session-resumen-last { font-size: 9px; }
+  }
+
+  /* En el reposo queda un único camino secundario: registrar un pase.
+     La observación es la nota de la sesión; no se duplica como botón aparte. */
+  [data-theme^="marmol"] .crono-idle-panel .crono-quick-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  [data-theme^="marmol"] .crono-idle-panel .crono-quick-actions .crono-pase-quick-btn {
+    grid-column: 1;
+  }
+  [data-theme^="marmol"] .crono-idle-panel .crono-observation-box-idle { order: 4; }
+  [data-theme^="marmol"] .crono-idle-panel .crono-quick-actions { order: 5; }
+  #view-cronometro .crono-bottom-row { display: none !important; }
+  #cronoRunDrawer .crono-run-drawer-tab[data-tab="pase"],
+  #cronoRunDrawer .crono-run-drawer-panel[data-panel="pase"] { display: none !important; }
+     [data-theme^="marmol"] .crono-run-drawer .crono-ctrl-btn.stop::after {
+       content: "Terminar y guardar";
+       font-size: 10px;
+     }
+
+     /* LOTE 3B · Repertorio progresivo, pase principal y evolución honesta */
+     #view-obras .obras-topbar-actions {
+       display: inline-flex;
+       align-items: center;
+       gap: 7px;
+       flex-shrink: 0;
+     }
+     #view-obras .obras-more-toggle {
+       display: none;
+       min-height: 38px;
+       padding: 8px 11px;
+       border: 1px solid var(--border2);
+       border-radius: 8px;
+       background: transparent;
+       color: var(--text3);
+       font-family: var(--font-mono);
+       font-size: 10px;
+       cursor: pointer;
+     }
+     #view-obras.obras-more-open .obras-more-toggle,
+     #view-obras:not(.obras-sparse) .obras-more-toggle { color: var(--accent); }
+     #view-obras.obras-sparse .obras-toolbar,
+     #view-obras.obras-sparse .obras-filter-row,
+     #view-obras.obras-sparse .obras-sort-row { display: none; }
+     #view-obras:not(.obras-more-open) .obras-sort-row { display: none; }
+     #view-obras.obras-more-open .obras-sort-row { display: flex; }
+     #view-obras.obras-sparse .obras-workbench { margin-bottom: 14px; }
+     #view-obras.obras-sparse .obras-primary-add { min-height: 42px; }
+
+     .obra-simple-title {
+       cursor: pointer;
+       border-radius: 8px;
+       outline: none;
+     }
+     .obra-simple-title:focus-visible {
+       box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 24%, transparent);
+     }
+     .obra-admin-menu { position: relative; flex: 0 0 auto; }
+     .obra-admin-menu > summary {
+       list-style: none;
+       display: inline-flex;
+       align-items: center;
+       justify-content: center;
+       width: 32px;
+       height: 32px;
+       border: 1px solid var(--border2);
+       border-radius: 8px;
+       color: var(--text3);
+       cursor: pointer;
+       font-family: var(--font-mono);
+       font-size: 17px;
+       line-height: 1;
+     }
+     .obra-admin-menu > summary::-webkit-details-marker { display: none; }
+     .obra-admin-menu[open] > summary { color: var(--accent); border-color: var(--accent); }
+     .obra-admin-menu-popover {
+       position: absolute;
+       right: 0;
+       top: calc(100% + 6px);
+       z-index: 8;
+       display: flex;
+       flex-direction: column;
+       gap: 3px;
+       min-width: 138px;
+       padding: 6px;
+       border: 1px solid var(--border2);
+       border-radius: 10px;
+       background: var(--bg2);
+       box-shadow: 0 12px 30px -16px rgba(0,0,0,.55);
+     }
+     .obra-admin-action {
+       display: flex;
+       align-items: center;
+       gap: 8px;
+       width: 100%;
+       padding: 8px 9px;
+       border: 0;
+       border-radius: 7px;
+       background: transparent;
+       color: var(--text2);
+       font-family: var(--font-mono);
+       font-size: 10px;
+       text-align: left;
+       cursor: pointer;
+     }
+     .obra-admin-action:hover,
+     .obra-admin-action:focus-visible { background: var(--bg3); color: var(--accent); }
+     .obra-admin-action.danger { color: var(--red); }
+     .obra-admin-action .obra-color-dot {
+       width: 12px; height: 12px; border-radius: 50%;
+       border: 1px solid var(--border2); flex: 0 0 auto;
+     }
+     .obra-primary-pase { margin-top: 14px; }
+     .obra-primary-pase .obra-sol-medir {
+       color: var(--accent);
+       font-weight: 700;
+     }
+     .obra-simple-last {
+       margin-top: 8px;
+       color: var(--text3);
+       font-family: var(--font-mono);
+       font-size: 10px;
+       line-height: 1.35;
+     }
+     .obra-simple-history {
+       display: block;
+       width: 100%;
+       margin-top: 10px;
+       padding: 8px 10px;
+       border: 1px solid var(--border2);
+       border-radius: 8px;
+       background: transparent;
+       color: var(--text3);
+       font-family: var(--font-mono);
+       font-size: 10px;
+       text-align: left;
+       cursor: pointer;
+     }
+     .obra-simple-history:hover,
+     .obra-simple-history:focus-visible { color: var(--accent); border-color: var(--accent); }
+
+     .pase-advanced-details {
+       margin-top: 12px;
+       border-top: 1px solid var(--border2);
+       border-bottom: 1px solid var(--border2);
+       padding: 9px 0;
+     }
+     .pase-advanced-details > summary {
+       color: var(--accent);
+       font-family: var(--font-mono);
+       font-size: 10px;
+       cursor: pointer;
+     }
+     .pase-advanced-details[open] > summary { margin-bottom: 11px; }
+
+     .grafico-evolucion-svg { width: 100%; height: auto; display: block; }
+     .grafico-insufficient,
+     .grafico-history-empty {
+       padding: 18px 12px;
+       border: 1px dashed var(--border2);
+       border-radius: 9px;
+       color: var(--text3);
+       font-family: var(--font-mono);
+       font-size: 10px;
+       line-height: 1.5;
+       text-align: center;
+     }
+     .grafico-accessible-list { margin-top: 12px; }
+     .grafico-history-title,
+     .grafico-scale-note {
+       color: var(--text3);
+       font-family: var(--font-mono);
+       font-size: 9px;
+       letter-spacing: .03em;
+     }
+     .grafico-history-list {
+       display: flex;
+       flex-direction: column;
+       gap: 5px;
+       max-height: 170px;
+       margin: 7px 0 0;
+       padding: 0 2px 0 18px;
+       overflow: auto;
+     }
+     .grafico-history-list li {
+       display: grid;
+       grid-template-columns: minmax(112px, 1fr) 42px 52px minmax(0, 1.3fr);
+       gap: 6px;
+       align-items: baseline;
+       color: var(--text2);
+       font-family: var(--font-mono);
+       font-size: 9px;
+     }
+     .grafico-history-list time,
+     .grafico-history-list em { color: var(--text3); }
+     .grafico-history-list strong { color: var(--accent); font-size: 11px; }
+     .grafico-history-list em { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+     @media (max-width: 520px) {
+       .grafico-history-list li { grid-template-columns: minmax(96px, 1fr) 38px 48px; }
+       .grafico-history-list em { grid-column: 1 / -1; }
+       .obra-admin-menu-popover { right: -4px; }
+     }
