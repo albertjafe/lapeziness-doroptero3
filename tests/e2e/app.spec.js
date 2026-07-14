@@ -55,6 +55,7 @@ test('keeps the app inside the viewport at the four target widths', async ({ bro
 });
 
 test('keeps mobile navigation visible and marks empty daily states honestly', async ({ browser }) => {
+  test.setTimeout(60_000);
   for (const viewport of [
     { width: 320, height: 844 },
     { width: 360, height: 844 },
@@ -89,6 +90,96 @@ test('keeps mobile navigation visible and marks empty daily states honestly', as
     expect(state.wellbeingStatus).toContain('Sin registrar hoy');
     expect(state.sleepStatus).toContain('Sin registrar hoy');
     expect(state.summary).toContain('sin objetivo configurado');
+    await context.close();
+  }
+});
+
+test('implements the second visual batch across header, type, theme and motion', async ({ page }) => {
+  await prepare(page);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+
+  const state = await page.evaluate(() => {
+    showView('session');
+    setFontSize('large');
+    setThemeMode('dark');
+    window.scrollTo(0, 1000);
+    showView('obras');
+    const active = document.querySelector('.view.active');
+    const activeStyles = getComputedStyle(active);
+    const bodyBefore = getComputedStyle(document.body, '::before');
+    return {
+      title: document.getElementById('headerTitle')?.textContent.trim(),
+      eyebrow: document.getElementById('headerEyebrow')?.textContent.trim(),
+      dateHidden: document.getElementById('headerDate')?.hidden,
+      currentView: document.body.dataset.view,
+      activeNav: document.querySelector('.nav-btn[aria-current="page"]')?.dataset.view,
+      fontOptions: document.querySelectorAll('.font-option').length,
+      sizes: [...document.querySelectorAll('.size-option')].map(button => button.dataset.size),
+      size: document.documentElement.dataset.size,
+      theme: document.documentElement.dataset.theme,
+      darkModeChecked: document.querySelector('.theme-mode-option[data-theme-mode="dark"]')?.getAttribute('aria-checked'),
+      rootZoom: document.documentElement.style.zoom,
+      bodyTransform: document.body.style.transform,
+      scrollY: window.scrollY,
+      viewAnimation: activeStyles.animationName,
+      viewTransform: activeStyles.transform,
+      backgroundAnimation: bodyBefore.animationName,
+    };
+  });
+
+  expect(state.title).toBe('Obras');
+  expect(state.eyebrow).toBe('Repertorio');
+  expect(state.dateHidden).toBe(true);
+  expect(state.currentView).toBe('obras');
+  expect(state.activeNav).toBe('obras');
+  expect(state.fontOptions).toBe(0);
+  expect(state.sizes).toEqual(['small', 'normal', 'large']);
+  expect(state.size).toBe('large');
+  expect(state.theme).toBe('marmol-night');
+  expect(state.darkModeChecked).toBe('true');
+  expect(state.rootZoom).toBe('');
+  expect(state.bodyTransform).toBe('');
+  expect(state.scrollY).toBe(0);
+  expect(state.viewAnimation).toBe('none');
+  expect(state.viewTransform).toBe('none');
+  expect(state.backgroundAnimation).toBe('none');
+  await expect(page.locator('#headerSettingsBtn')).toHaveAttribute('aria-label', 'Abrir ajustes');
+});
+
+test('keeps phase two grids and touch targets usable at mobile and iPad widths', async ({ browser }) => {
+  test.setTimeout(60_000);
+  for (const viewport of [{ width: 320, height: 844 }, { width: 834, height: 1194 }]) {
+    const context = await browser.newContext({ viewport });
+    const page = await context.newPage();
+    await prepare(page);
+    const state = await page.evaluate(() => {
+      setFontSize('large');
+      const gear = document.getElementById('headerSettingsBtn');
+      const gearSize = [gear.getBoundingClientRect().width, gear.getBoundingClientRect().height];
+      showView('ajustes');
+      const body = document.querySelector('#view-ajustes .ajustes-body');
+      const stats = document.getElementById('view-historial');
+      return {
+        viewport: window.innerWidth,
+        documentFits: document.documentElement.scrollWidth <= window.innerWidth + 1,
+        bottomNavFits: document.querySelector('.nav.nav-bottom').scrollWidth <= document.querySelector('.nav.nav-bottom').clientWidth,
+        navHeights: [...document.querySelectorAll('.nav.nav-bottom .nav-btn')].map(button => button.getBoundingClientRect().height),
+        gearSize,
+        settingsColumns: getComputedStyle(body).gridTemplateColumns,
+        statsDisplay: getComputedStyle(stats).display,
+      };
+    });
+    expect(state.documentFits).toBe(true);
+    expect(state.bottomNavFits).toBe(true);
+    expect(state.navHeights.every(height => height >= 44)).toBe(true);
+    expect(state.gearSize).toEqual([44, 44]);
+    if (viewport.width >= 768) {
+      expect(state.settingsColumns.split(' ').length).toBeGreaterThan(1);
+      expect(state.statsDisplay).toBe('grid');
+    } else {
+      expect(state.settingsColumns).toBe('none');
+      expect(state.statsDisplay).toBe('block');
+    }
     await context.close();
   }
 });
@@ -142,4 +233,100 @@ test('can reload after going offline', async ({ browser }) => {
   await page.waitForTimeout(500);
   await expect(page.locator('body')).toBeVisible();
   await context.close();
+});
+
+test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) => {
+  await prepare(page);
+  const state = await page.evaluate(() => {
+    showView('session');
+    const hoy = {
+      nav: document.querySelector('.nav-btn[data-view="session"]')?.textContent.trim(),
+      action: document.getElementById('sessionStartStudyBtn')?.textContent.trim(),
+      summary: document.getElementById('sessionResumenCard')?.textContent || '',
+      journal: [...document.querySelectorAll('#view-session button')].find(button => /Guardar entrada/.test(button.textContent))?.textContent.trim(),
+      nudge: document.querySelector('.session-insight-card.nudge'),
+    };
+    showView('cronometro');
+    return {
+      hoy,
+      cronoStart: document.getElementById('cronoStartBtn')?.textContent.trim(),
+      quickNoteButtons: document.querySelectorAll('#cronoQuickNoteBtn').length,
+      runTabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab),
+      bottomDisplay: getComputedStyle(document.querySelector('#view-cronometro .crono-bottom-row')).display,
+    };
+  });
+  expect(state.hoy.nav).toBe('Hoy');
+  expect(state.hoy.action).toBe('Empezar a estudiar');
+  expect(state.hoy.summary).toContain('Aún sin actividad registrada');
+  expect(state.hoy.journal).toBe('Guardar entrada');
+  expect(state.hoy.nudge).toBeNull();
+  expect(state.cronoStart).toBe('Iniciar');
+  expect(state.quickNoteButtons).toBe(0);
+  expect(state.runTabs).toEqual(['pasajes', 'nota', 'tareas']);
+  expect(state.bottomDisplay).toBe('none');
+});
+
+test('progressively reveals Obras tools and keeps evolution samples honest', async ({ page }) => {
+  await prepare(page);
+  const sparse = await page.evaluate(() => {
+    showView('obras');
+    const view = document.getElementById('view-obras');
+    return {
+      sparse: view.classList.contains('obras-sparse'),
+      toolbar: getComputedStyle(view.querySelector('.obras-toolbar')).display,
+      primaryText: view.querySelector('.obra-primary-pase')?.textContent || '',
+      hasEstimate: /80%|mantenimiento recomendado|horas sugeridas/i.test(view.textContent),
+    };
+  });
+  expect(sparse.sparse).toBe(true);
+  expect(sparse.toolbar).toBe('none');
+  expect(sparse.primaryText).toContain('Registrar pase');
+  expect(sparse.hasEstimate).toBe(false);
+
+  const rich = await page.evaluate(() => {
+    db.obras.push(
+      { id: 'obra_2', name: 'Obra dos', composer: 'Compositor', tipo: 'obra', movimientos: [], sol: 50, solHistory: [], paseHistory: [] },
+      { id: 'obra_3', name: 'Obra tres', composer: 'Compositor', tipo: 'obra', movimientos: [], sol: 50, solHistory: [], paseHistory: [] },
+    );
+    renderObras();
+    document.getElementById('obrasMoreToggle')?.click();
+    const view = document.getElementById('view-obras');
+    return {
+      sparse: view.classList.contains('obras-sparse'),
+      moreOpen: view.classList.contains('obras-more-open'),
+      sortDisplay: getComputedStyle(view.querySelector('.obras-sort-row')).display,
+      moreText: document.getElementById('obrasMoreToggle')?.textContent.trim(),
+    };
+  });
+  expect(rich.sparse).toBe(false);
+  expect(rich.moreOpen).toBe(true);
+  expect(rich.sortDisplay).toBe('flex');
+  expect(rich.moreText).toBe('Menos');
+
+  const graph = await page.evaluate(() => {
+    const now = Date.now();
+    db.obras[0].paseHistory = [
+      { date: new Date(now - 3 * 86400000).toISOString(), score: 4, tipo: 'solo', note: 'uno' },
+      { date: new Date(now - 2 * 86400000).toISOString(), score: 6, tipo: 'informal', note: 'dos' },
+    ];
+    openGrafico('obra_1', null);
+    renderGraficoSvg();
+    const short = {
+      list: document.getElementById('graficoAccessibleList')?.textContent || '',
+      svg: !!document.querySelector('#graficoSvgWrap svg'),
+      insufficient: !!document.querySelector('.grafico-insufficient'),
+    };
+    db.obras[0].paseHistory.push(
+      { date: new Date(now - 1 * 86400000).toISOString(), score: 7, tipo: 'solo' },
+      { date: new Date(now - 12 * 3600000).toISOString(), score: 8, tipo: 'solo' },
+      { date: new Date(now - 6 * 3600000).toISOString(), score: 9, tipo: 'evento' },
+    );
+    renderGraficoSvg();
+    return { short, long: { svg: !!document.querySelector('#graficoSvgWrap svg'), scale: document.getElementById('graficoSvgWrap')?.textContent.includes('%') } };
+  });
+  expect(graph.short.list).toContain('uno');
+  expect(graph.short.svg).toBe(false);
+  expect(graph.short.insufficient).toBe(true);
+  expect(graph.long.svg).toBe(true);
+  expect(graph.long.scale).toBe(true);
 });

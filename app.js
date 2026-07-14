@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-13-grafico-lote1-v36';
+const APP_VERSION = '2026-07-13-grafico-lote3-v38';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -484,15 +484,45 @@ if (!db.sessionPlants) db.sessionPlants = [];
 
 // ─── UI HELPERS ─────────────────────────────────────────────────────────────
 
+const VIEW_CONTEXT = {
+  session: { eyebrow: 'Estudio', title: 'Hoy' },
+  cronometro: { eyebrow: 'Práctica', title: 'Cronómetro' },
+  obras: { eyebrow: 'Repertorio', title: 'Obras' },
+  calendario: { eyebrow: 'Planificación', title: 'Calendario' },
+  historial: { eyebrow: 'Resumen', title: 'Estadísticas' },
+  ajustes: { eyebrow: 'Planificador de estudio', title: 'Ajustes' }
+};
+
+function updateContextHeader(name) {
+  const context = VIEW_CONTEXT[name] || VIEW_CONTEXT.session;
+  const eyebrow = document.getElementById('headerEyebrow');
+  const title = document.getElementById('headerTitle');
+  const date = document.getElementById('headerDate');
+  if (eyebrow) eyebrow.textContent = context.eyebrow;
+  if (title) title.textContent = context.title;
+  if (date) {
+    const showsDate = name === 'session' || name === 'calendario';
+    date.hidden = !showsDate;
+    if (!showsDate) date.textContent = '';
+  }
+  document.title = `${context.title} · Planificador de estudio`;
+}
+
 function showView(name) {
   document.body.setAttribute('data-view', name);
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.remove('active');
+    b.removeAttribute('aria-current');
+  });
   document.getElementById('view-' + name).classList.add('active');
-  const btns = document.querySelectorAll('.nav-btn');
-  const names = ['session','cronometro','obras','calendario','historial'];
-  const idx = names.indexOf(name);
-  if (idx >= 0) btns[idx].classList.add('active');
+  const activeButton = document.querySelector(`.nav-btn[data-view="${name}"]`);
+  if (activeButton) {
+    activeButton.classList.add('active');
+    activeButton.setAttribute('aria-current', 'page');
+  }
+  updateContextHeader(name);
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   // Modo concentración: activar/desactivar al entrar/salir de cronometro
   if (name !== 'cronometro' && typeof cronoOnLeaveView === 'function') cronoOnLeaveView();
   if (name === 'session')    { renderRacha(); if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI(); if (typeof renderSessionInsights === 'function') renderSessionInsights(); if (typeof renderSessionJournal === 'function') renderSessionJournal(); }
@@ -594,33 +624,6 @@ function openModal(id) {
     // "se desenfoca la pantalla pero no aparece nada".
     void overlay.offsetWidth;
   }
-  // ★ Compensación del zoom iOS: applyZoom escala el body con transform,
-  // que convierte a body en el containing block de position:fixed. El
-  // overlay con inset:0 pasa a cubrir el DOCUMENTO entero y el modal se
-  // centra en el documento, no en la pantalla (con scroll queda fuera).
-  // Solución: posicionarlo en absoluto sobre el viewport visible actual,
-  // en coordenadas locales del body escalado. En modo concentración el
-  // transform ya se anula vía html.crono-focus-root, no hace falta.
-  const z = (typeof _appZoom === 'number' && _appZoom) || 1;
-  // Solo compensamos cuando body está escalado con transform (fallback legacy).
-  // Con CSS zoom no hace falta: position:fixed se centra en el viewport normal.
-  const bodyScaled = _iosTransformZoom
-    && !document.documentElement.classList.contains('crono-focus-root');
-  if (bodyScaled) {
-    overlay.style.position = 'absolute';
-    overlay.style.top = (window.scrollY / z) + 'px';
-    overlay.style.left = (window.scrollX / z) + 'px';
-    overlay.style.width = (window.innerWidth / z) + 'px';
-    overlay.style.height = (window.innerHeight / z) + 'px';
-    overlay.style.minHeight = '0';
-  } else {
-    overlay.style.position = '';
-    overlay.style.top = '';
-    overlay.style.left = '';
-    overlay.style.width = '';
-    overlay.style.height = '';
-    overlay.style.minHeight = '';
-  }
   overlay.scrollTop = 0;
   const modalBox = overlay.querySelector('.modal');
   if (modalBox) modalBox.scrollTop = 0;
@@ -673,16 +676,23 @@ function updateHeader() {
   const d = new Date();
   const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
   const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const currentView = document.body.getAttribute('data-view') || 'session';
+  updateContextHeader(currentView);
   const h = d.getHours();
   const saludo = h < 6 ? 'Buenas noches' : h < 13 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches';
-  document.getElementById('headerDate').textContent = `${saludo} · ${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}`;
+  const dateEl = document.getElementById('headerDate');
+  if (dateEl) {
+    dateEl.textContent = currentView === 'calendario'
+      ? `${meses[d.getMonth()]} ${d.getFullYear()}`
+      : `${saludo} · ${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}`;
+  }
   // Show nearest upcoming event
   const now = Date.now();
   const proxEvento = (db.eventos || [])
     .filter(ev => new Date(ev.fecha) > now)
     .sort((a,b) => new Date(a.fecha) - new Date(b.fecha))[0];
   const headerSub = document.getElementById('packNameHeader');
-  if (proxEvento) {
+  if (proxEvento && (currentView === 'session' || currentView === 'calendario')) {
     const dias2 = Math.ceil((new Date(proxEvento.fecha) - now) / 86400000);
     headerSub.textContent = proxEvento.nombre + ' · ' + dias2 + 'd';
   } else {
@@ -14503,90 +14513,24 @@ function saveSesionManual() {
 
 // ─── THEMES ─────────────────────────────────────────────────────────────────
 
-function setFont(font, btn) {
-  document.documentElement.setAttribute('data-font', font);
-  localStorage.setItem('alberto_font', font);
-  document.querySelectorAll('.font-option').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
+function normalizeTextSizePreference(size) {
+  if (size === 'small' || size === 'normal' || size === 'large') return size;
+  // The former XL level was a canvas zoom. Keep existing users at the largest
+  // text level without bringing back the global zoom behaviour.
+  if (size === 'xlarge') return 'large';
+  return 'normal';
 }
 
 function setFontSize(size, btn) {
-  const zooms = { small: 0.82, normal: 1, large: 1.22, xlarge: 1.5 };
-  const z = zooms[size] || 1;
-  applyZoom(z);
-  document.documentElement.setAttribute('data-size', size);
-  localStorage.setItem('alberto_size', size);
-  document.querySelectorAll('.size-option').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-}
-
-// Detect iOS Safari (doesn't support CSS zoom)
-const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-var _appZoom = 1; // var: hoisted, openModal puede leerlo aunque se defina después
-var _iosTransformZoom = false; // true solo en el fallback legacy (transform en body)
-function applyZoom(z) {
-  _appZoom = z;
-  const b = document.body, h = document.documentElement;
-  // CSS `zoom` (soportado en iOS 16.4+) NO rompe position:fixed → la barra de
-  // navegación inferior se queda fija al hacer scroll. El `transform: scale` en
-  // body sí la rompía (convertía body en containing block de los fixed).
-  const canZoom = !!(window.CSS && CSS.supports && CSS.supports('zoom', '1.5'));
-  if (isIOS && canZoom) {
-    _iosTransformZoom = false;
-    b.style.transform = ''; b.style.width = ''; b.style.minHeight = ''; b.style.transformOrigin = '';
-    h.style.zoom = (z === 1 ? '' : z);
-    h.style.fontSize = '';
-  } else if (isIOS) {
-    // Fallback legacy (iOS < 16.4 sin CSS zoom): escalar body con transform.
-    _iosTransformZoom = (z !== 1);
-    h.style.zoom = '';
-    b.style.transformOrigin = 'top left';
-    if (z === 1) {
-      b.style.transform = '';
-      b.style.width = '';
-      b.style.minHeight = '';
-    } else {
-      b.style.transform = 'scale(' + z + ')';
-      b.style.width = (100 / z).toFixed(3) + '%';
-      b.style.minHeight = (100 / z).toFixed(3) + 'vh';
-    }
-  } else {
-    _iosTransformZoom = false;
-    h.style.zoom = z;
-    h.style.fontSize = Math.round(z * 100) + '%';
-  }
-}
-
-function editHeaderTitle() {
-  const el = document.getElementById('headerTitle');
-  if (!el) return;
-  const current = localStorage.getItem('alberto_app_title') || 'Planificador de estudio';
-  const input = document.createElement('input');
-  input.value = current;
-  input.style.cssText = 'background:transparent;border:none;border-bottom:1px solid var(--border);color:inherit;font:inherit;width:180px;outline:none;text-align:center;padding:0';
-  el.textContent = '';
-  el.appendChild(input);
-  input.focus();
-  input.select();
-  const save = () => {
-    const val = input.value.trim() || 'Planificador de estudio';
-    localStorage.setItem('alberto_app_title', val);
-    document.title = val;
-    el.textContent = val;
-  };
-  input.onblur = save;
-  input.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); input.blur(); } if (e.key === 'Escape') { el.textContent = current; } };
-}
-
-function loadAppTitle() {
-  const saved = localStorage.getItem('alberto_app_title');
-  if (saved) {
-    const el = document.getElementById('headerTitle');
-    if (el) el.textContent = saved;
-    document.title = saved;
-  }
+  const normalized = normalizeTextSizePreference(size);
+  document.documentElement.setAttribute('data-size', normalized);
+  localStorage.setItem('alberto_size', normalized);
+  document.querySelectorAll('.size-option').forEach(b => {
+    const isActive = b.dataset.size === normalized;
+    b.classList.toggle('active', isActive);
+    b.setAttribute('aria-checked', isActive ? 'true' : 'false');
+  });
+  if (btn && btn.dataset.size !== normalized) btn = null;
 }
 
 // Color de fondo base de cada tema. Se usa para tintar la barra del
@@ -14613,72 +14557,51 @@ function _isNightHour() {
 
 // Aplica Mármol claro u oscuro. Ya no hay temas alternativos activables.
 function refreshTheme() {
-  const day = THEME_DAY;
-  localStorage.setItem('alberto_theme', THEME_DAY);
-  const auto = localStorage.getItem('alberto_autonight') === '1';
-  const display = (auto && _isNightHour()) ? THEME_NIGHT : day;
+  const storedMode = localStorage.getItem('alberto_theme_mode');
+  const legacyAuto = localStorage.getItem('alberto_autonight') === '1';
+  const mode = storedMode === 'dark' || storedMode === 'auto' || storedMode === 'light'
+    ? storedMode
+    : (legacyAuto ? 'auto' : 'light');
+  const display = mode === 'dark' || (mode === 'auto' && _isNightHour()) ? THEME_NIGHT : THEME_DAY;
+  localStorage.setItem('alberto_theme_mode', mode);
+  localStorage.setItem('alberto_theme', display);
   document.documentElement.setAttribute('data-theme', display);
   applyThemeColor(display);
-  const tog = document.getElementById('autoNightToggle');
-  if (tog) tog.checked = auto;
+  document.querySelectorAll('.theme-mode-option').forEach(button => {
+    const active = button.dataset.themeMode === mode;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-checked', active ? 'true' : 'false');
+  });
   setTimeout(initEstadoSliders, 50); // re-fill tras cambio de color
 }
 
-function setTheme() {
-  localStorage.setItem('alberto_theme', THEME_DAY);
+function setThemeMode(mode) {
+  const normalized = mode === 'dark' || mode === 'auto' ? mode : 'light';
+  localStorage.setItem('alberto_theme_mode', normalized);
   refreshTheme();
-  if (typeof showToast === 'function') showToast('Tema fijado en Mármol');
+  if (typeof showToast === 'function') {
+    showToast(normalized === 'dark' ? 'Modo oscuro fijado' : normalized === 'auto' ? 'Modo automático activo' : 'Modo claro fijado');
+  }
 }
 
 function setAutoNight(on) {
-  localStorage.setItem('alberto_autonight', on ? '1' : '0');
-  refreshTheme();
-  if (typeof showToast === 'function') {
-    showToast(on
-      ? (_isNightHour() ? 'Modo noche activo' : 'Modo noche automático activo · 21:00-7:00')
-      : 'Modo noche automático desactivado');
-  }
+  setThemeMode(on ? 'auto' : 'light');
 }
 
 function loadTheme() {
-  // Migration v2: noche → cozy
-  if (!localStorage.getItem('alberto_theme_v2_migrated')) {
-    localStorage.setItem('alberto_theme_v2_migrated', '1');
-    if (!localStorage.getItem('alberto_theme') || localStorage.getItem('alberto_theme') === 'noche') {
-      localStorage.setItem('alberto_theme', 'cozy');
-    }
-    if (!localStorage.getItem('alberto_size') || localStorage.getItem('alberto_size') === 'normal') {
-      localStorage.setItem('alberto_size', 'large');
-    }
-  }
-  // Migration v3: force cozy default for everyone (one-time reset)
-  if (!localStorage.getItem('alberto_theme_v3_migrated')) {
-    localStorage.setItem('alberto_theme_v3_migrated', '1');
-    localStorage.setItem('alberto_theme', 'cozy');
-  }
-  // Migration v4: nuevo tema por defecto «Concierto» (recital nocturno).
-  if (!localStorage.getItem('alberto_theme_v4_concierto')) {
-    localStorage.setItem('alberto_theme_v4_concierto', '1');
-    localStorage.setItem('alberto_theme', 'concierto');
-  }
-  localStorage.setItem('alberto_theme', THEME_DAY);
-  const font  = localStorage.getItem('alberto_font')  || 'mono';
-  const size  = localStorage.getItem('alberto_size')  || 'large';
-  const zooms = { small: 0.82, normal: 1, large: 1.22, xlarge: 1.5 };
-  const z = zooms[size] || 1;
-
-  document.documentElement.setAttribute('data-font', font);
+  const storedSize = localStorage.getItem('alberto_size');
+  const size = normalizeTextSizePreference(storedSize);
+  // New installations start at Normal. Existing values are normalized
+  // conservatively so a previous XL preference becomes Grande.
+  localStorage.setItem('alberto_size', size);
   document.documentElement.setAttribute('data-size', size);
-  applyZoom(z);
 
   // Tema (respetando el modo noche automático por hora).
   refreshTheme();
 
-  document.querySelectorAll('.font-option').forEach(b => {
-    b.classList.toggle('active', b.dataset.font === font);
-  });
   document.querySelectorAll('.size-option').forEach(b => {
     b.classList.toggle('active', b.dataset.size === size);
+    b.setAttribute('aria-checked', b.dataset.size === size ? 'true' : 'false');
   });
 
   // Revisar el modo noche cada minuto y al volver a la app, para cambiar solo
@@ -16131,10 +16054,12 @@ function closeAjustes() {
 // Re-marca como activas las opciones de fuente y tamaño según lo guardado
 // (el tema lo marca refreshTheme). Necesario al abrir la pantalla de Ajustes.
 function _syncAjustesActiveOptions() {
-  const font = localStorage.getItem('alberto_font') || 'mono';
-  const size = localStorage.getItem('alberto_size') || 'large';
-  document.querySelectorAll('.font-option').forEach(b => b.classList.toggle('active', b.dataset.font === font));
-  document.querySelectorAll('.size-option').forEach(b => b.classList.toggle('active', b.dataset.size === size));
+  const size = normalizeTextSizePreference(localStorage.getItem('alberto_size'));
+  document.querySelectorAll('.size-option').forEach(b => {
+    const active = b.dataset.size === size;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-checked', active ? 'true' : 'false');
+  });
 }
 
 // Refresca la información de estado en Ajustes
@@ -16299,7 +16224,6 @@ async function initApp() {
 
   // Init UI
   loadTheme();
-  loadAppTitle();
   loadEstadoDiarioFromSources();
   initEstadoSliders();
   initTimeSlider();
@@ -16946,7 +16870,7 @@ function toggleCronoTask(id) {
 }
 
 function cronoSetRunDrawerTab(tab) {
-  const valid = tab === 'nota' || tab === 'pase' || tab === 'pasajes' || tab === 'tareas' ? tab : 'pasajes';
+  const valid = tab === 'nota' || tab === 'pasajes' || tab === 'tareas' ? tab : 'pasajes';
   _cronoRunDrawerTab = valid;
   cronoUpdateRunDrawer();
   try { Haptics.light(); } catch(e) {}
@@ -16955,7 +16879,7 @@ function cronoSetRunDrawerTab(tab) {
 function cronoUpdateRunDrawer() {
   const drawer = document.getElementById('cronoRunDrawer');
   if (!drawer) return;
-  const tab = _cronoRunDrawerTab === 'nota' || _cronoRunDrawerTab === 'pase' || _cronoRunDrawerTab === 'tareas' ? _cronoRunDrawerTab : 'pasajes';
+  const tab = _cronoRunDrawerTab === 'nota' || _cronoRunDrawerTab === 'tareas' ? _cronoRunDrawerTab : 'pasajes';
   drawer.dataset.tab = tab;
   drawer.querySelectorAll('.crono-run-drawer-tab').forEach(btn => {
     const active = btn.dataset.tab === tab;
@@ -17855,7 +17779,9 @@ function renderSessionInsights() {
   const cards = [];
   const now = new Date();
 
-  const nudge = computeStudyNudge();
+  // Hoy ofrece una entrada explícita al cronómetro; no recomienda una obra
+  // automáticamente antes de que el usuario elija qué quiere estudiar.
+  const nudge = null;
   if (nudge) {
     cards.push('<div class="session-insight-card nudge" onclick="nudgeStudyNow(\'' + nudge.obraId + '\')">' +
       '<div style="min-width:0">' +
@@ -18468,6 +18394,20 @@ function renderSessionResumen() {
   if (!el) return;
   const done = (typeof getMinutosConcentradoHoy === 'function') ? getMinutosConcentradoHoy() : 0;
   const goal = getExplicitDailyGoalMinutes();
+  const todayKey = sessionJournalDayKey(new Date());
+  const activity = [];
+  (db.sessionPlants || []).forEach(plant => {
+    if (!plant || plant.failed || plant.tipo === 'descanso' || !plant.startedAt) return;
+    if (sessionJournalDayKey(plant.startedAt) === todayKey) {
+      activity.push({ at: plant.startedAt, label: 'Estudio' });
+    }
+  });
+  sessionJournalTodayEntries().forEach(entry => activity.push({ at: entry.at, label: 'Diario' }));
+  activity.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+  const lastActivity = activity.length ? activity[activity.length - 1] : null;
+  const lastActivityText = lastActivity
+    ? 'Última actividad · ' + lastActivity.label.toLowerCase() + ' a las ' + new Date(lastActivity.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+    : 'Aún sin actividad registrada';
   const goalMarkup = goal
     ? (() => {
         const pct = Math.max(0, Math.min(100, Math.round(done / goal * 100)));
@@ -18491,6 +18431,7 @@ function renderSessionResumen() {
       '<div class="session-resumen-lbl">HOY</div>' +
       '<div class="session-resumen-big">' + fmtMinutos(done) + '</div>' +
       '<div class="session-resumen-sub">' + (goal ? ('de tu objetivo de ' + fmtMinutos(goal)) : 'sin objetivo configurado') + '</div>' +
+      '<div class="session-resumen-last">' + lastActivityText + '</div>' +
     '</div>' +
     rachaHtml;
 }
@@ -18807,11 +18748,11 @@ function cronoUpdateStartBtn() {
   if (typeof cronoUpdateSelectBtn === 'function') cronoUpdateSelectBtn();
   // Texto del botón según modo
   if (crono.mode === 'timer') {
-    btn.textContent = 'Plantar · ' + crono.timerMinutes + ' min';
+    btn.textContent = 'Iniciar · ' + crono.timerMinutes + ' min';
   } else if (crono.mode === 'until') {
-    btn.textContent = untilMinutes ? ('Plantar · hasta ' + crono.untilTime) : 'Elige hora futura';
+    btn.textContent = untilMinutes ? ('Iniciar · hasta ' + crono.untilTime) : 'Elige hora futura';
   } else {
-    btn.textContent = 'Plantar';
+    btn.textContent = 'Iniciar';
   }
   // Calcular color de la obra seleccionada y aplicarlo al ensō y al botón
   let color = null;
@@ -19979,7 +19920,7 @@ function cronoStop() {
   const min = Math.floor(ms / 60000);
   if (min >= CRONO_MIN_MIN) {
     // Sesión válida: confirmación simple inline (sin modal, es seguro)
-    if (!confirm('¿Parar y guardar la sesión?\n\nLlevas ' + cronoFmt(ms) + ' estudiando.')) return;
+    if (!confirm('¿Terminar y guardar la sesión?\n\nLlevas ' + cronoFmt(ms) + ' estudiando.')) return;
     cronoFinish();
   } else {
     // Sesión que será fallida: mostrar modal HTML elegante
@@ -21027,6 +20968,237 @@ async function checkForAppUpdate(manual) {
     }
   }
 }
+
+// ─── FASE 3B · repertorio, pases y evolución ───────────────────────────────
+// Estas capas finales consolidan la jerarquía visual del lote 3 sin tocar el
+// modelo de datos existente. Se mantienen juntas para que las reglas de la
+// tarjeta y de la gráfica puedan evolucionar como un único flujo.
+
+let _phase3ObrasMoreOpen = false;
+
+function toggleObrasMore() {
+  _phase3ObrasMoreOpen = !_phase3ObrasMoreOpen;
+  renderObras();
+}
+
+const _phase3BaseSyncObrasToolbar = syncObrasToolbar;
+syncObrasToolbar = function(total, visible) {
+  _phase3BaseSyncObrasToolbar(total, visible);
+  const view = document.getElementById('view-obras');
+  const more = document.getElementById('obrasMoreToggle');
+  const sparse = total < 3;
+  if (sparse) _phase3ObrasMoreOpen = false;
+  if (view) {
+    view.classList.toggle('obras-sparse', sparse);
+    view.classList.toggle('obras-more-open', !sparse && _phase3ObrasMoreOpen);
+  }
+  if (more) {
+    more.style.display = sparse ? 'none' : 'inline-flex';
+    more.setAttribute('aria-expanded', String(!sparse && _phase3ObrasMoreOpen));
+    more.textContent = _phase3ObrasMoreOpen ? 'Menos' : 'Más';
+  }
+};
+
+function _phase3ClampPct(value) {
+  return Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+}
+
+function _phase3PasePct(entry) {
+  if (!entry) return null;
+  if (entry.solidezPct != null && Number.isFinite(Number(entry.solidezPct))) {
+    return _phase3ClampPct(entry.solidezPct);
+  }
+  if (entry.score != null && Number.isFinite(Number(entry.score))) {
+    return _phase3ClampPct(paseScoreToPct(entry.score));
+  }
+  const legacy = { bien: 78, regular: 50, mal: 22 };
+  return entry.quality && legacy[entry.quality] != null ? legacy[entry.quality] : null;
+}
+
+function _phase3HistoryFor(obra, movId) {
+  const entity = movId ? findMovimiento(obra.id, movId) : obra;
+  return [...(entity?.paseHistory || [])]
+    .filter(entry => _phase3PasePct(entry) != null)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+function _phase3DateTime(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return 'sin fecha';
+  return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) +
+    ' · ' + date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+}
+
+function _phase3MinutesLabel(total) {
+  const mins = Math.max(0, Math.round(Number(total) || 0));
+  if (mins >= 60) return Math.floor(mins / 60) + ' h' + (mins % 60 ? ' ' + (mins % 60) + ' min' : '');
+  return mins + ' min';
+}
+
+function _phase3AdminMenu(o) {
+  const colorHex = obraColorHex(o);
+  return '<details class="obra-admin-menu">' +
+    '<summary aria-label="Más acciones de ' + escapeHtmlSafe(o.name) + '">⋯</summary>' +
+    '<div class="obra-admin-menu-popover">' +
+      '<button class="obra-admin-action obra-color-action" title="Cambiar color"' +
+        ' onclick="openObraColorPicker(\'' + o.id + '\')">' +
+        '<span class="obra-color-dot" style="background:' + (colorHex || 'transparent') + ';border-color:' + (colorHex || 'var(--border2)') + '"></span>Color</button>' +
+      '<button class="obra-admin-action" onclick="openEditObraNombre(\'' + o.id + '\')">Editar</button>' +
+      '<button class="obra-admin-action danger" onclick="confirmDeleteObra(\'' + o.id + '\')">Eliminar</button>' +
+    '</div>' +
+  '</details>';
+}
+
+function _phase3TitleAction(o) {
+  return 'role="button" tabindex="0" aria-label="Abrir detalle de ' + escapeHtmlSafe(o.name) + '"' +
+    ' onclick="openObraDetalleSession(\'' + o.id + '\')"' +
+    ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openObraDetalleSession(\'' + o.id + '\')}"';
+}
+
+function renderObraCardMini(o) {
+  const colorHex = obraColorHex(o);
+  const del = '<button class="obra-quick-btn delete obra-edit-action" title="Eliminar"' +
+    ' onclick="event.stopPropagation();confirmDeleteObra(\'' + o.id + '\')">' + ICON_DELETE + '</button>';
+  if (o.tipo === 'actividad') {
+    return '<div class="obra-card obra-card-mini" id="obra-' + o.id + '">' +
+      '<span class="obra-color-dot" style="background:' + (colorHex || 'transparent') + '"></span>' +
+      '<span class="obra-mini-name" style="flex:1">' + escapeHtmlSafe(o.name) + '</span>' +
+      '<span class="obra-mini-comp">actividad</span>' + del + '</div>';
+  }
+  const history = _phase3HistoryFor(o, null);
+  const pct = history.length ? _phase3PasePct(history[0]) : null;
+  const col = solPctColor(pct == null ? 0 : pct);
+  return '<div class="obra-card obra-card-mini" id="obra-' + o.id + '">' +
+    '<span class="obra-color-dot" style="background:' + (colorHex || 'transparent') + '"></span>' +
+    '<button class="obra-mini-main" onclick="registerPase(\'' + o.id + '\',null)" aria-label="Registrar pase en ' + escapeHtmlSafe(o.name) + '">' +
+      '<span class="obra-mini-name">' + escapeHtmlSafe(o.name) + '</span>' +
+      '<span class="obra-mini-bar"><span class="obra-mini-fill" style="width:' + (pct || 0) + '%;background:' + col + '"></span></span>' +
+      '<span class="obra-mini-pct" style="color:' + (pct == null ? 'var(--text3)' : col) + '">' + (pct == null ? '—' : pct + '%') + '</span>' +
+    '</button>' + del + '</div>';
+}
+
+renderObraCardSimple = function(o) {
+  if (o.tipo === 'actividad') return renderActividadCard(o, 0);
+  const est = estimateSolActual(o);
+  const pct = _phase3ClampPct(est.val);
+  const col = solPctColor(pct);
+  const history = _phase3HistoryFor(o, null);
+  const lastDate = o.lastPase || history[0]?.date || null;
+  const realMinutes = getMinutosObra(o.id);
+  const lastText = lastDate ? 'Último pase · ' + _phase3DateTime(lastDate) : 'Sin pase registrado';
+  const scoreCount = history.length;
+  const evolution = scoreCount >= 2
+    ? '<button class="obra-simple-history" onclick="openGrafico(\'' + o.id + '\',null)">Ver evolución</button>'
+    : scoreCount === 1
+      ? '<button class="obra-simple-history" onclick="openGrafico(\'' + o.id + '\',null)">Ver historial · 1 pase</button>'
+      : '';
+
+  return '<div class="obra-card obra-card-simple" id="obra-' + o.id + '">' +
+    '<div class="obra-simple-head">' +
+      '<div class="obra-simple-id obra-simple-title" ' + _phase3TitleAction(o) + '>' +
+        '<div class="obra-title-line"><span class="obra-name">' + escapeHtmlSafe(o.name) + '</span></div>' +
+        '<div class="obra-simple-meta">' +
+          '<span>' + escapeHtmlSafe(o.composer && o.composer !== '—' ? o.composer : 'Sin compositor') + '</span>' +
+          '<span>Tiempo real · ' + _phase3MinutesLabel(realMinutes) + '</span>' +
+        '</div>' +
+      '</div>' +
+      _phase3AdminMenu(o) +
+    '</div>' +
+    '<button class="obra-simple-sol obra-primary-pase" onclick="registerPase(\'' + o.id + '\',null)" aria-label="Registrar pase en ' + escapeHtmlSafe(o.name) + '">' +
+      '<div class="obra-sol-bar"><div class="obra-sol-fill" style="width:' + pct + '%;background:' + col + '"></div></div>' +
+      '<div class="obra-sol-row">' +
+        '<strong style="color:' + col + '">' + (scoreCount ? pct + '%' : '—') + '</strong>' +
+        '<span class="obra-sol-label">' + (scoreCount ? solPctLabel(pct) : 'Aún sin medir') + '</span>' +
+        '<span class="obra-sol-medir">Registrar pase</span>' +
+      '</div>' +
+    '</button>' +
+    '<div class="obra-simple-last">' + escapeHtmlSafe(lastText) + '</div>' +
+    evolution +
+  '</div>';
+};
+
+function _phase3HistoryListHtml(history) {
+  if (!history.length) return '<div class="grafico-history-empty">Todavía no hay pases. Registra el primero para empezar a ver evolución.</div>';
+  return '<div class="grafico-history-title">Historial de pases · escala 0–100</div>' +
+    '<ol class="grafico-history-list" aria-label="Historial cronológico de pases">' +
+    history.map(entry => {
+      const pct = _phase3PasePct(entry);
+      const context = paseTipoShort(entry.tipo);
+      const note = entry.note || entry.nota || '';
+      return '<li>' +
+        '<time datetime="' + escapeHtmlSafe(entry.date || '') + '">' + escapeHtmlSafe(_phase3DateTime(entry.date)) + '</time>' +
+        '<strong>' + pct + '%</strong>' +
+        '<span>' + escapeHtmlSafe(context) + '</span>' +
+        (note ? '<em>' + escapeHtmlSafe(note) + '</em>' : '') +
+      '</li>';
+    }).join('') + '</ol>';
+}
+
+renderGraficoSvg = function() {
+  const obra = findObra(graficoObraId);
+  if (!obra) return;
+  const history = _phase3HistoryFor(obra, graficoMovId);
+  const wrap = document.getElementById('graficoSvgWrap');
+  const list = document.getElementById('graficoAccessibleList');
+  const leyEl = document.getElementById('graficoLeyenda');
+  if (!wrap) return;
+
+  if (list) list.innerHTML = _phase3HistoryListHtml(history);
+  const dates = new Set(history.map(entry => {
+    const date = new Date(entry.date);
+    return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-CA');
+  }));
+  const canTrend = dates.size >= 3 || history.length >= 5;
+  if (!canTrend) {
+    wrap.innerHTML = history.length
+      ? '<div class="grafico-insufficient">Aún no hay muestras suficientes para afirmar una tendencia.</div>'
+      : '<div class="grafico-insufficient">Registra el primer pase desde la tarjeta para empezar.</div>';
+    if (leyEl) leyEl.innerHTML = '<span class="grafico-scale-note">La evolución aparece con 3 fechas o 5 pases.</span>';
+    return;
+  }
+
+  const W = 520, H = 220;
+  const PAD = { top: 18, right: 18, bottom: 42, left: 34 };
+  const cW = W - PAD.left - PAD.right;
+  const cH = H - PAD.top - PAD.bottom;
+  const times = history.map((entry, index) => new Date(entry.date).getTime() + index * 1000);
+  const minT = Math.min(...times);
+  const maxT = Math.max(...times);
+  const rangeT = Math.max(1, maxT - minT);
+  const xOf = time => PAD.left + ((time - minT) / rangeT) * cW;
+  const yOf = pct => PAD.top + cH - (pct / 100) * cH;
+  const points = history.map((entry, index) => ({ entry, pct: _phase3PasePct(entry), x: xOf(times[index]), y: yOf(_phase3PasePct(entry)) }));
+  const lineD = points.map((point, index) => (index ? 'L' : 'M') + point.x + ',' + point.y).join(' ');
+  const gridLines = [0, 25, 50, 75, 100].map(value => {
+    const y = yOf(value);
+    return '<line x1="' + PAD.left + '" y1="' + y + '" x2="' + (W - PAD.right) + '" y2="' + y + '" stroke="var(--border2)" stroke-dasharray="3,3"/>' +
+      '<text x="' + (PAD.left - 5) + '" y="' + (y + 3.5) + '" text-anchor="end" font-size="8" fill="var(--text3)" font-family="JetBrains Mono,monospace">' + value + '%</text>';
+  }).join('');
+  const labelStep = Math.max(1, Math.ceil(points.length / 5));
+  const labels = points.filter((_, index) => index % labelStep === 0 || index === points.length - 1).map(point => {
+    const d = new Date(point.entry.date);
+    const label = d.toLocaleDateString('es-ES', { day: 'numeric', month: 'numeric' }) + ' ' + d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return '<text x="' + point.x + '" y="' + (H - 9) + '" text-anchor="middle" font-size="8" fill="var(--text3)" font-family="JetBrains Mono,monospace">' + escapeHtmlSafe(label) + '</text>';
+  }).join('');
+  const dots = points.map(point => {
+    const note = point.entry.note || point.entry.nota || '';
+    const title = _phase3DateTime(point.entry.date) + ' · ' + point.pct + '%' + (note ? ' · ' + note : '');
+    return '<circle cx="' + point.x + '" cy="' + point.y + '" r="5" fill="var(--accent)" stroke="var(--bg2)" stroke-width="1.5"><title>' + escapeHtmlSafe(title) + '</title></circle>';
+  }).join('');
+  wrap.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" class="grafico-evolucion-svg" role="img" aria-label="Evolución de solidez de 0 a 100 por fecha y hora">' +
+    gridLines + '<path d="' + lineD + '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' + dots + labels + '</svg>';
+  if (leyEl) leyEl.innerHTML = '<span class="grafico-scale-note">Escala 0–100 · cada punto es un pase</span>';
+};
+
+// Evita que un doble toque sobre Guardar cree dos registros consecutivos.
+const _phase3ConfirmPaseBase = confirmPase;
+let _phase3PaseSaving = false;
+confirmPase = function() {
+  if (_phase3PaseSaving) return;
+  _phase3PaseSaving = true;
+  try { _phase3ConfirmPaseBase(); }
+  finally { setTimeout(() => { _phase3PaseSaving = false; }, 260); }
+};
 
 // Boot the app — runs auth, theme, draft restore, racha, etc.
 initApp();
