@@ -5353,6 +5353,7 @@ let _hechoZoneKey = null;
 let _hechoZoneStage = 'digitando';
 let _hechoZoneStart = null;
 let _hechoZoneEnd = null;
+let _hechoQuickSolidezVal = null;
 
 function solPctColor(pct) {
   if (pct >= 85) return 'var(--green)';
@@ -5373,6 +5374,40 @@ function solPctLabel(pct) {
 
 function hechoJs(s) {
   return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function hechoCurrentSolidezValue(entity, isMovement) {
+  if (!entity) return null;
+  const historyValue = entity.solHistory?.[0]?.val;
+  if (historyValue != null) return normalizeSolVal(historyValue);
+  if (entity.sol == null) return null;
+  const raw = Number(entity.sol);
+  if (!Number.isFinite(raw) || raw <= 0) return null;
+  return normalizeSolVal(isMovement && raw <= 10 ? raw * 10 : raw);
+}
+
+function hechoSelectSolidez(value, button) {
+  const val = Math.max(0, Math.min(100, parseInt(value, 10) || 0));
+  if (!val) return;
+  _hechoQuickSolidezVal = val;
+  document.querySelectorAll('#hechoSolidezSection .hecho-solidez-options button').forEach(btn => {
+    const selected = btn === button || parseInt(btn.dataset.value || '0', 10) === val;
+    btn.classList.toggle('active', selected);
+    btn.setAttribute('aria-checked', selected ? 'true' : 'false');
+  });
+  const selection = document.getElementById('hechoSolidezSelection');
+  if (selection) selection.textContent = solPctLabel(val) + ' · ' + val + '%';
+  try { Haptics.light(); } catch(e) {}
+}
+
+function hechoToggleAdvanced() {
+  const modal = document.querySelector('#modalHechoDatos .hecho-modal');
+  const button = document.getElementById('hechoAdvancedToggle');
+  if (!modal || !button) return;
+  const open = !modal.classList.contains('show-details');
+  modal.classList.toggle('show-details', open);
+  button.setAttribute('aria-expanded', open ? 'true' : 'false');
+  button.textContent = open ? 'Ocultar detalles' : 'Añadir detalles';
 }
 
 function aprendizajeStageMeta(stage) {
@@ -5916,6 +5951,7 @@ function openHechoDatos(planId, minPlan, opts) {
   _hechoZoneStage = 'digitando';
   _hechoZoneStart = null;
   _hechoZoneEnd = null;
+  _hechoQuickSolidezVal = null;
 
   const obra = findObra(obraId);
   const entity = movId ? findMovimiento(obraId, movId) : obra;
@@ -5934,6 +5970,7 @@ function openHechoDatos(planId, minPlan, opts) {
   // para hacer pases). En fase digitando no tiene sentido aún.
   // En actividades, nunca.
   _hechoShowMem = !isActividad && (fase === 'consolidando' || fase === 'mantenimiento');
+  _hechoShowSol = !isActividad;
   const showPases = false; // La solidez oficial se registra desde "Añadir pase".
   const showPasajes = !isActividad;
 
@@ -5944,6 +5981,27 @@ function openHechoDatos(planId, minPlan, opts) {
     nameEl.innerHTML = '<span style="font-size:12px;color:var(--text3)">' + obraTitle + '</span><br><span>' + entity.name + '</span>';
   } else {
     nameEl.textContent = obraTitle;
+  }
+
+  const savedMinutes = document.getElementById('hechoSavedMinutes');
+  if (savedMinutes) savedMinutes.textContent = (minPlan || 0) + ' min guardados';
+  const quickSection = document.getElementById('hechoSolidezSection');
+  if (quickSection) quickSection.style.display = _hechoShowSol ? '' : 'none';
+  const previous = hechoCurrentSolidezValue(entity, !!movId);
+  const previousEl = document.getElementById('hechoSolidezPrevious');
+  if (previousEl) previousEl.textContent = previous == null ? 'Sin medir' : 'Anterior · ' + previous + '%';
+  const selectionEl = document.getElementById('hechoSolidezSelection');
+  if (selectionEl) selectionEl.textContent = 'Toca una opción para registrarla al guardar';
+  document.querySelectorAll('#hechoSolidezSection .hecho-solidez-options button').forEach(btn => {
+    btn.classList.remove('active');
+    btn.setAttribute('aria-checked', 'false');
+  });
+  const hechoModal = document.querySelector('#modalHechoDatos .hecho-modal');
+  if (hechoModal) hechoModal.classList.remove('show-details');
+  const advancedToggle = document.getElementById('hechoAdvancedToggle');
+  if (advancedToggle) {
+    advancedToggle.setAttribute('aria-expanded', 'false');
+    advancedToggle.textContent = 'Añadir detalles';
   }
   hechoUpdateFastSolidityAction();
 
@@ -6212,6 +6270,8 @@ function openHechoDatos(planId, minPlan, opts) {
     }
   }
 
+  // El resumen animado del tiempo no debe cubrir las decisiones del cierre.
+  document.querySelectorAll('.crono-harvest-burst').forEach(el => el.remove());
   openModal('modalHechoDatos');
 }
 
@@ -6242,6 +6302,12 @@ function closeHechoDatos(save) {
   const zoneSnapshot = obra && obra.tipo !== 'actividad' ? hechoCurrentZoneSnapshot(true) : null;
   const legacyPaseSlidersEnabled = false;
   if (zoneSnapshot && entity) hechoStoreZoneSnapshot(entity, zoneSnapshot);
+
+  if (_hechoQuickSolidezVal != null && obra && obra.tipo !== 'actividad') {
+    if (movId) recordMovSolHistory(obraId, movId, _hechoQuickSolidezVal, 'cierre-sesion');
+    else recordSolHistory(obraId, _hechoQuickSolidezVal, 'cierre-sesion');
+    sessionSolRatings[planId] = _hechoQuickSolidezVal;
+  }
 
   // ★ Aplicar el cambio de minutos al estado en memoria.
   // Antes este valor solo se escribía en el input HTML tmin-, pero NO en
@@ -6592,6 +6658,7 @@ function closeHechoDatos(save) {
 
   saveDraft();
   SFX.tick();
+  if (_hechoQuickSolidezVal != null && typeof showSavedCheck === 'function') showSavedCheck();
   // Show rating badge on the plan item, and ensure save button visible
   updateProductivityBadge(planId);
   if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
@@ -16896,6 +16963,16 @@ function cronoUpdateRunDrawer() {
 function cronoSetObservation(value) {
   crono.observation = String(value || '').slice(0, 1600);
   cronoSaveState();
+  cronoUpdateRunObjective();
+}
+
+function cronoUpdateRunObjective() {
+  const text = document.getElementById('cronoRunObjectiveText');
+  const wrap = document.getElementById('cronoRunObjective');
+  if (!text || !wrap) return;
+  const objective = String(crono.observation || '').replace(/\s+/g, ' ').trim();
+  text.textContent = objective || 'Sesión libre';
+  wrap.classList.toggle('is-empty', !objective);
 }
 
 function cronoSyncObservationInputs() {
@@ -16905,6 +16982,7 @@ function cronoSyncObservationInputs() {
     if (!el || document.activeElement === el) return;
     if (el.value !== value) el.value = value;
   });
+  cronoUpdateRunObjective();
 }
 
 function cronoObservationTextForPlan(planId, isEditMode) {
@@ -18084,32 +18162,87 @@ function updatePasajeSolSlider(slider, valueId) {
 }
 
 function renderCronoPasajes() {
-  const targets = ['cronoPasajesSection', 'cronoIdlePasajesSection']
-    .map(id => document.getElementById(id))
-    .filter(Boolean);
-  if (!targets.length) return;
+  const runTarget = document.getElementById('cronoPasajesSection');
+  const idleTarget = document.getElementById('cronoIdlePasajesSection');
+  if (!runTarget && !idleTarget) return;
   const activos = _activeCronoPasajes();
   if (_pasajeOpenId && !activos.some(p => p.id === _pasajeOpenId)) _pasajeOpenId = null;
   const abierto = activos.find(p => p.id === _pasajeOpenId);
   const hoy = _pasajeDateKey();
   const hechosHoy = activos.filter(p => (p.focusHistory || []).some(h => h.key === hoy || _pasajeDateKey(h.date) === hoy)).length;
-  const dots = _renderPasajeDotRows(activos, abierto);
-  const sub = activos.length
-    ? 'Toca una bolita para registrar frío / después'
-    : 'Añade hasta 5 focos mínimos de estudio';
-  const html =
-    '<div class="crono-pasajes-head"><span class="crono-week-lbl">PASAJES</span><span class="crono-pasajes-progress">' + hechosHoy + '/' + PASAJE_MAX + ' hoy</span></div>' +
-    '<div class="crono-pasajes-card' + (abierto ? ' is-expanded' : '') + '">' +
-      '<div class="crono-pasajes-summary">' +
-        '<div class="crono-pasajes-copy">' +
-          '<div class="crono-pasajes-title">Focos de estudio</div>' +
-          '<div class="crono-pasajes-sub">' + sub + '</div>' +
+  const progress = hechosHoy + '/' + activos.length + ' hoy';
+
+  if (idleTarget) {
+    idleTarget.innerHTML =
+      '<div class="crono-pasajes-head"><span class="crono-week-lbl">PASAJES</span><span class="crono-pasajes-progress">' + progress + '</span></div>' +
+      '<div class="crono-pasajes-card crono-pasajes-card-idle' + (abierto ? ' is-expanded' : '') + '">' +
+        '<div class="crono-pasajes-summary">' +
+          '<div class="crono-pasajes-copy"><div class="crono-pasajes-title">Focos preparados</div></div>' +
+          _renderPasajeIdleChips(activos, abierto) +
         '</div>' +
-        '<div class="crono-pasajes-dots" aria-label="Pasajes">' + dots + '</div>' +
-      '</div>' +
-      (abierto ? _renderPasajeExpanded(abierto) : _renderPasajesLegend()) +
+        (abierto ? _renderPasajeCompactExpanded(abierto) : '') +
+      '</div>';
+  }
+
+  if (runTarget) {
+    runTarget.innerHTML =
+      '<div class="crono-pasajes-head"><span class="crono-week-lbl">FOCO DE PASAJE</span><span class="crono-pasajes-progress">' + progress + '</span></div>' +
+      '<div class="crono-pasajes-card crono-pasajes-card-run' + (abierto ? ' is-expanded' : '') + '">' +
+        _renderPasajeFocusList(activos, abierto) +
+      '</div>';
+  }
+}
+
+function _renderPasajeIdleChips(activos, abierto) {
+  const chips = activos.map(p => {
+    const tier = PASAJE_TIERS[_normalizePasajeTier(p.tier)];
+    const open = abierto && abierto.id === p.id;
+    return '<button type="button" class="crono-pasaje-name-chip' + (open ? ' active' : '') + '" style="--pasaje-tier-color:' + tier.color + '" onclick="openPasaje(\'' + hechoJs(p.id) + '\')">' +
+      '<span aria-hidden="true"></span><strong>' + escapeHtmlSafe(p.name) + '</strong>' +
+    '</button>';
+  }).join('');
+  const add = activos.length < PASAJE_MAX
+    ? '<button type="button" class="crono-pasaje-name-chip add" onclick="openPasajeNuevo()"><span aria-hidden="true">+</span><strong>Añadir</strong></button>'
+    : '';
+  return '<div class="crono-pasaje-name-chips" aria-label="Pasajes preparados">' + (chips || add) + (chips ? add : '') + '</div>';
+}
+
+function _renderPasajeFocusList(activos, abierto) {
+  if (!activos.length) {
+    return '<div class="crono-focus-empty"><span>No hay pasajes preparados</span>' +
+      '<button type="button" onclick="openPasajeNuevo()">Añadir pasaje</button></div>';
+  }
+  const rows = activos.map(p => {
+    const tier = PASAJE_TIERS[_normalizePasajeTier(p.tier)];
+    const today = _pasajeTodayLog(p) || {};
+    const open = abierto && abierto.id === p.id;
+    const cold = today.cold ? PASAJE_SCORE_LABELS[today.cold] : '—';
+    const after = today.after ? PASAJE_SCORE_LABELS[today.after] : '—';
+    return '<div class="crono-focus-pasaje' + (open ? ' is-open' : '') + '" style="--pasaje-tier-color:' + tier.color + '">' +
+      '<button type="button" class="crono-focus-pasaje-main" onclick="openPasaje(\'' + hechoJs(p.id) + '\')" aria-expanded="' + (open ? 'true' : 'false') + '">' +
+        '<span class="crono-focus-pasaje-dot" aria-hidden="true"></span>' +
+        '<span class="crono-focus-pasaje-copy"><strong>' + escapeHtmlSafe(p.name) + '</strong><span>' + tier.label + '</span></span>' +
+        '<span class="crono-focus-pasaje-scores"><span>Frío <strong>' + escapeHtmlSafe(cold) + '</strong></span><span>Después <strong>' + escapeHtmlSafe(after) + '</strong></span></span>' +
+        '<span class="crono-focus-pasaje-chevron" aria-hidden="true">⌄</span>' +
+      '</button>' +
+      (open ? _renderPasajeCompactExpanded(p) : '') +
     '</div>';
-  targets.forEach(el => { el.innerHTML = html; });
+  }).join('');
+  const add = activos.length < PASAJE_MAX
+    ? '<button type="button" class="crono-focus-add" onclick="openPasajeNuevo()">+ Añadir otro pasaje</button>'
+    : '';
+  return '<div class="crono-focus-pasaje-list">' + rows + add + '</div>';
+}
+
+function _renderPasajeCompactExpanded(p) {
+  const today = _pasajeTodayLog(p) || {};
+  return '<div class="crono-pasaje-expanded crono-pasaje-expanded-compact">' +
+    '<div class="crono-pasaje-score-wrap">' +
+      _renderPasajeScoreRow(p.id, 'cold', 'En frío', today.cold || 0) +
+      _renderPasajeScoreRow(p.id, 'after', 'Después', today.after || 0) +
+    '</div>' +
+    '<div class="crono-pasaje-expanded-foot"><span class="crono-pasaje-note">Se guarda al tocar</span></div>' +
+  '</div>';
 }
 
 function _renderPasajeDotRows(activos, abierto) {
@@ -18708,12 +18841,12 @@ function cronoRender() {
       ? '<button class="crono-ctrl-btn extend" onclick="cronoExtendTimer(5)" aria-label="Añadir 5 minutos">+5 min</button>'
       : '';
     ctrl.innerHTML =
-      '<button class="crono-ctrl-btn stop" onclick="cronoStop()" aria-label="Parar">' + CRONO_ICONS.stop + '</button>' +
+      '<button class="crono-ctrl-btn stop" onclick="cronoStop()" aria-label="Terminar y guardar">' + CRONO_ICONS.stop + '</button>' +
       extendBtn +
       '<button class="crono-ctrl-btn primary" onclick="cronoPause()" aria-label="Pausar">' + CRONO_ICONS.pause + '</button>';
   } else if (crono.state === 'paused') {
     ctrl.innerHTML =
-      '<button class="crono-ctrl-btn stop" onclick="cronoStop()" aria-label="Parar">' + CRONO_ICONS.stop + '</button>' +
+      '<button class="crono-ctrl-btn stop" onclick="cronoStop()" aria-label="Terminar y guardar">' + CRONO_ICONS.stop + '</button>' +
       '<button class="crono-ctrl-btn primary" onclick="cronoResume()" aria-label="Reanudar">' + CRONO_ICONS.play + '</button>';
   }
   cronoUpdateSolidityActions();
@@ -19288,13 +19421,34 @@ function cronoSetMode(mode) {
   cronoUpdateStartBtn();
 }
 
+function cronoSetTimerPreset(minutes) {
+  if (crono.state !== 'idle') return;
+  const value = Math.max(TIMER_MIN_MINUTES, Math.min(TIMER_MAX_MINUTES, parseInt(minutes, 10) || 25));
+  crono.mode = 'timer';
+  crono.timerMinutes = value;
+  cronoSaveState();
+  cronoApplyModeUI();
+  cronoTimerRenderSlider();
+  try { Haptics.light(); } catch(e) {}
+}
+
+function cronoUpdateTimerPresetButtons() {
+  document.querySelectorAll('#cronoDurationPresets button').forEach(button => {
+    const active = crono.mode === 'timer' && parseInt(button.dataset.minutes || '0', 10) === crono.timerMinutes;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
 function cronoApplyModeUI() {
   // Toggle visual
   const timedMode = crono.mode === 'timer' || crono.mode === 'until';
   document.body.classList.toggle('crono-timer-mode', timedMode);
   document.body.classList.toggle('crono-until-mode', crono.mode === 'until');
   document.querySelectorAll('.crono-mode-opt').forEach(b => {
-    b.classList.toggle('active', b.dataset.mode === crono.mode);
+    const active = b.dataset.mode === crono.mode;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
   // Mover indicador
   cronoMoveModeIndicator();
@@ -19303,6 +19457,7 @@ function cronoApplyModeUI() {
     if (crono.mode === 'until') cronoEnsureUntilTime();
     cronoTimerRenderSlider();
   }
+  cronoUpdateTimerPresetButtons();
   // Mensaje contextual: primero destellos propios, luego frases de respaldo.
   const msg = document.getElementById('cronoIdleMessage');
   if (msg) msg.textContent = _cronoIdlePhrase();
@@ -19503,6 +19658,7 @@ function cronoTimerRenderSlider() {
 
   // Texto
   text.textContent = String(m || '—');
+  cronoUpdateTimerPresetButtons();
   const untilInput = document.getElementById('cronoUntilTime');
   if (untilInput && crono.mode === 'until') {
     cronoEnsureUntilTime();
@@ -19775,6 +19931,8 @@ function cronoStart() {
 
   _cronoPaseDrawerReset();
   _cronoRunDrawerTab = 'pasajes';
+  const firstPasaje = _activeCronoPasajes()[0];
+  if (!_pasajeOpenId && firstPasaje) _pasajeOpenId = firstPasaje.id;
   _cronoLastRunDestelloKey = '';
   if (!Array.isArray(crono.notes)) crono.notes = [];
 
@@ -19807,6 +19965,7 @@ function cronoStart() {
   crono.runId = typeof TimerCore !== 'undefined' ? TimerCore.createRunId() : ('run_' + Date.now() + '_' + Math.random().toString(36).slice(2));
 
   cronoSaveState();
+  renderCronoPasajes();
   cronoRender();
   cronoStartTick();
   cronoAcquireWakeLock();
@@ -19919,8 +20078,8 @@ function cronoStop() {
   const ms = cronoEffectiveElapsedMs();
   const min = Math.floor(ms / 60000);
   if (min >= CRONO_MIN_MIN) {
-    // Sesión válida: confirmación simple inline (sin modal, es seguro)
-    if (!confirm('¿Terminar y guardar la sesión?\n\nLlevas ' + cronoFmt(ms) + ' estudiando.')) return;
+    // El botón ya expresa la acción completa. Guardamos de inmediato y
+    // dejamos la valoración opcional para el cierre rápido.
     cronoFinish();
   } else {
     // Sesión que será fallida: mostrar modal HTML elegante

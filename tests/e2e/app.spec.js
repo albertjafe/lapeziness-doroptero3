@@ -330,3 +330,92 @@ test('progressively reveals Obras tools and keeps evolution samples honest', asy
   expect(graph.long.svg).toBe(true);
   expect(graph.long.scale).toBe(true);
 });
+
+test('adapts the running timer to iPad landscape and portrait', async ({ browser }) => {
+  for (const viewport of [{ width: 1024, height: 768 }, { width: 834, height: 1194 }]) {
+    const context = await browser.newContext({ viewport });
+    const page = await context.newPage();
+    await prepare(page);
+    const layout = await page.evaluate(() => {
+      showView('cronometro');
+      db.cronoPasajes = [
+        { id: 'pj_1', name: 'Coda · cc. 200–208', tier: 'red', createdAt: new Date().toISOString(), focusHistory: [], solHistory: [] },
+        { id: 'pj_2', name: 'Octavas · cc. 119–126', tier: 'amber', createdAt: new Date().toISOString(), focusHistory: [], solHistory: [] },
+      ];
+      cronoSetMode('timer');
+      cronoSetTimerPreset(25);
+      const select = document.getElementById('cronoObraSelect');
+      select.value = 'obra::obra_1';
+      cronoSetObservation('Coda limpia, pulso estable');
+      cronoUpdateStartBtn();
+      cronoStart();
+      crono.startTs = Date.now() - 12 * 60 * 1000;
+      cronoRender();
+      renderCronoPasajes();
+
+      const stage = document.getElementById('cronoStageRun').getBoundingClientRect();
+      const drawer = document.getElementById('cronoRunDrawer').getBoundingClientRect();
+      const controls = document.getElementById('cronoControls').getBoundingClientRect();
+      return {
+        portrait: matchMedia('(orientation: portrait)').matches,
+        stage: { top: stage.top, right: stage.right, bottom: stage.bottom },
+        drawer: { top: drawer.top, left: drawer.left, bottom: drawer.bottom },
+        controlsBottom: controls.bottom,
+        viewportHeight: innerHeight,
+        fitsWidth: document.documentElement.scrollWidth <= innerWidth + 1,
+        objective: document.getElementById('cronoRunObjectiveText').textContent,
+        passage: document.querySelector('.crono-focus-pasaje-copy strong')?.textContent,
+      };
+    });
+
+    expect(layout.fitsWidth).toBe(true);
+    expect(layout.objective).toBe('Coda limpia, pulso estable');
+    expect(layout.passage).toBe('Coda · cc. 200–208');
+    if (layout.portrait) {
+      expect(layout.drawer.top).toBeGreaterThanOrEqual(layout.stage.bottom);
+      expect(layout.controlsBottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
+    } else {
+      expect(layout.drawer.left).toBeGreaterThanOrEqual(layout.stage.right);
+      expect(Math.abs(layout.drawer.top - layout.stage.top)).toBeLessThanOrEqual(16);
+    }
+    await context.close();
+  }
+});
+
+test('finishes a valid timer without native confirmation and saves one-tap solidity', async ({ page }) => {
+  let nativeDialogs = 0;
+  page.on('dialog', async dialog => {
+    nativeDialogs += 1;
+    await dialog.dismiss();
+  });
+  await prepare(page);
+  await page.evaluate(() => {
+    showView('cronometro');
+    const select = document.getElementById('cronoObraSelect');
+    select.value = 'obra::obra_1';
+    cronoSetObservation('Pulso estable');
+    cronoUpdateStartBtn();
+    cronoStart();
+    crono.startTs = Date.now() - 25 * 60 * 1000;
+    cronoSaveState();
+    cronoStop();
+  });
+
+  const modal = page.locator('#modalHechoDatos');
+  await expect(modal).toHaveClass(/visible/);
+  await expect(modal.locator('#hechoSavedMinutes')).toHaveText('25 min guardados');
+  expect(nativeDialogs).toBe(0);
+
+  const stable = modal.locator('.hecho-solidez-options button[data-value="65"]');
+  await stable.click();
+  await expect(stable).toHaveAttribute('aria-checked', 'true');
+  await modal.getByRole('button', { name: 'Listo' }).click();
+  await expect(modal).not.toHaveClass(/visible/);
+
+  const saved = await page.evaluate(() => ({
+    value: db.obras[0].solHistory[0]?.val,
+    context: db.obras[0].solHistory[0]?.context,
+    current: db.obras[0].sol,
+  }));
+  expect(saved).toEqual({ value: 65, context: 'cierre-sesion', current: 65 });
+});

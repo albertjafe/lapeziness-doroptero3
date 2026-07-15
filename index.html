@@ -297,11 +297,11 @@
       <div class="crono-idle-console">
       <section class="crono-idle-main" aria-label="Modo y duración">
 
-      <!-- Toggle Cronómetro / Temporizador, arriba sutil -->
+      <!-- Selector de modo -->
       <div class="crono-mode-toggle" id="cronoModeToggle">
-        <button class="crono-mode-opt active" data-mode="stopwatch" onclick="cronoSetMode('stopwatch')">Cronómetro</button>
+        <button class="crono-mode-opt active" data-mode="stopwatch" onclick="cronoSetMode('stopwatch')">Libre</button>
         <button class="crono-mode-opt" data-mode="timer" onclick="cronoSetMode('timer')">Temporizador</button>
-        <button class="crono-mode-opt" data-mode="until" onclick="cronoSetMode('until')">Hasta hora</button>
+        <button class="crono-mode-opt" data-mode="until" onclick="cronoSetMode('until')">Hasta una hora</button>
         <span class="crono-mode-indicator" id="cronoModeIndicator"></span>
       </div>
 
@@ -376,6 +376,13 @@
         </svg>
       </div>
 
+      <div class="crono-duration-presets" id="cronoDurationPresets" aria-label="Duración rápida">
+        <button type="button" data-minutes="15" onclick="cronoSetTimerPreset(15)">15</button>
+        <button type="button" data-minutes="25" onclick="cronoSetTimerPreset(25)">25</button>
+        <button type="button" data-minutes="45" onclick="cronoSetTimerPreset(45)">45</button>
+        <button type="button" data-minutes="60" onclick="cronoSetTimerPreset(60)">60</button>
+      </div>
+
       <div class="crono-until-row" id="cronoUntilRow">
         <span>Hasta</span>
         <input type="time" id="cronoUntilTime" onchange="cronoSetUntilTime(this.value)" oninput="cronoSetUntilTime(this.value)">
@@ -418,9 +425,12 @@
         </button>
       </div>
 
-      <textarea id="cronoIdleObservation" class="crono-observation-box crono-observation-box-idle"
-        rows="2" maxlength="1600" placeholder="Objetivo u observacion de esta sesion..."
-        oninput="cronoSetObservation(this.value)"></textarea>
+      <label class="crono-objective-field" for="cronoIdleObservation">
+        <span>Objetivo de la sesión</span>
+        <textarea id="cronoIdleObservation" class="crono-observation-box crono-observation-box-idle"
+          rows="2" maxlength="1600" placeholder="Qué quieres conseguir en esta sesión"
+          oninput="cronoSetObservation(this.value)"></textarea>
+      </label>
 
       <div class="crono-timer-projection" id="cronoTimerProjection" style="display:none"></div>
 
@@ -461,6 +471,11 @@
         </div>
       </div>
 
+      <div class="crono-run-objective" id="cronoRunObjective">
+        <span>Objetivo de la sesión</span>
+        <strong id="cronoRunObjectiveText">Sesión libre</strong>
+      </div>
+
       <!-- Tiempo gigante con outline (Forest-style) -->
       <div class="crono-display-wrap" id="cronoDisplayWrap">
         <svg class="crono-run-progress-svg" viewBox="0 0 220 220" aria-hidden="true">
@@ -490,7 +505,7 @@
       <div class="crono-run-drawer-handle" aria-hidden="true"></div>
       <div class="crono-run-drawer-head">
         <span>Durante la sesión</span>
-        <strong>Herramientas</strong>
+        <strong>Foco actual</strong>
       </div>
       <div class="crono-run-drawer-tabs" role="tablist" aria-label="Herramientas">
         <button type="button" class="crono-run-drawer-tab active" data-tab="pasajes" role="tab" aria-selected="true" onclick="cronoSetRunDrawerTab('pasajes')">Pasajes</button>
@@ -1299,8 +1314,34 @@
 <div class="modal-overlay" id="modalHechoDatos">
   <div class="modal hecho-modal" style="max-width:420px;display:flex;flex-direction:column;padding:0;overflow:hidden">
     <div class="hecho-modal-body" style="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch">
-    <div class="modal-title" style="margin-bottom:4px">✓ Hecho</div>
+    <div class="modal-title" style="margin-bottom:4px">Sesión completada</div>
     <div class="hecho-modal-obra" id="hechoObraName"></div>
+
+    <div class="hecho-save-summary">
+      <span class="hecho-save-check" aria-hidden="true">✓</span>
+      <div>
+        <strong id="hechoSavedMinutes">Tiempo guardado</strong>
+        <span>La sesión ya está a salvo</span>
+      </div>
+    </div>
+
+    <section class="hecho-solidez-section" id="hechoSolidezSection" aria-labelledby="hechoSolidezTitle">
+      <div class="hecho-solidez-head">
+        <div>
+          <span>Registro rápido</span>
+          <strong id="hechoSolidezTitle">¿Cómo quedó de sólida?</strong>
+        </div>
+        <span id="hechoSolidezPrevious">Sin medir</span>
+      </div>
+      <div class="hecho-solidez-options" role="radiogroup" aria-label="Solidez al terminar">
+        <button type="button" data-value="25" role="radio" aria-checked="false" onclick="hechoSelectSolidez(25,this)"><strong>Se cae</strong><span>25%</span></button>
+        <button type="button" data-value="45" role="radio" aria-checked="false" onclick="hechoSelectSolidez(45,this)"><strong>Frágil</strong><span>45%</span></button>
+        <button type="button" data-value="65" role="radio" aria-checked="false" onclick="hechoSelectSolidez(65,this)"><strong>Estable</strong><span>65%</span></button>
+        <button type="button" data-value="80" role="radio" aria-checked="false" onclick="hechoSelectSolidez(80,this)"><strong>Segura</strong><span>80%</span></button>
+        <button type="button" data-value="95" role="radio" aria-checked="false" onclick="hechoSelectSolidez(95,this)"><strong>Brillante</strong><span>95%</span></button>
+      </div>
+      <div class="hecho-solidez-selection" id="hechoSolidezSelection">Toca una opción para registrarla al guardar</div>
+    </section>
 
     <div class="hecho-fast-actions" id="hechoFastActions" style="display:none">
       <button class="hecho-fast-sol-btn" onclick="openQuickSolidez('hecho')">
@@ -1310,12 +1351,14 @@
     </div>
 
     <!-- Minutos -->
-    <div class="hecho-field-label">Minutos estudiados</div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
-      <input type="number" id="hechoMinutos" min="1" max="480" step="5"
-        class="modal-input" style="margin-bottom:0;width:90px;text-align:center;font-size:18px;color:var(--accent)">
-      <span style="font-size:9px;color:var(--text3)">planif: <span id="hechoMinPlan" style="color:var(--text2)">—</span></span>
-      <span id="hechoMinDiff" style="font-size:9px;margin-left:auto"></span>
+    <div class="hecho-advanced-only hecho-minutes-field">
+      <div class="hecho-field-label">Minutos estudiados</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+        <input type="number" id="hechoMinutos" min="1" max="480" step="5"
+          class="modal-input" style="margin-bottom:0;width:90px;text-align:center;font-size:18px;color:var(--accent)">
+        <span style="font-size:9px;color:var(--text3)">planif: <span id="hechoMinPlan" style="color:var(--text2)">—</span></span>
+        <span id="hechoMinDiff" style="font-size:9px;margin-left:auto"></span>
+      </div>
     </div>
 
     <!-- Zona trabajada -->
@@ -1438,7 +1481,7 @@
     </div>
 
     <!-- Destello: marcar la sesión como memorable (sin productividad) -->
-    <div style="margin-top:6px;padding-top:14px;border-top:1px dashed var(--border2)">
+    <div class="hecho-advanced-only hecho-destello-field" style="margin-top:6px;padding-top:14px;border-top:1px dashed var(--border2)">
       <label class="hecho-destello-toggle">
         <input type="checkbox" id="hechoDestelloChk" onchange="toggleHechoDestello(this.checked)">
         <span class="hecho-destello-toggle-track"><span class="hecho-destello-toggle-knob"></span></span>
@@ -1450,15 +1493,19 @@
     </div>
 
     <!-- Observacion unica -->
-    <div style="font-size:9px;color:var(--text3);margin:4px 0 10px">El tiempo ya está guardado; aquí puedes añadir detalles.</div>
-    <div class="hecho-field-label">Observacion de la sesion</div>
-    <textarea id="hechoNota" class="modal-input hecho-session-note" rows="3" maxlength="1600" placeholder="Una sola observacion: objetivo, sensacion, ajuste o cierre..."></textarea>
+    <div class="hecho-note-section">
+      <div class="hecho-field-label">Nota final <span>opcional</span></div>
+      <textarea id="hechoNota" class="modal-input hecho-session-note" rows="2" maxlength="1600" placeholder="Qué funcionó o qué retomarás mañana"></textarea>
+    </div>
+
+    <button type="button" class="hecho-advanced-toggle" id="hechoAdvancedToggle"
+      aria-expanded="false" onclick="hechoToggleAdvanced()">Añadir detalles</button>
 
     </div><!-- /.hecho-modal-body -->
 
     <div class="hecho-modal-footer">
-      <button class="modal-btn secondary" onclick="closeHechoDatos(false)">Ahora no</button>
-      <button class="modal-btn primary" onclick="closeHechoDatos(true)">Guardar</button>
+      <button class="modal-btn secondary" onclick="closeHechoDatos(false)">Omitir</button>
+      <button class="modal-btn primary" onclick="closeHechoDatos(true)">Listo</button>
     </div>
   </div>
 </div>

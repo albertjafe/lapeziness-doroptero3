@@ -11420,3 +11420,614 @@ body.crono-paused .crono-pause-overlay-inner {
        .grafico-history-list em { grid-column: 1 / -1; }
        .obra-admin-menu-popover { right: -4px; }
      }
+
+/* Cronómetro adaptativo: preparación, foco y cierre rápido. */
+.crono-duration-presets {
+  display: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  width: min(320px, 100%);
+  margin: 0 auto 10px;
+}
+body.crono-timer-mode:not(.crono-until-mode) .crono-duration-presets { display: grid; }
+.crono-duration-presets button {
+  min-height: 44px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: var(--bg2);
+  color: var(--text2);
+  font-family: var(--font-mono, monospace);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.crono-duration-presets button::after {
+  content: " min";
+  color: var(--text3);
+  font-size: 8px;
+  font-weight: 500;
+}
+.crono-duration-presets button.active {
+  border-color: var(--crono-color, var(--accent));
+  background: color-mix(in srgb, var(--crono-color, var(--accent)) 10%, var(--bg2));
+  color: var(--crono-color, var(--accent));
+  box-shadow: inset 0 0 0 1px var(--crono-color, var(--accent));
+}
+.crono-mode-indicator { display: none; }
+.crono-mode-opt.active {
+  background: var(--bg3);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+[data-theme^="marmol"] .crono-idle-panel .crono-plant-btn:not(:disabled) {
+  border-color: var(--crono-color, var(--accent));
+  background: var(--crono-color, var(--accent));
+  color: #fff;
+}
+
+.crono-objective-field {
+  order: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+  margin: 0;
+  text-align: left;
+}
+.crono-objective-field > span {
+  color: var(--text3);
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+[data-theme^="marmol"] .crono-idle-panel .crono-objective-field .crono-observation-box-idle {
+  order: initial;
+  width: 100%;
+  min-height: 64px;
+  margin: 0;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+[data-theme^="marmol"] .crono-idle-panel .crono-select-wrap { order: 1; }
+[data-theme^="marmol"] .crono-idle-panel .crono-timer-projection { order: 3; }
+[data-theme^="marmol"] .crono-idle-panel .crono-plant-btn { order: 4; }
+[data-theme^="marmol"] .crono-idle-panel .crono-idle-pasajes-shell { order: 5; }
+[data-theme^="marmol"] .crono-idle-panel .crono-quick-actions { order: 6; }
+
+.crono-run-objective {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  margin: 10px 0 0;
+  padding: 9px 0 9px 12px;
+  border-left: 3px solid var(--crono-color, var(--accent));
+  text-align: left;
+  box-sizing: border-box;
+}
+.crono-run-objective > span {
+  color: var(--text3);
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+.crono-run-objective > strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.crono-run-objective.is-empty { border-left-color: var(--border); }
+.crono-run-objective.is-empty > strong { color: var(--text3); font-weight: 500; }
+
+.crono-pasaje-name-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  width: 100%;
+}
+.crono-pasaje-name-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 38px;
+  max-width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: var(--bg3);
+  color: var(--text2);
+  cursor: pointer;
+}
+.crono-pasaje-name-chip > span {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--pasaje-tier-color, var(--text3));
+}
+.crono-pasaje-name-chip > strong {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crono-pasaje-name-chip.active {
+  border-color: var(--pasaje-tier-color, var(--accent));
+  color: var(--text);
+}
+.crono-pasaje-name-chip.add { color: var(--accent); }
+.crono-pasaje-name-chip.add > span {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  font-size: 16px;
+}
+
+.crono-focus-pasaje-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.crono-focus-pasaje {
+  overflow: hidden;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: var(--bg2);
+}
+.crono-focus-pasaje.is-open { border-color: color-mix(in srgb, var(--pasaje-tier-color) 52%, var(--border2)); }
+.crono-focus-pasaje-main {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto 16px;
+  gap: 9px;
+  align-items: center;
+  width: 100%;
+  min-height: 56px;
+  padding: 9px 11px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.crono-focus-pasaje-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--pasaje-tier-color);
+}
+.crono-focus-pasaje-copy,
+.crono-focus-pasaje-scores {
+  display: flex;
+  min-width: 0;
+}
+.crono-focus-pasaje-copy { flex-direction: column; gap: 2px; }
+.crono-focus-pasaje-copy > strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.crono-focus-pasaje-copy > span {
+  color: var(--pasaje-tier-color);
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.crono-focus-pasaje-scores { gap: 10px; }
+.crono-focus-pasaje-scores > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text3);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+.crono-focus-pasaje-scores strong {
+  max-width: 76px;
+  overflow: hidden;
+  color: var(--text2);
+  font-size: 10px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+.crono-focus-pasaje-chevron { color: var(--text3); font-size: 14px; transition: transform 160ms ease; }
+.crono-focus-pasaje.is-open .crono-focus-pasaje-chevron { transform: rotate(180deg); }
+.crono-pasaje-expanded-compact {
+  grid-template-columns: 1fr;
+  margin: 0 11px 11px;
+  padding: 11px 0 0;
+  border-top: 1px solid var(--border2);
+}
+.crono-pasaje-expanded-compact .crono-pasaje-score-row {
+  grid-template-columns: 62px minmax(150px, auto) minmax(62px, 1fr);
+}
+.crono-focus-add,
+.crono-focus-empty button {
+  min-height: 42px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.crono-focus-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  color: var(--text3);
+  font-size: 12px;
+  text-align: center;
+}
+
+body.crono-focus .crono-concentrado {
+  top: max(calc(env(safe-area-inset-top, 0px) + 18px), 38px);
+  color: var(--text3);
+  font-family: var(--font-system, sans-serif);
+  font-size: 13px;
+  font-weight: 600;
+}
+body.crono-focus .crono-milestone,
+body.crono-focus .crono-prob { display: none !important; }
+body.crono-running .crono-concentrado { display: none; }
+.crono-run-drawer-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* iPad horizontal: tiempo y decisiones comparten la primera pantalla. */
+@media (min-width: 900px) and (orientation: landscape) and (min-height: 620px) {
+  [data-theme^="marmol"] body.crono-focus .crono-wrap,
+  [data-theme^="marmol"] body.crono-running .crono-wrap {
+    width: min(1040px, calc(100vw - 56px));
+    max-width: none;
+    min-height: 100dvh;
+    padding: max(82px, calc(env(safe-area-inset-top, 0px) + 72px)) 0 max(22px, env(safe-area-inset-bottom, 0px));
+  }
+  [data-theme^="marmol"] .crono-idle-wrap { padding: 14px; border-radius: 8px; }
+  [data-theme^="marmol"] .crono-idle-console {
+    grid-template-columns: minmax(0, 1.04fr) minmax(340px, .96fr);
+    gap: 18px;
+  }
+  [data-theme^="marmol"] .crono-idle-main,
+  [data-theme^="marmol"] .crono-idle-panel {
+    min-height: 0;
+    height: min(610px, calc(100dvh - 112px));
+  }
+  [data-theme^="marmol"] .crono-idle-main { justify-content: flex-start; padding: 8px 12px; }
+  [data-theme^="marmol"] .crono-idle-main .crono-centerpiece,
+  [data-theme^="marmol"] body.crono-timer-mode .crono-idle-main .crono-centerpiece {
+    width: min(310px, 39dvh);
+    height: min(310px, 39dvh);
+    margin: 2px auto 4px;
+  }
+  [data-theme^="marmol"] .crono-idle-main .crono-idle-message {
+    max-width: 390px;
+    margin: 4px auto 4px;
+    font-size: 16px;
+  }
+  [data-theme^="marmol"] .crono-idle-panel {
+    overflow-y: auto;
+    padding: 20px;
+    border-radius: 8px;
+  }
+
+  [data-theme^="marmol"] body.crono-running .crono-wrap {
+    grid-template-columns: minmax(0, 1.04fr) minmax(360px, .96fr);
+    gap: 18px;
+  }
+  [data-theme^="marmol"] body.crono-running .crono-run-stage,
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer {
+    min-height: 0;
+    height: min(620px, calc(100dvh - 110px));
+    border-radius: 8px;
+  }
+  [data-theme^="marmol"] body.crono-running .crono-run-stage { padding: 18px 22px; }
+  [data-theme^="marmol"] body.crono-running .crono-display-wrap {
+    height: min(320px, 42dvh);
+    margin: 0 auto 2px;
+  }
+  [data-theme^="marmol"] body.crono-running .crono-run-progress-svg {
+    width: min(320px, 42dvh);
+    height: min(320px, 42dvh);
+  }
+  [data-theme^="marmol"] body.crono-running .crono-display { font-size: clamp(66px, 8vw, 90px); }
+  [data-theme^="marmol"] body.crono-running .crono-run-destello { height: 50px; }
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer { padding: 18px; }
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer-head { margin-bottom: 12px; }
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer-panels { min-height: 0; overflow: hidden; }
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer-panel { max-height: none; height: 100%; }
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer-panel.active { overflow-y: auto; }
+}
+
+/* iPad vertical: composición apilada que utiliza la altura disponible. */
+@media (min-width: 700px) and (orientation: portrait) {
+  html.crono-focus-root body.crono-focus {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto !important;
+    touch-action: pan-y;
+  }
+  html.crono-focus-root body.crono-focus .app-content,
+  html.crono-focus-root body.crono-focus #view-cronometro {
+    height: auto;
+    min-height: 100dvh;
+    max-height: none;
+    overflow: visible !important;
+    touch-action: pan-y;
+  }
+  [data-theme^="marmol"] body.crono-focus .crono-wrap,
+  [data-theme^="marmol"] body.crono-running .crono-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: min(760px, calc(100vw - 48px));
+    max-width: none;
+    min-height: 100dvh;
+    padding: max(92px, calc(env(safe-area-inset-top, 0px) + 82px)) 0 max(30px, env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+  }
+  [data-theme^="marmol"] .crono-idle-wrap { padding: 18px; border-radius: 8px; }
+  [data-theme^="marmol"] .crono-idle-console {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  [data-theme^="marmol"] .crono-idle-main { min-height: 0; padding: 6px 12px 10px; }
+  [data-theme^="marmol"] .crono-idle-main .crono-centerpiece,
+  [data-theme^="marmol"] body.crono-timer-mode .crono-idle-main .crono-centerpiece {
+    width: min(300px, 38dvh);
+    height: min(300px, 38dvh);
+    margin: 2px auto 6px;
+  }
+  [data-theme^="marmol"] .crono-idle-main .crono-idle-message { margin: 5px auto; font-size: 17px; }
+  [data-theme^="marmol"] .crono-idle-panel {
+    min-height: 0;
+    padding: 20px;
+    border-radius: 8px;
+  }
+  [data-theme^="marmol"] body.crono-running .crono-run-stage,
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer {
+    position: static;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    transform: none;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+  [data-theme^="marmol"] body.crono-running .crono-run-stage { padding: 20px 26px 14px; }
+  [data-theme^="marmol"] body.crono-running .crono-display-wrap { height: 290px; margin: 0 auto 2px; }
+  [data-theme^="marmol"] body.crono-running .crono-run-progress-svg { width: 290px; height: 290px; }
+  [data-theme^="marmol"] body.crono-running .crono-display { font-size: clamp(72px, 12vw, 98px); }
+  [data-theme^="marmol"] body.crono-running .crono-run-destello { height: 48px; }
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer { display: flex; min-height: 350px; padding: 20px; }
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer-panels { min-height: 180px; }
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer-panel { max-height: none; }
+}
+
+/* Teléfono: sin cajón flotante ni espacio muerto entre reloj y herramientas. */
+@media (max-width: 699px) {
+  html.crono-focus-root body.crono-focus.crono-running {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto !important;
+    touch-action: pan-y;
+  }
+  html.crono-focus-root body.crono-focus.crono-running .app-content,
+  html.crono-focus-root body.crono-focus.crono-running #view-cronometro {
+    height: auto;
+    min-height: 100dvh;
+    max-height: none;
+    overflow: visible !important;
+    touch-action: pan-y;
+  }
+  [data-theme^="marmol"] body.crono-running .crono-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: calc(100vw - 24px);
+    min-height: 100dvh;
+    padding: max(54px, calc(env(safe-area-inset-top, 0px) + 46px)) 0 max(24px, env(safe-area-inset-bottom, 0px));
+  }
+  [data-theme^="marmol"] body.crono-running .crono-run-stage,
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer {
+    position: static;
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    transform: none;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+  [data-theme^="marmol"] body.crono-running .crono-run-stage { padding: 15px 14px 10px; }
+  [data-theme^="marmol"] body.crono-running .crono-display-wrap { height: min(245px, 66vw); margin: 0 auto; }
+  [data-theme^="marmol"] body.crono-running .crono-run-progress-svg { width: min(245px, 66vw); height: min(245px, 66vw); }
+  [data-theme^="marmol"] body.crono-running .crono-run-destello { height: 40px; }
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer { display: flex; padding: 12px; }
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer-handle { display: none; }
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer-head { display: flex; margin-bottom: 10px; }
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer-panels { min-height: 116px; }
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer-panel { max-height: none; }
+  .crono-focus-pasaje-main { grid-template-columns: 10px minmax(0, 1fr) 16px; }
+  .crono-focus-pasaje-scores { grid-column: 2 / -1; flex-direction: row; }
+  .crono-focus-pasaje-chevron { grid-column: 3; grid-row: 1; }
+  .crono-pasaje-expanded-compact .crono-pasaje-score-row {
+    grid-template-columns: 58px minmax(130px, 1fr);
+    gap: 8px;
+  }
+  .crono-pasaje-expanded-compact .crono-pasaje-score-out { grid-column: 2; text-align: left; }
+}
+
+/* Cierre en diez segundos: Solidez visible y detalles progresivos. */
+#modalHechoDatos .hecho-modal {
+  width: min(640px, calc(100vw - 32px)) !important;
+  max-width: 640px !important;
+  max-height: min(88dvh, 760px) !important;
+  border-radius: 8px !important;
+}
+#modalHechoDatos .hecho-modal-body {
+  display: flex;
+  flex-direction: column;
+  padding: 22px 24px 12px !important;
+}
+#modalHechoDatos .hecho-modal-body > .modal-title { order: 1; }
+#modalHechoDatos .hecho-modal-obra { order: 2; }
+.hecho-save-summary { order: 3; }
+.hecho-solidez-section { order: 4; }
+#hechoCronoNotesSection { order: 5; }
+.hecho-note-section { order: 6; }
+.hecho-advanced-toggle { order: 7; }
+.hecho-advanced-only { order: 8; }
+#modalHechoDatos .hecho-fast-actions,
+#hechoZoneSection,
+#hechoCompasSection,
+#hechoPasesSection,
+#hechoPasajesSection,
+#hechoMemSection { order: 9; }
+.hecho-save-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: var(--bg3);
+}
+.hecho-save-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+}
+.hecho-save-summary > div { display: flex; flex-direction: column; gap: 2px; }
+.hecho-save-summary strong { color: var(--text); font-size: 14px; }
+.hecho-save-summary span:last-child { color: var(--text3); font-size: 10px; }
+.hecho-solidez-section {
+  margin-bottom: 16px;
+  padding: 15px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+}
+.hecho-solidez-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.hecho-solidez-head > div { display: flex; flex-direction: column; gap: 3px; }
+.hecho-solidez-head > div > span {
+  color: var(--text3);
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.hecho-solidez-head strong { color: var(--text); font-size: 17px; }
+#hechoSolidezPrevious {
+  flex: none;
+  color: var(--text3);
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+}
+.hecho-solidez-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+}
+.hecho-solidez-options button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 66px;
+  padding: 9px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: var(--bg3);
+  color: var(--text2);
+  cursor: pointer;
+}
+.hecho-solidez-options button strong {
+  width: 100%;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hecho-solidez-options button span {
+  color: var(--text3);
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+}
+.hecho-solidez-options button.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 11%, var(--bg3));
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.hecho-solidez-selection {
+  min-height: 16px;
+  margin-top: 9px;
+  color: var(--text3);
+  font-size: 10px;
+  line-height: 1.35;
+}
+.hecho-note-section { margin-bottom: 12px; }
+.hecho-note-section .hecho-field-label { display: flex; justify-content: space-between; }
+.hecho-note-section .hecho-field-label span { color: var(--text3); font-weight: 500; text-transform: none; }
+.hecho-note-section .hecho-session-note { min-height: 68px; margin-bottom: 0; border-radius: 8px; resize: vertical; }
+.hecho-advanced-toggle {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text3);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.hecho-advanced-only { display: none; }
+.hecho-modal.show-details .hecho-advanced-only { display: block; }
+.hecho-modal.show-details .hecho-minutes-field {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border2);
+}
+#modalHechoDatos .hecho-modal-footer { gap: 9px; padding: 12px 24px 18px !important; }
+#modalHechoDatos .hecho-modal-footer .modal-btn { min-height: 48px; border-radius: 8px; }
+
+@media (max-width: 560px) {
+  #modalHechoDatos .hecho-modal-body { padding: 18px 16px 10px !important; }
+  .hecho-solidez-section { padding: 12px; }
+  .hecho-solidez-options { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .hecho-solidez-options button { min-height: 58px; }
+  #modalHechoDatos .hecho-modal-footer { padding: 10px 16px 14px !important; }
+}
