@@ -48,7 +48,8 @@ test('keeps the app inside the viewport at the four target widths', async ({ bro
     await prepare(page);
     for (const view of ['session', 'cronometro', 'obras', 'calendario', 'historial', 'ajustes']) {
       await page.evaluate(name => { if (typeof showView !== 'function') throw new Error('showView no disponible'); showView(name); }, view);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+      const sizing = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth }));
+      expect(sizing.scrollWidth, view + ' at ' + viewport.width + 'px').toBeLessThanOrEqual(sizing.innerWidth + 1);
     }
     await context.close();
   }
@@ -492,6 +493,7 @@ test('keeps tasks available while idle and compacts long running content', async
     renderCronoPasajes();
   });
 
+  await page.locator('#cronoIdleDrawer .crono-idle-drawer-tab[data-tab="tareas"]').click();
   const idleTasks = page.locator('#cronoIdleTasksPanel');
   await expect(idleTasks).toContainText('Afinar el bajo de la coda');
   await idleTasks.locator('#cronoIdleTaskInput').fill('Revisar digitación final');
@@ -520,7 +522,7 @@ test('keeps tasks available while idle and compacts long running content', async
     const displayTextWidth = displayRange.getBoundingClientRect().width;
     const taskBadge = document.getElementById('cronoDrawerTaskTabCount');
     const taskBadgeStyle = getComputedStyle(taskBadge);
-    const taskTab = document.querySelector('.crono-run-drawer-tab[data-tab="tareas"]');
+    const taskTab = document.querySelector('#cronoRunDrawer .crono-run-drawer-tab[data-tab="tareas"]');
     const passageRows = [...document.querySelectorAll('.crono-focus-pasaje-main')];
     return {
       ringWidth: ring.width,
@@ -561,6 +563,72 @@ test('keeps tasks available while idle and compacts long running content', async
   expect(metrics.taskTabClass).toContain('has-tasks');
   expect(metrics.taskTabLabel).toBe('Tareas, 2 pendientes');
 
-  await page.locator('.crono-run-drawer-tab[data-tab="tareas"]').click();
+  await page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-tab="tareas"]').click();
   await expect(page.locator('#cronoTasksPanel')).toContainText('Revisar digitación final');
+});
+
+test('keeps the idle and running timer in the same iPad composition', async ({ browser }) => {
+  for (const viewport of [{ width: 1024, height: 768 }, { width: 834, height: 1194 }]) {
+    const context = await browser.newContext({ viewport });
+    const page = await context.newPage();
+    await prepare(page);
+
+    const layout = await page.evaluate(() => {
+      showView('cronometro');
+      cronoSetMode('timer');
+      cronoSetTimerPreset(25);
+      const select = document.getElementById('cronoObraSelect');
+      select.value = 'obra::obra_1';
+      cronoSetObservation('Coda limpia, pulso estable');
+      cronoUpdateStartBtn();
+      cronoRender();
+
+      const rect = element => {
+        const box = element.getBoundingClientRect();
+        return { top: box.top, left: box.left, right: box.right, bottom: box.bottom, width: box.width, height: box.height };
+      };
+      const idle = {
+        main: rect(document.getElementById('cronoStageIdle').querySelector('.crono-idle-main')),
+        drawer: rect(document.getElementById('cronoIdleDrawer')),
+        ring: rect(document.getElementById('cronoTimerSvg')),
+        tabs: [...document.querySelectorAll('#cronoIdleDrawer .crono-idle-drawer-tab')].map(button => button.dataset.tab),
+        objective: document.getElementById('cronoIdleObjectiveText').textContent,
+        garden: getComputedStyle(document.getElementById('cronoGarden')).display,
+      };
+
+      cronoStart();
+      const running = {
+        main: rect(document.getElementById('cronoStageRun')),
+        drawer: rect(document.getElementById('cronoRunDrawer')),
+        ring: rect(document.querySelector('.crono-run-progress-svg')),
+        tabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab),
+        objective: document.getElementById('cronoRunObjectiveText').textContent,
+      };
+      return {
+        portrait: matchMedia('(orientation: portrait)').matches,
+        fitsWidth: document.documentElement.scrollWidth <= innerWidth + 1,
+        idle,
+        running,
+      };
+    });
+
+    expect(layout.fitsWidth).toBe(true);
+    expect(layout.idle.tabs).toEqual(['pasajes', 'nota', 'tareas']);
+    expect(layout.running.tabs).toEqual(layout.idle.tabs);
+    expect(layout.idle.objective).toBe('Coda limpia, pulso estable');
+    expect(layout.running.objective).toBe(layout.idle.objective);
+    expect(layout.idle.garden).toBe('none');
+    expect(Math.abs(layout.idle.ring.width - layout.running.ring.width)).toBeLessThanOrEqual(2);
+
+    if (layout.portrait) {
+      expect(layout.idle.drawer.top).toBeGreaterThanOrEqual(layout.idle.main.bottom - 1);
+      expect(layout.running.drawer.top).toBeGreaterThanOrEqual(layout.running.main.bottom - 1);
+    } else {
+      expect(Math.abs(layout.idle.main.left - layout.running.main.left)).toBeLessThanOrEqual(2);
+      expect(Math.abs(layout.idle.drawer.left - layout.running.drawer.left)).toBeLessThanOrEqual(2);
+      expect(Math.abs(layout.idle.main.height - layout.running.main.height)).toBeLessThanOrEqual(2);
+      expect(Math.abs(layout.idle.drawer.height - layout.running.drawer.height)).toBeLessThanOrEqual(2);
+    }
+    await context.close();
+  }
 });

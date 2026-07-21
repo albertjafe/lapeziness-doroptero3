@@ -16688,6 +16688,7 @@ window.addEventListener('pageshow', cronoHandleLifecycleResume);
 let _cronoDraftPases = { antesActive: false, antesVal: 50, despuesActive: false, despuesVal: 60 };
 let _cronoPaseDrawerOpen = false;
 let _cronoRunDrawerTab = 'pasajes';
+let _cronoIdleDrawerTab = 'pasajes';
 
 // Iconos SVG inline (currentColor para integrarse con la paleta)
 const CRONO_ICONS = {
@@ -16918,14 +16919,17 @@ function cronoRenderNoteCounts() {
     const el = document.getElementById(id);
     if (el) el.textContent = label;
   });
-  const tabBadge = document.getElementById('cronoDrawerNoteTabCount');
-  if (tabBadge) tabBadge.textContent = label;
+  ['cronoDrawerNoteTabCount', 'cronoIdleDrawerNoteTabCount'].forEach(id => {
+    const badge = document.getElementById(id);
+    if (badge) badge.textContent = label;
+  });
   ['cronoQuickNoteBtn', 'cronoRunNoteBtn'].forEach(id => {
     const btn = document.getElementById(id);
     if (btn) btn.classList.toggle('has-notes', count > 0);
   });
-  const tabBtn = document.querySelector('.crono-run-drawer-tab[data-tab="nota"]');
-  if (tabBtn) tabBtn.classList.toggle('has-notes', count > 0);
+  document.querySelectorAll('.crono-run-drawer-tab[data-tab="nota"]').forEach(tabBtn => {
+    tabBtn.classList.toggle('has-notes', count > 0);
+  });
 }
 
 function cronoTasks() {
@@ -16940,20 +16944,20 @@ function cronoActiveTaskCount() {
 
 function cronoRenderTaskCount() {
   const count = cronoActiveTaskCount();
-  const badge = document.getElementById('cronoDrawerTaskTabCount');
-  if (badge) {
+  ['cronoDrawerTaskTabCount', 'cronoIdleDrawerTaskTabCount'].forEach(id => {
+    const badge = document.getElementById(id);
+    if (!badge) return;
     badge.textContent = count ? String(count) : '';
     badge.hidden = count === 0;
-  }
+  });
   const idleCount = document.getElementById('cronoIdleTaskCount');
   if (idleCount) idleCount.textContent = count + (count === 1 ? ' pendiente' : ' pendientes');
-  const tabBtn = document.querySelector('.crono-run-drawer-tab[data-tab="tareas"]');
-  if (tabBtn) {
+  document.querySelectorAll('.crono-run-drawer-tab[data-tab="tareas"]').forEach(tabBtn => {
     tabBtn.classList.toggle('has-tasks', count > 0);
     tabBtn.setAttribute('aria-label', count
       ? 'Tareas, ' + count + (count === 1 ? ' pendiente' : ' pendientes')
       : 'Tareas');
-  }
+  });
 }
 
 function renderCronoTasks() {
@@ -17061,13 +17065,42 @@ function cronoSetObservation(value) {
   cronoUpdateRunObjective();
 }
 
+function cronoSetIdleDrawerTab(tab) {
+  const valid = tab === 'nota' || tab === 'pasajes' || tab === 'tareas' ? tab : 'pasajes';
+  _cronoIdleDrawerTab = valid;
+  cronoUpdateIdleDrawer();
+  try { Haptics.light(); } catch(e) {}
+}
+
+function cronoUpdateIdleDrawer() {
+  const drawer = document.getElementById('cronoIdleDrawer');
+  if (!drawer) return;
+  const tab = _cronoIdleDrawerTab === 'nota' || _cronoIdleDrawerTab === 'tareas' ? _cronoIdleDrawerTab : 'pasajes';
+  drawer.dataset.tab = tab;
+  drawer.querySelectorAll('.crono-idle-drawer-tab').forEach(btn => {
+    const active = btn.dataset.tab === tab;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  drawer.querySelectorAll('.crono-idle-drawer-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.dataset.panel === tab);
+  });
+  if (tab === 'tareas') renderCronoTasks();
+  else cronoRenderTaskCount();
+}
+
 function cronoUpdateRunObjective() {
-  const text = document.getElementById('cronoRunObjectiveText');
-  const wrap = document.getElementById('cronoRunObjective');
-  if (!text || !wrap) return;
   const objective = String(crono.observation || '').replace(/\s+/g, ' ').trim();
-  text.textContent = objective || 'Sesión libre';
-  wrap.classList.toggle('is-empty', !objective);
+  [
+    ['cronoRunObjectiveText', 'cronoRunObjective'],
+    ['cronoIdleObjectiveText', 'cronoIdleObjective'],
+  ].forEach(([textId, wrapId]) => {
+    const text = document.getElementById(textId);
+    const wrap = document.getElementById(wrapId);
+    if (!text || !wrap) return;
+    text.textContent = objective || 'Sesión libre';
+    wrap.classList.toggle('is-empty', !objective);
+  });
 }
 
 function cronoSyncObservationInputs() {
@@ -18857,7 +18890,7 @@ function cronoRender() {
     cronoUpdateTimerProgress();
     cronoRenderNoteCounts();
     renderCronoTasks();
-    cronoUpdateRunDrawer();
+    cronoUpdateIdleDrawer();
     cronoSyncObservationInputs();
     return;
   }
