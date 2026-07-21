@@ -432,6 +432,14 @@
           oninput="cronoSetObservation(this.value)"></textarea>
       </label>
 
+      <section class="crono-idle-tasks" aria-labelledby="cronoIdleTasksTitle">
+        <div class="crono-idle-tasks-head">
+          <strong id="cronoIdleTasksTitle">Tareas de la sesión</strong>
+          <span id="cronoIdleTaskCount">0 pendientes</span>
+        </div>
+        <div class="crono-tasks-panel crono-tasks-panel-idle" id="cronoIdleTasksPanel"></div>
+      </section>
+
       <div class="crono-timer-projection" id="cronoTimerProjection" style="display:none"></div>
 
       <button class="crono-plant-btn" id="cronoStartBtn" onclick="cronoStart()" disabled>Iniciar</button>

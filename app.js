@@ -16721,6 +16721,15 @@ function cronoFmt(ms) {
   return pad(m) + ':' + pad(s);
 }
 
+function cronoSetMainDisplay(ms) {
+  const display = document.getElementById('cronoDisplay');
+  if (!display) return;
+  const value = cronoFmt(ms);
+  display.textContent = value;
+  const wrap = document.getElementById('cronoDisplayWrap');
+  if (wrap) wrap.classList.toggle('has-hours', value.split(':').length === 3);
+}
+
 let _cronoNoteDraftPhase = 'during';
 
 function cronoNoteId() {
@@ -16863,15 +16872,13 @@ function cronoRenderTaskCount() {
   const count = cronoActiveTaskCount();
   const badge = document.getElementById('cronoDrawerTaskTabCount');
   if (badge) badge.textContent = count ? String(count) : '+';
+  const idleCount = document.getElementById('cronoIdleTaskCount');
+  if (idleCount) idleCount.textContent = count + (count === 1 ? ' pendiente' : ' pendientes');
   const tabBtn = document.querySelector('.crono-run-drawer-tab[data-tab="tareas"]');
   if (tabBtn) tabBtn.classList.toggle('has-notes', count > 0);
 }
 
 function renderCronoTasks() {
-  const el = document.getElementById('cronoTasksPanel');
-  if (!el) return;
-  const activeInput = document.activeElement && document.activeElement.id === 'cronoTaskInput';
-  const currentDraft = activeInput ? (document.getElementById('cronoTaskInput')?.value || '') : '';
   const tasks = cronoTasks();
   const pending = tasks.filter(t => !t.done).slice(-12).reverse();
   const done = tasks.filter(t => t.done).slice(-5).reverse();
@@ -16882,34 +16889,44 @@ function renderCronoTasks() {
       '<span class="crono-task-text">' + escapeHtmlSafe(t.text) + '</span>' +
     '</button>';
   };
-  el.innerHTML =
-    '<div class="crono-task-add">' +
-      '<input id="cronoTaskInput" class="crono-task-input" type="text" maxlength="140" placeholder="Algo por hacer..." onkeydown="cronoTaskInputKey(event)">' +
-      '<button type="button" class="crono-task-add-btn" onclick="addCronoTask()">+</button>' +
-    '</div>' +
-    '<div class="crono-task-list">' +
-      (pending.length ? pending.map(row).join('') : '<div class="crono-task-empty">Sin tareas pendientes</div>') +
-      (done.length ? '<div class="crono-task-done-label">hechas</div>' + done.map(row).join('') : '') +
-    '</div>';
-  const input = document.getElementById('cronoTaskInput');
-  if (input && activeInput) {
-    input.value = currentDraft;
-    input.focus();
-    input.setSelectionRange(input.value.length, input.value.length);
-  }
+  [
+    { id: 'cronoIdleTasksPanel', inputId: 'cronoIdleTaskInput', source: 'idle' },
+    { id: 'cronoTasksPanel', inputId: 'cronoTaskInput', source: 'running' },
+  ].forEach(target => {
+    const el = document.getElementById(target.id);
+    if (!el) return;
+    const activeInput = document.activeElement && document.activeElement.id === target.inputId;
+    const currentDraft = activeInput ? (document.getElementById(target.inputId)?.value || '') : '';
+    el.innerHTML =
+      '<div class="crono-task-add">' +
+        '<input id="' + target.inputId + '" class="crono-task-input" type="text" maxlength="140" placeholder="Algo por hacer..." onkeydown="cronoTaskInputKey(event,\'' + target.source + '\')">' +
+        '<button type="button" class="crono-task-add-btn" onclick="addCronoTask(\'' + target.source + '\')" aria-label="Añadir tarea">+</button>' +
+      '</div>' +
+      '<div class="crono-task-list">' +
+        (pending.length ? pending.map(row).join('') : '<div class="crono-task-empty">Sin tareas pendientes</div>') +
+        (done.length ? '<div class="crono-task-done-label">hechas</div>' + done.map(row).join('') : '') +
+      '</div>';
+    const input = document.getElementById(target.inputId);
+    if (input && activeInput) {
+      input.value = currentDraft;
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  });
   cronoRenderTaskCount();
 }
 
-function cronoTaskInputKey(ev) {
+function cronoTaskInputKey(ev, source) {
   if (!ev) return;
   if (ev.key === 'Enter') {
     ev.preventDefault();
-    addCronoTask();
+    addCronoTask(source);
   }
 }
 
-function addCronoTask() {
-  const input = document.getElementById('cronoTaskInput');
+function addCronoTask(source) {
+  const inputId = source === 'idle' ? 'cronoIdleTaskInput' : 'cronoTaskInput';
+  const input = document.getElementById(inputId);
   const text = (input?.value || '').replace(/\s+/g, ' ').trim();
   if (!text) {
     showToast('Escribe una tarea');
@@ -18761,7 +18778,7 @@ function cronoRender() {
     cronoUpdateStartBtn();
     cronoUpdateTimerProgress();
     cronoRenderNoteCounts();
-    cronoRenderTaskCount();
+    renderCronoTasks();
     cronoUpdateRunDrawer();
     cronoSyncObservationInputs();
     return;
@@ -18796,9 +18813,9 @@ function cronoRender() {
   if (disp) {
     if (crono.targetMinutes != null) {
       const remainingMs = Math.max(0, (crono.targetDurationMs || crono.targetMinutes * 60000) - cronoEffectiveElapsedMs());
-      disp.textContent = cronoFmt(remainingMs);
+      cronoSetMainDisplay(remainingMs);
     } else {
-      disp.textContent = cronoFmt(cronoEffectiveElapsedMs());
+      cronoSetMainDisplay(cronoEffectiveElapsedMs());
     }
     if (crono.state === 'paused') {
       disp.classList.add('paused');
@@ -19810,7 +19827,7 @@ function cronoStartTick() {
     if (crono.targetDurationMs != null || crono.targetMinutes != null) {
       const targetMs = crono.targetDurationMs || crono.targetMinutes * 60000;
       const remainingMs = Math.max(0, targetMs - elapsedMs);
-      if (disp) disp.textContent = cronoFmt(remainingMs);
+      if (disp) cronoSetMainDisplay(remainingMs);
       cronoUpdateTimerProgress(elapsedMs);
       if (remainingMs <= 0) {
         clearInterval(crono.tickInterval);
@@ -19819,7 +19836,7 @@ function cronoStartTick() {
       }
     } else {
       // El cronómetro libre no tiene objetivo ni límite artificial.
-      if (disp) disp.textContent = cronoFmt(elapsedMs);
+      if (disp) cronoSetMainDisplay(elapsedMs);
       cronoUpdateTimerProgress(elapsedMs);
     }
     // Motivador de hito: muestra el tiempo total redondeado al múltiplo de 15min inferior
@@ -19931,8 +19948,7 @@ function cronoStart() {
 
   _cronoPaseDrawerReset();
   _cronoRunDrawerTab = 'pasajes';
-  const firstPasaje = _activeCronoPasajes()[0];
-  if (!_pasajeOpenId && firstPasaje) _pasajeOpenId = firstPasaje.id;
+  _pasajeOpenId = null;
   _cronoLastRunDestelloKey = '';
   if (!Array.isArray(crono.notes)) crono.notes = [];
 

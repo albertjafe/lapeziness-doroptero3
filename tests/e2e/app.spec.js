@@ -419,3 +419,74 @@ test('finishes a valid timer without native confirmation and saves one-tap solid
   }));
   expect(saved).toEqual({ value: 65, context: 'cierre-sesion', current: 65 });
 });
+
+test('keeps tasks available while idle and compacts long running content', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await prepare(page);
+  await page.evaluate(() => {
+    showView('cronometro');
+    db.cronoTasks = [
+      { id: 'ct_1', text: 'Afinar el bajo de la coda', done: false, createdAt: new Date().toISOString() },
+    ];
+    db.cronoPasajes = Array.from({ length: 5 }, (_, index) => ({
+      id: 'pj_' + index,
+      name: 'Pasaje ' + (index + 1) + ' · compases ' + (20 + index * 4) + '–' + (23 + index * 4),
+      tier: index < 2 ? 'red' : 'amber',
+      createdAt: new Date().toISOString(),
+      focusHistory: [],
+      solHistory: [],
+    }));
+    cronoRender();
+    renderCronoPasajes();
+  });
+
+  const idleTasks = page.locator('#cronoIdleTasksPanel');
+  await expect(idleTasks).toContainText('Afinar el bajo de la coda');
+  await idleTasks.locator('#cronoIdleTaskInput').fill('Revisar digitación final');
+  await idleTasks.locator('.crono-task-add-btn').click();
+  await expect(idleTasks).toContainText('Revisar digitación final');
+
+  const metrics = await page.evaluate(() => {
+    const select = document.getElementById('cronoObraSelect');
+    select.value = 'obra::obra_1';
+    cronoUpdateStartBtn();
+    cronoStart();
+    crono.startTs = Date.now() - 65 * 60 * 1000;
+    cronoRender();
+    renderCronoPasajes();
+
+    const destello = document.getElementById('cronoRunDestello');
+    const longText = 'Una repetición consciente puede ser lenta, pero debe conservar el sonido, la dirección y la sensación exacta que quieres encontrar mañana sin añadir tensión innecesaria.';
+    destello.className = 'crono-run-destello size-xlong';
+    destello.innerHTML = '<span class="crono-run-destello-text">' + longText + '</span>';
+    destello.style.display = '';
+
+    const ring = document.querySelector('.crono-run-progress-svg').getBoundingClientRect();
+    const display = document.getElementById('cronoDisplay').getBoundingClientRect();
+    const passageRows = [...document.querySelectorAll('.crono-focus-pasaje-main')];
+    return {
+      ringWidth: ring.width,
+      displayWidth: display.width,
+      hasHours: document.getElementById('cronoDisplayWrap').classList.contains('has-hours'),
+      destelloFits: destello.scrollHeight <= destello.clientHeight + 1,
+      destelloOverflow: getComputedStyle(destello).overflow,
+      destelloClamp: getComputedStyle(destello.querySelector('.crono-run-destello-text')).webkitLineClamp,
+      passageCount: passageRows.length,
+      maxPassageHeight: Math.max(...passageRows.map(row => row.getBoundingClientRect().height)),
+      openPassages: document.querySelectorAll('.crono-focus-pasaje.is-open').length,
+    };
+  });
+
+  expect(metrics.ringWidth).toBeGreaterThanOrEqual(350);
+  expect(metrics.hasHours).toBe(true);
+  expect(metrics.displayWidth).toBeLessThan(metrics.ringWidth * 0.82);
+  expect(metrics.destelloFits).toBe(true);
+  expect(metrics.destelloOverflow).toBe('visible');
+  expect(['none', 'unset']).toContain(metrics.destelloClamp);
+  expect(metrics.passageCount).toBe(5);
+  expect(metrics.maxPassageHeight).toBeLessThanOrEqual(45);
+  expect(metrics.openPassages).toBe(0);
+
+  await page.locator('.crono-run-drawer-tab[data-tab="tareas"]').click();
+  await expect(page.locator('#cronoTasksPanel')).toContainText('Revisar digitación final');
+});
