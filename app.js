@@ -16776,7 +16776,29 @@ function cronoSetMainDisplay(ms) {
   display.textContent = value;
   const wrap = document.getElementById('cronoDisplayWrap');
   if (wrap) wrap.classList.toggle('has-hours', value.split(':').length === 3);
+  cronoFitMainDisplay();
 }
+
+function cronoFitMainDisplay() {
+  const display = document.getElementById('cronoDisplay');
+  const ring = document.querySelector('#cronoDisplayWrap .crono-run-progress-svg');
+  if (!display || !ring) return;
+  display.style.removeProperty('font-size');
+  const ringWidth = ring.getBoundingClientRect().width;
+  if (ringWidth < 1) return;
+  const range = document.createRange();
+  range.selectNodeContents(display);
+  const textWidth = range.getBoundingClientRect().width;
+  const maxTextWidth = ringWidth * 0.68;
+  if (textWidth > maxTextWidth) {
+    const baseSize = parseFloat(getComputedStyle(display).fontSize) || 72;
+    display.style.fontSize = Math.max(36, baseSize * maxTextWidth / textWidth) + 'px';
+  }
+}
+
+window.addEventListener('resize', () => {
+  if (crono.state === 'running' || crono.state === 'paused') requestAnimationFrame(cronoFitMainDisplay);
+}, { passive: true });
 
 let _cronoNoteDraftPhase = 'during';
 
@@ -16919,11 +16941,19 @@ function cronoActiveTaskCount() {
 function cronoRenderTaskCount() {
   const count = cronoActiveTaskCount();
   const badge = document.getElementById('cronoDrawerTaskTabCount');
-  if (badge) badge.textContent = count ? String(count) : '+';
+  if (badge) {
+    badge.textContent = count ? String(count) : '';
+    badge.hidden = count === 0;
+  }
   const idleCount = document.getElementById('cronoIdleTaskCount');
   if (idleCount) idleCount.textContent = count + (count === 1 ? ' pendiente' : ' pendientes');
   const tabBtn = document.querySelector('.crono-run-drawer-tab[data-tab="tareas"]');
-  if (tabBtn) tabBtn.classList.toggle('has-notes', count > 0);
+  if (tabBtn) {
+    tabBtn.classList.toggle('has-tasks', count > 0);
+    tabBtn.setAttribute('aria-label', count
+      ? 'Tareas, ' + count + (count === 1 ? ' pendiente' : ' pendientes')
+      : 'Tareas');
+  }
 }
 
 function renderCronoTasks() {

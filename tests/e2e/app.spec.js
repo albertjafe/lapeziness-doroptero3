@@ -401,6 +401,11 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
       const stage = document.getElementById('cronoStageRun').getBoundingClientRect();
       const drawer = document.getElementById('cronoRunDrawer').getBoundingClientRect();
       const controls = document.getElementById('cronoControls').getBoundingClientRect();
+      const ring = document.querySelector('.crono-run-progress-svg').getBoundingClientRect();
+      const display = document.getElementById('cronoDisplay');
+      const displayRange = document.createRange();
+      displayRange.selectNodeContents(display);
+      const displayTextWidth = displayRange.getBoundingClientRect().width;
       return {
         portrait: matchMedia('(orientation: portrait)').matches,
         stage: { top: stage.top, right: stage.right, bottom: stage.bottom },
@@ -410,12 +415,14 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
         fitsWidth: document.documentElement.scrollWidth <= innerWidth + 1,
         objective: document.getElementById('cronoRunObjectiveText').textContent,
         passage: document.querySelector('.crono-focus-pasaje-copy strong')?.textContent,
+        displayRatio: displayTextWidth / ring.width,
       };
     });
 
     expect(layout.fitsWidth).toBe(true);
     expect(layout.objective).toBe('Coda limpia, pulso estable');
     expect(layout.passage).toBe('Coda · cc. 200–208');
+    expect(layout.displayRatio).toBeLessThanOrEqual(0.69);
     if (layout.portrait) {
       expect(layout.drawer.top).toBeGreaterThanOrEqual(layout.stage.bottom);
       expect(layout.controlsBottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
@@ -507,11 +514,17 @@ test('keeps tasks available while idle and compacts long running content', async
     destello.style.display = '';
 
     const ring = document.querySelector('.crono-run-progress-svg').getBoundingClientRect();
-    const display = document.getElementById('cronoDisplay').getBoundingClientRect();
+    const display = document.getElementById('cronoDisplay');
+    const displayRange = document.createRange();
+    displayRange.selectNodeContents(display);
+    const displayTextWidth = displayRange.getBoundingClientRect().width;
+    const taskBadge = document.getElementById('cronoDrawerTaskTabCount');
+    const taskBadgeStyle = getComputedStyle(taskBadge);
+    const taskTab = document.querySelector('.crono-run-drawer-tab[data-tab="tareas"]');
     const passageRows = [...document.querySelectorAll('.crono-focus-pasaje-main')];
     return {
       ringWidth: ring.width,
-      displayWidth: display.width,
+      displayWidth: displayTextWidth,
       hasHours: document.getElementById('cronoDisplayWrap').classList.contains('has-hours'),
       destelloFits: destello.scrollHeight <= destello.clientHeight + 1,
       destelloOverflow: getComputedStyle(destello).overflow,
@@ -519,18 +532,34 @@ test('keeps tasks available while idle and compacts long running content', async
       passageCount: passageRows.length,
       maxPassageHeight: Math.max(...passageRows.map(row => row.getBoundingClientRect().height)),
       openPassages: document.querySelectorAll('.crono-focus-pasaje.is-open').length,
+      taskDot: {
+        hidden: taskBadge.hidden,
+        width: taskBadge.getBoundingClientRect().width,
+        height: taskBadge.getBoundingClientRect().height,
+        radius: taskBadgeStyle.borderRadius,
+        background: taskBadgeStyle.backgroundColor,
+      },
+      taskTabClass: taskTab.className,
+      taskTabLabel: taskTab.getAttribute('aria-label'),
     };
   });
 
   expect(metrics.ringWidth).toBeGreaterThanOrEqual(350);
   expect(metrics.hasHours).toBe(true);
-  expect(metrics.displayWidth).toBeLessThan(metrics.ringWidth * 0.82);
+  expect(metrics.displayWidth).toBeLessThanOrEqual(metrics.ringWidth * 0.69);
   expect(metrics.destelloFits).toBe(true);
   expect(metrics.destelloOverflow).toBe('visible');
   expect(['none', 'unset']).toContain(metrics.destelloClamp);
   expect(metrics.passageCount).toBe(5);
   expect(metrics.maxPassageHeight).toBeLessThanOrEqual(45);
   expect(metrics.openPassages).toBe(0);
+  expect(metrics.taskDot.hidden).toBe(false);
+  expect(metrics.taskDot.width).toBe(8);
+  expect(metrics.taskDot.height).toBe(8);
+  expect(metrics.taskDot.radius).toBe('50%');
+  expect(metrics.taskDot.background).toBe('rgb(229, 72, 77)');
+  expect(metrics.taskTabClass).toContain('has-tasks');
+  expect(metrics.taskTabLabel).toBe('Tareas, 2 pendientes');
 
   await page.locator('.crono-run-drawer-tab[data-tab="tareas"]').click();
   await expect(page.locator('#cronoTasksPanel')).toContainText('Revisar digitación final');
