@@ -308,7 +308,7 @@ test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) =>
   expect(state.hoy.nudge).toBeNull();
   expect(state.cronoStart).toBe('Iniciar');
   expect(state.quickNoteButtons).toBe(0);
-  expect(state.runTabs).toEqual(['pasajes', 'nota', 'tareas']);
+  expect(state.runTabs).toEqual(['pasajes', 'nota', 'tareas', 'pase']);
   expect(state.bottomDisplay).toBe('none');
 });
 
@@ -402,7 +402,7 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
       const stage = document.getElementById('cronoStageRun').getBoundingClientRect();
       const drawer = document.getElementById('cronoRunDrawer').getBoundingClientRect();
       const controls = document.getElementById('cronoControls').getBoundingClientRect();
-      const ring = document.querySelector('.crono-run-progress-svg').getBoundingClientRect();
+      const ring = document.querySelector('#cronoStageRun .crono-run-progress-svg').getBoundingClientRect();
       const display = document.getElementById('cronoDisplay');
       const displayRange = document.createRange();
       displayRange.selectNodeContents(display);
@@ -515,7 +515,7 @@ test('keeps tasks available while idle and compacts long running content', async
     destello.innerHTML = '<span class="crono-run-destello-text">' + longText + '</span>';
     destello.style.display = '';
 
-    const ring = document.querySelector('.crono-run-progress-svg').getBoundingClientRect();
+    const ring = document.querySelector('#cronoStageRun .crono-run-progress-svg').getBoundingClientRect();
     const display = document.getElementById('cronoDisplay');
     const displayRange = document.createRange();
     displayRange.selectNodeContents(display);
@@ -536,6 +536,7 @@ test('keeps tasks available while idle and compacts long running content', async
       openPassages: document.querySelectorAll('.crono-focus-pasaje.is-open').length,
       taskDot: {
         hidden: taskBadge.hidden,
+        text: taskBadge.textContent,
         width: taskBadge.getBoundingClientRect().width,
         height: taskBadge.getBoundingClientRect().height,
         radius: taskBadgeStyle.borderRadius,
@@ -556,15 +557,20 @@ test('keeps tasks available while idle and compacts long running content', async
   expect(metrics.maxPassageHeight).toBeLessThanOrEqual(45);
   expect(metrics.openPassages).toBe(0);
   expect(metrics.taskDot.hidden).toBe(false);
-  expect(metrics.taskDot.width).toBe(8);
-  expect(metrics.taskDot.height).toBe(8);
+  expect(metrics.taskDot.text).toBe('2');
+  expect(metrics.taskDot.width).toBe(20);
+  expect(metrics.taskDot.height).toBe(20);
   expect(metrics.taskDot.radius).toBe('50%');
-  expect(metrics.taskDot.background).toBe('rgb(229, 72, 77)');
+  expect(metrics.taskDot.background).toBe('rgb(220, 38, 38)');
   expect(metrics.taskTabClass).toContain('has-tasks');
   expect(metrics.taskTabLabel).toBe('Tareas, 2 pendientes');
 
   await page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-tab="tareas"]').click();
   await expect(page.locator('#cronoTasksPanel')).toContainText('Revisar digitación final');
+  await page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-tab="pase"]').click();
+  await page.locator('#cronoRunDrawer .crono-drawer-pase-btn').click();
+  await expect(page.locator('#modalCronoPaseRapido')).toHaveClass(/visible/);
+  expect(await page.evaluate(() => crono.state)).toBe('running');
 });
 
 test('keeps the idle and running timer in the same iPad composition', async ({ browser }) => {
@@ -593,6 +599,9 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
         ring: rect(document.getElementById('cronoTimerSvg')),
         tabs: [...document.querySelectorAll('#cronoIdleDrawer .crono-idle-drawer-tab')].map(button => button.dataset.tab),
         objective: document.getElementById('cronoIdleObjectiveText').textContent,
+        display: document.getElementById('cronoTimerText').textContent,
+        usesRunningDisplay: document.getElementById('cronoTimerText').classList.contains('crono-display')
+          && document.getElementById('cronoTimerSvg').classList.contains('crono-run-progress-svg'),
         garden: getComputedStyle(document.getElementById('cronoGarden')).display,
       };
 
@@ -600,7 +609,7 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
       const running = {
         main: rect(document.getElementById('cronoStageRun')),
         drawer: rect(document.getElementById('cronoRunDrawer')),
-        ring: rect(document.querySelector('.crono-run-progress-svg')),
+        ring: rect(document.querySelector('#cronoStageRun .crono-run-progress-svg')),
         tabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab),
         objective: document.getElementById('cronoRunObjectiveText').textContent,
       };
@@ -613,10 +622,12 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
     });
 
     expect(layout.fitsWidth).toBe(true);
-    expect(layout.idle.tabs).toEqual(['pasajes', 'nota', 'tareas']);
+    expect(layout.idle.tabs).toEqual(['pasajes', 'nota', 'tareas', 'pase']);
     expect(layout.running.tabs).toEqual(layout.idle.tabs);
     expect(layout.idle.objective).toBe('Coda limpia, pulso estable');
     expect(layout.running.objective).toBe(layout.idle.objective);
+    expect(layout.idle.display).toBe('25:00');
+    expect(layout.idle.usesRunningDisplay).toBe(true);
     expect(layout.idle.garden).toBe('none');
     expect(Math.abs(layout.idle.ring.width - layout.running.ring.width)).toBeLessThanOrEqual(2);
 

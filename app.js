@@ -17036,7 +17036,7 @@ function toggleCronoTask(id) {
 }
 
 function cronoSetRunDrawerTab(tab) {
-  const valid = tab === 'nota' || tab === 'pasajes' || tab === 'tareas' ? tab : 'pasajes';
+  const valid = tab === 'nota' || tab === 'pasajes' || tab === 'tareas' || tab === 'pase' ? tab : 'pasajes';
   _cronoRunDrawerTab = valid;
   cronoUpdateRunDrawer();
   try { Haptics.light(); } catch(e) {}
@@ -17045,7 +17045,9 @@ function cronoSetRunDrawerTab(tab) {
 function cronoUpdateRunDrawer() {
   const drawer = document.getElementById('cronoRunDrawer');
   if (!drawer) return;
-  const tab = _cronoRunDrawerTab === 'nota' || _cronoRunDrawerTab === 'tareas' ? _cronoRunDrawerTab : 'pasajes';
+  const tab = _cronoRunDrawerTab === 'nota' || _cronoRunDrawerTab === 'tareas' || _cronoRunDrawerTab === 'pase'
+    ? _cronoRunDrawerTab
+    : 'pasajes';
   drawer.dataset.tab = tab;
   drawer.querySelectorAll('.crono-run-drawer-tab').forEach(btn => {
     const active = btn.dataset.tab === tab;
@@ -17066,7 +17068,7 @@ function cronoSetObservation(value) {
 }
 
 function cronoSetIdleDrawerTab(tab) {
-  const valid = tab === 'nota' || tab === 'pasajes' || tab === 'tareas' ? tab : 'pasajes';
+  const valid = tab === 'nota' || tab === 'pasajes' || tab === 'tareas' || tab === 'pase' ? tab : 'pasajes';
   _cronoIdleDrawerTab = valid;
   cronoUpdateIdleDrawer();
   try { Haptics.light(); } catch(e) {}
@@ -17075,7 +17077,9 @@ function cronoSetIdleDrawerTab(tab) {
 function cronoUpdateIdleDrawer() {
   const drawer = document.getElementById('cronoIdleDrawer');
   if (!drawer) return;
-  const tab = _cronoIdleDrawerTab === 'nota' || _cronoIdleDrawerTab === 'tareas' ? _cronoIdleDrawerTab : 'pasajes';
+  const tab = _cronoIdleDrawerTab === 'nota' || _cronoIdleDrawerTab === 'tareas' || _cronoIdleDrawerTab === 'pase'
+    ? _cronoIdleDrawerTab
+    : 'pasajes';
   drawer.dataset.tab = tab;
   drawer.querySelectorAll('.crono-idle-drawer-tab').forEach(btn => {
     const active = btn.dataset.tab === tab;
@@ -19035,6 +19039,7 @@ function cronoUpdateStartBtn() {
   cronoUpdateSolidityActions();
   cronoUpdateTimerProjection();
   cronoRenderNoteCounts();
+  cronoTimerRenderSlider(true);
 }
 
 function cronoUpdateTimerProjection() {
@@ -19459,8 +19464,9 @@ function hechoUpdateFastSolidityAction() {
 const TIMER_MIN_MINUTES = 5;
 const TIMER_MAX_MINUTES = 120;
 const TIMER_STEP_MINUTES = 5;
-const TIMER_RADIUS = 88;
-const TIMER_CIRC = 2 * Math.PI * TIMER_RADIUS; // ≈ 552.92
+const TIMER_CENTER = 110;
+const TIMER_RADIUS = 94;
+const TIMER_CIRC = 2 * Math.PI * TIMER_RADIUS; // ≈ 590.62
 const CRONO_RUN_PROGRESS_RADIUS = 94;
 const CRONO_RUN_PROGRESS_CIRC = 2 * Math.PI * CRONO_RUN_PROGRESS_RADIUS;
 
@@ -19580,11 +19586,8 @@ function cronoApplyModeUI() {
   });
   // Mover indicador
   cronoMoveModeIndicator();
-  // Si timer mode, actualizar el slider visualmente y el botón "Plantar"
-  if (timedMode) {
-    if (crono.mode === 'until') cronoEnsureUntilTime();
-    cronoTimerRenderSlider();
-  }
+  if (crono.mode === 'until') cronoEnsureUntilTime();
+  cronoTimerRenderSlider();
   cronoUpdateTimerPresetButtons();
   // Mensaje contextual: primero destellos propios, luego frases de respaldo.
   const msg = document.getElementById('cronoIdleMessage');
@@ -19764,14 +19767,15 @@ function cronoTimerEffectiveMinutes() {
 }
 
 // Renderiza el slider radial con crono.timerMinutes
-function cronoTimerRenderSlider() {
+function cronoTimerRenderSlider(skipStartUpdate) {
   const arc = document.getElementById('cronoTimerArc');
   const handle = document.getElementById('cronoTimerHandle');
   const text = document.getElementById('cronoTimerText');
   if (!arc || !handle || !text) return;
 
-  const m = cronoTimerEffectiveMinutes();
-  const pct = Math.min(m || 0, TIMER_MAX_MINUTES) / TIMER_MAX_MINUTES; // 0..1
+  const timedMode = crono.mode === 'timer' || crono.mode === 'until';
+  const m = timedMode ? cronoTimerEffectiveMinutes() : null;
+  const pct = timedMode ? Math.min(m || 0, TIMER_MAX_MINUTES) / TIMER_MAX_MINUTES : 0;
   // Arc: stroke-dashoffset = circ - circ*pct
   arc.setAttribute('stroke-dashoffset', String(TIMER_CIRC * (1 - pct)));
 
@@ -19779,13 +19783,25 @@ function cronoTimerRenderSlider() {
   // θ en radianes; 12 en punto = 0; sentido horario.
   // En SVG con y hacia abajo: x = cx + r*sin(θ), y = cy - r*cos(θ)
   const theta = pct * 2 * Math.PI;
-  const cx = 100 + TIMER_RADIUS * Math.sin(theta);
-  const cy = 100 - TIMER_RADIUS * Math.cos(theta);
+  const cx = TIMER_CENTER + TIMER_RADIUS * Math.sin(theta);
+  const cy = TIMER_CENTER - TIMER_RADIUS * Math.cos(theta);
   handle.setAttribute('cx', String(cx));
   handle.setAttribute('cy', String(cy));
 
-  // Texto
-  text.textContent = String(m || '—');
+  const displayText = timedMode && m ? cronoFmt(m * 60000) : '00:00';
+  text.textContent = displayText;
+  const wrap = document.getElementById('cronoIdleDisplayWrap');
+  if (wrap) {
+    wrap.classList.toggle('timer-active', timedMode);
+    wrap.classList.toggle('has-hours', displayText.split(':').length > 2);
+  }
+  const target = document.getElementById('cronoIdleTarget');
+  if (target) {
+    target.textContent = crono.mode === 'until' && crono.untilTime
+      ? 'hasta ' + crono.untilTime
+      : (crono.mode === 'timer' && m ? 'de ' + fmtMinutos(m) : '');
+    target.style.display = timedMode && m ? '' : 'none';
+  }
   cronoUpdateTimerPresetButtons();
   const untilInput = document.getElementById('cronoUntilTime');
   if (untilInput && crono.mode === 'until') {
@@ -19794,15 +19810,13 @@ function cronoTimerRenderSlider() {
   }
   const untilInfo = document.getElementById('cronoUntilInfo');
   if (untilInfo) untilInfo.textContent = crono.mode === 'until' ? cronoUntilInfoText() : '';
-  // Actualizar el botón "Plantar · N min"
-  cronoUpdateStartBtn();
+  if (!skipStartUpdate) cronoUpdateStartBtn();
 }
 
 // Convierte un punto (x, y) en coordenadas del SVG en minutos snap-eados.
 function cronoTimerXYToMinutes(svgX, svgY) {
-  // Centro está en (100, 100)
-  const dx = svgX - 100;
-  const dy = svgY - 100;
+  const dx = svgX - TIMER_CENTER;
+  const dy = svgY - TIMER_CENTER;
   // Ángulo desde "arriba" (12 en punto), sentido horario.
   // atan2(dx, -dy) da 0 cuando dx=0, dy<0 (arriba), creciendo en sentido horario.
   let theta = Math.atan2(dx, -dy);
@@ -19847,8 +19861,8 @@ function cronoTimerInitDrag() {
   function distToHandle(svgX, svgY) {
     const m = crono.timerMinutes;
     const theta = (m / TIMER_MAX_MINUTES) * 2 * Math.PI;
-    const hx = 100 + TIMER_RADIUS * Math.sin(theta);
-    const hy = 100 - TIMER_RADIUS * Math.cos(theta);
+    const hx = TIMER_CENTER + TIMER_RADIUS * Math.sin(theta);
+    const hy = TIMER_CENTER - TIMER_RADIUS * Math.cos(theta);
     const dx = svgX - hx;
     const dy = svgY - hy;
     return Math.sqrt(dx*dx + dy*dy);
@@ -19861,7 +19875,7 @@ function cronoTimerInitDrag() {
     const prev = crono.timerMinutes;
     // Robust wrap detection using the raw angle, not the snapped value.
     // Fast swipes can jump past multiple steps so checking newMin <= 5 is not enough.
-    const dx = p.x - 100, dy = p.y - 100;
+    const dx = p.x - TIMER_CENTER, dy = p.y - TIMER_CENTER;
     let rawTheta = Math.atan2(dx, -dy);
     if (rawTheta < 0) rawTheta += 2 * Math.PI; // 0..2π, 0 = 12 o'clock CW
     const prevAngle = (prev / TIMER_MAX_MINUTES) * 2 * Math.PI;

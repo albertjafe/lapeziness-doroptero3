@@ -12650,3 +12650,128 @@ body.crono-running .crono-concentrado { display: none; }
   }
   [data-theme^="marmol"] .crono-idle-drawer-panels { min-height: 116px; }
 }
+
+/* Reposo y marcha comparten el mismo componente de tiempo y el mismo drawer. */
+[data-theme^="marmol"] .crono-idle-display-wrap {
+  width: 100%;
+  height: min(400px, 52dvh);
+  margin: 0 auto 2px;
+}
+[data-theme^="marmol"] .crono-idle-main { background: var(--bg2); }
+[data-theme^="marmol"] .crono-idle-display-wrap .crono-run-progress-svg {
+  width: min(400px, 52dvh);
+  height: min(400px, 52dvh);
+  opacity: .82;
+}
+[data-theme^="marmol"] .crono-idle-display-wrap .crono-display-inner {
+  width: 100%;
+  padding: 0 12%;
+  box-sizing: border-box;
+}
+[data-theme^="marmol"] .crono-idle-display-wrap .crono-display {
+  max-width: 100%;
+  color: var(--crono-color, var(--accent));
+  font-size: clamp(72px, 8.8vw, 92px);
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+[data-theme^="marmol"] .crono-idle-display-wrap.has-hours .crono-display {
+  font-size: clamp(54px, 6vw, 68px);
+}
+#cronoTimerSvg {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+body.crono-timer-mode:not(.crono-until-mode) #cronoTimerSvg {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.crono-run-drawer-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+#cronoRunDrawer .crono-run-drawer-tab[data-tab="pase"] { display: block !important; }
+#cronoRunDrawer .crono-run-drawer-panel[data-panel="pase"] { display: none !important; }
+#cronoRunDrawer .crono-run-drawer-panel[data-panel="pase"].active { display: block !important; }
+
+.crono-run-drawer-tab .crono-task-notification-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 5px;
+  overflow: visible;
+  background: #dc2626;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #dc2626 18%, transparent), 0 4px 10px rgba(220,38,38,.28);
+  color: #fff;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 20px;
+  vertical-align: middle;
+  animation: cronoTaskBadgePulse 2.4s ease-in-out infinite;
+}
+.crono-run-drawer-tab.active .crono-task-notification-dot {
+  background: #b91c1c;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.82), 0 4px 10px rgba(127,29,29,.3);
+}
+@keyframes cronoTaskBadgePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .crono-run-drawer-tab .crono-task-notification-dot { animation: none; }
+}
+
+[data-theme^="marmol"] .crono-drawer-pase-btn {
+  min-height: 54px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg2));
+}
+[data-theme^="marmol"] body.crono-running #cronoRunDrawer .crono-controls {
+  align-self: stretch;
+  width: auto;
+  min-width: 0;
+}
+
+@media (min-width: 700px) and (orientation: portrait) {
+  [data-theme^="marmol"] .crono-idle-display-wrap { height: 370px; }
+  [data-theme^="marmol"] .crono-idle-display-wrap .crono-run-progress-svg {
+    width: 370px;
+    height: 370px;
+  }
+  [data-theme^="marmol"] .crono-idle-display-wrap .crono-display {
+    font-size: clamp(76px, 10.8vw, 94px);
+  }
+  [data-theme^="marmol"] .crono-idle-display-wrap.has-hours .crono-display {
+    font-size: clamp(56px, 7.6vw, 70px);
+  }
+}
+
+@media (max-width: 699px) {
+  [data-theme^="marmol"] body.crono-running #cronoRunDrawer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  [data-theme^="marmol"] .crono-idle-display-wrap {
+    height: min(280px, 76vw);
+  }
+  [data-theme^="marmol"] .crono-idle-display-wrap .crono-run-progress-svg {
+    width: min(280px, 76vw);
+    height: min(280px, 76vw);
+  }
+  [data-theme^="marmol"] .crono-idle-display-wrap .crono-display {
+    font-size: clamp(54px, 15vw, 70px);
+  }
+  [data-theme^="marmol"] .crono-idle-display-wrap.has-hours .crono-display {
+    font-size: clamp(44px, 11.5vw, 56px);
+  }
+  .crono-run-drawer-tab .crono-task-notification-dot {
+    width: 18px;
+    min-width: 18px;
+    height: 18px;
+    font-size: 9px;
+    line-height: 18px;
+  }
+}
