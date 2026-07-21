@@ -121,7 +121,10 @@
       <div class="view-local-label">Resumen de hoy</div>
       <div class="view-local-subtitle">Minutos, estado y diario en un solo lugar</div>
     </div>
-    <button type="button" class="hoy-start-study-btn" id="sessionStartStudyBtn" onclick="showView('cronometro')">Empezar a estudiar</button>
+    <div class="hoy-action-buttons">
+      <button type="button" class="hoy-quick-study-btn" id="sessionQuickStudyBtn" onclick="openSesionManual()">Añadir estudio</button>
+      <button type="button" class="hoy-start-study-btn" id="sessionStartStudyBtn" onclick="showView('cronometro')">Empezar a estudiar</button>
+    </div>
   </div>
   <!-- Banner: "Hoy te has concentrado X" + opción discreta para día pasado -->
   <div class="session-concentrado-banner" id="sessionConcentradoBanner">
@@ -794,7 +797,7 @@
       <div class="view-local-label">Evolución de tu práctica</div>
       <div class="view-local-subtitle">Resumen, tendencias y sesiones registradas</div>
     </div>
-    <button class="add-manual-session-btn stats-primary-add" onclick="openSesionManual()">+ registrar estudio</button>
+    <button class="add-manual-session-btn stats-primary-add" onclick="openSesionManual()">+ Añadir estudio</button>
   </div>
   <div id="statsDashboard" style="margin-bottom:22px"></div>
   <div id="mantenimientoSection" style="margin-bottom:20px"></div>
@@ -1065,7 +1068,7 @@
 <!-- MODAL REGISTRAR ESTUDIO UNIFICADO -->
 <div class="modal-overlay" id="modalStudyRegister">
   <div class="modal study-register-modal">
-    <div class="modal-title" style="margin-bottom:4px">Registrar estudio</div>
+    <div class="modal-title" id="studyRegisterTitle" style="margin-bottom:4px">Añadir estudio</div>
     <div class="study-register-sub" id="studyRegisterSub">Apunta estudio hecho o prepáralo para hoy.</div>
 
     <div class="study-mode-row" id="studyModeRow">
@@ -1073,48 +1076,74 @@
       <button class="study-mode-btn" data-mode="history" onclick="setStudyRegisterMode('history',this)">Al historial</button>
     </div>
 
-    <div class="hecho-field-label">Obra o movimiento</div>
-    <select id="studyRegisterObra" class="modal-input" onchange="studyRegisterOnObraChange()"></select>
+    <form id="studyRegisterForm" onsubmit="event.preventDefault();confirmStudyRegister()">
+      <div class="hecho-field-label">Obra o movimiento</div>
+      <select id="studyRegisterObra" class="modal-input" onchange="studyRegisterOnObraChange()"></select>
 
-    <div class="study-register-grid">
-      <div>
-        <div class="hecho-field-label">Minutos</div>
-        <input type="number" id="studyRegisterMinutos" min="1" max="480" step="5" class="modal-input study-register-number" placeholder="25">
+      <div class="study-register-grid">
+        <div>
+          <div class="hecho-field-label">Minutos</div>
+          <input type="number" id="studyRegisterMinutos" min="1" max="480" step="1" inputmode="numeric" class="modal-input study-register-number" placeholder="25" oninput="syncStudyRegisterMinutePreset()">
+        </div>
+        <div id="studyRegisterDateWrap">
+          <div class="hecho-field-label">Fecha</div>
+          <input type="date" id="studyRegisterFecha" class="modal-input" onchange="syncStudyRegisterDatePreset()">
+        </div>
       </div>
-      <div id="studyRegisterDateWrap">
-        <div class="hecho-field-label">Fecha</div>
-        <input type="date" id="studyRegisterFecha" class="modal-input">
+
+      <div class="study-minute-presets" id="studyMinutePresets" aria-label="Duraciones rápidas">
+        <button type="button" data-minutes="10" onclick="setStudyRegisterMinutes(10,this)">10</button>
+        <button type="button" data-minutes="15" onclick="setStudyRegisterMinutes(15,this)">15</button>
+        <button type="button" data-minutes="25" onclick="setStudyRegisterMinutes(25,this)">25</button>
+        <button type="button" data-minutes="30" onclick="setStudyRegisterMinutes(30,this)">30</button>
+        <button type="button" data-minutes="45" onclick="setStudyRegisterMinutes(45,this)">45</button>
+        <button type="button" data-minutes="60" onclick="setStudyRegisterMinutes(60,this)">60 min</button>
       </div>
-    </div>
-    <div id="studyRegisterHoraWrap">
-      <div class="hecho-field-label">Hora de inicio <span style="font-weight:normal;text-transform:none;letter-spacing:0;font-size:9px;color:var(--text3)">(opcional · para que aparezca en "Por horas")</span></div>
-      <input type="time" id="studyRegisterHora" class="modal-input">
-    </div>
 
-    <div id="studyRegisterTickWrap">
-      <div class="hecho-field-label">Resultado</div>
-      <div class="study-tick-row">
-        <button class="study-tick-btn active hecho" data-tick="hecho" onclick="selectStudyRegisterTick('hecho',this)">Hecho</button>
-        <button class="study-tick-btn parcial" data-tick="parcial" onclick="selectStudyRegisterTick('parcial',this)">Parcial</button>
+      <div class="study-date-presets" id="studyDatePresets">
+        <span>Fecha rápida</span>
+        <button type="button" data-date-offset="0" onclick="setStudyRegisterDate(0,this)">Hoy</button>
+        <button type="button" data-date-offset="-1" onclick="setStudyRegisterDate(-1,this)">Ayer</button>
       </div>
-    </div>
 
-    <div id="studyRegisterCompasSection" style="display:none">
-      <div class="hecho-field-label">Compás actual <span style="font-weight:normal;text-transform:none;letter-spacing:0;font-size:9px;color:var(--text3)">(opcional)</span></div>
-      <div class="study-compas-row">
-        <input type="number" id="studyRegisterCompasActual" class="modal-input" min="0" oninput="studyRegisterUpdateCompas()">
-        <span>de <strong id="studyRegisterCompasTotal">-</strong></span>
-        <em id="studyRegisterCompasPct"></em>
+      <details class="study-register-details" id="studyRegisterDetails">
+        <summary>
+          <span>Detalles opcionales</span>
+          <small>hora, resultado, compás y nota</small>
+        </summary>
+        <div class="study-register-details-body">
+          <div id="studyRegisterHoraWrap">
+            <div class="hecho-field-label">Hora de inicio</div>
+            <input type="time" id="studyRegisterHora" class="modal-input">
+          </div>
+
+          <div id="studyRegisterTickWrap">
+            <div class="hecho-field-label">Resultado</div>
+            <div class="study-tick-row">
+              <button type="button" class="study-tick-btn active hecho" data-tick="hecho" onclick="selectStudyRegisterTick('hecho',this)">Hecho</button>
+              <button type="button" class="study-tick-btn parcial" data-tick="parcial" onclick="selectStudyRegisterTick('parcial',this)">Parcial</button>
+            </div>
+          </div>
+
+          <div id="studyRegisterCompasSection" style="display:none">
+            <div class="hecho-field-label">Compás actual</div>
+            <div class="study-compas-row">
+              <input type="number" id="studyRegisterCompasActual" class="modal-input" min="0" oninput="studyRegisterUpdateCompas()">
+              <span>de <strong id="studyRegisterCompasTotal">-</strong></span>
+              <em id="studyRegisterCompasPct"></em>
+            </div>
+          </div>
+
+          <div class="hecho-field-label">Nota</div>
+          <input type="text" id="studyRegisterNota" class="modal-input" placeholder="qué trabajaste...">
+        </div>
+      </details>
+
+      <div class="modal-buttons study-register-actions">
+        <button type="button" class="modal-btn secondary" onclick="closeModal('modalStudyRegister')">Cancelar</button>
+        <button type="submit" class="modal-btn primary" id="studyRegisterSaveBtn">Añadir estudio</button>
       </div>
-    </div>
-
-    <div class="hecho-field-label" style="margin-top:12px">Nota</div>
-    <input type="text" id="studyRegisterNota" class="modal-input" placeholder="qué trabajaste...">
-
-    <div class="modal-buttons">
-      <button class="modal-btn secondary" onclick="closeModal('modalStudyRegister')">Cancelar</button>
-      <button class="modal-btn primary" id="studyRegisterSaveBtn" onclick="confirmStudyRegister()">Guardar</button>
-    </div>
+    </form>
   </div>
 </div>
 

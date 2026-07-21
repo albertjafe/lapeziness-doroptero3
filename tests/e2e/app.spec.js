@@ -197,6 +197,51 @@ test('refreshes statistics immediately after a local study save', async ({ page 
   await expect(page.locator('#statsDashboard')).toContainText('45 min');
 });
 
+test('adds custom study quickly and persists both history and timed detail', async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => showView('session'));
+  await page.locator('#sessionQuickStudyBtn').click();
+
+  const modal = page.locator('#modalStudyRegister');
+  await expect(modal).toHaveClass(/visible/);
+  await expect(page.locator('#studyRegisterTitle')).toHaveText('Añadir estudio');
+  await expect(page.locator('#studyModeRow')).toBeHidden();
+  await expect(page.locator('#studyRegisterDetails')).not.toHaveAttribute('open', '');
+  await expect(page.locator('#studyRegisterFecha')).toHaveValue(await page.evaluate(() => sessionJournalDayKey(new Date())));
+  const yesterday = await page.evaluate(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 1);
+    return sessionJournalDayKey(date);
+  });
+  await page.locator('#studyDatePresets [data-date-offset="-1"]').click();
+  await expect(page.locator('#studyRegisterFecha')).toHaveValue(yesterday);
+  await expect(page.locator('#studyDatePresets [data-date-offset="-1"]')).toHaveAttribute('aria-pressed', 'true');
+
+  await page.locator('#studyRegisterObra').selectOption('obra::obra_1');
+  await page.locator('#studyMinutePresets [data-minutes="25"]').click();
+  await expect(page.locator('#studyRegisterMinutos')).toHaveValue('25');
+  await expect(page.locator('#studyMinutePresets [data-minutes="25"]')).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('#studyRegisterSaveBtn').click();
+  await expect(modal).not.toHaveClass(/visible/);
+
+  const saved = await page.evaluate(() => ({
+    sessions: db.sesiones.map(session => ({
+      date: session.date,
+      items: session.items.map(item => ({ obraId: item.obraId, minutes: item.minutosEstudiados, manual: item.manual })),
+    })),
+    plants: db.sessionPlants.map(plant => ({ obraId: plant.obraId, minutes: plant.mins, source: plant.source })),
+    local: JSON.parse(localStorage.getItem('alberto_piano_v2')),
+  }));
+  expect(saved.sessions).toHaveLength(1);
+  expect(saved.sessions[0].date).toContain(yesterday);
+  expect(saved.sessions[0].items).toEqual([{ obraId: 'obra_1', minutes: 25, manual: true }]);
+  expect(saved.plants).toEqual([{ obraId: 'obra_1', minutes: 25, source: 'manual' }]);
+  expect(saved.local.sessionPlants).toHaveLength(1);
+
+  await page.evaluate(() => showView('historial'));
+  await expect(page.locator('#statsDashboard')).toContainText('25 min');
+});
+
 test('shows pause as an accessible rest state', async ({ page }) => {
   await prepare(page);
   await page.evaluate(() => showView('cronometro'));

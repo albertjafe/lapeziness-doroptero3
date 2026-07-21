@@ -3204,7 +3204,7 @@
     background: var(--accent);
   }
 
-  .study-register-modal { max-width: 460px; }
+  .study-register-modal { width: 460px; max-width: 100%; }
   .study-register-sub {
     color: var(--text3);
     font-size: 10px;
@@ -3252,9 +3252,77 @@
   }
   .study-register-number {
     text-align: center;
-    font-size: 17px;
+    font-size: 20px;
+    font-weight: 700;
     color: var(--accent);
   }
+  .study-minute-presets {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px;
+    margin: 2px 0 12px;
+  }
+  .study-minute-presets button,
+  .study-date-presets button {
+    min-height: 42px;
+    padding: 8px 6px;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    background: var(--bg2);
+    color: var(--text2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    cursor: pointer;
+  }
+  .study-minute-presets button.active,
+  .study-date-presets button.active {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, var(--bg2));
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .study-date-presets {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 12px;
+  }
+  .study-date-presets > span {
+    margin-right: auto;
+    color: var(--text3);
+    font-size: 9px;
+  }
+  .study-date-presets button { min-width: 68px; min-height: 38px; }
+  .study-register-details {
+    margin-top: 4px;
+    border-top: 1px solid var(--border2);
+    border-bottom: 1px solid var(--border2);
+  }
+  .study-register-details summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    color: var(--text2);
+    font-size: 11px;
+    cursor: pointer;
+    list-style: none;
+  }
+  .study-register-details summary::-webkit-details-marker { display: none; }
+  .study-register-details summary::after {
+    content: '+';
+    margin-left: auto;
+    color: var(--accent);
+    font-size: 18px;
+    line-height: 1;
+  }
+  .study-register-details[open] summary::after { content: '−'; }
+  .study-register-details summary small {
+    color: var(--text3);
+    font-size: 9px;
+  }
+  .study-register-details-body { padding: 2px 0 4px; }
+  .study-register-actions { margin-top: 16px; }
   .study-tick-row {
     display: flex;
     gap: 8px;
@@ -3285,6 +3353,8 @@
   }
   @media (max-width: 480px) {
     .study-register-grid { grid-template-columns: 1fr; }
+    .study-minute-presets { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .study-register-details summary small { display: none; }
   }
 
   .add-obra-modal {
@@ -11190,6 +11260,19 @@ body.crono-paused .crono-pause-overlay-inner {
     font-weight: 700;
     white-space: nowrap;
   }
+  .hoy-action-buttons { display: flex; align-items: center; gap: 8px; }
+  .hoy-quick-study-btn {
+    min-height: 44px !important;
+    padding: 10px 13px !important;
+    border: 1px solid var(--border2);
+    border-radius: 13px;
+    background: var(--bg2);
+    color: var(--text2);
+    font-size: var(--type-meta-size);
+    font-weight: 650;
+    white-space: nowrap;
+  }
+  .hoy-quick-study-btn:hover { border-color: var(--accent); color: var(--accent); }
   #view-session .session-concentrado-banner { display: none !important; }
   #view-session .session-state-heading {
     grid-column: 1 / -1;
@@ -11215,8 +11298,12 @@ body.crono-paused .crono-pause-overlay-inner {
     #view-session .session-journal-card { margin-left: 0; margin-right: 0; }
   }
   @media (max-width: 520px) {
-    #view-session .hoy-action-row { align-items: center; }
+    #view-session .hoy-action-row { align-items: flex-start; }
+    #view-session .hoy-action-row > div:first-child { min-width: 0; }
+    .hoy-action-buttons { flex-direction: column-reverse; align-items: stretch; flex: none; }
+    .hoy-action-buttons button { width: 100%; }
     .hoy-start-study-btn { padding-left: 11px !important; padding-right: 11px !important; }
+    .hoy-quick-study-btn { padding-left: 11px !important; padding-right: 11px !important; }
     [data-theme^="marmol"] .session-resumen-last { font-size: 9px; }
   }
 

@@ -2466,7 +2466,7 @@ function setTick(planId, tick, btn, minPlan) {
 // Abre directamente la elección de fecha pasada (no "hoy" — para eso está
 // el autoguardado).
 function openSavePastDate() {
-  openStudyRegister('history');
+  openStudyRegister('history', { quick: true });
   return;
   if (!currentPlan.length) {
     showToast('No hay sesiones en el plan actual para registrar en otra fecha');
@@ -14488,7 +14488,7 @@ function confirmDeleteObra(obraId) {
 let manualTickSelected = null;
 
 function openSesionManual() {
-  openStudyRegister('history');
+  openStudyRegister('history', { quick: true });
   return;
   // Populate obra select
   const sel = document.getElementById('manualObraSelect');
@@ -15318,6 +15318,7 @@ function buildObraSelectOptions(selectId) {
 
 let studyRegisterMode = 'plan';
 let studyRegisterTick = 'hecho';
+let studyRegisterQuick = false;
 
 function setStudyRegisterMode(mode, btn) {
   studyRegisterMode = mode === 'today' ? 'history' : (mode === 'history' ? 'history' : 'plan');
@@ -15329,15 +15330,21 @@ function setStudyRegisterMode(mode, btn) {
   const dateWrap = document.getElementById('studyRegisterDateWrap');
   const horaWrap = document.getElementById('studyRegisterHoraWrap');
   const tickWrap = document.getElementById('studyRegisterTickWrap');
+  const modeRow = document.getElementById('studyModeRow');
+  const title = document.getElementById('studyRegisterTitle');
   const sub = document.getElementById('studyRegisterSub');
   const saveBtn = document.getElementById('studyRegisterSaveBtn');
+  const datePresets = document.getElementById('studyDatePresets');
+  if (modeRow) modeRow.style.display = studyRegisterQuick ? 'none' : '';
   if (dateWrap) dateWrap.style.display = isPlan ? 'none' : '';
+  if (datePresets) datePresets.style.display = isPlan ? 'none' : '';
   if (horaWrap) horaWrap.style.display = isPlan ? 'none' : '';
   if (tickWrap) tickWrap.style.display = isPlan ? 'none' : '';
+  if (title) title.textContent = isPlan ? 'Añadir a la sesión' : 'Añadir estudio';
   if (sub) sub.textContent = isPlan
     ? 'Se añade al plan de hoy; márcala cuando la trabajes.'
-    : 'Estudio ya hecho, al historial con fecha y nota.';
-  if (saveBtn) saveBtn.textContent = isPlan ? 'Añadir' : 'Guardar';
+    : 'Elige obra y minutos. Se guardará directamente en tu historial.';
+  if (saveBtn) saveBtn.textContent = isPlan ? 'Añadir a la sesión' : 'Añadir estudio';
 }
 
 function selectStudyRegisterTick(tick, btn) {
@@ -15348,10 +15355,47 @@ function selectStudyRegisterTick(tick, btn) {
   if (btn) btn.classList.add('active');
 }
 
-function openStudyRegister(mode) {
+function setStudyRegisterMinutes(minutes, btn) {
+  const input = document.getElementById('studyRegisterMinutos');
+  if (input) input.value = String(minutes);
+  syncStudyRegisterMinutePreset();
+  if (btn) btn.classList.add('active');
+}
+
+function syncStudyRegisterMinutePreset() {
+  const value = document.getElementById('studyRegisterMinutos')?.value || '';
+  document.querySelectorAll('#studyMinutePresets [data-minutes]').forEach(btn => {
+    const active = btn.dataset.minutes === value;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
+function setStudyRegisterDate(offset, btn) {
+  const date = new Date();
+  date.setDate(date.getDate() + Number(offset || 0));
+  const input = document.getElementById('studyRegisterFecha');
+  if (input) input.value = sessionJournalDayKey(date);
+  syncStudyRegisterDatePreset();
+  if (btn) btn.classList.add('active');
+}
+
+function syncStudyRegisterDatePreset() {
+  const value = document.getElementById('studyRegisterFecha')?.value || '';
+  document.querySelectorAll('#studyDatePresets [data-date-offset]').forEach(btn => {
+    const date = new Date();
+    date.setDate(date.getDate() + Number(btn.dataset.dateOffset || 0));
+    const active = value === sessionJournalDayKey(date);
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
+function openStudyRegister(mode, options) {
+  studyRegisterQuick = Boolean(options && options.quick);
   buildObraSelectOptions('studyRegisterObra');
   studyRegisterTick = 'hecho';
-  const today = new Date().toISOString().split('T')[0];
+  const today = sessionJournalDayKey(new Date());
   const mins = document.getElementById('studyRegisterMinutos');
   const fecha = document.getElementById('studyRegisterFecha');
   const nota = document.getElementById('studyRegisterNota');
@@ -15360,8 +15404,12 @@ function openStudyRegister(mode) {
   if (fecha) fecha.value = today;
   if (nota) nota.value = '';
   if (hora) hora.value = '';
+  syncStudyRegisterMinutePreset();
+  syncStudyRegisterDatePreset();
   const compas = document.getElementById('studyRegisterCompasSection');
   if (compas) compas.style.display = 'none';
+  const details = document.getElementById('studyRegisterDetails');
+  if (details) details.open = false;
   selectStudyRegisterTick('hecho');
   setStudyRegisterMode(mode || 'plan');
   openModal('modalStudyRegister');
@@ -15422,7 +15470,7 @@ function studyRegisterSaveCompas(resolved) {
 function confirmStudyRegister() {
   const val = document.getElementById('studyRegisterObra')?.value || '';
   const minutos = parseInt(document.getElementById('studyRegisterMinutos')?.value || '0', 10);
-  const fecha = document.getElementById('studyRegisterFecha')?.value || new Date().toISOString().split('T')[0];
+  const fecha = document.getElementById('studyRegisterFecha')?.value || sessionJournalDayKey(new Date());
   const nota = document.getElementById('studyRegisterNota')?.value.trim() || '';
   const resolved = studyRegisterResolveValue(val);
   if (!resolved) { showToast('Selecciona una obra o movimiento'); return; }
@@ -15484,7 +15532,7 @@ function confirmStudyRegister() {
 }
 
 function openRegistroDirecto() {
-  openStudyRegister('today');
+  openStudyRegister('today', { quick: true });
   return;
   buildObraSelectOptions('rdObraSelect');
   document.getElementById('rdMinutos').value = '';
