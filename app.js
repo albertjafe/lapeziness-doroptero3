@@ -10603,7 +10603,7 @@ let _statsOffset = 0; // 0 = periodo actual, -1 = anterior…
 function _statsAllPlants() {
   const out = [];
   const add = p => {
-    if (!p || p.failed || !p.startedAt) return;
+    if (!p || p.failed || p.tipo === 'descanso' || !p.startedAt) return;
     const start = new Date(p.startedAt);
     if (isNaN(start.getTime())) return;
     const mins = Math.max(0, Math.round(p.mins || 0));
@@ -17178,13 +17178,28 @@ function cronoBuildSessionNotes(totalMs, minutos) {
 // estén en currentPlan. Cada tarjeta puede agregar varias sub-sesiones; los
 // minutos totales viven en sessionMinPlan[planId].
 function getMinutosConcentradoHoy() {
+  const now = new Date();
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  // La fuente persistente incluye cronometro, Forest y registros manuales.
+  // _statsMinsPorDia compara bloques e historial con MAX para no duplicar una
+  // misma sesion, que normalmente queda guardada en ambas estructuras.
+  if (typeof _statsMinsPorDia === 'function' && typeof _statsISO === 'function') {
+    const byDay = _statsMinsPorDia(start, end);
+    return Math.max(0, Math.round(byDay[_statsISO(now)] || 0));
+  }
+
+  // Respaldo para arranques parciales durante una actualizacion de la app.
   let total = 0;
-  if (!Array.isArray(currentPlan)) return 0;
+  if (!Array.isArray(currentPlan)) return total;
   currentPlan.forEach(entity => {
     if (!entity._isExtra) return;
     const pid = entity._planId || entity.id;
-    const m = sessionMinPlan[pid];
-    if (typeof m === 'number' && m > 0) total += m;
+    const minutes = sessionMinPlan[pid];
+    if (typeof minutes === 'number' && minutes > 0) total += minutes;
   });
   return total;
 }

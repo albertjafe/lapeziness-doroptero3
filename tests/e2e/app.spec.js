@@ -238,9 +238,26 @@ test('adds custom study quickly and persists both history and timed detail', asy
   expect(saved.sessions[0].items).toEqual([{ obraId: 'obra_1', minutes: 25, manual: true }]);
   expect(saved.plants).toEqual([{ obraId: 'obra_1', minutes: 25, source: 'manual' }]);
   expect(saved.local.sessionPlants).toHaveLength(1);
+  expect(await page.evaluate(() => getMinutosConcentradoHoy())).toBe(0);
 
   await page.evaluate(() => showView('historial'));
   await expect(page.locator('#statsDashboard')).toContainText('25 min');
+});
+
+test('adds manual study to today total immediately', async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => showView('session'));
+  await expect(page.locator('#sessionResumenCard')).toContainText('0 min');
+
+  await page.locator('#sessionQuickStudyBtn').click();
+  await page.locator('#studyRegisterObra').selectOption('obra::obra_1');
+  await page.locator('#studyMinutePresets [data-minutes="25"]').click();
+  await page.locator('#studyRegisterSaveBtn').click();
+
+  await expect(page.locator('#modalStudyRegister')).not.toHaveClass(/visible/);
+  await expect(page.locator('#sessionResumenCard')).toContainText('25 min');
+  await expect(page.locator('#sessionConcentradoText')).toHaveText(/25 min/);
+  expect(await page.evaluate(() => getMinutosConcentradoHoy())).toBe(25);
 });
 
 test('shows pause as an accessible rest state', async ({ page }) => {
