@@ -338,6 +338,28 @@
         </div>
 
         <div class="crono-run-destello crono-idle-message" id="cronoIdleMessage">Empieza tu sesión de hoy</div>
+
+        <div class="crono-idle-controls">
+          <div class="crono-mode-toggle" id="cronoModeToggle" role="group" aria-label="Tipo de cronómetro">
+            <button class="crono-mode-opt active" data-mode="stopwatch" onclick="cronoSetMode('stopwatch')">Libre</button>
+            <button class="crono-mode-opt" data-mode="timer" onclick="cronoSetMode('timer')">Temporizador</button>
+            <button class="crono-mode-opt" data-mode="until" onclick="cronoSetMode('until')">Hasta una hora</button>
+            <span class="crono-mode-indicator" id="cronoModeIndicator"></span>
+          </div>
+          <div class="crono-duration-presets" id="cronoDurationPresets" aria-label="Duración rápida">
+            <button type="button" data-minutes="15" onclick="cronoSetTimerPreset(15)">15</button>
+            <button type="button" data-minutes="25" onclick="cronoSetTimerPreset(25)">25</button>
+            <button type="button" data-minutes="45" onclick="cronoSetTimerPreset(45)">45</button>
+            <button type="button" data-minutes="60" onclick="cronoSetTimerPreset(60)">60</button>
+          </div>
+          <div class="crono-until-row" id="cronoUntilRow">
+            <span>Hasta</span>
+            <input type="time" id="cronoUntilTime" onchange="cronoSetUntilTime(this.value)" oninput="cronoSetUntilTime(this.value)">
+            <strong id="cronoUntilInfo">elige una hora</strong>
+          </div>
+          <div class="crono-timer-projection" id="cronoTimerProjection" style="display:none"></div>
+          <button class="crono-plant-btn" id="cronoStartBtn" onclick="cronoStart()" disabled>Iniciar</button>
+        </div>
       </section>
 
       <aside class="crono-run-drawer crono-idle-panel crono-idle-drawer" id="cronoIdleDrawer" data-tab="pasajes" aria-label="Preparar sesión">
@@ -394,28 +416,6 @@
             </button>
             <div class="crono-drawer-pase-hint">Añade la obra, el tipo y el resultado sin salir del cronómetro.</div>
           </div>
-        </div>
-
-        <div class="crono-idle-controls">
-          <div class="crono-mode-toggle" id="cronoModeToggle" role="group" aria-label="Tipo de cronómetro">
-            <button class="crono-mode-opt active" data-mode="stopwatch" onclick="cronoSetMode('stopwatch')">Libre</button>
-            <button class="crono-mode-opt" data-mode="timer" onclick="cronoSetMode('timer')">Temporizador</button>
-            <button class="crono-mode-opt" data-mode="until" onclick="cronoSetMode('until')">Hasta una hora</button>
-            <span class="crono-mode-indicator" id="cronoModeIndicator"></span>
-          </div>
-          <div class="crono-duration-presets" id="cronoDurationPresets" aria-label="Duración rápida">
-            <button type="button" data-minutes="15" onclick="cronoSetTimerPreset(15)">15</button>
-            <button type="button" data-minutes="25" onclick="cronoSetTimerPreset(25)">25</button>
-            <button type="button" data-minutes="45" onclick="cronoSetTimerPreset(45)">45</button>
-            <button type="button" data-minutes="60" onclick="cronoSetTimerPreset(60)">60</button>
-          </div>
-          <div class="crono-until-row" id="cronoUntilRow">
-            <span>Hasta</span>
-            <input type="time" id="cronoUntilTime" onchange="cronoSetUntilTime(this.value)" oninput="cronoSetUntilTime(this.value)">
-            <strong id="cronoUntilInfo">elige una hora</strong>
-          </div>
-          <div class="crono-timer-projection" id="cronoTimerProjection" style="display:none"></div>
-          <button class="crono-plant-btn" id="cronoStartBtn" onclick="cronoStart()" disabled>Iniciar</button>
         </div>
 
         <div class="crono-idle-dot-wrap">

@@ -12899,3 +12899,232 @@ body.crono-timer-mode:not(.crono-until-mode) #cronoTimerSvg {
     font-size: 12px;
   }
 }
+
+/* Tareas separadas y controles de preparacion junto al reloj. */
+[data-theme^="marmol"] .crono-idle-main .crono-idle-controls {
+  width: 100%;
+  margin-top: auto;
+  padding-top: 9px;
+  border-top: 1px solid var(--border2);
+  box-sizing: border-box;
+}
+[data-theme^="marmol"] .crono-idle-main .crono-mode-toggle {
+  width: 100%;
+  margin-bottom: 7px;
+}
+[data-theme^="marmol"] .crono-idle-main .crono-plant-btn {
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 10px 18px;
+  border-radius: 8px;
+}
+[data-theme^="marmol"] .crono-idle-main .crono-plant-btn:not(:disabled) {
+  border-color: var(--crono-color, var(--accent));
+  background: var(--crono-color, var(--accent));
+  color: #fff;
+}
+[data-theme^="marmol"] .crono-idle-main .crono-duration-presets,
+[data-theme^="marmol"] .crono-idle-main .crono-until-row,
+[data-theme^="marmol"] .crono-idle-main .crono-timer-projection {
+  width: 100%;
+  max-width: none;
+}
+[data-theme^="marmol"] .crono-idle-drawer-panels,
+[data-theme^="marmol"] .crono-idle-drawer-panel[data-panel="tareas"],
+[data-theme^="marmol"] .crono-idle-tasks,
+[data-theme^="marmol"] .crono-tasks-panel-idle {
+  min-height: 0;
+}
+[data-theme^="marmol"] .crono-idle-drawer-panel[data-panel="tareas"] {
+  height: auto;
+  overflow-y: auto;
+}
+
+.crono-task-composer {
+  grid-template-columns: minmax(0, 1fr) 42px;
+  grid-template-areas:
+    "input input"
+    "options add";
+  gap: 7px 8px;
+  margin-bottom: 14px;
+}
+.crono-task-composer .crono-task-input {
+  grid-area: input;
+  height: 40px;
+  border-radius: 7px;
+  background: var(--bg2);
+}
+.crono-task-compose-options {
+  grid-area: options;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+.crono-task-kind-btn,
+.crono-task-tomorrow-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  background: var(--bg2);
+  color: var(--text2);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.crono-task-kind-btn > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.crono-task-kind-btn.piano { color: #2f855a; }
+.crono-task-kind-btn.personal { color: #3182ce; }
+.crono-task-kind-btn.active.piano {
+  border-color: color-mix(in srgb, #2f855a 46%, var(--border2));
+  background: color-mix(in srgb, #2f855a 8%, var(--bg2));
+}
+.crono-task-kind-btn.active.personal {
+  border-color: color-mix(in srgb, #3182ce 46%, var(--border2));
+  background: color-mix(in srgb, #3182ce 8%, var(--bg2));
+}
+.crono-task-tomorrow-btn { color: var(--text3); }
+.crono-task-tomorrow-btn.active {
+  border-color: color-mix(in srgb, #2f855a 42%, var(--border2));
+  background: color-mix(in srgb, #2f855a 10%, var(--bg2));
+  color: #247148;
+}
+.crono-task-tomorrow-btn[hidden] { display: none; }
+.crono-task-composer .crono-task-add-btn {
+  grid-area: add;
+  width: 42px;
+  height: 36px;
+  border-radius: 7px;
+}
+.crono-task-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+}
+.crono-task-lane {
+  min-width: 0;
+  padding: 1px 13px 0 0;
+}
+.crono-task-lane + .crono-task-lane {
+  padding: 1px 0 0 14px;
+  border-left: 1px solid var(--border2);
+}
+.crono-task-lane-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.crono-task-lane-head strong {
+  color: var(--text);
+  font-size: 13px;
+}
+.crono-task-lane-head > span:last-child {
+  margin-left: auto;
+  color: var(--text3);
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  font-weight: 700;
+}
+.crono-task-lane-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+.crono-task-lane.piano .crono-task-lane-dot { background: #2f855a; }
+.crono-task-lane.personal .crono-task-lane-dot { background: #3182ce; }
+.crono-task-lane-sub {
+  margin: 2px 0 8px 16px;
+  color: var(--text3);
+  font-size: 9px;
+  line-height: 1.25;
+}
+.crono-task-lane .crono-task-list {
+  max-height: none;
+  overflow: visible;
+  gap: 0;
+}
+.crono-task-lane .crono-task-row {
+  min-height: 39px;
+  padding: 5px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border2) 72%, transparent);
+  border-radius: 0;
+}
+.crono-task-lane .crono-task-text {
+  flex: 1 1 auto;
+  overflow: visible;
+  font-size: 11px;
+  line-height: 1.28;
+  text-overflow: clip;
+  white-space: normal;
+}
+.crono-task-lane.piano .crono-task-check {
+  border-color: color-mix(in srgb, #2f855a 58%, var(--border2));
+}
+.crono-task-lane.personal .crono-task-check {
+  border-color: color-mix(in srgb, #3182ce 58%, var(--border2));
+}
+.crono-task-due-tag {
+  flex: 0 0 auto;
+  padding: 3px 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #2f855a 10%, var(--bg2));
+  color: #247148;
+  font-family: var(--font-mono, monospace);
+  font-size: 7px;
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.crono-task-lane .crono-task-empty {
+  padding: 10px 0;
+  font-size: 10px;
+}
+.crono-task-lane .crono-task-done-label { margin-top: 10px; }
+
+@media (min-width: 900px) and (orientation: landscape) and (min-height: 620px) {
+  [data-theme^="marmol"] body.crono-running .crono-run-stage,
+  [data-theme^="marmol"] body.crono-running .crono-run-drawer,
+  [data-theme^="marmol"] .crono-idle-main,
+  [data-theme^="marmol"] .crono-idle-drawer {
+    height: min(665px, calc(100dvh - 88px));
+  }
+  [data-theme^="marmol"] .crono-idle-main { padding-bottom: 10px; }
+  [data-theme^="marmol"] .crono-idle-main .crono-idle-message {
+    min-height: 40px;
+    margin: 2px 0 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+  }
+  [data-theme^="marmol"] .crono-idle-drawer .crono-idle-tasks-head { margin-bottom: 8px; }
+}
+
+@media (max-width: 899px), (orientation: portrait) {
+  .crono-task-columns { grid-template-columns: 1fr; }
+  .crono-task-lane { padding: 1px 0 9px; }
+  .crono-task-lane + .crono-task-lane {
+    padding: 12px 0 0;
+    border-top: 1px solid var(--border2);
+    border-left: 0;
+  }
+  [data-theme^="marmol"] .crono-idle-drawer-panel[data-panel="tareas"] { overflow: visible; }
+}
+
+@media (max-width: 480px) {
+  .crono-task-compose-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .crono-task-kind-btn,
+  .crono-task-tomorrow-btn { min-width: 0; padding: 0 5px; font-size: 9px; }
+  [data-theme^="marmol"] .crono-idle-main .crono-idle-controls { padding-top: 7px; }
+  [data-theme^="marmol"] .crono-idle-main .crono-idle-message { margin-bottom: 6px; }
+}

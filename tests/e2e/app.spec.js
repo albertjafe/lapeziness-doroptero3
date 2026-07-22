@@ -604,7 +604,7 @@ test('opens pending tasks once per day and repeats the reminder after two hours'
 
   const drawer = page.locator('#cronoIdleDrawer');
   await expect(drawer).toHaveAttribute('data-tab', 'tareas');
-  await expect(page.locator('#cronoIdleTasksPanel .crono-task-reminder-banner')).toContainText('Tienes 1 tarea pendiente');
+  await expect(page.locator('#cronoIdleTasksPanel .crono-task-reminder-banner')).toContainText('Tienes 1 tarea de piano pendiente');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 
   const cooldown = await page.evaluate(() => {
@@ -624,6 +624,55 @@ test('opens pending tasks once per day and repeats the reminder after two hours'
   });
   await expect(drawer).toHaveAttribute('data-tab', 'tareas');
   expect(await page.evaluate(() => cronoTaskReminderState().reason)).toBe('session-end');
+});
+
+test('separates piano and personal tasks and only reminds piano work', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await prepare(page);
+  await page.evaluate(() => {
+    showView('cronometro');
+    cronoSetIdleDrawerTab('tareas');
+  });
+
+  const panel = page.locator('#cronoIdleTasksPanel');
+  await panel.locator('.crono-task-kind-btn.piano').click();
+  await panel.locator('.crono-task-tomorrow-btn').click();
+  await panel.locator('#cronoIdleTaskInput').fill('Estudiar la coda sin pedal');
+  await panel.locator('.crono-task-add-btn').click();
+  await expect(panel.locator('.crono-task-lane.piano')).toContainText('Estudiar la coda sin pedal');
+  await expect(panel.locator('.crono-task-lane.piano .crono-task-due-tag')).toHaveText('Mañana');
+
+  await panel.locator('.crono-task-kind-btn.personal').click();
+  await expect(panel.locator('.crono-task-tomorrow-btn')).toBeHidden();
+  await panel.locator('#cronoIdleTaskInput').fill('Escribir a Emma');
+  await panel.locator('.crono-task-add-btn').click();
+  await expect(panel.locator('.crono-task-lane.personal')).toContainText('Escribir a Emma');
+
+  const landscape = await page.evaluate(() => ({
+    saved: cronoTasks().map(task => ({ text: task.text, kind: task.kind, tomorrow: task.tomorrow })),
+    controlsInMain: !!document.querySelector('.crono-idle-main > .crono-idle-controls'),
+    controlsInDrawer: !!document.querySelector('#cronoIdleDrawer .crono-idle-controls'),
+    taskColumns: getComputedStyle(document.querySelector('.crono-task-columns')).gridTemplateColumns.split(' ').length,
+  }));
+  expect(landscape.saved).toEqual([
+    { text: 'Estudiar la coda sin pedal', kind: 'piano', tomorrow: true },
+    { text: 'Escribir a Emma', kind: 'personal', tomorrow: false },
+  ]);
+  expect(landscape.controlsInMain).toBe(true);
+  expect(landscape.controlsInDrawer).toBe(false);
+  expect(landscape.taskColumns).toBe(2);
+
+  await panel.locator('.crono-task-lane.piano .crono-task-row').click();
+  const personalOnly = await page.evaluate(() => {
+    localStorage.removeItem(CRONO_TASK_REMINDER_KEY);
+    cronoSetIdleDrawerTab('pasajes');
+    return { reminded: cronoMaybeRemindTasks('test'), tab: document.getElementById('cronoIdleDrawer').dataset.tab };
+  });
+  expect(personalOnly).toEqual({ reminded: false, tab: 'pasajes' });
+
+  await page.setViewportSize({ width: 834, height: 1194 });
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector('.crono-task-columns')).gridTemplateColumns.split(' ').length)).toBe(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });
 
 test('advances free timer progress to a 120 minute maximum and enlarges mode labels', async ({ page }) => {
@@ -654,6 +703,7 @@ test('advances free timer progress to a 120 minute maximum and enlarges mode lab
       fontSize: parseFloat(modeStyle.fontSize),
       minHeight: mode.getBoundingClientRect().height,
       columns: getComputedStyle(document.getElementById('cronoModeToggle')).gridTemplateColumns.split(' ').length,
+      controlsInMain: !!document.querySelector('.crono-idle-main > .crono-idle-controls'),
     };
   });
 
@@ -662,6 +712,7 @@ test('advances free timer progress to a 120 minute maximum and enlarges mode lab
   expect(metrics.fontSize).toBeGreaterThanOrEqual(13);
   expect(metrics.minHeight).toBeGreaterThanOrEqual(44);
   expect(metrics.columns).toBe(3);
+  expect(metrics.controlsInMain).toBe(true);
 });
 
 test('keeps the idle and running timer in the same iPad composition', async ({ browser }) => {

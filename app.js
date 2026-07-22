@@ -16940,11 +16940,63 @@ function cronoRenderNoteCounts() {
 function cronoTasks() {
   if (!Array.isArray(db.cronoTasks)) db.cronoTasks = [];
   db.cronoTasks = db.cronoTasks.filter(t => t && typeof t.text === 'string');
+  db.cronoTasks.forEach(task => {
+    if (task.kind !== 'personal' && task.kind !== 'piano') task.kind = 'piano';
+    if (task.kind === 'personal') task.tomorrow = false;
+  });
   return db.cronoTasks;
 }
 
+function cronoTaskKind(task) {
+  return task && task.kind === 'personal' ? 'personal' : 'piano';
+}
+
+function cronoPendingTaskCount(kind) {
+  return cronoTasks().filter(task => !task.done && (!kind || cronoTaskKind(task) === kind)).length;
+}
+
 function cronoActiveTaskCount() {
-  return cronoTasks().filter(t => !t.done).length;
+  return cronoPendingTaskCount();
+}
+
+const _cronoTaskComposer = {
+  idle: { kind: 'piano', tomorrow: false },
+  running: { kind: 'piano', tomorrow: false },
+};
+
+function cronoTaskComposerState(source) {
+  return source === 'running' ? _cronoTaskComposer.running : _cronoTaskComposer.idle;
+}
+
+function cronoSetTaskKind(source, kind) {
+  const state = cronoTaskComposerState(source);
+  state.kind = kind === 'personal' ? 'personal' : 'piano';
+  if (state.kind === 'personal') state.tomorrow = false;
+  cronoUpdateTaskComposer(source);
+}
+
+function cronoToggleTaskTomorrow(source) {
+  const state = cronoTaskComposerState(source);
+  if (state.kind !== 'piano') return;
+  state.tomorrow = !state.tomorrow;
+  cronoUpdateTaskComposer(source);
+}
+
+function cronoUpdateTaskComposer(source) {
+  const panel = document.getElementById(source === 'running' ? 'cronoTasksPanel' : 'cronoIdleTasksPanel');
+  if (!panel) return;
+  const state = cronoTaskComposerState(source);
+  panel.querySelectorAll('.crono-task-kind-btn').forEach(button => {
+    const active = button.dataset.kind === state.kind;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+  const tomorrow = panel.querySelector('.crono-task-tomorrow-btn');
+  if (tomorrow) {
+    tomorrow.hidden = state.kind !== 'piano';
+    tomorrow.classList.toggle('active', state.tomorrow);
+    tomorrow.setAttribute('aria-pressed', state.tomorrow ? 'true' : 'false');
+  }
 }
 
 const CRONO_TASK_REMINDER_KEY = 'alberto_crono_task_reminder_v1';
@@ -16966,8 +17018,9 @@ function cronoTaskReminderState() {
 }
 
 function cronoMaybeRemindTasks(reason) {
-  const count = cronoActiveTaskCount();
+  const count = cronoPendingTaskCount('piano');
   if (!count) return false;
+  const personalCount = cronoPendingTaskCount('personal');
   const now = Date.now();
   const day = cronoTaskReminderDayKey(new Date(now));
   const saved = cronoTaskReminderState();
@@ -16988,7 +17041,7 @@ function cronoMaybeRemindTasks(reason) {
       reminder.setAttribute('aria-live', 'assertive');
       panel.prepend(reminder);
     }
-    reminder.innerHTML = '<span aria-hidden="true">!</span><div><strong>Tienes ' + count + ' tarea' + (count === 1 ? '' : 's') + ' pendiente' + (count === 1 ? '' : 's') + '</strong><small>Revísalas antes de seguir estudiando.</small></div>';
+    reminder.innerHTML = '<span aria-hidden="true">!</span><div><strong>Tienes ' + count + ' tarea' + (count === 1 ? '' : 's') + ' de piano pendiente' + (count === 1 ? '' : 's') + '</strong><small>Revísalas antes de seguir estudiando.' + (personalCount ? ' · ' + personalCount + ' apunte' + (personalCount === 1 ? '' : 's') + ' personal' + (personalCount === 1 ? '' : 'es') : '') + '</small></div>';
   }
   if (drawer) {
     drawer.classList.remove('task-reminder-active');
@@ -16998,7 +17051,7 @@ function cronoMaybeRemindTasks(reason) {
     drawer._taskReminderTimer = setTimeout(() => drawer.classList.remove('task-reminder-active'), 6500);
   }
   try { localStorage.setItem(CRONO_TASK_REMINDER_KEY, JSON.stringify({ day, lastAt: now, reason: reason || 'interval' })); } catch(e) {}
-  showToast(count + ' tarea' + (count === 1 ? '' : 's') + ' pendiente' + (count === 1 ? '' : 's') + ' · revísalas');
+  showToast(count + ' tarea' + (count === 1 ? '' : 's') + ' de piano pendiente' + (count === 1 ? '' : 's') + ' · revísalas');
   return true;
 }
 
@@ -17039,14 +17092,30 @@ function cronoRenderTaskCount() {
 
 function renderCronoTasks() {
   const tasks = cronoTasks();
-  const pending = tasks.filter(t => !t.done).slice(-12).reverse();
-  const done = tasks.filter(t => t.done).slice(-5).reverse();
+  const byKind = kind => ({
+    pending: tasks.filter(task => !task.done && cronoTaskKind(task) === kind).slice(-12).reverse(),
+    done: tasks.filter(task => task.done && cronoTaskKind(task) === kind).slice(-3).reverse(),
+  });
+  const piano = byKind('piano');
+  const personal = byKind('personal');
   const row = t => {
     const cls = 'crono-task-row' + (t.done ? ' is-done' : '');
     return '<button type="button" class="' + cls + '" onclick="toggleCronoTask(\'' + hechoJs(t.id) + '\')" aria-label="Marcar tarea">' +
       '<span class="crono-task-check"></span>' +
       '<span class="crono-task-text">' + escapeHtmlSafe(t.text) + '</span>' +
+      (cronoTaskKind(t) === 'piano' && t.tomorrow ? '<span class="crono-task-due-tag">Mañana</span>' : '') +
     '</button>';
+  };
+  const lane = (kind, title, subtitle, group) => {
+    const empty = kind === 'piano' ? 'Nada pendiente para piano' : 'Ningún apunte personal';
+    return '<section class="crono-task-lane ' + kind + '">' +
+      '<div class="crono-task-lane-head"><span class="crono-task-lane-dot"></span><strong>' + title + '</strong><span>' + group.pending.length + '</span></div>' +
+      '<div class="crono-task-lane-sub">' + subtitle + '</div>' +
+      '<div class="crono-task-list">' +
+        (group.pending.length ? group.pending.map(row).join('') : '<div class="crono-task-empty">' + empty + '</div>') +
+        (group.done.length ? '<div class="crono-task-done-label">hechas</div>' + group.done.map(row).join('') : '') +
+      '</div>' +
+    '</section>';
   };
   [
     { id: 'cronoIdleTasksPanel', inputId: 'cronoIdleTaskInput', source: 'idle' },
@@ -17057,14 +17126,20 @@ function renderCronoTasks() {
     const activeInput = document.activeElement && document.activeElement.id === target.inputId;
     const currentDraft = activeInput ? (document.getElementById(target.inputId)?.value || '') : '';
     el.innerHTML =
-      '<div class="crono-task-add">' +
+      '<div class="crono-task-add crono-task-composer">' +
         '<input id="' + target.inputId + '" class="crono-task-input" type="text" maxlength="140" placeholder="Algo por hacer..." onkeydown="cronoTaskInputKey(event,\'' + target.source + '\')">' +
+        '<div class="crono-task-compose-options" role="group" aria-label="Tipo de tarea">' +
+          '<button type="button" class="crono-task-kind-btn piano" data-kind="piano" onclick="cronoSetTaskKind(\'' + target.source + '\',\'piano\')" aria-pressed="true"><span></span>Piano</button>' +
+          '<button type="button" class="crono-task-kind-btn personal" data-kind="personal" onclick="cronoSetTaskKind(\'' + target.source + '\',\'personal\')" aria-pressed="false"><span></span>Personal</button>' +
+          '<button type="button" class="crono-task-tomorrow-btn" onclick="cronoToggleTaskTomorrow(\'' + target.source + '\')" aria-pressed="false">Mañana</button>' +
+        '</div>' +
         '<button type="button" class="crono-task-add-btn" onclick="addCronoTask(\'' + target.source + '\')" aria-label="Añadir tarea">+</button>' +
       '</div>' +
-      '<div class="crono-task-list">' +
-        (pending.length ? pending.map(row).join('') : '<div class="crono-task-empty">Sin tareas pendientes</div>') +
-        (done.length ? '<div class="crono-task-done-label">hechas</div>' + done.map(row).join('') : '') +
+      '<div class="crono-task-columns">' +
+        lane('piano', 'Piano', 'Para la próxima sesión', piano) +
+        lane('personal', 'Personal', 'Ideas que surgieron estudiando', personal) +
       '</div>';
+    cronoUpdateTaskComposer(target.source);
     const input = document.getElementById(target.inputId);
     if (input && activeInput) {
       input.value = currentDraft;
@@ -17091,16 +17166,20 @@ function addCronoTask(source) {
     showToast('Escribe una tarea');
     return;
   }
+  const composer = cronoTaskComposerState(source);
   cronoTasks().push({
     id: 'ct' + Date.now(),
     text,
+    kind: composer.kind,
+    tomorrow: composer.kind === 'piano' && composer.tomorrow,
     done: false,
     createdAt: new Date().toISOString(),
   });
+  composer.tomorrow = false;
   saveData();
   if (input) input.value = '';
   renderCronoTasks();
-  showToast('Tarea añadida');
+  showToast('Tarea añadida · ' + (composer.kind === 'piano' ? 'Piano' : 'Personal'));
 }
 
 function toggleCronoTask(id) {
