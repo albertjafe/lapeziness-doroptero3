@@ -6276,6 +6276,7 @@ function openHechoDatos(planId, minPlan, opts) {
 }
 
 function closeHechoDatos(save) {
+  const shouldCheckTaskReminder = !!_hechoSubSession && document.body.classList.contains('crono-focus');
   // Si vamos a guardar, lanzar primero el flash de "Hecho" para que el backdrop
   // difuminado de fondo se mantenga continuo (cierre del modal hecho + flash
   // se solapan visualmente). Lo lanzamos en el siguiente microtask para que
@@ -6289,7 +6290,10 @@ function closeHechoDatos(save) {
     }
   }
   closeModal('modalHechoDatos');
-  if (!save || !_hechoObraId) return;
+  if (!save || !_hechoObraId) {
+    if (shouldCheckTaskReminder) setTimeout(() => cronoMaybeRemindTasks('session-end'), 180);
+    return;
+  }
 
   const obraId = _hechoObraId;
   const movId = _hechoMovId;
@@ -6676,6 +6680,7 @@ function closeHechoDatos(save) {
     try { renderCalendario(); } catch(e) {}
   }
   if (shouldOfferBreak) cronoMaybeShowLongSessionBreak(minutos);
+  if (shouldCheckTaskReminder) setTimeout(() => cronoMaybeRemindTasks('session-end'), 180);
 }
 
 // Flash de éxito al guardar la sesión: aparece sobre el cronómetro con el
@@ -16942,6 +16947,77 @@ function cronoActiveTaskCount() {
   return cronoTasks().filter(t => !t.done).length;
 }
 
+const CRONO_TASK_REMINDER_KEY = 'alberto_crono_task_reminder_v1';
+const CRONO_TASK_REMINDER_MS = 2 * 60 * 60 * 1000;
+let _cronoTaskReminderInterval = null;
+
+function cronoTaskReminderDayKey(date) {
+  const d = date || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function cronoTaskReminderState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CRONO_TASK_REMINDER_KEY) || 'null');
+    return saved && typeof saved === 'object' ? saved : {};
+  } catch(e) {
+    return {};
+  }
+}
+
+function cronoMaybeRemindTasks(reason) {
+  const count = cronoActiveTaskCount();
+  if (!count) return false;
+  const now = Date.now();
+  const day = cronoTaskReminderDayKey(new Date(now));
+  const saved = cronoTaskReminderState();
+  const due = saved.day !== day || !Number.isFinite(saved.lastAt) || now - saved.lastAt >= CRONO_TASK_REMINDER_MS;
+  if (!due) return false;
+
+  const running = crono.state !== 'idle';
+  if (running) cronoSetRunDrawerTab('tareas');
+  else cronoSetIdleDrawerTab('tareas');
+  const drawer = document.getElementById(running ? 'cronoRunDrawer' : 'cronoIdleDrawer');
+  const panel = document.getElementById(running ? 'cronoTasksPanel' : 'cronoIdleTasksPanel');
+  if (panel) {
+    let reminder = panel.querySelector('.crono-task-reminder-banner');
+    if (!reminder) {
+      reminder = document.createElement('div');
+      reminder.className = 'crono-task-reminder-banner';
+      reminder.setAttribute('role', 'alert');
+      reminder.setAttribute('aria-live', 'assertive');
+      panel.prepend(reminder);
+    }
+    reminder.innerHTML = '<span aria-hidden="true">!</span><div><strong>Tienes ' + count + ' tarea' + (count === 1 ? '' : 's') + ' pendiente' + (count === 1 ? '' : 's') + '</strong><small>Revísalas antes de seguir estudiando.</small></div>';
+  }
+  if (drawer) {
+    drawer.classList.remove('task-reminder-active');
+    void drawer.offsetWidth;
+    drawer.classList.add('task-reminder-active');
+    clearTimeout(drawer._taskReminderTimer);
+    drawer._taskReminderTimer = setTimeout(() => drawer.classList.remove('task-reminder-active'), 6500);
+  }
+  try { localStorage.setItem(CRONO_TASK_REMINDER_KEY, JSON.stringify({ day, lastAt: now, reason: reason || 'interval' })); } catch(e) {}
+  showToast(count + ' tarea' + (count === 1 ? '' : 's') + ' pendiente' + (count === 1 ? '' : 's') + ' · revísalas');
+  return true;
+}
+
+function cronoStartTaskReminderLoop() {
+  if (_cronoTaskReminderInterval) clearInterval(_cronoTaskReminderInterval);
+  _cronoTaskReminderInterval = setInterval(() => {
+    if (document.body.getAttribute('data-view') === 'cronometro' && crono.state === 'idle') {
+      cronoMaybeRemindTasks('interval');
+    }
+  }, 60 * 1000);
+}
+
+function cronoStopTaskReminderLoop() {
+  if (_cronoTaskReminderInterval) {
+    clearInterval(_cronoTaskReminderInterval);
+    _cronoTaskReminderInterval = null;
+  }
+}
+
 function cronoRenderTaskCount() {
   const count = cronoActiveTaskCount();
   ['cronoDrawerTaskTabCount', 'cronoIdleDrawerTaskTabCount'].forEach(id => {
@@ -16958,6 +17034,7 @@ function cronoRenderTaskCount() {
       ? 'Tareas, ' + count + (count === 1 ? ' pendiente' : ' pendientes')
       : 'Tareas');
   });
+  if (!count) document.querySelectorAll('.crono-run-drawer.task-reminder-active').forEach(drawer => drawer.classList.remove('task-reminder-active'));
 }
 
 function renderCronoTasks() {
@@ -19484,6 +19561,7 @@ const TIMER_RADIUS = 94;
 const TIMER_CIRC = 2 * Math.PI * TIMER_RADIUS; // ≈ 590.62
 const CRONO_RUN_PROGRESS_RADIUS = 94;
 const CRONO_RUN_PROGRESS_CIRC = 2 * Math.PI * CRONO_RUN_PROGRESS_RADIUS;
+const CRONO_FREE_PROGRESS_MS = 120 * 60 * 1000;
 
 function cronoUpdateTimerProgress(elapsedMs) {
   const wrap = document.getElementById('cronoDisplayWrap');
@@ -19507,7 +19585,8 @@ function cronoUpdateTimerProgress(elapsedMs) {
 
   const elapsed = elapsedMs != null ? elapsedMs : cronoEffectiveElapsedMs();
   const targetMs = isTimer ? (crono.targetDurationMs || crono.targetMinutes * 60000) : null;
-  const progressPct = targetMs > 0 ? Math.min(1, Math.max(0, elapsed / targetMs)) : 0;
+  const progressTargetMs = isTimer ? targetMs : CRONO_FREE_PROGRESS_MS;
+  const progressPct = progressTargetMs > 0 ? Math.min(1, Math.max(0, elapsed / progressTargetMs)) : 0;
   if (arc) arc.setAttribute('stroke-dashoffset', String(CRONO_RUN_PROGRESS_CIRC * (1 - progressPct)));
   if (handle) {
     const theta = progressPct * 2 * Math.PI;
@@ -21133,6 +21212,8 @@ function cronoOnEnterView() {
   cronoRender();
   refreshConcentradoUI();
   _startCronoClock();
+  cronoStartTaskReminderLoop();
+  setTimeout(() => cronoMaybeRemindTasks('enter'), 80);
   // El indicador del toggle necesita layout para medir; volver a moverlo tras frame
   requestAnimationFrame(cronoMoveModeIndicator);
   if (crono.state === 'running' && !crono.tickInterval) cronoStartTick();
@@ -21142,6 +21223,7 @@ function cronoOnEnterView() {
 // Se llama desde showView cuando se cambia a OTRA vista que no es cronometro
 function cronoOnLeaveView() {
   _stopCronoClock();
+  cronoStopTaskReminderLoop();
   if (typeof closeCronoAyerPanel === 'function') closeCronoAyerPanel();
   cronoExitFocus();
   document.body.classList.remove('crono-timer-mode');

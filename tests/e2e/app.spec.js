@@ -590,6 +590,80 @@ test('keeps tasks available while idle and compacts long running content', async
   expect(await page.evaluate(() => crono.state)).toBe('running');
 });
 
+test('opens pending tasks once per day and repeats the reminder after two hours', async ({ page }) => {
+  await page.setViewportSize({ width: 834, height: 1194 });
+  await prepare(page);
+  await page.evaluate(() => {
+    db.cronoTasks = [
+      { id: 'ct_reminder', text: 'Repasar la coda sin pedal', done: false, createdAt: new Date().toISOString() },
+      { id: 'ct_done', text: 'Afinar', done: true, createdAt: new Date().toISOString() },
+    ];
+    localStorage.removeItem(CRONO_TASK_REMINDER_KEY);
+    showView('cronometro');
+  });
+
+  const drawer = page.locator('#cronoIdleDrawer');
+  await expect(drawer).toHaveAttribute('data-tab', 'tareas');
+  await expect(page.locator('#cronoIdleTasksPanel .crono-task-reminder-banner')).toContainText('Tienes 1 tarea pendiente');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+
+  const cooldown = await page.evaluate(() => {
+    cronoSetIdleDrawerTab('pasajes');
+    return { reminded: cronoMaybeRemindTasks('enter'), tab: document.getElementById('cronoIdleDrawer').dataset.tab };
+  });
+  expect(cooldown).toEqual({ reminded: false, tab: 'pasajes' });
+
+  await page.evaluate(() => {
+    const state = cronoTaskReminderState();
+    state.lastAt = Date.now() - CRONO_TASK_REMINDER_MS - 1000;
+    localStorage.setItem(CRONO_TASK_REMINDER_KEY, JSON.stringify(state));
+    cronoSetIdleDrawerTab('pasajes');
+    _hechoSubSession = true;
+    _hechoObraId = 'obra_1';
+    closeHechoDatos(false);
+  });
+  await expect(drawer).toHaveAttribute('data-tab', 'tareas');
+  expect(await page.evaluate(() => cronoTaskReminderState().reason)).toBe('session-end');
+});
+
+test('advances free timer progress to a 120 minute maximum and enlarges mode labels', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await prepare(page);
+  const metrics = await page.evaluate(() => {
+    showView('cronometro');
+    cronoSetMode('stopwatch');
+    const select = document.getElementById('cronoObraSelect');
+    select.value = 'obra::obra_1';
+    cronoUpdateStartBtn();
+    cronoStart();
+    const arc = document.getElementById('cronoRunProgressArc');
+    crono.startTs = Date.now() - 60 * 60 * 1000;
+    cronoUpdateTimerProgress();
+    const halfway = parseFloat(arc.getAttribute('stroke-dashoffset'));
+    crono.startTs = Date.now() - 180 * 60 * 1000;
+    cronoUpdateTimerProgress();
+    const capped = parseFloat(arc.getAttribute('stroke-dashoffset'));
+    cronoReset();
+    cronoRender();
+    const mode = document.querySelector('.crono-mode-opt[data-mode="timer"]');
+    const modeStyle = getComputedStyle(mode);
+    return {
+      halfway,
+      capped,
+      expectedHalfway: CRONO_RUN_PROGRESS_CIRC / 2,
+      fontSize: parseFloat(modeStyle.fontSize),
+      minHeight: mode.getBoundingClientRect().height,
+      columns: getComputedStyle(document.getElementById('cronoModeToggle')).gridTemplateColumns.split(' ').length,
+    };
+  });
+
+  expect(Math.abs(metrics.halfway - metrics.expectedHalfway)).toBeLessThan(2);
+  expect(metrics.capped).toBeLessThanOrEqual(0.01);
+  expect(metrics.fontSize).toBeGreaterThanOrEqual(13);
+  expect(metrics.minHeight).toBeGreaterThanOrEqual(44);
+  expect(metrics.columns).toBe(3);
+});
+
 test('keeps the idle and running timer in the same iPad composition', async ({ browser }) => {
   for (const viewport of [{ width: 1024, height: 768 }, { width: 834, height: 1194 }]) {
     const context = await browser.newContext({ viewport });

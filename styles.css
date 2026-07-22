@@ -12296,6 +12296,100 @@ body.crono-running .crono-concentrado { display: none; }
   }
 }
 
+/* Recordatorio visible de tareas y selector de modo de lectura comoda. */
+.crono-task-reminder-banner {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 0 0 12px;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, #dc2626 52%, var(--border2));
+  border-radius: 8px;
+  background: color-mix(in srgb, #dc2626 9%, var(--bg2));
+  color: var(--text);
+}
+.crono-task-reminder-banner > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #fff;
+  font-family: var(--font-mono, monospace);
+  font-size: 15px;
+  font-weight: 900;
+}
+.crono-task-reminder-banner div { min-width: 0; }
+.crono-task-reminder-banner strong,
+.crono-task-reminder-banner small { display: block; }
+.crono-task-reminder-banner strong {
+  font-size: 13px;
+  line-height: 1.25;
+}
+.crono-task-reminder-banner small {
+  margin-top: 2px;
+  color: var(--text2);
+  font-size: 11px;
+  line-height: 1.3;
+}
+.crono-run-drawer.task-reminder-active {
+  border-color: color-mix(in srgb, #dc2626 64%, var(--border2)) !important;
+  animation: cronoTaskReminderAttention .7s ease-out 2;
+  box-shadow: 0 0 0 4px color-mix(in srgb, #dc2626 12%, transparent), 0 18px 42px rgba(127,29,29,.14) !important;
+}
+@keyframes cronoTaskReminderAttention {
+  0%, 100% { filter: saturate(1); }
+  50% { filter: saturate(1.45); }
+}
+
+.crono-idle-controls .crono-mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  width: min(430px, 100%);
+  padding: 4px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: var(--bg2);
+  box-sizing: border-box;
+}
+.crono-idle-controls .crono-mode-opt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text2);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0;
+  white-space: normal;
+}
+.crono-idle-controls .crono-mode-opt.active {
+  border-color: color-mix(in srgb, var(--crono-color, var(--accent)) 26%, var(--border2));
+  background: color-mix(in srgb, var(--crono-color, var(--accent)) 12%, var(--bg3));
+  color: var(--crono-color, var(--accent));
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+@media (max-width: 430px) {
+  .crono-idle-controls .crono-mode-opt {
+    min-height: 46px;
+    padding: 7px 5px;
+    font-size: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .crono-run-drawer.task-reminder-active { animation: none; }
+}
+
 @media (min-width: 700px) and (orientation: portrait) {
   [data-theme^="marmol"] body.crono-running .crono-display-wrap {
     height: 370px;
@@ -12773,5 +12867,35 @@ body.crono-timer-mode:not(.crono-until-mode) #cronoTimerSvg {
     height: 18px;
     font-size: 9px;
     line-height: 18px;
+  }
+}
+
+/* Override final: el selector debe ganar a los ajustes historicos de Marmol. */
+[data-theme^="marmol"] .crono-idle-controls .crono-mode-toggle {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  width: min(430px, 100%);
+  min-height: 52px;
+  margin: 0 auto 10px;
+  padding: 4px;
+  border-radius: 8px;
+}
+[data-theme^="marmol"] .crono-idle-controls .crono-mode-opt {
+  min-height: 44px;
+  padding: 8px 9px;
+  font-size: 13px;
+  font-weight: 700;
+}
+[data-theme^="marmol"] .crono-idle-controls .crono-mode-opt.active {
+  border-color: color-mix(in srgb, var(--crono-color, var(--accent)) 26%, var(--border2));
+  background: color-mix(in srgb, var(--crono-color, var(--accent)) 12%, var(--bg3));
+  color: var(--crono-color, var(--accent));
+}
+@media (max-width: 430px) {
+  [data-theme^="marmol"] .crono-idle-controls .crono-mode-opt {
+    min-height: 46px;
+    padding: 7px 5px;
+    font-size: 12px;
   }
 }
