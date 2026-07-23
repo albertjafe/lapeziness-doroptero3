@@ -349,12 +349,6 @@
             <button class="crono-mode-opt" data-mode="until" onclick="cronoSetMode('until')">Hasta una hora</button>
             <span class="crono-mode-indicator" id="cronoModeIndicator"></span>
           </div>
-          <div class="crono-duration-presets" id="cronoDurationPresets" aria-label="Duración rápida">
-            <button type="button" data-minutes="15" onclick="cronoSetTimerPreset(15)">15</button>
-            <button type="button" data-minutes="25" onclick="cronoSetTimerPreset(25)">25</button>
-            <button type="button" data-minutes="45" onclick="cronoSetTimerPreset(45)">45</button>
-            <button type="button" data-minutes="60" onclick="cronoSetTimerPreset(60)">60</button>
-          </div>
           <div class="crono-until-row" id="cronoUntilRow">
             <span>Hasta</span>
             <input type="time" id="cronoUntilTime" onchange="cronoSetUntilTime(this.value)" oninput="cronoSetUntilTime(this.value)">

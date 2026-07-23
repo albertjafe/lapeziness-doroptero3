@@ -11528,37 +11528,6 @@ body.crono-paused .crono-pause-overlay-inner {
      }
 
 /* Cronómetro adaptativo: preparación, foco y cierre rápido. */
-.crono-duration-presets {
-  display: none;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 7px;
-  width: min(320px, 100%);
-  margin: 0 auto 10px;
-}
-body.crono-timer-mode:not(.crono-until-mode) .crono-duration-presets { display: grid; }
-.crono-duration-presets button {
-  min-height: 44px;
-  border: 1px solid var(--border2);
-  border-radius: 8px;
-  background: var(--bg2);
-  color: var(--text2);
-  font-family: var(--font-mono, monospace);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.crono-duration-presets button::after {
-  content: " min";
-  color: var(--text3);
-  font-size: 8px;
-  font-weight: 500;
-}
-.crono-duration-presets button.active {
-  border-color: var(--crono-color, var(--accent));
-  background: color-mix(in srgb, var(--crono-color, var(--accent)) 10%, var(--bg2));
-  color: var(--crono-color, var(--accent));
-  box-shadow: inset 0 0 0 1px var(--crono-color, var(--accent));
-}
 .crono-mode-indicator { display: none; }
 .crono-mode-opt.active {
   background: var(--bg3);
@@ -12547,13 +12516,6 @@ body.crono-running .crono-concentrado { display: none; }
   stroke-width: 3.5;
 }
 [data-theme^="marmol"] .crono-timer-track { opacity: .5; }
-[data-theme^="marmol"] .crono-idle-controls .crono-duration-presets {
-  width: min(360px, 100%);
-  margin: 0 auto 8px;
-}
-[data-theme^="marmol"] .crono-idle-controls .crono-duration-presets button {
-  min-height: 34px;
-}
 [data-theme^="marmol"] .crono-idle-controls .crono-until-row {
   margin: 0 auto 8px;
 }
@@ -12924,7 +12886,6 @@ body.crono-timer-mode:not(.crono-until-mode) #cronoTimerSvg {
   background: var(--crono-color, var(--accent));
   color: #fff;
 }
-[data-theme^="marmol"] .crono-idle-main .crono-duration-presets,
 [data-theme^="marmol"] .crono-idle-main .crono-until-row,
 [data-theme^="marmol"] .crono-idle-main .crono-timer-projection {
   width: 100%;
@@ -13456,4 +13417,48 @@ body.crono-timer-mode:not(.crono-until-mode) #cronoTimerSvg {
 }
 @media (prefers-reduced-motion: reduce) {
   .app-refresh-btn.is-checking svg { animation: none; }
+}
+
+/* El anillo del temporizador no invade la tarjeta de Destellos. */
+[data-theme^="marmol"] body.crono-timer-mode .crono-idle-display-wrap {
+  flex: 0 0 min(400px, 52dvh);
+  height: min(400px, 52dvh);
+  min-height: min(400px, 52dvh);
+  margin-bottom: 12px;
+}
+[data-theme^="marmol"] body.crono-timer-mode .crono-idle-display-wrap .crono-run-progress-svg {
+  width: min(400px, 52dvh);
+  height: min(400px, 52dvh);
+}
+[data-theme^="marmol"] body.crono-timer-mode .crono-idle-main .crono-idle-message {
+  position: relative;
+  z-index: 1;
+  margin-top: 0;
+}
+@media (min-width: 900px) and (orientation: landscape) and (max-height: 820px) {
+  [data-theme^="marmol"] body.crono-timer-mode .crono-idle-main .crono-timer-projection {
+    display: none !important;
+  }
+}
+@media (min-width: 700px) and (orientation: portrait) {
+  [data-theme^="marmol"] body.crono-timer-mode .crono-idle-display-wrap {
+    flex-basis: 370px;
+    height: 370px;
+    min-height: 370px;
+  }
+  [data-theme^="marmol"] body.crono-timer-mode .crono-idle-display-wrap .crono-run-progress-svg {
+    width: 370px;
+    height: 370px;
+  }
+}
+@media (max-width: 699px) {
+  [data-theme^="marmol"] body.crono-timer-mode .crono-idle-display-wrap {
+    flex-basis: min(280px, 76vw);
+    height: min(280px, 76vw);
+    min-height: min(280px, 76vw);
+  }
+  [data-theme^="marmol"] body.crono-timer-mode .crono-idle-display-wrap .crono-run-progress-svg {
+    width: min(280px, 76vw);
+    height: min(280px, 76vw);
+  }
 }

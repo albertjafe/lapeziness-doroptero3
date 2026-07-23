@@ -682,11 +682,24 @@ test('separates piano and personal tasks and only reminds piano work', async ({ 
   expect(landscape.controlsInDrawer).toBe(false);
   expect(landscape.taskColumns).toBe(2);
 
+  await page.evaluate(() => {
+    for (let index = 0; index < 5; index += 1) {
+      cronoTasks().push({
+        id: 'done_old_' + index,
+        text: 'Tarea antigua ' + index,
+        kind: 'piano',
+        done: true,
+        createdAt: new Date(Date.now() - (index + 10) * 86400000).toISOString(),
+        doneAt: new Date(Date.now() - (index + 2) * 86400000).toISOString(),
+      });
+    }
+    renderCronoTasks();
+  });
   const pianoRow = panel.locator('.crono-task-lane.piano .crono-task-row').first();
   await pianoRow.click();
   expect(await pianoRow.evaluate(row => row.classList.contains('is-completing'))).toBe(true);
   await expect(panel.locator('.crono-task-lane.piano .crono-task-clean')).toContainText('Todo limpio');
-  await expect(panel.locator('.crono-task-lane.piano .crono-task-row.is-done')).toContainText('Estudiar la coda sin pedal');
+  await expect(panel.locator('.crono-task-lane.piano .crono-task-completed .crono-task-row').first()).toContainText('Estudiar la coda sin pedal');
   const personalOnly = await page.evaluate(() => {
     localStorage.removeItem(CRONO_TASK_REMINDER_KEY);
     cronoSetIdleDrawerTab('pasajes');
@@ -763,6 +776,9 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
         main: rect(document.getElementById('cronoStageIdle').querySelector('.crono-idle-main')),
         drawer: rect(document.getElementById('cronoIdleDrawer')),
         ring: rect(document.getElementById('cronoTimerSvg')),
+        destello: rect(document.getElementById('cronoIdleMessage')),
+        start: rect(document.getElementById('cronoStartBtn')),
+        presetCount: document.querySelectorAll('#cronoDurationPresets button').length,
         tabs: [...document.querySelectorAll('#cronoIdleDrawer .crono-idle-drawer-tab')].map(button => button.dataset.tab),
         objectiveRemoved: !document.getElementById('cronoIdleObjective') && !document.getElementById('cronoIdleObjectiveText'),
         display: document.getElementById('cronoTimerText').textContent,
@@ -790,6 +806,9 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
     expect(layout.fitsWidth).toBe(true);
     expect(layout.idle.tabs).toEqual(['pasajes', 'nota', 'tareas', 'pase']);
     expect(layout.running.tabs).toEqual(layout.idle.tabs);
+    expect(layout.idle.presetCount).toBe(0);
+    expect(layout.idle.destello.top - layout.idle.ring.bottom).toBeGreaterThanOrEqual(8);
+    expect(layout.idle.start.bottom).toBeLessThanOrEqual(layout.idle.main.bottom + 1);
     expect(layout.idle.objectiveRemoved).toBe(true);
     expect(layout.running.objectiveRemoved).toBe(true);
     expect(layout.idle.display).toBe('25:00');

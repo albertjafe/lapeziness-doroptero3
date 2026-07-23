@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-23-crono-tareas-v39';
+const APP_VERSION = '2026-07-23-crono-tareas-v40';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -17109,9 +17109,13 @@ function cronoRenderTaskCount() {
 
 function renderCronoTasks() {
   const tasks = cronoTasks();
+  const doneTime = task => Date.parse(task.doneAt || task.createdAt || '') || 0;
   const byKind = kind => ({
     pending: tasks.filter(task => !task.done && cronoTaskKind(task) === kind).slice(-12).reverse(),
-    done: tasks.filter(task => task.done && cronoTaskKind(task) === kind).slice(-3).reverse(),
+    done: tasks
+      .filter(task => task.done && cronoTaskKind(task) === kind)
+      .sort((a, b) => doneTime(b) - doneTime(a))
+      .slice(0, 8),
   });
   const piano = byKind('piano');
   const personal = byKind('personal');
