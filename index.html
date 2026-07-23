@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=166">
 </head>
 <body>
 
@@ -1917,10 +1917,10 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js"></script>
-<script src="data-core.js"></script>
-<script src="sync-core.js"></script>
-<script src="app.js"></script>
+<script src="timer-core.js?v=166"></script>
+<script src="data-core.js?v=166"></script>
+<script src="sync-core.js?v=166"></script>
+<script src="app.js?v=166"></script>
 
 </body>
 <script>
@@ -1942,7 +1942,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=166', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
