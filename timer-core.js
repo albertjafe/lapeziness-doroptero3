@@ -40,16 +40,38 @@
 
     if (target != null) {
       const remainingMs = Math.max(0, target - elapsed);
-      const fiveMinuteSent = !!previous.fiveMinuteSent;
-      if (!fiveMinuteSent && remainingMs > 0 && remainingMs <= 5 * 60_000) {
+      const timerMinutesSent = Array.isArray(previous.timerMinutesSent)
+        ? previous.timerMinutesSent
+            .map(Number)
+            .filter(value => Number.isInteger(value) && value >= 1 && value <= 5)
+        : [];
+      // Compatibility with sessions saved before per-minute warnings existed.
+      if (previous.fiveMinuteSent && !timerMinutesSent.includes(5)) timerMinutesSent.push(5);
+
+      if (remainingMs > 0 && remainingMs <= 5 * 60_000) {
+        const warningMinutes = Math.max(1, Math.min(5, Math.ceil(remainingMs / 60_000)));
+        const alreadySent = timerMinutesSent.includes(warningMinutes);
+        const nextTimerMinutesSent = Array.from(new Set(
+          timerMinutesSent.concat([1, 2, 3, 4, 5].filter(value => value >= warningMinutes))
+        )).sort((a, b) => b - a);
+        if (!alreadySent) {
+          return {
+            fiveMinuteSent: nextTimerMinutesSent.includes(5),
+            timerMinutesSent: nextTimerMinutesSent,
+            lastMilestoneMinutes: Math.max(0, Number(previous.lastMilestoneMinutes) || 0),
+            event: { kind: 'timer-countdown', remainingMs, warningMinutes },
+          };
+        }
         return {
-          fiveMinuteSent: true,
+          fiveMinuteSent: nextTimerMinutesSent.includes(5),
+          timerMinutesSent: nextTimerMinutesSent,
           lastMilestoneMinutes: Math.max(0, Number(previous.lastMilestoneMinutes) || 0),
-          event: { kind: 'timer-five', remainingMs },
+          event: null,
         };
       }
       return {
-        fiveMinuteSent,
+        fiveMinuteSent: timerMinutesSent.includes(5),
+        timerMinutesSent,
         lastMilestoneMinutes: Math.max(0, Number(previous.lastMilestoneMinutes) || 0),
         event: null,
       };
@@ -60,12 +82,14 @@
     if (!(run && run.isRest) && milestoneMinutes >= 15 && milestoneMinutes > previousMilestone) {
       return {
         fiveMinuteSent: !!previous.fiveMinuteSent,
+        timerMinutesSent: Array.isArray(previous.timerMinutesSent) ? previous.timerMinutesSent.slice() : [],
         lastMilestoneMinutes: milestoneMinutes,
         event: { kind: 'stopwatch-milestone', milestoneMinutes },
       };
     }
     return {
       fiveMinuteSent: !!previous.fiveMinuteSent,
+      timerMinutesSent: Array.isArray(previous.timerMinutesSent) ? previous.timerMinutesSent.slice() : [],
       lastMilestoneMinutes: previousMilestone,
       event: null,
     };

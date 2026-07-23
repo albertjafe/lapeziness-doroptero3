@@ -302,626 +302,5 @@ test('can reload after going offline', async ({ browser }) => {
 test('implements phase three Hoy and CronÃ³metro hierarchy', async ({ page }) => {
   await prepare(page);
   const state = await page.evaluate(() => {
-    showView('session');
-    db.dailyGoalMinutes = 240;
-    renderSessionResumen();
-    const hoy = {
-      nav: document.querySelector('.nav-btn[data-view="session"]')?.textContent.trim(),
-      action: document.getElementById('sessionStartStudyBtn')?.textContent.trim(),
-      summary: document.getElementById('sessionResumenCard')?.textContent || '',
-      journal: {
-        label: document.getElementById('sessionJournalToggle')?.getAttribute('aria-label'),
-        text: document.getElementById('sessionJournalToggle')?.textContent.trim(),
-        expanded: document.getElementById('sessionJournalToggle')?.getAttribute('aria-expanded'),
-        panelHidden: document.getElementById('sessionJournalPanel')?.hidden,
-      },
-      hasGoalRing: !!document.querySelector('#sessionResumenCard .session-resumen-ring'),
-      nudge: document.querySelector('.session-insight-card.nudge'),
-      refresh: (() => {
-        const button = document.querySelector('#view-session .app-refresh-btn');
-        const box = button?.getBoundingClientRect();
-        return { label: button?.getAttribute('aria-label'), width: box?.width, height: box?.height, hasIcon: !!button?.querySelector('svg') };
-      })(),
-    };
-    showView('cronometro');
-    const cronoRefresh = document.querySelector('#view-cronometro .app-refresh-btn');
-    const cronoRefreshBox = cronoRefresh?.getBoundingClientRect();
-    return {
-      hoy,
-      cronoStart: document.getElementById('cronoStartBtn')?.textContent.trim(),
-      quickNoteButtons: document.querySelectorAll('#cronoQuickNoteBtn').length,
-      runTabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab),
-      bottomDisplay: getComputedStyle(document.querySelector('#view-cronometro .crono-bottom-row')).display,
-      cronoRefresh: { label: cronoRefresh?.getAttribute('aria-label'), width: cronoRefreshBox?.width, height: cronoRefreshBox?.height, hasIcon: !!cronoRefresh?.querySelector('svg') },
-    };
-  });
-  expect(state.hoy.nav).toBe('Hoy');
-  expect(state.hoy.action).toBe('Empezar a estudiar');
-  expect(state.hoy.summary).toContain('AÃºn sin actividad registrada');
-  expect(state.hoy.summary.toLowerCase()).not.toContain('objetivo');
-  expect(state.hoy.hasGoalRing).toBe(false);
-  expect(state.hoy.journal).toEqual({
-    label: 'AÃ±adir una entrada al diario',
-    text: '+',
-    expanded: 'false',
-    panelHidden: true,
-  });
-  expect(state.hoy.nudge).toBeNull();
-  expect(state.hoy.refresh).toEqual({ label: 'Comprobar actualizaciÃ³n', width: 44, height: 44, hasIcon: true });
-  expect(state.cronoStart).toBe('Iniciar');
-  expect(state.quickNoteButtons).toBe(0);
-  expect(state.runTabs).toEqual(['pasajes', 'nota', 'tareas', 'pase']);
-  expect(state.bottomDisplay).toBe('none');
-  expect(state.cronoRefresh).toEqual({ label: 'Comprobar actualizaciÃ³n', width: 44, height: 44, hasIcon: true });
-
-  await page.evaluate(() => showView('session'));
-  await page.locator('#sessionJournalToggle').click();
-  await expect(page.locator('#sessionJournalPanel')).toBeVisible();
-  await expect(page.locator('#sessionJournalInput')).toBeFocused();
-  await page.locator('#sessionJournalInput').fill('Escuchar la toma de hoy');
-  await page.locator('.session-journal-submit').click();
-  await expect(page.locator('#sessionJournalPanel')).toBeHidden();
-  expect(await page.evaluate(() => sessionJournalTodayEntries().at(-1)?.text)).toBe('Escuchar la toma de hoy');
-});
-
-test('progressively reveals Obras tools and keeps evolution samples honest', async ({ page }) => {
-  await prepare(page);
-  const sparse = await page.evaluate(() => {
-    showView('obras');
-    const view = document.getElementById('view-obras');
-    return {
-      sparse: view.classList.contains('obras-sparse'),
-      toolbar: getComputedStyle(view.querySelector('.obras-toolbar')).display,
-      primaryText: view.querySelector('.obra-primary-pase')?.textContent || '',
-      hasEstimate: /80%|mantenimiento recomendado|horas sugeridas/i.test(view.textContent),
-    };
-  });
-  expect(sparse.sparse).toBe(true);
-  expect(sparse.toolbar).toBe('none');
-  expect(sparse.primaryText).toContain('Registrar pase');
-  expect(sparse.hasEstimate).toBe(false);
-
-  const rich = await page.evaluate(() => {
-    db.obras.push(
-      { id: 'obra_2', name: 'Obra dos', composer: 'Compositor', tipo: 'obra', movimientos: [], sol: 50, solHistory: [], paseHistory: [] },
-      { id: 'obra_3', name: 'Obra tres', composer: 'Compositor', tipo: 'obra', movimientos: [], sol: 50, solHistory: [], paseHistory: [] },
-    );
-    renderObras();
-    document.getElementById('obrasMoreToggle')?.click();
-    const view = document.getElementById('view-obras');
-    return {
-      sparse: view.classList.contains('obras-sparse'),
-      moreOpen: view.classList.contains('obras-more-open'),
-      sortDisplay: getComputedStyle(view.querySelector('.obras-sort-row')).display,
-      moreText: document.getElementById('obrasMoreToggle')?.textContent.trim(),
-    };
-  });
-  expect(rich.sparse).toBe(false);
-  expect(rich.moreOpen).toBe(true);
-  expect(rich.sortDisplay).toBe('flex');
-  expect(rich.moreText).toBe('Menos');
-
-  const graph = await page.evaluate(() => {
-    const now = Date.now();
-    db.obras[0].paseHistory = [
-      { date: new Date(now - 3 * 86400000).toISOString(), score: 4, tipo: 'solo', note: 'uno' },
-      { date: new Date(now - 2 * 86400000).toISOString(), score: 6, tipo: 'informal', note: 'dos' },
-    ];
-    openGrafico('obra_1', null);
-    renderGraficoSvg();
-    const short = {
-      list: document.getElementById('graficoAccessibleList')?.textContent || '',
-      svg: !!document.querySelector('#graficoSvgWrap svg'),
-      insufficient: !!document.querySelector('.grafico-insufficient'),
-    };
-    db.obras[0].paseHistory.push(
-      { date: new Date(now - 1 * 86400000).toISOString(), score: 7, tipo: 'solo' },
-      { date: new Date(now - 12 * 3600000).toISOString(), score: 8, tipo: 'solo' },
-      { date: new Date(now - 6 * 3600000).toISOString(), score: 9, tipo: 'evento' },
-    );
-    renderGraficoSvg();
-    return { short, long: { svg: !!document.querySelector('#graficoSvgWrap svg'), scale: document.getElementById('graficoSvgWrap')?.textContent.includes('%') } };
-  });
-  expect(graph.short.list).toContain('uno');
-  expect(graph.short.svg).toBe(false);
-  expect(graph.short.insufficient).toBe(true);
-  expect(graph.long.svg).toBe(true);
-  expect(graph.long.scale).toBe(true);
-});
-
-test('adapts the running timer to iPad landscape and portrait', async ({ browser }) => {
-  for (const viewport of [{ width: 1024, height: 768 }, { width: 834, height: 1194 }]) {
-    const context = await browser.newContext({ viewport });
-    const page = await context.newPage();
-    await prepare(page);
-    const layout = await page.evaluate(() => {
-      showView('cronometro');
-      db.cronoPasajes = [
-        { id: 'pj_1', name: 'Coda Â· cc. 200â€“208', tier: 'red', createdAt: new Date().toISOString(), focusHistory: [], solHistory: [] },
-        { id: 'pj_2', name: 'Octavas Â· cc. 119â€“126', tier: 'amber', createdAt: new Date().toISOString(), focusHistory: [], solHistory: [] },
-      ];
-      cronoSetMode('timer');
-      cronoSetTimerPreset(25);
-      const select = document.getElementById('cronoObraSelect');
-      select.value = 'obra::obra_1';
-      cronoSetObservation('Coda limpia, pulso estable');
-      cronoUpdateStartBtn();
-      cronoStart();
-      crono.startTs = Date.now() - 12 * 60 * 1000;
-      cronoRender();
-      renderCronoPasajes();
-
-      const stage = document.getElementById('cronoStageRun').getBoundingClientRect();
-      const drawer = document.getElementById('cronoRunDrawer').getBoundingClientRect();
-      const controls = document.getElementById('cronoControls').getBoundingClientRect();
-      const ring = document.querySelector('#cronoStageRun .crono-run-progress-svg').getBoundingClientRect();
-      const display = document.getElementById('cronoDisplay');
-      const displayRange = document.createRange();
-      displayRange.selectNodeContents(display);
-      const displayTextWidth = displayRange.getBoundingClientRect().width;
-      return {
-        portrait: matchMedia('(orientation: portrait)').matches,
-        stage: { top: stage.top, right: stage.right, bottom: stage.bottom },
-        drawer: { top: drawer.top, left: drawer.left, bottom: drawer.bottom },
-        controlsBottom: controls.bottom,
-        viewportHeight: innerHeight,
-        fitsWidth: document.documentElement.scrollWidth <= innerWidth + 1,
-        objectiveRemoved: !document.getElementById('cronoRunObjective') && !document.getElementById('cronoRunObjectiveText'),
-        observation: document.getElementById('cronoRunObservation').value,
-        passage: document.querySelector('.crono-focus-pasaje-copy strong')?.textContent,
-        displayRatio: displayTextWidth / ring.width,
-      };
-    });
-
-    expect(layout.fitsWidth).toBe(true);
-    expect(layout.objectiveRemoved).toBe(true);
-    expect(layout.observation).toBe('Coda limpia, pulso estable');
-    expect(layout.passage).toBe('Coda Â· cc. 200â€“208');
-    expect(layout.displayRatio).toBeLessThanOrEqual(0.69);
-    if (layout.portrait) {
-      expect(layout.drawer.top).toBeGreaterThanOrEqual(layout.stage.bottom);
-      expect(layout.controlsBottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
-    } else {
-      expect(layout.drawer.left).toBeGreaterThanOrEqual(layout.stage.right);
-      expect(Math.abs(layout.drawer.top - layout.stage.top)).toBeLessThanOrEqual(16);
-    }
-    await context.close();
-  }
-});
-
-test('cancels or confirms a valid timer before saving and keeps one-tap solidity', async ({ page }) => {
-  let nativeDialogs = 0;
-  page.on('dialog', async dialog => {
-    nativeDialogs += 1;
-    await dialog.dismiss();
-  });
-  await prepare(page);
-  await page.evaluate(() => {
-    showView('cronometro');
-    const select = document.getElementById('cronoObraSelect');
-    select.value = 'obra::obra_1';
-    cronoSetObservation('Pulso estable');
-    cronoUpdateStartBtn();
-    cronoStart();
-    crono.startTs = Date.now() - 25 * 60 * 1000;
-    cronoSaveState();
-    cronoStop();
-  });
-
-  const confirm = page.locator('#modalCronoConfirmFinish');
-  await expect(confirm).toHaveClass(/visible/);
-  await expect(confirm.locator('#cronoFinishConfirmDur')).toHaveText('25:00');
-  await expect(confirm.locator('#cronoFinishConfirmWork')).toContainText('Bach');
-  expect(await page.evaluate(() => db.sessionPlants.length)).toBe(0);
-  await confirm.getByRole('button', { name: 'Cancelar' }).click();
-  await expect(confirm).not.toHaveClass(/visible/);
-  expect(await page.evaluate(() => ({ state: crono.state, saved: db.sessionPlants.length }))).toEqual({ state: 'running', saved: 0 });
-
-  await page.evaluate(() => cronoStop());
-  await expect(confirm).toHaveClass(/visible/);
-  await confirm.getByRole('button', { name: 'Hecho' }).click();
-
-  const modal = page.locator('#modalHechoDatos');
-  await expect(modal).toHaveClass(/visible/);
-  await expect(modal.locator('#hechoSavedMinutes')).toHaveText('25 min guardados');
-  expect(nativeDialogs).toBe(0);
-
-  const stable = modal.locator('.hecho-solidez-options button[data-value="65"]');
-  await stable.click();
-  await expect(stable).toHaveAttribute('aria-checked', 'true');
-  await modal.getByRole('button', { name: 'Hecho' }).click();
-  await expect(modal).not.toHaveClass(/visible/);
-
-  const saved = await page.evaluate(() => ({
-    value: db.obras[0].solHistory[0]?.val,
-    context: db.obras[0].solHistory[0]?.context,
-    current: db.obras[0].sol,
-  }));
-  expect(saved).toEqual({ value: 65, context: 'cierre-sesion', current: 65 });
-});
-
-test('keeps tasks available while idle and compacts long running content', async ({ page }) => {
-  await page.setViewportSize({ width: 1024, height: 768 });
-  await prepare(page);
-  await page.evaluate(() => {
-    showView('cronometro');
-    db.cronoTasks = [
-      { id: 'ct_1', text: 'Afinar el bajo de la coda', done: false, createdAt: new Date().toISOString() },
-    ];
-    db.cronoPasajes = Array.from({ length: 5 }, (_, index) => ({
-      id: 'pj_' + index,
-      name: 'Pasaje ' + (index + 1) + ' Â· compases ' + (20 + index * 4) + 'â€“' + (23 + index * 4),
-      tier: index < 2 ? 'red' : 'amber',
-      createdAt: new Date().toISOString(),
-      focusHistory: [],
-      solHistory: [],
-    }));
-    cronoRender();
-    renderCronoPasajes();
-  });
-
-  await page.locator('#cronoIdleDrawer .crono-idle-drawer-tab[data-tab="tareas"]').click();
-  const idleTasks = page.locator('#cronoIdleTasksPanel');
-  await expect(idleTasks).toContainText('Afinar el bajo de la coda');
-  await expect(idleTasks.locator('#cronoIdleTaskInput')).toHaveCount(0);
-  await idleTasks.locator('.crono-task-compose-trigger').click();
-  await expect(idleTasks.locator('#cronoIdleTaskInput')).toBeFocused();
-  await idleTasks.locator('#cronoIdleTaskInput').fill('Revisar digitaciÃ³n final');
-  await idleTasks.locator('.crono-task-add-btn').click();
-  await expect(idleTasks).toContainText('Revisar digitaciÃ³n final');
-  await expect(idleTasks.locator('#cronoIdleTaskInput')).toHaveCount(0);
-
-  const metrics = await page.evaluate(() => {
-    const select = document.getElementById('cronoObraSelect');
-    select.value = 'obra::obra_1';
-    cronoUpdateStartBtn();
-    cronoStart();
-    crono.startTs = Date.now() - 65 * 60 * 1000;
-    cronoRender();
-    renderCronoPasajes();
-
-    const destello = document.getElementById('cronoRunDestello');
-    const longText = 'Una repeticiÃ³n consciente puede ser lenta, pero debe conservar el sonido, la direcciÃ³n y la sensaciÃ³n exacta que quieres encontrar maÃ±ana sin aÃ±adir tensiÃ³n innecesaria.';
-    destello.className = 'crono-run-destello size-xlong';
-    destello.innerHTML = '<span class="crono-run-destello-text">' + longText + '</span>';
-    destello.style.display = '';
-
-    const ring = document.querySelector('#cronoStageRun .crono-run-progress-svg').getBoundingClientRect();
-    const display = document.getElementById('cronoDisplay');
-    const displayRange = document.createRange();
-    displayRange.selectNodeContents(display);
-    const displayTextWidth = displayRange.getBoundingClientRect().width;
-    const taskBadge = document.getElementById('cronoDrawerTaskTabCount');
-    const taskBadgeStyle = getComputedStyle(taskBadge);
-    const taskTab = document.querySelector('#cronoRunDrawer .crono-run-drawer-tab[data-tab="tareas"]');
-    const passageRows = [...document.querySelectorAll('.crono-focus-pasaje-main')];
-    return {
-      ringWidth: ring.width,
-      displayWidth: displayTextWidth,
-      hasHours: document.getElementById('cronoDisplayWrap').classList.contains('has-hours'),
-      destelloFits: destello.scrollHeight <= destello.clientHeight + 1,
-      destelloOverflow: getComputedStyle(destello).overflow,
-      destelloClamp: getComputedStyle(destello.querySelector('.crono-run-destello-text')).webkitLineClamp,
-      passageCount: passageRows.length,
-      maxPassageHeight: Math.max(...passageRows.map(row => row.getBoundingClientRect().height)),
-      openPassages: document.querySelectorAll('.crono-focus-pasaje.is-open').length,
-      taskDot: {
-        hidden: taskBadge.hidden,
-        text: taskBadge.textContent,
-        width: taskBadge.getBoundingClientRect().width,
-        height: taskBadge.getBoundingClientRect().height,
-        radius: taskBadgeStyle.borderRadius,
-        background: taskBadgeStyle.backgroundColor,
-      },
-      taskTabClass: taskTab.className,
-      taskTabLabel: taskTab.getAttribute('aria-label'),
-    };
-  });
-
-  expect(metrics.ringWidth).toBeGreaterThanOrEqual(350);
-  expect(metrics.hasHours).toBe(true);
-  expect(metrics.displayWidth).toBeLessThanOrEqual(metrics.ringWidth * 0.69);
-  expect(metrics.destelloFits).toBe(true);
-  expect(metrics.destelloOverflow).toBe('visible');
-  expect(['none', 'unset']).toContain(metrics.destelloClamp);
-  expect(metrics.passageCount).toBe(5);
-  expect(metrics.maxPassageHeight).toBeLessThanOrEqual(45);
-  expect(metrics.openPassages).toBe(0);
-  expect(metrics.taskDot.hidden).toBe(false);
-  expect(metrics.taskDot.text).toBe('2');
-  expect(metrics.taskDot.width).toBe(20);
-  expect(metrics.taskDot.height).toBe(20);
-  expect(metrics.taskDot.radius).toBe('50%');
-  expect(metrics.taskDot.background).toBe('rgb(220, 38, 38)');
-  expect(metrics.taskTabClass).toContain('has-tasks');
-  expect(metrics.taskTabLabel).toBe('Tareas, 2 pendientes');
-
-  await page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-tab="tareas"]').click();
-  await expect(page.locator('#cronoTasksPanel')).toContainText('Revisar digitaciÃ³n final');
-  await page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-tab="pase"]').click();
-  await page.locator('#cronoRunDrawer .crono-drawer-pase-btn').click();
-  await expect(page.locator('#modalCronoPaseRapido')).toHaveClass(/visible/);
-  expect(await page.evaluate(() => crono.state)).toBe('running');
-});
-
-test('opens pending tasks once per day and repeats the reminder after two hours', async ({ page }) => {
-  await page.setViewportSize({ width: 834, height: 1194 });
-  await prepare(page);
-  await page.evaluate(() => {
-    db.cronoTasks = [
-      { id: 'ct_reminder', text: 'Repasar la coda sin pedal', done: false, createdAt: new Date().toISOString() },
-      { id: 'ct_done', text: 'Afinar', done: true, createdAt: new Date().toISOString() },
-    ];
-    localStorage.removeItem(CRONO_TASK_REMINDER_KEY);
-    showView('cronometro');
-  });
-
-  const drawer = page.locator('#cronoIdleDrawer');
-  await expect(drawer).toHaveAttribute('data-tab', 'tareas');
-  await expect(page.locator('#cronoIdleTasksPanel .crono-task-reminder-banner')).toContainText('Tienes 1 tarea de piano pendiente');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
-
-  const cooldown = await page.evaluate(() => {
-    cronoSetIdleDrawerTab('pasajes');
-    return { reminded: cronoMaybeRemindTasks('enter'), tab: document.getElementById('cronoIdleDrawer').dataset.tab };
-  });
-  expect(cooldown).toEqual({ reminded: false, tab: 'pasajes' });
-
-  await page.evaluate(() => {
-    const state = cronoTaskReminderState();
-    state.lastAt = Date.now() - CRONO_TASK_REMINDER_MS - 1000;
-    localStorage.setItem(CRONO_TASK_REMINDER_KEY, JSON.stringify(state));
-    cronoSetIdleDrawerTab('pasajes');
-    _hechoSubSession = true;
-    _hechoObraId = 'obra_1';
-    closeHechoDatos(false);
-  });
-  await expect(drawer).toHaveAttribute('data-tab', 'tareas');
-  expect(await page.evaluate(() => cronoTaskReminderState().reason)).toBe('session-end');
-});
-
-test('separates piano and personal tasks and only reminds piano work', async ({ page }) => {
-  await page.setViewportSize({ width: 1024, height: 768 });
-  await prepare(page);
-  await page.evaluate(() => {
-    showView('cronometro');
-    cronoSetIdleDrawerTab('tareas');
-  });
-
-  const panel = page.locator('#cronoIdleTasksPanel');
-  await expect(panel.locator('#cronoIdleTaskInput')).toHaveCount(0);
-  await panel.locator('.crono-task-compose-trigger').click();
-  await expect(panel.locator('#cronoIdleTaskInput')).toBeFocused();
-  await panel.locator('.crono-task-kind-btn.piano').click();
-  await panel.locator('.crono-task-tomorrow-btn').click();
-  await panel.locator('#cronoIdleTaskInput').fill('Estudiar la coda sin pedal');
-  await panel.locator('.crono-task-add-btn').click();
-  await expect(panel.locator('.crono-task-lane.piano')).toContainText('Estudiar la coda sin pedal');
-  await expect(panel.locator('.crono-task-lane.piano .crono-task-due-tag')).toHaveText('MaÃ±ana');
-
-  await panel.locator('.crono-task-compose-trigger').click();
-  await panel.locator('.crono-task-kind-btn.personal').click();
-  await expect(panel.locator('.crono-task-tomorrow-btn')).toBeHidden();
-  await panel.locator('#cronoIdleTaskInput').fill('Escribir a Emma');
-  await panel.locator('.crono-task-add-btn').click();
-  await expect(panel.locator('.crono-task-lane.personal')).toContainText('Escribir a Emma');
-
-  const landscape = await page.evaluate(() => ({
-    saved: cronoTasks().map(task => ({ text: task.text, kind: task.kind, tomorrow: task.tomorrow })),
-    controlsInMain: !!document.querySelector('.crono-idle-main > .crono-idle-controls'),
-    controlsInDrawer: !!document.querySelector('#cronoIdleDrawer .crono-idle-controls'),
-    taskColumns: getComputedStyle(document.querySelector('.crono-task-columns')).gridTemplateColumns.split(' ').length,
-  }));
-  expect(landscape.saved).toEqual([
-    { text: 'Estudiar la coda sin pedal', kind: 'piano', tomorrow: true },
-    { text: 'Escribir a Emma', kind: 'personal', tomorrow: false },
-  ]);
-  expect(landscape.controlsInMain).toBe(true);
-  expect(landscape.controlsInDrawer).toBe(false);
-  expect(landscape.taskColumns).toBe(2);
-
-  await page.evaluate(() => {
-    for (let index = 0; index < 5; index += 1) {
-      cronoTasks().push({
-        id: 'done_old_' + index,
-        text: 'Tarea antigua ' + index,
-        kind: 'piano',
-        done: true,
-        createdAt: new Date(Date.now() - (index + 10) * 86400000).toISOString(),
-        doneAt: new Date(Date.now() - (index + 2) * 86400000).toISOString(),
-      });
-    }
-    renderCronoTasks();
-  });
-  const pianoRow = panel.locator('.crono-task-lane.piano .crono-task-row').first();
-  await pianoRow.click();
-  expect(await pianoRow.evaluate(row => row.classList.contains('is-completing'))).toBe(true);
-  await expect(panel.locator('.crono-task-lane.piano .crono-task-clean')).toContainText('Todo limpio');
-  const completed = panel.locator('.crono-task-lane.piano .crono-task-completed');
-  await expect(completed.locator('summary')).toContainText('6 hechas');
-  await expect(completed).not.toHaveAttribute('open', '');
-  await expect(completed.locator('.crono-task-row').first()).toBeHidden();
-  await completed.locator('summary').click();
-  await expect(completed).toHaveAttribute('open', '');
-  await expect(completed.locator('.crono-task-row').first()).toContainText('Estudiar la coda sin pedal');
-  await expect(completed.locator('.crono-task-row').first()).toBeVisible();
-  await completed.locator('summary').click();
-  await expect(completed).not.toHaveAttribute('open', '');
-  const personalOnly = await page.evaluate(() => {
-    localStorage.removeItem(CRONO_TASK_REMINDER_KEY);
-    cronoSetIdleDrawerTab('pasajes');
-    return { reminded: cronoMaybeRemindTasks('test'), tab: document.getElementById('cronoIdleDrawer').dataset.tab };
-  });
-  expect(personalOnly).toEqual({ reminded: false, tab: 'pasajes' });
-
-  await page.setViewportSize({ width: 834, height: 1194 });
-  expect(await page.evaluate(() => getComputedStyle(document.querySelector('.crono-task-columns')).gridTemplateColumns.split(' ').length)).toBe(1);
-  await expect(completed.locator('.crono-task-row').first()).toBeHidden();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
-});
-
-test('advances free timer progress to a 120 minute maximum and enlarges mode labels', async ({ page }) => {
-  await page.setViewportSize({ width: 1024, height: 768 });
-  await prepare(page);
-  const metrics = await page.evaluate(() => {
-    showView('cronometro');
-    cronoSetMode('stopwatch');
-    const select = document.getElementById('cronoObraSelect');
-    select.value = 'obra::obra_1';
-    cronoUpdateStartBtn();
-    cronoStart();
-    const arc = document.getElementById('cronoRunProgressArc');
-    crono.startTs = Date.now() - 60 * 60 * 1000;
-    cronoUpdateTimerProgress();
-    const halfway = parseFloat(arc.getAttribute('stroke-dashoffset'));
-    crono.startTs = Date.now() - 180 * 60 * 1000;
-    cronoUpdateTimerProgress();
-    const capped = parseFloat(arc.getAttribute('stroke-dashoffset'));
-    cronoReset();
-    cronoRender();
-    const mode = document.querySelector('.crono-mode-opt[data-mode="timer"]');
-    const modeStyle = getComputedStyle(mode);
-    return {
-      halfway,
-      capped,
-      expectedHalfway: CRONO_RUN_PROGRESS_CIRC / 2,
-      fontSize: parseFloat(modeStyle.fontSize),
-      minHeight: mode.getBoundingClientRect().height,
-      columns: getComputedStyle(document.getElementById('cronoModeToggle')).gridTemplateColumns.split(' ').length,
-      controlsInMain: !!document.querySelector('.crono-idle-main > .crono-idle-controls'),
-    };
-  });
-
-  expect(Math.abs(metrics.halfway - metrics.expectedHalfway)).toBeLessThan(2);
-  expect(metrics.capped).toBeLessThanOrEqual(0.01);
-  expect(metrics.fontSize).toBeGreaterThanOrEqual(13);
-  expect(metrics.minHeight).toBeGreaterThanOrEqual(44);
-  expect(metrics.columns).toBe(3);
-  expect(metrics.controlsInMain).toBe(true);
-});
-
-test('deduplicates background timer and stopwatch notifications', async ({ page }) => {
-  await prepare(page);
-  const result = await page.evaluate(() => {
-    const sent = [];
-    cronoShowSystemNotification = event => sent.push(event);
-    crono.state = 'running';
-    crono.runId = 'notification-e2e';
-    crono.obraId = 'obra_1';
-    crono.displayName = 'Bach Â· Preludio';
-    crono.isRest = false;
-    crono.targetMinutes = null;
-    crono.targetDurationMs = null;
-    crono.notificationFiveMinuteSent = false;
-    crono.notificationLastMilestoneMinutes = 0;
-
-    cronoCheckSessionNotifications(46 * 60_000, true);
-    cronoCheckSessionNotifications(46 * 60_000, true);
-
-    crono.targetMinutes = 25;
-    crono.targetDurationMs = 25 * 60_000;
-    crono.notificationFiveMinuteSent = false;
-    crono.notificationLastMilestoneMinutes = 0;
-    cronoCheckSessionNotifications(21 * 60_000, false);
-    const beforeBackground = {
-      sent: sent.length,
-      marked: crono.notificationFiveMinuteSent,
-    };
-    cronoCheckSessionNotifications(21 * 60_000, true);
-    cronoCheckSessionNotifications(21 * 60_000, true);
-
-    const saved = JSON.parse(localStorage.getItem(CRONO_STORAGE_KEY));
-    cronoReset();
-    return {
-      sent,
-      fiveMinuteSent: saved.notificationFiveMinuteSent,
-      lastMilestoneMinutes: saved.notificationLastMilestoneMinutes,
-      beforeBackground,
-    };
-  });
-
-  expect(result.sent).toEqual([
-    { kind: 'stopwatch-milestone', milestoneMinutes: 45 },
-    { kind: 'timer-five', remainingMs: 4 * 60_000 },
-  ]);
-  expect(result.beforeBackground).toEqual({ sent: 1, marked: false });
-  expect(result.fiveMinuteSent).toBe(true);
-  expect(result.lastMilestoneMinutes).toBe(0);
-});
-
-test('keeps the idle and running timer in the same iPad composition', async ({ browser }) => {
-  for (const viewport of [{ width: 1024, height: 768 }, { width: 834, height: 1194 }]) {
-    const context = await browser.newContext({ viewport });
-    const page = await context.newPage();
-    await prepare(page);
-
-    const layout = await page.evaluate(() => {
-      showView('cronometro');
-      cronoSetMode('timer');
-      cronoSetTimerPreset(25);
-      const select = document.getElementById('cronoObraSelect');
-      select.value = 'obra::obra_1';
-      cronoSetObservation('Coda limpia, pulso estable');
-      cronoUpdateStartBtn();
-      cronoRender();
-
-      const rect = element => {
-        const box = element.getBoundingClientRect();
-        return { top: box.top, left: box.left, right: box.right, bottom: box.bottom, width: box.width, height: box.height };
-      };
-      const idle = {
-        main: rect(document.getElementById('cronoStageIdle').querySelector('.crono-idle-main')),
-        drawer: rect(document.getElementById('cronoIdleDrawer')),
-        ring: rect(document.getElementById('cronoTimerSvg')),
-        destello: rect(document.getElementById('cronoIdleMessage')),
-        start: rect(document.getElementById('cronoStartBtn')),
-        presetCount: document.querySelectorAll('#cronoDurationPresets button').length,
-        tabs: [...document.querySelectorAll('#cronoIdleDrawer .crono-idle-drawer-tab')].map(button => button.dataset.tab),
-        objectiveRemoved: !document.getElementById('cronoIdleObjective') && !document.getElementById('cronoIdleObjectiveText'),
-        display: document.getElementById('cronoTimerText').textContent,
-        usesRunningDisplay: document.getElementById('cronoTimerText').classList.contains('crono-display')
-          && document.getElementById('cronoTimerSvg').classList.contains('crono-run-progress-svg'),
-        garden: getComputedStyle(document.getElementById('cronoGarden')).display,
-      };
-
-      cronoStart();
-      const running = {
-        main: rect(document.getElementById('cronoStageRun')),
-        drawer: rect(document.getElementById('cronoRunDrawer')),
-        ring: rect(document.querySelector('#cronoStageRun .crono-run-progress-svg')),
-        tabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab),
-        objectiveRemoved: !document.getElementById('cronoRunObjective') && !document.getElementById('cronoRunObjectiveText'),
-      };
-      return {
-        portrait: matchMedia('(orientation: portrait)').matches,
-        fitsWidth: document.documentElement.scrollWidth <= innerWidth + 1,
-        idle,
-        running,
-      };
-    });
-
-    expect(layout.fitsWidth).toBe(true);
-    expect(layout.idle.tabs).toEqual(['pasajes', 'nota', 'tareas', 'pase']);
-    expect(layout.running.tabs).toEqual(layout.idle.tabs);
-    expect(layout.idle.presetCount).toBe(0);
-    expect(layout.idle.destello.top - layout.idle.ring.bottom).toBeGreaterThanOrEqual(8);
-    expect(layout.idle.start.bottom).toBeLessThanOrEqual(layout.idle.main.bottom + 1);
-    expect(layout.idle.objectiveRemoved).toBe(true);
-    expect(layout.running.objectiveRemoved).toBe(true);
-    expect(layout.idle.display).toBe('25:00');
-    expect(layout.idle.usesRunningDisplay).toBe(true);
-    expect(layout.idle.garden).toBe('none');
-    expect(Math.abs(layout.idle.ring.width - layout.running.ring.width)).toBeLessThanOrEqual(2);
-
-    if (layout.portrait) {
-      expect(layout.idle.drawer.top).toBeGreaterThanOrEqual(layout.idle.main.bottom - 1);
-      expect(layout.running.drawer.top).toBeGreaterThanOrEqual(layout.running.main.bottom - 1);
-    } else {
-      expect(Math.abs(layout.idle.main.left - layout.running.main.left)).toBeLessThanOrEqual(2);
-      expect(Math.abs(layout.idle.drawer.left - layout.running.drawer.left)).toBeLessThanOrEqual(2);
-      expect(Math.abs(layout.idle.main.height - layout.running.main.height)).toBeLessThanOrEqual(2);
-      expect(Math.abs(layout.idle.drawer.height - layout.running.drawer.height)).toBeLessThanOrEqual(2);
-    }
-    await context.close();
-  }
-});
+    ç­t¶‰žËkºwµçe¬ ¤ì(€…Ý…¥Ð•áÁ•Ð¡Á…”¹±½…Ñ½È œµ½‘…±É½¹½A…Í•I…Á¥‘¼œ¤¤¹Ñ½!…Ù•±…ÍÌ ½Ù¥Í¥‰±”¼¤ì(€•áÁ•Ð¡…Ý…¥ÐÁ…”¹•Ù…±Õ…Ñ”  ¤€ôøÉ½¹¼¹ÍÑ…Ñ”¤¤¹Ñ½	” ÉÕ¹¹¥¹œœ¤ì)ô¤ì()Ñ•ÍÐ ½Á•¹ÌÁ•¹‘¥¹œÑ…Í­Ì½¹”Á•È‘…ä…¹É•Á•…ÑÌÑ¡”É•µ¥¹‘•È…™Ñ•ÈÑÝ¼¡½ÕÉÌœ°…Íå¹Œ€¡ìÁ…”ô¤€ôøì(€…Ý…¥ÐÁ…”¹Í•ÑY¥•ÝÁ½ÉÑM¥é”¡ìÝ¥‘Ñ è€àÌÐ°¡•¥¡Ðè€ÄÄäÐô¤ì(€…Ý…¥ÐÁÉ•Á…É”¡Á…”¤ì(€…Ý…¥ÐÁ…”¹•Ù…±Õ…Ñ”  ¤€ôøì(€€€‘ˆ¹É½¹½Q…Í­Ì€ôl(€€€€€ì¥è€Ñ}É•µ¥¹‘•Èœ°Ñ•áÐè€I•Á…Í…È±„½‘„Í¥¸Á•‘…°œ°‘½¹”è™…±Í”°É•…Ñ•‘Ðè¹•Ü…Ñ” ¤¹Ñ½%M=MÑÉ¥¹œ ¤ô°(€€€€€ì¥è€Ñ}‘½¹”œ°Ñ•áÐè€™¥¹…Èœ°‘½¹”èÑÉÕ”°É•…Ñ•‘Ðè¹•Ü…Ñ” ¤¹Ñ½%M=MÑÉ¥¹œ ¤ô°(€€€tì(€€€±½…±MÑ½É…”¹É•µ½Ù•%Ñ•´¡I=9=}QM-}I5%9I}-d¤ì(€€€Í¡½ÝY¥•Ü É½¹½µ•ÑÉ¼œ¤ì(€ô¤ì((€½¹ÍÐ‘É…Ý•È€ôÁ…”¹±½…Ñ½È œÉ½¹½%‘±•É…Ý•Èœ¤ì(€…Ý…¥Ð•áÁ•Ð¡‘É…Ý•È¤¹Ñ½!…Ù•ÑÑÉ¥‰ÕÑ” ‘…Ñ„µÑ…ˆœ°€Ñ…É•…Ìœ¤ì(€…Ý…¥Ð•áÁ•Ð¡Á…”¹±½…Ñ½È œÉ½¹½%‘±•Q…Í­ÍA…¹•°€¹É½¹¼µÑ…Í¬µÉ•µ¥¹‘•Èµ‰…¹¹•Èœ¤¤¹Ñ½½¹Ñ…¥¹Q•áÐ Q¥•¹•Ì€ÄÑ…É•„‘”Á¥…¹¼Á•¹‘¥•¹Ñ”œ¤ì(€•áÁ•Ð¡…Ý…¥ÐÁ…”¹•Ù…±Õ…Ñ”  ¤€ôø‘½Õµ•¹Ð¹‘½Õµ•¹Ñ±•µ•¹Ð¹ÍÉ½±±]¥‘Ñ €ðô¥¹¹•É]¥‘Ñ €¬€Ä¤¤¹Ñ½	”¡ÑÉÕ”¤ì((€½¹ÍÐ½½±‘½Ý¸€ô…Ý…¥ÐÁ…”¹•Ù…±Õ…Ñ”  ¤€ôøì(€€€É½¹½M•Ñ%‘±•É…Ý•ÉQ…ˆ Á…Í…©•Ìœ¤ì(€€€É•ÑÕÉ¸ìÉ•µ¥¹‘•èÉ½¹½5…å‰•I•µ¥¹‘Q…Í­Ì •¹Ñ•Èœ¤°Ñ…ˆè‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½%‘±•É…Ý•Èœ¤¹‘…Ñ…Í•Ð¹Ñ…ˆôì(€ô¤ì(€•áÁ•Ð¡½½±‘½Ý¸¤¹Ñ½ÅÕ…°¡ìÉ•µ¥¹‘•è™…±Í”°Ñ…ˆè€Á…Í…©•Ìœô¤ì((€…Ý…¥ÐÁ…”¹•Ù…±Õ…Ñ”  ¤€ôøì(€€€½¹ÍÐÍÑ…Ñ”€ôÉ½¹½Q…Í­I•µ¥¹‘•ÉMÑ…Ñ” ¤ì(€€€ÍÑ…Ñ”¹±…ÍÑÐ€ô…Ñ”¹¹½Ü ¤€´I=9=}QM-}I5%9I}5L€´€ÄÀÀÀì(€€€±½…±MÑ½É…”¹Í•Ñ%Ñ•´¡I=9=}QM-}I5%9I}-d°)M=8¹ÍÑÉ¥¹¥™ä¡ÍÑ…Ñ”¤¤ì(€€€É½¹½M•Ñ%‘±•É…Ý•ÉQ…ˆ Á…Í…©•Ìœ¤ì(€€€}¡•¡½MÕ‰M•ÍÍ¥½¸€ôÑÉÕ”ì(€€€}¡•¡½=‰É…%€ô€½‰É…|Äœì(€€€±½Í•!•¡½…Ñ½Ì¡™…±Í”¤ì(€ô¤ì(€…Ý…¥Ð•áÁ•Ð¡‘É…Ý•È¤¹Ñ½!…Ù•ÑÑÉ¥‰ÕÑ” ‘…Ñ„µÑ…ˆœ°€Ñ…É•…Ìœ¤ì(€•áÁ•Ð¡…Ý…¥ÐÁ…”¹•Ù…±Õ…Ñ”  ¤€ôøÉ½¹½Q…Í­I•µ¥¹‘•ÉMÑ…Ñ” ¤¹É•…Í½¸¤¤¹Ñ½	” Í•ÍÍ¥½¸µ•¹œ¤ì)ô¤ì()Ñ•ÍÐ Í•Á…É…Ñ•ÌÁ¥…¹¼…¹Á•ÉÍ½¹…°Ñ…Í­Ì…¹½¹±äÉ•µ¥¹‘ÌÁ¥…¹¼Ý½É¬œ°…Íå¹Œ€¡ìÁ…”ô¤€ôøì(€…Ý…¥ÐÁ…”¹Í•ÑY¥•ÝÁ½ÉÑM¥é”¡ìÝ¥‘Ñ è€ÄÀÈÐ°¡•¥¡Ðè€ÜØàô¤ì(€…Ý…¥ÐÁÉ•Á…É”¡Á…”¤ì(€…Ý…¥ÐÁ…”¹•Ù…±Õ…Ñ”  ¤€ôøì(€€€Í¡½ÝY¥•Ü É½¹½µ•ÑÉ¼œ¤ì(€€€É½¹½M•Ñ%‘±•É…Ý•ÉQ…ˆ Ñ…É•…Ìœ¤ì(€ô¤ì((€½¹ÍÐÁ…¹•°€ôÁ…”¹±½…Ñ½È œÉ½¹½%‘±•Q…Í­ÍA…¹•°œ¤ì(€…Ý…¥Ð•áÁ•Ð¡Á…¹•°¹±½…Ñ½È œÉ½¹½%‘±•Q…Í­%¹ÁÕÐœ¤¤¹Ñ½!…Ù•½Õ¹Ð À¤ì(€…Ý…¥ÐÁ…¹•°¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µ½µÁ½Í”µÑÉ¥•Èœ¤¹±¥¬ ¤ì(€…Ý…¥Ð•áÁ•Ð¡Á…¹•°¹±½…Ñ½È œÉ½¹½%‘±•Q…Í­%¹ÁÕÐœ¤¤¹Ñ½	•½ÕÍ• ¤ì(€…Ý…¥ÐÁ…¹•°¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µ­¥¹µ‰Ñ¸¹Á¥…¹¼œ¤¹±¥¬ ¤ì(€…Ý…¥ÐÁ…¹•°¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µÑ½µ½ÉÉ½Üµ‰Ñ¸œ¤¹±¥¬ ¤ì(€…Ý…¥ÐÁ…¹•°¹±½…Ñ½È œÉ½¹½%‘±•Q…Í­%¹ÁÕÐœ¤¹™¥±° ÍÑÕ‘¥…È±„½‘„Í¥¸Á•‘…°œ¤ì(€…Ý…¥ÐÁ…¹•°¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µ…‘µ‰Ñ¸œ¤¹±¥¬ ¤ì(€…Ý…¥Ð•áÁ•Ð¡Á…¹•°¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µ±…¹”¹Á¥…¹¼œ¤¤¹Ñ½½¹Ñ…¥¹Q•áÐ ÍÑÕ‘¥…È±„½‘„Í¥¸Á•‘…°œ¤ì(€…Ý…¥Ð•áÁ•Ð¡Á…¹•°¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µ±…¹”¹Á¥…¹¼€¹É½¹¼µÑ…Í¬µ‘Õ”µÑ…œœ¤¤¹Ñ½!…Ù•Q•áÐ 5‡Å…¹„œ¤ì((€…Ý…¥ÐÁ…¹•°¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µ½µÁ½Í”µÑÉ¥•Èœ¤¹±¥¬ ¤ì(€…Ý…¥ÐÁ…¹•°¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µ­¥¹µ‰Ñ¸¹Á•ÉÍ½¹…°œ¤¹±¥¬ ¤ì(€…Ý…¥Ð•áÁ•Ð¡Á…¹•°¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µÑ½µ½ÉÉ½Üµ‰Ñ¸œ¤¤¹Ñ½	•!¥‘‘•¸ ¤ì(€…Ý…¥ÐÁ…¹•°¹±½…Ñ½È œÉ½¹½%‘±•Q…Í­%¹ÁÕÐœ¤¹™¥±° ÍÉ¥‰¥È„µµ„œ¤ì(€…Ý…¥ÐÁ…¹•°¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µ…‘µ‰Ñ¸œ¤¹±¥¬ ¤ì(€…Ý…¥Ð•áÁ•Ð¡Á…¹•°¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µ±…¹”¹Á•ÉÍ½¹…°œ¤¤¹Ñ½½¹Ñ…¥¹Q•áÐ ÍÉ¥‰¥È„µµ„œ¤ì((€½¹ÍÐ±…¹‘Í…Á”€ô…Ý…¥ÐÁ…”¹•Ù…±Õ…Ñ”  ¤€ôø€¡ì(€€€Í…Ù•èÉ½¹½Q…Í­Ì ¤¹µ…À¡Ñ…Í¬€ôø€¡ìÑ•áÐèÑ…Í¬¹Ñ•áÐ°­¥¹èÑ…Í¬¹­¥¹°Ñ½µ½ÉÉ½ÜèÑ…Í¬¹Ñ½µ½ÉÉ½Üô¤¤°(€€€½¹ÑÉ½±Í%¹5…¥¸è€„…‘½Õµ•¹Ð¹ÅÕ•ÉåM•±•Ñ½È œ¹É½¹¼µ¥‘±”µµ…¥¸€ø€¹É½¹¼µ¥‘±”µ½¹ÑÉ½±Ìœ¤°(€€€½¹ÑÉ½±Í%¹É…Ý•Èè€„…‘½Õµ•¹Ð¹ÅÕ•ÉåM•±•Ñ½È œÉ½¹½%‘±•É…Ý•È€¹É½¹¼µ¥‘±”µ½¹ÑÉ½±Ìœ¤°(€€€Ñ…Í­½±Õµ¹Ìè•Ñ½µÁÕÑ•‘MÑå±”¡‘½Õµ•¹Ð¹ÅÕ•ÉåM•±•Ñ½È œ¹É½¹¼µÑ…Í¬µ½±Õµ¹Ìœ¤¤¹É¥‘Q•µÁ±…Ñ•½±Õµ¹Ì¹ÍÁ±¥Ð œ€œ¤¹±•¹Ñ °(€ô¤¤ì(€•áÁ•Ð¡±…¹‘Í…Á”¹Í…Ù•¤¹Ñ½ÅÕ…°¡l(€€€ìÑ•áÐè€ÍÑÕ‘¥…È±„½‘„Í¥¸Á•‘…°œ°­¥¹è€Á¥…¹¼œ°Ñ½µ½ÉÉ½ÜèÑÉÕ”ô°(€€€ìÑ•áÐè€ÍÉ¥‰¥È„µµ„œ°­¥¹è€Á•ÉÍ½¹…°œ°Ñ½µ½ÉÉ½Üè™…±Í”ô°(€t¤ì(€•áÁ•Ð¡±…¹‘Í…Á”¹½¹ÑÉ½±Í%¹5…¥¸¤¹Ñ½	”¡ÑÉÕ”¤ì(€•áÁ•Ð¡±…¹‘Í…Á”¹½¹ÑÉ½±Í%¹É…Ý•È¤¹Ñ½	”¡™…±Í”¤ì(€•áÁ•Ð¡±…¹‘Í…Á”¹Ñ…Í­½±Õµ¹Ì¤¹Ñ½	” È¤ì((€…Ý…¥ÐÁ…”¹•Ù…±Õ…Ñ”  ¤€ôøì(€€€™½È€¡±•Ð¥¹‘•à€ô€Àì¥¹‘•à€ð€Ôì¥¹‘•à€¬ô€Ä¤ì(€€€€€É½¹½Q…Í­Ì ¤¹ÁÕÍ ¡ì(€€€€€€€¥è€‘½¹•}½±‘|œ€¬¥¹‘•à°(€€€€€€€Ñ•áÐè€Q…É•„…¹Ñ¥Õ„€œ€¬¥¹‘•à°(€€€€€€€­¥¹è€Á¥…¹¼œ°(€€€€€€€‘½¹”èÑÉÕ”°(€€€€€€€É•…Ñ•‘Ðè¹•Ü…Ñ”¡…Ñ”¹¹½Ü ¤€´€¡¥¹‘•à€¬€ÄÀ¤€¨€àØÐÀÀÀÀÀ¤¹Ñ½%M=MÑÉ¥¹œ ¤°(€€€€€€€‘½¹•Ðè¹•Ü…Ñ”¡…Ñ”¹¹½Ü ¤€´€¡¥¹‘•à€¬€È¤€¨€àØÐÀÀÀÀÀ¤¹Ñ½%M=MÑÉ¥¹œ ¤°(€€€€€ô¤ì(€€€ô(€€€É•¹‘•ÉÉ½¹½Q…Í­Ì ¤ì(€ô¤ì(€½¹ÍÐÁ¥…¹½I½Ü€ôÁ…¹•°¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µ±…¹”¹Á¥…¹¼€¹É½¹¼µÑ…Í¬µÉ½Üœ¤¹™¥ÉÍÐ ¤ì(€…Ý…¥ÐÁ¥…¹½I½Ü¹±¥¬ ¤ì(€•áÁ•Ð¡…Ý…¥ÐÁ¥…¹½I½Ü¹•Ù…±Õ…Ñ”¡É½Ü€ôøÉ½Ü¹±…ÍÍ1¥ÍÐ¹½¹Ñ…¥¹Ì ¥Ìµ½µÁ±•Ñ¥¹œœ¤¤¤¹Ñ½	”¡ÑÉÕ”¤ì(€…Ý…¥Ð•áÁ•Ð¡Á…¹•°¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µ±…¹”¹Á¥…¹¼€¹É½¹¼µÑ…Í¬µ±•…¸œ¤¤¹Ñ½½¹Ñ…¥¹Q•áÐ Q½‘¼±¥µÁ¥¼œ¤ì(€½¹ÍÐ½µÁ±•Ñ•€ôÁ…¹•°¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µ±…¹”¹Á¥…¹¼€¹É½¹¼µÑ…Í¬µ½µÁ±•Ñ•œ¤ì(€…Ý…¥Ð•áÁ•Ð¡½µÁ±•Ñ•¹±½…Ñ½È ÍÕµµ…Éäœ¤¤¹Ñ½½¹Ñ…¥¹Q•áÐ œØ¡•¡…Ìœ¤ì(€…Ý…¥Ð•áÁ•Ð¡½µÁ±•Ñ•¤¹¹½Ð¹Ñ½!…Ù•ÑÑÉ¥‰ÕÑ” ½Á•¸œ°€œœ¤ì(€…Ý…¥Ð•áÁ•Ð¡½µÁ±•Ñ•¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µÉ½Üœ¤¹™¥ÉÍÐ ¤¤¹Ñ½	•!¥‘‘•¸ ¤ì(€…Ý…¥Ð½µÁ±•Ñ•¹±½…Ñ½È ÍÕµµ…Éäœ¤¹±¥¬ ¤ì(€…Ý…¥Ð•áÁ•Ð¡½µÁ±•Ñ•¤¹Ñ½!…Ù•ÑÑÉ¥‰ÕÑ” ½Á•¸œ°€œœ¤ì(€…Ý…¥Ð•áÁ•Ð¡½µÁ±•Ñ•¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µÉ½Üœ¤¹™¥ÉÍÐ ¤¤¹Ñ½½¹Ñ…¥¹Q•áÐ ÍÑÕ‘¥…È±„½‘„Í¥¸Á•‘…°œ¤ì(€…Ý…¥Ð•áÁ•Ð¡½µÁ±•Ñ•¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µÉ½Üœ¤¹™¥ÉÍÐ ¤¤¹Ñ½	•Y¥Í¥‰±” ¤ì(€…Ý…¥Ð½µÁ±•Ñ•¹±½…Ñ½È ÍÕµµ…Éäœ¤¹±¥¬ ¤ì(€…Ý…¥Ð•áÁ•Ð¡½µÁ±•Ñ•¤¹¹½Ð¹Ñ½!…Ù•ÑÑÉ¥‰ÕÑ” ½Á•¸œ°€œœ¤ì(€½¹ÍÐÁ•ÉÍ½¹…±=¹±ä€ô…Ý…¥ÐÁ…”¹•Ù…±Õ…Ñ”  ¤€ôøì(€€€±½…±MÑ½É…”¹É•µ½Ù•%Ñ•´¡I=9=}QM-}I5%9I}-d¤ì(€€€É½¹½M•Ñ%‘±•É…Ý•ÉQ…ˆ Á…Í…©•Ìœ¤ì(€€€É•ÑÕÉ¸ìÉ•µ¥¹‘•èÉ½¹½5…å‰•I•µ¥¹‘Q…Í­Ì Ñ•ÍÐœ¤°Ñ…ˆè‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½%‘±•É…Ý•Èœ¤¹‘…Ñ…Í•Ð¹Ñ…ˆôì(€ô¤ì(€•áÁ•Ð¡Á•ÉÍ½¹…±=¹±ä¤¹Ñ½ÅÕ…°¡ìÉ•µ¥¹‘•è™…±Í”°Ñ…ˆè€Á…Í…©•Ìœô¤ì((€…Ý…¥ÐÁ…”¹Í•ÑY¥•ÝÁ½ÉÑM¥é”¡ìÝ¥‘Ñ è€àÌÐ°¡•¥¡Ðè€ÄÄäÐô¤ì(€•áÁ•Ð¡…Ý…¥ÐÁ…”¹•Ù…±Õ…Ñ”  ¤€ôø•Ñ½µÁÕÑ•‘MÑå±”¡‘½Õµ•¹Ð¹ÅÕ•ÉåM•±•Ñ½È œ¹É½¹¼µÑ…Í¬µ½±Õµ¹Ìœ¤¤¹É¥‘Q•µÁ±…Ñ•½±Õµ¹Ì¹ÍÁ±¥Ð œ€œ¤¹±•¹Ñ ¤¤¹Ñ½	” Ä¤ì(€…Ý…¥Ð•áÁ•Ð¡½µÁ±•Ñ•¹±½…Ñ½È œ¹É½¹¼µÑ…Í¬µÉ½Üœ¤¹™¥ÉÍÐ ¤¤¹Ñ½	•!¥‘‘•¸ ¤ì(€•áÁ•Ð¡…Ý…¥ÐÁ…”¹•Ù…±Õ…Ñ”  ¤€ôø‘½Õµ•¹Ð¹‘½Õµ•¹Ñ±•µ•¹Ð¹ÍÉ½±±]¥‘Ñ €ðô¥¹¹•É]¥‘Ñ €¬€Ä¤¤¹Ñ½	”¡ÑÉÕ”¤ì)ô¤ì()Ñ•ÍÐ …‘Ù…¹•Ì™É•”Ñ¥µ•ÈÁÉ½É•ÍÌÑ¼„€ÄÈÀµ¥¹ÕÑ”µ…á¥µÕ´…¹•¹±…É•Ìµ½‘”±…‰•±Ìœ°…Íå¹Œ€¡ìÁ…”ô¤€ôøì(€…Ý…¥ÐÁ…”¹Í•ÑY¥•ÝÁ½ÉÑM¥é”¡ìÝ¥‘Ñ è€ÄÀÈÐ°¡•¥¡Ðè€ÜØàô¤ì(€…Ý…¥ÐÁÉ•Á…É”¡Á…”¤ì(€½¹ÍÐµ•ÑÉ¥Ì€ô…Ý…¥ÐÁ…”¹•Ù…±Õ…Ñ”  ¤€ôøì(€€€Í¡½ÝY¥•Ü É½¹½µ•ÑÉ¼œ¤ì(€€€É½¹½M•Ñ5½‘” ÍÑ½ÁÝ…Ñ œ¤ì(€€€½¹ÍÐÍ•±•Ð€ô‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½=‰É…M•±•Ðœ¤ì(€€€Í•±•Ð¹Ù…±Õ”€ô€½‰É„èé½‰É…|Äœì(€€€É½¹½UÁ‘…Ñ•MÑ…ÉÑ	Ñ¸ ¤ì(€€€É½¹½MÑ…ÉÐ ¤ì(€€€½¹ÍÐ…ÉŒ€ô‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½IÕ¹AÉ½É•ÍÍÉŒœ¤ì(€€€É½¹¼¹ÍÑ…ÉÑQÌ€ô…Ñ”¹¹½Ü ¤€´€ØÀ€¨€ØÀ€¨€ÄÀÀÀì(€€€É½¹½UÁ‘…Ñ•Q¥µ•ÉAÉ½É•ÍÌ ¤ì(€€€½¹ÍÐ¡…±™Ý…ä€ôÁ…ÉÍ•±½…Ð¡…ÉŒ¹•ÑÑÑÉ¥‰ÕÑ” ÍÑÉ½­”µ‘…Í¡½™™Í•Ðœ¤¤ì(€€€É½¹¼¹ÍÑ…ÉÑQÌ€ô…Ñ”¹¹½Ü ¤€´€ÄàÀ€¨€ØÀ€¨€ÄÀÀÀì(€€€É½¹½UÁ‘…Ñ•Q¥µ•ÉAÉ½É•ÍÌ ¤ì(€€€½¹ÍÐ…ÁÁ•€ôÁ…ÉÍ•±½…Ð¡…ÉŒ¹•ÑÑÑÉ¥‰ÕÑ” ÍÑÉ½­”µ‘…Í¡½™™Í•Ðœ¤¤ì(€€€É½¹½I•Í•Ð ¤ì(€€€É½¹½I•¹‘•È ¤ì(€€€½¹ÍÐµ½‘”€ô‘½Õµ•¹Ð¹ÅÕ•ÉåM•±•Ñ½È œ¹É½¹¼µµ½‘”µ½ÁÑm‘…Ñ„µµ½‘”ô‰Ñ¥µ•È‰tœ¤ì(€€€½¹ÍÐµ½‘•MÑå±”€ô•Ñ½µÁÕÑ•‘MÑå±”¡µ½‘”¤ì(€€€É•ÑÕÉ¸ì(€€€€€¡…±™Ý…ä°(€€€€€…ÁÁ•°(€€€€€•áÁ•Ñ•‘!…±™Ý…äèI=9=}IU9}AI=IMM}%I€¼€È°(€€€€€™½¹ÑM¥é”èÁ…ÉÍ•±½…Ð¡µ½‘•MÑå±”¹™½¹ÑM¥é”¤°(€€€€€µ¥¹!•¥¡Ðèµ½‘”¹•Ñ	½Õ¹‘¥¹±¥•¹ÑI•Ð ¤¹¡•¥¡Ð°(€€€€€½±Õµ¹Ìè•Ñ½µÁÕÑ•‘MÑå±”¡‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½5½‘•Q½±”œ¤¤¹É¥‘Q•µÁ±…Ñ•½±Õµ¹Ì¹ÍÁ±¥Ð œ€œ¤¹±•¹Ñ °(€€€€€½¹ÑÉ½±Í%¹5…¥¸è€„…‘½Õµ•¹Ð¹ÅÕ•ÉåM•±•Ñ½È œ¹É½¹¼µ¥‘±”µµ…¥¸€ø€¹É½¹¼µ¥‘±”µ½¹ÑÉ½±Ìœ¤°(€€€ôì(€ô¤ì((€•áÁ•Ð¡5…Ñ ¹…‰Ì¡µ•ÑÉ¥Ì¹¡…±™Ý…ä€´µ•ÑÉ¥Ì¹•áÁ•Ñ•‘!…±™Ý…ä¤¤¹Ñ½	•1•ÍÍQ¡…¸ È¤ì(€•áÁ•Ð¡µ•ÑÉ¥Ì¹…ÁÁ•¤¹Ñ½	•1•ÍÍQ¡…¹=ÉÅÕ…° À¸ÀÄ¤ì(€•áÁ•Ð¡µ•ÑÉ¥Ì¹™½¹ÑM¥é”¤¹Ñ½	•É•…Ñ•ÉQ¡…¹=ÉÅÕ…° ÄÌ¤ì(€•áÁ•Ð¡µ•ÑÉ¥Ì¹µ¥¹!•¥¡Ð¤¹Ñ½	•É•…Ñ•ÉQ¡…¹=ÉÅÕ…° ÐÐ¤ì(€•áÁ•Ð¡µ•ÑÉ¥Ì¹½±Õµ¹Ì¤¹Ñ½	” Ì¤ì(€•áÁ•Ð¡µ•ÑÉ¥Ì¹½¹ÑÉ½±Í%¹5…¥¸¤¹Ñ½	”¡ÑÉÕ”¤ì)ô¤ì()Ñ•ÍÐ ‘•‘ÕÁ±¥…Ñ•Ì‰…­É½Õ¹Ñ¥µ•È…¹ÍÑ½ÁÝ…Ñ ¹½Ñ¥™¥…Ñ¥½¹Ìœ°…Íå¹Œ€¡ìÁ…”ô¤€ôøì(€…Ý…¥ÐÁÉ•Á…É”¡Á…”¤ì(€½¹ÍÐÉ•ÍÕ±Ð€ô…Ý…¥ÐÁ…”¹•Ù…±Õ…Ñ”  ¤€ôøì(€€€½¹ÍÐÍ•¹Ð€ômtì(€€€É½¹½M¡½ÝMåÍÑ•µ9½Ñ¥™¥…Ñ¥½¸€ô•Ù•¹Ð€ôøÍ•¹Ð¹ÁÕÍ ¡•Ù•¹Ð¤ì(€€€É½¹¼¹ÍÑ…Ñ”€ô€ÉÕ¹¹¥¹œœì(€€€É½¹¼¹ÉÕ¹%€ô€¹½Ñ¥™¥…Ñ¥½¸µ”É”œì(€€€É½¹¼¹½‰É…%€ô€½‰É…|Äœì(€€€É½¹¼¹‘¥ÍÁ±…å9…µ”€ô€	… ƒ
+ÜAÉ•±Õ‘¥¼œì(€€€É½¹¼¹¥ÍI•ÍÐ€ô™…±Í”ì(€€€É½¹¼¹Ñ…É•Ñ5¥¹ÕÑ•Ì€ô¹Õ±°ì(€€€É½¹¼¹Ñ…É•ÑÕÉ…Ñ¥½¹5Ì€ô¹Õ±°ì(€€€É½¹¼¹¹½Ñ¥™¥…Ñ¥½¹¥Ù•5¥¹ÕÑ•M•¹Ð€ô™…±Í”ì(€€€É½¹¼¹¹½Ñ¥™¥…Ñ¥½¹Q¥µ•É5¥¹ÕÑ•ÍM•¹Ð€ômtì(€€€É½¹¼¹¹½Ñ¥™¥…Ñ¥½¹1…ÍÑ5¥±•ÍÑ½¹•5¥¹ÕÑ•Ì€ô€Àì((€€€É½¹½¡•­M•ÍÍ¥½¹9½Ñ¥™¥…Ñ¥½¹Ì ÐØ€¨€ØÁ|ÀÀÀ°ÑÉÕ”¤ì(€€€É½¹½¡•­M•ÍÍ¥½¹9½Ñ¥™¥…Ñ¥½¹Ì ÐØ€¨€ØÁ|ÀÀÀ°ÑÉÕ”¤ì((€€€É½¹¼¹Ñ…É•Ñ5¥¹ÕÑ•Ì€ô€ÈÔì(€€€É½¹¼¹Ñ…É•ÑÕÉ…Ñ¥½¹5Ì€ô€ÈÔ€¨€ØÁ|ÀÀÀì(€€€É½¹¼¹¹½Ñ¥™¥…Ñ¥½¹¥Ù•5¥¹ÕÑ•M•¹Ð€ô™…±Í”ì(€€€É½¹¼¹¹½Ñ¥™¥…Ñ¥½¹Q¥µ•É5¥¹ÕÑ•ÍM•¹Ð€ômtì(€€€É½¹¼¹¹½Ñ¥™¥…Ñ¥½¹1…ÍÑ5¥±•ÍÑ½¹•5¥¹ÕÑ•Ì€ô€Àì(€€€É½¹½¡•­M•ÍÍ¥½¹9½Ñ¥™¥…Ñ¥½¹Ì ÈÄ€¨€ØÁ|ÀÀÀ°™…±Í”¤ì(€€€½¹ÍÐ‰•™½É•	…­É½Õ¹€ôì(€€€€€Í•¹ÐèÍ•¹Ð¹±•¹Ñ °(€€€€€µ…É­•èÉ½¹¼¹¹½Ñ¥™¥…Ñ¥½¹Q¥µ•É5¥¹ÕÑ•ÍM•¹Ð¹Í±¥” ¤°(€€€ôì(€€€É½¹½¡•­M•ÍÍ¥½¹9½Ñ¥™¥…Ñ¥½¹Ì ÈÄ€¨€ØÁ|ÀÀÀ°ÑÉÕ”¤ì(€€€É½¹½¡•­M•ÍÍ¥½¹9½Ñ¥™¥…Ñ¥½¹Ì ÈÄ€¨€ØÁ|ÀÀÀ°ÑÉÕ”¤ì(€€€™½È€¡½¹ÍÐ•±…ÁÍ•‘5¥¹ÕÑ•Ì½˜lÈÈ°€ÈÌ°€ÈÑt¤ì(€€€€€É½¹½¡•­M•ÍÍ¥½¹9½Ñ¥™¥…Ñ¥½¹Ì¡•±…ÁÍ•‘5¥¹ÕÑ•Ì€¨€ØÁ|ÀÀÀ°ÑÉÕ”¤ì(€€€€€É½¹½¡•­M•ÍÍ¥½¹9½Ñ¥™¥…Ñ¥½¹Ì¡•±…ÁÍ•‘5¥¹ÕÑ•Ì€¨€ØÁ|ÀÀÀ°ÑÉÕ”¤ì(€€€ô((€€€½¹ÍÐÍ…Ù•€ô)M=8¹Á…ÉÍ”¡±½…±MÑ½É…”¹•Ñ%Ñ•´¡I=9=}MQ=I}-d¤¤ì(€€€É½¹½I•Í•Ð ¤ì(€€€É•ÑÕÉ¸ì(€€€€€Í•¹Ð°(€€€€€™¥Ù•5¥¹ÕÑ•M•¹ÐèÍ…Ù•¹¹½Ñ¥™¥…Ñ¥½¹¥Ù•5¥¹ÕÑ•M•¹Ð°(€€€€€Ñ¥µ•É5¥¹ÕÑ•ÍM•¹ÐèÍ…Ù•¹¹½Ñ¥™¥…Ñ¥½¹Q¥µ•É5¥¹ÕÑ•ÍM•¹Ð°(€€€€€±…ÍÑ5¥±•ÍÑ½¹•5¥¹ÕÑ•ÌèÍ…Ù•¹¹½Ñ¥™¥…Ñ¥½¹1…ÍÑ5¥±•ÍÑ½¹•5¥¹ÕÑ•Ì°(€€€€€‰•™½É•	…­É½Õ¹°(€€€ôì(€ô¤ì((€•áÁ•Ð¡É•ÍÕ±Ð¹Í•¹Ð¤¹Ñ½ÅÕ…°¡l(€€€ì­¥¹è€ÍÑ½ÁÝ…Ñ µµ¥±•ÍÑ½¹”œ°µ¥±•ÍÑ½¹•5¥¹ÕÑ•Ìè€ÐÔô°(€€€ì­¥¹è€Ñ¥µ•Èµ½Õ¹Ñ‘½Ý¸œ°É•µ…¥¹¥¹5Ìè€Ð€¨€ØÁ|ÀÀÀ°Ý…É¹¥¹5¥¹ÕÑ•Ìè€Ðô°(€€€ì­¥¹è€Ñ¥µ•Èµ½Õ¹Ñ‘½Ý¸œ°É•µ…¥¹¥¹5Ìè€Ì€¨€ØÁ|ÀÀÀ°Ý…É¹¥¹5¥¹ÕÑ•Ìè€Ìô°(€€€ì­¥¹è€Ñ¥µ•Èµ½Õ¹Ñ‘½Ý¸œ°É•µ…¥¹¥¹5Ìè€È€¨€ØÁ|ÀÀÀ°Ý…É¹¥¹5¥¹ÕÑ•Ìè€Èô°(€€€ì­¥¹è€Ñ¥µ•Èµ½Õ¹Ñ‘½Ý¸œ°É•µ…¥¹¥¹5Ìè€Ä€¨€ØÁ|ÀÀÀ°Ý…É¹¥¹5¥¹ÕÑ•Ìè€Äô°(€t¤ì(€•áÁ•Ð¡É•ÍÕ±Ð¹‰•™½É•	…­É½Õ¹¤¹Ñ½ÅÕ…°¡ìÍ•¹Ðè€Ä°µ…É­•èmtô¤ì(€•áÁ•Ð¡É•ÍÕ±Ð¹™¥Ù•5¥¹ÕÑ•M•¹Ð¤¹Ñ½	”¡ÑÉÕ”¤ì(€•áÁ•Ð¡É•ÍÕ±Ð¹Ñ¥µ•É5¥¹ÕÑ•ÍM•¹Ð¤¹Ñ½ÅÕ…°¡lÔ°€Ð°€Ì°€È°€Åt¤ì(€•áÁ•Ð¡É•ÍÕ±Ð¹±…ÍÑ5¥±•ÍÑ½¹•5¥¹ÕÑ•Ì¤¹Ñ½	” À¤ì)ô¤ì()Ñ•ÍÐ ­••ÁÌÑ¡”¥‘±”…¹ÉÕ¹¹¥¹œÑ¥µ•È¥¸Ñ¡”Í…µ”¥A…½µÁ½Í¥Ñ¥½¸œ°…Íå¹Œ€¡ì‰É½ÝÍ•Èô¤€ôøì(€™½È€¡½¹ÍÐÙ¥•ÝÁ½ÉÐ½˜mìÝ¥‘Ñ è€ÄÀÈÐ°¡•¥¡Ðè€ÜØàô°ìÝ¥‘Ñ è€àÌÐ°¡•¥¡Ðè€ÄÄäÐõt¤ì(€€€½¹ÍÐ½¹Ñ•áÐ€ô…Ý…¥Ð‰É½ÝÍ•È¹¹•Ý½¹Ñ•áÐ¡ìÙ¥•ÝÁ½ÉÐô¤ì(€€€½¹ÍÐÁ…”€ô…Ý…¥Ð½¹Ñ•áÐ¹¹•ÝA…” ¤ì(€€€…Ý…¥ÐÁÉ•Á…É”¡Á…”¤ì((€€€½¹ÍÐ±…å½ÕÐ€ô…Ý…¥ÐÁ…”¹•Ù…±Õ…Ñ”¡…Íå¹Œ€ ¤€ôøì(€€€€€Í¡½ÝY¥•Ü É½¹½µ•ÑÉ¼œ¤ì(€€€€€‘ˆ¹½‰É…ÍlÁt¹½±½È€ô€½•…¸œì(€€€€€É½¹½M•Ñ5½‘” Ñ¥µ•Èœ¤ì(€€€€€É½¹½M•ÑQ¥µ•ÉAÉ•Í•Ð ÈÔ¤ì(€€€€€½¹ÍÐÍ•±•Ð€ô‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½=‰É…M•±•Ðœ¤ì(€€€€€Í•±•Ð¹Ù…±Õ”€ô€½‰É„èé½‰É…|Äœì(€€€€€É½¹½M•Ñ=‰Í•ÉÙ…Ñ¥½¸ ½‘„±¥µÁ¥„°ÁÕ±Í¼•ÍÑ…‰±”œ¤ì(€€€€€É½¹½UÁ‘…Ñ•MÑ…ÉÑ	Ñ¸ ¤ì(€€€€€É½¹½I•¹‘•È ¤ì(€€€€€…Ý…¥Ð¹•ÜAÉ½µ¥Í”¡É•Í½±Ù”€ôøÍ•ÑQ¥µ•½ÕÐ¡É•Í½±Ù”°€ØÀÀ¤¤ì((€€€€€½¹ÍÐÉ•Ð€ô•±•µ•¹Ð€ôøì(€€€€€€€½¹ÍÐ‰½à€ô•±•µ•¹Ð¹•Ñ	½Õ¹‘¥¹±¥•¹ÑI•Ð ¤ì(€€€€€€€É•ÑÕÉ¸ìÑ½Àè‰½à¹Ñ½À°±•™Ðè‰½à¹±•™Ð°É¥¡Ðè‰½à¹É¥¡Ð°‰½ÑÑ½´è‰½à¹‰½ÑÑ½´°Ý¥‘Ñ è‰½à¹Ý¥‘Ñ °¡•¥¡Ðè‰½à¹¡•¥¡Ðôì(€€€€€ôì(€€€€€½¹ÍÐ¥‘±”€ôì(€€€€€€€µ…¥¸èÉ•Ð¡‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½MÑ…•%‘±”œ¤¹ÅÕ•ÉåM•±•Ñ½È œ¹É½¹¼µ¥‘±”µµ…¥¸œ¤¤°(€€€€€€€‘É…Ý•ÈèÉ•Ð¡‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½%‘±•É…Ý•Èœ¤¤°(€€€€€€€É¥¹œèÉ•Ð¡‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½Q¥µ•ÉMÙœœ¤¤°(€€€€€€€‘•ÍÑ•±±¼èÉ•Ð¡‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½%‘±•5•ÍÍ…”œ¤¤°(€€€€€€€ÍÑ…ÉÐèÉ•Ð¡‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½MÑ…ÉÑ	Ñ¸œ¤¤°(€€€€€€€ÁÉ•Í•Ñ½Õ¹Ðè‘½Õµ•¹Ð¹ÅÕ•ÉåM•±•Ñ½É±° œÉ½¹½ÕÉ…Ñ¥½¹AÉ•Í•ÑÌ‰ÕÑÑ½¸œ¤¹±•¹Ñ °(€€€€€€€Ñ…‰Ìèl¸¸¹‘½Õµ•¹Ð¹ÅÕ•ÉåM•±•Ñ½É±° œÉ½¹½%‘±•É…Ý•È€¹É½¹¼µ¥‘±”µ‘É…Ý•ÈµÑ…ˆœ¥t¹µ…À¡‰ÕÑÑ½¸€ôø‰ÕÑÑ½¸¹‘…Ñ…Í•Ð¹Ñ…ˆ¤°(€€€€€€€½‰©•Ñ¥Ù•I•µ½Ù•è€…‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½%‘±•=‰©•Ñ¥Ù”œ¤€˜˜€…‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½%‘±•=‰©•Ñ¥Ù•Q•áÐœ¤°(€€€€€€€‘¥ÍÁ±…äè‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½Q¥µ•ÉQ•áÐœ¤¹Ñ•áÑ½¹Ñ•¹Ð°(€€€€€€€…É½±½Èè•Ñ½µÁÕÑ•‘MÑå±”¡‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½Q¥µ•ÉÉŒœ¤¤¹ÍÑÉ½­”°(€€€€€€€¡…¹‘±•½±½Èè•Ñ½µÁÕÑ•‘MÑå±”¡‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½Q¥µ•É!…¹‘±”œ¤¤¹™¥±°°(€€€€€€€ÕÍ•ÍIÕ¹¹¥¹¥ÍÁ±…äè‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½Q¥µ•ÉQ•áÐœ¤¹±…ÍÍ1¥ÍÐ¹½¹Ñ…¥¹Ì É½¹¼µ‘¥ÍÁ±…äœ¤(€€€€€€€€€€˜˜‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½Q¥µ•ÉMÙœœ¤¹±…ÍÍ1¥ÍÐ¹½¹Ñ…¥¹Ì É½¹¼µÉÕ¸µÁÉ½É•ÍÌµÍÙœœ¤°(€€€€€€€…É‘•¸è•Ñ½µÁÕÑ•‘MÑå±”¡‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½…É‘•¸œ¤¤¹‘¥ÍÁ±…ä°(€€€€€ôì((€€€€€É½¹½MÑ…ÉÐ ¤ì(€€€€€½¹ÍÐÉÕ¹¹¥¹œ€ôì(€€€€€€€µ…¥¸èÉ•Ð¡‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½MÑ…•IÕ¸œ¤¤°(€€€€€€€‘É…Ý•ÈèÉ•Ð¡‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½IÕ¹É…Ý•Èœ¤¤°(€€€€€€€É¥¹œèÉ•Ð¡‘½Õµ•¹Ð¹ÅÕ•ÉåM•±•Ñ½È œÉ½¹½MÑ…•IÕ¸€¹É½¹¼µÉÕ¸µÁÉ½É•ÍÌµÍÙœœ¤¤°(€€€€€€€…É½±½Èè•Ñ½µÁÕÑ•‘MÑå±”¡‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½IÕ¹AÉ½É•ÍÍÉŒœ¤¤¹ÍÑÉ½­”°(€€€€€€€¡…¹‘±•½±½Èè•Ñ½µÁÕÑ•‘MÑå±”¡‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½IÕ¹AÉ½É•ÍÍ!…¹‘±”œ¤¤¹™¥±°°(€€€€€€€Ñ…‰Ìèl¸¸¹‘½Õµ•¹Ð¹ÅÕ•ÉåM•±•Ñ½É±° œÉ½¹½IÕ¹É…Ý•È€¹É½¹¼µÉÕ¸µ‘É…Ý•ÈµÑ…ˆœ¥t¹µ…À¡‰ÕÑÑ½¸€ôø‰ÕÑÑ½¸¹‘…Ñ…Í•Ð¹Ñ…ˆ¤°(€€€€€€€½‰©•Ñ¥Ù•I•µ½Ù•è€…‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½IÕ¹=‰©•Ñ¥Ù”œ¤€˜˜€…‘½Õµ•¹Ð¹•Ñ±•µ•¹Ñ	å% É½¹½IÕ¹=‰©•Ñ¥Ù•Q•áÐœ¤°(€€€€€ôì(€€€€€É•ÑÕÉ¸ì(€€€€€€€Á½ÉÑÉ…¥Ðèµ…Ñ¡5•‘¥„ œ¡½É¥•¹Ñ…Ñ¥½¸èÁ½ÉÑÉ…¥Ð¤œ¤¹µ…Ñ¡•Ì°(€€€€€€€™¥ÑÍ]¥‘Ñ è‘½Õµ•¹Ð¹‘½Õµ•¹Ñ±•µ•¹Ð¹ÍÉ½±±]¥‘Ñ €ðô¥¹¹•É]¥‘Ñ €¬€Ä°(€€€€€€€¥‘±”°(€€€€€€€ÉÕ¹¹¥¹œ°(€€€€€ôì(€€€ô¤ì((€€€•áÁ•Ð¡±…å½ÕÐ¹™¥ÑÍ]¥‘Ñ ¤¹Ñ½	”¡ÑÉÕ”¤ì(€€€•áÁ•Ð¡±…å½ÕÐ¹¥‘±”¹Ñ…‰Ì¤¹Ñ½ÅÕ…°¡lÁ…Í…©•Ìœ°€¹½Ñ„œ°€Ñ…É•…Ìœ°€Á…Í”t¤ì(€€€•áÁ•Ð¡±…å½ÕÐ¹ÉÕ¹¹¥¹œ¹Ñ…‰Ì¤¹Ñ½ÅÕ…°¡±…å½ÕÐ¹¥‘±”¹Ñ…‰Ì¤ì(€€€•áÁ•Ð¡±…å½ÕÐ¹¥‘±”¹ÁÉ•Í•Ñ½Õ¹Ð¤¹Ñ½	” À¤ì(€€€•áÁ•Ð¡±…å½ÕÐ¹¥‘±”¹‘•ÍÑ•±±¼¹Ñ½À€´±…å½ÕÐ¹¥‘±”¹É¥¹œ¹‰½ÑÑ½´¤¹Ñ½	•É•…Ñ•ÉQ¡…¹=ÉÅÕ…° à¤ì(€€€•áÁ•Ð¡±…å½ÕÐ¹¥‘±”¹ÍÑ…ÉÐ¹‰½ÑÑ½´¤¹Ñ½	•1•ÍÍQ¡…¹=ÉÅÕ…°¡±…å½ÕÐ¹¥‘±”¹µ…¥¸¹‰½ÑÑ½´€¬€Ä¤ì(€€€•áÁ•Ð¡±…å½ÕÐ¹¥‘±”¹½‰©•Ñ¥Ù•I•µ½Ù•¤¹Ñ½	”¡ÑÉÕ”¤ì(€€€•áÁ•Ð¡±…å½ÕÐ¹¥‘±”¹…É½±½È¤¹Ñ½	”¡±…å½ÕÐ¹¥‘±”¹¡…¹‘±•½±½È¤ì(€€€•áÁ•Ð¡±…å½ÕÐ¹ÉÕ¹¹¥¹œ¹…É½±½È¤¹Ñ½	”¡±…å½ÕÐ¹ÉÕ¹¹¥¹œ¹¡…¹‘±•½±½È¤ì(€€€•áÁ•Ð¡±…å½ÕÐ¹ÉÕ¹¹¥¹œ¹…É½±½È¤¹Ñ½	”¡±…å½ÕÐ¹¥‘±”¹…É½±½È¤ì(€€€•áÁ•Ð¡±…å½ÕÐ¹ÉÕ¹¹¥¹œ¹½‰©•Ñ¥Ù•I•µ½Ù•¤¹Ñ½	”¡ÑÉÕ”¤ì(€€€•áÁ•Ð¡±…å½ÕÐ¹¥‘±”¹‘¥ÍÁ±…ä¤¹Ñ½	” œÈÔèÀÀœ¤ì(€€€•áÁ•Ð¡±…å½ÕÐ¹¥‘±”¹ÕÍ•ÍIÕ¹¹¥¹¥ÍÁ±…ä¤¹Ñ½	”¡ÑÉÕ”¤ì(€€€•áÁ•Ð¡±…å½ÕÐ¹¥‘±”¹…É‘•¸¤¹Ñ½	” ¹½¹”œ¤ì(€€€•áÁ•Ð¡5…Ñ ¹…‰Ì¡±…å½ÕÐ¹¥‘±”¹É¥¹œ¹Ý¥‘Ñ €´±…å½ÕÐ¹ÉÕ¹¹¥¹œ¹É¥¹œ¹Ý¥‘Ñ ¤¤¹Ñ½	•1•ÍÍQ¡…¹=ÉÅÕ…° È¤ì((€€€¥˜€¡±…å½ÕÐ¹Á½ÉÑÉ…¥Ð¤ì(€€€€€•áÁ•Ð¡±…å½ÕÐ¹¥‘±”¹‘É…Ý•È¹Ñ½À¤¹Ñ½	•É•…Ñ•ÉQ¡…¹=ÉÅÕ…°¡±…å½ÕÐ¹¥‘±”¹µ…¥¸¹‰½ÑÑ½´€´€Ä¤ì(€€€€€•áÁ•Ð¡±…å½ÕÐ¹ÉÕ¹¹¥¹œ¹‘É…Ý•È¹Ñ½À¤¹Ñ½	•É•…Ñ•ÉQ¡…¹=ÉÅÕ…°¡±…å½ÕÐ¹ÉÕ¹¹¥¹œ¹µ…¥¸¹‰½ÑÑ½´€´€Ä¤ì(€€€ô•±Í”ì(€€€€€•áÁ•Ð¡5…Ñ ¹…‰Ì¡±…å½ÕÐ¹¥‘±”¹µ…¥¸¹±•™Ð€´±…å½ÕÐ¹ÉÕ¹¹¥¹œ¹µ…¥¸¹±•™Ð¤¤¹Ñ½	•1•ÍÍQ¡…¹=ÉÅÕ…° È¤ì(€€€€€•áÁ•Ð¡5…Ñ ¹…‰Ì¡±…å½ÕÐ¹¥‘±”¹‘É…Ý•È¹±•™Ð€´±…å½ÕÐ¹ÉÕ¹¹¥¹œ¹‘É…Ý•È¹±•™Ð¤¤¹Ñ½	•1•ÍÍQ¡…¹=ÉÅÕ…° È¤ì(€€€€€•áÁ•Ð¡5…Ñ ¹…‰Ì¡±…å½ÕÐ¹¥‘±”¹µ…¥¸¹¡•¥¡Ð€´±…å½ÕÐ¹ÉÕ¹¹¥¹œ¹µ…¥¸¹¡•¥¡Ð¤¤¹Ñ½	•1•ÍÍQ¡…¹=ÉÅÕ…° È¤ì(€€€€€•áÁ•Ð¡5…Ñ ¹…‰Ì¡±…å½ÕÐ¹¥‘±”¹‘É…Ý•È¹¡•¥¡Ð€´±…å½ÕÐ¹ÉÕ¹¹¥¹œ¹‘É…Ý•È¹¡•¥¡Ð¤¤¹Ñ½	•1•ÍÍQ¡…¹=ÉÅÕ…° È¤ì(€€€ô(€€€…Ý…¥Ð½¹Ñ•áÐ¹±½Í” ¤ì(€ô)ô¤ì(
