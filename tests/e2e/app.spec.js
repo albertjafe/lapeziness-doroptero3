@@ -90,7 +90,8 @@ test('keeps mobile navigation visible and marks empty daily states honestly', as
     expect(state.sleepActive).toBe(0);
     expect(state.wellbeingStatus).toContain('Sin registrar hoy');
     expect(state.sleepStatus).toContain('Sin registrar hoy');
-    expect(state.summary).toContain('sin objetivo configurado');
+    expect(state.summary).toContain('0 min');
+    expect(state.summary.toLowerCase()).not.toContain('objetivo');
     await context.close();
   }
 });
@@ -302,11 +303,19 @@ test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) =>
   await prepare(page);
   const state = await page.evaluate(() => {
     showView('session');
+    db.dailyGoalMinutes = 240;
+    renderSessionResumen();
     const hoy = {
       nav: document.querySelector('.nav-btn[data-view="session"]')?.textContent.trim(),
       action: document.getElementById('sessionStartStudyBtn')?.textContent.trim(),
       summary: document.getElementById('sessionResumenCard')?.textContent || '',
-      journal: [...document.querySelectorAll('#view-session button')].find(button => /Guardar entrada/.test(button.textContent))?.textContent.trim(),
+      journal: {
+        label: document.getElementById('sessionJournalToggle')?.getAttribute('aria-label'),
+        text: document.getElementById('sessionJournalToggle')?.textContent.trim(),
+        expanded: document.getElementById('sessionJournalToggle')?.getAttribute('aria-expanded'),
+        panelHidden: document.getElementById('sessionJournalPanel')?.hidden,
+      },
+      hasGoalRing: !!document.querySelector('#sessionResumenCard .session-resumen-ring'),
       nudge: document.querySelector('.session-insight-card.nudge'),
       refresh: (() => {
         const button = document.querySelector('#view-session .app-refresh-btn');
@@ -329,7 +338,14 @@ test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) =>
   expect(state.hoy.nav).toBe('Hoy');
   expect(state.hoy.action).toBe('Empezar a estudiar');
   expect(state.hoy.summary).toContain('Aún sin actividad registrada');
-  expect(state.hoy.journal).toBe('Guardar entrada');
+  expect(state.hoy.summary.toLowerCase()).not.toContain('objetivo');
+  expect(state.hoy.hasGoalRing).toBe(false);
+  expect(state.hoy.journal).toEqual({
+    label: 'Añadir una entrada al diario',
+    text: '+',
+    expanded: 'false',
+    panelHidden: true,
+  });
   expect(state.hoy.nudge).toBeNull();
   expect(state.hoy.refresh).toEqual({ label: 'Comprobar actualización', width: 44, height: 44, hasIcon: true });
   expect(state.cronoStart).toBe('Iniciar');
@@ -337,6 +353,15 @@ test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) =>
   expect(state.runTabs).toEqual(['pasajes', 'nota', 'tareas', 'pase']);
   expect(state.bottomDisplay).toBe('none');
   expect(state.cronoRefresh).toEqual({ label: 'Comprobar actualización', width: 44, height: 44, hasIcon: true });
+
+  await page.evaluate(() => showView('session'));
+  await page.locator('#sessionJournalToggle').click();
+  await expect(page.locator('#sessionJournalPanel')).toBeVisible();
+  await expect(page.locator('#sessionJournalInput')).toBeFocused();
+  await page.locator('#sessionJournalInput').fill('Escuchar la toma de hoy');
+  await page.locator('.session-journal-submit').click();
+  await expect(page.locator('#sessionJournalPanel')).toBeHidden();
+  expect(await page.evaluate(() => sessionJournalTodayEntries().at(-1)?.text)).toBe('Escuchar la toma de hoy');
 });
 
 test('progressively reveals Obras tools and keeps evolution samples honest', async ({ page }) => {
@@ -699,7 +724,16 @@ test('separates piano and personal tasks and only reminds piano work', async ({ 
   await pianoRow.click();
   expect(await pianoRow.evaluate(row => row.classList.contains('is-completing'))).toBe(true);
   await expect(panel.locator('.crono-task-lane.piano .crono-task-clean')).toContainText('Todo limpio');
-  await expect(panel.locator('.crono-task-lane.piano .crono-task-completed .crono-task-row').first()).toContainText('Estudiar la coda sin pedal');
+  const completed = panel.locator('.crono-task-lane.piano .crono-task-completed');
+  await expect(completed.locator('summary')).toContainText('6 hechas');
+  await expect(completed).not.toHaveAttribute('open', '');
+  await expect(completed.locator('.crono-task-row').first()).toBeHidden();
+  await completed.locator('summary').click();
+  await expect(completed).toHaveAttribute('open', '');
+  await expect(completed.locator('.crono-task-row').first()).toContainText('Estudiar la coda sin pedal');
+  await expect(completed.locator('.crono-task-row').first()).toBeVisible();
+  await completed.locator('summary').click();
+  await expect(completed).not.toHaveAttribute('open', '');
   const personalOnly = await page.evaluate(() => {
     localStorage.removeItem(CRONO_TASK_REMINDER_KEY);
     cronoSetIdleDrawerTab('pasajes');
@@ -709,6 +743,7 @@ test('separates piano and personal tasks and only reminds piano work', async ({ 
 
   await page.setViewportSize({ width: 834, height: 1194 });
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.crono-task-columns')).gridTemplateColumns.split(' ').length)).toBe(1);
+  await expect(completed.locator('.crono-task-row').first()).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });
 

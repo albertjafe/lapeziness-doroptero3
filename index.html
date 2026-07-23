@@ -119,7 +119,6 @@
   <div class="view-action-row hoy-action-row">
     <div>
       <div class="view-local-label">Resumen de hoy</div>
-      <div class="view-local-subtitle">Minutos, estado y diario en un solo lugar</div>
     </div>
     <div class="hoy-action-buttons">
       <button type="button" class="hoy-quick-study-btn" id="sessionQuickStudyBtn" onclick="openSesionManual()">Añadir estudio</button>
@@ -157,25 +156,28 @@
     </button>
   </div>
 
-  <!-- Resumen del día (anillo + concentrado + racha) — visible solo en Mármol -->
+  <!-- Resumen del día (concentrado + actividad + racha) — visible solo en Mármol -->
   <div class="session-resumen-card" id="sessionResumenCard"></div>
 
   <div class="session-insight-stack" id="sessionInsightStack" style="display:none"></div>
 
-  <section class="session-journal-card" aria-label="Diario del dÃ­a">
-    <div class="session-journal-head">
-      <div>
-        <h2>Diario</h2>
-        <span id="sessionJournalMeta">Hoy</span>
+  <section class="session-journal-card is-collapsed" id="sessionJournalCard" aria-label="Diario del día">
+    <button type="button" class="session-journal-toggle" id="sessionJournalToggle" onclick="toggleSessionJournal()" aria-expanded="false" aria-controls="sessionJournalPanel" aria-label="Añadir una entrada al diario" title="Añadir al diario">
+      <span aria-hidden="true">+</span>
+    </button>
+    <div class="session-journal-panel" id="sessionJournalPanel" hidden>
+      <div class="session-journal-head">
+        <div>
+          <h2>Diario</h2>
+          <span id="sessionJournalMeta">Hoy</span>
+        </div>
       </div>
-      <button type="button" class="session-journal-clear" onclick="clearSessionJournalInput()" title="Vaciar texto">Limpiar</button>
+      <textarea id="sessionJournalInput" class="session-journal-input" rows="3" maxlength="2400" placeholder="Escribe algo que quieras recordar..."></textarea>
+      <div class="session-journal-actions">
+        <button type="button" class="session-journal-submit" onclick="saveSessionJournalEntry()">Guardar</button>
+      </div>
+      <div class="session-journal-list" id="sessionJournalList"></div>
     </div>
-    <textarea id="sessionJournalInput" class="session-journal-input" rows="4" maxlength="2400" placeholder="Dicta o escribe una entrada general del dÃ­a: plan, sensaciones, prioridades, algo que quieras recordar..."></textarea>
-    <div class="session-journal-actions">
-      <span id="sessionJournalHint">Se guarda con fecha y hora.</span>
-      <button type="button" class="session-journal-submit" onclick="saveSessionJournalEntry()">Guardar entrada</button>
-    </div>
-    <div class="session-journal-list" id="sessionJournalList"></div>
   </section>
 
   <div class="session-hero session-ritmo-panel">

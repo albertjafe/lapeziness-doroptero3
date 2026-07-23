@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-23-crono-avisos-v41';
+const APP_VERSION = '2026-07-23-sesion-minimal-v42';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -989,9 +989,24 @@ function sessionJournalTodayEntries() {
     .sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')));
 }
 
-function clearSessionJournalInput() {
-  const input = document.getElementById('sessionJournalInput');
-  if (input) input.value = '';
+function setSessionJournalExpanded(expanded) {
+  const card = document.getElementById('sessionJournalCard');
+  const panel = document.getElementById('sessionJournalPanel');
+  const toggle = document.getElementById('sessionJournalToggle');
+  const open = !!expanded;
+  if (card) card.classList.toggle('is-collapsed', !open);
+  if (panel) panel.hidden = !open;
+  if (toggle) {
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.setAttribute('aria-label', open ? 'Cerrar diario' : 'Añadir una entrada al diario');
+    toggle.title = open ? 'Cerrar diario' : 'Añadir al diario';
+  }
+  if (open) setTimeout(() => document.getElementById('sessionJournalInput')?.focus(), 0);
+}
+
+function toggleSessionJournal() {
+  const toggle = document.getElementById('sessionJournalToggle');
+  setSessionJournalExpanded(toggle?.getAttribute('aria-expanded') !== 'true');
 }
 
 function saveSessionJournalEntry() {
@@ -1014,6 +1029,7 @@ function saveSessionJournalEntry() {
   if (input) input.value = '';
   saveData();
   renderSessionJournal();
+  setSessionJournalExpanded(false);
   try { Haptics.light(); } catch(e) {}
   showToast('Entrada guardada');
 }
@@ -1032,7 +1048,7 @@ function renderSessionJournal() {
   const meta = document.getElementById('sessionJournalMeta');
   const list = document.getElementById('sessionJournalList');
   const input = document.getElementById('sessionJournalInput');
-  if (input) input.placeholder = 'Dicta o escribe una entrada general del dia: plan, sensaciones, prioridades, algo que quieras recordar...';
+  if (input) input.placeholder = 'Escribe algo que quieras recordar...';
   if (!meta && !list) return;
   const entries = sessionJournalTodayEntries();
   if (meta) meta.textContent = entries.length ? ('Hoy · ' + entries.length + (entries.length === 1 ? ' entrada' : ' entradas')) : 'Hoy';
@@ -17225,8 +17241,7 @@ function renderCronoTasks() {
     pending: tasks.filter(task => !task.done && cronoTaskKind(task) === kind).slice(-12).reverse(),
     done: tasks
       .filter(task => task.done && cronoTaskKind(task) === kind)
-      .sort((a, b) => doneTime(b) - doneTime(a))
-      .slice(0, 8),
+      .sort((a, b) => doneTime(b) - doneTime(a)),
   });
   const piano = byKind('piano');
   const personal = byKind('personal');
@@ -17241,13 +17256,21 @@ function renderCronoTasks() {
   };
   const lane = (kind, title, group) => {
     const clean = !group.pending.length;
+    const completed = group.done.length
+      ? '<details class="crono-task-completed">' +
+          '<summary><span>' + group.done.length + (group.done.length === 1 ? ' hecha' : ' hechas') + '</span>' +
+            '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="7 8 10 11 13 8"/></svg>' +
+          '</summary>' +
+          '<div class="crono-task-completed-list">' + group.done.map(row).join('') + '</div>' +
+        '</details>'
+      : '';
     return '<section class="crono-task-lane ' + kind + (clean ? ' is-clean' : '') + '">' +
       '<div class="crono-task-lane-head"><span class="crono-task-lane-dot"></span><strong>' + title + '</strong>' +
         (clean ? '' : '<span class="crono-task-lane-count">' + group.pending.length + '</span>') +
       '</div>' +
       '<div class="crono-task-list">' +
         (clean ? '<div class="crono-task-clean" role="status"><span class="crono-task-clean-check" aria-hidden="true"></span><strong>Todo limpio</strong></div>' : group.pending.map(row).join('')) +
-        (group.done.length ? '<div class="crono-task-completed">' + group.done.map(row).join('') + '</div>' : '') +
+        completed +
       '</div>' +
     '</section>';
   };
@@ -18959,26 +18982,11 @@ function _pasajeChartSVG(p) {
 }
 
 // Tarjeta resumen del día de la pestaña Sesión (visible solo en Mármol):
-function getExplicitDailyGoalMinutes() {
-  const candidates = [
-    db && db.dailyGoalMinutes,
-    db && db.settings && db.settings.dailyGoalMinutes,
-  ];
-  try {
-    const saved = JSON.parse(localStorage.getItem('alberto_daily_goal_v1') || 'null');
-    candidates.push(saved && (saved.minutes ?? saved.dailyGoalMinutes));
-  } catch(e) {}
-  const goal = candidates.map(Number).find(n => Number.isFinite(n) && n > 0);
-  return goal ? Math.round(goal) : null;
-}
-
-// Resumen neutral cuando no existe una meta diaria explícita; nunca presenta
-// una cifra predeterminada como si fuera una decisión del usuario.
+// Resumen descriptivo: muestra minutos y actividad sin convertirlos en meta.
 function renderSessionResumen() {
   const el = document.getElementById('sessionResumenCard');
   if (!el) return;
   const done = (typeof getMinutosConcentradoHoy === 'function') ? getMinutosConcentradoHoy() : 0;
-  const goal = getExplicitDailyGoalMinutes();
   const todayKey = sessionJournalDayKey(new Date());
   const activity = [];
   (db.sessionPlants || []).forEach(plant => {
@@ -18993,29 +19001,15 @@ function renderSessionResumen() {
   const lastActivityText = lastActivity
     ? 'Última actividad · ' + lastActivity.label.toLowerCase() + ' a las ' + new Date(lastActivity.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
     : 'Aún sin actividad registrada';
-  const goalMarkup = goal
-    ? (() => {
-        const pct = Math.max(0, Math.min(100, Math.round(done / goal * 100)));
-        const C = 2 * Math.PI * 34;
-        const dash = (C * pct / 100).toFixed(1);
-        return '<svg class="session-resumen-ring" viewBox="0 0 80 80" aria-hidden="true">' +
-          '<circle cx="40" cy="40" r="34" fill="none" stroke="var(--bg3)" stroke-width="8"/>' +
-          '<circle cx="40" cy="40" r="34" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + dash + ' ' + C.toFixed(1) + '" transform="rotate(-90 40 40)"/>' +
-          '<text x="40" y="46" text-anchor="middle" class="session-resumen-pct">' + pct + '%</text>' +
-        '</svg>';
-      })()
-    : '<div class="session-resumen-neutral" aria-hidden="true">·</div>';
   let racha = 0;
   try { racha = (typeof computeRacha === 'function') ? (computeRacha().racha || 0) : 0; } catch (e) {}
   const rachaHtml = racha > 0
     ? '<div class="session-resumen-racha">racha ' + racha + (racha === 1 ? ' día' : ' días') + '</div>'
     : '';
-  el.classList.toggle('is-neutral', !goal);
-  el.innerHTML = goalMarkup +
-    '<div class="session-resumen-info">' +
+  el.classList.remove('is-neutral');
+  el.innerHTML = '<div class="session-resumen-info">' +
       '<div class="session-resumen-lbl">HOY</div>' +
       '<div class="session-resumen-big">' + fmtMinutos(done) + '</div>' +
-      '<div class="session-resumen-sub">' + (goal ? ('de tu objetivo de ' + fmtMinutos(goal)) : 'sin objetivo configurado') + '</div>' +
       '<div class="session-resumen-last">' + lastActivityText + '</div>' +
     '</div>' +
     rachaHtml;

@@ -1083,7 +1083,7 @@
 
   /* ── SESIÓN · estilo "B · secciones iOS" (solo Mármol) ── */
   [data-theme^="marmol"] #headerTitle { color: var(--text); }
-  /* Resumen del día con anillo (sustituye al banner "Hoy") */
+  /* Resumen compacto del día (sustituye al banner "Hoy") */
   .session-resumen-card { display: none; }
   [data-theme^="marmol"] .session-concentrado-banner { display: none !important; }
   [data-theme^="marmol"] .session-resumen-card {
@@ -1092,11 +1092,6 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 8px 20px rgba(0,0,0,0.04);
     padding: 16px 20px; margin-bottom: 18px;
   }
-  [data-theme^="marmol"] .session-resumen-ring { width: 76px; height: 76px; flex: none; }
-  [data-theme^="marmol"] .session-resumen-pct {
-    fill: var(--text2); font-size: 19px; font-weight: 600;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
-  }
   [data-theme^="marmol"] .session-resumen-info { flex: 1 1 0; min-width: 0; }
   [data-theme^="marmol"] .session-resumen-lbl {
     font-size: 12px; font-weight: 600; letter-spacing: 0.05em; color: var(--text3);
@@ -1104,7 +1099,6 @@
   [data-theme^="marmol"] .session-resumen-big {
     font-size: 26px; font-weight: 600; color: var(--text); margin-top: 2px;
   }
-  [data-theme^="marmol"] .session-resumen-sub { font-size: 13px; color: var(--text3); margin-top: 2px; }
   [data-theme^="marmol"] .session-resumen-racha {
     font-size: 14px; font-weight: 600; color: var(--green); flex: none; align-self: flex-start;
   }
@@ -1541,7 +1535,6 @@
     font-size: 9px;
   }
 
-  #view-session .session-journal-clear,
   #view-session .session-journal-submit,
   #view-session .session-journal-entry-head button {
     border: 1px solid var(--border2);
@@ -1549,13 +1542,6 @@
     color: var(--text2);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-  }
-
-  #view-session .session-journal-clear {
-    min-height: 30px;
-    padding: 0 11px;
-    border-radius: 999px;
-    font-size: 10px;
   }
 
   #view-session .session-journal-input {
@@ -10621,19 +10607,6 @@
 }
 .nav.nav-bottom .nav-btn svg { width: 18px; height: 18px; }
 
-.session-resumen-card.is-neutral .session-resumen-neutral {
-  width: 76px;
-  height: 76px;
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid var(--border2);
-  border-radius: 50%;
-  color: var(--text3);
-  font-size: 28px;
-  line-height: 1;
-}
 .ritmo-card-status {
   margin-top: 7px;
   color: var(--text3);
@@ -13203,26 +13176,56 @@ body.crono-timer-mode:not(.crono-until-mode) #cronoTimerSvg {
   opacity: 1;
 }
 .crono-task-completed {
+  margin-top: 7px;
+  border-top: 1px solid color-mix(in srgb, var(--border2) 65%, transparent);
+}
+.crono-task-completed > summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  min-height: 34px;
+  padding: 3px 1px 0;
+  color: color-mix(in srgb, var(--text3) 70%, transparent);
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.crono-task-completed > summary::-webkit-details-marker { display: none; }
+.crono-task-completed > summary svg {
+  width: 15px;
+  height: 15px;
+  opacity: .62;
+  transition: transform 160ms ease;
+}
+.crono-task-completed[open] > summary svg { transform: rotate(180deg); }
+.crono-task-completed > summary:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.crono-task-completed-list {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px solid color-mix(in srgb, var(--border2) 65%, transparent);
+  padding-top: 2px;
 }
-.crono-task-completed .crono-task-row {
+.crono-task-completed-list .crono-task-row {
   min-height: 34px;
   padding: 5px 3px;
   border-color: transparent;
   background: transparent;
   opacity: .52;
 }
-.crono-task-completed .crono-task-text {
+.crono-task-completed-list .crono-task-text {
   color: var(--text3);
   font-size: 10.5px;
   font-weight: 550;
 }
-.crono-task-completed .crono-task-due-tag {
+.crono-task-completed-list .crono-task-due-tag {
   display: none;
 }
 .crono-task-clean {
@@ -13418,6 +13421,70 @@ body.crono-timer-mode:not(.crono-until-mode) #cronoTimerSvg {
 @media (prefers-reduced-motion: reduce) {
   .app-refresh-btn.is-checking svg { animation: none; }
 }
+
+/* Sesión minimalista: resumen sin objetivo y diario bajo una única acción. */
+[data-theme^="marmol"] .session-resumen-card {
+  gap: 0;
+  padding: 14px 17px;
+  margin-bottom: 12px;
+}
+[data-theme^="marmol"] .session-resumen-card .session-resumen-info {
+  flex: 1 1 auto;
+}
+#view-session .session-journal-card {
+  width: min(560px, 100%);
+  max-width: 560px;
+  margin: 4px auto 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: right;
+}
+#view-session .session-journal-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--border2) 82%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--bg2) 84%, transparent);
+  color: var(--text3);
+  box-shadow: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#view-session .session-journal-toggle span {
+  display: block;
+  font: 300 25px/1 -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  transform-origin: center;
+  transition: transform 160ms ease, color 160ms ease;
+}
+#view-session .session-journal-card:not(.is-collapsed) .session-journal-toggle span {
+  transform: rotate(45deg);
+  color: var(--accent);
+}
+#view-session .session-journal-toggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
+}
+#view-session .session-journal-panel {
+  width: 100%;
+  margin-top: 8px;
+  padding: 14px 15px 13px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: var(--bg2);
+  text-align: left;
+}
+#view-session .session-journal-panel[hidden] { display: none; }
+#view-session .session-journal-head { margin-bottom: 8px; }
+#view-session .session-journal-input { min-height: 82px; border-radius: 7px; }
+#view-session .session-journal-actions { justify-content: flex-end; margin-top: 8px; }
+#view-session .session-journal-submit { min-height: 36px; border-radius: 7px; }
 
 /* El anillo del temporizador no invade la tarjeta de Destellos. */
 [data-theme^="marmol"] body.crono-timer-mode .crono-idle-display-wrap {
