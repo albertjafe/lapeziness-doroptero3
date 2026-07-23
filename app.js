@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-23-sesion-minimal-v42';
+const APP_VERSION = '2026-07-23-aviso-al-salir-v43';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -16880,6 +16880,13 @@ function cronoCheckSessionNotifications(elapsedMs, allowSystemNotification) {
     lastMilestoneMinutes: crono.notificationLastMilestoneMinutes,
   });
   if (!checkpoint || !checkpoint.event) return null;
+
+  // Cruzar los cinco minutos en primer plano no consume el aviso. Si el
+  // usuario abre la partitura después, visibilitychange lo enviará con el
+  // tiempo restante real y sólo entonces quedará deduplicado.
+  if (!allowSystemNotification && checkpoint.event.kind === 'timer-five') {
+    return checkpoint.event;
+  }
 
   crono.notificationFiveMinuteSent = !!checkpoint.fiveMinuteSent;
   crono.notificationLastMilestoneMinutes = Math.max(0, Number(checkpoint.lastMilestoneMinutes) || 0);

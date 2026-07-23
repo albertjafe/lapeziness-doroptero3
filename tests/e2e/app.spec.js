@@ -809,7 +809,12 @@ test('deduplicates background timer and stopwatch notifications', async ({ page 
     crono.targetDurationMs = 25 * 60_000;
     crono.notificationFiveMinuteSent = false;
     crono.notificationLastMilestoneMinutes = 0;
-    cronoCheckSessionNotifications(20 * 60_000 + 1, true);
+    cronoCheckSessionNotifications(21 * 60_000, false);
+    const beforeBackground = {
+      sent: sent.length,
+      marked: crono.notificationFiveMinuteSent,
+    };
+    cronoCheckSessionNotifications(21 * 60_000, true);
     cronoCheckSessionNotifications(21 * 60_000, true);
 
     const saved = JSON.parse(localStorage.getItem(CRONO_STORAGE_KEY));
@@ -818,13 +823,15 @@ test('deduplicates background timer and stopwatch notifications', async ({ page 
       sent,
       fiveMinuteSent: saved.notificationFiveMinuteSent,
       lastMilestoneMinutes: saved.notificationLastMilestoneMinutes,
+      beforeBackground,
     };
   });
 
   expect(result.sent).toEqual([
     { kind: 'stopwatch-milestone', milestoneMinutes: 45 },
-    { kind: 'timer-five', remainingMs: 5 * 60_000 - 1 },
+    { kind: 'timer-five', remainingMs: 4 * 60_000 },
   ]);
+  expect(result.beforeBackground).toEqual({ sent: 1, marked: false });
   expect(result.fiveMinuteSent).toBe(true);
   expect(result.lastMilestoneMinutes).toBe(0);
 });
