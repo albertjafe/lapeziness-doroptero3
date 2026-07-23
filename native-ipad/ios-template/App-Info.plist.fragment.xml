@@ -1,0 +1,4 @@
+<!-- Add this key inside the main app target's Info.plist dictionary. -->
+<key>NSSupportsLiveActivities</key>
+<true/>
+
