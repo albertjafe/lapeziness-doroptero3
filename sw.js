@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v160';
+const CACHE = 'estudio-v161';
 const ASSETS = [
   './index.html',
   './styles.css',
@@ -30,6 +30,21 @@ self.addEventListener('activate', e => {
 // Allow the page to trigger an immediate activation of a newer worker.
 self.addEventListener('message', e => {
   if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const targetUrl = new URL('./index.html?view=cronometro', self.registration.scope).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async windowClients => {
+      const appClient = windowClients.find(client => client.url.startsWith(self.registration.scope));
+      if (appClient) {
+        appClient.postMessage({ type: 'OPEN_CRONOMETRO' });
+        return appClient.focus();
+      }
+      return self.clients.openWindow(targetUrl);
+    })
+  );
 });
 
 self.addEventListener('fetch', e => {

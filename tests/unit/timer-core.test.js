@@ -23,4 +23,33 @@ describe('TimerCore', () => {
     const run = { state: 'running', startTs: 1_000, pausedMs: 0, targetDurationMs: null };
     expect(TimerCore.effectiveElapsedMs(run, 1_000 + 8 * 60 * 60_000)).toBe(8 * 60 * 60_000);
   });
+
+  it('requests one five-minute warning for a target timer', () => {
+    const run = { targetDurationMs: 25 * 60_000, isRest: false };
+    const before = TimerCore.notificationCheckpoint(run, 19 * 60_000, {});
+    expect(before.event).toBeNull();
+
+    const warning = TimerCore.notificationCheckpoint(run, 20 * 60_000 + 1, before);
+    expect(warning.event).toEqual({ kind: 'timer-five', remainingMs: 5 * 60_000 - 1 });
+    expect(TimerCore.notificationCheckpoint(run, 21 * 60_000, warning).event).toBeNull();
+  });
+
+  it('reports only the latest crossed 15-minute stopwatch milestone', () => {
+    const run = { targetDurationMs: null, isRest: false };
+    const first = TimerCore.notificationCheckpoint(run, 15 * 60_000, {});
+    expect(first.event).toEqual({ kind: 'stopwatch-milestone', milestoneMinutes: 15 });
+
+    const lateWake = TimerCore.notificationCheckpoint(run, 46 * 60_000, first);
+    expect(lateWake.event).toEqual({ kind: 'stopwatch-milestone', milestoneMinutes: 45 });
+    expect(TimerCore.notificationCheckpoint(run, 46 * 60_000, lateWake).event).toBeNull();
+  });
+
+  it('does not create stopwatch milestones during a rest', () => {
+    const result = TimerCore.notificationCheckpoint(
+      { targetDurationMs: null, isRest: true },
+      60 * 60_000,
+      {}
+    );
+    expect(result.event).toBeNull();
+  });
 });

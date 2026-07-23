@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-23-crono-tareas-v40';
+const APP_VERSION = '2026-07-23-crono-avisos-v41';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -16582,6 +16582,8 @@ const crono = {
   tickInterval: null,
   pauseInterval: null,
   lastCountdownSecond: null,
+  notificationFiveMinuteSent: false,
+  notificationLastMilestoneMinutes: 0,
   notes: [],
   observation: '',
 };
@@ -16682,6 +16684,7 @@ function cronoRefreshWakeLock() {
   else if (document.visibilityState !== 'visible') cronoClearWakeRetry();
 }
 
+let _cronoWasBackgrounded = document.visibilityState !== 'visible';
 document.addEventListener('visibilitychange', cronoHandleLifecycleResume);
 window.addEventListener('focus', cronoRefreshWakeLock);
 window.addEventListener('pageshow', cronoHandleLifecycleResume);
@@ -16721,6 +16724,8 @@ function cronoSaveState() {
       startTs: crono.startTs,
       pausedMs: crono.pausedMs,
       pauseStartTs: crono.pauseStartTs,
+      notificationFiveMinuteSent: !!crono.notificationFiveMinuteSent,
+      notificationLastMilestoneMinutes: Math.max(0, Number(crono.notificationLastMilestoneMinutes) || 0),
       notes: Array.isArray(crono.notes) ? crono.notes.slice(-80) : [],
       observation: crono.observation || '',
     }));
@@ -16757,8 +16762,114 @@ function cronoLoadState() {
     crono.startTs = s.startTs;
     crono.pausedMs = s.pausedMs || 0;
     crono.pauseStartTs = s.pauseStartTs || 0;
+    crono.notificationFiveMinuteSent = !!s.notificationFiveMinuteSent;
+    crono.notificationLastMilestoneMinutes = Math.max(0, Number(s.notificationLastMilestoneMinutes) || 0);
     return true;
   } catch(e) { return false; }
+}
+
+function cronoNotificationToastOnce(key, message) {
+  try {
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+  } catch(e) {}
+  showToast(message);
+}
+
+function cronoRequestNotificationPermissionFromGesture() {
+  if (!('Notification' in window)) {
+    cronoNotificationToastOnce(
+      'crono_notification_unsupported',
+      'En iPad, añade la app a la pantalla de inicio para recibir avisos'
+    );
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    cronoNotificationToastOnce(
+      'crono_notification_denied',
+      'Los avisos están bloqueados; puedes activarlos en Ajustes'
+    );
+    return;
+  }
+  if (Notification.permission !== 'default') return;
+
+  try {
+    const request = Notification.requestPermission();
+    Promise.resolve(request).then(permission => {
+      if (permission === 'granted') showToast('Avisos de estudio activados');
+      else if (permission === 'denied') {
+        cronoNotificationToastOnce(
+          'crono_notification_denied',
+          'Los avisos están bloqueados; puedes activarlos en Ajustes'
+        );
+      }
+    }).catch(() => {});
+  } catch(e) {}
+}
+
+function cronoNotificationDurationText(minutes) {
+  const value = Math.max(0, Math.round(Number(minutes) || 0));
+  const hours = Math.floor(value / 60);
+  const mins = value % 60;
+  if (!hours) return value + (value === 1 ? ' minuto' : ' minutos');
+  const hourText = hours + (hours === 1 ? ' hora' : ' horas');
+  return mins ? hourText + ' y ' + mins + (mins === 1 ? ' minuto' : ' minutos') : hourText;
+}
+
+function cronoShowSystemNotification(event) {
+  if (!event || !('Notification' in window) || Notification.permission !== 'granted') return;
+
+  const sessionName = crono.displayName || (crono.isRest ? 'Descanso' : 'Sesión de estudio');
+  let title = '';
+  let body = '';
+  let tag = '';
+  if (event.kind === 'timer-five') {
+    const remainingMinutes = Math.max(1, Math.ceil(event.remainingMs / 60000));
+    title = 'Quedan ' + cronoNotificationDurationText(remainingMinutes);
+    body = sessionName + ' · Tu temporizador está cerca de terminar.';
+    tag = 'crono-timer-five-' + (crono.runId || crono.startTs);
+  } else if (event.kind === 'stopwatch-milestone') {
+    title = 'Has logrado ' + cronoNotificationDurationText(event.milestoneMinutes);
+    body = sessionName + ' · El cronómetro sigue en marcha.';
+    tag = 'crono-milestone-' + (crono.runId || crono.startTs) + '-' + event.milestoneMinutes;
+  } else {
+    return;
+  }
+
+  const icon = new URL('./icon-192.png', window.location.href).href;
+  const options = {
+    body,
+    tag,
+    icon,
+    badge: icon,
+    lang: 'es',
+    data: { view: 'cronometro', runId: crono.runId || null },
+  };
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready
+      .then(registration => registration.showNotification(title, options))
+      .catch(() => {});
+    return;
+  }
+  try { new Notification(title, options); } catch(e) {}
+}
+
+function cronoCheckSessionNotifications(elapsedMs, allowSystemNotification) {
+  if (crono.state !== 'running' || typeof TimerCore === 'undefined' ||
+      typeof TimerCore.notificationCheckpoint !== 'function') return null;
+
+  const checkpoint = TimerCore.notificationCheckpoint(crono, elapsedMs, {
+    fiveMinuteSent: crono.notificationFiveMinuteSent,
+    lastMilestoneMinutes: crono.notificationLastMilestoneMinutes,
+  });
+  if (!checkpoint || !checkpoint.event) return null;
+
+  crono.notificationFiveMinuteSent = !!checkpoint.fiveMinuteSent;
+  crono.notificationLastMilestoneMinutes = Math.max(0, Number(checkpoint.lastMilestoneMinutes) || 0);
+  cronoSaveState();
+  if (allowSystemNotification) cronoShowSystemNotification(checkpoint.event);
+  return checkpoint.event;
 }
 
 function cronoClearState() {
@@ -19041,8 +19152,16 @@ function cronoQueueFinish(runId) {
 }
 
 function cronoHandleLifecycleResume() {
+  const isVisible = document.visibilityState === 'visible';
+  const resumedFromBackground = isVisible && _cronoWasBackgrounded;
+  if (!isVisible) _cronoWasBackgrounded = true;
   cronoRefreshWakeLock();
-  if (crono.state !== 'running') return;
+  if (crono.state !== 'running') {
+    if (isVisible) _cronoWasBackgrounded = false;
+    return;
+  }
+  const elapsedMs = cronoEffectiveElapsedMs();
+  cronoCheckSessionNotifications(elapsedMs, !isVisible || resumedFromBackground);
   if (cronoTargetReached()) {
     cronoStopTick();
     cronoQueueFinish(crono.runId);
@@ -19050,6 +19169,7 @@ function cronoHandleLifecycleResume() {
     cronoStartTick();
     cronoRender();
   }
+  if (isVisible) _cronoWasBackgrounded = false;
 }
 
 // ms restantes de pausa antes de auto-cierre
@@ -20158,6 +20278,7 @@ function cronoStartTick() {
   crono.tickInterval = setInterval(() => {
     const disp = document.getElementById('cronoDisplay');
     const elapsedMs = cronoEffectiveElapsedMs();
+    cronoCheckSessionNotifications(elapsedMs, document.visibilityState !== 'visible');
     cronoUpdateRunDestello(elapsedMs);
     // En modo timer: mostrar cuenta atrás y auto-finalizar al llegar a 0
     if (crono.targetDurationMs != null || crono.targetMinutes != null) {
@@ -20278,6 +20399,7 @@ function cronoStart() {
   if (!sel) return;
   const resolved = cronoResolveSelectValue(sel.value);
   if (!resolved) { showToast('Elige una obra o movimiento'); return; }
+  cronoRequestNotificationPermissionFromGesture();
 
   // Marcar como la última usada (para que sea el default la próxima vez).
   if (typeof bumpCronoPickRecency === 'function') bumpCronoPickRecency(resolved.obraId);
@@ -20298,6 +20420,8 @@ function cronoStart() {
   crono.startTs = Date.now();
   crono.pausedMs = 0;
   crono.pauseStartTs = 0;
+  crono.notificationFiveMinuteSent = false;
+  crono.notificationLastMilestoneMinutes = 0;
   if (crono.mode === 'until') {
     const untilMin = cronoUntilMinutes();
     if (!untilMin) {
@@ -20333,6 +20457,7 @@ function cronoStartRest() {
     showToast('Termina la sesión actual antes de descansar');
     return;
   }
+  cronoRequestNotificationPermissionFromGesture();
   _cronoRunDrawerTab = 'pasajes';
   _cronoLastRunDestelloKey = '';
   crono.notes = [];
@@ -20346,6 +20471,8 @@ function cronoStartRest() {
   crono.startTs = Date.now();
   crono.pausedMs = 0;
   crono.pauseStartTs = 0;
+  crono.notificationFiveMinuteSent = false;
+  crono.notificationLastMilestoneMinutes = 0;
   if (crono.mode === 'until') {
     const untilMin = cronoUntilMinutes();
     if (!untilMin) {
@@ -20386,6 +20513,9 @@ function cronoExtendTimer(minutes) {
   const previousTargetDuration = crono.targetDurationMs || crono.targetMinutes * 60000;
   crono.targetMinutes += extra;
   crono.targetDurationMs = previousTargetDuration + extra * 60000;
+  if (crono.targetDurationMs - cronoEffectiveElapsedMs() > 5 * 60000) {
+    crono.notificationFiveMinuteSent = false;
+  }
   if (crono.mode === 'until') crono.untilTime = cronoTargetEndClock();
   crono.lastCountdownSecond = null;
   cronoSaveState();
@@ -20736,6 +20866,8 @@ function cronoReset() {
   crono.startTs = 0;
   crono.pausedMs = 0;
   crono.pauseStartTs = 0;
+  crono.notificationFiveMinuteSent = false;
+  crono.notificationLastMilestoneMinutes = 0;
   crono.notes = [];
   crono.observation = '';
   _cronoLastRunDestelloKey = '';
@@ -21373,8 +21505,30 @@ function cronoHydrate() {
   }
 }
 
+function cronoOpenFromSystemNotification() {
+  showView('cronometro');
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('view') === 'cronometro') {
+      url.searchParams.delete('view');
+      history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+    }
+  } catch(e) {}
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data && event.data.type === 'OPEN_CRONOMETRO') cronoOpenFromSystemNotification();
+  });
+}
+
 window.addEventListener('load', function() {
   setTimeout(cronoHydrate, 100);
+  try {
+    if (new URL(window.location.href).searchParams.get('view') === 'cronometro') {
+      setTimeout(cronoOpenFromSystemNotification, 140);
+    }
+  } catch(e) {}
   _swUpdateInit();
 });
 

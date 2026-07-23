@@ -752,6 +752,48 @@ test('advances free timer progress to a 120 minute maximum and enlarges mode lab
   expect(metrics.controlsInMain).toBe(true);
 });
 
+test('deduplicates background timer and stopwatch notifications', async ({ page }) => {
+  await prepare(page);
+  const result = await page.evaluate(() => {
+    const sent = [];
+    cronoShowSystemNotification = event => sent.push(event);
+    crono.state = 'running';
+    crono.runId = 'notification-e2e';
+    crono.obraId = 'obra_1';
+    crono.displayName = 'Bach · Preludio';
+    crono.isRest = false;
+    crono.targetMinutes = null;
+    crono.targetDurationMs = null;
+    crono.notificationFiveMinuteSent = false;
+    crono.notificationLastMilestoneMinutes = 0;
+
+    cronoCheckSessionNotifications(46 * 60_000, true);
+    cronoCheckSessionNotifications(46 * 60_000, true);
+
+    crono.targetMinutes = 25;
+    crono.targetDurationMs = 25 * 60_000;
+    crono.notificationFiveMinuteSent = false;
+    crono.notificationLastMilestoneMinutes = 0;
+    cronoCheckSessionNotifications(20 * 60_000 + 1, true);
+    cronoCheckSessionNotifications(21 * 60_000, true);
+
+    const saved = JSON.parse(localStorage.getItem(CRONO_STORAGE_KEY));
+    cronoReset();
+    return {
+      sent,
+      fiveMinuteSent: saved.notificationFiveMinuteSent,
+      lastMilestoneMinutes: saved.notificationLastMilestoneMinutes,
+    };
+  });
+
+  expect(result.sent).toEqual([
+    { kind: 'stopwatch-milestone', milestoneMinutes: 45 },
+    { kind: 'timer-five', remainingMs: 5 * 60_000 - 1 },
+  ]);
+  expect(result.fiveMinuteSent).toBe(true);
+  expect(result.lastMilestoneMinutes).toBe(0);
+});
+
 test('keeps the idle and running timer in the same iPad composition', async ({ browser }) => {
   for (const viewport of [{ width: 1024, height: 768 }, { width: 834, height: 1194 }]) {
     const context = await browser.newContext({ viewport });

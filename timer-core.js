@@ -31,5 +31,45 @@
     return target != null && activeElapsedMs(run, now) >= target;
   }
 
-  return { createRunId, activeElapsedMs, effectiveElapsedMs, isTargetReached };
+  function notificationCheckpoint(run, elapsedMs, checkpoint) {
+    const elapsed = Math.max(0, Number(elapsedMs) || 0);
+    const previous = checkpoint || {};
+    const target = Number.isFinite(run && run.targetDurationMs) && run.targetDurationMs > 0
+      ? run.targetDurationMs
+      : null;
+
+    if (target != null) {
+      const remainingMs = Math.max(0, target - elapsed);
+      const fiveMinuteSent = !!previous.fiveMinuteSent;
+      if (!fiveMinuteSent && remainingMs > 0 && remainingMs <= 5 * 60_000) {
+        return {
+          fiveMinuteSent: true,
+          lastMilestoneMinutes: Math.max(0, Number(previous.lastMilestoneMinutes) || 0),
+          event: { kind: 'timer-five', remainingMs },
+        };
+      }
+      return {
+        fiveMinuteSent,
+        lastMilestoneMinutes: Math.max(0, Number(previous.lastMilestoneMinutes) || 0),
+        event: null,
+      };
+    }
+
+    const previousMilestone = Math.max(0, Number(previous.lastMilestoneMinutes) || 0);
+    const milestoneMinutes = Math.floor(elapsed / (15 * 60_000)) * 15;
+    if (!(run && run.isRest) && milestoneMinutes >= 15 && milestoneMinutes > previousMilestone) {
+      return {
+        fiveMinuteSent: !!previous.fiveMinuteSent,
+        lastMilestoneMinutes: milestoneMinutes,
+        event: { kind: 'stopwatch-milestone', milestoneMinutes },
+      };
+    }
+    return {
+      fiveMinuteSent: !!previous.fiveMinuteSent,
+      lastMilestoneMinutes: previousMilestone,
+      event: null,
+    };
+  }
+
+  return { createRunId, activeElapsedMs, effectiveElapsedMs, isTargetReached, notificationCheckpoint };
 });
