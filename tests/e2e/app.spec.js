@@ -489,7 +489,7 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
   }
 });
 
-test('finishes a valid timer without native confirmation and saves one-tap solidity', async ({ page }) => {
+test('cancels or confirms a valid timer before saving and keeps one-tap solidity', async ({ page }) => {
   let nativeDialogs = 0;
   page.on('dialog', async dialog => {
     nativeDialogs += 1;
@@ -508,6 +508,19 @@ test('finishes a valid timer without native confirmation and saves one-tap solid
     cronoStop();
   });
 
+  const confirm = page.locator('#modalCronoConfirmFinish');
+  await expect(confirm).toHaveClass(/visible/);
+  await expect(confirm.locator('#cronoFinishConfirmDur')).toHaveText('25:00');
+  await expect(confirm.locator('#cronoFinishConfirmWork')).toContainText('Bach');
+  expect(await page.evaluate(() => db.sessionPlants.length)).toBe(0);
+  await confirm.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(confirm).not.toHaveClass(/visible/);
+  expect(await page.evaluate(() => ({ state: crono.state, saved: db.sessionPlants.length }))).toEqual({ state: 'running', saved: 0 });
+
+  await page.evaluate(() => cronoStop());
+  await expect(confirm).toHaveClass(/visible/);
+  await confirm.getByRole('button', { name: 'Hecho' }).click();
+
   const modal = page.locator('#modalHechoDatos');
   await expect(modal).toHaveClass(/visible/);
   await expect(modal.locator('#hechoSavedMinutes')).toHaveText('25 min guardados');
@@ -516,7 +529,7 @@ test('finishes a valid timer without native confirmation and saves one-tap solid
   const stable = modal.locator('.hecho-solidez-options button[data-value="65"]');
   await stable.click();
   await expect(stable).toHaveAttribute('aria-checked', 'true');
-  await modal.getByRole('button', { name: 'Listo' }).click();
+  await modal.getByRole('button', { name: 'Hecho' }).click();
   await expect(modal).not.toHaveClass(/visible/);
 
   const saved = await page.evaluate(() => ({

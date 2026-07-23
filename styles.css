@@ -7434,6 +7434,37 @@
     display: flex; flex-direction: column;
     gap: 8px;
   }
+  .crono-finish-confirm-modal {
+    width: min(360px, calc(100vw - 32px));
+    padding: 28px;
+    text-align: center;
+  }
+  .crono-finish-confirm-time {
+    margin-bottom: 8px;
+    color: var(--accent);
+    font-family: "JetBrains Mono", monospace;
+    font-size: clamp(30px, 6vw, 44px);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .crono-finish-confirm-work {
+    min-height: 18px;
+    margin: -2px 0 22px;
+    overflow: hidden;
+    color: var(--text3);
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .crono-finish-confirm-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .crono-finish-confirm-actions .modal-btn {
+    min-height: 48px;
+    border-radius: 8px;
+  }
   .crono-fallida-ok {
     padding: 12px;
     border-radius: 10px;
@@ -12070,7 +12101,7 @@ body.crono-running .crono-concentrado { display: none; }
   border-top: 1px solid var(--border2);
 }
 #modalHechoDatos .hecho-modal-footer { gap: 9px; padding: 12px 24px 18px !important; }
-#modalHechoDatos .hecho-modal-footer .modal-btn { min-height: 48px; border-radius: 8px; }
+#modalHechoDatos .hecho-modal-footer .modal-btn { min-height: 48px; border-radius: 8px; width: 100%; }
 
 @media (max-width: 560px) {
   #modalHechoDatos .hecho-modal-body { padding: 18px 16px 10px !important; }

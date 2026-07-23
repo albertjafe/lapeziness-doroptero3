@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-23-aviso-al-salir-v43';
+const APP_VERSION = '2026-07-23-confirmar-cierre-v44';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -19303,12 +19303,12 @@ function cronoRender() {
       ? '<button class="crono-ctrl-btn extend" onclick="cronoExtendTimer(5)" aria-label="Añadir 5 minutos">+5 min</button>'
       : '';
     ctrl.innerHTML =
-      '<button class="crono-ctrl-btn stop" onclick="cronoStop()" aria-label="Terminar y guardar">' + CRONO_ICONS.stop + '</button>' +
+      '<button class="crono-ctrl-btn stop" onclick="cronoStop()" aria-label="Terminar sesion">' + CRONO_ICONS.stop + '</button>' +
       extendBtn +
       '<button class="crono-ctrl-btn primary" onclick="cronoPause()" aria-label="Pausar">' + CRONO_ICONS.pause + '</button>';
   } else if (crono.state === 'paused') {
     ctrl.innerHTML =
-      '<button class="crono-ctrl-btn stop" onclick="cronoStop()" aria-label="Terminar y guardar">' + CRONO_ICONS.stop + '</button>' +
+      '<button class="crono-ctrl-btn stop" onclick="cronoStop()" aria-label="Terminar sesion">' + CRONO_ICONS.stop + '</button>' +
       '<button class="crono-ctrl-btn primary" onclick="cronoResume()" aria-label="Reanudar">' + CRONO_ICONS.play + '</button>';
   }
   cronoUpdateSolidityActions();
@@ -20561,13 +20561,51 @@ function cronoStop() {
   const ms = cronoEffectiveElapsedMs();
   const min = Math.floor(ms / 60000);
   if (min >= CRONO_MIN_MIN) {
-    // El botón ya expresa la acción completa. Guardamos de inmediato y
-    // dejamos la valoración opcional para el cierre rápido.
-    cronoFinish();
+    // Guardar solo despues de una confirmacion explicita.
+    cronoShowFinishConfirmModal(ms);
   } else {
     // Sesión que será fallida: mostrar modal HTML elegante
     cronoShowConfirmFallidaModal(ms);
   }
+}
+
+// Confirm before saving. The timer keeps its current state while this dialog
+// is open, so Cancel returns to the same active session without losing time.
+function cronoShowFinishConfirmModal(ms) {
+  let modal = document.getElementById('modalCronoConfirmFinish');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modalCronoConfirmFinish';
+    modal.className = 'modal-overlay';
+    modal.innerHTML =
+      '<div class="modal crono-finish-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="cronoFinishConfirmTitle">' +
+        '<div class="crono-finish-confirm-time" id="cronoFinishConfirmDur"></div>' +
+        '<div class="crono-fallida-title" id="cronoFinishConfirmTitle">&iquest;Terminar sesi&oacute;n?</div>' +
+        '<div class="crono-finish-confirm-work" id="cronoFinishConfirmWork"></div>' +
+        '<div class="crono-finish-confirm-actions">' +
+          '<button type="button" class="modal-btn secondary" onclick="cronoConfirmFinishCancel()">Cancelar</button>' +
+          '<button type="button" class="modal-btn primary" onclick="cronoConfirmFinishAccept()">Hecho</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+  }
+  modal.dataset.runId = crono.runId || '';
+  const durEl = document.getElementById('cronoFinishConfirmDur');
+  const workEl = document.getElementById('cronoFinishConfirmWork');
+  if (durEl) durEl.textContent = cronoFmt(ms);
+  if (workEl) workEl.textContent = crono.displayName || 'Sesion de estudio';
+  openModal('modalCronoConfirmFinish');
+}
+
+function cronoConfirmFinishCancel() {
+  closeModal('modalCronoConfirmFinish');
+}
+
+function cronoConfirmFinishAccept() {
+  const modal = document.getElementById('modalCronoConfirmFinish');
+  const runId = modal ? modal.dataset.runId : '';
+  closeModal('modalCronoConfirmFinish');
+  if (runId && crono.runId === runId) cronoFinish(runId);
 }
 
 // Modal antes de parar con <10 min. Pregunta si quiere abortar como fallida.
@@ -20639,6 +20677,8 @@ function cronoFinish(expectedRunId) {
   const runId = crono.runId;
   if (crono.state === 'idle' || !runId || (expectedRunId && expectedRunId !== runId) || _cronoFinalizingRunId === runId) return;
   _cronoFinalizingRunId = runId;
+  const confirmModal = document.getElementById('modalCronoConfirmFinish');
+  if (confirmModal && confirmModal.classList.contains('visible')) closeModal('modalCronoConfirmFinish');
   cronoStopTick();
   cronoStopPauseCountdown();
   cronoReleaseWakeLock();
