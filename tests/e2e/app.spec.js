@@ -308,14 +308,22 @@ test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) =>
       summary: document.getElementById('sessionResumenCard')?.textContent || '',
       journal: [...document.querySelectorAll('#view-session button')].find(button => /Guardar entrada/.test(button.textContent))?.textContent.trim(),
       nudge: document.querySelector('.session-insight-card.nudge'),
+      refresh: (() => {
+        const button = document.querySelector('#view-session .app-refresh-btn');
+        const box = button?.getBoundingClientRect();
+        return { label: button?.getAttribute('aria-label'), width: box?.width, height: box?.height, hasIcon: !!button?.querySelector('svg') };
+      })(),
     };
     showView('cronometro');
+    const cronoRefresh = document.querySelector('#view-cronometro .app-refresh-btn');
+    const cronoRefreshBox = cronoRefresh?.getBoundingClientRect();
     return {
       hoy,
       cronoStart: document.getElementById('cronoStartBtn')?.textContent.trim(),
       quickNoteButtons: document.querySelectorAll('#cronoQuickNoteBtn').length,
       runTabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab),
       bottomDisplay: getComputedStyle(document.querySelector('#view-cronometro .crono-bottom-row')).display,
+      cronoRefresh: { label: cronoRefresh?.getAttribute('aria-label'), width: cronoRefreshBox?.width, height: cronoRefreshBox?.height, hasIcon: !!cronoRefresh?.querySelector('svg') },
     };
   });
   expect(state.hoy.nav).toBe('Hoy');
@@ -323,10 +331,12 @@ test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) =>
   expect(state.hoy.summary).toContain('Aún sin actividad registrada');
   expect(state.hoy.journal).toBe('Guardar entrada');
   expect(state.hoy.nudge).toBeNull();
+  expect(state.hoy.refresh).toEqual({ label: 'Comprobar actualización', width: 44, height: 44, hasIcon: true });
   expect(state.cronoStart).toBe('Iniciar');
   expect(state.quickNoteButtons).toBe(0);
   expect(state.runTabs).toEqual(['pasajes', 'nota', 'tareas', 'pase']);
   expect(state.bottomDisplay).toBe('none');
+  expect(state.cronoRefresh).toEqual({ label: 'Comprobar actualización', width: 44, height: 44, hasIcon: true });
 });
 
 test('progressively reveals Obras tools and keeps evolution samples honest', async ({ page }) => {
@@ -515,9 +525,13 @@ test('keeps tasks available while idle and compacts long running content', async
   await page.locator('#cronoIdleDrawer .crono-idle-drawer-tab[data-tab="tareas"]').click();
   const idleTasks = page.locator('#cronoIdleTasksPanel');
   await expect(idleTasks).toContainText('Afinar el bajo de la coda');
+  await expect(idleTasks.locator('#cronoIdleTaskInput')).toHaveCount(0);
+  await idleTasks.locator('.crono-task-compose-trigger').click();
+  await expect(idleTasks.locator('#cronoIdleTaskInput')).toBeFocused();
   await idleTasks.locator('#cronoIdleTaskInput').fill('Revisar digitación final');
   await idleTasks.locator('.crono-task-add-btn').click();
   await expect(idleTasks).toContainText('Revisar digitación final');
+  await expect(idleTasks.locator('#cronoIdleTaskInput')).toHaveCount(0);
 
   const metrics = await page.evaluate(() => {
     const select = document.getElementById('cronoObraSelect');
@@ -637,6 +651,9 @@ test('separates piano and personal tasks and only reminds piano work', async ({ 
   });
 
   const panel = page.locator('#cronoIdleTasksPanel');
+  await expect(panel.locator('#cronoIdleTaskInput')).toHaveCount(0);
+  await panel.locator('.crono-task-compose-trigger').click();
+  await expect(panel.locator('#cronoIdleTaskInput')).toBeFocused();
   await panel.locator('.crono-task-kind-btn.piano').click();
   await panel.locator('.crono-task-tomorrow-btn').click();
   await panel.locator('#cronoIdleTaskInput').fill('Estudiar la coda sin pedal');
@@ -644,6 +661,7 @@ test('separates piano and personal tasks and only reminds piano work', async ({ 
   await expect(panel.locator('.crono-task-lane.piano')).toContainText('Estudiar la coda sin pedal');
   await expect(panel.locator('.crono-task-lane.piano .crono-task-due-tag')).toHaveText('Mañana');
 
+  await panel.locator('.crono-task-compose-trigger').click();
   await panel.locator('.crono-task-kind-btn.personal').click();
   await expect(panel.locator('.crono-task-tomorrow-btn')).toBeHidden();
   await panel.locator('#cronoIdleTaskInput').fill('Escribir a Emma');

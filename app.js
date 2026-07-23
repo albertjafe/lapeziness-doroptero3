@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-13-grafico-lote3-v38';
+const APP_VERSION = '2026-07-23-crono-tareas-v39';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -16960,12 +16960,29 @@ function cronoActiveTaskCount() {
 }
 
 const _cronoTaskComposer = {
-  idle: { kind: 'piano', tomorrow: false },
-  running: { kind: 'piano', tomorrow: false },
+  idle: { kind: 'piano', tomorrow: false, open: false },
+  running: { kind: 'piano', tomorrow: false, open: false },
 };
 
 function cronoTaskComposerState(source) {
   return source === 'running' ? _cronoTaskComposer.running : _cronoTaskComposer.idle;
+}
+
+function cronoOpenTaskComposer(source) {
+  const state = cronoTaskComposerState(source);
+  state.open = true;
+  renderCronoTasks();
+  requestAnimationFrame(() => {
+    const input = document.getElementById(source === 'running' ? 'cronoTaskInput' : 'cronoIdleTaskInput');
+    if (input) input.focus();
+  });
+}
+
+function cronoCloseTaskComposer(source) {
+  const state = cronoTaskComposerState(source);
+  state.open = false;
+  state.tomorrow = false;
+  renderCronoTasks();
 }
 
 function cronoSetTaskKind(source, kind) {
@@ -17125,18 +17142,27 @@ function renderCronoTasks() {
   ].forEach(target => {
     const el = document.getElementById(target.id);
     if (!el) return;
+    const composer = cronoTaskComposerState(target.source);
     const activeInput = document.activeElement && document.activeElement.id === target.inputId;
     const currentDraft = activeInput ? (document.getElementById(target.inputId)?.value || '') : '';
-    el.innerHTML =
-      '<div class="crono-task-add crono-task-composer">' +
+    const composerHtml = composer.open
+      ? '<div class="crono-task-add crono-task-composer is-open">' +
         '<input id="' + target.inputId + '" class="crono-task-input" type="text" maxlength="140" placeholder="Algo por hacer..." onkeydown="cronoTaskInputKey(event,\'' + target.source + '\')">' +
         '<div class="crono-task-compose-options" role="group" aria-label="Tipo de tarea">' +
           '<button type="button" class="crono-task-kind-btn piano" data-kind="piano" onclick="cronoSetTaskKind(\'' + target.source + '\',\'piano\')" aria-pressed="true"><span></span>Piano</button>' +
           '<button type="button" class="crono-task-kind-btn personal" data-kind="personal" onclick="cronoSetTaskKind(\'' + target.source + '\',\'personal\')" aria-pressed="false"><span></span>Personal</button>' +
           '<button type="button" class="crono-task-tomorrow-btn" onclick="cronoToggleTaskTomorrow(\'' + target.source + '\')" aria-pressed="false">Mañana</button>' +
         '</div>' +
-        '<button type="button" class="crono-task-add-btn" onclick="addCronoTask(\'' + target.source + '\')" aria-label="Añadir tarea">+</button>' +
-      '</div>' +
+        '<div class="crono-task-compose-actions">' +
+          '<button type="button" class="crono-task-cancel-btn" onclick="cronoCloseTaskComposer(\'' + target.source + '\')" aria-label="Cancelar">×</button>' +
+          '<button type="button" class="crono-task-add-btn" onclick="addCronoTask(\'' + target.source + '\')" aria-label="Guardar tarea">✓</button>' +
+        '</div>' +
+      '</div>'
+      : '<button type="button" class="crono-task-compose-trigger" onclick="cronoOpenTaskComposer(\'' + target.source + '\')">' +
+          '<span aria-hidden="true">+</span><strong>Nueva tarea</strong>' +
+        '</button>';
+    el.innerHTML =
+      composerHtml +
       '<div class="crono-task-columns">' +
         lane('piano', 'Piano', piano) +
         lane('personal', 'Personal', personal) +
@@ -17157,10 +17183,18 @@ function cronoTaskInputKey(ev, source) {
   if (ev.key === 'Enter') {
     ev.preventDefault();
     addCronoTask(source);
+  } else if (ev.key === 'Escape') {
+    ev.preventDefault();
+    cronoCloseTaskComposer(source);
   }
 }
 
 function addCronoTask(source) {
+  const composer = cronoTaskComposerState(source);
+  if (!composer.open) {
+    cronoOpenTaskComposer(source);
+    return;
+  }
   const inputId = source === 'idle' ? 'cronoIdleTaskInput' : 'cronoTaskInput';
   const input = document.getElementById(inputId);
   const text = (input?.value || '').replace(/\s+/g, ' ').trim();
@@ -17168,7 +17202,6 @@ function addCronoTask(source) {
     showToast('Escribe una tarea');
     return;
   }
-  const composer = cronoTaskComposerState(source);
   cronoTasks().push({
     id: 'ct' + Date.now(),
     text,
@@ -17177,6 +17210,7 @@ function addCronoTask(source) {
     done: false,
     createdAt: new Date().toISOString(),
   });
+  composer.open = false;
   composer.tomorrow = false;
   saveData();
   if (input) input.value = '';
@@ -21399,10 +21433,16 @@ async function checkForAppUpdate(manual) {
   if (_appUpdateChecking) return;
   _appUpdateChecking = true;
   const btn = document.getElementById('appUpdateCheckBtn');
+  const quickButtons = document.querySelectorAll('.app-refresh-btn');
   if (btn) {
     btn.disabled = true;
     btn.textContent = 'Buscando...';
   }
+  quickButtons.forEach(button => {
+    button.disabled = true;
+    button.classList.add('is-checking');
+    button.setAttribute('aria-busy', 'true');
+  });
   updateAppVersionInfo('Buscando actualización...');
 
   try {
@@ -21442,6 +21482,11 @@ async function checkForAppUpdate(manual) {
       btn.disabled = false;
       btn.textContent = 'Buscar actualización';
     }
+    quickButtons.forEach(button => {
+      button.disabled = false;
+      button.classList.remove('is-checking');
+      button.removeAttribute('aria-busy');
+    });
   }
 }
 

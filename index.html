@@ -124,6 +124,12 @@
     <div class="hoy-action-buttons">
       <button type="button" class="hoy-quick-study-btn" id="sessionQuickStudyBtn" onclick="openSesionManual()">Añadir estudio</button>
       <button type="button" class="hoy-start-study-btn" id="sessionStartStudyBtn" onclick="showView('cronometro')">Empezar a estudiar</button>
+      <button type="button" class="app-refresh-btn session-refresh-btn" onclick="checkForAppUpdate(true)" aria-label="Comprobar actualización" title="Comprobar actualización">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 11a8 8 0 1 0-2.34 5.66"/>
+          <polyline points="20 4 20 11 13 11"/>
+        </svg>
+      </button>
     </div>
   </div>
   <!-- Banner: "Hoy te has concentrado X" + opción discreta para día pasado -->
@@ -270,6 +276,12 @@
       <span class="crono-ayer-dot"></span>
       <span id="cronoAyerBtnText">Ayer</span>
       <span class="crono-ayer-chev">⌄</span>
+    </button>
+    <button type="button" class="app-refresh-btn crono-refresh-btn" onclick="checkForAppUpdate(true)" aria-label="Comprobar actualización" title="Comprobar actualización">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20 11a8 8 0 1 0-2.34 5.66"/>
+        <polyline points="20 4 20 11 13 11"/>
+      </svg>
     </button>
   </div>
   <div class="crono-ayer-panel" id="cronoAyerPanel" style="display:none"></div>
