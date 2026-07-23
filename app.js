@@ -17100,20 +17100,22 @@ function renderCronoTasks() {
   const personal = byKind('personal');
   const row = t => {
     const cls = 'crono-task-row' + (t.done ? ' is-done' : '');
-    return '<button type="button" class="' + cls + '" onclick="toggleCronoTask(\'' + hechoJs(t.id) + '\')" aria-label="Marcar tarea">' +
+    const action = t.done ? 'Volver a abrir' : 'Marcar como hecha';
+    return '<button type="button" class="' + cls + '" onclick="toggleCronoTask(\'' + hechoJs(t.id) + '\',this)" aria-label="' + action + ': ' + escapeHtmlSafe(t.text) + '">' +
       '<span class="crono-task-check"></span>' +
       '<span class="crono-task-text">' + escapeHtmlSafe(t.text) + '</span>' +
       (cronoTaskKind(t) === 'piano' && t.tomorrow ? '<span class="crono-task-due-tag">Mañana</span>' : '') +
     '</button>';
   };
-  const lane = (kind, title, subtitle, group) => {
-    const empty = kind === 'piano' ? 'Nada pendiente para piano' : 'Ningún apunte personal';
-    return '<section class="crono-task-lane ' + kind + '">' +
-      '<div class="crono-task-lane-head"><span class="crono-task-lane-dot"></span><strong>' + title + '</strong><span>' + group.pending.length + '</span></div>' +
-      '<div class="crono-task-lane-sub">' + subtitle + '</div>' +
+  const lane = (kind, title, group) => {
+    const clean = !group.pending.length;
+    return '<section class="crono-task-lane ' + kind + (clean ? ' is-clean' : '') + '">' +
+      '<div class="crono-task-lane-head"><span class="crono-task-lane-dot"></span><strong>' + title + '</strong>' +
+        (clean ? '' : '<span class="crono-task-lane-count">' + group.pending.length + '</span>') +
+      '</div>' +
       '<div class="crono-task-list">' +
-        (group.pending.length ? group.pending.map(row).join('') : '<div class="crono-task-empty">' + empty + '</div>') +
-        (group.done.length ? '<div class="crono-task-done-label">hechas</div>' + group.done.map(row).join('') : '') +
+        (clean ? '<div class="crono-task-clean" role="status"><span class="crono-task-clean-check" aria-hidden="true"></span><strong>Todo limpio</strong></div>' : group.pending.map(row).join('')) +
+        (group.done.length ? '<div class="crono-task-completed">' + group.done.map(row).join('') + '</div>' : '') +
       '</div>' +
     '</section>';
   };
@@ -17136,8 +17138,8 @@ function renderCronoTasks() {
         '<button type="button" class="crono-task-add-btn" onclick="addCronoTask(\'' + target.source + '\')" aria-label="Añadir tarea">+</button>' +
       '</div>' +
       '<div class="crono-task-columns">' +
-        lane('piano', 'Piano', 'Para la próxima sesión', piano) +
-        lane('personal', 'Personal', 'Ideas que surgieron estudiando', personal) +
+        lane('piano', 'Piano', piano) +
+        lane('personal', 'Personal', personal) +
       '</div>';
     cronoUpdateTaskComposer(target.source);
     const input = document.getElementById(target.inputId);
@@ -17182,13 +17184,27 @@ function addCronoTask(source) {
   showToast('Tarea añadida · ' + (composer.kind === 'piano' ? 'Piano' : 'Personal'));
 }
 
-function toggleCronoTask(id) {
+function toggleCronoTask(id, rowEl) {
   const task = cronoTasks().find(t => t.id === id);
   if (!task) return;
-  task.done = !task.done;
-  task.doneAt = task.done ? new Date().toISOString() : null;
-  saveData();
-  renderCronoTasks();
+  const commitToggle = () => {
+    task.done = !task.done;
+    task.doneAt = task.done ? new Date().toISOString() : null;
+    saveData();
+    renderCronoTasks();
+  };
+  if (task.done || !rowEl) {
+    commitToggle();
+    try { Haptics.light(); } catch(e) {}
+    return;
+  }
+  if (rowEl.classList.contains('is-completing')) return;
+  rowEl.classList.add('is-completing');
+  rowEl.disabled = true;
+  rowEl.setAttribute('aria-busy', 'true');
+  try { Haptics.success(); } catch(e) {}
+  const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  setTimeout(commitToggle, reducedMotion ? 80 : 520);
 }
 
 function cronoSetRunDrawerTab(tab) {
@@ -17220,7 +17236,6 @@ function cronoUpdateRunDrawer() {
 function cronoSetObservation(value) {
   crono.observation = String(value || '').slice(0, 1600);
   cronoSaveState();
-  cronoUpdateRunObjective();
 }
 
 function cronoSetIdleDrawerTab(tab) {
@@ -17249,20 +17264,6 @@ function cronoUpdateIdleDrawer() {
   else cronoRenderTaskCount();
 }
 
-function cronoUpdateRunObjective() {
-  const objective = String(crono.observation || '').replace(/\s+/g, ' ').trim();
-  [
-    ['cronoRunObjectiveText', 'cronoRunObjective'],
-    ['cronoIdleObjectiveText', 'cronoIdleObjective'],
-  ].forEach(([textId, wrapId]) => {
-    const text = document.getElementById(textId);
-    const wrap = document.getElementById(wrapId);
-    if (!text || !wrap) return;
-    text.textContent = objective || 'Sesión libre';
-    wrap.classList.toggle('is-empty', !objective);
-  });
-}
-
 function cronoSyncObservationInputs() {
   const value = crono.observation || '';
   ['cronoIdleObservation', 'cronoRunObservation'].forEach(id => {
@@ -17270,7 +17271,6 @@ function cronoSyncObservationInputs() {
     if (!el || document.activeElement === el) return;
     if (el.value !== value) el.value = value;
   });
-  cronoUpdateRunObjective();
 }
 
 function cronoObservationTextForPlan(planId, isEditMode) {

@@ -431,14 +431,16 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
         controlsBottom: controls.bottom,
         viewportHeight: innerHeight,
         fitsWidth: document.documentElement.scrollWidth <= innerWidth + 1,
-        objective: document.getElementById('cronoRunObjectiveText').textContent,
+        objectiveRemoved: !document.getElementById('cronoRunObjective') && !document.getElementById('cronoRunObjectiveText'),
+        observation: document.getElementById('cronoRunObservation').value,
         passage: document.querySelector('.crono-focus-pasaje-copy strong')?.textContent,
         displayRatio: displayTextWidth / ring.width,
       };
     });
 
     expect(layout.fitsWidth).toBe(true);
-    expect(layout.objective).toBe('Coda limpia, pulso estable');
+    expect(layout.objectiveRemoved).toBe(true);
+    expect(layout.observation).toBe('Coda limpia, pulso estable');
     expect(layout.passage).toBe('Coda · cc. 200–208');
     expect(layout.displayRatio).toBeLessThanOrEqual(0.69);
     if (layout.portrait) {
@@ -662,7 +664,11 @@ test('separates piano and personal tasks and only reminds piano work', async ({ 
   expect(landscape.controlsInDrawer).toBe(false);
   expect(landscape.taskColumns).toBe(2);
 
-  await panel.locator('.crono-task-lane.piano .crono-task-row').click();
+  const pianoRow = panel.locator('.crono-task-lane.piano .crono-task-row').first();
+  await pianoRow.click();
+  expect(await pianoRow.evaluate(row => row.classList.contains('is-completing'))).toBe(true);
+  await expect(panel.locator('.crono-task-lane.piano .crono-task-clean')).toContainText('Todo limpio');
+  await expect(panel.locator('.crono-task-lane.piano .crono-task-row.is-done')).toContainText('Estudiar la coda sin pedal');
   const personalOnly = await page.evaluate(() => {
     localStorage.removeItem(CRONO_TASK_REMINDER_KEY);
     cronoSetIdleDrawerTab('pasajes');
@@ -740,7 +746,7 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
         drawer: rect(document.getElementById('cronoIdleDrawer')),
         ring: rect(document.getElementById('cronoTimerSvg')),
         tabs: [...document.querySelectorAll('#cronoIdleDrawer .crono-idle-drawer-tab')].map(button => button.dataset.tab),
-        objective: document.getElementById('cronoIdleObjectiveText').textContent,
+        objectiveRemoved: !document.getElementById('cronoIdleObjective') && !document.getElementById('cronoIdleObjectiveText'),
         display: document.getElementById('cronoTimerText').textContent,
         usesRunningDisplay: document.getElementById('cronoTimerText').classList.contains('crono-display')
           && document.getElementById('cronoTimerSvg').classList.contains('crono-run-progress-svg'),
@@ -753,7 +759,7 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
         drawer: rect(document.getElementById('cronoRunDrawer')),
         ring: rect(document.querySelector('#cronoStageRun .crono-run-progress-svg')),
         tabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab),
-        objective: document.getElementById('cronoRunObjectiveText').textContent,
+        objectiveRemoved: !document.getElementById('cronoRunObjective') && !document.getElementById('cronoRunObjectiveText'),
       };
       return {
         portrait: matchMedia('(orientation: portrait)').matches,
@@ -766,8 +772,8 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
     expect(layout.fitsWidth).toBe(true);
     expect(layout.idle.tabs).toEqual(['pasajes', 'nota', 'tareas', 'pase']);
     expect(layout.running.tabs).toEqual(layout.idle.tabs);
-    expect(layout.idle.objective).toBe('Coda limpia, pulso estable');
-    expect(layout.running.objective).toBe(layout.idle.objective);
+    expect(layout.idle.objectiveRemoved).toBe(true);
+    expect(layout.running.objectiveRemoved).toBe(true);
     expect(layout.idle.display).toBe('25:00');
     expect(layout.idle.usesRunningDisplay).toBe(true);
     expect(layout.idle.garden).toBe('none');

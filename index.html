@@ -311,15 +311,6 @@
               <span class="crono-select-custom-chevron">⌄</span>
             </button>
           </div>
-          <div class="crono-run-status crono-idle-status">
-            <span class="crono-run-status-dot"></span>
-            <span>Preparación</span>
-          </div>
-        </div>
-
-        <div class="crono-run-objective crono-idle-objective is-empty" id="cronoIdleObjective">
-          <span>Objetivo de la sesión</span>
-          <strong id="cronoIdleObjectiveText">Sesión libre</strong>
         </div>
 
         <div class="crono-display-wrap crono-idle-display-wrap progress-active" id="cronoIdleDisplayWrap">
@@ -387,9 +378,8 @@
           </div>
           <div class="crono-run-drawer-panel crono-idle-drawer-panel" data-panel="nota" role="tabpanel">
             <label class="crono-objective-field" for="cronoIdleObservation">
-              <span>Objetivo de la sesión</span>
               <textarea id="cronoIdleObservation" class="crono-observation-box crono-observation-box-idle"
-                rows="3" maxlength="1600" placeholder="Qué quieres conseguir en esta sesión"
+                rows="3" maxlength="1600" placeholder="Nota para esta sesión..."
                 oninput="cronoSetObservation(this.value)"></textarea>
             </label>
             <button class="crono-solidity-btn" id="cronoQuickSolBtn" onclick="openQuickSolidez('idle')" style="display:none">
@@ -401,11 +391,7 @@
             </div>
           </div>
           <div class="crono-run-drawer-panel crono-idle-drawer-panel" data-panel="tareas" role="tabpanel">
-            <section class="crono-idle-tasks" aria-labelledby="cronoIdleTasksTitle">
-              <div class="crono-idle-tasks-head">
-                <strong id="cronoIdleTasksTitle">Tareas de la sesión</strong>
-                <span id="cronoIdleTaskCount">0 pendientes</span>
-              </div>
+            <section class="crono-idle-tasks" aria-label="Tareas">
               <div class="crono-tasks-panel crono-tasks-panel-idle" id="cronoIdleTasksPanel"></div>
             </section>
           </div>
@@ -441,11 +427,6 @@
           <span class="crono-run-status-dot"></span>
           <span id="cronoRunStatusText">En marcha</span>
         </div>
-      </div>
-
-      <div class="crono-run-objective" id="cronoRunObjective">
-        <span>Objetivo de la sesión</span>
-        <strong id="cronoRunObjectiveText">Sesión libre</strong>
       </div>
 
       <!-- Tiempo gigante con outline (Forest-style) -->
