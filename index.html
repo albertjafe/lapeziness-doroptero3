@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=167">
+<link rel="stylesheet" href="styles.css?v=168">
 </head>
 <body>
 
@@ -188,12 +188,12 @@
       <div class="view-local-subtitle">Registra solo lo que quieras conservar; lo demás queda sin datos.</div>
     </div>
 
-    <section class="ritmo-card ritmo-card-bienestar" aria-label="Bienestar">
+    <section class="ritmo-card ritmo-card-bienestar" aria-label="Concentración">
       <div class="ritmo-card-head">
-        <h2>Bienestar</h2>
-        <button type="button" class="ritmo-info" onclick="showToast('El ánimo se registra como momentos con hora')">i</button>
+        <h2>Concentración</h2>
+        <button type="button" class="ritmo-info" onclick="showToast('La concentración se registra como momentos con hora')">i</button>
       </div>
-      <div class="estado-faces ritmo-scale" id="estadoFaces" role="radiogroup" aria-label="Bienestar actual"></div>
+      <div class="estado-faces ritmo-scale" id="estadoFaces" role="radiogroup" aria-label="Concentración actual"></div>
       <div class="ritmo-card-status is-unset" id="estadoStatus">Sin registrar hoy · toca una opción</div>
     </section>
 
@@ -524,6 +524,11 @@
       <div class="crono-week-card" id="cronoWeekCard"></div>
       <button type="button" class="crono-destellos-card" id="cronoDestellosCard" onclick="openDestellosModal()"></button>
     </div>
+
+    <section class="crono-concentration-monitor" aria-label="Concentración actual">
+      <span class="crono-concentration-label">Concentración</span>
+      <div class="crono-concentration-levels" id="cronoConcentrationFaces" role="radiogroup" aria-label="Registrar concentración"></div>
+    </section>
 
   </div>
 
@@ -955,7 +960,7 @@
     <div class="ajustes-group-label"><span class="ajustes-group-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h3.5l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></span>Datos</div>
     <div class="ajustes-card">
       <div class="ajustes-card-head">IA / Codex · exportar contexto</div>
-      <div class="ajustes-hint" style="margin-bottom:12px">Genera un paquete con sesiones, pases, notas, sueño, ánimo, deporte, tiempo disponible, siestas, gatillos y eventos. Incluye datos privados: úsalo sólo para pegarlo o adjuntarlo donde quieras.</div>
+      <div class="ajustes-hint" style="margin-bottom:12px">Genera un paquete con sesiones, pases, notas, sueño, concentración, deporte, tiempo disponible, siestas, gatillos y eventos. Incluye datos privados: úsalo sólo para pegarlo o adjuntarlo donde quieras.</div>
       <div class="ai-export-mode-row" id="aiExportModeRow">
         <button type="button" class="ai-export-mode active" data-range="today" onclick="setAiExportRange('today')">Hoy</button>
         <button type="button" class="ai-export-mode" data-range="yesterday" onclick="setAiExportRange('yesterday')">Ayer</button>
@@ -1664,6 +1669,19 @@
   </div>
 </div>
 
+<!-- MODAL EDITAR TAREA DEL CRONÓMETRO -->
+<div class="modal-overlay" id="modalCronoTaskEdit">
+  <div class="modal crono-task-edit-modal">
+    <div class="modal-title">Editar tarea</div>
+    <div class="crono-task-edit-sub">Cambia el nombre de la tarea.</div>
+    <input class="modal-input" id="cronoTaskEditInput" type="text" maxlength="140" placeholder="Nombre de la tarea" onkeydown="cronoTaskEditKey(event)">
+    <div class="modal-buttons">
+      <button class="modal-btn secondary" onclick="closeModal('modalCronoTaskEdit')">Cancelar</button>
+      <button class="modal-btn primary" onclick="saveCronoTaskEdit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL PASE QUALITY -->
 <div class="modal-overlay" id="modalPaseQuality">
   <div class="modal">
@@ -1693,28 +1711,38 @@
 <!-- MODAL PASE RÁPIDO DESDE CRONÓMETRO -->
 <div class="modal-overlay" id="modalCronoPaseRapido">
   <div class="modal crono-pase-rapido-modal">
-    <div class="modal-title">Pase rápido</div>
-    <div class="crono-pase-rapido-sub">Añade las obras tocadas. Se sumará automáticamente la duración de cada una al estudio de hoy.</div>
-
-    <div class="pase-tipo-label">Tipo de pase</div>
-    <div class="pase-tipo-row crono-pase-tipo-row">
-      <button class="pase-tipo-btn solo active" onclick="selectCronoPaseTipo('solo',this)">Solo</button>
-      <button class="pase-tipo-btn informal" onclick="selectCronoPaseTipo('informal',this)">Informal</button>
-      <button class="pase-tipo-btn evento" onclick="selectCronoPaseTipo('evento',this)">Evento</button>
+    <div class="crono-pase-modal-head">
+      <div class="modal-title" id="cronoPaseModalTitle">¿Qué obras has pasado?</div>
+      <div class="crono-pase-rapido-sub" id="cronoPaseModalSub">Toca todas las que quieras. Vuelve a tocar una para quitarla.</div>
     </div>
 
-    <div class="crono-pase-add-row">
-      <select class="modal-input" id="cronoPaseObraSelect" onchange="cronoPasePreviewSelected()"></select>
-      <button type="button" class="crono-pase-add-btn" onclick="cronoPaseAddSelected()">Añadir</button>
+    <div class="crono-pase-select-stage" id="cronoPaseSelectStage">
+      <div class="crono-pase-search-wrap">
+        <input type="search" id="cronoPaseSearch" class="crono-pase-search" placeholder="Buscar obra..." autocomplete="off" oninput="cronoPaseRenderSelection()">
+      </div>
+      <div class="crono-pase-selection-list" id="cronoPaseSelectionList"></div>
+      <div class="crono-pase-selection-summary" id="cronoPaseSelectionSummary">Ninguna seleccionada</div>
+      <div class="modal-buttons crono-pase-select-actions">
+        <button class="modal-btn secondary" onclick="closeModal('modalCronoPaseRapido')">Cancelar</button>
+        <button class="modal-btn primary" id="cronoPaseContinueBtn" onclick="cronoPaseAdvanceToDetails()" disabled>Añadir</button>
+      </div>
     </div>
-    <div class="crono-pase-preview" id="cronoPasePreview"></div>
 
-    <div class="crono-pase-items" id="cronoPaseItems"></div>
-    <div class="crono-pase-total" id="cronoPaseTotal">0 min</div>
+    <div class="crono-pase-detail-stage" id="cronoPaseDetailStage" hidden>
+      <div class="pase-tipo-label">Tipo de pase</div>
+      <div class="pase-tipo-row crono-pase-tipo-row">
+        <button class="pase-tipo-btn solo active" onclick="selectCronoPaseTipo('solo',this)">Solo</button>
+        <button class="pase-tipo-btn informal" onclick="selectCronoPaseTipo('informal',this)">Informal</button>
+        <button class="pase-tipo-btn evento" onclick="selectCronoPaseTipo('evento',this)">Evento</button>
+      </div>
 
-    <div class="modal-buttons">
-      <button class="modal-btn secondary" onclick="closeModal('modalCronoPaseRapido')">Cancelar</button>
-      <button class="modal-btn primary" onclick="confirmCronoPaseRapido()">Guardar pase</button>
+      <div class="crono-pase-items" id="cronoPaseItems"></div>
+      <div class="crono-pase-total" id="cronoPaseTotal">0 min</div>
+
+      <div class="modal-buttons">
+        <button class="modal-btn secondary" onclick="cronoPaseBackToSelection()">Cambiar obras</button>
+        <button class="modal-btn primary" onclick="confirmCronoPaseRapido()">Guardar pases</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1931,11 +1959,11 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js?v=167"></script>
-<script src="data-core.js?v=167"></script>
-<script src="sync-core.js?v=167"></script>
-<script src="push-client.js?v=167"></script>
-<script src="app.js?v=167"></script>
+<script src="timer-core.js?v=168"></script>
+<script src="data-core.js?v=168"></script>
+<script src="sync-core.js?v=168"></script>
+<script src="push-client.js?v=168"></script>
+<script src="app.js?v=168"></script>
 
 </body>
 <script>
@@ -1957,7 +1985,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=167', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=168', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

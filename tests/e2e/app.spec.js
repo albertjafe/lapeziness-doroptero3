@@ -644,6 +644,59 @@ test('keeps tasks available while idle and compacts long running content', async
   expect(await page.evaluate(() => crono.state)).toBe('running');
 });
 
+test('selects several recent works before rating and saving their passes', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepare(page);
+  await page.evaluate(() => {
+    db.obras = [
+      { id: 'obra_a', name: 'Obra antigua', composer: 'A', tipo: 'obra', movimientos: [], paseHistory: [] },
+      { id: 'obra_b', name: 'Obra reciente', composer: 'B', tipo: 'obra', movimientos: [], paseHistory: [] },
+      { id: 'obra_c', name: 'Obra intermedia', composer: 'C', tipo: 'obra', movimientos: [], paseHistory: [] },
+    ];
+    localStorage.setItem('cronoPickRecency', JSON.stringify({ obra_a: 100, obra_b: 300, obra_c: 200 }));
+    openCronoPaseRapido();
+  });
+
+  const modal = page.locator('#modalCronoPaseRapido');
+  const choices = modal.locator('.crono-pase-picker-item');
+  await expect(choices).toHaveCount(3);
+  await expect(choices.nth(0)).toContainText('Obra reciente');
+  await expect(choices.nth(1)).toContainText('Obra intermedia');
+  await expect(choices.nth(2)).toContainText('Obra antigua');
+
+  await choices.nth(0).click();
+  await choices.nth(2).click();
+  await expect(modal).toHaveClass(/visible/);
+  await expect(choices.nth(0)).toHaveAttribute('aria-pressed', 'true');
+  await expect(choices.nth(2)).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#cronoPaseSelectionSummary')).toHaveText('2 seleccionadas');
+
+  await choices.nth(0).click();
+  await expect(choices.nth(0)).toHaveAttribute('aria-pressed', 'false');
+  await choices.nth(1).click();
+  await page.locator('#cronoPaseContinueBtn').click();
+
+  await expect(page.locator('#cronoPaseSelectStage')).toBeHidden();
+  await expect(page.locator('#cronoPaseDetailStage')).toBeVisible();
+  const cards = page.locator('#cronoPaseItems .crono-pase-item');
+  await expect(cards).toHaveCount(2);
+  await expect(cards.locator('.crono-pase-score.active')).toHaveCount(0);
+  await cards.nth(0).locator('.crono-pase-score').nth(1).click();
+  await cards.nth(1).locator('.crono-pase-score').nth(3).click();
+  await modal.getByRole('button', { name: 'Guardar pases' }).click();
+  await expect(modal).not.toHaveClass(/visible/);
+
+  const saved = await page.evaluate(() => ({
+    ancient: findObra('obra_a').paseHistory.length,
+    middle: findObra('obra_c').paseHistory.length,
+    recent: findObra('obra_b').paseHistory.length,
+  }));
+  expect(saved).toEqual({ ancient: 1, middle: 1, recent: 0 });
+
+  await page.evaluate(() => openCronoPaseRapido());
+  await expect(page.locator('.crono-pase-picker-item').nth(0)).toContainText('Obra intermedia');
+});
+
 test('opens pending tasks once per day and repeats the reminder after two hours', async ({ page }) => {
   await page.setViewportSize({ width: 834, height: 1194 });
   await prepare(page);
@@ -734,7 +787,7 @@ test('separates piano and personal tasks and only reminds piano work', async ({ 
     renderCronoTasks();
   });
   const pianoRow = panel.locator('.crono-task-lane.piano .crono-task-row').first();
-  await pianoRow.click();
+  await pianoRow.locator('.crono-task-toggle').click();
   expect(await pianoRow.evaluate(row => row.classList.contains('is-completing'))).toBe(true);
   await expect(panel.locator('.crono-task-lane.piano .crono-task-clean')).toContainText('Todo limpio');
   const completed = panel.locator('.crono-task-lane.piano .crono-task-completed');
@@ -758,6 +811,70 @@ test('separates piano and personal tasks and only reminds piano work', async ({ 
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.crono-task-columns')).gridTemplateColumns.split(' ').length)).toBe(1);
   await expect(completed.locator('.crono-task-row').first()).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+});
+
+test('uses the task circle to toggle and the task name to edit', async ({ page }) => {
+  await page.setViewportSize({ width: 834, height: 1194 });
+  await prepare(page);
+  await page.evaluate(() => {
+    db.cronoTasks = [{
+      id: 'ct_editable',
+      text: 'Revisar digitación',
+      kind: 'piano',
+      tomorrow: false,
+      done: false,
+      createdAt: new Date().toISOString(),
+    }];
+    showView('cronometro');
+    cronoSetIdleDrawerTab('tareas');
+    renderCronoTasks();
+  });
+
+  const panel = page.locator('#cronoIdleTasksPanel');
+  const pendingRow = panel.locator('.crono-task-row').first();
+  const toggle = pendingRow.locator('.crono-task-toggle');
+  const toggleBox = await toggle.boundingBox();
+  expect(toggleBox.width).toBeGreaterThanOrEqual(44);
+  expect(toggleBox.height).toBeGreaterThanOrEqual(44);
+
+  await pendingRow.locator('.crono-task-open').click();
+  await expect(page.locator('#modalCronoTaskEdit')).toHaveClass(/visible/);
+  await page.locator('#cronoTaskEditInput').fill('Revisar digitación final');
+  await page.locator('#modalCronoTaskEdit').getByRole('button', { name: 'Guardar' }).click();
+  await expect(page.locator('#modalCronoTaskEdit')).not.toHaveClass(/visible/);
+  await expect(panel.locator('.crono-task-row').first()).toContainText('Revisar digitación final');
+  expect(await page.evaluate(() => cronoTasks()[0].done)).toBe(false);
+
+  await panel.locator('.crono-task-row').first().locator('.crono-task-toggle').click();
+  await expect(panel.locator('.crono-task-completed summary')).toContainText('1 hecha');
+  await panel.locator('.crono-task-completed summary').click();
+  const completedRow = panel.locator('.crono-task-completed-list .crono-task-row').first();
+  await expect(completedRow).toContainText('Revisar digitación final');
+  await completedRow.locator('.crono-task-toggle').click();
+  await expect(panel.locator('.crono-task-row').first()).not.toHaveClass(/is-done/);
+  expect(await page.evaluate(() => cronoTasks()[0].done)).toBe(false);
+});
+
+test('records concentration discreetly from the landscape timer', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await prepare(page);
+  await page.evaluate(() => showView('cronometro'));
+
+  const monitor = page.locator('.crono-concentration-monitor');
+  await expect(monitor).toBeVisible();
+  await expect(monitor).toContainText('Concentración');
+  await monitor.getByRole('radio', { name: 'Alta', exact: true }).click();
+  await expect(monitor.getByRole('radio', { name: 'Alta', exact: true })).toHaveAttribute('aria-checked', 'true');
+
+  const state = await page.evaluate(() => ({
+    value: estadoActualVal(),
+    lastLabel: ensureEstadoEventos().at(-1)?.label,
+    sessionSelected: document.querySelector('#estadoFaces .estado-face.active')?.getAttribute('aria-label'),
+  }));
+  expect(state).toEqual({ value: 78, lastLabel: 'Alta', sessionSelected: 'Alta' });
+
+  await page.setViewportSize({ width: 834, height: 1194 });
+  await expect(monitor).toBeHidden();
 });
 
 test('advances free timer progress to a 120 minute maximum and enlarges mode labels', async ({ page }) => {

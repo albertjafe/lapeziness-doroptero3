@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-23-confirmar-cierre-v44';
+const APP_VERSION = '2026-07-24-pases-tareas-concentracion-v46';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -704,7 +704,7 @@ function updateHeader() {
 
 let selectedEnergy = 'normal';
 let selectedTime = 2;
-// Estado diario: `estado`/`bienestar` es el ánimo actual; `sueno` es una métrica
+// Estado diario: `estado`/`bienestar` conserva la concentración actual; `sueno` es una métrica
 // diaria independiente. energia/claridad quedan como alias para código antiguo.
 let estadoDiario = { estado: 70, bienestar: 70, sueno: 70, energia: 70, claridad: 70, deporte: null, triggers: null, tiempoDisponible: null };
 // ¿Ha introducido Alberto su estado HOY (de forma explícita)? Solo entonces la
@@ -716,11 +716,11 @@ const ESTADO_COLORS = { bienestar: '#c8a030', sueno: '#a090e0', energia: '#c8a03
 
 // Las 5 caras del selector de estado. value = 0-100 que se guarda internamente.
 const ESTADO_FACES = [
-  { v: 12, emoji: '😣', label: 'Muy mal', icon: 'face-very-bad' },
-  { v: 34, emoji: '😕', label: 'Mal', icon: 'face-bad' },
-  { v: 56, emoji: '😐', label: 'Regular', icon: 'face-neutral' },
-  { v: 78, emoji: '🙂', label: 'Bien', icon: 'face-good' },
-  { v: 96, emoji: '😄', label: 'Muy bien', icon: 'face-great' },
+  { v: 12, emoji: '😣', label: 'Muy baja', icon: 'face-very-bad' },
+  { v: 34, emoji: '😕', label: 'Baja', icon: 'face-bad' },
+  { v: 56, emoji: '😐', label: 'Media', icon: 'face-neutral' },
+  { v: 78, emoji: '🙂', label: 'Alta', icon: 'face-good' },
+  { v: 96, emoji: '😄', label: 'Muy alta', icon: 'face-great' },
 ];
 
 const SUENO_FACES = [
@@ -819,7 +819,7 @@ function suenoToFaceIndex(val) {
   return best;
 }
 
-// Fija los alias de ánimo sin tocar sueño.
+// Fija los alias retrocompatibles de concentración sin tocar sueño.
 function _setEstadoAll(n) {
   estadoDiario.estado = n;
   estadoDiario.bienestar = n;
@@ -1288,7 +1288,8 @@ function recordSiesta() {
 
 function refreshEstadoFacesUI() {
   const idx = _estadoUserSet ? estadoToFaceIndex(estadoActualVal()) : -1;
-  document.querySelectorAll('#estadoFaces .estado-face').forEach((b, i) => {
+  document.querySelectorAll('#estadoFaces .estado-face, #cronoConcentrationFaces .estado-face').forEach(b => {
+    const i = Number(b.dataset.levelIndex);
     const on = i === idx;
     b.classList.toggle('active', on);
     b.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -1393,7 +1394,7 @@ function refreshEstadoEventSummary() {
   const today = new Date().toDateString();
   const todayEvents = ensureEstadoEventos().filter(e => e && e.date === today);
   if (!todayEvents.length) {
-    el.textContent = 'Sin registrar hoy · elige una cara cuando quieras guardar tu estado.';
+    el.textContent = 'Sin registrar hoy · elige un nivel cuando quieras guardar tu concentración.';
     return;
   }
   const last = todayEvents[todayEvents.length - 1];
@@ -1401,7 +1402,7 @@ function refreshEstadoEventSummary() {
   try {
     hour = new Date(last.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   } catch(e) {}
-  el.textContent = 'Último ánimo: ' + last.label + (hour ? ' · ' + hour : '') + ' · ' + todayEvents.length + ' registros hoy';
+  el.textContent = 'Última concentración: ' + last.label + (hour ? ' · ' + hour : '') + ' · ' + todayEvents.length + ' registros hoy';
 }
 
 function refreshDeporteEventSummary() {
@@ -1501,7 +1502,7 @@ function saveEstadoDiario() {
       estado: snap.estado,
       userSet: _estadoUserSet, // true solo si Alberto lo introdujo hoy
       suenoUserSet: _suenoUserSet,
-      // Alias retrocompatibles de ánimo + sueño independiente
+      // Alias retrocompatibles de concentración + sueño independiente
       bienestar: snap.bienestar,
       sueno: snap.sueno,
       energia: snap.energia,
@@ -1789,7 +1790,7 @@ function ritmoIconSvg(icon) {
 
 function ritmoChoiceHTML(item, idx, fnName, groupName) {
   return '<button type="button" class="estado-face ritmo-choice" role="radio" aria-checked="false"' +
-    ' aria-label="' + item.label + '" title="' + item.label + '" onclick="' + fnName + '(' + idx + ')">' +
+    ' data-level-index="' + idx + '" aria-label="' + item.label + '" title="' + item.label + '" onclick="' + fnName + '(' + idx + ')">' +
     '<span class="estado-face-emoji ritmo-icon">' + ritmoIconSvg(item.icon) + '</span>' +
     '<span class="estado-face-label">' + item.label + '</span>' +
     '<span class="ritmo-dot" aria-hidden="true"></span>' +
@@ -1803,9 +1804,14 @@ function initEstadoSliders() {
   _setEstadoAll(estadoActualVal());
   const host = document.getElementById('estadoFaces');
   if (host && !host.dataset.built) {
-    host.innerHTML = ESTADO_FACES.map((f, i) => ritmoChoiceHTML(f, i, 'pickEstado', 'bienestar')).join('');
+    host.innerHTML = ESTADO_FACES.map((f, i) => ritmoChoiceHTML(f, i, 'pickEstado', 'concentracion')).join('');
     host.classList.add('ritmo-scale');
     host.dataset.built = '1';
+  }
+  const cronoConcentrationHost = document.getElementById('cronoConcentrationFaces');
+  if (cronoConcentrationHost && !cronoConcentrationHost.dataset.built) {
+    cronoConcentrationHost.innerHTML = ESTADO_FACES.map((f, i) => ritmoChoiceHTML(f, i, 'pickEstado', 'concentracion')).join('');
+    cronoConcentrationHost.dataset.built = '1';
   }
   const sleepHost = document.getElementById('suenoFaces');
   if (sleepHost && !sleepHost.dataset.built) {
@@ -12822,6 +12828,7 @@ function confirmPase() {
 // ─── PASE RÁPIDO DESDE CRONÓMETRO ───────────────────────────────────────────
 
 let cronoPaseDraft = [];
+let cronoPaseSelectionGroups = [];
 const CRONO_PASE_SCORE_CHOICES = [
   { score: 2, label: 'Se cae' },
   { score: 4, label: 'Frágil' },
@@ -12845,33 +12852,47 @@ function cronoPaseDraftKey(obraId, movId) {
   return obraId + '::' + (movId || '');
 }
 
-function cronoPaseResolveSelect() {
-  const val = document.getElementById('cronoPaseObraSelect')?.value || '';
-  return studyRegisterResolveValue(val);
-}
-
-function cronoPaseSeedCurrentSelection() {
-  let val = '';
-  if (crono.state !== 'idle' && crono.obraId && crono.obraId !== '_rest_') {
-    val = crono.movId ? ('mov::' + crono.obraId + '::' + crono.movId) : ('obra::' + crono.obraId);
-  } else {
-    val = document.getElementById('cronoObraSelect')?.value || '';
-  }
-  if (!val) return;
-  const sel = document.getElementById('cronoPaseObraSelect');
-  if (sel) sel.value = val;
-  cronoPaseAddSelected({ silent: true });
+function cronoPaseBuildSelectionGroups() {
+  const recency = getCronoPickRecency();
+  const obras = (db.obras || [])
+    .filter(obra => obra && obra.tipo !== 'actividad')
+    .slice()
+    .sort((a, b) => {
+      const recentDiff = (recency[b.id] || 0) - (recency[a.id] || 0);
+      return recentDiff || a.name.localeCompare(b.name);
+    });
+  cronoPaseSelectionGroups = obras.map(obra => {
+    const movements = (obra.movimientos || []).filter(mov => mov && mov.name);
+    const targets = movements.length
+      ? movements.map(mov => ({
+          value: 'mov::' + obra.id + '::' + mov.id,
+          obraId: obra.id,
+          movId: mov.id,
+          name: obra.name + ' — ' + mov.name,
+          label: mov.name,
+          search: obra.name + ' ' + (obra.composer || '') + ' ' + mov.name,
+        }))
+      : [{
+          value: 'obra::' + obra.id,
+          obraId: obra.id,
+          movId: null,
+          name: obra.name,
+          label: obra.name,
+          search: obra.name + ' ' + (obra.composer || ''),
+        }];
+    return { obra, targets, hasMovements: movements.length > 0 };
+  });
 }
 
 function openCronoPaseRapido() {
-  buildObraSelectOptions('cronoPaseObraSelect');
   cronoPaseDraft = [];
+  cronoPaseBuildSelectionGroups();
   cronoPaseTipoSelected = 'solo';
+  const search = document.getElementById('cronoPaseSearch');
+  if (search) search.value = '';
   document.querySelectorAll('#modalCronoPaseRapido .pase-tipo-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('#modalCronoPaseRapido .pase-tipo-btn.solo')?.classList.add('active');
-  cronoPaseSeedCurrentSelection();
-  cronoPasePreviewSelected();
-  cronoPaseRender();
+  cronoPaseBackToSelection();
   openModal('modalCronoPaseRapido');
 }
 
@@ -12882,40 +12903,85 @@ function selectCronoPaseTipo(tipo, btn) {
   btn.classList.add('active', cronoPaseTipoSelected);
 }
 
-function cronoPasePreviewSelected() {
-  const el = document.getElementById('cronoPasePreview');
-  if (!el) return;
-  const resolved = cronoPaseResolveSelect();
-  if (!resolved) {
-    el.textContent = 'Selecciona una obra';
-    return;
+function cronoPaseToggleSelection(value) {
+  const resolved = studyRegisterResolveValue(value);
+  if (!resolved) return;
+  const key = cronoPaseDraftKey(resolved.obraId, resolved.movId);
+  const existingIndex = cronoPaseDraft.findIndex(item => item.key === key);
+  if (existingIndex >= 0) {
+    cronoPaseDraft.splice(existingIndex, 1);
+  } else {
+    cronoPaseDraft.push({
+      key,
+      obraId: resolved.obraId,
+      movId: resolved.movId || null,
+      name: resolved.name,
+      minutes: cronoPaseDefaultMinutes(resolved),
+      score: null,
+    });
+    bumpCronoPickRecency(resolved.obraId);
   }
-  el.textContent = 'Duración: ' + cronoPaseDefaultMinutes(resolved) + ' min';
+  cronoPaseRenderSelection();
+  try { Haptics.light(); } catch(e) {}
 }
 
-function cronoPaseAddSelected(opts) {
-  const resolved = cronoPaseResolveSelect();
-  if (!resolved) {
-    if (!opts || !opts.silent) showToast('Selecciona una obra o movimiento');
+function cronoPaseRenderSelection() {
+  const host = document.getElementById('cronoPaseSelectionList');
+  const summary = document.getElementById('cronoPaseSelectionSummary');
+  const continueButton = document.getElementById('cronoPaseContinueBtn');
+  if (!host) return;
+  const query = (document.getElementById('cronoPaseSearch')?.value || '').trim().toLocaleLowerCase('es');
+  const selected = new Set(cronoPaseDraft.map(item => item.key));
+  const groups = cronoPaseSelectionGroups.map(group => ({
+    ...group,
+    targets: group.targets.filter(target => !query || target.search.toLocaleLowerCase('es').includes(query)),
+  })).filter(group => group.targets.length);
+  host.innerHTML = groups.map(group => {
+    const obra = group.obra;
+    const color = typeof obraColorHex === 'function' ? (obraColorHex(obra) || '') : '';
+    const composer = obra.composer && obra.composer !== '—'
+      ? '<span class="crono-pase-picker-composer">' + escapeHtmlSafe(obra.composer) + '</span>'
+      : '';
+    const heading = group.hasMovements
+      ? '<div class="crono-pase-picker-heading"><span class="crono-picker-dot" style="' + (color ? 'background:' + color : '') + '"></span><span>' + escapeHtmlSafe(obra.name) + composer + '</span></div>'
+      : '';
+    const rows = group.targets.map(target => {
+      const key = cronoPaseDraftKey(target.obraId, target.movId);
+      const isSelected = selected.has(key);
+      return '<button type="button" class="crono-pase-picker-item' + (group.hasMovements ? ' is-mov' : '') + (isSelected ? ' is-selected' : '') + '" aria-pressed="' + isSelected + '" onclick="cronoPaseToggleSelection(\'' + target.value + '\')">' +
+        (!group.hasMovements ? '<span class="crono-picker-dot" style="' + (color ? 'background:' + color : '') + '"></span>' : '') +
+        '<span class="crono-pase-picker-label">' + escapeHtmlSafe(target.label) + (!group.hasMovements ? composer : '') + '</span>' +
+        '<span class="crono-pase-picker-check" aria-hidden="true">✓</span>' +
+      '</button>';
+    }).join('');
+    return '<div class="crono-pase-picker-group">' + heading + rows + '</div>';
+  }).join('') || '<div class="crono-picker-empty">' + (query ? 'No hay obras que coincidan' : 'Todavía no hay obras') + '</div>';
+  const count = cronoPaseDraft.length;
+  if (summary) summary.textContent = count ? count + (count === 1 ? ' seleccionada' : ' seleccionadas') : 'Ninguna seleccionada';
+  if (continueButton) {
+    continueButton.disabled = count === 0;
+    continueButton.textContent = count ? 'Añadir (' + count + ')' : 'Añadir';
+  }
+}
+
+function cronoPaseAdvanceToDetails() {
+  if (!cronoPaseDraft.length) {
+    showToast('Selecciona al menos una obra');
     return;
   }
-  const key = cronoPaseDraftKey(resolved.obraId, resolved.movId);
-  if (cronoPaseDraft.some(it => it.key === key)) {
-    if (!opts || !opts.silent) showToast('Ya está añadida');
-    return;
-  }
-  cronoPaseDraft.push({
-    key,
-    obraId: resolved.obraId,
-    movId: resolved.movId || null,
-    name: resolved.name,
-    minutes: cronoPaseDefaultMinutes(resolved),
-    score: 8,
-  });
+  document.getElementById('cronoPaseSelectStage').hidden = true;
+  document.getElementById('cronoPaseDetailStage').hidden = false;
+  document.getElementById('cronoPaseModalTitle').textContent = '¿Cómo ha salido cada pase?';
+  document.getElementById('cronoPaseModalSub').textContent = 'Valora cada obra antes de guardar.';
   cronoPaseRender();
-  if (!opts || !opts.silent) {
-    try { Haptics.light(); } catch(e) {}
-  }
+}
+
+function cronoPaseBackToSelection() {
+  document.getElementById('cronoPaseSelectStage').hidden = false;
+  document.getElementById('cronoPaseDetailStage').hidden = true;
+  document.getElementById('cronoPaseModalTitle').textContent = '¿Qué obras has pasado?';
+  document.getElementById('cronoPaseModalSub').textContent = 'Toca todas las que quieras. Vuelve a tocar una para quitarla.';
+  cronoPaseRenderSelection();
 }
 
 function cronoPaseSetScore(key, score) {
@@ -12935,6 +13001,10 @@ function cronoPaseSetMinutes(key, value) {
 
 function cronoPaseRemove(key) {
   cronoPaseDraft = cronoPaseDraft.filter(it => it.key !== key);
+  if (!cronoPaseDraft.length) {
+    cronoPaseBackToSelection();
+    return;
+  }
   cronoPaseRender();
 }
 
@@ -13074,7 +13144,12 @@ function cronoPaseAddToStudy(item, startedAtIso, endedAtIso) {
 
 function confirmCronoPaseRapido() {
   if (!cronoPaseDraft.length) {
-    showToast('Añade al menos una obra');
+    showToast('Selecciona al menos una obra');
+    return;
+  }
+  const unrated = cronoPaseDraft.find(item => !item.score);
+  if (unrated) {
+    showToast('Valora el pase de ' + unrated.name);
     return;
   }
   const total = cronoPaseDraft.reduce((s, it) => s + (parseInt(it.minutes || 0, 10) || 0), 0);
@@ -13754,7 +13829,7 @@ function buildAiDataPackage() {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
     guidance: {
       purpose: 'Paquete para que una IA o Codex pueda analizar el estudio sin acceder directamente al localStorage.',
-      priorityRule: 'Las prioridades deben derivarse de datos introducidos por el usuario: notas, pases, eventos, sueño, ánimo, deporte, gatillos, tiempo disponible bruto y tiempo registrado. No inventar recomendaciones como si fueran datos.',
+      priorityRule: 'Las prioridades deben derivarse de datos introducidos por el usuario: notas, pases, eventos, sueño, concentración, deporte, gatillos, tiempo disponible bruto y tiempo registrado. No inventar recomendaciones como si fueran datos.',
       privacy: 'Incluye notas privadas y datos personales de estudio.',
     },
     counts: {
@@ -14024,7 +14099,7 @@ function buildAiTextReport(options) {
   lines.push('- Estado/sueño/deporte/siesta/gatillos TOC/tiempo disponible: contexto corporal, mental y logístico registrado por mí. Úsalo como contexto, no como diagnóstico clínico ni como causa segura.');
   lines.push('- Tiempo disponible bruto: estimación diaria de cuánto margen teórico tuve para tocar. No equivale a horas estudiadas ni a obligación; sirve para distinguir falta real de tiempo de baja ejecución con tiempo disponible.');
   lines.push('- Eventos próximos: compromisos futuros. Pueden aumentar la relevancia de obras/pasajes, pero no inventes prioridades si no están apoyadas por datos registrados.');
-  lines.push('- Regla de interpretación: distingue HECHOS registrados de LECTURAS derivadas. Si propones prioridades, deriva cada una de notas, pases, pasajes, eventos, sueño, ánimo, deporte, gatillos, tiempo disponible o tiempo registrado. No trates inferencias como hechos.');
+  lines.push('- Regla de interpretación: distingue HECHOS registrados de LECTURAS derivadas. Si propones prioridades, deriva cada una de notas, pases, pasajes, eventos, sueño, concentración, deporte, gatillos, tiempo disponible o tiempo registrado. No trates inferencias como hechos.');
   lines.push('- Si el último día solicitado aparece como HOY, entiende que el día puede seguir abierto y que la orientación puede ser para terminar hoy o preparar mañana según la hora y la carga ya registrada.');
   lines.push('');
   lines.push('RESUMEN GLOBAL');
@@ -14101,7 +14176,7 @@ function buildAiTextReport(options) {
       lines.push('Diario general: ' + day.journalEntries.length + (day.journalEntries.length === 1 ? ' entrada' : ' entradas') + ' (detalle arriba).');
     }
     if (day.estadoEventos.length) {
-      lines.push('Ánimo/bienestar:');
+      lines.push('Concentración:');
       day.estadoEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.label || e.value)));
     }
     if (day.suenoEventos.length) {
@@ -14200,10 +14275,10 @@ function buildAiTextReport(options) {
   lines.push('PETICIÓN SUGERIDA A LA IA');
   if (reportIncludesToday) {
     lines.push('Con esta información, ayúdame primero a decidir qué hacer con lo que queda de HOY. No asumas que el día está cerrado sólo porque el texto sea un resumen.');
-    lines.push('Si por la hora actual, el tiempo disponible bruto, la carga ya registrada, el sueño, el ánimo, el deporte, los gatillos o las notas parece que aún queda margen razonable, propón un cierre o continuación breve para hoy: obras/pasajes/pases concretos, duración aproximada, criterio de cierre y cuándo parar.');
+    lines.push('Si por la hora actual, el tiempo disponible bruto, la carga ya registrada, el sueño, la concentración, el deporte, los gatillos o las notas parece que aún queda margen razonable, propón un cierre o continuación breve para hoy: obras/pasajes/pases concretos, duración aproximada, criterio de cierre y cuándo parar.');
     lines.push('Si por la hora o por la carga parece que probablemente ya he terminado, entonces sugiere una forma de cerrar el día y preparar mañana. En ambos casos, basa las prioridades sólo en mis datos registrados y distingue hechos de inferencias.');
   } else {
-    lines.push('Con esta información, ayúdame a preparar mañana. Basa las prioridades sólo en mis datos registrados: pases, notas, bloques de estudio, sueño, ánimo, deporte, tiempo disponible, siestas, gatillos y eventos próximos. Distingue hechos de inferencias.');
+    lines.push('Con esta información, ayúdame a preparar mañana. Basa las prioridades sólo en mis datos registrados: pases, notas, bloques de estudio, sueño, concentración, deporte, tiempo disponible, siestas, gatillos y eventos próximos. Distingue hechos de inferencias.');
   }
   let text = lines.join('\n');
   if (!includeContext) {
@@ -17277,11 +17352,15 @@ function renderCronoTasks() {
   const row = t => {
     const cls = 'crono-task-row' + (t.done ? ' is-done' : '');
     const action = t.done ? 'Volver a abrir' : 'Marcar como hecha';
-    return '<button type="button" class="' + cls + '" onclick="toggleCronoTask(\'' + hechoJs(t.id) + '\',this)" aria-label="' + action + ': ' + escapeHtmlSafe(t.text) + '">' +
-      '<span class="crono-task-check"></span>' +
-      '<span class="crono-task-text">' + escapeHtmlSafe(t.text) + '</span>' +
-      (cronoTaskKind(t) === 'piano' && t.tomorrow ? '<span class="crono-task-due-tag">Mañana</span>' : '') +
-    '</button>';
+    return '<div class="' + cls + '">' +
+      '<button type="button" class="crono-task-toggle" onclick="toggleCronoTask(\'' + hechoJs(t.id) + '\',this)" aria-label="' + action + ': ' + escapeHtmlSafe(t.text) + '">' +
+        '<span class="crono-task-check" aria-hidden="true"></span>' +
+      '</button>' +
+      '<button type="button" class="crono-task-open" onclick="openCronoTaskEdit(\'' + hechoJs(t.id) + '\')" aria-label="Editar tarea: ' + escapeHtmlSafe(t.text) + '">' +
+        '<span class="crono-task-text">' + escapeHtmlSafe(t.text) + '</span>' +
+        (cronoTaskKind(t) === 'piano' && t.tomorrow ? '<span class="crono-task-due-tag">Mañana</span>' : '') +
+      '</button>' +
+    '</div>';
   };
   const lane = (kind, title, group) => {
     const clean = !group.pending.length;
@@ -17385,23 +17464,72 @@ function addCronoTask(source) {
   showToast('Tarea añadida · ' + (composer.kind === 'piano' ? 'Piano' : 'Personal'));
 }
 
-function toggleCronoTask(id, rowEl) {
+let _cronoTaskEditId = null;
+
+function openCronoTaskEdit(id) {
+  const task = cronoTasks().find(item => item.id === id);
+  if (!task) return;
+  _cronoTaskEditId = id;
+  const input = document.getElementById('cronoTaskEditInput');
+  if (input) input.value = task.text;
+  openModal('modalCronoTaskEdit');
+  setTimeout(() => {
+    if (!input) return;
+    input.focus();
+    input.select();
+  }, 80);
+}
+
+function cronoTaskEditKey(event) {
+  if (!event) return;
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    saveCronoTaskEdit();
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    closeModal('modalCronoTaskEdit');
+  }
+}
+
+function saveCronoTaskEdit() {
+  const task = cronoTasks().find(item => item.id === _cronoTaskEditId);
+  const input = document.getElementById('cronoTaskEditInput');
+  const text = (input?.value || '').replace(/\s+/g, ' ').trim();
+  if (!task) {
+    closeModal('modalCronoTaskEdit');
+    return;
+  }
+  if (!text) {
+    showToast('Escribe un nombre para la tarea');
+    return;
+  }
+  task.text = text;
+  task.updatedAt = new Date().toISOString();
+  saveData();
+  closeModal('modalCronoTaskEdit');
+  _cronoTaskEditId = null;
+  renderCronoTasks();
+  showToast('Tarea actualizada');
+}
+
+function toggleCronoTask(id, toggleButton) {
   const task = cronoTasks().find(t => t.id === id);
   if (!task) return;
+  const rowEl = toggleButton?.closest('.crono-task-row');
   const commitToggle = () => {
     task.done = !task.done;
     task.doneAt = task.done ? new Date().toISOString() : null;
     saveData();
     renderCronoTasks();
   };
-  if (task.done || !rowEl) {
+  if (task.done || !rowEl || !toggleButton) {
     commitToggle();
     try { Haptics.light(); } catch(e) {}
     return;
   }
   if (rowEl.classList.contains('is-completing')) return;
   rowEl.classList.add('is-completing');
-  rowEl.disabled = true;
+  toggleButton.disabled = true;
   rowEl.setAttribute('aria-busy', 'true');
   try { Haptics.success(); } catch(e) {}
   const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
