@@ -1,0 +1,4 @@
+project_id = "fexfeekifzgszluemihs"
+
+[functions.study-push-dispatch]
+verify_jwt = false

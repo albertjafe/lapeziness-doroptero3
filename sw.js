@@ -1,11 +1,12 @@
-const CACHE = 'estudio-v166';
+const CACHE = 'estudio-v167';
 const ASSETS = [
   './index.html',
-  './styles.css?v=166',
-  './app.js?v=166',
-  './timer-core.js?v=166',
-  './data-core.js?v=166',
-  './sync-core.js?v=166',
+  './styles.css?v=167',
+  './app.js?v=167',
+  './timer-core.js?v=167',
+  './data-core.js?v=167',
+  './sync-core.js?v=167',
+  './push-client.js?v=167',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -32,9 +33,28 @@ self.addEventListener('message', e => {
   if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
+self.addEventListener('push', event => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch (error) {}
+  const title = payload.title || 'Estudio en marcha';
+  const icon = new URL('./icon-192.png', self.registration.scope).href;
+  event.waitUntil(self.registration.showNotification(title, {
+    body: payload.body || 'Tu sesión sigue activa.',
+    tag: payload.tag || 'study-timer',
+    icon,
+    badge: icon,
+    lang: 'es',
+    renotify: true,
+    data: payload.data || { view: 'cronometro' },
+  }));
+});
+
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  const targetUrl = new URL('./index.html?view=cronometro', self.registration.scope).href;
+  const requestedUrl = event.notification.data && event.notification.data.url;
+  const targetUrl = requestedUrl
+    ? new URL(requestedUrl, self.registration.scope).href
+    : new URL('./index.html?view=cronometro', self.registration.scope).href;
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async windowClients => {
       const appClient = windowClients.find(client => client.url.startsWith(self.registration.scope));

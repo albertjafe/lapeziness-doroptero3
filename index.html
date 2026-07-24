@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=166">
+<link rel="stylesheet" href="styles.css?v=167">
 </head>
 <body>
 
@@ -935,6 +935,20 @@
           <span class="haptics-toggle-knob"></span>
         </button>
       </div>
+    </div>
+
+    <!-- ── NOTIFICACIONES ── -->
+    <div class="ajustes-group-label">Notificaciones</div>
+    <div class="ajustes-card push-settings-card">
+      <div class="push-settings-main">
+        <span class="push-status-dot" id="pushNotificationDot" data-tone="neutral" aria-hidden="true"></span>
+        <div class="push-settings-copy">
+          <div class="ajustes-card-head">Avisos con la app cerrada</div>
+          <div class="ajustes-hint" id="pushNotificationStatus">Comprobando este dispositivo...</div>
+        </div>
+        <button class="modal-btn secondary push-enable-btn" id="pushNotificationEnableBtn" type="button" onclick="enableReliableNotifications()">Activar avisos</button>
+      </div>
+      <div class="push-settings-schedule">Temporizador: 5, 4, 3, 2 y 1 min · Cronómetro: cada 15 min</div>
     </div>
 
     <!-- ── DATOS ── -->
@@ -1917,10 +1931,11 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js?v=166"></script>
-<script src="data-core.js?v=166"></script>
-<script src="sync-core.js?v=166"></script>
-<script src="app.js?v=166"></script>
+<script src="timer-core.js?v=167"></script>
+<script src="data-core.js?v=167"></script>
+<script src="sync-core.js?v=167"></script>
+<script src="push-client.js?v=167"></script>
+<script src="app.js?v=167"></script>
 
 </body>
 <script>
@@ -1942,7 +1957,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=166', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=167', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

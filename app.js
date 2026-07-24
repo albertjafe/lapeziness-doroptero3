@@ -16180,6 +16180,7 @@ function openSettings() {
   if (typeof updateForestPendientesBtn === 'function') updateForestPendientesBtn();
   if (typeof updateAppVersionInfo === 'function') updateAppVersionInfo();
   if (typeof updateAiExportControls === 'function') updateAiExportControls();
+  if (typeof StudyPush !== 'undefined' && StudyPush.refreshUI) StudyPush.refreshUI();
 }
 
 // Vuelve a la pantalla desde la que se abrió Ajustes.
@@ -16377,6 +16378,7 @@ async function initApp() {
   if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
   if (typeof renderSessionJournal === 'function') renderSessionJournal();
   if (typeof updateAiExportControls === 'function') updateAiExportControls();
+  if (typeof StudyPush !== 'undefined' && StudyPush.refreshUI) StudyPush.refreshUI();
   // Programar el chequeo de medianoche y escuchar visibilitychange por si el
   // setTimeout falla (móviles que duermen tabs en background)
   scheduleNextMidnightCheck();
@@ -16604,6 +16606,7 @@ const crono = {
   notes: [],
   observation: '',
 };
+window.crono = crono;
 
 let _cronoPendingFinishRunId = null;
 let _cronoFinalizingRunId = null;
@@ -16802,25 +16805,28 @@ function cronoNotificationToastOnce(key, message) {
 }
 
 function cronoRequestNotificationPermissionFromGesture() {
+  if (typeof StudyPush !== 'undefined') {
+    return StudyPush.enableFromGesture({ silent: true });
+  }
   if (!('Notification' in window)) {
     cronoNotificationToastOnce(
       'crono_notification_unsupported',
       'En iPad, añade la app a la pantalla de inicio para recibir avisos'
     );
-    return;
+    return Promise.resolve(false);
   }
   if (Notification.permission === 'denied') {
     cronoNotificationToastOnce(
       'crono_notification_denied',
       'Los avisos están bloqueados; puedes activarlos en Ajustes'
     );
-    return;
+    return Promise.resolve(false);
   }
-  if (Notification.permission !== 'default') return;
+  if (Notification.permission !== 'default') return Promise.resolve(Notification.permission === 'granted');
 
   try {
     const request = Notification.requestPermission();
-    Promise.resolve(request).then(permission => {
+    return Promise.resolve(request).then(permission => {
       if (permission === 'granted') showToast('Avisos de estudio activados');
       else if (permission === 'denied') {
         cronoNotificationToastOnce(
@@ -16828,8 +16834,9 @@ function cronoRequestNotificationPermissionFromGesture() {
           'Los avisos están bloqueados; puedes activarlos en Ajustes'
         );
       }
-    }).catch(() => {});
-  } catch(e) {}
+      return permission === 'granted';
+    }).catch(() => false);
+  } catch(e) { return Promise.resolve(false); }
 }
 
 function cronoNotificationDurationText(minutes) {
@@ -16842,6 +16849,7 @@ function cronoNotificationDurationText(minutes) {
 }
 
 function cronoShowSystemNotification(event) {
+  if (typeof StudyPush !== 'undefined' && StudyPush.isActive()) return;
   if (!event || !('Notification' in window) || Notification.permission !== 'granted') return;
 
   const sessionName = crono.displayName || (crono.isRest ? 'Descanso' : 'Sesión de estudio');
@@ -20414,7 +20422,7 @@ function cronoStart() {
   if (!sel) return;
   const resolved = cronoResolveSelectValue(sel.value);
   if (!resolved) { showToast('Elige una obra o movimiento'); return; }
-  cronoRequestNotificationPermissionFromGesture();
+  const pushEnable = cronoRequestNotificationPermissionFromGesture();
 
   // Marcar como la última usada (para que sea el default la próxima vez).
   if (typeof bumpCronoPickRecency === 'function') bumpCronoPickRecency(resolved.obraId);
@@ -20457,6 +20465,11 @@ function cronoStart() {
   crono.runId = typeof TimerCore !== 'undefined' ? TimerCore.createRunId() : ('run_' + Date.now() + '_' + Math.random().toString(36).slice(2));
 
   cronoSaveState();
+  Promise.resolve(pushEnable).then(enabled => {
+    if (enabled && typeof StudyPush !== 'undefined') {
+      StudyPush.syncRun({ resetCountdown: true, resetMilestones: true });
+    }
+  });
   renderCronoPasajes();
   cronoRender();
   cronoStartTick();
@@ -20473,7 +20486,7 @@ function cronoStartRest() {
     showToast('Termina la sesión actual antes de descansar');
     return;
   }
-  cronoRequestNotificationPermissionFromGesture();
+  const pushEnable = cronoRequestNotificationPermissionFromGesture();
   _cronoRunDrawerTab = 'pasajes';
   _cronoLastRunDestelloKey = '';
   crono.notes = [];
@@ -20508,6 +20521,11 @@ function cronoStartRest() {
   crono.runId = typeof TimerCore !== 'undefined' ? TimerCore.createRunId() : ('run_' + Date.now() + '_' + Math.random().toString(36).slice(2));
 
   cronoSaveState();
+  Promise.resolve(pushEnable).then(enabled => {
+    if (enabled && typeof StudyPush !== 'undefined') {
+      StudyPush.syncRun({ resetCountdown: true, resetMilestones: true });
+    }
+  });
   cronoRender();
   cronoStartTick();
   cronoAcquireWakeLock();
@@ -20530,13 +20548,15 @@ function cronoExtendTimer(minutes) {
   const previousTargetDuration = crono.targetDurationMs || crono.targetMinutes * 60000;
   crono.targetMinutes += extra;
   crono.targetDurationMs = previousTargetDuration + extra * 60000;
-  if (crono.targetDurationMs - cronoEffectiveElapsedMs() > 5 * 60000) {
+  const resetPushCountdown = crono.targetDurationMs - cronoEffectiveElapsedMs() > 5 * 60000;
+  if (resetPushCountdown) {
     crono.notificationFiveMinuteSent = false;
     crono.notificationTimerMinutesSent = [];
   }
   if (crono.mode === 'until') crono.untilTime = cronoTargetEndClock();
   crono.lastCountdownSecond = null;
   cronoSaveState();
+  if (typeof StudyPush !== 'undefined') StudyPush.syncRun({ resetCountdown: resetPushCountdown });
   cronoRender();
   if (!crono.tickInterval) cronoStartTick();
   cronoUpdateTimerProgress();
@@ -20557,6 +20577,7 @@ function cronoPause() {
   crono.state = 'paused';
   crono.pauseStartTs = Date.now();
   cronoSaveState();
+  if (typeof StudyPush !== 'undefined') StudyPush.pauseRun(crono.runId);
   cronoRender();
   cronoStartPauseCountdown();
 }
@@ -20569,6 +20590,7 @@ function cronoResume() {
   crono.pauseStartTs = 0;
   crono.state = 'running';
   cronoSaveState();
+  if (typeof StudyPush !== 'undefined') StudyPush.syncRun({ reason: 'resume' });
   cronoRender();
   cronoStartTick();
   cronoAcquireWakeLock();
@@ -20728,7 +20750,7 @@ function cronoFinish(expectedRunId) {
         opts: { source: 'app', notes: cronoSessionNotes, tipo: 'descanso' }
       });
     }
-    cronoReset();
+    cronoReset('completed');
     cronoRender();
     refreshConcentradoUI();
     // Pequeño toast de confirmación
@@ -20760,7 +20782,7 @@ function cronoFinish(expectedRunId) {
         opts: { failed: true, notes: cronoSessionNotes }
       });
     }
-    cronoReset();
+    cronoReset('completed');
     cronoRender();
     refreshConcentradoUI();
     // Mostrar modal con opciones (¡La próxima vez mejorará!)
@@ -20771,7 +20793,7 @@ function cronoFinish(expectedRunId) {
   const obra = findObra(obraId);
   if (!obra) {
     showToast('La obra ya no existe — sesión descartada');
-    cronoReset();
+    cronoReset('completed');
     cronoRender();
     return;
   }
@@ -20788,7 +20810,7 @@ function cronoFinish(expectedRunId) {
     opts: { notes: cronoSessionNotes }
   });
   if (!blockResult.persisted) {
-    cronoReset();
+    cronoReset('completed');
     cronoRender();
     refreshConcentradoUI();
     return;
@@ -20885,7 +20907,7 @@ function cronoFinish(expectedRunId) {
     observation: crono.observation || ''
   };
 
-  cronoReset();
+  cronoReset('completed');
   cronoRender();
   cronoPlayHarvest(
     prevConcentradoMin,
@@ -20906,7 +20928,12 @@ function cronoFinish(expectedRunId) {
   }, 120);
 }
 
-function cronoReset() {
+function cronoReset(pushStatus) {
+  const pushRunId = crono.runId;
+  if (pushRunId && typeof StudyPush !== 'undefined') {
+    if (pushStatus === 'completed') StudyPush.completeRun(pushRunId);
+    else StudyPush.cancelRun(pushRunId);
+  }
   cronoReleaseWakeLock();
   crono.state = 'idle';
   crono.isRest = false;
@@ -21560,6 +21587,9 @@ function cronoHydrate() {
       }
     } else if (crono.state === 'paused') {
       cronoStartPauseCountdown();
+    }
+    if (crono.state === 'running' && typeof StudyPush !== 'undefined') {
+      StudyPush.syncRun({ reason: 'hydrate' });
     }
   }
 }
