@@ -87,6 +87,7 @@
     merged.forestPlants = mergePlants(base.forestPlants, other.forestPlants);
     merged.sesiones = mergeSessions(base.sesiones, other.sesiones);
     merged.estadoEventos = mergeEvents(base.estadoEventos, other.estadoEventos, ['at', 'value', 'label'], 2000);
+    merged.impulsoEventos = mergeEvents(base.impulsoEventos, other.impulsoEventos, ['at', 'value', 'label'], 2000);
     merged.deporteEventos = mergeEvents(base.deporteEventos, other.deporteEventos, ['at', 'kind', 'value', 'label'], 2000);
     merged.suenoEventos = mergeEvents(base.suenoEventos, other.suenoEventos, ['at', 'kind'], 2000);
     merged.triggerEventos = mergeEvents(base.triggerEventos, other.triggerEventos, ['at', 'value', 'label'], 2000);

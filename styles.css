@@ -12433,67 +12433,76 @@ body.crono-running .crono-concentrado { display: none; }
   }
 }
 
-/* Registro de concentración sin fricción: aparece solo cuando el cronómetro
-   tiene anchura horizontal suficiente y no roba espacio a la vista vertical. */
-.crono-concentration-monitor {
-  display: none;
-}
+/* Registros rápidos del momento: solo ocupan el espacio libre de la vista
+   horizontal. Cada selección confirma el guardado y vuelve a quedar neutra. */
+.crono-moment-monitor { display: none; }
 @media (min-width: 900px) and (orientation: landscape) and (min-height: 560px) {
-  #view-cronometro .crono-concentration-monitor {
+  #view-cronometro .crono-moment-monitor {
     position: fixed;
-    left: 25%;
+    left: 18px;
+    right: 18px;
     bottom: max(9px, env(safe-area-inset-bottom, 0px));
     z-index: 120;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: min(430px, calc(50vw - 34px));
-    min-height: 38px;
+    display: grid;
+    grid-template-columns: minmax(520px, 1.45fr) minmax(310px, 1fr);
+    gap: 9px;
+    max-width: 1120px;
+    margin: 0 auto;
+    pointer-events: none;
+  }
+  .crono-moment-controls,
+  .crono-moment-history {
     box-sizing: border-box;
-    padding: 5px 7px 5px 13px;
     border: 1px solid color-mix(in srgb, var(--border2) 74%, transparent);
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--bg2) 88%, transparent);
+    border-radius: 15px;
+    background: color-mix(in srgb, var(--bg2) 90%, transparent);
     box-shadow: 0 5px 18px rgba(0,0,0,.06);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
-    transform: translateX(-50%);
+    pointer-events: auto;
   }
-  .crono-concentration-label {
-    flex: 0 0 auto;
+  .crono-moment-controls { padding: 5px 7px; }
+  .crono-moment-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 31px;
+  }
+  .crono-moment-row + .crono-moment-row {
+    border-top: 1px solid color-mix(in srgb, var(--border2) 55%, transparent);
+  }
+  .crono-moment-label {
+    flex: 0 0 108px;
     color: var(--text3);
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 8px;
     font-weight: 700;
-    letter-spacing: .08em;
+    letter-spacing: .06em;
     text-transform: uppercase;
   }
-  .crono-concentration-levels {
+  .crono-moment-levels {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 3px;
     min-width: 0;
     flex: 1;
   }
-  .crono-concentration-levels .estado-face {
+  .crono-moment-levels .estado-face {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
     min-width: 0;
-    min-height: 28px;
-    padding: 3px 6px;
+    min-height: 25px;
+    padding: 2px 5px;
     border: 0;
     border-radius: 999px;
     background: transparent;
     color: var(--text3);
     cursor: pointer;
   }
-  .crono-concentration-levels .ritmo-icon,
-  .crono-concentration-levels .ritmo-dot {
-    display: none;
-  }
-  .crono-concentration-levels .estado-face-label {
+  .crono-moment-levels .ritmo-icon,
+  .crono-moment-levels .ritmo-dot { display: none; }
+  .crono-moment-levels .estado-face-label {
     overflow: hidden;
     color: inherit;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
@@ -12502,19 +12511,85 @@ body.crono-running .crono-concentrado { display: none; }
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .crono-concentration-levels .estado-face:hover {
+  .crono-moment-levels .estado-face:hover {
     background: var(--bg3);
     color: var(--text2);
   }
-  .crono-concentration-levels .estado-face.active {
-    background: color-mix(in srgb, var(--accent) 15%, var(--bg2));
+  .crono-moment-levels .estado-face.active {
+    background: color-mix(in srgb, var(--accent) 16%, var(--bg2));
     color: var(--accent);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent);
   }
-  .crono-concentration-levels .estado-face:focus-visible {
+  .crono-moment-levels .estado-face.is-registering {
+    animation: crono-moment-confirm .85s ease both;
+  }
+  .crono-moment-levels .estado-face:focus-visible {
     outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
     outline-offset: 1px;
   }
+  .crono-moment-history {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 7px;
+    min-height: 73px;
+    padding: 7px 8px;
+  }
+  .crono-moment-history-title {
+    align-self: start;
+    padding-top: 3px;
+    color: var(--text3);
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .crono-moment-history-list {
+    display: grid;
+    gap: 2px;
+    max-height: 58px;
+    overflow-y: auto;
+  }
+  .crono-moment-history-item {
+    display: grid;
+    grid-template-columns: 68px minmax(60px, 1fr) 38px 24px;
+    align-items: center;
+    gap: 5px;
+    min-height: 25px;
+    color: var(--text2);
+    font-size: 9px;
+  }
+  .crono-moment-history-kind,
+  .crono-moment-history-item time { color: var(--text3); }
+  .crono-moment-history-item strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .crono-moment-history-item button {
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+  }
+  .crono-moment-history-item button:hover {
+    background: color-mix(in srgb, #dc2626 10%, transparent);
+    color: #dc2626;
+  }
+  .crono-moment-empty {
+    align-self: center;
+    color: var(--text3);
+    font-size: 9px;
+  }
+}
+@keyframes crono-moment-confirm {
+  0% { transform: scale(.94); }
+  35% { transform: scale(1.08); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 13%, transparent); }
+  100% { transform: scale(1); }
 }
 
 /* Recordatorio visible de tareas y selector de modo de lectura comoda. */

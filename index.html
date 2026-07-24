@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=168">
+<link rel="stylesheet" href="styles.css?v=169">
 </head>
 <body>
 
@@ -525,9 +525,21 @@
       <button type="button" class="crono-destellos-card" id="cronoDestellosCard" onclick="openDestellosModal()"></button>
     </div>
 
-    <section class="crono-concentration-monitor" aria-label="Concentración actual">
-      <span class="crono-concentration-label">Concentración</span>
-      <div class="crono-concentration-levels" id="cronoConcentrationFaces" role="radiogroup" aria-label="Registrar concentración"></div>
+    <section class="crono-moment-monitor" aria-label="Registros del momento">
+      <div class="crono-moment-controls">
+        <div class="crono-moment-row">
+          <span class="crono-moment-label">Impulso superado</span>
+          <div class="crono-moment-levels" id="cronoImpulseFaces" role="radiogroup" aria-label="Registrar impulso superado"></div>
+        </div>
+        <div class="crono-moment-row crono-concentration-monitor">
+          <span class="crono-moment-label">Concentración</span>
+          <div class="crono-moment-levels" id="cronoConcentrationFaces" role="radiogroup" aria-label="Registrar concentración"></div>
+        </div>
+      </div>
+      <aside class="crono-moment-history" aria-label="Registros recientes">
+        <span class="crono-moment-history-title">Hoy</span>
+        <div class="crono-moment-history-list" id="cronoMomentHistoryList"></div>
+      </aside>
     </section>
 
   </div>
@@ -1959,11 +1971,11 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js?v=168"></script>
-<script src="data-core.js?v=168"></script>
-<script src="sync-core.js?v=168"></script>
-<script src="push-client.js?v=168"></script>
-<script src="app.js?v=168"></script>
+<script src="timer-core.js?v=169"></script>
+<script src="data-core.js?v=169"></script>
+<script src="sync-core.js?v=169"></script>
+<script src="push-client.js?v=169"></script>
+<script src="app.js?v=169"></script>
 
 </body>
 <script>
@@ -1985,7 +1997,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=168', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=169', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

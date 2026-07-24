@@ -36,7 +36,7 @@ const nativeMarker = '<script>window.__ESTUDIO_NATIVE__ = true;</script>';
 const bridgeScript = '<script src="native-live-activity.js"></script>';
 let html = await readFile(join(targetRoot, 'index.html'), 'utf8');
 html = html.replace('<meta charset="UTF-8">', '<meta charset="UTF-8">\n' + nativeMarker);
-html = html.replace('<script src="app.js?v=168"></script>', '<script src="app.js?v=168"></script>\n' + bridgeScript);
+html = html.replace('<script src="app.js?v=169"></script>', '<script src="app.js?v=169"></script>\n' + bridgeScript);
 html = html.replaceAll(
   "if ('serviceWorker' in navigator)",
   "if (!window.__ESTUDIO_NATIVE__ && 'serviceWorker' in navigator)",

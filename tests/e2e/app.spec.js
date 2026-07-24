@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 const fixture = {
   obras: [{ id: 'obra_1', name: 'Bach · Preludio', composer: 'J. S. Bach', tipo: 'obra', movimientos: [], sol: 50, solHistory: [] }],
   eventos: [], sesiones: [], registro: [], sessionPlants: [], forestPlants: [],
-  estadoEventos: [], deporteEventos: [], suenoEventos: [], triggerEventos: [],
+  estadoEventos: [], impulsoEventos: [], deporteEventos: [], suenoEventos: [], triggerEventos: [],
   tiempoDisponibleEventos: [], dailyJournalEntries: [],
 };
 
@@ -855,7 +855,7 @@ test('uses the task circle to toggle and the task name to edit', async ({ page }
   expect(await page.evaluate(() => cronoTasks()[0].done)).toBe(false);
 });
 
-test('records concentration discreetly from the landscape timer', async ({ page }) => {
+test('records concentration and resisted urges transiently from the landscape timer', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await prepare(page);
   await page.evaluate(() => showView('cronometro'));
@@ -866,15 +866,34 @@ test('records concentration discreetly from the landscape timer', async ({ page 
   await monitor.getByRole('radio', { name: 'Alta', exact: true }).click();
   await expect(monitor.getByRole('radio', { name: 'Alta', exact: true })).toHaveAttribute('aria-checked', 'true');
 
+  const impulse = page.locator('#cronoImpulseFaces');
+  await impulse.getByRole('radio', { name: 'Muy alto', exact: true }).click();
+  await expect(impulse.getByRole('radio', { name: 'Muy alto', exact: true })).toHaveAttribute('aria-checked', 'true');
+
   const state = await page.evaluate(() => ({
     value: estadoActualVal(),
     lastLabel: ensureEstadoEventos().at(-1)?.label,
-    sessionSelected: document.querySelector('#estadoFaces .estado-face.active')?.getAttribute('aria-label'),
+    impulseLabel: ensureImpulsoEventos().at(-1)?.label,
   }));
-  expect(state).toEqual({ value: 78, lastLabel: 'Alta', sessionSelected: 'Alta' });
+  expect(state).toEqual({ value: 78, lastLabel: 'Alta', impulseLabel: 'Muy alto' });
+
+  const history = page.locator('#cronoMomentHistoryList');
+  await expect(history).toContainText('Impulso');
+  await expect(history).toContainText('Concentración');
+  await history.getByRole('button', { name: 'Borrar impulso muy alto' }).click();
+  expect(await page.evaluate(() => ensureImpulsoEventos().length)).toBe(0);
+  await history.getByRole('button', { name: 'Borrar concentración alta' }).click();
+  expect(await page.evaluate(() => ({ events: ensureEstadoEventos().length, userSet: _estadoUserSet })))
+    .toEqual({ events: 0, userSet: false });
+  await expect(history).toContainText('Sin registros todavía');
+
+  await page.waitForTimeout(900);
+  await expect(monitor.locator('.estado-face.active')).toHaveCount(0);
+  await expect(impulse.locator('.estado-face.active')).toHaveCount(0);
+  await expect(page.locator('#estadoFaces .estado-face.active')).toHaveCount(0);
 
   await page.setViewportSize({ width: 834, height: 1194 });
-  await expect(monitor).toBeHidden();
+  await expect(page.locator('.crono-moment-monitor')).toBeHidden();
 });
 
 test('advances free timer progress to a 120 minute maximum and enlarges mode labels', async ({ page }) => {

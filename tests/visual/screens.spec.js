@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const fixture = {
   obras: [{ id: 'obra_1', name: 'Bach · Preludio', composer: 'J. S. Bach', tipo: 'obra', movimientos: [], sol: 50, solHistory: [] }],
-  eventos: [], sesiones: [], registro: [], sessionPlants: [], forestPlants: [], estadoEventos: [],
+  eventos: [], sesiones: [], registro: [], sessionPlants: [], forestPlants: [], estadoEventos: [], impulsoEventos: [],
   deporteEventos: [], suenoEventos: [], triggerEventos: [], tiempoDisponibleEventos: [], dailyJournalEntries: [],
 };
 

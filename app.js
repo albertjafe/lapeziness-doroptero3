@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-24-pases-tareas-concentracion-v46';
+const APP_VERSION = '2026-07-24-impulsos-concentracion-v47';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -242,6 +242,7 @@ function _mergeStudyHistory(base, other) {
   merged.forestPlants  = _mergePlants(base.forestPlants, other.forestPlants);
   merged.sesiones      = _mergeSesiones(base.sesiones, other.sesiones);
   merged.estadoEventos = _mergeEstadoEventos(base.estadoEventos, other.estadoEventos);
+  merged.impulsoEventos = _mergeEstadoEventos(base.impulsoEventos, other.impulsoEventos);
   merged.deporteEventos = _mergeDeporteEventos(base.deporteEventos, other.deporteEventos);
   merged.suenoEventos = _mergeSuenoEventos(base.suenoEventos, other.suenoEventos);
   merged.triggerEventos = _mergeTriggerEventos(base.triggerEventos, other.triggerEventos);
@@ -371,6 +372,8 @@ async function loadFromCloud() {
         const cloudMin = (data.data.sessionPlants || []).length + (data.data.forestPlants || []).length;
         const localEstadoN = localDb ? (localDb.estadoEventos || []).length : 0;
         const cloudEstadoN = (data.data.estadoEventos || []).length;
+        const localImpulsoN = localDb ? (localDb.impulsoEventos || []).length : 0;
+        const cloudImpulsoN = (data.data.impulsoEventos || []).length;
         const localDeporteN = localDb ? (localDb.deporteEventos || []).length : 0;
         const cloudDeporteN = (data.data.deporteEventos || []).length;
         const localSuenoN = localDb ? (localDb.suenoEventos || []).length : 0;
@@ -379,7 +382,7 @@ async function loadFromCloud() {
         const cloudTriggerN = (data.data.triggerEventos || []).length;
         const localTiempoN = localDb ? (localDb.tiempoDisponibleEventos || []).length : 0;
         const cloudTiempoN = (data.data.tiempoDisponibleEventos || []).length;
-        const localHasMore = localMin > cloudMin || localEstadoN > cloudEstadoN || localDeporteN > cloudDeporteN || localSuenoN > cloudSuenoN || localTriggerN > cloudTriggerN || localTiempoN > cloudTiempoN;
+        const localHasMore = localMin > cloudMin || localEstadoN > cloudEstadoN || localImpulsoN > cloudImpulsoN || localDeporteN > cloudDeporteN || localSuenoN > cloudSuenoN || localTriggerN > cloudTriggerN || localTiempoN > cloudTiempoN;
         if (localHasMore || (typeof SyncCore !== 'undefined' && SyncCore.isDirty(beforeMeta))) {
           if (typeof SyncCore !== 'undefined' && !SyncCore.isDirty(_readSyncMeta())) _writeLocalSnapshot(true);
           await syncPendingCloudChanges();
@@ -419,6 +422,7 @@ function getDefaultData() {
     sesiones: [],
     registro: [],
     estadoEventos: [],
+    impulsoEventos: [],
     deporteEventos: [],
     suenoEventos: [],
     triggerEventos: [],
@@ -433,6 +437,7 @@ if (!db.eventos) db.eventos = [];
 if (!db.obras) db.obras = [];
 if (!db.forestPlants) db.forestPlants = [];
 if (!db.estadoEventos) db.estadoEventos = [];
+if (!db.impulsoEventos) db.impulsoEventos = [];
 if (!db.deporteEventos) db.deporteEventos = [];
 if (!db.suenoEventos) db.suenoEventos = [];
 if (!db.triggerEventos) db.triggerEventos = [];
@@ -723,6 +728,17 @@ const ESTADO_FACES = [
   { v: 96, emoji: '😄', label: 'Muy alta', icon: 'face-great' },
 ];
 
+const IMPULSO_LEVELS = [
+  { v: 20, level: 1, label: 'Muy bajo', icon: 'trigger-1' },
+  { v: 40, level: 2, label: 'Bajo', icon: 'trigger-2' },
+  { v: 60, level: 3, label: 'Medio', icon: 'trigger-3' },
+  { v: 80, level: 4, label: 'Alto', icon: 'trigger-4' },
+  { v: 100, level: 5, label: 'Muy alto', icon: 'trigger-5' },
+];
+
+let _concentrationPulseIndex = -1;
+let _impulsePulseIndex = -1;
+
 const SUENO_FACES = [
   { v: 12, label: 'Muy poco', icon: 'moon-lowest' },
   { v: 34, label: 'Poco', icon: 'moon-low' },
@@ -835,7 +851,7 @@ function pickEstado(idx) {
   _setEstadoAll(f.v);
   recordEstadoEvent(f);
   selectedEnergy = f.v >= 65 ? 'alta' : f.v >= 35 ? 'normal' : 'baja';
-  refreshEstadoFacesUI();
+  flashMomentSelection('concentration', idx);
   try { Haptics.medium(); } catch(e) {}
   try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
   clearTimeout(pickEstado._t);
@@ -881,6 +897,27 @@ function ensureEstadoEventos() {
   if (typeof db !== 'object' || !db) return _estadoEventosLocal();
   if (!Array.isArray(db.estadoEventos)) db.estadoEventos = _estadoEventosLocal();
   return db.estadoEventos;
+}
+
+function _impulsoEventosLocal() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('alberto_impulso_eventos_v1') || '[]');
+    return Array.isArray(raw) ? raw : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function _saveImpulsoEventosLocal(items) {
+  try {
+    localStorage.setItem('alberto_impulso_eventos_v1', JSON.stringify((items || []).slice(-2000)));
+  } catch(e) {}
+}
+
+function ensureImpulsoEventos() {
+  if (typeof db !== 'object' || !db) return _impulsoEventosLocal();
+  if (!Array.isArray(db.impulsoEventos)) db.impulsoEventos = _impulsoEventosLocal();
+  return db.impulsoEventos;
 }
 
 function _deporteEventosLocal() {
@@ -1002,6 +1039,15 @@ function setSessionJournalExpanded(expanded) {
     toggle.title = open ? 'Cerrar diario' : 'Añadir al diario';
   }
   if (open) setTimeout(() => document.getElementById('sessionJournalInput')?.focus(), 0);
+}
+
+function pickImpulso(idx) {
+  const level = IMPULSO_LEVELS[idx];
+  if (!level) return;
+  recordImpulsoEvent(level);
+  flashMomentSelection('impulse', idx);
+  try { Haptics.medium(); } catch(e) {}
+  try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
 }
 
 function toggleSessionJournal() {
@@ -1178,10 +1224,115 @@ function recordEstadoEvent(face) {
   if (arr.length > 2000) arr.splice(0, arr.length - 2000);
   _saveEstadoEventosLocal(arr);
   refreshEstadoEventSummary();
+  renderCronoMomentHistory();
   clearTimeout(recordEstadoEvent._t);
   recordEstadoEvent._t = setTimeout(() => {
     if (typeof saveData === 'function') saveData();
   }, 600);
+}
+
+function recordImpulsoEvent(level) {
+  const arr = ensureImpulsoEventos();
+  const now = new Date();
+  arr.push({
+    id: 'impulso_' + now.getTime() + '_' + Math.random().toString(36).slice(2, 7),
+    at: now.toISOString(),
+    date: now.toDateString(),
+    value: level.v,
+    level: level.level,
+    label: level.label,
+  });
+  if (arr.length > 2000) arr.splice(0, arr.length - 2000);
+  _saveImpulsoEventosLocal(arr);
+  renderCronoMomentHistory();
+  clearTimeout(recordImpulsoEvent._t);
+  recordImpulsoEvent._t = setTimeout(() => {
+    if (typeof saveData === 'function') saveData();
+  }, 600);
+}
+
+function flashMomentSelection(kind, idx) {
+  const isImpulse = kind === 'impulse';
+  if (isImpulse) _impulsePulseIndex = idx;
+  else _concentrationPulseIndex = idx;
+  refreshMomentFacesUI();
+  const timerKey = isImpulse ? '_impulseTimer' : '_concentrationTimer';
+  clearTimeout(flashMomentSelection[timerKey]);
+  flashMomentSelection[timerKey] = setTimeout(() => {
+    if (isImpulse) _impulsePulseIndex = -1;
+    else _concentrationPulseIndex = -1;
+    refreshMomentFacesUI();
+  }, 850);
+}
+
+function refreshMomentFacesUI() {
+  document.querySelectorAll('#estadoFaces .estado-face, #cronoConcentrationFaces .estado-face').forEach(button => {
+    const on = Number(button.dataset.levelIndex) === _concentrationPulseIndex;
+    button.classList.toggle('active', on);
+    button.classList.toggle('is-registering', on);
+    button.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('#cronoImpulseFaces .estado-face').forEach(button => {
+    const on = Number(button.dataset.levelIndex) === _impulsePulseIndex;
+    button.classList.toggle('active', on);
+    button.classList.toggle('is-registering', on);
+    button.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+}
+
+function momentEventTimeLabel(at) {
+  const date = new Date(at);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderCronoMomentHistory() {
+  const host = document.getElementById('cronoMomentHistoryList');
+  if (!host) return;
+  const today = new Date().toDateString();
+  const concentration = ensureEstadoEventos().filter(item => item && item.date === today)
+    .map(item => Object.assign({ kind: 'concentration', kindLabel: 'Concentración' }, item));
+  const impulses = ensureImpulsoEventos().filter(item => item && item.date === today)
+    .map(item => Object.assign({ kind: 'impulse', kindLabel: 'Impulso' }, item));
+  const recent = concentration.concat(impulses)
+    .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
+    .slice(0, 6);
+  if (!recent.length) {
+    host.innerHTML = '<div class="crono-moment-empty">Sin registros todavía</div>';
+    return;
+  }
+  host.innerHTML = recent.map(item =>
+    '<div class="crono-moment-history-item" data-kind="' + item.kind + '">' +
+      '<span class="crono-moment-history-kind">' + item.kindLabel + '</span>' +
+      '<strong>' + (item.label || item.value || '') + '</strong>' +
+      '<time datetime="' + (item.at || '') + '">' + momentEventTimeLabel(item.at) + '</time>' +
+      '<button type="button" aria-label="Borrar ' + item.kindLabel.toLowerCase() + ' ' + (item.label || '') + '" onclick="deleteCronoMomentEvent(\'' + item.kind + '\',\'' + item.id + '\')">×</button>' +
+    '</div>'
+  ).join('');
+}
+
+function deleteCronoMomentEvent(kind, id) {
+  const isImpulse = kind === 'impulse';
+  const arr = isImpulse ? ensureImpulsoEventos() : ensureEstadoEventos();
+  const index = arr.findIndex(item => item && item.id === id);
+  if (index < 0) return;
+  arr.splice(index, 1);
+  if (isImpulse) _saveImpulsoEventosLocal(arr);
+  else {
+    _saveEstadoEventosLocal(arr);
+    const today = new Date().toDateString();
+    const latest = arr.filter(item => item && item.date === today)
+      .sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')))
+      .at(-1);
+    _estadoUserSet = !!latest;
+    if (latest && typeof latest.value === 'number') _setEstadoAll(latest.value);
+    saveEstadoDiario();
+    refreshEstadoFacesUI();
+  }
+  renderCronoMomentHistory();
+  if (!isImpulse) refreshEstadoEventSummary();
+  if (typeof saveData === 'function') saveData();
+  showToast('Registro borrado');
 }
 
 function recordDeporteEvent(kind, level) {
@@ -1288,7 +1439,7 @@ function recordSiesta() {
 
 function refreshEstadoFacesUI() {
   const idx = _estadoUserSet ? estadoToFaceIndex(estadoActualVal()) : -1;
-  document.querySelectorAll('#estadoFaces .estado-face, #cronoConcentrationFaces .estado-face').forEach(b => {
+  document.querySelectorAll('#estadoFaces .estado-face').forEach(b => {
     const i = Number(b.dataset.levelIndex);
     const on = i === idx;
     b.classList.toggle('active', on);
@@ -1299,6 +1450,7 @@ function refreshEstadoFacesUI() {
     status.textContent = _estadoUserSet ? 'Registrado hoy' : 'Sin registrar hoy · toca una opción';
     status.classList.toggle('is-unset', !_estadoUserSet);
   }
+  refreshMomentFacesUI();
 }
 
 function refreshSuenoFacesUI() {
@@ -1813,6 +1965,11 @@ function initEstadoSliders() {
     cronoConcentrationHost.innerHTML = ESTADO_FACES.map((f, i) => ritmoChoiceHTML(f, i, 'pickEstado', 'concentracion')).join('');
     cronoConcentrationHost.dataset.built = '1';
   }
+  const cronoImpulseHost = document.getElementById('cronoImpulseFaces');
+  if (cronoImpulseHost && !cronoImpulseHost.dataset.built) {
+    cronoImpulseHost.innerHTML = IMPULSO_LEVELS.map((f, i) => ritmoChoiceHTML(f, i, 'pickImpulso', 'impulso')).join('');
+    cronoImpulseHost.dataset.built = '1';
+  }
   const sleepHost = document.getElementById('suenoFaces');
   if (sleepHost && !sleepHost.dataset.built) {
     sleepHost.innerHTML = SUENO_FACES.map((f, i) => ritmoChoiceHTML(f, i, 'pickSueno', 'sueno')).join('');
@@ -1848,6 +2005,7 @@ function initEstadoSliders() {
     triggerHost.dataset.built = '1';
   }
   refreshEstadoFacesUI();
+  renderCronoMomentHistory();
   refreshSuenoFacesUI();
   refreshSiestaSummary();
   refreshTiempoDisponibleFacesUI();
@@ -13782,13 +13940,14 @@ function aiBuildDailyRows() {
   const paseRows = aiBuildPaseRows();
   const pasajeRows = aiBuildPasajeRows();
   const estadoEventos = ensureEstadoEventos ? ensureEstadoEventos() : (db.estadoEventos || []);
+  const impulsoEventos = ensureImpulsoEventos ? ensureImpulsoEventos() : (db.impulsoEventos || []);
   const deporteEventos = ensureDeporteEventos ? ensureDeporteEventos() : (db.deporteEventos || []);
   const suenoEventos = ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || []);
   const triggerEventos = ensureTriggerEventos ? ensureTriggerEventos() : (db.triggerEventos || []);
   const tiempoDisponibleEventos = ensureTiempoDisponibleEventos ? ensureTiempoDisponibleEventos() : (db.tiempoDisponibleEventos || []);
   const dailyJournalEntries = ensureDailyJournalEntries ? ensureDailyJournalEntries() : (db.dailyJournalEntries || []);
   const keys = new Set();
-  [studyRows, sessionCards, paseRows, pasajeRows, estadoEventos, deporteEventos, suenoEventos, triggerEventos, tiempoDisponibleEventos, dailyJournalEntries].forEach(arr => {
+  [studyRows, sessionCards, paseRows, pasajeRows, estadoEventos, impulsoEventos, deporteEventos, suenoEventos, triggerEventos, tiempoDisponibleEventos, dailyJournalEntries].forEach(arr => {
     (arr || []).forEach(x => {
       const k = x.day || aiLocalDateKey(x.date || x.at || x.start || x.startedAt);
       if (k) keys.add(k);
@@ -13809,6 +13968,7 @@ function aiBuildDailyRows() {
       pases: paseRows.filter(x => x.day === day),
       pasajes: pasajeRows.filter(x => x.day === day),
       estadoEventos: (estadoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
+      impulsoEventos: (impulsoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       deporteEventos: (deporteEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       suenoEventos: (suenoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       triggerEventos: (triggerEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
@@ -13839,6 +13999,7 @@ function buildAiDataPackage() {
       pases: aiBuildPaseRows().length,
       pasajeEntries: aiBuildPasajeRows().length,
       estadoEventos: (ensureEstadoEventos ? ensureEstadoEventos() : (db.estadoEventos || [])).length,
+      impulsoEventos: (ensureImpulsoEventos ? ensureImpulsoEventos() : (db.impulsoEventos || [])).length,
       deporteEventos: (ensureDeporteEventos ? ensureDeporteEventos() : (db.deporteEventos || [])).length,
       suenoEventos: (ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || [])).length,
       triggerEventos: (ensureTriggerEventos ? ensureTriggerEventos() : (db.triggerEventos || [])).length,
@@ -13852,6 +14013,7 @@ function buildAiDataPackage() {
     rawData: db,
     localMirrors: {
       estadoEventos: aiReadLocalJson('alberto_estado_eventos_v1'),
+      impulsoEventos: aiReadLocalJson('alberto_impulso_eventos_v1'),
       deporteEventos: aiReadLocalJson('alberto_deporte_eventos_v1'),
       suenoEventos: aiReadLocalJson('alberto_sueno_eventos_v1'),
       triggerEventos: aiReadLocalJson('alberto_trigger_eventos_v1'),
@@ -14039,6 +14201,7 @@ function aiDayHasReportableActivity(day) {
     day.pases.length ||
     day.pasajes.length ||
     day.estadoEventos.length ||
+    (day.impulsoEventos || []).length ||
     day.deporteEventos.length ||
     day.suenoEventos.length ||
     (day.triggerEventos || []).length ||
@@ -17288,6 +17451,10 @@ function cronoMaybeRemindTasks(reason) {
       reminder.setAttribute('role', 'alert');
       reminder.setAttribute('aria-live', 'assertive');
       panel.prepend(reminder);
+    }
+    if ((day.impulsoEventos || []).length) {
+      lines.push('Impulsos superados:');
+      day.impulsoEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.label || e.value)));
     }
     reminder.innerHTML = '<span aria-hidden="true">!</span><div><strong>Tienes ' + count + ' tarea' + (count === 1 ? '' : 's') + ' de piano pendiente' + (count === 1 ? '' : 's') + '</strong><small>Revísalas antes de seguir estudiando.' + (personalCount ? ' · ' + personalCount + ' apunte' + (personalCount === 1 ? '' : 's') + ' personal' + (personalCount === 1 ? '' : 'es') : '') + '</small></div>';
   }
