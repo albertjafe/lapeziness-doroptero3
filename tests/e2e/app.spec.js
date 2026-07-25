@@ -855,7 +855,7 @@ test('uses the task circle to toggle and the task name to edit', async ({ page }
   expect(await page.evaluate(() => cronoTasks()[0].done)).toBe(false);
 });
 
-test('records concentration and resisted urges transiently from the landscape timer', async ({ page }) => {
+test('records concentration and resisted urges across landscape and portrait timers', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await prepare(page);
   await page.evaluate(() => showView('cronometro'));
@@ -886,6 +886,7 @@ test('records concentration and resisted urges transiently from the landscape ti
   expect(await page.evaluate(() => ({ events: ensureEstadoEventos().length, userSet: _estadoUserSet })))
     .toEqual({ events: 0, userSet: false });
   await expect(history).toContainText('Sin registros todavía');
+  await expect(page.locator('#cronoMomentHistoryCount')).toHaveText('Hoy · 0');
 
   await page.waitForTimeout(900);
   await expect(monitor.locator('.estado-face.active')).toHaveCount(0);
@@ -893,7 +894,32 @@ test('records concentration and resisted urges transiently from the landscape ti
   await expect(page.locator('#estadoFaces .estado-face.active')).toHaveCount(0);
 
   await page.setViewportSize({ width: 834, height: 1194 });
-  await expect(page.locator('.crono-moment-monitor')).toBeHidden();
+  const momentMonitor = page.locator('.crono-moment-monitor');
+  await expect(momentMonitor).toBeVisible();
+  await expect(momentMonitor.locator('.crono-moment-mobile-trigger')).toBeHidden();
+  await expect(momentMonitor.locator('.crono-moment-controls')).toBeVisible();
+  await expect(momentMonitor.locator('.crono-moment-history-toggle')).toBeVisible();
+  const tabletControlsBox = await momentMonitor.locator('.crono-moment-controls').boundingBox();
+  expect(tabletControlsBox.y).toBeGreaterThanOrEqual(0);
+  expect(tabletControlsBox.y + tabletControlsBox.height).toBeLessThanOrEqual(1194);
+  await momentMonitor.locator('.crono-moment-history-toggle').click();
+  await expect(momentMonitor.locator('.crono-moment-history')).toBeVisible();
+
+  await page.evaluate(() => toggleCronoMomentHistory(false));
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileTrigger = momentMonitor.locator('.crono-moment-mobile-trigger');
+  await expect(mobileTrigger).toBeVisible();
+  await expect(momentMonitor.locator('.crono-moment-content')).toBeHidden();
+  await mobileTrigger.click();
+  await expect(mobileTrigger).toHaveAttribute('aria-expanded', 'true');
+  await expect(momentMonitor.locator('.crono-moment-content')).toBeVisible();
+  await expect(momentMonitor.locator('#cronoImpulseFaces')).toBeVisible();
+  await expect(momentMonitor.locator('#cronoConcentrationFaces')).toBeVisible();
+  const mobileContentBox = await momentMonitor.locator('.crono-moment-content').boundingBox();
+  expect(mobileContentBox.x).toBeGreaterThanOrEqual(0);
+  expect(mobileContentBox.x + mobileContentBox.width).toBeLessThanOrEqual(390);
+  expect(mobileContentBox.y).toBeGreaterThanOrEqual(0);
+  expect(mobileContentBox.y + mobileContentBox.height).toBeLessThanOrEqual(844);
 });
 
 test('advances free timer progress to a 120 minute maximum and enlarges mode labels', async ({ page }) => {

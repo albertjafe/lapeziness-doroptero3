@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-24-impulsos-concentracion-v47';
+const APP_VERSION = '2026-07-24-registros-verticales-v48';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1286,6 +1286,25 @@ function momentEventTimeLabel(at) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function toggleCronoMomentPanel(force) {
+  const monitor = document.querySelector('#view-cronometro .crono-moment-monitor');
+  if (!monitor) return;
+  const open = typeof force === 'boolean' ? force : !monitor.classList.contains('is-open');
+  monitor.classList.toggle('is-open', open);
+  const trigger = monitor.querySelector('.crono-moment-mobile-trigger');
+  if (trigger) trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (!open) toggleCronoMomentHistory(false);
+}
+
+function toggleCronoMomentHistory(force) {
+  const monitor = document.querySelector('#view-cronometro .crono-moment-monitor');
+  if (!monitor) return;
+  const open = typeof force === 'boolean' ? force : !monitor.classList.contains('history-open');
+  monitor.classList.toggle('history-open', open);
+  const trigger = monitor.querySelector('.crono-moment-history-toggle');
+  if (trigger) trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
 function renderCronoMomentHistory() {
   const host = document.getElementById('cronoMomentHistoryList');
   if (!host) return;
@@ -1294,6 +1313,9 @@ function renderCronoMomentHistory() {
     .map(item => Object.assign({ kind: 'concentration', kindLabel: 'Concentración' }, item));
   const impulses = ensureImpulsoEventos().filter(item => item && item.date === today)
     .map(item => Object.assign({ kind: 'impulse', kindLabel: 'Impulso' }, item));
+  const count = concentration.length + impulses.length;
+  const countLabel = document.getElementById('cronoMomentHistoryCount');
+  if (countLabel) countLabel.textContent = 'Hoy · ' + count;
   const recent = concentration.concat(impulses)
     .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
     .slice(0, 6);
