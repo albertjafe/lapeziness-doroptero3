@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-25-movil-horizontal-amplio-v51';
+const APP_VERSION = '2026-07-25-reparto-inverso-v52';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -16993,17 +16993,19 @@ function cronoClampInterfaceScale(value) {
   return Math.max(CRONO_INTERFACE_SCALE_MIN, Math.min(CRONO_INTERFACE_SCALE_MAX, Number(value) || 1));
 }
 
-function cronoInterfaceBaseWidth() {
-  const viewport = Math.max(320, window.innerWidth || document.documentElement.clientWidth || 1024);
-  if (viewport < 700) return Math.max(296, viewport - 24);
-  if (window.matchMedia('(orientation: portrait)').matches) return Math.min(760, viewport - 48);
-  return Math.min(920, viewport - 48);
+function cronoInterfaceRingBaseSize() {
+  const width = Math.max(320, window.innerWidth || document.documentElement.clientWidth || 1024);
+  const height = Math.max(320, window.innerHeight || document.documentElement.clientHeight || 768);
+  if (width > height && height <= 600) return 142;
+  if (width < 700) return Math.min(250, width * 0.64);
+  if (width > height) return Math.min(370, height * 0.5);
+  return 370;
 }
 
 function cronoShowInterfaceScale(scale, linger) {
   const indicator = document.getElementById('cronoInterfaceZoomIndicator');
   if (!indicator) return;
-  indicator.textContent = Math.round(scale * 100) + '%';
+  indicator.textContent = 'Reloj ' + Math.round(scale * 100) + ' · Tareas ' + Math.round((2 - scale) * 100);
   indicator.classList.add('visible');
   if (_cronoInterfaceZoomHideTimer) clearTimeout(_cronoInterfaceZoomHideTimer);
   if (linger) {
@@ -17017,12 +17019,19 @@ function cronoSetInterfaceScale(value, options) {
   const view = document.getElementById('view-cronometro');
   _cronoInterfaceScale = scale;
   if (view) {
-    view.style.setProperty('--crono-interface-scale', String(scale));
-    view.style.setProperty('--crono-interface-width', (cronoInterfaceBaseWidth() / Math.max(1, scale)).toFixed(2) + 'px');
-    view.style.setProperty('--crono-interface-landscape-height', (Math.max(260, window.innerHeight - 16) / Math.max(1, scale)).toFixed(2) + 'px');
+    const toolsScale = 2 - scale;
+    const timerShare = 1.04 + ((scale - 1) * 1.15);
+    const toolsShare = 2 - timerShare;
+    const ringSize = cronoInterfaceRingBaseSize() * scale;
+    const portraitToolsBase = window.innerWidth < 700 ? 300 : 340;
+    view.style.setProperty('--crono-timer-track', timerShare.toFixed(3) + 'fr');
+    view.style.setProperty('--crono-tools-track', toolsShare.toFixed(3) + 'fr');
+    view.style.setProperty('--crono-interface-ring-size', ringSize.toFixed(2) + 'px');
+    view.style.setProperty('--crono-tools-min-height', (portraitToolsBase * toolsScale).toFixed(2) + 'px');
     view.dataset.interfaceScale = String(scale);
   }
-  document.body.classList.toggle('crono-interface-zoomed-in', scale > 1.001);
+  document.body.classList.toggle('crono-interface-clock-small', scale < 0.999);
+  document.body.classList.toggle('crono-interface-clock-large', scale > 1.001);
   if (opts.persist) {
     try { localStorage.setItem(CRONO_INTERFACE_SCALE_KEY, String(scale)); } catch(e) {}
   }

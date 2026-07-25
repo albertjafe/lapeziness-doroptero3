@@ -978,7 +978,7 @@ test('advances free timer progress to a 120 minute maximum and enlarges mode lab
 
 test('deduplicates background timer and stopwatch notifications', async ({ page }) => {
   await prepare(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const sent = [];
     cronoShowSystemNotification = event => sent.push(event);
     crono.state = 'running';
@@ -1126,40 +1126,89 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
   }
 });
 
-test('scales the complete timer workspace and remembers the touch zoom', async ({ page }) => {
-  await page.setViewportSize({ width: 834, height: 1194 });
+test('uses pinch to distribute space inversely between timer and tools', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
   await prepare(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
+    db.cronoTasks = [{
+      id: 'dense_mobile_task',
+      text: 'Repasar la coda',
+      kind: 'piano',
+      tomorrow: false,
+      done: false,
+      createdAt: new Date().toISOString(),
+    }];
     showView('cronometro');
-    const wrap = document.querySelector('#view-cronometro .crono-wrap');
-    const before = wrap.getBoundingClientRect();
+    renderCronoTasks();
+    const rect = element => element.getBoundingClientRect();
+    const main = document.querySelector('.crono-idle-main');
+    const drawer = document.getElementById('cronoIdleDrawer');
+    const ring = document.getElementById('cronoTimerSvg');
+    const settle = () => new Promise(resolve => setTimeout(resolve, 260));
+    const before = { main: rect(main).width, drawer: rect(drawer).width, ring: rect(ring).width };
     cronoSetInterfaceScale(0.84, { persist: false, announce: false });
-    const reduced = wrap.getBoundingClientRect();
+    await settle();
+    const compactClock = { main: rect(main).width, drawer: rect(drawer).width, ring: rect(ring).width };
     cronoSetInterfaceScale(1.18, { persist: true, announce: false });
-    const enlarged = wrap.getBoundingClientRect();
+    await settle();
+    const largeClock = { main: rect(main).width, drawer: rect(drawer).width, ring: rect(ring).width };
     const view = document.getElementById('view-cronometro');
+    cronoShowInterfaceScale(0.84, false);
+    const indicator = document.getElementById('cronoInterfaceZoomIndicator').textContent;
     cronoResetInterfaceScale();
-    const reset = wrap.getBoundingClientRect();
     return {
-      beforeHeight: before.height,
-      beforeWidth: before.width,
-      reducedHeight: reduced.height,
-      reducedWidth: reduced.width,
-      enlargedHeight: enlarged.height,
-      resetHeight: reset.height,
+      before,
+      compactClock,
+      largeClock,
+      indicator,
       scale: view.dataset.interfaceScale,
       saved: localStorage.getItem(CRONO_INTERFACE_SCALE_KEY),
-      widthFits: enlarged.right <= innerWidth + 1 && enlarged.left >= -1,
     };
   });
 
-  expect(result.reducedWidth).toBeLessThan(result.beforeWidth * 0.9);
-  expect(result.reducedHeight).toBeLessThan(result.beforeHeight * 0.9);
-  expect(result.enlargedHeight).toBeGreaterThan(result.beforeHeight * 1.1);
-  expect(result.resetHeight).toBeCloseTo(result.beforeHeight, 0);
+  expect(result.compactClock.main).toBeLessThan(result.before.main);
+  expect(result.compactClock.drawer).toBeGreaterThan(result.before.drawer);
+  expect(result.compactClock.ring).toBeLessThan(result.before.ring);
+  expect(result.largeClock.main).toBeGreaterThan(result.before.main);
+  expect(result.largeClock.drawer).toBeLessThan(result.before.drawer);
+  expect(result.largeClock.ring).toBeGreaterThan(result.before.ring);
+  expect(result.indicator).toContain('Reloj 84 · Tareas 116');
   expect(result.scale).toBe('1');
   expect(result.saved).toBe('1');
-  expect(result.widthFits).toBe(true);
+});
+
+test('keeps mobile portrait tools dense while inverse pinch exposes more tasks', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepare(page);
+  const result = await page.evaluate(async () => {
+    db.cronoTasks = [{
+      id: 'dense_mobile_task',
+      text: 'Repasar la coda',
+      kind: 'piano',
+      tomorrow: false,
+      done: false,
+      createdAt: new Date().toISOString(),
+    }];
+    showView('cronometro');
+    renderCronoTasks();
+    const ring = document.getElementById('cronoTimerSvg');
+    const drawer = document.getElementById('cronoIdleDrawer');
+    const before = { ring: ring.getBoundingClientRect().width, drawer: drawer.getBoundingClientRect().height };
+    cronoSetInterfaceScale(0.84, { persist: false, announce: false });
+    await new Promise(resolve => setTimeout(resolve, 260));
+    const compact = { ring: ring.getBoundingClientRect().width, drawer: drawer.getBoundingClientRect().height };
+    return {
+      before,
+      compact,
+      tabFont: parseFloat(getComputedStyle(document.querySelector('#cronoIdleDrawer .crono-run-drawer-tab')).fontSize),
+      taskFont: parseFloat(getComputedStyle(document.querySelector('.crono-task-lane .crono-task-text')).fontSize),
+    };
+  });
+
+  expect(result.compact.ring).toBeLessThan(result.before.ring);
+  expect(result.compact.drawer).toBeGreaterThan(result.before.drawer);
+  expect(result.tabFont).toBeLessThanOrEqual(10);
+  expect(result.taskFont).toBeLessThanOrEqual(10);
 });
 
 test('uses a complete two-column timer layout on landscape phones', async ({ browser }) => {
@@ -1172,7 +1221,7 @@ test('uses a complete two-column timer layout on landscape phones', async ({ bro
     const context = await browser.newContext({ viewport });
     const page = await context.newPage();
     await prepare(page);
-    const layout = await page.evaluate(() => {
+    const layout = await page.evaluate(async () => {
       showView('cronometro');
       const rect = element => {
         const box = element.getBoundingClientRect();
@@ -1197,6 +1246,7 @@ test('uses a complete two-column timer layout on landscape phones', async ({ bro
         controls: rect(document.getElementById('cronoControls')),
       };
       cronoSetInterfaceScale(1.18, { persist: false, announce: false });
+      await new Promise(resolve => setTimeout(resolve, 260));
       const zoomed = {
         main: rect(document.getElementById('cronoStageRun')),
         drawer: rect(document.getElementById('cronoRunDrawer')),

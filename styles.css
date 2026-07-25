@@ -13337,28 +13337,35 @@ body.crono-timer-mode:not(.crono-until-mode) #cronoTimerSvg {
   .crono-run-drawer-tab .crono-task-notification-dot { animation: none; }
 }
 
-/* Pellizco local del cronometro: escala y redistribuye las dos tarjetas sin
-   ampliar el resto de la aplicacion. El ancho logico evita desbordamientos. */
+/* Pellizco local: reparte el espacio de forma inversa entre reloj y herramientas. */
 #view-cronometro {
-  --crono-interface-scale: 1;
-  --crono-interface-width: min(920px, calc(100vw - 48px));
+  --crono-timer-track: 1.04fr;
+  --crono-tools-track: .96fr;
+  --crono-interface-ring-size: 370px;
+  --crono-tools-min-height: 340px;
 }
-html.crono-focus-root body.crono-focus #view-cronometro .crono-wrap {
-  width: var(--crono-interface-width) !important;
-  zoom: var(--crono-interface-scale);
-  transform-origin: top center;
-  transition: zoom 220ms cubic-bezier(.2, .8, .2, 1);
-  will-change: zoom;
+@media (min-width: 700px) and (orientation: landscape) {
+  [data-theme^="marmol"] #view-cronometro .crono-idle-console,
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
+    grid-template-columns: minmax(250px, var(--crono-timer-track)) minmax(300px, var(--crono-tools-track));
+    transition: grid-template-columns 220ms cubic-bezier(.2, .8, .2, 1);
+  }
 }
 body.crono-interface-pinching #view-cronometro .crono-wrap {
   transition: none;
+}
+#view-cronometro .crono-idle-display-wrap,
+#view-cronometro body.crono-timer-mode .crono-idle-display-wrap,
+#view-cronometro .crono-display-wrap,
+#view-cronometro .crono-run-progress-svg {
+  transition: width 220ms cubic-bezier(.2, .8, .2, 1), height 220ms cubic-bezier(.2, .8, .2, 1), flex-basis 220ms cubic-bezier(.2, .8, .2, 1);
 }
 .crono-interface-zoom-indicator {
   position: fixed;
   top: max(14px, env(safe-area-inset-top, 0px));
   left: 50%;
   z-index: 360;
-  min-width: 54px;
+  min-width: 158px;
   padding: 7px 11px;
   border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border2));
   border-radius: 999px;
@@ -13381,7 +13388,8 @@ body.crono-interface-pinching #view-cronometro .crono-wrap {
   transform: translate(-50%, 0) scale(1);
 }
 @media (prefers-reduced-motion: reduce) {
-  html.crono-focus-root body.crono-focus #view-cronometro .crono-wrap,
+  [data-theme^="marmol"] #view-cronometro .crono-idle-console,
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap,
   .crono-interface-zoom-indicator { transition: none; }
 }
 
@@ -14222,18 +14230,20 @@ body.crono-interface-pinching #view-cronometro .crono-wrap {
   }
   html.crono-focus-root body.crono-focus #view-cronometro {
     justify-content: flex-start;
+    max-width: none !important;
+    margin: 0 !important;
     padding: 0;
   }
   [data-theme^="marmol"] body.crono-focus #view-cronometro .crono-wrap,
   [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
     display: grid;
-    grid-template-columns: minmax(0, 1.04fr) minmax(300px, .96fr);
+    grid-template-columns: minmax(220px, var(--crono-timer-track)) minmax(280px, var(--crono-tools-track));
     gap: 10px;
     align-items: stretch;
     align-content: stretch;
-    width: var(--crono-interface-width) !important;
+    width: calc(100vw - 56px) !important;
     max-width: calc(100vw - max(28px, env(safe-area-inset-left, 0px)) - max(28px, env(safe-area-inset-right, 0px))) !important;
-    height: var(--crono-interface-landscape-height, calc(100dvh - 16px));
+    height: calc(100dvh - 16px);
     min-height: 0;
     margin: 0 auto;
     padding: max(48px, calc(env(safe-area-inset-top, 0px) + 42px)) 0 max(9px, env(safe-area-inset-bottom, 0px));
@@ -14248,7 +14258,7 @@ body.crono-interface-pinching #view-cronometro .crono-wrap {
   }
   [data-theme^="marmol"] .crono-idle-console {
     display: grid;
-    grid-template-columns: minmax(0, 1.04fr) minmax(300px, .96fr);
+    grid-template-columns: minmax(220px, var(--crono-timer-track)) minmax(280px, var(--crono-tools-track));
     gap: 10px;
     width: 100%;
     height: 100%;
@@ -14296,17 +14306,17 @@ body.crono-interface-pinching #view-cronometro .crono-wrap {
   [data-theme^="marmol"] .crono-idle-display-wrap,
   [data-theme^="marmol"] body.crono-timer-mode .crono-idle-display-wrap,
   [data-theme^="marmol"] body.crono-running .crono-display-wrap {
-    flex: 0 0 142px;
+    flex: 0 0 var(--crono-interface-ring-size);
     width: 100%;
-    height: 142px;
-    min-height: 142px;
+    height: var(--crono-interface-ring-size);
+    min-height: var(--crono-interface-ring-size);
     margin: 0 auto 2px;
   }
   [data-theme^="marmol"] .crono-idle-display-wrap .crono-run-progress-svg,
   [data-theme^="marmol"] body.crono-timer-mode .crono-idle-display-wrap .crono-run-progress-svg,
   [data-theme^="marmol"] body.crono-running .crono-run-progress-svg {
-    width: 142px;
-    height: 142px;
+    width: var(--crono-interface-ring-size);
+    height: var(--crono-interface-ring-size);
   }
   [data-theme^="marmol"] .crono-idle-display-wrap .crono-display,
   [data-theme^="marmol"] body.crono-running .crono-display {
@@ -14423,4 +14433,86 @@ body.crono-interface-pinching #view-cronometro .crono-wrap {
     border-radius: 8px;
   }
   #view-cronometro .crono-moment-monitor { display: none !important; }
+}
+
+/* El anillo obedece al gesto; la tarjeta organizativa recibe el espacio inverso. */
+[data-theme^="marmol"] #view-cronometro .crono-idle-display-wrap,
+[data-theme^="marmol"] body.crono-timer-mode #view-cronometro .crono-idle-display-wrap,
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-display-wrap {
+  flex-basis: var(--crono-interface-ring-size) !important;
+  height: var(--crono-interface-ring-size) !important;
+  min-height: var(--crono-interface-ring-size) !important;
+}
+[data-theme^="marmol"] #view-cronometro .crono-idle-display-wrap .crono-run-progress-svg,
+[data-theme^="marmol"] body.crono-timer-mode #view-cronometro .crono-idle-display-wrap .crono-run-progress-svg,
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-run-progress-svg {
+  width: var(--crono-interface-ring-size) !important;
+  height: var(--crono-interface-ring-size) !important;
+}
+@media (orientation: portrait) {
+  [data-theme^="marmol"] #view-cronometro .crono-idle-drawer,
+  [data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunDrawer {
+    min-height: var(--crono-tools-min-height) !important;
+    transition: min-height 220ms cubic-bezier(.2, .8, .2, 1);
+  }
+}
+
+/* Movil vertical: misma informacion que en iPad, con una densidad tipografica
+   mayor y manteniendo grandes las acciones tactiles. */
+@media (max-width: 699px) and (orientation: portrait) {
+  [data-theme^="marmol"] #view-cronometro .crono-idle-work-picker .crono-select-custom-label {
+    font-size: 13px;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-idle-message {
+    min-height: 42px;
+    margin: 3px auto 5px;
+    padding: 6px 9px;
+    font-size: 11px;
+    line-height: 1.25;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-controls .crono-mode-toggle {
+    min-height: 42px;
+    margin-bottom: 5px;
+    padding: 3px;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-controls .crono-mode-opt {
+    min-height: 36px;
+    padding: 5px 3px;
+    font-size: 10px;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-plant-btn {
+    min-height: 42px;
+    padding: 8px 12px;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-drawer,
+  [data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunDrawer {
+    padding: 11px 12px;
+  }
+  #view-cronometro .crono-run-drawer-tabs { gap: 4px; margin-bottom: 7px; }
+  #view-cronometro .crono-run-drawer-tab {
+    min-height: 34px;
+    height: 34px;
+    padding: 0 4px;
+    font-size: 9px;
+  }
+  #view-cronometro .crono-task-composer { gap: 5px 6px; margin-bottom: 8px; }
+  #view-cronometro .crono-task-composer .crono-task-input {
+    height: 36px;
+    font-size: 11px;
+  }
+  #view-cronometro .crono-task-kind-btn,
+  #view-cronometro .crono-task-tomorrow-btn { font-size: 8px; }
+  #view-cronometro .crono-task-lane-head { margin-bottom: 5px; }
+  #view-cronometro .crono-task-lane-head strong { font-size: 11px; }
+  #view-cronometro .crono-task-lane-sub { font-size: 8px; }
+  #view-cronometro .crono-task-lane .crono-task-row {
+    min-height: 38px;
+    padding: 6px 7px;
+  }
+  #view-cronometro .crono-task-lane .crono-task-text {
+    font-size: 10px;
+    line-height: 1.22;
+  }
+  #view-cronometro .crono-observation-box { font-size: 11px; }
+  #view-cronometro .crono-drawer-pase-hint { font-size: 9px; }
 }
