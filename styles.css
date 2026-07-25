@@ -14206,3 +14206,221 @@ body.crono-interface-pinching #view-cronometro .crono-wrap {
     height: min(280px, 76vw);
   }
 }
+
+/* Telefono horizontal: dos zonas completas dentro de una pantalla baja. */
+@media (orientation: landscape) and (min-width: 560px) and (max-width: 899px) and (max-height: 520px) {
+  html.crono-focus-root,
+  html.crono-focus-root body.crono-focus,
+  html.crono-focus-root body.crono-focus .app-content,
+  html.crono-focus-root body.crono-focus #view-cronometro {
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    max-height: 100dvh;
+    overflow: hidden !important;
+    touch-action: none;
+  }
+  html.crono-focus-root body.crono-focus #view-cronometro {
+    justify-content: flex-start;
+    padding: 0;
+  }
+  [data-theme^="marmol"] body.crono-focus #view-cronometro .crono-wrap,
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
+    display: grid;
+    grid-template-columns: minmax(0, 1.04fr) minmax(300px, .96fr);
+    gap: 10px;
+    align-items: stretch;
+    align-content: stretch;
+    width: var(--crono-interface-width) !important;
+    max-width: calc(100vw - max(28px, env(safe-area-inset-left, 0px)) - max(28px, env(safe-area-inset-right, 0px))) !important;
+    height: var(--crono-interface-landscape-height, calc(100dvh - 16px));
+    min-height: 0;
+    margin: 0 auto;
+    padding: max(48px, calc(env(safe-area-inset-top, 0px) + 42px)) 0 max(9px, env(safe-area-inset-bottom, 0px));
+    box-sizing: border-box;
+  }
+  [data-theme^="marmol"] #cronoStageIdle {
+    grid-column: 1 / -1;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    padding: 0;
+  }
+  [data-theme^="marmol"] .crono-idle-console {
+    display: grid;
+    grid-template-columns: minmax(0, 1.04fr) minmax(300px, .96fr);
+    gap: 10px;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+  }
+  [data-theme^="marmol"] .crono-idle-main,
+  [data-theme^="marmol"] .crono-idle-drawer,
+  [data-theme^="marmol"] body.crono-running .crono-run-stage,
+  [data-theme^="marmol"] body.crono-running #cronoRunDrawer {
+    position: static;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    margin: 0;
+    transform: none;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+  [data-theme^="marmol"] .crono-idle-main,
+  [data-theme^="marmol"] body.crono-running .crono-run-stage {
+    padding: 8px 11px;
+  }
+  [data-theme^="marmol"] .crono-idle-drawer,
+  [data-theme^="marmol"] body.crono-running #cronoRunDrawer {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 9px 10px 8px;
+    overflow: hidden;
+  }
+  [data-theme^="marmol"] .crono-idle-head,
+  [data-theme^="marmol"] body.crono-running .crono-run-head {
+    min-height: 26px;
+    margin: 0 0 2px;
+  }
+  [data-theme^="marmol"] .crono-idle-work-picker {
+    max-width: min(82%, 280px);
+  }
+  [data-theme^="marmol"] .crono-idle-work-picker .crono-select-custom {
+    min-height: 28px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+  [data-theme^="marmol"] .crono-idle-display-wrap,
+  [data-theme^="marmol"] body.crono-timer-mode .crono-idle-display-wrap,
+  [data-theme^="marmol"] body.crono-running .crono-display-wrap {
+    flex: 0 0 142px;
+    width: 100%;
+    height: 142px;
+    min-height: 142px;
+    margin: 0 auto 2px;
+  }
+  [data-theme^="marmol"] .crono-idle-display-wrap .crono-run-progress-svg,
+  [data-theme^="marmol"] body.crono-timer-mode .crono-idle-display-wrap .crono-run-progress-svg,
+  [data-theme^="marmol"] body.crono-running .crono-run-progress-svg {
+    width: 142px;
+    height: 142px;
+  }
+  [data-theme^="marmol"] .crono-idle-display-wrap .crono-display,
+  [data-theme^="marmol"] body.crono-running .crono-display {
+    font-size: clamp(42px, 7vw, 56px);
+  }
+  [data-theme^="marmol"] .crono-idle-display-wrap.has-hours .crono-display,
+  [data-theme^="marmol"] body.crono-running .crono-display-wrap.has-hours .crono-display {
+    font-size: clamp(34px, 5.5vw, 44px);
+  }
+  [data-theme^="marmol"] .crono-idle-main .crono-idle-message,
+  [data-theme^="marmol"] body.crono-running .crono-run-destello {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 30px;
+    height: 30px;
+    margin: 1px auto 3px;
+    padding: 4px 8px;
+    font-size: 11px;
+    line-height: 1.15;
+    overflow: hidden;
+  }
+  [data-theme^="marmol"] body.crono-running .crono-run-destello-text {
+    -webkit-line-clamp: 2;
+  }
+  [data-theme^="marmol"] body.crono-running .crono-run-milestone { display: none !important; }
+  [data-theme^="marmol"] .crono-idle-main .crono-idle-controls {
+    margin-top: auto;
+    padding-top: 4px;
+  }
+  [data-theme^="marmol"] .crono-idle-controls .crono-mode-toggle {
+    min-height: 34px;
+    margin-bottom: 4px;
+    padding: 2px;
+  }
+  [data-theme^="marmol"] .crono-idle-controls .crono-mode-opt {
+    min-height: 30px;
+    padding: 4px 5px;
+    font-size: 10px;
+  }
+  [data-theme^="marmol"] .crono-idle-main .crono-plant-btn {
+    min-height: 34px;
+    padding: 6px 12px;
+  }
+  [data-theme^="marmol"] .crono-idle-main .crono-until-row {
+    min-height: 26px;
+    margin-bottom: 3px;
+    padding: 2px 8px;
+  }
+  [data-theme^="marmol"] .crono-idle-main .crono-timer-projection { display: none !important; }
+  [data-theme^="marmol"] .crono-idle-drawer .crono-idle-panel-head,
+  [data-theme^="marmol"] body.crono-running #cronoRunDrawer .crono-run-drawer-head,
+  [data-theme^="marmol"] body.crono-running #cronoRunDrawer .crono-run-drawer-handle {
+    display: none;
+  }
+  [data-theme^="marmol"] .crono-idle-drawer .crono-run-drawer-tabs,
+  [data-theme^="marmol"] body.crono-running #cronoRunDrawer .crono-run-drawer-tabs {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    margin: 0 0 6px;
+  }
+  [data-theme^="marmol"] .crono-idle-drawer .crono-run-drawer-tab,
+  [data-theme^="marmol"] body.crono-running #cronoRunDrawer .crono-run-drawer-tab {
+    height: 30px;
+    min-height: 30px;
+    padding: 0 3px;
+    font-size: 9px;
+  }
+  [data-theme^="marmol"] .crono-idle-drawer-panels,
+  [data-theme^="marmol"] body.crono-running #cronoRunDrawer .crono-run-drawer-panels {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+  [data-theme^="marmol"] .crono-idle-drawer-panel,
+  [data-theme^="marmol"] body.crono-running #cronoRunDrawer .crono-run-drawer-panel {
+    height: 100%;
+    max-height: none;
+    overflow-y: auto;
+  }
+  .crono-task-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .crono-task-lane { padding: 0 8px 0 0; }
+  .crono-task-lane + .crono-task-lane {
+    padding: 0 0 0 9px;
+    border-top: 0;
+    border-left: 1px solid var(--border2);
+  }
+  .crono-task-composer {
+    grid-template-columns: minmax(0, 1fr) 34px;
+    grid-template-areas: "input add" "options options";
+    gap: 4px 6px;
+    margin-bottom: 7px;
+  }
+  .crono-task-composer .crono-task-input { height: 32px; }
+  .crono-task-compose-options { gap: 3px; }
+  .crono-task-kind-btn,
+  .crono-task-tomorrow-btn { min-height: 26px; font-size: 8px; }
+  .crono-task-composer .crono-task-add-btn { width: 34px; height: 32px; }
+  [data-theme^="marmol"] body.crono-running #cronoRunDrawer .crono-controls {
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    gap: 5px;
+    margin: 6px 0 0;
+  }
+  [data-theme^="marmol"] body.crono-running #cronoRunDrawer .crono-ctrl-btn,
+  [data-theme^="marmol"] body.crono-running #cronoRunDrawer .crono-ctrl-btn.primary,
+  [data-theme^="marmol"] body.crono-running #cronoRunDrawer .crono-ctrl-btn.stop,
+  [data-theme^="marmol"] body.crono-running #cronoRunDrawer .crono-ctrl-btn.extend {
+    height: 36px;
+    min-height: 36px;
+    border-radius: 8px;
+  }
+  #view-cronometro .crono-moment-monitor { display: none !important; }
+}

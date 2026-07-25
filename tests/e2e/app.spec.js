@@ -1161,3 +1161,62 @@ test('scales the complete timer workspace and remembers the touch zoom', async (
   expect(result.saved).toBe('1');
   expect(result.widthFits).toBe(true);
 });
+
+test('uses a complete two-column timer layout on landscape phones', async ({ browser }) => {
+  for (const viewport of [{ width: 740, height: 360 }, { width: 844, height: 390 }]) {
+    const context = await browser.newContext({ viewport });
+    const page = await context.newPage();
+    await prepare(page);
+    const layout = await page.evaluate(() => {
+      showView('cronometro');
+      const rect = element => {
+        const box = element.getBoundingClientRect();
+        return { top: box.top, left: box.left, right: box.right, bottom: box.bottom, width: box.width, height: box.height };
+      };
+      const inside = box => box.top >= -1 && box.left >= -1 && box.right <= innerWidth + 1 && box.bottom <= innerHeight + 1;
+      const idle = {
+        main: rect(document.querySelector('.crono-idle-main')),
+        drawer: rect(document.getElementById('cronoIdleDrawer')),
+        ring: rect(document.getElementById('cronoTimerSvg')),
+      };
+      const select = document.getElementById('cronoObraSelect');
+      select.value = 'obra::obra_1';
+      cronoUpdateStartBtn();
+      cronoStart();
+      const running = {
+        main: rect(document.getElementById('cronoStageRun')),
+        drawer: rect(document.getElementById('cronoRunDrawer')),
+        ring: rect(document.querySelector('#cronoStageRun .crono-run-progress-svg')),
+        tabs: rect(document.querySelector('#cronoRunDrawer .crono-run-drawer-tabs')),
+        panels: rect(document.querySelector('#cronoRunDrawer .crono-run-drawer-panels')),
+        controls: rect(document.getElementById('cronoControls')),
+      };
+      cronoSetInterfaceScale(1.18, { persist: false, announce: false });
+      const zoomed = {
+        main: rect(document.getElementById('cronoStageRun')),
+        drawer: rect(document.getElementById('cronoRunDrawer')),
+      };
+      cronoResetInterfaceScale();
+      return {
+        idle,
+        running,
+        zoomed,
+        idleFits: inside(idle.main) && inside(idle.drawer) && inside(idle.ring),
+        runningFits: inside(running.main) && inside(running.drawer) && inside(running.ring) && inside(running.controls),
+        zoomedFits: inside(zoomed.main) && inside(zoomed.drawer),
+        documentFits: document.documentElement.scrollWidth <= innerWidth + 1,
+      };
+    });
+
+    expect(layout.documentFits).toBe(true);
+    expect(layout.idleFits).toBe(true);
+    expect(layout.runningFits).toBe(true);
+    expect(layout.zoomedFits).toBe(true);
+    expect(layout.idle.drawer.left).toBeGreaterThanOrEqual(layout.idle.main.right);
+    expect(layout.running.drawer.left).toBeGreaterThanOrEqual(layout.running.main.right);
+    expect(layout.running.panels.top).toBeGreaterThanOrEqual(layout.running.tabs.bottom - 1);
+    expect(layout.running.controls.top).toBeGreaterThanOrEqual(layout.running.panels.top);
+    expect(layout.running.controls.bottom).toBeLessThanOrEqual(layout.running.drawer.bottom + 1);
+    await context.close();
+  }
+});

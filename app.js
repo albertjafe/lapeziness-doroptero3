@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-25-zoom-tactil-v49';
+const APP_VERSION = '2026-07-25-movil-horizontal-v50';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -17019,6 +17019,7 @@ function cronoSetInterfaceScale(value, options) {
   if (view) {
     view.style.setProperty('--crono-interface-scale', String(scale));
     view.style.setProperty('--crono-interface-width', (cronoInterfaceBaseWidth() / Math.max(1, scale)).toFixed(2) + 'px');
+    view.style.setProperty('--crono-interface-landscape-height', (Math.max(260, window.innerHeight - 16) / Math.max(1, scale)).toFixed(2) + 'px');
     view.dataset.interfaceScale = String(scale);
   }
   document.body.classList.toggle('crono-interface-zoomed-in', scale > 1.001);
