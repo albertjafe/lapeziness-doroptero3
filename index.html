@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=170">
+<link rel="stylesheet" href="styles.css?v=171">
 </head>
 <body>
 
@@ -361,25 +361,25 @@
         </div>
       </section>
 
-      <aside class="crono-run-drawer crono-idle-panel crono-idle-drawer" id="cronoIdleDrawer" data-tab="pasajes" aria-label="Preparar sesión">
+      <aside class="crono-run-drawer crono-idle-panel crono-idle-drawer" id="cronoIdleDrawer" data-tab="tareas" aria-label="Preparar sesión">
         <div class="crono-run-drawer-handle" aria-hidden="true"></div>
         <div class="crono-run-drawer-head crono-idle-panel-head">
           <span>Antes de empezar</span>
           <strong>Foco actual</strong>
         </div>
         <div class="crono-run-drawer-tabs" role="tablist" aria-label="Preparación de la sesión">
-          <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab active" data-tab="pasajes" role="tab" aria-selected="true" onclick="cronoSetIdleDrawerTab('pasajes')">Pasajes</button>
+          <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab" data-tab="pasajes" role="tab" aria-selected="false" onclick="cronoSetIdleDrawerTab('pasajes')">Pasajes</button>
           <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab" data-tab="nota" role="tab" aria-selected="false" onclick="cronoSetIdleDrawerTab('nota')">
             Notas <span id="cronoIdleDrawerNoteTabCount">+</span>
           </button>
-          <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab" data-tab="tareas" role="tab" aria-selected="false" onclick="cronoSetIdleDrawerTab('tareas')">
+          <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab active" data-tab="tareas" role="tab" aria-selected="true" onclick="cronoSetIdleDrawerTab('tareas')">
             Tareas <span class="crono-task-notification-dot" id="cronoIdleDrawerTaskTabCount" aria-hidden="true" hidden></span>
           </button>
           <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab" data-tab="pase" role="tab" aria-selected="false" onclick="cronoSetIdleDrawerTab('pase')">Pase +</button>
         </div>
 
         <div class="crono-run-drawer-panels crono-idle-drawer-panels">
-          <div class="crono-run-drawer-panel crono-idle-drawer-panel active" data-panel="pasajes" role="tabpanel">
+          <div class="crono-run-drawer-panel crono-idle-drawer-panel" data-panel="pasajes" role="tabpanel">
             <div class="crono-idle-pasajes-shell">
               <div class="crono-pasajes-section crono-pasajes-section-idle" id="cronoIdlePasajesSection"></div>
             </div>
@@ -398,7 +398,7 @@
               <span class="n" id="cronoFallidasN">0</span> · fallidas hoy
             </div>
           </div>
-          <div class="crono-run-drawer-panel crono-idle-drawer-panel" data-panel="tareas" role="tabpanel">
+          <div class="crono-run-drawer-panel crono-idle-drawer-panel active" data-panel="tareas" role="tabpanel">
             <section class="crono-idle-tasks" aria-label="Tareas">
               <div class="crono-tasks-panel crono-tasks-panel-idle" id="cronoIdleTasksPanel"></div>
             </section>
@@ -462,25 +462,25 @@
     </div>
 
     <!-- Bandeja inferior compacta: pasajes / nota / pase. No ocupa altura en la columna central. -->
-    <div class="crono-run-drawer" id="cronoRunDrawer" data-tab="pasajes" aria-label="Herramientas de estudio">
+    <div class="crono-run-drawer" id="cronoRunDrawer" data-tab="tareas" aria-label="Herramientas de estudio">
       <div class="crono-run-drawer-handle" aria-hidden="true"></div>
       <div class="crono-run-drawer-head">
         <span>Durante la sesión</span>
         <strong>Foco actual</strong>
       </div>
       <div class="crono-run-drawer-tabs" role="tablist" aria-label="Herramientas">
-        <button type="button" class="crono-run-drawer-tab active" data-tab="pasajes" role="tab" aria-selected="true" onclick="cronoSetRunDrawerTab('pasajes')">Pasajes</button>
+        <button type="button" class="crono-run-drawer-tab" data-tab="pasajes" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('pasajes')">Pasajes</button>
         <button type="button" class="crono-run-drawer-tab" data-tab="nota" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('nota')">
           Notas <span id="cronoDrawerNoteTabCount">+</span>
         </button>
-        <button type="button" class="crono-run-drawer-tab" data-tab="tareas" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('tareas')">
+        <button type="button" class="crono-run-drawer-tab active" data-tab="tareas" role="tab" aria-selected="true" onclick="cronoSetRunDrawerTab('tareas')">
           Tareas <span class="crono-task-notification-dot" id="cronoDrawerTaskTabCount" aria-hidden="true" hidden></span>
         </button>
         <button type="button" class="crono-run-drawer-tab" data-tab="pase" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('pase')">Pase +</button>
       </div>
 
       <div class="crono-run-drawer-panels">
-        <div class="crono-run-drawer-panel active" data-panel="pasajes" role="tabpanel">
+        <div class="crono-run-drawer-panel" data-panel="pasajes" role="tabpanel">
           <div class="crono-pasajes-section" id="cronoPasajesSection"></div>
         </div>
         <div class="crono-run-drawer-panel" data-panel="nota" role="tabpanel">
@@ -502,7 +502,7 @@
             </button>
           </div>
         </div>
-        <div class="crono-run-drawer-panel" data-panel="tareas" role="tabpanel">
+        <div class="crono-run-drawer-panel active" data-panel="tareas" role="tabpanel">
           <div class="crono-tasks-panel" id="cronoTasksPanel"></div>
         </div>
         <div class="crono-run-drawer-panel" data-panel="pase" role="tabpanel">
@@ -1981,11 +1981,11 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js?v=170"></script>
-<script src="data-core.js?v=170"></script>
-<script src="sync-core.js?v=170"></script>
-<script src="push-client.js?v=170"></script>
-<script src="app.js?v=170"></script>
+<script src="timer-core.js?v=171"></script>
+<script src="data-core.js?v=171"></script>
+<script src="sync-core.js?v=171"></script>
+<script src="push-client.js?v=171"></script>
+<script src="app.js?v=171"></script>
 
 </body>
 <script>
@@ -2007,7 +2007,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=170', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=171', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

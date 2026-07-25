@@ -7357,6 +7357,113 @@
     .crono-breath-circle { width: min(238px, 68vw); }
   }
 
+  .crono-task-break-modal {
+    width: min(470px, calc(100vw - 28px));
+    max-height: min(720px, calc(100dvh - 44px));
+    padding: 26px;
+    overflow-y: auto;
+    border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border2));
+    border-radius: 12px;
+    background: var(--bg2);
+  }
+  .crono-task-break-kicker {
+    margin-bottom: 7px;
+    color: var(--accent);
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  .crono-task-break-title {
+    color: var(--text);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: clamp(27px, 5vw, 34px);
+    font-weight: 600;
+    line-height: 1.08;
+  }
+  .crono-task-break-meta {
+    margin-top: 8px;
+    color: var(--text3);
+    font-size: 10px;
+  }
+  .crono-task-break-list {
+    display: grid;
+    gap: 7px;
+    margin: 19px 0;
+  }
+  .crono-task-break-item {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 52px;
+    padding: 8px 12px;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+    transition: opacity 180ms ease, transform 180ms ease, border-color 180ms ease;
+  }
+  .crono-task-break-item:active { transform: scale(.985); }
+  .crono-task-break-check {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    border: 1.5px solid color-mix(in srgb, var(--text3) 72%, transparent);
+    border-radius: 50%;
+    transition: background-color 180ms ease, border-color 180ms ease;
+  }
+  .crono-task-break-check::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 5px;
+    width: 8px;
+    height: 4px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    opacity: 0;
+    transform: rotate(-45deg) scale(.55);
+    transition: opacity 160ms ease, transform 220ms ease;
+  }
+  .crono-task-break-copy { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+  .crono-task-break-copy strong { font-size: 13px; line-height: 1.3; }
+  .crono-task-break-copy small { color: var(--text3); font-size: 9px; }
+  .crono-task-break-item.is-completing { border-color: color-mix(in srgb, var(--green) 45%, var(--border2)); opacity: .66; }
+  .crono-task-break-item.is-completing .crono-task-break-check { border-color: var(--green); background: var(--green); }
+  .crono-task-break-item.is-completing .crono-task-break-check::after { opacity: 1; transform: rotate(-45deg) scale(1); }
+  .crono-task-break-item.is-completing .crono-task-break-copy strong { text-decoration: line-through; }
+  .crono-task-break-more { padding: 4px 12px 0; color: var(--text3); font-size: 9px; text-align: center; }
+  .crono-task-break-clean {
+    display: grid;
+    justify-items: center;
+    gap: 5px;
+    padding: 20px 12px;
+    color: var(--green);
+    text-align: center;
+  }
+  .crono-task-break-clean > span {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--green) 14%, transparent);
+    font-size: 20px;
+  }
+  .crono-task-break-clean strong { color: var(--text); font-size: 14px; }
+  .crono-task-break-clean small { color: var(--text3); font-size: 10px; }
+  .crono-task-break-close { width: 100%; min-height: 44px; }
+
+  @media (max-width: 480px) {
+    .crono-task-break-modal { padding: 22px 18px 18px; }
+    .crono-task-break-item { min-height: 54px; }
+  }
+
   /* Modal de cambio de obra */
   .crono-change-modal { max-width: 380px; padding: 28px 24px; }
   .crono-change-title {
@@ -12465,12 +12572,12 @@ body.crono-running .crono-concentrado { display: none; }
     -webkit-backdrop-filter: blur(14px);
     pointer-events: auto;
   }
-  .crono-moment-controls { padding: 5px 7px; }
+  .crono-moment-controls { padding: 7px 9px; }
   .crono-moment-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 31px;
+    min-height: 35px;
   }
   .crono-moment-row + .crono-moment-row {
     border-top: 1px solid color-mix(in srgb, var(--border2) 55%, transparent);
@@ -12496,8 +12603,8 @@ body.crono-running .crono-concentrado { display: none; }
     align-items: center;
     justify-content: center;
     min-width: 0;
-    min-height: 25px;
-    padding: 2px 5px;
+    min-height: 29px;
+    padding: 3px 6px;
     border: 0;
     border-radius: 999px;
     background: transparent;
@@ -12510,7 +12617,7 @@ body.crono-running .crono-concentrado { display: none; }
     overflow: hidden;
     color: inherit;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-size: 8px;
+    font-size: 9px;
     font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -12606,9 +12713,9 @@ body.crono-running .crono-concentrado { display: none; }
     bottom: max(12px, env(safe-area-inset-bottom, 0px));
   }
   #view-cronometro .crono-moment-content { display: block; }
-  #view-cronometro .crono-moment-controls { padding: 7px 10px; }
-  #view-cronometro .crono-moment-row { min-height: 38px; }
-  #view-cronometro .crono-moment-levels .estado-face { min-height: 32px; }
+  #view-cronometro .crono-moment-controls { padding: 9px 11px; }
+  #view-cronometro .crono-moment-row { min-height: 42px; }
+  #view-cronometro .crono-moment-levels .estado-face { min-height: 36px; }
   #view-cronometro .crono-moment-levels .estado-face-label { font-size: 9px; }
   #view-cronometro .crono-moment-history-toggle {
     display: flex;
@@ -12680,11 +12787,11 @@ body.crono-running .crono-concentrado { display: none; }
     pointer-events: auto;
   }
   #view-cronometro .crono-moment-monitor.is-open .crono-moment-content { display: block; }
-  #view-cronometro .crono-moment-controls { padding: 7px 8px; }
-  #view-cronometro .crono-moment-row { gap: 5px; min-height: 38px; }
+  #view-cronometro .crono-moment-controls { padding: 9px 9px; }
+  #view-cronometro .crono-moment-row { gap: 5px; min-height: 42px; }
   #view-cronometro .crono-moment-label { flex-basis: 90px; font-size: 7px; }
-  #view-cronometro .crono-moment-levels .estado-face { min-height: 32px; padding: 2px 3px; }
-  #view-cronometro .crono-moment-levels .estado-face-label { font-size: 7px; }
+  #view-cronometro .crono-moment-levels .estado-face { min-height: 36px; padding: 3px 4px; }
+  #view-cronometro .crono-moment-levels .estado-face-label { font-size: 8px; }
   #view-cronometro .crono-moment-history-toggle {
     display: flex;
     align-items: center;

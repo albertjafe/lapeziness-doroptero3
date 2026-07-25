@@ -497,6 +497,10 @@ test('cancels or confirms a valid timer before saving and keeps one-tap solidity
   });
   await prepare(page);
   await page.evaluate(() => {
+    db.cronoTasks = [
+      { id: 'ct_break', text: 'Responder el mensaje pendiente', kind: 'personal', done: false, createdAt: new Date().toISOString() },
+      { id: 'ct_break_piano', text: 'Anotar la digitación de la coda', kind: 'piano', done: false, createdAt: new Date().toISOString() },
+    ];
     showView('cronometro');
     const select = document.getElementById('cronoObraSelect');
     select.value = 'obra::obra_1';
@@ -531,6 +535,16 @@ test('cancels or confirms a valid timer before saving and keeps one-tap solidity
   await expect(stable).toHaveAttribute('aria-checked', 'true');
   await modal.getByRole('button', { name: 'Hecho' }).click();
   await expect(modal).not.toHaveClass(/visible/);
+
+  const taskBreak = page.locator('#modalCronoTaskBreak');
+  await expect(taskBreak).toHaveClass(/visible/);
+  await expect(taskBreak).toContainText('¿Un descanso?');
+  await expect(taskBreak).toContainText('Responder el mensaje pendiente');
+  await taskBreak.getByRole('button', { name: /Responder el mensaje pendiente/ }).click();
+  await expect(taskBreak.locator('.crono-task-break-item.is-completing')).toHaveCount(1);
+  await expect.poll(() => page.evaluate(() => db.cronoTasks.find(task => task.id === 'ct_break')?.done)).toBe(true);
+  await taskBreak.getByRole('button', { name: 'OK, cerrar' }).click();
+  await expect(taskBreak).not.toHaveClass(/visible/);
 
   const saved = await page.evaluate(() => ({
     value: db.obras[0].solHistory[0]?.val,
@@ -632,7 +646,7 @@ test('keeps tasks available while idle and compacts long running content', async
   expect(metrics.taskDot.width).toBe(20);
   expect(metrics.taskDot.height).toBe(20);
   expect(metrics.taskDot.radius).toBe('50%');
-  expect(metrics.taskDot.background).toBe('rgb(220, 38, 38)');
+  expect(metrics.taskDot.background).toBe('rgb(185, 28, 28)');
   expect(metrics.taskTabClass).toContain('has-tasks');
   expect(metrics.taskTabLabel).toBe('Tareas, 2 pendientes');
 
@@ -1059,6 +1073,7 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
         usesRunningDisplay: document.getElementById('cronoTimerText').classList.contains('crono-display')
           && document.getElementById('cronoTimerSvg').classList.contains('crono-run-progress-svg'),
         garden: getComputedStyle(document.getElementById('cronoGarden')).display,
+        activeTab: document.getElementById('cronoIdleDrawer').dataset.tab,
       };
 
       cronoStart();
@@ -1070,6 +1085,7 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
         handleColor: getComputedStyle(document.getElementById('cronoRunProgressHandle')).fill,
         tabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab),
         objectiveRemoved: !document.getElementById('cronoRunObjective') && !document.getElementById('cronoRunObjectiveText'),
+        activeTab: document.getElementById('cronoRunDrawer').dataset.tab,
       };
       return {
         portrait: matchMedia('(orientation: portrait)').matches,
@@ -1082,6 +1098,8 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
     expect(layout.fitsWidth).toBe(true);
     expect(layout.idle.tabs).toEqual(['pasajes', 'nota', 'tareas', 'pase']);
     expect(layout.running.tabs).toEqual(layout.idle.tabs);
+    expect(layout.idle.activeTab).toBe('tareas');
+    expect(layout.running.activeTab).toBe('tareas');
     expect(layout.idle.presetCount).toBe(0);
     expect(layout.idle.destello.top - layout.idle.ring.bottom).toBeGreaterThanOrEqual(8);
     expect(layout.idle.start.bottom).toBeLessThanOrEqual(layout.idle.main.bottom + 1);

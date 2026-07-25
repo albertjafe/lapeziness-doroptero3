@@ -6504,6 +6504,7 @@ function closeHechoDatos(save) {
   const entity = movId ? findMovimiento(obraId, movId) : obra;
   const minutos = parseInt(document.getElementById('hechoMinutos').value) || _hechoMinPlan || null;
   const shouldOfferBreak = !!(save && _hechoSubSession && !_hechoEditMode && minutos >= CRONO_LONG_SESSION_BREAK_MIN);
+  const shouldOfferTaskBreak = !!(save && _hechoSubSession && !_hechoEditMode && cronoPendingTaskCount() > 0);
   const nota = document.getElementById('hechoNota').value.trim();
   const zoneSnapshot = obra && obra.tipo !== 'actividad' ? hechoCurrentZoneSnapshot(true) : null;
   const legacyPaseSlidersEnabled = false;
@@ -6881,8 +6882,9 @@ function closeHechoDatos(save) {
   if (typeof renderCalendario === 'function') {
     try { renderCalendario(); } catch(e) {}
   }
-  if (shouldOfferBreak) cronoMaybeShowLongSessionBreak(minutos);
-  if (shouldCheckTaskReminder) setTimeout(() => cronoMaybeRemindTasks('session-end'), 180);
+  if (shouldOfferTaskBreak) setTimeout(cronoOpenTaskBreakPrompt, 420);
+  else if (shouldOfferBreak) cronoMaybeShowLongSessionBreak(minutos);
+  else if (shouldCheckTaskReminder) setTimeout(() => cronoMaybeRemindTasks('session-end'), 180);
 }
 
 // Flash de éxito al guardar la sesión: aparece sobre el cronómetro con el
@@ -16975,8 +16977,8 @@ window.addEventListener('pageshow', cronoHandleLifecycleResume);
 // Pases registrados durante la sesión (drawer lateral) — se pre-rellenan en el modal Hecho
 let _cronoDraftPases = { antesActive: false, antesVal: 50, despuesActive: false, despuesVal: 60 };
 let _cronoPaseDrawerOpen = false;
-let _cronoRunDrawerTab = 'pasajes';
-let _cronoIdleDrawerTab = 'pasajes';
+let _cronoRunDrawerTab = 'tareas';
+let _cronoIdleDrawerTab = 'tareas';
 
 // Iconos SVG inline (currentColor para integrarse con la paleta)
 const CRONO_ICONS = {
@@ -17490,6 +17492,85 @@ function cronoMaybeRemindTasks(reason) {
   try { localStorage.setItem(CRONO_TASK_REMINDER_KEY, JSON.stringify({ day, lastAt: now, reason: reason || 'interval' })); } catch(e) {}
   showToast(count + ' tarea' + (count === 1 ? '' : 's') + ' de piano pendiente' + (count === 1 ? '' : 's') + ' · revísalas');
   return true;
+}
+
+function cronoTaskBreakPending() {
+  return cronoTasks()
+    .filter(task => !task.done)
+    .sort((a, b) => {
+      const kindOrder = (cronoTaskKind(a) === 'personal' ? 0 : 1) - (cronoTaskKind(b) === 'personal' ? 0 : 1);
+      if (kindOrder) return kindOrder;
+      return (Date.parse(a.createdAt || '') || 0) - (Date.parse(b.createdAt || '') || 0);
+    });
+}
+
+function cronoRenderTaskBreakPrompt() {
+  const list = document.getElementById('cronoTaskBreakList');
+  const count = document.getElementById('cronoTaskBreakCount');
+  if (!list) return;
+  const pending = cronoTaskBreakPending();
+  if (count) count.textContent = pending.length
+    ? pending.length + (pending.length === 1 ? ' pendiente' : ' pendientes')
+    : 'Todo limpio';
+  if (!pending.length) {
+    list.innerHTML = '<div class="crono-task-break-clean" role="status"><span aria-hidden="true">✓</span><strong>Todo limpio</strong><small>No queda ninguna tarea pendiente.</small></div>';
+    return;
+  }
+  const visible = pending.slice(0, 6);
+  list.innerHTML = visible.map(task => {
+    const kind = cronoTaskKind(task);
+    return '<button type="button" class="crono-task-break-item" onclick="cronoCompleteTaskFromBreak(\'' + hechoJs(task.id) + '\',this)">' +
+      '<span class="crono-task-break-check" aria-hidden="true"></span>' +
+      '<span class="crono-task-break-copy"><strong>' + escapeHtmlSafe(task.text) + '</strong>' +
+        '<small>' + (kind === 'personal' ? 'Personal' : 'Piano') + (kind === 'piano' && task.tomorrow ? ' · Mañana' : '') + '</small>' +
+      '</span>' +
+    '</button>';
+  }).join('') + (pending.length > visible.length
+    ? '<div class="crono-task-break-more">+' + (pending.length - visible.length) + ' más</div>'
+    : '');
+}
+
+function cronoOpenTaskBreakPrompt() {
+  if (!cronoPendingTaskCount()) return false;
+  let modal = document.getElementById('modalCronoTaskBreak');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modalCronoTaskBreak';
+    modal.className = 'modal-overlay';
+    modal.innerHTML =
+      '<div class="modal crono-task-break-modal" role="dialog" aria-modal="true" aria-labelledby="cronoTaskBreakTitle">' +
+        '<div class="crono-task-break-kicker">¿Un descanso?</div>' +
+        '<div class="crono-task-break-title" id="cronoTaskBreakTitle">Haz alguna de estas tareas</div>' +
+        '<div class="crono-task-break-meta" id="cronoTaskBreakCount"></div>' +
+        '<div class="crono-task-break-list" id="cronoTaskBreakList"></div>' +
+        '<button type="button" class="modal-btn primary crono-task-break-close" onclick="closeCronoTaskBreakPrompt()">OK, cerrar</button>' +
+      '</div>';
+    document.body.appendChild(modal);
+  }
+  cronoRenderTaskBreakPrompt();
+  const now = Date.now();
+  const day = cronoTaskReminderDayKey(new Date(now));
+  try { localStorage.setItem(CRONO_TASK_REMINDER_KEY, JSON.stringify({ day, lastAt: now, reason: 'session-end' })); } catch(e) {}
+  openModal('modalCronoTaskBreak');
+  return true;
+}
+
+function closeCronoTaskBreakPrompt() {
+  closeModal('modalCronoTaskBreak');
+}
+
+function cronoCompleteTaskFromBreak(id, button) {
+  const task = cronoTasks().find(item => item.id === id);
+  if (!task || task.done || !button || button.classList.contains('is-completing')) return;
+  task.done = true;
+  task.doneAt = new Date().toISOString();
+  saveData();
+  renderCronoTasks();
+  button.classList.add('is-completing');
+  button.disabled = true;
+  try { Haptics.success(); } catch(e) {}
+  const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  setTimeout(cronoRenderTaskBreakPrompt, reducedMotion ? 100 : 620);
 }
 
 function cronoStartTaskReminderLoop() {
@@ -20745,7 +20826,7 @@ function cronoStart() {
   if (typeof bumpCronoPickRecency === 'function') bumpCronoPickRecency(resolved.obraId);
 
   _cronoPaseDrawerReset();
-  _cronoRunDrawerTab = 'pasajes';
+  _cronoRunDrawerTab = 'tareas';
   _pasajeOpenId = null;
   _cronoLastRunDestelloKey = '';
   if (!Array.isArray(crono.notes)) crono.notes = [];
@@ -20804,7 +20885,7 @@ function cronoStartRest() {
     return;
   }
   const pushEnable = cronoRequestNotificationPermissionFromGesture();
-  _cronoRunDrawerTab = 'pasajes';
+  _cronoRunDrawerTab = 'tareas';
   _cronoLastRunDestelloKey = '';
   crono.notes = [];
   crono.state = 'running';
@@ -21259,7 +21340,7 @@ function cronoReset(pushStatus) {
   crono.runId = null;
   _cronoPendingFinishRunId = null;
   _cronoFinalizingRunId = null;
-  _cronoRunDrawerTab = 'pasajes';
+  _cronoRunDrawerTab = 'tareas';
   crono.obraId = null;
   crono.movId = null;
   crono.displayName = '';
