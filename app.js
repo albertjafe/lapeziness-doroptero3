@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-24-registros-verticales-v48';
+const APP_VERSION = '2026-07-25-zoom-tactil-v49';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -16980,6 +16980,120 @@ let _cronoPaseDrawerOpen = false;
 let _cronoRunDrawerTab = 'tareas';
 let _cronoIdleDrawerTab = 'tareas';
 
+const CRONO_INTERFACE_SCALE_KEY = 'alberto_crono_interface_scale_v1';
+const CRONO_INTERFACE_SCALE_MIN = 0.82;
+const CRONO_INTERFACE_SCALE_MAX = 1.22;
+let _cronoInterfaceScale = 1;
+let _cronoInterfacePinch = null;
+let _cronoInterfaceZoomInitialized = false;
+let _cronoInterfaceZoomHideTimer = null;
+let _cronoLastTwoFingerTap = 0;
+
+function cronoClampInterfaceScale(value) {
+  return Math.max(CRONO_INTERFACE_SCALE_MIN, Math.min(CRONO_INTERFACE_SCALE_MAX, Number(value) || 1));
+}
+
+function cronoInterfaceBaseWidth() {
+  const viewport = Math.max(320, window.innerWidth || document.documentElement.clientWidth || 1024);
+  if (viewport < 700) return Math.max(296, viewport - 24);
+  if (window.matchMedia('(orientation: portrait)').matches) return Math.min(760, viewport - 48);
+  return Math.min(920, viewport - 48);
+}
+
+function cronoShowInterfaceScale(scale, linger) {
+  const indicator = document.getElementById('cronoInterfaceZoomIndicator');
+  if (!indicator) return;
+  indicator.textContent = Math.round(scale * 100) + '%';
+  indicator.classList.add('visible');
+  if (_cronoInterfaceZoomHideTimer) clearTimeout(_cronoInterfaceZoomHideTimer);
+  if (linger) {
+    _cronoInterfaceZoomHideTimer = setTimeout(() => indicator.classList.remove('visible'), 900);
+  }
+}
+
+function cronoSetInterfaceScale(value, options) {
+  const opts = options || {};
+  const scale = Math.round(cronoClampInterfaceScale(value) * 1000) / 1000;
+  const view = document.getElementById('view-cronometro');
+  _cronoInterfaceScale = scale;
+  if (view) {
+    view.style.setProperty('--crono-interface-scale', String(scale));
+    view.style.setProperty('--crono-interface-width', (cronoInterfaceBaseWidth() / Math.max(1, scale)).toFixed(2) + 'px');
+    view.dataset.interfaceScale = String(scale);
+  }
+  document.body.classList.toggle('crono-interface-zoomed-in', scale > 1.001);
+  if (opts.persist) {
+    try { localStorage.setItem(CRONO_INTERFACE_SCALE_KEY, String(scale)); } catch(e) {}
+  }
+  if (opts.announce !== false) cronoShowInterfaceScale(scale, !!opts.linger);
+  return scale;
+}
+
+function cronoResetInterfaceScale() {
+  document.body.classList.remove('crono-interface-pinching');
+  return cronoSetInterfaceScale(1, { persist: true, linger: true });
+}
+
+function cronoTouchDistance(touches) {
+  if (!touches || touches.length < 2) return 0;
+  return Math.hypot(touches[1].clientX - touches[0].clientX, touches[1].clientY - touches[0].clientY);
+}
+
+function cronoInitInterfaceZoom() {
+  const view = document.getElementById('view-cronometro');
+  if (!view) return;
+  if (!_cronoInterfaceZoomInitialized) {
+    _cronoInterfaceZoomInitialized = true;
+    try { _cronoInterfaceScale = cronoClampInterfaceScale(localStorage.getItem(CRONO_INTERFACE_SCALE_KEY)); } catch(e) {}
+
+    view.addEventListener('touchstart', event => {
+      if (event.touches.length !== 2 || (event.target.closest && event.target.closest('.modal-overlay'))) return;
+      const distance = cronoTouchDistance(event.touches);
+      if (!distance) return;
+      event.preventDefault();
+      _cronoInterfacePinch = {
+        distance,
+        startScale: _cronoInterfaceScale,
+        startedAt: Date.now(),
+        moved: false,
+      };
+      document.body.classList.add('crono-interface-pinching');
+      cronoShowInterfaceScale(_cronoInterfaceScale, false);
+    }, { passive: false });
+
+    view.addEventListener('touchmove', event => {
+      if (!_cronoInterfacePinch || event.touches.length < 2) return;
+      event.preventDefault();
+      const ratio = cronoTouchDistance(event.touches) / _cronoInterfacePinch.distance;
+      if (Math.abs(ratio - 1) > 0.018) _cronoInterfacePinch.moved = true;
+      cronoSetInterfaceScale(_cronoInterfacePinch.startScale * ratio, { announce: true });
+    }, { passive: false });
+
+    const finishPinch = () => {
+      if (!_cronoInterfacePinch) return;
+      const pinch = _cronoInterfacePinch;
+      _cronoInterfacePinch = null;
+      document.body.classList.remove('crono-interface-pinching');
+      const now = Date.now();
+      if (!pinch.moved && now - pinch.startedAt < 260) {
+        if (now - _cronoLastTwoFingerTap < 380) {
+          _cronoLastTwoFingerTap = 0;
+          cronoResetInterfaceScale();
+          return;
+        }
+        _cronoLastTwoFingerTap = now;
+      }
+      cronoSetInterfaceScale(_cronoInterfaceScale, { persist: true, linger: true });
+    };
+    view.addEventListener('touchend', event => {
+      if (_cronoInterfacePinch && event.touches.length < 2) finishPinch();
+    }, { passive: true });
+    view.addEventListener('touchcancel', finishPinch, { passive: true });
+    window.addEventListener('resize', () => cronoSetInterfaceScale(_cronoInterfaceScale, { announce: false }));
+  }
+  cronoSetInterfaceScale(_cronoInterfaceScale, { announce: false });
+}
+
 // Iconos SVG inline (currentColor para integrarse con la paleta)
 const CRONO_ICONS = {
   pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
@@ -21938,6 +22052,7 @@ function _stopCronoClock() {
 
 function cronoOnEnterView() {
   cronoEnterFocus();
+  cronoInitInterfaceZoom();
   cronoFillObraSelect();
   cronoSelectLastUsed();
   cronoApplyModeUI();

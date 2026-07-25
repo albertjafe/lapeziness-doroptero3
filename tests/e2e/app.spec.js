@@ -1125,3 +1125,39 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
     await context.close();
   }
 });
+
+test('scales the complete timer workspace and remembers the touch zoom', async ({ page }) => {
+  await page.setViewportSize({ width: 834, height: 1194 });
+  await prepare(page);
+  const result = await page.evaluate(() => {
+    showView('cronometro');
+    const wrap = document.querySelector('#view-cronometro .crono-wrap');
+    const before = wrap.getBoundingClientRect();
+    cronoSetInterfaceScale(0.84, { persist: false, announce: false });
+    const reduced = wrap.getBoundingClientRect();
+    cronoSetInterfaceScale(1.18, { persist: true, announce: false });
+    const enlarged = wrap.getBoundingClientRect();
+    const view = document.getElementById('view-cronometro');
+    cronoResetInterfaceScale();
+    const reset = wrap.getBoundingClientRect();
+    return {
+      beforeHeight: before.height,
+      beforeWidth: before.width,
+      reducedHeight: reduced.height,
+      reducedWidth: reduced.width,
+      enlargedHeight: enlarged.height,
+      resetHeight: reset.height,
+      scale: view.dataset.interfaceScale,
+      saved: localStorage.getItem(CRONO_INTERFACE_SCALE_KEY),
+      widthFits: enlarged.right <= innerWidth + 1 && enlarged.left >= -1,
+    };
+  });
+
+  expect(result.reducedWidth).toBeLessThan(result.beforeWidth * 0.9);
+  expect(result.reducedHeight).toBeLessThan(result.beforeHeight * 0.9);
+  expect(result.enlargedHeight).toBeGreaterThan(result.beforeHeight * 1.1);
+  expect(result.resetHeight).toBeCloseTo(result.beforeHeight, 0);
+  expect(result.scale).toBe('1');
+  expect(result.saved).toBe('1');
+  expect(result.widthFits).toBe(true);
+});

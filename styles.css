@@ -13337,6 +13337,54 @@ body.crono-timer-mode:not(.crono-until-mode) #cronoTimerSvg {
   .crono-run-drawer-tab .crono-task-notification-dot { animation: none; }
 }
 
+/* Pellizco local del cronometro: escala y redistribuye las dos tarjetas sin
+   ampliar el resto de la aplicacion. El ancho logico evita desbordamientos. */
+#view-cronometro {
+  --crono-interface-scale: 1;
+  --crono-interface-width: min(920px, calc(100vw - 48px));
+}
+html.crono-focus-root body.crono-focus #view-cronometro .crono-wrap {
+  width: var(--crono-interface-width) !important;
+  zoom: var(--crono-interface-scale);
+  transform-origin: top center;
+  transition: zoom 220ms cubic-bezier(.2, .8, .2, 1);
+  will-change: zoom;
+}
+body.crono-interface-pinching #view-cronometro .crono-wrap {
+  transition: none;
+}
+.crono-interface-zoom-indicator {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top, 0px));
+  left: 50%;
+  z-index: 360;
+  min-width: 54px;
+  padding: 7px 11px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border2));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg2) 92%, transparent);
+  box-shadow: 0 8px 26px rgba(0,0,0,.12);
+  color: var(--accent);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -7px) scale(.94);
+  transition: opacity 150ms ease, transform 180ms cubic-bezier(.2, .8, .2, 1);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.crono-interface-zoom-indicator.visible {
+  opacity: 1;
+  transform: translate(-50%, 0) scale(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  html.crono-focus-root body.crono-focus #view-cronometro .crono-wrap,
+  .crono-interface-zoom-indicator { transition: none; }
+}
+
 [data-theme^="marmol"] .crono-drawer-pase-btn {
   min-height: 54px;
   border-radius: 8px;
