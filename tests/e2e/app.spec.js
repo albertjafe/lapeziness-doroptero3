@@ -1163,7 +1163,12 @@ test('scales the complete timer workspace and remembers the touch zoom', async (
 });
 
 test('uses a complete two-column timer layout on landscape phones', async ({ browser }) => {
-  for (const viewport of [{ width: 740, height: 360 }, { width: 844, height: 390 }]) {
+  for (const viewport of [
+    { width: 740, height: 360 },
+    { width: 844, height: 390 },
+    { width: 932, height: 430 },
+    { width: 1024, height: 576 },
+  ]) {
     const context = await browser.newContext({ viewport });
     const page = await context.newPage();
     await prepare(page);
