@@ -13348,17 +13348,23 @@ body.crono-timer-mode:not(.crono-until-mode) #cronoTimerSvg {
   [data-theme^="marmol"] #view-cronometro .crono-idle-console,
   [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
     grid-template-columns: minmax(250px, var(--crono-timer-track)) minmax(300px, var(--crono-tools-track));
-    transition: grid-template-columns 220ms cubic-bezier(.2, .8, .2, 1);
+    transition: grid-template-columns 320ms cubic-bezier(.16, 1, .3, 1);
   }
 }
-body.crono-interface-pinching #view-cronometro .crono-wrap {
-  transition: none;
-}
 #view-cronometro .crono-idle-display-wrap,
-#view-cronometro body.crono-timer-mode .crono-idle-display-wrap,
+body.crono-timer-mode #view-cronometro .crono-idle-display-wrap,
 #view-cronometro .crono-display-wrap,
 #view-cronometro .crono-run-progress-svg {
-  transition: width 220ms cubic-bezier(.2, .8, .2, 1), height 220ms cubic-bezier(.2, .8, .2, 1), flex-basis 220ms cubic-bezier(.2, .8, .2, 1);
+  transition: width 320ms cubic-bezier(.16, 1, .3, 1), height 320ms cubic-bezier(.16, 1, .3, 1), flex-basis 320ms cubic-bezier(.16, 1, .3, 1);
+}
+body.crono-interface-pinching #view-cronometro .crono-wrap,
+body.crono-interface-pinching #view-cronometro .crono-idle-console,
+body.crono-interface-pinching #view-cronometro .crono-idle-display-wrap,
+body.crono-interface-pinching #view-cronometro .crono-display-wrap,
+body.crono-interface-pinching #view-cronometro .crono-run-progress-svg,
+body.crono-interface-pinching #view-cronometro .crono-idle-drawer,
+body.crono-interface-pinching #view-cronometro #cronoRunDrawer {
+  transition: none !important;
 }
 .crono-interface-zoom-indicator {
   position: fixed;
@@ -14453,7 +14459,7 @@ body.crono-interface-pinching #view-cronometro .crono-wrap {
   [data-theme^="marmol"] #view-cronometro .crono-idle-drawer,
   [data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunDrawer {
     min-height: var(--crono-tools-min-height) !important;
-    transition: min-height 220ms cubic-bezier(.2, .8, .2, 1);
+    transition: min-height 320ms cubic-bezier(.16, 1, .3, 1);
   }
 }
 

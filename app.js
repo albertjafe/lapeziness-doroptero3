@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-25-reparto-inverso-v52';
+const APP_VERSION = '2026-07-25-gesto-120hz-v53';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -16988,6 +16988,10 @@ let _cronoInterfacePinch = null;
 let _cronoInterfaceZoomInitialized = false;
 let _cronoInterfaceZoomHideTimer = null;
 let _cronoLastTwoFingerTap = 0;
+let _cronoInterfaceTargetScale = 1;
+let _cronoInterfaceAnimationFrame = null;
+let _cronoInterfaceAnimationLastTs = 0;
+let _cronoInterfacePersistOnSettle = false;
 
 function cronoClampInterfaceScale(value) {
   return Math.max(CRONO_INTERFACE_SCALE_MIN, Math.min(CRONO_INTERFACE_SCALE_MAX, Number(value) || 1));
@@ -17039,7 +17043,65 @@ function cronoSetInterfaceScale(value, options) {
   return scale;
 }
 
+function cronoCancelInterfaceAnimation() {
+  if (_cronoInterfaceAnimationFrame) cancelAnimationFrame(_cronoInterfaceAnimationFrame);
+  _cronoInterfaceAnimationFrame = null;
+  _cronoInterfaceAnimationLastTs = 0;
+  _cronoInterfacePersistOnSettle = false;
+  _cronoInterfaceTargetScale = _cronoInterfaceScale;
+}
+
+function cronoAnimateInterfaceScale(value, options) {
+  const opts = options || {};
+  _cronoInterfaceTargetScale = cronoClampInterfaceScale(value);
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const target = _cronoInterfaceTargetScale;
+    cronoCancelInterfaceAnimation();
+    document.body.classList.remove('crono-interface-pinching');
+    return cronoSetInterfaceScale(target, {
+      persist: !!opts.persist,
+      announce: opts.announce !== false,
+      linger: opts.linger !== false,
+    });
+  }
+  if (opts.persist) _cronoInterfacePersistOnSettle = true;
+  if (opts.announce !== false) cronoShowInterfaceScale(_cronoInterfaceTargetScale, false);
+  if (_cronoInterfaceAnimationFrame) return;
+
+  const step = timestamp => {
+    const elapsed = _cronoInterfaceAnimationLastTs
+      ? Math.min(34, Math.max(1, timestamp - _cronoInterfaceAnimationLastTs))
+      : 1000 / 120;
+    _cronoInterfaceAnimationLastTs = timestamp;
+    // La constante temporal mantiene la misma sensacion a 60 y a 120 Hz.
+    const damping = 1 - Math.exp(-elapsed / 28);
+    const delta = _cronoInterfaceTargetScale - _cronoInterfaceScale;
+    const next = Math.abs(delta) < 0.0012
+      ? _cronoInterfaceTargetScale
+      : _cronoInterfaceScale + (delta * damping);
+    cronoSetInterfaceScale(next, { announce: false });
+
+    if (Math.abs(_cronoInterfaceTargetScale - _cronoInterfaceScale) >= 0.0012) {
+      _cronoInterfaceAnimationFrame = requestAnimationFrame(step);
+      return;
+    }
+
+    const persist = _cronoInterfacePersistOnSettle;
+    _cronoInterfaceAnimationFrame = null;
+    _cronoInterfaceAnimationLastTs = 0;
+    _cronoInterfacePersistOnSettle = false;
+    document.body.classList.remove('crono-interface-pinching');
+    cronoSetInterfaceScale(_cronoInterfaceTargetScale, {
+      persist,
+      announce: opts.announce !== false,
+      linger: opts.linger !== false,
+    });
+  };
+  _cronoInterfaceAnimationFrame = requestAnimationFrame(step);
+}
+
 function cronoResetInterfaceScale() {
+  cronoCancelInterfaceAnimation();
   document.body.classList.remove('crono-interface-pinching');
   return cronoSetInterfaceScale(1, { persist: true, linger: true });
 }
@@ -17061,6 +17123,7 @@ function cronoInitInterfaceZoom() {
       const distance = cronoTouchDistance(event.touches);
       if (!distance) return;
       event.preventDefault();
+      cronoCancelInterfaceAnimation();
       _cronoInterfacePinch = {
         distance,
         startScale: _cronoInterfaceScale,
@@ -17076,14 +17139,13 @@ function cronoInitInterfaceZoom() {
       event.preventDefault();
       const ratio = cronoTouchDistance(event.touches) / _cronoInterfacePinch.distance;
       if (Math.abs(ratio - 1) > 0.018) _cronoInterfacePinch.moved = true;
-      cronoSetInterfaceScale(_cronoInterfacePinch.startScale * ratio, { announce: true });
+      cronoAnimateInterfaceScale(_cronoInterfacePinch.startScale * ratio, { announce: true });
     }, { passive: false });
 
     const finishPinch = () => {
       if (!_cronoInterfacePinch) return;
       const pinch = _cronoInterfacePinch;
       _cronoInterfacePinch = null;
-      document.body.classList.remove('crono-interface-pinching');
       const now = Date.now();
       if (!pinch.moved && now - pinch.startedAt < 260) {
         if (now - _cronoLastTwoFingerTap < 380) {
@@ -17093,7 +17155,7 @@ function cronoInitInterfaceZoom() {
         }
         _cronoLastTwoFingerTap = now;
       }
-      cronoSetInterfaceScale(_cronoInterfaceScale, { persist: true, linger: true });
+      cronoAnimateInterfaceScale(_cronoInterfaceTargetScale, { persist: true, linger: true });
     };
     view.addEventListener('touchend', event => {
       if (_cronoInterfacePinch && event.touches.length < 2) finishPinch();

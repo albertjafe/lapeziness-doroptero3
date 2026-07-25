@@ -1155,12 +1155,31 @@ test('uses pinch to distribute space inversely between timer and tools', async (
     const view = document.getElementById('view-cronometro');
     cronoShowInterfaceScale(0.84, false);
     const indicator = document.getElementById('cronoInterfaceZoomIndicator').textContent;
+    document.body.classList.add('crono-interface-pinching');
+    cronoAnimateInterfaceScale(0.9, { persist: true, announce: false });
+    await new Promise(resolve => {
+      const startedAt = performance.now();
+      const waitForSettle = () => {
+        if (!document.body.classList.contains('crono-interface-pinching') || performance.now() - startedAt > 1200) {
+          resolve();
+          return;
+        }
+        requestAnimationFrame(waitForSettle);
+      };
+      waitForSettle();
+    });
+    const animated = {
+      scale: Number(view.dataset.interfaceScale),
+      saved: Number(localStorage.getItem(CRONO_INTERFACE_SCALE_KEY)),
+      settled: !document.body.classList.contains('crono-interface-pinching'),
+    };
     cronoResetInterfaceScale();
     return {
       before,
       compactClock,
       largeClock,
       indicator,
+      animated,
       scale: view.dataset.interfaceScale,
       saved: localStorage.getItem(CRONO_INTERFACE_SCALE_KEY),
     };
@@ -1173,6 +1192,9 @@ test('uses pinch to distribute space inversely between timer and tools', async (
   expect(result.largeClock.drawer).toBeLessThan(result.before.drawer);
   expect(result.largeClock.ring).toBeGreaterThan(result.before.ring);
   expect(result.indicator).toContain('Reloj 84 · Tareas 116');
+  expect(result.animated.scale).toBeCloseTo(0.9, 2);
+  expect(result.animated.saved).toBeCloseTo(0.9, 2);
+  expect(result.animated.settled).toBe(true);
   expect(result.scale).toBe('1');
   expect(result.saved).toBe('1');
 });
