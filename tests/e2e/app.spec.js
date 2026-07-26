@@ -80,18 +80,15 @@ test('keeps mobile navigation visible and marks empty daily states honestly', as
       sleepActive: document.querySelectorAll('#suenoFaces .estado-face.active').length,
       wellbeingStatus: document.getElementById('estadoStatus')?.textContent,
       sleepStatus: document.getElementById('suenoStatus')?.textContent,
-      summary: document.getElementById('sessionResumenCard')?.textContent,
     }));
     expect(state.navFits).toBe(true);
     expect(state.documentFits).toBe(true);
-    expect(state.navButtons).toHaveLength(5);
+    expect(state.navButtons).toHaveLength(4);
     expect(state.navButtons.every(btn => btn.width > 0 && btn.height >= 44 && btn.label)).toBe(true);
     expect(state.wellbeingActive).toBe(0);
     expect(state.sleepActive).toBe(0);
     expect(state.wellbeingStatus).toContain('Sin registrar hoy');
     expect(state.sleepStatus).toContain('Sin registrar hoy');
-    expect(state.summary).toContain('0 min');
-    expect(state.summary.toLowerCase()).not.toContain('objetivo');
     await context.close();
   }
 });
@@ -248,15 +245,12 @@ test('adds custom study quickly and persists both history and timed detail', asy
 test('adds manual study to today total immediately', async ({ page }) => {
   await prepare(page);
   await page.evaluate(() => showView('session'));
-  await expect(page.locator('#sessionResumenCard')).toContainText('0 min');
-
   await page.locator('#sessionStatsSection .stats-primary-add').click();
   await page.locator('#studyRegisterObra').selectOption('obra::obra_1');
   await page.locator('#studyMinutePresets [data-minutes="25"]').click();
   await page.locator('#studyRegisterSaveBtn').click();
 
   await expect(page.locator('#modalStudyRegister')).not.toHaveClass(/visible/);
-  await expect(page.locator('#sessionResumenCard')).toContainText('25 min');
   await expect(page.locator('#sessionConcentradoText')).toHaveText(/25 min/);
   expect(await page.evaluate(() => getMinutosConcentradoHoy())).toBe(25);
 });
@@ -308,14 +302,12 @@ test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) =>
     const hoy = {
       nav: document.querySelector('.nav-btn[data-view="session"]')?.textContent.trim(),
       action: document.getElementById('sessionStartStudyBtn')?.textContent.trim() || null,
-      summary: document.getElementById('sessionResumenCard')?.textContent || '',
       journal: {
         label: document.getElementById('sessionJournalToggle')?.getAttribute('aria-label'),
         text: document.getElementById('sessionJournalToggle')?.textContent.trim(),
         expanded: document.getElementById('sessionJournalToggle')?.getAttribute('aria-expanded'),
         panelHidden: document.getElementById('sessionJournalPanel')?.hidden,
       },
-      hasGoalRing: !!document.querySelector('#sessionResumenCard .session-resumen-ring'),
       nudge: document.querySelector('.session-insight-card.nudge'),
       refresh: (() => {
         const button = document.querySelector('#view-session .app-refresh-btn');
@@ -336,9 +328,6 @@ test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) =>
   });
   expect(state.hoy.nav).toBe('Hoy');
   expect(state.hoy.action).toBeNull();
-  expect(state.hoy.summary).toContain('Aún sin actividad registrada');
-  expect(state.hoy.summary.toLowerCase()).not.toContain('objetivo');
-  expect(state.hoy.hasGoalRing).toBe(false);
   expect(state.hoy.journal).toEqual({
     label: 'Añadir una entrada al diario',
     text: '+',
