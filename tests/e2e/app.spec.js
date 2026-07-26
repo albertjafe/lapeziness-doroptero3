@@ -160,7 +160,7 @@ test('keeps phase two grids and touch targets usable at mobile and iPad widths',
       const gearSize = [gear.getBoundingClientRect().width, gear.getBoundingClientRect().height];
       showView('ajustes');
       const body = document.querySelector('#view-ajustes .ajustes-body');
-      const stats = document.getElementById('view-historial');
+      const stats = document.querySelector('.session-stats-grid');
       return {
         viewport: window.innerWidth,
         documentFits: document.documentElement.scrollWidth <= window.innerWidth + 1,
@@ -1002,7 +1002,7 @@ test('keeps a 13-inch touch iPad in the tablet layout', async ({ browser }) => {
   await context.close();
 });
 
-test('uses the requested four-view order for swipe navigation', async ({ page }) => {
+test('uses the combined sessions-statistics three-view order for swipe navigation', async ({ page }) => {
   await prepare(page);
   const result = await page.evaluate(() => {
     showView('cronometro');
@@ -1013,7 +1013,7 @@ test('uses the requested four-view order for swipe navigation', async ({ page })
     };
   });
   expect(result).toEqual({
-    order: ['session', 'cronometro', 'obras', 'historial'],
+    order: ['session', 'cronometro', 'obras'],
     active: 'session',
   });
 });

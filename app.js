@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-26-carrusel-fluido-v71';
+const APP_VERSION = '2026-07-26-sesiones-estadisticas-v72';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -517,6 +517,11 @@ function updateContextHeader(name) {
 }
 
 function showView(name) {
+  if (name === 'historial') {
+    showView('session');
+    requestAnimationFrame(() => document.getElementById('sessionStatsSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    return;
+  }
   document.body.setAttribute('data-view', name);
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => {
@@ -533,7 +538,13 @@ function showView(name) {
   window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   // Modo concentración: activar/desactivar al entrar/salir de cronometro
   if (name !== 'cronometro' && typeof cronoOnLeaveView === 'function') cronoOnLeaveView();
-  if (name === 'session')    { renderRacha(); if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI(); if (typeof renderSessionInsights === 'function') renderSessionInsights(); if (typeof renderSessionJournal === 'function') renderSessionJournal(); }
+  if (name === 'session')    {
+    renderRacha();
+    if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+    if (typeof renderSessionInsights === 'function') renderSessionInsights();
+    if (typeof renderSessionJournal === 'function') renderSessionJournal();
+    renderCombinedSessionStats();
+  }
   if (name === 'cronometro') { cronoOnEnterView(); if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true); }
   if (name === 'obras')      renderObras();
   if (name === 'calendario') renderCalendario();
@@ -905,7 +916,19 @@ function ensureEstadoEventos() {
   return db.estadoEventos;
 }
 
-const SWIPE_VIEW_ORDER = ['session', 'cronometro', 'obras', 'historial'];
+function renderCombinedSessionStats() {
+  const sd = document.getElementById('statsDashboard');
+  if (!sd) return;
+  renderStatsDashboard();
+  renderMantenimientoSection();
+  renderSolidezSection();
+  renderEficienciaSection();
+  renderEstadoSection();
+  renderSesionesHistorial();
+  _histListApplyPref();
+}
+
+const SWIPE_VIEW_ORDER = ['session', 'cronometro', 'obras'];
 let _viewSwipe = null;
 
 function viewSwipeBlockedTarget(target) {
@@ -945,8 +968,13 @@ function viewSwipePrepareNeighbor(swipe, direction) {
     swipe.neighborDirection = direction;
     return false;
   }
-  const neighbor = document.getElementById('view-' + SWIPE_VIEW_ORDER[nextIndex]);
+  const nextName = SWIPE_VIEW_ORDER[nextIndex];
+  const neighbor = document.getElementById('view-' + nextName);
   if (!neighbor) return false;
+  // La vista que aparece bajo el dedo debe ser exactamente la definitiva.
+  // La preparamos antes de hacerla visible para que al soltar no cambie su DOM.
+  if (nextName === 'session') renderCombinedSessionStats();
+  if (nextName === 'obras') renderObras();
   const rect = swipe.view.getBoundingClientRect();
   swipe.width = Math.max(1, window.innerWidth);
   swipe.neighbor = neighbor;
@@ -996,8 +1024,14 @@ function viewSwipeSettle(swipe, commit, nextView) {
     if (swipe.neighbor) swipe.neighbor.style.transform = 'translate3d(' + neighborEnd + 'px,0,0)';
   });
   setTimeout(() => {
+    if (commit && nextView) {
+      // Activar el mismo nodo que ya está a translateX(0). No existe un frame
+      // intermedio vacío ni una segunda copia que pueda provocar un corte.
+      document.body.classList.add('view-swipe-commit');
+      showView(nextView);
+    }
     viewSwipeCleanup(swipe);
-    if (commit && nextView) showView(nextView);
+    requestAnimationFrame(() => document.body.classList.remove('view-swipe-commit'));
   }, 270);
 }
 
@@ -3098,7 +3132,7 @@ function commitSession(targetDate) {
   }
   showSavedCheck();
   // Refrescar historial si está visible
-  if (document.getElementById('view-historial')?.classList.contains('active')) {
+  if (document.getElementById('view-session')?.classList.contains('active')) {
     renderSesionesHistorial();
   }
 }
@@ -15157,7 +15191,7 @@ function saveSesionManual() {
   saveData();
   closeModal('modalSesionManual');
   showToast(`${minutos} min de ${obra.name} registrados ✓`);
-  if (document.getElementById('view-historial').classList.contains('active')) {
+  if (document.getElementById('view-session')?.classList.contains('active')) {
     renderSesionesHistorial();
   }
 }
@@ -16862,7 +16896,7 @@ async function onAuthSuccess() {
   if (reloaded) {
     renderObras();
     renderCalendario();
-    if (document.getElementById('view-historial')?.classList.contains('active')) {
+    if (document.getElementById('view-session')?.classList.contains('active')) {
       renderSesionesHistorial();
       renderEficienciaSection();
       renderEstadoSection();
@@ -20808,7 +20842,7 @@ function confirmQuickSolidez() {
   hechoUpdateFastSolidityAction();
   _justMeasuredObraId = target.obraId || null;
   if (typeof renderObras === 'function' && document.getElementById('view-obras')?.classList.contains('active')) renderObras();
-  if (document.getElementById('view-historial')?.classList.contains('active')) {
+  if (document.getElementById('view-session')?.classList.contains('active')) {
     if (typeof renderSolidezSection === 'function') renderSolidezSection();
     if (typeof renderSesionesHistorial === 'function') renderSesionesHistorial();
   }

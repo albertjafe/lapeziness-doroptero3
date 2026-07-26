@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=194">
+<link rel="stylesheet" href="styles.css?v=195">
 </head>
 <body>
 
@@ -256,6 +256,31 @@
   </div>
 
   <div class="session-plan" id="sessionPlan"></div>
+
+  <section class="session-stats-section" id="sessionStatsSection" aria-labelledby="sessionStatsTitle">
+    <div class="view-action-row stats-action-row">
+      <div>
+        <div class="view-local-label" id="sessionStatsTitle">Estadísticas</div>
+        <div class="view-local-subtitle">Resumen, tendencias y sesiones registradas</div>
+      </div>
+      <button class="add-manual-session-btn stats-primary-add" onclick="openSesionManual()">+ Añadir estudio</button>
+    </div>
+    <div class="session-stats-grid">
+      <div id="statsDashboard" style="margin-bottom:22px"></div>
+      <div id="mantenimientoSection" style="margin-bottom:20px"></div>
+      <div id="solidezSection" style="margin-bottom:20px"></div>
+      <div id="eficienciaSection" style="margin-bottom:20px"></div>
+      <div id="estadoSection" style="margin-bottom:20px"></div>
+      <div class="session-history-heading" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border2)">
+        <div class="history-section-label">Sesiones registradas</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="hist-list-toggle" onclick="openSesionesDetalle()" title="Ver cada sesión con su hora">↗ Por horas</button>
+          <button class="hist-list-toggle" id="histListToggle" onclick="toggleHistList()">Mostrar</button>
+        </div>
+      </div>
+      <div id="sesionesHistorial" style="display:none"></div>
+    </div>
+  </section>
 </div>
 
 <!-- CRONÓMETRO VIEW -->
@@ -766,29 +791,6 @@
 </div>
 
 
-
-<div class="view" id="view-historial">
-  <div class="view-action-row stats-action-row">
-    <div>
-      <div class="view-local-label">Evolución de tu práctica</div>
-      <div class="view-local-subtitle">Resumen, tendencias y sesiones registradas</div>
-    </div>
-    <button class="add-manual-session-btn stats-primary-add" onclick="openSesionManual()">+ Añadir estudio</button>
-  </div>
-  <div id="statsDashboard" style="margin-bottom:22px"></div>
-  <div id="mantenimientoSection" style="margin-bottom:20px"></div>
-  <div id="solidezSection" style="margin-bottom:20px"></div>
-  <div id="eficienciaSection" style="margin-bottom:20px"></div>
-  <div id="estadoSection" style="margin-bottom:20px"></div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border2)">
-    <div class="history-section-label">Sesiones registradas</div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <button class="hist-list-toggle" onclick="openSesionesDetalle()" title="Ver cada sesión con su hora">↗ Por horas</button>
-      <button class="hist-list-toggle" id="histListToggle" onclick="toggleHistList()">Mostrar</button>
-    </div>
-  </div>
-  <div id="sesionesHistorial" style="display:none"></div>
-</div>
 
 <!-- MODAL: sesiones individuales con hora de inicio/fin, por día -->
 <div class="modal-overlay" id="modalSesionesDetalle">
@@ -1955,10 +1957,6 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
     <span>Calendario</span>
   </button>
-  <button class="nav-btn" aria-label="Estadísticas" data-view="historial" data-short="Estad." onclick="showView('historial')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 19v-6M12 19V6M18 19v-9"/></svg>
-    <span>Estadísticas</span>
-  </button>
 </nav>
 
 <div class="toast" id="toast"></div>
@@ -1979,11 +1977,11 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js?v=194"></script>
-<script src="data-core.js?v=194"></script>
-<script src="sync-core.js?v=194"></script>
-<script src="push-client.js?v=194"></script>
-<script src="app.js?v=194"></script>
+<script src="timer-core.js?v=195"></script>
+<script src="data-core.js?v=195"></script>
+<script src="sync-core.js?v=195"></script>
+<script src="push-client.js?v=195"></script>
+<script src="app.js?v=195"></script>
 
 </body>
 <script>
@@ -2005,7 +2003,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=194', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=195', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

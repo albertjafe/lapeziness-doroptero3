@@ -11489,13 +11489,15 @@ body.crono-paused .crono-pause-overlay-inner {
   #view-session { max-width: 960px; }
   #view-cronometro { max-width: 1120px; }
   #view-obras, #view-calendario { max-width: 960px; }
-  #view-historial { max-width: 1120px; }
+  .session-stats-section { margin-top: clamp(36px, 7vw, 72px); padding-top: 28px; border-top: 1px solid var(--border2); }
+  .session-stats-grid { width: 100%; }
   #view-ajustes { max-width: 1040px; }
   .session-journal-card { max-width: 74ch; }
   .session-journal-input, .session-journal-text { max-width: 74ch; }
 
   /* El cambio de vista comunica estado sin desplazar toda la página. */
   .view.active { animation: viewFadeInOpacity 180ms ease-out; }
+  body.view-swipe-commit .view.active { animation: none !important; opacity: 1 !important; }
   @keyframes viewFadeInOpacity { from { opacity: 0; } to { opacity: 1; } }
 
   /* Las opciones segmentadas tienen una semántica clara y no dependen del color. */
@@ -11537,14 +11539,15 @@ body.crono-paused .crono-pause-overlay-inner {
   }
 
   @media (min-width: 768px) {
-    #view-historial { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; align-items: start; }
-    #view-historial > .view-action-row, #view-historial > #statsDashboard,
-    #view-historial > div[style*="border-bottom"] { grid-column: 1 / -1; }
+    .session-stats-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; align-items: start; }
+    .session-stats-grid > #statsDashboard,
+    .session-stats-grid > .session-history-heading,
+    .session-stats-grid > #sesionesHistorial { grid-column: 1 / -1; }
     #view-session .session-insight-stack { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     #view-ajustes .ajustes-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; align-items: start; }
   }
   @media (max-width: 767px) {
-    #view-historial { display: block; }
+    .session-stats-grid { display: block; }
     .view-action-row { align-items: flex-start; }
   }
   @media (max-width: 390px) {
