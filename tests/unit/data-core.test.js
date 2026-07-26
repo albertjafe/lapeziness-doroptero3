@@ -37,4 +37,13 @@ describe('DataCore', () => {
     );
     expect(merged.impulsoEventos.map(event => event.id)).toEqual(['urge-a', 'urge-b']);
   });
+
+  it('merges discomfort events and their context without losing either device', () => {
+    const merged = DataCore.mergeStudyHistory(
+      { malestarEventos: [{ id: 'distress-a', at: '2026-07-13T08:00:00Z', value: 40, label: 'Bajo', note: 'Tensión física' }] },
+      { malestarEventos: [{ id: 'distress-b', at: '2026-07-13T09:00:00Z', value: 80, label: 'Alto', note: 'Pensamiento repetitivo' }] }
+    );
+    expect(merged.malestarEventos.map(event => event.id)).toEqual(['distress-a', 'distress-b']);
+    expect(merged.malestarEventos[1].note).toBe('Pensamiento repetitivo');
+  });
 });

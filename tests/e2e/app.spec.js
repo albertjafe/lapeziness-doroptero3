@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 const fixture = {
   obras: [{ id: 'obra_1', name: 'Bach · Preludio', composer: 'J. S. Bach', tipo: 'obra', movimientos: [], sol: 50, solHistory: [] }],
   eventos: [], sesiones: [], registro: [], sessionPlants: [], forestPlants: [],
-  estadoEventos: [], impulsoEventos: [], deporteEventos: [], suenoEventos: [], triggerEventos: [],
+  estadoEventos: [], impulsoEventos: [], malestarEventos: [], deporteEventos: [], suenoEventos: [], triggerEventos: [],
   tiempoDisponibleEventos: [], dailyJournalEntries: [],
 };
 
@@ -886,23 +886,33 @@ test('records concentration and resisted urges across landscape and portrait tim
   await impulse.getByRole('radio', { name: 'Muy alto', exact: true }).click();
   await expect(impulse.getByRole('radio', { name: 'Muy alto', exact: true })).toHaveAttribute('aria-checked', 'true');
 
+  await page.locator('#cronoMomentNote').fill('Tensión física y pensamiento repetitivo');
+  const discomfort = page.locator('#cronoDiscomfortFaces');
+  await discomfort.getByRole('radio', { name: 'Medio', exact: true }).click();
+  await expect(discomfort.getByRole('radio', { name: 'Medio', exact: true })).toHaveAttribute('aria-checked', 'true');
+
   const state = await page.evaluate(() => ({
     value: estadoActualVal(),
     lastLabel: ensureEstadoEventos().at(-1)?.label,
     lastNote: ensureEstadoEventos().at(-1)?.note,
     impulseLabel: ensureImpulsoEventos().at(-1)?.label,
+    discomfortLabel: ensureMalestarEventos().at(-1)?.label,
+    discomfortNote: ensureMalestarEventos().at(-1)?.note,
   }));
   expect(state).toEqual({
     value: 78,
     lastLabel: 'Alta',
     lastNote: 'Concentrarme en la mano derecha',
     impulseLabel: 'Muy alto',
+    discomfortLabel: 'Medio',
+    discomfortNote: 'Tensión física y pensamiento repetitivo',
   });
 
   const history = page.locator('#cronoMomentHistoryList');
   await expect(history).toContainText('Impulso');
   await expect(history).toContainText('Concentración');
   await expect(history).toContainText('Concentrarme en la mano derecha');
+  await expect(history).toContainText('Tensión física y pensamiento repetitivo');
   await history.getByRole('button', { name: 'Borrar impulso muy alto' }).click();
   expect(await page.evaluate(() => ensureImpulsoEventos().length)).toBe(0);
   await history.getByRole('button', { name: 'Borrar concentración alta' }).click();

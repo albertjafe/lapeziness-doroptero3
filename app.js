@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-26-notas-de-concentracion-v61';
+const APP_VERSION = '2026-07-26-malestar-v62';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -243,6 +243,7 @@ function _mergeStudyHistory(base, other) {
   merged.sesiones      = _mergeSesiones(base.sesiones, other.sesiones);
   merged.estadoEventos = _mergeEstadoEventos(base.estadoEventos, other.estadoEventos);
   merged.impulsoEventos = _mergeEstadoEventos(base.impulsoEventos, other.impulsoEventos);
+  merged.malestarEventos = _mergeEstadoEventos(base.malestarEventos, other.malestarEventos);
   merged.deporteEventos = _mergeDeporteEventos(base.deporteEventos, other.deporteEventos);
   merged.suenoEventos = _mergeSuenoEventos(base.suenoEventos, other.suenoEventos);
   merged.triggerEventos = _mergeTriggerEventos(base.triggerEventos, other.triggerEventos);
@@ -423,6 +424,7 @@ function getDefaultData() {
     registro: [],
     estadoEventos: [],
     impulsoEventos: [],
+    malestarEventos: [],
     deporteEventos: [],
     suenoEventos: [],
     triggerEventos: [],
@@ -438,6 +440,7 @@ if (!db.obras) db.obras = [];
 if (!db.forestPlants) db.forestPlants = [];
 if (!db.estadoEventos) db.estadoEventos = [];
 if (!db.impulsoEventos) db.impulsoEventos = [];
+if (!db.malestarEventos) db.malestarEventos = [];
 if (!db.deporteEventos) db.deporteEventos = [];
 if (!db.suenoEventos) db.suenoEventos = [];
 if (!db.triggerEventos) db.triggerEventos = [];
@@ -736,8 +739,11 @@ const IMPULSO_LEVELS = [
   { v: 100, level: 5, label: 'Muy alto', icon: 'trigger-5' },
 ];
 
+const MALESTAR_LEVELS = IMPULSO_LEVELS.map(item => Object.assign({}, item));
+
 let _concentrationPulseIndex = -1;
 let _impulsePulseIndex = -1;
+let _discomfortPulseIndex = -1;
 
 const SUENO_FACES = [
   { v: 12, label: 'Muy poco', icon: 'moon-lowest' },
@@ -920,6 +926,27 @@ function ensureImpulsoEventos() {
   return db.impulsoEventos;
 }
 
+function _malestarEventosLocal() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('alberto_malestar_eventos_v1') || '[]');
+    return Array.isArray(raw) ? raw : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function _saveMalestarEventosLocal(items) {
+  try {
+    localStorage.setItem('alberto_malestar_eventos_v1', JSON.stringify((items || []).slice(-2000)));
+  } catch(e) {}
+}
+
+function ensureMalestarEventos() {
+  if (typeof db !== 'object' || !db) return _malestarEventosLocal();
+  if (!Array.isArray(db.malestarEventos)) db.malestarEventos = _malestarEventosLocal();
+  return db.malestarEventos;
+}
+
 function _deporteEventosLocal() {
   try {
     const raw = JSON.parse(localStorage.getItem('alberto_deporte_eventos_v1') || '[]');
@@ -1046,6 +1073,15 @@ function pickImpulso(idx, trigger) {
   if (!level) return;
   recordImpulsoEvent(level, consumeCronoMomentNote(trigger));
   flashMomentSelection('impulse', idx);
+  try { Haptics.medium(); } catch(e) {}
+  try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
+}
+
+function pickMalestar(idx, trigger) {
+  const level = MALESTAR_LEVELS[idx];
+  if (!level) return;
+  recordMalestarEvent(level, consumeCronoMomentNote(trigger));
+  flashMomentSelection('discomfort', idx);
   try { Haptics.medium(); } catch(e) {}
   try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
 }
@@ -1261,15 +1297,39 @@ function recordImpulsoEvent(level, note) {
   }, 600);
 }
 
+function recordMalestarEvent(level, note) {
+  const arr = ensureMalestarEventos();
+  const now = new Date();
+  arr.push({
+    id: 'malestar_' + now.getTime() + '_' + Math.random().toString(36).slice(2, 7),
+    at: now.toISOString(),
+    date: now.toDateString(),
+    value: level.v,
+    level: level.level,
+    label: level.label,
+    note: String(note || '').trim().slice(0, 180),
+  });
+  if (arr.length > 2000) arr.splice(0, arr.length - 2000);
+  _saveMalestarEventosLocal(arr);
+  renderCronoMomentHistory();
+  clearTimeout(recordMalestarEvent._t);
+  recordMalestarEvent._t = setTimeout(() => {
+    if (typeof saveData === 'function') saveData();
+  }, 600);
+}
+
 function flashMomentSelection(kind, idx) {
   const isImpulse = kind === 'impulse';
+  const isDiscomfort = kind === 'discomfort';
   if (isImpulse) _impulsePulseIndex = idx;
+  else if (isDiscomfort) _discomfortPulseIndex = idx;
   else _concentrationPulseIndex = idx;
   refreshMomentFacesUI();
-  const timerKey = isImpulse ? '_impulseTimer' : '_concentrationTimer';
+  const timerKey = isImpulse ? '_impulseTimer' : isDiscomfort ? '_discomfortTimer' : '_concentrationTimer';
   clearTimeout(flashMomentSelection[timerKey]);
   flashMomentSelection[timerKey] = setTimeout(() => {
     if (isImpulse) _impulsePulseIndex = -1;
+    else if (isDiscomfort) _discomfortPulseIndex = -1;
     else _concentrationPulseIndex = -1;
     refreshMomentFacesUI();
   }, 850);
@@ -1284,6 +1344,12 @@ function refreshMomentFacesUI() {
   });
   document.querySelectorAll('#cronoImpulseFaces .estado-face').forEach(button => {
     const on = Number(button.dataset.levelIndex) === _impulsePulseIndex;
+    button.classList.toggle('active', on);
+    button.classList.toggle('is-registering', on);
+    button.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('#cronoDiscomfortFaces .estado-face').forEach(button => {
+    const on = Number(button.dataset.levelIndex) === _discomfortPulseIndex;
     button.classList.toggle('active', on);
     button.classList.toggle('is-registering', on);
     button.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -1323,10 +1389,12 @@ function renderCronoMomentHistory() {
     .map(item => Object.assign({ kind: 'concentration', kindLabel: 'Concentración' }, item));
   const impulses = ensureImpulsoEventos().filter(item => item && item.date === today)
     .map(item => Object.assign({ kind: 'impulse', kindLabel: 'Impulso' }, item));
-  const count = concentration.length + impulses.length;
+  const discomfort = ensureMalestarEventos().filter(item => item && item.date === today)
+    .map(item => Object.assign({ kind: 'discomfort', kindLabel: 'Malestar' }, item));
+  const count = concentration.length + impulses.length + discomfort.length;
   const countLabel = document.getElementById('cronoMomentHistoryCount');
   if (countLabel) countLabel.textContent = 'Hoy · ' + count;
-  const recent = concentration.concat(impulses)
+  const recent = concentration.concat(impulses, discomfort)
     .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
     .slice(0, 6);
   if (!recent.length) {
@@ -1347,11 +1415,13 @@ function renderCronoMomentHistory() {
 
 function deleteCronoMomentEvent(kind, id) {
   const isImpulse = kind === 'impulse';
-  const arr = isImpulse ? ensureImpulsoEventos() : ensureEstadoEventos();
+  const isDiscomfort = kind === 'discomfort';
+  const arr = isImpulse ? ensureImpulsoEventos() : isDiscomfort ? ensureMalestarEventos() : ensureEstadoEventos();
   const index = arr.findIndex(item => item && item.id === id);
   if (index < 0) return;
   arr.splice(index, 1);
   if (isImpulse) _saveImpulsoEventosLocal(arr);
+  else if (isDiscomfort) _saveMalestarEventosLocal(arr);
   else {
     _saveEstadoEventosLocal(arr);
     const today = new Date().toDateString();
@@ -1364,7 +1434,7 @@ function deleteCronoMomentEvent(kind, id) {
     refreshEstadoFacesUI();
   }
   renderCronoMomentHistory();
-  if (!isImpulse) refreshEstadoEventSummary();
+  if (!isImpulse && !isDiscomfort) refreshEstadoEventSummary();
   if (typeof saveData === 'function') saveData();
   showToast('Registro borrado');
 }
@@ -2003,6 +2073,11 @@ function initEstadoSliders() {
   if (cronoImpulseHost && !cronoImpulseHost.dataset.built) {
     cronoImpulseHost.innerHTML = IMPULSO_LEVELS.map((f, i) => ritmoChoiceHTML(f, i, 'pickImpulso', 'impulso')).join('');
     cronoImpulseHost.dataset.built = '1';
+  }
+  const cronoDiscomfortHost = document.getElementById('cronoDiscomfortFaces');
+  if (cronoDiscomfortHost && !cronoDiscomfortHost.dataset.built) {
+    cronoDiscomfortHost.innerHTML = MALESTAR_LEVELS.map((f, i) => ritmoChoiceHTML(f, i, 'pickMalestar', 'malestar')).join('');
+    cronoDiscomfortHost.dataset.built = '1';
   }
   const sleepHost = document.getElementById('suenoFaces');
   if (sleepHost && !sleepHost.dataset.built) {
@@ -13977,13 +14052,14 @@ function aiBuildDailyRows() {
   const pasajeRows = aiBuildPasajeRows();
   const estadoEventos = ensureEstadoEventos ? ensureEstadoEventos() : (db.estadoEventos || []);
   const impulsoEventos = ensureImpulsoEventos ? ensureImpulsoEventos() : (db.impulsoEventos || []);
+  const malestarEventos = ensureMalestarEventos ? ensureMalestarEventos() : (db.malestarEventos || []);
   const deporteEventos = ensureDeporteEventos ? ensureDeporteEventos() : (db.deporteEventos || []);
   const suenoEventos = ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || []);
   const triggerEventos = ensureTriggerEventos ? ensureTriggerEventos() : (db.triggerEventos || []);
   const tiempoDisponibleEventos = ensureTiempoDisponibleEventos ? ensureTiempoDisponibleEventos() : (db.tiempoDisponibleEventos || []);
   const dailyJournalEntries = ensureDailyJournalEntries ? ensureDailyJournalEntries() : (db.dailyJournalEntries || []);
   const keys = new Set();
-  [studyRows, sessionCards, paseRows, pasajeRows, estadoEventos, impulsoEventos, deporteEventos, suenoEventos, triggerEventos, tiempoDisponibleEventos, dailyJournalEntries].forEach(arr => {
+  [studyRows, sessionCards, paseRows, pasajeRows, estadoEventos, impulsoEventos, malestarEventos, deporteEventos, suenoEventos, triggerEventos, tiempoDisponibleEventos, dailyJournalEntries].forEach(arr => {
     (arr || []).forEach(x => {
       const k = x.day || aiLocalDateKey(x.date || x.at || x.start || x.startedAt);
       if (k) keys.add(k);
@@ -14005,6 +14081,7 @@ function aiBuildDailyRows() {
       pasajes: pasajeRows.filter(x => x.day === day),
       estadoEventos: (estadoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       impulsoEventos: (impulsoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
+      malestarEventos: (malestarEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       deporteEventos: (deporteEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       suenoEventos: (suenoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       triggerEventos: (triggerEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
@@ -14036,6 +14113,7 @@ function buildAiDataPackage() {
       pasajeEntries: aiBuildPasajeRows().length,
       estadoEventos: (ensureEstadoEventos ? ensureEstadoEventos() : (db.estadoEventos || [])).length,
       impulsoEventos: (ensureImpulsoEventos ? ensureImpulsoEventos() : (db.impulsoEventos || [])).length,
+      malestarEventos: (ensureMalestarEventos ? ensureMalestarEventos() : (db.malestarEventos || [])).length,
       deporteEventos: (ensureDeporteEventos ? ensureDeporteEventos() : (db.deporteEventos || [])).length,
       suenoEventos: (ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || [])).length,
       triggerEventos: (ensureTriggerEventos ? ensureTriggerEventos() : (db.triggerEventos || [])).length,
@@ -14050,6 +14128,7 @@ function buildAiDataPackage() {
     localMirrors: {
       estadoEventos: aiReadLocalJson('alberto_estado_eventos_v1'),
       impulsoEventos: aiReadLocalJson('alberto_impulso_eventos_v1'),
+      malestarEventos: aiReadLocalJson('alberto_malestar_eventos_v1'),
       deporteEventos: aiReadLocalJson('alberto_deporte_eventos_v1'),
       suenoEventos: aiReadLocalJson('alberto_sueno_eventos_v1'),
       triggerEventos: aiReadLocalJson('alberto_trigger_eventos_v1'),
@@ -14238,6 +14317,7 @@ function aiDayHasReportableActivity(day) {
     day.pasajes.length ||
     day.estadoEventos.length ||
     (day.impulsoEventos || []).length ||
+    (day.malestarEventos || []).length ||
     day.deporteEventos.length ||
     day.suenoEventos.length ||
     (day.triggerEventos || []).length ||
@@ -14376,7 +14456,15 @@ function buildAiTextReport(options) {
     }
     if (day.estadoEventos.length) {
       lines.push('Concentración:');
-      day.estadoEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.label || e.value)));
+      day.estadoEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.label || e.value) + (e.note ? ' · ' + e.note : '')));
+    }
+    if ((day.impulsoEventos || []).length) {
+      lines.push('Impulsos superados:');
+      day.impulsoEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.label || e.value) + (e.note ? ' · ' + e.note : '')));
+    }
+    if ((day.malestarEventos || []).length) {
+      lines.push('Malestar:');
+      day.malestarEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.label || e.value) + (e.note ? ' · ' + e.note : '')));
     }
     if (day.suenoEventos.length) {
       lines.push('Sueño/siestas:');
@@ -17708,10 +17796,6 @@ function cronoMaybeRemindTasks(reason) {
       reminder.setAttribute('role', 'alert');
       reminder.setAttribute('aria-live', 'assertive');
       panel.prepend(reminder);
-    }
-    if ((day.impulsoEventos || []).length) {
-      lines.push('Impulsos superados:');
-      day.impulsoEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.label || e.value)));
     }
     reminder.innerHTML = '<span aria-hidden="true">!</span><div><strong>Tienes ' + count + ' tarea' + (count === 1 ? '' : 's') + ' de piano pendiente' + (count === 1 ? '' : 's') + '</strong><small>Revísalas antes de seguir estudiando.' + (personalCount ? ' · ' + personalCount + ' apunte' + (personalCount === 1 ? '' : 's') + ' personal' + (personalCount === 1 ? '' : 'es') : '') + '</small></div>';
   }
