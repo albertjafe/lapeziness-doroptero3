@@ -931,6 +931,21 @@ test('records concentration and resisted urges across landscape and portrait tim
   await expect(momentMonitor.locator('.crono-moment-history-toggle')).toHaveCount(0);
   await expect(momentMonitor.locator('#cronoMomentNote')).toBeVisible();
   await expect(momentMonitor.locator('.crono-moment-history-list')).toHaveCount(0);
+  const portraitTabletLayout = await page.evaluate(() => {
+    const clock = document.querySelector('#cronoStageIdle .crono-idle-main').getBoundingClientRect();
+    const states = document.querySelector('.crono-moment-monitor').getBoundingClientRect();
+    const tools = document.getElementById('cronoIdleDrawer').getBoundingClientRect();
+    return {
+      clock: { top: clock.top, right: clock.right, bottom: clock.bottom },
+      states: { top: states.top, left: states.left, bottom: states.bottom },
+      toolsTop: tools.top,
+    };
+  });
+  expect(Math.abs(portraitTabletLayout.clock.top - portraitTabletLayout.states.top)).toBeLessThanOrEqual(2);
+  expect(portraitTabletLayout.states.left).toBeGreaterThanOrEqual(portraitTabletLayout.clock.right - 1);
+  expect(portraitTabletLayout.toolsTop).toBeGreaterThanOrEqual(
+    Math.max(portraitTabletLayout.clock.bottom, portraitTabletLayout.states.bottom) - 1
+  );
   const tabletControlsBox = await momentMonitor.locator('.crono-moment-controls').boundingBox();
   expect(tabletControlsBox.y).toBeGreaterThanOrEqual(0);
   expect(tabletControlsBox.y + tabletControlsBox.height).toBeLessThanOrEqual(1194);

@@ -15090,3 +15090,90 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
     overflow-y: auto;
   }
 }
+
+/* iPad vertical: reloj y registro comparten la cabecera; todas las
+   herramientas reciben una segunda fila completa. */
+@media (min-width: 700px) and (max-width: 1199px) and (orientation: portrait) {
+  [data-theme^="marmol"] #view-cronometro {
+    width: min(980px, calc(100vw - 24px));
+    max-width: none;
+    margin-inline: auto;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-wrap,
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
+    display: grid;
+    grid-template-columns: minmax(300px, .92fr) minmax(350px, 1.08fr);
+    grid-template-rows: auto auto;
+    align-items: stretch;
+    gap: 12px;
+    width: 100%;
+    max-width: none;
+    margin-inline: auto;
+  }
+  #view-cronometro #cronoStageIdle,
+  #view-cronometro #cronoStageIdle .crono-idle-console {
+    display: contents;
+  }
+  #view-cronometro #cronoStageIdle .crono-idle-main,
+  #view-cronometro #cronoStageRun {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 330px;
+  }
+  #view-cronometro #cronoStageIdle .crono-garden { display: none !important; }
+  #view-cronometro .crono-idle-drawer,
+  #view-cronometro #cronoRunDrawer {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    min-width: 0;
+    min-height: 390px !important;
+    margin: 0;
+  }
+  #view-cronometro .crono-moment-monitor {
+    position: static;
+    inset: auto;
+    z-index: auto;
+    grid-column: 2;
+    grid-row: 1;
+    display: block;
+    align-self: stretch;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    pointer-events: auto;
+  }
+  #view-cronometro .crono-moment-content {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    gap: 8px;
+  }
+  #view-cronometro .crono-moment-controls {
+    flex: 1 1 auto;
+    padding: 10px 12px;
+  }
+  #view-cronometro .crono-moment-row {
+    min-height: 48px;
+    gap: 7px;
+  }
+  #view-cronometro .crono-moment-label { flex-basis: 88px; }
+  #view-cronometro .crono-moment-levels .estado-face {
+    min-height: 38px;
+    padding-inline: 4px;
+  }
+  #view-cronometro .crono-moment-history {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 9px 10px;
+  }
+  #view-cronometro .crono-moment-note-compose {
+    grid-template-columns: 96px minmax(0, 1fr);
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+  #view-cronometro .crono-moment-note-compose input { height: 38px; }
+}
