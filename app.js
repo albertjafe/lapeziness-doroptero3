@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-26-zoom-cronometro-centrado-v58';
+const APP_VERSION = '2026-07-26-controles-esenciales-v59';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -17610,6 +17610,13 @@ function cronoOpenTaskComposer(source) {
   });
 }
 
+function cronoOpenTaskComposerForKind(source, kind) {
+  const state = cronoTaskComposerState(source);
+  state.kind = kind === 'personal' ? 'personal' : 'piano';
+  if (state.kind === 'personal') state.tomorrow = false;
+  cronoOpenTaskComposer(source);
+}
+
 function cronoCloseTaskComposer(source) {
   const state = cronoTaskComposerState(source);
   state.open = false;
@@ -17859,7 +17866,7 @@ function renderCronoTasks() {
       '</button>' +
     '</div>';
   };
-  const lane = (kind, title, group) => {
+  const lane = (kind, title, group, source) => {
     const clean = !group.pending.length;
     const completed = group.done.length
       ? '<details class="crono-task-completed">' +
@@ -17872,6 +17879,7 @@ function renderCronoTasks() {
     return '<section class="crono-task-lane ' + kind + (clean ? ' is-clean' : '') + '">' +
       '<div class="crono-task-lane-head"><span class="crono-task-lane-dot"></span><strong>' + title + '</strong>' +
         (clean ? '' : '<span class="crono-task-lane-count">' + group.pending.length + '</span>') +
+        '<button type="button" class="crono-task-lane-add" onclick="cronoOpenTaskComposerForKind(\'' + source + '\',\'' + kind + '\')" aria-label="Añadir tarea de ' + title + '">+</button>' +
       '</div>' +
       '<div class="crono-task-list">' +
         (clean ? '<div class="crono-task-clean" role="status"><span class="crono-task-clean-check" aria-hidden="true"></span><strong>Todo limpio</strong></div>' : group.pending.map(row).join('')) +
@@ -17891,24 +17899,18 @@ function renderCronoTasks() {
     const composerHtml = composer.open
       ? '<div class="crono-task-add crono-task-composer is-open">' +
         '<input id="' + target.inputId + '" class="crono-task-input" type="text" maxlength="140" placeholder="Algo por hacer..." onkeydown="cronoTaskInputKey(event,\'' + target.source + '\')">' +
-        '<div class="crono-task-compose-options" role="group" aria-label="Tipo de tarea">' +
-          '<button type="button" class="crono-task-kind-btn piano" data-kind="piano" onclick="cronoSetTaskKind(\'' + target.source + '\',\'piano\')" aria-pressed="true"><span></span>Piano</button>' +
-          '<button type="button" class="crono-task-kind-btn personal" data-kind="personal" onclick="cronoSetTaskKind(\'' + target.source + '\',\'personal\')" aria-pressed="false"><span></span>Personal</button>' +
-          '<button type="button" class="crono-task-tomorrow-btn" onclick="cronoToggleTaskTomorrow(\'' + target.source + '\')" aria-pressed="false">Mañana</button>' +
-        '</div>' +
+        (composer.kind === 'piano' ? '<button type="button" class="crono-task-tomorrow-btn" onclick="cronoToggleTaskTomorrow(\'' + target.source + '\')" aria-pressed="false">Mañana</button>' : '') +
         '<div class="crono-task-compose-actions">' +
           '<button type="button" class="crono-task-cancel-btn" onclick="cronoCloseTaskComposer(\'' + target.source + '\')" aria-label="Cancelar">×</button>' +
           '<button type="button" class="crono-task-add-btn" onclick="addCronoTask(\'' + target.source + '\')" aria-label="Guardar tarea">✓</button>' +
         '</div>' +
       '</div>'
-      : '<button type="button" class="crono-task-compose-trigger" onclick="cronoOpenTaskComposer(\'' + target.source + '\')">' +
-          '<span aria-hidden="true">+</span><strong>Nueva tarea</strong>' +
-        '</button>';
+      : '';
     el.innerHTML =
       composerHtml +
       '<div class="crono-task-columns">' +
-        lane('piano', 'Piano', piano) +
-        lane('personal', 'Personal', personal) +
+        lane('piano', 'Piano', piano, target.source) +
+        lane('personal', 'Personal', personal, target.source) +
       '</div>';
     cronoUpdateTaskComposer(target.source);
     const input = document.getElementById(target.inputId);
@@ -18113,6 +18115,65 @@ function toggleCronoTask(id, toggleButton) {
   try { Haptics.success(); } catch(e) {}
   const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   setTimeout(commitToggle, reducedMotion ? 80 : 520);
+}
+
+let _cronoSessionButtonPress = null;
+let _cronoSessionButtonSuppressClickUntil = 0;
+
+function cronoSessionButtonCleanup() {
+  const press = _cronoSessionButtonPress;
+  if (!press) return;
+  clearTimeout(press.timer);
+  press.button?.classList.remove('is-holding');
+  _cronoSessionButtonPress = null;
+}
+
+function cronoSessionButtonPressStart(event, button) {
+  if (!event || !button || (event.button != null && event.button !== 0)) return;
+  cronoSessionButtonCleanup();
+  const press = { button, pointerId: event.pointerId, x: event.clientX, y: event.clientY, timer: null };
+  _cronoSessionButtonPress = press;
+  button.classList.add('is-holding');
+  try { button.setPointerCapture?.(event.pointerId); } catch(e) {}
+  press.timer = setTimeout(() => {
+    if (_cronoSessionButtonPress !== press) return;
+    _cronoSessionButtonSuppressClickUntil = Date.now() + 1000;
+    try { Haptics.medium(); } catch(e) {}
+    cronoSessionButtonCleanup();
+    cronoStop();
+  }, 900);
+}
+
+function cronoSessionButtonPressMove(event) {
+  const press = _cronoSessionButtonPress;
+  if (!press || press.pointerId !== event.pointerId) return;
+  if (Math.hypot(event.clientX - press.x, event.clientY - press.y) > 12) cronoSessionButtonCleanup();
+}
+
+function cronoSessionButtonPressEnd(event) {
+  if (!_cronoSessionButtonPress || _cronoSessionButtonPress.pointerId !== event.pointerId) return;
+  cronoSessionButtonCleanup();
+}
+
+function cronoSessionButtonClick(event) {
+  if (Date.now() < _cronoSessionButtonSuppressClickUntil) {
+    event?.preventDefault();
+    return;
+  }
+  if (crono.state === 'paused') cronoResume();
+  else if (crono.state === 'running') cronoPause();
+}
+
+function cronoSessionButtonHtml(paused, extraClass) {
+  const label = paused ? 'Reanudar' : 'Pausar';
+  return '<button type="button" class="crono-session-main-btn ' + (paused ? 'is-paused ' : '') + (extraClass || '') + '" ' +
+    'onclick="cronoSessionButtonClick(event)" onpointerdown="cronoSessionButtonPressStart(event,this)" ' +
+    'onpointermove="cronoSessionButtonPressMove(event)" onpointerup="cronoSessionButtonPressEnd(event)" ' +
+    'onpointercancel="cronoSessionButtonCleanup()" oncontextmenu="event.preventDefault()" ' +
+    'aria-label="' + label + '. Mantén pulsado para terminar y guardar">' +
+      '<svg class="crono-session-hold-ring" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="27"></circle></svg>' +
+      '<span class="crono-session-main-icon" aria-hidden="true">' + (paused ? CRONO_ICONS.play : CRONO_ICONS.pause) + '</span>' +
+    '</button>';
 }
 
 function cronoSetRunDrawerTab(tab) {
@@ -20015,7 +20076,9 @@ function cronoRender() {
     if (ovSession) ovSession.textContent = 'Sesión pausada en ' + cronoFmt(cronoEffectiveElapsedMs());
     if (!cronoRender._pauseFocusSet) {
       cronoRender._pauseFocusSet = true;
-      setTimeout(() => document.querySelector('#cronoPauseOverlay .crono-pause-overlay-play')?.focus(), 0);
+      const overlayActions = document.getElementById('cronoPauseOverlayActions');
+      if (overlayActions) overlayActions.innerHTML = cronoSessionButtonHtml(true, 'crono-pause-overlay-main');
+      setTimeout(() => document.querySelector('#cronoPauseOverlay .crono-session-main-btn')?.focus(), 0);
     }
   } else {
     document.body.classList.remove('crono-paused');
@@ -20028,17 +20091,9 @@ function cronoRender() {
   const ctrl = document.getElementById('cronoControls');
   if (!ctrl) return;
   if (crono.state === 'running') {
-    const extendBtn = crono.targetMinutes != null && !crono.isRest
-      ? '<button class="crono-ctrl-btn extend" onclick="cronoExtendTimer(5)" aria-label="Añadir 5 minutos">+5 min</button>'
-      : '';
-    ctrl.innerHTML =
-      '<button class="crono-ctrl-btn stop" onclick="cronoStop()" aria-label="Terminar sesion">' + CRONO_ICONS.stop + '</button>' +
-      extendBtn +
-      '<button class="crono-ctrl-btn primary" onclick="cronoPause()" aria-label="Pausar">' + CRONO_ICONS.pause + '</button>';
+    ctrl.innerHTML = cronoSessionButtonHtml(false);
   } else if (crono.state === 'paused') {
-    ctrl.innerHTML =
-      '<button class="crono-ctrl-btn stop" onclick="cronoStop()" aria-label="Terminar sesion">' + CRONO_ICONS.stop + '</button>' +
-      '<button class="crono-ctrl-btn primary" onclick="cronoResume()" aria-label="Reanudar">' + CRONO_ICONS.play + '</button>';
+    ctrl.innerHTML = cronoSessionButtonHtml(true);
   }
   cronoUpdateSolidityActions();
   cronoRenderNoteCounts();

@@ -14625,3 +14625,87 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
   #view-cronometro .crono-observation-box { font-size: 11px; }
   #view-cronometro .crono-drawer-pase-hint { font-size: 9px; }
 }
+
+/* Controles esenciales: añadir por categoría y un solo botón de sesión. */
+.crono-task-lane-add {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 4px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border2));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg2));
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 160ms cubic-bezier(.2,.8,.2,1), background-color 160ms ease;
+}
+.crono-task-lane-add:hover { background: color-mix(in srgb, var(--accent) 13%, var(--bg2)); }
+.crono-task-lane-add:active { transform: scale(.9); }
+.crono-task-lane-head .crono-task-lane-count { margin-left: auto; }
+.crono-task-lane-head .crono-task-lane-count + .crono-task-lane-add { margin-left: 0; }
+.crono-task-composer.is-open {
+  grid-template-areas: "input tomorrow actions";
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+.crono-task-composer.is-open .crono-task-input { grid-area: input; }
+.crono-task-composer.is-open .crono-task-tomorrow-btn { grid-area: tomorrow; }
+.crono-task-composer.is-open .crono-task-compose-actions { grid-area: actions; }
+.crono-session-main-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  flex: 0 0 62px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--bg);
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 170ms cubic-bezier(.2,.8,.2,1), box-shadow 170ms ease, background-color 170ms ease;
+}
+.crono-session-main-btn:hover { box-shadow: 0 10px 28px color-mix(in srgb, var(--accent) 32%, transparent); }
+.crono-session-main-btn:active,
+.crono-session-main-btn.is-holding { transform: scale(1.045); }
+.crono-session-main-btn.is-paused { background: color-mix(in srgb, var(--accent) 82%, var(--text)); }
+.crono-session-main-icon { display: grid; place-items: center; }
+.crono-session-main-icon svg { width: 23px; height: 23px; }
+.crono-session-hold-ring {
+  position: absolute;
+  inset: -4px;
+  width: 70px;
+  height: 70px;
+  overflow: visible;
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+.crono-session-hold-ring circle {
+  fill: none;
+  stroke: color-mix(in srgb, var(--accent) 80%, var(--text));
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 170;
+  stroke-dashoffset: 170;
+}
+.crono-session-main-btn.is-holding .crono-session-hold-ring circle {
+  animation: crono-session-hold-progress 900ms linear forwards;
+}
+@keyframes crono-session-hold-progress { to { stroke-dashoffset: 0; } }
+.crono-pause-overlay-actions .crono-session-main-btn { margin: 0 auto; }
+@media (max-width: 699px) {
+  .crono-task-composer.is-open { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "input input" "tomorrow actions"; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .crono-session-main-btn { transition: none; }
+}

@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=181">
+<link rel="stylesheet" href="styles.css?v=182">
 </head>
 <body>
 
@@ -573,13 +573,7 @@
       <div class="crono-pause-overlay-time" id="cronoPauseOverlayTime">05:00</div>
       <div class="crono-pause-overlay-session" id="cronoPauseOverlaySession">Sesión pausada en 00:00</div>
       <div class="crono-pause-overlay-note" id="cronoPauseOverlayNote">Se reanuda sola al acabar la pausa.</div>
-      <div class="crono-pause-overlay-actions">
-        <button class="crono-pause-overlay-play" onclick="cronoResume()" aria-label="Reanudar">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-          <span>Reanudar</span>
-        </button>
-        <button class="crono-pause-overlay-stop" onclick="cronoStop()">Terminar</button>
-      </div>
+      <div class="crono-pause-overlay-actions" id="cronoPauseOverlayActions"></div>
     </div>
   </div>
 </div>
@@ -1982,11 +1976,11 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js?v=181"></script>
-<script src="data-core.js?v=181"></script>
-<script src="sync-core.js?v=181"></script>
-<script src="push-client.js?v=181"></script>
-<script src="app.js?v=181"></script>
+<script src="timer-core.js?v=182"></script>
+<script src="data-core.js?v=182"></script>
+<script src="sync-core.js?v=182"></script>
+<script src="push-client.js?v=182"></script>
+<script src="app.js?v=182"></script>
 
 </body>
 <script>
@@ -2008,7 +2002,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=181', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=182', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
