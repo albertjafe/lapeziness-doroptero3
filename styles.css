@@ -11557,36 +11557,7 @@ body.crono-paused .crono-pause-overlay-inner {
     .view-action-row button { padding-left: 10px !important; padding-right: 10px !important; }
   }
 
-  /* LOTE 3A · Hoy y Cronómetro: una entrada principal y menos ruido */
-  #view-session .hoy-action-row {
-    margin-top: 0;
-    margin-bottom: 14px;
-    padding-bottom: 12px;
-  }
-  .hoy-start-study-btn {
-    min-height: 44px !important;
-    padding: 10px 14px !important;
-    border: 1px solid var(--accent);
-    border-radius: 13px;
-    background: var(--accent);
-    color: #fff;
-    font-size: var(--type-meta-size);
-    font-weight: 700;
-    white-space: nowrap;
-  }
-  .hoy-action-buttons { display: flex; align-items: center; gap: 8px; }
-  .hoy-quick-study-btn {
-    min-height: 44px !important;
-    padding: 10px 13px !important;
-    border: 1px solid var(--border2);
-    border-radius: 13px;
-    background: var(--bg2);
-    color: var(--text2);
-    font-size: var(--type-meta-size);
-    font-weight: 650;
-    white-space: nowrap;
-  }
-  .hoy-quick-study-btn:hover { border-color: var(--accent); color: var(--accent); }
+  /* LOTE 3A · Hoy y Cronómetro: menos ruido y sin CTA superior duplicada. */
   #view-session .session-concentrado-banner { display: none !important; }
   #view-session .session-state-heading {
     grid-column: 1 / -1;
@@ -11612,12 +11583,6 @@ body.crono-paused .crono-pause-overlay-inner {
     #view-session .session-journal-card { margin-left: 0; margin-right: 0; }
   }
   @media (max-width: 520px) {
-    #view-session .hoy-action-row { align-items: flex-start; }
-    #view-session .hoy-action-row > div:first-child { min-width: 0; }
-    .hoy-action-buttons { flex-direction: column-reverse; align-items: stretch; flex: none; }
-    .hoy-action-buttons button { width: 100%; }
-    .hoy-start-study-btn { padding-left: 11px !important; padding-right: 11px !important; }
-    .hoy-quick-study-btn { padding-left: 11px !important; padding-right: 11px !important; }
     [data-theme^="marmol"] .session-resumen-last { font-size: 9px; }
   }
 
@@ -14214,7 +14179,6 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
 }
 .app-refresh-btn:disabled { cursor: wait; opacity: .72; }
 .app-refresh-btn.is-checking svg { animation: app-refresh-spin 800ms linear infinite; }
-.hoy-action-buttons .app-refresh-btn { flex: 0 0 44px; }
 [data-theme^="marmol"] .crono-refresh-btn {
   position: fixed;
   top: max(calc(env(safe-area-inset-top, 14px) + 9px), 35px);
@@ -14299,12 +14263,6 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
   color: #fff;
 }
 
-@media (max-width: 520px) {
-  .hoy-action-buttons .app-refresh-btn {
-    width: 44px !important;
-    align-self: flex-end;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .app-refresh-btn.is-checking svg { animation: none; }
 }
@@ -15181,7 +15139,7 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
   #view-cronometro .crono-moment-note-compose input { height: 38px; }
 }
 
-/* Navegación horizontal entre las cuatro vistas principales. */
+/* Navegación horizontal entre las tres vistas principales. */
 html, body { overflow-x: clip; }
 .app-content { touch-action: pan-y; }
 body.view-swipe-dragging {
@@ -15193,6 +15151,19 @@ body.view-swipe-dragging .view.active {
   animation: none !important;
   will-change: transform, opacity;
 }
+body.view-swipe-dragging > .topbar:not(.view-swipe-header),
+body.view-swipe-settling > .topbar:not(.view-swipe-header) { visibility: hidden; }
+.topbar.view-swipe-header {
+  display: block !important;
+  position: fixed;
+  inset: 0 0 auto 0;
+  width: 100%;
+  z-index: 304;
+  pointer-events: none;
+  contain: paint;
+  will-change: transform;
+}
+body.crono-focus .topbar.view-swipe-header { display: block !important; }
 .view.view-swipe-live { position: relative; z-index: 302; }
 .view.view-swipe-neighbor {
   display: block !important;
@@ -15201,12 +15172,14 @@ body.view-swipe-dragging .view.active {
   contain: paint;
   will-change: transform;
 }
-.view.view-swipe-settling {
+.view.view-swipe-settling,
+.topbar.view-swipe-settling {
   transition: transform 260ms cubic-bezier(.22,.82,.25,1);
   will-change: transform;
 }
 @media (prefers-reduced-motion: reduce) {
-  .view.view-swipe-settling { transition-duration: 1ms; }
+  .view.view-swipe-settling,
+  .topbar.view-swipe-settling { transition-duration: 1ms; }
 }
 
 /* Acción de sesión separada, situada al final del cajón de herramientas. */

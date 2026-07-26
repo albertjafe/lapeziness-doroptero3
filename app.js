@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-26-sesiones-estadisticas-v72';
+const APP_VERSION = '2026-07-26-carrusel-cabecera-v73';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -952,7 +952,54 @@ function viewSwipeCleanup(swipe) {
     view.classList.remove('view-swipe-live', 'view-swipe-neighbor', 'view-swipe-settling');
     ['transform', 'opacity', 'position', 'top', 'left', 'width', 'height', 'max-width', 'margin', 'z-index', 'pointer-events'].forEach(prop => view.style.removeProperty(prop));
   });
+  [swipe.header, swipe.neighborHeader].forEach(header => header?.remove());
   document.body.classList.remove('view-swipe-dragging', 'view-swipe-settling');
+}
+
+function viewSwipeHeaderDate(name) {
+  if (name !== 'session' && name !== 'calendario') return '';
+  const d = new Date();
+  const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  if (name === 'calendario') return `${meses[d.getMonth()]} ${d.getFullYear()}`;
+  const h = d.getHours();
+  const saludo = h < 6 ? 'Buenas noches' : h < 13 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches';
+  return `${saludo} · ${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}`;
+}
+
+function viewSwipeBuildHeader(name, kind) {
+  // El cronómetro en modo concentración es deliberadamente inmersivo y no
+  // tiene cabecera. Las demás páginas sí la arrastran como parte del lienzo.
+  if (name === 'cronometro') return null;
+  const source = document.querySelector('body > .topbar');
+  if (!source) return null;
+  const header = source.cloneNode(true);
+  header.classList.add('view-swipe-header', 'view-swipe-header-' + kind);
+  header.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
+  header.querySelectorAll('[onclick]').forEach(node => node.removeAttribute('onclick'));
+  const context = VIEW_CONTEXT[name] || VIEW_CONTEXT.session;
+  const eyebrow = header.querySelector('.header-eyebrow');
+  const title = header.querySelector('.header-title');
+  const date = header.querySelector('.header-date');
+  if (eyebrow) eyebrow.textContent = context.eyebrow;
+  if (title) title.textContent = context.title;
+  if (date) {
+    const value = viewSwipeHeaderDate(name);
+    date.textContent = value;
+    date.hidden = !value;
+  }
+  const info = header.querySelector('[title="Mostrar u ocultar detalles"]');
+  if (info) info.style.display = name === 'session' ? '' : 'none';
+  document.body.appendChild(header);
+  return header;
+}
+
+function viewSwipePrepareHeaders(swipe, nextName, direction) {
+  if (!swipe.header) swipe.header = viewSwipeBuildHeader(SWIPE_VIEW_ORDER[swipe.index], 'current');
+  swipe.neighborHeader?.remove();
+  swipe.neighborHeader = viewSwipeBuildHeader(nextName, 'neighbor');
+  if (swipe.header) swipe.header.style.transform = 'translate3d(0,0,0)';
+  if (swipe.neighborHeader) swipe.neighborHeader.style.transform = 'translate3d(' + (direction * swipe.width) + 'px,0,0)';
 }
 
 function viewSwipePrepareNeighbor(swipe, direction) {
@@ -966,6 +1013,9 @@ function viewSwipePrepareNeighbor(swipe, direction) {
   if (nextIndex < 0 || nextIndex >= SWIPE_VIEW_ORDER.length) {
     swipe.neighbor = null;
     swipe.neighborDirection = direction;
+    swipe.neighborHeader?.remove();
+    swipe.neighborHeader = null;
+    if (!swipe.header) swipe.header = viewSwipeBuildHeader(SWIPE_VIEW_ORDER[swipe.index], 'current');
     return false;
   }
   const nextName = SWIPE_VIEW_ORDER[nextIndex];
@@ -976,20 +1026,24 @@ function viewSwipePrepareNeighbor(swipe, direction) {
   if (nextName === 'session') renderCombinedSessionStats();
   if (nextName === 'obras') renderObras();
   const rect = swipe.view.getBoundingClientRect();
+  const content = document.querySelector('.app-content');
+  const normalTop = Math.max(0, parseFloat(content?.style?.paddingTop) || 0);
+  const targetTop = nextName === 'cronometro' ? 0 : (normalTop || Math.max(0, rect.top));
   swipe.width = Math.max(1, window.innerWidth);
   swipe.neighbor = neighbor;
   swipe.neighborDirection = direction;
   neighbor.classList.add('view-swipe-neighbor');
   neighbor.style.position = 'fixed';
-  neighbor.style.top = rect.top + 'px';
+  neighbor.style.top = targetTop + 'px';
   neighbor.style.left = rect.left + 'px';
   neighbor.style.width = rect.width + 'px';
-  neighbor.style.height = Math.max(rect.height, window.innerHeight - rect.top) + 'px';
+  neighbor.style.height = Math.max(rect.height, window.innerHeight - targetTop) + 'px';
   neighbor.style.maxWidth = 'none';
   neighbor.style.margin = '0';
   neighbor.style.zIndex = '301';
   neighbor.style.pointerEvents = 'none';
   neighbor.style.transform = 'translate3d(' + (direction * swipe.width) + 'px,0,0)';
+  viewSwipePrepareHeaders(swipe, nextName, direction);
   return true;
 }
 
@@ -998,8 +1052,12 @@ function viewSwipeRenderFrame(swipe) {
   if (_viewSwipe !== swipe || swipe.intent !== 'horizontal') return;
   const dx = swipe.renderDx || 0;
   swipe.view.style.transform = 'translate3d(' + dx + 'px,0,0)';
+  if (swipe.header) swipe.header.style.transform = 'translate3d(' + dx + 'px,0,0)';
   if (swipe.neighbor) {
     swipe.neighbor.style.transform = 'translate3d(' + (dx + swipe.neighborDirection * swipe.width) + 'px,0,0)';
+  }
+  if (swipe.neighborHeader) {
+    swipe.neighborHeader.style.transform = 'translate3d(' + (dx + swipe.neighborDirection * swipe.width) + 'px,0,0)';
   }
 }
 
@@ -1017,11 +1075,15 @@ function viewSwipeSettle(swipe, commit, nextView) {
   document.body.classList.add('view-swipe-settling');
   swipe.view.classList.add('view-swipe-settling');
   swipe.neighbor?.classList.add('view-swipe-settling');
+  swipe.header?.classList.add('view-swipe-settling');
+  swipe.neighborHeader?.classList.add('view-swipe-settling');
   const activeEnd = commit ? -swipe.neighborDirection * swipe.width : 0;
   const neighborEnd = commit ? 0 : swipe.neighborDirection * swipe.width;
   requestAnimationFrame(() => {
     swipe.view.style.transform = 'translate3d(' + activeEnd + 'px,0,0)';
     if (swipe.neighbor) swipe.neighbor.style.transform = 'translate3d(' + neighborEnd + 'px,0,0)';
+    if (swipe.header) swipe.header.style.transform = 'translate3d(' + activeEnd + 'px,0,0)';
+    if (swipe.neighborHeader) swipe.neighborHeader.style.transform = 'translate3d(' + neighborEnd + 'px,0,0)';
   });
   setTimeout(() => {
     if (commit && nextView) {
@@ -1076,6 +1138,8 @@ function initViewSwipeNavigation() {
       view: viewSwipeActiveElement(),
       neighbor: null,
       neighborDirection: 0,
+      header: null,
+      neighborHeader: null,
       renderDx: 0,
       raf: null,
     };

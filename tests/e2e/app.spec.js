@@ -202,7 +202,7 @@ test('refreshes statistics immediately after a local study save', async ({ page 
 test('adds custom study quickly and persists both history and timed detail', async ({ page }) => {
   await prepare(page);
   await page.evaluate(() => showView('session'));
-  await page.locator('#sessionQuickStudyBtn').click();
+  await page.locator('#sessionStatsSection .stats-primary-add').click();
 
   const modal = page.locator('#modalStudyRegister');
   await expect(modal).toHaveClass(/visible/);
@@ -250,7 +250,7 @@ test('adds manual study to today total immediately', async ({ page }) => {
   await page.evaluate(() => showView('session'));
   await expect(page.locator('#sessionResumenCard')).toContainText('0 min');
 
-  await page.locator('#sessionQuickStudyBtn').click();
+  await page.locator('#sessionStatsSection .stats-primary-add').click();
   await page.locator('#studyRegisterObra').selectOption('obra::obra_1');
   await page.locator('#studyMinutePresets [data-minutes="25"]').click();
   await page.locator('#studyRegisterSaveBtn').click();
@@ -307,7 +307,7 @@ test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) =>
     renderSessionResumen();
     const hoy = {
       nav: document.querySelector('.nav-btn[data-view="session"]')?.textContent.trim(),
-      action: document.getElementById('sessionStartStudyBtn')?.textContent.trim(),
+      action: document.getElementById('sessionStartStudyBtn')?.textContent.trim() || null,
       summary: document.getElementById('sessionResumenCard')?.textContent || '',
       journal: {
         label: document.getElementById('sessionJournalToggle')?.getAttribute('aria-label'),
@@ -319,8 +319,7 @@ test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) =>
       nudge: document.querySelector('.session-insight-card.nudge'),
       refresh: (() => {
         const button = document.querySelector('#view-session .app-refresh-btn');
-        const box = button?.getBoundingClientRect();
-        return { label: button?.getAttribute('aria-label'), width: box?.width, height: box?.height, hasIcon: !!button?.querySelector('svg') };
+        return !!button;
       })(),
     };
     showView('cronometro');
@@ -336,7 +335,7 @@ test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) =>
     };
   });
   expect(state.hoy.nav).toBe('Hoy');
-  expect(state.hoy.action).toBe('Empezar a estudiar');
+  expect(state.hoy.action).toBeNull();
   expect(state.hoy.summary).toContain('Aún sin actividad registrada');
   expect(state.hoy.summary.toLowerCase()).not.toContain('objetivo');
   expect(state.hoy.hasGoalRing).toBe(false);
@@ -347,7 +346,7 @@ test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) =>
     panelHidden: true,
   });
   expect(state.hoy.nudge).toBeNull();
-  expect(state.hoy.refresh).toEqual({ label: 'Comprobar actualización', width: 44, height: 44, hasIcon: true });
+  expect(state.hoy.refresh).toBe(false);
   expect(state.cronoStart).toBe('Iniciar');
   expect(state.quickNoteButtons).toBe(0);
   expect(state.runTabs).toEqual(['pasajes', 'nota', 'tareas', 'pase']);

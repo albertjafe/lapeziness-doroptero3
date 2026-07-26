@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=195">
+<link rel="stylesheet" href="styles.css?v=196">
 </head>
 <body>
 
@@ -116,21 +116,6 @@
   <path d="M40 420 Q44 400 48 382" stroke="var(--accent)" stroke-width="1" fill="none"/>
 </svg>
 <div class="view active" id="view-session">
-  <div class="view-action-row hoy-action-row">
-    <div>
-      <div class="view-local-label">Resumen de hoy</div>
-    </div>
-    <div class="hoy-action-buttons">
-      <button type="button" class="hoy-quick-study-btn" id="sessionQuickStudyBtn" onclick="openSesionManual()">Añadir estudio</button>
-      <button type="button" class="hoy-start-study-btn" id="sessionStartStudyBtn" onclick="showView('cronometro')">Empezar a estudiar</button>
-      <button type="button" class="app-refresh-btn session-refresh-btn" onclick="checkForAppUpdate(true)" aria-label="Comprobar actualización" title="Comprobar actualización">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M20 11a8 8 0 1 0-2.34 5.66"/>
-          <polyline points="20 4 20 11 13 11"/>
-        </svg>
-      </button>
-    </div>
-  </div>
   <!-- Banner: "Hoy te has concentrado X" + opción discreta para día pasado -->
   <div class="session-concentrado-banner" id="sessionConcentradoBanner">
     <span class="session-concentrado-icon" aria-hidden="true">
@@ -1977,11 +1962,11 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js?v=195"></script>
-<script src="data-core.js?v=195"></script>
-<script src="sync-core.js?v=195"></script>
-<script src="push-client.js?v=195"></script>
-<script src="app.js?v=195"></script>
+<script src="timer-core.js?v=196"></script>
+<script src="data-core.js?v=196"></script>
+<script src="sync-core.js?v=196"></script>
+<script src="push-client.js?v=196"></script>
+<script src="app.js?v=196"></script>
 
 </body>
 <script>
@@ -2003,7 +1988,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=195', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=196', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
