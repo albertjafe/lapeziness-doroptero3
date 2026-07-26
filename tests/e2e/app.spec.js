@@ -932,11 +932,14 @@ test('records concentration and resisted urges across landscape and portrait tim
   await expect(momentMonitor.locator('.crono-moment-mobile-trigger')).toBeHidden();
   await expect(momentMonitor.locator('.crono-moment-controls')).toBeVisible();
   await expect(momentMonitor.locator('.crono-moment-history-toggle')).toBeVisible();
+  await expect(momentMonitor.locator('#cronoMomentNote')).toBeVisible();
+  await expect(momentMonitor.locator('.crono-moment-history-list')).toBeHidden();
   const tabletControlsBox = await momentMonitor.locator('.crono-moment-controls').boundingBox();
   expect(tabletControlsBox.y).toBeGreaterThanOrEqual(0);
   expect(tabletControlsBox.y + tabletControlsBox.height).toBeLessThanOrEqual(1194);
   await momentMonitor.locator('.crono-moment-history-toggle').click();
   await expect(momentMonitor.locator('.crono-moment-history')).toBeVisible();
+  await expect(momentMonitor.locator('.crono-moment-history-list')).toBeVisible();
 
   await page.evaluate(() => toggleCronoMomentHistory(false));
   await page.setViewportSize({ width: 390, height: 844 });

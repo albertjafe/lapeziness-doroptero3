@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=185">
+<link rel="stylesheet" href="styles.css?v=186">
 </head>
 <body>
 
@@ -439,7 +439,14 @@
       </div>
 
       <!-- Tiempo gigante con outline (Forest-style) -->
-      <div class="crono-display-wrap" id="cronoDisplayWrap">
+      <div class="crono-display-wrap crono-ring-control" id="cronoDisplayWrap"
+           role="button" tabindex="0" aria-label="Pausar. Mantén pulsado para terminar y guardar"
+           onclick="cronoSessionButtonClick(event)"
+           onkeydown="cronoSessionRingKeydown(event)"
+           onpointerdown="cronoSessionButtonPressStart(event,this)"
+           onpointermove="cronoSessionButtonPressMove(event)"
+           onpointerup="cronoSessionButtonPressEnd(event)"
+           onpointercancel="cronoSessionButtonCleanup()" oncontextmenu="event.preventDefault()">
         <svg class="crono-run-progress-svg" viewBox="0 0 220 220" aria-hidden="true">
           <circle class="crono-run-progress-track" cx="110" cy="110" r="94" fill="none"/>
           <circle class="crono-run-progress-arc" id="cronoRunProgressArc"
@@ -453,6 +460,10 @@
         <div class="crono-display-inner">
           <div class="crono-display" id="cronoDisplay">00:00</div>
           <div class="crono-run-target" id="cronoRunTarget" style="display:none"></div>
+        </div>
+        <div class="crono-ring-control-cue" aria-hidden="true">
+          <span class="crono-ring-cue-pause">Toca para pausar</span>
+          <span class="crono-ring-cue-stop">Mantén para terminar</span>
         </div>
       </div>
 
@@ -1985,11 +1996,11 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js?v=185"></script>
-<script src="data-core.js?v=185"></script>
-<script src="sync-core.js?v=185"></script>
-<script src="push-client.js?v=185"></script>
-<script src="app.js?v=185"></script>
+<script src="timer-core.js?v=186"></script>
+<script src="data-core.js?v=186"></script>
+<script src="sync-core.js?v=186"></script>
+<script src="push-client.js?v=186"></script>
+<script src="app.js?v=186"></script>
 
 </body>
 <script>
@@ -2011,7 +2022,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=185', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=186', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

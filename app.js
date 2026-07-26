@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-26-malestar-v62';
+const APP_VERSION = '2026-07-26-cronometro-control-v63';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -17228,6 +17228,8 @@ function cronoInitInterfaceZoom() {
 
     view.addEventListener('touchstart', event => {
       if (event.touches.length !== 2 || (event.target.closest && event.target.closest('.modal-overlay'))) return;
+      cronoSessionButtonCleanup();
+      _cronoSessionButtonSuppressClickUntil = Date.now() + 500;
       const distance = cronoTouchDistance(event.touches);
       if (!distance) return;
       event.preventDefault();
@@ -18268,6 +18270,12 @@ function cronoSessionButtonClick(event) {
   }
   if (crono.state === 'paused') cronoResume();
   else if (crono.state === 'running') cronoPause();
+}
+
+function cronoSessionRingKeydown(event) {
+  if (!event || (event.key !== 'Enter' && event.key !== ' ')) return;
+  event.preventDefault();
+  cronoSessionButtonClick(event);
 }
 
 function cronoSessionButtonHtml(paused, extraClass) {
@@ -20201,9 +20209,14 @@ function cronoRender() {
   const ctrl = document.getElementById('cronoControls');
   if (!ctrl) return;
   if (crono.state === 'running') {
-    ctrl.innerHTML = cronoSessionButtonHtml(false);
+    ctrl.innerHTML = '';
   } else if (crono.state === 'paused') {
     ctrl.innerHTML = cronoSessionButtonHtml(true);
+  }
+  if (wrap) {
+    wrap.setAttribute('aria-label', crono.state === 'paused'
+      ? 'Reanudar. Mantén pulsado para terminar y guardar'
+      : 'Pausar. Mantén pulsado para terminar y guardar');
   }
   cronoUpdateSolidityActions();
   cronoRenderNoteCounts();
