@@ -14982,3 +14982,111 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
   .crono-session-main-btn { transition: none; }
   .crono-session-main-btn.is-holding { animation: none; filter: brightness(1.25); }
 }
+
+/* Escritorio real: los registros forman parte de la retícula y nunca flotan
+   sobre el reloj o las herramientas. */
+@media (min-width: 900px) and (orientation: landscape) and (min-height: 560px) {
+  [data-theme^="marmol"] #view-cronometro {
+    width: min(1560px, calc(100vw - 40px));
+    max-width: none;
+    margin-inline: auto;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-wrap,
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
+    width: 100%;
+    max-width: none;
+    margin-inline: auto;
+    align-items: stretch;
+  }
+  #view-cronometro .crono-moment-monitor {
+    position: static;
+    inset: auto;
+    z-index: auto;
+    grid-column: 1 / -1;
+    display: block;
+    width: 100%;
+    max-width: none;
+    margin: 14px 0 0;
+    pointer-events: auto;
+  }
+  #view-cronometro .crono-moment-content {
+    display: grid;
+    grid-template-columns: minmax(520px, 1.45fr) minmax(310px, 1fr);
+    gap: 10px;
+  }
+}
+
+@media (min-width: 1200px) and (orientation: landscape) and (min-height: 650px) {
+  [data-theme^="marmol"] #view-cronometro .crono-wrap,
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
+    display: grid;
+    grid-template-columns: minmax(330px, var(--crono-timer-track)) minmax(500px, var(--crono-tools-track)) minmax(300px, 360px);
+    gap: 16px;
+  }
+  #view-cronometro #cronoStageIdle {
+    grid-column: 1 / 3;
+    min-width: 0;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-console {
+    width: 100%;
+    max-width: none;
+  }
+  #view-cronometro #cronoStageRun { grid-column: 1; min-width: 0; }
+  #view-cronometro #cronoRunDrawer { grid-column: 2; min-width: 0; }
+  #view-cronometro .crono-bottom-row { grid-column: 1 / 3; }
+  #view-cronometro .crono-moment-monitor {
+    grid-column: 3;
+    grid-row: 1;
+    display: block;
+    align-self: stretch;
+    min-width: 0;
+    margin: 0;
+    padding: 12px;
+    border: 1px solid color-mix(in srgb, var(--border2) 82%, transparent);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--bg2) 94%, transparent);
+    box-shadow: 0 8px 28px rgba(0,0,0,.07);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  #view-cronometro .crono-moment-content {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+    gap: 10px;
+  }
+  #view-cronometro .crono-moment-controls,
+  #view-cronometro .crono-moment-history {
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  #view-cronometro .crono-moment-controls {
+    padding: 2px 0 10px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border2) 68%, transparent);
+  }
+  #view-cronometro .crono-moment-row {
+    min-height: 44px;
+    gap: 7px;
+  }
+  #view-cronometro .crono-moment-label { flex-basis: 86px; }
+  #view-cronometro .crono-moment-levels .estado-face {
+    min-height: 34px;
+    padding-inline: 3px;
+  }
+  #view-cronometro .crono-moment-levels .estado-face-label { font-size: 8px; }
+  #view-cronometro .crono-moment-history {
+    flex: 1 1 auto;
+    align-content: start;
+    min-height: 0;
+    padding: 0;
+  }
+  #view-cronometro .crono-moment-history-list {
+    max-height: none;
+    overflow-y: auto;
+  }
+}
