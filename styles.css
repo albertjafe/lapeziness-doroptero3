@@ -15184,6 +15184,9 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
   contain: paint;
   will-change: transform;
 }
+#view-cronometro.view-swipe-neighbor {
+  display: flex !important;
+}
 .view.view-swipe-settling,
 .topbar.view-swipe-settling,
 .nav-bottom.view-swipe-settling {

@@ -35,6 +35,20 @@ describe('quality wiring', () => {
     expect(app).not.toContain('localStorage.setItem(\'piano_auto_creds\'');
   });
 
+  it('keeps the stopwatch preview at its final zoom and accepts swipes anywhere', () => {
+    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+    const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+    const preview = app.slice(
+      app.indexOf('function viewSwipePrepareCronoPreview'),
+      app.indexOf('function viewSwipeHeaderDate')
+    );
+
+    expect(app).toContain('const root = document;');
+    expect(app).not.toContain('viewSwipeBlockedTarget');
+    expect(preview).toContain("cronoInitInterfaceZoom === 'function'");
+    expect(styles).toMatch(/#view-cronometro\.view-swipe-neighbor\s*{\s*display:\s*flex\s*!important;/);
+  });
+
   it('ships one vector music mark and correctly sized app icons', () => {
     const svg = fs.readFileSync(path.join(root, 'icon.svg'), 'utf8');
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
