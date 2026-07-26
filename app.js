@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-26-icono-corchea-v54';
+const APP_VERSION = '2026-07-26-zoom-cronometro-centrado-v58';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -16981,7 +16981,8 @@ let _cronoRunDrawerTab = 'tareas';
 let _cronoIdleDrawerTab = 'tareas';
 
 const CRONO_INTERFACE_SCALE_KEY = 'alberto_crono_interface_scale_v1';
-const CRONO_INTERFACE_SCALE_MIN = 0.82;
+const CRONO_INTERFACE_SCALE_MIN_DESKTOP = 0.66;
+const CRONO_INTERFACE_SCALE_MIN_MOBILE = 0.76;
 const CRONO_INTERFACE_SCALE_MAX = 1.22;
 let _cronoInterfaceScale = 1;
 let _cronoInterfacePinch = null;
@@ -16994,7 +16995,10 @@ let _cronoInterfaceAnimationLastTs = 0;
 let _cronoInterfacePersistOnSettle = false;
 
 function cronoClampInterfaceScale(value) {
-  return Math.max(CRONO_INTERFACE_SCALE_MIN, Math.min(CRONO_INTERFACE_SCALE_MAX, Number(value) || 1));
+  const min = window.innerWidth < 700
+    ? CRONO_INTERFACE_SCALE_MIN_MOBILE
+    : window.innerHeight <= 600 ? .82 : CRONO_INTERFACE_SCALE_MIN_DESKTOP;
+  return Math.max(min, Math.min(CRONO_INTERFACE_SCALE_MAX, Number(value) || 1));
 }
 
 function cronoInterfaceRingBaseSize() {
@@ -17024,6 +17028,7 @@ function cronoSetInterfaceScale(value, options) {
   _cronoInterfaceScale = scale;
   if (view) {
     const toolsScale = 2 - scale;
+    const clockContentScale = scale < .82 ? scale / .82 : 1;
     const timerShare = 1.04 + ((scale - 1) * 1.15);
     const toolsShare = 2 - timerShare;
     const ringSize = cronoInterfaceRingBaseSize() * scale;
@@ -17032,6 +17037,8 @@ function cronoSetInterfaceScale(value, options) {
     view.style.setProperty('--crono-tools-track', toolsShare.toFixed(3) + 'fr');
     view.style.setProperty('--crono-interface-ring-size', ringSize.toFixed(2) + 'px');
     view.style.setProperty('--crono-tools-min-height', (portraitToolsBase * toolsScale).toFixed(2) + 'px');
+    view.style.setProperty('--crono-clock-content-scale', clockContentScale.toFixed(3));
+    view.style.setProperty('--crono-timer-min-width', Math.max(185, 250 * scale).toFixed(2) + 'px');
     view.dataset.interfaceScale = String(scale);
   }
   document.body.classList.toggle('crono-interface-clock-small', scale < 0.999);
@@ -17117,6 +17124,7 @@ function cronoInitInterfaceZoom() {
   if (!_cronoInterfaceZoomInitialized) {
     _cronoInterfaceZoomInitialized = true;
     try { _cronoInterfaceScale = cronoClampInterfaceScale(localStorage.getItem(CRONO_INTERFACE_SCALE_KEY)); } catch(e) {}
+    _cronoInterfaceTargetScale = _cronoInterfaceScale;
 
     view.addEventListener('touchstart', event => {
       if (event.touches.length !== 2 || (event.target.closest && event.target.closest('.modal-overlay'))) return;
@@ -17161,6 +17169,17 @@ function cronoInitInterfaceZoom() {
       if (_cronoInterfacePinch && event.touches.length < 2) finishPinch();
     }, { passive: true });
     view.addEventListener('touchcancel', finishPinch, { passive: true });
+    view.addEventListener('wheel', event => {
+      if (event.target.closest && event.target.closest('.modal-overlay, input, textarea, select')) return;
+      const overTasks = event.target.closest && event.target.closest('#cronoIdleTasksPanel, #cronoTasksPanel');
+      const overClock = event.target.closest && event.target.closest('.crono-idle-main, .crono-run-stage');
+      if (!overTasks && !overClock) return;
+      event.preventDefault();
+      const wheelDirection = event.deltaY < 0 ? 1 : -1;
+      // La escala de herramientas es inversa a la del reloj: 2 - scale.
+      const scaleDelta = 0.035 * wheelDirection * (overTasks ? -1 : 1);
+      cronoAnimateInterfaceScale(_cronoInterfaceTargetScale + scaleDelta, { persist: true, linger: true });
+    }, { passive: false });
     window.addEventListener('resize', () => cronoSetInterfaceScale(_cronoInterfaceScale, { announce: false }));
   }
   cronoSetInterfaceScale(_cronoInterfaceScale, { announce: false });
@@ -17547,12 +17566,21 @@ function cronoTasks() {
   db.cronoTasks.forEach(task => {
     if (task.kind !== 'personal' && task.kind !== 'piano') task.kind = 'piano';
     if (task.kind === 'personal') task.tomorrow = false;
+    task.priority = Math.max(0, Math.min(2, Math.round(Number(task.priority) || 0)));
   });
   return db.cronoTasks;
 }
 
 function cronoTaskKind(task) {
   return task && task.kind === 'personal' ? 'personal' : 'piano';
+}
+
+function cronoTaskPriority(task) {
+  return Math.max(0, Math.min(2, Math.round(Number(task?.priority) || 0)));
+}
+
+function cronoTaskPriorityLabel(priority) {
+  return priority === 2 ? 'Urgente' : priority === 1 ? 'Importante' : 'Normal';
 }
 
 function cronoPendingTaskCount(kind) {
@@ -17684,6 +17712,8 @@ function cronoTaskBreakPending() {
   return cronoTasks()
     .filter(task => !task.done)
     .sort((a, b) => {
+      const priorityOrder = cronoTaskPriority(b) - cronoTaskPriority(a);
+      if (priorityOrder) return priorityOrder;
       const kindOrder = (cronoTaskKind(a) === 'personal' ? 0 : 1) - (cronoTaskKind(b) === 'personal' ? 0 : 1);
       if (kindOrder) return kindOrder;
       return (Date.parse(a.createdAt || '') || 0) - (Date.parse(b.createdAt || '') || 0);
@@ -17797,8 +17827,12 @@ function cronoRenderTaskCount() {
 function renderCronoTasks() {
   const tasks = cronoTasks();
   const doneTime = task => Date.parse(task.doneAt || task.createdAt || '') || 0;
+  const pendingTime = task => Date.parse(task.createdAt || '') || 0;
   const byKind = kind => ({
-    pending: tasks.filter(task => !task.done && cronoTaskKind(task) === kind).slice(-12).reverse(),
+    pending: tasks
+      .filter(task => !task.done && cronoTaskKind(task) === kind)
+      .sort((a, b) => (cronoTaskPriority(b) - cronoTaskPriority(a)) || (pendingTime(b) - pendingTime(a)))
+      .slice(0, 12),
     done: tasks
       .filter(task => task.done && cronoTaskKind(task) === kind)
       .sort((a, b) => doneTime(b) - doneTime(a)),
@@ -17806,14 +17840,21 @@ function renderCronoTasks() {
   const piano = byKind('piano');
   const personal = byKind('personal');
   const row = t => {
-    const cls = 'crono-task-row' + (t.done ? ' is-done' : '');
+    const priority = cronoTaskPriority(t);
+    const priorityLabel = cronoTaskPriorityLabel(priority);
+    const cls = 'crono-task-row priority-' + priority + (t.done ? ' is-done' : '');
     const action = t.done ? 'Volver a abrir' : 'Marcar como hecha';
-    return '<div class="' + cls + '">' +
+    return '<div class="' + cls + '" data-task-id="' + hechoJs(t.id) + '">' +
       '<button type="button" class="crono-task-toggle" onclick="toggleCronoTask(\'' + hechoJs(t.id) + '\',this)" aria-label="' + action + ': ' + escapeHtmlSafe(t.text) + '">' +
         '<span class="crono-task-check" aria-hidden="true"></span>' +
       '</button>' +
-      '<button type="button" class="crono-task-open" onclick="openCronoTaskEdit(\'' + hechoJs(t.id) + '\')" aria-label="Editar tarea: ' + escapeHtmlSafe(t.text) + '">' +
+      '<button type="button" class="crono-task-open" ' +
+        'onclick="cronoTaskBodyClick(event,\'' + hechoJs(t.id) + '\')" ' +
+        'onpointerdown="cronoTaskPressStart(event,\'' + hechoJs(t.id) + '\',this)" ' +
+        'onpointermove="cronoTaskPressMove(event)" onpointerup="cronoTaskPressEnd(event)" onpointercancel="cronoTaskPressCancel()" ' +
+        'oncontextmenu="event.preventDefault()" aria-label="' + escapeHtmlSafe(t.text) + '. Prioridad ' + priorityLabel + '. Pulsa para cambiar; mantén pulsado para editar.">' +
         '<span class="crono-task-text">' + escapeHtmlSafe(t.text) + '</span>' +
+        '<span class="crono-task-priority" aria-hidden="true"><i></i><i></i><i></i><em>' + priorityLabel + '</em></span>' +
         (cronoTaskKind(t) === 'piano' && t.tomorrow ? '<span class="crono-task-due-tag">Mañana</span>' : '') +
       '</button>' +
     '</div>';
@@ -17910,6 +17951,7 @@ function addCronoTask(source) {
     kind: composer.kind,
     tomorrow: composer.kind === 'piano' && composer.tomorrow,
     done: false,
+    priority: 0,
     createdAt: new Date().toISOString(),
   });
   composer.open = false;
@@ -17921,6 +17963,87 @@ function addCronoTask(source) {
 }
 
 let _cronoTaskEditId = null;
+let _cronoTaskPress = null;
+let _cronoTaskSuppressClickUntil = 0;
+
+function cronoTaskPressCleanup() {
+  if (!_cronoTaskPress) return;
+  clearTimeout(_cronoTaskPress.timer);
+  _cronoTaskPress.button?.classList.remove('is-pressing', 'is-long-pressed');
+  _cronoTaskPress.button?.closest('.crono-task-row')?.classList.remove('is-pressing', 'is-long-pressed');
+  _cronoTaskPress = null;
+}
+
+function cronoTaskPressStart(event, id, button) {
+  if (!event || !button || (event.button != null && event.button !== 0)) return;
+  cronoTaskPressCleanup();
+  const press = {
+    id,
+    button,
+    x: event.clientX,
+    y: event.clientY,
+    pointerId: event.pointerId,
+    long: false,
+    timer: null,
+  };
+  _cronoTaskPress = press;
+  button.classList.add('is-pressing');
+  button.closest('.crono-task-row')?.classList.add('is-pressing');
+  press.timer = setTimeout(() => {
+    if (_cronoTaskPress !== press) return;
+    press.long = true;
+    button.classList.remove('is-pressing');
+    button.classList.add('is-long-pressed');
+    const row = button.closest('.crono-task-row');
+    row?.classList.remove('is-pressing');
+    row?.classList.add('is-long-pressed');
+    _cronoTaskSuppressClickUntil = Date.now() + 900;
+    try { Haptics.medium(); } catch(e) {}
+    setTimeout(() => {
+      openCronoTaskEdit(id);
+      if (_cronoTaskPress === press) cronoTaskPressCleanup();
+    }, 90);
+  }, 520);
+}
+
+function cronoTaskPressMove(event) {
+  const press = _cronoTaskPress;
+  if (!press || press.pointerId !== event.pointerId) return;
+  if (Math.hypot(event.clientX - press.x, event.clientY - press.y) > 10) cronoTaskPressCleanup();
+}
+
+function cronoTaskPressEnd(event) {
+  if (!_cronoTaskPress || _cronoTaskPress.pointerId !== event.pointerId) return;
+  if (_cronoTaskPress.long) {
+    event.preventDefault();
+    _cronoTaskSuppressClickUntil = Date.now() + 900;
+  }
+  cronoTaskPressCleanup();
+}
+
+function cronoTaskPressCancel() {
+  cronoTaskPressCleanup();
+}
+
+function cronoTaskBodyClick(event, id) {
+  if (Date.now() < _cronoTaskSuppressClickUntil) {
+    event?.preventDefault();
+    return;
+  }
+  const task = cronoTasks().find(item => item.id === id);
+  if (!task) return;
+  const next = (cronoTaskPriority(task) + 1) % 3;
+  task.priority = next;
+  task.priorityChangedAt = new Date().toISOString();
+  saveData();
+  renderCronoTasks();
+  document.querySelectorAll('.crono-task-row[data-task-id="' + CSS.escape(String(id)) + '"]').forEach(row => {
+    row.classList.add('is-priority-changing');
+    setTimeout(() => row.classList.remove('is-priority-changing'), 440);
+  });
+  try { next === 2 ? Haptics.medium() : Haptics.light(); } catch(e) {}
+  showToast('Prioridad: ' + cronoTaskPriorityLabel(next));
+}
 
 function openCronoTaskEdit(id) {
   const task = cronoTasks().find(item => item.id === id);

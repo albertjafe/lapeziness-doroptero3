@@ -42,9 +42,11 @@ describe('quality wiring', () => {
       const png = fs.readFileSync(path.join(root, filename));
       return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
     };
-    const markPath = 'M259 110c76 5 132 44 139 110';
+    const markPath = 'M262 292V96c0-11 9-20 20-20';
 
     expect(svg).toContain(markPath);
+    expect(svg.match(/<path\b/g)).toHaveLength(1);
+    expect(svg).not.toContain('<ellipse');
     expect(svg).not.toContain('<text');
     expect(html).toContain(markPath);
     expect(html).not.toContain('font-family="serif">♪');
