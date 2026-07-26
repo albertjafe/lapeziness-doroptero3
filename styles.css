@@ -11498,6 +11498,7 @@ body.crono-paused .crono-pause-overlay-inner {
   /* El cambio de vista comunica estado sin desplazar toda la página. */
   .view.active { animation: viewFadeInOpacity 180ms ease-out; }
   body.view-swipe-commit .view.active { animation: none !important; opacity: 1 !important; }
+  .view.active.view-swipe-arrived { animation: none !important; opacity: 1 !important; }
   @keyframes viewFadeInOpacity { from { opacity: 0; } to { opacity: 1; } }
 
   /* Las opciones segmentadas tienen una semántica clara y no dependen del color. */
@@ -15190,7 +15191,7 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
 .view.view-swipe-settling,
 .topbar.view-swipe-settling,
 .nav-bottom.view-swipe-settling {
-  transition: transform 260ms cubic-bezier(.22,.82,.25,1);
+  transition: transform var(--view-swipe-settle-duration, 380ms) cubic-bezier(.32,.72,0,1);
   will-change: transform;
 }
 @media (prefers-reduced-motion: reduce) {

@@ -49,6 +49,19 @@ describe('quality wiring', () => {
     expect(styles).toMatch(/#view-cronometro\.view-swipe-neighbor\s*{\s*display:\s*flex\s*!important;/);
   });
 
+  it('settles swipe navigation with inertia and hands off without a fade', () => {
+    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+    const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+
+    expect(app).toContain('projectedDistance = Math.abs(dx) + (forwardVelocity * 190)');
+    expect(app).toContain("addEventListener('transitionend', onTransitionEnd)");
+    expect(app).toContain("showView(nextView, { swipePrepared: true })");
+    expect(app).toContain("targetView.classList.add('view-swipe-arrived')");
+    expect(app).toContain('_origShowView(name, options)');
+    expect(styles).toContain('cubic-bezier(.32,.72,0,1)');
+    expect(styles).toMatch(/\.view\.active\.view-swipe-arrived\s*{\s*animation:\s*none\s*!important;\s*opacity:\s*1\s*!important;/);
+  });
+
   it('ships one vector music mark and correctly sized app icons', () => {
     const svg = fs.readFileSync(path.join(root, 'icon.svg'), 'utf8');
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
