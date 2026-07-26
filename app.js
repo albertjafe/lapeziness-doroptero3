@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-26-cronometro-control-v63';
+const APP_VERSION = '2026-07-26-tareas-urgentisimas-v64';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -17668,7 +17668,7 @@ function cronoTasks() {
   db.cronoTasks.forEach(task => {
     if (task.kind !== 'personal' && task.kind !== 'piano') task.kind = 'piano';
     if (task.kind === 'personal') task.tomorrow = false;
-    task.priority = Math.max(0, Math.min(2, Math.round(Number(task.priority) || 0)));
+    task.priority = Math.max(0, Math.min(3, Math.round(Number(task.priority) || 0)));
   });
   return db.cronoTasks;
 }
@@ -17678,11 +17678,11 @@ function cronoTaskKind(task) {
 }
 
 function cronoTaskPriority(task) {
-  return Math.max(0, Math.min(2, Math.round(Number(task?.priority) || 0)));
+  return Math.max(0, Math.min(3, Math.round(Number(task?.priority) || 0)));
 }
 
 function cronoTaskPriorityLabel(priority) {
-  return priority === 2 ? 'Urgente' : priority === 1 ? 'Importante' : 'Normal';
+  return priority === 3 ? 'Urgentísima' : priority === 2 ? 'Urgente' : priority === 1 ? 'Importante' : 'Normal';
 }
 
 function cronoPendingTaskCount(kind) {
@@ -17840,10 +17840,13 @@ function cronoRenderTaskBreakPrompt() {
   const visible = pending.slice(0, 6);
   list.innerHTML = visible.map(task => {
     const kind = cronoTaskKind(task);
-    return '<button type="button" class="crono-task-break-item" onclick="cronoCompleteTaskFromBreak(\'' + hechoJs(task.id) + '\',this)">' +
+    const priority = cronoTaskPriority(task);
+    const priorityLabel = cronoTaskPriorityLabel(priority);
+    return '<button type="button" class="crono-task-break-item priority-' + priority + '" onclick="cronoCompleteTaskFromBreak(\'' + hechoJs(task.id) + '\',this)" aria-label="' + escapeHtmlSafe(task.text) + '. Prioridad ' + priorityLabel + '">' +
       '<span class="crono-task-break-check" aria-hidden="true"></span>' +
       '<span class="crono-task-break-copy"><strong>' + escapeHtmlSafe(task.text) + '</strong>' +
-        '<small>' + (kind === 'personal' ? 'Personal' : 'Piano') + (kind === 'piano' && task.tomorrow ? ' · Mañana' : '') + '</small>' +
+        '<small>' + (kind === 'personal' ? 'Personal' : 'Piano') + (kind === 'piano' && task.tomorrow ? ' · Mañana' : '') +
+          (priority === 3 ? ' · <b>Urgentísima</b>' : '') + '</small>' +
       '</span>' +
     '</button>';
   }).join('') + (pending.length > visible.length
@@ -17959,7 +17962,7 @@ function renderCronoTasks() {
         'onpointermove="cronoTaskPressMove(event)" onpointerup="cronoTaskPressEnd(event)" onpointercancel="cronoTaskPressCancel()" ' +
         'oncontextmenu="event.preventDefault()" aria-label="' + escapeHtmlSafe(t.text) + '. Prioridad ' + priorityLabel + '. Pulsa para cambiar; mantén pulsado para editar.">' +
         '<span class="crono-task-text">' + escapeHtmlSafe(t.text) + '</span>' +
-        '<span class="crono-task-priority" aria-hidden="true"><i></i><i></i><i></i><em>' + priorityLabel + '</em></span>' +
+        '<span class="crono-task-priority" aria-hidden="true"><i></i><i></i><i></i><i></i><em>' + priorityLabel + '</em></span>' +
         (cronoTaskKind(t) === 'piano' && t.tomorrow ? '<span class="crono-task-due-tag">Mañana</span>' : '') +
       '</button>' +
     '</div>';
@@ -18134,7 +18137,7 @@ function cronoTaskBodyClick(event, id) {
   }
   const task = cronoTasks().find(item => item.id === id);
   if (!task) return;
-  const next = (cronoTaskPriority(task) + 1) % 3;
+  const next = (cronoTaskPriority(task) + 1) % 4;
   task.priority = next;
   task.priorityChangedAt = new Date().toISOString();
   saveData();
@@ -18143,7 +18146,7 @@ function cronoTaskBodyClick(event, id) {
     row.classList.add('is-priority-changing');
     setTimeout(() => row.classList.remove('is-priority-changing'), 440);
   });
-  try { next === 2 ? Haptics.medium() : Haptics.light(); } catch(e) {}
+  try { next === 3 ? Haptics.heavy() : next === 2 ? Haptics.medium() : Haptics.light(); } catch(e) {}
   showToast('Prioridad: ' + cronoTaskPriorityLabel(next));
 }
 

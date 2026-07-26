@@ -498,7 +498,7 @@ test('cancels or confirms a valid timer before saving and keeps one-tap solidity
   await prepare(page);
   await page.evaluate(() => {
     db.cronoTasks = [
-      { id: 'ct_break', text: 'Responder el mensaje pendiente', kind: 'personal', done: false, createdAt: new Date().toISOString() },
+      { id: 'ct_break', text: 'Responder el mensaje pendiente', kind: 'personal', priority: 3, done: false, createdAt: new Date().toISOString() },
       { id: 'ct_break_piano', text: 'Anotar la digitación de la coda', kind: 'piano', done: false, createdAt: new Date().toISOString() },
     ];
     showView('cronometro');
@@ -540,6 +540,7 @@ test('cancels or confirms a valid timer before saving and keeps one-tap solidity
   await expect(taskBreak).toHaveClass(/visible/);
   await expect(taskBreak).toContainText('¿Un descanso?');
   await expect(taskBreak).toContainText('Responder el mensaje pendiente');
+  await expect(taskBreak.locator('.crono-task-break-item.priority-3')).toContainText('Urgentísima');
   await taskBreak.getByRole('button', { name: /Responder el mensaje pendiente/ }).click();
   await expect(taskBreak.locator('.crono-task-break-item.is-completing')).toHaveCount(1);
   await expect.poll(() => page.evaluate(() => db.cronoTasks.find(task => task.id === 'ct_break')?.done)).toBe(true);

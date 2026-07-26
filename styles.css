@@ -7433,6 +7433,23 @@
   .crono-task-break-copy { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
   .crono-task-break-copy strong { font-size: 13px; line-height: 1.3; }
   .crono-task-break-copy small { color: var(--text3); font-size: 9px; }
+  .crono-task-break-copy small b {
+    color: #c72f46;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 8px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+  .crono-task-break-item.priority-3 {
+    border-color: color-mix(in srgb, #e12645 66%, var(--border2));
+    background: color-mix(in srgb, #e12645 10%, var(--bg));
+    box-shadow: inset 3px 0 0 #e12645, 0 0 0 0 color-mix(in srgb, #e12645 0%, transparent);
+    animation: crono-task-critical-break-pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes crono-task-critical-break-pulse {
+    0%, 100% { transform: scale(1); box-shadow: inset 3px 0 0 #e12645, 0 0 0 0 color-mix(in srgb, #e12645 0%, transparent); }
+    50% { transform: scale(1.012); box-shadow: inset 3px 0 0 #e12645, 0 0 0 5px color-mix(in srgb, #e12645 13%, transparent), 0 7px 20px color-mix(in srgb, #e12645 18%, transparent); }
+  }
   .crono-task-break-item.is-completing { border-color: color-mix(in srgb, var(--green) 45%, var(--border2)); opacity: .66; }
   .crono-task-break-item.is-completing .crono-task-break-check { border-color: var(--green); background: var(--green); }
   .crono-task-break-item.is-completing .crono-task-break-check::after { opacity: 1; transform: rotate(-45deg) scale(1); }
@@ -13893,8 +13910,8 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
   align-items: flex-end;
   gap: 2px;
   flex: 0 0 auto;
-  min-width: 18px;
-  height: 16px;
+  min-width: 23px;
+  height: 18px;
   color: var(--text3);
 }
 .crono-task-priority i {
@@ -13908,6 +13925,7 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
 .crono-task-priority i:nth-child(1) { height: 5px; }
 .crono-task-priority i:nth-child(2) { height: 9px; }
 .crono-task-priority i:nth-child(3) { height: 13px; }
+.crono-task-priority i:nth-child(4) { height: 17px; }
 .crono-task-priority em {
   display: none;
   margin-left: 3px;
@@ -13931,9 +13949,25 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
   box-shadow: inset 3px 0 0 color-mix(in srgb, #c54b4b 82%, transparent);
 }
 .crono-task-row.priority-2 .crono-task-priority { color: #b73f3f; }
-.crono-task-row.priority-2 .crono-task-priority i { opacity: 1; }
+.crono-task-row.priority-2 .crono-task-priority i:nth-child(-n+3) { opacity: 1; }
+.crono-task-row.priority-3 {
+  position: relative;
+  border-color: color-mix(in srgb, #e12645 68%, var(--border2));
+  background: color-mix(in srgb, #e12645 10%, var(--bg2));
+  box-shadow: inset 4px 0 0 #e12645;
+  animation: crono-task-critical-pulse 2.2s ease-in-out infinite;
+}
+.crono-task-row.priority-3 .crono-task-priority { color: #cf2944; }
+.crono-task-row.priority-3 .crono-task-priority i { opacity: 1; }
+.crono-task-row.priority-3 .crono-task-text { color: color-mix(in srgb, #cf2944 68%, var(--text)); font-weight: 760; }
+.crono-task-row.priority-3.is-done { animation: none; }
 .crono-task-row.priority-1 .crono-task-priority em,
-.crono-task-row.priority-2 .crono-task-priority em { display: block; }
+.crono-task-row.priority-2 .crono-task-priority em,
+.crono-task-row.priority-3 .crono-task-priority em { display: block; }
+@keyframes crono-task-critical-pulse {
+  0%, 100% { transform: scale(1); box-shadow: inset 4px 0 0 #e12645, 0 0 0 0 color-mix(in srgb, #e12645 0%, transparent); }
+  50% { transform: scale(1.012); box-shadow: inset 4px 0 0 #e12645, 0 0 0 5px color-mix(in srgb, #e12645 12%, transparent), 0 8px 22px color-mix(in srgb, #e12645 18%, transparent); }
+}
 .crono-task-row.is-pressing {
   transform: scale(1.018);
   box-shadow: 0 8px 24px color-mix(in srgb, #000 12%, transparent);
@@ -14066,6 +14100,8 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
   .crono-task-row,
   .crono-task-priority i { transition: none; }
   .crono-task-row.is-priority-changing { animation: none; }
+  .crono-task-row.priority-3,
+  .crono-task-break-item.priority-3 { animation: none; }
 }
 .crono-task-edit-modal {
   width: min(420px, calc(100vw - 28px));
