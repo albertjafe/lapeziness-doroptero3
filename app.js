@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-26-ipad-vertical-eficiente-v69';
+const APP_VERSION = '2026-07-26-navegacion-por-gestos-v70';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -904,6 +904,147 @@ function ensureEstadoEventos() {
   if (!Array.isArray(db.estadoEventos)) db.estadoEventos = _estadoEventosLocal();
   return db.estadoEventos;
 }
+
+const SWIPE_VIEW_ORDER = ['session', 'cronometro', 'obras', 'historial'];
+let _viewSwipe = null;
+
+function viewSwipeBlockedTarget(target) {
+  return !!target?.closest?.(
+    'button, a, input, textarea, select, summary, details, [contenteditable="true"], ' +
+    '.modal-overlay, .crono-display-wrap, .crono-idle-display-wrap, .crono-task-row, ' +
+    '.crono-moment-monitor, .chart-wrap, canvas, svg, [role="slider"]'
+  );
+}
+
+function viewSwipeActiveElement() {
+  const name = document.body.getAttribute('data-view') || 'session';
+  return document.getElementById('view-' + name);
+}
+
+function viewSwipeReset(animate) {
+  const swipe = _viewSwipe;
+  _viewSwipe = null;
+  document.body.classList.remove('view-swipe-dragging');
+  if (!swipe?.view) return;
+  const view = swipe.view;
+  if (animate) {
+    view.classList.add('view-swipe-returning');
+    requestAnimationFrame(() => {
+      view.style.transform = 'translate3d(0,0,0)';
+      view.style.opacity = '1';
+    });
+    setTimeout(() => {
+      view.classList.remove('view-swipe-returning');
+      view.style.removeProperty('transform');
+      view.style.removeProperty('opacity');
+    }, 240);
+  } else {
+    view.style.removeProperty('transform');
+    view.style.removeProperty('opacity');
+  }
+}
+
+function showViewFromSwipe(name, direction) {
+  const previous = viewSwipeActiveElement();
+  if (previous) {
+    previous.style.removeProperty('transform');
+    previous.style.removeProperty('opacity');
+  }
+  showView(name);
+  const incoming = document.getElementById('view-' + name);
+  if (!incoming) return;
+  incoming.classList.remove('view-swipe-enter-left', 'view-swipe-enter-right');
+  incoming.classList.add(direction > 0 ? 'view-swipe-enter-right' : 'view-swipe-enter-left');
+  setTimeout(() => incoming.classList.remove('view-swipe-enter-left', 'view-swipe-enter-right'), 360);
+}
+
+function initViewSwipeNavigation() {
+  if (initViewSwipeNavigation._done) return;
+  initViewSwipeNavigation._done = true;
+  const root = document.querySelector('.app-content');
+  if (!root) return;
+
+  root.addEventListener('touchstart', event => {
+    if (event.touches.length !== 1 || viewSwipeBlockedTarget(event.target)) return;
+    if (document.querySelector('.modal-overlay.visible')) return;
+    const current = document.body.getAttribute('data-view') || 'session';
+    const index = SWIPE_VIEW_ORDER.indexOf(current);
+    if (index < 0) return;
+    const touch = event.touches[0];
+    _viewSwipe = {
+      id: touch.identifier,
+      x: touch.clientX,
+      y: touch.clientY,
+      lastX: touch.clientX,
+      lastAt: performance.now(),
+      velocity: 0,
+      index,
+      intent: null,
+      view: viewSwipeActiveElement(),
+    };
+  }, { passive: true });
+
+  root.addEventListener('touchmove', event => {
+    const swipe = _viewSwipe;
+    if (!swipe) return;
+    const touch = Array.from(event.touches).find(item => item.identifier === swipe.id);
+    if (!touch) return;
+    let dx = touch.clientX - swipe.x;
+    const dy = touch.clientY - swipe.y;
+    if (!swipe.intent && Math.hypot(dx, dy) >= 10) {
+      swipe.intent = Math.abs(dx) > Math.abs(dy) * 1.25 ? 'horizontal' : 'vertical';
+      if (swipe.intent === 'vertical') {
+        viewSwipeReset(false);
+        return;
+      }
+      document.body.classList.add('view-swipe-dragging');
+    }
+    if (swipe.intent !== 'horizontal') return;
+    event.preventDefault();
+    const atStart = swipe.index === 0 && dx > 0;
+    const atEnd = swipe.index === SWIPE_VIEW_ORDER.length - 1 && dx < 0;
+    if (atStart || atEnd) dx *= .24;
+    const now = performance.now();
+    const elapsed = Math.max(8, now - swipe.lastAt);
+    swipe.velocity = (touch.clientX - swipe.lastX) / elapsed;
+    swipe.lastX = touch.clientX;
+    swipe.lastAt = now;
+    swipe.dx = dx;
+    if (swipe.view) {
+      swipe.view.style.transform = 'translate3d(' + dx + 'px,0,0)';
+      swipe.view.style.opacity = String(Math.max(.72, 1 - Math.abs(dx) / (window.innerWidth * 1.8)));
+    }
+  }, { passive: false });
+
+  const finish = event => {
+    const swipe = _viewSwipe;
+    if (!swipe) return;
+    if (event?.changedTouches && !Array.from(event.changedTouches).some(item => item.identifier === swipe.id)) return;
+    if (swipe.intent !== 'horizontal') {
+      viewSwipeReset(false);
+      return;
+    }
+    const dx = swipe.dx || 0;
+    const direction = dx < 0 ? 1 : -1;
+    const nextIndex = swipe.index + direction;
+    const threshold = Math.min(120, window.innerWidth * .16);
+    const commits = nextIndex >= 0 && nextIndex < SWIPE_VIEW_ORDER.length &&
+      (Math.abs(dx) >= threshold || Math.abs(swipe.velocity) >= .48);
+    if (!commits) {
+      viewSwipeReset(true);
+      return;
+    }
+    const nextView = SWIPE_VIEW_ORDER[nextIndex];
+    _viewSwipe = null;
+    document.body.classList.remove('view-swipe-dragging');
+    try { Haptics.light(); } catch(e) {}
+    showViewFromSwipe(nextView, direction);
+  };
+  root.addEventListener('touchend', finish, { passive: true });
+  root.addEventListener('touchcancel', () => viewSwipeReset(true), { passive: true });
+}
+
+initViewSwipeNavigation();
 
 function _impulsoEventosLocal() {
   try {

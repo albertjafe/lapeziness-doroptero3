@@ -993,6 +993,24 @@ test('keeps a 13-inch touch iPad in the tablet layout', async ({ browser }) => {
   await context.close();
 });
 
+test('uses the requested four-view order for swipe navigation', async ({ page }) => {
+  await prepare(page);
+  const result = await page.evaluate(() => {
+    showView('cronometro');
+    showViewFromSwipe('session', -1);
+    return {
+      order: SWIPE_VIEW_ORDER.slice(),
+      active: document.body.getAttribute('data-view'),
+      entryClass: document.getElementById('view-session').classList.contains('view-swipe-enter-left'),
+    };
+  });
+  expect(result).toEqual({
+    order: ['session', 'cronometro', 'obras', 'historial'],
+    active: 'session',
+    entryClass: true,
+  });
+});
+
 test('advances free timer progress to a 120 minute maximum and enlarges mode labels', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await prepare(page);
