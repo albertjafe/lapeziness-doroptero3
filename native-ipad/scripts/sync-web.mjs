@@ -12,6 +12,7 @@ const assets = [
   'data-core.js',
   'icon-192.png',
   'icon-512.png',
+  'icon.svg',
   'index.html',
   'manifest.json',
   'push-client.js',
@@ -36,7 +37,7 @@ const nativeMarker = '<script>window.__ESTUDIO_NATIVE__ = true;</script>';
 const bridgeScript = '<script src="native-live-activity.js"></script>';
 let html = await readFile(join(targetRoot, 'index.html'), 'utf8');
 html = html.replace('<meta charset="UTF-8">', '<meta charset="UTF-8">\n' + nativeMarker);
-html = html.replace('<script src="app.js?v=176"></script>', '<script src="app.js?v=176"></script>\n' + bridgeScript);
+html = html.replace('<script src="app.js?v=177"></script>', '<script src="app.js?v=177"></script>\n' + bridgeScript);
 html = html.replaceAll(
   "if ('serviceWorker' in navigator)",
   "if (!window.__ESTUDIO_NATIVE__ && 'serviceWorker' in navigator)",

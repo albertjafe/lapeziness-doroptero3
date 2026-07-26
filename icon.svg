@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Planificador de estudio</title>
+  <rect width="512" height="512" fill="#17140f"/>
+  <g fill="#d8b77a">
+    <ellipse cx="185" cy="354" rx="78" ry="54" transform="rotate(-18 185 354)"/>
+    <path d="M259 110c76 5 132 44 139 110 2 20-2 39-12 57-8-53-46-87-112-93v155a15 15 0 0 1-30 0V125a15 15 0 0 1 15-15z"/>
+  </g>
+</svg>

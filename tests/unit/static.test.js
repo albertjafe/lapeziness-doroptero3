@@ -34,4 +34,21 @@ describe('quality wiring', () => {
     expect(app).not.toContain('_saveStoredCredentials');
     expect(app).not.toContain('localStorage.setItem(\'piano_auto_creds\'');
   });
+
+  it('ships one vector music mark and correctly sized app icons', () => {
+    const svg = fs.readFileSync(path.join(root, 'icon.svg'), 'utf8');
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const pngSize = filename => {
+      const png = fs.readFileSync(path.join(root, filename));
+      return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
+    };
+    const markPath = 'M259 110c76 5 132 44 139 110';
+
+    expect(svg).toContain(markPath);
+    expect(svg).not.toContain('<text');
+    expect(html).toContain(markPath);
+    expect(html).not.toContain('font-family="serif">♪');
+    expect(pngSize('icon-192.png')).toEqual({ width: 192, height: 192 });
+    expect(pngSize('icon-512.png')).toEqual({ width: 512, height: 512 });
+  });
 });
