@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-26-navegacion-por-gestos-v70';
+const APP_VERSION = '2026-07-26-carrusel-fluido-v71';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -921,41 +921,100 @@ function viewSwipeActiveElement() {
   return document.getElementById('view-' + name);
 }
 
-function viewSwipeReset(animate) {
-  const swipe = _viewSwipe;
-  _viewSwipe = null;
-  document.body.classList.remove('view-swipe-dragging');
-  if (!swipe?.view) return;
-  const view = swipe.view;
-  if (animate) {
-    view.classList.add('view-swipe-returning');
-    requestAnimationFrame(() => {
-      view.style.transform = 'translate3d(0,0,0)';
-      view.style.opacity = '1';
-    });
-    setTimeout(() => {
-      view.classList.remove('view-swipe-returning');
-      view.style.removeProperty('transform');
-      view.style.removeProperty('opacity');
-    }, 240);
-  } else {
-    view.style.removeProperty('transform');
-    view.style.removeProperty('opacity');
+function viewSwipeCleanup(swipe) {
+  if (!swipe) return;
+  if (swipe.raf) cancelAnimationFrame(swipe.raf);
+  [swipe.view, swipe.neighbor].forEach(view => {
+    if (!view) return;
+    view.classList.remove('view-swipe-live', 'view-swipe-neighbor', 'view-swipe-settling');
+    ['transform', 'opacity', 'position', 'top', 'left', 'width', 'height', 'max-width', 'margin', 'z-index', 'pointer-events'].forEach(prop => view.style.removeProperty(prop));
+  });
+  document.body.classList.remove('view-swipe-dragging', 'view-swipe-settling');
+}
+
+function viewSwipePrepareNeighbor(swipe, direction) {
+  if (swipe.neighborDirection === direction && swipe.neighbor) return true;
+  if (swipe.neighbor) {
+    const old = swipe.neighbor;
+    old.classList.remove('view-swipe-neighbor', 'view-swipe-settling');
+    ['transform', 'position', 'top', 'left', 'width', 'height', 'max-width', 'margin', 'z-index', 'pointer-events'].forEach(prop => old.style.removeProperty(prop));
+  }
+  const nextIndex = swipe.index + direction;
+  if (nextIndex < 0 || nextIndex >= SWIPE_VIEW_ORDER.length) {
+    swipe.neighbor = null;
+    swipe.neighborDirection = direction;
+    return false;
+  }
+  const neighbor = document.getElementById('view-' + SWIPE_VIEW_ORDER[nextIndex]);
+  if (!neighbor) return false;
+  const rect = swipe.view.getBoundingClientRect();
+  swipe.width = Math.max(1, window.innerWidth);
+  swipe.neighbor = neighbor;
+  swipe.neighborDirection = direction;
+  neighbor.classList.add('view-swipe-neighbor');
+  neighbor.style.position = 'fixed';
+  neighbor.style.top = rect.top + 'px';
+  neighbor.style.left = rect.left + 'px';
+  neighbor.style.width = rect.width + 'px';
+  neighbor.style.height = Math.max(rect.height, window.innerHeight - rect.top) + 'px';
+  neighbor.style.maxWidth = 'none';
+  neighbor.style.margin = '0';
+  neighbor.style.zIndex = '301';
+  neighbor.style.pointerEvents = 'none';
+  neighbor.style.transform = 'translate3d(' + (direction * swipe.width) + 'px,0,0)';
+  return true;
+}
+
+function viewSwipeRenderFrame(swipe) {
+  swipe.raf = null;
+  if (_viewSwipe !== swipe || swipe.intent !== 'horizontal') return;
+  const dx = swipe.renderDx || 0;
+  swipe.view.style.transform = 'translate3d(' + dx + 'px,0,0)';
+  if (swipe.neighbor) {
+    swipe.neighbor.style.transform = 'translate3d(' + (dx + swipe.neighborDirection * swipe.width) + 'px,0,0)';
   }
 }
 
-function showViewFromSwipe(name, direction) {
-  const previous = viewSwipeActiveElement();
-  if (previous) {
-    previous.style.removeProperty('transform');
-    previous.style.removeProperty('opacity');
+function viewSwipeRequestFrame(swipe) {
+  if (!swipe.raf) swipe.raf = requestAnimationFrame(() => viewSwipeRenderFrame(swipe));
+}
+
+function viewSwipeSettle(swipe, commit, nextView) {
+  _viewSwipe = null;
+  if (swipe.raf) {
+    cancelAnimationFrame(swipe.raf);
+    swipe.raf = null;
   }
+  document.body.classList.remove('view-swipe-dragging');
+  document.body.classList.add('view-swipe-settling');
+  swipe.view.classList.add('view-swipe-settling');
+  swipe.neighbor?.classList.add('view-swipe-settling');
+  const activeEnd = commit ? -swipe.neighborDirection * swipe.width : 0;
+  const neighborEnd = commit ? 0 : swipe.neighborDirection * swipe.width;
+  requestAnimationFrame(() => {
+    swipe.view.style.transform = 'translate3d(' + activeEnd + 'px,0,0)';
+    if (swipe.neighbor) swipe.neighbor.style.transform = 'translate3d(' + neighborEnd + 'px,0,0)';
+  });
+  setTimeout(() => {
+    viewSwipeCleanup(swipe);
+    if (commit && nextView) showView(nextView);
+  }, 270);
+}
+
+function viewSwipeReset(animate) {
+  const swipe = _viewSwipe;
+  _viewSwipe = null;
+  if (!swipe) return;
+  if (animate && swipe.intent === 'horizontal') {
+    _viewSwipe = swipe;
+    viewSwipeSettle(swipe, false, null);
+  } else {
+    viewSwipeCleanup(swipe);
+  }
+}
+
+function showViewFromSwipe(name) {
   showView(name);
-  const incoming = document.getElementById('view-' + name);
-  if (!incoming) return;
-  incoming.classList.remove('view-swipe-enter-left', 'view-swipe-enter-right');
-  incoming.classList.add(direction > 0 ? 'view-swipe-enter-right' : 'view-swipe-enter-left');
-  setTimeout(() => incoming.classList.remove('view-swipe-enter-left', 'view-swipe-enter-right'), 360);
 }
 
 function initViewSwipeNavigation() {
@@ -981,6 +1040,10 @@ function initViewSwipeNavigation() {
       index,
       intent: null,
       view: viewSwipeActiveElement(),
+      neighbor: null,
+      neighborDirection: 0,
+      renderDx: 0,
+      raf: null,
     };
   }, { passive: true });
 
@@ -998,22 +1061,23 @@ function initViewSwipeNavigation() {
         return;
       }
       document.body.classList.add('view-swipe-dragging');
+      swipe.view?.classList.add('view-swipe-live');
     }
     if (swipe.intent !== 'horizontal') return;
     event.preventDefault();
     const atStart = swipe.index === 0 && dx > 0;
     const atEnd = swipe.index === SWIPE_VIEW_ORDER.length - 1 && dx < 0;
     if (atStart || atEnd) dx *= .24;
+    const direction = dx < 0 ? 1 : -1;
+    viewSwipePrepareNeighbor(swipe, direction);
     const now = performance.now();
     const elapsed = Math.max(8, now - swipe.lastAt);
     swipe.velocity = (touch.clientX - swipe.lastX) / elapsed;
     swipe.lastX = touch.clientX;
     swipe.lastAt = now;
     swipe.dx = dx;
-    if (swipe.view) {
-      swipe.view.style.transform = 'translate3d(' + dx + 'px,0,0)';
-      swipe.view.style.opacity = String(Math.max(.72, 1 - Math.abs(dx) / (window.innerWidth * 1.8)));
-    }
+    swipe.renderDx = dx;
+    viewSwipeRequestFrame(swipe);
   }, { passive: false });
 
   const finish = event => {
@@ -1030,15 +1094,11 @@ function initViewSwipeNavigation() {
     const threshold = Math.min(120, window.innerWidth * .16);
     const commits = nextIndex >= 0 && nextIndex < SWIPE_VIEW_ORDER.length &&
       (Math.abs(dx) >= threshold || Math.abs(swipe.velocity) >= .48);
-    if (!commits) {
+    if (!swipe.neighbor || swipe.neighborDirection !== direction) {
       viewSwipeReset(true);
       return;
     }
-    const nextView = SWIPE_VIEW_ORDER[nextIndex];
-    _viewSwipe = null;
-    document.body.classList.remove('view-swipe-dragging');
-    try { Haptics.light(); } catch(e) {}
-    showViewFromSwipe(nextView, direction);
+    viewSwipeSettle(swipe, commits, commits ? SWIPE_VIEW_ORDER[nextIndex] : null);
   };
   root.addEventListener('touchend', finish, { passive: true });
   root.addEventListener('touchcancel', () => viewSwipeReset(true), { passive: true });
@@ -20355,14 +20415,9 @@ function cronoRender() {
   const ctrl = document.getElementById('cronoControls');
   if (!ctrl) return;
   if (crono.state === 'running') {
-    ctrl.innerHTML = '';
+    ctrl.innerHTML = cronoSessionButtonHtml(false, 'crono-session-drawer-main');
   } else if (crono.state === 'paused') {
-    ctrl.innerHTML = cronoSessionButtonHtml(true);
-  }
-  if (wrap) {
-    wrap.setAttribute('aria-label', crono.state === 'paused'
-      ? 'Reanudar. Mantén pulsado para terminar y guardar'
-      : 'Pausar. Mantén pulsado para terminar y guardar');
+    ctrl.innerHTML = '';
   }
   cronoUpdateSolidityActions();
   cronoRenderNoteCounts();

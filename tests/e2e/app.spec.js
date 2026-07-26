@@ -459,6 +459,9 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
       const displayRange = document.createRange();
       displayRange.selectNodeContents(display);
       const displayTextWidth = displayRange.getBoundingClientRect().width;
+      const drawerButton = document.querySelector('#cronoControls .crono-session-drawer-main');
+      const drawerPanels = document.querySelector('#cronoRunDrawer .crono-run-drawer-panels').getBoundingClientRect();
+      const drawerButtonBox = drawerButton?.getBoundingClientRect();
       return {
         portrait: matchMedia('(orientation: portrait)').matches,
         stage: { top: stage.top, right: stage.right, bottom: stage.bottom },
@@ -470,6 +473,9 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
         observation: document.getElementById('cronoRunObservation').value,
         passage: document.querySelector('.crono-focus-pasaje-copy strong')?.textContent,
         displayRatio: displayTextWidth / ring.width,
+        circleIsButton: document.getElementById('cronoDisplayWrap').hasAttribute('role'),
+        hasSeparateControl: !!drawerButton,
+        controlBelowTools: !!drawerButtonBox && drawerButtonBox.top >= drawerPanels.bottom - 1,
       };
     });
 
@@ -478,6 +484,9 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
     expect(layout.observation).toBe('Coda limpia, pulso estable');
     expect(layout.passage).toBe('Coda · cc. 200–208');
     expect(layout.displayRatio).toBeLessThanOrEqual(0.69);
+    expect(layout.circleIsButton).toBe(false);
+    expect(layout.hasSeparateControl).toBe(true);
+    expect(layout.controlBelowTools).toBe(true);
     if (layout.portrait) {
       expect(layout.drawer.top).toBeGreaterThanOrEqual(layout.stage.bottom);
       expect(layout.controlsBottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
@@ -997,17 +1006,15 @@ test('uses the requested four-view order for swipe navigation', async ({ page })
   await prepare(page);
   const result = await page.evaluate(() => {
     showView('cronometro');
-    showViewFromSwipe('session', -1);
+    showViewFromSwipe('session');
     return {
       order: SWIPE_VIEW_ORDER.slice(),
       active: document.body.getAttribute('data-view'),
-      entryClass: document.getElementById('view-session').classList.contains('view-swipe-enter-left'),
     };
   });
   expect(result).toEqual({
     order: ['session', 'cronometro', 'obras', 'historial'],
     active: 'session',
-    entryClass: true,
   });
 });
 
