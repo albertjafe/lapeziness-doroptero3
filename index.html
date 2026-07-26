@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=189">
+<link rel="stylesheet" href="styles.css?v=190">
 </head>
 <body>
 
@@ -557,18 +557,12 @@
           <div class="crono-moment-levels" id="cronoDiscomfortFaces" role="radiogroup" aria-label="Registrar malestar"></div>
         </div>
         </div>
-        <button type="button" class="crono-moment-history-toggle" aria-expanded="false" onclick="toggleCronoMomentHistory()">
-          <span id="cronoMomentHistoryCount">Hoy · 0</span>
-          <strong>Ver registros</strong>
-        </button>
-        <aside class="crono-moment-history" aria-label="Registros recientes">
+        <aside class="crono-moment-history" aria-label="Contexto del registro">
           <label class="crono-moment-note-compose" for="cronoMomentNote">
             <span>¿Qué influyó?</span>
             <input id="cronoMomentNote" type="text" maxlength="180" autocomplete="off"
                    placeholder="Ej.: concentrarme en la mano derecha">
           </label>
-          <span class="crono-moment-history-title">Hoy</span>
-          <div class="crono-moment-history-list" id="cronoMomentHistoryList"></div>
         </aside>
       </div>
     </section>
@@ -1996,11 +1990,11 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js?v=189"></script>
-<script src="data-core.js?v=189"></script>
-<script src="sync-core.js?v=189"></script>
-<script src="push-client.js?v=189"></script>
-<script src="app.js?v=189"></script>
+<script src="timer-core.js?v=190"></script>
+<script src="data-core.js?v=190"></script>
+<script src="sync-core.js?v=190"></script>
+<script src="push-client.js?v=190"></script>
+<script src="app.js?v=190"></script>
 
 </body>
 <script>
@@ -2022,7 +2016,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=189', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=190', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

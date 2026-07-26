@@ -15038,7 +15038,7 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
     grid-column: 3;
     grid-row: 1;
     display: block;
-    align-self: stretch;
+    align-self: start;
     min-width: 0;
     margin: 0;
     padding: 12px;
@@ -15051,7 +15051,7 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
   }
   #view-cronometro .crono-moment-content {
     display: flex;
-    height: 100%;
+    height: auto;
     min-height: 0;
     flex-direction: column;
     gap: 10px;
@@ -15080,7 +15080,7 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
   }
   #view-cronometro .crono-moment-levels .estado-face-label { font-size: 8px; }
   #view-cronometro .crono-moment-history {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     align-content: start;
     min-height: 0;
     padding: 0;

@@ -909,18 +909,14 @@ test('records concentration and resisted urges across landscape and portrait tim
     discomfortNote: 'Tensión física y pensamiento repetitivo',
   });
 
-  const history = page.locator('#cronoMomentHistoryList');
-  await expect(history).toContainText('Impulso');
-  await expect(history).toContainText('Concentración');
-  await expect(history).toContainText('Concentrarme en la mano derecha');
-  await expect(history).toContainText('Tensión física y pensamiento repetitivo');
-  await history.getByRole('button', { name: 'Borrar impulso muy alto' }).click();
-  expect(await page.evaluate(() => ensureImpulsoEventos().length)).toBe(0);
-  await history.getByRole('button', { name: 'Borrar concentración alta' }).click();
-  expect(await page.evaluate(() => ({ events: ensureEstadoEventos().length, userSet: _estadoUserSet })))
-    .toEqual({ events: 0, userSet: false });
-  await expect(history).toContainText('Sin registros todavía');
-  await expect(page.locator('#cronoMomentHistoryCount')).toHaveText('Hoy · 0');
+  await expect(page.locator('#cronoMomentHistoryList')).toHaveCount(0);
+  await expect(page.locator('.crono-moment-history-toggle')).toHaveCount(0);
+  const horizontalLayout = await page.evaluate(() => {
+    const stage = document.getElementById('cronoStageIdle').getBoundingClientRect();
+    const monitorBox = document.querySelector('.crono-moment-monitor').getBoundingClientRect();
+    return { stageBottom: stage.bottom, monitorTop: monitorBox.top };
+  });
+  expect(horizontalLayout.monitorTop).toBeGreaterThanOrEqual(horizontalLayout.stageBottom - 1);
 
   await page.waitForTimeout(900);
   await expect(monitor.locator('.estado-face.active')).toHaveCount(0);
@@ -932,17 +928,13 @@ test('records concentration and resisted urges across landscape and portrait tim
   await expect(momentMonitor).toBeVisible();
   await expect(momentMonitor.locator('.crono-moment-mobile-trigger')).toBeHidden();
   await expect(momentMonitor.locator('.crono-moment-controls')).toBeVisible();
-  await expect(momentMonitor.locator('.crono-moment-history-toggle')).toBeVisible();
+  await expect(momentMonitor.locator('.crono-moment-history-toggle')).toHaveCount(0);
   await expect(momentMonitor.locator('#cronoMomentNote')).toBeVisible();
-  await expect(momentMonitor.locator('.crono-moment-history-list')).toBeHidden();
+  await expect(momentMonitor.locator('.crono-moment-history-list')).toHaveCount(0);
   const tabletControlsBox = await momentMonitor.locator('.crono-moment-controls').boundingBox();
   expect(tabletControlsBox.y).toBeGreaterThanOrEqual(0);
   expect(tabletControlsBox.y + tabletControlsBox.height).toBeLessThanOrEqual(1194);
-  await momentMonitor.locator('.crono-moment-history-toggle').click();
   await expect(momentMonitor.locator('.crono-moment-history')).toBeVisible();
-  await expect(momentMonitor.locator('.crono-moment-history-list')).toBeVisible();
-
-  await page.evaluate(() => toggleCronoMomentHistory(false));
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileTrigger = momentMonitor.locator('.crono-moment-mobile-trigger');
   await expect(mobileTrigger).toBeVisible();
