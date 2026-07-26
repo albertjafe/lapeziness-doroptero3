@@ -12645,6 +12645,43 @@ body.crono-running .crono-concentrado { display: none; }
     min-height: 73px;
     padding: 7px 8px;
   }
+  .crono-moment-note-compose {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border2) 55%, transparent);
+  }
+  .crono-moment-note-compose span {
+    color: var(--text3);
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  .crono-moment-note-compose input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    height: 30px;
+    padding: 5px 9px;
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border2));
+    border-radius: 9px;
+    outline: none;
+    background: color-mix(in srgb, var(--bg) 74%, transparent);
+    color: var(--text);
+    font: 10px/1.2 var(--font-sans, sans-serif);
+    transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  }
+  .crono-moment-note-compose input::placeholder { color: var(--text3); }
+  .crono-moment-note-compose input:focus {
+    border-color: color-mix(in srgb, var(--accent) 62%, var(--border2));
+    background: var(--bg2);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+  }
   .crono-moment-history-title {
     align-self: start;
     padding-top: 3px;
@@ -12658,7 +12695,7 @@ body.crono-running .crono-concentrado { display: none; }
   .crono-moment-history-list {
     display: grid;
     gap: 2px;
-    max-height: 58px;
+    max-height: 76px;
     overflow-y: auto;
   }
   .crono-moment-history-item {
@@ -12669,6 +12706,16 @@ body.crono-running .crono-concentrado { display: none; }
     min-height: 25px;
     color: var(--text2);
     font-size: 9px;
+  }
+  .crono-moment-history-note {
+    grid-column: 2 / -1;
+    overflow: hidden;
+    margin: -2px 0 3px;
+    color: var(--text3);
+    font-size: 9px;
+    line-height: 1.35;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .crono-moment-history-kind,
   .crono-moment-history-item time { color: var(--text3); }

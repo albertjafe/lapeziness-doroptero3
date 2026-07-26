@@ -877,8 +877,10 @@ test('records concentration and resisted urges across landscape and portrait tim
   const monitor = page.locator('.crono-concentration-monitor');
   await expect(monitor).toBeVisible();
   await expect(monitor).toContainText('Concentración');
+  await page.locator('#cronoMomentNote').fill('Concentrarme en la mano derecha');
   await monitor.getByRole('radio', { name: 'Alta', exact: true }).click();
   await expect(monitor.getByRole('radio', { name: 'Alta', exact: true })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('#cronoMomentNote')).toHaveValue('');
 
   const impulse = page.locator('#cronoImpulseFaces');
   await impulse.getByRole('radio', { name: 'Muy alto', exact: true }).click();
@@ -887,13 +889,20 @@ test('records concentration and resisted urges across landscape and portrait tim
   const state = await page.evaluate(() => ({
     value: estadoActualVal(),
     lastLabel: ensureEstadoEventos().at(-1)?.label,
+    lastNote: ensureEstadoEventos().at(-1)?.note,
     impulseLabel: ensureImpulsoEventos().at(-1)?.label,
   }));
-  expect(state).toEqual({ value: 78, lastLabel: 'Alta', impulseLabel: 'Muy alto' });
+  expect(state).toEqual({
+    value: 78,
+    lastLabel: 'Alta',
+    lastNote: 'Concentrarme en la mano derecha',
+    impulseLabel: 'Muy alto',
+  });
 
   const history = page.locator('#cronoMomentHistoryList');
   await expect(history).toContainText('Impulso');
   await expect(history).toContainText('Concentración');
+  await expect(history).toContainText('Concentrarme en la mano derecha');
   await history.getByRole('button', { name: 'Borrar impulso muy alto' }).click();
   expect(await page.evaluate(() => ensureImpulsoEventos().length)).toBe(0);
   await history.getByRole('button', { name: 'Borrar concentración alta' }).click();

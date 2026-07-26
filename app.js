@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-26-control-sesion-premium-v60';
+const APP_VERSION = '2026-07-26-notas-de-concentracion-v61';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -844,12 +844,12 @@ function _setEstadoAll(n) {
 }
 
 // El usuario toca una cara: fija el estado, persiste y da feedback.
-function pickEstado(idx) {
+function pickEstado(idx, trigger) {
   const f = ESTADO_FACES[idx];
   if (!f) return;
   _estadoUserSet = true;
   _setEstadoAll(f.v);
-  recordEstadoEvent(f);
+  recordEstadoEvent(f, consumeCronoMomentNote(trigger));
   selectedEnergy = f.v >= 65 ? 'alta' : f.v >= 35 ? 'normal' : 'baja';
   flashMomentSelection('concentration', idx);
   try { Haptics.medium(); } catch(e) {}
@@ -1041,10 +1041,10 @@ function setSessionJournalExpanded(expanded) {
   if (open) setTimeout(() => document.getElementById('sessionJournalInput')?.focus(), 0);
 }
 
-function pickImpulso(idx) {
+function pickImpulso(idx, trigger) {
   const level = IMPULSO_LEVELS[idx];
   if (!level) return;
-  recordImpulsoEvent(level);
+  recordImpulsoEvent(level, consumeCronoMomentNote(trigger));
   flashMomentSelection('impulse', idx);
   try { Haptics.medium(); } catch(e) {}
   try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
@@ -1210,7 +1210,15 @@ function estadoSnapshot() {
   return { estado: n, bienestar: n, sueno: suenoActualVal(), energia: n, claridad: n, deporte, siestas, triggers, tiempoDisponible };
 }
 
-function recordEstadoEvent(face) {
+function consumeCronoMomentNote(trigger) {
+  if (!trigger?.closest?.('.crono-moment-monitor')) return '';
+  const input = document.getElementById('cronoMomentNote');
+  const note = String(input?.value || '').trim().slice(0, 180);
+  if (input) input.value = '';
+  return note;
+}
+
+function recordEstadoEvent(face, note) {
   const arr = ensureEstadoEventos();
   const now = new Date();
   const entry = {
@@ -1219,6 +1227,7 @@ function recordEstadoEvent(face) {
     date: now.toDateString(),
     value: face.v,
     label: face.label,
+    note: String(note || '').trim().slice(0, 180),
   };
   arr.push(entry);
   if (arr.length > 2000) arr.splice(0, arr.length - 2000);
@@ -1231,7 +1240,7 @@ function recordEstadoEvent(face) {
   }, 600);
 }
 
-function recordImpulsoEvent(level) {
+function recordImpulsoEvent(level, note) {
   const arr = ensureImpulsoEventos();
   const now = new Date();
   arr.push({
@@ -1241,6 +1250,7 @@ function recordImpulsoEvent(level) {
     value: level.v,
     level: level.level,
     label: level.label,
+    note: String(note || '').trim().slice(0, 180),
   });
   if (arr.length > 2000) arr.splice(0, arr.length - 2000);
   _saveImpulsoEventosLocal(arr);
@@ -1323,14 +1333,16 @@ function renderCronoMomentHistory() {
     host.innerHTML = '<div class="crono-moment-empty">Sin registros todavía</div>';
     return;
   }
-  host.innerHTML = recent.map(item =>
-    '<div class="crono-moment-history-item" data-kind="' + item.kind + '">' +
+  host.innerHTML = recent.map(item => {
+    const note = String(item.note || '').trim();
+    return '<div class="crono-moment-history-item" data-kind="' + item.kind + '">' +
       '<span class="crono-moment-history-kind">' + item.kindLabel + '</span>' +
       '<strong>' + (item.label || item.value || '') + '</strong>' +
       '<time datetime="' + (item.at || '') + '">' + momentEventTimeLabel(item.at) + '</time>' +
       '<button type="button" aria-label="Borrar ' + item.kindLabel.toLowerCase() + ' ' + (item.label || '') + '" onclick="deleteCronoMomentEvent(\'' + item.kind + '\',\'' + item.id + '\')">×</button>' +
+      (note ? '<p class="crono-moment-history-note">' + escapeHtmlSafe(note) + '</p>' : '') +
     '</div>'
-  ).join('');
+  }).join('');
 }
 
 function deleteCronoMomentEvent(kind, id) {
@@ -1964,7 +1976,7 @@ function ritmoIconSvg(icon) {
 
 function ritmoChoiceHTML(item, idx, fnName, groupName) {
   return '<button type="button" class="estado-face ritmo-choice" role="radio" aria-checked="false"' +
-    ' data-level-index="' + idx + '" aria-label="' + item.label + '" title="' + item.label + '" onclick="' + fnName + '(' + idx + ')">' +
+    ' data-level-index="' + idx + '" aria-label="' + item.label + '" title="' + item.label + '" onclick="' + fnName + '(' + idx + ', this)">' +
     '<span class="estado-face-emoji ritmo-icon">' + ritmoIconSvg(item.icon) + '</span>' +
     '<span class="estado-face-label">' + item.label + '</span>' +
     '<span class="ritmo-dot" aria-hidden="true"></span>' +
