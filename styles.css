@@ -15016,7 +15016,7 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
   }
 }
 
-@media (min-width: 1200px) and (orientation: landscape) and (min-height: 650px) {
+@media (min-width: 1200px) and (orientation: landscape) and (min-height: 650px) and (hover: hover) and (pointer: fine) {
   [data-theme^="marmol"] #view-cronometro .crono-wrap,
   [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
     display: grid;

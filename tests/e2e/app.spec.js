@@ -951,6 +951,33 @@ test('records concentration and resisted urges across landscape and portrait tim
   expect(mobileContentBox.y + mobileContentBox.height).toBeLessThanOrEqual(844);
 });
 
+test('keeps a 13-inch touch iPad in the tablet layout', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 1366, height: 1024 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await context.newPage();
+  await prepare(page);
+  const layout = await page.evaluate(() => {
+    showView('cronometro');
+    const stage = document.getElementById('cronoStageIdle').getBoundingClientRect();
+    const monitor = document.querySelector('.crono-moment-monitor').getBoundingClientRect();
+    return {
+      coarse: matchMedia('(pointer: coarse)').matches,
+      desktopPointer: matchMedia('(hover: hover) and (pointer: fine)').matches,
+      stageBottom: stage.bottom,
+      monitorTop: monitor.top,
+      monitorPosition: getComputedStyle(document.querySelector('.crono-moment-monitor')).position,
+    };
+  });
+  expect(layout.coarse).toBe(true);
+  expect(layout.desktopPointer).toBe(false);
+  expect(layout.monitorPosition).toBe('static');
+  expect(layout.monitorTop).toBeGreaterThanOrEqual(layout.stageBottom - 1);
+  await context.close();
+});
+
 test('advances free timer progress to a 120 minute maximum and enlarges mode labels', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await prepare(page);
