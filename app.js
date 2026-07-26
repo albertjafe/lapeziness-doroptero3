@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-26-tareas-urgentisimas-v64';
+const APP_VERSION = '2026-07-26-escritorio-control-y-zoom-v65';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -17137,12 +17137,14 @@ function cronoSetInterfaceScale(value, options) {
     view.style.setProperty('--crono-tools-track', toolsShare.toFixed(3) + 'fr');
     view.style.setProperty('--crono-interface-ring-size', ringSize.toFixed(2) + 'px');
     view.style.setProperty('--crono-tools-min-height', (portraitToolsBase * toolsScale).toFixed(2) + 'px');
+    view.style.setProperty('--crono-tools-density', Math.max(.78, Math.min(1.08, toolsScale)).toFixed(3));
     view.style.setProperty('--crono-clock-content-scale', clockContentScale.toFixed(3));
     view.style.setProperty('--crono-timer-min-width', Math.max(185, 250 * scale).toFixed(2) + 'px');
     view.dataset.interfaceScale = String(scale);
   }
   document.body.classList.toggle('crono-interface-clock-small', scale < 0.999);
   document.body.classList.toggle('crono-interface-clock-large', scale > 1.001);
+  document.body.classList.toggle('crono-interface-tools-compact', scale > 1.13);
   if (opts.persist) {
     try { localStorage.setItem(CRONO_INTERFACE_SCALE_KEY, String(scale)); } catch(e) {}
   }

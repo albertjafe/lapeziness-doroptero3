@@ -1,12 +1,12 @@
-const CACHE = 'estudio-v187';
+const CACHE = 'estudio-v188';
 const ASSETS = [
   './index.html',
-  './styles.css?v=187',
-  './app.js?v=187',
-  './timer-core.js?v=187',
-  './data-core.js?v=187',
-  './sync-core.js?v=187',
-  './push-client.js?v=187',
+  './styles.css?v=188',
+  './app.js?v=188',
+  './timer-core.js?v=188',
+  './data-core.js?v=188',
+  './sync-core.js?v=188',
+  './push-client.js?v=188',
   './manifest.json',
   './icon.svg',
   './icon-192.png',
