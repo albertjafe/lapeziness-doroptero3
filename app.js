@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-26-controles-esenciales-v59';
+const APP_VERSION = '2026-07-26-control-sesion-premium-v60';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -17879,7 +17879,9 @@ function renderCronoTasks() {
     return '<section class="crono-task-lane ' + kind + (clean ? ' is-clean' : '') + '">' +
       '<div class="crono-task-lane-head"><span class="crono-task-lane-dot"></span><strong>' + title + '</strong>' +
         (clean ? '' : '<span class="crono-task-lane-count">' + group.pending.length + '</span>') +
-        '<button type="button" class="crono-task-lane-add" onclick="cronoOpenTaskComposerForKind(\'' + source + '\',\'' + kind + '\')" aria-label="Añadir tarea de ' + title + '">+</button>' +
+        '<button type="button" class="crono-task-lane-add" onclick="cronoOpenTaskComposerForKind(\'' + source + '\',\'' + kind + '\')" aria-label="Añadir tarea de ' + title + '">' +
+          '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>' +
+        '</button>' +
       '</div>' +
       '<div class="crono-task-list">' +
         (clean ? '<div class="crono-task-clean" role="status"><span class="crono-task-clean-check" aria-hidden="true"></span><strong>Todo limpio</strong></div>' : group.pending.map(row).join('')) +
@@ -18124,6 +18126,7 @@ function cronoSessionButtonCleanup() {
   const press = _cronoSessionButtonPress;
   if (!press) return;
   clearTimeout(press.timer);
+  (press.hapticTimers || []).forEach(clearTimeout);
   press.button?.classList.remove('is-holding');
   _cronoSessionButtonPress = null;
 }
@@ -18131,14 +18134,21 @@ function cronoSessionButtonCleanup() {
 function cronoSessionButtonPressStart(event, button) {
   if (!event || !button || (event.button != null && event.button !== 0)) return;
   cronoSessionButtonCleanup();
-  const press = { button, pointerId: event.pointerId, x: event.clientX, y: event.clientY, timer: null };
+  const press = { button, pointerId: event.pointerId, x: event.clientX, y: event.clientY, timer: null, hapticTimers: [] };
   _cronoSessionButtonPress = press;
   button.classList.add('is-holding');
+  try { Haptics.light(); } catch(e) {}
+  press.hapticTimers.push(setTimeout(() => {
+    if (_cronoSessionButtonPress === press) try { Haptics.tick(); } catch(e) {}
+  }, 320));
+  press.hapticTimers.push(setTimeout(() => {
+    if (_cronoSessionButtonPress === press) try { Haptics.light(); } catch(e) {}
+  }, 650));
   try { button.setPointerCapture?.(event.pointerId); } catch(e) {}
   press.timer = setTimeout(() => {
     if (_cronoSessionButtonPress !== press) return;
     _cronoSessionButtonSuppressClickUntil = Date.now() + 1000;
-    try { Haptics.medium(); } catch(e) {}
+    try { Haptics.heavy(); } catch(e) {}
     cronoSessionButtonCleanup();
     cronoStop();
   }, 900);
@@ -18171,8 +18181,12 @@ function cronoSessionButtonHtml(paused, extraClass) {
     'onpointermove="cronoSessionButtonPressMove(event)" onpointerup="cronoSessionButtonPressEnd(event)" ' +
     'onpointercancel="cronoSessionButtonCleanup()" oncontextmenu="event.preventDefault()" ' +
     'aria-label="' + label + '. Mantén pulsado para terminar y guardar">' +
-      '<svg class="crono-session-hold-ring" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="27"></circle></svg>' +
+      '<svg class="crono-session-hold-ring" viewBox="0 0 64 64" aria-hidden="true">' +
+        '<circle class="crono-session-hold-track" cx="32" cy="32" r="27"></circle>' +
+        '<circle class="crono-session-hold-progress" cx="32" cy="32" r="27"></circle>' +
+      '</svg>' +
       '<span class="crono-session-main-icon" aria-hidden="true">' + (paused ? CRONO_ICONS.play : CRONO_ICONS.pause) + '</span>' +
+      '<span class="crono-session-stop-mark" aria-hidden="true"><i></i></span>' +
     '</button>';
 }
 
