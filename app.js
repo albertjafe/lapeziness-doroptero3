@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-26-sesiones-limpias-v74';
+const APP_VERSION = '2026-07-26-carrusel-integral-v75';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -509,7 +509,7 @@ function updateContextHeader(name) {
   if (eyebrow) eyebrow.textContent = context.eyebrow;
   if (title) title.textContent = context.title;
   if (date) {
-    const showsDate = name === 'session' || name === 'calendario';
+    const showsDate = name === 'calendario';
     date.hidden = !showsDate;
     if (!showsDate) date.textContent = '';
   }
@@ -693,17 +693,14 @@ function closeModal(id) {
 
 function updateHeader() {
   const d = new Date();
-  const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
   const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const currentView = document.body.getAttribute('data-view') || 'session';
   updateContextHeader(currentView);
-  const h = d.getHours();
-  const saludo = h < 6 ? 'Buenas noches' : h < 13 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches';
   const dateEl = document.getElementById('headerDate');
   if (dateEl) {
-    dateEl.textContent = currentView === 'calendario'
-      ? `${meses[d.getMonth()]} ${d.getFullYear()}`
-      : `${saludo} · ${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}`;
+    const showsDate = currentView === 'calendario';
+    dateEl.hidden = !showsDate;
+    dateEl.textContent = showsDate ? `${meses[d.getMonth()]} ${d.getFullYear()}` : '';
   }
   // Show nearest upcoming event
   const now = Date.now();
@@ -952,19 +949,15 @@ function viewSwipeCleanup(swipe) {
     view.classList.remove('view-swipe-live', 'view-swipe-neighbor', 'view-swipe-settling');
     ['transform', 'opacity', 'position', 'top', 'left', 'width', 'height', 'max-width', 'margin', 'z-index', 'pointer-events'].forEach(prop => view.style.removeProperty(prop));
   });
-  [swipe.header, swipe.neighborHeader].forEach(header => header?.remove());
+  [swipe.header, swipe.neighborHeader, swipe.nav, swipe.neighborNav].forEach(layer => layer?.remove());
   document.body.classList.remove('view-swipe-dragging', 'view-swipe-settling');
 }
 
 function viewSwipeHeaderDate(name) {
-  if (name !== 'session' && name !== 'calendario') return '';
+  if (name !== 'calendario') return '';
   const d = new Date();
-  const dias = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
   const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  if (name === 'calendario') return `${meses[d.getMonth()]} ${d.getFullYear()}`;
-  const h = d.getHours();
-  const saludo = h < 6 ? 'Buenas noches' : h < 13 ? 'Buenos días' : h < 21 ? 'Buenas tardes' : 'Buenas noches';
-  return `${saludo} · ${dias[d.getDay()]} ${d.getDate()} ${meses[d.getMonth()]}`;
+  return `${meses[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 function viewSwipeBuildHeader(name, kind) {
@@ -994,12 +987,37 @@ function viewSwipeBuildHeader(name, kind) {
   return header;
 }
 
-function viewSwipePrepareHeaders(swipe, nextName, direction) {
+function viewSwipeBuildNav(name, kind) {
+  // En concentración el cronómetro ocupa el lienzo completo, también sin la
+  // barra inferior. Para el resto clonamos la barra real y marcamos su vista.
+  if (name === 'cronometro') return null;
+  const source = document.querySelector('body > .nav-bottom');
+  if (!source) return null;
+  const nav = source.cloneNode(true);
+  nav.classList.add('view-swipe-nav', 'view-swipe-nav-' + kind);
+  nav.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
+  nav.querySelectorAll('[onclick]').forEach(node => node.removeAttribute('onclick'));
+  nav.querySelectorAll('.nav-btn').forEach(button => {
+    const active = button.getAttribute('data-view') === name;
+    button.classList.toggle('active', active);
+    if (active) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  });
+  document.body.appendChild(nav);
+  return nav;
+}
+
+function viewSwipePrepareChrome(swipe, nextName, direction) {
   if (!swipe.header) swipe.header = viewSwipeBuildHeader(SWIPE_VIEW_ORDER[swipe.index], 'current');
   swipe.neighborHeader?.remove();
   swipe.neighborHeader = viewSwipeBuildHeader(nextName, 'neighbor');
+  if (!swipe.nav) swipe.nav = viewSwipeBuildNav(SWIPE_VIEW_ORDER[swipe.index], 'current');
+  swipe.neighborNav?.remove();
+  swipe.neighborNav = viewSwipeBuildNav(nextName, 'neighbor');
   if (swipe.header) swipe.header.style.transform = 'translate3d(0,0,0)';
   if (swipe.neighborHeader) swipe.neighborHeader.style.transform = 'translate3d(' + (direction * swipe.width) + 'px,0,0)';
+  if (swipe.nav) swipe.nav.style.transform = 'translate3d(0,0,0)';
+  if (swipe.neighborNav) swipe.neighborNav.style.transform = 'translate3d(' + (direction * swipe.width) + 'px,0,0)';
 }
 
 function viewSwipePrepareNeighbor(swipe, direction) {
@@ -1015,7 +1033,10 @@ function viewSwipePrepareNeighbor(swipe, direction) {
     swipe.neighborDirection = direction;
     swipe.neighborHeader?.remove();
     swipe.neighborHeader = null;
+    swipe.neighborNav?.remove();
+    swipe.neighborNav = null;
     if (!swipe.header) swipe.header = viewSwipeBuildHeader(SWIPE_VIEW_ORDER[swipe.index], 'current');
+    if (!swipe.nav) swipe.nav = viewSwipeBuildNav(SWIPE_VIEW_ORDER[swipe.index], 'current');
     return false;
   }
   const nextName = SWIPE_VIEW_ORDER[nextIndex];
@@ -1026,10 +1047,13 @@ function viewSwipePrepareNeighbor(swipe, direction) {
   if (nextName === 'session') renderCombinedSessionStats();
   if (nextName === 'obras') renderObras();
   const rect = swipe.view.getBoundingClientRect();
-  const content = document.querySelector('.app-content');
-  const normalTop = Math.max(0, parseFloat(content?.style?.paddingTop) || 0);
-  const targetTop = nextName === 'cronometro' ? 0 : (normalTop || Math.max(0, rect.top));
   swipe.width = Math.max(1, window.innerWidth);
+  viewSwipePrepareChrome(swipe, nextName, direction);
+  // Medimos la cabecera vecina real ya clonada. Así una cabecera de dos líneas
+  // (Sesiones) y otra de una (Obras) reservan exactamente su altura definitiva.
+  const targetTop = swipe.neighborHeader
+    ? Math.max(0, swipe.neighborHeader.getBoundingClientRect().height + 4)
+    : 0;
   swipe.neighbor = neighbor;
   swipe.neighborDirection = direction;
   neighbor.classList.add('view-swipe-neighbor');
@@ -1043,7 +1067,6 @@ function viewSwipePrepareNeighbor(swipe, direction) {
   neighbor.style.zIndex = '301';
   neighbor.style.pointerEvents = 'none';
   neighbor.style.transform = 'translate3d(' + (direction * swipe.width) + 'px,0,0)';
-  viewSwipePrepareHeaders(swipe, nextName, direction);
   return true;
 }
 
@@ -1053,11 +1076,15 @@ function viewSwipeRenderFrame(swipe) {
   const dx = swipe.renderDx || 0;
   swipe.view.style.transform = 'translate3d(' + dx + 'px,0,0)';
   if (swipe.header) swipe.header.style.transform = 'translate3d(' + dx + 'px,0,0)';
+  if (swipe.nav) swipe.nav.style.transform = 'translate3d(' + dx + 'px,0,0)';
   if (swipe.neighbor) {
     swipe.neighbor.style.transform = 'translate3d(' + (dx + swipe.neighborDirection * swipe.width) + 'px,0,0)';
   }
   if (swipe.neighborHeader) {
     swipe.neighborHeader.style.transform = 'translate3d(' + (dx + swipe.neighborDirection * swipe.width) + 'px,0,0)';
+  }
+  if (swipe.neighborNav) {
+    swipe.neighborNav.style.transform = 'translate3d(' + (dx + swipe.neighborDirection * swipe.width) + 'px,0,0)';
   }
 }
 
@@ -1077,6 +1104,8 @@ function viewSwipeSettle(swipe, commit, nextView) {
   swipe.neighbor?.classList.add('view-swipe-settling');
   swipe.header?.classList.add('view-swipe-settling');
   swipe.neighborHeader?.classList.add('view-swipe-settling');
+  swipe.nav?.classList.add('view-swipe-settling');
+  swipe.neighborNav?.classList.add('view-swipe-settling');
   const activeEnd = commit ? -swipe.neighborDirection * swipe.width : 0;
   const neighborEnd = commit ? 0 : swipe.neighborDirection * swipe.width;
   requestAnimationFrame(() => {
@@ -1084,6 +1113,8 @@ function viewSwipeSettle(swipe, commit, nextView) {
     if (swipe.neighbor) swipe.neighbor.style.transform = 'translate3d(' + neighborEnd + 'px,0,0)';
     if (swipe.header) swipe.header.style.transform = 'translate3d(' + activeEnd + 'px,0,0)';
     if (swipe.neighborHeader) swipe.neighborHeader.style.transform = 'translate3d(' + neighborEnd + 'px,0,0)';
+    if (swipe.nav) swipe.nav.style.transform = 'translate3d(' + activeEnd + 'px,0,0)';
+    if (swipe.neighborNav) swipe.neighborNav.style.transform = 'translate3d(' + neighborEnd + 'px,0,0)';
   });
   setTimeout(() => {
     if (commit && nextView) {
@@ -1091,6 +1122,10 @@ function viewSwipeSettle(swipe, commit, nextView) {
       // intermedio vacío ni una segunda copia que pueda provocar un corte.
       document.body.classList.add('view-swipe-commit');
       showView(nextView);
+      // showView cambia las clases inmersivas del cronómetro. Medimos ahora,
+      // antes de retirar las capas, para que el contenido normal caiga en el
+      // mismo píxel vertical que ocupaba durante el arrastre.
+      if (nextView !== 'cronometro' && typeof adjustTopPadding === 'function') adjustTopPadding();
     }
     viewSwipeCleanup(swipe);
     requestAnimationFrame(() => document.body.classList.remove('view-swipe-commit'));
@@ -1140,6 +1175,8 @@ function initViewSwipeNavigation() {
       neighborDirection: 0,
       header: null,
       neighborHeader: null,
+      nav: null,
+      neighborNav: null,
       renderDx: 0,
       raf: null,
     };

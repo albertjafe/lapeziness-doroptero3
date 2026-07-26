@@ -15153,6 +15153,8 @@ body.view-swipe-dragging .view.active {
 }
 body.view-swipe-dragging > .topbar:not(.view-swipe-header),
 body.view-swipe-settling > .topbar:not(.view-swipe-header) { visibility: hidden; }
+body.view-swipe-dragging > .nav-bottom:not(.view-swipe-nav),
+body.view-swipe-settling > .nav-bottom:not(.view-swipe-nav) { visibility: hidden; }
 .topbar.view-swipe-header {
   display: block !important;
   position: fixed;
@@ -15164,6 +15166,16 @@ body.view-swipe-settling > .topbar:not(.view-swipe-header) { visibility: hidden;
   will-change: transform;
 }
 body.crono-focus .topbar.view-swipe-header { display: block !important; }
+.nav-bottom.view-swipe-nav {
+  position: fixed;
+  inset: auto 0 0 0;
+  width: 100%;
+  z-index: 305;
+  pointer-events: none;
+  contain: paint;
+  will-change: transform;
+}
+body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
 .view.view-swipe-live { position: relative; z-index: 302; }
 .view.view-swipe-neighbor {
   display: block !important;
@@ -15173,13 +15185,15 @@ body.crono-focus .topbar.view-swipe-header { display: block !important; }
   will-change: transform;
 }
 .view.view-swipe-settling,
-.topbar.view-swipe-settling {
+.topbar.view-swipe-settling,
+.nav-bottom.view-swipe-settling {
   transition: transform 260ms cubic-bezier(.22,.82,.25,1);
   will-change: transform;
 }
 @media (prefers-reduced-motion: reduce) {
   .view.view-swipe-settling,
-  .topbar.view-swipe-settling { transition-duration: 1ms; }
+  .topbar.view-swipe-settling,
+  .nav-bottom.view-swipe-settling { transition-duration: 1ms; }
 }
 
 /* Acción de sesión separada, situada al final del cajón de herramientas. */
