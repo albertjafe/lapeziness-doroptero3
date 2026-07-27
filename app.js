@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-27-destellos-eventos-v81';
+const APP_VERSION = '2026-07-27-pulso-resistencia-v83';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -244,6 +244,7 @@ function _mergeStudyHistory(base, other) {
   merged.estadoEventos = _mergeEstadoEventos(base.estadoEventos, other.estadoEventos);
   merged.impulsoEventos = _mergeEstadoEventos(base.impulsoEventos, other.impulsoEventos);
   merged.malestarEventos = _mergeEstadoEventos(base.malestarEventos, other.malestarEventos);
+  merged.resistenciaEventos = _mergeEstadoEventos(base.resistenciaEventos, other.resistenciaEventos);
   merged.deporteEventos = _mergeDeporteEventos(base.deporteEventos, other.deporteEventos);
   merged.suenoEventos = _mergeSuenoEventos(base.suenoEventos, other.suenoEventos);
   merged.triggerEventos = _mergeTriggerEventos(base.triggerEventos, other.triggerEventos);
@@ -382,6 +383,8 @@ async function loadFromCloud() {
         const cloudEstadoN = (data.data.estadoEventos || []).length;
         const localImpulsoN = localDb ? (localDb.impulsoEventos || []).length : 0;
         const cloudImpulsoN = (data.data.impulsoEventos || []).length;
+        const localResistenciaN = localDb ? (localDb.resistenciaEventos || []).length : 0;
+        const cloudResistenciaN = (data.data.resistenciaEventos || []).length;
         const localDeporteN = localDb ? (localDb.deporteEventos || []).length : 0;
         const cloudDeporteN = (data.data.deporteEventos || []).length;
         const localSuenoN = localDb ? (localDb.suenoEventos || []).length : 0;
@@ -390,7 +393,7 @@ async function loadFromCloud() {
         const cloudTriggerN = (data.data.triggerEventos || []).length;
         const localTiempoN = localDb ? (localDb.tiempoDisponibleEventos || []).length : 0;
         const cloudTiempoN = (data.data.tiempoDisponibleEventos || []).length;
-        const localHasMore = localMin > cloudMin || localEstadoN > cloudEstadoN || localImpulsoN > cloudImpulsoN || localDeporteN > cloudDeporteN || localSuenoN > cloudSuenoN || localTriggerN > cloudTriggerN || localTiempoN > cloudTiempoN;
+        const localHasMore = localMin > cloudMin || localEstadoN > cloudEstadoN || localImpulsoN > cloudImpulsoN || localResistenciaN > cloudResistenciaN || localDeporteN > cloudDeporteN || localSuenoN > cloudSuenoN || localTriggerN > cloudTriggerN || localTiempoN > cloudTiempoN;
         if (localHasMore || (typeof SyncCore !== 'undefined' && SyncCore.isDirty(beforeMeta))) {
           if (typeof SyncCore !== 'undefined' && !SyncCore.isDirty(_readSyncMeta())) _writeLocalSnapshot(true);
           await syncPendingCloudChanges();
@@ -432,6 +435,7 @@ function getDefaultData() {
     estadoEventos: [],
     impulsoEventos: [],
     malestarEventos: [],
+    resistenciaEventos: [],
     deporteEventos: [],
     suenoEventos: [],
     triggerEventos: [],
@@ -449,6 +453,7 @@ if (!db.forestPlants) db.forestPlants = [];
 if (!db.estadoEventos) db.estadoEventos = [];
 if (!db.impulsoEventos) db.impulsoEventos = [];
 if (!db.malestarEventos) db.malestarEventos = [];
+if (!db.resistenciaEventos) db.resistenciaEventos = [];
 if (!db.deporteEventos) db.deporteEventos = [];
 if (!db.suenoEventos) db.suenoEventos = [];
 if (!db.triggerEventos) db.triggerEventos = [];
@@ -765,10 +770,18 @@ const IMPULSO_LEVELS = [
 ];
 
 const MALESTAR_LEVELS = IMPULSO_LEVELS.map(item => Object.assign({}, item));
+const RESISTENCIA_LEVELS = [
+  { v: 20, level: 1, label: 'Ninguna', icon: 'trigger-1' },
+  { v: 40, level: 2, label: 'Baja', icon: 'trigger-2' },
+  { v: 60, level: 3, label: 'Media', icon: 'trigger-3' },
+  { v: 80, level: 4, label: 'Alta', icon: 'trigger-4' },
+  { v: 100, level: 5, label: 'Muy alta', icon: 'trigger-5' },
+];
 
 let _concentrationPulseIndex = -1;
 let _impulsePulseIndex = -1;
 let _discomfortPulseIndex = -1;
+let _resistancePulseIndex = -1;
 
 const SUENO_FACES = [
   { v: 12, label: 'Muy poco', icon: 'moon-lowest' },
@@ -1411,6 +1424,27 @@ function ensureMalestarEventos() {
   return db.malestarEventos;
 }
 
+function _resistenciaEventosLocal() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('alberto_resistencia_eventos_v1') || '[]');
+    return Array.isArray(raw) ? raw : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function _saveResistenciaEventosLocal(items) {
+  try {
+    localStorage.setItem('alberto_resistencia_eventos_v1', JSON.stringify((items || []).slice(-2000)));
+  } catch(e) {}
+}
+
+function ensureResistenciaEventos() {
+  if (typeof db !== 'object' || !db) return _resistenciaEventosLocal();
+  if (!Array.isArray(db.resistenciaEventos)) db.resistenciaEventos = _resistenciaEventosLocal();
+  return db.resistenciaEventos;
+}
+
 function _deporteEventosLocal() {
   try {
     const raw = JSON.parse(localStorage.getItem('alberto_deporte_eventos_v1') || '[]');
@@ -1546,6 +1580,15 @@ function pickMalestar(idx, trigger) {
   if (!level) return;
   recordMalestarEvent(level, consumeCronoMomentNote(trigger));
   flashMomentSelection('discomfort', idx);
+  try { Haptics.medium(); } catch(e) {}
+  try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
+}
+
+function pickResistencia(idx, trigger) {
+  const level = RESISTENCIA_LEVELS[idx];
+  if (!level) return;
+  recordResistenciaEvent(level, consumeCronoMomentNote(trigger));
+  flashMomentSelection('resistance', idx);
   try { Haptics.medium(); } catch(e) {}
   try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
 }
@@ -1782,18 +1825,42 @@ function recordMalestarEvent(level, note) {
   }, 600);
 }
 
+function recordResistenciaEvent(level, note) {
+  const arr = ensureResistenciaEventos();
+  const now = new Date();
+  arr.push({
+    id: 'resistencia_' + now.getTime() + '_' + Math.random().toString(36).slice(2, 7),
+    at: now.toISOString(),
+    date: now.toDateString(),
+    value: level.v,
+    level: level.level,
+    label: level.label,
+    note: String(note || '').trim().slice(0, 180),
+  });
+  if (arr.length > 2000) arr.splice(0, arr.length - 2000);
+  _saveResistenciaEventosLocal(arr);
+  renderCronoMomentHistory();
+  clearTimeout(recordResistenciaEvent._t);
+  recordResistenciaEvent._t = setTimeout(() => {
+    if (typeof saveData === 'function') saveData();
+  }, 600);
+}
+
 function flashMomentSelection(kind, idx) {
   const isImpulse = kind === 'impulse';
   const isDiscomfort = kind === 'discomfort';
+  const isResistance = kind === 'resistance';
   if (isImpulse) _impulsePulseIndex = idx;
   else if (isDiscomfort) _discomfortPulseIndex = idx;
+  else if (isResistance) _resistancePulseIndex = idx;
   else _concentrationPulseIndex = idx;
   refreshMomentFacesUI();
-  const timerKey = isImpulse ? '_impulseTimer' : isDiscomfort ? '_discomfortTimer' : '_concentrationTimer';
+  const timerKey = isImpulse ? '_impulseTimer' : isDiscomfort ? '_discomfortTimer' : isResistance ? '_resistanceTimer' : '_concentrationTimer';
   clearTimeout(flashMomentSelection[timerKey]);
   flashMomentSelection[timerKey] = setTimeout(() => {
     if (isImpulse) _impulsePulseIndex = -1;
     else if (isDiscomfort) _discomfortPulseIndex = -1;
+    else if (isResistance) _resistancePulseIndex = -1;
     else _concentrationPulseIndex = -1;
     refreshMomentFacesUI();
   }, 850);
@@ -1814,6 +1881,12 @@ function refreshMomentFacesUI() {
   });
   document.querySelectorAll('#cronoDiscomfortFaces .estado-face').forEach(button => {
     const on = Number(button.dataset.levelIndex) === _discomfortPulseIndex;
+    button.classList.toggle('active', on);
+    button.classList.toggle('is-registering', on);
+    button.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+  document.querySelectorAll('#cronoResistanceFaces .estado-face').forEach(button => {
+    const on = Number(button.dataset.levelIndex) === _resistancePulseIndex;
     button.classList.toggle('active', on);
     button.classList.toggle('is-registering', on);
     button.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -1855,10 +1928,12 @@ function renderCronoMomentHistory() {
     .map(item => Object.assign({ kind: 'impulse', kindLabel: 'Impulso' }, item));
   const discomfort = ensureMalestarEventos().filter(item => item && item.date === today)
     .map(item => Object.assign({ kind: 'discomfort', kindLabel: 'Malestar' }, item));
-  const count = concentration.length + impulses.length + discomfort.length;
+  const resistance = ensureResistenciaEventos().filter(item => item && item.date === today)
+    .map(item => Object.assign({ kind: 'resistance', kindLabel: 'Resistencia' }, item));
+  const count = concentration.length + impulses.length + discomfort.length + resistance.length;
   const countLabel = document.getElementById('cronoMomentHistoryCount');
   if (countLabel) countLabel.textContent = 'Hoy · ' + count;
-  const recent = concentration.concat(impulses, discomfort)
+  const recent = concentration.concat(impulses, discomfort, resistance)
     .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
     .slice(0, 6);
   if (!recent.length) {
@@ -1880,12 +1955,14 @@ function renderCronoMomentHistory() {
 function deleteCronoMomentEvent(kind, id) {
   const isImpulse = kind === 'impulse';
   const isDiscomfort = kind === 'discomfort';
-  const arr = isImpulse ? ensureImpulsoEventos() : isDiscomfort ? ensureMalestarEventos() : ensureEstadoEventos();
+  const isResistance = kind === 'resistance';
+  const arr = isImpulse ? ensureImpulsoEventos() : isDiscomfort ? ensureMalestarEventos() : isResistance ? ensureResistenciaEventos() : ensureEstadoEventos();
   const index = arr.findIndex(item => item && item.id === id);
   if (index < 0) return;
   arr.splice(index, 1);
   if (isImpulse) _saveImpulsoEventosLocal(arr);
   else if (isDiscomfort) _saveMalestarEventosLocal(arr);
+  else if (isResistance) _saveResistenciaEventosLocal(arr);
   else {
     _saveEstadoEventosLocal(arr);
     const today = new Date().toDateString();
@@ -1898,7 +1975,7 @@ function deleteCronoMomentEvent(kind, id) {
     refreshEstadoFacesUI();
   }
   renderCronoMomentHistory();
-  if (!isImpulse && !isDiscomfort) refreshEstadoEventSummary();
+  if (!isImpulse && !isDiscomfort && !isResistance) refreshEstadoEventSummary();
   if (typeof saveData === 'function') saveData();
   showToast('Registro borrado');
 }
@@ -2542,6 +2619,11 @@ function initEstadoSliders() {
   if (cronoDiscomfortHost && !cronoDiscomfortHost.dataset.built) {
     cronoDiscomfortHost.innerHTML = MALESTAR_LEVELS.map((f, i) => ritmoChoiceHTML(f, i, 'pickMalestar', 'malestar')).join('');
     cronoDiscomfortHost.dataset.built = '1';
+  }
+  const cronoResistanceHost = document.getElementById('cronoResistanceFaces');
+  if (cronoResistanceHost && !cronoResistanceHost.dataset.built) {
+    cronoResistanceHost.innerHTML = RESISTENCIA_LEVELS.map((f, i) => ritmoChoiceHTML(f, i, 'pickResistencia', 'resistencia')).join('');
+    cronoResistanceHost.dataset.built = '1';
   }
   const sleepHost = document.getElementById('suenoFaces');
   if (sleepHost && !sleepHost.dataset.built) {
@@ -12975,6 +13057,267 @@ function _statsAvailabilityCard(start, end) {
     + '</div>';
 }
 
+// ── PULSO · curvas momentáneas ─────────────────────────────────────────────
+// Mantiene los registros reales visibles y no une puntos separados por huecos
+// largos. Las vistas agregadas conservan además el rango observado.
+let _pulseRange = localStorage.getItem('pulse_range') || 'dia';
+if (!['dia', 'semana', 'tipico', 'mes'].includes(_pulseRange)) _pulseRange = 'dia';
+let _pulseOffset = 0;
+const _pulseVisible = new Set(['concentration', 'impulse', 'discomfort', 'resistance']);
+const PULSE_METRICS = [
+  { key: 'concentration', label: 'Concentración', short: 'Concentración', color: '#4d9fe6' },
+  { key: 'impulse', label: 'Impulso superado', short: 'Impulso', color: '#d89b45' },
+  { key: 'discomfort', label: 'Malestar', short: 'Malestar', color: '#e36f72' },
+  { key: 'resistance', label: 'Resistencia', short: 'Resistencia', color: '#9b7ce6' },
+];
+
+function _pulseAtNoon(date) {
+  const d = new Date(date);
+  d.setHours(12, 0, 0, 0);
+  return d;
+}
+
+function _pulsePeriod() {
+  const base = _pulseAtNoon(new Date());
+  let start, end, label;
+  if (_pulseRange === 'dia') {
+    start = new Date(base);
+    start.setDate(start.getDate() + _pulseOffset);
+    start.setHours(0, 0, 0, 0);
+    end = new Date(start); end.setDate(end.getDate() + 1);
+    label = start.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  } else if (_pulseRange === 'semana' || _pulseRange === 'tipico') {
+    start = new Date(base);
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7) + (_pulseOffset * 7));
+    start.setHours(0, 0, 0, 0);
+    end = new Date(start); end.setDate(end.getDate() + 7);
+    const last = new Date(end); last.setDate(last.getDate() - 1);
+    label = (_pulseRange === 'tipico' ? 'Semana base · ' : '') + start.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + '–' + last.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+  } else {
+    start = new Date(base.getFullYear(), base.getMonth() + _pulseOffset, 1);
+    end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+    label = start.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  }
+  label = label.charAt(0).toUpperCase() + label.slice(1);
+  return { start, end, label };
+}
+
+function _pulseLevel(value, key) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  const source = key === 'concentration' ? ESTADO_FACES : IMPULSO_LEVELS;
+  let best = 0;
+  source.forEach((item, idx) => {
+    if (Math.abs(item.v - n) < Math.abs(source[best].v - n)) best = idx;
+  });
+  return best + 1;
+}
+
+function _pulseSource(metric) {
+  if (metric === 'concentration') return ensureEstadoEventos();
+  if (metric === 'impulse') return ensureImpulsoEventos();
+  if (metric === 'discomfort') return ensureMalestarEventos();
+  return ensureResistenciaEventos();
+}
+
+function _pulseRaw(period) {
+  const out = {};
+  PULSE_METRICS.forEach(metric => {
+    out[metric.key] = _pulseSource(metric.key).map(item => {
+      const at = new Date(item?.at || '');
+      const value = _pulseLevel(item?.value, metric.key);
+      if (!item || Number.isNaN(at.getTime()) || value == null || at < period.start || at >= period.end) return null;
+      return { at, value, note: String(item.note || ''), label: item.label || '', id: item.id || '' };
+    }).filter(Boolean).sort((a, b) => a.at - b.at);
+  });
+  return out;
+}
+
+function _pulseAggregate(values) {
+  const sum = values.reduce((acc, value) => acc + value, 0);
+  return { value: sum / values.length, lo: Math.min(...values), hi: Math.max(...values), count: values.length };
+}
+
+function _pulseSeries(period) {
+  const raw = _pulseRaw(period);
+  const span = period.end - period.start;
+  const result = {};
+  PULSE_METRICS.forEach(metric => {
+    const rows = raw[metric.key];
+    if (_pulseRange === 'tipico') {
+      const bins = new Map();
+      rows.forEach(row => {
+        const minute = row.at.getHours() * 60 + row.at.getMinutes();
+        const bin = Math.floor(minute / 120);
+        if (!bins.has(bin)) bins.set(bin, []);
+        bins.get(bin).push(row);
+      });
+      result[metric.key] = Array.from(bins.entries()).sort((a, b) => a[0] - b[0]).map(([bin, items]) => {
+        const agg = _pulseAggregate(items.map(item => item.value));
+        return Object.assign(agg, { x: (bin * 120 + 60) / 1440, time: String(bin * 2).padStart(2, '0') + ':00–' + String(Math.min(24, bin * 2 + 2)).padStart(2, '0') + ':00', note: '' });
+      });
+    } else if (_pulseRange === 'mes') {
+      const days = new Map();
+      rows.forEach(row => {
+        const key = _statsISO(row.at);
+        if (!days.has(key)) days.set(key, []);
+        days.get(key).push(row);
+      });
+      result[metric.key] = Array.from(days.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([key, items]) => {
+        const at = new Date(key + 'T12:00:00');
+        const agg = _pulseAggregate(items.map(item => item.value));
+        return Object.assign(agg, { x: (at - period.start) / span, time: at.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }), note: items.map(item => item.note).filter(Boolean).join(' · ') });
+      });
+    } else {
+      result[metric.key] = rows.map(row => ({
+        x: (row.at - period.start) / span,
+        value: row.value,
+        lo: row.value,
+        hi: row.value,
+        count: 1,
+        time: _pulseRange === 'dia'
+          ? row.at.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+          : row.at.toLocaleDateString('es-ES', { weekday: 'short' }) + ' · ' + row.at.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+        note: row.note,
+      }));
+    }
+  });
+  return result;
+}
+
+function _pulseSegments(points) {
+  if (!points.length) return [];
+  const maxGap = _pulseRange === 'mes' ? (2.1 / 31) : _pulseRange === 'semana' ? (4 / (24 * 7)) : (4 / 24);
+  const out = [[points[0]]];
+  for (let i = 1; i < points.length; i++) {
+    if (points[i].x - points[i - 1].x > maxGap) out.push([]);
+    out[out.length - 1].push(points[i]);
+  }
+  return out;
+}
+
+function _pulseMonotonePath(points) {
+  if (!points.length) return '';
+  if (points.length === 1) return 'M' + points[0].px.toFixed(1) + ',' + points[0].py.toFixed(1);
+  const slopes = [];
+  const tangents = [];
+  for (let i = 0; i < points.length - 1; i++) {
+    slopes[i] = (points[i + 1].py - points[i].py) / Math.max(.001, points[i + 1].px - points[i].px);
+  }
+  tangents[0] = slopes[0];
+  tangents[points.length - 1] = slopes[slopes.length - 1];
+  for (let i = 1; i < points.length - 1; i++) {
+    tangents[i] = slopes[i - 1] * slopes[i] <= 0 ? 0 : (slopes[i - 1] + slopes[i]) / 2;
+  }
+  let path = 'M' + points[0].px.toFixed(1) + ',' + points[0].py.toFixed(1);
+  for (let i = 0; i < points.length - 1; i++) {
+    const dx = points[i + 1].px - points[i].px;
+    path += ' C' + (points[i].px + dx / 3).toFixed(1) + ',' + (points[i].py + tangents[i] * dx / 3).toFixed(1)
+      + ' ' + (points[i + 1].px - dx / 3).toFixed(1) + ',' + (points[i + 1].py - tangents[i + 1] * dx / 3).toFixed(1)
+      + ' ' + points[i + 1].px.toFixed(1) + ',' + points[i + 1].py.toFixed(1);
+  }
+  return path;
+}
+
+function _pulseChartSVG(series) {
+  const W = 760, H = 330, left = 72, right = 18, top = 20, bottom = 40;
+  const plotW = W - left - right, plotH = H - top - bottom;
+  const px = x => left + Math.max(0, Math.min(1, x)) * plotW;
+  const py = value => top + (5 - Math.max(1, Math.min(5, value))) / 4 * plotH;
+  const yLabels = ['Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+  let grid = '';
+  for (let value = 1; value <= 5; value++) {
+    const y = py(value);
+    grid += '<line class="pulse-grid-line" x1="' + left + '" y1="' + y + '" x2="' + (W - right) + '" y2="' + y + '"/>'
+      + '<text class="pulse-axis-y" x="' + (left - 8) + '" y="' + (y + 3) + '" text-anchor="end">' + yLabels[value - 1] + '</text>';
+  }
+  const xLabels = _pulseRange === 'semana'
+    ? ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'].map((label, i) => ({ x: (i + .5) / 7, label }))
+    : _pulseRange === 'mes'
+      ? [0, .25, .5, .75, 1].map((x, i) => ({ x, label: i === 0 ? '1' : i === 4 ? 'fin' : Math.max(1, Math.round(x * 30)) + '' }))
+      : [0, .25, .5, .75, 1].map((x, i) => ({ x, label: String(i * 6).padStart(2, '0') + ':00' }));
+  xLabels.forEach(item => {
+    grid += '<text class="pulse-axis-x" x="' + px(item.x) + '" y="' + (H - 13) + '" text-anchor="middle">' + item.label + '</text>';
+  });
+  let layers = '';
+  PULSE_METRICS.forEach(metric => {
+    if (!_pulseVisible.has(metric.key)) return;
+    const points = (series[metric.key] || []).map(point => Object.assign({}, point, { px: px(point.x), py: py(point.value) }));
+    _pulseSegments(points).forEach(segment => {
+      if ((_pulseRange === 'mes' || _pulseRange === 'tipico') && segment.length > 1) {
+        const upper = segment.map(point => point.px.toFixed(1) + ',' + py(point.hi).toFixed(1));
+        const lower = segment.slice().reverse().map(point => point.px.toFixed(1) + ',' + py(point.lo).toFixed(1));
+        layers += '<path class="pulse-band" style="fill:' + metric.color + '" d="M' + upper.join(' L') + ' L' + lower.join(' L') + ' Z"/>';
+      }
+      if (segment.length > 1) layers += '<path class="pulse-line" style="stroke:' + metric.color + '" d="' + _pulseMonotonePath(segment) + '"/>';
+      segment.forEach(point => {
+        const detail = metric.label + ' · ' + point.value.toFixed(point.value % 1 ? 1 : 0) + '/5 · ' + point.time;
+        const note = String(point.note || '').slice(0, 180);
+        layers += '<circle class="pulse-point" tabindex="0" role="button" aria-label="' + escapeHtmlSafe(detail) + '" data-detail="' + escapeHtmlSafe(detail) + '" data-note="' + escapeHtmlSafe(note) + '" onclick="showPulsePoint(this)" onfocus="showPulsePoint(this)" cx="' + point.px.toFixed(1) + '" cy="' + point.py.toFixed(1) + '" r="' + (note ? 5 : 4) + '" style="fill:' + metric.color + '"><title>' + escapeHtmlSafe(detail + (note ? ' · ' + note : '')) + '</title></circle>';
+      });
+    });
+  });
+  return '<svg class="pulse-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Evolución de los registros del momento">'
+    + '<g>' + grid + '</g><g clip-path="url(#pulsePlotClip)"><defs><clipPath id="pulsePlotClip"><rect x="' + left + '" y="' + (top - 7) + '" width="' + plotW + '" height="' + (plotH + 14) + '"/></clipPath></defs>' + layers + '</g></svg>';
+}
+
+function _pulseCard() {
+  const period = _pulsePeriod();
+  const series = _pulseSeries(period);
+  const total = PULSE_METRICS.reduce((sum, metric) => sum + (series[metric.key] || []).reduce((n, point) => n + (point.count || 1), 0), 0);
+  const tabs = [['dia', 'Día'], ['semana', 'Semana'], ['tipico', 'Día típico'], ['mes', 'Mes']].map(item =>
+    '<button type="button" class="pulse-range-btn' + (_pulseRange === item[0] ? ' active' : '') + '" onclick="setPulseRange(\'' + item[0] + '\')">' + item[1] + '</button>'
+  ).join('');
+  const legend = PULSE_METRICS.map(metric =>
+    '<button type="button" class="pulse-metric' + (_pulseVisible.has(metric.key) ? ' active' : '') + '" style="--pulse-color:' + metric.color + '" aria-pressed="' + _pulseVisible.has(metric.key) + '" onclick="togglePulseMetric(\'' + metric.key + '\')"><i></i>' + metric.short + '</button>'
+  ).join('');
+  const chart = total
+    ? _pulseChartSVG(series)
+    : '<div class="pulse-empty"><strong>Aún no hay registros aquí</strong><span>Los que añadas desde el cronómetro aparecerán en su hora real.</span></div>';
+  const typical = _pulseRange === 'tipico'
+    ? '<div class="pulse-method">Cada punto reúne la misma franja horaria de los siete días. La sombra muestra su variación.</div>'
+    : _pulseRange === 'mes'
+      ? '<div class="pulse-method">Cada punto es la media del día. La sombra conserva el mínimo y el máximo registrados.</div>'
+      : '<div class="pulse-method">Las líneas se interrumpen tras cuatro horas sin datos: el gráfico no presupone cómo estabas.</div>';
+  return '<section class="stats-card pulse-card">'
+    + '<div class="pulse-head"><div><div class="stats-card-title">Pulso</div><div class="stats-card-sub">Concentración, impulso, malestar y resistencia</div></div><span class="pulse-count">' + total + (total === 1 ? ' registro' : ' registros') + '</span></div>'
+    + '<div class="pulse-range">' + tabs + '</div>'
+    + '<div class="pulse-period"><button type="button" onclick="pulseNav(-1)" aria-label="Periodo anterior">‹</button><strong>' + escapeHtmlSafe(period.label) + '</strong><button type="button" onclick="pulseNav(1)" aria-label="Periodo siguiente"' + (_pulseOffset === 0 ? ' disabled' : '') + '>›</button></div>'
+    + '<div class="pulse-legend">' + legend + '</div>'
+    + chart + '<div class="pulse-detail" id="pulseDetail" aria-live="polite">Toca un punto para ver su hora y comentario.</div>' + typical
+    + '</section>';
+}
+
+function setPulseRange(range) {
+  if (!['dia', 'semana', 'tipico', 'mes'].includes(range)) return;
+  _pulseRange = range;
+  _pulseOffset = 0;
+  localStorage.setItem('pulse_range', range);
+  renderStatsDashboard();
+}
+
+function pulseNav(direction) {
+  _pulseOffset = Math.min(0, _pulseOffset + direction);
+  renderStatsDashboard();
+}
+
+function togglePulseMetric(metric) {
+  if (_pulseVisible.has(metric)) {
+    if (_pulseVisible.size === 1) return;
+    _pulseVisible.delete(metric);
+  } else {
+    _pulseVisible.add(metric);
+  }
+  renderStatsDashboard();
+}
+
+function showPulsePoint(point) {
+  const host = document.getElementById('pulseDetail');
+  if (!host || !point) return;
+  host.textContent = point.dataset.detail + (point.dataset.note ? ' · “' + point.dataset.note + '”' : '');
+  host.classList.add('visible');
+}
+
 function renderStatsDashboard() {
   const el = document.getElementById('statsDashboard');
   if (!el) return;
@@ -12999,7 +13342,7 @@ function renderStatsDashboard() {
 
   // Tarjeta 1: tiempo de concentración (barras)
   const bars = _statsBarsData(porDia, periodo.start, periodo.end);
-  let cards = '<div class="stats-card">'
+  let cards = _pulseCard() + '<div class="stats-card">'
     + '<div class="stats-card-title">Tiempo de concentración</div>'
     + '<div class="stats-card-big">' + fmtMinutos(total) + '</div>'
     + (total > 0
@@ -13782,12 +14125,36 @@ function cronoPaseBuildSelectionGroups() {
   });
 }
 
+function cronoPaseDraftItem(resolved) {
+  if (!resolved || resolved.obra?.tipo === 'actividad') return null;
+  return {
+    key: cronoPaseDraftKey(resolved.obraId, resolved.movId),
+    obraId: resolved.obraId,
+    movId: resolved.movId || null,
+    name: resolved.name,
+    minutes: cronoPaseDefaultMinutes(resolved),
+    score: null,
+  };
+}
+
+function cronoPaseCurrentSelection() {
+  if (crono.state === 'idle' || crono.isRest || !crono.obraId) return null;
+  const value = crono.movId
+    ? 'mov::' + crono.obraId + '::' + crono.movId
+    : 'obra::' + crono.obraId;
+  return cronoPaseDraftItem(studyRegisterResolveValue(value));
+}
+
 function openCronoPaseRapido() {
   cronoPaseDraft = [];
   cronoPaseBuildSelectionGroups();
+  const current = cronoPaseCurrentSelection();
+  if (current) cronoPaseDraft.push(current);
   cronoPaseTipoSelected = 'solo';
   const search = document.getElementById('cronoPaseSearch');
   if (search) search.value = '';
+  const comment = document.getElementById('cronoPaseComment');
+  if (comment) comment.value = '';
   document.querySelectorAll('#modalCronoPaseRapido .pase-tipo-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('#modalCronoPaseRapido .pase-tipo-btn.solo')?.classList.add('active');
   cronoPaseBackToSelection();
@@ -13809,14 +14176,9 @@ function cronoPaseToggleSelection(value) {
   if (existingIndex >= 0) {
     cronoPaseDraft.splice(existingIndex, 1);
   } else {
-    cronoPaseDraft.push({
-      key,
-      obraId: resolved.obraId,
-      movId: resolved.movId || null,
-      name: resolved.name,
-      minutes: cronoPaseDefaultMinutes(resolved),
-      score: null,
-    });
+    const item = cronoPaseDraftItem(resolved);
+    if (!item) return;
+    cronoPaseDraft.push(item);
     bumpCronoPickRecency(resolved.obraId);
   }
   cronoPaseRenderSelection();
@@ -13940,7 +14302,7 @@ function cronoPaseRender() {
   cronoPaseUpdateTotal();
 }
 
-function cronoPaseRecordQuality(item, dateIso) {
+function cronoPaseRecordQuality(item, dateIso, comment) {
   const tipo = normalizePaseTipo(cronoPaseTipoSelected);
   const paseEntry = {
     date: dateIso,
@@ -13948,7 +14310,7 @@ function cronoPaseRecordQuality(item, dateIso) {
     solidezPct: paseScoreToPct(item.score),
     quality: scoreToQuality(item.score),
     tipo,
-    note: 'pase rápido',
+    note: (comment || '').trim(),
   };
   if (item.movId) {
     const mov = findMovimiento(item.obraId, item.movId);
@@ -13969,7 +14331,7 @@ function cronoPaseRecordQuality(item, dateIso) {
   linkPaseToHistory(item.obraId, item.score, tipo, dateIso);
 }
 
-function cronoPaseAddToStudy(item, startedAtIso, endedAtIso) {
+function cronoPaseAddToStudy(item, startedAtIso, endedAtIso, comment) {
   const obra = findObra(item.obraId);
   if (!obra) return null;
   const mov = item.movId ? findMovimiento(item.obraId, item.movId) : null;
@@ -14008,6 +14370,20 @@ function cronoPaseAddToStudy(item, startedAtIso, endedAtIso) {
   sessionTicks[targetPlanId] = 'hecho';
   sessionProductivityRatings[targetPlanId] = Math.max(0, Math.min(100, item.score * 10));
   if (!sessionAggregate[targetPlanId]) sessionAggregate[targetPlanId] = { subsessions: [] };
+  const passComment = (comment || '').trim();
+  const passNote = passComment ? cronoNormalizeSessionNote({
+    text: passComment,
+    at: endedAtIso,
+    phase: 'after',
+    minute: minutes,
+    elapsedMs: minutes * 60000,
+    state: 'hecho',
+    mode: 'pase',
+    obraId: item.obraId,
+    movId: item.movId,
+    displayName: item.name,
+    source: 'pase',
+  }) : null;
   sessionAggregate[targetPlanId].subsessions.push({
     min: minutes,
     prod: item.score * 10,
@@ -14017,6 +14393,9 @@ function cronoPaseAddToStudy(item, startedAtIso, endedAtIso) {
     pase: true,
     score: item.score,
     tipo: normalizePaseTipo(cronoPaseTipoSelected),
+    note: passComment || null,
+    sessionNotes: passNote ? [passNote] : null,
+    notes: passNote ? [passNote] : null,
   });
 
   ensureSessionPlanScaffold();
@@ -14036,7 +14415,10 @@ function cronoPaseAddToStudy(item, startedAtIso, endedAtIso) {
     if (doneBtn) doneBtn.classList.add('hecho');
     if (typeof updateProductivityBadge === 'function') updateProductivityBadge(targetPlanId);
   }
-  recordSessionPlant(item.obraId, item.movId, startedAtIso, endedAtIso, minutes, { source: 'pase' });
+  recordSessionPlant(item.obraId, item.movId, startedAtIso, endedAtIso, minutes, {
+    source: 'pase',
+    notes: passNote ? [passNote] : [],
+  });
   return { planId: targetPlanId, minutes };
 }
 
@@ -14059,13 +14441,14 @@ function confirmCronoPaseRapido() {
   let cursor = new Date(Date.now() - total * 60000);
   let added = 0;
   const dateIso = new Date().toISOString();
+  const comment = (document.getElementById('cronoPaseComment')?.value || '').trim().slice(0, 300);
   cronoPaseDraft.forEach(item => {
     const minutes = Math.max(1, parseInt(item.minutes || 0, 10) || 1);
     const started = new Date(cursor);
     const ended = new Date(cursor.getTime() + minutes * 60000);
     cursor = ended;
-    cronoPaseRecordQuality(item, dateIso);
-    const res = cronoPaseAddToStudy(item, started.toISOString(), ended.toISOString());
+    cronoPaseRecordQuality(item, dateIso, comment);
+    const res = cronoPaseAddToStudy(item, started.toISOString(), ended.toISOString(), comment);
     if (res) added += res.minutes;
   });
   if (typeof ensureSessionPlanScaffold === 'function') ensureSessionPlanScaffold();
@@ -14682,13 +15065,14 @@ function aiBuildDailyRows() {
   const estadoEventos = ensureEstadoEventos ? ensureEstadoEventos() : (db.estadoEventos || []);
   const impulsoEventos = ensureImpulsoEventos ? ensureImpulsoEventos() : (db.impulsoEventos || []);
   const malestarEventos = ensureMalestarEventos ? ensureMalestarEventos() : (db.malestarEventos || []);
+  const resistenciaEventos = ensureResistenciaEventos ? ensureResistenciaEventos() : (db.resistenciaEventos || []);
   const deporteEventos = ensureDeporteEventos ? ensureDeporteEventos() : (db.deporteEventos || []);
   const suenoEventos = ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || []);
   const triggerEventos = ensureTriggerEventos ? ensureTriggerEventos() : (db.triggerEventos || []);
   const tiempoDisponibleEventos = ensureTiempoDisponibleEventos ? ensureTiempoDisponibleEventos() : (db.tiempoDisponibleEventos || []);
   const dailyJournalEntries = ensureDailyJournalEntries ? ensureDailyJournalEntries() : (db.dailyJournalEntries || []);
   const keys = new Set();
-  [studyRows, sessionCards, paseRows, pasajeRows, estadoEventos, impulsoEventos, malestarEventos, deporteEventos, suenoEventos, triggerEventos, tiempoDisponibleEventos, dailyJournalEntries].forEach(arr => {
+  [studyRows, sessionCards, paseRows, pasajeRows, estadoEventos, impulsoEventos, malestarEventos, resistenciaEventos, deporteEventos, suenoEventos, triggerEventos, tiempoDisponibleEventos, dailyJournalEntries].forEach(arr => {
     (arr || []).forEach(x => {
       const k = x.day || aiLocalDateKey(x.date || x.at || x.start || x.startedAt);
       if (k) keys.add(k);
@@ -14711,6 +15095,7 @@ function aiBuildDailyRows() {
       estadoEventos: (estadoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       impulsoEventos: (impulsoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       malestarEventos: (malestarEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
+      resistenciaEventos: (resistenciaEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       deporteEventos: (deporteEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       suenoEventos: (suenoEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
       triggerEventos: (triggerEventos || []).filter(x => (x.date === new Date(day + 'T12:00:00').toDateString()) || aiLocalDateKey(x.at) === day),
@@ -14743,6 +15128,7 @@ function buildAiDataPackage() {
       estadoEventos: (ensureEstadoEventos ? ensureEstadoEventos() : (db.estadoEventos || [])).length,
       impulsoEventos: (ensureImpulsoEventos ? ensureImpulsoEventos() : (db.impulsoEventos || [])).length,
       malestarEventos: (ensureMalestarEventos ? ensureMalestarEventos() : (db.malestarEventos || [])).length,
+      resistenciaEventos: (ensureResistenciaEventos ? ensureResistenciaEventos() : (db.resistenciaEventos || [])).length,
       deporteEventos: (ensureDeporteEventos ? ensureDeporteEventos() : (db.deporteEventos || [])).length,
       suenoEventos: (ensureSuenoEventos ? ensureSuenoEventos() : (db.suenoEventos || [])).length,
       triggerEventos: (ensureTriggerEventos ? ensureTriggerEventos() : (db.triggerEventos || [])).length,
@@ -14758,6 +15144,7 @@ function buildAiDataPackage() {
       estadoEventos: aiReadLocalJson('alberto_estado_eventos_v1'),
       impulsoEventos: aiReadLocalJson('alberto_impulso_eventos_v1'),
       malestarEventos: aiReadLocalJson('alberto_malestar_eventos_v1'),
+      resistenciaEventos: aiReadLocalJson('alberto_resistencia_eventos_v1'),
       deporteEventos: aiReadLocalJson('alberto_deporte_eventos_v1'),
       suenoEventos: aiReadLocalJson('alberto_sueno_eventos_v1'),
       triggerEventos: aiReadLocalJson('alberto_trigger_eventos_v1'),
@@ -14947,6 +15334,7 @@ function aiDayHasReportableActivity(day) {
     day.estadoEventos.length ||
     (day.impulsoEventos || []).length ||
     (day.malestarEventos || []).length ||
+    (day.resistenciaEventos || []).length ||
     day.deporteEventos.length ||
     day.suenoEventos.length ||
     (day.triggerEventos || []).length ||
@@ -15004,7 +15392,7 @@ function buildAiTextReport(options) {
   lines.push('- Tarjeta/sesión guardada: resumen diario o tarjeta de estudio. Puede incluir obra, minutos, tick, nota, destello y datos agregados de sub-sesiones.');
   lines.push('- Pase: ejecución de una obra o movimiento. Es la medida principal de solidez. Tipos: solo = para mí; informal = ante pareja/amigos; evento = audición/concurso/concierto o situación formal. Resultado: Se cae, Frágil, Sale, Sólido o Listo.');
   lines.push('- Pasaje: fragmento concreto dentro de una obra. Puede tener estado actual, intensidad de trabajo, solidez antes/después, fallos de memoria o entradas de seguimiento. Si un pasaje aparece varias veces el mismo día, trátalo como foco recurrente, no como duplicado irrelevante.');
-  lines.push('- Estado/sueño/deporte/siesta/gatillos TOC/tiempo disponible: contexto corporal, mental y logístico registrado por mí. Úsalo como contexto, no como diagnóstico clínico ni como causa segura.');
+  lines.push('- Concentración/impulso/malestar/resistencia y el resto de estados: contexto momentáneo registrado por mí. Resistencia indica cuánta fricción interna siento para continuar. Úsalo como contexto, no como diagnóstico clínico ni como causa segura.');
   lines.push('- Tiempo disponible bruto: estimación diaria de cuánto margen teórico tuve para tocar. No equivale a horas estudiadas ni a obligación; sirve para distinguir falta real de tiempo de baja ejecución con tiempo disponible.');
   lines.push('- Eventos próximos: compromisos futuros. Pueden aumentar la relevancia de obras/pasajes, pero no inventes prioridades si no están apoyadas por datos registrados.');
   lines.push('- Regla de interpretación: distingue HECHOS registrados de LECTURAS derivadas. Si propones prioridades, deriva cada una de notas, pases, pasajes, eventos, sueño, concentración, deporte, gatillos, tiempo disponible o tiempo registrado. No trates inferencias como hechos.');
@@ -15094,6 +15482,10 @@ function buildAiTextReport(options) {
     if ((day.malestarEventos || []).length) {
       lines.push('Malestar:');
       day.malestarEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.label || e.value) + (e.note ? ' · ' + e.note : '')));
+    }
+    if ((day.resistenciaEventos || []).length) {
+      lines.push('Resistencia a continuar:');
+      day.resistenciaEventos.forEach(e => lines.push('- ' + aiTimeLabel(e.at) + ' · ' + (e.label || e.value) + (e.note ? ' · ' + e.note : '')));
     }
     if (day.suenoEventos.length) {
       lines.push('Sueño/siestas:');
@@ -18953,6 +19345,11 @@ function cronoUpdateRunDrawer() {
     : 'pasajes';
   drawer.dataset.tab = tab;
   drawer.querySelectorAll('.crono-run-drawer-tab').forEach(btn => {
+    if (btn.dataset.action) {
+      btn.classList.remove('active');
+      btn.removeAttribute('aria-selected');
+      return;
+    }
     const active = btn.dataset.tab === tab;
     btn.classList.toggle('active', active);
     btn.setAttribute('aria-selected', active ? 'true' : 'false');

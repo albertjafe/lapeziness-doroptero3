@@ -117,6 +117,32 @@ describe('quality wiring', () => {
     expect(styles).toContain('.crono-picker-event-chip.active');
   });
 
+  it('opens passes directly with the running work selected and stores a comment', () => {
+    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+
+    expect(html).toContain('data-action="pase" role="button" onclick="openCronoPaseRapido()"');
+    expect(html).toContain('id="cronoPaseComment"');
+    expect(app).toContain('function cronoPaseCurrentSelection()');
+    expect(app).toContain('if (current) cronoPaseDraft.push(current);');
+    expect(app).toContain('note: (comment || \'\').trim()');
+    expect(app).toContain("source: 'pase'");
+  });
+
+  it('registers resistance and renders honest pulse curves across four ranges', () => {
+    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+
+    expect(html).toContain('id="cronoResistanceFaces"');
+    expect(app).toContain('function recordResistenciaEvent(level, note)');
+    expect(app).toContain('merged.resistenciaEventos');
+    expect(app).toContain("['dia', 'semana', 'tipico', 'mes']");
+    expect(app).toContain('function _pulseMonotonePath(points)');
+    expect(app).toContain('Las líneas se interrumpen tras cuatro horas sin datos');
+    expect(styles).toContain('.pulse-band');
+  });
+
   it('ships one vector music mark and correctly sized app icons', () => {
     const svg = fs.readFileSync(path.join(root, 'icon.svg'), 'utf8');
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');

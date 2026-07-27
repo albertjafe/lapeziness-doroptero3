@@ -646,9 +646,10 @@ test('keeps tasks available while idle and compacts long running content', async
 
   await page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-tab="tareas"]').click();
   await expect(page.locator('#cronoTasksPanel')).toContainText('Revisar digitación final');
-  await page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-tab="pase"]').click();
-  await page.locator('#cronoRunDrawer .crono-drawer-pase-btn').click();
+  await page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-action="pase"]').click();
   await expect(page.locator('#modalCronoPaseRapido')).toHaveClass(/visible/);
+  await expect(page.locator('#cronoPaseSelectionSummary')).toHaveText('1 seleccionada');
+  await expect(page.locator('#cronoPaseSelectionList .crono-pase-picker-item.is-selected')).toHaveCount(1);
   expect(await page.evaluate(() => crono.state)).toBe('running');
 });
 
@@ -691,6 +692,7 @@ test('selects several recent works before rating and saving their passes', async
   await expect(cards.locator('.crono-pase-score.active')).toHaveCount(0);
   await cards.nth(0).locator('.crono-pase-score').nth(1).click();
   await cards.nth(1).locator('.crono-pase-score').nth(3).click();
+  await page.locator('#cronoPaseComment').fill('Afinar el ataque y sostener mejor el final');
   await modal.getByRole('button', { name: 'Guardar pases' }).click();
   await expect(modal).not.toHaveClass(/visible/);
 
@@ -698,8 +700,14 @@ test('selects several recent works before rating and saving their passes', async
     ancient: findObra('obra_a').paseHistory.length,
     middle: findObra('obra_c').paseHistory.length,
     recent: findObra('obra_b').paseHistory.length,
+    middleNote: findObra('obra_c').paseHistory[0]?.note,
   }));
-  expect(saved).toEqual({ ancient: 1, middle: 1, recent: 0 });
+  expect(saved).toEqual({
+    ancient: 1,
+    middle: 1,
+    recent: 0,
+    middleNote: 'Afinar el ataque y sostener mejor el final',
+  });
 
   await page.evaluate(() => openCronoPaseRapido());
   await expect(page.locator('.crono-pase-picker-item').nth(0)).toContainText('Obra intermedia');
@@ -885,6 +893,11 @@ test('records concentration and resisted urges across landscape and portrait tim
   await discomfort.getByRole('radio', { name: 'Medio', exact: true }).click();
   await expect(discomfort.getByRole('radio', { name: 'Medio', exact: true })).toHaveAttribute('aria-checked', 'true');
 
+  await page.locator('#cronoMomentNote').fill('Quería cambiar de tarea');
+  const resistance = page.locator('#cronoResistanceFaces');
+  await resistance.getByRole('radio', { name: 'Alta', exact: true }).click();
+  await expect(resistance.getByRole('radio', { name: 'Alta', exact: true })).toHaveAttribute('aria-checked', 'true');
+
   const state = await page.evaluate(() => ({
     value: estadoActualVal(),
     lastLabel: ensureEstadoEventos().at(-1)?.label,
@@ -892,6 +905,8 @@ test('records concentration and resisted urges across landscape and portrait tim
     impulseLabel: ensureImpulsoEventos().at(-1)?.label,
     discomfortLabel: ensureMalestarEventos().at(-1)?.label,
     discomfortNote: ensureMalestarEventos().at(-1)?.note,
+    resistanceLabel: ensureResistenciaEventos().at(-1)?.label,
+    resistanceNote: ensureResistenciaEventos().at(-1)?.note,
   }));
   expect(state).toEqual({
     value: 78,
@@ -900,6 +915,8 @@ test('records concentration and resisted urges across landscape and portrait tim
     impulseLabel: 'Muy alto',
     discomfortLabel: 'Medio',
     discomfortNote: 'Tensión física y pensamiento repetitivo',
+    resistanceLabel: 'Alta',
+    resistanceNote: 'Quería cambiar de tarea',
   });
 
   await expect(page.locator('#cronoMomentHistoryList')).toHaveCount(0);
@@ -952,11 +969,16 @@ test('records concentration and resisted urges across landscape and portrait tim
   await expect(momentMonitor.locator('.crono-moment-content')).toBeVisible();
   await expect(momentMonitor.locator('#cronoImpulseFaces')).toBeVisible();
   await expect(momentMonitor.locator('#cronoConcentrationFaces')).toBeVisible();
+  await expect(momentMonitor.locator('#cronoResistanceFaces')).toBeVisible();
   const mobileContentBox = await momentMonitor.locator('.crono-moment-content').boundingBox();
   expect(mobileContentBox.x).toBeGreaterThanOrEqual(0);
   expect(mobileContentBox.x + mobileContentBox.width).toBeLessThanOrEqual(390);
   expect(mobileContentBox.y).toBeGreaterThanOrEqual(0);
   expect(mobileContentBox.y + mobileContentBox.height).toBeLessThanOrEqual(844);
+
+  await page.evaluate(() => showView('session'));
+  await expect(page.locator('.pulse-card')).toContainText('4 registros');
+  await expect(page.locator('.pulse-point[aria-label^="Resistencia"]')).toHaveCount(1);
 });
 
 test('keeps a 13-inch touch iPad in the tablet layout', async ({ browser }) => {

@@ -56,4 +56,13 @@ describe('DataCore', () => {
     expect(merged.malestarEventos.map(event => event.id)).toEqual(['distress-a', 'distress-b']);
     expect(merged.malestarEventos[1].note).toBe('Pensamiento repetitivo');
   });
+
+  it('merges resistance events without losing either device', () => {
+    const merged = DataCore.mergeStudyHistory(
+      { resistenciaEventos: [{ id: 'resistance-a', at: '2026-07-13T08:00:00Z', value: 40, label: 'Baja' }] },
+      { resistenciaEventos: [{ id: 'resistance-b', at: '2026-07-13T09:00:00Z', value: 80, label: 'Alta', note: 'Quería cambiar de tarea' }] }
+    );
+    expect(merged.resistenciaEventos.map(event => event.id)).toEqual(['resistance-a', 'resistance-b']);
+    expect(merged.resistenciaEventos[1].note).toBe('Quería cambiar de tarea');
+  });
 });

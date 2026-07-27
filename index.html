@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=204">
+<link rel="stylesheet" href="styles.css?v=206">
 </head>
 <body>
 
@@ -417,7 +417,7 @@
         <button type="button" class="crono-run-drawer-tab active" data-tab="tareas" role="tab" aria-selected="true" onclick="cronoSetRunDrawerTab('tareas')">
           Tareas <span class="crono-task-notification-dot" id="cronoDrawerTaskTabCount" aria-hidden="true" hidden></span>
         </button>
-        <button type="button" class="crono-run-drawer-tab" data-tab="pase" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('pase')">Pase +</button>
+        <button type="button" class="crono-run-drawer-tab" data-action="pase" role="button" onclick="openCronoPaseRapido()">Pase +</button>
       </div>
 
       <div class="crono-run-drawer-panels">
@@ -469,7 +469,7 @@
     <section class="crono-moment-monitor" aria-label="Registros del momento">
       <button type="button" class="crono-moment-mobile-trigger" aria-expanded="false" onclick="toggleCronoMomentPanel()">
         <span>Registrar</span>
-        <strong>Impulso · Concentración · Malestar</strong>
+        <strong>Impulso · Concentración · Malestar · Resistencia</strong>
       </button>
       <div class="crono-moment-content">
         <div class="crono-moment-controls">
@@ -484,6 +484,10 @@
         <div class="crono-moment-row crono-discomfort-monitor">
           <span class="crono-moment-label">Malestar</span>
           <div class="crono-moment-levels" id="cronoDiscomfortFaces" role="radiogroup" aria-label="Registrar malestar"></div>
+        </div>
+        <div class="crono-moment-row crono-resistance-monitor">
+          <span class="crono-moment-label">Resistencia</span>
+          <div class="crono-moment-levels" id="cronoResistanceFaces" role="radiogroup" aria-label="Registrar resistencia a continuar"></div>
         </div>
         </div>
         <aside class="crono-moment-history" aria-label="Contexto del registro">
@@ -1688,6 +1692,12 @@
       <div class="crono-pase-items" id="cronoPaseItems"></div>
       <div class="crono-pase-total" id="cronoPaseTotal">0 min</div>
 
+      <label class="crono-pase-comment-field" for="cronoPaseComment">
+        <span>Comentario del pase <small>opcional</small></span>
+        <textarea id="cronoPaseComment" maxlength="300" rows="2"
+                  placeholder="Qué funcionó, dónde falló o qué quieres recordar..."></textarea>
+      </label>
+
       <div class="modal-buttons">
         <button class="modal-btn secondary" onclick="cronoPaseBackToSelection()">Cambiar obras</button>
         <button class="modal-btn primary" onclick="confirmCronoPaseRapido()">Guardar pases</button>
@@ -1904,11 +1914,11 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js?v=204"></script>
-<script src="data-core.js?v=204"></script>
-<script src="sync-core.js?v=204"></script>
-<script src="push-client.js?v=204"></script>
-<script src="app.js?v=204"></script>
+<script src="timer-core.js?v=206"></script>
+<script src="data-core.js?v=206"></script>
+<script src="sync-core.js?v=206"></script>
+<script src="push-client.js?v=206"></script>
+<script src="app.js?v=206"></script>
 
 </body>
 <script>
@@ -1930,7 +1940,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=204', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=206', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
