@@ -89,6 +89,16 @@ describe('quality wiring', () => {
     expect(app).toContain("['semana', 'mes', 'año', 'todo']");
   });
 
+  it('reuses the recent-first work picker while the stopwatch is active', () => {
+    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+
+    expect(html).not.toContain('id="modalCronoChangeObra"');
+    expect(app).toContain("openCronoObraPicker('change')");
+    expect(app).toContain("pickerMode === 'change'");
+    expect(app).toContain('El cronómetro sigue contando. Las últimas usadas aparecen primero.');
+  });
+
   it('ships one vector music mark and correctly sized app icons', () => {
     const svg = fs.readFileSync(path.join(root, 'icon.svg'), 'utf8');
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');

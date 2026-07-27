@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=202">
+<link rel="stylesheet" href="styles.css?v=203">
 </head>
 <body>
 
@@ -1223,7 +1223,8 @@
 <div class="modal-overlay" id="modalCronoObraPicker">
   <div class="modal" style="max-width:480px;padding:0;display:flex;flex-direction:column">
     <div style="padding:18px 22px 12px;border-bottom:1px solid var(--border2);background:var(--bg2)">
-      <div class="modal-title" style="margin-bottom:4px">Elige obra o actividad</div>
+      <div class="modal-title" id="cronoObraPickerTitle" style="margin-bottom:3px">Elige obra o actividad</div>
+      <div class="crono-picker-subtitle" id="cronoObraPickerSubtitle">Las últimas usadas aparecen primero.</div>
       <input type="text" id="cronoObraPickerSearch"
              placeholder="Buscar..." autocomplete="off"
              oninput="renderCronoObraPicker()"
@@ -1231,18 +1232,7 @@
     </div>
     <div id="cronoObraPickerList" style="overflow-y:auto;flex:1;padding:8px 0;-webkit-overflow-scrolling:touch"></div>
     <div style="padding:12px 22px;border-top:1px solid var(--border2);background:var(--bg2);text-align:right">
-      <button class="modal-btn secondary" onclick="closeModal('modalCronoObraPicker')">Cancelar</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modalCronoChangeObra">
-  <div class="modal crono-change-modal">
-    <div class="crono-change-title">Cambiar obra</div>
-    <select id="cronoChangeSelect" class="crono-change-select"></select>
-    <div class="crono-change-actions">
-      <button class="crono-change-btn cancel" onclick="closeModal('modalCronoChangeObra')">Cancelar</button>
-      <button class="crono-change-btn confirm" onclick="cronoConfirmChangeObra()">Cambiar</button>
+      <button class="modal-btn secondary" onclick="closeCronoObraPicker()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -1885,11 +1875,11 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js?v=202"></script>
-<script src="data-core.js?v=202"></script>
-<script src="sync-core.js?v=202"></script>
-<script src="push-client.js?v=202"></script>
-<script src="app.js?v=202"></script>
+<script src="timer-core.js?v=203"></script>
+<script src="data-core.js?v=203"></script>
+<script src="sync-core.js?v=203"></script>
+<script src="push-client.js?v=203"></script>
+<script src="app.js?v=203"></script>
 
 </body>
 <script>
@@ -1911,7 +1901,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=202', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=203', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

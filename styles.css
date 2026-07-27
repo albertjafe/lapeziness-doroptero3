@@ -3129,6 +3129,11 @@
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
   }
+  .crono-picker-subtitle {
+    color: var(--text3);
+    font: 600 10px/1.35 'JetBrains Mono', monospace;
+    margin-bottom: 8px;
+  }
   @media (max-width: 480px) {
     #modalCronoObraPicker .modal {
       height: 75vh;

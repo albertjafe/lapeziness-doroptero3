@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-27-planificador-dia-v79';
+const APP_VERSION = '2026-07-27-selector-obra-activo-v80';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -22679,38 +22679,7 @@ function confirmChangePlanObra() {
 
 function cronoOpenChangeObra() {
   if (crono.state !== 'running' && crono.state !== 'paused') return;
-  // Rellenar el select del modal y preseleccionar la obra actual
-  const sel = document.getElementById('cronoChangeSelect');
-  if (!sel) return;
-  cronoFillSelectInto(sel);
-  // Preseleccionar la actual
-  const currentVal = crono.movId
-    ? ('mov::' + crono.obraId + '::' + crono.movId)
-    : ('obra::' + crono.obraId);
-  const has = Array.from(sel.options).some(o => o.value === currentVal);
-  if (has) sel.value = currentVal;
-  openModal('modalCronoChangeObra');
-}
-
-function cronoConfirmChangeObra() {
-  const sel = document.getElementById('cronoChangeSelect');
-  if (!sel) return;
-  const resolved = cronoResolveSelectValue(sel.value);
-  if (!resolved) { showToast('Elige una obra o movimiento'); return; }
-
-  // Si es la misma, simplemente cerramos
-  const same = (resolved.obraId === crono.obraId) && (resolved.movId === crono.movId);
-  if (same) { closeModal('modalCronoChangeObra'); return; }
-
-  crono.obraId = resolved.obraId;
-  crono.movId = resolved.movId;
-  crono.displayName = resolved.displayName;
-  crono.subName = resolved.subName;
-  crono.color = resolved.color || null;
-  cronoSaveState();
-  cronoRender();
-  closeModal('modalCronoChangeObra');
-  showToast('Cambiado a: ' + resolved.displayName);
+  openCronoObraPicker('change');
 }
 
 // ── Selectores ──────────────────────────────────────────────────────────────
@@ -22809,13 +22778,13 @@ function cronoUpdateSelectBtn() {
   label.textContent = texto;
 }
 
-// Modo del picker: 'crono' (selecciona obra para el cronómetro) |
-//                 'pase'  (abre registerPase al elegir obra)
+// Modo del picker: 'crono' (selecciona antes de empezar) |
+//                 'change' (cambia durante una sesión activa)  |
+//                 'pase' (abre registerPase al elegir obra)
 let _obraPickerMode = 'crono';
 
 function openPasePicker() {
-  _obraPickerMode = 'pase';
-  openCronoObraPicker();
+  openCronoObraPicker('pase');
 }
 
 // ── Recencia del picker: las últimas obras/actividades elegidas suben arriba ──
@@ -22864,14 +22833,27 @@ if (window.visualViewport) {
 }
 
 // Abre el modal picker. Resetea el buscador y renderiza.
-function openCronoObraPicker() {
+function openCronoObraPicker(mode) {
+  _obraPickerMode = mode || 'crono';
   const search = document.getElementById('cronoObraPickerSearch');
+  const title = document.getElementById('cronoObraPickerTitle');
+  const subtitle = document.getElementById('cronoObraPickerSubtitle');
+  const changing = _obraPickerMode === 'change';
+  if (title) title.textContent = changing ? 'Cambiar obra' : 'Elige obra o actividad';
+  if (subtitle) subtitle.textContent = changing
+    ? 'El cronómetro sigue contando. Las últimas usadas aparecen primero.'
+    : 'Las últimas usadas aparecen primero.';
   if (search) search.value = '';
   renderCronoObraPicker();
   openModal('modalCronoObraPicker');
   _cronoPickerFit();
   // Focus al search tras un pequeño delay para que iOS termine la animación
   setTimeout(() => { if (search) search.focus(); _cronoPickerFit(); }, 200);
+}
+
+function closeCronoObraPicker() {
+  _obraPickerMode = 'crono';
+  closeModal('modalCronoObraPicker');
 }
 
 // Renderiza la lista de obras/actividades con su dot de color.
@@ -22888,7 +22870,9 @@ function renderCronoObraPicker() {
     if (ra !== rb) return rb - ra;        // más reciente primero
     return a.name.localeCompare(b.name);  // sin uso previo: alfabético
   });
-  const currentValue = sel?.value || '';
+  const currentValue = _obraPickerMode === 'change'
+    ? (crono.movId ? 'mov::' + crono.obraId + '::' + crono.movId : 'obra::' + crono.obraId)
+    : (sel?.value || '');
 
   // Obras y actividades MEZCLADAS en una sola lista, en orden de uso reciente
   // (lo último que tocaste arriba del todo, sin separar por tipo).
@@ -22948,15 +22932,30 @@ function renderCronoObraPicker() {
 function pickCronoObra(val) {
   const parts = String(val).split('::');  // 'obra::id' | 'mov::id::movId'
   if (parts.length >= 2) bumpCronoPickRecency(parts[1]);
+  const pickerMode = _obraPickerMode;
+  _obraPickerMode = 'crono';
   closeModal('modalCronoObraPicker');
-  if (_obraPickerMode === 'pase') {
-    _obraPickerMode = 'crono';
+  if (pickerMode === 'pase') {
     const obraId = parts[1];
     const movId  = parts[0] === 'mov' && parts[2] ? parts[2] : null;
     if (obraId) registerPase(obraId, movId || undefined);
     return;
   }
-  _obraPickerMode = 'crono';
+  if (pickerMode === 'change') {
+    const resolved = cronoResolveSelectValue(val);
+    if (!resolved) { showToast('Elige una obra o movimiento'); return; }
+    const same = resolved.obraId === crono.obraId && resolved.movId === crono.movId;
+    if (same) return;
+    crono.obraId = resolved.obraId;
+    crono.movId = resolved.movId;
+    crono.displayName = resolved.displayName;
+    crono.subName = resolved.subName;
+    crono.color = resolved.color || null;
+    cronoSaveState();
+    cronoRender();
+    showToast('Cambiado a: ' + resolved.displayName);
+    return;
+  }
   const sel = document.getElementById('cronoObraSelect');
   if (!sel) return;
   sel.value = val;
