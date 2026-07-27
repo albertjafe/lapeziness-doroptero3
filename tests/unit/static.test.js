@@ -62,6 +62,21 @@ describe('quality wiring', () => {
     expect(styles).toMatch(/\.view\.active\.view-swipe-arrived\s*{\s*animation:\s*none\s*!important;\s*opacity:\s*1\s*!important;/);
   });
 
+  it('separates page zoom from a more sensitive horizontal swipe', () => {
+    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+    const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+
+    expect(app).toContain('visualViewport.scale > 1.015');
+    expect(app).toContain('_viewSwipeMultiTouch = event.touches.length > 1');
+    expect(app).toContain('Math.hypot(dx, dy) >= 5');
+    expect(app).toContain("Math.abs(dx) > Math.abs(dy) * 1.12");
+    expect(app).toContain('window.innerWidth * .145');
+    expect(styles).toContain('touch-action: pan-y pinch-zoom');
+    expect(styles).toContain('body.page-zoomed:not(.crono-focus) .view *');
+    expect(styles).toContain('grid-template-columns: repeat(4, minmax(0, 1fr))');
+    expect(styles).toContain('min-height: 44px !important');
+  });
+
   it('ships one vector music mark and correctly sized app icons', () => {
     const svg = fs.readFileSync(path.join(root, 'icon.svg'), 'utf8');
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');

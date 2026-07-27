@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-26-carrusel-fluido-v77';
+const APP_VERSION = '2026-07-27-carrusel-tactil-v78';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -935,6 +935,17 @@ function renderCombinedSessionStats() {
 
 const SWIPE_VIEW_ORDER = ['session', 'cronometro', 'obras'];
 let _viewSwipe = null;
+let _viewSwipeMultiTouch = false;
+
+function viewSwipePageZoomed() {
+  return !!(window.visualViewport && window.visualViewport.scale > 1.015);
+}
+
+function viewSwipeSyncPageZoom() {
+  const zoomed = viewSwipePageZoomed();
+  document.body.classList.toggle('page-zoomed', zoomed);
+  if (zoomed && _viewSwipe) viewSwipeReset(false);
+}
 
 function viewSwipeActiveElement() {
   const name = document.body.getAttribute('data-view') || 'session';
@@ -1230,7 +1241,12 @@ function initViewSwipeNavigation() {
   if (!root) return;
 
   root.addEventListener('touchstart', event => {
-    if (event.touches.length !== 1) return;
+    if (event.touches.length !== 1) {
+      _viewSwipeMultiTouch = event.touches.length > 1;
+      viewSwipeReset(false);
+      return;
+    }
+    if (_viewSwipeMultiTouch || viewSwipePageZoomed()) return;
     if (document.body.classList.contains('view-swipe-settling')) return;
     if (document.querySelector('.modal-overlay.visible')) return;
     const current = document.body.getAttribute('data-view') || 'session';
@@ -1262,14 +1278,19 @@ function initViewSwipeNavigation() {
   }, { passive: true });
 
   root.addEventListener('touchmove', event => {
+    if (event.touches.length !== 1 || _viewSwipeMultiTouch || viewSwipePageZoomed()) {
+      if (event.touches.length > 1) _viewSwipeMultiTouch = true;
+      viewSwipeReset(false);
+      return;
+    }
     const swipe = _viewSwipe;
     if (!swipe) return;
     const touch = Array.from(event.touches).find(item => item.identifier === swipe.id);
     if (!touch) return;
     let dx = touch.clientX - swipe.x;
     const dy = touch.clientY - swipe.y;
-    if (!swipe.intent && Math.hypot(dx, dy) >= 10) {
-      swipe.intent = Math.abs(dx) > Math.abs(dy) * 1.25 ? 'horizontal' : 'vertical';
+    if (!swipe.intent && Math.hypot(dx, dy) >= 5) {
+      swipe.intent = Math.abs(dx) > Math.abs(dy) * 1.12 ? 'horizontal' : 'vertical';
       if (swipe.intent === 'vertical') {
         viewSwipeReset(false);
         return;
@@ -1286,7 +1307,10 @@ function initViewSwipeNavigation() {
     viewSwipePrepareNeighbor(swipe, direction);
     const now = performance.now();
     const elapsed = Math.max(8, now - swipe.lastAt);
-    swipe.velocity = (touch.clientX - swipe.lastX) / elapsed;
+    const instantVelocity = (touch.clientX - swipe.lastX) / elapsed;
+    swipe.velocity = swipe.velocity
+      ? (swipe.velocity * .35) + (instantVelocity * .65)
+      : instantVelocity;
     swipe.lastX = touch.clientX;
     swipe.lastAt = now;
     swipe.dx = dx;
@@ -1295,6 +1319,11 @@ function initViewSwipeNavigation() {
   }, { passive: false });
 
   const finish = event => {
+    if (_viewSwipeMultiTouch) {
+      if (!event?.touches?.length) _viewSwipeMultiTouch = false;
+      viewSwipeReset(false);
+      return;
+    }
     const swipe = _viewSwipe;
     if (!swipe) return;
     if (event?.changedTouches && !Array.from(event.changedTouches).some(item => item.identifier === swipe.id)) return;
@@ -1306,9 +1335,11 @@ function initViewSwipeNavigation() {
     const direction = dx < 0 ? 1 : -1;
     const nextIndex = swipe.index + direction;
     const travelSign = dx < 0 ? -1 : 1;
-    const forwardVelocity = Math.max(0, (swipe.velocity || 0) * travelSign);
+    const releaseDelay = Math.max(0, performance.now() - swipe.lastAt);
+    swipe.velocity = (swipe.velocity || 0) * Math.exp(-Math.max(0, releaseDelay - 32) / 85);
+    const forwardVelocity = Math.max(0, swipe.velocity * travelSign);
     const projectedDistance = Math.abs(dx) + (forwardVelocity * 190);
-    const threshold = Math.min(150, window.innerWidth * .2);
+    const threshold = Math.min(110, window.innerWidth * .145);
     const commits = nextIndex >= 0 && nextIndex < SWIPE_VIEW_ORDER.length &&
       projectedDistance >= threshold;
     if (!swipe.neighbor || swipe.neighborDirection !== direction) {
@@ -1318,7 +1349,13 @@ function initViewSwipeNavigation() {
     viewSwipeSettle(swipe, commits, commits ? SWIPE_VIEW_ORDER[nextIndex] : null);
   };
   root.addEventListener('touchend', finish, { passive: true });
-  root.addEventListener('touchcancel', () => viewSwipeReset(true), { passive: true });
+  root.addEventListener('touchcancel', () => {
+    _viewSwipeMultiTouch = false;
+    viewSwipeReset(true);
+  }, { passive: true });
+  window.visualViewport?.addEventListener('resize', viewSwipeSyncPageZoom, { passive: true });
+  window.visualViewport?.addEventListener('scroll', viewSwipeSyncPageZoom, { passive: true });
+  viewSwipeSyncPageZoom();
 }
 
 initViewSwipeNavigation();
