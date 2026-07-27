@@ -79,6 +79,20 @@
       .slice(-2000);
   }
 
+  function mergeBlockedDaySchedules(a, b) {
+    const byDay = new Map();
+    (a || []).concat(b || []).forEach(day => {
+      if (!day || !day.date || !Array.isArray(day.blocks)) return;
+      const current = byDay.get(day.date);
+      if (!current || String(day.updatedAt || '').localeCompare(String(current.updatedAt || '')) >= 0) {
+        byDay.set(day.date, day);
+      }
+    });
+    return Array.from(byDay.values())
+      .sort((x, y) => String(x.date).localeCompare(String(y.date)))
+      .slice(-2000);
+  }
+
   function mergeStudyHistory(base, other) {
     if (!base) return other;
     if (!other) return base;
@@ -94,8 +108,9 @@
     merged.triggerEventos = mergeEvents(base.triggerEventos, other.triggerEventos, ['at', 'value', 'label'], 2000);
     merged.tiempoDisponibleEventos = mergeTimeAvailableEvents(base.tiempoDisponibleEventos, other.tiempoDisponibleEventos);
     merged.dailyJournalEntries = mergeEvents(base.dailyJournalEntries, other.dailyJournalEntries, ['at', 'text'], 3000);
+    merged.blockedDaySchedules = mergeBlockedDaySchedules(base.blockedDaySchedules, other.blockedDaySchedules);
     return merged;
   }
 
-  return { mergeStudyHistory, mergePlants, mergeSessions, sessionRealMinutes };
+  return { mergeStudyHistory, mergePlants, mergeSessions, mergeBlockedDaySchedules, sessionRealMinutes };
 });

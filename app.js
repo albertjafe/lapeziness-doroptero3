@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-27-carrusel-tactil-v78';
+const APP_VERSION = '2026-07-27-planificador-dia-v79';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -249,6 +249,13 @@ function _mergeStudyHistory(base, other) {
   merged.triggerEventos = _mergeTriggerEventos(base.triggerEventos, other.triggerEventos);
   merged.tiempoDisponibleEventos = _mergeTiempoDisponibleEventos(base.tiempoDisponibleEventos, other.tiempoDisponibleEventos);
   merged.dailyJournalEntries = _mergeDailyJournalEntries(base.dailyJournalEntries, other.dailyJournalEntries);
+  const scheduleMap = {};
+  (base.blockedDaySchedules || []).concat(other.blockedDaySchedules || []).forEach(day => {
+    if (!day || !day.date || !Array.isArray(day.blocks)) return;
+    const current = scheduleMap[day.date];
+    if (!current || String(day.updatedAt || '').localeCompare(String(current.updatedAt || '')) >= 0) scheduleMap[day.date] = day;
+  });
+  merged.blockedDaySchedules = Object.values(scheduleMap).sort((x, y) => String(x.date).localeCompare(String(y.date))).slice(-2000);
   return merged;
 }
 
@@ -429,7 +436,8 @@ function getDefaultData() {
     suenoEventos: [],
     triggerEventos: [],
     tiempoDisponibleEventos: [],
-    dailyJournalEntries: []
+    dailyJournalEntries: [],
+    blockedDaySchedules: []
   };
 }
 
@@ -446,6 +454,7 @@ if (!db.suenoEventos) db.suenoEventos = [];
 if (!db.triggerEventos) db.triggerEventos = [];
 if (!db.tiempoDisponibleEventos) db.tiempoDisponibleEventos = [];
 if (!db.dailyJournalEntries) db.dailyJournalEntries = [];
+if (!db.blockedDaySchedules) db.blockedDaySchedules = [];
 // db.sessionPlants[]: array paralelo a forestPlants con UN registro por sub-sesión
 // del cronómetro. Persiste los timestamps detallados aunque la sesión en
 // db.sesiones[] sea descartada por el cap. Estructura por entrada:
@@ -11348,7 +11357,7 @@ function renderEstadoSection() {
 //  - db.sesiones: total diario (incluye registros manuales sin timestamp).
 //    Por día se toma el MÁXIMO de ambas fuentes para no contar doble.
 let _statsRange = localStorage.getItem('stats_range') || 'semana';
-if (['semana', 'mes', 'año'].indexOf(_statsRange) === -1) _statsRange = 'semana';
+if (['semana', 'mes', 'año', 'todo'].indexOf(_statsRange) === -1) _statsRange = 'semana';
 let _statsOffset = 0; // 0 = periodo actual, -1 = anterior…
 
 function _statsAllPlants() {
@@ -11439,19 +11448,38 @@ function _recentPlants() {
   return { plants: all, scope: 'histórico' };
 }
 
-// ── HORAS BLOQUEADAS HOY ──────────────────────────────────────────────────────
+// ── DISPONIBILIDAD DIARIA ─────────────────────────────────────────────────────
 // Franjas en las que Alberto sabe que NO podrá estudiar (cita, clase, etc.).
-// Se guardan solo para el día de hoy (se resetean en cuanto cambia la fecha) y
-// el modelo de probabilidad descuenta el tiempo histórico que caería en ellas.
+// Se conservan por fecha para distinguir después entre tiempo libre no usado y
+// tiempo que nunca estuvo disponible. El modelo de hoy descuenta esas franjas.
 function _blkHmToMin(hm) { const a = String(hm).split(':'); return (parseInt(a[0], 10) || 0) * 60 + (parseInt(a[1], 10) || 0); }
 function _blockedDayState() {
-  let s = null;
-  try { s = JSON.parse(localStorage.getItem('alberto_blocked_hoy') || 'null'); } catch (e) {}
   const today = _statsISO(new Date());
-  if (!s || s.date !== today || !Array.isArray(s.blocks)) s = { date: today, blocks: [] };
-  return s;
+  const saved = (db.blockedDaySchedules || []).find(day => day && day.date === today && Array.isArray(day.blocks));
+  if (saved) return { date: today, blocks: saved.blocks.map(b => ({ start: b.start, end: b.end })) };
+
+  // Migración de la versión anterior, que solo conservaba el día actual.
+  let legacy = null;
+  try { legacy = JSON.parse(localStorage.getItem('alberto_blocked_hoy') || 'null'); } catch (e) {}
+  if (legacy && legacy.date === today && Array.isArray(legacy.blocks)) {
+    return { date: today, blocks: legacy.blocks.map(b => ({ start: b.start, end: b.end })) };
+  }
+  return { date: today, blocks: [] };
 }
-function _blockedDaySave(s) { try { localStorage.setItem('alberto_blocked_hoy', JSON.stringify(s)); } catch (e) {} }
+function _blockedDaySave(s) {
+  if (!s || !s.date || !Array.isArray(s.blocks)) return;
+  const entry = {
+    date: s.date,
+    blocks: s.blocks.map(b => ({ start: b.start, end: b.end })),
+    updatedAt: new Date().toISOString(),
+  };
+  db.blockedDaySchedules = (db.blockedDaySchedules || []).filter(day => day && day.date !== entry.date);
+  db.blockedDaySchedules.push(entry);
+  db.blockedDaySchedules.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  db.blockedDaySchedules = db.blockedDaySchedules.slice(-2000);
+  try { localStorage.setItem('alberto_blocked_hoy', JSON.stringify(entry)); } catch (e) {}
+  saveData();
+}
 function _getBlockedRangesToday() {
   return _blockedDayState().blocks
     .map(b => ({ s: _blkHmToMin(b.start), e: _blkHmToMin(b.end) }))
@@ -11792,17 +11820,14 @@ function _probEstadoChip(e) {
 function _probRichHTML(t) {
   const done240 = t.done >= 240, done300 = t.done >= 300;
   const blkTotal = _fmtBlockedTotal();
-  const blkBtn = '<button class="prob-bloqueo-btn' + (blkTotal ? ' on' : '') + '"'
-    + ' onclick="openHorasBloqueadas(event)" title="Horas que hoy no podrás estudiar">⊘'
-    + (blkTotal ? ' ' + blkTotal : '') + '</button>';
-  const startBtn = '<button class="prob-bloqueo-btn prob-start-btn' + (t.startedLater ? ' on' : '') + '"'
-    + ' onclick="openHoraComienzo(event)" title="Hora a la que vas a empezar (calcula el «quédate hasta» desde esa hora)">▷'
-    + (t.startedLater ? ' ' + _fmtHourMin(t.startMin) : '') + '</button>';
+  const dayPlanBtn = '<button class="prob-day-plan-btn' + (blkTotal ? ' on' : '') + '"'
+    + ' onclick="openHorasBloqueadas(event)" title="Organizar las horas disponibles de hoy">Organizar día'
+    + (blkTotal ? '<span>' + blkTotal + ' bloqueadas</span>' : '') + '</button>';
   return '<div class="prob-head">'
       + '<span class="prob-head-left"><span class="prob-kicker">Hoy</span>'
         + '<span class="prob-scope">' + (t.scope || '3 meses') + '</span></span>'
       + '<span class="prob-context">' + t.hhmm + ' · llevas <b>' + t.doneTxt + '</b></span>'
-      + '<span class="prob-head-btns">' + startBtn + blkBtn + '</span>'
+      + '<span class="prob-head-btns">' + dayPlanBtn + '</span>'
     + '</div>'
     + '<div class="prob-body">'
       + '<div class="prob-proj">'
@@ -11873,9 +11898,15 @@ function _fmtBlockedTotal() {
 function openHorasBloqueadas(ev) {
   if (ev && ev.stopPropagation) ev.stopPropagation();
   openModal('modalHorasBloqueadas');
-  renderHorasBloqueadasList();
+  renderBlockedDayPlanner();
   const tope = document.getElementById('horaTope');
   if (tope) tope.value = localStorage.getItem('alberto_hora_tope') || '';
+  requestAnimationFrame(() => {
+    const scroller = document.getElementById('blockedDayScroll');
+    if (!scroller) return;
+    const now = new Date();
+    scroller.scrollTop = Math.max(0, (now.getHours() - 2) * 56 + now.getMinutes() / 60 * 56);
+  });
 }
 
 function openHoraComienzo(ev) {
@@ -11897,37 +11928,132 @@ function clearHoraComienzo() {
   closeModal('modalHoraComienzo');
   if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true);
 }
-function renderHorasBloqueadasList() {
-  const cont = document.getElementById('horasBloqueadasList');
-  if (!cont) return;
-  const s = _blockedDayState();
-  if (!s.blocks.length) {
-    cont.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:6px 0">Sin franjas bloqueadas. Añade abajo las horas que tienes ocupadas hoy.</div>';
-    return;
+const BLOCKED_DAY_SLOT_MIN = 30;
+let _blockedPlannerDrag = null;
+
+function _blockedPlannerSet() {
+  const selected = new Set();
+  _getBlockedRangesToday().forEach(range => {
+    for (let i = 0; i < 48; i++) {
+      const start = i * BLOCKED_DAY_SLOT_MIN;
+      if (Math.min(start + BLOCKED_DAY_SLOT_MIN, range.e) > Math.max(start, range.s)) selected.add(i);
+    }
+  });
+  return selected;
+}
+function _blockedSetToRanges(selected) {
+  const blocks = [];
+  let start = null;
+  for (let i = 0; i <= 48; i++) {
+    const on = i < 48 && selected.has(i);
+    if (on && start == null) start = i;
+    if (!on && start != null) {
+      const fmt = mins => mins === 1440 ? '24:00' : String(Math.floor(mins / 60)).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0');
+      blocks.push({ start: fmt(start * BLOCKED_DAY_SLOT_MIN), end: fmt(i * BLOCKED_DAY_SLOT_MIN) });
+      start = null;
+    }
   }
-  cont.innerHTML = s.blocks.slice()
-    .sort((a, b) => _blkHmToMin(a.start) - _blkHmToMin(b.start))
-    .map((b, i) => '<div class="bloq-chip"><span>' + b.start + ' → ' + b.end + '</span>'
-      + '<button onclick="removeHoraBloqueada(' + i + ')" title="Quitar">✕</button></div>').join('');
+  return blocks;
 }
-function addHoraBloqueada() {
-  const d = document.getElementById('bloqDesde'), h = document.getElementById('bloqHasta');
-  if (!d || !h || !d.value || !h.value) { showToast('Indica desde y hasta'); return; }
-  if (_blkHmToMin(h.value) <= _blkHmToMin(d.value)) { showToast('«Hasta» debe ser posterior a «Desde»'); return; }
+function _blockedPlannerSummary(selected) {
+  const blocked = selected.size * BLOCKED_DAY_SLOT_MIN;
+  const available = 1440 - blocked;
+  const fmt = mins => Math.floor(mins / 60) + ' h' + (mins % 60 ? ' ' + mins % 60 + ' min' : '');
+  return '<strong>' + fmt(blocked) + ' bloqueadas</strong><span>' + fmt(available) + ' disponibles</span>';
+}
+function _paintBlockedPlanner(selected) {
+  document.querySelectorAll('#blockedDayGrid .day-blocker-slot').forEach(slot => {
+    const on = selected.has(Number(slot.dataset.slot));
+    slot.classList.toggle('is-blocked', on);
+    slot.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  const summary = document.getElementById('blockedDaySummary');
+  if (summary) summary.innerHTML = _blockedPlannerSummary(selected);
+}
+function renderBlockedDayPlanner() {
+  const grid = document.getElementById('blockedDayGrid');
+  if (!grid) return;
+  const selected = _blockedPlannerSet();
+  let html = '';
+  for (let hour = 0; hour < 24; hour++) {
+    const label = String(hour).padStart(2, '0') + ':00';
+    html += '<div class="day-blocker-hour">'
+      + '<div class="day-blocker-time">' + label + '</div>'
+      + '<div class="day-blocker-hour-slots">';
+    for (let half = 0; half < 2; half++) {
+      const i = hour * 2 + half;
+      const slotLabel = String(hour).padStart(2, '0') + ':' + (half ? '30' : '00') + '–'
+        + (half ? String(hour + 1).padStart(2, '0') + ':00' : String(hour).padStart(2, '0') + ':30');
+      html += '<button type="button" class="day-blocker-slot' + (selected.has(i) ? ' is-blocked' : '') + '"'
+        + ' data-slot="' + i + '" aria-label="' + slotLabel + '" aria-pressed="' + (selected.has(i) ? 'true' : 'false') + '"'
+        + ' onpointerdown="blockedSlotPointerDown(event,' + i + ')"><span>' + (selected.has(i) ? 'No disponible' : '') + '</span></button>';
+    }
+    html += '</div></div>';
+  }
+  grid.innerHTML = html;
+  const date = document.getElementById('blockedDayDate');
+  if (date) date.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  _paintBlockedPlanner(selected);
+}
+function blockedSlotPointerDown(ev, slotIndex) {
+  if (ev.button != null && ev.button !== 0) return;
+  ev.preventDefault();
+  const base = _blockedPlannerSet();
+  _blockedPlannerDrag = {
+    pointerId: ev.pointerId,
+    start: slotIndex,
+    last: slotIndex,
+    makeBlocked: !base.has(slotIndex),
+    base,
+    selected: new Set(base),
+  };
+  if (ev.currentTarget && ev.currentTarget.setPointerCapture) {
+    try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch (e) {}
+  }
+  _blockedPlannerApplyDrag(slotIndex);
+  document.addEventListener('pointermove', _blockedPlannerPointerMove, { passive: false });
+  document.addEventListener('pointerup', _blockedPlannerPointerEnd, { once: true });
+  document.addEventListener('pointercancel', _blockedPlannerPointerEnd, { once: true });
+}
+function _blockedPlannerApplyDrag(endIndex) {
+  const d = _blockedPlannerDrag;
+  if (!d) return;
+  d.last = endIndex;
+  d.selected = new Set(d.base);
+  const from = Math.min(d.start, endIndex), to = Math.max(d.start, endIndex);
+  for (let i = from; i <= to; i++) {
+    if (d.makeBlocked) d.selected.add(i); else d.selected.delete(i);
+  }
+  _paintBlockedPlanner(d.selected);
+}
+function _blockedPlannerPointerMove(ev) {
+  const d = _blockedPlannerDrag;
+  if (!d || ev.pointerId !== d.pointerId) return;
+  ev.preventDefault();
+  const under = document.elementFromPoint(ev.clientX, ev.clientY);
+  const slot = under && under.closest ? under.closest('#blockedDayGrid .day-blocker-slot') : null;
+  if (slot) _blockedPlannerApplyDrag(Number(slot.dataset.slot));
+}
+function _blockedPlannerPointerEnd(ev) {
+  const d = _blockedPlannerDrag;
+  if (!d || ev.pointerId !== d.pointerId) return;
+  document.removeEventListener('pointermove', _blockedPlannerPointerMove);
+  document.removeEventListener('pointerup', _blockedPlannerPointerEnd);
+  document.removeEventListener('pointercancel', _blockedPlannerPointerEnd);
+  _blockedPlannerDrag = null;
   const s = _blockedDayState();
-  s.blocks.push({ start: d.value, end: h.value });
+  s.blocks = _blockedSetToRanges(d.selected);
   _blockedDaySave(s);
-  d.value = ''; h.value = '';
-  renderHorasBloqueadasList();
+  _paintBlockedPlanner(d.selected);
   _afterBlockedChange();
+  if (navigator.vibrate) navigator.vibrate(10);
 }
-function removeHoraBloqueada(i) {
+function clearBlockedDay() {
   const s = _blockedDayState();
-  const sorted = s.blocks.slice().sort((a, b) => _blkHmToMin(a.start) - _blkHmToMin(b.start));
-  const target = sorted[i];
-  s.blocks = s.blocks.filter(b => b !== target);
+  if (!s.blocks.length) return;
+  s.blocks = [];
   _blockedDaySave(s);
-  renderHorasBloqueadasList();
+  renderBlockedDayPlanner();
   _afterBlockedChange();
 }
 function _afterBlockedChange() {
@@ -11982,7 +12108,22 @@ function _statsPeriod(offset) {
   if (offset == null) offset = _statsOffset;
   const now = new Date();
   let start, end, label;
-  if (_statsRange === 'semana') {
+  if (_statsRange === 'todo') {
+    const dates = [];
+    _statsAllPlants().forEach(p => dates.push(p.start));
+    (db.sesiones || []).forEach(s => {
+      const d = new Date(s.date);
+      if (!isNaN(d.getTime())) dates.push(d);
+    });
+    (db.blockedDaySchedules || []).forEach(day => {
+      const d = new Date(day.date + 'T12:00:00');
+      if (!isNaN(d.getTime())) dates.push(d);
+    });
+    const first = dates.length ? new Date(Math.min.apply(null, dates.map(d => d.getTime()))) : new Date(now.getFullYear(), 0, 1);
+    start = new Date(first.getFullYear(), 0, 1);
+    end = new Date(now.getFullYear() + 1, 0, 1);
+    label = 'Todo el tiempo';
+  } else if (_statsRange === 'semana') {
     const lunes = new Date(now);
     lunes.setDate(now.getDate() - ((now.getDay() + 6) % 7) + offset * 7);
     lunes.setHours(0, 0, 0, 0);
@@ -12543,7 +12684,17 @@ function _statsBarsData(porDia, start, end) {
   const labels = [], values = [], tipLabels = [];
   let hoyIdx = -1;
   const hoyKey = _statsISO(new Date());
-  if (_statsRange === 'año') {
+  if (_statsRange === 'todo') {
+    const firstYear = start.getFullYear(), lastYear = Math.max(firstYear, new Date(end.getTime() - 1).getFullYear());
+    const porAño = {};
+    Object.keys(porDia).forEach(k => { const y = k.slice(0, 4); porAño[y] = (porAño[y] || 0) + porDia[k]; });
+    for (let year = firstYear; year <= lastYear; year++) {
+      labels.push(String(year));
+      tipLabels.push(String(year));
+      values.push(porAño[String(year)] || 0);
+      if (year === new Date().getFullYear()) hoyIdx = year - firstYear;
+    }
+  } else if (_statsRange === 'año') {
     const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
     const mesesL = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
     const porMes = new Array(12).fill(0);
@@ -12581,6 +12732,7 @@ function setStatsRange(r) {
   renderStatsDashboard();
 }
 function statsNav(dir) {
+  if (_statsRange === 'todo') return;
   _statsOffset = Math.min(0, _statsOffset + dir);
   renderStatsDashboard();
 }
@@ -12805,6 +12957,24 @@ function _statsIntenseCard() {
     + '</div>';
 }
 
+function _statsAvailabilityCard(start, end) {
+  const days = (db.blockedDaySchedules || []).filter(day => {
+    if (!day || !day.date || !Array.isArray(day.blocks)) return false;
+    const d = new Date(day.date + 'T12:00:00');
+    return !isNaN(d.getTime()) && d >= start && d < end;
+  });
+  if (!days.length) return '';
+  const blockedMin = days.reduce((total, day) => total + day.blocks.reduce((sum, block) => {
+    return sum + Math.max(0, _blkHmToMin(block.end) - _blkHmToMin(block.start));
+  }, 0), 0);
+  return '<div class="stats-card stats-availability-card">'
+    + '<div class="stats-card-title">Disponibilidad registrada</div>'
+    + '<div class="stats-card-big">' + fmtMinutos(blockedMin) + '</div>'
+    + '<div class="stats-card-sub">Tiempo marcado como no disponible en ' + days.length + ' día' + (days.length === 1 ? '' : 's')
+    + '. No se interpreta como tiempo de estudio perdido.</div>'
+    + '</div>';
+}
+
 function renderStatsDashboard() {
   const el = document.getElementById('statsDashboard');
   if (!el) return;
@@ -12813,17 +12983,19 @@ function renderStatsDashboard() {
   const total = Object.keys(porDia).reduce((a, k) => a + porDia[k], 0);
 
   const seg = '<div class="stats-seg">'
-    + [['semana', 'Semana'], ['mes', 'Mes'], ['año', 'Año']].map(r =>
+    + [['semana', 'Semana'], ['mes', 'Mes'], ['año', 'Año'], ['todo', 'Todo']].map(r =>
         '<button class="stats-seg-btn' + (r[0] === _statsRange ? ' active' : '') + '" onclick="setStatsRange(\'' + r[0] + '\')">' + r[1] + '</button>'
       ).join('')
     + '</div>';
 
-  const navRow = '<div class="stats-period-row">'
-    + '<button class="stats-period-btn" onclick="statsNav(-1)" aria-label="Periodo anterior">‹</button>'
-    + '<div class="stats-period-label" onclick="statsResetOffset()" title="Volver al periodo actual">' + periodo.label
-    + (_statsOffset !== 0 ? ' <span class="stats-period-reset">⟲</span>' : '') + '</div>'
-    + '<button class="stats-period-btn" onclick="statsNav(1)"' + (_statsOffset === 0 ? ' disabled' : '') + ' aria-label="Periodo siguiente">›</button>'
-    + '</div>';
+  const navRow = _statsRange === 'todo'
+    ? '<div class="stats-period-row stats-period-all"><div class="stats-period-label">' + periodo.label + '</div></div>'
+    : '<div class="stats-period-row">'
+      + '<button class="stats-period-btn" onclick="statsNav(-1)" aria-label="Periodo anterior">‹</button>'
+      + '<div class="stats-period-label" onclick="statsResetOffset()" title="Volver al periodo actual">' + periodo.label
+      + (_statsOffset !== 0 ? ' <span class="stats-period-reset">⟲</span>' : '') + '</div>'
+      + '<button class="stats-period-btn" onclick="statsNav(1)"' + (_statsOffset === 0 ? ' disabled' : '') + ' aria-label="Periodo siguiente">›</button>'
+      + '</div>';
 
   // Tarjeta 1: tiempo de concentración (barras)
   const bars = _statsBarsData(porDia, periodo.start, periodo.end);
@@ -12836,7 +13008,9 @@ function renderStatsDashboard() {
     + '</div>';
 
   // Tarjeta comparativa: este periodo vs los dos anteriores (estilo Forest)
-  cards += _statsComparisonCard();
+  if (_statsRange !== 'todo') cards += _statsComparisonCard();
+
+  cards += _statsAvailabilityCard(periodo.start, periodo.end);
 
   // Tarjeta "Estudio intenso" (4 h+): hora de arranque + mapa del año.
   cards += _statsIntenseCard();

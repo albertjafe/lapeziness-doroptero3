@@ -77,6 +77,18 @@ describe('quality wiring', () => {
     expect(styles).toContain('min-height: 44px !important');
   });
 
+  it('uses a daily drag planner instead of the old session state controls', () => {
+    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+
+    expect(html).not.toContain('session-ritmo-panel');
+    expect(html).not.toContain('id="estadoFaces"');
+    expect(html).toContain('id="blockedDayGrid"');
+    expect(app).toContain('BLOCKED_DAY_SLOT_MIN = 30');
+    expect(app).toContain('blockedDaySchedules');
+    expect(app).toContain("['semana', 'mes', 'año', 'todo']");
+  });
+
   it('ships one vector music mark and correctly sized app icons', () => {
     const svg = fs.readFileSync(path.join(root, 'icon.svg'), 'utf8');
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');

@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=201">
+<link rel="stylesheet" href="styles.css?v=202">
 </head>
 <body>
 
@@ -161,81 +161,6 @@
       <div class="session-journal-list" id="sessionJournalList"></div>
     </div>
   </section>
-
-  <div class="session-hero session-ritmo-panel">
-    <div class="notes-deco" id="notesDeco"></div>
-    <div id="rachaDisplay" style="display:none;margin-bottom:6px"></div>
-    <div class="session-state-heading">
-      <div class="view-local-label">Estado de hoy</div>
-      <div class="view-local-subtitle">Registra solo lo que quieras conservar; lo demás queda sin datos.</div>
-    </div>
-
-    <section class="ritmo-card ritmo-card-bienestar" aria-label="Concentración">
-      <div class="ritmo-card-head">
-        <h2>Concentración</h2>
-        <button type="button" class="ritmo-info" onclick="showToast('La concentración se registra como momentos con hora')">i</button>
-      </div>
-      <div class="estado-faces ritmo-scale" id="estadoFaces" role="radiogroup" aria-label="Concentración actual"></div>
-      <div class="ritmo-card-status is-unset" id="estadoStatus">Sin registrar hoy · toca una opción</div>
-    </section>
-
-    <section class="ritmo-card ritmo-card-sueno" aria-label="Sueño">
-      <div class="ritmo-card-head">
-        <h2>Sueño</h2>
-        <div class="ritmo-card-actions">
-          <button type="button" class="ritmo-nap-btn" id="siestaBtn" onclick="recordSiesta()" title="Registrar siesta">Siesta</button>
-          <button type="button" class="ritmo-info" onclick="showToast('El sueño se guarda para el día y puedes corregirlo')">i</button>
-        </div>
-      </div>
-      <div class="estado-faces ritmo-scale" id="suenoFaces" role="radiogroup" aria-label="Sueño de hoy"></div>
-      <div class="ritmo-card-status is-unset" id="suenoStatus">Sin registrar hoy · toca una opción</div>
-      <div class="siesta-summary" id="siestaSummary">sin siesta hoy</div>
-    </section>
-
-    <section class="ritmo-card ritmo-card-tiempo" aria-label="Tiempo disponible hoy">
-      <div class="ritmo-card-head">
-        <h2>Tiempo hoy</h2>
-        <button type="button" class="ritmo-info" onclick="showToast('Tiempo bruto disponible para tocar hoy; se guarda una vez por día')">i</button>
-      </div>
-      <div class="estado-faces ritmo-scale tiempo-scale" id="tiempoDisponibleFaces" role="radiogroup" aria-label="Tiempo disponible hoy"></div>
-      <div class="ritmo-card-status is-unset" id="tiempoDisponibleStatus">Sin registrar hoy</div>
-      <div class="ritmo-moment-summary tiempo-summary" id="tiempoDisponibleSummary"></div>
-    </section>
-
-    <section class="ritmo-card ritmo-card-deporte" aria-label="Deporte">
-      <div class="ritmo-card-head">
-        <h2>Deporte</h2>
-        <button type="button" class="ritmo-info" onclick="showToast('Cardio y fuerza se registran con hora e intensidad')">i</button>
-      </div>
-      <div class="deporte-row">
-        <div class="deporte-row-head">
-          <span class="deporte-row-title">Cardio</span>
-          <span class="deporte-row-meta" id="deporteCardioMeta">sin registro hoy</span>
-        </div>
-        <div class="estado-faces ritmo-scale deporte-scale deporte-cardio-scale" id="cardioFaces" role="radiogroup" aria-label="Cardio de hoy"></div>
-      </div>
-      <div class="deporte-row">
-        <div class="deporte-row-head">
-          <span class="deporte-row-title">Fuerza</span>
-          <span class="deporte-row-meta" id="deporteFuerzaMeta">sin registro hoy</span>
-        </div>
-        <div class="estado-faces ritmo-scale deporte-scale deporte-fuerza-scale" id="fuerzaFaces" role="radiogroup" aria-label="Fuerza de hoy"></div>
-      </div>
-      <div class="ritmo-moment-summary deporte-summary" id="deporteEventSummary"></div>
-    </section>
-
-    <section class="ritmo-card ritmo-card-trigger" aria-label="Gatillos TOC">
-      <div class="ritmo-card-head">
-        <h2>Gatillo</h2>
-        <button type="button" class="ritmo-info" onclick="showToast('Cada toque añade un gatillo con hora e intensidad')">i</button>
-      </div>
-      <div class="estado-faces ritmo-scale trigger-scale" id="triggerFaces" role="radiogroup" aria-label="Gatillo TOC"></div>
-      <div class="ritmo-card-status is-unset" id="triggerStatus">Sin registrar hoy · toca un nivel</div>
-      <div class="ritmo-moment-summary trigger-summary" id="triggerEventSummary"></div>
-    </section>
-
-    <div class="ritmo-moment-summary" id="estadoEventSummary"></div>
-  </div>
 
   <div class="session-plan" id="sessionPlan"></div>
 
@@ -709,25 +634,26 @@
 </div>
 
 <div class="modal-overlay" id="modalHorasBloqueadas">
-  <div class="modal" style="max-width:380px">
-    <div class="modal-title">Horas bloqueadas hoy</div>
-    <div style="font-size:11.5px;color:var(--text2);line-height:1.5;margin-bottom:12px">
-      Marca las franjas en las que <b>no</b> podrás estudiar (cita, clase…). La probabilidad de llegar a 4&nbsp;h&nbsp;/&nbsp;5&nbsp;h se recalcula contando solo el tiempo que te queda libre.
+  <div class="modal day-blocker-modal">
+    <div class="day-blocker-head">
+      <div>
+        <div class="modal-title">Disponibilidad de hoy</div>
+        <div class="day-blocker-date" id="blockedDayDate"></div>
+      </div>
+      <button class="day-blocker-clear" type="button" onclick="clearBlockedDay()">Limpiar</button>
     </div>
-    <div id="horasBloqueadasList"></div>
-    <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
-      <input class="modal-input" id="bloqDesde" type="time" style="margin:0;flex:1">
-      <span style="color:var(--text3)">→</span>
-      <input class="modal-input" id="bloqHasta" type="time" style="margin:0;flex:1">
-      <button class="modal-btn primary" style="flex:0 0 auto;padding:10px 15px" onclick="addHoraBloqueada()">+</button>
+    <div class="day-blocker-help">Toca o arrastra sobre el calendario para marcar en rojo las horas en las que no vas a estudiar. Arrastra sobre rojo para liberarlas.</div>
+    <div class="day-blocker-summary" id="blockedDaySummary"></div>
+    <div class="day-blocker-scroll" id="blockedDayScroll">
+      <div class="day-blocker-grid" id="blockedDayGrid" aria-label="Planificador de disponibilidad de hoy"></div>
     </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border2);font-size:12.5px;color:var(--text2)">
-      <span>Como muy tarde, paro a las</span>
-      <input class="modal-input" id="horaTope" type="time" style="margin:0;width:118px;flex:0 0 auto" onchange="setHoraTope(this.value)">
+    <div class="day-blocker-cutoff">
+      <label for="horaTope">Como muy tarde, paro a las</label>
+      <input class="modal-input" id="horaTope" type="time" onchange="setHoraTope(this.value)">
     </div>
-    <div style="font-size:10.5px;color:var(--text3);margin-top:6px">Tope para estimar la hora de 4&nbsp;h&nbsp;/&nbsp;5&nbsp;h. Vacío = medianoche.</div>
-    <div class="modal-buttons">
-      <button class="modal-btn secondary" onclick="closeModal('modalHorasBloqueadas')">Listo</button>
+    <div class="day-blocker-footer">
+      <span>Se guarda automáticamente</span>
+      <button class="modal-btn primary" onclick="closeModal('modalHorasBloqueadas')">Listo</button>
     </div>
   </div>
 </div>
@@ -1959,11 +1885,11 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js?v=201"></script>
-<script src="data-core.js?v=201"></script>
-<script src="sync-core.js?v=201"></script>
-<script src="push-client.js?v=201"></script>
-<script src="app.js?v=201"></script>
+<script src="timer-core.js?v=202"></script>
+<script src="data-core.js?v=202"></script>
+<script src="sync-core.js?v=202"></script>
+<script src="push-client.js?v=202"></script>
+<script src="app.js?v=202"></script>
 
 </body>
 <script>
@@ -1985,7 +1911,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=201', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=202', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

@@ -38,6 +38,16 @@ describe('DataCore', () => {
     expect(merged.impulsoEventos.map(event => event.id)).toEqual(['urge-a', 'urge-b']);
   });
 
+  it('keeps the latest blocked schedule for each civil day', () => {
+    const merged = DataCore.mergeStudyHistory(
+      { blockedDaySchedules: [{ date: '2026-07-13', updatedAt: '2026-07-13T08:00:00Z', blocks: [{ start: '09:00', end: '10:00' }] }] },
+      { blockedDaySchedules: [{ date: '2026-07-13', updatedAt: '2026-07-13T09:00:00Z', blocks: [{ start: '11:00', end: '12:30' }] }] }
+    );
+    expect(merged.blockedDaySchedules).toEqual([
+      { date: '2026-07-13', updatedAt: '2026-07-13T09:00:00Z', blocks: [{ start: '11:00', end: '12:30' }] }
+    ]);
+  });
+
   it('merges discomfort events and their context without losing either device', () => {
     const merged = DataCore.mergeStudyHistory(
       { malestarEventos: [{ id: 'distress-a', at: '2026-07-13T08:00:00Z', value: 40, label: 'Bajo', note: 'Tensión física' }] },

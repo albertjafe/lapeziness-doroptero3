@@ -55,7 +55,7 @@ test('keeps the app inside the viewport at the four target widths', async ({ bro
   }
 });
 
-test('keeps mobile navigation visible and marks empty daily states honestly', async ({ browser }) => {
+test('keeps mobile navigation visible after removing the daily state panel', async ({ browser }) => {
   test.setTimeout(60_000);
   for (const viewport of [
     { width: 320, height: 844 },
@@ -76,19 +76,15 @@ test('keeps mobile navigation visible and marks empty daily states honestly', as
         height: btn.getBoundingClientRect().height,
         label: btn.getAttribute('aria-label'),
       })),
-      wellbeingActive: document.querySelectorAll('#estadoFaces .estado-face.active').length,
-      sleepActive: document.querySelectorAll('#suenoFaces .estado-face.active').length,
-      wellbeingStatus: document.getElementById('estadoStatus')?.textContent,
-      sleepStatus: document.getElementById('suenoStatus')?.textContent,
+      hasLegacyStatePanel: Boolean(document.querySelector('.session-ritmo-panel')),
+      hasDayPlanner: Boolean(document.getElementById('blockedDayGrid')),
     }));
     expect(state.navFits).toBe(true);
     expect(state.documentFits).toBe(true);
     expect(state.navButtons).toHaveLength(4);
     expect(state.navButtons.every(btn => btn.width > 0 && btn.height >= 44 && btn.label)).toBe(true);
-    expect(state.wellbeingActive).toBe(0);
-    expect(state.sleepActive).toBe(0);
-    expect(state.wellbeingStatus).toContain('Sin registrar hoy');
-    expect(state.sleepStatus).toContain('Sin registrar hoy');
+    expect(state.hasLegacyStatePanel).toBe(false);
+    expect(state.hasDayPlanner).toBe(true);
     await context.close();
   }
 });
