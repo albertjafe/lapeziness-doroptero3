@@ -1010,6 +1010,43 @@ test('records concentration and resisted urges across landscape and portrait tim
   await expect(page.locator('.pulse-point[aria-label^="Resistencia"]')).toHaveCount(1);
 });
 
+test('draws unknown time between study sessions as a straight dashed bridge', async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    const now = new Date();
+    const at = (hour, minute) => {
+      const value = new Date(now);
+      value.setHours(hour, minute, 0, 0);
+      return value;
+    };
+    db.sessionPlants = [
+      {
+        id: 'pulse-session-morning', obraId: 'obra_1', startedAt: at(9, 0).toISOString(),
+        endedAt: at(10, 0).toISOString(), mins: 60, source: 'app',
+      },
+      {
+        id: 'pulse-session-afternoon', obraId: 'obra_1', startedAt: at(16, 0).toISOString(),
+        endedAt: at(17, 0).toISOString(), mins: 60, source: 'app',
+      },
+    ];
+    db.estadoEventos = [
+      { id: 'pulse-1', at: at(9, 10).toISOString(), value: 78, label: 'Alta' },
+      { id: 'pulse-2', at: at(9, 40).toISOString(), value: 56, label: 'Media' },
+      { id: 'pulse-3', at: at(16, 10).toISOString(), value: 34, label: 'Baja' },
+      { id: 'pulse-4', at: at(16, 40).toISOString(), value: 78, label: 'Alta' },
+    ];
+    _pulseRange = 'dia';
+    _pulseOffset = 0;
+    renderStatsDashboard();
+  });
+
+  await expect(page.locator('.pulse-line')).toHaveCount(2);
+  await expect(page.locator('.pulse-gap-line')).toHaveCount(1);
+  const bridgePath = await page.locator('.pulse-gap-line').getAttribute('d');
+  expect(bridgePath).toMatch(/^M[\d.]+,[\d.]+ L[\d.]+,[\d.]+$/);
+  await expect(page.locator('.pulse-method')).toContainText('sin inventar datos intermedios');
+});
+
 test('keeps a 13-inch touch iPad in the tablet layout', async ({ browser }) => {
   const context = await browser.newContext({
     viewport: { width: 1366, height: 1024 },

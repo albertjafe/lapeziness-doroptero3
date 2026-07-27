@@ -10052,6 +10052,13 @@ body.crono-running .crono-destellos-pill { display: none !important; }
     stroke-linejoin: round;
     filter: drop-shadow(0 3px 5px rgba(0,0,0,.08));
   }
+  .pulse-gap-line {
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 3 7;
+    opacity: .44;
+  }
   .pulse-band { opacity: .11; }
   .pulse-point {
     stroke: var(--bg2);
@@ -10077,6 +10084,14 @@ body.crono-running .crono-destellos-pill { display: none !important; }
     color: var(--text3);
     font-size: 8px;
     line-height: 1.45;
+  }
+  .pulse-method-sample {
+    display: inline-block;
+    width: 25px;
+    margin-right: 7px;
+    border-top: 2px dashed var(--text3);
+    vertical-align: 3px;
+    opacity: .65;
   }
   .pulse-empty {
     display: grid;

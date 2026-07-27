@@ -139,8 +139,11 @@ describe('quality wiring', () => {
     expect(app).toContain('merged.resistenciaEventos');
     expect(app).toContain("['dia', 'semana', 'tipico', 'mes']");
     expect(app).toContain('function _pulseMonotonePath(points)');
-    expect(app).toContain('Las líneas se interrumpen tras cuatro horas sin datos');
+    expect(app).toContain('línea recta discontinua entre sesiones');
+    expect(app).toContain('function _pulseStudyIntervals(period)');
+    expect(app).toContain('class="pulse-gap-line"');
     expect(styles).toContain('.pulse-band');
+    expect(styles).toContain('.pulse-gap-line');
   });
 
   it('keeps today study time prominent and updates it from a running stopwatch', () => {

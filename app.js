@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-27-tiempo-diario-v84';
+const APP_VERSION = '2026-07-27-pulso-sesiones-v85';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -13120,14 +13120,43 @@ function _pulseSource(metric) {
   return ensureResistenciaEventos();
 }
 
+function _pulseStudyIntervals(period) {
+  const rows = [];
+  const add = (plant, index, source) => {
+    if (!plant || plant.failed || plant.tipo === 'descanso' || !plant.startedAt) return;
+    const start = new Date(plant.startedAt).getTime();
+    let end = new Date(plant.endedAt || '').getTime();
+    if (!Number.isFinite(start)) return;
+    if (!Number.isFinite(end) || end < start) end = start + Math.max(1, Number(plant.mins) || 1) * 60000;
+    if (end < period.start.getTime() || start >= period.end.getTime()) return;
+    rows.push({ key: source + '-' + index + '-' + start, start, end });
+  };
+  (db.sessionPlants || []).forEach((plant, index) => add(plant, index, 'app'));
+  (db.forestPlants || []).forEach((plant, index) => add(plant, index, 'forest'));
+  if (typeof crono !== 'undefined' && crono && crono.state !== 'idle' && crono.startTs) {
+    const liveEnd = crono.state === 'paused' && crono.pauseStartTs ? crono.pauseStartTs : Date.now();
+    rows.push({ key: 'live-' + crono.startTs, start: crono.startTs, end: Math.max(crono.startTs, liveEnd) });
+  }
+  return rows.sort((a, b) => a.start - b.start);
+}
+
+function _pulseSessionKey(at, intervals, fallback) {
+  const time = at.getTime();
+  const tolerance = 2 * 60000;
+  const match = intervals.find(row => time >= row.start - tolerance && time <= row.end + tolerance);
+  return match ? match.key : 'outside-' + fallback;
+}
+
 function _pulseRaw(period) {
   const out = {};
+  const intervals = _pulseStudyIntervals(period);
   PULSE_METRICS.forEach(metric => {
     out[metric.key] = _pulseSource(metric.key).map(item => {
       const at = new Date(item?.at || '');
       const value = _pulseLevel(item?.value, metric.key);
       if (!item || Number.isNaN(at.getTime()) || value == null || at < period.start || at >= period.end) return null;
-      return { at, value, note: String(item.note || ''), label: item.label || '', id: item.id || '' };
+      const id = item.id || String(at.getTime());
+      return { at, value, note: String(item.note || ''), label: item.label || '', id, sessionKey: _pulseSessionKey(at, intervals, metric.key + '-' + id) };
     }).filter(Boolean).sort((a, b) => a.at - b.at);
   });
   return out;
@@ -13179,6 +13208,7 @@ function _pulseSeries(period) {
           ? row.at.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
           : row.at.toLocaleDateString('es-ES', { weekday: 'short' }) + ' · ' + row.at.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
         note: row.note,
+        sessionKey: row.sessionKey,
       }));
     }
   });
@@ -13190,7 +13220,8 @@ function _pulseSegments(points) {
   const maxGap = _pulseRange === 'mes' ? (2.1 / 31) : _pulseRange === 'semana' ? (4 / (24 * 7)) : (4 / 24);
   const out = [[points[0]]];
   for (let i = 1; i < points.length; i++) {
-    if (points[i].x - points[i - 1].x > maxGap) out.push([]);
+    const changesSession = (_pulseRange === 'dia' || _pulseRange === 'semana') && points[i].sessionKey !== points[i - 1].sessionKey;
+    if (changesSession || points[i].x - points[i - 1].x > maxGap) out.push([]);
     out[out.length - 1].push(points[i]);
   }
   return out;
@@ -13243,7 +13274,16 @@ function _pulseChartSVG(series) {
   PULSE_METRICS.forEach(metric => {
     if (!_pulseVisible.has(metric.key)) return;
     const points = (series[metric.key] || []).map(point => Object.assign({}, point, { px: px(point.x), py: py(point.value) }));
-    _pulseSegments(points).forEach(segment => {
+    const segments = _pulseSegments(points);
+    if ((_pulseRange === 'dia' || _pulseRange === 'semana') && segments.length > 1) {
+      for (let i = 1; i < segments.length; i++) {
+        const from = segments[i - 1][segments[i - 1].length - 1];
+        const to = segments[i][0];
+        if (!from || !to) continue;
+        layers += '<path class="pulse-gap-line" style="stroke:' + metric.color + '" d="M' + from.px.toFixed(1) + ',' + from.py.toFixed(1) + ' L' + to.px.toFixed(1) + ',' + to.py.toFixed(1) + '"><title>Sin datos entre sesiones</title></path>';
+      }
+    }
+    segments.forEach(segment => {
       if ((_pulseRange === 'mes' || _pulseRange === 'tipico') && segment.length > 1) {
         const upper = segment.map(point => point.px.toFixed(1) + ',' + py(point.hi).toFixed(1));
         const lower = segment.slice().reverse().map(point => point.px.toFixed(1) + ',' + py(point.lo).toFixed(1));
@@ -13278,7 +13318,7 @@ function _pulseCard() {
     ? '<div class="pulse-method">Cada punto reúne la misma franja horaria de los siete días. La sombra muestra su variación.</div>'
     : _pulseRange === 'mes'
       ? '<div class="pulse-method">Cada punto es la media del día. La sombra conserva el mínimo y el máximo registrados.</div>'
-      : '<div class="pulse-method">Las líneas se interrumpen tras cuatro horas sin datos: el gráfico no presupone cómo estabas.</div>';
+      : '<div class="pulse-method"><span class="pulse-method-sample"></span>Curva sólida dentro de una sesión · línea recta discontinua entre sesiones, sin inventar datos intermedios.</div>';
   return '<section class="stats-card pulse-card">'
     + '<div class="pulse-head"><div><div class="stats-card-title">Pulso</div><div class="stats-card-sub">Concentración, impulso, malestar y resistencia</div></div><span class="pulse-count">' + total + (total === 1 ? ' registro' : ' registros') + '</span></div>'
     + '<div class="pulse-range">' + tabs + '</div>'
