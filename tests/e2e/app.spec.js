@@ -40,6 +40,35 @@ test('opens every main view without page exceptions', async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem('piano_auto_creds'))).toBeNull();
 });
 
+test('shows today study time prominently and includes the running stopwatch', async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => showView('session'));
+  const summary = page.locator('#sessionResumenCard');
+  await expect(summary).toBeVisible();
+  await expect(summary).toContainText('TIEMPO ESTUDIADO HOY');
+  await expect(summary).toContainText('0 min');
+
+  await page.evaluate(() => {
+    const now = new Date();
+    db.sessionPlants.push({
+      id: 'today-summary-test',
+      obraId: 'obra_1',
+      startedAt: new Date(now.getTime() - 50 * 60000).toISOString(),
+      endedAt: new Date(now.getTime() - 8 * 60000).toISOString(),
+      mins: 42,
+      source: 'app',
+    });
+    crono.state = 'running';
+    crono.startTs = Date.now() - 5 * 60000;
+    crono.pausedMs = 0;
+    crono.targetMinutes = null;
+    crono.targetDurationMs = null;
+    renderSessionResumen();
+  });
+  await expect(summary).toContainText('47 min');
+  await expect(summary).toContainText('en directo');
+});
+
 test('keeps the app inside the viewport at the four target widths', async ({ browser }) => {
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 834, height: 1194 }, { width: 1024, height: 768 }, { width: 1280, height: 720 }]) {

@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-27-pulso-resistencia-v83';
+const APP_VERSION = '2026-07-27-tiempo-diario-v84';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -20979,12 +20979,13 @@ function _pasajeChartSVG(p) {
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="pasaje-chart-svg">' + g + line + dots + '</svg>';
 }
 
-// Tarjeta resumen del día de la pestaña Sesión (visible solo en Mármol):
-// Resumen descriptivo: muestra minutos y actividad sin convertirlos en meta.
+// Dato principal de Hoy: tiempo diario, incluyendo en vivo la sesión activa.
 function renderSessionResumen() {
   const el = document.getElementById('sessionResumenCard');
   if (!el) return;
-  const done = (typeof getMinutosConcentradoHoy === 'function') ? getMinutosConcentradoHoy() : 0;
+  const done = (typeof _doneMinHoy === 'function')
+    ? _doneMinHoy()
+    : ((typeof getMinutosConcentradoHoy === 'function') ? getMinutosConcentradoHoy() : 0);
   const todayKey = sessionJournalDayKey(new Date());
   const activity = [];
   (db.sessionPlants || []).forEach(plant => {
@@ -21004,13 +21005,17 @@ function renderSessionResumen() {
   const rachaHtml = racha > 0
     ? '<div class="session-resumen-racha">racha ' + racha + (racha === 1 ? ' día' : ' días') + '</div>'
     : '';
+  const live = typeof crono !== 'undefined' && crono && crono.state === 'running';
+  const statusHtml = live
+    ? '<div class="session-resumen-live"><i></i> en directo</div>'
+    : rachaHtml;
   el.classList.remove('is-neutral');
   el.innerHTML = '<div class="session-resumen-info">' +
-      '<div class="session-resumen-lbl">HOY</div>' +
+      '<div class="session-resumen-lbl">TIEMPO ESTUDIADO HOY</div>' +
       '<div class="session-resumen-big">' + fmtMinutos(done) + '</div>' +
       '<div class="session-resumen-last">' + lastActivityText + '</div>' +
     '</div>' +
-    rachaHtml;
+    statusHtml;
 }
 
 function refreshConcentradoUI() {
@@ -22309,6 +22314,9 @@ function cronoStartTick() {
     }
     // Probabilidad en vivo de 4h/5h (recalcula solo al cambiar de minuto).
     if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI();
+    if (document.getElementById('view-session')?.classList.contains('active') && typeof renderSessionResumen === 'function') {
+      renderSessionResumen();
+    }
   }, 1000);
 }
 

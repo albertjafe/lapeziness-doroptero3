@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=206">
+<link rel="stylesheet" href="styles.css?v=207">
 </head>
 <body>
 
@@ -116,6 +116,12 @@
   <path d="M40 420 Q44 400 48 382" stroke="var(--accent)" stroke-width="1" fill="none"/>
 </svg>
 <div class="view active" id="view-session">
+  <section class="session-resumen-card" id="sessionResumenCard" aria-label="Tiempo estudiado hoy">
+    <div class="session-resumen-info">
+      <div class="session-resumen-lbl">TIEMPO ESTUDIADO HOY</div>
+      <div class="session-resumen-big">0 min</div>
+    </div>
+  </section>
   <!-- Banner: "Hoy te has concentrado X" + opción discreta para día pasado -->
   <div class="session-concentrado-banner" id="sessionConcentradoBanner">
     <span class="session-concentrado-icon" aria-hidden="true">
@@ -1914,11 +1920,11 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js?v=206"></script>
-<script src="data-core.js?v=206"></script>
-<script src="sync-core.js?v=206"></script>
-<script src="push-client.js?v=206"></script>
-<script src="app.js?v=206"></script>
+<script src="timer-core.js?v=207"></script>
+<script src="data-core.js?v=207"></script>
+<script src="sync-core.js?v=207"></script>
+<script src="push-client.js?v=207"></script>
+<script src="app.js?v=207"></script>
 
 </body>
 <script>
@@ -1940,7 +1946,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=206', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=207', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

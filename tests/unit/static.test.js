@@ -143,6 +143,19 @@ describe('quality wiring', () => {
     expect(styles).toContain('.pulse-band');
   });
 
+  it('keeps today study time prominent and updates it from a running stopwatch', () => {
+    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+
+    expect(html).toContain('id="sessionResumenCard" aria-label="Tiempo estudiado hoy"');
+    expect(html).toContain('TIEMPO ESTUDIADO HOY');
+    expect(app).toContain("const done = (typeof _doneMinHoy === 'function')");
+    expect(app).toContain('session-resumen-live');
+    expect(styles).toContain('#view-session .session-resumen-card');
+    expect(styles).toContain('display: flex !important');
+  });
+
   it('ships one vector music mark and correctly sized app icons', () => {
     const svg = fs.readFileSync(path.join(root, 'icon.svg'), 'utf8');
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
