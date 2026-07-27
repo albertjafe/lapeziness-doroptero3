@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-27-selector-obra-activo-v80';
+const APP_VERSION = '2026-07-27-destellos-eventos-v81';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -17601,6 +17601,7 @@ const crono = {
   notificationLastMilestoneMinutes: 0,
   notes: [],
   observation: '',
+  quickDestelloNote: '', // destello marcado antes o durante la sesión actual
 };
 window.crono = crono;
 
@@ -17956,6 +17957,7 @@ function cronoSaveState() {
       notificationLastMilestoneMinutes: Math.max(0, Number(crono.notificationLastMilestoneMinutes) || 0),
       notes: Array.isArray(crono.notes) ? crono.notes.slice(-80) : [],
       observation: crono.observation || '',
+      quickDestelloNote: (crono.quickDestelloNote || '').slice(0, CRONO_DESTELLO_MAX_CHARS),
     }));
   } catch(e) {}
 }
@@ -17973,6 +17975,9 @@ function cronoLoadState() {
     if (typeof s.untilTime === 'string') crono.untilTime = s.untilTime;
     crono.notes = Array.isArray(s.notes) ? s.notes.slice(-80).map(cronoNormalizeSessionNote).filter(Boolean) : [];
     crono.observation = typeof s.observation === 'string' ? s.observation.slice(0, 1600) : '';
+    crono.quickDestelloNote = typeof s.quickDestelloNote === 'string'
+      ? s.quickDestelloNote.slice(0, CRONO_DESTELLO_MAX_CHARS)
+      : '';
     if (s.state !== 'running' && s.state !== 'paused') return false;
     if (!s.obraId || !s.startTs) return false;
     crono.state = s.state;
@@ -20222,6 +20227,48 @@ function renderCronoPasajes() {
   }
 }
 
+function refreshQuickDestelloButtons() {
+  const active = !!(crono.quickDestelloNote || '').trim();
+  document.querySelectorAll('.crono-quick-destello-btn').forEach(btn => {
+    btn.classList.toggle('is-saved', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    btn.title = active ? 'Editar el destello de esta sesión' : 'Añadir un destello';
+  });
+}
+
+function openQuickDestello() {
+  if (crono.isRest) {
+    showToast('Los destellos se guardan en sesiones de estudio');
+    return;
+  }
+  const input = document.getElementById('quickDestelloInput');
+  const context = document.getElementById('quickDestelloContext');
+  if (input) input.value = crono.quickDestelloNote || '';
+  if (context) {
+    context.textContent = crono.state === 'idle'
+      ? 'Quedará preparado para la próxima sesión.'
+      : 'Quedará unido a ' + (crono.displayName || 'esta sesión') + ', sin detener el tiempo.';
+  }
+  openModal('modalQuickDestello');
+  setTimeout(() => input?.focus(), 160);
+}
+
+function saveQuickDestello() {
+  const input = document.getElementById('quickDestelloInput');
+  const note = (input?.value || '').trim().slice(0, CRONO_DESTELLO_MAX_CHARS);
+  if (!note) {
+    showToast('Escribe qué quieres recordar');
+    input?.focus();
+    return;
+  }
+  crono.quickDestelloNote = note;
+  cronoSaveState();
+  refreshQuickDestelloButtons();
+  closeModal('modalQuickDestello');
+  try { Haptics.medium(); } catch (e) {}
+  showToast(crono.state === 'idle' ? 'Destello preparado' : 'Destello guardado en esta sesión');
+}
+
 function _renderPasajeIdleChips(activos, abierto) {
   const chips = activos.map(p => {
     const tier = PASAJE_TIERS[_normalizePasajeTier(p.tier)];
@@ -20754,6 +20801,7 @@ function cronoRender() {
 
   // Marca de marcha: el pill de Destellos solo se muestra en reposo (idle).
   document.body.classList.toggle('crono-running', crono.state !== 'idle');
+  refreshQuickDestelloButtons();
 
   if (crono.state === 'idle') {
     idle.style.display = '';
@@ -22423,8 +22471,23 @@ function cronoFinish(expectedRunId) {
     startedAt: startedAtIso,
     endedAt: endedAtIso,
     notes: cronoSessionNotes,
-    observation: crono.observation || ''
+    observation: crono.observation || '',
+    quickDestelloNote: (crono.quickDestelloNote || '').trim()
   };
+
+  // Un destello marcado junto al reloj llega al mismo modelo que el modal
+  // final. Así aparece ya activado y se persiste en el historial/Supabase al
+  // guardar la sesión, sin crear un segundo tipo de registro.
+  const quickDestelloNote = (crono.quickDestelloNote || '').trim();
+  if (quickDestelloNote) {
+    const prevDestello = sessionDestello[targetPlanId] || {};
+    sessionDestello[targetPlanId] = Object.assign({}, prevDestello, {
+      on: true,
+      nota: quickDestelloNote,
+    });
+    if (typeof saveDraft === 'function') saveDraft();
+    if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
+  }
 
   cronoReset('completed');
   cronoRender();
@@ -22475,6 +22538,7 @@ function cronoReset(pushStatus) {
   crono.notificationLastMilestoneMinutes = 0;
   crono.notes = [];
   crono.observation = '';
+  crono.quickDestelloNote = '';
   _cronoLastRunDestelloKey = '';
   // NB: NO reseteamos mode ni timerMinutes — son preferencias persistentes.
   // Las guardamos en localStorage para la próxima sesión.
@@ -22782,6 +22846,33 @@ function cronoUpdateSelectBtn() {
 //                 'change' (cambia durante una sesión activa)  |
 //                 'pase' (abre registerPase al elegir obra)
 let _obraPickerMode = 'crono';
+let _cronoPickerEventId = null;
+const CRONO_PICKER_EVENT_KEY = 'cronoPickerEvent';
+
+function cronoPickerEvents() {
+  const now = Date.now();
+  return (db.eventos || [])
+    .filter(ev => ev && Array.isArray(ev.obras) && ev.obras.length && new Date(ev.fecha).getTime() > now - 86400000)
+    .sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+}
+
+function cronoPickerInitialEvent() {
+  const events = cronoPickerEvents();
+  const ids = new Set(events.map(ev => ev.id));
+  try {
+    const saved = localStorage.getItem(CRONO_PICKER_EVENT_KEY);
+    if (saved === '__all__') return '';
+    if (saved && ids.has(saved)) return saved;
+  } catch (e) {}
+  return events[0]?.id || '';
+}
+
+function setCronoPickerEvent(eventId) {
+  const valid = cronoPickerEvents().some(ev => ev.id === eventId);
+  _cronoPickerEventId = valid ? eventId : '';
+  try { localStorage.setItem(CRONO_PICKER_EVENT_KEY, _cronoPickerEventId || '__all__'); } catch (e) {}
+  renderCronoObraPicker();
+}
 
 function openPasePicker() {
   openCronoObraPicker('pase');
@@ -22839,6 +22930,12 @@ function openCronoObraPicker(mode) {
   const title = document.getElementById('cronoObraPickerTitle');
   const subtitle = document.getElementById('cronoObraPickerSubtitle');
   const changing = _obraPickerMode === 'change';
+  const obrasEventFilter = document.getElementById('filtroEvento');
+  if (obrasEventFilter?.value && cronoPickerEvents().some(ev => ev.id === obrasEventFilter.value)) {
+    _cronoPickerEventId = obrasEventFilter.value;
+  } else if (_cronoPickerEventId === null) {
+    _cronoPickerEventId = cronoPickerInitialEvent();
+  }
   if (title) title.textContent = changing ? 'Cambiar obra' : 'Elige obra o actividad';
   if (subtitle) subtitle.textContent = changing
     ? 'El cronómetro sigue contando. Las últimas usadas aparecen primero.'
@@ -22861,15 +22958,36 @@ function closeCronoObraPicker() {
 function renderCronoObraPicker() {
   const list = document.getElementById('cronoObraPickerList');
   const search = document.getElementById('cronoObraPickerSearch');
+  const eventStrip = document.getElementById('cronoObraPickerEvents');
+  const subtitle = document.getElementById('cronoObraPickerSubtitle');
   const sel = document.getElementById('cronoObraSelect');
   if (!list) return;
   const q = (search?.value || '').toLowerCase().trim();
   const recency = getCronoPickRecency();
-  const obras = (db.obras || []).slice().sort((a, b) => {
+  const events = cronoPickerEvents();
+  if (_cronoPickerEventId === null) _cronoPickerEventId = cronoPickerInitialEvent();
+  if (_cronoPickerEventId && !events.some(ev => ev.id === _cronoPickerEventId)) _cronoPickerEventId = '';
+  const activeEvent = events.find(ev => ev.id === _cronoPickerEventId) || null;
+  const allowedObras = activeEvent ? new Set(activeEvent.obras || []) : null;
+  const obras = (db.obras || []).filter(o => !allowedObras || allowedObras.has(o.id)).slice().sort((a, b) => {
     const ra = recency[a.id] || 0, rb = recency[b.id] || 0;
     if (ra !== rb) return rb - ra;        // más reciente primero
     return a.name.localeCompare(b.name);  // sin uso previo: alfabético
   });
+  if (eventStrip) {
+    eventStrip.innerHTML =
+      '<button type="button" class="crono-picker-event-chip' + (!activeEvent ? ' active' : '') + '" onclick="setCronoPickerEvent(\'\')">Todas</button>' +
+      events.map(ev =>
+        '<button type="button" class="crono-picker-event-chip' + (activeEvent?.id === ev.id ? ' active' : '') + '" ' +
+        'data-event="' + escapeHtmlSafe(ev.id) + '" onclick="setCronoPickerEvent(this.dataset.event)">' +
+        escapeHtmlSafe(ev.nombre || 'Evento') + '</button>'
+      ).join('');
+  }
+  if (subtitle) {
+    const scope = activeEvent ? (activeEvent.nombre || 'Evento') : 'Todo el repertorio';
+    subtitle.textContent = obras.length + (obras.length === 1 ? ' obra' : ' obras') + ' · ' + scope +
+      (_obraPickerMode === 'change' ? ' · el tiempo sigue contando' : ' · últimas usadas primero');
+  }
   const currentValue = _obraPickerMode === 'change'
     ? (crono.movId ? 'mov::' + crono.obraId + '::' + crono.movId : 'obra::' + crono.obraId)
     : (sel?.value || '');
@@ -22920,7 +23038,11 @@ function renderCronoObraPicker() {
   let html = items.map(o => obraButtonHTML(o, o.tipo === 'actividad')).join('');
   if (!html) {
     html = '<div class="crono-picker-empty">' +
-      (q ? 'Sin resultados para "' + escapeHtmlSafe(q) + '"' : 'No hay obras todavía') +
+      (q
+        ? 'Sin resultados para "' + escapeHtmlSafe(q) + '" en ' + escapeHtmlSafe(activeEvent?.nombre || 'el repertorio')
+        : activeEvent
+          ? 'Este evento no tiene obras disponibles. Elige otro grupo o Todas.'
+          : 'No hay obras todavía') +
       '</div>';
   }
   list.innerHTML = html;

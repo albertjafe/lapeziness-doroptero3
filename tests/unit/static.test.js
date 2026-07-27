@@ -99,6 +99,24 @@ describe('quality wiring', () => {
     expect(app).toContain('El cronómetro sigue contando. Las últimas usadas aparecen primero.');
   });
 
+  it('adds session destellos beside the clock and filters the picker by event', () => {
+    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+
+    expect(html.match(/class="crono-quick-destello-btn/g)).toHaveLength(3);
+    expect(html).toContain('id="modalQuickDestello"');
+    expect(app).toContain('quickDestelloNote');
+    expect(app).toContain('sessionDestello[targetPlanId]');
+    expect(styles).toContain('.crono-quick-destello-btn.is-saved');
+
+    expect(html).toContain('id="cronoObraPickerEvents"');
+    expect(app).toContain('function cronoPickerEvents()');
+    expect(app).toContain('const allowedObras = activeEvent ? new Set(activeEvent.obras || []) : null;');
+    expect(app).toContain('localStorage.setItem(CRONO_PICKER_EVENT_KEY');
+    expect(styles).toContain('.crono-picker-event-chip.active');
+  });
+
   it('ships one vector music mark and correctly sized app icons', () => {
     const svg = fs.readFileSync(path.join(root, 'icon.svg'), 'utf8');
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');

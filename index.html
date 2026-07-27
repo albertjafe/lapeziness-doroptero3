@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=203">
+<link rel="stylesheet" href="styles.css?v=204">
 </head>
 <body>
 
@@ -273,6 +273,10 @@
             <div class="crono-display" id="cronoTimerText">00:00</div>
             <div class="crono-run-target" id="cronoIdleTarget" style="display:none"></div>
           </div>
+          <button type="button" class="crono-quick-destello-btn" onclick="openQuickDestello()"
+                  aria-label="Añadir un destello" title="Añadir un destello">
+            <span aria-hidden="true">✦</span><small>+</small>
+          </button>
         </div>
 
         <div class="crono-run-destello crono-idle-message" id="cronoIdleMessage">Empieza tu sesión de hoy</div>
@@ -386,6 +390,10 @@
           <div class="crono-display" id="cronoDisplay">00:00</div>
           <div class="crono-run-target" id="cronoRunTarget" style="display:none"></div>
         </div>
+        <button type="button" class="crono-quick-destello-btn" onclick="openQuickDestello()"
+                aria-label="Añadir un destello" title="Añadir un destello">
+          <span aria-hidden="true">✦</span><small>+</small>
+        </button>
       </div>
 
       <!-- Hito "si paras ahora" como cápsula dentro de la tarjeta (Mármol) -->
@@ -508,6 +516,9 @@
       <div class="crono-pause-overlay-time" id="cronoPauseOverlayTime">05:00</div>
       <div class="crono-pause-overlay-session" id="cronoPauseOverlaySession">Sesión pausada en 00:00</div>
       <div class="crono-pause-overlay-note" id="cronoPauseOverlayNote">Se reanuda sola al acabar la pausa.</div>
+      <button type="button" class="crono-quick-destello-btn crono-pause-destello-btn" onclick="openQuickDestello()">
+        <span aria-hidden="true">✦</span><span>Añadir destello</span>
+      </button>
       <div class="crono-pause-overlay-actions" id="cronoPauseOverlayActions"></div>
     </div>
   </div>
@@ -1225,6 +1236,7 @@
     <div style="padding:18px 22px 12px;border-bottom:1px solid var(--border2);background:var(--bg2)">
       <div class="modal-title" id="cronoObraPickerTitle" style="margin-bottom:3px">Elige obra o actividad</div>
       <div class="crono-picker-subtitle" id="cronoObraPickerSubtitle">Las últimas usadas aparecen primero.</div>
+      <div class="crono-picker-events" id="cronoObraPickerEvents" role="group" aria-label="Grupo de obras"></div>
       <input type="text" id="cronoObraPickerSearch"
              placeholder="Buscar..." autocomplete="off"
              oninput="renderCronoObraPicker()"
@@ -1503,6 +1515,23 @@
 </div>
 
 <!-- MODAL DESTELLOS — lista de sesiones de excelencia para releer en días flojos -->
+<div class="modal-overlay" id="modalQuickDestello">
+  <div class="modal quick-destello-modal" style="max-width:410px">
+    <div class="quick-destello-mark" aria-hidden="true">✦</div>
+    <div class="modal-title" style="margin-bottom:5px">Guardar este destello</div>
+    <div class="quick-destello-context" id="quickDestelloContext">Quedará unido a esta sesión.</div>
+    <label class="quick-destello-field" for="quickDestelloInput">
+      <span>¿Qué quieres recordar?</span>
+      <textarea id="quickDestelloInput" class="modal-input" rows="3" maxlength="180"
+                placeholder="Una idea, un sonido o algo que por fin salió..."></textarea>
+    </label>
+    <div class="modal-actions quick-destello-actions">
+      <button type="button" class="modal-btn secondary" onclick="closeModal('modalQuickDestello')">Cancelar</button>
+      <button type="button" class="modal-btn primary" onclick="saveQuickDestello()">Guardar destello</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalDestellos">
   <div class="modal destellos-modal" style="max-width:460px;max-height:88dvh;display:flex;flex-direction:column;padding:0;overflow:hidden">
     <div style="display:flex;align-items:baseline;justify-content:space-between;padding:22px 24px 6px">
@@ -1875,11 +1904,11 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js?v=203"></script>
-<script src="data-core.js?v=203"></script>
-<script src="sync-core.js?v=203"></script>
-<script src="push-client.js?v=203"></script>
-<script src="app.js?v=203"></script>
+<script src="timer-core.js?v=204"></script>
+<script src="data-core.js?v=204"></script>
+<script src="sync-core.js?v=204"></script>
+<script src="push-client.js?v=204"></script>
+<script src="app.js?v=204"></script>
 
 </body>
 <script>
@@ -1901,7 +1930,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=203', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=204', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

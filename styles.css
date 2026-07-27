@@ -3134,6 +3134,35 @@
     font: 600 10px/1.35 'JetBrains Mono', monospace;
     margin-bottom: 8px;
   }
+  .crono-picker-events {
+    display: flex;
+    gap: 7px;
+    margin: 4px -2px 8px;
+    padding: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .crono-picker-events::-webkit-scrollbar { display: none; }
+  .crono-picker-event-chip {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 7px 13px;
+    border: 1px solid var(--border2);
+    border-radius: 999px;
+    background: var(--bg3);
+    color: var(--text2);
+    font: 700 10px/1 var(--font-mono, 'JetBrains Mono', monospace);
+    cursor: pointer;
+    transition: background 160ms ease, color 160ms ease, border-color 160ms ease, transform 140ms ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .crono-picker-event-chip.active {
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--border2));
+    background: color-mix(in srgb, var(--accent) 15%, var(--bg2));
+    color: var(--accent);
+  }
+  .crono-picker-event-chip:active { transform: scale(.95); }
   @media (max-width: 480px) {
     #modalCronoObraPicker .modal {
       height: 75vh;
@@ -4130,7 +4159,41 @@
     font-variant-numeric: tabular-nums;
   }
   /* Ocultar el pill mientras el cronómetro corre/pausado (solo en reposo) */
-  body.crono-running .crono-destellos-pill { display: none !important; }
+body.crono-running .crono-destellos-pill { display: none !important; }
+
+.quick-destello-modal { text-align: center; }
+.quick-destello-mark {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border2));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg2));
+  box-shadow: 0 0 28px color-mix(in srgb, var(--accent) 23%, transparent);
+  color: var(--accent);
+  font-size: 27px;
+}
+.quick-destello-context {
+  margin-bottom: 17px;
+  color: var(--text3);
+  font: 600 10px/1.5 var(--font-mono, 'JetBrains Mono', monospace);
+}
+.quick-destello-field { display: block; text-align: left; }
+.quick-destello-field > span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--text2);
+  font: 700 10px/1.2 var(--font-mono, 'JetBrains Mono', monospace);
+}
+.quick-destello-field textarea { resize: none; line-height: 1.45; }
+.quick-destello-actions { margin-top: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .crono-quick-destello-btn,
+  .crono-picker-event-chip { transition: none; }
+}
 
   /* MODAL DESTELLOS — lista de sesiones de excelencia */
   .destellos-list { display: flex; flex-direction: column; gap: 10px; }
@@ -6944,6 +7007,53 @@
     margin: 0 auto 60px;
     position: relative;
   }
+  .crono-quick-destello-btn {
+    position: absolute;
+    z-index: 6;
+    top: 50%;
+    right: max(2px, calc((100% - var(--crono-interface-ring-size, 230px)) / 2 - 18px));
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border2));
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--bg2) 92%, transparent);
+    box-shadow: 0 8px 22px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.12);
+    color: var(--accent);
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms ease, background 220ms ease;
+    -webkit-tap-highlight-color: transparent;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  .crono-quick-destello-btn > span:first-child { font-size: 21px; line-height: 1; }
+  .crono-quick-destello-btn small { font: 800 10px/1 var(--font-mono, monospace); margin-top: -10px; }
+  .crono-quick-destello-btn:hover { transform: translateY(-50%) scale(1.06); }
+  .crono-quick-destello-btn:active { transform: translateY(-50%) scale(.92); }
+  .crono-quick-destello-btn.is-saved {
+    color: #fff;
+    background: var(--accent);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 15%, transparent), 0 0 24px color-mix(in srgb, var(--accent) 42%, transparent);
+  }
+  .crono-pause-destello-btn {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: auto;
+    height: 40px;
+    margin: 4px auto 10px;
+    padding: 0 15px;
+    border-radius: 999px;
+    transform: none;
+    font: 700 11px/1 var(--font-mono, monospace);
+  }
+  .crono-pause-destello-btn > span:first-child { font-size: 17px; }
+  .crono-pause-destello-btn:hover { transform: scale(1.04); }
+  .crono-pause-destello-btn:active { transform: scale(.95); }
   .crono-run-progress-svg {
     position: absolute;
     left: 50%;
