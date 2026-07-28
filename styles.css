@@ -15787,3 +15787,100 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
   #view-session .session-resumen-big { font-size: 36px; }
   #view-session .session-resumen-last { font-size: 9px; }
 }
+
+/* Pulso vive en un lienzo propio, a la izquierda de Hoy. */
+#view-pulse {
+  width: 100%;
+  max-width: 1040px;
+  padding-inline: clamp(14px, 3vw, 32px);
+}
+.pulse-page-shell { width: 100%; }
+.pulse-page-intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 0 16px;
+  padding: 0 2px 13px;
+  border-bottom: 1px solid var(--border2);
+}
+.pulse-page-swipe-hint {
+  flex: 0 0 auto;
+  color: var(--text3);
+  font: 700 9px/1 var(--font-mono, 'JetBrains Mono', monospace);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+#view-pulse .pulse-card-expanded {
+  width: 100%;
+  margin: 0;
+  padding: clamp(16px, 2.4vw, 26px);
+  border-radius: clamp(15px, 2vw, 22px);
+}
+#view-pulse .pulse-card-expanded .pulse-head { margin-bottom: 16px; }
+#view-pulse .pulse-card-expanded .stats-card-title { font-size: clamp(18px, 2.4vw, 25px); }
+#view-pulse .pulse-card-expanded .stats-card-sub { font-size: clamp(10px, 1.4vw, 13px); }
+#view-pulse .pulse-card-expanded .pulse-range {
+  max-width: 720px;
+  margin-inline: auto;
+}
+#view-pulse .pulse-card-expanded .pulse-period {
+  max-width: 720px;
+  margin: 14px auto 10px;
+}
+#view-pulse .pulse-card-expanded .pulse-legend {
+  justify-content: center;
+  padding-bottom: 13px;
+}
+#view-pulse .pulse-card-expanded .pulse-chart {
+  width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+#view-pulse .pulse-card-expanded .pulse-line { stroke-width: 3.6; }
+#view-pulse .pulse-card-expanded .pulse-gap-line { stroke-width: 2.2; }
+#view-pulse .pulse-card-expanded .pulse-point { stroke-width: 2.7; }
+#view-pulse .pulse-card-expanded .pulse-detail {
+  min-height: 42px;
+  padding: 10px 12px;
+  font-size: clamp(10px, 1.25vw, 12px);
+}
+#view-pulse .pulse-card-expanded .pulse-method {
+  font-size: clamp(9px, 1.1vw, 11px);
+}
+.pulse-shortcut {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 17px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border2));
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg2));
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.pulse-shortcut-copy { display: grid; gap: 4px; min-width: 0; }
+.pulse-shortcut-action {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font: 700 9px/1 var(--font-mono, 'JetBrains Mono', monospace);
+  letter-spacing: .03em;
+  white-space: nowrap;
+}
+.pulse-shortcut-action span { font-size: 18px; vertical-align: -2px; }
+.pulse-shortcut:active { transform: scale(.992); }
+
+@media (max-width: 560px) {
+  #view-pulse { padding-inline: 10px; }
+  .pulse-page-intro { align-items: center; margin-bottom: 10px; padding-inline: 5px; }
+  .pulse-page-intro .view-local-subtitle { max-width: 29ch; font-size: 9px; }
+  #view-pulse .pulse-card-expanded { padding: 14px 10px 13px; }
+  #view-pulse .pulse-card-expanded .pulse-head { padding-inline: 3px; }
+  #view-pulse .pulse-card-expanded .pulse-legend { justify-content: flex-start; }
+  #view-pulse .pulse-card-expanded .pulse-axis-x,
+  #view-pulse .pulse-card-expanded .pulse-axis-y { font-size: 14px; }
+  .pulse-shortcut { padding: 13px 14px; }
+  .pulse-shortcut-action { font-size: 8px; }
+}

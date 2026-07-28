@@ -32,7 +32,7 @@ test('opens every main view without page exceptions', async ({ page }) => {
   page.on('console', message => { if (message.type() === 'error') recordError(message.text()); });
   await prepare(page);
 
-  for (const view of ['session', 'cronometro', 'obras', 'calendario', 'historial', 'ajustes']) {
+  for (const view of ['pulse', 'session', 'cronometro', 'obras', 'calendario', 'historial', 'ajustes']) {
     await page.evaluate(name => { if (typeof showView !== 'function') throw new Error('showView no disponible'); showView(name); }, view);
     await expect(page.locator('#view-' + view)).toHaveClass(/active/);
   }
@@ -75,7 +75,7 @@ test('keeps the app inside the viewport at the four target widths', async ({ bro
     const context = await browser.newContext({ viewport });
     const page = await context.newPage();
     await prepare(page);
-    for (const view of ['session', 'cronometro', 'obras', 'calendario', 'historial', 'ajustes']) {
+    for (const view of ['pulse', 'session', 'cronometro', 'obras', 'calendario', 'historial', 'ajustes']) {
       await page.evaluate(name => { if (typeof showView !== 'function') throw new Error('showView no disponible'); showView(name); }, view);
       const sizing = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth }));
       expect(sizing.scrollWidth, view + ' at ' + viewport.width + 'px').toBeLessThanOrEqual(sizing.innerWidth + 1);
@@ -1005,9 +1005,14 @@ test('records concentration and resisted urges across landscape and portrait tim
   expect(mobileContentBox.y).toBeGreaterThanOrEqual(0);
   expect(mobileContentBox.y + mobileContentBox.height).toBeLessThanOrEqual(844);
 
+  await page.evaluate(() => showView('pulse'));
+  await expect(page.locator('#pulseDashboard .pulse-card')).toContainText('4 registros');
+  await expect(page.locator('#pulseDashboard .pulse-point[aria-label^="Resistencia"]')).toHaveCount(1);
+  const pulseChartBox = await page.locator('#pulseDashboard .pulse-chart').boundingBox();
+  expect(pulseChartBox.height).toBeGreaterThan(220);
   await page.evaluate(() => showView('session'));
-  await expect(page.locator('.pulse-card')).toContainText('4 registros');
-  await expect(page.locator('.pulse-point[aria-label^="Resistencia"]')).toHaveCount(1);
+  await expect(page.locator('#statsDashboard .pulse-shortcut')).toBeVisible();
+  await expect(page.locator('#statsDashboard .pulse-card')).toHaveCount(0);
 });
 
 test('draws unknown time between study sessions as a straight dashed bridge', async ({ page }) => {
@@ -1037,7 +1042,7 @@ test('draws unknown time between study sessions as a straight dashed bridge', as
     ];
     _pulseRange = 'dia';
     _pulseOffset = 0;
-    renderStatsDashboard();
+    renderPulseDashboard();
   });
 
   await expect(page.locator('.pulse-line')).toHaveCount(2);
@@ -1074,19 +1079,19 @@ test('keeps a 13-inch touch iPad in the tablet layout', async ({ browser }) => {
   await context.close();
 });
 
-test('uses the combined sessions-statistics three-view order for swipe navigation', async ({ page }) => {
+test('places the dedicated pulse screen at the far left of swipe navigation', async ({ page }) => {
   await prepare(page);
   const result = await page.evaluate(() => {
     showView('cronometro');
-    showViewFromSwipe('session');
+    showViewFromSwipe('pulse');
     return {
       order: SWIPE_VIEW_ORDER.slice(),
       active: document.body.getAttribute('data-view'),
     };
   });
   expect(result).toEqual({
-    order: ['session', 'cronometro', 'obras'],
-    active: 'session',
+    order: ['pulse', 'session', 'cronometro', 'obras'],
+    active: 'pulse',
   });
 });
 

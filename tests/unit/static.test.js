@@ -142,8 +142,13 @@ describe('quality wiring', () => {
     expect(app).toContain('línea recta discontinua entre sesiones');
     expect(app).toContain('function _pulseStudyIntervals(period)');
     expect(app).toContain('class="pulse-gap-line"');
+    expect(app).toContain("const SWIPE_VIEW_ORDER = ['pulse', 'session', 'cronometro', 'obras']");
+    expect(app).toContain('function renderPulseDashboard()');
+    expect(html).toContain('id="view-pulse"');
+    expect(html).toContain('id="pulseDashboard"');
     expect(styles).toContain('.pulse-band');
     expect(styles).toContain('.pulse-gap-line');
+    expect(styles).toContain('.pulse-card-expanded');
   });
 
   it('keeps today study time prominent and updates it from a running stopwatch', () => {

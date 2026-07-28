@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=208">
+<link rel="stylesheet" href="styles.css?v=209">
 </head>
 <body>
 
@@ -115,6 +115,19 @@
   <path d="M30 420 Q32 398 28 378" stroke="var(--accent)" stroke-width="1" fill="none"/>
   <path d="M40 420 Q44 400 48 382" stroke="var(--accent)" stroke-width="1" fill="none"/>
 </svg>
+<div class="view" id="view-pulse">
+  <section class="pulse-page-shell" aria-label="Análisis de Pulso">
+    <div class="pulse-page-intro">
+      <div>
+        <div class="view-local-label">Tu estado mientras estudias</div>
+        <div class="view-local-subtitle">La hora permanece visible y los intervalos sin sesión no se interpretan.</div>
+      </div>
+      <span class="pulse-page-swipe-hint" aria-hidden="true">Hoy&nbsp; ›</span>
+    </div>
+    <div id="pulseDashboard"></div>
+  </section>
+</div>
+
 <div class="view active" id="view-session">
   <section class="session-resumen-card" id="sessionResumenCard" aria-label="Tiempo estudiado hoy">
     <div class="session-resumen-info">
@@ -1920,11 +1933,11 @@
   <button class="undo-toast-btn" id="undoToastBtn" onclick="_doUndo()">Deshacer</button>
 </div>
 
-<script src="timer-core.js?v=208"></script>
-<script src="data-core.js?v=208"></script>
-<script src="sync-core.js?v=208"></script>
-<script src="push-client.js?v=208"></script>
-<script src="app.js?v=208"></script>
+<script src="timer-core.js?v=209"></script>
+<script src="data-core.js?v=209"></script>
+<script src="sync-core.js?v=209"></script>
+<script src="push-client.js?v=209"></script>
+<script src="app.js?v=209"></script>
 
 </body>
 <script>
@@ -1946,7 +1959,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=208', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=209', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

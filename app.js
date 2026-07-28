@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-27-pulso-sesiones-v85';
+const APP_VERSION = '2026-07-28-pulso-pantalla-v86';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -112,6 +112,7 @@ function refreshStudyViews() {
     _studyViewsRefreshFrame = null;
     if (typeof renderRacha === 'function') renderRacha();
     if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+    if (typeof renderPulseDashboard === 'function') renderPulseDashboard();
     if (typeof renderStatsDashboard === 'function') renderStatsDashboard();
     if (typeof renderMantenimientoSection === 'function') renderMantenimientoSection();
     if (typeof renderSolidezSection === 'function') renderSolidezSection();
@@ -507,6 +508,7 @@ if (!db.sessionPlants) db.sessionPlants = [];
 // ─── UI HELPERS ─────────────────────────────────────────────────────────────
 
 const VIEW_CONTEXT = {
+  pulse: { eyebrow: 'Análisis', title: 'Pulso' },
   session: { eyebrow: 'Estudio', title: 'Hoy' },
   cronometro: { eyebrow: 'Práctica', title: 'Cronómetro' },
   obras: { eyebrow: 'Repertorio', title: 'Obras' },
@@ -538,6 +540,10 @@ function renderSessionViewContent() {
   renderCombinedSessionStats();
 }
 
+function renderPulseViewContent() {
+  renderPulseDashboard();
+}
+
 function showView(name, options) {
   const opts = options || {};
   if (name === 'historial') {
@@ -563,6 +569,7 @@ function showView(name, options) {
   window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   // Modo concentración: activar/desactivar al entrar/salir de cronometro
   if (name !== 'cronometro' && typeof cronoOnLeaveView === 'function') cronoOnLeaveView();
+  if (name === 'pulse' && !opts.swipePrepared) renderPulseViewContent();
   if (name === 'session' && !opts.swipePrepared) renderSessionViewContent();
   if (name === 'cronometro') {
     cronoOnEnterView({ layoutPrepared: !!opts.swipePrepared });
@@ -955,7 +962,7 @@ function renderCombinedSessionStats() {
   _histListApplyPref();
 }
 
-const SWIPE_VIEW_ORDER = ['session', 'cronometro', 'obras'];
+const SWIPE_VIEW_ORDER = ['pulse', 'session', 'cronometro', 'obras'];
 let _viewSwipe = null;
 let _viewSwipeMultiTouch = false;
 
@@ -1148,6 +1155,7 @@ function viewSwipePrepareNeighbor(swipe, direction) {
   // Renderizamos una sola vez, ya con la vista visible fuera del lienzo. Al
   // completar el gesto showView reutilizara este mismo DOM sin reconstruirlo.
   viewSwipePrepareCronoPreview(swipe, nextName === 'cronometro');
+  if (nextName === 'pulse') renderPulseViewContent();
   if (nextName === 'session') renderSessionViewContent();
   if (nextName === 'obras') renderObras();
   return true;
@@ -13250,8 +13258,8 @@ function _pulseMonotonePath(points) {
   return path;
 }
 
-function _pulseChartSVG(series) {
-  const W = 760, H = 330, left = 72, right = 18, top = 20, bottom = 40;
+function _pulseChartSVG(series, expanded) {
+  const W = 760, H = expanded ? 560 : 330, left = 72, right = 18, top = expanded ? 30 : 20, bottom = expanded ? 52 : 40;
   const plotW = W - left - right, plotH = H - top - bottom;
   const px = x => left + Math.max(0, Math.min(1, x)) * plotW;
   const py = value => top + (5 - Math.max(1, Math.min(5, value))) / 4 * plotH;
@@ -13301,7 +13309,8 @@ function _pulseChartSVG(series) {
     + '<g>' + grid + '</g><g clip-path="url(#pulsePlotClip)"><defs><clipPath id="pulsePlotClip"><rect x="' + left + '" y="' + (top - 7) + '" width="' + plotW + '" height="' + (plotH + 14) + '"/></clipPath></defs>' + layers + '</g></svg>';
 }
 
-function _pulseCard() {
+function _pulseCard(options) {
+  const expanded = !!options?.expanded;
   const period = _pulsePeriod();
   const series = _pulseSeries(period);
   const total = PULSE_METRICS.reduce((sum, metric) => sum + (series[metric.key] || []).reduce((n, point) => n + (point.count || 1), 0), 0);
@@ -13312,15 +13321,15 @@ function _pulseCard() {
     '<button type="button" class="pulse-metric' + (_pulseVisible.has(metric.key) ? ' active' : '') + '" style="--pulse-color:' + metric.color + '" aria-pressed="' + _pulseVisible.has(metric.key) + '" onclick="togglePulseMetric(\'' + metric.key + '\')"><i></i>' + metric.short + '</button>'
   ).join('');
   const chart = total
-    ? _pulseChartSVG(series)
+    ? _pulseChartSVG(series, expanded)
     : '<div class="pulse-empty"><strong>Aún no hay registros aquí</strong><span>Los que añadas desde el cronómetro aparecerán en su hora real.</span></div>';
   const typical = _pulseRange === 'tipico'
     ? '<div class="pulse-method">Cada punto reúne la misma franja horaria de los siete días. La sombra muestra su variación.</div>'
     : _pulseRange === 'mes'
       ? '<div class="pulse-method">Cada punto es la media del día. La sombra conserva el mínimo y el máximo registrados.</div>'
       : '<div class="pulse-method"><span class="pulse-method-sample"></span>Curva sólida dentro de una sesión · línea recta discontinua entre sesiones, sin inventar datos intermedios.</div>';
-  return '<section class="stats-card pulse-card">'
-    + '<div class="pulse-head"><div><div class="stats-card-title">Pulso</div><div class="stats-card-sub">Concentración, impulso, malestar y resistencia</div></div><span class="pulse-count">' + total + (total === 1 ? ' registro' : ' registros') + '</span></div>'
+  return '<section class="stats-card pulse-card' + (expanded ? ' pulse-card-expanded' : '') + '">'
+    + '<div class="pulse-head"><div><div class="stats-card-title">' + (expanded ? 'Evolución' : 'Pulso') + '</div><div class="stats-card-sub">Concentración, impulso, malestar y resistencia</div></div><span class="pulse-count">' + total + (total === 1 ? ' registro' : ' registros') + '</span></div>'
     + '<div class="pulse-range">' + tabs + '</div>'
     + '<div class="pulse-period"><button type="button" onclick="pulseNav(-1)" aria-label="Periodo anterior">‹</button><strong>' + escapeHtmlSafe(period.label) + '</strong><button type="button" onclick="pulseNav(1)" aria-label="Periodo siguiente"' + (_pulseOffset === 0 ? ' disabled' : '') + '>›</button></div>'
     + '<div class="pulse-legend">' + legend + '</div>'
@@ -13328,16 +13337,34 @@ function _pulseCard() {
     + '</section>';
 }
 
+function _pulseShortcut() {
+  const period = _pulsePeriod();
+  const series = _pulseSeries(period);
+  const total = PULSE_METRICS.reduce((sum, metric) => sum + (series[metric.key] || []).reduce((n, point) => n + (point.count || 1), 0), 0);
+  return '<button type="button" class="stats-card pulse-shortcut" onclick="showView(\'pulse\')" aria-label="Abrir Pulso">'
+    + '<span class="pulse-shortcut-copy"><span class="stats-card-title">Pulso</span><span class="stats-card-sub">' + total + (total === 1 ? ' registro' : ' registros') + ' · evolución en pantalla completa</span></span>'
+    + '<span class="pulse-shortcut-action"><span aria-hidden="true">‹</span> Desliza o abre</span>'
+    + '</button>';
+}
+
+function renderPulseDashboard() {
+  const el = document.getElementById('pulseDashboard');
+  if (!el) return;
+  el.innerHTML = _pulseCard({ expanded: true });
+}
+
 function setPulseRange(range) {
   if (!['dia', 'semana', 'tipico', 'mes'].includes(range)) return;
   _pulseRange = range;
   _pulseOffset = 0;
   localStorage.setItem('pulse_range', range);
+  renderPulseDashboard();
   renderStatsDashboard();
 }
 
 function pulseNav(direction) {
   _pulseOffset = Math.min(0, _pulseOffset + direction);
+  renderPulseDashboard();
   renderStatsDashboard();
 }
 
@@ -13348,6 +13375,7 @@ function togglePulseMetric(metric) {
   } else {
     _pulseVisible.add(metric);
   }
+  renderPulseDashboard();
   renderStatsDashboard();
 }
 
@@ -13382,7 +13410,7 @@ function renderStatsDashboard() {
 
   // Tarjeta 1: tiempo de concentración (barras)
   const bars = _statsBarsData(porDia, periodo.start, periodo.end);
-  let cards = _pulseCard() + '<div class="stats-card">'
+  let cards = _pulseShortcut() + '<div class="stats-card">'
     + '<div class="stats-card-title">Tiempo de concentración</div>'
     + '<div class="stats-card-big">' + fmtMinutos(total) + '</div>'
     + (total > 0
