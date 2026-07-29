@@ -1061,6 +1061,12 @@ test('draws unknown time between study sessions as a straight dashed bridge', as
   const bridgePath = await page.locator('.pulse-gap-line').getAttribute('d');
   expect(bridgePath).toMatch(/^M[\d.]+,[\d.]+ L[\d.]+,[\d.]+$/);
   await expect(page.locator('.pulse-method')).toContainText('sin inventar datos intermedios');
+  const touchGuard = await page.locator('.pulse-trimmer').evaluate(trimmer => {
+    const move = new Event('touchmove', { bubbles: true, cancelable: true });
+    trimmer.dispatchEvent(move);
+    return { touchAction: getComputedStyle(trimmer).touchAction, prevented: move.defaultPrevented };
+  });
+  expect(touchGuard).toEqual({ touchAction: 'none', prevented: true });
 
   await page.locator('#pulseWindowStart').evaluate(input => {
     input.value = '720';

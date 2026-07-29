@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-29-pulso-recortable-v88';
+const APP_VERSION = '2026-07-29-pulso-arrastre-v89';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -13442,6 +13442,19 @@ function renderPulseDashboard() {
   const el = document.getElementById('pulseDashboard');
   if (!el) return;
   el.innerHTML = _pulseCard({ expanded: true });
+  _bindPulseWindowTouch();
+}
+
+function _bindPulseWindowTouch() {
+  const trimmer = document.querySelector('#pulseDashboard .pulse-trimmer');
+  if (!trimmer || trimmer.dataset.touchBound === 'true') return;
+  trimmer.dataset.touchBound = 'true';
+  trimmer.addEventListener('touchmove', event => {
+    if (event.cancelable) event.preventDefault();
+  }, { passive: false });
+  trimmer.addEventListener('gesturestart', event => {
+    if (event.cancelable) event.preventDefault();
+  }, { passive: false });
 }
 
 function previewPulseWindow(edge, rawValue) {

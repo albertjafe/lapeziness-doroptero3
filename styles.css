@@ -10026,6 +10026,10 @@ body.crono-running .crono-destellos-pill { display: none !important; }
   .pulse-trimmer {
     position: relative;
     height: 34px;
+    touch-action: none;
+    overscroll-behavior: contain;
+    user-select: none;
+    -webkit-user-select: none;
   }
   .pulse-trimmer-track,
   .pulse-trimmer-selection {
