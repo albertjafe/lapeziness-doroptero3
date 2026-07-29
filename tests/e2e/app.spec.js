@@ -1015,7 +1015,7 @@ test('records concentration and resisted urges across landscape and portrait tim
   await expect(page.locator('#statsDashboard .pulse-card')).toHaveCount(0);
 });
 
-test('draws unknown time between study sessions as a straight dashed bridge', async ({ page }) => {
+test('draws one smooth curve across sessions and reserves touch drag for the time trimmer', async ({ page }) => {
   await prepare(page);
   await page.evaluate(() => {
     const now = new Date();
@@ -1037,6 +1037,7 @@ test('draws unknown time between study sessions as a straight dashed bridge', as
     db.estadoEventos = [
       { id: 'pulse-1', at: at(9, 10).toISOString(), value: 78, label: 'Alta' },
       { id: 'pulse-2', at: at(9, 40).toISOString(), value: 56, label: 'Media' },
+      { id: 'pulse-outside-session', at: at(13, 0).toISOString(), value: 96, label: 'Muy alta' },
       { id: 'pulse-3', at: at(16, 10).toISOString(), value: 34, label: 'Baja' },
       { id: 'pulse-4', at: at(16, 40).toISOString(), value: 78, label: 'Alta' },
     ];
@@ -1050,23 +1051,26 @@ test('draws unknown time between study sessions as a straight dashed bridge', as
     renderPulseDashboard();
   });
 
-  await expect(page.locator('.pulse-line')).toHaveCount(3);
+  await expect(page.locator('.pulse-line')).toHaveCount(2);
   await expect(page.locator('.pulse-axis-x')).toHaveText(['09:00', '12:00', '15:00', '18:00', '21:00', '23:00']);
   await expect(page.locator('.pulse-axis-x', { hasText: '00:00' })).toHaveCount(0);
   await expect(page.locator('.pulse-point[aria-label^="Malestar"]')).toHaveCount(2);
   await expect(page.locator('.pulse-point[aria-label*="02:30"]')).toHaveCount(0);
   const smoothPaths = await page.locator('.pulse-line').evaluateAll(paths => paths.map(path => path.getAttribute('d')));
   expect(smoothPaths.every(path => / C[\d.]+,[\d.]+/.test(path || ''))).toBe(true);
-  await expect(page.locator('.pulse-gap-line')).toHaveCount(1);
-  const bridgePath = await page.locator('.pulse-gap-line').getAttribute('d');
-  expect(bridgePath).toMatch(/^M[\d.]+,[\d.]+ L[\d.]+,[\d.]+$/);
-  await expect(page.locator('.pulse-method')).toContainText('sin inventar datos intermedios');
+  await expect(page.locator('.pulse-gap-line')).toHaveCount(0);
+  await expect(page.locator('.pulse-method')).toContainText('Curva continua por métrica');
   const touchGuard = await page.locator('.pulse-trimmer').evaluate(trimmer => {
+    let reachedDocument = false;
+    const observeStart = () => { reachedDocument = true; };
+    document.addEventListener('touchstart', observeStart);
+    trimmer.dispatchEvent(new Event('touchstart', { bubbles: true, cancelable: true }));
+    document.removeEventListener('touchstart', observeStart);
     const move = new Event('touchmove', { bubbles: true, cancelable: true });
     trimmer.dispatchEvent(move);
-    return { touchAction: getComputedStyle(trimmer).touchAction, prevented: move.defaultPrevented };
+    return { touchAction: getComputedStyle(trimmer).touchAction, prevented: move.defaultPrevented, startStopped: !reachedDocument };
   });
-  expect(touchGuard).toEqual({ touchAction: 'none', prevented: true });
+  expect(touchGuard).toEqual({ touchAction: 'none', prevented: true, startStopped: true });
 
   await page.locator('#pulseWindowStart').evaluate(input => {
     input.value = '720';
@@ -1082,7 +1086,7 @@ test('draws unknown time between study sessions as a straight dashed bridge', as
   await expect(page.locator('#pulseWindowLabel')).toHaveText('12:00–18:00');
   await expect(page.locator('.pulse-axis-x')).toHaveText(['12:00', '14:00', '16:00', '18:00']);
   await expect(page.locator('.pulse-point[aria-label^="Malestar"]')).toHaveCount(0);
-  await expect(page.locator('.pulse-point[aria-label^="Concentración"]')).toHaveCount(2);
+  await expect(page.locator('.pulse-point[aria-label^="Concentración"]')).toHaveCount(3);
   expect(await page.evaluate(() => [localStorage.getItem('pulse_day_start'), localStorage.getItem('pulse_day_end')])).toEqual(['720', '1080']);
 });
 

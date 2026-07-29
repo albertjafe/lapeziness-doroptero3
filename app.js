@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-29-pulso-arrastre-v89';
+const APP_VERSION = '2026-07-29-pulso-continuo-v90';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1271,6 +1271,10 @@ function initViewSwipeNavigation() {
   if (!root) return;
 
   root.addEventListener('touchstart', event => {
+    if (event.target?.closest?.('.pulse-trimmer, input[type="range"], [data-no-view-swipe]')) {
+      viewSwipeReset(false);
+      return;
+    }
     if (event.touches.length !== 1) {
       _viewSwipeMultiTouch = event.touches.length > 1;
       viewSwipeReset(false);
@@ -13066,8 +13070,8 @@ function _statsAvailabilityCard(start, end) {
 }
 
 // ── PULSO · curvas momentáneas ─────────────────────────────────────────────
-// Mantiene los registros reales visibles y no une puntos separados por huecos
-// largos. Las vistas agregadas conservan además el rango observado.
+// Mantiene los registros reales visibles en una curva continua por métrica.
+// Las vistas agregadas conservan además el rango observado.
 let _pulseRange = localStorage.getItem('pulse_range') || 'dia';
 if (!['dia', 'semana', 'tipico', 'mes'].includes(_pulseRange)) _pulseRange = 'dia';
 let _pulseOffset = 0;
@@ -13169,43 +13173,15 @@ function _pulseSource(metric) {
   return ensureResistenciaEventos();
 }
 
-function _pulseStudyIntervals(period) {
-  const rows = [];
-  const add = (plant, index, source) => {
-    if (!plant || plant.failed || plant.tipo === 'descanso' || !plant.startedAt) return;
-    const start = new Date(plant.startedAt).getTime();
-    let end = new Date(plant.endedAt || '').getTime();
-    if (!Number.isFinite(start)) return;
-    if (!Number.isFinite(end) || end < start) end = start + Math.max(1, Number(plant.mins) || 1) * 60000;
-    if (end < period.start.getTime() || start >= period.end.getTime()) return;
-    rows.push({ key: source + '-' + index + '-' + start, start, end });
-  };
-  (db.sessionPlants || []).forEach((plant, index) => add(plant, index, 'app'));
-  (db.forestPlants || []).forEach((plant, index) => add(plant, index, 'forest'));
-  if (typeof crono !== 'undefined' && crono && crono.state !== 'idle' && crono.startTs) {
-    const liveEnd = crono.state === 'paused' && crono.pauseStartTs ? crono.pauseStartTs : Date.now();
-    rows.push({ key: 'live-' + crono.startTs, start: crono.startTs, end: Math.max(crono.startTs, liveEnd) });
-  }
-  return rows.sort((a, b) => a.start - b.start);
-}
-
-function _pulseSessionKey(at, intervals, fallback) {
-  const time = at.getTime();
-  const tolerance = 2 * 60000;
-  const match = intervals.find(row => time >= row.start - tolerance && time <= row.end + tolerance);
-  return match ? match.key : 'outside-' + fallback;
-}
-
 function _pulseRaw(period) {
   const out = {};
-  const intervals = _pulseStudyIntervals(period);
   PULSE_METRICS.forEach(metric => {
     out[metric.key] = _pulseSource(metric.key).map(item => {
       const at = new Date(item?.at || '');
       const value = _pulseLevel(item?.value, metric.key);
       if (!item || Number.isNaN(at.getTime()) || value == null || at < period.start || at >= period.end) return null;
       const id = item.id || String(at.getTime());
-      return { at, value, note: String(item.note || ''), label: item.label || '', id, sessionKey: _pulseSessionKey(at, intervals, metric.key + '-' + id) };
+      return { at, value, note: String(item.note || ''), label: item.label || '', id };
     }).filter(Boolean).sort((a, b) => a.at - b.at);
   });
   return out;
@@ -13266,7 +13242,6 @@ function _pulseSeries(period) {
           ? row.at.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
           : row.at.toLocaleDateString('es-ES', { weekday: 'short' }) + ' · ' + row.at.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
         note: row.note,
-        sessionKey: row.sessionKey,
       }));
     }
   });
@@ -13274,17 +13249,7 @@ function _pulseSeries(period) {
 }
 
 function _pulseSegments(points) {
-  if (!points.length) return [];
-  const maxGap = _pulseRange === 'mes' ? (2.1 / 31)
-    : _pulseRange === 'semana' ? (4 / (24 * 7))
-    : 240 / _pulseDaySpanMinutes();
-  const out = [[points[0]]];
-  for (let i = 1; i < points.length; i++) {
-    const changesSession = (_pulseRange === 'dia' || _pulseRange === 'semana') && points[i].sessionKey !== points[i - 1].sessionKey;
-    if (changesSession || points[i].x - points[i - 1].x > maxGap) out.push([]);
-    out[out.length - 1].push(points[i]);
-  }
-  return out;
+  return points.length ? [points] : [];
 }
 
 function _pulseMonotonePath(points) {
@@ -13350,14 +13315,6 @@ function _pulseChartSVG(series, expanded) {
     if (!_pulseVisible.has(metric.key)) return;
     const points = (series[metric.key] || []).map(point => Object.assign({}, point, { px: px(point.x), py: py(point.value) }));
     const segments = _pulseSegments(points);
-    if ((_pulseRange === 'dia' || _pulseRange === 'semana') && segments.length > 1) {
-      for (let i = 1; i < segments.length; i++) {
-        const from = segments[i - 1][segments[i - 1].length - 1];
-        const to = segments[i][0];
-        if (!from || !to) continue;
-        layers += '<path class="pulse-gap-line" style="stroke:' + metric.color + '" d="M' + from.px.toFixed(1) + ',' + from.py.toFixed(1) + ' L' + to.px.toFixed(1) + ',' + to.py.toFixed(1) + '"><title>Sin datos entre sesiones</title></path>';
-      }
-    }
     segments.forEach(segment => {
       if ((_pulseRange === 'mes' || _pulseRange === 'tipico') && segment.length > 1) {
         const upper = segment.map(point => point.px.toFixed(1) + ',' + py(point.hi).toFixed(1));
@@ -13390,7 +13347,7 @@ function _pulseWindowControl() {
   if (_pulseRange !== 'dia' && _pulseRange !== 'tipico') return '';
   const startPct = (_pulseDayStartMinute / PULSE_DAY_LIMIT_MINUTE * 100).toFixed(3) + '%';
   const endPct = (_pulseDayEndMinute / PULSE_DAY_LIMIT_MINUTE * 100).toFixed(3) + '%';
-  return '<div class="pulse-window" id="pulseWindow" role="group" aria-label="Recortar horas visibles" style="--pulse-window-start:' + startPct + ';--pulse-window-end:' + endPct + '">'
+  return '<div class="pulse-window" id="pulseWindow" role="group" aria-label="Recortar horas visibles" data-no-view-swipe style="--pulse-window-start:' + startPct + ';--pulse-window-end:' + endPct + '">'
     + '<div class="pulse-window-head"><span>Ventana visible</span><strong id="pulseWindowLabel">' + _pulseWindowText() + '</strong></div>'
     + '<div class="pulse-trimmer">'
       + '<div class="pulse-trimmer-track"></div><div class="pulse-trimmer-selection"></div>'
@@ -13417,7 +13374,7 @@ function _pulseCard(options) {
     ? '<div class="pulse-method"><span id="pulseWindowMethodRange">' + _pulseWindowText() + '</span>. Cada punto reúne la misma franja horaria de los siete días. La sombra muestra su variación.</div>'
     : _pulseRange === 'mes'
       ? '<div class="pulse-method">Cada punto es la media del día. La sombra conserva el mínimo y el máximo registrados.</div>'
-      : '<div class="pulse-method"><span class="pulse-method-sample"></span>' + (_pulseRange === 'dia' ? '<span id="pulseWindowMethodRange">' + _pulseWindowText() + '</span> · ' : '') + 'Curva sólida dentro de una sesión · línea recta discontinua entre sesiones, sin inventar datos intermedios.</div>';
+      : '<div class="pulse-method">' + (_pulseRange === 'dia' ? '<span id="pulseWindowMethodRange">' + _pulseWindowText() + '</span> · ' : '') + 'Curva continua por métrica, también entre registros añadidos fuera de una sesión.</div>';
   return '<section class="stats-card pulse-card' + (expanded ? ' pulse-card-expanded' : '') + '">'
     + '<div class="pulse-head"><div><div class="stats-card-title">' + (expanded ? 'Evolución' : 'Pulso') + '</div><div class="stats-card-sub">Concentración, impulso, malestar y resistencia</div></div><span class="pulse-count" id="pulseCount">' + total + (total === 1 ? ' registro' : ' registros') + '</span></div>'
     + '<div class="pulse-range">' + tabs + '</div>'
@@ -13449,11 +13406,20 @@ function _bindPulseWindowTouch() {
   const trimmer = document.querySelector('#pulseDashboard .pulse-trimmer');
   if (!trimmer || trimmer.dataset.touchBound === 'true') return;
   trimmer.dataset.touchBound = 'true';
+  trimmer.addEventListener('touchstart', event => {
+    event.stopPropagation();
+    viewSwipeReset(false);
+  }, { passive: true });
   trimmer.addEventListener('touchmove', event => {
     if (event.cancelable) event.preventDefault();
+    event.stopPropagation();
   }, { passive: false });
+  ['touchend', 'touchcancel'].forEach(type => trimmer.addEventListener(type, event => {
+    event.stopPropagation();
+  }, { passive: true }));
   trimmer.addEventListener('gesturestart', event => {
     if (event.cancelable) event.preventDefault();
+    event.stopPropagation();
   }, { passive: false });
 }
 

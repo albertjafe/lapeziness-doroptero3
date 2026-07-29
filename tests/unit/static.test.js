@@ -129,7 +129,7 @@ describe('quality wiring', () => {
     expect(app).toContain("source: 'pase'");
   });
 
-  it('registers resistance and renders honest pulse curves across four ranges', () => {
+  it('registers resistance and renders continuous pulse curves across four ranges', () => {
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
@@ -139,15 +139,17 @@ describe('quality wiring', () => {
     expect(app).toContain('merged.resistenciaEventos');
     expect(app).toContain("['dia', 'semana', 'tipico', 'mes']");
     expect(app).toContain('function _pulseMonotonePath(points)');
-    expect(app).toContain('línea recta discontinua entre sesiones');
-    expect(app).toContain('function _pulseStudyIntervals(period)');
-    expect(app).toContain('class="pulse-gap-line"');
+    expect(app).toContain('Curva continua por métrica');
+    expect(app).not.toContain('function _pulseStudyIntervals(period)');
+    expect(app).not.toContain('class="pulse-gap-line"');
+    expect(app).toContain("closest?.('.pulse-trimmer, input[type=\"range\"], [data-no-view-swipe]')");
     expect(app).toContain("const SWIPE_VIEW_ORDER = ['pulse', 'session', 'cronometro', 'obras']");
     expect(app).toContain('function renderPulseDashboard()');
     expect(html).toContain('id="view-pulse"');
     expect(html).toContain('id="pulseDashboard"');
     expect(styles).toContain('.pulse-band');
-    expect(styles).toContain('.pulse-gap-line');
+    expect(styles).toContain('.pulse-trimmer');
+    expect(styles).toContain('touch-action: none');
     expect(styles).toContain('.pulse-card-expanded');
   });
 
