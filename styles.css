@@ -10000,6 +10000,106 @@ body.crono-running .crono-destellos-pill { display: none !important; }
     cursor: pointer;
   }
   .pulse-period button:disabled { opacity: .25; cursor: default; }
+  .pulse-window {
+    max-width: 720px;
+    margin: 2px auto 9px;
+    padding: 7px 9px 4px;
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--bg3) 46%, transparent);
+  }
+  .pulse-window-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 2px 2px;
+    color: var(--text3);
+    font: 700 8px/1.2 'JetBrains Mono', monospace;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .pulse-window-head strong {
+    color: var(--text2);
+    font-size: 9px;
+    letter-spacing: 0;
+  }
+  .pulse-trimmer {
+    position: relative;
+    height: 34px;
+  }
+  .pulse-trimmer-track,
+  .pulse-trimmer-selection {
+    position: absolute;
+    top: 15px;
+    height: 4px;
+    border-radius: 999px;
+  }
+  .pulse-trimmer-track {
+    right: 0;
+    left: 0;
+    background: color-mix(in srgb, var(--text3) 18%, transparent);
+  }
+  .pulse-trimmer-selection {
+    right: calc(100% - var(--pulse-window-end));
+    left: var(--pulse-window-start);
+    background: color-mix(in srgb, var(--accent) 68%, var(--text2));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+  .pulse-trimmer-input {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    width: 100%;
+    height: 34px;
+    margin: 0;
+    padding: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    pointer-events: none;
+    touch-action: none;
+  }
+  .pulse-trimmer-end { z-index: 4; }
+  .pulse-trimmer-input::-webkit-slider-runnable-track {
+    height: 4px;
+    background: transparent;
+  }
+  .pulse-trimmer-input::-webkit-slider-thumb {
+    width: 18px;
+    height: 28px;
+    margin-top: -12px;
+    border: 2px solid color-mix(in srgb, var(--accent) 72%, var(--text2));
+    border-radius: 6px;
+    appearance: none;
+    -webkit-appearance: none;
+    background: var(--bg2);
+    box-shadow: 0 2px 7px rgba(0,0,0,.18), inset 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent);
+    cursor: ew-resize;
+    pointer-events: auto;
+  }
+  .pulse-trimmer-input::-moz-range-track { height: 4px; background: transparent; }
+  .pulse-trimmer-input::-moz-range-thumb {
+    width: 16px;
+    height: 26px;
+    border: 2px solid color-mix(in srgb, var(--accent) 72%, var(--text2));
+    border-radius: 6px;
+    background: var(--bg2);
+    box-shadow: 0 2px 7px rgba(0,0,0,.18);
+    cursor: ew-resize;
+    pointer-events: auto;
+  }
+  .pulse-trimmer-input:focus-visible::-webkit-slider-thumb {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .pulse-window-scale {
+    display: flex;
+    justify-content: space-between;
+    margin-top: -2px;
+    color: var(--text3);
+    font: 7px/1 'JetBrains Mono', monospace;
+    opacity: .66;
+  }
   .pulse-legend {
     display: flex;
     gap: 6px;
@@ -10109,6 +10209,8 @@ body.crono-running .crono-destellos-pill { display: none !important; }
   @media (max-width: 560px) {
     .pulse-card { padding-inline: 11px; }
     .pulse-range-btn { font-size: 8px; }
+    .pulse-window { padding-inline: 7px; }
+    .pulse-trimmer-input::-webkit-slider-thumb { width: 20px; height: 30px; margin-top: -13px; }
     .pulse-axis-y { font-size: 12px; }
     .pulse-line { stroke-width: 3.8; }
   }

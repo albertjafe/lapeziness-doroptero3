@@ -1061,6 +1061,23 @@ test('draws unknown time between study sessions as a straight dashed bridge', as
   const bridgePath = await page.locator('.pulse-gap-line').getAttribute('d');
   expect(bridgePath).toMatch(/^M[\d.]+,[\d.]+ L[\d.]+,[\d.]+$/);
   await expect(page.locator('.pulse-method')).toContainText('sin inventar datos intermedios');
+
+  await page.locator('#pulseWindowStart').evaluate(input => {
+    input.value = '720';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.locator('#pulseWindowEnd').evaluate(input => {
+    input.value = '1080';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+
+  await expect(page.locator('#pulseWindowLabel')).toHaveText('12:00–18:00');
+  await expect(page.locator('.pulse-axis-x')).toHaveText(['12:00', '14:00', '16:00', '18:00']);
+  await expect(page.locator('.pulse-point[aria-label^="Malestar"]')).toHaveCount(0);
+  await expect(page.locator('.pulse-point[aria-label^="Concentración"]')).toHaveCount(2);
+  expect(await page.evaluate(() => [localStorage.getItem('pulse_day_start'), localStorage.getItem('pulse_day_end')])).toEqual(['720', '1080']);
 });
 
 test('keeps a 13-inch touch iPad in the tablet layout', async ({ browser }) => {

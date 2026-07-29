@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-29-pulso-horario-v87';
+const APP_VERSION = '2026-07-29-pulso-recortable-v88';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -13078,9 +13078,29 @@ const PULSE_METRICS = [
   { key: 'discomfort', label: 'Malestar', short: 'Malestar', color: '#e36f72' },
   { key: 'resistance', label: 'Resistencia', short: 'Resistencia', color: '#9b7ce6' },
 ];
-const PULSE_DAY_START_MINUTE = 9 * 60;
-const PULSE_DAY_END_MINUTE = 23 * 60;
-const PULSE_DAY_SPAN_MINUTES = PULSE_DAY_END_MINUTE - PULSE_DAY_START_MINUTE;
+const PULSE_DAY_LIMIT_MINUTE = 24 * 60;
+const PULSE_DAY_STEP_MINUTES = 30;
+const PULSE_DAY_MIN_SPAN_MINUTES = 2 * 60;
+let _pulseDayStartMinute = _pulseStoredMinute('pulse_day_start', 9 * 60);
+let _pulseDayEndMinute = _pulseStoredMinute('pulse_day_end', 23 * 60);
+if (_pulseDayEndMinute - _pulseDayStartMinute < PULSE_DAY_MIN_SPAN_MINUTES) {
+  _pulseDayStartMinute = 9 * 60;
+  _pulseDayEndMinute = 23 * 60;
+}
+
+function _pulseStoredMinute(key, fallback) {
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored == null || stored === '') return fallback;
+    const value = Number(stored);
+    if (Number.isFinite(value) && value >= 0 && value <= PULSE_DAY_LIMIT_MINUTE) return value;
+  } catch(e) {}
+  return fallback;
+}
+
+function _pulseDaySpanMinutes() {
+  return _pulseDayEndMinute - _pulseDayStartMinute;
+}
 
 function _pulseMinuteOfDay(date) {
   return date.getHours() * 60 + date.getMinutes();
@@ -13088,11 +13108,16 @@ function _pulseMinuteOfDay(date) {
 
 function _pulseInDayWindow(date) {
   const minute = _pulseMinuteOfDay(date);
-  return minute >= PULSE_DAY_START_MINUTE && minute <= PULSE_DAY_END_MINUTE;
+  return minute >= _pulseDayStartMinute && minute <= _pulseDayEndMinute;
 }
 
 function _pulseDayX(date) {
-  return (_pulseMinuteOfDay(date) - PULSE_DAY_START_MINUTE) / PULSE_DAY_SPAN_MINUTES;
+  return (_pulseMinuteOfDay(date) - _pulseDayStartMinute) / _pulseDaySpanMinutes();
+}
+
+function _pulseHourLabel(minute) {
+  const safe = Math.max(0, Math.min(PULSE_DAY_LIMIT_MINUTE, Math.round(minute)));
+  return String(Math.floor(safe / 60)).padStart(2, '0') + ':' + String(safe % 60).padStart(2, '0');
 }
 
 function _pulseAtNoon(date) {
@@ -13201,18 +13226,19 @@ function _pulseSeries(period) {
       const bins = new Map();
       rows.filter(row => _pulseInDayWindow(row.at)).forEach(row => {
         const minute = _pulseMinuteOfDay(row.at);
-        const bin = Math.min(6, Math.floor((minute - PULSE_DAY_START_MINUTE) / 120));
+        const lastBin = Math.max(0, Math.ceil(_pulseDaySpanMinutes() / 120) - 1);
+        const bin = Math.min(lastBin, Math.floor((minute - _pulseDayStartMinute) / 120));
         if (!bins.has(bin)) bins.set(bin, []);
         bins.get(bin).push(row);
       });
       result[metric.key] = Array.from(bins.entries()).sort((a, b) => a[0] - b[0]).map(([bin, items]) => {
         const agg = _pulseAggregate(items.map(item => item.value));
-        const startMinute = PULSE_DAY_START_MINUTE + bin * 120;
-        const endMinute = Math.min(PULSE_DAY_END_MINUTE, startMinute + 120);
+        const startMinute = _pulseDayStartMinute + bin * 120;
+        const endMinute = Math.min(_pulseDayEndMinute, startMinute + 120);
         const centerMinute = (startMinute + endMinute) / 2;
         return Object.assign(agg, {
-          x: (centerMinute - PULSE_DAY_START_MINUTE) / PULSE_DAY_SPAN_MINUTES,
-          time: String(Math.floor(startMinute / 60)).padStart(2, '0') + ':00–' + String(Math.floor(endMinute / 60)).padStart(2, '0') + ':00',
+          x: (centerMinute - _pulseDayStartMinute) / _pulseDaySpanMinutes(),
+          time: _pulseHourLabel(startMinute) + '–' + _pulseHourLabel(endMinute),
           note: '',
         });
       });
@@ -13251,7 +13277,7 @@ function _pulseSegments(points) {
   if (!points.length) return [];
   const maxGap = _pulseRange === 'mes' ? (2.1 / 31)
     : _pulseRange === 'semana' ? (4 / (24 * 7))
-    : 240 / PULSE_DAY_SPAN_MINUTES;
+    : 240 / _pulseDaySpanMinutes();
   const out = [[points[0]]];
   for (let i = 1; i < points.length; i++) {
     const changesSession = (_pulseRange === 'dia' || _pulseRange === 'semana') && points[i].sessionKey !== points[i - 1].sessionKey;
@@ -13284,6 +13310,21 @@ function _pulseMonotonePath(points) {
   return path;
 }
 
+function _pulseDayTicks() {
+  const span = _pulseDaySpanMinutes();
+  const target = span / 5;
+  const step = [30, 60, 120, 180, 240, 360].find(value => value >= target) || 360;
+  const ticks = [_pulseDayStartMinute];
+  for (let minute = Math.ceil(_pulseDayStartMinute / step) * step; minute < _pulseDayEndMinute; minute += step) {
+    if (minute > _pulseDayStartMinute) ticks.push(minute);
+  }
+  if (ticks[ticks.length - 1] !== _pulseDayEndMinute) ticks.push(_pulseDayEndMinute);
+  return ticks.map(minute => ({
+    x: (minute - _pulseDayStartMinute) / span,
+    label: _pulseHourLabel(minute),
+  }));
+}
+
 function _pulseChartSVG(series, expanded) {
   const W = 760, H = expanded ? 560 : 330, left = 72, right = 18, top = expanded ? 30 : 20, bottom = expanded ? 52 : 40;
   const plotW = W - left - right, plotH = H - top - bottom;
@@ -13300,10 +13341,7 @@ function _pulseChartSVG(series, expanded) {
     ? ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'].map((label, i) => ({ x: (i + .5) / 7, label }))
     : _pulseRange === 'mes'
       ? [0, .25, .5, .75, 1].map((x, i) => ({ x, label: i === 0 ? '1' : i === 4 ? 'fin' : Math.max(1, Math.round(x * 30)) + '' }))
-      : [9, 12, 15, 18, 21, 23].map(hour => ({
-          x: (hour * 60 - PULSE_DAY_START_MINUTE) / PULSE_DAY_SPAN_MINUTES,
-          label: String(hour).padStart(2, '0') + ':00',
-        }));
+      : _pulseDayTicks();
   xLabels.forEach(item => {
     grid += '<text class="pulse-axis-x" x="' + px(item.x) + '" y="' + (H - 13) + '" text-anchor="middle">' + item.label + '</text>';
   });
@@ -13338,6 +13376,31 @@ function _pulseChartSVG(series, expanded) {
     + '<g>' + grid + '</g><g clip-path="url(#pulsePlotClip)"><defs><clipPath id="pulsePlotClip"><rect x="' + left + '" y="' + (top - 7) + '" width="' + plotW + '" height="' + (plotH + 14) + '"/></clipPath></defs>' + layers + '</g></svg>';
 }
 
+function _pulseChartContent(series, total, expanded) {
+  return total
+    ? _pulseChartSVG(series, expanded)
+    : '<div class="pulse-empty"><strong>Aún no hay registros en esta franja</strong><span>Ajusta los tiradores o añade un registro desde el cronómetro.</span></div>';
+}
+
+function _pulseWindowText() {
+  return _pulseHourLabel(_pulseDayStartMinute) + '–' + _pulseHourLabel(_pulseDayEndMinute);
+}
+
+function _pulseWindowControl() {
+  if (_pulseRange !== 'dia' && _pulseRange !== 'tipico') return '';
+  const startPct = (_pulseDayStartMinute / PULSE_DAY_LIMIT_MINUTE * 100).toFixed(3) + '%';
+  const endPct = (_pulseDayEndMinute / PULSE_DAY_LIMIT_MINUTE * 100).toFixed(3) + '%';
+  return '<div class="pulse-window" id="pulseWindow" role="group" aria-label="Recortar horas visibles" style="--pulse-window-start:' + startPct + ';--pulse-window-end:' + endPct + '">'
+    + '<div class="pulse-window-head"><span>Ventana visible</span><strong id="pulseWindowLabel">' + _pulseWindowText() + '</strong></div>'
+    + '<div class="pulse-trimmer">'
+      + '<div class="pulse-trimmer-track"></div><div class="pulse-trimmer-selection"></div>'
+      + '<input id="pulseWindowStart" class="pulse-trimmer-input pulse-trimmer-start" type="range" min="0" max="' + PULSE_DAY_LIMIT_MINUTE + '" step="' + PULSE_DAY_STEP_MINUTES + '" value="' + _pulseDayStartMinute + '" aria-label="Hora inicial visible" aria-valuetext="' + _pulseHourLabel(_pulseDayStartMinute) + '" oninput="previewPulseWindow(\'start\',this.value)" onchange="commitPulseWindow()">'
+      + '<input id="pulseWindowEnd" class="pulse-trimmer-input pulse-trimmer-end" type="range" min="0" max="' + PULSE_DAY_LIMIT_MINUTE + '" step="' + PULSE_DAY_STEP_MINUTES + '" value="' + _pulseDayEndMinute + '" aria-label="Hora final visible" aria-valuetext="' + _pulseHourLabel(_pulseDayEndMinute) + '" oninput="previewPulseWindow(\'end\',this.value)" onchange="commitPulseWindow()">'
+    + '</div>'
+    + '<div class="pulse-window-scale"><span>00:00</span><span>24:00</span></div>'
+    + '</div>';
+}
+
 function _pulseCard(options) {
   const expanded = !!options?.expanded;
   const period = _pulsePeriod();
@@ -13349,20 +13412,19 @@ function _pulseCard(options) {
   const legend = PULSE_METRICS.map(metric =>
     '<button type="button" class="pulse-metric' + (_pulseVisible.has(metric.key) ? ' active' : '') + '" style="--pulse-color:' + metric.color + '" aria-pressed="' + _pulseVisible.has(metric.key) + '" onclick="togglePulseMetric(\'' + metric.key + '\')"><i></i>' + metric.short + '</button>'
   ).join('');
-  const chart = total
-    ? _pulseChartSVG(series, expanded)
-    : '<div class="pulse-empty"><strong>Aún no hay registros aquí</strong><span>Los que añadas desde el cronómetro aparecerán en su hora real.</span></div>';
+  const chart = _pulseChartContent(series, total, expanded);
   const typical = _pulseRange === 'tipico'
-    ? '<div class="pulse-method">Ventana 09:00–23:00. Cada punto reúne la misma franja horaria de los siete días. La sombra muestra su variación.</div>'
+    ? '<div class="pulse-method"><span id="pulseWindowMethodRange">' + _pulseWindowText() + '</span>. Cada punto reúne la misma franja horaria de los siete días. La sombra muestra su variación.</div>'
     : _pulseRange === 'mes'
       ? '<div class="pulse-method">Cada punto es la media del día. La sombra conserva el mínimo y el máximo registrados.</div>'
-      : '<div class="pulse-method"><span class="pulse-method-sample"></span>' + (_pulseRange === 'dia' ? '09:00–23:00 · ' : '') + 'Curva sólida dentro de una sesión · línea recta discontinua entre sesiones, sin inventar datos intermedios.</div>';
+      : '<div class="pulse-method"><span class="pulse-method-sample"></span>' + (_pulseRange === 'dia' ? '<span id="pulseWindowMethodRange">' + _pulseWindowText() + '</span> · ' : '') + 'Curva sólida dentro de una sesión · línea recta discontinua entre sesiones, sin inventar datos intermedios.</div>';
   return '<section class="stats-card pulse-card' + (expanded ? ' pulse-card-expanded' : '') + '">'
-    + '<div class="pulse-head"><div><div class="stats-card-title">' + (expanded ? 'Evolución' : 'Pulso') + '</div><div class="stats-card-sub">Concentración, impulso, malestar y resistencia</div></div><span class="pulse-count">' + total + (total === 1 ? ' registro' : ' registros') + '</span></div>'
+    + '<div class="pulse-head"><div><div class="stats-card-title">' + (expanded ? 'Evolución' : 'Pulso') + '</div><div class="stats-card-sub">Concentración, impulso, malestar y resistencia</div></div><span class="pulse-count" id="pulseCount">' + total + (total === 1 ? ' registro' : ' registros') + '</span></div>'
     + '<div class="pulse-range">' + tabs + '</div>'
     + '<div class="pulse-period"><button type="button" onclick="pulseNav(-1)" aria-label="Periodo anterior">‹</button><strong>' + escapeHtmlSafe(period.label) + '</strong><button type="button" onclick="pulseNav(1)" aria-label="Periodo siguiente"' + (_pulseOffset === 0 ? ' disabled' : '') + '>›</button></div>'
+    + _pulseWindowControl()
     + '<div class="pulse-legend">' + legend + '</div>'
-    + chart + '<div class="pulse-detail" id="pulseDetail" aria-live="polite">Toca un punto para ver su hora y comentario.</div>' + typical
+    + '<div id="pulseChartHost">' + chart + '</div><div class="pulse-detail" id="pulseDetail" aria-live="polite">Toca un punto para ver su hora y comentario.</div>' + typical
     + '</section>';
 }
 
@@ -13380,6 +13442,56 @@ function renderPulseDashboard() {
   const el = document.getElementById('pulseDashboard');
   if (!el) return;
   el.innerHTML = _pulseCard({ expanded: true });
+}
+
+function previewPulseWindow(edge, rawValue) {
+  let minute = Math.round(Number(rawValue) / PULSE_DAY_STEP_MINUTES) * PULSE_DAY_STEP_MINUTES;
+  if (!Number.isFinite(minute)) return;
+  minute = Math.max(0, Math.min(PULSE_DAY_LIMIT_MINUTE, minute));
+  if (edge === 'start') {
+    _pulseDayStartMinute = Math.min(minute, _pulseDayEndMinute - PULSE_DAY_MIN_SPAN_MINUTES);
+  } else if (edge === 'end') {
+    _pulseDayEndMinute = Math.max(minute, _pulseDayStartMinute + PULSE_DAY_MIN_SPAN_MINUTES);
+  } else {
+    return;
+  }
+
+  const startInput = document.getElementById('pulseWindowStart');
+  const endInput = document.getElementById('pulseWindowEnd');
+  if (startInput) startInput.value = String(_pulseDayStartMinute);
+  if (endInput) endInput.value = String(_pulseDayEndMinute);
+  if (startInput) startInput.setAttribute('aria-valuetext', _pulseHourLabel(_pulseDayStartMinute));
+  if (endInput) endInput.setAttribute('aria-valuetext', _pulseHourLabel(_pulseDayEndMinute));
+  const control = document.getElementById('pulseWindow');
+  if (control) {
+    control.style.setProperty('--pulse-window-start', (_pulseDayStartMinute / PULSE_DAY_LIMIT_MINUTE * 100) + '%');
+    control.style.setProperty('--pulse-window-end', (_pulseDayEndMinute / PULSE_DAY_LIMIT_MINUTE * 100) + '%');
+  }
+  const label = document.getElementById('pulseWindowLabel');
+  if (label) label.textContent = _pulseWindowText();
+  const methodRange = document.getElementById('pulseWindowMethodRange');
+  if (methodRange) methodRange.textContent = _pulseWindowText();
+
+  const period = _pulsePeriod();
+  const series = _pulseSeries(period);
+  const total = PULSE_METRICS.reduce((sum, metric) => sum + (series[metric.key] || []).reduce((n, point) => n + (point.count || 1), 0), 0);
+  const chartHost = document.getElementById('pulseChartHost');
+  if (chartHost) chartHost.innerHTML = _pulseChartContent(series, total, true);
+  const count = document.getElementById('pulseCount');
+  if (count) count.textContent = total + (total === 1 ? ' registro' : ' registros');
+  const detail = document.getElementById('pulseDetail');
+  if (detail) {
+    detail.textContent = 'Toca un punto para ver su hora y comentario.';
+    detail.classList.remove('visible');
+  }
+}
+
+function commitPulseWindow() {
+  try {
+    localStorage.setItem('pulse_day_start', String(_pulseDayStartMinute));
+    localStorage.setItem('pulse_day_end', String(_pulseDayEndMinute));
+  } catch(e) {}
+  renderStatsDashboard();
 }
 
 function setPulseRange(range) {
