@@ -1040,12 +1040,23 @@ test('draws unknown time between study sessions as a straight dashed bridge', as
       { id: 'pulse-3', at: at(16, 10).toISOString(), value: 34, label: 'Baja' },
       { id: 'pulse-4', at: at(16, 40).toISOString(), value: 78, label: 'Alta' },
     ];
+    db.malestarEventos = [
+      { id: 'distress-night', at: at(2, 30).toISOString(), value: 80, label: 'Alto' },
+      { id: 'distress-1', at: at(9, 20).toISOString(), value: 80, label: 'Alto' },
+      { id: 'distress-2', at: at(9, 50).toISOString(), value: 40, label: 'Bajo' },
+    ];
     _pulseRange = 'dia';
     _pulseOffset = 0;
     renderPulseDashboard();
   });
 
-  await expect(page.locator('.pulse-line')).toHaveCount(2);
+  await expect(page.locator('.pulse-line')).toHaveCount(3);
+  await expect(page.locator('.pulse-axis-x')).toHaveText(['09:00', '12:00', '15:00', '18:00', '21:00', '23:00']);
+  await expect(page.locator('.pulse-axis-x', { hasText: '00:00' })).toHaveCount(0);
+  await expect(page.locator('.pulse-point[aria-label^="Malestar"]')).toHaveCount(2);
+  await expect(page.locator('.pulse-point[aria-label*="02:30"]')).toHaveCount(0);
+  const smoothPaths = await page.locator('.pulse-line').evaluateAll(paths => paths.map(path => path.getAttribute('d')));
+  expect(smoothPaths.every(path => / C[\d.]+,[\d.]+/.test(path || ''))).toBe(true);
   await expect(page.locator('.pulse-gap-line')).toHaveCount(1);
   const bridgePath = await page.locator('.pulse-gap-line').getAttribute('d');
   expect(bridgePath).toMatch(/^M[\d.]+,[\d.]+ L[\d.]+,[\d.]+$/);

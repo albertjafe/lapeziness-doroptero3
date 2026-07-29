@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-28-pulso-pantalla-v86';
+const APP_VERSION = '2026-07-29-pulso-horario-v87';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -13078,6 +13078,22 @@ const PULSE_METRICS = [
   { key: 'discomfort', label: 'Malestar', short: 'Malestar', color: '#e36f72' },
   { key: 'resistance', label: 'Resistencia', short: 'Resistencia', color: '#9b7ce6' },
 ];
+const PULSE_DAY_START_MINUTE = 9 * 60;
+const PULSE_DAY_END_MINUTE = 23 * 60;
+const PULSE_DAY_SPAN_MINUTES = PULSE_DAY_END_MINUTE - PULSE_DAY_START_MINUTE;
+
+function _pulseMinuteOfDay(date) {
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+function _pulseInDayWindow(date) {
+  const minute = _pulseMinuteOfDay(date);
+  return minute >= PULSE_DAY_START_MINUTE && minute <= PULSE_DAY_END_MINUTE;
+}
+
+function _pulseDayX(date) {
+  return (_pulseMinuteOfDay(date) - PULSE_DAY_START_MINUTE) / PULSE_DAY_SPAN_MINUTES;
+}
 
 function _pulseAtNoon(date) {
   const d = new Date(date);
@@ -13183,15 +13199,22 @@ function _pulseSeries(period) {
     const rows = raw[metric.key];
     if (_pulseRange === 'tipico') {
       const bins = new Map();
-      rows.forEach(row => {
-        const minute = row.at.getHours() * 60 + row.at.getMinutes();
-        const bin = Math.floor(minute / 120);
+      rows.filter(row => _pulseInDayWindow(row.at)).forEach(row => {
+        const minute = _pulseMinuteOfDay(row.at);
+        const bin = Math.min(6, Math.floor((minute - PULSE_DAY_START_MINUTE) / 120));
         if (!bins.has(bin)) bins.set(bin, []);
         bins.get(bin).push(row);
       });
       result[metric.key] = Array.from(bins.entries()).sort((a, b) => a[0] - b[0]).map(([bin, items]) => {
         const agg = _pulseAggregate(items.map(item => item.value));
-        return Object.assign(agg, { x: (bin * 120 + 60) / 1440, time: String(bin * 2).padStart(2, '0') + ':00–' + String(Math.min(24, bin * 2 + 2)).padStart(2, '0') + ':00', note: '' });
+        const startMinute = PULSE_DAY_START_MINUTE + bin * 120;
+        const endMinute = Math.min(PULSE_DAY_END_MINUTE, startMinute + 120);
+        const centerMinute = (startMinute + endMinute) / 2;
+        return Object.assign(agg, {
+          x: (centerMinute - PULSE_DAY_START_MINUTE) / PULSE_DAY_SPAN_MINUTES,
+          time: String(Math.floor(startMinute / 60)).padStart(2, '0') + ':00–' + String(Math.floor(endMinute / 60)).padStart(2, '0') + ':00',
+          note: '',
+        });
       });
     } else if (_pulseRange === 'mes') {
       const days = new Map();
@@ -13206,8 +13229,9 @@ function _pulseSeries(period) {
         return Object.assign(agg, { x: (at - period.start) / span, time: at.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }), note: items.map(item => item.note).filter(Boolean).join(' · ') });
       });
     } else {
-      result[metric.key] = rows.map(row => ({
-        x: (row.at - period.start) / span,
+      const visibleRows = _pulseRange === 'dia' ? rows.filter(row => _pulseInDayWindow(row.at)) : rows;
+      result[metric.key] = visibleRows.map(row => ({
+        x: _pulseRange === 'dia' ? _pulseDayX(row.at) : (row.at - period.start) / span,
         value: row.value,
         lo: row.value,
         hi: row.value,
@@ -13225,7 +13249,9 @@ function _pulseSeries(period) {
 
 function _pulseSegments(points) {
   if (!points.length) return [];
-  const maxGap = _pulseRange === 'mes' ? (2.1 / 31) : _pulseRange === 'semana' ? (4 / (24 * 7)) : (4 / 24);
+  const maxGap = _pulseRange === 'mes' ? (2.1 / 31)
+    : _pulseRange === 'semana' ? (4 / (24 * 7))
+    : 240 / PULSE_DAY_SPAN_MINUTES;
   const out = [[points[0]]];
   for (let i = 1; i < points.length; i++) {
     const changesSession = (_pulseRange === 'dia' || _pulseRange === 'semana') && points[i].sessionKey !== points[i - 1].sessionKey;
@@ -13274,7 +13300,10 @@ function _pulseChartSVG(series, expanded) {
     ? ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'].map((label, i) => ({ x: (i + .5) / 7, label }))
     : _pulseRange === 'mes'
       ? [0, .25, .5, .75, 1].map((x, i) => ({ x, label: i === 0 ? '1' : i === 4 ? 'fin' : Math.max(1, Math.round(x * 30)) + '' }))
-      : [0, .25, .5, .75, 1].map((x, i) => ({ x, label: String(i * 6).padStart(2, '0') + ':00' }));
+      : [9, 12, 15, 18, 21, 23].map(hour => ({
+          x: (hour * 60 - PULSE_DAY_START_MINUTE) / PULSE_DAY_SPAN_MINUTES,
+          label: String(hour).padStart(2, '0') + ':00',
+        }));
   xLabels.forEach(item => {
     grid += '<text class="pulse-axis-x" x="' + px(item.x) + '" y="' + (H - 13) + '" text-anchor="middle">' + item.label + '</text>';
   });
@@ -13324,10 +13353,10 @@ function _pulseCard(options) {
     ? _pulseChartSVG(series, expanded)
     : '<div class="pulse-empty"><strong>Aún no hay registros aquí</strong><span>Los que añadas desde el cronómetro aparecerán en su hora real.</span></div>';
   const typical = _pulseRange === 'tipico'
-    ? '<div class="pulse-method">Cada punto reúne la misma franja horaria de los siete días. La sombra muestra su variación.</div>'
+    ? '<div class="pulse-method">Ventana 09:00–23:00. Cada punto reúne la misma franja horaria de los siete días. La sombra muestra su variación.</div>'
     : _pulseRange === 'mes'
       ? '<div class="pulse-method">Cada punto es la media del día. La sombra conserva el mínimo y el máximo registrados.</div>'
-      : '<div class="pulse-method"><span class="pulse-method-sample"></span>Curva sólida dentro de una sesión · línea recta discontinua entre sesiones, sin inventar datos intermedios.</div>';
+      : '<div class="pulse-method"><span class="pulse-method-sample"></span>' + (_pulseRange === 'dia' ? '09:00–23:00 · ' : '') + 'Curva sólida dentro de una sesión · línea recta discontinua entre sesiones, sin inventar datos intermedios.</div>';
   return '<section class="stats-card pulse-card' + (expanded ? ' pulse-card-expanded' : '') + '">'
     + '<div class="pulse-head"><div><div class="stats-card-title">' + (expanded ? 'Evolución' : 'Pulso') + '</div><div class="stats-card-sub">Concentración, impulso, malestar y resistencia</div></div><span class="pulse-count">' + total + (total === 1 ? ' registro' : ' registros') + '</span></div>'
     + '<div class="pulse-range">' + tabs + '</div>'
