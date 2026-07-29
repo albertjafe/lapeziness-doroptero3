@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-29-pulso-continuo-v90';
+const APP_VERSION = '2026-07-29-pulso-tiradores-v91';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -13349,10 +13349,10 @@ function _pulseWindowControl() {
   const endPct = (_pulseDayEndMinute / PULSE_DAY_LIMIT_MINUTE * 100).toFixed(3) + '%';
   return '<div class="pulse-window" id="pulseWindow" role="group" aria-label="Recortar horas visibles" data-no-view-swipe style="--pulse-window-start:' + startPct + ';--pulse-window-end:' + endPct + '">'
     + '<div class="pulse-window-head"><span>Ventana visible</span><strong id="pulseWindowLabel">' + _pulseWindowText() + '</strong></div>'
-    + '<div class="pulse-trimmer">'
+    + '<div class="pulse-trimmer" onpointerdown="pulseTrimmerTrackPointerDown(event)">'
       + '<div class="pulse-trimmer-track"></div><div class="pulse-trimmer-selection"></div>'
-      + '<input id="pulseWindowStart" class="pulse-trimmer-input pulse-trimmer-start" type="range" min="0" max="' + PULSE_DAY_LIMIT_MINUTE + '" step="' + PULSE_DAY_STEP_MINUTES + '" value="' + _pulseDayStartMinute + '" aria-label="Hora inicial visible" aria-valuetext="' + _pulseHourLabel(_pulseDayStartMinute) + '" oninput="previewPulseWindow(\'start\',this.value)" onchange="commitPulseWindow()">'
-      + '<input id="pulseWindowEnd" class="pulse-trimmer-input pulse-trimmer-end" type="range" min="0" max="' + PULSE_DAY_LIMIT_MINUTE + '" step="' + PULSE_DAY_STEP_MINUTES + '" value="' + _pulseDayEndMinute + '" aria-label="Hora final visible" aria-valuetext="' + _pulseHourLabel(_pulseDayEndMinute) + '" oninput="previewPulseWindow(\'end\',this.value)" onchange="commitPulseWindow()">'
+      + '<button type="button" id="pulseWindowStart" class="pulse-trimmer-handle pulse-trimmer-start" role="slider" aria-label="Hora inicial visible" aria-valuemin="0" aria-valuemax="' + (_pulseDayEndMinute - PULSE_DAY_MIN_SPAN_MINUTES) + '" aria-valuenow="' + _pulseDayStartMinute + '" aria-valuetext="' + _pulseHourLabel(_pulseDayStartMinute) + '" onpointerdown="pulseTrimmerPointerDown(event,\'start\')" onkeydown="pulseTrimmerKeyDown(event,\'start\')"></button>'
+      + '<button type="button" id="pulseWindowEnd" class="pulse-trimmer-handle pulse-trimmer-end" role="slider" aria-label="Hora final visible" aria-valuemin="' + (_pulseDayStartMinute + PULSE_DAY_MIN_SPAN_MINUTES) + '" aria-valuemax="' + PULSE_DAY_LIMIT_MINUTE + '" aria-valuenow="' + _pulseDayEndMinute + '" aria-valuetext="' + _pulseHourLabel(_pulseDayEndMinute) + '" onpointerdown="pulseTrimmerPointerDown(event,\'end\')" onkeydown="pulseTrimmerKeyDown(event,\'end\')"></button>'
     + '</div>'
     + '<div class="pulse-window-scale"><span>00:00</span><span>24:00</span></div>'
     + '</div>';
@@ -13423,6 +13423,79 @@ function _bindPulseWindowTouch() {
   }, { passive: false });
 }
 
+let _pulseTrimmerDrag = null;
+
+function _pulseTrimmerMinuteAtX(trimmer, clientX) {
+  const rect = trimmer.getBoundingClientRect();
+  if (!rect.width) return null;
+  const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  return Math.round((ratio * PULSE_DAY_LIMIT_MINUTE) / PULSE_DAY_STEP_MINUTES) * PULSE_DAY_STEP_MINUTES;
+}
+
+function _pulseBeginPointerDrag(event, edge, captureTarget) {
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
+  event.preventDefault();
+  event.stopPropagation();
+  viewSwipeReset(false);
+  const trimmer = captureTarget.closest?.('.pulse-trimmer') || captureTarget;
+  _pulseTrimmerDrag = { edge, pointerId: event.pointerId, trimmer, captureTarget };
+  try { captureTarget.setPointerCapture(event.pointerId); } catch(e) {}
+  document.addEventListener('pointermove', _pulseTrimmerPointerMove, { passive: false });
+  document.addEventListener('pointerup', _pulseTrimmerPointerEnd, { passive: false });
+  document.addEventListener('pointercancel', _pulseTrimmerPointerEnd, { passive: false });
+  document.body.classList.add('pulse-trimmer-dragging');
+}
+
+function pulseTrimmerPointerDown(event, edge) {
+  _pulseBeginPointerDrag(event, edge, event.currentTarget);
+}
+
+function pulseTrimmerTrackPointerDown(event) {
+  if (event.target.closest?.('.pulse-trimmer-handle')) return;
+  const trimmer = event.currentTarget;
+  const minute = _pulseTrimmerMinuteAtX(trimmer, event.clientX);
+  if (minute == null) return;
+  const edge = Math.abs(minute - _pulseDayStartMinute) <= Math.abs(minute - _pulseDayEndMinute) ? 'start' : 'end';
+  previewPulseWindow(edge, minute);
+  _pulseBeginPointerDrag(event, edge, trimmer);
+}
+
+function _pulseTrimmerPointerMove(event) {
+  const drag = _pulseTrimmerDrag;
+  if (!drag || event.pointerId !== drag.pointerId) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const minute = _pulseTrimmerMinuteAtX(drag.trimmer, event.clientX);
+  if (minute != null) previewPulseWindow(drag.edge, minute);
+}
+
+function _pulseTrimmerPointerEnd(event) {
+  const drag = _pulseTrimmerDrag;
+  if (!drag || event.pointerId !== drag.pointerId) return;
+  event.preventDefault();
+  event.stopPropagation();
+  try { drag.captureTarget.releasePointerCapture(event.pointerId); } catch(e) {}
+  _pulseTrimmerDrag = null;
+  document.removeEventListener('pointermove', _pulseTrimmerPointerMove);
+  document.removeEventListener('pointerup', _pulseTrimmerPointerEnd);
+  document.removeEventListener('pointercancel', _pulseTrimmerPointerEnd);
+  document.body.classList.remove('pulse-trimmer-dragging');
+  commitPulseWindow();
+}
+
+function pulseTrimmerKeyDown(event, edge) {
+  let minute = edge === 'start' ? _pulseDayStartMinute : _pulseDayEndMinute;
+  if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') minute -= PULSE_DAY_STEP_MINUTES;
+  else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') minute += PULSE_DAY_STEP_MINUTES;
+  else if (event.key === 'Home') minute = edge === 'start' ? 0 : _pulseDayStartMinute + PULSE_DAY_MIN_SPAN_MINUTES;
+  else if (event.key === 'End') minute = edge === 'start' ? _pulseDayEndMinute - PULSE_DAY_MIN_SPAN_MINUTES : PULSE_DAY_LIMIT_MINUTE;
+  else return;
+  event.preventDefault();
+  event.stopPropagation();
+  previewPulseWindow(edge, minute);
+  commitPulseWindow();
+}
+
 function previewPulseWindow(edge, rawValue) {
   let minute = Math.round(Number(rawValue) / PULSE_DAY_STEP_MINUTES) * PULSE_DAY_STEP_MINUTES;
   if (!Number.isFinite(minute)) return;
@@ -13435,12 +13508,18 @@ function previewPulseWindow(edge, rawValue) {
     return;
   }
 
-  const startInput = document.getElementById('pulseWindowStart');
-  const endInput = document.getElementById('pulseWindowEnd');
-  if (startInput) startInput.value = String(_pulseDayStartMinute);
-  if (endInput) endInput.value = String(_pulseDayEndMinute);
-  if (startInput) startInput.setAttribute('aria-valuetext', _pulseHourLabel(_pulseDayStartMinute));
-  if (endInput) endInput.setAttribute('aria-valuetext', _pulseHourLabel(_pulseDayEndMinute));
+  const startHandle = document.getElementById('pulseWindowStart');
+  const endHandle = document.getElementById('pulseWindowEnd');
+  if (startHandle) {
+    startHandle.setAttribute('aria-valuenow', String(_pulseDayStartMinute));
+    startHandle.setAttribute('aria-valuetext', _pulseHourLabel(_pulseDayStartMinute));
+    startHandle.setAttribute('aria-valuemax', String(_pulseDayEndMinute - PULSE_DAY_MIN_SPAN_MINUTES));
+  }
+  if (endHandle) {
+    endHandle.setAttribute('aria-valuemin', String(_pulseDayStartMinute + PULSE_DAY_MIN_SPAN_MINUTES));
+    endHandle.setAttribute('aria-valuenow', String(_pulseDayEndMinute));
+    endHandle.setAttribute('aria-valuetext', _pulseHourLabel(_pulseDayEndMinute));
+  }
   const control = document.getElementById('pulseWindow');
   if (control) {
     control.style.setProperty('--pulse-window-start', (_pulseDayStartMinute / PULSE_DAY_LIMIT_MINUTE * 100) + '%');

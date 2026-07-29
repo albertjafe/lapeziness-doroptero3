@@ -1050,6 +1050,7 @@ test('draws one smooth curve across sessions and reserves touch drag for the tim
     _pulseOffset = 0;
     renderPulseDashboard();
   });
+  await page.evaluate(() => showView('pulse'));
 
   await expect(page.locator('.pulse-line')).toHaveCount(2);
   await expect(page.locator('.pulse-axis-x')).toHaveText(['09:00', '12:00', '15:00', '18:00', '21:00', '23:00']);
@@ -1072,21 +1073,23 @@ test('draws one smooth curve across sessions and reserves touch drag for the tim
   });
   expect(touchGuard).toEqual({ touchAction: 'none', prevented: true, startStopped: true });
 
-  await page.locator('#pulseWindowStart').evaluate(input => {
-    input.value = '720';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-  });
-  await page.locator('#pulseWindowEnd').evaluate(input => {
-    input.value = '1080';
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-  });
+  const dragHandleTo = async (selector, ratio) => {
+    const track = await page.locator('.pulse-trimmer').boundingBox();
+    const handle = await page.locator(selector).boundingBox();
+    await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(track.x + track.width * ratio, track.y + track.height / 2, { steps: 8 });
+    await page.mouse.up();
+  };
+  await dragHandleTo('#pulseWindowStart', .5);
+  await dragHandleTo('#pulseWindowEnd', .75);
 
   await expect(page.locator('#pulseWindowLabel')).toHaveText('12:00–18:00');
   await expect(page.locator('.pulse-axis-x')).toHaveText(['12:00', '14:00', '16:00', '18:00']);
   await expect(page.locator('.pulse-point[aria-label^="Malestar"]')).toHaveCount(0);
   await expect(page.locator('.pulse-point[aria-label^="Concentración"]')).toHaveCount(3);
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'pulse');
+  await expect(page.locator('body')).not.toHaveClass(/view-swipe-dragging/);
   expect(await page.evaluate(() => [localStorage.getItem('pulse_day_start'), localStorage.getItem('pulse_day_end')])).toEqual(['720', '1080']);
 });
 
