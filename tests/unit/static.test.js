@@ -160,7 +160,7 @@ describe('quality wiring', () => {
     expect(styles).toContain('.pulse-card-expanded');
   });
 
-  it('adds an iPad month calendar and visceral liquid pulse controls', () => {
+  it('adds an iPad month calendar and visceral liquid pulse controls in both orientations', () => {
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
@@ -174,6 +174,8 @@ describe('quality wiring', () => {
     expect(app).toContain('function renderCronoCalendar()');
     expect(app).toContain('function calendarEventRange(evento)');
     expect(app).toContain('function cronoFluidCommit(kind, value, trigger)');
+    expect(app).toContain('function cronoUsesLargeTabletLandscape()');
+    expect(app).toContain('height < 900 ? Math.min(182, height * 0.22)');
     expect(app).toContain("const note = '';");
     expect(app).toContain('const CRONO_INTERFACE_SCALE_MIN_DESKTOP = 0.50');
     expect(app).toContain('function cronoSetIdleDestelloText(text)');
@@ -185,6 +187,9 @@ describe('quality wiring', () => {
     expect(styles).toContain('#view-cronometro .crono-impulse-monitor');
     expect(styles).toContain('grid-template-rows: repeat(6, minmax(0, 1fr))');
     expect(styles).toContain('calc(var(--crono-interface-ring-size) * .024)');
+    expect(styles).toContain('(max-aspect-ratio: 3/2)');
+    expect(styles).toContain('grid-template-rows: clamp(380px, 46dvh, 470px)');
+    expect(styles).toContain('width: clamp(72px, 6.5vw, 92px)');
     expect(styles).toContain('touch-action: none');
   });
 

@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-30-pulso-exacto-v96';
+const APP_VERSION = '2026-07-30-ipad-horizontal-v98';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -18718,11 +18718,18 @@ function cronoClampInterfaceScale(value) {
   return Math.max(min, Math.min(CRONO_INTERFACE_SCALE_MAX, Number(value) || 1));
 }
 
+function cronoUsesLargeTabletLandscape() {
+  return !!window.matchMedia?.('(min-width: 900px) and (max-width: 1399px) and (min-height: 820px) and (orientation: landscape) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 3/2)').matches;
+}
+
 function cronoInterfaceRingBaseSize() {
   const width = Math.max(320, window.innerWidth || document.documentElement.clientWidth || 1024);
   const height = Math.max(320, window.innerHeight || document.documentElement.clientHeight || 768);
   if (width > height && height <= 600) return 142;
   if (width < 700) return Math.min(250, width * 0.64);
+  if (cronoUsesLargeTabletLandscape()) {
+    return height < 900 ? Math.min(182, height * 0.22) : Math.min(255, height * 0.28);
+  }
   if (width > height) return Math.min(370, height * 0.5);
   return 370;
 }

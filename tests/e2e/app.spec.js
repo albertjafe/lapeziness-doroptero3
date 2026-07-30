@@ -1156,31 +1156,55 @@ test('draws one smooth curve across sessions and reserves touch drag for the tim
   expect(await page.evaluate(() => [localStorage.getItem('pulse_day_start'), localStorage.getItem('pulse_day_end')])).toEqual(['720', '1080']);
 });
 
-test('keeps a 13-inch touch iPad in the tablet layout', async ({ browser }) => {
-  const context = await browser.newContext({
-    viewport: { width: 1366, height: 1024 },
-    hasTouch: true,
-    isMobile: true,
-  });
-  const page = await context.newPage();
-  await prepare(page);
-  const layout = await page.evaluate(() => {
-    showView('cronometro');
-    const stage = document.getElementById('cronoStageIdle').getBoundingClientRect();
-    const monitor = document.querySelector('.crono-moment-monitor').getBoundingClientRect();
-    return {
-      coarse: matchMedia('(pointer: coarse)').matches,
-      desktopPointer: matchMedia('(hover: hover) and (pointer: fine)').matches,
-      stageBottom: stage.bottom,
-      monitorTop: monitor.top,
-      monitorPosition: getComputedStyle(document.querySelector('.crono-moment-monitor')).position,
-    };
-  });
-  expect(layout.coarse).toBe(true);
-  expect(layout.desktopPointer).toBe(false);
-  expect(layout.monitorPosition).toBe('static');
-  expect(layout.monitorTop).toBeGreaterThanOrEqual(layout.stageBottom - 1);
-  await context.close();
+test('keeps large touch iPads in the two-row tablet layout', async ({ browser }) => {
+  for (const viewport of [{ width: 1366, height: 1024 }, { width: 1194, height: 834 }]) {
+    const context = await browser.newContext({ viewport, hasTouch: true, isMobile: true });
+    const page = await context.newPage();
+    await prepare(page);
+    const layout = await page.evaluate(async () => {
+      showView('cronometro');
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      const rect = selector => {
+        const element = document.querySelector(selector);
+        const box = element.getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom, width: box.width, height: box.height };
+      };
+      return {
+        coarse: matchMedia('(pointer: coarse)').matches,
+        desktopPointer: matchMedia('(hover: hover) and (pointer: fine)').matches,
+        tabletLandscape: matchMedia('(min-width: 900px) and (max-width: 1399px) and (min-height: 820px) and (orientation: landscape) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 3/2)').matches,
+        clock: rect('.crono-idle-main'),
+        calendar: rect('.crono-calendar-panel'),
+        tasks: rect('.crono-idle-drawer'),
+        pulse: rect('.crono-fluid-panel'),
+        ring: rect('.crono-idle-display-wrap .crono-run-progress-svg'),
+        vessel: rect('.crono-fluid-vessel'),
+        start: rect('#cronoStartBtn'),
+        oldControls: getComputedStyle(document.querySelector('.crono-moment-controls')).display,
+        history: getComputedStyle(document.querySelector('.crono-moment-history')).display,
+        scrollWidth: document.documentElement.scrollWidth,
+        scrollHeight: document.documentElement.scrollHeight,
+        innerWidth,
+        innerHeight,
+      };
+    });
+    expect(layout.coarse).toBe(true);
+    expect(layout.desktopPointer).toBe(false);
+    expect(layout.tabletLandscape).toBe(true);
+    expect(Math.abs(layout.clock.top - layout.calendar.top)).toBeLessThanOrEqual(1);
+    expect(Math.abs(layout.clock.height - layout.calendar.height)).toBeLessThanOrEqual(1);
+    expect(Math.abs(layout.tasks.top - layout.pulse.top)).toBeLessThanOrEqual(1);
+    expect(layout.tasks.width).toBeGreaterThan(layout.pulse.width * 1.8);
+    expect(layout.ring.height).toBeLessThanOrEqual(260);
+    expect(layout.vessel.width).toBeGreaterThanOrEqual(72);
+    expect(layout.vessel.height).toBeGreaterThanOrEqual(210);
+    expect(layout.start.bottom).toBeLessThanOrEqual(layout.clock.bottom + 1);
+    expect(layout.oldControls).toBe('none');
+    expect(layout.history).toBe('none');
+    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.innerWidth + 1);
+    expect(layout.scrollHeight).toBeLessThanOrEqual(layout.innerHeight + 1);
+    await context.close();
+  }
 });
 
 test('places the dedicated pulse screen at the far left of swipe navigation', async ({ page }) => {
