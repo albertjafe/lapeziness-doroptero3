@@ -974,7 +974,7 @@ test('records concentration and resisted urges across landscape and portrait tim
   await expect(momentMonitor.locator('.crono-discomfort-monitor')).toBeHidden();
   await expect(page.locator('.crono-calendar-panel')).toBeVisible();
   await expect(momentMonitor.locator('.crono-moment-history-toggle')).toHaveCount(0);
-  await expect(momentMonitor.locator('#cronoMomentNote')).toBeVisible();
+  await expect(momentMonitor.locator('#cronoMomentNote')).toBeHidden();
   await expect(momentMonitor.locator('.crono-moment-history-list')).toHaveCount(0);
   const portraitTabletLayout = await page.evaluate(() => {
     const clock = document.querySelector('#cronoStageIdle .crono-idle-main').getBoundingClientRect();
@@ -983,18 +983,19 @@ test('records concentration and resisted urges across landscape and portrait tim
     const tools = document.getElementById('cronoIdleDrawer').getBoundingClientRect();
     return {
       clock: { top: clock.top, right: clock.right, bottom: clock.bottom, height: clock.height },
-      states: { top: states.top, left: states.left, bottom: states.bottom },
+      states: { top: states.top, left: states.left, bottom: states.bottom, width: states.width, height: states.height },
       calendar: { top: calendar.top, left: calendar.left, bottom: calendar.bottom, height: calendar.height },
-      toolsTop: tools.top,
+      tools: { top: tools.top, right: tools.right, bottom: tools.bottom, width: tools.width, height: tools.height },
     };
   });
   expect(Math.abs(portraitTabletLayout.clock.top - portraitTabletLayout.calendar.top)).toBeLessThanOrEqual(2);
   expect(Math.abs(portraitTabletLayout.clock.height - portraitTabletLayout.calendar.height)).toBeLessThanOrEqual(2);
   expect(portraitTabletLayout.calendar.left).toBeGreaterThanOrEqual(portraitTabletLayout.clock.right - 1);
   expect(portraitTabletLayout.states.top).toBeGreaterThanOrEqual(portraitTabletLayout.clock.bottom - 1);
-  expect(portraitTabletLayout.toolsTop).toBeGreaterThanOrEqual(
-    Math.max(portraitTabletLayout.states.bottom, portraitTabletLayout.calendar.bottom) - 1
-  );
+  expect(Math.abs(portraitTabletLayout.tools.top - portraitTabletLayout.states.top)).toBeLessThanOrEqual(2);
+  expect(portraitTabletLayout.states.left).toBeGreaterThanOrEqual(portraitTabletLayout.tools.right - 1);
+  expect(Math.abs(portraitTabletLayout.tools.height - portraitTabletLayout.states.height)).toBeLessThanOrEqual(2);
+  expect(portraitTabletLayout.tools.width).toBeGreaterThan(portraitTabletLayout.states.width);
   const reducedZoom = await page.evaluate(() => {
     const timer = document.querySelector('#cronoStageIdle .crono-idle-main');
     const calendar = document.querySelector('.crono-calendar-panel');
@@ -1027,9 +1028,12 @@ test('records concentration and resisted urges across landscape and portrait tim
   expect(reducedZoom.result.messageSize).toBeLessThanOrEqual(10);
   expect(reducedZoom.result.messageClass).toContain('size-xlong');
   const tabletFluidBox = await momentMonitor.locator('.crono-fluid-panel').boundingBox();
+  const tabletFluidVesselBox = await momentMonitor.locator('#cronoFluidConcentration .crono-fluid-vessel').boundingBox();
   expect(tabletFluidBox.y).toBeGreaterThanOrEqual(0);
   expect(tabletFluidBox.y + tabletFluidBox.height).toBeLessThanOrEqual(1194);
-  await expect(momentMonitor.locator('.crono-moment-history')).toBeVisible();
+  expect(tabletFluidVesselBox.width).toBeGreaterThanOrEqual(62);
+  expect(tabletFluidVesselBox.height).toBeGreaterThanOrEqual(220);
+  await expect(momentMonitor.locator('.crono-moment-history')).toBeHidden();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('.crono-calendar-panel')).toBeHidden();
   await expect(momentMonitor.locator('.crono-fluid-panel')).toBeHidden();

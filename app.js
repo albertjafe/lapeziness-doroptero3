@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-30-zoom-destellos-v94';
+const APP_VERSION = '2026-07-30-pulso-amplio-v95';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1895,7 +1895,8 @@ function cronoFluidEnd(event) {
 
 function cronoFluidCommit(kind, value, trigger) {
   const safe = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
-  const note = consumeCronoMomentNote(trigger || cronoFluidControl(kind));
+  // Las barras son un registro visceral y sin fricción: no adjuntan notas.
+  const note = '';
   if (kind === 'discomfort') {
     recordMalestarEvent({ v: safe, level: Math.max(1, Math.ceil(safe / 20)), label: safe + '%' }, note);
   } else {
