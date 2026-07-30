@@ -966,8 +966,10 @@ test('records concentration and resisted urges across landscape and portrait tim
   const momentMonitor = page.locator('.crono-moment-monitor');
   await expect(momentMonitor).toBeVisible();
   await expect(momentMonitor.locator('.crono-moment-mobile-trigger')).toBeHidden();
-  await expect(momentMonitor.locator('.crono-moment-controls')).toBeVisible();
+  await expect(momentMonitor.locator('.crono-moment-controls')).toBeHidden();
   await expect(momentMonitor.locator('.crono-fluid-panel')).toBeVisible();
+  await expect(momentMonitor.locator('.crono-impulse-monitor')).toBeHidden();
+  await expect(momentMonitor.locator('.crono-resistance-monitor')).toBeHidden();
   await expect(momentMonitor.locator('.crono-concentration-monitor')).toBeHidden();
   await expect(momentMonitor.locator('.crono-discomfort-monitor')).toBeHidden();
   await expect(page.locator('.crono-calendar-panel')).toBeVisible();
@@ -980,21 +982,22 @@ test('records concentration and resisted urges across landscape and portrait tim
     const calendar = document.querySelector('.crono-calendar-panel').getBoundingClientRect();
     const tools = document.getElementById('cronoIdleDrawer').getBoundingClientRect();
     return {
-      clock: { top: clock.top, right: clock.right, bottom: clock.bottom },
+      clock: { top: clock.top, right: clock.right, bottom: clock.bottom, height: clock.height },
       states: { top: states.top, left: states.left, bottom: states.bottom },
-      calendar: { top: calendar.top, left: calendar.left, bottom: calendar.bottom },
+      calendar: { top: calendar.top, left: calendar.left, bottom: calendar.bottom, height: calendar.height },
       toolsTop: tools.top,
     };
   });
   expect(Math.abs(portraitTabletLayout.clock.top - portraitTabletLayout.calendar.top)).toBeLessThanOrEqual(2);
+  expect(Math.abs(portraitTabletLayout.clock.height - portraitTabletLayout.calendar.height)).toBeLessThanOrEqual(2);
   expect(portraitTabletLayout.calendar.left).toBeGreaterThanOrEqual(portraitTabletLayout.clock.right - 1);
   expect(portraitTabletLayout.states.top).toBeGreaterThanOrEqual(portraitTabletLayout.clock.bottom - 1);
   expect(portraitTabletLayout.toolsTop).toBeGreaterThanOrEqual(
     Math.max(portraitTabletLayout.states.bottom, portraitTabletLayout.calendar.bottom) - 1
   );
-  const tabletControlsBox = await momentMonitor.locator('.crono-moment-controls').boundingBox();
-  expect(tabletControlsBox.y).toBeGreaterThanOrEqual(0);
-  expect(tabletControlsBox.y + tabletControlsBox.height).toBeLessThanOrEqual(1194);
+  const tabletFluidBox = await momentMonitor.locator('.crono-fluid-panel').boundingBox();
+  expect(tabletFluidBox.y).toBeGreaterThanOrEqual(0);
+  expect(tabletFluidBox.y + tabletFluidBox.height).toBeLessThanOrEqual(1194);
   await expect(momentMonitor.locator('.crono-moment-history')).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('.crono-calendar-panel')).toBeHidden();

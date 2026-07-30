@@ -162,6 +162,7 @@ describe('quality wiring', () => {
     expect(html).toContain('id="cronoCalendarGrid"');
     expect(html).toContain('id="cronoFluidConcentration"');
     expect(html).toContain('id="cronoFluidDiscomfort"');
+    expect(html).toContain('crono-moment-row crono-impulse-monitor');
     expect(html).toContain('id="eventoFechaFin"');
     expect(app).toContain('function renderCronoCalendar()');
     expect(app).toContain('function calendarEventRange(evento)');
@@ -169,6 +170,8 @@ describe('quality wiring', () => {
     expect(app).toContain('fechaFin: fechaFin || null');
     expect(styles).toContain('.crono-calendar-grid');
     expect(styles).toContain('.crono-fluid-liquid');
+    expect(styles).toContain('#view-cronometro .crono-impulse-monitor');
+    expect(styles).toContain('grid-template-rows: repeat(6, minmax(0, 1fr))');
     expect(styles).toContain('touch-action: none');
   });
 
