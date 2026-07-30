@@ -10151,33 +10151,74 @@ body.crono-running .crono-destellos-pill { display: none !important; }
     stroke-dasharray: 3 7;
     opacity: .44;
   }
-  .pulse-band { opacity: .11; }
-  .pulse-point {
-    stroke: var(--bg2);
-    stroke-width: 2.5;
-    cursor: pointer;
-    transition: r 140ms ease, filter 140ms ease;
+  .pulse-record-manager {
+    margin: 8px 0 0;
+    border: 1px solid color-mix(in srgb, var(--border2) 82%, transparent);
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--bg3) 62%, transparent);
+    overflow: hidden;
   }
-  .pulse-point:hover,
-  .pulse-point:focus { r: 6.5px; outline: none; filter: drop-shadow(0 0 5px currentColor); }
-  .pulse-detail {
-    min-height: 30px;
-    margin: 2px 0 0;
-    padding: 7px 9px;
-    border-radius: 9px;
-    background: color-mix(in srgb, var(--bg3) 75%, transparent);
-    color: var(--text3);
-    font-size: 9px;
-    line-height: 1.45;
-  }
-  .pulse-detail.visible { color: var(--text2); }
-  .pulse-detail.visible.has-action {
+  .pulse-record-manager summary {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
+    min-height: 40px;
+    padding: 8px 10px;
+    color: var(--text3);
+    font: 700 8px/1 var(--font-mono, 'JetBrains Mono', monospace);
+    letter-spacing: .04em;
+    cursor: pointer;
+    list-style: none;
   }
-  .pulse-detail-copy { min-width: 0; }
+  .pulse-record-manager summary::-webkit-details-marker { display: none; }
+  .pulse-record-manager summary strong {
+    display: grid;
+    place-items: center;
+    min-width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: var(--bg2);
+    color: var(--text2);
+    font: inherit;
+  }
+  .pulse-record-manager[open] summary { border-bottom: 1px solid var(--border2); }
+  .pulse-record-list {
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .pulse-record-row {
+    display: grid;
+    grid-template-columns: 9px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 9px;
+    min-height: 48px;
+    padding: 7px 9px;
+    border-bottom: 1px solid color-mix(in srgb, var(--border2) 72%, transparent);
+  }
+  .pulse-record-row:last-child { border-bottom: 0; }
+  .pulse-record-color {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--pulse-color);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--pulse-color) 12%, transparent);
+  }
+  .pulse-record-copy { display: grid; gap: 2px; min-width: 0; }
+  .pulse-record-copy strong { color: var(--text2); font-size: 9px; }
+  .pulse-record-copy small {
+    color: var(--text3);
+    font: 7px/1.25 var(--font-mono, 'JetBrains Mono', monospace);
+  }
+  .pulse-record-copy em {
+    overflow: hidden;
+    color: var(--text3);
+    font-size: 8px;
+    font-style: normal;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .pulse-delete-record {
     flex: 0 0 auto;
     min-height: 34px;
@@ -15960,12 +16001,7 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
 }
 #view-pulse .pulse-card-expanded .pulse-line { stroke-width: 3.6; }
 #view-pulse .pulse-card-expanded .pulse-gap-line { stroke-width: 2.2; }
-#view-pulse .pulse-card-expanded .pulse-point { stroke-width: 2.7; }
-#view-pulse .pulse-card-expanded .pulse-detail {
-  min-height: 42px;
-  padding: 10px 12px;
-  font-size: clamp(10px, 1.25vw, 12px);
-}
+#view-pulse .pulse-card-expanded .pulse-record-manager { max-width: 720px; margin-inline: auto; }
 #view-pulse .pulse-card-expanded .pulse-method {
   font-size: clamp(9px, 1.1vw, 11px);
 }
@@ -16372,8 +16408,6 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
   #view-cronometro .crono-moment-controls {
     display: none !important;
   }
-  #view-cronometro .crono-impulse-monitor,
-  #view-cronometro .crono-resistance-monitor { display: none; }
   #view-cronometro .crono-moment-history {
     display: none !important;
   }
@@ -16497,8 +16531,6 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
   #view-cronometro .crono-moment-controls,
   #view-cronometro .crono-moment-history,
   #view-cronometro .crono-moment-history-toggle,
-  #view-cronometro .crono-impulse-monitor,
-  #view-cronometro .crono-resistance-monitor,
   #view-cronometro .crono-concentration-monitor,
   #view-cronometro .crono-discomfort-monitor {
     display: none !important;

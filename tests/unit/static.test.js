@@ -129,23 +129,28 @@ describe('quality wiring', () => {
     expect(app).toContain("source: 'pase'");
   });
 
-  it('registers resistance and renders continuous pulse curves across four ranges', () => {
+  it('keeps legacy pulse data compatible but only measures concentration and discomfort', () => {
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
-    expect(html).toContain('id="cronoResistanceFaces"');
-    expect(app).toContain('function recordResistenciaEvent(level, note)');
+    expect(html).toContain('<strong>Concentración · Malestar</strong>');
+    expect(html).not.toContain('id="cronoImpulseFaces"');
+    expect(html).not.toContain('id="cronoResistanceFaces"');
     expect(app).toContain('merged.resistenciaEventos');
+    expect(app).toContain("const _pulseVisible = new Set(['concentration', 'discomfort']);");
     expect(app).toContain("['dia', 'semana', 'tipico', 'mes']");
     expect(app).toContain('function _pulseMonotonePath(points)');
     expect(app).toContain('function _pulseValue(value)');
+    expect(app).toContain('function _pulseRecordManager(period)');
     expect(app).toContain('function deletePulseRecord(metric, recordId, trigger)');
     expect(app).toContain("metric + '::' + recordId");
-    expect(app).toContain("point.value.toFixed(point.value % 1 ? 1 : 0)");
+    expect(app).toContain("row.value.toFixed(row.value % 1 ? 1 : 0)");
     expect(app).toContain("expanded ? (mobileExpanded ? 430 : 380) : 300");
     expect(app).not.toContain('function _pulseLevel(value, key)');
-    expect(app).toContain('Curva continua por métrica');
+    expect(app).toContain('Curvas continuas de concentración y malestar, sin marcadores');
+    expect(app).not.toContain('class="pulse-point"');
+    expect(app).not.toContain('class="pulse-band"');
     expect(app).not.toContain('function _pulseStudyIntervals(period)');
     expect(app).not.toContain('class="pulse-gap-line"');
     expect(app).toContain("closest?.('.pulse-trimmer, input[type=\"range\"], [data-no-view-swipe]')");
@@ -153,8 +158,10 @@ describe('quality wiring', () => {
     expect(app).toContain('function renderPulseDashboard()');
     expect(html).toContain('id="view-pulse"');
     expect(html).toContain('id="pulseDashboard"');
-    expect(styles).toContain('.pulse-band');
+    expect(styles).not.toContain('.pulse-point');
+    expect(styles).not.toContain('.pulse-band');
     expect(styles).toContain('.pulse-trimmer');
+    expect(styles).toContain('.pulse-record-manager');
     expect(styles).toContain('.pulse-delete-record');
     expect(styles).toContain('touch-action: none');
     expect(styles).toContain('.pulse-card-expanded');
@@ -169,7 +176,8 @@ describe('quality wiring', () => {
     expect(html).toContain('id="cronoCalendarGrid"');
     expect(html).toContain('id="cronoFluidConcentration"');
     expect(html).toContain('id="cronoFluidDiscomfort"');
-    expect(html).toContain('crono-moment-row crono-impulse-monitor');
+    expect(html).not.toContain('crono-moment-row crono-impulse-monitor');
+    expect(html).not.toContain('crono-moment-row crono-resistance-monitor');
     expect(html).toContain('id="eventoFechaFin"');
     expect(app).toContain('function renderCronoCalendar()');
     expect(app).toContain('function calendarEventRange(evento)');
@@ -184,7 +192,7 @@ describe('quality wiring', () => {
     expect(styles).toContain('.crono-fluid-liquid');
     expect(styles).toContain('grid-column: 5 / -1');
     expect(styles).toContain('height: clamp(220px, 30vw, 292px)');
-    expect(styles).toContain('#view-cronometro .crono-impulse-monitor');
+    expect(styles).not.toContain('#view-cronometro .crono-impulse-monitor');
     expect(styles).toContain('grid-template-rows: repeat(6, minmax(0, 1fr))');
     expect(styles).toContain('calc(var(--crono-interface-ring-size) * .024)');
     expect(styles).toContain('(max-aspect-ratio: 3/2)');

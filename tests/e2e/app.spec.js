@@ -900,7 +900,7 @@ test('uses the task circle to toggle and the task name to edit', async ({ page }
   expect(await page.evaluate(() => cronoTasks()[0].done)).toBe(false);
 });
 
-test('records concentration and resisted urges across landscape and portrait timers', async ({ page }) => {
+test('records only concentration and discomfort across timer layouts', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await prepare(page);
   await page.evaluate(() => showView('cronometro'));
@@ -913,39 +913,28 @@ test('records concentration and resisted urges across landscape and portrait tim
   await expect(monitor.getByRole('radio', { name: 'Alta', exact: true })).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('#cronoMomentNote')).toHaveValue('');
 
-  const impulse = page.locator('#cronoImpulseFaces');
-  await impulse.getByRole('radio', { name: 'Muy alto', exact: true }).click();
-  await expect(impulse.getByRole('radio', { name: 'Muy alto', exact: true })).toHaveAttribute('aria-checked', 'true');
-
   await page.locator('#cronoMomentNote').fill('Tensión física y pensamiento repetitivo');
   const discomfort = page.locator('#cronoDiscomfortFaces');
   await discomfort.getByRole('radio', { name: 'Medio', exact: true }).click();
   await expect(discomfort.getByRole('radio', { name: 'Medio', exact: true })).toHaveAttribute('aria-checked', 'true');
 
-  await page.locator('#cronoMomentNote').fill('Quería cambiar de tarea');
-  const resistance = page.locator('#cronoResistanceFaces');
-  await resistance.getByRole('radio', { name: 'Alta', exact: true }).click();
-  await expect(resistance.getByRole('radio', { name: 'Alta', exact: true })).toHaveAttribute('aria-checked', 'true');
-
   const state = await page.evaluate(() => ({
     value: estadoActualVal(),
     lastLabel: ensureEstadoEventos().at(-1)?.label,
     lastNote: ensureEstadoEventos().at(-1)?.note,
-    impulseLabel: ensureImpulsoEventos().at(-1)?.label,
     discomfortLabel: ensureMalestarEventos().at(-1)?.label,
     discomfortNote: ensureMalestarEventos().at(-1)?.note,
-    resistanceLabel: ensureResistenciaEventos().at(-1)?.label,
-    resistanceNote: ensureResistenciaEventos().at(-1)?.note,
+    impulseCount: ensureImpulsoEventos().length,
+    resistanceCount: ensureResistenciaEventos().length,
   }));
   expect(state).toEqual({
     value: 78,
     lastLabel: 'Alta',
     lastNote: 'Concentrarme en la mano derecha',
-    impulseLabel: 'Muy alto',
     discomfortLabel: 'Medio',
     discomfortNote: 'Tensión física y pensamiento repetitivo',
-    resistanceLabel: 'Alta',
-    resistanceNote: 'Quería cambiar de tarea',
+    impulseCount: 0,
+    resistanceCount: 0,
   });
 
   await expect(page.locator('#cronoMomentHistoryList')).toHaveCount(0);
@@ -959,7 +948,6 @@ test('records concentration and resisted urges across landscape and portrait tim
 
   await page.waitForTimeout(900);
   await expect(monitor.locator('.estado-face.active')).toHaveCount(0);
-  await expect(impulse.locator('.estado-face.active')).toHaveCount(0);
   await expect(page.locator('#estadoFaces .estado-face.active')).toHaveCount(0);
 
   await page.setViewportSize({ width: 834, height: 1194 });
@@ -968,8 +956,8 @@ test('records concentration and resisted urges across landscape and portrait tim
   await expect(momentMonitor.locator('.crono-moment-mobile-trigger')).toBeHidden();
   await expect(momentMonitor.locator('.crono-moment-controls')).toBeHidden();
   await expect(momentMonitor.locator('.crono-fluid-panel')).toBeVisible();
-  await expect(momentMonitor.locator('.crono-impulse-monitor')).toBeHidden();
-  await expect(momentMonitor.locator('.crono-resistance-monitor')).toBeHidden();
+  await expect(momentMonitor.locator('.crono-impulse-monitor')).toHaveCount(0);
+  await expect(momentMonitor.locator('.crono-resistance-monitor')).toHaveCount(0);
   await expect(momentMonitor.locator('.crono-concentration-monitor')).toBeHidden();
   await expect(momentMonitor.locator('.crono-discomfort-monitor')).toBeHidden();
   await expect(page.locator('.crono-calendar-panel')).toBeVisible();
@@ -1043,9 +1031,10 @@ test('records concentration and resisted urges across landscape and portrait tim
   await mobileTrigger.click();
   await expect(mobileTrigger).toHaveAttribute('aria-expanded', 'true');
   await expect(momentMonitor.locator('.crono-moment-content')).toBeVisible();
-  await expect(momentMonitor.locator('#cronoImpulseFaces')).toBeVisible();
   await expect(momentMonitor.locator('#cronoConcentrationFaces')).toBeVisible();
-  await expect(momentMonitor.locator('#cronoResistanceFaces')).toBeVisible();
+  await expect(momentMonitor.locator('#cronoDiscomfortFaces')).toBeVisible();
+  await expect(momentMonitor.locator('#cronoImpulseFaces')).toHaveCount(0);
+  await expect(momentMonitor.locator('#cronoResistanceFaces')).toHaveCount(0);
   const mobileContentBox = await momentMonitor.locator('.crono-moment-content').boundingBox();
   expect(mobileContentBox.x).toBeGreaterThanOrEqual(0);
   expect(mobileContentBox.x + mobileContentBox.width).toBeLessThanOrEqual(390);
@@ -1053,8 +1042,9 @@ test('records concentration and resisted urges across landscape and portrait tim
   expect(mobileContentBox.y + mobileContentBox.height).toBeLessThanOrEqual(844);
 
   await page.evaluate(() => showView('pulse'));
-  await expect(page.locator('#pulseDashboard .pulse-card')).toContainText('4 registros');
-  await expect(page.locator('#pulseDashboard .pulse-point[aria-label^="Resistencia"]')).toHaveCount(1);
+  await expect(page.locator('#pulseDashboard .pulse-card')).toContainText('2 registros');
+  await expect(page.locator('#pulseDashboard .pulse-metric')).toHaveText(['Concentración', 'Malestar']);
+  await expect(page.locator('#pulseDashboard .pulse-point')).toHaveCount(0);
   const pulseChartBox = await page.locator('#pulseDashboard .pulse-chart').boundingBox();
   expect(pulseChartBox.height).toBeGreaterThan(180);
   expect(pulseChartBox.height).toBeLessThan(240);
@@ -1104,22 +1094,21 @@ test('draws one smooth curve across sessions and reserves touch drag for the tim
   await expect(page.locator('.pulse-line')).toHaveCount(2);
   await expect(page.locator('.pulse-axis-x')).toHaveText(['09:00', '12:00', '15:00', '18:00', '21:00', '23:00']);
   await expect(page.locator('.pulse-axis-x', { hasText: '00:00' })).toHaveCount(0);
-  await expect(page.locator('.pulse-point[aria-label^="Malestar"]')).toHaveCount(2);
-  await expect(page.locator('.pulse-point[aria-label*="02:30"]')).toHaveCount(0);
+  await expect(page.locator('.pulse-point')).toHaveCount(0);
   await expect(page.locator('.pulse-axis-y')).toHaveText(['0', '25', '50', '75', '100']);
-  await expect(page.locator('.pulse-point[data-record-id="pulse-1"]')).toHaveAttribute('aria-label', /78\/100/);
   const smoothPaths = await page.locator('.pulse-line').evaluateAll(paths => paths.map(path => path.getAttribute('d')));
   expect(smoothPaths.every(path => / C[\d.]+,[\d.]+/.test(path || ''))).toBe(true);
   await expect(page.locator('.pulse-gap-line')).toHaveCount(0);
-  await expect(page.locator('.pulse-method')).toContainText('Curva continua por métrica');
-  await page.locator('.pulse-point[data-record-id="pulse-1"]').click();
-  await expect(page.locator('#pulseDetail')).toContainText('78/100');
-  const deletePulseButton = page.locator('.pulse-delete-record');
+  await expect(page.locator('.pulse-band')).toHaveCount(0);
+  await expect(page.locator('.pulse-method')).toContainText('sin marcadores');
+  await page.locator('.pulse-record-manager summary').click();
+  await expect(page.locator('.pulse-record-manager')).toContainText('78/100');
+  const deletePulseButton = page.locator('.pulse-delete-record[data-record-id="pulse-1"]');
   await deletePulseButton.click();
   await expect(deletePulseButton).toHaveText('Confirmar');
   expect(await page.evaluate(() => db.estadoEventos.some(item => item.id === 'pulse-1'))).toBe(true);
   await deletePulseButton.click();
-  await expect(page.locator('.pulse-point[data-record-id="pulse-1"]')).toHaveCount(0);
+  await expect(page.locator('.pulse-delete-record[data-record-id="pulse-1"]')).toHaveCount(0);
   expect(await page.evaluate(() => ({
     present: db.estadoEventos.some(item => item.id === 'pulse-1'),
     deleted: db.pulseDeletedIds.includes('concentration::pulse-1'),
@@ -1149,8 +1138,8 @@ test('draws one smooth curve across sessions and reserves touch drag for the tim
 
   await expect(page.locator('#pulseWindowLabel')).toHaveText('12:00–18:00');
   await expect(page.locator('.pulse-axis-x')).toHaveText(['12:00', '14:00', '16:00', '18:00']);
-  await expect(page.locator('.pulse-point[aria-label^="Malestar"]')).toHaveCount(0);
-  await expect(page.locator('.pulse-point[aria-label^="Concentración"]')).toHaveCount(3);
+  await expect(page.locator('.pulse-point')).toHaveCount(0);
+  await expect(page.locator('.pulse-line')).toHaveCount(1);
   await expect(page.locator('body')).toHaveAttribute('data-view', 'pulse');
   await expect(page.locator('body')).not.toHaveClass(/view-swipe-dragging/);
   expect(await page.evaluate(() => [localStorage.getItem('pulse_day_start'), localStorage.getItem('pulse_day_end')])).toEqual(['720', '1080']);
