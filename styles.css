@@ -10171,6 +10171,30 @@ body.crono-running .crono-destellos-pill { display: none !important; }
     line-height: 1.45;
   }
   .pulse-detail.visible { color: var(--text2); }
+  .pulse-detail.visible.has-action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .pulse-detail-copy { min-width: 0; }
+  .pulse-delete-record {
+    flex: 0 0 auto;
+    min-height: 34px;
+    padding: 6px 11px;
+    border: 1px solid color-mix(in srgb, #d94b5d 34%, var(--border2));
+    border-radius: 9px;
+    background: color-mix(in srgb, #d94b5d 7%, var(--bg2));
+    color: #c63e50;
+    font: 700 8px/1 var(--font-mono, 'JetBrains Mono', monospace);
+    cursor: pointer;
+  }
+  .pulse-delete-record.is-confirming {
+    border-color: color-mix(in srgb, #d94b5d 72%, var(--border2));
+    background: #d94b5d;
+    color: #fff;
+    box-shadow: 0 6px 16px color-mix(in srgb, #d94b5d 24%, transparent);
+  }
   .pulse-method {
     margin-top: 7px;
     color: var(--text3);

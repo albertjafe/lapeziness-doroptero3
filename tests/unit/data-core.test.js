@@ -65,4 +65,13 @@ describe('DataCore', () => {
     expect(merged.resistenciaEventos.map(event => event.id)).toEqual(['resistance-a', 'resistance-b']);
     expect(merged.resistenciaEventos[1].note).toBe('Quería cambiar de tarea');
   });
+
+  it('keeps a deleted pulse record deleted when another device still has it', () => {
+    const merged = DataCore.mergeStudyHistory(
+      { estadoEventos: [{ id: 'pulse-37', at: '2026-07-13T10:00:00Z', value: 37, label: '37%' }] },
+      { estadoEventos: [], pulseDeletedIds: ['concentration::pulse-37'] }
+    );
+    expect(merged.estadoEventos).toEqual([]);
+    expect(merged.pulseDeletedIds).toContain('concentration::pulse-37');
+  });
 });

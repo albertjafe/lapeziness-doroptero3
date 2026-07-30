@@ -139,6 +139,12 @@ describe('quality wiring', () => {
     expect(app).toContain('merged.resistenciaEventos');
     expect(app).toContain("['dia', 'semana', 'tipico', 'mes']");
     expect(app).toContain('function _pulseMonotonePath(points)');
+    expect(app).toContain('function _pulseValue(value)');
+    expect(app).toContain('function deletePulseRecord(metric, recordId, trigger)');
+    expect(app).toContain("metric + '::' + recordId");
+    expect(app).toContain("point.value.toFixed(point.value % 1 ? 1 : 0)");
+    expect(app).toContain("expanded ? (mobileExpanded ? 430 : 380) : 300");
+    expect(app).not.toContain('function _pulseLevel(value, key)');
     expect(app).toContain('Curva continua por métrica');
     expect(app).not.toContain('function _pulseStudyIntervals(period)');
     expect(app).not.toContain('class="pulse-gap-line"');
@@ -149,6 +155,7 @@ describe('quality wiring', () => {
     expect(html).toContain('id="pulseDashboard"');
     expect(styles).toContain('.pulse-band');
     expect(styles).toContain('.pulse-trimmer');
+    expect(styles).toContain('.pulse-delete-record');
     expect(styles).toContain('touch-action: none');
     expect(styles).toContain('.pulse-card-expanded');
   });

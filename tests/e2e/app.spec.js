@@ -1056,7 +1056,8 @@ test('records concentration and resisted urges across landscape and portrait tim
   await expect(page.locator('#pulseDashboard .pulse-card')).toContainText('4 registros');
   await expect(page.locator('#pulseDashboard .pulse-point[aria-label^="Resistencia"]')).toHaveCount(1);
   const pulseChartBox = await page.locator('#pulseDashboard .pulse-chart').boundingBox();
-  expect(pulseChartBox.height).toBeGreaterThan(220);
+  expect(pulseChartBox.height).toBeGreaterThan(180);
+  expect(pulseChartBox.height).toBeLessThan(240);
   await page.evaluate(() => showView('session'));
   await expect(page.locator('#statsDashboard .pulse-shortcut')).toBeVisible();
   await expect(page.locator('#statsDashboard .pulse-card')).toHaveCount(0);
@@ -1093,6 +1094,7 @@ test('draws one smooth curve across sessions and reserves touch drag for the tim
       { id: 'distress-1', at: at(9, 20).toISOString(), value: 80, label: 'Alto' },
       { id: 'distress-2', at: at(9, 50).toISOString(), value: 40, label: 'Bajo' },
     ];
+    db.pulseDeletedIds = [];
     _pulseRange = 'dia';
     _pulseOffset = 0;
     renderPulseDashboard();
@@ -1104,10 +1106,24 @@ test('draws one smooth curve across sessions and reserves touch drag for the tim
   await expect(page.locator('.pulse-axis-x', { hasText: '00:00' })).toHaveCount(0);
   await expect(page.locator('.pulse-point[aria-label^="Malestar"]')).toHaveCount(2);
   await expect(page.locator('.pulse-point[aria-label*="02:30"]')).toHaveCount(0);
+  await expect(page.locator('.pulse-axis-y')).toHaveText(['0', '25', '50', '75', '100']);
+  await expect(page.locator('.pulse-point[data-record-id="pulse-1"]')).toHaveAttribute('aria-label', /78\/100/);
   const smoothPaths = await page.locator('.pulse-line').evaluateAll(paths => paths.map(path => path.getAttribute('d')));
   expect(smoothPaths.every(path => / C[\d.]+,[\d.]+/.test(path || ''))).toBe(true);
   await expect(page.locator('.pulse-gap-line')).toHaveCount(0);
   await expect(page.locator('.pulse-method')).toContainText('Curva continua por métrica');
+  await page.locator('.pulse-point[data-record-id="pulse-1"]').click();
+  await expect(page.locator('#pulseDetail')).toContainText('78/100');
+  const deletePulseButton = page.locator('.pulse-delete-record');
+  await deletePulseButton.click();
+  await expect(deletePulseButton).toHaveText('Confirmar');
+  expect(await page.evaluate(() => db.estadoEventos.some(item => item.id === 'pulse-1'))).toBe(true);
+  await deletePulseButton.click();
+  await expect(page.locator('.pulse-point[data-record-id="pulse-1"]')).toHaveCount(0);
+  expect(await page.evaluate(() => ({
+    present: db.estadoEventos.some(item => item.id === 'pulse-1'),
+    deleted: db.pulseDeletedIds.includes('concentration::pulse-1'),
+  }))).toEqual({ present: false, deleted: true });
   const touchGuard = await page.locator('.pulse-trimmer').evaluate(trimmer => {
     let reachedDocument = false;
     const observeStart = () => { reachedDocument = true; };

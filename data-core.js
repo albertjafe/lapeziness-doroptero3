@@ -37,6 +37,23 @@
     return limit ? out.slice(-limit) : out;
   }
 
+  function mergePulseDeletedIds(a, b) {
+    return Array.from(new Set((a || []).concat(b || []).map(String).filter(Boolean))).slice(-5000);
+  }
+
+  function applyPulseDeletedIds(merged) {
+    const deleted = new Set(merged.pulseDeletedIds || []);
+    const keep = (metric, items) => (items || []).filter(item => {
+      const id = eventKey(item, ['at', 'value', 'label']);
+      return !deleted.has(metric + '::' + id);
+    });
+    merged.estadoEventos = keep('concentration', merged.estadoEventos);
+    merged.impulsoEventos = keep('impulse', merged.impulsoEventos);
+    merged.malestarEventos = keep('discomfort', merged.malestarEventos);
+    merged.resistenciaEventos = keep('resistance', merged.resistenciaEventos);
+    return merged;
+  }
+
   function itemRealMinutes(item) {
     if (!item || item.estudiado === false) return 0;
     return Number(item.minutosReales ?? item.min ?? item.minutos ?? 0) || 0;
@@ -104,13 +121,14 @@
     merged.impulsoEventos = mergeEvents(base.impulsoEventos, other.impulsoEventos, ['at', 'value', 'label'], 2000);
     merged.malestarEventos = mergeEvents(base.malestarEventos, other.malestarEventos, ['at', 'value', 'label'], 2000);
     merged.resistenciaEventos = mergeEvents(base.resistenciaEventos, other.resistenciaEventos, ['at', 'value', 'label'], 2000);
+    merged.pulseDeletedIds = mergePulseDeletedIds(base.pulseDeletedIds, other.pulseDeletedIds);
     merged.deporteEventos = mergeEvents(base.deporteEventos, other.deporteEventos, ['at', 'kind', 'value', 'label'], 2000);
     merged.suenoEventos = mergeEvents(base.suenoEventos, other.suenoEventos, ['at', 'kind'], 2000);
     merged.triggerEventos = mergeEvents(base.triggerEventos, other.triggerEventos, ['at', 'value', 'label'], 2000);
     merged.tiempoDisponibleEventos = mergeTimeAvailableEvents(base.tiempoDisponibleEventos, other.tiempoDisponibleEventos);
     merged.dailyJournalEntries = mergeEvents(base.dailyJournalEntries, other.dailyJournalEntries, ['at', 'text'], 3000);
     merged.blockedDaySchedules = mergeBlockedDaySchedules(base.blockedDaySchedules, other.blockedDaySchedules);
-    return merged;
+    return applyPulseDeletedIds(merged);
   }
 
   return { mergeStudyHistory, mergePlants, mergeSessions, mergeBlockedDaySchedules, sessionRealMinutes };
