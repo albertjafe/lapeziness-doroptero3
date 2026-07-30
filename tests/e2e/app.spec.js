@@ -1058,15 +1058,21 @@ test('records only concentration and discomfort across timer layouts', async ({ 
   await mobileTrigger.click();
   await expect(mobileTrigger).toHaveAttribute('aria-expanded', 'true');
   await expect(momentMonitor.locator('.crono-moment-content')).toBeVisible();
-  await expect(momentMonitor.locator('#cronoConcentrationFaces')).toBeVisible();
-  await expect(momentMonitor.locator('#cronoDiscomfortFaces')).toBeVisible();
+  await expect(momentMonitor.locator('.crono-fluid-panel')).toBeVisible();
+  await expect(momentMonitor.locator('.crono-moment-controls')).toBeHidden();
+  await expect(momentMonitor.locator('#cronoConcentrationFaces')).toBeHidden();
+  await expect(momentMonitor.locator('#cronoDiscomfortFaces')).toBeHidden();
+  await expect(momentMonitor.locator('.crono-moment-history')).toBeHidden();
   await expect(momentMonitor.locator('#cronoImpulseFaces')).toHaveCount(0);
   await expect(momentMonitor.locator('#cronoResistanceFaces')).toHaveCount(0);
   const mobileContentBox = await momentMonitor.locator('.crono-moment-content').boundingBox();
+  const mobileFluidVesselBox = await momentMonitor.locator('#cronoFluidConcentration .crono-fluid-vessel').boundingBox();
   expect(mobileContentBox.x).toBeGreaterThanOrEqual(0);
   expect(mobileContentBox.x + mobileContentBox.width).toBeLessThanOrEqual(390);
   expect(mobileContentBox.y).toBeGreaterThanOrEqual(0);
   expect(mobileContentBox.y + mobileContentBox.height).toBeLessThanOrEqual(844);
+  expect(mobileFluidVesselBox.width).toBeGreaterThanOrEqual(58);
+  expect(mobileFluidVesselBox.height).toBeGreaterThanOrEqual(150);
 
   await page.evaluate(() => showView('pulse'));
   await expect(page.locator('#pulseDashboard .pulse-card')).toContainText('3 registros');

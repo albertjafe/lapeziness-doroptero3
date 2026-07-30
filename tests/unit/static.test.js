@@ -168,7 +168,7 @@ describe('quality wiring', () => {
     expect(styles).toContain('.pulse-card-expanded');
   });
 
-  it('adds an iPad month calendar and visceral liquid pulse controls in both orientations', () => {
+  it('adds an iPad month calendar and visceral liquid pulse controls on iPad and mobile', () => {
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
@@ -199,6 +199,8 @@ describe('quality wiring', () => {
     expect(styles).toContain('0 0 76px 18px');
     expect(styles).toContain('grid-column: 5 / -1');
     expect(styles).toContain('height: clamp(220px, 30vw, 292px)');
+    expect(styles).toContain('width: min(258px, calc(100vw - 20px))');
+    expect(styles).toContain('height: clamp(150px, 22dvh, 184px)');
     expect(styles).not.toContain('#view-cronometro .crono-impulse-monitor');
     expect(styles).toContain('grid-template-rows: repeat(6, minmax(0, 1fr))');
     expect(styles).toContain('calc(var(--crono-interface-ring-size) * .024)');

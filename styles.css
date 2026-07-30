@@ -16573,6 +16573,151 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
   }
 }
 
+/* En teléfono, el acceso flotante abre las mismas barras líquidas de Pulso
+   que iPad. Son compactas en altura, pero conservan un recorrido táctil cómodo. */
+@media (orientation: portrait) and (max-width: 699px) {
+  #view-cronometro .crono-fluid-panel {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 11px;
+    width: min(258px, calc(100vw - 20px));
+    margin-left: auto;
+    padding: 12px 13px 11px;
+    border: 1px solid color-mix(in srgb, var(--border2) 80%, transparent);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--bg2) 96%, var(--bg));
+    box-shadow: 0 18px 42px -24px rgba(0,0,0,.58), inset 0 1px 0 rgba(255,255,255,.2);
+    box-sizing: border-box;
+  }
+  #view-cronometro .crono-fluid-panel > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  #view-cronometro .crono-fluid-panel > header > div { display: grid; gap: 3px; }
+  #view-cronometro .crono-fluid-panel > header span {
+    color: var(--text3);
+    font: 700 8px/1 var(--font-mono, 'JetBrains Mono', monospace);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  #view-cronometro .crono-fluid-panel > header strong {
+    color: var(--text2);
+    font-size: 9px;
+    font-weight: 600;
+  }
+  #view-cronometro .crono-fluid-panel > header i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 10%, transparent);
+  }
+  #view-cronometro .crono-fluid-bars {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(24px, 10vw, 38px);
+  }
+  #view-cronometro .crono-fluid-control {
+    --fluid-level: 50%;
+    display: grid;
+    place-items: center;
+    gap: 7px;
+    min-width: 76px;
+    min-height: 44px;
+    padding: 3px 7px;
+    border-radius: 24px;
+    outline: 0;
+    cursor: ns-resize;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #view-cronometro .crono-fluid-control > strong {
+    color: var(--text2);
+    font: 700 8px/1 var(--font-mono, 'JetBrains Mono', monospace);
+    letter-spacing: .035em;
+  }
+  #view-cronometro .crono-fluid-vessel {
+    position: relative;
+    width: 60px;
+    height: clamp(150px, 22dvh, 184px);
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--border2) 94%, transparent);
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(255,255,255,.17), transparent 28%, transparent 72%, rgba(0,0,0,.05));
+    box-shadow: inset 0 0 0 5px color-mix(in srgb, var(--bg) 42%, transparent), inset 0 -18px 32px rgba(0,0,0,.04);
+  }
+  #view-cronometro .crono-fluid-liquid {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    left: 6px;
+    height: calc(var(--fluid-level) - 6px);
+    min-height: 2px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--fluid-color) 66%, white), var(--fluid-color));
+    box-shadow: 0 -5px 20px color-mix(in srgb, var(--fluid-color) 36%, transparent), inset 0 1px 0 rgba(255,255,255,.58);
+    transition: height 280ms cubic-bezier(.22,.8,.25,1), box-shadow 200ms ease;
+  }
+  #view-cronometro .crono-fluid-liquid::before {
+    position: absolute;
+    top: -5px;
+    left: -15%;
+    width: 130%;
+    height: 10px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--fluid-color) 54%, white);
+    content: '';
+  }
+  #view-cronometro .crono-fluid-liquid i {
+    position: absolute;
+    top: 10%;
+    left: 13%;
+    width: 7px;
+    height: 68%;
+    border-radius: 999px;
+    background: linear-gradient(rgba(255,255,255,.36), transparent);
+    opacity: .7;
+  }
+  #view-cronometro .crono-fluid-control.concentration { --fluid-color: #42a6d7; }
+  #view-cronometro .crono-fluid-control.discomfort { --fluid-color: #e46672; }
+  #view-cronometro .crono-fluid-bound {
+    position: absolute;
+    left: 50%;
+    z-index: 2;
+    width: 22px;
+    height: 2px;
+    border-radius: 99px;
+    background: color-mix(in srgb, var(--text3) 48%, transparent);
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  #view-cronometro .crono-fluid-bound.top { top: 12px; }
+  #view-cronometro .crono-fluid-bound.bottom { bottom: 12px; }
+  #view-cronometro .crono-fluid-control.is-dragging { background: color-mix(in srgb, var(--fluid-color) 7%, transparent); }
+  #view-cronometro .crono-fluid-control.is-dragging .crono-fluid-liquid { transition: none; }
+  #view-cronometro .crono-fluid-control.is-saved .crono-fluid-vessel {
+    animation: crono-fluid-confirm 980ms cubic-bezier(.2,.8,.2,1);
+  }
+  #view-cronometro .crono-fluid-control.is-saved .crono-fluid-liquid {
+    animation: crono-fluid-liquid-confirm 980ms cubic-bezier(.2,.8,.2,1);
+  }
+  #view-cronometro .crono-fluid-control:focus-visible .crono-fluid-vessel {
+    outline: 2px solid color-mix(in srgb, var(--fluid-color) 66%, transparent);
+    outline-offset: 3px;
+  }
+  #view-cronometro .crono-moment-controls,
+  #view-cronometro .crono-moment-history,
+  #view-cronometro .crono-moment-history-toggle,
+  #view-cronometro .crono-concentration-monitor,
+  #view-cronometro .crono-discomfort-monitor {
+    display: none !important;
+  }
+}
+
 /* Los iPad horizontales menos altos conservan todos los controles dentro de
    la tarjeta del reloj sin reducir las barras táctiles de Pulso. */
 @media (min-width: 900px) and (max-width: 1399px) and (min-height: 820px) and (max-height: 899px) and (orientation: landscape) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 3/2) {
