@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-30-calendario-compacto-v93';
+const APP_VERSION = '2026-07-30-zoom-destellos-v94';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -18614,8 +18614,8 @@ let _cronoRunDrawerTab = 'tareas';
 let _cronoIdleDrawerTab = 'tareas';
 
 const CRONO_INTERFACE_SCALE_KEY = 'alberto_crono_interface_scale_v1';
-const CRONO_INTERFACE_SCALE_MIN_DESKTOP = 0.66;
-const CRONO_INTERFACE_SCALE_MIN_MOBILE = 0.76;
+const CRONO_INTERFACE_SCALE_MIN_DESKTOP = 0.50;
+const CRONO_INTERFACE_SCALE_MIN_MOBILE = 0.68;
 const CRONO_INTERFACE_SCALE_MAX = 1.22;
 let _cronoInterfaceScale = 1;
 let _cronoInterfacePinch = null;
@@ -22419,8 +22419,7 @@ function cronoApplyModeUI() {
   cronoTimerRenderSlider();
   cronoUpdateTimerPresetButtons();
   // Mensaje contextual: primero destellos propios, luego frases de respaldo.
-  const msg = document.getElementById('cronoIdleMessage');
-  if (msg) msg.textContent = _cronoIdlePhrase();
+  cronoSetIdleDestelloText(_cronoIdlePhrase());
 }
 
 const CRONO_IDLE_PHRASES = [
@@ -22486,6 +22485,15 @@ function _cronoDestelloSizeClass(text) {
   return 'size-short';
 }
 
+function cronoSetIdleDestelloText(text) {
+  const msg = document.getElementById('cronoIdleMessage');
+  if (!msg) return;
+  const clean = _cronoClampDestelloText(text);
+  msg.classList.remove('size-short', 'size-medium', 'size-long', 'size-xlong');
+  msg.classList.add(_cronoDestelloSizeClass(clean));
+  msg.textContent = clean;
+}
+
 function cronoUpdateRunDestello(elapsedMs, force) {
   const el = document.getElementById('cronoRunDestello');
   if (!el) return;
@@ -22528,8 +22536,7 @@ function cronoUpdateRunDestello(elapsedMs, force) {
 }
 
 function cronoRefreshDestelloPhrase(force) {
-  const msg = document.getElementById('cronoIdleMessage');
-  if (msg && crono.state === 'idle') msg.textContent = _cronoIdlePhrase();
+  if (crono.state === 'idle') cronoSetIdleDestelloText(_cronoIdlePhrase());
   if (crono.state !== 'idle') cronoUpdateRunDestello(cronoEffectiveElapsedMs(), !!force);
 }
 

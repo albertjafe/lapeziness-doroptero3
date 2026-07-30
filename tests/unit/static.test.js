@@ -167,11 +167,14 @@ describe('quality wiring', () => {
     expect(app).toContain('function renderCronoCalendar()');
     expect(app).toContain('function calendarEventRange(evento)');
     expect(app).toContain('function cronoFluidCommit(kind, value, trigger)');
+    expect(app).toContain('const CRONO_INTERFACE_SCALE_MIN_DESKTOP = 0.50');
+    expect(app).toContain('function cronoSetIdleDestelloText(text)');
     expect(app).toContain('fechaFin: fechaFin || null');
     expect(styles).toContain('.crono-calendar-grid');
     expect(styles).toContain('.crono-fluid-liquid');
     expect(styles).toContain('#view-cronometro .crono-impulse-monitor');
     expect(styles).toContain('grid-template-rows: repeat(6, minmax(0, 1fr))');
+    expect(styles).toContain('calc(var(--crono-interface-ring-size) * .024)');
     expect(styles).toContain('touch-action: none');
   });
 

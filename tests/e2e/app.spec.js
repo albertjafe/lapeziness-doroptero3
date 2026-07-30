@@ -995,6 +995,37 @@ test('records concentration and resisted urges across landscape and portrait tim
   expect(portraitTabletLayout.toolsTop).toBeGreaterThanOrEqual(
     Math.max(portraitTabletLayout.states.bottom, portraitTabletLayout.calendar.bottom) - 1
   );
+  const reducedZoom = await page.evaluate(() => {
+    const timer = document.querySelector('#cronoStageIdle .crono-idle-main');
+    const calendar = document.querySelector('.crono-calendar-panel');
+    const ring = document.getElementById('cronoTimerSvg');
+    cronoResetInterfaceScale();
+    const before = { timer: timer.getBoundingClientRect().height, calendar: calendar.getBoundingClientRect().height };
+    cronoSetInterfaceScale(0.1, { persist: false, announce: false });
+    const longText = 'Un destello suficientemente largo para comprobar que el texto se adapta al espacio disponible sin cortarse aunque el cronómetro se reduzca hasta su nuevo mínimo seguro de tamaño.';
+    cronoSetIdleDestelloText(longText);
+    const message = document.getElementById('cronoIdleMessage');
+    const result = {
+      scale: Number(document.getElementById('view-cronometro').dataset.interfaceScale),
+      timer: timer.getBoundingClientRect().height,
+      calendar: calendar.getBoundingClientRect().height,
+      ring: ring.getBoundingClientRect().width,
+      messageFits: message.scrollHeight <= message.clientHeight + 1,
+      messageSize: parseFloat(getComputedStyle(message).fontSize),
+      messageClass: message.className,
+    };
+    cronoSetIdleDestelloText(_cronoIdlePhrase());
+    cronoResetInterfaceScale();
+    return { before, result };
+  });
+  expect(reducedZoom.result.scale).toBe(0.5);
+  expect(reducedZoom.result.timer).toBeLessThan(reducedZoom.before.timer - 80);
+  expect(reducedZoom.result.calendar).toBeLessThan(reducedZoom.before.calendar - 80);
+  expect(Math.abs(reducedZoom.result.timer - reducedZoom.result.calendar)).toBeLessThanOrEqual(2);
+  expect(reducedZoom.result.ring).toBeLessThanOrEqual(186);
+  expect(reducedZoom.result.messageFits).toBe(true);
+  expect(reducedZoom.result.messageSize).toBeLessThanOrEqual(10);
+  expect(reducedZoom.result.messageClass).toContain('size-xlong');
   const tabletFluidBox = await momentMonitor.locator('.crono-fluid-panel').boundingBox();
   expect(tabletFluidBox.y).toBeGreaterThanOrEqual(0);
   expect(tabletFluidBox.y + tabletFluidBox.height).toBeLessThanOrEqual(1194);
