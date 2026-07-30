@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-29-pulso-tiradores-v91';
+const APP_VERSION = '2026-07-30-calendario-pulso-v92';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -112,6 +112,7 @@ function refreshStudyViews() {
     _studyViewsRefreshFrame = null;
     if (typeof renderRacha === 'function') renderRacha();
     if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+    if (typeof renderCronoCalendar === 'function') renderCronoCalendar();
     if (typeof renderPulseDashboard === 'function') renderPulseDashboard();
     if (typeof renderStatsDashboard === 'function') renderStatsDashboard();
     if (typeof renderMantenimientoSection === 'function') renderMantenimientoSection();
@@ -1836,6 +1837,127 @@ function recordMalestarEvent(level, note) {
     if (typeof saveData === 'function') saveData();
   }, 600);
 }
+
+let _cronoFluidDrag = null;
+
+function cronoFluidControl(kind) {
+  return document.getElementById(kind === 'discomfort' ? 'cronoFluidDiscomfort' : 'cronoFluidConcentration');
+}
+
+function cronoFluidSetVisual(control, value) {
+  if (!control) return 50;
+  const safe = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+  control.dataset.value = String(safe);
+  control.style.setProperty('--fluid-level', safe + '%');
+  control.setAttribute('aria-valuenow', String(safe));
+  control.setAttribute('aria-valuetext', safe + ' de 100');
+  return safe;
+}
+
+function cronoFluidValueFromPointer(control, event) {
+  const vessel = control?.querySelector('.crono-fluid-vessel');
+  if (!vessel) return Number(control?.dataset.value || 50);
+  const rect = vessel.getBoundingClientRect();
+  if (!rect.height) return Number(control.dataset.value || 50);
+  return ((rect.bottom - event.clientY) / rect.height) * 100;
+}
+
+function cronoFluidStart(event, kind) {
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
+  const control = cronoFluidControl(kind);
+  if (!control) return;
+  event.preventDefault();
+  control.setPointerCapture?.(event.pointerId);
+  control.classList.add('is-dragging');
+  _cronoFluidDrag = { pointerId: event.pointerId, kind, control };
+  cronoFluidSetVisual(control, cronoFluidValueFromPointer(control, event));
+}
+
+function cronoFluidMove(event) {
+  const drag = _cronoFluidDrag;
+  if (!drag || event.pointerId !== drag.pointerId) return;
+  event.preventDefault();
+  cronoFluidSetVisual(drag.control, cronoFluidValueFromPointer(drag.control, event));
+}
+
+function cronoFluidEnd(event) {
+  const drag = _cronoFluidDrag;
+  if (!drag || event.pointerId !== drag.pointerId) return;
+  event.preventDefault();
+  if (event.type !== 'pointercancel') {
+    cronoFluidSetVisual(drag.control, cronoFluidValueFromPointer(drag.control, event));
+  }
+  drag.control.classList.remove('is-dragging');
+  drag.control.releasePointerCapture?.(event.pointerId);
+  _cronoFluidDrag = null;
+  cronoFluidCommit(drag.kind, Number(drag.control.dataset.value), drag.control);
+}
+
+function cronoFluidCommit(kind, value, trigger) {
+  const safe = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+  const note = consumeCronoMomentNote(trigger || cronoFluidControl(kind));
+  if (kind === 'discomfort') {
+    recordMalestarEvent({ v: safe, level: Math.max(1, Math.ceil(safe / 20)), label: safe + '%' }, note);
+  } else {
+    _estadoUserSet = true;
+    _setEstadoAll(safe);
+    selectedEnergy = safe >= 65 ? 'alta' : safe >= 35 ? 'normal' : 'baja';
+    recordEstadoEvent({ v: safe, label: safe + '%' }, note);
+    refreshEstadoFacesUI();
+    clearTimeout(cronoFluidCommit._saveTimer);
+    cronoFluidCommit._saveTimer = setTimeout(() => {
+      saveEstadoDiario();
+      if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
+      if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true);
+    }, 150);
+  }
+  const control = cronoFluidControl(kind);
+  cronoFluidSetVisual(control, safe);
+  control?.classList.add('is-saved');
+  clearTimeout(control?._savedTimer);
+  if (control) control._savedTimer = setTimeout(() => control.classList.remove('is-saved'), 650);
+  try { Haptics.light(); } catch(e) {}
+}
+
+function cronoFluidKey(event, kind) {
+  const control = cronoFluidControl(kind);
+  if (!control) return;
+  const current = Number(control.dataset.value || 50);
+  if (event.key === 'ArrowUp' || event.key === 'ArrowRight') {
+    event.preventDefault();
+    cronoFluidSetVisual(control, current + 5);
+  } else if (event.key === 'ArrowDown' || event.key === 'ArrowLeft') {
+    event.preventDefault();
+    cronoFluidSetVisual(control, current - 5);
+  } else if (event.key === 'Home') {
+    event.preventDefault();
+    cronoFluidSetVisual(control, 0);
+  } else if (event.key === 'End') {
+    event.preventDefault();
+    cronoFluidSetVisual(control, 100);
+  } else if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    cronoFluidCommit(kind, current, control);
+  }
+}
+
+function refreshCronoFluidUI() {
+  const today = new Date().toDateString();
+  const latest = items => (items || []).filter(item => item && item.date === today)
+    .sort((a, b) => String(a.at || '').localeCompare(String(b.at || ''))).at(-1);
+  const concentration = latest(ensureEstadoEventos());
+  const discomfort = latest(ensureMalestarEventos());
+  if (_cronoFluidDrag?.kind !== 'concentration') {
+    cronoFluidSetVisual(cronoFluidControl('concentration'), concentration?.value ?? 50);
+  }
+  if (_cronoFluidDrag?.kind !== 'discomfort') {
+    cronoFluidSetVisual(cronoFluidControl('discomfort'), discomfort?.value ?? 50);
+  }
+}
+
+document.addEventListener('pointermove', cronoFluidMove, { passive: false });
+document.addEventListener('pointerup', cronoFluidEnd, { passive: false });
+document.addEventListener('pointercancel', cronoFluidEnd, { passive: false });
 
 function recordResistenciaEvent(level, note) {
   const arr = ensureResistenciaEventos();
@@ -10600,6 +10722,111 @@ function renderPases() {
 
 
 
+const CALENDAR_EVENT_COLORS = {
+  concurso: '#9a60e0', audicion: '#e05070', concierto: '#38c870',
+  grabacion: '#4090e0', clase: '#e0a030', ensayo: '#30c0c0'
+};
+const CALENDAR_MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function calendarDateISO(date) {
+  return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+}
+
+function calendarDateFromISO(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12, 0, 0, 0);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function calendarEventRange(evento) {
+  const start = calendarDateFromISO(evento?.fecha);
+  let end = calendarDateFromISO(evento?.fechaFin) || start;
+  if (!start) return null;
+  if (end < start) end = start;
+  return { start, end };
+}
+
+function calendarEventsByDay() {
+  const map = {};
+  (db.eventos || []).forEach(evento => {
+    const range = calendarEventRange(evento);
+    if (!range) return;
+    const cursor = new Date(range.start);
+    let guard = 0;
+    while (cursor <= range.end && guard < 370) {
+      const key = calendarDateISO(cursor);
+      if (!map[key]) map[key] = [];
+      map[key].push(evento);
+      cursor.setDate(cursor.getDate() + 1);
+      guard++;
+    }
+  });
+  Object.values(map).forEach(items => items.sort((a, b) => String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es')));
+  return map;
+}
+
+let _cronoCalendarOffset = 0;
+
+function changeCronoCalendarMonth(delta) {
+  _cronoCalendarOffset += Number(delta) || 0;
+  renderCronoCalendar();
+}
+
+function openAddEventoOnDate(dateIso) {
+  openAddEvento();
+  const start = document.getElementById('eventoFecha');
+  const end = document.getElementById('eventoFechaFin');
+  if (start) start.value = dateIso || '';
+  if (end) {
+    end.value = '';
+    end.min = dateIso || '';
+  }
+  updateEventoModalPred();
+}
+
+function openCronoCalendarAdd(dateIso) {
+  const today = calendarDateISO(new Date());
+  openAddEventoOnDate(dateIso || today);
+}
+
+function cronoCalendarCellKey(event, dateIso) {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  openCronoCalendarAdd(dateIso);
+}
+
+function renderCronoCalendar() {
+  const grid = document.getElementById('cronoCalendarGrid');
+  const label = document.getElementById('cronoCalendarLabel');
+  if (!grid || !label) return;
+  const today = new Date();
+  const ref = new Date(today.getFullYear(), today.getMonth() + _cronoCalendarOffset, 1, 12);
+  const year = ref.getFullYear();
+  const month = ref.getMonth();
+  label.textContent = CALENDAR_MONTHS[month] + ' ' + year;
+  const first = new Date(year, month, 1, 12);
+  const offset = (first.getDay() + 6) % 7;
+  const cursor = new Date(year, month, 1 - offset, 12);
+  const eventsByDay = calendarEventsByDay();
+  const todayIso = calendarDateISO(today);
+  let html = '';
+  for (let index = 0; index < 42; index++) {
+    const date = new Date(cursor);
+    date.setDate(cursor.getDate() + index);
+    const iso = calendarDateISO(date);
+    const events = eventsByDay[iso] || [];
+    const pills = events.slice(0, 2).map(evento => {
+      const color = CALENDAR_EVENT_COLORS[evento.tipo] || '#7890a8';
+      return '<button type="button" class="crono-calendar-event" style="--event-color:' + color + '" data-event-id="' + escapeHtmlSafe(evento.id || '') + '" title="' + escapeHtmlSafe(evento.nombre || 'Evento') + '" onclick="event.stopPropagation();openEditEvento(this.dataset.eventId)">' + escapeHtmlSafe(evento.nombre || 'Evento') + '</button>';
+    }).join('');
+    const extra = events.length > 2 ? '<span class="crono-calendar-more">+' + (events.length - 2) + '</span>' : '';
+    html += '<div class="crono-calendar-cell' + (date.getMonth() !== month ? ' is-outside' : '') + (iso === todayIso ? ' is-today' : '') + (events.length ? ' has-events' : '') + '" role="button" tabindex="0" data-date="' + iso + '" onclick="openCronoCalendarAdd(this.dataset.date)" onkeydown="cronoCalendarCellKey(event,this.dataset.date)">'
+      + '<span class="crono-calendar-day">' + date.getDate() + '</span><div class="crono-calendar-events">' + pills + extra + '</div></div>';
+  }
+  grid.innerHTML = html;
+}
+
 let mesOffset = 0; // 0 = mes actual, +1 = siguiente, etc.
 
 function switchCalTab(tab, btn) {
@@ -10622,17 +10849,10 @@ function renderMesCalendario() {
   const month = ref.getMonth();
 
   // Label
-  const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  document.getElementById('mesNavLabel').textContent = meses[month] + ' ' + year;
+  document.getElementById('mesNavLabel').textContent = CALENDAR_MONTHS[month] + ' ' + year;
 
   // Agrupar eventos por día
-  const eventosPorDia = {};
-  (db.eventos || []).forEach(ev => {
-    const d = new Date(ev.fecha + 'T12:00:00');
-    const key = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate();
-    if (!eventosPorDia[key]) eventosPorDia[key] = [];
-    eventosPorDia[key].push(ev);
-  });
+  const eventosPorDia = calendarEventsByDay();
 
   // Primer día de la semana (lunes = 0)
   const primerDia = new Date(year, month, 1);
@@ -10643,8 +10863,6 @@ function renderMesCalendario() {
   const grid = document.getElementById('mesGrid');
   let html = '';
 
-  const TIPO_COLORS = { concurso:'#9a60e0', audicion:'#e05070', concierto:'#38c870', grabacion:'#4090e0', clase:'#e0a030', ensayo:'#30c0c0' };
-
   // Celdas del mes anterior (relleno)
   for (let i = 0; i < offsetInicio; i++) {
     const d = diasMesAnterior - offsetInicio + 1 + i;
@@ -10654,7 +10872,7 @@ function renderMesCalendario() {
   // Días del mes
   for (let d = 1; d <= diasEnMes; d++) {
     const esHoy = d === hoy.getDate() && month === hoy.getMonth() && year === hoy.getFullYear();
-    const key = year + '-' + month + '-' + d;
+    const key = calendarDateISO(new Date(year, month, d, 12));
     const evs = eventosPorDia[key] || [];
     const dotsHtml = evs.map(ev =>
       `<div class="mes-dot ${ev.tipo}" title="${ev.nombre}"></div>`
@@ -10676,10 +10894,10 @@ function renderMesCalendario() {
 
   // Leyenda con los tipos presentes en el mes
   const tiposPresentes = new Set();
-  Object.values(eventosPorDia).forEach(evs => evs.forEach(ev => {
-    const d = new Date(ev.fecha + 'T12:00:00');
-    if (d.getFullYear() === year && d.getMonth() === month) tiposPresentes.add(ev.tipo);
-  }));
+  for (let d = 1; d <= diasEnMes; d++) {
+    const key = calendarDateISO(new Date(year, month, d, 12));
+    (eventosPorDia[key] || []).forEach(ev => tiposPresentes.add(ev.tipo));
+  }
   const TIPO_LABELS = { concurso:'Concurso', audicion:'Audición', concierto:'Concierto', grabacion:'Grabación', clase:'Clase', ensayo:'Ensayo' };
   document.getElementById('mesLeyenda').innerHTML = [...tiposPresentes].map(t =>
     `<div class="mes-leyenda-item"><div class="mes-dot ${t}"></div>${TIPO_LABELS[t]||t}</div>`
@@ -10948,7 +11166,12 @@ function renderEventoCard(ev, isPast, isCompletado) {
     diasLabel = '<div class="evento-dias">' + ev.dias + '</div><div class="evento-dias-label">días</div>';
   }
 
-  const fechaStr = new Date(ev.fecha).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const fechaInicio = calendarDateFromISO(ev.fecha);
+  const fechaFin = calendarDateFromISO(ev.fechaFin);
+  const formatFecha = date => date?.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) || '';
+  const fechaStr = fechaFin && fechaInicio && fechaFin > fechaInicio
+    ? formatFecha(fechaInicio) + ' – ' + formatFecha(fechaFin)
+    : formatFecha(fechaInicio);
 
   const obrasHtml = obras.map(o => {
     const faseClass = obraFase(o);
@@ -11031,6 +11254,8 @@ function openAddEvento() {
   document.getElementById('eventoModalTitle').textContent = 'Nuevo evento';
   document.getElementById('eventoNombre').value = '';
   document.getElementById('eventoFecha').value = '';
+  const fechaFin = document.getElementById('eventoFechaFin');
+  if (fechaFin) { fechaFin.value = ''; fechaFin.min = ''; }
   eventoTipoSelected = 'concurso';
   document.querySelectorAll('#eventoTipoSelector .evento-tipo-btn').forEach(b => {
     b.classList.remove('active');
@@ -11047,6 +11272,8 @@ function openEditEvento(eventoId) {
   document.getElementById('eventoModalTitle').textContent = 'Editar evento';
   document.getElementById('eventoNombre').value = ev.nombre;
   document.getElementById('eventoFecha').value = ev.fecha;
+  const fechaFin = document.getElementById('eventoFechaFin');
+  if (fechaFin) { fechaFin.value = ev.fechaFin || ''; fechaFin.min = ev.fecha || ''; }
   eventoTipoSelected = ev.tipo;
   document.querySelectorAll('#eventoTipoSelector .evento-tipo-btn').forEach(b => {
     b.classList.remove('active');
@@ -11060,6 +11287,14 @@ function selectEventoTipo(tipo, btn) {
   eventoTipoSelected = tipo;
   document.querySelectorAll('#eventoTipoSelector .evento-tipo-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active', tipo);
+}
+
+function syncEventoDateRange() {
+  const start = document.getElementById('eventoFecha');
+  const end = document.getElementById('eventoFechaFin');
+  if (!start || !end) return;
+  end.min = start.value || '';
+  if (start.value && end.value && end.value < start.value) end.value = start.value;
 }
 
 function renderObraCheckList(selectedIds) {
@@ -11108,8 +11343,10 @@ function updateEventoModalPred() {
 function saveEvento() {
   const nombre = document.getElementById('eventoNombre').value.trim();
   const fecha = document.getElementById('eventoFecha').value;
+  const fechaFin = document.getElementById('eventoFechaFin')?.value || '';
   if (!nombre) { showToast('Escribe el nombre del evento'); return; }
   if (!fecha) { showToast('Selecciona una fecha'); return; }
+  if (fechaFin && fechaFin < fecha) { showToast('La fecha final no puede ser anterior al inicio'); return; }
 
   const obraIds = [...document.querySelectorAll('#obraCheckList input:checked')].map(el => el.value);
   const editId = document.getElementById('eventoEditId').value;
@@ -11118,14 +11355,15 @@ function saveEvento() {
 
   if (editId) {
     const ev = db.eventos.find(e => e.id === editId);
-    if (ev) { ev.nombre = nombre; ev.fecha = fecha; ev.tipo = eventoTipoSelected; ev.obras = obraIds; }
+    if (ev) { ev.nombre = nombre; ev.fecha = fecha; ev.fechaFin = fechaFin || null; ev.tipo = eventoTipoSelected; ev.obras = obraIds; }
   } else {
-    db.eventos.push({ id: 'ev_' + Date.now(), tipo: eventoTipoSelected, nombre, fecha, obras: obraIds });
+    db.eventos.push({ id: 'ev_' + Date.now(), tipo: eventoTipoSelected, nombre, fecha, fechaFin: fechaFin || null, obras: obraIds });
   }
 
   saveData();
   closeModal('modalAddEvento');
   renderCalendario();
+  renderCronoCalendar();
   updateHeader();
   showToast(editId ? 'Evento actualizado ✓' : 'Evento añadido ✓');
 }
@@ -11138,6 +11376,7 @@ function deleteEvento(eventoId) {
   db.eventos = (db.eventos || []).filter(e => e.id !== eventoId);
   saveData();
   renderCalendario();
+  renderCronoCalendar();
   updateHeader();
   showToast('Evento eliminado');
 }
@@ -23863,6 +24102,8 @@ function cronoOnEnterView(options) {
     refreshConcentradoUI();
   }
   _startCronoClock();
+  renderCronoCalendar();
+  refreshCronoFluidUI();
   cronoStartTaskReminderLoop();
   setTimeout(() => cronoMaybeRemindTasks('enter'), 80);
   // El indicador del toggle necesita layout para medir; volver a moverlo tras frame

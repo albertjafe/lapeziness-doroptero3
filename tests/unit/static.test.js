@@ -153,6 +153,25 @@ describe('quality wiring', () => {
     expect(styles).toContain('.pulse-card-expanded');
   });
 
+  it('adds an iPad month calendar and visceral liquid pulse controls', () => {
+    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+
+    expect(html).toContain('class="crono-calendar-panel"');
+    expect(html).toContain('id="cronoCalendarGrid"');
+    expect(html).toContain('id="cronoFluidConcentration"');
+    expect(html).toContain('id="cronoFluidDiscomfort"');
+    expect(html).toContain('id="eventoFechaFin"');
+    expect(app).toContain('function renderCronoCalendar()');
+    expect(app).toContain('function calendarEventRange(evento)');
+    expect(app).toContain('function cronoFluidCommit(kind, value, trigger)');
+    expect(app).toContain('fechaFin: fechaFin || null');
+    expect(styles).toContain('.crono-calendar-grid');
+    expect(styles).toContain('.crono-fluid-liquid');
+    expect(styles).toContain('touch-action: none');
+  });
+
   it('keeps today study time prominent and updates it from a running stopwatch', () => {
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
