@@ -163,6 +163,7 @@ describe('quality wiring', () => {
     expect(styles).toContain('.pulse-trimmer');
     expect(styles).toContain('.pulse-record-manager');
     expect(styles).toContain('.pulse-delete-record');
+    expect(styles).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
     expect(styles).toContain('touch-action: none');
     expect(styles).toContain('.pulse-card-expanded');
   });

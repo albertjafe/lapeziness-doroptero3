@@ -16035,7 +16035,18 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
   .pulse-page-intro .view-local-subtitle { max-width: 29ch; font-size: 9px; }
   #view-pulse .pulse-card-expanded { padding: 14px 10px 13px; }
   #view-pulse .pulse-card-expanded .pulse-head { padding-inline: 3px; }
-  #view-pulse .pulse-card-expanded .pulse-legend { justify-content: flex-start; }
+  #view-pulse .pulse-card-expanded .pulse-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    overflow: visible;
+    padding-bottom: 10px;
+  }
+  #view-pulse .pulse-card-expanded .pulse-metric {
+    justify-content: center;
+    width: 100%;
+    min-height: 36px;
+  }
   #view-pulse .pulse-card-expanded .pulse-axis-x,
   #view-pulse .pulse-card-expanded .pulse-axis-y { font-size: 14px; }
   .pulse-shortcut { padding: 13px 14px; }
