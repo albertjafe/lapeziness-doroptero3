@@ -16408,7 +16408,10 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
   #view-cronometro .crono-fluid-control.is-dragging { background: color-mix(in srgb, var(--fluid-color) 7%, transparent); }
   #view-cronometro .crono-fluid-control.is-dragging .crono-fluid-liquid { transition: none; }
   #view-cronometro .crono-fluid-control.is-saved .crono-fluid-vessel {
-    animation: crono-fluid-confirm 620ms cubic-bezier(.2,.8,.2,1);
+    animation: crono-fluid-confirm 980ms cubic-bezier(.2,.8,.2,1);
+  }
+  #view-cronometro .crono-fluid-control.is-saved .crono-fluid-liquid {
+    animation: crono-fluid-liquid-confirm 980ms cubic-bezier(.2,.8,.2,1);
   }
   #view-cronometro .crono-fluid-control:focus-visible .crono-fluid-vessel {
     outline: 2px solid color-mix(in srgb, var(--fluid-color) 66%, transparent);
@@ -16435,9 +16438,30 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
 }
 
 @keyframes crono-fluid-confirm {
-  0% { transform: scale(.97); }
-  42% { transform: scale(1.025); box-shadow: 0 0 0 7px color-mix(in srgb, var(--fluid-color) 12%, transparent), inset 0 0 0 4px color-mix(in srgb, var(--bg) 42%, transparent); }
+  0% { transform: scale(.965); }
+  24% {
+    transform: scale(1.045);
+    border-color: color-mix(in srgb, var(--fluid-color) 78%, white);
+    box-shadow:
+      0 0 0 10px color-mix(in srgb, var(--fluid-color) 24%, transparent),
+      0 0 34px 8px color-mix(in srgb, var(--fluid-color) 34%, transparent),
+      0 0 76px 18px color-mix(in srgb, var(--fluid-color) 22%, transparent),
+      inset 0 0 0 4px color-mix(in srgb, var(--bg) 34%, transparent);
+  }
+  58% {
+    transform: scale(1.018);
+    box-shadow:
+      0 0 0 6px color-mix(in srgb, var(--fluid-color) 13%, transparent),
+      0 0 38px 5px color-mix(in srgb, var(--fluid-color) 21%, transparent),
+      inset 0 0 0 4px color-mix(in srgb, var(--bg) 38%, transparent);
+  }
   100% { transform: scale(1); }
+}
+
+@keyframes crono-fluid-liquid-confirm {
+  0%, 100% { filter: brightness(1) saturate(1); }
+  26% { filter: brightness(1.38) saturate(1.24); }
+  62% { filter: brightness(1.14) saturate(1.1); }
 }
 
 @media (max-width: 560px) {
@@ -16446,7 +16470,8 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
 
 @media (prefers-reduced-motion: reduce) {
   #view-cronometro .crono-fluid-liquid { transition-duration: 1ms; }
-  #view-cronometro .crono-fluid-control.is-saved .crono-fluid-vessel { animation-duration: 1ms; }
+  #view-cronometro .crono-fluid-control.is-saved .crono-fluid-vessel,
+  #view-cronometro .crono-fluid-control.is-saved .crono-fluid-liquid { animation-duration: 1ms; }
 }
 
 /* iPad horizontal grande: conserva la jerarquía de tablet en dos filas.

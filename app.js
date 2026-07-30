@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-30-pulso-movil-v100';
+const APP_VERSION = '2026-07-30-pulso-inmediato-v101';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1781,16 +1781,14 @@ function recordEstadoEvent(face, note) {
   _saveEstadoEventosLocal(arr);
   refreshEstadoEventSummary();
   renderCronoMomentHistory();
-  clearTimeout(recordEstadoEvent._t);
-  recordEstadoEvent._t = setTimeout(() => {
-    if (typeof saveData === 'function') saveData();
-  }, 600);
+  persistPulseEntryImmediately(now);
+  return entry;
 }
 
 function recordMalestarEvent(level, note) {
   const arr = ensureMalestarEventos();
   const now = new Date();
-  arr.push({
+  const entry = {
     id: 'malestar_' + now.getTime() + '_' + Math.random().toString(36).slice(2, 7),
     at: now.toISOString(),
     date: now.toDateString(),
@@ -1798,14 +1796,13 @@ function recordMalestarEvent(level, note) {
     level: level.level,
     label: level.label,
     note: String(note || '').trim().slice(0, 180),
-  });
+  };
+  arr.push(entry);
   if (arr.length > 2000) arr.splice(0, arr.length - 2000);
   _saveMalestarEventosLocal(arr);
   renderCronoMomentHistory();
-  clearTimeout(recordMalestarEvent._t);
-  recordMalestarEvent._t = setTimeout(() => {
-    if (typeof saveData === 'function') saveData();
-  }, 600);
+  persistPulseEntryImmediately(now);
+  return entry;
 }
 
 let _cronoFluidDrag = null;
@@ -1886,8 +1883,8 @@ function cronoFluidCommit(kind, value, trigger) {
   cronoFluidSetVisual(control, safe);
   control?.classList.add('is-saved');
   clearTimeout(control?._savedTimer);
-  if (control) control._savedTimer = setTimeout(() => control.classList.remove('is-saved'), 650);
-  try { Haptics.light(); } catch(e) {}
+  if (control) control._savedTimer = setTimeout(() => control.classList.remove('is-saved'), 1100);
+  try { Haptics.medium(); } catch(e) {}
 }
 
 function cronoFluidKey(event, kind) {
@@ -13277,6 +13274,45 @@ function _pulseDayX(date) {
 function _pulseHourLabel(minute) {
   const safe = Math.max(0, Math.min(PULSE_DAY_LIMIT_MINUTE, Math.round(minute)));
   return String(Math.floor(safe / 60)).padStart(2, '0') + ':' + String(safe % 60).padStart(2, '0');
+}
+
+// Un registro nuevo siempre debe quedar dentro de la ventana diaria visible.
+// Si el usuario habÃ­a recortado la grÃ¡fica antes de esa hora, ampliamos solo
+// el extremo necesario y conservamos el resto de su encuadre.
+function _pulseRevealTimestamp(value) {
+  const at = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(at.getTime())) return false;
+  const minute = _pulseMinuteOfDay(at);
+  let changed = false;
+  if (minute < _pulseDayStartMinute) {
+    _pulseDayStartMinute = Math.max(0, Math.floor((minute - PULSE_DAY_STEP_MINUTES) / PULSE_DAY_STEP_MINUTES) * PULSE_DAY_STEP_MINUTES);
+    changed = true;
+  }
+  if (minute > _pulseDayEndMinute) {
+    _pulseDayEndMinute = Math.min(PULSE_DAY_LIMIT_MINUTE, Math.ceil((minute + PULSE_DAY_STEP_MINUTES) / PULSE_DAY_STEP_MINUTES) * PULSE_DAY_STEP_MINUTES);
+    changed = true;
+  }
+  if (!changed) return false;
+  if (_pulseDayEndMinute - _pulseDayStartMinute < PULSE_DAY_MIN_SPAN_MINUTES) {
+    _pulseDayEndMinute = Math.min(PULSE_DAY_LIMIT_MINUTE, _pulseDayStartMinute + PULSE_DAY_MIN_SPAN_MINUTES);
+    _pulseDayStartMinute = Math.max(0, _pulseDayEndMinute - PULSE_DAY_MIN_SPAN_MINUTES);
+  }
+  try {
+    localStorage.setItem('pulse_day_start', String(_pulseDayStartMinute));
+    localStorage.setItem('pulse_day_end', String(_pulseDayEndMinute));
+  } catch(e) {}
+  return true;
+}
+
+function persistPulseEntryImmediately(at) {
+  _pulseRevealTimestamp(at);
+  // Si Pulso se habÃ­a quedado navegando por un periodo anterior, vuelve al
+  // periodo actual: el registro que acaba de hacerse debe ser el protagonista.
+  _pulseOffset = 0;
+  if (typeof saveData !== 'function' || saveData() === false) return;
+  // La entrada ya estÃ¡ en memoria y en local; adelantamos tambiÃ©n la subida
+  // para que los demÃ¡s dispositivos puedan recibirla cuanto antes.
+  if (typeof enqueueCloudSync === 'function') enqueueCloudSync({ immediate: true });
 }
 
 function _pulseAtNoon(date) {

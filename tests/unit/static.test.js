@@ -183,6 +183,10 @@ describe('quality wiring', () => {
     expect(app).toContain('function renderCronoCalendar()');
     expect(app).toContain('function calendarEventRange(evento)');
     expect(app).toContain('function cronoFluidCommit(kind, value, trigger)');
+    expect(app).toContain('function persistPulseEntryImmediately(at)');
+    expect(app).toContain('function _pulseRevealTimestamp(value)');
+    expect(app).toContain('enqueueCloudSync({ immediate: true })');
+    expect(app).toContain('_pulseOffset = 0;');
     expect(app).toContain('function cronoUsesLargeTabletLandscape()');
     expect(app).toContain('height < 900 ? Math.min(182, height * 0.22)');
     expect(app).toContain("const note = '';");
@@ -191,6 +195,8 @@ describe('quality wiring', () => {
     expect(app).toContain('fechaFin: fechaFin || null');
     expect(styles).toContain('.crono-calendar-grid');
     expect(styles).toContain('.crono-fluid-liquid');
+    expect(styles).toContain('@keyframes crono-fluid-liquid-confirm');
+    expect(styles).toContain('0 0 76px 18px');
     expect(styles).toContain('grid-column: 5 / -1');
     expect(styles).toContain('height: clamp(220px, 30vw, 292px)');
     expect(styles).not.toContain('#view-cronometro .crono-impulse-monitor');
