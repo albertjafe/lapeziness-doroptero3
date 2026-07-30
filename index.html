@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=226">
+<link rel="stylesheet" href="styles.css?v=227">
 </head>
 <body>
 
@@ -524,6 +524,7 @@
               <div class="crono-fluid-vessel">
                 <span class="crono-fluid-bound top" aria-hidden="true"></span>
                 <div class="crono-fluid-liquid"><i></i></div>
+                <span class="crono-fluid-cooldown" aria-hidden="true"></span>
                 <span class="crono-fluid-bound bottom" aria-hidden="true"></span>
               </div>
               <strong>Concentración</strong>
@@ -535,6 +536,7 @@
               <div class="crono-fluid-vessel">
                 <span class="crono-fluid-bound top" aria-hidden="true"></span>
                 <div class="crono-fluid-liquid"><i></i></div>
+                <span class="crono-fluid-cooldown" aria-hidden="true"></span>
                 <span class="crono-fluid-bound bottom" aria-hidden="true"></span>
               </div>
               <strong>Malestar</strong>
@@ -1979,10 +1981,10 @@
 </div>
 
 <script src="timer-core.js?v=209"></script>
-<script src="data-core.js?v=226"></script>
+<script src="data-core.js?v=227"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=226"></script>
+<script src="app.js?v=227"></script>
 
 </body>
 <script>
@@ -2004,7 +2006,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=226', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=227', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

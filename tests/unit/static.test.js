@@ -183,6 +183,9 @@ describe('quality wiring', () => {
     expect(app).toContain('function renderCronoCalendar()');
     expect(app).toContain('function calendarEventRange(evento)');
     expect(app).toContain('function cronoFluidCommit(kind, value, trigger)');
+    expect(app).toContain('const CRONO_FLUID_COOLDOWN_MS = 30 * 1000');
+    expect(app).toContain('function cronoFluidCooldownRemaining(kind, now)');
+    expect(app).toContain('function cronoFluidCanCommit(kind, announce)');
     expect(app).toContain('function persistPulseEntryImmediately(at)');
     expect(app).toContain('function _pulseRevealTimestamp(value)');
     expect(app).toContain('enqueueCloudSync({ immediate: true })');
@@ -196,6 +199,8 @@ describe('quality wiring', () => {
     expect(styles).toContain('.crono-calendar-grid');
     expect(styles).toContain('.crono-fluid-liquid');
     expect(styles).toContain('@keyframes crono-fluid-liquid-confirm');
+    expect(styles).toContain('@keyframes crono-fluid-cooldown-drain');
+    expect(html.match(/class="crono-fluid-cooldown"/g)).toHaveLength(2);
     expect(styles).toContain('0 0 76px 18px');
     expect(styles).toContain('grid-column: 5 / -1');
     expect(styles).toContain('height: clamp(220px, 30vw, 292px)');

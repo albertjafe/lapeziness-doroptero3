@@ -1030,24 +1030,45 @@ test('records only concentration and discomfort across timer layouts', async ({ 
     _pulseDayEndMinute = 14 * 60;
     localStorage.setItem('pulse_day_start', String(_pulseDayStartMinute));
     localStorage.setItem('pulse_day_end', String(_pulseDayEndMinute));
+    const oldEnough = new Date(Date.now() - CRONO_FLUID_COOLDOWN_MS - 1000).toISOString();
+    const priorConcentration = ensureEstadoEventos().at(-1);
+    const priorDiscomfort = ensureMalestarEventos().at(-1);
+    if (priorConcentration) priorConcentration.at = oldEnough;
+    if (priorDiscomfort) priorDiscomfort.at = oldEnough;
     const before = ensureEstadoEventos().length;
-    cronoFluidCommit('concentration', 67, document.getElementById('cronoFluidConcentration'));
+    const discomfortBefore = ensureMalestarEventos().length;
+    const firstSaved = cronoFluidCommit('concentration', 67, document.getElementById('cronoFluidConcentration'));
     const latest = ensureEstadoEventos().at(-1);
+    const duplicateSaved = cronoFluidCommit('concentration', 72, document.getElementById('cronoFluidConcentration'));
+    const discomfortSaved = cronoFluidCommit('discomfort', 43, document.getElementById('cronoFluidDiscomfort'));
     return {
       before,
       after: ensureEstadoEventos().length,
+      discomfortBefore,
+      discomfortAfter: ensureMalestarEventos().length,
+      firstSaved,
+      duplicateSaved,
+      discomfortSaved,
       latestValue: latest?.value,
       latestMinute: new Date(latest?.at).getHours() * 60 + new Date(latest?.at).getMinutes(),
       visibleEnd: _pulseDayEndMinute,
       offset: _pulseOffset,
       savedClass: document.getElementById('cronoFluidConcentration').classList.contains('is-saved'),
+      concentrationCooling: document.getElementById('cronoFluidConcentration').getAttribute('aria-disabled'),
+      discomfortCooling: document.getElementById('cronoFluidDiscomfort').getAttribute('aria-disabled'),
     };
   });
   expect(immediatePulse.after).toBe(immediatePulse.before + 1);
+  expect(immediatePulse.discomfortAfter).toBe(immediatePulse.discomfortBefore + 1);
+  expect(immediatePulse.firstSaved).toBe(true);
+  expect(immediatePulse.duplicateSaved).toBe(false);
+  expect(immediatePulse.discomfortSaved).toBe(true);
   expect(immediatePulse.latestValue).toBe(67);
   expect(immediatePulse.visibleEnd).toBeGreaterThanOrEqual(immediatePulse.latestMinute);
   expect(immediatePulse.offset).toBe(0);
   expect(immediatePulse.savedClass).toBe(true);
+  expect(immediatePulse.concentrationCooling).toBe('true');
+  expect(immediatePulse.discomfortCooling).toBe('true');
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('.crono-calendar-panel')).toBeHidden();
@@ -1063,6 +1084,8 @@ test('records only concentration and discomfort across timer layouts', async ({ 
   await expect(momentMonitor.locator('#cronoConcentrationFaces')).toBeHidden();
   await expect(momentMonitor.locator('#cronoDiscomfortFaces')).toBeHidden();
   await expect(momentMonitor.locator('.crono-moment-history')).toBeHidden();
+  await expect(momentMonitor.locator('#cronoFluidConcentration')).toHaveAttribute('aria-disabled', 'true');
+  await expect(momentMonitor.locator('#cronoFluidDiscomfort')).toHaveAttribute('aria-disabled', 'true');
   await expect(momentMonitor.locator('#cronoImpulseFaces')).toHaveCount(0);
   await expect(momentMonitor.locator('#cronoResistanceFaces')).toHaveCount(0);
   const mobileContentBox = await momentMonitor.locator('.crono-moment-content').boundingBox();
@@ -1075,7 +1098,7 @@ test('records only concentration and discomfort across timer layouts', async ({ 
   expect(mobileFluidVesselBox.height).toBeGreaterThanOrEqual(150);
 
   await page.evaluate(() => showView('pulse'));
-  await expect(page.locator('#pulseDashboard .pulse-card')).toContainText('3 registros');
+  await expect(page.locator('#pulseDashboard .pulse-card')).toContainText('4 registros');
   await expect(page.locator('#pulseDashboard .pulse-metric')).toHaveText(['Concentración', 'Malestar']);
   await expect(page.locator('#pulseDashboard .pulse-point')).toHaveCount(0);
   const pulseChartBox = await page.locator('#pulseDashboard .pulse-chart').boundingBox();

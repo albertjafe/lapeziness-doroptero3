@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-30-pulso-liquido-movil-v102';
+const APP_VERSION = '2026-07-30-pulso-cooldown-v103';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -908,6 +908,7 @@ function _setEstadoAll(n) {
 function pickEstado(idx, trigger) {
   const f = ESTADO_FACES[idx];
   if (!f) return;
+  if (!cronoFluidCanCommit('concentration', true)) return;
   _estadoUserSet = true;
   _setEstadoAll(f.v);
   recordEstadoEvent(f, consumeCronoMomentNote(trigger));
@@ -1591,6 +1592,7 @@ function setSessionJournalExpanded(expanded) {
 function pickMalestar(idx, trigger) {
   const level = MALESTAR_LEVELS[idx];
   if (!level) return;
+  if (!cronoFluidCanCommit('discomfort', true)) return;
   recordMalestarEvent(level, consumeCronoMomentNote(trigger));
   flashMomentSelection('discomfort', idx);
   try { Haptics.medium(); } catch(e) {}
@@ -1782,6 +1784,7 @@ function recordEstadoEvent(face, note) {
   refreshEstadoEventSummary();
   renderCronoMomentHistory();
   persistPulseEntryImmediately(now);
+  cronoFluidApplyCooldown('concentration', CRONO_FLUID_COOLDOWN_MS);
   return entry;
 }
 
@@ -1802,13 +1805,62 @@ function recordMalestarEvent(level, note) {
   _saveMalestarEventosLocal(arr);
   renderCronoMomentHistory();
   persistPulseEntryImmediately(now);
+  cronoFluidApplyCooldown('discomfort', CRONO_FLUID_COOLDOWN_MS);
   return entry;
 }
 
+const CRONO_FLUID_COOLDOWN_MS = 30 * 1000;
 let _cronoFluidDrag = null;
 
 function cronoFluidControl(kind) {
   return document.getElementById(kind === 'discomfort' ? 'cronoFluidDiscomfort' : 'cronoFluidConcentration');
+}
+
+function cronoFluidCooldownRemaining(kind, now) {
+  const items = kind === 'discomfort' ? ensureMalestarEventos() : ensureEstadoEventos();
+  const latestAt = (items || []).reduce((latest, item) => {
+    const at = Date.parse(item?.at || '');
+    return Number.isFinite(at) ? Math.max(latest, at) : latest;
+  }, 0);
+  if (!latestAt) return 0;
+  return Math.max(0, Math.min(CRONO_FLUID_COOLDOWN_MS, latestAt + CRONO_FLUID_COOLDOWN_MS - (now || Date.now())));
+}
+
+function cronoFluidApplyCooldown(kind, remaining) {
+  const control = cronoFluidControl(kind);
+  if (!control) return 0;
+  const safe = Math.max(0, Math.min(CRONO_FLUID_COOLDOWN_MS, Math.round(Number(remaining) || 0)));
+  clearTimeout(control._cooldownTimer);
+  control.classList.remove('is-cooling');
+  control.removeAttribute('aria-disabled');
+  control.removeAttribute('data-cooldown-seconds');
+  control.removeAttribute('title');
+  if (!safe) return 0;
+  const seconds = Math.max(1, Math.ceil(safe / 1000));
+  control.style.setProperty('--fluid-cooldown-start', String(safe / CRONO_FLUID_COOLDOWN_MS));
+  control.style.setProperty('--fluid-cooldown-duration', safe + 'ms');
+  control.setAttribute('aria-disabled', 'true');
+  control.dataset.cooldownSeconds = String(seconds);
+  control.title = 'Disponible de nuevo en ' + seconds + ' s';
+  void control.offsetWidth;
+  control.classList.add('is-cooling');
+  control._cooldownTimer = setTimeout(() => cronoFluidApplyCooldown(kind, 0), safe + 40);
+  return safe;
+}
+
+function cronoFluidCanCommit(kind, announce) {
+  const remaining = cronoFluidCooldownRemaining(kind);
+  if (remaining <= 0) {
+    cronoFluidApplyCooldown(kind, 0);
+    return true;
+  }
+  cronoFluidApplyCooldown(kind, remaining);
+  if (announce) {
+    const label = kind === 'discomfort' ? 'Malestar' : 'Concentración';
+    showToast(label + ' disponible en ' + Math.max(1, Math.ceil(remaining / 1000)) + ' s');
+    try { Haptics.light(); } catch(e) {}
+  }
+  return false;
 }
 
 function cronoFluidSetVisual(control, value) {
@@ -1834,6 +1886,7 @@ function cronoFluidStart(event, kind) {
   const control = cronoFluidControl(kind);
   if (!control) return;
   event.preventDefault();
+  if (!cronoFluidCanCommit(kind, true)) return;
   control.setPointerCapture?.(event.pointerId);
   control.classList.add('is-dragging');
   _cronoFluidDrag = { pointerId: event.pointerId, kind, control };
@@ -1861,6 +1914,7 @@ function cronoFluidEnd(event) {
 }
 
 function cronoFluidCommit(kind, value, trigger) {
+  if (!cronoFluidCanCommit(kind, true)) return false;
   const safe = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
   // Las barras son un registro visceral y sin fricción: no adjuntan notas.
   const note = '';
@@ -1885,11 +1939,17 @@ function cronoFluidCommit(kind, value, trigger) {
   clearTimeout(control?._savedTimer);
   if (control) control._savedTimer = setTimeout(() => control.classList.remove('is-saved'), 1100);
   try { Haptics.medium(); } catch(e) {}
+  return true;
 }
 
 function cronoFluidKey(event, kind) {
   const control = cronoFluidControl(kind);
   if (!control) return;
+  const handled = ['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'Home', 'End', 'Enter', ' '].includes(event.key);
+  if (handled && !cronoFluidCanCommit(kind, event.key === 'Enter' || event.key === ' ')) {
+    event.preventDefault();
+    return;
+  }
   const current = Number(control.dataset.value || 50);
   if (event.key === 'ArrowUp' || event.key === 'ArrowRight') {
     event.preventDefault();
@@ -1921,6 +1981,8 @@ function refreshCronoFluidUI() {
   if (_cronoFluidDrag?.kind !== 'discomfort') {
     cronoFluidSetVisual(cronoFluidControl('discomfort'), discomfort?.value ?? 50);
   }
+  cronoFluidApplyCooldown('concentration', cronoFluidCooldownRemaining('concentration'));
+  cronoFluidApplyCooldown('discomfort', cronoFluidCooldownRemaining('discomfort'));
 }
 
 document.addEventListener('pointermove', cronoFluidMove, { passive: false });
