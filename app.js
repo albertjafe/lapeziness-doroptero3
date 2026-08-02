@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-07-30-pulso-cooldown-v103';
+const APP_VERSION = '2026-08-02-session-edits-recording-passes-v104';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -3732,6 +3732,12 @@ function recordSessionPlant(obraId, movId, startedAt, endedAt, mins, opts) {
   };
   if (options.runId) entry.runId = options.runId;
   if (options.tipo) entry.tipo = options.tipo;
+  if (options.pase) {
+    entry.pase = true;
+    if (options.paseScore != null) entry.paseScore = options.paseScore;
+    if (options.paseTipo) entry.paseTipo = normalizePaseTipo(options.paseTipo);
+    if (options.takes != null) entry.takes = options.takes;
+  }
   // Si la sesión es fallida, marcarla como tal. Esto
   // permite distinguir en estadísticas las sesiones exitosas de las fallidas.
   if (options.failed) entry.failed = true;
@@ -4508,6 +4514,7 @@ function recordEscHistory(obraId, val, context, dateIso) {
 }
 
 function normalizePaseTipo(tipo) {
+  if (tipo === 'grabacion' || tipo === 'grabación' || tipo === 'recording') return 'grabacion';
   if (tipo === 'evento' || tipo === 'escena' || tipo === 'concierto' || tipo === 'concurso' || tipo === 'audicion') return 'evento';
   if (tipo === 'informal') return 'informal';
   return 'solo';
@@ -4515,6 +4522,7 @@ function normalizePaseTipo(tipo) {
 
 function paseTipoShort(tipo) {
   const t = normalizePaseTipo(tipo);
+  if (t === 'grabacion') return 'grabación';
   if (t === 'evento') return 'evento';
   if (t === 'informal') return 'amigos';
   return 'solo';
@@ -9287,16 +9295,17 @@ function renderObraCard_LEGACY(o, idx) {
     ? '<span class="origen-tag recuperacion">Recuperación</span>'
     : '';
 
-  const tipoIcons = { solo: 'solo', informal: 'amigos', evento: 'evento', escena: 'evento', tecnico: 'tec', memoria: 'mem', concierto: 'evento' };
+  const tipoIcons = { solo: 'solo', informal: 'amigos', evento: 'evento', grabacion: 'grabación', escena: 'evento', tecnico: 'tec', memoria: 'mem', concierto: 'evento' };
   const paseHistHtml = (o.paseHistory||[]).slice(0,5).map(p => {
     const d = new Date(p.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
     const sc = p.score ?? null;
     const col = sc !== null ? scoreColor(sc) : 'var(--text3)';
     const val = sc !== null ? sc : (p.quality === 'bien' ? '✓' : p.quality === 'regular' ? '≈' : p.quality === 'mal' ? '✗' : '—');
     const tipoLabel = p.tipo ? `<span style="color:var(--text3);font-size:8px;background:var(--bg2);border-radius:3px;padding:1px 4px;margin-left:2px">${tipoIcons[p.tipo]||p.tipo}</span>` : '';
+    const takesLabel = p.takes ? `<span style="font-size:8px;color:var(--text3)">${p.takes} takes</span>` : '';
     return `<div style="display:flex;gap:8px;font-size:9px;color:var(--text3);padding:4px 0;border-bottom:1px solid var(--border2);align-items:center">
       <span style="color:${col};font-weight:bold;min-width:14px">${val}</span>
-      ${tipoLabel}
+      ${tipoLabel}${takesLabel}
       <span>${d}</span>
       ${p.note ? `<span style="color:var(--text3)">· ${p.note}</span>` : ''}
     </div>`;
@@ -10007,15 +10016,16 @@ function renderMovimientoCard(obraId, mov) {
     ? `Último: ${new Date(mov.lastPase).toLocaleDateString('es-ES')}`
     : 'Sin pase';
 
-  const tipoIcons = { solo: 'solo', informal: 'amigos', evento: 'evento', escena: 'evento', tecnico: 'tec', memoria: 'mem', concierto: 'evento' };
+  const tipoIcons = { solo: 'solo', informal: 'amigos', evento: 'evento', grabacion: 'grabación', escena: 'evento', tecnico: 'tec', memoria: 'mem', concierto: 'evento' };
   const paseHistHtml = (mov.paseHistory||[]).slice(0,3).map(p => {
     const d = new Date(p.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
     const sc = p.score ?? null;
     const col = sc !== null ? scoreColor(sc) : 'var(--text3)';
     const val = sc !== null ? sc : (p.quality === 'bien' ? '✓' : p.quality === 'regular' ? '≈' : p.quality === 'mal' ? '✗' : '—');
     const tipoLabel = p.tipo ? `<span style="color:var(--text3);font-size:8px;background:var(--bg2);border-radius:3px;padding:1px 4px;margin-left:2px">${tipoIcons[p.tipo]||p.tipo}</span>` : '';
+    const takesLabel = p.takes ? `<span style="font-size:8px;color:var(--text3)">${p.takes} takes</span>` : '';
     return `<div style="display:flex;gap:8px;font-size:9px;color:var(--text3);padding:2px 0;align-items:center">
-      <span style="color:${col};font-weight:bold">${val}</span>${tipoLabel}<span>${d}</span>${p.note ? `<span>· ${p.note}</span>` : ''}
+      <span style="color:${col};font-weight:bold">${val}</span>${tipoLabel}${takesLabel}<span>${d}</span>${p.note ? `<span>· ${p.note}</span>` : ''}
     </div>`;
   }).join('');
 
@@ -14046,29 +14056,33 @@ function renderSesionesHistorial() {
       const tick = it.tick;
       const tickClass = tick || 'none';
       const icon = tick ? tickIcons[tick] : '·';
-      const badges = [];
-      if (it.manual) badges.push('<span class="sesion-hist-obra-badge">manual</span>');
+      const primaryBadges = [];
+      const detailBadges = [];
+      if (it.manual) primaryBadges.push('<span class="sesion-hist-obra-badge">manual</span>');
       const minRealItem = _itemMinReal(it);
       if (!it.manual && minRealItem > 0) {
-        badges.push('<span class="sesion-hist-obra-badge">' + minRealItem + ' min</span>');
+        primaryBadges.push('<span class="sesion-hist-obra-badge">' + minRealItem + ' min</span>');
       }
       if (it.solRating != null) {
         const c = solPctColor(it.solRating);
-        badges.push('<span class="sesion-hist-obra-badge" style="color:' + c + ';border-color:' + c + '55">solidez ' + it.solRating + '%</span>');
+        detailBadges.push('<span class="sesion-hist-obra-badge" style="color:' + c + ';border-color:' + c + '55">solidez ' + it.solRating + '%</span>');
       }
       const zoneLabel = it.zona || zoneSummaryText(it.zone);
       if (zoneLabel) {
-        badges.push('<span class="sesion-hist-obra-badge">zona ' + escapeHtmlSafe(zoneLabel) + '</span>');
+        detailBadges.push('<span class="sesion-hist-obra-badge">zona ' + escapeHtmlSafe(zoneLabel) + '</span>');
       }
       if (it.rating != null) {
         const c = solPctColor(it.rating);
-        badges.push('<span class="sesion-hist-obra-badge" style="color:' + c + ';border-color:' + c + '55">sesión ' + it.rating + '%</span>');
+        detailBadges.push('<span class="sesion-hist-obra-badge" style="color:' + c + ';border-color:' + c + '55">sesión ' + it.rating + '%</span>');
       }
+      const details = detailBadges.length
+        ? '<details class="sesion-hist-more"><summary>Detalles</summary><div class="sesion-hist-more-list">' + detailBadges.join('') + '</div></details>'
+        : '';
 
       return '<div class="sesion-hist-obra">' +
         '<div class="sesion-hist-obra-tick ' + tickClass + '">' + icon + '</div>' +
         '<div class="sesion-hist-obra-name">' + escapeHtmlSafe(it.obraName || '—') + '</div>' +
-        '<div class="sesion-hist-obra-badges">' + badges.join('') + '</div>' +
+        '<div class="sesion-hist-obra-badges">' + primaryBadges.join('') + details + '</div>' +
         (it.note ? '<div class="sesion-hist-obra-note">' + escapeHtmlSafe(it.note) + '</div>' : '') +
       '</div>';
     }).join('');
@@ -14091,14 +14105,153 @@ function renderSesionesHistorial() {
 }
 
 // Modal de sesiones individuales con su rango horario (HH:MM–HH:MM), agrupadas
-// por día (todos los días, más recientes arriba, con scroll). Lee las plantas
-// del cronómetro + Forest (cada planta es un tramo real de estudio). Excluye
-// descansos y tramos fallidos.
-function openSesionesDetalle() {
+// por día. Cada tramo se puede corregir sin abandonar el cronómetro: obra,
+// hora de inicio y minutos. Los cambios se escriben en plantas y en el resumen
+// diario para que estadísticas, concentración y el plan de hoy coincidan.
+let _sesionesDetalleEditing = null;
+
+function _timedStudyOptionValue(obraId, movId) {
+  return movId ? 'mov::' + obraId + '::' + movId : 'obra::' + obraId;
+}
+
+function _timedStudyOptions(selectedObraId, selectedMovId, tag) {
+  const options = [];
+  (db.obras || []).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(obra => {
+    const movements = (obra.movimientos || []).filter(m => m && m.name);
+    if (!movements.length) {
+      options.push({ value: _timedStudyOptionValue(obra.id, null), label: obra.name || obra.id });
+    } else {
+      movements.forEach(mov => options.push({
+        value: _timedStudyOptionValue(obra.id, mov.id),
+        label: (obra.name || '') + ' · ' + mov.name,
+      }));
+    }
+  });
+  const current = selectedObraId ? _timedStudyOptionValue(selectedObraId, selectedMovId) : '';
+  if (!options.some(option => option.value === current) && tag) {
+    options.unshift({ value: 'tag::' + tag, label: tag });
+  }
+  return options.map(option => '<option value="' + escapeHtmlSafe(option.value) + '"' + (option.value === current ? ' selected' : '') + '>' + escapeHtmlSafe(option.label) + '</option>').join('');
+}
+
+function _timedStudyPlant(source, index) {
+  const list = source === 'forestPlants' ? db.forestPlants : db.sessionPlants;
+  return Array.isArray(list) ? list[index] : null;
+}
+
+function _timedStudyPlantName(plant) {
+  const obra = plant && plant.obraId ? findObra(plant.obraId) : null;
+  if (!obra) return plant?.tag || 'Estudio';
+  const mov = plant.movId ? findMovimiento(plant.obraId, plant.movId) : null;
+  return mov ? obra.name + ' · ' + mov.name : obra.name;
+}
+
+function toggleSesionesDetalleEdit(source, index) {
+  const key = source + ':' + index;
+  _sesionesDetalleEditing = _sesionesDetalleEditing === key ? null : key;
+  renderSesionesDetalle();
+}
+
+function _syncTimedStudyBlockToSession(oldPlant, plant) {
+  const oldStart = oldPlant.startedAt;
+  const oldEnd = oldPlant.endedAt;
+  let matchedAggregate = false;
+
+  (db.sesiones || []).forEach(sesion => {
+    const aggregate = sesion && sesion._aggregate;
+    if (!aggregate || typeof aggregate !== 'object') return;
+    Object.entries(aggregate).forEach(([planId, agg]) => {
+      const subs = Array.isArray(agg?.subsessions) ? agg.subsessions : [];
+      const sub = subs.find(candidate => candidate && (
+        candidate.startedAt === oldStart ||
+        (candidate.startedAt === oldStart && candidate.endedAt === oldEnd)
+      ));
+      if (!sub) return;
+      matchedAggregate = true;
+      sub.startedAt = plant.startedAt;
+      sub.endedAt = plant.endedAt;
+      sub.timestamp = plant.endedAt;
+      sub.min = plant.mins;
+      const item = (sesion.items || []).find(entry => entry._planId === planId) ||
+        (sesion.items || []).find(entry => entry.obraId === oldPlant.obraId && (entry.movId || null) === (oldPlant.movId || null));
+      if (!item) return;
+      item.obraId = plant.obraId || item.obraId;
+      item.movId = plant.movId || null;
+      item.obraName = _timedStudyPlantName(plant);
+      item.minutosReales = subs.reduce((sum, current) => sum + (Number(current.min) || 0), 0);
+      item.estudiado = true;
+      item.tick = item.tick || 'hecho';
+    });
+  });
+
+  // Los registros manuales antiguos pueden tener planta pero no aggregate.
+  if (!matchedAggregate) {
+    const oldDay = new Date(oldStart).toDateString();
+    (db.sesiones || []).forEach(sesion => {
+      if (!sesion || new Date(sesion.date).toDateString() !== oldDay) return;
+      const item = (sesion.items || []).find(entry =>
+        entry.obraId === oldPlant.obraId &&
+        (entry.movId || null) === (oldPlant.movId || null) &&
+        Number(_itemMinReal(entry)) === Number(oldPlant.mins)
+      );
+      if (!item) return;
+      item.obraId = plant.obraId || item.obraId;
+      item.movId = plant.movId || null;
+      item.obraName = _timedStudyPlantName(plant);
+      item.minutosReales = plant.mins;
+      item.minutosEstudiados = item.manual ? plant.mins : item.minutosEstudiados;
+      item.estudiado = true;
+      item.tick = item.tick || 'hecho';
+    });
+  }
+
+  // Si el tramo es de hoy, reconstruir el plan visible desde la misma fuente.
+  // Esto hace que la tarjeta del cronómetro abandone el valor antiguo.
+  if (_statsISO(new Date(plant.startedAt)) === _statsISO(new Date()) && typeof restoreSessionFromDbToday === 'function') {
+    restoreSessionFromDbToday({ force: true });
+  }
+}
+
+function saveTimedStudyEdit(source, index) {
+  const plant = _timedStudyPlant(source, index);
+  const form = document.getElementById('sesdet-edit-' + source + '-' + index);
+  if (!plant || !form) return;
+  const rawMinutes = parseInt(form.querySelector('[data-field="minutes"]')?.value || '', 10);
+  if (!Number.isFinite(rawMinutes) || rawMinutes < 1) { showToast('Indica los minutos estudiados'); return; }
+  const minutes = Math.min(480, rawMinutes);
+  const oldPlant = { ...plant };
+  const selected = form.querySelector('[data-field="obra"]')?.value || '';
+  if (selected.startsWith('mov::')) {
+    const [, obraId, movId] = selected.split('::');
+    plant.obraId = obraId;
+    plant.movId = movId || null;
+    delete plant.tag;
+  } else if (selected.startsWith('obra::')) {
+    plant.obraId = selected.slice(6);
+    plant.movId = null;
+    delete plant.tag;
+  }
+  const time = form.querySelector('[data-field="time"]')?.value || '';
+  const start = new Date(plant.startedAt);
+  if (/^\d{2}:\d{2}$/.test(time)) {
+    const [hours, mins] = time.split(':').map(Number);
+    start.setHours(hours, mins, 0, 0);
+    plant.startedAt = start.toISOString();
+  }
+  plant.mins = minutes;
+  plant.endedAt = new Date(start.getTime() + minutes * 60000).toISOString();
+  _syncTimedStudyBlockToSession(oldPlant, plant);
+  _sesionesDetalleEditing = null;
+  saveData();
+  renderSesionesDetalle();
+  showToast('Sesión actualizada · ' + minutes + ' min');
+}
+
+function renderSesionesDetalle() {
   const cont = document.getElementById('sesionesDetalleBody');
   if (!cont) return;
   const plants = [];
-  const add = p => {
+  const add = (p, source, index) => {
     if (!p || p.failed || !p.startedAt) return;
     if (p.tipo === 'descanso' || p.obraId === '_rest_') return;
     const start = new Date(p.startedAt);
@@ -14106,15 +14259,14 @@ function openSesionesDetalle() {
     const mins = Math.max(0, Math.round(p.mins || 0));
     if (!mins) return;
     const end = p.endedAt ? new Date(p.endedAt) : new Date(start.getTime() + mins * 60000);
-    plants.push({ start, end, mins, obraId: p.obraId || null, tag: p.tag || null });
+    plants.push({ start, end, mins, obraId: p.obraId || null, movId: p.movId || null, tag: p.tag || null, source, index });
   };
-  (db.sessionPlants || []).forEach(add);
-  (db.forestPlants || []).forEach(add);
-  plants.sort((a, b) => b.start - a.start); // más recientes primero
+  (db.sessionPlants || []).forEach((p, index) => add(p, 'sessionPlants', index));
+  (db.forestPlants || []).forEach((p, index) => add(p, 'forestPlants', index));
+  plants.sort((a, b) => b.start - a.start);
 
   if (!plants.length) {
     cont.innerHTML = '<div class="sesdet-empty">Aún no hay sesiones con hora registrada.<br>Estudia con el cronómetro y aparecerán aquí.</div>';
-    openModal('modalSesionesDetalle');
     return;
   }
 
@@ -14135,22 +14287,40 @@ function openSesionesDetalle() {
     const rows = g.items.map(p => {
       const obra = p.obraId ? findObra(p.obraId) : null;
       const color = (obra && obraColorHex(obra)) || 'var(--text3)';
-      const name = obra ? obra.name : (p.tag || 'Estudio');
-      return '<div class="sesdet-row">' +
+      const name = _timedStudyPlantName(p);
+      const isEditing = _sesionesDetalleEditing === p.source + ':' + p.index;
+      const editId = 'sesdet-edit-' + p.source + '-' + p.index;
+      const startTime = fmtH(p.start);
+      const edit = isEditing
+        ? '<div class="sesdet-edit" id="' + editId + '">' +
+            '<select class="sesdet-edit-work" data-field="obra" aria-label="Obra estudiada">' + _timedStudyOptions(p.obraId, p.movId, p.tag) + '</select>' +
+            '<div class="sesdet-edit-line"><label>Inicio <input type="time" data-field="time" value="' + startTime + '"></label>' +
+              '<label>Min <input type="number" data-field="minutes" min="1" max="480" step="1" value="' + p.mins + '"></label>' +
+              '<button type="button" class="sesdet-save" onclick="saveTimedStudyEdit(\'' + p.source + '\',' + p.index + ')">Guardar</button>' +
+              '<button type="button" class="sesdet-cancel" onclick="toggleSesionesDetalleEdit(\'' + p.source + '\',' + p.index + ')" aria-label="Cancelar edición">×</button>' +
+            '</div>' +
+          '</div>'
+        : '';
+      return '<div class="sesdet-row' + (isEditing ? ' is-editing' : '') + '">' +
         '<span class="sesdet-dot" style="background:' + color + '"></span>' +
         '<span class="sesdet-time">' + fmtH(p.start) + '–' + fmtH(p.end) + '</span>' +
-        '<span class="sesdet-name">' + escapeHtmlSafe(name) + '</span>' +
+        '<span class="sesdet-name" title="' + escapeHtmlSafe(name) + '">' + escapeHtmlSafe(name) + '</span>' +
         '<span class="sesdet-min">' + p.mins + ' min</span>' +
+        '<button type="button" class="sesdet-edit-btn" onclick="toggleSesionesDetalleEdit(\'' + p.source + '\',' + p.index + ')" aria-label="Editar sesión" title="Editar sesión">✎</button>' +
+        edit +
       '</div>';
     }).join('');
     return '<div class="sesdet-day">' +
       '<div class="sesdet-day-head">' +
         '<span class="sesdet-day-label">' + label + '</span>' +
         '<span class="sesdet-day-total">' + fmtMinutos(g.total) + '</span>' +
-      '</div>' +
-      rows +
-    '</div>';
+      '</div>' + rows + '</div>';
   }).join('');
+}
+
+function openSesionesDetalle() {
+  _sesionesDetalleEditing = null;
+  renderSesionesDetalle();
   openModal('modalSesionesDetalle');
 }
 
@@ -14567,11 +14737,19 @@ function registerPase(obraId, movId) {
     : (obra ? obra.name : '');
   document.getElementById('paseQualityName').textContent = displayName;
   document.getElementById('paseQNote').value = '';
+  const takes = document.getElementById('paseQTakes');
+  if (takes) takes.value = '';
   document.getElementById('paseQFecha').value = new Date().toISOString().split('T')[0];
   buildPaseScoreBtns();
   document.querySelectorAll('#modalPaseQuality .pase-tipo-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('#modalPaseQuality .pase-tipo-btn.solo')?.classList.add('active');
+  updatePaseTakesVisibility('solo');
   openModal('modalPaseQuality');
+}
+
+function updatePaseTakesVisibility(tipo) {
+  const wrap = document.getElementById('paseQTakesWrap');
+  if (wrap) wrap.hidden = normalizePaseTipo(tipo) !== 'grabacion';
 }
 
 function selectPaseTipo(tipo, btn) {
@@ -14579,6 +14757,7 @@ function selectPaseTipo(tipo, btn) {
   const row = btn?.closest('.pase-tipo-row') || document;
   row.querySelectorAll('.pase-tipo-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active', paseTipoSelected);
+  updatePaseTakesVisibility(paseTipoSelected);
 }
 
 function selectPaseQ(n, btn) {
@@ -14597,8 +14776,10 @@ function confirmPase() {
   const fechaStr = document.getElementById('paseQFecha').value;
   const paseDate = fechaStr ? new Date(fechaStr + 'T12:00:00').toISOString() : new Date().toISOString();
   const tipo = normalizePaseTipo(paseTipoSelected);
+  const takesValue = parseInt(document.getElementById('paseQTakes')?.value || '', 10);
+  const takes = tipo === 'grabacion' && Number.isFinite(takesValue) && takesValue > 0 ? Math.min(99, takesValue) : null;
   const quality = scoreToQuality(paseQualitySelected);
-  const paseEntry = { date: paseDate, score: paseQualitySelected, solidezPct: paseScoreToPct(paseQualitySelected), quality, tipo, note };
+  const paseEntry = { date: paseDate, score: paseQualitySelected, solidezPct: paseScoreToPct(paseQualitySelected), quality, tipo, takes, note };
 
   if (paseQualityMovId) {
     const mov = findMovimiento(paseQualityObraId, paseQualityMovId);
@@ -14616,11 +14797,12 @@ function confirmPase() {
       const lastSpan = movCard.querySelector('.mov-actions span');
       if (lastSpan) lastSpan.textContent = 'Último pase: ' + new Date(paseEntry.date).toLocaleDateString('es-ES');
       const histDiv = movCard.querySelector('.mov-pase-hist');
-      const tipoIcons = { solo: 'solo', informal: 'amigos', evento: 'evento', escena: 'evento', tecnico: 'tec', memoria: 'mem', concierto: 'evento' };
+      const tipoIcons = { solo: 'solo', informal: 'amigos', evento: 'evento', grabacion: 'grabación', escena: 'evento', tecnico: 'tec', memoria: 'mem', concierto: 'evento' };
       const d = new Date(paseEntry.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
       const tipoLabel = paseEntry.tipo ? `<span style="color:var(--text3);font-size:8px;background:var(--bg2);border-radius:3px;padding:1px 4px;margin-left:2px">${tipoIcons[paseEntry.tipo]||paseEntry.tipo}</span>` : '';
+      const takesLabel = paseEntry.takes ? `<span style="color:var(--text3);font-size:8px">${paseEntry.takes} takes</span>` : '';
       const newRow = `<div style="display:flex;gap:8px;font-size:9px;color:var(--text3);padding:3px 0;align-items:center">
-        <span style="color:${scoreColor(paseEntry.score)};font-weight:bold">${paseEntry.score}</span>${tipoLabel}<span>${d}</span>${note?`<span>· ${note}</span>`:''}
+        <span style="color:${scoreColor(paseEntry.score)};font-weight:bold">${paseEntry.score}</span>${tipoLabel}${takesLabel}<span>${d}</span>${note?`<span>· ${note}</span>`:''}
       </div>`;
       if (histDiv) histDiv.insertAdjacentHTML('afterbegin', newRow);
       else movCard.insertAdjacentHTML('beforeend', `<div class="mov-pase-hist">${newRow}</div>`);
@@ -14709,6 +14891,7 @@ function cronoPaseDraftItem(resolved) {
     name: resolved.name,
     minutes: cronoPaseDefaultMinutes(resolved),
     score: null,
+    takes: null,
   };
 }
 
@@ -14732,6 +14915,7 @@ function openCronoPaseRapido() {
   if (comment) comment.value = '';
   document.querySelectorAll('#modalCronoPaseRapido .pase-tipo-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('#modalCronoPaseRapido .pase-tipo-btn.solo')?.classList.add('active');
+  cronoPaseRender();
   cronoPaseBackToSelection();
   openModal('modalCronoPaseRapido');
 }
@@ -14741,6 +14925,7 @@ function selectCronoPaseTipo(tipo, btn) {
   const row = btn?.closest('.pase-tipo-row') || document;
   row.querySelectorAll('.pase-tipo-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active', cronoPaseTipoSelected);
+  if (document.getElementById('cronoPaseDetailStage')?.hidden === false) cronoPaseRender();
 }
 
 function cronoPaseToggleSelection(value) {
@@ -14834,6 +15019,13 @@ function cronoPaseSetMinutes(key, value) {
   cronoPaseUpdateTotal();
 }
 
+function cronoPaseSetTakes(key, value) {
+  const item = cronoPaseDraft.find(it => it.key === key);
+  if (!item) return;
+  const n = parseInt(value || '', 10);
+  item.takes = Number.isFinite(n) && n > 0 ? Math.min(99, n) : null;
+}
+
 function cronoPaseRemove(key) {
   cronoPaseDraft = cronoPaseDraft.filter(it => it.key !== key);
   if (!cronoPaseDraft.length) {
@@ -14872,6 +15064,9 @@ function cronoPaseRender() {
         '<button type="button" class="crono-pase-remove" onclick="cronoPaseRemove(\'' + it.key + '\')" aria-label="Quitar">×</button>' +
       '</div>' +
       '<div class="crono-pase-score-row">' + scoreBtns + '</div>' +
+      (normalizePaseTipo(cronoPaseTipoSelected) === 'grabacion'
+        ? '<label class="crono-pase-takes"><span>Takes de esta obra</span><input type="number" min="1" max="99" step="1" inputmode="numeric" value="' + (it.takes || '') + '" placeholder="—" onchange="cronoPaseSetTakes(\'' + it.key + '\',this.value)" aria-label="Takes de esta obra"></label>'
+        : '') +
     '</div>';
   }).join('');
   cronoPaseUpdateTotal();
@@ -14885,6 +15080,7 @@ function cronoPaseRecordQuality(item, dateIso, comment) {
     solidezPct: paseScoreToPct(item.score),
     quality: scoreToQuality(item.score),
     tipo,
+    takes: tipo === 'grabacion' && item.takes ? item.takes : null,
     note: (comment || '').trim(),
   };
   if (item.movId) {
@@ -14968,6 +15164,7 @@ function cronoPaseAddToStudy(item, startedAtIso, endedAtIso, comment) {
     pase: true,
     score: item.score,
     tipo: normalizePaseTipo(cronoPaseTipoSelected),
+    takes: normalizePaseTipo(cronoPaseTipoSelected) === 'grabacion' && item.takes ? item.takes : null,
     note: passComment || null,
     sessionNotes: passNote ? [passNote] : null,
     notes: passNote ? [passNote] : null,
@@ -14992,6 +15189,10 @@ function cronoPaseAddToStudy(item, startedAtIso, endedAtIso, comment) {
   }
   recordSessionPlant(item.obraId, item.movId, startedAtIso, endedAtIso, minutes, {
     source: 'pase',
+    pase: true,
+    paseScore: item.score,
+    paseTipo: normalizePaseTipo(cronoPaseTipoSelected),
+    takes: normalizePaseTipo(cronoPaseTipoSelected) === 'grabacion' && item.takes ? item.takes : null,
     notes: passNote ? [passNote] : [],
   });
   return { planId: targetPlanId, minutes };
@@ -15305,6 +15506,7 @@ function aiLatestPaseForObra(obra) {
     movimiento: p.movimiento || null,
     tipo: typeof normalizePaseTipo === 'function' ? normalizePaseTipo(p.tipo) : (p.tipo || ''),
     score: p.score != null ? p.score : null,
+    takes: p.takes != null ? p.takes : null,
     resultado: aiPaseResultLabel(p.score),
     nota: p.note || p.nota || '',
   };
@@ -15399,6 +15601,7 @@ function aiBuildPaseRows() {
         movimiento: null,
         tipo: typeof normalizePaseTipo === 'function' ? normalizePaseTipo(p.tipo) : (p.tipo || ''),
         score: p.score != null ? p.score : null,
+        takes: p.takes != null ? p.takes : null,
         resultado: aiPaseResultLabel(p.score),
         solidezPct: p.solidezPct != null ? p.solidezPct : (p.score != null && typeof paseScoreToPct === 'function' ? paseScoreToPct(p.score) : null),
         nota: p.note || p.nota || '',
@@ -15418,6 +15621,7 @@ function aiBuildPaseRows() {
           movimiento: mov.name,
           tipo: typeof normalizePaseTipo === 'function' ? normalizePaseTipo(p.tipo) : (p.tipo || ''),
           score: p.score != null ? p.score : null,
+          takes: p.takes != null ? p.takes : null,
           resultado: aiPaseResultLabel(p.score),
           solidezPct: p.solidezPct != null ? p.solidezPct : (p.score != null && typeof paseScoreToPct === 'function' ? paseScoreToPct(p.score) : null),
           nota: p.note || p.nota || '',
@@ -24533,10 +24737,11 @@ function _phase3HistoryListHtml(history) {
       const pct = _phase3PasePct(entry);
       const context = paseTipoShort(entry.tipo);
       const note = entry.note || entry.nota || '';
+      const takes = entry.takes ? ' · ' + entry.takes + ' takes' : '';
       return '<li>' +
         '<time datetime="' + escapeHtmlSafe(entry.date || '') + '">' + escapeHtmlSafe(_phase3DateTime(entry.date)) + '</time>' +
         '<strong>' + pct + '%</strong>' +
-        '<span>' + escapeHtmlSafe(context) + '</span>' +
+        '<span>' + escapeHtmlSafe(context + takes) + '</span>' +
         (note ? '<em>' + escapeHtmlSafe(note) + '</em>' : '') +
       '</li>';
     }).join('') + '</ol>';

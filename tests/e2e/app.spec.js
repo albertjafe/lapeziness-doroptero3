@@ -742,6 +742,65 @@ test('selects several recent works before rating and saving their passes', async
   await expect(page.locator('.crono-pase-picker-item').nth(0)).toContainText('Obra intermedia');
 });
 
+test('edits an hourly study block and updates the daily total', async ({ page }) => {
+  await page.setViewportSize({ width: 834, height: 1194 });
+  await prepare(page);
+  await page.evaluate(() => {
+    const now = new Date();
+    const started = new Date(now.getTime() - 120 * 60000);
+    const ended = now;
+    const startIso = started.toISOString();
+    const endIso = ended.toISOString();
+    db.sessionPlants = [{ id: 'editable-block', obraId: 'obra_1', movId: null, startedAt: startIso, endedAt: endIso, mins: 120, source: 'app' }];
+    db.sesiones = [{
+      date: now.toISOString(),
+      items: [{ _planId: 'plan_edit', obraId: 'obra_1', movId: null, obraName: 'Bach · Preludio', tick: 'hecho', estudiado: true, minutosReales: 120, minutosPlan: 120 }],
+      _aggregate: { plan_edit: { subsessions: [{ startedAt: startIso, endedAt: endIso, min: 120 }] } },
+    }];
+    openSesionesDetalle();
+  });
+
+  const modal = page.locator('#modalSesionesDetalle');
+  await expect(modal).toHaveClass(/visible/);
+  await modal.locator('.sesdet-edit-btn').first().click();
+  await modal.locator('[data-field="minutes"]').fill('90');
+  await modal.locator('.sesdet-save').click();
+
+  const state = await page.evaluate(() => ({
+    plant: db.sessionPlants[0].mins,
+    item: db.sesiones[0].items[0].minutosReales,
+    aggregate: db.sesiones[0]._aggregate.plan_edit.subsessions[0].min,
+    today: getMinutosConcentradoHoy(),
+  }));
+  expect(state).toEqual({ plant: 90, item: 90, aggregate: 90, today: 90 });
+  await expect(modal).toContainText('90 min');
+});
+
+test('records recording passes with takes and a score for each work', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepare(page);
+  await page.evaluate(() => {
+    db.obras = [
+      { id: 'obra_grabacion', name: 'Ligeti', composer: 'G.', tipo: 'obra', movimientos: [], paseHistory: [] },
+    ];
+    openCronoPaseRapido();
+  });
+
+  await page.locator('#cronoPaseSelectionList .crono-pase-picker-item').click();
+  await page.locator('#cronoPaseContinueBtn').click();
+  await page.locator('#modalCronoPaseRapido .pase-tipo-btn.grabacion').click();
+  await page.locator('.crono-pase-item').first().locator('.crono-pase-score').nth(3).click();
+  await page.locator('.crono-pase-item').first().locator('.crono-pase-takes input').fill('4');
+  await page.getByRole('button', { name: 'Guardar pases' }).click();
+
+  const state = await page.evaluate(() => ({
+    pase: findObra('obra_grabacion').paseHistory[0],
+    plant: db.sessionPlants.find(item => item.source === 'pase'),
+  }));
+  expect(state.pase).toMatchObject({ tipo: 'grabacion', score: 8, takes: 4 });
+  expect(state.plant).toMatchObject({ pase: true, paseTipo: 'grabacion', paseScore: 8, takes: 4 });
+});
+
 test('opens pending tasks once per day and repeats the reminder after two hours', async ({ page }) => {
   await page.setViewportSize({ width: 834, height: 1194 });
   await prepare(page);

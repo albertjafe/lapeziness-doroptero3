@@ -894,6 +894,23 @@
   }
   .crono-ayer-btn,
   .crono-ayer-panel { display: none; }
+  .crono-hours-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 3px;
+    padding: 6px 8px;
+    border: 1px solid color-mix(in srgb, var(--text3) 28%, transparent);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text3);
+    font: 600 10px/1 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    cursor: pointer;
+    opacity: 0.78;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .crono-hours-btn span:first-child { font-size: 13px; line-height: 0.8; }
+  .crono-hours-btn:hover { color: var(--accent); border-color: var(--accent); opacity: 1; }
   [data-theme^="marmol"] .crono-ayer-btn {
     display: inline-flex;
     appearance: none;
@@ -5071,6 +5088,69 @@ body.crono-running .crono-destellos-pill { display: none !important; }
     font-size: 10px; color: var(--text3); flex: none;
     font-variant-numeric: tabular-nums;
   }
+  .sesdet-edit-btn,
+  .sesdet-save,
+  .sesdet-cancel {
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text3);
+    border-radius: 6px;
+    cursor: pointer;
+    font: 10px/1 'JetBrains Mono', monospace;
+  }
+  .sesdet-edit-btn { width: 25px; height: 25px; padding: 0; flex: none; opacity: .72; }
+  .sesdet-edit-btn:hover { color: var(--accent); border-color: var(--accent); opacity: 1; }
+  .sesdet-row.is-editing { flex-wrap: wrap; padding-bottom: 10px; }
+  .sesdet-row.is-editing .sesdet-edit-btn { color: var(--accent); border-color: var(--accent); }
+  .sesdet-edit {
+    flex: 1 0 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin: 3px 0 0 18px;
+    padding: 9px 10px;
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    background: var(--bg2);
+  }
+  .sesdet-edit-work,
+  .sesdet-edit input {
+    min-width: 0;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    background: var(--bg3);
+    color: var(--text);
+    font: 11px/1.2 'JetBrains Mono', monospace;
+    padding: 7px 8px;
+  }
+  .sesdet-edit-work:focus,
+  .sesdet-edit input:focus { outline: none; border-color: var(--accent); }
+  .sesdet-edit-line { display: flex; align-items: center; gap: 7px; }
+  .sesdet-edit-line label { display: flex; align-items: center; gap: 4px; color: var(--text3); font: 9px/1 'JetBrains Mono', monospace; }
+  .sesdet-edit-line input { width: 78px; }
+  .sesdet-save { padding: 7px 9px; color: var(--accent); border-color: var(--accent); }
+  .sesdet-cancel { width: 28px; height: 28px; font-size: 15px; }
+
+  .crono-pase-takes {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 8px;
+    color: var(--text3);
+    font: 9px/1.2 'JetBrains Mono', monospace;
+  }
+  .crono-pase-takes input {
+    width: 64px;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    background: var(--bg3);
+    color: var(--accent);
+    font: 11px/1 'JetBrains Mono', monospace;
+    padding: 6px;
+    text-align: center;
+  }
+  .crono-pase-takes input:focus { outline: none; border-color: var(--accent); }
 
   /* ── PASAJES · bolitas mínimas (cronómetro) ── */
   .crono-pasajes-section { width: 100%; margin-top: 12px; }
@@ -5735,9 +5815,9 @@ body.crono-running .crono-destellos-pill { display: none !important; }
 
   /* PASE TIPO */
   .pase-tipo-label { font-size: 9px; color: var(--text3); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; }
-  .pase-tipo-row { display: flex; gap: 6px; margin-bottom: 14px; }
+  .pase-tipo-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
   .pase-tipo-btn {
-    flex: 1; padding: 7px 4px;
+    flex: 1 1 70px; padding: 7px 4px;
     border: 1px solid var(--border2); border-radius: 4px;
     background: transparent; color: var(--text3);
     font-family: 'JetBrains Mono', monospace;
@@ -5747,6 +5827,21 @@ body.crono-running .crono-destellos-pill { display: none !important; }
   .pase-tipo-btn.active.informal { background: var(--orange);  color: var(--bg); border-color: var(--orange); }
   .pase-tipo-btn.active.escena   { background: #5a4aaa; color: #d0c8ff; border-color: #7a6acc; }
   .pase-tipo-btn.active.evento   { background: #5a4aaa; color: #d0c8ff; border-color: #7a6acc; }
+  .pase-tipo-btn.active.grabacion { background: #2e6f9e; color: #e7f5ff; border-color: #5aa2d2; }
+  .pase-takes-wrap:not([hidden]) {
+    display: grid;
+    grid-template-columns: 1fr 110px;
+    align-items: center;
+    gap: 10px;
+    margin: -4px 0 8px;
+  }
+  .pase-takes-wrap label {
+    color: var(--text3);
+    font: 9px/1.3 'JetBrains Mono', monospace;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .pase-takes-wrap .modal-input { margin: 0; padding: 7px 8px; text-align: center; }
 
   /* SEGUIMIENTO DE PASAJES */
   .pasaje-tracking-toggle {
@@ -7805,6 +7900,26 @@ body.crono-running .crono-destellos-pill { display: none !important; }
     font-size: 11px;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .sesion-hist-more { flex: none; color: var(--text3); }
+  .sesion-hist-more summary {
+    list-style: none;
+    cursor: pointer;
+    font: 9px/1 'JetBrains Mono', monospace;
+    padding: 3px 5px;
+    border: 1px solid var(--border2);
+    border-radius: 5px;
+    color: var(--text3);
+  }
+  .sesion-hist-more summary::-webkit-details-marker { display: none; }
+  .sesion-hist-more summary::before { content: '+'; margin-right: 2px; }
+  .sesion-hist-more[open] summary::before { content: '-'; }
+  .sesion-hist-more-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: flex-end;
+    margin-top: 5px;
   }
   .crono-finish-confirm-actions {
     display: grid;

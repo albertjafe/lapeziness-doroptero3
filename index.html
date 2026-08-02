@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=227">
+<link rel="stylesheet" href="styles.css?v=228">
 </head>
 <body>
 
@@ -235,6 +235,9 @@
         <path d="M20 11a8 8 0 1 0-2.34 5.66"/>
         <polyline points="20 4 20 11 13 11"/>
       </svg>
+    </button>
+    <button type="button" class="crono-hours-btn" onclick="openSesionesDetalle()" aria-label="Ver sesiones por horas" title="Ver sesiones por horas">
+      <span aria-hidden="true">◷</span><span>Horas</span>
     </button>
   </div>
   <div class="crono-ayer-panel" id="cronoAyerPanel" style="display:none"></div>
@@ -1715,6 +1718,11 @@
         <button class="pase-tipo-btn solo active" onclick="selectPaseTipo('solo',this)">Solo</button>
         <button class="pase-tipo-btn informal" onclick="selectPaseTipo('informal',this)">Informal</button>
         <button class="pase-tipo-btn evento" onclick="selectPaseTipo('evento',this)">Evento</button>
+        <button class="pase-tipo-btn grabacion" onclick="selectPaseTipo('grabacion',this)">Grabación</button>
+      </div>
+      <div id="paseQTakesWrap" class="pase-takes-wrap" hidden>
+        <label for="paseQTakes">Takes</label>
+        <input class="modal-input" id="paseQTakes" type="number" min="1" max="99" step="1" inputmode="numeric" placeholder="n.º de intentos">
       </div>
       <input class="modal-input" id="paseQNote" placeholder="nota rápida (opcional)" type="text" style="margin-top:4px">
       <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin:10px 0 6px">Fecha del pase · puede ser otro día</div>
@@ -1753,6 +1761,7 @@
         <button class="pase-tipo-btn solo active" onclick="selectCronoPaseTipo('solo',this)">Solo</button>
         <button class="pase-tipo-btn informal" onclick="selectCronoPaseTipo('informal',this)">Informal</button>
         <button class="pase-tipo-btn evento" onclick="selectCronoPaseTipo('evento',this)">Evento</button>
+        <button class="pase-tipo-btn grabacion" onclick="selectCronoPaseTipo('grabacion',this)">Grabación</button>
       </div>
 
       <div class="crono-pase-items" id="cronoPaseItems"></div>
@@ -1984,7 +1993,7 @@
 <script src="data-core.js?v=227"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=227"></script>
+<script src="app.js?v=228"></script>
 
 </body>
 <script>
@@ -2006,7 +2015,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=227', { updateViaCache: 'none' }).then(function(reg) {
+    navigator.serviceWorker.register('./sw.js?v=228', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
