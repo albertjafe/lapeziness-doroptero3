@@ -17740,3 +17740,94 @@ body.crono-interface-pinching #view-cronometro .crono-run-action-rail {
     font-size: 27px;
   }
 }
+
+/* El reto en reposo comparte fila con la obra y no resta altura al reloj. */
+#view-cronometro .crono-idle-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+#view-cronometro .crono-idle-head .crono-idle-work-picker {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: min(calc(100% - 52px), 360px);
+}
+#view-cronometro [data-habit-slot="idle"].crono-habit-slot {
+  flex: 0 0 44px;
+  width: 44px;
+  min-height: 44px;
+  height: 44px;
+  margin: 0 0 0 auto;
+}
+#view-cronometro .crono-habit-trophy {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, #b58a24 40%, var(--border2));
+  border-radius: 8px;
+  background: color-mix(in srgb, #d6a52e 8%, var(--bg2));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 28%, transparent);
+  color: #a87913;
+  appearance: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 140ms ease, background 180ms ease, border-color 180ms ease;
+}
+#view-cronometro .crono-habit-trophy:hover {
+  border-color: color-mix(in srgb, #b58a24 70%, var(--border2));
+  background: color-mix(in srgb, #d6a52e 14%, var(--bg2));
+}
+#view-cronometro .crono-habit-trophy:active { transform: scale(.94); }
+#view-cronometro .crono-habit-trophy svg { width: 21px; height: 21px; }
+#view-cronometro .crono-habit-trophy-state {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  display: grid;
+  width: 15px;
+  height: 15px;
+  place-items: center;
+  border: 2px solid var(--bg2);
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  font: 800 9px/1 Arial, sans-serif;
+}
+#view-cronometro .crono-habit-trophy.is-active .crono-habit-trophy-state {
+  right: 1px;
+  bottom: 1px;
+  width: 9px;
+  height: 9px;
+  border-width: 1px;
+  background: #c7931b;
+}
+#view-cronometro .crono-habit-trophy.is-done .crono-habit-trophy-state,
+#view-cronometro .crono-habit-trophy.is-complete .crono-habit-trophy-state { background: #4c9b6d; }
+#view-cronometro .crono-habit-trophy.is-failed .crono-habit-trophy-state { background: #bd4b4b; }
+
+/* Dos modos claros, sin una segunda fila para elegir hora. */
+#view-cronometro .crono-idle-controls .crono-mode-toggle,
+[data-theme^="marmol"] #view-cronometro .crono-idle-controls .crono-mode-toggle {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: min(300px, 100%);
+}
+
+@media (max-height: 600px) and (orientation: landscape) {
+  #view-cronometro .crono-idle-head { min-height: 30px; }
+  #view-cronometro [data-habit-slot="idle"].crono-habit-slot,
+  #view-cronometro .crono-habit-trophy {
+    width: 30px;
+    height: 30px;
+    min-height: 30px;
+  }
+  #view-cronometro [data-habit-slot="idle"].crono-habit-slot { flex-basis: 30px; }
+  #view-cronometro .crono-habit-trophy svg { width: 18px; height: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #view-cronometro .crono-habit-trophy { transition: none; }
+}

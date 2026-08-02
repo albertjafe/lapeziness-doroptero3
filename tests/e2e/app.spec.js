@@ -240,12 +240,13 @@ test('keeps one daily challenge visible in idle and running timer layouts', asyn
     await page.locator('#habitDurationInput').fill('14');
     await page.locator('#modalHabitChallenge .modal-btn.primary').click();
 
-    const idleHabit = page.locator('[data-habit-slot="idle"] .crono-habit-card');
-    await expect(idleHabit).toBeVisible();
-    await expect(idleHabit).toContainText('Practicar escalas');
-    await expect(idleHabit).toContainText('día 1/14');
-    await idleHabit.locator('.crono-habit-check').click();
-    await expect(idleHabit).toContainText('Cumplido hoy');
+    const idleTrophy = page.locator('[data-habit-slot="idle"] .crono-habit-trophy');
+    await expect(idleTrophy).toBeVisible();
+    await expect(idleTrophy).toHaveAttribute('aria-label', /Practicar escalas/);
+    await expect(page.locator('[data-habit-slot="idle"] .crono-habit-card')).toHaveCount(0);
+    await idleTrophy.click();
+    await expect(page.locator('#modalHabitChallenge')).toHaveClass(/visible/);
+    await page.locator('#modalHabitChallenge .modal-btn.secondary').click();
 
     await page.evaluate(() => {
       crono.state = 'running';
@@ -262,6 +263,8 @@ test('keeps one daily challenge visible in idle and running timer layouts', asyn
     const runningHabit = page.locator('[data-habit-slot="running"] .crono-habit-card');
     await expect(runningHabit).toBeVisible();
     await expect(runningHabit).toContainText('Practicar escalas');
+    await runningHabit.locator('.crono-habit-check').click();
+    await expect(runningHabit).toContainText('Cumplido hoy');
     const layout = await page.evaluate(() => {
       const card = document.querySelector('[data-habit-slot="running"] .crono-habit-card').getBoundingClientRect();
       const stage = document.getElementById('cronoStageRun').getBoundingClientRect();
@@ -313,25 +316,38 @@ test('uses a dedicated daily challenge composition on mobile', async ({ browser 
         const box = document.querySelector(selector).getBoundingClientRect();
         return { top: box.top, bottom: box.bottom, left: box.left, right: box.right, width: box.width, height: box.height };
       };
-      const card = rect('[data-habit-slot="idle"] .crono-habit-card');
-      const title = rect('[data-habit-slot="idle"] .crono-habit-copy strong');
-      const check = rect('[data-habit-slot="idle"] .crono-habit-check');
+      const trophy = rect('[data-habit-slot="idle"] .crono-habit-trophy');
+      const slot = rect('[data-habit-slot="idle"]');
+      const picker = rect('.crono-idle-work-picker');
+      const head = rect('.crono-idle-head');
       const main = rect('.crono-idle-main');
       const start = rect('#cronoStartBtn');
-      return { card, title, check, main, start };
+      return {
+        trophy, slot, picker, head, main, start,
+        hasIdleCard: !!document.querySelector('[data-habit-slot="idle"] .crono-habit-card'),
+        trophyLabel: document.querySelector('[data-habit-slot="idle"] .crono-habit-trophy').getAttribute('aria-label'),
+        modeOptions: document.querySelectorAll('#cronoModeToggle .crono-mode-opt').length,
+        hasUntilMode: !!document.querySelector('#cronoModeToggle [data-mode="until"]'),
+        hasUntilRow: !!document.getElementById('cronoUntilRow'),
+      };
     });
 
-    expect(layout.card.left).toBeGreaterThanOrEqual(layout.main.left);
-    expect(layout.card.right).toBeLessThanOrEqual(layout.main.right);
-    expect(layout.title.top).toBeGreaterThanOrEqual(layout.card.top);
-    expect(layout.title.bottom).toBeLessThanOrEqual(layout.card.bottom);
-    expect(layout.title.width).toBeGreaterThan(80);
+    expect(layout.trophy.left).toBeGreaterThanOrEqual(layout.head.left);
+    expect(layout.trophy.right).toBeLessThanOrEqual(layout.head.right);
+    expect(layout.trophy.top).toBeGreaterThanOrEqual(layout.head.top);
+    expect(layout.trophy.bottom).toBeLessThanOrEqual(layout.head.bottom);
+    expect(Math.abs((layout.trophy.top + layout.trophy.bottom) / 2 - (layout.picker.top + layout.picker.bottom) / 2)).toBeLessThanOrEqual(5);
+    expect(layout.slot.height).toBeLessThanOrEqual(44);
+    expect(layout.hasIdleCard).toBe(false);
+    expect(layout.trophyLabel).toContain('No coger el móvil en el baño');
+    expect(layout.modeOptions).toBe(2);
+    expect(layout.hasUntilMode).toBe(false);
+    expect(layout.hasUntilRow).toBe(false);
     if (viewport.width < viewport.height) {
-      expect(layout.check.width).toBeGreaterThanOrEqual(32);
-      expect(layout.card.height).toBeGreaterThanOrEqual(50);
+      expect(layout.trophy.width).toBeGreaterThanOrEqual(44);
+      expect(layout.trophy.height).toBeGreaterThanOrEqual(44);
     } else {
-      expect(layout.card.height).toBeLessThanOrEqual(31);
-      expect(layout.check.height).toBeLessThanOrEqual(22);
+      expect(layout.trophy.height).toBeLessThanOrEqual(31);
       expect(layout.start.bottom).toBeLessThanOrEqual(layout.main.bottom + 1);
 
       await page.evaluate(() => openHabitChallengeModal());
@@ -1711,8 +1727,47 @@ test('advances free timer progress to a 120 minute maximum and enlarges mode lab
   expect(metrics.capped).toBeLessThanOrEqual(0.01);
   expect(metrics.fontSize).toBeGreaterThanOrEqual(13);
   expect(metrics.minHeight).toBeGreaterThanOrEqual(44);
-  expect(metrics.columns).toBe(3);
+  expect(metrics.columns).toBe(2);
   expect(metrics.controlsInMain).toBe(true);
+});
+
+test('retires until-time mode without breaking an active legacy timer', async ({ page }) => {
+  await prepare(page);
+  const result = await page.evaluate(() => {
+    const base = {
+      mode: 'until', timerMinutes: 25, untilTime: '20:00', targetMinutes: null,
+      targetDurationMs: null, runId: null, isRest: false, obraId: null, movId: null,
+      displayName: '', subName: '', color: null, startTs: 0, pausedMs: 0, pauseStartTs: 0,
+    };
+    localStorage.setItem('pianoCrono_v2', JSON.stringify(Object.assign({}, base, { state: 'idle' })));
+    crono.mode = 'stopwatch';
+    const idleRestored = cronoLoadState();
+    const idleMode = crono.mode;
+
+    localStorage.setItem('pianoCrono_v2', JSON.stringify(Object.assign({}, base, {
+      state: 'running', runId: 'legacy-until', obraId: 'obra_1', displayName: 'Bach',
+      startTs: Date.now() - 5 * 60000, targetMinutes: 60, targetDurationMs: 60 * 60000,
+    })));
+    crono.mode = 'stopwatch';
+    const activeRestored = cronoLoadState();
+    const activeMode = crono.mode;
+    cronoReset();
+    return {
+      idleRestored, idleMode, activeRestored, activeMode, modeAfterReset: crono.mode,
+      optionCount: document.querySelectorAll('#cronoModeToggle .crono-mode-opt').length,
+      hasUntilOption: !!document.querySelector('#cronoModeToggle [data-mode="until"]'),
+    };
+  });
+
+  expect(result).toEqual({
+    idleRestored: false,
+    idleMode: 'timer',
+    activeRestored: true,
+    activeMode: 'until',
+    modeAfterReset: 'timer',
+    optionCount: 2,
+    hasUntilOption: false,
+  });
 });
 
 test('deduplicates background timer and stopwatch notifications', async ({ page }) => {

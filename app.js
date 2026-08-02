@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-02-discard-current-session-v111';
+const APP_VERSION = '2026-08-02-compact-idle-controls-v112';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -18970,10 +18970,44 @@ function habitCardHtml(habit) {
   '</div>';
 }
 
+function habitTrophyHtml(habit) {
+  const trophy = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 12v5M8.5 20h7M10 17h4"/>' +
+  '</svg>';
+  if (!habit) {
+    return '<button type="button" class="crono-habit-trophy is-empty" onclick="openHabitChallengeModal()" aria-label="Crear un reto" title="Crear un reto">' +
+      trophy + '<span class="crono-habit-trophy-state" aria-hidden="true">+</span>' +
+    '</button>';
+  }
+
+  const metrics = habitMetrics(habit);
+  const title = escapeHtmlSafe(habit.title || 'Reto');
+  const marked = habit.mode === 'avoid' ? metrics.todayLog === 'failed' : metrics.todayLog === 'done';
+  const stateClass = metrics.complete
+    ? 'is-complete'
+    : habit.mode === 'avoid' && marked
+      ? 'is-failed'
+      : habit.mode === 'do' && marked
+        ? 'is-done'
+        : 'is-active';
+  const stateLabel = metrics.complete
+    ? 'completado'
+    : habit.mode === 'avoid' && marked
+      ? 'incumplido hoy'
+      : habit.mode === 'do' && marked
+        ? 'cumplido hoy'
+        : 'pendiente hoy';
+  const stateMark = stateClass === 'is-failed' ? '!' : (stateClass === 'is-done' || stateClass === 'is-complete' ? '&#10003;' : '');
+  const label = 'Abrir reto: ' + title + ', ' + stateLabel;
+  return '<button type="button" class="crono-habit-trophy ' + stateClass + '" onclick="openHabitChallengeModal()" aria-label="' + label + '" title="' + label + '">' +
+    trophy + '<span class="crono-habit-trophy-state" aria-hidden="true">' + stateMark + '</span>' +
+  '</button>';
+}
+
 function renderHabitChallenge() {
   const habit = habitActiveChallenge();
-  const html = habitCardHtml(habit);
   document.querySelectorAll('[data-habit-slot]').forEach(slot => {
+    const html = slot.dataset.habitSlot === 'idle' ? habitTrophyHtml(habit) : habitCardHtml(habit);
     if (slot.innerHTML !== html) slot.innerHTML = html;
   });
   renderHabitChallenge._dayKey = habitDayKey();
@@ -19106,7 +19140,7 @@ function deleteHabitChallenge() {
 
 const crono = {
   state: 'idle',         // 'idle' | 'running' | 'paused'
-  mode: 'stopwatch',     // 'stopwatch' | 'timer' | 'until'
+  mode: 'stopwatch',     // 'stopwatch' | 'timer'; 'until' solo al restaurar una sesión antigua
   timerMinutes: 25,      // minutos seleccionados en modo timer (5..120, step 5)
   untilTime: '',         // HH:MM seleccionado en modo "hasta hora"
   targetMinutes: null,   // minutos objetivo de la sesión en curso (timer mode); null en stopwatch
@@ -19502,8 +19536,11 @@ function cronoLoadState() {
     const raw = localStorage.getItem(CRONO_STORAGE_KEY);
     if (!raw) return false;
     const s = JSON.parse(raw);
-    // Cargar siempre la preferencia de mode + timerMinutes (independiente del state)
-    if (s.mode === 'stopwatch' || s.mode === 'timer' || s.mode === 'until') crono.mode = s.mode;
+    const restoringActiveRun = (s.state === 'running' || s.state === 'paused') && !!s.obraId && !!s.startTs;
+    // "Hasta una hora" ya no se ofrece. Solo se conserva para terminar una
+    // sesión antigua que estuviera activa cuando se actualizó la aplicación.
+    if (s.mode === 'stopwatch' || s.mode === 'timer') crono.mode = s.mode;
+    else if (s.mode === 'until') crono.mode = restoringActiveRun ? 'until' : 'timer';
     if (typeof s.timerMinutes === 'number' && s.timerMinutes >= 5 && s.timerMinutes <= 120) {
       crono.timerMinutes = s.timerMinutes;
     }
@@ -19513,8 +19550,7 @@ function cronoLoadState() {
     crono.quickDestelloNote = typeof s.quickDestelloNote === 'string'
       ? s.quickDestelloNote.slice(0, CRONO_DESTELLO_MAX_CHARS)
       : '';
-    if (s.state !== 'running' && s.state !== 'paused') return false;
-    if (!s.obraId || !s.startTs) return false;
+    if (!restoringActiveRun) return false;
     crono.state = s.state;
     crono.targetMinutes = s.targetMinutes || null;
     crono.targetDurationMs = Number.isFinite(s.targetDurationMs) && s.targetDurationMs > 0
@@ -23041,14 +23077,13 @@ function _playCronoTick() {
 }
 
 function cronoSetMode(mode) {
-  if (mode !== 'stopwatch' && mode !== 'timer' && mode !== 'until') return;
+  if (mode !== 'stopwatch' && mode !== 'timer') return;
   if (crono.state !== 'idle') {
     // No permitir cambiar de modo mientras corre una sesión
     showToast('Termina la sesión actual antes de cambiar de modo');
     return;
   }
   crono.mode = mode;
-  if (mode === 'until') cronoEnsureUntilTime();
   cronoSaveState();
   cronoApplyModeUI();
   cronoUpdateStartBtn();
@@ -24135,8 +24170,12 @@ function cronoReset(pushStatus) {
   crono.observation = '';
   crono.quickDestelloNote = '';
   _cronoLastRunDestelloKey = '';
-  // NB: NO reseteamos mode ni timerMinutes — son preferencias persistentes.
-  // Las guardamos en localStorage para la próxima sesión.
+  if (crono.mode === 'until') {
+    crono.mode = 'timer';
+    crono.untilTime = '';
+  }
+  // Conservamos mode y timerMinutes como preferencias; la modalidad retirada
+  // "until" es la única que vuelve a temporizador al cerrar su sesión antigua.
   cronoSaveState();
 }
 

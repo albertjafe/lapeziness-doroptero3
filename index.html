@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=235">
+<link rel="stylesheet" href="styles.css?v=236">
 </head>
 <body>
 
@@ -278,9 +278,8 @@
               <span class="crono-select-custom-chevron">⌄</span>
             </button>
           </div>
+          <div class="crono-habit-slot" data-habit-slot="idle" aria-live="polite"></div>
         </div>
-
-        <div class="crono-habit-slot" data-habit-slot="idle" aria-live="polite"></div>
 
         <div class="crono-display-wrap crono-idle-display-wrap progress-active" id="cronoIdleDisplayWrap">
           <svg class="crono-run-progress-svg crono-timer-svg" id="cronoTimerSvg" viewBox="0 0 220 220" aria-hidden="true">
@@ -307,13 +306,7 @@
           <div class="crono-mode-toggle" id="cronoModeToggle" role="group" aria-label="Tipo de cronómetro">
             <button class="crono-mode-opt active" data-mode="stopwatch" onclick="cronoSetMode('stopwatch')">Libre</button>
             <button class="crono-mode-opt" data-mode="timer" onclick="cronoSetMode('timer')">Temporizador</button>
-            <button class="crono-mode-opt" data-mode="until" onclick="cronoSetMode('until')">Hasta una hora</button>
             <span class="crono-mode-indicator" id="cronoModeIndicator"></span>
-          </div>
-          <div class="crono-until-row" id="cronoUntilRow">
-            <span>Hasta</span>
-            <input type="time" id="cronoUntilTime" onchange="cronoSetUntilTime(this.value)" oninput="cronoSetUntilTime(this.value)">
-            <strong id="cronoUntilInfo">elige una hora</strong>
           </div>
           <div class="crono-timer-projection" id="cronoTimerProjection" style="display:none"></div>
           <button class="crono-plant-btn" id="cronoStartBtn" onclick="cronoStart()" disabled>Iniciar</button>
@@ -2051,7 +2044,7 @@
 <script src="data-core.js?v=228"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=235"></script>
+<script src="app.js?v=236"></script>
 
 </body>
 <script>
@@ -2073,7 +2066,7 @@
       });
     }
     window.addEventListener('load', function() {
-    navigator.serviceWorker.register('./sw.js?v=231', { updateViaCache: 'none' }).then(function(reg) {
+    navigator.serviceWorker.register('./sw.js?v=232', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
