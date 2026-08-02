@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-02-mobile-daily-challenge-v110';
+const APP_VERSION = '2026-08-02-discard-current-session-v111';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -23757,8 +23757,16 @@ function cronoShowFinishConfirmModal(ms) {
         '<div class="crono-fallida-title" id="cronoFinishConfirmTitle">&iquest;Terminar sesi&oacute;n?</div>' +
         '<div class="crono-finish-confirm-work" id="cronoFinishConfirmWork"></div>' +
         '<div class="crono-finish-confirm-actions">' +
-          '<button type="button" class="modal-btn secondary" onclick="cronoConfirmFinishCancel()">Cancelar</button>' +
-          '<button type="button" class="modal-btn primary" onclick="cronoConfirmFinishAccept()">Hecho</button>' +
+          '<div class="crono-finish-confirm-main-actions">' +
+            '<button type="button" class="modal-btn secondary" onclick="cronoConfirmFinishCancel()">Cancelar</button>' +
+            '<button type="button" class="modal-btn primary" onclick="cronoConfirmFinishAccept()">Hecho</button>' +
+          '</div>' +
+          '<button type="button" class="crono-finish-discard" onclick="cronoConfirmFinishDiscard()" aria-label="Eliminar solamente esta sesi&oacute;n; no afecta al resto del d&iacute;a">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+              '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 10v6M14 10v6"/>' +
+            '</svg>' +
+            '<span><strong>Eliminar sesi&oacute;n</strong><small>Solo esta; lo anterior de hoy se conserva</small></span>' +
+          '</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(modal);
@@ -23780,6 +23788,25 @@ function cronoConfirmFinishAccept() {
   const runId = modal ? modal.dataset.runId : '';
   closeModal('modalCronoConfirmFinish');
   if (runId && crono.runId === runId) cronoFinish(runId);
+}
+
+function cronoConfirmFinishDiscard() {
+  const modal = document.getElementById('modalCronoConfirmFinish');
+  const runId = modal ? modal.dataset.runId : '';
+  if (!runId || crono.runId !== runId || crono.state === 'idle') {
+    closeModal('modalCronoConfirmFinish');
+    return;
+  }
+
+  const elapsedMs = cronoEffectiveElapsedMs();
+  closeModal('modalCronoConfirmFinish');
+  cronoStopTick();
+  cronoStopPauseCountdown();
+  cronoReset('cancelled');
+  cronoRender();
+  refreshConcentradoUI();
+  showToast('Sesión eliminada · ' + cronoFmt(elapsedMs) + ' descartados');
+  try { Haptics.warn(); } catch(e) {}
 }
 
 // Modal antes de parar con <10 min. Pregunta si quiere abortar como fallida.

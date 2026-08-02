@@ -716,6 +716,86 @@ test('cancels or confirms a valid timer before saving and keeps one-tap solidity
   expect(saved).toEqual({ value: 65, context: 'cierre-sesion', current: 65 });
 });
 
+test('discards only the active timer and preserves earlier study from today', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepare(page);
+  const before = await page.evaluate(() => {
+    const endedAt = new Date(Date.now() - 30 * 60 * 1000);
+    db.sessionPlants.push({
+      id: 'already-saved-today',
+      obraId: 'obra_1',
+      startedAt: new Date(endedAt.getTime() - 40 * 60 * 1000).toISOString(),
+      endedAt: endedAt.toISOString(),
+      mins: 40,
+      source: 'app',
+    });
+    saveData();
+    const savedTotal = getMinutosConcentradoHoy();
+    showView('cronometro');
+    const select = document.getElementById('cronoObraSelect');
+    select.value = 'obra::obra_1';
+    cronoUpdateStartBtn();
+    cronoStart();
+    crono.startTs = Date.now() - 18 * 60 * 1000;
+    crono.notes = [{ id: 'pending-note', text: 'No debe guardarse', at: new Date().toISOString() }];
+    crono.quickDestelloNote = 'Destello pendiente';
+    cronoSaveState();
+    window.__discardedPushRunId = null;
+    if (window.StudyPush) {
+      window.StudyPush.cancelRun = runId => { window.__discardedPushRunId = runId; return Promise.resolve(true); };
+    }
+    const runId = crono.runId;
+    cronoStop();
+    return { savedTotal, liveTotal: getMinutosConcentradoHoy(), runId };
+  });
+
+  const confirm = page.locator('#modalCronoConfirmFinish');
+  await expect(confirm).toHaveClass(/visible/);
+  await expect(confirm.getByRole('button', { name: /Eliminar solamente esta sesión/ })).toBeVisible();
+
+  for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
+    await page.setViewportSize(viewport);
+    const layout = await confirm.evaluate(overlay => {
+      const modal = overlay.querySelector('.crono-finish-confirm-modal');
+      const actions = [...overlay.querySelectorAll('button')];
+      const box = modal.getBoundingClientRect();
+      return {
+        fits: box.left >= 0 && box.top >= 0 && box.right <= innerWidth && box.bottom <= innerHeight,
+        actionHeights: actions.map(button => button.getBoundingClientRect().height),
+        overflow: modal.scrollWidth <= modal.clientWidth + 1,
+      };
+    });
+    expect(layout.fits).toBe(true);
+    expect(layout.overflow).toBe(true);
+    expect(layout.actionHeights).toHaveLength(3);
+    expect(layout.actionHeights.every(height => height >= 44)).toBe(true);
+  }
+
+  await confirm.getByRole('button', { name: /Eliminar solamente esta sesión/ }).click();
+  await expect(confirm).not.toHaveClass(/visible/);
+
+  const after = await page.evaluate(() => ({
+    state: crono.state,
+    runId: crono.runId,
+    notes: crono.notes,
+    quickDestelloNote: crono.quickDestelloNote,
+    savedIds: db.sessionPlants.map(session => session.id),
+    total: getMinutosConcentradoHoy(),
+    storedState: JSON.parse(localStorage.getItem('pianoCrono_v2')),
+    discardedPushRunId: window.__discardedPushRunId,
+  }));
+  expect(after.state).toBe('idle');
+  expect(after.runId).toBeNull();
+  expect(after.notes).toEqual([]);
+  expect(after.quickDestelloNote).toBe('');
+  expect(after.savedIds).toEqual(['already-saved-today']);
+  expect(before.liveTotal).toBe(before.savedTotal);
+  expect(after.total).toBe(before.savedTotal);
+  expect(after.storedState.state).toBe('idle');
+  expect(after.storedState.runId).toBeNull();
+  expect(after.discardedPushRunId).toBe(before.runId);
+});
+
 test('keeps tasks available while idle and compacts long running content', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await prepare(page);

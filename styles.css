@@ -7922,13 +7922,50 @@ body.crono-running .crono-destellos-pill { display: none !important; }
     margin-top: 5px;
   }
   .crono-finish-confirm-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .crono-finish-confirm-main-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
   }
-  .crono-finish-confirm-actions .modal-btn {
+  .crono-finish-confirm-main-actions .modal-btn {
     min-height: 48px;
     border-radius: 8px;
+  }
+  .crono-finish-discard {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+    gap: 9px;
+    padding: 7px 12px;
+    border: 1px solid color-mix(in srgb, var(--red) 38%, var(--border2));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--red) 5%, transparent);
+    color: var(--red);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 160ms ease, border-color 160ms ease, transform 120ms ease;
+  }
+  .crono-finish-discard svg { width: 18px; height: 18px; flex: none; }
+  .crono-finish-discard span { display: grid; gap: 2px; text-align: left; }
+  .crono-finish-discard strong {
+    font: 600 11px/1.15 "JetBrains Mono", monospace;
+  }
+  .crono-finish-discard small {
+    color: var(--text3);
+    font: 8px/1.2 "JetBrains Mono", monospace;
+  }
+  .crono-finish-discard:hover {
+    border-color: color-mix(in srgb, var(--red) 65%, var(--border2));
+    background: color-mix(in srgb, var(--red) 10%, transparent);
+  }
+  .crono-finish-discard:active { transform: scale(0.985); }
+  @supports not (color: color-mix(in srgb, red, blue)) {
+    .crono-finish-discard { border-color: var(--red); background: transparent; }
   }
   .crono-fallida-ok {
     padding: 12px;
