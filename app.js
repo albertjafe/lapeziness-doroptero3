@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-02-clock-controls-pulse-window-v107';
+const APP_VERSION = '2026-08-02-work-total-destello-pulse-v108';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1805,7 +1805,7 @@ function recordMalestarEvent(level, note) {
 }
 
 const CRONO_FLUID_COOLDOWN_MS = 30 * 1000;
-const CRONO_FLUID_EDIT_WINDOW_MS = 15 * 1000;
+const CRONO_FLUID_EDIT_WINDOW_MS = 30 * 1000;
 let _cronoFluidDrag = null;
 const _cronoFluidEditWindow = {
   concentration: { until: 0, id: null },
@@ -4493,9 +4493,7 @@ function getMinutosObra(obraId) {
   (db.sesiones || []).forEach(s => {
     (s.items || []).forEach(it => {
       if (it.obraId !== obraId) return;
-      if (it.manual && it.minutosEstudiados) total += it.minutosEstudiados;
-      else if (it.tick === 'hecho' && it.minutosReales) total += it.minutosReales;
-      else if (it.tick === 'hecho' && it.minutosPlan) total += it.minutosPlan;
+      total += _itemMinReal(it);
     });
   });
   return total;
@@ -22056,6 +22054,14 @@ function cronoPauseRemainingMs() {
 function cronoEnterFocus() {
   document.documentElement.classList.add('crono-focus-root');
   document.body.classList.add('crono-focus');
+  cronoResetViewScroll();
+}
+
+function cronoResetViewScroll() {
+  const view = document.getElementById('view-cronometro');
+  if (!view) return;
+  view.scrollTop = 0;
+  requestAnimationFrame(() => { view.scrollTop = 0; });
 }
 
 function cronoExitFocus() {
@@ -22077,6 +22083,20 @@ function cronoUpdateRunTodayTotal() {
     ? _doneMinHoy()
     : ((typeof getMinutosConcentradoHoy === 'function') ? getMinutosConcentradoHoy() : 0);
   el.textContent = fmtMinutos(Math.max(0, Math.round(minutes || 0)));
+}
+
+function cronoUpdateRunWorkTotal() {
+  const wrap = document.getElementById('cronoRunWorkTotalWrap');
+  const el = document.getElementById('cronoRunWorkTotal');
+  if (!wrap || !el) return;
+  const hasWork = !crono.isRest && crono.obraId && crono.obraId !== '_rest_';
+  wrap.hidden = !hasWork;
+  if (!hasWork) return;
+  const saved = typeof getMinutosObra === 'function' ? getMinutosObra(crono.obraId) : 0;
+  const live = crono.state === 'running' || crono.state === 'paused'
+    ? Math.floor(cronoEffectiveElapsedMs() / 60000)
+    : 0;
+  el.textContent = fmtMinutos(Math.max(0, Math.round(saved || 0) + live));
 }
 
 // ── Render ──────────────────────────────────────────────────────────────────
@@ -22121,6 +22141,7 @@ function cronoRender() {
   // Nombre de la obra (pildora)
   const nameEl = document.getElementById('cronoRunName');
   if (nameEl) nameEl.textContent = crono.displayName || '—';
+  cronoUpdateRunWorkTotal();
 
   // Estado de la pildora: running activa halo y dot pulse, paused los atenúa
   const pill = document.getElementById('cronoObraPill');
@@ -23184,6 +23205,7 @@ function cronoStartTick() {
     // Probabilidad en vivo de 4h/5h (recalcula solo al cambiar de minuto).
     if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI();
     cronoUpdateRunTodayTotal();
+    cronoUpdateRunWorkTotal();
     if (document.getElementById('view-session')?.classList.contains('active') && typeof renderSessionResumen === 'function') {
       renderSessionResumen();
     }
@@ -23314,6 +23336,7 @@ function cronoStart() {
   });
   renderCronoPasajes();
   cronoRender();
+  cronoResetViewScroll();
   cronoStartTick();
   cronoAcquireWakeLock();
   if (typeof SFX !== 'undefined' && SFX.startSession) SFX.startSession();
@@ -23369,6 +23392,7 @@ function cronoStartRest() {
     }
   });
   cronoRender();
+  cronoResetViewScroll();
   cronoStartTick();
   cronoAcquireWakeLock();
   if (typeof SFX !== 'undefined' && SFX.startSession) SFX.startSession();

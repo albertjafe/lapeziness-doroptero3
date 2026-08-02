@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=231">
+<link rel="stylesheet" href="styles.css?v=232">
 </head>
 <body>
 
@@ -386,7 +386,13 @@
       <div class="crono-run-head">
         <div class="crono-obra-pill" id="cronoObraPill" onclick="cronoOpenChangeObra()">
           <div class="crono-obra-pill-dot" id="cronoObraDot"></div>
-          <div class="crono-obra-pill-name" id="cronoRunName">—</div>
+          <div class="crono-obra-pill-copy">
+            <div class="crono-obra-pill-name" id="cronoRunName">—</div>
+            <div class="crono-run-work-total" id="cronoRunWorkTotalWrap">
+              <span>Total</span>
+              <strong id="cronoRunWorkTotal">0 min</strong>
+            </div>
+          </div>
         </div>
         <div class="crono-run-status" id="cronoRunStatus">
           <span class="crono-run-status-dot"></span>
@@ -1992,7 +1998,7 @@
 <script src="data-core.js?v=227"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=231"></script>
+<script src="app.js?v=232"></script>
 
 </body>
 <script>

@@ -17081,6 +17081,86 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
   }
 }
 
+/* La obra conserva nombre y acumulado historico en una sola zona compacta. */
+#view-cronometro .crono-obra-pill-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  text-align: left;
+}
+#view-cronometro .crono-run-head .crono-obra-pill-name {
+  max-width: 100%;
+}
+#view-cronometro .crono-run-work-total {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  color: var(--text3);
+  font: 700 8px/1.05 var(--font-mono, 'JetBrains Mono', monospace);
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+#view-cronometro .crono-run-work-total strong {
+  overflow: hidden;
+  color: var(--crono-color, var(--accent));
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  text-transform: none;
+}
+
+/* El texto del destello no se encoge con el aro. El zoom reparte espacio,
+   pero conserva una lectura estable y limita la tarjeta a cuatro lineas. */
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-run-destello {
+  min-height: 48px;
+  max-height: 96px;
+  padding: 8px 11px;
+  font-size: 15px !important;
+  line-height: 1.35;
+  overflow: hidden;
+}
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-run-destello.size-short {
+  font-size: 16px !important;
+}
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-run-destello.size-medium {
+  font-size: 15px !important;
+}
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-run-destello.size-long {
+  font-size: 14px !important;
+}
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-run-destello.size-xlong {
+  font-size: 13px !important;
+}
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-run-destello-text,
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-run-destello-btn .crono-run-destello-text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-run-destello-btn {
+  max-height: 100%;
+  overflow: hidden;
+}
+
+@media (max-width: 430px) {
+  #view-cronometro .crono-run-work-total span { display: none; }
+  #view-cronometro .crono-run-work-total strong { font-size: 10px; }
+}
+
+@media (min-width: 700px) and (max-width: 1199px) and (orientation: portrait) {
+  #view-cronometro .crono-run-work-total span { display: none; }
+  #view-cronometro .crono-run-work-total strong {
+    flex: none;
+    overflow: visible;
+    font-size: 10.5px;
+    text-overflow: clip;
+  }
+}
+
 /* Acciones ligadas al diametro real del reloj: el pellizco las acerca al aro
    sin permitir que salgan de la tarjeta. */
 #view-cronometro .crono-run-action-rail {

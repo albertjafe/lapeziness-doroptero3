@@ -607,7 +607,7 @@ test('keeps tasks available while idle and compacts long running content', async
   const idleTasks = page.locator('#cronoIdleTasksPanel');
   await expect(idleTasks).toContainText('Afinar el bajo de la coda');
   await expect(idleTasks.locator('#cronoIdleTaskInput')).toHaveCount(0);
-  await idleTasks.locator('.crono-task-compose-trigger').click();
+  await idleTasks.getByRole('button', { name: 'Añadir tarea de Piano' }).click();
   await expect(idleTasks.locator('#cronoIdleTaskInput')).toBeFocused();
   await idleTasks.locator('#cronoIdleTaskInput').fill('Revisar digitación final');
   await idleTasks.locator('.crono-task-add-btn').click();
@@ -645,6 +645,7 @@ test('keeps tasks available while idle and compacts long running content', async
       destelloFits: destello.scrollHeight <= destello.clientHeight + 1,
       destelloOverflow: getComputedStyle(destello).overflow,
       destelloClamp: getComputedStyle(destello.querySelector('.crono-run-destello-text')).webkitLineClamp,
+      destelloFontSize: parseFloat(getComputedStyle(destello).fontSize),
       passageCount: passageRows.length,
       maxPassageHeight: Math.max(...passageRows.map(row => row.getBoundingClientRect().height)),
       openPassages: document.querySelectorAll('.crono-focus-pasaje.is-open').length,
@@ -663,10 +664,11 @@ test('keeps tasks available while idle and compacts long running content', async
 
   expect(metrics.ringWidth).toBeGreaterThanOrEqual(350);
   expect(metrics.hasHours).toBe(true);
-  expect(metrics.displayWidth).toBeLessThanOrEqual(metrics.ringWidth * 0.69);
+  expect(metrics.displayWidth).toBeLessThanOrEqual(metrics.ringWidth * 0.78);
   expect(metrics.destelloFits).toBe(true);
-  expect(metrics.destelloOverflow).toBe('visible');
-  expect(['none', 'unset']).toContain(metrics.destelloClamp);
+  expect(metrics.destelloOverflow).toBe('hidden');
+  expect(metrics.destelloClamp).toBe('4');
+  expect(metrics.destelloFontSize).toBeGreaterThanOrEqual(13);
   expect(metrics.passageCount).toBe(5);
   expect(metrics.maxPassageHeight).toBeLessThanOrEqual(45);
   expect(metrics.openPassages).toBe(0);
@@ -853,17 +855,15 @@ test('separates piano and personal tasks and only reminds piano work', async ({ 
 
   const panel = page.locator('#cronoIdleTasksPanel');
   await expect(panel.locator('#cronoIdleTaskInput')).toHaveCount(0);
-  await panel.locator('.crono-task-compose-trigger').click();
+  await panel.getByRole('button', { name: 'Añadir tarea de Piano' }).click();
   await expect(panel.locator('#cronoIdleTaskInput')).toBeFocused();
-  await panel.locator('.crono-task-kind-btn.piano').click();
   await panel.locator('.crono-task-tomorrow-btn').click();
   await panel.locator('#cronoIdleTaskInput').fill('Estudiar la coda sin pedal');
   await panel.locator('.crono-task-add-btn').click();
   await expect(panel.locator('.crono-task-lane.piano')).toContainText('Estudiar la coda sin pedal');
   await expect(panel.locator('.crono-task-lane.piano .crono-task-due-tag')).toHaveText('Mañana');
 
-  await panel.locator('.crono-task-compose-trigger').click();
-  await panel.locator('.crono-task-kind-btn.personal').click();
+  await panel.getByRole('button', { name: 'Añadir tarea de Personal' }).click();
   await expect(panel.locator('.crono-task-tomorrow-btn')).toBeHidden();
   await panel.locator('#cronoIdleTaskInput').fill('Escribir a Emma');
   await panel.locator('.crono-task-add-btn').click();
@@ -1190,12 +1190,22 @@ test('keeps running clock actions inside the timer card across pinch zoom levels
     await page.setViewportSize(viewport);
     const layout = await page.evaluate(() => {
       showView('cronometro');
+      db.obras[0].minutosExtra = 120;
+      db.sesiones = [{
+        date: new Date(Date.now() - 30 * 86400000).toISOString(),
+        items: [{ obraId: 'obra_1', estudiado: true, tick: 'parcial', minutosReales: 35 }],
+      }];
       const select = document.getElementById('cronoObraSelect');
       select.value = 'obra::obra_1';
       cronoUpdateStartBtn();
       cronoStart();
       crono.startTs = Date.now() - 6 * 60000;
       cronoRender();
+      const expectedWorkTotal = '2h 41min';
+      const phraseCard = document.getElementById('cronoRunDestello');
+      phraseCard.className = 'crono-run-destello size-xlong';
+      phraseCard.innerHTML = '<span class="crono-run-destello-text">Una repetición consciente conserva el sonido, la dirección y la sensación exacta que quieres encontrar mañana sin añadir tensión innecesaria.</span>';
+      phraseCard.style.display = '';
       const rect = selector => {
         const box = document.querySelector(selector)?.getBoundingClientRect();
         return box ? { top: box.top, left: box.left, right: box.right, bottom: box.bottom, width: box.width, height: box.height } : null;
@@ -1214,6 +1224,9 @@ test('keeps running clock actions inside the timer card across pinch zoom levels
           calendar: rect('.crono-calendar-panel'),
           destello: rect('.crono-run-side-destello'),
           stop: rect('#cronoControls .crono-session-rail-main'),
+          phrase: rect('#cronoRunDestello'),
+          phraseFontSize: parseFloat(getComputedStyle(phraseCard).fontSize),
+          phraseClamp: getComputedStyle(phraseCard.querySelector('.crono-run-destello-text')).webkitLineClamp,
           coversDisplayCenter: rail.left <= displayCenter.x && rail.right >= displayCenter.x
             && rail.top <= displayCenter.y && rail.bottom >= displayCenter.y,
         };
@@ -1221,6 +1234,9 @@ test('keeps running clock actions inside the timer card across pinch zoom levels
       return {
         layouts,
         today: document.getElementById('cronoRunTodayTotal')?.textContent,
+        workTotal: document.getElementById('cronoRunWorkTotal')?.textContent,
+        workTotalFits: document.getElementById('cronoRunWorkTotal').scrollWidth <= document.getElementById('cronoRunWorkTotal').clientWidth + 1,
+        expectedWorkTotal,
         milestoneCount: document.querySelectorAll('#cronoMilestone, #cronoRunMilestone').length,
         stopBadgeCount: document.querySelectorAll('.crono-session-stop-mark').length,
         hasVisibleStopIcon: !!document.querySelector('#cronoControls .crono-session-main-icon rect'),
@@ -1236,8 +1252,15 @@ test('keeps running clock actions inside the timer card across pinch zoom levels
       if (zoomLayout.calendar.width > 0) expect(zoomLayout.rail.right).toBeLessThanOrEqual(zoomLayout.calendar.left + 1);
       expect(zoomLayout.destello.width).toBeGreaterThanOrEqual(viewport.actionSize);
       expect(zoomLayout.stop.width).toBeGreaterThanOrEqual(viewport.actionSize);
+      expect(zoomLayout.phrase.left).toBeGreaterThanOrEqual(zoomLayout.stage.left - 1);
+      expect(zoomLayout.phrase.right).toBeLessThanOrEqual(zoomLayout.stage.right + 1);
+      expect(zoomLayout.phraseFontSize).toBeGreaterThanOrEqual(13);
+      expect(zoomLayout.phraseClamp).toBe('4');
     }
+    expect(new Set(layout.layouts.map(item => item.phraseFontSize)).size).toBe(1);
     expect(layout.today).toBe('6 min');
+    expect(layout.workTotal).toBe(layout.expectedWorkTotal);
+    expect(layout.workTotalFits).toBe(true);
     expect(layout.milestoneCount).toBe(0);
     expect(layout.stopBadgeCount).toBe(0);
     expect(layout.hasVisibleStopIcon).toBe(true);
@@ -1277,7 +1300,7 @@ test('allows a short pulse correction without creating a duplicate entry', async
   expect(result.countAfterEdit).toBe(result.countAfterFirst);
   expect(result.latestValue).toBe(72);
   expect(result.editVisible).toBe(true);
-  expect(result.editSeconds).toBe(15);
+  expect(result.editSeconds).toBe(30);
 });
 
 test('draws one smooth curve across sessions and reserves touch drag for the time trimmer', async ({ page }) => {
