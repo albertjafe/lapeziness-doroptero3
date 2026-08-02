@@ -74,4 +74,33 @@ describe('DataCore', () => {
     expect(merged.estadoEventos).toEqual([]);
     expect(merged.pulseDeletedIds).toContain('concentration::pulse-37');
   });
+
+  it('merges daily challenge logs from two devices without losing either day', () => {
+    const shared = {
+      id: 'habit-1', title: 'Practicar escalas', mode: 'do', durationDays: 14,
+      startDate: '2026-08-01', createdAt: '2026-08-01T08:00:00Z',
+    };
+    const merged = DataCore.mergeStudyHistory(
+      { habitChallenge: { ...shared, updatedAt: '2026-08-01T20:00:00Z', logs: { '2026-08-01': { status: 'done', at: '2026-08-01T20:00:00Z' } } } },
+      { habitChallenge: { ...shared, updatedAt: '2026-08-02T20:00:00Z', logs: { '2026-08-02': { status: 'done', at: '2026-08-02T20:00:00Z' } } } }
+    );
+    expect(Object.keys(merged.habitChallenge.logs)).toEqual(['2026-08-01', '2026-08-02']);
+  });
+
+  it('keeps a newer daily challenge deletion instead of resurrecting it', () => {
+    const merged = DataCore.mergeStudyHistory(
+      { habitChallenge: { id: 'habit-1', title: 'Antiguo', updatedAt: '2026-08-02T10:00:00Z' } },
+      { habitChallenge: { id: 'habit-1', deleted: true, updatedAt: '2026-08-02T11:00:00Z' } }
+    );
+    expect(merged.habitChallenge.deleted).toBe(true);
+  });
+
+  it('keeps a newer cleared day from being re-marked by an older device', () => {
+    const shared = { id: 'habit-1', title: 'Escalas', mode: 'do', startDate: '2026-08-02', durationDays: 7 };
+    const merged = DataCore.mergeStudyHistory(
+      { habitChallenge: { ...shared, updatedAt: '2026-08-02T10:00:00Z', logs: { '2026-08-02': { status: 'done', at: '2026-08-02T10:00:00Z' } } } },
+      { habitChallenge: { ...shared, updatedAt: '2026-08-02T10:01:00Z', logs: { '2026-08-02': { status: 'clear', at: '2026-08-02T10:01:00Z' } } } }
+    );
+    expect(merged.habitChallenge.logs['2026-08-02'].status).toBe('clear');
+  });
 });

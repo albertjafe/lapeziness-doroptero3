@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-02-work-total-destello-pulse-v108';
+const APP_VERSION = '2026-08-02-daily-challenge-v109';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -120,6 +120,7 @@ function refreshStudyViews() {
     if (typeof renderEficienciaSection === 'function') renderEficienciaSection();
     if (typeof renderEstadoSection === 'function') renderEstadoSection();
     if (typeof renderSesionesHistorial === 'function') renderSesionesHistorial();
+    if (typeof renderHabitChallenge === 'function') renderHabitChallenge();
   };
   if (typeof requestAnimationFrame === 'function' && document.visibilityState !== 'hidden') {
     _studyViewsRefreshFrame = requestAnimationFrame(render);
@@ -231,6 +232,23 @@ function _mergeDailyJournalEntries(a, b) {
   out.sort((x, y) => (x.at || '').localeCompare(y.at || ''));
   return out.slice(-3000);
 }
+function _mergeHabitChallenge(a, b) {
+  if (!a) return b || null;
+  if (!b) return a;
+  const aUpdated = String(a.updatedAt || a.createdAt || '');
+  const bUpdated = String(b.updatedAt || b.createdAt || '');
+  if (a.id !== b.id) return aUpdated.localeCompare(bUpdated) >= 0 ? a : b;
+  const newer = aUpdated.localeCompare(bUpdated) >= 0 ? a : b;
+  const older = newer === a ? b : a;
+  const merged = Object.assign({}, older, newer);
+  const logs = Object.assign({}, older.logs || {});
+  Object.entries(newer.logs || {}).forEach(([day, log]) => {
+    const current = logs[day];
+    if (!current || String(log && log.at || '').localeCompare(String(current && current.at || '')) >= 0) logs[day] = log;
+  });
+  merged.logs = logs;
+  return merged;
+}
 function _sesionRealMin(s) {
   return (s.items || []).reduce((acc, it) =>
     acc + (typeof _itemMinReal === 'function' ? _itemMinReal(it) : (it.minutosReales || 0)), 0);
@@ -268,6 +286,7 @@ function _mergeStudyHistory(base, other) {
   merged.triggerEventos = _mergeTriggerEventos(base.triggerEventos, other.triggerEventos);
   merged.tiempoDisponibleEventos = _mergeTiempoDisponibleEventos(base.tiempoDisponibleEventos, other.tiempoDisponibleEventos);
   merged.dailyJournalEntries = _mergeDailyJournalEntries(base.dailyJournalEntries, other.dailyJournalEntries);
+  merged.habitChallenge = _mergeHabitChallenge(base.habitChallenge, other.habitChallenge);
   const scheduleMap = {};
   (base.blockedDaySchedules || []).concat(other.blockedDaySchedules || []).forEach(day => {
     if (!day || !day.date || !Array.isArray(day.blocks)) return;
@@ -462,7 +481,8 @@ function getDefaultData() {
     triggerEventos: [],
     tiempoDisponibleEventos: [],
     dailyJournalEntries: [],
-    blockedDaySchedules: []
+    blockedDaySchedules: [],
+    habitChallenge: null
   };
 }
 
@@ -18836,6 +18856,252 @@ function setObraColor(obraId, colorId) {
   closeModal('modalObraColor');
 }
 
+// Un unico reto diario. Los dias anteriores se cierran automaticamente:
+// en "hacer", no marcar equivale a no cumplir; en "evitar", no registrar
+// una recaida equivale a haber mantenido el objetivo.
+let _habitModalMode = 'do';
+let _habitEditingExisting = false;
+
+function habitDayKey(date) {
+  const d = date ? new Date(date) : new Date();
+  if (Number.isNaN(d.getTime())) return '';
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function habitDayNumber(key) {
+  const parts = String(key || '').split('-').map(Number);
+  if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return NaN;
+  return Math.floor(Date.UTC(parts[0], parts[1] - 1, parts[2]) / 86400000);
+}
+
+function habitKeyAt(startKey, offset) {
+  const parts = String(startKey || '').split('-').map(Number);
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + offset));
+  return date.getUTCFullYear() + '-' + String(date.getUTCMonth() + 1).padStart(2, '0') + '-' + String(date.getUTCDate()).padStart(2, '0');
+}
+
+function habitActiveChallenge() {
+  const habit = db.habitChallenge;
+  if (!habit || habit.deleted || !habit.id || !habit.startDate) return null;
+  if (habit.mode !== 'do' && habit.mode !== 'avoid') habit.mode = 'do';
+  habit.durationDays = Math.max(1, Math.min(365, Math.round(Number(habit.durationDays) || 21)));
+  if (!habit.logs || typeof habit.logs !== 'object') habit.logs = {};
+  return habit;
+}
+
+function habitLogStatus(log) {
+  return typeof log === 'string' ? log : (log && log.status || '');
+}
+
+function habitMetrics(habit, now) {
+  if (!habit) return null;
+  const todayKey = habitDayKey(now);
+  const index = habitDayNumber(todayKey) - habitDayNumber(habit.startDate);
+  const duration = Math.max(1, Math.min(365, Math.round(Number(habit.durationDays) || 21)));
+  const closedDays = Math.min(duration, Math.max(0, index));
+  const results = [];
+  for (let i = 0; i < closedDays; i += 1) {
+    const status = habitLogStatus(habit.logs[habitKeyAt(habit.startDate, i)]);
+    results.push(habit.mode === 'avoid' ? (status === 'failed' ? 'failure' : 'success') : (status === 'done' ? 'success' : 'failure'));
+  }
+  const todayLog = index >= 0 && index < duration ? habitLogStatus(habit.logs[todayKey]) : '';
+  if (index >= 0 && index < duration) {
+    if (habit.mode === 'do' && todayLog === 'done') results.push('success');
+    if (habit.mode === 'avoid' && todayLog === 'failed') results.push('failure');
+  }
+  let streak = 0;
+  results.forEach(result => { streak = result === 'success' ? streak + 1 : 0; });
+  const success = results.filter(result => result === 'success').length;
+  const failure = results.filter(result => result === 'failure').length;
+  const complete = index >= duration;
+  const elapsed = Math.min(duration, Math.max(0, index + 1));
+  return {
+    todayKey,
+    todayLog,
+    duration,
+    day: Math.min(duration, Math.max(1, index + 1)),
+    elapsed,
+    success,
+    failure,
+    streak,
+    complete,
+    progress: Math.round(elapsed / duration * 100),
+    compliance: Math.round(success / duration * 100),
+  };
+}
+
+function habitCardHtml(habit) {
+  if (!habit) {
+    return '<button type="button" class="crono-habit-card is-empty" onclick="openHabitChallengeModal()">' +
+      '<span class="crono-habit-empty-icon" aria-hidden="true">+</span>' +
+      '<span><strong>Reto diario</strong><small>Crear uno</small></span>' +
+    '</button>';
+  }
+  const metrics = habitMetrics(habit);
+  const title = escapeHtmlSafe(habit.title || 'Reto diario');
+  const modeLabel = habit.mode === 'avoid' ? 'Evitar' : 'Hacer';
+  if (metrics.complete) {
+    return '<div class="crono-habit-card is-complete">' +
+      '<span class="crono-habit-check is-done" aria-hidden="true">&#10003;</span>' +
+      '<button type="button" class="crono-habit-copy" onclick="openHabitChallengeModal()">' +
+        '<span class="crono-habit-kicker">Reto completado</span><strong>' + title + '</strong>' +
+        '<small>' + metrics.success + '/' + metrics.duration + ' días · ' + metrics.compliance + '%</small>' +
+      '</button>' +
+      '<button type="button" class="crono-habit-edit" onclick="openHabitChallengeModal()">Nuevo</button>' +
+    '</div>';
+  }
+  const marked = habit.mode === 'avoid' ? metrics.todayLog === 'failed' : metrics.todayLog === 'done';
+  const actionClass = habit.mode === 'avoid' ? (marked ? ' is-failed' : ' is-avoid') : (marked ? ' is-done' : '');
+  const actionLabel = habit.mode === 'avoid'
+    ? (marked ? 'Incumplido hoy. Toca para corregir' : 'Registrar que has incumplido hoy')
+    : (marked ? 'Cumplido hoy. Toca para desmarcar' : 'Marcar cumplido hoy');
+  const actionIcon = habit.mode === 'avoid' ? (marked ? '&#215;' : '!') : (marked ? '&#10003;' : '');
+  const todayState = habit.mode === 'avoid'
+    ? (marked ? 'Incumplido hoy' : 'Sin recaída hoy')
+    : (marked ? 'Cumplido hoy' : (metrics.streak ? metrics.streak + ' seguidos' : 'Pendiente hoy'));
+  return '<div class="crono-habit-card mode-' + habit.mode + '">' +
+    '<button type="button" class="crono-habit-check' + actionClass + '" onclick="toggleHabitToday(event)" aria-label="' + actionLabel + '">' + actionIcon + '</button>' +
+    '<button type="button" class="crono-habit-copy" onclick="openHabitChallengeModal()">' +
+      '<span class="crono-habit-kicker">' + modeLabel + ' · día ' + metrics.day + '/' + metrics.duration + '</span>' +
+      '<strong>' + title + '</strong><small>' + todayState + '</small>' +
+    '</button>' +
+    '<button type="button" class="crono-habit-edit" onclick="openHabitChallengeModal()" aria-label="Editar reto">&#8942;</button>' +
+    '<span class="crono-habit-progress" aria-hidden="true"><i style="width:' + metrics.progress + '%"></i></span>' +
+  '</div>';
+}
+
+function renderHabitChallenge() {
+  const habit = habitActiveChallenge();
+  const html = habitCardHtml(habit);
+  document.querySelectorAll('[data-habit-slot]').forEach(slot => {
+    if (slot.innerHTML !== html) slot.innerHTML = html;
+  });
+  renderHabitChallenge._dayKey = habitDayKey();
+}
+
+function openHabitChallengeModal() {
+  const current = habitActiveChallenge();
+  const metrics = current ? habitMetrics(current) : null;
+  const existing = !!(current && !metrics.complete);
+  _habitEditingExisting = existing;
+  _habitModalMode = existing ? current.mode : 'do';
+  const title = document.getElementById('habitModalTitle');
+  const input = document.getElementById('habitTitleInput');
+  const duration = document.getElementById('habitDurationInput');
+  const deleteBtn = document.getElementById('habitDeleteBtn');
+  if (title) title.textContent = existing ? 'Editar el reto' : 'Crear un reto';
+  if (input) input.value = existing ? (current.title || '') : '';
+  if (duration) duration.value = existing ? current.durationDays : 21;
+  if (deleteBtn) deleteBtn.hidden = !existing;
+  document.querySelectorAll('#habitModeToggle button').forEach(button => {
+    button.disabled = existing;
+  });
+  updateHabitModalPreview();
+  openModal('modalHabitChallenge');
+  setTimeout(() => input?.focus(), 140);
+}
+
+function setHabitMode(mode) {
+  if (_habitEditingExisting) return;
+  _habitModalMode = mode === 'avoid' ? 'avoid' : 'do';
+  updateHabitModalPreview();
+}
+
+function setHabitDuration(days) {
+  const input = document.getElementById('habitDurationInput');
+  if (input) input.value = Math.max(1, Math.min(365, Math.round(Number(days) || 21)));
+  updateHabitModalPreview();
+}
+
+function updateHabitModalPreview() {
+  const durationInput = document.getElementById('habitDurationInput');
+  const days = Math.max(1, Math.min(365, Math.round(Number(durationInput?.value) || 21)));
+  document.querySelectorAll('#habitModeToggle button').forEach(button => {
+    const active = button.dataset.mode === _habitModalMode;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-checked', active ? 'true' : 'false');
+  });
+  document.querySelectorAll('.habit-duration-presets button').forEach(button => {
+    button.classList.toggle('active', Number(button.textContent) === days);
+  });
+  const preview = document.getElementById('habitModalPreview');
+  if (!preview) return;
+  preview.innerHTML = _habitModalMode === 'avoid'
+    ? '<strong>Evitar durante ' + days + ' días</strong><span>La casilla solo se toca si recaes. Un fallo reinicia la racha, pero no borra los días logrados.</span>'
+    : '<strong>Hacer durante ' + days + ' días</strong><span>Marca la casilla cada día que lo cumplas. Un día fallado no borra tu progreso anterior.</span>';
+}
+
+function saveHabitChallenge() {
+  const titleInput = document.getElementById('habitTitleInput');
+  const durationInput = document.getElementById('habitDurationInput');
+  const title = String(titleInput?.value || '').trim().slice(0, 100);
+  const durationDays = Math.max(1, Math.min(365, Math.round(Number(durationInput?.value) || 21)));
+  if (!title) {
+    showToast('Escribe el objetivo del reto');
+    titleInput?.focus();
+    return;
+  }
+  const now = new Date().toISOString();
+  const current = habitActiveChallenge();
+  if (_habitEditingExisting && current) {
+    current.title = title;
+    current.durationDays = durationDays;
+    current.updatedAt = now;
+    db.habitChallenge = current;
+  } else {
+    db.habitChallenge = {
+      id: 'habit_' + Date.now(),
+      title,
+      mode: _habitModalMode === 'avoid' ? 'avoid' : 'do',
+      durationDays,
+      startDate: habitDayKey(),
+      logs: {},
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+  saveData();
+  renderHabitChallenge();
+  closeModal('modalHabitChallenge');
+  showToast(_habitEditingExisting ? 'Reto actualizado' : 'Reto iniciado');
+}
+
+function toggleHabitToday(event) {
+  event?.stopPropagation();
+  const habit = habitActiveChallenge();
+  if (!habit) return openHabitChallengeModal();
+  const metrics = habitMetrics(habit);
+  if (metrics.complete) return openHabitChallengeModal();
+  const existing = habitLogStatus(habit.logs[metrics.todayKey]);
+  if (habit.mode === 'avoid') {
+    const message = existing === 'failed'
+      ? '¿Quitar el incumplimiento de hoy?'
+      : '¿Has incumplido hoy este reto?\n\nSe guardará el día, pero no se borrará el progreso anterior.';
+    if (!confirm(message)) return;
+    if (existing === 'failed') habit.logs[metrics.todayKey] = { status: 'clear', at: new Date().toISOString() };
+    else habit.logs[metrics.todayKey] = { status: 'failed', at: new Date().toISOString() };
+  } else if (existing === 'done') {
+    habit.logs[metrics.todayKey] = { status: 'clear', at: new Date().toISOString() };
+  } else {
+    habit.logs[metrics.todayKey] = { status: 'done', at: new Date().toISOString() };
+  }
+  habit.updatedAt = new Date().toISOString();
+  db.habitChallenge = habit;
+  saveData();
+  renderHabitChallenge();
+  try { Haptics.success(); } catch(e) {}
+}
+
+function deleteHabitChallenge() {
+  const habit = habitActiveChallenge();
+  if (!habit || !confirm('¿Eliminar este reto?')) return;
+  db.habitChallenge = { id: habit.id, deleted: true, updatedAt: new Date().toISOString() };
+  saveData();
+  renderHabitChallenge();
+  closeModal('modalHabitChallenge');
+  showToast('Reto eliminado');
+}
+
 const crono = {
   state: 'idle',         // 'idle' | 'running' | 'paused'
   mode: 'stopwatch',     // 'stopwatch' | 'timer' | 'until'
@@ -22109,6 +22375,7 @@ function cronoRender() {
   // Marca de marcha: el pill de Destellos solo se muestra en reposo (idle).
   document.body.classList.toggle('crono-running', crono.state !== 'idle');
   refreshQuickDestelloButtons();
+  renderHabitChallenge();
 
   if (crono.state === 'idle') {
     idle.style.display = '';
@@ -24466,6 +24733,9 @@ function _startCronoClock() {
     if (hoyEl) {
       const min = typeof getMinutosConcentradoHoy === 'function' ? getMinutosConcentradoHoy() : 0;
       hoyEl.textContent = 'hoy · ' + min + ' min';
+    }
+    if (typeof renderHabitChallenge === 'function' && renderHabitChallenge._dayKey !== habitDayKey()) {
+      renderHabitChallenge();
     }
     if (crono.state === 'idle' && crono.mode === 'until') cronoTimerRenderSlider();
   }

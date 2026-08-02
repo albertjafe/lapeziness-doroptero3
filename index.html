@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=232">
+<link rel="stylesheet" href="styles.css?v=233">
 </head>
 <body>
 
@@ -280,6 +280,8 @@
           </div>
         </div>
 
+        <div class="crono-habit-slot" data-habit-slot="idle" aria-live="polite"></div>
+
         <div class="crono-display-wrap crono-idle-display-wrap progress-active" id="cronoIdleDisplayWrap">
           <svg class="crono-run-progress-svg crono-timer-svg" id="cronoTimerSvg" viewBox="0 0 220 220" aria-hidden="true">
             <circle class="crono-run-progress-track" cx="110" cy="110" r="94" fill="none"/>
@@ -402,6 +404,8 @@
           <strong class="crono-run-today-total" id="cronoRunTodayTotal">0 min</strong>
         </div>
       </div>
+
+      <div class="crono-habit-slot" data-habit-slot="running" aria-live="polite"></div>
 
       <!-- Tiempo gigante con outline (Forest-style) -->
       <div class="crono-display-wrap" id="cronoDisplayWrap">
@@ -1541,6 +1545,55 @@
 </div>
 
 <!-- MODAL: registro rápido de solidez desde el cronómetro -->
+<!-- MODAL: un unico reto diario, siempre visible en el cronometro -->
+<div class="modal-overlay" id="modalHabitChallenge">
+  <div class="modal habit-modal" style="max-width:440px">
+    <div class="habit-modal-kicker">Reto diario</div>
+    <div class="modal-title" id="habitModalTitle">Crear un reto</div>
+
+    <label class="habit-modal-field" for="habitTitleInput">
+      <span>Objetivo</span>
+      <input type="text" id="habitTitleInput" class="modal-input" maxlength="100"
+             placeholder="Ej. No coger el móvil en el baño">
+    </label>
+
+    <div class="habit-modal-field">
+      <span>Tipo</span>
+      <div class="habit-mode-toggle" id="habitModeToggle" role="radiogroup" aria-label="Tipo de reto">
+        <button type="button" data-mode="do" role="radio" aria-checked="true" onclick="setHabitMode('do')">
+          <strong>Hacer</strong><small>marco cuando lo cumplo</small>
+        </button>
+        <button type="button" data-mode="avoid" role="radio" aria-checked="false" onclick="setHabitMode('avoid')">
+          <strong>Evitar</strong><small>marco solo si recaigo</small>
+        </button>
+      </div>
+    </div>
+
+    <label class="habit-modal-field" for="habitDurationInput">
+      <span>Duración</span>
+      <div class="habit-duration-row">
+        <input type="number" id="habitDurationInput" class="modal-input" min="1" max="365" step="1" value="21"
+               oninput="updateHabitModalPreview()">
+        <em>días</em>
+      </div>
+    </label>
+    <div class="habit-duration-presets" aria-label="Duraciones rapidas">
+      <button type="button" onclick="setHabitDuration(7)">7</button>
+      <button type="button" onclick="setHabitDuration(14)">14</button>
+      <button type="button" onclick="setHabitDuration(21)">21</button>
+      <button type="button" onclick="setHabitDuration(30)">30</button>
+    </div>
+
+    <div class="habit-modal-preview" id="habitModalPreview"></div>
+    <button type="button" class="habit-delete-btn" id="habitDeleteBtn" onclick="deleteHabitChallenge()">Eliminar reto</button>
+
+    <div class="modal-buttons habit-modal-actions">
+      <button class="modal-btn secondary" onclick="closeModal('modalHabitChallenge')">Cancelar</button>
+      <button class="modal-btn primary" onclick="saveHabitChallenge()">Guardar reto</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalQuickSolidez">
   <div class="modal quick-sol-modal">
     <div class="quick-sol-kicker">Registro rápido</div>
@@ -1995,10 +2048,10 @@
 </div>
 
 <script src="timer-core.js?v=209"></script>
-<script src="data-core.js?v=227"></script>
+<script src="data-core.js?v=228"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=232"></script>
+<script src="app.js?v=233"></script>
 
 </body>
 <script>
@@ -2020,7 +2073,7 @@
       });
     }
     window.addEventListener('load', function() {
-    navigator.serviceWorker.register('./sw.js?v=228', { updateViaCache: 'none' }).then(function(reg) {
+    navigator.serviceWorker.register('./sw.js?v=229', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

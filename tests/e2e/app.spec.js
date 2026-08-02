@@ -221,6 +221,80 @@ test('refreshes statistics immediately after a local study save', async ({ page 
   await expect(page.locator('#statsDashboard')).toContainText('45 min');
 });
 
+test('keeps one daily challenge visible in idle and running timer layouts', async ({ browser }) => {
+  test.setTimeout(60_000);
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 844, height: 390 },
+    { width: 834, height: 1194 },
+    { width: 1024, height: 768 },
+  ]) {
+    const context = await browser.newContext({ viewport });
+    const page = await context.newPage();
+    await prepare(page);
+    await page.evaluate(() => {
+      showView('cronometro');
+      openHabitChallengeModal();
+    });
+    await page.locator('#habitTitleInput').fill('Practicar escalas');
+    await page.locator('#habitDurationInput').fill('14');
+    await page.locator('#modalHabitChallenge .modal-btn.primary').click();
+
+    const idleHabit = page.locator('[data-habit-slot="idle"] .crono-habit-card');
+    await expect(idleHabit).toBeVisible();
+    await expect(idleHabit).toContainText('Practicar escalas');
+    await expect(idleHabit).toContainText('día 1/14');
+    await idleHabit.locator('.crono-habit-check').click();
+    await expect(idleHabit).toContainText('Cumplido hoy');
+
+    await page.evaluate(() => {
+      crono.state = 'running';
+      crono.mode = 'stopwatch';
+      crono.isRest = false;
+      crono.obraId = 'obra_1';
+      crono.displayName = 'Bach · Preludio';
+      crono.startTs = Date.now() - 5 * 60000;
+      crono.pausedMs = 0;
+      crono.targetMinutes = null;
+      crono.targetDurationMs = null;
+      cronoRender();
+    });
+    const runningHabit = page.locator('[data-habit-slot="running"] .crono-habit-card');
+    await expect(runningHabit).toBeVisible();
+    await expect(runningHabit).toContainText('Practicar escalas');
+    const layout = await page.evaluate(() => {
+      const card = document.querySelector('[data-habit-slot="running"] .crono-habit-card').getBoundingClientRect();
+      const stage = document.getElementById('cronoStageRun').getBoundingClientRect();
+      return {
+        contained: card.left >= stage.left - 1 && card.right <= stage.right + 1,
+        documentFits: document.documentElement.scrollWidth <= window.innerWidth + 1,
+      };
+    });
+    expect(layout.contained).toBe(true);
+    expect(layout.documentFits).toBe(true);
+    if (viewport.width === 390) {
+      const originalId = await page.evaluate(() => db.habitChallenge.id);
+      await page.evaluate(() => openHabitChallengeModal());
+      await page.locator('#habitDurationInput').fill('30');
+      await page.locator('#modalHabitChallenge .modal-btn.primary').click();
+      expect(await page.evaluate(() => ({ id: db.habitChallenge.id, days: db.habitChallenge.durationDays }))).toEqual({ id: originalId, days: 30 });
+
+      await page.evaluate(() => {
+        db.habitChallenge = {
+          id: 'avoid-test', title: 'No coger el móvil en el baño', mode: 'avoid', durationDays: 7,
+          startDate: habitDayKey(), logs: {}, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        };
+        renderHabitChallenge();
+      });
+      page.once('dialog', dialog => dialog.accept());
+      await page.locator('[data-habit-slot="running"] .crono-habit-check').click();
+      await expect(page.locator('[data-habit-slot="running"] .crono-habit-card')).toContainText('Incumplido hoy');
+      expect(await page.evaluate(() => habitLogStatus(db.habitChallenge.logs[habitDayKey()]))).toBe('failed');
+    }
+    await context.close();
+  }
+});
+
 test('adds custom study quickly and persists both history and timed detail', async ({ page }) => {
   await prepare(page);
   await page.evaluate(() => showView('session'));
