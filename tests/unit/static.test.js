@@ -182,8 +182,10 @@ describe('quality wiring', () => {
     expect(html).toContain('id="eventoFechaFin"');
     expect(app).toContain('function renderCronoCalendar()');
     expect(app).toContain('function calendarEventRange(evento)');
-    expect(app).toContain('function cronoFluidCommit(kind, value, trigger)');
+    expect(app).toContain('function cronoFluidCommit(kind, value, trigger, options)');
     expect(app).toContain('const CRONO_FLUID_COOLDOWN_MS = 30 * 1000');
+    expect(app).toContain('const CRONO_FLUID_EDIT_WINDOW_MS = 8 * 1000');
+    expect(app).toContain('function cronoFluidUpdateEditableEntry(kind, value, label, note)');
     expect(app).toContain('function cronoFluidCooldownRemaining(kind, now)');
     expect(app).toContain('function cronoFluidCanCommit(kind, announce)');
     expect(app).toContain('function persistPulseEntryImmediately(at)');
@@ -192,7 +194,6 @@ describe('quality wiring', () => {
     expect(app).toContain('_pulseOffset = 0;');
     expect(app).toContain('function cronoUsesLargeTabletLandscape()');
     expect(app).toContain('height < 900 ? Math.min(182, height * 0.22)');
-    expect(app).toContain("const note = '';");
     expect(app).toContain('const CRONO_INTERFACE_SCALE_MIN_DESKTOP = 0.50');
     expect(app).toContain('function cronoSetIdleDestelloText(text)');
     expect(app).toContain('fechaFin: fechaFin || null');
@@ -200,6 +201,7 @@ describe('quality wiring', () => {
     expect(styles).toContain('.crono-fluid-liquid');
     expect(styles).toContain('@keyframes crono-fluid-liquid-confirm');
     expect(styles).toContain('@keyframes crono-fluid-cooldown-drain');
+    expect(styles).toContain('@keyframes crono-fluid-cooldown-rise');
     expect(html.match(/class="crono-fluid-cooldown"/g)).toHaveLength(2);
     expect(styles).toContain('0 0 76px 18px');
     expect(styles).toContain('grid-column: 5 / -1');

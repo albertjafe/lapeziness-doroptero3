@@ -16895,3 +16895,96 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
     padding-block: 8px;
   }
 }
+
+/* Acciones del reloj: permanecen al lado del anillo y no invaden los digitos. */
+#view-cronometro .crono-run-action-rail {
+  position: absolute;
+  top: 50%;
+  right: -52px;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  transform: translateY(-50%);
+}
+#view-cronometro .crono-run-action-rail .crono-quick-destello-btn {
+  position: relative;
+  top: auto;
+  right: auto;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  transform: none;
+}
+#view-cronometro .crono-run-action-rail .crono-quick-destello-btn:hover { transform: scale(1.06); }
+#view-cronometro .crono-run-action-rail .crono-quick-destello-btn:active { transform: scale(.92); }
+#view-cronometro .crono-run-action-rail #cronoControls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+#view-cronometro .crono-run-action-rail .crono-session-rail-main {
+  width: 44px;
+  height: 44px;
+  flex-basis: 44px;
+}
+#view-cronometro .crono-run-action-rail .crono-session-rail-main .crono-session-hold-ring {
+  width: 52px;
+  height: 52px;
+  inset: -4px;
+}
+#view-cronometro .crono-run-action-rail .crono-session-rail-main .crono-session-main-icon svg {
+  width: 18px;
+  height: 18px;
+}
+#view-cronometro .crono-run-action-rail .crono-session-rail-main .crono-session-stop-mark {
+  right: -1px;
+  bottom: -1px;
+  width: 13px;
+  height: 13px;
+  border-width: 1.5px;
+}
+#view-cronometro .crono-run-action-rail .crono-session-rail-main .crono-session-stop-mark i {
+  width: 5px;
+  height: 5px;
+}
+
+/* El cooldown entra desde abajo y desaparece con una bajada mas larga y suave. */
+#view-cronometro .crono-fluid-control.is-cooling .crono-fluid-cooldown {
+  animation:
+    crono-fluid-cooldown-rise var(--fluid-cooldown-rise-duration, 220ms) cubic-bezier(.2,.8,.2,1) forwards,
+    crono-fluid-cooldown-drain var(--fluid-cooldown-drain-duration, 30.7s) linear var(--fluid-cooldown-rise-duration, 220ms) forwards;
+}
+#view-cronometro .crono-fluid-control.is-edit-window {
+  cursor: ns-resize;
+}
+#view-cronometro .crono-fluid-control.is-edit-window > strong {
+  color: var(--fluid-color);
+}
+#view-cronometro .crono-fluid-control.is-edit-window .crono-fluid-vessel {
+  box-shadow: inset 0 0 0 5px color-mix(in srgb, var(--bg) 42%, transparent), inset 0 -18px 32px rgba(0,0,0,.04), 0 0 0 3px color-mix(in srgb, var(--fluid-color) 18%, transparent);
+}
+@keyframes crono-fluid-cooldown-rise {
+  from { opacity: 0; transform: scaleY(0); }
+  to { opacity: .94; transform: scaleY(var(--fluid-cooldown-start, 1)); }
+}
+
+@media (max-width: 699px) {
+  #view-cronometro .crono-run-action-rail {
+    right: -44px;
+    gap: 8px;
+  }
+  #view-cronometro .crono-run-action-rail .crono-quick-destello-btn,
+  #view-cronometro .crono-run-action-rail .crono-session-rail-main {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+  }
+  #view-cronometro .crono-run-action-rail .crono-session-rail-main .crono-session-hold-ring {
+    width: 50px;
+    height: 50px;
+  }
+}

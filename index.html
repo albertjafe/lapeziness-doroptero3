@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=228">
+<link rel="stylesheet" href="styles.css?v=229">
 </head>
 <body>
 
@@ -412,10 +412,13 @@
           <div class="crono-display" id="cronoDisplay">00:00</div>
           <div class="crono-run-target" id="cronoRunTarget" style="display:none"></div>
         </div>
-        <button type="button" class="crono-quick-destello-btn" onclick="openQuickDestello()"
-                aria-label="Añadir un destello" title="Añadir un destello">
-          <span aria-hidden="true">✦</span><small>+</small>
-        </button>
+        <div class="crono-run-action-rail" aria-label="Acciones de la sesion">
+          <button type="button" class="crono-quick-destello-btn crono-run-side-destello" onclick="openQuickDestello()"
+                  aria-label="Anadir un destello" title="Anadir un destello">
+            <span aria-hidden="true">&#10022;</span><small>+</small>
+          </button>
+          <div class="crono-controls" id="cronoControls"></div>
+        </div>
       </div>
 
       <!-- Hito "si paras ahora" como cápsula dentro de la tarjeta (Mármol) -->
@@ -477,9 +480,6 @@
         </div>
       </div>
 
-      <div class="crono-controls" id="cronoControls">
-        <!-- Se rellenan dinámicamente -->
-      </div>
     </div>
 
     <!-- Fila inferior (solo Mármol): "Esta semana" + "Destellos" en paralelo -->
@@ -1993,7 +1993,7 @@
 <script src="data-core.js?v=227"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=228"></script>
+<script src="app.js?v=229"></script>
 
 </body>
 <script>

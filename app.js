@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-02-session-edits-recording-passes-v104';
+const APP_VERSION = '2026-08-02-clock-actions-pulse-edit-v105';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -908,13 +908,9 @@ function _setEstadoAll(n) {
 function pickEstado(idx, trigger) {
   const f = ESTADO_FACES[idx];
   if (!f) return;
-  if (!cronoFluidCanCommit('concentration', true)) return;
-  _estadoUserSet = true;
-  _setEstadoAll(f.v);
-  recordEstadoEvent(f, consumeCronoMomentNote(trigger));
-  selectedEnergy = f.v >= 65 ? 'alta' : f.v >= 35 ? 'normal' : 'baja';
+  if (!cronoFluidEditActive('concentration') && !cronoFluidCanCommit('concentration', true)) return;
+  if (!cronoFluidCommit('concentration', f.v, trigger, { label: f.label, note: consumeCronoMomentNote(trigger) })) return;
   flashMomentSelection('concentration', idx);
-  try { Haptics.medium(); } catch(e) {}
   try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
   clearTimeout(pickEstado._t);
   pickEstado._t = setTimeout(() => {
@@ -1592,10 +1588,9 @@ function setSessionJournalExpanded(expanded) {
 function pickMalestar(idx, trigger) {
   const level = MALESTAR_LEVELS[idx];
   if (!level) return;
-  if (!cronoFluidCanCommit('discomfort', true)) return;
-  recordMalestarEvent(level, consumeCronoMomentNote(trigger));
+  if (!cronoFluidEditActive('discomfort') && !cronoFluidCanCommit('discomfort', true)) return;
+  if (!cronoFluidCommit('discomfort', level.v, trigger, { label: level.label, note: consumeCronoMomentNote(trigger) })) return;
   flashMomentSelection('discomfort', idx);
-  try { Haptics.medium(); } catch(e) {}
   try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
 }
 
@@ -1810,7 +1805,12 @@ function recordMalestarEvent(level, note) {
 }
 
 const CRONO_FLUID_COOLDOWN_MS = 30 * 1000;
+const CRONO_FLUID_EDIT_WINDOW_MS = 8 * 1000;
 let _cronoFluidDrag = null;
+const _cronoFluidEditWindow = {
+  concentration: { until: 0, id: null },
+  discomfort: { until: 0, id: null },
+};
 
 function cronoFluidControl(kind) {
   return document.getElementById(kind === 'discomfort' ? 'cronoFluidDiscomfort' : 'cronoFluidConcentration');
@@ -1826,29 +1826,92 @@ function cronoFluidCooldownRemaining(kind, now) {
   return Math.max(0, Math.min(CRONO_FLUID_COOLDOWN_MS, latestAt + CRONO_FLUID_COOLDOWN_MS - (now || Date.now())));
 }
 
+function cronoFluidEditRemaining(kind, now) {
+  const state = _cronoFluidEditWindow[kind];
+  if (!state) return 0;
+  return Math.max(0, state.until - (now || Date.now()));
+}
+
+function cronoFluidEditActive(kind) {
+  return cronoFluidEditRemaining(kind) > 0;
+}
+
+function cronoFluidEditableEntry(kind) {
+  const state = _cronoFluidEditWindow[kind];
+  const items = kind === 'discomfort' ? ensureMalestarEventos() : ensureEstadoEventos();
+  if (!state || !Array.isArray(items)) return null;
+  const byId = state.id && items.find(item => item && item.id === state.id);
+  if (byId) return byId;
+  return items.slice().reverse().find(item => {
+    const at = Date.parse(item?.at || '');
+    return Number.isFinite(at) && Date.now() - at <= CRONO_FLUID_EDIT_WINDOW_MS;
+  }) || null;
+}
+
+function cronoFluidEndEditWindow(kind) {
+  const state = _cronoFluidEditWindow[kind];
+  const control = cronoFluidControl(kind);
+  if (!state) return;
+  clearTimeout(control?._editWindowTimer);
+  state.until = 0;
+  state.id = null;
+  control?.classList.remove('is-edit-window');
+  if (control) control.removeAttribute('data-edit-seconds');
+  cronoFluidApplyCooldown(kind, cronoFluidCooldownRemaining(kind));
+}
+
+function cronoFluidStartEditWindow(kind, entry) {
+  const state = _cronoFluidEditWindow[kind];
+  const control = cronoFluidControl(kind);
+  if (!state || !control) return;
+  clearTimeout(control._editWindowTimer);
+  state.until = Date.now() + CRONO_FLUID_EDIT_WINDOW_MS;
+  state.id = entry?.id || null;
+  control.classList.add('is-edit-window');
+  control.dataset.editSeconds = String(Math.ceil(CRONO_FLUID_EDIT_WINDOW_MS / 1000));
+  control.removeAttribute('aria-disabled');
+  control.title = 'Puedes ajustar este registro durante 8 s';
+  control._editWindowTimer = setTimeout(() => cronoFluidEndEditWindow(kind), CRONO_FLUID_EDIT_WINDOW_MS + 40);
+}
+
 function cronoFluidApplyCooldown(kind, remaining) {
   const control = cronoFluidControl(kind);
   if (!control) return 0;
   const safe = Math.max(0, Math.min(CRONO_FLUID_COOLDOWN_MS, Math.round(Number(remaining) || 0)));
+  const editRemaining = cronoFluidEditRemaining(kind);
   clearTimeout(control._cooldownTimer);
   control.classList.remove('is-cooling');
   control.removeAttribute('aria-disabled');
   control.removeAttribute('data-cooldown-seconds');
   control.removeAttribute('title');
-  if (!safe) return 0;
+  if (!safe) {
+    if (editRemaining) {
+      control.removeAttribute('aria-disabled');
+      control.dataset.editSeconds = String(Math.max(1, Math.ceil(editRemaining / 1000)));
+      control.title = 'Puedes ajustar este registro durante ' + Math.max(1, Math.ceil(editRemaining / 1000)) + ' s';
+    }
+    return 0;
+  }
   const seconds = Math.max(1, Math.ceil(safe / 1000));
   control.style.setProperty('--fluid-cooldown-start', String(safe / CRONO_FLUID_COOLDOWN_MS));
   control.style.setProperty('--fluid-cooldown-duration', safe + 'ms');
-  control.setAttribute('aria-disabled', 'true');
-  control.dataset.cooldownSeconds = String(seconds);
-  control.title = 'Disponible de nuevo en ' + seconds + ' s';
+  control.style.setProperty('--fluid-cooldown-drain-duration', Math.max(1200, safe + 700) + 'ms');
+  if (editRemaining) {
+    control.dataset.editSeconds = String(Math.max(1, Math.ceil(editRemaining / 1000)));
+    control.title = 'Puedes ajustar este registro durante ' + Math.max(1, Math.ceil(editRemaining / 1000)) + ' s';
+  } else {
+    control.setAttribute('aria-disabled', 'true');
+    control.dataset.cooldownSeconds = String(seconds);
+    control.title = 'Disponible de nuevo en ' + seconds + ' s';
+  }
   void control.offsetWidth;
   control.classList.add('is-cooling');
-  control._cooldownTimer = setTimeout(() => cronoFluidApplyCooldown(kind, 0), safe + 40);
+  control._cooldownTimer = setTimeout(() => cronoFluidApplyCooldown(kind, 0), safe + 760);
   return safe;
 }
 
 function cronoFluidCanCommit(kind, announce) {
+  if (cronoFluidEditActive(kind)) return true;
   const remaining = cronoFluidCooldownRemaining(kind);
   if (remaining <= 0) {
     cronoFluidApplyCooldown(kind, 0);
@@ -1913,18 +1976,44 @@ function cronoFluidEnd(event) {
   cronoFluidCommit(drag.kind, Number(drag.control.dataset.value), drag.control);
 }
 
-function cronoFluidCommit(kind, value, trigger) {
-  if (!cronoFluidCanCommit(kind, true)) return false;
+function cronoFluidUpdateEditableEntry(kind, value, label, note) {
+  const entry = cronoFluidEditableEntry(kind);
+  if (!entry) return null;
   const safe = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
-  // Las barras son un registro visceral y sin fricción: no adjuntan notas.
-  const note = '';
-  if (kind === 'discomfort') {
-    recordMalestarEvent({ v: safe, level: Math.max(1, Math.ceil(safe / 20)), label: safe + '%' }, note);
+  entry.value = safe;
+  entry.label = label || safe + '%';
+  if (kind === 'discomfort') entry.level = Math.max(1, Math.ceil(safe / 20));
+  if (String(note || '').trim()) entry.note = String(note).trim().slice(0, 180);
+  if (kind === 'discomfort') _saveMalestarEventosLocal(ensureMalestarEventos());
+  else _saveEstadoEventosLocal(ensureEstadoEventos());
+  if (kind === 'concentration') {
+    refreshEstadoEventSummary();
+    _estadoUserSet = true;
+    _setEstadoAll(safe);
+    selectedEnergy = safe >= 65 ? 'alta' : safe >= 35 ? 'normal' : 'baja';
+    refreshEstadoFacesUI();
+  }
+  renderCronoMomentHistory();
+  persistPulseEntryImmediately(new Date(entry.at));
+  return entry;
+}
+
+function cronoFluidCommit(kind, value, trigger, options) {
+  const editing = cronoFluidEditActive(kind);
+  if (!editing && !cronoFluidCanCommit(kind, true)) return false;
+  const safe = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+  const note = String(options?.note || '').trim().slice(0, 180);
+  const label = String(options?.label || '').trim() || safe + '%';
+  let entry;
+  if (editing) {
+    entry = cronoFluidUpdateEditableEntry(kind, safe, label, note);
+  } else if (kind === 'discomfort') {
+    entry = recordMalestarEvent({ v: safe, level: Math.max(1, Math.ceil(safe / 20)), label }, note);
   } else {
     _estadoUserSet = true;
     _setEstadoAll(safe);
     selectedEnergy = safe >= 65 ? 'alta' : safe >= 35 ? 'normal' : 'baja';
-    recordEstadoEvent({ v: safe, label: safe + '%' }, note);
+    entry = recordEstadoEvent({ v: safe, label }, note);
     refreshEstadoFacesUI();
     clearTimeout(cronoFluidCommit._saveTimer);
     cronoFluidCommit._saveTimer = setTimeout(() => {
@@ -1933,6 +2022,8 @@ function cronoFluidCommit(kind, value, trigger) {
       if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true);
     }, 150);
   }
+  if (!entry) return false;
+  if (!editing) cronoFluidStartEditWindow(kind, entry);
   const control = cronoFluidControl(kind);
   cronoFluidSetVisual(control, safe);
   control?.classList.add('is-saved');
@@ -22084,7 +22175,7 @@ function cronoRender() {
   const ctrl = document.getElementById('cronoControls');
   if (!ctrl) return;
   if (crono.state === 'running') {
-    ctrl.innerHTML = cronoSessionButtonHtml(false, 'crono-session-drawer-main');
+    ctrl.innerHTML = cronoSessionButtonHtml(false, 'crono-session-rail-main');
   } else if (crono.state === 'paused') {
     ctrl.innerHTML = '';
   }

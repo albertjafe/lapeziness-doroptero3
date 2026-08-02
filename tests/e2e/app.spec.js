@@ -472,9 +472,11 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
       const displayRange = document.createRange();
       displayRange.selectNodeContents(display);
       const displayTextWidth = displayRange.getBoundingClientRect().width;
-      const drawerButton = document.querySelector('#cronoControls .crono-session-drawer-main');
-      const drawerPanels = document.querySelector('#cronoRunDrawer .crono-run-drawer-panels').getBoundingClientRect();
-      const drawerButtonBox = drawerButton?.getBoundingClientRect();
+      const sessionButton = document.querySelector('#cronoControls .crono-session-rail-main');
+      const actionRail = document.querySelector('.crono-run-action-rail').getBoundingClientRect();
+      const sideDestello = document.querySelector('.crono-run-side-destello').getBoundingClientRect();
+      const displayBox = document.getElementById('cronoDisplay').getBoundingClientRect();
+      const sessionButtonBox = sessionButton?.getBoundingClientRect();
       return {
         portrait: matchMedia('(orientation: portrait)').matches,
         stage: { top: stage.top, right: stage.right, bottom: stage.bottom },
@@ -487,8 +489,10 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
         passage: document.querySelector('.crono-focus-pasaje-copy strong')?.textContent,
         displayRatio: displayTextWidth / ring.width,
         circleIsButton: document.getElementById('cronoDisplayWrap').hasAttribute('role'),
-        hasSeparateControl: !!drawerButton,
-        controlBelowTools: !!drawerButtonBox && drawerButtonBox.top >= drawerPanels.bottom - 1,
+        hasSeparateControl: !!sessionButton,
+        controlBesideClock: sideDestello.left >= displayBox.right - 1,
+        pauseBelowDestello: !!sessionButtonBox && sessionButtonBox.top >= sideDestello.bottom - 1,
+        actionRailBesideClock: actionRail.left >= displayBox.right - 1,
       };
     });
 
@@ -499,7 +503,9 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
     expect(layout.displayRatio).toBeLessThanOrEqual(0.69);
     expect(layout.circleIsButton).toBe(false);
     expect(layout.hasSeparateControl).toBe(true);
-    expect(layout.controlBelowTools).toBe(true);
+    expect(layout.controlBesideClock).toBe(true);
+    expect(layout.pauseBelowDestello).toBe(true);
+    expect(layout.actionRailBesideClock).toBe(true);
     if (layout.portrait) {
       expect(layout.drawer.top).toBeGreaterThanOrEqual(layout.stage.bottom);
       expect(layout.controlsBottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
@@ -1099,6 +1105,10 @@ test('records only concentration and discomfort across timer layouts', async ({ 
     const firstSaved = cronoFluidCommit('concentration', 67, document.getElementById('cronoFluidConcentration'));
     const latest = ensureEstadoEventos().at(-1);
     const duplicateSaved = cronoFluidCommit('concentration', 72, document.getElementById('cronoFluidConcentration'));
+    const editedValue = latest?.value;
+    const editedCount = ensureEstadoEventos().length;
+    cronoFluidEndEditWindow('concentration');
+    const afterWindow = cronoFluidCommit('concentration', 31, document.getElementById('cronoFluidConcentration'));
     const discomfortSaved = cronoFluidCommit('discomfort', 43, document.getElementById('cronoFluidDiscomfort'));
     return {
       before,
@@ -1107,6 +1117,9 @@ test('records only concentration and discomfort across timer layouts', async ({ 
       discomfortAfter: ensureMalestarEventos().length,
       firstSaved,
       duplicateSaved,
+      editedValue,
+      editedCount,
+      afterWindow,
       discomfortSaved,
       latestValue: latest?.value,
       latestMinute: new Date(latest?.at).getHours() * 60 + new Date(latest?.at).getMinutes(),
@@ -1120,9 +1133,12 @@ test('records only concentration and discomfort across timer layouts', async ({ 
   expect(immediatePulse.after).toBe(immediatePulse.before + 1);
   expect(immediatePulse.discomfortAfter).toBe(immediatePulse.discomfortBefore + 1);
   expect(immediatePulse.firstSaved).toBe(true);
-  expect(immediatePulse.duplicateSaved).toBe(false);
+  expect(immediatePulse.duplicateSaved).toBe(true);
+  expect(immediatePulse.editedValue).toBe(72);
+  expect(immediatePulse.editedCount).toBe(immediatePulse.after);
+  expect(immediatePulse.afterWindow).toBe(false);
   expect(immediatePulse.discomfortSaved).toBe(true);
-  expect(immediatePulse.latestValue).toBe(67);
+  expect(immediatePulse.latestValue).toBe(72);
   expect(immediatePulse.visibleEnd).toBeGreaterThanOrEqual(immediatePulse.latestMinute);
   expect(immediatePulse.offset).toBe(0);
   expect(immediatePulse.savedClass).toBe(true);
@@ -1166,6 +1182,68 @@ test('records only concentration and discomfort across timer layouts', async ({ 
   await page.evaluate(() => showView('session'));
   await expect(page.locator('#statsDashboard .pulse-shortcut')).toBeVisible();
   await expect(page.locator('#statsDashboard .pulse-card')).toHaveCount(0);
+});
+
+test('keeps running clock actions stacked beside the display', async ({ page }) => {
+  await prepare(page);
+  for (const viewport of [{ width: 834, height: 1194 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    const layout = await page.evaluate(() => {
+    showView('cronometro');
+    const select = document.getElementById('cronoObraSelect');
+    select.value = 'obra::obra_1';
+    cronoUpdateStartBtn();
+    cronoStart();
+    cronoRender();
+    const rect = selector => {
+      const box = document.querySelector(selector)?.getBoundingClientRect();
+      return box ? { top: box.top, left: box.left, right: box.right, bottom: box.bottom, width: box.width, height: box.height } : null;
+    };
+    return {
+      rail: rect('.crono-run-action-rail'),
+      destello: rect('.crono-run-side-destello'),
+      pause: rect('#cronoControls .crono-session-rail-main'),
+      display: rect('#cronoDisplay'),
+      hasHoldRing: !!document.querySelector('#cronoControls .crono-session-hold-ring'),
+      hasHoldHandlers: document.getElementById('cronoControls')?.innerHTML.includes('cronoSessionButtonPressStart'),
+    };
+    });
+    expect(layout.rail.left).toBeGreaterThanOrEqual(layout.display.right - 1);
+    expect(layout.pause.top).toBeGreaterThanOrEqual(layout.destello.bottom - 1);
+    expect(layout.hasHoldRing).toBe(true);
+    expect(layout.hasHoldHandlers).toBe(true);
+  }
+});
+
+test('allows a short pulse correction without creating a duplicate entry', async ({ page }) => {
+  await prepare(page);
+  const result = await page.evaluate(() => {
+    showView('cronometro');
+    const control = document.getElementById('cronoFluidConcentration');
+    const first = cronoFluidCommit('concentration', 40, control);
+    const countAfterFirst = ensureEstadoEventos().length;
+    const second = cronoFluidCommit('concentration', 72, control);
+    const latest = ensureEstadoEventos().at(-1);
+    const countAfterEdit = ensureEstadoEventos().length;
+    const editVisible = control.classList.contains('is-edit-window') && !control.hasAttribute('aria-disabled');
+    cronoFluidEndEditWindow('concentration');
+    const blocked = cronoFluidCommit('concentration', 31, control);
+    return {
+      first,
+      second,
+      blocked,
+      countAfterFirst,
+      countAfterEdit,
+      latestValue: latest?.value,
+      editVisible,
+    };
+  });
+  expect(result.first).toBe(true);
+  expect(result.second).toBe(true);
+  expect(result.blocked).toBe(false);
+  expect(result.countAfterEdit).toBe(result.countAfterFirst);
+  expect(result.latestValue).toBe(72);
+  expect(result.editVisible).toBe(true);
 });
 
 test('draws one smooth curve across sessions and reserves touch drag for the time trimmer', async ({ page }) => {
@@ -1683,8 +1761,8 @@ test('uses a complete two-column timer layout on landscape phones', async ({ bro
     expect(layout.idle.drawer.left).toBeGreaterThanOrEqual(layout.idle.main.right);
     expect(layout.running.drawer.left).toBeGreaterThanOrEqual(layout.running.main.right);
     expect(layout.running.panels.top).toBeGreaterThanOrEqual(layout.running.tabs.bottom - 1);
-    expect(layout.running.controls.top).toBeGreaterThanOrEqual(layout.running.panels.top);
-    expect(layout.running.controls.bottom).toBeLessThanOrEqual(layout.running.drawer.bottom + 1);
+    expect(layout.running.controls.top).toBeGreaterThanOrEqual(layout.running.main.top - 1);
+    expect(layout.running.controls.bottom).toBeLessThanOrEqual(layout.running.main.bottom + 1);
     await context.close();
   }
 });
