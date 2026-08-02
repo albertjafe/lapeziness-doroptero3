@@ -16988,3 +16988,95 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
     height: 50px;
   }
 }
+
+/* Total diario en vivo, integrado en el estado de la sesion. */
+#view-cronometro .crono-run-status-divider {
+  color: color-mix(in srgb, var(--text3) 55%, transparent);
+}
+#view-cronometro .crono-run-today-label {
+  color: var(--text3);
+  font: 700 8px/1 var(--font-mono, 'JetBrains Mono', monospace);
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+#view-cronometro .crono-run-today-total {
+  color: var(--text);
+  font: 800 12px/1 var(--font-mono, 'JetBrains Mono', monospace);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* El stop solo aparece durante la pulsacion larga, centrado y sin insignia. */
+#view-cronometro .crono-session-rail-main::before,
+#view-cronometro .crono-pause-overlay-main::before {
+  position: absolute;
+  z-index: 2;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: currentColor;
+  content: '';
+  opacity: 0;
+  transform: scale(.45);
+  transition: opacity 180ms ease, transform 260ms cubic-bezier(.2,.9,.25,1.2);
+}
+#view-cronometro .crono-session-rail-main.is-holding::before,
+#view-cronometro .crono-pause-overlay-main.is-holding::before {
+  opacity: 1;
+  transform: scale(1.1);
+}
+#view-cronometro .crono-session-rail-main.is-holding .crono-session-main-icon,
+#view-cronometro .crono-pause-overlay-main.is-holding .crono-session-main-icon {
+  opacity: 0;
+}
+
+/* iPad horizontal: acciones grandes dentro de la tarjeta del reloj. */
+@media (min-width: 900px) and (max-width: 1399px) and (orientation: landscape) and (min-height: 620px) {
+  #view-cronometro .crono-run-action-rail {
+    right: -8px;
+    gap: 12px;
+  }
+  #view-cronometro .crono-run-action-rail .crono-quick-destello-btn,
+  #view-cronometro .crono-run-action-rail .crono-session-rail-main {
+    width: 58px;
+    height: 58px;
+    flex-basis: 58px;
+  }
+  #view-cronometro .crono-run-action-rail .crono-session-rail-main .crono-session-hold-ring {
+    width: 68px;
+    height: 68px;
+    inset: -5px;
+  }
+  #view-cronometro .crono-run-action-rail .crono-session-rail-main .crono-session-main-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+  #view-cronometro .crono-run-action-rail .crono-quick-destello-btn > span:first-child {
+    font-size: 25px;
+  }
+  #view-cronometro .crono-run-today-total { font-size: 14px; }
+}
+
+/* iPad vertical: conserva la columna dentro del reloj y lejos del texto. */
+@media (min-width: 700px) and (max-width: 1199px) and (orientation: portrait) {
+  #view-cronometro .crono-run-action-rail {
+    top: 75%;
+    right: 0;
+    gap: 10px;
+  }
+  #view-cronometro .crono-run-action-rail .crono-quick-destello-btn,
+  #view-cronometro .crono-run-action-rail .crono-session-rail-main {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
+  }
+  #view-cronometro .crono-run-action-rail .crono-session-rail-main .crono-session-hold-ring {
+    width: 58px;
+    height: 58px;
+    inset: -5px;
+  }
+  #view-cronometro .crono-run-action-rail .crono-session-rail-main .crono-session-main-icon svg {
+    width: 21px;
+    height: 21px;
+  }
+}

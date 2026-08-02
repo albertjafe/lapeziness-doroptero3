@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-02-clock-actions-pulse-edit-v105';
+const APP_VERSION = '2026-08-02-ipad-clock-actions-live-total-v106';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -20203,7 +20203,6 @@ function cronoSessionButtonHtml(paused, extraClass) {
         '<circle class="crono-session-hold-progress" cx="32" cy="32" r="27"></circle>' +
       '</svg>' +
       '<span class="crono-session-main-icon" aria-hidden="true">' + (paused ? CRONO_ICONS.play : CRONO_ICONS.pause) + '</span>' +
-      '<span class="crono-session-stop-mark" aria-hidden="true"><i></i></span>' +
     '</button>';
 }
 
@@ -22071,6 +22070,15 @@ function cronoCloseFocus() {
   showView('session');
 }
 
+function cronoUpdateRunTodayTotal() {
+  const el = document.getElementById('cronoRunTodayTotal');
+  if (!el) return;
+  const minutes = typeof _doneMinHoy === 'function'
+    ? _doneMinHoy()
+    : ((typeof getMinutosConcentradoHoy === 'function') ? getMinutosConcentradoHoy() : 0);
+  el.textContent = fmtMinutos(Math.max(0, Math.round(minutes || 0)));
+}
+
 // ── Render ──────────────────────────────────────────────────────────────────
 
 function cronoRender() {
@@ -22190,6 +22198,7 @@ function cronoRender() {
   const stEl = document.getElementById('cronoRunStatus');
   if (stTxt) stTxt.textContent = crono.state === 'paused' ? 'En pausa' : 'En marcha';
   if (stEl) stEl.classList.toggle('paused', crono.state === 'paused');
+  cronoUpdateRunTodayTotal();
   // Subtítulo de objetivo (solo en modo temporizador)
   const tgt = document.getElementById('cronoRunTarget');
   if (tgt) {
@@ -23198,6 +23207,7 @@ function cronoStartTick() {
     }
     // Probabilidad en vivo de 4h/5h (recalcula solo al cambiar de minuto).
     if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI();
+    cronoUpdateRunTodayTotal();
     if (document.getElementById('view-session')?.classList.contains('active') && typeof renderSessionResumen === 'function') {
       renderSessionResumen();
     }

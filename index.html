@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=229">
+<link rel="stylesheet" href="styles.css?v=230">
 </head>
 <body>
 
@@ -393,6 +393,9 @@
         <div class="crono-run-status" id="cronoRunStatus">
           <span class="crono-run-status-dot"></span>
           <span id="cronoRunStatusText">En marcha</span>
+          <span class="crono-run-status-divider" aria-hidden="true">·</span>
+          <span class="crono-run-today-label">Hoy</span>
+          <strong class="crono-run-today-total" id="cronoRunTodayTotal">0 min</strong>
         </div>
       </div>
 
@@ -1993,7 +1996,7 @@
 <script src="data-core.js?v=227"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=229"></script>
+<script src="app.js?v=230"></script>
 
 </body>
 <script>
