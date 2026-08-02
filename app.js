@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-02-daily-challenge-v109';
+const APP_VERSION = '2026-08-02-mobile-daily-challenge-v110';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -18998,7 +18998,9 @@ function openHabitChallengeModal() {
   });
   updateHabitModalPreview();
   openModal('modalHabitChallenge');
-  setTimeout(() => input?.focus(), 140);
+  if (window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) {
+    setTimeout(() => input?.focus(), 140);
+  }
 }
 
 function setHabitMode(mode) {

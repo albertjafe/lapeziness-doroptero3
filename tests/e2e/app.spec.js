@@ -295,6 +295,65 @@ test('keeps one daily challenge visible in idle and running timer layouts', asyn
   }
 });
 
+test('uses a dedicated daily challenge composition on mobile', async ({ browser }) => {
+  test.setTimeout(45_000);
+  for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
+    const context = await browser.newContext({ viewport, hasTouch: true, isMobile: true });
+    const page = await context.newPage();
+    await prepare(page);
+    const layout = await page.evaluate(async () => {
+      showView('cronometro');
+      db.habitChallenge = {
+        id: 'mobile-habit', title: 'No coger el móvil en el baño', mode: 'avoid', durationDays: 21,
+        startDate: habitDayKey(), logs: {}, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      };
+      renderHabitChallenge();
+      await new Promise(resolve => setTimeout(resolve, 320));
+      const rect = selector => {
+        const box = document.querySelector(selector).getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom, left: box.left, right: box.right, width: box.width, height: box.height };
+      };
+      const card = rect('[data-habit-slot="idle"] .crono-habit-card');
+      const title = rect('[data-habit-slot="idle"] .crono-habit-copy strong');
+      const check = rect('[data-habit-slot="idle"] .crono-habit-check');
+      const main = rect('.crono-idle-main');
+      const start = rect('#cronoStartBtn');
+      return { card, title, check, main, start };
+    });
+
+    expect(layout.card.left).toBeGreaterThanOrEqual(layout.main.left);
+    expect(layout.card.right).toBeLessThanOrEqual(layout.main.right);
+    expect(layout.title.top).toBeGreaterThanOrEqual(layout.card.top);
+    expect(layout.title.bottom).toBeLessThanOrEqual(layout.card.bottom);
+    expect(layout.title.width).toBeGreaterThan(80);
+    if (viewport.width < viewport.height) {
+      expect(layout.check.width).toBeGreaterThanOrEqual(32);
+      expect(layout.card.height).toBeGreaterThanOrEqual(50);
+    } else {
+      expect(layout.card.height).toBeLessThanOrEqual(31);
+      expect(layout.check.height).toBeLessThanOrEqual(22);
+      expect(layout.start.bottom).toBeLessThanOrEqual(layout.main.bottom + 1);
+
+      await page.evaluate(() => openHabitChallengeModal());
+      const modal = await page.evaluate(() => {
+        const box = document.querySelector('#modalHabitChallenge .habit-modal');
+        const actions = box.querySelector('.habit-modal-actions').getBoundingClientRect();
+        return {
+          columns: getComputedStyle(box).gridTemplateColumns.split(' ').length,
+          fitsWithoutScroll: box.scrollHeight <= box.clientHeight + 1,
+          actionsVisible: actions.top >= 0 && actions.bottom <= innerHeight,
+          focusedId: document.activeElement?.id || '',
+        };
+      });
+      expect(modal.columns).toBe(2);
+      expect(modal.fitsWithoutScroll).toBe(true);
+      expect(modal.actionsVisible).toBe(true);
+      expect(modal.focusedId).not.toBe('habitTitleInput');
+    }
+    await context.close();
+  }
+});
+
 test('adds custom study quickly and persists both history and timed detail', async ({ page }) => {
   await prepare(page);
   await page.evaluate(() => showView('session'));
