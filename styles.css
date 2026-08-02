@@ -17080,3 +17080,76 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
     height: 21px;
   }
 }
+
+/* Acciones ligadas al diametro real del reloj: el pellizco las acerca al aro
+   sin permitir que salgan de la tarjeta. */
+#view-cronometro .crono-run-action-rail {
+  --crono-action-size: 52px;
+  --crono-action-gap: 12px;
+  right: max(10px, calc((100% - var(--crono-interface-ring-size)) / 2 - var(--crono-action-size) - 8px));
+  gap: var(--crono-action-gap);
+  transition: right 300ms cubic-bezier(.16, 1, .3, 1);
+}
+#view-cronometro .crono-run-action-rail .crono-quick-destello-btn,
+#view-cronometro .crono-run-action-rail .crono-session-rail-main {
+  width: var(--crono-action-size);
+  height: var(--crono-action-size);
+  flex-basis: var(--crono-action-size);
+}
+#view-cronometro .crono-run-action-rail .crono-session-rail-main .crono-session-hold-ring {
+  width: calc(var(--crono-action-size) + 10px);
+  height: calc(var(--crono-action-size) + 10px);
+  inset: -5px;
+}
+#view-cronometro .crono-run-action-rail .crono-session-rail-main .crono-session-main-icon svg {
+  width: 24px;
+  height: 24px;
+}
+#view-cronometro .crono-run-action-rail .crono-run-side-destello {
+  border-color: color-mix(in srgb, #d9a512 58%, var(--border2));
+  background: color-mix(in srgb, #ffd95a 18%, var(--bg2));
+  box-shadow:
+    0 0 0 5px color-mix(in srgb, #ffd84d 13%, transparent),
+    0 0 24px color-mix(in srgb, #f6c52f 34%, transparent),
+    0 8px 22px rgba(0,0,0,.11),
+    inset 0 1px 0 rgba(255,255,255,.42);
+  color: #b27600;
+}
+#view-cronometro .crono-run-action-rail .crono-run-side-destello > span:first-child {
+  font-size: 25px;
+  filter: drop-shadow(0 0 5px rgba(245,190,24,.5));
+}
+#view-cronometro .crono-run-action-rail .crono-run-side-destello:hover {
+  box-shadow:
+    0 0 0 7px color-mix(in srgb, #ffd84d 17%, transparent),
+    0 0 30px color-mix(in srgb, #f6c52f 46%, transparent),
+    0 9px 24px rgba(0,0,0,.12);
+}
+body.crono-interface-pinching #view-cronometro .crono-run-action-rail {
+  transition: none !important;
+}
+
+@media (min-width: 900px) and (max-width: 1399px) and (orientation: landscape) and (min-height: 620px) {
+  #view-cronometro .crono-run-action-rail {
+    --crono-action-size: 64px;
+    --crono-action-gap: 14px;
+  }
+  #view-cronometro .crono-run-action-rail .crono-session-rail-main .crono-session-main-icon svg {
+    width: 27px;
+    height: 27px;
+  }
+  #view-cronometro .crono-run-action-rail .crono-run-side-destello > span:first-child {
+    font-size: 29px;
+  }
+}
+
+@media (min-width: 700px) and (max-width: 1199px) and (orientation: portrait) {
+  #view-cronometro .crono-run-action-rail {
+    --crono-action-size: 54px;
+    --crono-action-gap: 12px;
+    top: 75%;
+  }
+  #view-cronometro .crono-run-action-rail .crono-run-side-destello > span:first-child {
+    font-size: 27px;
+  }
+}

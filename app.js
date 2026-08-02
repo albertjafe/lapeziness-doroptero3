@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-02-ipad-clock-actions-live-total-v106';
+const APP_VERSION = '2026-08-02-clock-controls-pulse-window-v107';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1805,7 +1805,7 @@ function recordMalestarEvent(level, note) {
 }
 
 const CRONO_FLUID_COOLDOWN_MS = 30 * 1000;
-const CRONO_FLUID_EDIT_WINDOW_MS = 8 * 1000;
+const CRONO_FLUID_EDIT_WINDOW_MS = 15 * 1000;
 let _cronoFluidDrag = null;
 const _cronoFluidEditWindow = {
   concentration: { until: 0, id: null },
@@ -1870,7 +1870,7 @@ function cronoFluidStartEditWindow(kind, entry) {
   control.classList.add('is-edit-window');
   control.dataset.editSeconds = String(Math.ceil(CRONO_FLUID_EDIT_WINDOW_MS / 1000));
   control.removeAttribute('aria-disabled');
-  control.title = 'Puedes ajustar este registro durante 8 s';
+  control.title = 'Puedes ajustar este registro durante ' + Math.ceil(CRONO_FLUID_EDIT_WINDOW_MS / 1000) + ' s';
   control._editWindowTimer = setTimeout(() => cronoFluidEndEditWindow(kind), CRONO_FLUID_EDIT_WINDOW_MS + 40);
 }
 
@@ -19197,7 +19197,7 @@ function cronoInitInterfaceZoom() {
 const CRONO_ICONS = {
   pause: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
   play:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
-  stop:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg>',
+  stop:  '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6.5" y="6.5" width="11" height="11" rx="1.8"/></svg>',
 };
 
 function cronoSaveState() {
@@ -20202,7 +20202,7 @@ function cronoSessionButtonHtml(paused, extraClass) {
         '<circle class="crono-session-hold-track" cx="32" cy="32" r="27"></circle>' +
         '<circle class="crono-session-hold-progress" cx="32" cy="32" r="27"></circle>' +
       '</svg>' +
-      '<span class="crono-session-main-icon" aria-hidden="true">' + (paused ? CRONO_ICONS.play : CRONO_ICONS.pause) + '</span>' +
+      '<span class="crono-session-main-icon" aria-hidden="true">' + (paused ? CRONO_ICONS.play : CRONO_ICONS.stop) + '</span>' +
     '</button>';
 }
 
@@ -23180,30 +23180,6 @@ function cronoStartTick() {
       // El cronómetro libre no tiene objetivo ni límite artificial.
       if (disp) cronoSetMainDisplay(elapsedMs);
       cronoUpdateTimerProgress(elapsedMs);
-    }
-    // Motivador de hito: muestra el tiempo total redondeado al múltiplo de 15min inferior
-    const milestoneEl = document.getElementById('cronoMilestone');
-    if (milestoneEl) {
-      const minHoy = typeof getMinutosConcentradoHoy === 'function' ? getMinutosConcentradoHoy() : 0;
-      const sessionMin = Math.floor(elapsedMs / 60000);
-      const totalMin = minHoy + sessionMin;
-      const milestone = Math.floor(totalMin / 15) * 15;
-      if (milestone >= 15) {
-        const h = Math.floor(milestone / 60);
-        const m = milestone % 60;
-        const t = h > 0 ? (h + 'h' + (m > 0 ? ' ' + m + 'min' : '')) : (m + 'min');
-        milestoneEl.textContent = 'si paras ahora · ' + t;
-        milestoneEl.style.display = '';
-        const rm = document.getElementById('cronoRunMilestone');
-        if (rm) {
-          rm.innerHTML = '<span class="crono-run-ms-star">★</span> si paras ahora · ' + t;
-          rm.style.display = '';
-        }
-      } else {
-        milestoneEl.style.display = 'none';
-        const rm = document.getElementById('cronoRunMilestone');
-        if (rm) rm.style.display = 'none';
-      }
     }
     // Probabilidad en vivo de 4h/5h (recalcula solo al cambiar de minuto).
     if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI();

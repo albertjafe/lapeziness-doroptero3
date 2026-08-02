@@ -184,7 +184,7 @@ describe('quality wiring', () => {
     expect(app).toContain('function calendarEventRange(evento)');
     expect(app).toContain('function cronoFluidCommit(kind, value, trigger, options)');
     expect(app).toContain('const CRONO_FLUID_COOLDOWN_MS = 30 * 1000');
-    expect(app).toContain('const CRONO_FLUID_EDIT_WINDOW_MS = 8 * 1000');
+    expect(app).toContain('const CRONO_FLUID_EDIT_WINDOW_MS = 15 * 1000');
     expect(app).toContain('function cronoFluidUpdateEditableEntry(kind, value, label, note)');
     expect(app).toContain('function cronoFluidCooldownRemaining(kind, now)');
     expect(app).toContain('function cronoFluidCanCommit(kind, announce)');

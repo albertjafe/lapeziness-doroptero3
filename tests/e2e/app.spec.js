@@ -490,9 +490,9 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
         displayRatio: displayTextWidth / ring.width,
         circleIsButton: document.getElementById('cronoDisplayWrap').hasAttribute('role'),
         hasSeparateControl: !!sessionButton,
-        controlBesideClock: sideDestello.left >= displayBox.right - 1,
+        controlPastClockCenter: sideDestello.left > (displayBox.left + displayBox.right) / 2,
         pauseBelowDestello: !!sessionButtonBox && sessionButtonBox.top >= sideDestello.bottom - 1,
-        actionRailBesideClock: actionRail.left >= displayBox.right - 1,
+        actionRailPastClockCenter: actionRail.left > (displayBox.left + displayBox.right) / 2,
       };
     });
 
@@ -500,12 +500,12 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
     expect(layout.objectiveRemoved).toBe(true);
     expect(layout.observation).toBe('Coda limpia, pulso estable');
     expect(layout.passage).toBe('Coda · cc. 200–208');
-    expect(layout.displayRatio).toBeLessThanOrEqual(0.69);
+    expect(layout.displayRatio).toBeLessThanOrEqual(0.78);
     expect(layout.circleIsButton).toBe(false);
     expect(layout.hasSeparateControl).toBe(true);
-    expect(layout.controlBesideClock).toBe(true);
+    expect(layout.controlPastClockCenter).toBe(true);
     expect(layout.pauseBelowDestello).toBe(true);
-    expect(layout.actionRailBesideClock).toBe(true);
+    expect(layout.actionRailPastClockCenter).toBe(true);
     if (layout.portrait) {
       expect(layout.drawer.top).toBeGreaterThanOrEqual(layout.stage.bottom);
       expect(layout.controlsBottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
@@ -1184,9 +1184,9 @@ test('records only concentration and discomfort across timer layouts', async ({ 
   await expect(page.locator('#statsDashboard .pulse-card')).toHaveCount(0);
 });
 
-test('keeps running clock actions stacked beside the display', async ({ page }) => {
+test('keeps running clock actions inside the timer card across pinch zoom levels', async ({ page }) => {
   await prepare(page);
-  for (const viewport of [{ width: 1024, height: 768, actionSize: 58 }, { width: 834, height: 1194, actionSize: 48 }]) {
+  for (const viewport of [{ width: 1024, height: 768, actionSize: 64 }, { width: 834, height: 1194, actionSize: 54 }]) {
     await page.setViewportSize(viewport);
     const layout = await page.evaluate(() => {
       showView('cronometro');
@@ -1200,33 +1200,47 @@ test('keeps running clock actions stacked beside the display', async ({ page }) 
         const box = document.querySelector(selector)?.getBoundingClientRect();
         return box ? { top: box.top, left: box.left, right: box.right, bottom: box.bottom, width: box.width, height: box.height } : null;
       };
-      const rail = rect('.crono-run-action-rail');
-      const display = rect('#cronoDisplay');
-      const displayCenter = { x: (display.left + display.right) / 2, y: (display.top + display.bottom) / 2 };
-      const coversDisplayCenter = rail.left <= displayCenter.x && rail.right >= displayCenter.x
-        && rail.top <= displayCenter.y && rail.bottom >= displayCenter.y;
+      const layouts = [0.5, 1, 1.22].map(scale => {
+        cronoSetInterfaceScale(scale, { announce: false });
+        const rail = rect('.crono-run-action-rail');
+        const display = rect('#cronoDisplay');
+        const stage = rect('#cronoStageRun');
+        const displayCenter = { x: (display.left + display.right) / 2, y: (display.top + display.bottom) / 2 };
+        return {
+          scale,
+          rail,
+          display,
+          stage,
+          calendar: rect('.crono-calendar-panel'),
+          destello: rect('.crono-run-side-destello'),
+          stop: rect('#cronoControls .crono-session-rail-main'),
+          coversDisplayCenter: rail.left <= displayCenter.x && rail.right >= displayCenter.x
+            && rail.top <= displayCenter.y && rail.bottom >= displayCenter.y,
+        };
+      });
       return {
-        rail,
-        display,
-        stage: rect('#cronoStageRun'),
-        calendar: rect('.crono-calendar-panel'),
-        destello: rect('.crono-run-side-destello'),
-        pause: rect('#cronoControls .crono-session-rail-main'),
-        coversDisplayCenter,
+        layouts,
         today: document.getElementById('cronoRunTodayTotal')?.textContent,
+        milestoneCount: document.querySelectorAll('#cronoMilestone, #cronoRunMilestone').length,
         stopBadgeCount: document.querySelectorAll('.crono-session-stop-mark').length,
+        hasVisibleStopIcon: !!document.querySelector('#cronoControls .crono-session-main-icon rect'),
         hasHoldRing: !!document.querySelector('#cronoControls .crono-session-hold-ring'),
         hasHoldHandlers: document.getElementById('cronoControls')?.innerHTML.includes('cronoSessionButtonPressStart'),
       };
     });
-    expect(layout.coversDisplayCenter).toBe(false);
-    expect(layout.pause.top).toBeGreaterThanOrEqual(layout.destello.bottom - 1);
-    expect(layout.rail.right).toBeLessThanOrEqual(layout.stage.right + 1);
-    if (layout.calendar.width > 0) expect(layout.rail.right).toBeLessThanOrEqual(layout.calendar.left + 1);
-    expect(layout.destello.width).toBeGreaterThanOrEqual(viewport.actionSize);
-    expect(layout.pause.width).toBeGreaterThanOrEqual(viewport.actionSize);
+    for (const zoomLayout of layout.layouts) {
+      expect(zoomLayout.coversDisplayCenter).toBe(false);
+      expect(zoomLayout.stop.top).toBeGreaterThanOrEqual(zoomLayout.destello.bottom - 1);
+      expect(zoomLayout.rail.left).toBeGreaterThanOrEqual(zoomLayout.stage.left - 1);
+      expect(zoomLayout.rail.right).toBeLessThanOrEqual(zoomLayout.stage.right + 1);
+      if (zoomLayout.calendar.width > 0) expect(zoomLayout.rail.right).toBeLessThanOrEqual(zoomLayout.calendar.left + 1);
+      expect(zoomLayout.destello.width).toBeGreaterThanOrEqual(viewport.actionSize);
+      expect(zoomLayout.stop.width).toBeGreaterThanOrEqual(viewport.actionSize);
+    }
     expect(layout.today).toBe('6 min');
+    expect(layout.milestoneCount).toBe(0);
     expect(layout.stopBadgeCount).toBe(0);
+    expect(layout.hasVisibleStopIcon).toBe(true);
     expect(layout.hasHoldRing).toBe(true);
     expect(layout.hasHoldHandlers).toBe(true);
   }
@@ -1243,6 +1257,7 @@ test('allows a short pulse correction without creating a duplicate entry', async
     const latest = ensureEstadoEventos().at(-1);
     const countAfterEdit = ensureEstadoEventos().length;
     const editVisible = control.classList.contains('is-edit-window') && !control.hasAttribute('aria-disabled');
+    const editSeconds = Number(control.dataset.editSeconds);
     cronoFluidEndEditWindow('concentration');
     const blocked = cronoFluidCommit('concentration', 31, control);
     return {
@@ -1253,6 +1268,7 @@ test('allows a short pulse correction without creating a duplicate entry', async
       countAfterEdit,
       latestValue: latest?.value,
       editVisible,
+      editSeconds,
     };
   });
   expect(result.first).toBe(true);
@@ -1261,6 +1277,7 @@ test('allows a short pulse correction without creating a duplicate entry', async
   expect(result.countAfterEdit).toBe(result.countAfterFirst);
   expect(result.latestValue).toBe(72);
   expect(result.editVisible).toBe(true);
+  expect(result.editSeconds).toBe(15);
 });
 
 test('draws one smooth curve across sessions and reserves touch drag for the time trimmer', async ({ page }) => {
