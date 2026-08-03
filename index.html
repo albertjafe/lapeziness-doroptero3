@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=237">
+<link rel="stylesheet" href="styles.css?v=238">
 </head>
 <body>
 
@@ -644,11 +644,12 @@
 
 <!-- CALENDARIO VIEW -->
 <div class="view" id="view-calendario">
-  <div class="cal-tabs">
-    <button class="cal-tab active" id="calTabEventos" onclick="switchCalTab('eventos',this)">Eventos</button>
-    <button class="cal-tab" id="calTabMes" onclick="switchCalTab('mes',this)">Mes</button>
+  <div class="cal-tabs calendar-view-tabs" role="tablist" aria-label="Vista de calendario">
+    <button type="button" class="cal-tab active" id="calTabEventos" role="tab" aria-selected="true" aria-controls="calPanelEventos" onclick="switchCalTab('eventos',this)">Eventos</button>
+    <button type="button" class="cal-tab" id="calTabMes" role="tab" aria-selected="false" aria-controls="calPanelMes" onclick="switchCalTab('mes',this)">Calendario</button>
+    <button type="button" class="cal-tab" id="calTabObjetivos" role="tab" aria-selected="false" aria-controls="calPanelObjetivos" onclick="switchCalTab('objetivos',this)">Objetivos</button>
   </div>
-  <div class="view-action-row calendar-action-row">
+  <div class="view-action-row calendar-action-row" id="calendarActionRow">
     <div class="view-local-label">Próximos eventos</div>
     <button class="add-evento-btn" onclick="openAddEvento()">+ añadir evento</button>
   </div>
@@ -672,6 +673,11 @@
     </div>
     <div class="mes-grid" id="mesGrid"></div>
     <div class="mes-leyenda" id="mesLeyenda"></div>
+  </div>
+
+  <!-- Pestaña Objetivos -->
+  <div id="calPanelObjetivos" role="tabpanel" aria-labelledby="calTabObjetivos" style="display:none">
+    <div id="habitCalendarDashboard"></div>
   </div>
 </div>
 
@@ -2044,7 +2050,7 @@
 <script src="data-core.js?v=228"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=237"></script>
+<script src="app.js?v=238"></script>
 
 </body>
 <script>
@@ -2066,7 +2072,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=237', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=238', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

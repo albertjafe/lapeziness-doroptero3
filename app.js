@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-03-crono-continuo-v113';
+const APP_VERSION = '2026-08-03-crono-habit-calendar-v114';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -121,6 +121,7 @@ function refreshStudyViews() {
     if (typeof renderEstadoSection === 'function') renderEstadoSection();
     if (typeof renderSesionesHistorial === 'function') renderSesionesHistorial();
     if (typeof renderHabitChallenge === 'function') renderHabitChallenge();
+    if (typeof renderHabitCalendar === 'function') renderHabitCalendar();
   };
   if (typeof requestAnimationFrame === 'function' && document.visibilityState !== 'hidden') {
     _studyViewsRefreshFrame = requestAnimationFrame(render);
@@ -10924,13 +10925,135 @@ function renderCronoCalendar() {
 }
 
 let mesOffset = 0; // 0 = mes actual, +1 = siguiente, etc.
+let _calendarMainTab = 'eventos';
+let _habitCalendarOffset = 0;
 
 function switchCalTab(tab, btn) {
-  document.querySelectorAll('.cal-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  if (tab !== 'eventos' && tab !== 'mes' && tab !== 'objetivos') tab = 'eventos';
+  _calendarMainTab = tab;
+  document.querySelectorAll('#view-calendario > .calendar-view-tabs .cal-tab').forEach(button => {
+    const active = button === btn || button.id === ({ eventos: 'calTabEventos', mes: 'calTabMes', objetivos: 'calTabObjetivos' })[tab];
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
   document.getElementById('calPanelEventos').style.display = tab === 'eventos' ? '' : 'none';
-  document.getElementById('calPanelMes').style.display     = tab === 'mes'     ? '' : 'none';
+  document.getElementById('calPanelMes').style.display = tab === 'mes' ? '' : 'none';
+  document.getElementById('calPanelObjetivos').style.display = tab === 'objetivos' ? '' : 'none';
+  const actionRow = document.getElementById('calendarActionRow');
+  if (actionRow) actionRow.hidden = tab === 'objetivos';
   if (tab === 'mes') renderMesCalendario();
+  if (tab === 'objetivos') renderHabitCalendar();
+}
+
+function changeHabitCalendarMonth(delta) {
+  _habitCalendarOffset += Number(delta) || 0;
+  renderHabitCalendar();
+}
+
+function habitCalendarDayState(habit, dateKey, todayKey) {
+  const startNumber = habitDayNumber(habit.startDate);
+  const dayNumber = habitDayNumber(dateKey);
+  const todayNumber = habitDayNumber(todayKey);
+  const index = dayNumber - startNumber;
+  if (!Number.isFinite(index) || index < 0 || index >= habit.durationDays) return 'outside';
+  if (dayNumber > todayNumber) return 'future';
+  const status = habitLogStatus(habit.logs?.[dateKey]);
+  if (dayNumber === todayNumber) {
+    if (habit.mode === 'avoid') return status === 'failed' ? 'failure' : 'current';
+    return status === 'done' ? 'success' : 'current';
+  }
+  if (habit.mode === 'avoid') return status === 'failed' ? 'failure' : 'success';
+  return status === 'done' ? 'success' : 'failure';
+}
+
+function habitCalendarStateLabel(state) {
+  return ({
+    success: 'cumplido', failure: 'fallado', current: 'pendiente hoy',
+    future: 'futuro', outside: 'fuera del reto'
+  })[state] || '';
+}
+
+function renderHabitCalendar() {
+  const root = document.getElementById('habitCalendarDashboard');
+  if (!root) return;
+  const habit = habitActiveChallenge();
+  const trophy = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 12v5M8.5 20h7M10 17h4"/></svg>';
+  if (!habit) {
+    root.innerHTML = '<section class="habit-calendar-empty">' +
+      '<span class="habit-calendar-empty-icon">' + trophy + '</span>' +
+      '<div><h2>Sin objetivo activo</h2><p>Crea un reto para ver aquí los días cumplidos y fallados.</p></div>' +
+      '<button type="button" onclick="openHabitChallengeModal()">Crear objetivo</button>' +
+    '</section>';
+    return;
+  }
+
+  const metrics = habitMetrics(habit);
+  const todayKey = habitDayKey();
+  const todayState = habitCalendarDayState(habit, todayKey, todayKey);
+  const refToday = new Date();
+  const ref = new Date(refToday.getFullYear(), refToday.getMonth() + _habitCalendarOffset, 1, 12);
+  const year = ref.getFullYear();
+  const month = ref.getMonth();
+  const first = new Date(year, month, 1, 12);
+  const monthStartOffset = (first.getDay() + 6) % 7;
+  const cursor = new Date(year, month, 1 - monthStartOffset, 12);
+  let cells = '';
+  for (let index = 0; index < 42; index += 1) {
+    const date = new Date(cursor);
+    date.setDate(cursor.getDate() + index);
+    const key = habitDayKey(date);
+    const state = habitCalendarDayState(habit, key, todayKey);
+    const otherMonth = date.getMonth() !== month;
+    const isToday = key === todayKey;
+    const mark = state === 'success' ? '&#10003;' : (state === 'failure' ? '&#215;' : (state === 'current' ? '&#8226;' : ''));
+    const label = date.getDate() + ' de ' + CALENDAR_MONTHS[date.getMonth()] + ': ' + habitCalendarStateLabel(state);
+    cells += '<div class="habit-calendar-day is-' + state + (otherMonth ? ' is-other-month' : '') + (isToday ? ' is-today' : '') + '" role="listitem" data-date="' + key + '" aria-label="' + label + '">' +
+      '<span>' + date.getDate() + '</span><i aria-hidden="true">' + mark + '</i>' +
+    '</div>';
+  }
+
+  const modeLabel = habit.mode === 'avoid' ? 'Evitar' : 'Hacer';
+  const actionLabel = metrics.complete
+    ? 'Reto finalizado'
+    : habit.mode === 'avoid'
+      ? (todayState === 'failure' ? 'Incumplido hoy' : 'Registrar incumplimiento hoy')
+      : (todayState === 'success' ? 'Cumplido hoy' : 'Marcar hoy como cumplido');
+  const actionClass = todayState === 'success' ? ' is-success' : (todayState === 'failure' ? ' is-failure' : '');
+  const actionDisabled = metrics.complete ? ' disabled' : '';
+  const editLabel = metrics.complete ? 'Nuevo objetivo' : 'Editar';
+
+  root.innerHTML = '<section class="habit-calendar-dashboard">' +
+    '<header class="habit-calendar-hero">' +
+      '<span class="habit-calendar-trophy">' + trophy + '</span>' +
+      '<div class="habit-calendar-title"><span>' + modeLabel + ' · día ' + metrics.day + '/' + metrics.duration + '</span><h2>' + escapeHtmlSafe(habit.title) + '</h2></div>' +
+      '<button type="button" class="habit-calendar-edit" onclick="openHabitChallengeModal()">' + editLabel + '</button>' +
+      '<span class="habit-calendar-progress" aria-label="' + metrics.progress + '% del reto transcurrido"><i style="width:' + metrics.progress + '%"></i></span>' +
+    '</header>' +
+    '<div class="habit-calendar-layout">' +
+      '<div class="habit-calendar-summary">' +
+        '<button type="button" class="habit-calendar-today' + actionClass + '" onclick="toggleHabitToday(event)"' + actionDisabled + '>' + actionLabel + '</button>' +
+        '<div class="habit-calendar-stats">' +
+          '<div><span>Racha</span><strong>' + metrics.streak + '</strong><small>días</small></div>' +
+          '<div><span>Cumplidos</span><strong>' + metrics.success + '</strong><small>de ' + metrics.duration + '</small></div>' +
+          '<div><span>Fallados</span><strong>' + metrics.failure + '</strong><small>días</small></div>' +
+          '<div><span>Progreso</span><strong>' + metrics.progress + '%</strong><small>' + metrics.elapsed + ' días</small></div>' +
+        '</div>' +
+        '<div class="habit-calendar-guidance">' + (habit.mode === 'avoid'
+          ? 'Un día cuenta como cumplido al terminar sin registrar incumplimiento.'
+          : 'Los días anteriores sin marcar aparecen como fallados.') + '</div>' +
+      '</div>' +
+      '<div class="habit-calendar-history">' +
+        '<div class="habit-calendar-month-nav">' +
+          '<button type="button" onclick="changeHabitCalendarMonth(-1)" aria-label="Mes anterior">&#8249;</button>' +
+          '<strong>' + CALENDAR_MONTHS[month] + ' ' + year + '</strong>' +
+          '<button type="button" onclick="changeHabitCalendarMonth(1)" aria-label="Mes siguiente">&#8250;</button>' +
+        '</div>' +
+        '<div class="habit-calendar-weekdays" aria-hidden="true"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div>' +
+        '<div class="habit-calendar-grid" role="list" aria-label="Historial diario del objetivo">' + cells + '</div>' +
+        '<div class="habit-calendar-legend"><span class="success">Cumplido</span><span class="failure">Fallado</span><span class="current">Hoy</span><span class="future">Futuro</span></div>' +
+      '</div>' +
+    '</div>' +
+  '</section>';
 }
 
 function cambiarMes(delta) {
@@ -11236,6 +11359,7 @@ function renderCalendario() {
       pasados.slice(0, 5).map(ev => renderEventoCard(ev, true)).join('');
   }
   pastList.innerHTML = pastHtml;
+  renderHabitCalendar();
   updateHeader();
 }
 
@@ -19097,6 +19221,7 @@ function saveHabitChallenge() {
     current.updatedAt = now;
     db.habitChallenge = current;
   } else {
+    _habitCalendarOffset = 0;
     db.habitChallenge = {
       id: 'habit_' + Date.now(),
       title,
@@ -19110,6 +19235,7 @@ function saveHabitChallenge() {
   }
   saveData();
   renderHabitChallenge();
+  renderHabitCalendar();
   closeModal('modalHabitChallenge');
   showToast(_habitEditingExisting ? 'Reto actualizado' : 'Reto iniciado');
 }
@@ -19137,6 +19263,7 @@ function toggleHabitToday(event) {
   db.habitChallenge = habit;
   saveData();
   renderHabitChallenge();
+  renderHabitCalendar();
   try { Haptics.success(); } catch(e) {}
 }
 
@@ -19149,8 +19276,10 @@ function deleteHabitChallenge() {
   const habit = habitActiveChallenge();
   if (!habit || !confirm('¿Eliminar este reto?')) return;
   db.habitChallenge = { id: habit.id, deleted: true, updatedAt: new Date().toISOString() };
+  _habitCalendarOffset = 0;
   saveData();
   renderHabitChallenge();
+  renderHabitCalendar();
   closeModal('modalHabitChallenge');
   showToast('Reto eliminado');
 }

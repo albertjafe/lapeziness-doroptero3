@@ -21,4 +21,35 @@ test('captures stable responsive views', async ({ page }, testInfo) => {
     expect(screenshot.byteLength).toBeGreaterThan(1000);
     await testInfo.attach(view + '.png', { body: screenshot, contentType: 'image/png' });
   }
+
+  await page.evaluate(() => {
+    const today = habitDayKey();
+    const start = habitKeyAt(today, -8);
+    db.habitChallenge = {
+      id: 'visual-habit', title: 'Practicar escalas', mode: 'do', durationDays: 21,
+      startDate: start,
+      logs: {
+        [start]: { status: 'done', at: new Date().toISOString() },
+        [habitKeyAt(start, 2)]: { status: 'done', at: new Date().toISOString() },
+        [habitKeyAt(start, 3)]: { status: 'done', at: new Date().toISOString() },
+        [habitKeyAt(start, 5)]: { status: 'done', at: new Date().toISOString() },
+        [habitKeyAt(start, 7)]: { status: 'done', at: new Date().toISOString() },
+      },
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    showView('calendario');
+    switchCalTab('objetivos', document.getElementById('calTabObjetivos'));
+  });
+  for (const viewport of [
+    { width: 390, height: 844, name: 'movil-vertical' },
+    { width: 844, height: 390, name: 'movil-horizontal' },
+    { width: 834, height: 1194, name: 'ipad-vertical' },
+    { width: 1024, height: 768, name: 'ipad-horizontal' },
+  ]) {
+    await page.setViewportSize(viewport);
+    const objectivesPath = testInfo.outputPath('objetivos-' + viewport.name + '.png');
+    const objectivesScreenshot = await page.screenshot({ path: objectivesPath, fullPage: true });
+    expect(objectivesScreenshot.byteLength).toBeGreaterThan(1000);
+    await testInfo.attach('objetivos-' + viewport.name + '.png', { path: objectivesPath, contentType: 'image/png' });
+  }
 });

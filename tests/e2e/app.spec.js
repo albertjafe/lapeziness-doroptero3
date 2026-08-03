@@ -374,6 +374,80 @@ test('uses a dedicated daily challenge composition on mobile', async ({ browser 
   }
 });
 
+test('shows and updates the daily challenge history from calendar', async ({ browser }) => {
+  test.setTimeout(60_000);
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 844, height: 390 },
+    { width: 834, height: 1194 },
+    { width: 1024, height: 768 },
+  ]) {
+    const context = await browser.newContext({ viewport, hasTouch: true });
+    const page = await context.newPage();
+    await prepare(page);
+    await page.evaluate(() => {
+      showView('calendario');
+      switchCalTab('objetivos', document.getElementById('calTabObjetivos'));
+    });
+
+    await expect(page.locator('#calPanelObjetivos')).toBeVisible();
+    await expect(page.locator('.habit-calendar-empty')).toContainText('Sin objetivo activo');
+    await expect(page.locator('#calendarActionRow')).toBeHidden();
+    await expect(page.locator('#calTabObjetivos')).toHaveAttribute('aria-selected', 'true');
+
+    const dates = await page.evaluate(() => {
+      const today = habitDayKey();
+      const start = habitKeyAt(today, -4);
+      const success = habitKeyAt(start, 3);
+      const failure = habitKeyAt(start, 1);
+      db.habitChallenge = {
+        id: 'calendar-habit', title: 'Practicar escalas', mode: 'do', durationDays: 14,
+        startDate: start,
+        logs: {
+          [start]: { status: 'done', at: new Date().toISOString() },
+          [success]: { status: 'done', at: new Date().toISOString() },
+        },
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      };
+      saveData();
+      renderHabitChallenge();
+      renderHabitCalendar();
+      return { today, success, failure };
+    });
+
+    const dashboard = page.locator('.habit-calendar-dashboard');
+    await expect(dashboard).toContainText('Practicar escalas');
+    await expect(page.locator(`.habit-calendar-day[data-date="${dates.success}"]`)).toHaveClass(/is-success/);
+    await expect(page.locator(`.habit-calendar-day[data-date="${dates.failure}"]`)).toHaveClass(/is-failure/);
+    await expect(page.locator(`.habit-calendar-day[data-date="${dates.today}"]`)).toHaveClass(/is-current/);
+    await page.locator('.habit-calendar-today').click();
+    await expect(page.locator('.habit-calendar-today')).toContainText('Cumplido hoy');
+    await expect(page.locator(`.habit-calendar-day[data-date="${dates.today}"]`)).toHaveClass(/is-success/);
+    expect(await page.evaluate(() => habitLogStatus(db.habitChallenge.logs[habitDayKey()]))).toBe('done');
+
+    const layout = await page.evaluate(() => {
+      const panel = document.getElementById('calPanelObjetivos').getBoundingClientRect();
+      const dashboard = document.querySelector('.habit-calendar-dashboard').getBoundingClientRect();
+      const todayButton = document.querySelector('.habit-calendar-today').getBoundingClientRect();
+      return {
+        columns: getComputedStyle(document.querySelector('.habit-calendar-grid')).gridTemplateColumns.split(' ').length,
+        contained: dashboard.left >= panel.left - 1 && dashboard.right <= panel.right + 1,
+        actionHeight: todayButton.height,
+        documentFits: document.documentElement.scrollWidth <= innerWidth + 1,
+      };
+    });
+    expect(layout.columns).toBe(7);
+    expect(layout.contained).toBe(true);
+    expect(layout.actionHeight).toBeGreaterThanOrEqual(38);
+    expect(layout.documentFits).toBe(true);
+
+    const monthBefore = await page.locator('.habit-calendar-month-nav strong').textContent();
+    await page.getByRole('button', { name: 'Mes anterior' }).click();
+    await expect(page.locator('.habit-calendar-month-nav strong')).not.toHaveText(monthBefore);
+    await context.close();
+  }
+});
+
 test('adds custom study quickly and persists both history and timed detail', async ({ page }) => {
   await prepare(page);
   await page.evaluate(() => showView('session'));
