@@ -260,13 +260,16 @@ test('keeps one daily challenge visible in idle and running timer layouts', asyn
       crono.targetDurationMs = null;
       cronoRender();
     });
-    const runningHabit = page.locator('[data-habit-slot="running"] .crono-habit-card');
-    await expect(runningHabit).toBeVisible();
-    await expect(runningHabit).toContainText('Practicar escalas');
-    await runningHabit.locator('.crono-habit-check').click();
-    await expect(runningHabit).toContainText('Cumplido hoy');
+    const runningTrophy = page.locator('[data-habit-slot="running"] .crono-habit-trophy');
+    await expect(runningTrophy).toBeVisible();
+    await expect(runningTrophy).toHaveAttribute('aria-label', /Practicar escalas/);
+    await expect(page.locator('[data-habit-slot="running"] .crono-habit-card')).toHaveCount(0);
+    await runningTrophy.click();
+    await page.locator('#habitTodayBtn').click();
+    await expect(runningTrophy).toHaveAttribute('aria-label', /cumplido hoy/);
+    await page.locator('#modalHabitChallenge .modal-btn.secondary').click();
     const layout = await page.evaluate(() => {
-      const card = document.querySelector('[data-habit-slot="running"] .crono-habit-card').getBoundingClientRect();
+      const card = document.querySelector('[data-habit-slot="running"] .crono-habit-trophy').getBoundingClientRect();
       const stage = document.getElementById('cronoStageRun').getBoundingClientRect();
       return {
         contained: card.left >= stage.left - 1 && card.right <= stage.right + 1,
@@ -290,8 +293,9 @@ test('keeps one daily challenge visible in idle and running timer layouts', asyn
         renderHabitChallenge();
       });
       page.once('dialog', dialog => dialog.accept());
-      await page.locator('[data-habit-slot="running"] .crono-habit-check').click();
-      await expect(page.locator('[data-habit-slot="running"] .crono-habit-card')).toContainText('Incumplido hoy');
+      await page.locator('[data-habit-slot="running"] .crono-habit-trophy').click();
+      await page.locator('#habitTodayBtn').click();
+      await expect(page.locator('[data-habit-slot="running"] .crono-habit-trophy')).toHaveAttribute('aria-label', /incumplido hoy/);
       expect(await page.evaluate(() => habitLogStatus(db.habitChallenge.logs[habitDayKey()]))).toBe('failed');
     }
     await context.close();
@@ -642,6 +646,8 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
         controlPastClockCenter: sideDestello.left > (displayBox.left + displayBox.right) / 2,
         pauseBelowDestello: !!sessionButtonBox && sessionButtonBox.top >= sideDestello.bottom - 1,
         actionRailPastClockCenter: actionRail.left > (displayBox.left + displayBox.right) / 2,
+        controlInsideClock: !!sessionButtonBox && document.getElementById('cronoStageRun').contains(sessionButton),
+        controlOutsideTools: !!sessionButtonBox && !document.getElementById('cronoRunDrawer').contains(sessionButton),
       };
     });
 
@@ -655,6 +661,8 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
     expect(layout.controlPastClockCenter).toBe(true);
     expect(layout.pauseBelowDestello).toBe(true);
     expect(layout.actionRailPastClockCenter).toBe(true);
+    expect(layout.controlInsideClock).toBe(true);
+    expect(layout.controlOutsideTools).toBe(true);
     if (layout.portrait) {
       expect(layout.drawer.top).toBeGreaterThanOrEqual(layout.stage.bottom);
       expect(layout.controlsBottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
@@ -1856,6 +1864,8 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
         main: rect(document.getElementById('cronoStageIdle').querySelector('.crono-idle-main')),
         drawer: rect(document.getElementById('cronoIdleDrawer')),
         ring: rect(document.getElementById('cronoTimerSvg')),
+        quickDestello: rect(document.querySelector('#cronoStageIdle .crono-quick-destello-btn')),
+        trophy: rect(document.querySelector('[data-habit-slot="idle"] .crono-habit-trophy')),
         destello: rect(document.getElementById('cronoIdleMessage')),
         start: rect(document.getElementById('cronoStartBtn')),
         presetCount: document.querySelectorAll('#cronoDurationPresets button').length,
@@ -1875,6 +1885,13 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
         main: rect(document.getElementById('cronoStageRun')),
         drawer: rect(document.getElementById('cronoRunDrawer')),
         ring: rect(document.querySelector('#cronoStageRun .crono-run-progress-svg')),
+        quickDestello: rect(document.querySelector('#cronoStageRun .crono-quick-destello-btn')),
+        trophy: rect(document.querySelector('[data-habit-slot="running"] .crono-habit-trophy')),
+        controls: rect(document.getElementById('cronoControls')),
+        controlInsideClock: document.getElementById('cronoStageRun').contains(document.getElementById('cronoControls')),
+        modeSelectorVisible: getComputedStyle(document.getElementById('cronoModeToggle')).display !== 'none'
+          && document.getElementById('cronoStageIdle').style.display !== 'none',
+        dailyTotalVisible: getComputedStyle(document.getElementById('cronoRunTodayTotal')).display !== 'none',
         arcColor: getComputedStyle(document.getElementById('cronoRunProgressArc')).stroke,
         handleColor: getComputedStyle(document.getElementById('cronoRunProgressHandle')).fill,
         tabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab),
@@ -1906,6 +1923,11 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
     expect(layout.idle.usesRunningDisplay).toBe(true);
     expect(layout.idle.garden).toBe('none');
     expect(Math.abs(layout.idle.ring.width - layout.running.ring.width)).toBeLessThanOrEqual(2);
+    expect(Math.abs(layout.idle.trophy.width - layout.running.trophy.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(layout.idle.trophy.height - layout.running.trophy.height)).toBeLessThanOrEqual(1);
+    expect(layout.running.controlInsideClock).toBe(true);
+    expect(layout.running.modeSelectorVisible).toBe(false);
+    expect(layout.running.dailyTotalVisible).toBe(true);
 
     if (layout.portrait) {
       expect(layout.idle.drawer.top).toBeGreaterThanOrEqual(layout.idle.main.bottom - 1);

@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-02-compact-idle-controls-v112';
+const APP_VERSION = '2026-08-03-crono-continuo-v113';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -19007,7 +19007,7 @@ function habitTrophyHtml(habit) {
 function renderHabitChallenge() {
   const habit = habitActiveChallenge();
   document.querySelectorAll('[data-habit-slot]').forEach(slot => {
-    const html = slot.dataset.habitSlot === 'idle' ? habitTrophyHtml(habit) : habitCardHtml(habit);
+    const html = habitTrophyHtml(habit);
     if (slot.innerHTML !== html) slot.innerHTML = html;
   });
   renderHabitChallenge._dayKey = habitDayKey();
@@ -19023,10 +19023,22 @@ function openHabitChallengeModal() {
   const input = document.getElementById('habitTitleInput');
   const duration = document.getElementById('habitDurationInput');
   const deleteBtn = document.getElementById('habitDeleteBtn');
+  const todayBtn = document.getElementById('habitTodayBtn');
   if (title) title.textContent = existing ? 'Editar el reto' : 'Crear un reto';
   if (input) input.value = existing ? (current.title || '') : '';
   if (duration) duration.value = existing ? current.durationDays : 21;
   if (deleteBtn) deleteBtn.hidden = !existing;
+  if (todayBtn) {
+    todayBtn.hidden = !existing;
+    if (existing) {
+      const marked = current.mode === 'avoid' ? metrics.todayLog === 'failed' : metrics.todayLog === 'done';
+      todayBtn.classList.toggle('is-marked', marked);
+      todayBtn.classList.toggle('is-avoid', current.mode === 'avoid');
+      todayBtn.textContent = current.mode === 'avoid'
+        ? (marked ? 'Quitar incumplimiento de hoy' : 'Registrar incumplimiento de hoy')
+        : (marked ? 'Desmarcar cumplimiento de hoy' : 'Marcar cumplido hoy');
+    }
+  }
   document.querySelectorAll('#habitModeToggle button').forEach(button => {
     button.disabled = existing;
   });
@@ -19126,6 +19138,11 @@ function toggleHabitToday(event) {
   saveData();
   renderHabitChallenge();
   try { Haptics.success(); } catch(e) {}
+}
+
+function toggleHabitTodayFromModal(event) {
+  toggleHabitToday(event);
+  if (habitActiveChallenge()) openHabitChallengeModal();
 }
 
 function deleteHabitChallenge() {

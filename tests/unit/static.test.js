@@ -217,6 +217,22 @@ describe('quality wiring', () => {
     expect(styles).toContain('touch-action: none');
   });
 
+  it('keeps the idle and running timer cards structurally continuous', () => {
+    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+
+    expect(html).toContain('crono-timer-card-idle');
+    expect(html).toContain('crono-timer-card-running');
+    expect(html.match(/data-habit-slot=/g)).toHaveLength(2);
+    expect(html).toContain('class="crono-quick-destello-btn crono-run-side-destello"');
+    expect(html.indexOf('id="cronoControls"')).toBeLessThan(html.indexOf('id="cronoRunDrawer"'));
+    expect(app).toContain('const html = habitTrophyHtml(habit)');
+    expect(app).toContain('function toggleHabitTodayFromModal(event)');
+    expect(styles).toContain('[data-habit-slot="running"].crono-habit-slot');
+    expect(styles).toContain('#cronoRunStatusText');
+  });
+
   it('keeps today study time prominent and updates it from a running stopwatch', () => {
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');

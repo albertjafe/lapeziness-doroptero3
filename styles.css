@@ -17831,3 +17831,79 @@ body.crono-interface-pinching #view-cronometro .crono-run-action-rail {
 @media (prefers-reduced-motion: reduce) {
   #view-cronometro .crono-habit-trophy { transition: none; }
 }
+
+/* Cronometro continuo: obra y reto ocupan la misma cabecera antes y durante
+   la sesion. La configuracion previa es el unico bloque que desaparece. */
+[data-theme^="marmol"] #view-cronometro .crono-timer-card {
+  box-sizing: border-box;
+}
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoStageRun .crono-run-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+}
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoStageRun .crono-obra-pill {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: min(calc(100% - 112px), 360px);
+  margin: 0;
+}
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoStageRun .crono-run-status {
+  flex: 0 0 auto;
+  min-width: 48px;
+  min-height: 34px;
+  padding: 0 8px;
+  justify-content: center;
+}
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoStageRun .crono-run-status-dot,
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunStatusText,
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-run-status-divider,
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-run-today-label {
+  display: none !important;
+}
+#view-cronometro [data-habit-slot="running"].crono-habit-slot {
+  flex: 0 0 44px;
+  width: 44px;
+  min-height: 44px;
+  height: 44px;
+  margin: 0 0 0 auto;
+}
+[data-theme^="marmol"] #view-cronometro .crono-stage-message {
+  flex: 0 0 auto;
+}
+.habit-today-btn {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 10px;
+  border: 1px solid color-mix(in srgb, #4c9b6d 48%, var(--border2));
+  border-radius: 10px;
+  background: color-mix(in srgb, #4c9b6d 10%, var(--bg2));
+  color: color-mix(in srgb, #4c9b6d 82%, var(--text));
+  font-weight: 750;
+  cursor: pointer;
+}
+.habit-today-btn.is-marked {
+  background: #4c9b6d;
+  border-color: #4c9b6d;
+  color: white;
+}
+.habit-today-btn.is-avoid:not(.is-marked) {
+  border-color: color-mix(in srgb, #bd4b4b 42%, var(--border2));
+  background: color-mix(in srgb, #bd4b4b 8%, var(--bg2));
+  color: color-mix(in srgb, #bd4b4b 82%, var(--text));
+}
+.habit-today-btn.is-avoid.is-marked {
+  background: #bd4b4b;
+  border-color: #bd4b4b;
+}
+
+@media (max-height: 600px) and (orientation: landscape) {
+  #view-cronometro [data-habit-slot="running"].crono-habit-slot {
+    width: 30px;
+    height: 30px;
+    min-height: 30px;
+    flex-basis: 30px;
+  }
+}
