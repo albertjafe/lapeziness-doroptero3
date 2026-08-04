@@ -17995,6 +17995,20 @@ body.crono-interface-pinching #view-cronometro .crono-run-action-rail {
   padding: 8px 10px;
 }
 #calendarActionRow[hidden] { display: none !important; }
+.calendar-action-buttons { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.calendar-objectives-shortcut {
+  min-height: 44px !important;
+  padding: 10px 14px;
+  white-space: nowrap;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border2));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: pointer;
+}
+.calendar-objectives-shortcut:hover { background: color-mix(in srgb, var(--accent) 13%, transparent); }
 
 .habit-calendar-dashboard { width: 100%; }
 .habit-calendar-empty {
@@ -18275,6 +18289,8 @@ body.crono-interface-pinching #view-cronometro .crono-run-action-rail {
 
 @media (max-width: 520px) {
   #view-calendario > .calendar-view-tabs .cal-tab { padding-inline: 4px; font-size: 9px; }
+  .calendar-action-buttons { gap: 5px; }
+  .calendar-objectives-shortcut { padding-inline: 10px; font-size: 9px; }
   .habit-calendar-empty {
     grid-template-columns: 48px minmax(0, 1fr);
     gap: 12px;

@@ -11360,7 +11360,8 @@ function renderCalendario() {
       pasados.slice(0, 5).map(ev => renderEventoCard(ev, true)).join('');
   }
   pastList.innerHTML = pastHtml;
-  renderHabitCalendar();
+  const activeCalendarTabId = ({ eventos: 'calTabEventos', mes: 'calTabMes', objetivos: 'calTabObjetivos' })[_calendarMainTab] || 'calTabEventos';
+  switchCalTab(_calendarMainTab, document.getElementById(activeCalendarTabId));
   updateHeader();
 }
 

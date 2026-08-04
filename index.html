@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=239">
+<link rel="stylesheet" href="styles.css?v=240">
 </head>
 <body>
 
@@ -651,7 +651,10 @@
   </div>
   <div class="view-action-row calendar-action-row" id="calendarActionRow">
     <div class="view-local-label">Próximos eventos</div>
-    <button class="add-evento-btn" onclick="openAddEvento()">+ añadir evento</button>
+    <div class="calendar-action-buttons">
+      <button type="button" class="calendar-objectives-shortcut" onclick="switchCalTab('objetivos',document.getElementById('calTabObjetivos'))" aria-controls="calPanelObjetivos">Objetivos</button>
+      <button type="button" class="add-evento-btn" onclick="openAddEvento()">+ añadir evento</button>
+    </div>
   </div>
 
   <!-- Pestaña Eventos -->
@@ -2055,7 +2058,7 @@
 <script src="data-core.js?v=228"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=239"></script>
+<script src="app.js?v=240"></script>
 
 </body>
 <script>
@@ -2077,7 +2080,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=239', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=240', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
