@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-03-crono-habit-calendar-v114';
+const APP_VERSION = '2026-08-04-pases-v115';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -3846,6 +3846,7 @@ function recordSessionPlant(obraId, movId, startedAt, endedAt, mins, opts) {
   if (options.tipo) entry.tipo = options.tipo;
   if (options.pase) {
     entry.pase = true;
+    if (options.paseId) entry.paseId = options.paseId;
     if (options.paseScore != null) entry.paseScore = options.paseScore;
     if (options.paseTipo) entry.paseTipo = normalizePaseTipo(options.paseTipo);
     if (options.takes != null) entry.takes = options.takes;
@@ -14925,6 +14926,17 @@ let paseQualityMovId = null;
 let paseQualitySelected = null; // number 1-10, chosen from 5 coarse levels
 let paseTipoSelected = 'solo';
 let cronoPaseTipoSelected = 'solo';
+let paseEditingEntry = null;
+
+function createPaseId() {
+  return 'pase_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+}
+
+function dateInputValueFromIso(iso) {
+  const date = iso ? new Date(iso) : new Date();
+  if (Number.isNaN(date.getTime())) return new Date().toISOString().slice(0, 10);
+  return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+}
 
 const PASE_SCORE_CHOICES = [
   { score: 2, label: 'Se cae', sub: 'pierdo el hilo' },
@@ -14959,6 +14971,7 @@ function buildPaseScoreBtns() {
 }
 
 function registerPase(obraId, movId) {
+  paseEditingEntry = null;
   paseQualityObraId = obraId;
   paseQualityMovId = movId || null;
   paseQualitySelected = null;
@@ -14969,6 +14982,7 @@ function registerPase(obraId, movId) {
     ? `${obra ? obra.name + ' — ' : ''}${mov.name}`
     : (obra ? obra.name : '');
   document.getElementById('paseQualityName').textContent = displayName;
+  document.getElementById('paseQualityTitle').textContent = 'Â¿CÃ³mo fue el pase?';
   document.getElementById('paseQNote').value = '';
   const takes = document.getElementById('paseQTakes');
   if (takes) takes.value = '';
@@ -14977,6 +14991,51 @@ function registerPase(obraId, movId) {
   document.querySelectorAll('#modalPaseQuality .pase-tipo-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('#modalPaseQuality .pase-tipo-btn.solo')?.classList.add('active');
   updatePaseTakesVisibility('solo');
+  openModal('modalPaseQuality');
+}
+
+function editPaseFromHistory(button) {
+  openEditPase(graficoObraId, graficoMovId, button?.dataset.paseId || '', button?.dataset.paseIndex || '');
+}
+
+function openEditPase(obraId, movId, entryId, entryIndex) {
+  const obra = findObra(obraId);
+  const entity = movId ? findMovimiento(obraId, movId) : obra;
+  const history = Array.isArray(entity?.paseHistory) ? entity.paseHistory : [];
+  let index = entryId ? history.findIndex(entry => entry.id === entryId) : -1;
+  if (index < 0 && entryIndex !== '' && Number.isFinite(Number(entryIndex))) {
+    const sorted = history.map((entry, originalIndex) => ({ entry, originalIndex }))
+      .sort((a, b) => new Date(b.entry.date) - new Date(a.entry.date));
+    index = sorted[Number(entryIndex)]?.originalIndex ?? -1;
+  }
+  const entry = index >= 0 ? history[index] : null;
+  if (!entry) return;
+  if (!entry.id) entry.id = createPaseId();
+  paseEditingEntry = { obraId, movId: movId || null, entryId: entry.id, index };
+  paseQualityObraId = obraId;
+  paseQualityMovId = movId || null;
+  paseQualitySelected = Number(entry.score) || ({ bien: 8, regular: 5, mal: 2 }[entry.quality] || null);
+  paseTipoSelected = normalizePaseTipo(entry.tipo || 'solo');
+  document.getElementById('paseQualityTitle').textContent = 'Editar pase';
+  document.getElementById('paseQualityName').textContent = movId
+    ? (obra?.name || '') + ' Â— ' + (findMovimiento(obraId, movId)?.name || '')
+    : (obra?.name || '');
+  document.getElementById('paseQNote').value = entry.note || entry.nota || '';
+  document.getElementById('paseQFecha').value = dateInputValueFromIso(entry.date);
+  const takes = document.getElementById('paseQTakes');
+  if (takes) takes.value = entry.takes || '';
+  const details = document.querySelector('#modalPaseQuality .pase-advanced-details');
+  if (details) details.open = true;
+  buildPaseScoreBtns();
+  document.querySelectorAll('#modalPaseQuality .pase-tipo-btn').forEach(button => {
+    const active = normalizePaseTipo(button.textContent) === paseTipoSelected || button.classList.contains(paseTipoSelected);
+    button.classList.toggle('active', active);
+  });
+  updatePaseTakesVisibility(paseTipoSelected);
+  const scoreButton = [...document.querySelectorAll('#paseQScoreBtns .pscore-modal-btn')]
+    .find(button => button.textContent.includes(PASE_SCORE_CHOICES.find(choice => choice.score === paseQualitySelected)?.label || ''));
+  if (scoreButton && paseQualitySelected) selectPaseQ(paseQualitySelected, scoreButton);
+  saveData();
   openModal('modalPaseQuality');
 }
 
@@ -15012,7 +15071,45 @@ function confirmPase() {
   const takesValue = parseInt(document.getElementById('paseQTakes')?.value || '', 10);
   const takes = tipo === 'grabacion' && Number.isFinite(takesValue) && takesValue > 0 ? Math.min(99, takesValue) : null;
   const quality = scoreToQuality(paseQualitySelected);
-  const paseEntry = { date: paseDate, score: paseQualitySelected, solidezPct: paseScoreToPct(paseQualitySelected), quality, tipo, takes, note };
+  const paseEntry = { id: paseEditingEntry?.entryId || createPaseId(), date: paseDate, score: paseQualitySelected, solidezPct: paseScoreToPct(paseQualitySelected), quality, tipo, takes, note };
+
+  if (paseEditingEntry) {
+    const entity = paseEditingEntry.movId
+      ? findMovimiento(paseEditingEntry.obraId, paseEditingEntry.movId)
+      : findObra(paseEditingEntry.obraId);
+    const existing = entity?.paseHistory?.find(entry => entry.id === paseEditingEntry.entryId);
+    if (!entity || !existing) {
+      paseEditingEntry = null;
+      closeModal('modalPaseQuality');
+      return;
+    }
+    const previousDate = existing.date;
+    Object.assign(existing, paseEntry);
+    const latest = [...(entity.paseHistory || [])]
+      .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+    entity.lastPase = latest?.date || paseEntry.date;
+    const linkedPlants = (db.sessionPlants || []).filter(plant => plant.paseId === existing.id);
+    linkedPlants.forEach(plant => {
+      plant.paseScore = existing.score;
+      plant.paseTipo = existing.tipo;
+      plant.takes = existing.takes;
+      if (previousDate !== existing.date) {
+        const durationMs = Math.max(1, Number(plant.mins) || 1) * 60000;
+        const ended = new Date(existing.date).getTime();
+        if (Number.isFinite(ended)) {
+          plant.endedAt = new Date(ended).toISOString();
+          plant.startedAt = new Date(ended - durationMs).toISOString();
+        }
+      }
+    });
+    saveData();
+    paseEditingEntry = null;
+    closeModal('modalPaseQuality');
+    renderObras();
+    if (document.getElementById('modalGrafico')?.classList.contains('visible')) renderGraficoSvg();
+    showToast('Pase actualizado âœ“');
+    return;
+  }
 
   if (paseQualityMovId) {
     const mov = findMovimiento(paseQualityObraId, paseQualityMovId);
@@ -15117,15 +15214,23 @@ function cronoPaseBuildSelectionGroups() {
 
 function cronoPaseDraftItem(resolved) {
   if (!resolved || resolved.obra?.tipo === 'actividad') return null;
+  const targetKey = cronoPaseDraftKey(resolved.obraId, resolved.movId);
   return {
-    key: cronoPaseDraftKey(resolved.obraId, resolved.movId),
+    key: targetKey,
+    targetKey,
     obraId: resolved.obraId,
     movId: resolved.movId || null,
     name: resolved.name,
     minutes: cronoPaseDefaultMinutes(resolved),
     score: null,
     takes: null,
+    passNumber: 1,
+    passCount: 1,
   };
+}
+
+function cronoPaseTargetKey(item) {
+  return item?.targetKey || item?.key || '';
 }
 
 function cronoPaseCurrentSelection() {
@@ -15146,6 +15251,8 @@ function openCronoPaseRapido() {
   if (search) search.value = '';
   const comment = document.getElementById('cronoPaseComment');
   if (comment) comment.value = '';
+  const date = document.getElementById('cronoPaseFecha');
+  if (date) date.value = dateInputValueFromIso();
   document.querySelectorAll('#modalCronoPaseRapido .pase-tipo-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('#modalCronoPaseRapido .pase-tipo-btn.solo')?.classList.add('active');
   cronoPaseRender();
@@ -15164,10 +15271,10 @@ function selectCronoPaseTipo(tipo, btn) {
 function cronoPaseToggleSelection(value) {
   const resolved = studyRegisterResolveValue(value);
   if (!resolved) return;
-  const key = cronoPaseDraftKey(resolved.obraId, resolved.movId);
-  const existingIndex = cronoPaseDraft.findIndex(item => item.key === key);
+  const targetKey = cronoPaseDraftKey(resolved.obraId, resolved.movId);
+  const existingIndex = cronoPaseDraft.findIndex(item => cronoPaseTargetKey(item) === targetKey);
   if (existingIndex >= 0) {
-    cronoPaseDraft.splice(existingIndex, 1);
+    cronoPaseDraft = cronoPaseDraft.filter(item => cronoPaseTargetKey(item) !== targetKey);
   } else {
     const item = cronoPaseDraftItem(resolved);
     if (!item) return;
@@ -15184,7 +15291,7 @@ function cronoPaseRenderSelection() {
   const continueButton = document.getElementById('cronoPaseContinueBtn');
   if (!host) return;
   const query = (document.getElementById('cronoPaseSearch')?.value || '').trim().toLocaleLowerCase('es');
-  const selected = new Set(cronoPaseDraft.map(item => item.key));
+  const selected = new Set(cronoPaseDraft.map(item => cronoPaseTargetKey(item)));
   const groups = cronoPaseSelectionGroups.map(group => ({
     ...group,
     targets: group.targets.filter(target => !query || target.search.toLocaleLowerCase('es').includes(query)),
@@ -15252,6 +15359,30 @@ function cronoPaseSetMinutes(key, value) {
   cronoPaseUpdateTotal();
 }
 
+function cronoPaseSetCount(targetKey, value) {
+  const desired = Math.max(1, Math.min(20, parseInt(value || '1', 10) || 1));
+  const group = cronoPaseDraft.filter(item => cronoPaseTargetKey(item) === targetKey);
+  if (!group.length) return;
+  const firstIndex = cronoPaseDraft.findIndex(item => cronoPaseTargetKey(item) === targetKey);
+  const next = [];
+  for (let index = 0; index < desired; index += 1) {
+    const previous = group[index];
+    const base = previous || group[0];
+    next.push({
+      ...base,
+      key: index === 0 ? targetKey : targetKey + '::pase-' + (index + 1),
+      targetKey,
+      passNumber: index + 1,
+      passCount: desired,
+      score: previous?.score ?? null,
+      takes: previous?.takes ?? null,
+    });
+  }
+  cronoPaseDraft = cronoPaseDraft.filter(item => cronoPaseTargetKey(item) !== targetKey);
+  cronoPaseDraft.splice(firstIndex, 0, ...next);
+  cronoPaseRender();
+}
+
 function cronoPaseSetTakes(key, value) {
   const item = cronoPaseDraft.find(it => it.key === key);
   if (!item) return;
@@ -15283,7 +15414,17 @@ function cronoPaseRender() {
     cronoPaseUpdateTotal();
     return;
   }
-  host.innerHTML = cronoPaseDraft.map(it => {
+  const grouped = [];
+  cronoPaseDraft.forEach(item => {
+    const targetKey = cronoPaseTargetKey(item);
+    let group = grouped.find(entry => entry.targetKey === targetKey);
+    if (!group) {
+      group = { targetKey, items: [] };
+      grouped.push(group);
+    }
+    group.items.push(item);
+  });
+  host.innerHTML = grouped.flatMap(group => group.items.map((it, groupIndex) => {
     const scoreBtns = CRONO_PASE_SCORE_CHOICES.map(ch =>
       '<button type="button" class="crono-pase-score ' + (it.score === ch.score ? 'active' : '') + '" onclick="cronoPaseSetScore(\'' + it.key + '\',' + ch.score + ')">' +
         escapeHtmlSafe(ch.label) +
@@ -15291,23 +15432,28 @@ function cronoPaseRender() {
     ).join('');
     return '<div class="crono-pase-item">' +
       '<div class="crono-pase-item-top">' +
-        '<div class="crono-pase-item-name">' + escapeHtmlSafe(it.name) + '</div>' +
+        '<div class="crono-pase-item-name">' + escapeHtmlSafe(it.name) + '<small>Pase ' + (it.passNumber || groupIndex + 1) + ' de ' + (group.items.length || 1) + '</small></div>' +
         '<input class="crono-pase-min" type="number" min="1" max="180" step="1" value="' + it.minutes + '" onchange="cronoPaseSetMinutes(\'' + it.key + '\',this.value)" oninput="cronoPaseSetMinutes(\'' + it.key + '\',this.value)" aria-label="Minutos">' +
         '<span class="crono-pase-min-label">min</span>' +
         '<button type="button" class="crono-pase-remove" onclick="cronoPaseRemove(\'' + it.key + '\')" aria-label="Quitar">×</button>' +
       '</div>' +
+      (groupIndex === 0
+        ? '<label class="crono-pase-count"><span>N de pases de esta obra</span><input type="number" min="1" max="20" step="1" value="' + (group.items.length || 1) + '" onchange="cronoPaseSetCount(\'' + group.targetKey + '\',this.value)" oninput="cronoPaseSetCount(\'' + group.targetKey + '\',this.value)" aria-label="Numero de pases"></label>'
+        : '') +
       '<div class="crono-pase-score-row">' + scoreBtns + '</div>' +
       (normalizePaseTipo(cronoPaseTipoSelected) === 'grabacion'
         ? '<label class="crono-pase-takes"><span>Takes de esta obra</span><input type="number" min="1" max="99" step="1" inputmode="numeric" value="' + (it.takes || '') + '" placeholder="—" onchange="cronoPaseSetTakes(\'' + it.key + '\',this.value)" aria-label="Takes de esta obra"></label>'
         : '') +
     '</div>';
-  }).join('');
+  })).join('');
   cronoPaseUpdateTotal();
 }
 
 function cronoPaseRecordQuality(item, dateIso, comment) {
   const tipo = normalizePaseTipo(cronoPaseTipoSelected);
+  item.paseId = item.paseId || createPaseId();
   const paseEntry = {
+    id: item.paseId,
     date: dateIso,
     score: item.score,
     solidezPct: paseScoreToPct(item.score),
@@ -15395,6 +15541,7 @@ function cronoPaseAddToStudy(item, startedAtIso, endedAtIso, comment) {
     startedAt: startedAtIso,
     endedAt: endedAtIso,
     pase: true,
+    paseId: item.paseId,
     score: item.score,
     tipo: normalizePaseTipo(cronoPaseTipoSelected),
     takes: normalizePaseTipo(cronoPaseTipoSelected) === 'grabacion' && item.takes ? item.takes : null,
@@ -15423,6 +15570,7 @@ function cronoPaseAddToStudy(item, startedAtIso, endedAtIso, comment) {
   recordSessionPlant(item.obraId, item.movId, startedAtIso, endedAtIso, minutes, {
     source: 'pase',
     pase: true,
+    paseId: item.paseId,
     paseScore: item.score,
     paseTipo: normalizePaseTipo(cronoPaseTipoSelected),
     takes: normalizePaseTipo(cronoPaseTipoSelected) === 'grabacion' && item.takes ? item.takes : null,
@@ -15447,9 +15595,13 @@ function confirmCronoPaseRapido() {
     return;
   }
   const prevConcentradoMin = typeof getMinutosConcentradoHoy === 'function' ? getMinutosConcentradoHoy() : 0;
-  let cursor = new Date(Date.now() - total * 60000);
+  const dateInput = document.getElementById('cronoPaseFecha')?.value || dateInputValueFromIso();
+  const todayInput = dateInputValueFromIso();
+  const dateIso = dateInput === todayInput
+    ? new Date().toISOString()
+    : new Date(dateInput + 'T12:00:00').toISOString();
+  let cursor = new Date(new Date(dateIso).getTime() - total * 60000);
   let added = 0;
-  const dateIso = new Date().toISOString();
   const comment = (document.getElementById('cronoPaseComment')?.value || '').trim().slice(0, 300);
   cronoPaseDraft.forEach(item => {
     const minutes = Math.max(1, parseInt(item.minutes || 0, 10) || 1);
@@ -25318,17 +25470,18 @@ function _phase3HistoryListHtml(history) {
   if (!history.length) return '<div class="grafico-history-empty">Todavía no hay pases. Registra el primero para empezar a ver evolución.</div>';
   return '<div class="grafico-history-title">Historial de pases · escala 0–100</div>' +
     '<ol class="grafico-history-list" aria-label="Historial cronológico de pases">' +
-    history.map(entry => {
+     history.map((entry, index) => {
       const pct = _phase3PasePct(entry);
       const context = paseTipoShort(entry.tipo);
       const note = entry.note || entry.nota || '';
       const takes = entry.takes ? ' · ' + entry.takes + ' takes' : '';
-      return '<li>' +
-        '<time datetime="' + escapeHtmlSafe(entry.date || '') + '">' + escapeHtmlSafe(_phase3DateTime(entry.date)) + '</time>' +
-        '<strong>' + pct + '%</strong>' +
-        '<span>' + escapeHtmlSafe(context + takes) + '</span>' +
-        (note ? '<em>' + escapeHtmlSafe(note) + '</em>' : '') +
-      '</li>';
+       return '<li>' +
+         '<time datetime="' + escapeHtmlSafe(entry.date || '') + '">' + escapeHtmlSafe(_phase3DateTime(entry.date)) + '</time>' +
+         '<strong>' + pct + '%</strong>' +
+         '<span>' + escapeHtmlSafe(context + takes) + '</span>' +
+         (note ? '<em>' + escapeHtmlSafe(note) + '</em>' : '') +
+         '<button type="button" class="grafico-history-edit" data-pase-id="' + escapeHtmlSafe(entry.id || '') + '" data-pase-index="' + index + '" onclick="editPaseFromHistory(this)">Editar</button>' +
+       '</li>';
     }).join('') + '</ol>';
 }
 

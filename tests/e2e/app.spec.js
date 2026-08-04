@@ -1120,6 +1120,86 @@ test('records recording passes with takes and a score for each work', async ({ p
   expect(state.plant).toMatchObject({ pase: true, paseTipo: 'grabacion', paseScore: 8, takes: 4 });
 });
 
+test('keeps the pass save action visible and supports repeated passes per work', async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    db.obras = Array.from({ length: 12 }, (_, index) => ({
+      id: 'many-' + index,
+      name: 'Obra ' + (index + 1),
+      composer: 'Compositor',
+      tipo: 'obra',
+      movimientos: [],
+      paseHistory: [],
+    }));
+    openCronoPaseRapido();
+  });
+  const choices = page.locator('#cronoPaseSelectionList .crono-pase-picker-item');
+  await expect(choices).toHaveCount(12);
+  for (let index = 0; index < 12; index += 1) await choices.nth(index).click();
+  await page.locator('#cronoPaseContinueBtn').click();
+  const modal = page.locator('#modalCronoPaseRapido');
+  const geometry = await page.evaluate(() => {
+    const list = document.getElementById('cronoPaseItems');
+    const save = document.querySelector('#modalCronoPaseRapido .crono-pase-detail-stage .modal-btn.primary');
+    const modalBox = document.querySelector('#modalCronoPaseRapido .modal').getBoundingClientRect();
+    const saveBox = save.getBoundingClientRect();
+    return { scrolls: list.scrollHeight > list.clientHeight, saveVisible: saveBox.bottom <= modalBox.bottom + 1 && saveBox.top >= modalBox.top - 1 };
+  });
+  expect(geometry.scrolls).toBe(true);
+  expect(geometry.saveVisible).toBe(true);
+
+  const passCountInput = page.locator('#cronoPaseItems input[aria-label="Numero de pases"]').first();
+  await passCountInput.fill('3');
+  await expect(page.locator('#cronoPaseItems .crono-pase-item')).toHaveCount(14);
+
+  await page.evaluate(() => {
+    cronoPaseDraft = cronoPaseDraft.filter(item => item.targetKey === 'many-0::');
+    cronoPaseRender();
+    document.getElementById('cronoPaseFecha').value = '2026-08-01';
+  });
+  const firstPassIndices = await page.locator('#cronoPaseItems .crono-pase-item').evaluateAll(nodes => nodes
+    .map((node, index) => ({ index, name: node.querySelector('.crono-pase-item-name')?.firstChild?.textContent?.trim() }))
+    .filter(item => item.name === 'Obra 1')
+    .map(item => item.index));
+  expect(firstPassIndices).toHaveLength(3);
+  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[0]).locator('.crono-pase-score').nth(0).click();
+  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[1]).locator('.crono-pase-score').nth(2).click();
+  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[2]).locator('.crono-pase-score').nth(4).click();
+  await modal.getByRole('button', { name: 'Guardar pases' }).click();
+  const result = await page.evaluate(() => db.obras[0].paseHistory.map(entry => ({ score: entry.score, date: entry.date.slice(0, 10) })));
+  expect(result).toEqual([
+    { score: 10, date: '2026-08-01' },
+    { score: 6, date: '2026-08-01' },
+    { score: 2, date: '2026-08-01' },
+  ]);
+});
+
+test('edits a previous pass by date, type and result from the evolution history', async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    db.obras[0].paseHistory = [{
+      id: 'previous-pass', date: '2026-08-01T12:00:00.000Z', score: 2,
+      solidezPct: 11, quality: 'mal', tipo: 'solo', takes: null, note: 'Antes',
+    }];
+    showView('obras');
+    openGrafico('obra_1', null);
+  });
+  const history = page.locator('#graficoAccessibleList');
+  await expect(history).toContainText('Editar');
+  await history.getByRole('button', { name: 'Editar' }).click();
+  await expect(page.locator('#modalPaseQuality')).toHaveClass(/visible/);
+  await expect(page.locator('#paseQualityTitle')).toHaveText('Editar pase');
+  await page.locator('#paseQFecha').fill('2026-08-03');
+  await page.locator('#modalPaseQuality .pase-tipo-btn.grabacion').click();
+  await page.locator('#paseQTakes').fill('4');
+  await page.locator('#paseQScoreBtns .pscore-modal-btn').nth(3).click();
+  await page.locator('#paseQNote').fill('Ahora estable');
+  await page.getByRole('button', { name: 'Guardar' }).click();
+  const edited = await page.evaluate(() => db.obras[0].paseHistory[0]);
+  expect(edited).toMatchObject({ id: 'previous-pass', score: 8, tipo: 'grabacion', takes: 4, note: 'Ahora estable' });
+  expect(edited.date.slice(0, 10)).toBe('2026-08-03');
+});
+
 test('opens pending tasks once per day and repeats the reminder after two hours', async ({ page }) => {
   await page.setViewportSize({ width: 834, height: 1194 });
   await prepare(page);
