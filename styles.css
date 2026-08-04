@@ -3758,6 +3758,28 @@
     display: flex; flex-direction: column; align-items: flex-start;
     position: relative;
   }
+  .mes-cell.is-success { background: color-mix(in srgb, var(--green) 12%, var(--bg2)); }
+  .mes-cell.is-failure { background: color-mix(in srgb, var(--red) 12%, var(--bg2)); }
+  .mes-cell.is-current { background: color-mix(in srgb, #c38d16 12%, var(--bg2)); }
+  .mes-cell.is-success:hover, .mes-cell.is-failure:hover, .mes-cell.is-current:hover { cursor: pointer; filter: brightness(0.96); }
+  .mes-habit-mark {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    font-size: 9px;
+    font-style: normal;
+    font-weight: bold;
+    font-family: var(--font-mono);
+  }
+  .mes-habit-mark.is-success { background: var(--green); color: white; }
+  .mes-habit-mark.is-failure { background: var(--red); color: white; }
+  .mes-habit-mark.is-current { background: #c38d16; color: white; }
   .mes-cell.hoy { border-color: var(--accent); background: var(--bg3); }
   .mes-cell.otro-mes { opacity: 0.28; }
   .mes-cell-num {

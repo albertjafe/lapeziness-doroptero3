@@ -11083,6 +11083,9 @@ function renderMesCalendario() {
   const grid = document.getElementById('mesGrid');
   let html = '';
 
+  const habit = habitActiveChallenge();
+  const todayKey = habitDayKey();
+
   // Celdas del mes anterior (relleno)
   for (let i = 0; i < offsetInicio; i++) {
     const d = diasMesAnterior - offsetInicio + 1 + i;
@@ -11097,9 +11100,29 @@ function renderMesCalendario() {
     const dotsHtml = evs.map(ev =>
       `<div class="mes-dot ${ev.tipo}" title="${ev.nombre}"></div>`
     ).join('');
-    html += `<div class="mes-cell${esHoy ? ' hoy' : ''}">
+
+    let habitHtml = '';
+    let habitClass = '';
+    let clickHandler = '';
+
+    if (habit) {
+      const state = habitCalendarDayState(habit, key, todayKey);
+      if (state && state !== 'outside' && state !== 'future') {
+        const mark = state === 'success' ? '&#10003;' : (state === 'failure' ? '&#215;' : (state === 'current' ? '&#8226;' : ''));
+        habitHtml = `<i class="mes-habit-mark is-${state}" aria-hidden="true">${mark}</i>`;
+        habitClass = ` is-${state}`;
+        clickHandler = `onclick="toggleHabitForDate('${key}', event)"`;
+      }
+    }
+
+    if (!clickHandler) {
+      clickHandler = `onclick="openCronoCalendarAdd('${key}')"`;
+    }
+
+    html += `<div class="mes-cell${esHoy ? ' hoy' : ''}${habitClass}" ${clickHandler} role="button" tabindex="0" data-date="${key}">
       <span class="mes-cell-num">${d}</span>
       <div class="mes-dots">${dotsHtml}</div>
+      ${habitHtml}
     </div>`;
   }
 
@@ -11119,9 +11142,21 @@ function renderMesCalendario() {
     (eventosPorDia[key] || []).forEach(ev => tiposPresentes.add(ev.tipo));
   }
   const TIPO_LABELS = { concurso:'Concurso', audicion:'Audición', concierto:'Concierto', grabacion:'Grabación', clase:'Clase', ensayo:'Ensayo' };
-  document.getElementById('mesLeyenda').innerHTML = [...tiposPresentes].map(t =>
+
+  const baseLegend = [...tiposPresentes].map(t =>
     `<div class="mes-leyenda-item"><div class="mes-dot ${t}"></div>${TIPO_LABELS[t]||t}</div>`
   ).join('');
+
+  let habitLegend = '';
+  if (habit) {
+    habitLegend = `
+      <div class="mes-leyenda-item"><div class="mes-habit-mark is-success" style="position:static;display:inline-flex;margin-right:4px;width:14px;height:14px;font-size:9px;align-items:center;justify-content:center">&#10003;</div>Cumplido</div>
+      <div class="mes-leyenda-item"><div class="mes-habit-mark is-failure" style="position:static;display:inline-flex;margin-right:4px;width:14px;height:14px;font-size:9px;align-items:center;justify-content:center">&#215;</div>Fallado</div>
+      <div class="mes-leyenda-item"><div class="mes-habit-mark is-current" style="position:static;display:inline-flex;margin-right:4px;width:14px;height:14px;font-size:9px;align-items:center;justify-content:center">&#8226;</div>Hoy</div>
+    `;
+  }
+
+  document.getElementById('mesLeyenda').innerHTML = baseLegend + habitLegend;
 }
 
 
@@ -19417,6 +19452,42 @@ function toggleHabitToday(event) {
   saveData();
   renderHabitChallenge();
   renderHabitCalendar();
+  renderMesCalendario();
+  try { Haptics.success(); } catch(e) {}
+}
+
+function toggleHabitForDate(dateKey, event) {
+  event?.stopPropagation();
+  const habit = habitActiveChallenge();
+  if (!habit) return openHabitChallengeModal();
+  const todayKey = habitDayKey();
+  const startNumber = habitDayNumber(habit.startDate);
+  const dayNumber = habitDayNumber(dateKey);
+  const todayNumber = habitDayNumber(todayKey);
+  const index = dayNumber - startNumber;
+  if (!Number.isFinite(index) || index < 0 || index >= habit.durationDays) return;
+  if (dayNumber > todayNumber) return;
+
+  const existing = habitLogStatus(habit.logs[dateKey]);
+  if (habit.mode === 'avoid') {
+    const isToday = dateKey === todayKey;
+    const message = existing === 'failed'
+      ? (isToday ? '¿Quitar el incumplimiento de hoy?' : '¿Quitar el incumplimiento de este día?')
+      : (isToday ? '¿Has incumplido hoy este reto?\n\nSe guardará el día, pero no se borrará el progreso anterior.' : '¿Has incumplido este día este reto?\n\nSe guardará el día, pero no se borrará el progreso anterior.');
+    if (!confirm(message)) return;
+    if (existing === 'failed') habit.logs[dateKey] = { status: 'clear', at: new Date().toISOString() };
+    else habit.logs[dateKey] = { status: 'failed', at: new Date().toISOString() };
+  } else if (existing === 'done') {
+    habit.logs[dateKey] = { status: 'clear', at: new Date().toISOString() };
+  } else {
+    habit.logs[dateKey] = { status: 'done', at: new Date().toISOString() };
+  }
+  habit.updatedAt = new Date().toISOString();
+  db.habitChallenge = habit;
+  saveData();
+  renderHabitChallenge();
+  renderHabitCalendar();
+  renderMesCalendario();
   try { Haptics.success(); } catch(e) {}
 }
 
