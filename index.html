@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=240">
+<link rel="stylesheet" href="styles.css?v=241">
 </head>
 <body>
 
@@ -489,38 +489,22 @@
       <button type="button" class="crono-destellos-card" id="cronoDestellosCard" onclick="openDestellosModal()"></button>
     </div>
 
-    <!-- Selector de vista secundaria del cronómetro: Calendario | Objetivos -->
-    <div class="crono-calendar-selector" role="tablist" aria-label="Vista secundaria del cronómetro">
-      <button type="button" class="crono-selector-btn active" id="cronoTabCalendar" role="tab" aria-selected="true" onclick="switchCronoCalendarTab('calendar')">Calendario</button>
-      <button type="button" class="crono-selector-btn" id="cronoTabObjectives" role="tab" aria-selected="false" onclick="switchCronoCalendarTab('objectives')">Objetivos</button>
-    </div>
-
-    <div class="crono-panel-wrapper">
-      <!-- Panel de Calendario -->
-      <div id="cronoPanelCalendar">
-        <section class="crono-calendar-panel" aria-label="Calendario mensual durante el estudio">
-          <header class="crono-calendar-head">
-            <button type="button" class="crono-calendar-nav" onclick="changeCronoCalendarMonth(-1)" aria-label="Mes anterior">‹</button>
-            <div>
-              <span>Calendario</span>
-              <strong id="cronoCalendarLabel"></strong>
-            </div>
-            <button type="button" class="crono-calendar-nav" onclick="changeCronoCalendarMonth(1)" aria-label="Mes siguiente">›</button>
-            <button type="button" class="crono-calendar-add" onclick="openCronoCalendarAdd()" aria-label="Añadir evento">＋</button>
-          </header>
-          <div class="crono-calendar-weekdays" aria-hidden="true">
-            <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
-          </div>
-          <div class="crono-calendar-grid" id="cronoCalendarGrid"></div>
-          <div class="crono-calendar-foot">Toca un día para añadir · toca un evento para editarlo</div>
-        </section>
+    <section class="crono-calendar-panel" aria-label="Calendario mensual durante el estudio">
+      <header class="crono-calendar-head">
+        <button type="button" class="crono-calendar-nav" onclick="changeCronoCalendarMonth(-1)" aria-label="Mes anterior">‹</button>
+        <div>
+          <span>Calendario</span>
+          <strong id="cronoCalendarLabel"></strong>
+        </div>
+        <button type="button" class="crono-calendar-nav" onclick="changeCronoCalendarMonth(1)" aria-label="Mes siguiente">›</button>
+        <button type="button" class="crono-calendar-add" onclick="openCronoCalendarAdd()" aria-label="Añadir evento">＋</button>
+      </header>
+      <div class="crono-calendar-weekdays" aria-hidden="true">
+        <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
       </div>
-
-      <!-- Panel de Objetivos -->
-      <div id="cronoPanelObjectives" style="display:none">
-        <div class="crono-habit-dashboard" id="cronoHabitCalendarDashboard"></div>
-      </div>
-    </div>
+      <div class="crono-calendar-grid" id="cronoCalendarGrid"></div>
+      <div class="crono-calendar-foot">Toca un día para añadir · toca un evento para editarlo</div>
+    </section>
 
     <section class="crono-moment-monitor" aria-label="Registros del momento">
       <button type="button" class="crono-moment-mobile-trigger" aria-expanded="false" onclick="toggleCronoMomentPanel()">
@@ -2074,7 +2058,8 @@
 <script src="data-core.js?v=228"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=240"></script>
+<script src="app.js?v=241"></script>
+<script src="timer-objectives.js?v=241"></script>
 
 </body>
 <script>
@@ -2096,7 +2081,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=240', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=241', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
