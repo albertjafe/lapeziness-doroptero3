@@ -449,7 +449,7 @@ test('shows and updates the daily challenge history from calendar', async ({ bro
 });
 
 test('loads the calendar and objectives switch inside the stopwatch', async ({ page }) => {
-  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.setViewportSize({ width: 834, height: 1194 });
   await prepare(page);
   await page.evaluate(() => {
     const today = habitDayKey();
@@ -471,6 +471,43 @@ test('loads the calendar and objectives switch inside the stopwatch', async ({ p
   await objectivesTab.click();
   await expect(objectivesTab).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#cronoObjectivesPanel #habitCalendarDashboard')).toContainText('Practicar escalas');
+
+  const portraitLayout = await page.evaluate(() => {
+    const shell = document.getElementById('cronoCalendarObjectivesShell').getBoundingClientRect();
+    const panel = document.getElementById('cronoObjectivesPanel').getBoundingClientRect();
+    const dashboard = document.querySelector('#cronoObjectivesPanel .habit-calendar-dashboard').getBoundingClientRect();
+    const layout = getComputedStyle(document.querySelector('#cronoObjectivesPanel .habit-calendar-layout'));
+    const stats = getComputedStyle(document.querySelector('#cronoObjectivesPanel .habit-calendar-stats'));
+    const day = document.querySelector('#cronoObjectivesPanel .habit-calendar-day').getBoundingClientRect();
+    return {
+      shellWidth: shell.width,
+      panelContainsDashboard: dashboard.left >= panel.left - 1 && dashboard.right <= panel.right + 1,
+      layoutColumns: layout.gridTemplateColumns.split(' ').length,
+      statColumns: stats.gridTemplateColumns.split(' ').length,
+      dayWidth: day.width,
+      documentFits: document.documentElement.scrollWidth <= innerWidth + 1,
+    };
+  });
+  expect(portraitLayout.shellWidth).toBeGreaterThan(300);
+  expect(portraitLayout.panelContainsDashboard).toBe(true);
+  expect(portraitLayout.layoutColumns).toBe(1);
+  expect(portraitLayout.statColumns).toBe(4);
+  expect(portraitLayout.dayWidth).toBeGreaterThanOrEqual(34);
+  expect(portraitLayout.documentFits).toBe(true);
+
+  await page.setViewportSize({ width: 1194, height: 834 });
+  const landscapeLayout = await page.evaluate(() => {
+    const shell = document.getElementById('cronoCalendarObjectivesShell').getBoundingClientRect();
+    const dashboard = document.querySelector('#cronoObjectivesPanel .habit-calendar-dashboard').getBoundingClientRect();
+    return {
+      visible: shell.width > 0 && shell.height > 0,
+      contained: dashboard.left >= shell.left - 1 && dashboard.right <= shell.right + 1,
+      documentFits: document.documentElement.scrollWidth <= innerWidth + 1,
+    };
+  });
+  expect(landscapeLayout.visible).toBe(true);
+  expect(landscapeLayout.contained).toBe(true);
+  expect(landscapeLayout.documentFits).toBe(true);
 
   await calendarTab.click();
   await expect(calendarTab).toHaveAttribute('aria-selected', 'true');
