@@ -448,6 +448,36 @@ test('shows and updates the daily challenge history from calendar', async ({ bro
   }
 });
 
+test('loads the calendar and objectives switch inside the stopwatch', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await prepare(page);
+  await page.evaluate(() => {
+    const today = habitDayKey();
+    db.habitChallenge = {
+      id: 'timer-habit', title: 'Practicar escalas', mode: 'do', durationDays: 14,
+      startDate: today, logs: {}, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    saveData();
+    renderHabitChallenge();
+    renderHabitCalendar();
+    showView('cronometro');
+  });
+
+  const calendarTab = page.locator('.crono-calendar-objectives-tab[data-timer-panel="calendar"]');
+  const objectivesTab = page.locator('.crono-calendar-objectives-tab[data-timer-panel="objectives"]');
+  await expect(calendarTab).toBeVisible();
+  await expect(objectivesTab).toBeVisible();
+
+  await objectivesTab.click();
+  await expect(objectivesTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#cronoObjectivesPanel #habitCalendarDashboard')).toContainText('Practicar escalas');
+
+  await calendarTab.click();
+  await expect(calendarTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#cronoCalendarPanelInner')).not.toHaveAttribute('hidden', '');
+  await expect(page.locator('#cronoObjectivesPanel')).toBeHidden();
+});
+
 test('adds custom study quickly and persists both history and timed detail', async ({ page }) => {
   await prepare(page);
   await page.evaluate(() => showView('session'));
