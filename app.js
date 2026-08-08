@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-08-pulse-optional-v118';
+const APP_VERSION = '2026-08-08-unified-calendar-v119';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -122,6 +122,7 @@ function refreshStudyViews() {
     if (typeof renderSesionesHistorial === 'function') renderSesionesHistorial();
     if (typeof renderHabitChallenge === 'function') renderHabitChallenge();
     if (typeof renderHabitCalendar === 'function') renderHabitCalendar();
+    if (typeof renderMesCalendario === 'function') renderMesCalendario();
   };
   if (typeof requestAnimationFrame === 'function' && document.visibilityState !== 'hidden') {
     _studyViewsRefreshFrame = requestAnimationFrame(render);
@@ -10928,6 +10929,22 @@ function renderCronoCalendar() {
 let mesOffset = 0; // 0 = mes actual, +1 = siguiente, etc.
 let _calendarMainTab = 'eventos';
 let _habitCalendarOffset = 0;
+let _calendarHabitLayerVisible = null;
+
+function calendarHabitLayerEnabled() {
+  if (_calendarHabitLayerVisible === null) {
+    try { _calendarHabitLayerVisible = localStorage.getItem('calendar-habit-layer') === '1'; }
+    catch (e) { _calendarHabitLayerVisible = false; }
+  }
+  return _calendarHabitLayerVisible;
+}
+
+function toggleCalendarHabitLayer(event) {
+  event?.stopPropagation();
+  _calendarHabitLayerVisible = !calendarHabitLayerEnabled();
+  try { localStorage.setItem('calendar-habit-layer', _calendarHabitLayerVisible ? '1' : '0'); } catch (e) {}
+  renderMesCalendario();
+}
 
 function switchCalTab(tab, btn) {
   if (tab !== 'eventos' && tab !== 'mes' && tab !== 'objetivos') tab = 'eventos';
@@ -10941,7 +10958,11 @@ function switchCalTab(tab, btn) {
   document.getElementById('calPanelMes').style.display = tab === 'mes' ? '' : 'none';
   document.getElementById('calPanelObjetivos').style.display = tab === 'objetivos' ? '' : 'none';
   const actionRow = document.getElementById('calendarActionRow');
-  if (actionRow) actionRow.hidden = tab === 'objetivos';
+  if (actionRow) {
+    actionRow.hidden = tab === 'objetivos';
+    const label = actionRow.querySelector('.view-local-label');
+    if (label) label.textContent = tab === 'eventos' ? 'Próximos eventos' : 'Calendario mensual';
+  }
   if (tab === 'mes') renderMesCalendario();
   if (tab === 'objetivos') renderHabitCalendar();
 }
@@ -11062,11 +11083,78 @@ function cambiarMes(delta) {
   renderMesCalendario();
 }
 
+function renderCalendarHabitLayer() {
+  const toggle = document.getElementById('calendarHabitToggle');
+  const summary = document.getElementById('calendarHabitSummary');
+  const visible = calendarHabitLayerEnabled();
+  if (toggle) {
+    toggle.setAttribute('aria-checked', visible ? 'true' : 'false');
+    toggle.classList.toggle('is-active', visible);
+  }
+  if (!summary) return;
+  summary.hidden = !visible;
+  if (!visible) {
+    summary.innerHTML = '';
+    return;
+  }
+
+  const habit = habitActiveChallenge();
+  if (!habit) {
+    summary.innerHTML = '<div class="calendar-habit-empty"><span><strong>No hay un objetivo activo</strong><small>Crea un reto para ver sus días aquí.</small></span>' +
+      '<button type="button" onclick="openHabitChallengeModal()">Crear objetivo</button></div>';
+    return;
+  }
+
+  const metrics = habitMetrics(habit);
+  const marked = habit.mode === 'avoid' ? metrics.todayLog === 'failed' : metrics.todayLog === 'done';
+  const modeLabel = habit.mode === 'avoid' ? 'Evitar' : 'Hacer';
+  const dayLabel = metrics.complete ? 'Reto completado' : modeLabel + ' · día ' + metrics.day + '/' + metrics.duration;
+  let action = '';
+  if (metrics.complete) {
+    action = '<button type="button" class="calendar-habit-action" onclick="openHabitChallengeModal()">Nuevo objetivo</button>';
+  } else if (habit.mode === 'avoid') {
+    action = '<button type="button" class="calendar-habit-action calendar-habit-relapse' + (marked ? ' is-failure' : '') + '" onclick="registerHabitRelapse(event)">' +
+      (marked ? 'Quitar recaída' : 'Registrar recaída') + '</button>';
+  } else {
+    action = '<button type="button" class="calendar-habit-action' + (marked ? ' is-success' : '') + '" onclick="toggleHabitToday(event)">' +
+      (marked ? 'Cumplido hoy' : 'Marcar hoy') + '</button>';
+  }
+  summary.innerHTML = '<div class="calendar-habit-summary-main">' +
+    '<span class="calendar-habit-summary-icon" aria-hidden="true">&#127942;</span>' +
+    '<span class="calendar-habit-summary-copy"><small>' + dayLabel + '</small><strong>' + escapeHtmlSafe(habit.title || 'Objetivo') + '</strong></span>' +
+    '<span class="calendar-habit-summary-progress" aria-label="' + metrics.progress + '% del objetivo"><i style="width:' + metrics.progress + '%"></i></span>' +
+    '<span class="calendar-habit-summary-count">' + metrics.success + '<small>cumplidos</small></span>' +
+    action +
+    '<button type="button" class="calendar-habit-edit" onclick="openHabitChallengeModal()" aria-label="Editar objetivo" title="Editar objetivo">&#8942;</button>' +
+  '</div>';
+}
+
+function calendarHabitMonthCell(habit, key, date, month, todayKey) {
+  const state = habitCalendarDayState(habit, key, todayKey);
+  const finalKey = habitKeyAt(habit.startDate, Math.max(0, habit.durationDays - 1));
+  const victory = key === finalKey && state === 'success';
+  const otherMonth = date.getMonth() !== month;
+  const isToday = key === todayKey;
+  const mark = victory ? '&#9873;' : (state === 'success' ? '&#10003;' : (state === 'failure' ? '&#215;' : (state === 'current' || state === 'future' ? '&#8226;' : '')));
+  const victoryLabel = victory ? ' · meta alcanzada' : '';
+  const label = date.getDate() + ' de ' + CALENDAR_MONTHS[date.getMonth()] + ': ' + habitCalendarStateLabel(state) + victoryLabel;
+  return '<div class="mes-cell habit-calendar-month-cell is-' + state + (otherMonth ? ' otro-mes' : '') + (isToday ? ' hoy' : '') + (victory ? ' is-victory' : '') + '" data-date="' + key + '" aria-label="' + label + '">' +
+    '<span class="mes-cell-num">' + date.getDate() + '</span><span class="habit-month-mark" aria-hidden="true">' + mark + '</span>' +
+  '</div>';
+}
+
 function renderMesCalendario() {
   const hoy = new Date();
   const ref = new Date(hoy.getFullYear(), hoy.getMonth() + mesOffset, 1);
   const year = ref.getFullYear();
   const month = ref.getMonth();
+
+  renderCalendarHabitLayer();
+  const objectiveMode = calendarHabitLayerEnabled();
+  const habit = objectiveMode ? habitActiveChallenge() : null;
+  const todayKey = habitDayKey();
+  const actionRow = document.getElementById('calendarActionRow');
+  if (actionRow && _calendarMainTab === 'mes') actionRow.hidden = objectiveMode;
 
   // Label
   document.getElementById('mesNavLabel').textContent = CALENDAR_MONTHS[month] + ' ' + year;
@@ -11083,34 +11171,60 @@ function renderMesCalendario() {
   const grid = document.getElementById('mesGrid');
   let html = '';
 
+  if (objectiveMode && !habit) {
+    grid.innerHTML = '<div class="mes-objective-empty"><span class="calendar-habit-summary-icon" aria-hidden="true">&#127942;</span><strong>Crea un objetivo para llenar este calendario</strong><button type="button" onclick="openHabitChallengeModal()">Crear objetivo</button></div>';
+    document.getElementById('mesLeyenda').innerHTML = '';
+    return;
+  }
+
   // Celdas del mes anterior (relleno)
   for (let i = 0; i < offsetInicio; i++) {
     const d = diasMesAnterior - offsetInicio + 1 + i;
-    html += `<div class="mes-cell otro-mes"><span class="mes-cell-num">${d}</span></div>`;
+    const date = new Date(year, month - 1, d, 12);
+    const key = calendarDateISO(date);
+    html += objectiveMode
+      ? calendarHabitMonthCell(habit, key, date, month, todayKey)
+      : `<div class="mes-cell otro-mes"><span class="mes-cell-num">${d}</span></div>`;
   }
 
   // Días del mes
   for (let d = 1; d <= diasEnMes; d++) {
     const esHoy = d === hoy.getDate() && month === hoy.getMonth() && year === hoy.getFullYear();
     const key = calendarDateISO(new Date(year, month, d, 12));
-    const evs = eventosPorDia[key] || [];
-    const dotsHtml = evs.map(ev =>
-      `<div class="mes-dot ${ev.tipo}" title="${ev.nombre}"></div>`
-    ).join('');
-    html += `<div class="mes-cell${esHoy ? ' hoy' : ''}">
-      <span class="mes-cell-num">${d}</span>
-      <div class="mes-dots">${dotsHtml}</div>
-    </div>`;
+    if (objectiveMode) {
+      html += calendarHabitMonthCell(habit, key, new Date(year, month, d, 12), month, todayKey);
+    } else {
+      const evs = eventosPorDia[key] || [];
+      const dotsHtml = evs.map(ev =>
+        `<div class="mes-dot ${ev.tipo}" title="${ev.nombre}"></div>`
+      ).join('');
+      html += `<div class="mes-cell${esHoy ? ' hoy' : ''}">
+        <span class="mes-cell-num">${d}</span>
+        <div class="mes-dots">${dotsHtml}</div>
+      </div>`;
+    }
   }
 
   // Celdas del mes siguiente (relleno)
   const totalCeldas = offsetInicio + diasEnMes;
   const celdaSiguiente = totalCeldas % 7 === 0 ? 0 : 7 - (totalCeldas % 7);
   for (let i = 1; i <= celdaSiguiente; i++) {
-    html += `<div class="mes-cell otro-mes"><span class="mes-cell-num">${i}</span></div>`;
+    const date = new Date(year, month + 1, i, 12);
+    const key = calendarDateISO(date);
+    html += objectiveMode
+      ? calendarHabitMonthCell(habit, key, date, month, todayKey)
+      : `<div class="mes-cell otro-mes"><span class="mes-cell-num">${i}</span></div>`;
   }
 
   grid.innerHTML = html;
+
+  if (objectiveMode) {
+    document.getElementById('mesLeyenda').innerHTML = '<div class="mes-leyenda-item"><span class="habit-legend-symbol success">&#10003;</span> Cumplido</div>' +
+      '<div class="mes-leyenda-item"><span class="habit-legend-symbol failure">&#215;</span> Fallado</div>' +
+      '<div class="mes-leyenda-item"><span class="habit-legend-symbol current">&#8226;</span> Hoy / pendiente</div>' +
+      '<div class="mes-leyenda-item"><span class="habit-legend-symbol victory">&#9873;</span> Meta alcanzada</div>';
+    return;
+  }
 
   // Leyenda con los tipos presentes en el mes
   const tiposPresentes = new Set();
@@ -19424,8 +19538,30 @@ function saveHabitChallenge() {
   saveData();
   renderHabitChallenge();
   renderHabitCalendar();
+  renderMesCalendario();
   closeModal('modalHabitChallenge');
   showToast(_habitEditingExisting ? 'Reto actualizado' : 'Reto iniciado');
+}
+
+function registerHabitRelapse(event) {
+  event?.stopPropagation();
+  const habit = habitActiveChallenge();
+  if (!habit) return openHabitChallengeModal();
+  const metrics = habitMetrics(habit);
+  if (metrics.complete) return openHabitChallengeModal();
+  const existing = habitLogStatus(habit.logs[metrics.todayKey]);
+  habit.logs[metrics.todayKey] = {
+    status: existing === 'failed' ? 'clear' : 'failed',
+    at: new Date().toISOString(),
+  };
+  habit.updatedAt = new Date().toISOString();
+  db.habitChallenge = habit;
+  saveData();
+  renderHabitChallenge();
+  renderHabitCalendar();
+  renderMesCalendario();
+  showToast(existing === 'failed' ? 'Recaída quitada' : 'Recaída registrada');
+  try { Haptics.success(); } catch (e) {}
 }
 
 function toggleHabitToday(event) {
@@ -19468,6 +19604,7 @@ function deleteHabitChallenge() {
   saveData();
   renderHabitChallenge();
   renderHabitCalendar();
+  renderMesCalendario();
   closeModal('modalHabitChallenge');
   showToast('Reto eliminado');
 }

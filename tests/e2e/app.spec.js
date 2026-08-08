@@ -448,6 +448,47 @@ test('shows and updates the daily challenge history from calendar', async ({ bro
   }
 });
 
+test('shows objectives as a layer inside the monthly calendar', async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    const today = habitDayKey();
+    const start = habitKeyAt(today, -20);
+    db.habitChallenge = {
+      id: 'integrated-calendar-habit', title: 'Leer sin móvil', mode: 'do', durationDays: 21,
+      startDate: start,
+      logs: { [today]: { status: 'done', at: new Date().toISOString() } },
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    saveData();
+    showView('calendario');
+    switchCalTab('mes', document.getElementById('calTabMes'));
+  });
+
+  await expect(page.locator('#calPanelMes')).toBeVisible();
+  await expect(page.locator('#calPanelObjetivos')).toBeHidden();
+  await expect(page.locator('#calendarHabitToggle')).toHaveAttribute('aria-checked', 'false');
+  await page.locator('#calendarHabitToggle').click();
+  await expect(page.locator('#calendarHabitToggle')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('#mesGrid .habit-calendar-month-cell')).not.toHaveCount(0);
+  await expect(page.locator('#mesGrid .mes-dot')).toHaveCount(0);
+  await expect(page.locator(`.habit-calendar-month-cell[data-date="${await page.evaluate(() => habitDayKey())}"]`)).toHaveClass(/is-victory/);
+
+  await page.evaluate(() => {
+    const today = habitDayKey();
+    db.habitChallenge = {
+      id: 'integrated-calendar-avoid', title: 'No coger el móvil', mode: 'avoid', durationDays: 21,
+      startDate: habitKeyAt(today, -20), logs: {},
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    saveData();
+    renderMesCalendario();
+  });
+  await expect(page.locator('.calendar-habit-relapse')).toContainText('Registrar recaída');
+  await page.locator('.calendar-habit-relapse').click();
+  expect(await page.evaluate(() => habitLogStatus(db.habitChallenge.logs[habitDayKey()]))).toBe('failed');
+  await expect(page.locator('.calendar-habit-relapse')).toContainText('Quitar recaída');
+});
+
 test('loads the calendar and objectives switch inside the stopwatch', async ({ page }) => {
   await page.setViewportSize({ width: 834, height: 1194 });
   await prepare(page);

@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=243">
+<link rel="stylesheet" href="styles.css?v=244">
 </head>
 <body>
 
@@ -647,12 +647,11 @@
   <div class="cal-tabs calendar-view-tabs" role="tablist" aria-label="Vista de calendario">
     <button type="button" class="cal-tab active" id="calTabEventos" role="tab" aria-selected="true" aria-controls="calPanelEventos" onclick="switchCalTab('eventos',this)">Eventos</button>
     <button type="button" class="cal-tab" id="calTabMes" role="tab" aria-selected="false" aria-controls="calPanelMes" onclick="switchCalTab('mes',this)">Calendario</button>
-    <button type="button" class="cal-tab" id="calTabObjetivos" role="tab" aria-selected="false" aria-controls="calPanelObjetivos" onclick="switchCalTab('objetivos',this)">Objetivos</button>
+    <button type="button" class="cal-tab" id="calTabObjetivos" role="tab" aria-selected="false" aria-controls="calPanelObjetivos" onclick="switchCalTab('objetivos',this)" hidden>Objetivos</button>
   </div>
   <div class="view-action-row calendar-action-row" id="calendarActionRow">
     <div class="view-local-label">Próximos eventos</div>
     <div class="calendar-action-buttons">
-      <button type="button" class="calendar-objectives-shortcut" onclick="switchCalTab('objetivos',document.getElementById('calTabObjetivos'))" aria-controls="calPanelObjetivos">Objetivos</button>
       <button type="button" class="add-evento-btn" onclick="openAddEvento()">+ añadir evento</button>
     </div>
   </div>
@@ -668,9 +667,15 @@
   <div id="calPanelMes" style="display:none">
     <div class="mes-nav">
       <button class="mes-nav-btn" onclick="cambiarMes(-1)">‹</button>
-      <div class="mes-nav-label" id="mesNavLabel"></div>
+      <div class="mes-nav-center">
+        <div class="mes-nav-label" id="mesNavLabel"></div>
+        <button type="button" class="calendar-layer-toggle" id="calendarHabitToggle" role="switch" aria-checked="false" onclick="toggleCalendarHabitLayer(event)">
+          <span class="calendar-layer-toggle-dot" aria-hidden="true"></span> Objetivos
+        </button>
+      </div>
       <button class="mes-nav-btn" onclick="cambiarMes(1)">›</button>
     </div>
+    <div class="calendar-habit-summary" id="calendarHabitSummary" hidden></div>
     <div class="mes-grid-header">
       <span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span>
     </div>
@@ -2071,8 +2076,8 @@
 <script src="data-core.js?v=228"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=243"></script>
-<script src="timer-objectives.js?v=243"></script>
+<script src="app.js?v=244"></script>
+<script src="timer-objectives.js?v=244"></script>
 
 </body>
 <script>
@@ -2094,7 +2099,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=241', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=244', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
