@@ -467,11 +467,39 @@ test('shows objectives as a layer inside the monthly calendar', async ({ page })
   await expect(page.locator('#calPanelMes')).toBeVisible();
   await expect(page.locator('#calPanelObjetivos')).toBeHidden();
   await expect(page.locator('#calendarHabitToggle')).toHaveAttribute('aria-checked', 'false');
+  const geometryOff = await page.evaluate(() => ({
+    panel: document.getElementById('calPanelMes').getBoundingClientRect().height,
+    grid: document.getElementById('mesGrid').getBoundingClientRect().height,
+    summary: document.getElementById('calendarHabitSummary').getBoundingClientRect().height,
+  }));
   await page.locator('#calendarHabitToggle').click();
   await expect(page.locator('#calendarHabitToggle')).toHaveAttribute('aria-checked', 'true');
   await expect(page.locator('#mesGrid .habit-calendar-month-cell')).not.toHaveCount(0);
   await expect(page.locator('#mesGrid .mes-dot')).toHaveCount(0);
   await expect(page.locator(`.habit-calendar-month-cell[data-date="${await page.evaluate(() => habitDayKey())}"]`)).toHaveClass(/is-victory/);
+  const geometryOn = await page.evaluate(() => ({
+    panel: document.getElementById('calPanelMes').getBoundingClientRect().height,
+    grid: document.getElementById('mesGrid').getBoundingClientRect().height,
+    summary: document.getElementById('calendarHabitSummary').getBoundingClientRect().height,
+    legend: document.getElementById('mesLeyenda').getBoundingClientRect().height,
+  }));
+  expect(Math.abs(geometryOn.panel - geometryOff.panel)).toBeLessThanOrEqual(2);
+  expect(Math.abs(geometryOn.grid - geometryOff.grid)).toBeLessThanOrEqual(1);
+  expect(Math.abs(geometryOn.summary - geometryOff.summary)).toBeLessThanOrEqual(1);
+
+  await page.evaluate(() => {
+    const today = habitDayKey();
+    db.habitChallenge = {
+      id: 'integrated-calendar-future', title: 'Leer a diario', mode: 'do', durationDays: 3,
+      startDate: today, logs: {},
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    saveData();
+    renderMesCalendario();
+  });
+  await expect(page.locator('#mesGrid .habit-calendar-month-cell.is-target')).toHaveCount(1);
+  await expect(page.locator('#mesGrid .habit-calendar-month-cell.is-target .habit-month-mark')).toHaveText(String.fromCodePoint(9873));
+  await expect(page.locator('#mesGrid .habit-calendar-month-cell.is-target')).not.toHaveClass(/is-victory/);
 
   await page.evaluate(() => {
     const today = habitDayKey();

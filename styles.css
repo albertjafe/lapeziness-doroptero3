@@ -18631,3 +18631,88 @@ body.crono-pulse-disabled #view-cronometro .crono-moment-monitor { display: none
   .mes-cell.habit-calendar-month-cell { min-height: 46px; }
   .habit-month-mark { width: 20px; height: 20px; margin-top: 3px; font-size: 12px; }
 }
+
+/* La capa de objetivos cambia el contenido, no el espacio reservado del calendario. */
+#view-calendario .calendar-action-row.is-objective-layer .calendar-action-buttons {
+  visibility: hidden;
+}
+#calPanelMes .calendar-habit-summary {
+  min-height: 58px;
+  margin-bottom: 12px;
+}
+#calPanelMes .calendar-habit-summary-main {
+  grid-template-columns: 34px minmax(0, 1fr) auto auto auto 32px;
+  min-height: 58px;
+  box-sizing: border-box;
+}
+#calPanelMes .calendar-habit-edit { min-height: 34px; }
+#calPanelMes .calendar-habit-summary-main.is-muted {
+  border-color: var(--border2);
+  background: color-mix(in srgb, var(--bg2) 76%, transparent);
+  opacity: .72;
+}
+.calendar-habit-summary-hint {
+  color: var(--text3);
+  font-size: 9px;
+  white-space: nowrap;
+}
+#calPanelMes .mes-grid {
+  align-items: stretch;
+}
+#calPanelMes .mes-cell {
+  height: 52px;
+  min-height: 52px;
+  box-sizing: border-box;
+}
+#calPanelMes .mes-leyenda {
+  height: 48px;
+  min-height: 48px;
+  box-sizing: border-box;
+  align-content: flex-start;
+  overflow: hidden;
+}
+#calPanelMes .habit-calendar-month-cell.is-target {
+  border-color: color-mix(in srgb, #d6a52e 78%, var(--border2));
+  background: color-mix(in srgb, #d6a52e 7%, var(--bg2));
+  opacity: .94;
+}
+#calPanelMes .habit-calendar-month-cell.is-target.is-future { opacity: .94; }
+#calPanelMes .habit-calendar-month-cell.is-target .habit-month-mark {
+  background: #d6a52e;
+  color: #fff;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #d6a52e 14%, transparent);
+}
+#calPanelMes .habit-calendar-month-cell.is-target.is-failure .habit-month-mark {
+  background: var(--red);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 13%, transparent);
+}
+#calPanelMes .habit-calendar-month-cell.is-target.is-victory {
+  border-color: color-mix(in srgb, #5a9a6e 72%, #d6a52e 28%);
+  background: color-mix(in srgb, #5a9a6e 10%, var(--bg2));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #d6a52e 45%, transparent);
+  opacity: 1;
+}
+#calPanelMes .habit-calendar-month-cell.is-target.is-victory .habit-month-mark {
+  background: #5a9a6e;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #5a9a6e 15%, transparent);
+}
+
+@media (max-width: 560px) {
+  #calPanelMes .calendar-habit-summary-hint { display: none; }
+  #calPanelMes .calendar-habit-action {
+    grid-column: auto;
+    grid-row: auto;
+    justify-self: stretch;
+    min-height: 32px;
+    padding-inline: 7px;
+    font-size: 8px;
+  }
+  #calPanelMes .mes-cell {
+    height: 46px;
+    min-height: 46px;
+  }
+  #calPanelMes .mes-leyenda {
+    height: 60px;
+    min-height: 60px;
+  }
+}

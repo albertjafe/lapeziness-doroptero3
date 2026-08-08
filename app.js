@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-08-unified-calendar-v119';
+const APP_VERSION = '2026-08-08-unified-calendar-v120';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -10960,6 +10960,7 @@ function switchCalTab(tab, btn) {
   const actionRow = document.getElementById('calendarActionRow');
   if (actionRow) {
     actionRow.hidden = tab === 'objetivos';
+    actionRow.classList.toggle('is-objective-layer', tab === 'mes' && calendarHabitLayerEnabled());
     const label = actionRow.querySelector('.view-local-label');
     if (label) label.textContent = tab === 'eventos' ? 'Próximos eventos' : 'Calendario mensual';
   }
@@ -11092,9 +11093,14 @@ function renderCalendarHabitLayer() {
     toggle.classList.toggle('is-active', visible);
   }
   if (!summary) return;
-  summary.hidden = !visible;
+  summary.hidden = false;
+  summary.classList.toggle('is-objectives-visible', visible);
   if (!visible) {
-    summary.innerHTML = '';
+    summary.innerHTML = '<div class="calendar-habit-summary-main is-muted" aria-hidden="true">' +
+      '<span class="calendar-habit-summary-icon">&#127942;</span>' +
+      '<span class="calendar-habit-summary-copy"><small>Capa opcional</small><strong>Objetivos ocultos</strong></span>' +
+      '<span class="calendar-habit-summary-hint">Activa el toggle superior para ver el reto</span>' +
+    '</div>';
     return;
   }
 
@@ -11132,13 +11138,14 @@ function renderCalendarHabitLayer() {
 function calendarHabitMonthCell(habit, key, date, month, todayKey) {
   const state = habitCalendarDayState(habit, key, todayKey);
   const finalKey = habitKeyAt(habit.startDate, Math.max(0, habit.durationDays - 1));
-  const victory = key === finalKey && state === 'success';
+  const target = key === finalKey;
+  const victory = target && state === 'success';
   const otherMonth = date.getMonth() !== month;
   const isToday = key === todayKey;
-  const mark = victory ? '&#9873;' : (state === 'success' ? '&#10003;' : (state === 'failure' ? '&#215;' : (state === 'current' || state === 'future' ? '&#8226;' : '')));
-  const victoryLabel = victory ? ' · meta alcanzada' : '';
-  const label = date.getDate() + ' de ' + CALENDAR_MONTHS[date.getMonth()] + ': ' + habitCalendarStateLabel(state) + victoryLabel;
-  return '<div class="mes-cell habit-calendar-month-cell is-' + state + (otherMonth ? ' otro-mes' : '') + (isToday ? ' hoy' : '') + (victory ? ' is-victory' : '') + '" data-date="' + key + '" aria-label="' + label + '">' +
+  const mark = target ? '&#9873;' : (state === 'success' ? '&#10003;' : (state === 'failure' ? '&#215;' : (state === 'current' || state === 'future' ? '&#8226;' : '')));
+  const targetLabel = victory ? ' · meta alcanzada' : (target ? ' · día objetivo' : '');
+  const label = date.getDate() + ' de ' + CALENDAR_MONTHS[date.getMonth()] + ': ' + habitCalendarStateLabel(state) + targetLabel;
+  return '<div class="mes-cell habit-calendar-month-cell is-' + state + (otherMonth ? ' otro-mes' : '') + (isToday ? ' hoy' : '') + (target ? ' is-target' : '') + (victory ? ' is-victory' : '') + '" data-date="' + key + '" aria-label="' + label + '">' +
     '<span class="mes-cell-num">' + date.getDate() + '</span><span class="habit-month-mark" aria-hidden="true">' + mark + '</span>' +
   '</div>';
 }
@@ -11154,7 +11161,10 @@ function renderMesCalendario() {
   const habit = objectiveMode ? habitActiveChallenge() : null;
   const todayKey = habitDayKey();
   const actionRow = document.getElementById('calendarActionRow');
-  if (actionRow && _calendarMainTab === 'mes') actionRow.hidden = objectiveMode;
+  if (actionRow && _calendarMainTab === 'mes') {
+    actionRow.hidden = false;
+    actionRow.classList.toggle('is-objective-layer', objectiveMode);
+  }
 
   // Label
   document.getElementById('mesNavLabel').textContent = CALENDAR_MONTHS[month] + ' ' + year;
