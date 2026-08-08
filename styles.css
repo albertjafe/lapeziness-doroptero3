@@ -15414,7 +15414,7 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
     min-height: 36px;
     border-radius: 8px;
   }
-  #view-cronometro .crono-moment-monitor { display: none !important; }
+  body.crono-pulse-disabled #view-cronometro .crono-moment-monitor { display: none !important; }
 }
 
 /* El anillo obedece al gesto; la tarjeta organizativa recibe el espacio inverso. */
@@ -18335,4 +18335,61 @@ body.crono-interface-pinching #view-cronometro .crono-run-action-rail {
 
 @media (prefers-reduced-motion: reduce) {
   .habit-calendar-progress i { transition: none; }
+}
+
+/* Pulso es una capa opcional. Cuando estÃ¡ apagado, el espacio vuelve a las
+   tareas y cada categorÃ­a conserva su propio scroll interno. */
+#view-cronometro .crono-moment-monitor[hidden] { display: none !important; }
+body.crono-pulse-disabled #view-cronometro .crono-moment-monitor { display: none !important; }
+.crono-pulse-row .haptics-label > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.crono-pulse-row .haptics-label strong {
+  color: var(--text2);
+  font-size: 12px;
+}
+.crono-pulse-row .haptics-label small {
+  color: var(--text3);
+  font-size: 9px;
+  line-height: 1.25;
+}
+.crono-task-lane .crono-task-list {
+  max-height: min(280px, 34dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 700px) and (max-width: 1199px) and (orientation: portrait),
+       (min-width: 900px) and (max-width: 1399px) and (min-height: 820px) and (orientation: landscape) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 3/2) {
+  body.crono-pulse-disabled #view-cronometro .crono-idle-drawer,
+  body.crono-pulse-disabled #view-cronometro #cronoRunDrawer {
+    grid-column: 1 / -1 !important;
+  }
+  body.crono-pulse-disabled #view-cronometro .crono-tasks-panel-idle .crono-task-list,
+  body.crono-pulse-disabled #view-cronometro #cronoTasksPanel .crono-task-list {
+    max-height: min(320px, 38dvh);
+  }
+  body.crono-pulse-disabled #view-cronometro .crono-idle-drawer-panel[data-panel="tareas"],
+  body.crono-pulse-disabled #view-cronometro #cronoRunDrawer .crono-run-drawer-panel[data-panel="tareas"] {
+    overflow-y: auto;
+  }
+}
+
+@media (min-width: 1200px) and (orientation: landscape) and (min-height: 650px) and (hover: hover) and (pointer: fine) {
+  [data-theme^="marmol"] body.crono-pulse-disabled #view-cronometro .crono-wrap {
+    grid-template-columns: minmax(330px, var(--crono-timer-track)) minmax(500px, var(--crono-tools-track)) !important;
+  }
+  body.crono-pulse-disabled #view-cronometro #cronoStageIdle { grid-column: 1 / 3 !important; }
+  body.crono-pulse-disabled #view-cronometro #cronoStageRun { grid-column: 1 !important; }
+  body.crono-pulse-disabled #view-cronometro #cronoRunDrawer { grid-column: 2 !important; }
+  body.crono-pulse-disabled #view-cronometro .crono-bottom-row { grid-column: 1 / 3 !important; }
+  body.crono-pulse-disabled #view-cronometro .crono-tasks-panel .crono-task-list { max-height: min(380px, 52dvh); }
+}
+
+@media (max-width: 699px) {
+  .crono-task-lane .crono-task-list { max-height: min(230px, 31dvh); }
 }

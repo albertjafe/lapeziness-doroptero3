@@ -515,6 +515,37 @@ test('loads the calendar and objectives switch inside the stopwatch', async ({ p
   await expect(page.locator('#cronoObjectivesPanel')).toBeHidden();
 });
 
+test('hides pulse by default and lets settings restore it while tasks remain scrollable', async ({ page }) => {
+  await page.setViewportSize({ width: 834, height: 1194 });
+  await prepare(page);
+  await page.evaluate(() => showView('cronometro'));
+
+  const pulse = page.locator('#view-cronometro .crono-moment-monitor');
+  await expect(pulse).toBeHidden();
+  expect(await page.evaluate(() => ({
+    stored: localStorage.getItem('alberto_crono_pulse_visible_v1'),
+    disabled: document.body.classList.contains('crono-pulse-disabled'),
+  }))).toEqual({ stored: null, disabled: true });
+  expect(await page.locator('#cronoIdleDrawer').evaluate(el => ({
+    gridColumn: getComputedStyle(el).gridColumn,
+    width: el.getBoundingClientRect().width,
+  }))).toEqual(expect.objectContaining({ gridColumn: '1 / -1' }));
+
+  const taskLists = page.locator('#cronoIdleTasksPanel .crono-task-lane .crono-task-list');
+  expect(await taskLists.count()).toBe(2);
+  const taskList = taskLists.nth(0);
+  expect(await taskList.evaluate(el => ({ overflowY: getComputedStyle(el).overflowY, maxHeight: getComputedStyle(el).maxHeight }))).toEqual(expect.objectContaining({ overflowY: 'auto' }));
+
+  await page.evaluate(() => showView('ajustes'));
+  const pulseToggle = page.locator('#cronoPulseToggleBtn');
+  await expect(pulseToggle).toHaveAttribute('aria-checked', 'false');
+  await pulseToggle.click();
+  await expect(pulseToggle).toHaveAttribute('aria-checked', 'true');
+  await page.evaluate(() => showView('cronometro'));
+  await expect(pulse).toBeVisible();
+  expect(await page.evaluate(() => document.body.classList.contains('crono-pulse-enabled'))).toBe(true);
+});
+
 test('adds custom study quickly and persists both history and timed detail', async ({ page }) => {
   await prepare(page);
   await page.evaluate(() => showView('session'));

@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-06-timer-objectives-layout-v117';
+const APP_VERSION = '2026-08-08-pulse-optional-v118';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -17777,6 +17777,40 @@ const Haptics = (() => {
   };
 })();
 
+// Pulso es opcional: por defecto el cronometro prioriza reloj y tareas.
+const CRONO_PULSE_VISIBILITY_KEY = 'alberto_crono_pulse_visible_v1';
+
+function cronoPulseVisibilityEnabled() {
+  try { return localStorage.getItem(CRONO_PULSE_VISIBILITY_KEY) === 'on'; }
+  catch (e) { return false; }
+}
+
+function cronoRefreshPulseUI() {
+  const enabled = cronoPulseVisibilityEnabled();
+  const button = document.getElementById('cronoPulseToggleBtn');
+  if (!button) return;
+  button.classList.toggle('on', enabled);
+  button.setAttribute('aria-checked', enabled ? 'true' : 'false');
+}
+
+function cronoRefreshPulseVisibility() {
+  const enabled = cronoPulseVisibilityEnabled();
+  document.body.classList.toggle('crono-pulse-enabled', enabled);
+  document.body.classList.toggle('crono-pulse-disabled', !enabled);
+  document.querySelectorAll('#view-cronometro .crono-moment-monitor').forEach(monitor => {
+    monitor.hidden = !enabled;
+    if (!enabled) monitor.classList.remove('is-open', 'history-open');
+  });
+  cronoRefreshPulseUI();
+}
+
+function toggleCronoPulseVisibility() {
+  const enabled = !cronoPulseVisibilityEnabled();
+  try { localStorage.setItem(CRONO_PULSE_VISIBILITY_KEY, enabled ? 'on' : 'off'); } catch (e) {}
+  cronoRefreshPulseVisibility();
+  showToast(enabled ? 'Pulso visible en el cronometro' : 'Pulso oculto en el cronometro');
+}
+
 function toggleHaptics() { Haptics.toggle(); }
 
 function refreshHapticsUI() {
@@ -18730,6 +18764,7 @@ function openSettings() {
   if (typeof updateAjustesAccountRow === 'function') updateAjustesAccountRow();
   if (typeof refreshSoundOptionUI === 'function') refreshSoundOptionUI();
   if (typeof refreshHapticsUI === 'function') refreshHapticsUI();
+  if (typeof cronoRefreshPulseUI === 'function') cronoRefreshPulseUI();
   if (typeof updateForestPendientesBtn === 'function') updateForestPendientesBtn();
   if (typeof updateAppVersionInfo === 'function') updateAppVersionInfo();
   if (typeof updateAiExportControls === 'function') updateAiExportControls();
@@ -25117,6 +25152,7 @@ function _stopCronoClock() {
 function cronoOnEnterView(options) {
   const layoutPrepared = !!options?.layoutPrepared;
   cronoEnterFocus();
+  cronoRefreshPulseVisibility();
   if (!layoutPrepared) {
     cronoInitInterfaceZoom();
     cronoFillObraSelect();
