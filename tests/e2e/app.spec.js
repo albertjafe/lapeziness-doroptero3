@@ -536,46 +536,58 @@ test('loads the calendar and objectives switch inside the stopwatch', async ({ p
   const objectivesTab = page.locator('.crono-calendar-objectives-tab[data-timer-panel="objectives"]');
   await expect(calendarTab).toBeVisible();
   await expect(objectivesTab).toBeVisible();
-
-  await objectivesTab.click();
   await expect(objectivesTab).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('#cronoObjectivesPanel #habitCalendarDashboard')).toContainText('Practicar escalas');
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker')).toContainText('Practicar escalas');
 
   const portraitLayout = await page.evaluate(() => {
     const shell = document.getElementById('cronoCalendarObjectivesShell').getBoundingClientRect();
     const panel = document.getElementById('cronoObjectivesPanel').getBoundingClientRect();
-    const dashboard = document.querySelector('#cronoObjectivesPanel .habit-calendar-dashboard').getBoundingClientRect();
-    const layout = getComputedStyle(document.querySelector('#cronoObjectivesPanel .habit-calendar-layout'));
-    const stats = getComputedStyle(document.querySelector('#cronoObjectivesPanel .habit-calendar-stats'));
-    const day = document.querySelector('#cronoObjectivesPanel .habit-calendar-day').getBoundingClientRect();
+    const tracker = document.querySelector('#cronoObjectivesPanel .crono-habit-tracker').getBoundingClientRect();
+    const clock = document.querySelector('#cronoStageIdle .crono-idle-main').getBoundingClientRect();
+    const stats = getComputedStyle(document.querySelector('#cronoObjectivesPanel .crono-habit-tracker-stats'));
+    const days = getComputedStyle(document.querySelector('#cronoObjectivesPanel .crono-habit-tracker-days'));
+    const day = document.querySelector('#cronoObjectivesPanel .crono-habit-day').getBoundingClientRect();
     return {
       shellWidth: shell.width,
-      panelContainsDashboard: dashboard.left >= panel.left - 1 && dashboard.right <= panel.right + 1,
-      layoutColumns: layout.gridTemplateColumns.split(' ').length,
+      panelContainsTracker: tracker.left >= panel.left - 1 && tracker.right <= panel.right + 1,
+      balancedHeight: Math.abs(shell.height - clock.height),
       statColumns: stats.gridTemplateColumns.split(' ').length,
+      dayColumns: days.gridTemplateColumns.split(' ').length,
       dayWidth: day.width,
       documentFits: document.documentElement.scrollWidth <= innerWidth + 1,
     };
   });
   expect(portraitLayout.shellWidth).toBeGreaterThan(300);
-  expect(portraitLayout.panelContainsDashboard).toBe(true);
-  expect(portraitLayout.layoutColumns).toBe(1);
+  expect(portraitLayout.panelContainsTracker).toBe(true);
+  expect(portraitLayout.balancedHeight).toBeLessThanOrEqual(2);
   expect(portraitLayout.statColumns).toBe(4);
-  expect(portraitLayout.dayWidth).toBeGreaterThanOrEqual(34);
+  expect(portraitLayout.dayColumns).toBe(7);
+  expect(portraitLayout.dayWidth).toBeGreaterThanOrEqual(32);
   expect(portraitLayout.documentFits).toBe(true);
+
+  const sizeToggle = page.locator('#cronoPanelSizeToggle');
+  await expect(sizeToggle).toBeVisible();
+  await sizeToggle.click();
+  await expect(sizeToggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('body')).toHaveClass(/crono-dashboard-compact/);
+  await sizeToggle.click();
+  await expect(sizeToggle).toHaveAttribute('aria-pressed', 'false');
 
   await page.setViewportSize({ width: 1194, height: 834 });
   const landscapeLayout = await page.evaluate(() => {
     const shell = document.getElementById('cronoCalendarObjectivesShell').getBoundingClientRect();
-    const dashboard = document.querySelector('#cronoObjectivesPanel .habit-calendar-dashboard').getBoundingClientRect();
+    const tracker = document.querySelector('#cronoObjectivesPanel .crono-habit-tracker').getBoundingClientRect();
+    const clock = document.querySelector('#cronoStageIdle .crono-idle-main').getBoundingClientRect();
     return {
       visible: shell.width > 0 && shell.height > 0,
-      contained: dashboard.left >= shell.left - 1 && dashboard.right <= shell.right + 1,
+      contained: tracker.left >= shell.left - 1 && tracker.right <= shell.right + 1,
+      balancedHeight: Math.abs(shell.height - clock.height),
       documentFits: document.documentElement.scrollWidth <= innerWidth + 1,
     };
   });
   expect(landscapeLayout.visible).toBe(true);
   expect(landscapeLayout.contained).toBe(true);
+  expect(landscapeLayout.balancedHeight).toBeLessThanOrEqual(2);
   expect(landscapeLayout.documentFits).toBe(true);
 
   await calendarTab.click();
@@ -1476,7 +1488,19 @@ test('separates piano and personal tasks and only reminds piano work', async ({ 
   expect(personalOnly).toEqual({ reminded: false, tab: 'pasajes' });
 
   await page.setViewportSize({ width: 834, height: 1194 });
+  await page.evaluate(() => {
+    cronoTasks().push({
+      id: 'personal_second_column', text: 'Llamar al luthier', kind: 'personal', done: false,
+      createdAt: new Date().toISOString(), priority: 0,
+    });
+    renderCronoTasks();
+    cronoSetIdleDrawerTab('tareas');
+  });
   expect(await page.evaluate(() => getComputedStyle(document.querySelector('.crono-task-columns')).gridTemplateColumns.split(' ').length)).toBe(1);
+  expect(await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('#cronoIdleTasksPanel .crono-task-lane.personal .crono-task-row:not(.is-wide)')];
+    return new Set(rows.map(row => Math.round(row.getBoundingClientRect().left))).size;
+  })).toBe(2);
   await expect(completed.locator('.crono-task-row').first()).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });

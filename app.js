@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-08-unified-calendar-v120';
+const APP_VERSION = '2026-08-09-ipad-habit-tracker-v121';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -19788,6 +19788,7 @@ function cronoInterfaceRingBaseSize() {
   const height = Math.max(320, window.innerHeight || document.documentElement.clientHeight || 768);
   if (width > height && height <= 600) return 142;
   if (width < 700) return Math.min(250, width * 0.64);
+  if (width <= 1199 && height > width && height >= 760) return Math.min(225, height * 0.20);
   if (cronoUsesLargeTabletLandscape()) {
     return height < 900 ? Math.min(182, height * 0.22) : Math.min(255, height * 0.28);
   }
@@ -20643,7 +20644,8 @@ function renderCronoTasks() {
   const row = t => {
     const priority = cronoTaskPriority(t);
     const priorityLabel = cronoTaskPriorityLabel(priority);
-    const cls = 'crono-task-row priority-' + priority + (t.done ? ' is-done' : '');
+    const wide = String(t.text || '').trim().length > 48 ? ' is-wide' : '';
+    const cls = 'crono-task-row priority-' + priority + wide + (t.done ? ' is-done' : '');
     const action = t.done ? 'Volver a abrir' : 'Marcar como hecha';
     return '<div class="' + cls + '" data-task-id="' + hechoJs(t.id) + '">' +
       '<button type="button" class="crono-task-toggle" onclick="toggleCronoTask(\'' + hechoJs(t.id) + '\',this)" aria-label="' + action + ': ' + escapeHtmlSafe(t.text) + '">' +

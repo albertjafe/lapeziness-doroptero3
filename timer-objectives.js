@@ -2,9 +2,11 @@
   'use strict';
 
   const STYLE_ID = 'timerObjectivesStyles';
-  const GENERAL_PARENT_ID = 'calPanelObjetivos';
-  let timerMode = 'calendar';
-  let originalSwitchCalTab = null;
+  const MODE_KEY = 'crono_calendar_panel_v2';
+  const COMPACT_KEY = 'crono_dashboard_compact_v1';
+  let timerMode = 'objectives';
+  let compactLayout = false;
+  let originalRenderHabitCalendar = null;
 
   function addStyles() {
     if (document.getElementById(STYLE_ID)) return;
@@ -19,7 +21,7 @@
       }
       .crono-calendar-objectives-tabs {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 38px;
         gap: 4px;
         width: 100%;
         margin: 0 0 8px;
@@ -27,14 +29,17 @@
         border: 1px solid var(--border2);
         border-radius: 12px;
         background: color-mix(in srgb, var(--bg2) 88%, transparent);
+        box-sizing: border-box;
       }
-      .crono-calendar-objectives-tab {
-        min-height: 40px;
+      .crono-calendar-objectives-tab,
+      .crono-panel-size-toggle {
+        min-width: 0;
+        min-height: 38px;
         border: 0;
         border-radius: 9px;
         background: transparent;
         color: var(--text2);
-        font: 600 10px/1 var(--font-mono, 'JetBrains Mono', monospace);
+        font: 600 9px/1 var(--font-mono, 'JetBrains Mono', monospace);
         letter-spacing: .04em;
         cursor: pointer;
       }
@@ -43,193 +48,478 @@
         color: var(--accent);
         box-shadow: 0 1px 5px rgba(0,0,0,.12);
       }
+      .crono-panel-size-toggle {
+        display: grid;
+        place-items: center;
+        border: 1px solid color-mix(in srgb, var(--border2) 80%, transparent);
+      }
+      .crono-panel-size-toggle svg { width: 16px; height: 16px; }
+      .crono-panel-size-toggle[aria-pressed="true"] {
+        border-color: color-mix(in srgb, var(--accent) 45%, var(--border2));
+        background: color-mix(in srgb, var(--accent) 9%, transparent);
+        color: var(--accent);
+      }
       .crono-calendar-objectives-panel {
         min-width: 0;
         min-height: 0;
       }
       .crono-calendar-objectives-panel[hidden] { display: none !important; }
-      .crono-calendar-objectives-panel .habit-calendar-dashboard { margin: 0; }
+
+      .crono-habit-tracker {
+        display: flex;
+        height: 100%;
+        min-height: 0;
+        padding: 11px;
+        flex-direction: column;
+        gap: 8px;
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, var(--border2) 82%, transparent);
+        border-radius: 18px;
+        background:
+          radial-gradient(circle at 88% 0%, color-mix(in srgb, #d6a52e 8%, transparent), transparent 34%),
+          color-mix(in srgb, var(--bg2) 97%, var(--bg));
+        box-shadow: 0 14px 34px -30px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.2);
+        box-sizing: border-box;
+      }
+      .crono-habit-tracker-head {
+        position: relative;
+        display: grid;
+        grid-template-columns: 38px minmax(0, 1fr) 34px;
+        align-items: center;
+        gap: 9px;
+        min-height: 58px;
+        padding: 7px 8px 10px;
+        overflow: hidden;
+        border: 1px solid color-mix(in srgb, #bd8a1c 34%, var(--border2));
+        border-radius: 10px;
+        background: color-mix(in srgb, #d6a52e 5%, var(--bg));
+      }
+      .crono-habit-tracker-icon {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        border: 1px solid color-mix(in srgb, #bd8a1c 42%, var(--border2));
+        border-radius: 9px;
+        color: #a87913;
+      }
+      .crono-habit-tracker-icon svg { width: 20px; height: 20px; }
+      .crono-habit-tracker-copy { display: grid; gap: 3px; min-width: 0; }
+      .crono-habit-tracker-copy small {
+        overflow: hidden;
+        color: #9b7218;
+        font: 750 7px/1 var(--font-mono, 'JetBrains Mono', monospace);
+        letter-spacing: .07em;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .crono-habit-tracker-copy strong {
+        display: -webkit-box;
+        overflow: hidden;
+        color: var(--text);
+        font: 500 18px/1.02 'Cormorant Garamond', serif;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+      }
+      .crono-habit-tracker-edit {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        min-height: 34px !important;
+        place-items: center;
+        padding: 0;
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        background: var(--bg3);
+        color: var(--text3);
+        font-size: 16px;
+        cursor: pointer;
+      }
+      .crono-habit-tracker-progress {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        height: 3px;
+        background: color-mix(in srgb, var(--border2) 65%, transparent);
+      }
+      .crono-habit-tracker-progress i {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #bd8a1c, #5a9a6e);
+        transition: width 280ms ease;
+      }
+      .crono-habit-tracker-action {
+        min-height: 36px;
+        padding: 7px 10px;
+        border: 1px solid color-mix(in srgb, #b58a24 45%, var(--border2));
+        border-radius: 9px;
+        background: color-mix(in srgb, #d6a52e 7%, var(--bg2));
+        color: #956a0e;
+        font: 750 9px/1 var(--font-mono, 'JetBrains Mono', monospace);
+        cursor: pointer;
+      }
+      .crono-habit-tracker-action.is-success {
+        border-color: color-mix(in srgb, var(--green) 52%, var(--border2));
+        background: color-mix(in srgb, var(--green) 9%, var(--bg2));
+        color: var(--green);
+      }
+      .crono-habit-tracker-action.is-failure {
+        border-color: color-mix(in srgb, var(--red) 52%, var(--border2));
+        background: color-mix(in srgb, var(--red) 8%, var(--bg2));
+        color: var(--red);
+      }
+      .crono-habit-tracker-stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 5px;
+      }
+      .crono-habit-tracker-stat {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: baseline;
+        gap: 2px 5px;
+        min-width: 0;
+        min-height: 43px;
+        padding: 7px 8px;
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--bg) 70%, transparent);
+        box-sizing: border-box;
+      }
+      .crono-habit-tracker-stat strong {
+        grid-row: 1 / 3;
+        color: var(--text);
+        font: 500 21px/1 'Cormorant Garamond', serif;
+      }
+      .crono-habit-tracker-stat span,
+      .crono-habit-tracker-stat small {
+        overflow: hidden;
+        color: var(--text3);
+        font: 700 6px/1 var(--font-mono, 'JetBrains Mono', monospace);
+        letter-spacing: .035em;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .crono-habit-tracker-days {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        grid-auto-rows: minmax(35px, 1fr);
+        gap: 4px;
+        min-height: 0;
+        flex: 1 1 auto;
+        align-content: stretch;
+      }
+      .crono-habit-day {
+        position: relative;
+        display: grid;
+        min-width: 0;
+        min-height: 35px;
+        place-items: center;
+        overflow: hidden;
+        border: 1px solid var(--border2);
+        border-radius: 7px;
+        background: color-mix(in srgb, var(--bg) 72%, transparent);
+        color: var(--text3);
+      }
+      .crono-habit-day > span {
+        position: absolute;
+        top: 4px;
+        left: 5px;
+        font: 700 6px/1 var(--font-mono, 'JetBrains Mono', monospace);
+      }
+      .crono-habit-day > i {
+        display: grid;
+        width: 20px;
+        height: 20px;
+        place-items: center;
+        border-radius: 50%;
+        font: 800 11px/1 Arial, sans-serif;
+        font-style: normal;
+      }
+      .crono-habit-day.is-success {
+        border-color: color-mix(in srgb, var(--green) 42%, var(--border2));
+        background: color-mix(in srgb, var(--green) 8%, var(--bg2));
+      }
+      .crono-habit-day.is-success > i { background: var(--green); color: #fff; }
+      .crono-habit-day.is-failure {
+        border-color: color-mix(in srgb, var(--red) 44%, var(--border2));
+        background: color-mix(in srgb, var(--red) 7%, var(--bg2));
+      }
+      .crono-habit-day.is-failure > i { background: var(--red); color: #fff; }
+      .crono-habit-day.is-current {
+        border-color: color-mix(in srgb, #bd8a1c 70%, var(--border2));
+        background: color-mix(in srgb, #d6a52e 10%, var(--bg2));
+        box-shadow: 0 0 0 2px color-mix(in srgb, #d6a52e 11%, transparent);
+      }
+      .crono-habit-day.is-current > i { background: #c38d16; color: #fff; }
+      .crono-habit-day.is-future { opacity: .48; }
+      .crono-habit-day.is-target {
+        border-color: color-mix(in srgb, #d6a52e 74%, var(--border2));
+        background: color-mix(in srgb, #d6a52e 8%, var(--bg2));
+        opacity: .95;
+      }
+      .crono-habit-day.is-target > i {
+        background: #d6a52e;
+        color: #fff;
+        box-shadow: 0 0 0 3px color-mix(in srgb, #d6a52e 13%, transparent);
+      }
+      .crono-habit-day.is-target.is-victory {
+        border-color: color-mix(in srgb, var(--green) 62%, #d6a52e 38%);
+        background: color-mix(in srgb, var(--green) 10%, var(--bg2));
+        opacity: 1;
+      }
+      .crono-habit-day.is-target.is-victory > i { background: var(--green); }
+      .crono-habit-tracker-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        min-height: 23px;
+        color: var(--text3);
+        font: 700 7px/1 var(--font-mono, 'JetBrains Mono', monospace);
+        letter-spacing: .035em;
+        text-transform: uppercase;
+      }
+      .crono-habit-tracker-goal {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: #9b7218;
+      }
+      .crono-habit-tracker-goal i { color: #d6a52e; font-size: 13px; font-style: normal; }
+      .crono-habit-tracker.is-complete .crono-habit-tracker-goal,
+      .crono-habit-tracker.is-complete .crono-habit-tracker-goal i { color: var(--green); }
+      .crono-habit-tracker-empty {
+        display: grid;
+        height: 100%;
+        min-height: 0;
+        place-items: center;
+        padding: 24px;
+        border: 1px dashed var(--border2);
+        border-radius: 18px;
+        background: color-mix(in srgb, var(--bg2) 90%, transparent);
+        box-sizing: border-box;
+        text-align: center;
+      }
+      .crono-habit-tracker-empty > div { display: grid; justify-items: center; gap: 8px; }
+      .crono-habit-tracker-empty strong { color: var(--text); font: 500 22px/1 'Cormorant Garamond', serif; }
+      .crono-habit-tracker-empty span { color: var(--text3); font-size: 9px; }
+      .crono-habit-tracker-empty button {
+        min-height: 38px;
+        padding: 8px 14px;
+        border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border2));
+        border-radius: 9px;
+        background: color-mix(in srgb, var(--accent) 8%, transparent);
+        color: var(--accent);
+        font: 700 9px/1 var(--font-mono, 'JetBrains Mono', monospace);
+      }
 
       @media (min-width: 700px) and (max-width: 1199px) and (orientation: portrait),
              (min-width: 900px) and (max-width: 1399px) and (min-height: 820px) and (orientation: landscape) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 3/2) {
+        [data-theme^="marmol"] #view-cronometro .crono-wrap,
+        [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
+          grid-template-rows: clamp(410px, 38dvh, 456px) auto auto;
+        }
+        [data-theme^="marmol"] body.crono-dashboard-compact #view-cronometro .crono-wrap,
+        [data-theme^="marmol"] body.crono-dashboard-compact.crono-running #view-cronometro .crono-wrap {
+          grid-template-rows: 396px auto auto;
+        }
         #view-cronometro .crono-calendar-objectives-shell {
           grid-column: 4 / -1;
           grid-row: 1;
           align-self: stretch;
           display: flex;
+          width: 100%;
           height: 100%;
           min-height: 0;
           flex-direction: column;
         }
+        #view-cronometro .crono-calendar-objectives-panel {
+          flex: 1 1 auto;
+          height: 100%;
+          min-height: 0;
+        }
         #view-cronometro #cronoCalendarPanelInner {
           display: flex;
-          flex: 1 1 auto;
         }
         #view-cronometro #cronoCalendarPanelInner > .crono-calendar-panel {
           grid-column: auto;
           grid-row: auto;
           width: 100%;
-          height: auto;
+          height: 100%;
           flex: 1 1 auto;
         }
-        #view-cronometro #cronoObjectivesPanel {
-          flex: 1 1 auto;
-          overflow-x: hidden;
-          overflow-y: auto;
-          padding: 1px 2px 5px;
-          overscroll-behavior: contain;
-          scrollbar-width: thin;
+        #view-cronometro #cronoObjectivesPanel { overflow: hidden; }
+        #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker {
+          gap: 6px;
+          padding: 8px;
         }
-        #cronoObjectivesPanel .habit-calendar-empty {
-          grid-template-columns: 44px minmax(0, 1fr);
-          gap: 10px;
-          min-height: 0;
-          padding: 16px 13px;
-        }
-        #cronoObjectivesPanel .habit-calendar-empty-icon {
-          width: 44px;
-          height: 44px;
-        }
-        #cronoObjectivesPanel .habit-calendar-empty h2 { font-size: 20px; }
-        #cronoObjectivesPanel .habit-calendar-empty > button {
-          grid-column: 1 / -1;
-          width: 100%;
-        }
-        #cronoObjectivesPanel .habit-calendar-hero {
-          grid-template-columns: 44px minmax(0, 1fr) auto;
-          gap: 10px;
-          min-height: 78px;
-          padding: 11px 11px 15px;
-        }
-        #cronoObjectivesPanel .habit-calendar-trophy {
-          width: 44px;
-          height: 44px;
-        }
-        #cronoObjectivesPanel .habit-calendar-trophy svg {
-          width: 23px;
-          height: 23px;
-        }
-        #cronoObjectivesPanel .habit-calendar-title h2 {
-          display: -webkit-box;
-          overflow: hidden;
-          font-size: clamp(18px, 2.1vw, 22px);
-          line-height: 1.05;
-          white-space: normal;
-          -webkit-box-orient: vertical;
-          -webkit-line-clamp: 2;
-        }
-        #cronoObjectivesPanel .habit-calendar-edit {
-          min-width: 44px;
-          min-height: 40px;
-          padding-inline: 9px;
-          font-size: 8px;
-        }
-        #cronoObjectivesPanel .habit-calendar-layout {
-          grid-template-columns: minmax(0, 1fr);
-          gap: 10px;
-          margin-top: 10px;
-        }
-        #cronoObjectivesPanel .habit-calendar-summary { gap: 8px; }
-        #cronoObjectivesPanel .habit-calendar-today {
-          min-height: 42px;
-          padding-block: 8px;
-          font-size: 11px;
-        }
-        #cronoObjectivesPanel .habit-calendar-stats {
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 5px;
-        }
-        #cronoObjectivesPanel .habit-calendar-stats > div {
-          display: flex;
-          min-height: 58px;
-          padding: 7px 4px;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 3px;
-          text-align: center;
-        }
-        #cronoObjectivesPanel .habit-calendar-stats span { font-size: 6.5px; }
-        #cronoObjectivesPanel .habit-calendar-stats strong {
-          font-size: 22px;
-          line-height: .9;
-        }
-        #cronoObjectivesPanel .habit-calendar-stats small { font-size: 7px; }
-        #cronoObjectivesPanel .habit-calendar-guidance { display: none; }
-        #cronoObjectivesPanel .habit-calendar-history { padding: 10px 8px; }
-        #cronoObjectivesPanel .habit-calendar-month-nav {
-          grid-template-columns: 38px minmax(0, 1fr) 38px;
-          gap: 5px;
-          margin-bottom: 6px;
-        }
-        #cronoObjectivesPanel .habit-calendar-month-nav strong { font-size: 18px; }
-        #cronoObjectivesPanel .habit-calendar-month-nav button {
-          width: 38px;
-          height: 38px;
-        }
-        #cronoObjectivesPanel .habit-calendar-weekdays,
-        #cronoObjectivesPanel .habit-calendar-grid { gap: 3px; }
-        #cronoObjectivesPanel .habit-calendar-day {
-          min-height: 36px;
-          aspect-ratio: 1.08;
-          border-radius: 5px;
-        }
-        #cronoObjectivesPanel .habit-calendar-day > span {
-          top: 4px;
-          left: 4px;
-          font-size: 7px;
-        }
-        #cronoObjectivesPanel .habit-calendar-day > i {
-          width: 19px;
-          height: 19px;
-          font-size: 11px;
-        }
-        #cronoObjectivesPanel .habit-calendar-legend {
-          gap: 6px 10px;
-          margin-top: 8px;
-          font-size: 7px;
-        }
+        #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker-head { min-height: 52px; padding-block: 5px 8px; }
+        #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker-action { min-height: 32px; }
+        #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker-stat { min-height: 38px; padding-block: 5px; }
+        #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker-days { gap: 3px; }
       }
+
       @media (max-width: 520px) {
-        .crono-calendar-objectives-tabs { width: 100%; margin-bottom: 9px; }
-        .crono-calendar-objectives-tab { min-height: 38px; font-size: 9px; }
+        .crono-calendar-objectives-tabs { margin-bottom: 7px; }
+        .crono-calendar-objectives-tab { min-height: 36px; font-size: 8px; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .crono-habit-tracker-progress i { transition: none; }
       }
     `;
     document.head.appendChild(style);
   }
 
-  function dashboard() {
-    return document.getElementById('habitCalendarDashboard');
+  function safeText(value) {
+    if (typeof window.escapeHtmlSafe === 'function') return window.escapeHtmlSafe(String(value || ''));
+    return String(value || '').replace(/[&<>"']/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[character]);
   }
 
-  function generalParent() {
-    return document.getElementById(GENERAL_PARENT_ID);
+  function parseDayKey(key) {
+    const parts = String(key || '').split('-').map(Number);
+    if (parts.length !== 3 || parts.some(value => !Number.isFinite(value))) return null;
+    return new Date(parts[0], parts[1] - 1, parts[2], 12);
   }
 
-  function timerPanel() {
+  function formatDayKey(key) {
+    const date = parseDayKey(key);
+    if (!date) return '';
+    return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' }).format(date).replace('.', '');
+  }
+
+  function trackerPanel() {
     return document.getElementById('cronoObjectivesPanel');
   }
 
-  function moveDashboardToGeneral() {
-    const root = dashboard();
-    const parent = generalParent();
-    if (root && parent && root.parentElement !== parent) parent.appendChild(root);
+  function trackerState(habit, key, todayKey) {
+    if (typeof window.habitCalendarDayState === 'function') return window.habitCalendarDayState(habit, key, todayKey);
+    return 'future';
   }
 
-  function moveDashboardToTimer() {
-    const root = dashboard();
-    const parent = timerPanel();
-    if (root && parent && root.parentElement !== parent) parent.appendChild(root);
-    if (typeof window.renderHabitCalendar === 'function') window.renderHabitCalendar();
+  function trackerStateLabel(state) {
+    return ({ success: 'cumplido', failure: 'fallado', current: 'hoy', future: 'pendiente' })[state] || '';
+  }
+
+  function trackerDaysHtml(habit, metrics) {
+    const duration = metrics.duration;
+    const visibleCount = Math.min(duration, 28);
+    const todayNumber = typeof window.habitDayNumber === 'function' ? window.habitDayNumber(metrics.todayKey) : 0;
+    const startNumber = typeof window.habitDayNumber === 'function' ? window.habitDayNumber(habit.startDate) : 0;
+    const currentIndex = Math.max(0, Math.min(duration - 1, todayNumber - startNumber));
+    let firstIndex = 0;
+    if (duration > visibleCount) {
+      firstIndex = Math.max(0, Math.min(duration - visibleCount, currentIndex - Math.floor(visibleCount * .65)));
+    }
+    let html = '';
+    for (let offset = 0; offset < visibleCount; offset += 1) {
+      const index = firstIndex + offset;
+      const key = window.habitKeyAt(habit.startDate, index);
+      const state = trackerState(habit, key, metrics.todayKey);
+      const target = index === duration - 1;
+      const victory = target && state === 'success';
+      const mark = target ? '&#9873;' : (state === 'success' ? '&#10003;' : (state === 'failure' ? '&#215;' : (state === 'current' ? '&#8226;' : '')));
+      const label = 'Día ' + (index + 1) + ', ' + formatDayKey(key) + ': ' + trackerStateLabel(state) + (target ? ', meta' : '');
+      html += '<div class="crono-habit-day is-' + state + (target ? ' is-target' : '') + (victory ? ' is-victory' : '') + '" data-date="' + key + '" aria-label="' + label + '">' +
+        '<span>' + (index + 1) + '</span><i aria-hidden="true">' + mark + '</i>' +
+      '</div>';
+    }
+    return html;
+  }
+
+  function renderTracker() {
+    const panel = trackerPanel();
+    if (!panel) return;
+    const habit = typeof window.habitActiveChallenge === 'function' ? window.habitActiveChallenge() : null;
+    const trophy = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 12v5M8.5 20h7M10 17h4"/></svg>';
+    if (!habit || typeof window.habitMetrics !== 'function' || typeof window.habitKeyAt !== 'function') {
+      panel.innerHTML = '<section class="crono-habit-tracker-empty"><div>' +
+        '<span class="crono-habit-tracker-icon">' + trophy + '</span>' +
+        '<strong>Sin objetivo activo</strong><span>Crea un reto y sigue aquí cada día.</span>' +
+        '<button type="button" onclick="openHabitChallengeModal()">Crear objetivo</button>' +
+      '</div></section>';
+      return;
+    }
+
+    const metrics = window.habitMetrics(habit);
+    const marked = habit.mode === 'avoid' ? metrics.todayLog === 'failed' : metrics.todayLog === 'done';
+    const remaining = Math.max(0, metrics.duration - metrics.elapsed);
+    const targetKey = window.habitKeyAt(habit.startDate, metrics.duration - 1);
+    const modeLabel = habit.mode === 'avoid' ? 'Evitar' : 'Hacer';
+    let action = '';
+    if (metrics.complete) {
+      action = '<button type="button" class="crono-habit-tracker-action is-success" onclick="openHabitChallengeModal()">Objetivo completado · crear otro</button>';
+    } else if (habit.mode === 'avoid') {
+      action = '<button type="button" class="crono-habit-tracker-action' + (marked ? ' is-failure' : '') + '" onclick="registerHabitRelapse(event)">' +
+        (marked ? 'Recaída registrada · deshacer' : 'Registrar recaída') + '</button>';
+    } else {
+      action = '<button type="button" class="crono-habit-tracker-action' + (marked ? ' is-success' : '') + '" onclick="toggleHabitToday(event)">' +
+        (marked ? 'Cumplido hoy · desmarcar' : 'Marcar hoy como cumplido') + '</button>';
+    }
+
+    panel.innerHTML = '<section class="crono-habit-tracker' + (metrics.complete ? ' is-complete' : '') + '">' +
+      '<header class="crono-habit-tracker-head">' +
+        '<span class="crono-habit-tracker-icon">' + trophy + '</span>' +
+        '<span class="crono-habit-tracker-copy"><small>' + modeLabel + ' · día ' + metrics.day + '/' + metrics.duration + '</small><strong>' + safeText(habit.title || 'Objetivo') + '</strong></span>' +
+        '<button type="button" class="crono-habit-tracker-edit" onclick="openHabitChallengeModal()" aria-label="Editar objetivo" title="Editar objetivo">&#8942;</button>' +
+        '<span class="crono-habit-tracker-progress" aria-label="' + metrics.progress + '% del reto"><i style="width:' + metrics.progress + '%"></i></span>' +
+      '</header>' +
+      action +
+      '<div class="crono-habit-tracker-stats" aria-label="Resumen del objetivo">' +
+        '<span class="crono-habit-tracker-stat"><strong>' + metrics.streak + '</strong><span>Racha</span><small>días</small></span>' +
+        '<span class="crono-habit-tracker-stat"><strong>' + metrics.success + '</strong><span>Hechos</span><small>de ' + metrics.duration + '</small></span>' +
+        '<span class="crono-habit-tracker-stat"><strong>' + metrics.failure + '</strong><span>Fallos</span><small>días</small></span>' +
+        '<span class="crono-habit-tracker-stat"><strong>' + remaining + '</strong><span>Quedan</span><small>días</small></span>' +
+      '</div>' +
+      '<div class="crono-habit-tracker-days" role="list" aria-label="Días del objetivo">' + trackerDaysHtml(habit, metrics) + '</div>' +
+      '<footer class="crono-habit-tracker-foot"><span>Inicio ' + formatDayKey(habit.startDate) + '</span><span class="crono-habit-tracker-goal"><i aria-hidden="true">&#9873;</i> Meta ' + formatDayKey(targetKey) + '</span></footer>' +
+    '</section>';
+  }
+
+  function installRenderHook() {
+    if (typeof window.renderHabitCalendar !== 'function' || originalRenderHabitCalendar) return;
+    originalRenderHabitCalendar = window.renderHabitCalendar;
+    window.renderHabitCalendar = function() {
+      const result = originalRenderHabitCalendar.apply(this, arguments);
+      renderTracker();
+      return result;
+    };
+  }
+
+  function setCompactLayout(compact, userInitiated) {
+    compactLayout = !!compact;
+    document.body.classList.toggle('crono-dashboard-compact', compactLayout);
+    const shell = document.getElementById('cronoCalendarObjectivesShell');
+    shell?.classList.toggle('is-compact', compactLayout);
+    const button = document.getElementById('cronoPanelSizeToggle');
+    if (button) {
+      button.setAttribute('aria-pressed', compactLayout ? 'true' : 'false');
+      button.setAttribute('aria-label', compactLayout ? 'Restaurar tamaño del reloj y el tracker' : 'Hacer más pequeños el reloj y el tracker');
+      button.title = compactLayout ? 'Tamaño normal' : 'Tamaño compacto';
+    }
+    try { localStorage.setItem(COMPACT_KEY, compactLayout ? '1' : '0'); } catch (error) {}
+    if (userInitiated && typeof window.cronoAnimateInterfaceScale === 'function') {
+      window.cronoAnimateInterfaceScale(compactLayout ? .72 : 1, { persist: true, linger: true });
+    }
+  }
+
+  function toggleCompactLayout() {
+    setCompactLayout(!compactLayout, true);
   }
 
   function setMode(mode) {
-    timerMode = mode === 'objectives' ? 'objectives' : 'calendar';
+    timerMode = mode === 'calendar' ? 'calendar' : 'objectives';
     const calendar = document.getElementById('cronoCalendarPanelInner');
-    const objectives = timerPanel();
+    const objectives = trackerPanel();
     const tabs = document.querySelectorAll('.crono-calendar-objectives-tab');
     if (!calendar || !objectives) return;
-
     const showingObjectives = timerMode === 'objectives';
     calendar.hidden = showingObjectives;
     objectives.hidden = !showingObjectives;
@@ -238,24 +528,13 @@
       tab.classList.toggle('active', active);
       tab.setAttribute('aria-selected', active ? 'true' : 'false');
     });
-
-    if (showingObjectives) moveDashboardToTimer();
-    try { localStorage.setItem('crono_calendar_panel', timerMode); } catch (error) {}
-  }
-
-  function installSwitch() {
-    if (typeof window.switchCalTab !== 'function' || originalSwitchCalTab) return;
-    originalSwitchCalTab = window.switchCalTab;
-    window.switchCalTab = function(tab, btn) {
-      if (tab === 'objetivos') moveDashboardToGeneral();
-      return originalSwitchCalTab.apply(this, arguments);
-    };
+    if (showingObjectives) renderTracker();
+    try { localStorage.setItem(MODE_KEY, timerMode); } catch (error) {}
   }
 
   function build() {
     addStyles();
-    installSwitch();
-
+    installRenderHook();
     const calendar = document.querySelector('#view-cronometro .crono-calendar-panel');
     if (!calendar || document.getElementById('cronoCalendarObjectivesShell')) return false;
 
@@ -268,18 +547,21 @@
     tabs.setAttribute('role', 'tablist');
     tabs.setAttribute('aria-label', 'Calendario u objetivos');
     tabs.innerHTML = `
-      <button type="button" class="crono-calendar-objectives-tab active" data-timer-panel="calendar" role="tab" aria-selected="true">Calendario</button>
-      <button type="button" class="crono-calendar-objectives-tab" data-timer-panel="objectives" role="tab" aria-selected="false">Objetivos</button>
+      <button type="button" class="crono-calendar-objectives-tab" data-timer-panel="calendar" role="tab" aria-selected="false">Calendario</button>
+      <button type="button" class="crono-calendar-objectives-tab active" data-timer-panel="objectives" role="tab" aria-selected="true">Objetivos</button>
+      <button type="button" class="crono-panel-size-toggle" id="cronoPanelSizeToggle" aria-pressed="false" aria-label="Hacer más pequeños el reloj y el tracker" title="Tamaño compacto">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v4H3M13 3v4h4M7 17v-4H3M13 17v-4h4"/><path d="m3 7 4-4M17 7l-4-4M3 13l4 4M17 13l-4 4"/></svg>
+      </button>
     `;
 
     const calendarPanel = document.createElement('div');
     calendarPanel.id = 'cronoCalendarPanelInner';
     calendarPanel.className = 'crono-calendar-objectives-panel';
+    calendarPanel.hidden = true;
 
     const objectivesPanel = document.createElement('div');
     objectivesPanel.id = 'cronoObjectivesPanel';
     objectivesPanel.className = 'crono-calendar-objectives-panel';
-    objectivesPanel.hidden = true;
 
     calendar.parentNode.insertBefore(shell, calendar);
     shell.appendChild(tabs);
@@ -288,13 +570,17 @@
     calendarPanel.appendChild(calendar);
 
     tabs.addEventListener('click', event => {
-      const button = event.target.closest('[data-timer-panel]');
-      if (button) setMode(button.dataset.timerPanel);
+      const tab = event.target.closest('[data-timer-panel]');
+      if (tab) setMode(tab.dataset.timerPanel);
+      if (event.target.closest('#cronoPanelSizeToggle')) toggleCompactLayout();
     });
 
-    let saved = 'calendar';
-    try { saved = localStorage.getItem('crono_calendar_panel') || 'calendar'; } catch (error) {}
-    setMode(saved);
+    try { compactLayout = localStorage.getItem(COMPACT_KEY) === '1'; } catch (error) {}
+    setCompactLayout(compactLayout, false);
+    let savedMode = 'objectives';
+    try { savedMode = localStorage.getItem(MODE_KEY) || 'objectives'; } catch (error) {}
+    setMode(savedMode);
+    renderTracker();
     return true;
   }
 
@@ -307,6 +593,8 @@
     window.setTimeout(() => observer.disconnect(), 15000);
   }
 
+  window.renderCronoHabitTracker = renderTracker;
+  window.setCronoCalendarObjectivesMode = setMode;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();
 })();

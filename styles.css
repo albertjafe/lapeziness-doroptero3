@@ -18716,3 +18716,34 @@ body.crono-pulse-disabled #view-cronometro .crono-moment-monitor { display: none
     min-height: 60px;
   }
 }
+
+/* En iPad, las tareas breves aprovechan la anchura; las largas conservan una fila completa. */
+@media (min-width: 700px) and (max-width: 1199px) and (orientation: portrait),
+       (min-width: 900px) and (max-width: 1399px) and (min-height: 820px) and (orientation: landscape) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 3/2) {
+  #view-cronometro .crono-task-lane .crono-task-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: clamp(4px, calc(7px * var(--crono-tools-density)), 7px);
+  }
+  #view-cronometro .crono-task-lane .crono-task-row {
+    height: 100%;
+    min-width: 0;
+  }
+  #view-cronometro .crono-task-lane .crono-task-row.is-wide,
+  #view-cronometro .crono-task-lane .crono-task-clean,
+  #view-cronometro .crono-task-lane .crono-task-completed {
+    grid-column: 1 / -1;
+  }
+  #view-cronometro .crono-task-completed-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3px 6px;
+  }
+  #view-cronometro .crono-task-completed-list .crono-task-row.is-wide {
+    grid-column: 1 / -1;
+  }
+  #view-cronometro .crono-task-row:not(.is-wide) .crono-task-priority em {
+    display: none;
+  }
+}
