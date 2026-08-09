@@ -128,6 +128,16 @@
     return merged;
   }
 
+  function mergeHabitChallenges(a, b) {
+    const map = new Map();
+    (a || []).concat(b || []).forEach(habit => {
+      if (!habit || !habit.id) return;
+      const current = map.get(habit.id);
+      map.set(habit.id, current ? mergeHabitChallenge(current, habit) : habit);
+    });
+    return Array.from(map.values()).sort((x, y) => String(x.createdAt || x.startDate || '').localeCompare(String(y.createdAt || y.startDate || '')));
+  }
+
   function mergeStudyHistory(base, other) {
     if (!base) return other;
     if (!other) return base;
@@ -146,9 +156,12 @@
     merged.tiempoDisponibleEventos = mergeTimeAvailableEvents(base.tiempoDisponibleEventos, other.tiempoDisponibleEventos);
     merged.dailyJournalEntries = mergeEvents(base.dailyJournalEntries, other.dailyJournalEntries, ['at', 'text'], 3000);
     merged.blockedDaySchedules = mergeBlockedDaySchedules(base.blockedDaySchedules, other.blockedDaySchedules);
-    merged.habitChallenge = mergeHabitChallenge(base.habitChallenge, other.habitChallenge);
+    const baseHabits = (base.habitChallenges || []).concat(base.habitChallenge ? [base.habitChallenge] : []);
+    const otherHabits = (other.habitChallenges || []).concat(other.habitChallenge ? [other.habitChallenge] : []);
+    merged.habitChallenges = mergeHabitChallenges(baseHabits, otherHabits);
+    merged.habitChallenge = merged.habitChallenges.find(habit => !habit.deleted) || merged.habitChallenges[0] || null;
     return applyPulseDeletedIds(merged);
   }
 
-  return { mergeStudyHistory, mergePlants, mergeSessions, mergeBlockedDaySchedules, mergeHabitChallenge, sessionRealMinutes };
+  return { mergeStudyHistory, mergePlants, mergeSessions, mergeBlockedDaySchedules, mergeHabitChallenge, mergeHabitChallenges, sessionRealMinutes };
 });

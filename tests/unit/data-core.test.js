@@ -103,4 +103,15 @@ describe('DataCore', () => {
     );
     expect(merged.habitChallenge.logs['2026-08-02'].status).toBe('clear');
   });
+
+  it('merges two independent habit objectives without collapsing either one', () => {
+    const first = { id: 'habit-bathroom', title: 'Baño', mode: 'avoid', startDate: '2026-08-01', createdAt: '2026-08-01T08:00:00Z', updatedAt: '2026-08-03T08:00:00Z', logs: {} };
+    const second = { id: 'habit-bed', title: 'Cama', mode: 'avoid', startDate: '2026-08-04', createdAt: '2026-08-04T08:00:00Z', updatedAt: '2026-08-04T08:00:00Z', logs: {} };
+    const merged = DataCore.mergeStudyHistory(
+      { habitChallenges: [first] },
+      { habitChallenges: [second] }
+    );
+    expect(merged.habitChallenges.map(habit => habit.id)).toEqual(['habit-bathroom', 'habit-bed']);
+    expect(merged.habitChallenge.id).toBe('habit-bathroom');
+  });
 });

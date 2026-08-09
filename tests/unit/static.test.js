@@ -227,7 +227,7 @@ describe('quality wiring', () => {
     expect(html.match(/data-habit-slot=/g)).toHaveLength(2);
     expect(html).toContain('class="crono-quick-destello-btn crono-run-side-destello"');
     expect(html.indexOf('id="cronoControls"')).toBeLessThan(html.indexOf('id="cronoRunDrawer"'));
-    expect(app).toContain('const html = habitTrophyHtml(habit)');
+    expect(app).toContain('const html = habitTrophyHtml(habits)');
     expect(app).toContain('function toggleHabitTodayFromModal(event)');
     expect(styles).toContain('[data-habit-slot="running"].crono-habit-slot');
     expect(styles).toContain('#cronoRunStatusText');

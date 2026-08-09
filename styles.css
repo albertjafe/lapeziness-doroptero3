@@ -3583,6 +3583,10 @@
     background: var(--bg3); border: 1px solid var(--border);
     border-radius: 20px; padding: 10px 20px;
     font-size: 11px; color: var(--accent);
+    max-width: min(420px, calc(100vw - 28px));
+    box-sizing: border-box;
+    text-align: center;
+    white-space: normal;
     z-index: 300; opacity: 0;
     transition: opacity 0.3s, transform 0.3s var(--ease-out);
     box-shadow: 0 10px 28px -12px rgba(0,0,0,0.55);
@@ -16888,7 +16892,8 @@ body.crono-task-density-compact #view-cronometro .crono-task-clean { min-height:
 #calPanelMes .calendar-habit-compact.is-placeholder { visibility: hidden; }
 #calPanelMes .calendar-habit-compact.is-empty { justify-content: center; }
 #calPanelMes .calendar-habit-icon-action,
-#calPanelMes .calendar-habit-icon-edit {
+#calPanelMes .calendar-habit-icon-edit,
+#calPanelMes .calendar-habit-icon-add {
   display: grid;
   width: 38px;
   height: 38px;
@@ -16903,6 +16908,7 @@ body.crono-task-density-compact #view-cronometro .crono-task-clean { min-height:
   -webkit-tap-highlight-color: transparent;
 }
 #calPanelMes .calendar-habit-icon-action { color: #b27716; font-size: 18px; font-weight: 850; }
+#calPanelMes .calendar-habit-icon-add { color: var(--accent); font-size: 18px; font-weight: 700; }
 #calPanelMes .calendar-habit-icon-action.is-failure {
   border-color: color-mix(in srgb, var(--red) 48%, var(--border2));
   background: color-mix(in srgb, var(--red) 10%, var(--bg2));
@@ -16916,7 +16922,8 @@ body.crono-task-density-compact #view-cronometro .crono-task-clean { min-height:
 }
 #calPanelMes .calendar-habit-icon-edit svg { width: 17px; height: 17px; }
 #calPanelMes .calendar-habit-icon-action:active,
-#calPanelMes .calendar-habit-icon-edit:active { transform: scale(.94); }
+#calPanelMes .calendar-habit-icon-edit:active,
+#calPanelMes .calendar-habit-icon-add:active { transform: scale(.94); }
 
 @media (prefers-reduced-motion: reduce) {
   #view-cronometro .crono-tomorrow-note-rail,
@@ -18152,6 +18159,39 @@ body.crono-interface-pinching #view-cronometro .crono-run-action-rail {
   border-color: color-mix(in srgb, #b58a24 70%, var(--border2));
   background: color-mix(in srgb, #d6a52e 14%, var(--bg2));
 }
+#view-cronometro .crono-habit-trophy-stack {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+}
+#view-cronometro .crono-habit-trophy-stack:not(.is-double) .crono-habit-trophy {
+  flex: 0 0 44px;
+}
+#view-cronometro .crono-habit-trophy-stack.is-double .crono-habit-trophy,
+#view-cronometro .crono-habit-trophy-add {
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+}
+#view-cronometro .crono-habit-trophy-add {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: var(--bg2);
+  color: var(--accent);
+  font-size: 20px;
+  cursor: pointer;
+}
+#view-cronometro [data-habit-slot].has-multiple.crono-habit-slot {
+  flex-basis: 84px;
+  width: 84px;
+  min-width: 84px;
+}
 #view-cronometro .crono-habit-trophy:active { transform: scale(.94); }
 #view-cronometro .crono-habit-trophy svg { width: 21px; height: 21px; }
 #view-cronometro .crono-habit-trophy-state {
@@ -18189,7 +18229,7 @@ body.crono-interface-pinching #view-cronometro .crono-run-action-rail {
 
 @media (max-height: 600px) and (orientation: landscape) {
   #view-cronometro .crono-idle-head { min-height: 30px; }
-  #view-cronometro [data-habit-slot="idle"].crono-habit-slot,
+#view-cronometro [data-habit-slot="idle"].crono-habit-slot,
   #view-cronometro .crono-habit-trophy {
     width: 30px;
     height: 30px;
@@ -18308,6 +18348,35 @@ body.crono-interface-pinching #view-cronometro .crono-run-action-rail {
 .calendar-objectives-shortcut:hover { background: color-mix(in srgb, var(--accent) 13%, transparent); }
 
 .habit-calendar-dashboard { width: 100%; }
+.habit-calendar-objective-switch {
+  display: flex;
+  gap: 5px;
+  width: 100%;
+  margin: 0 0 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.habit-calendar-objective-switch::-webkit-scrollbar { display: none; }
+.habit-calendar-objective-switch button {
+  min-width: 0;
+  max-width: 220px;
+  min-height: 32px;
+  padding: 6px 10px;
+  overflow: hidden;
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  background: var(--bg2);
+  color: var(--text3);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.habit-calendar-objective-switch button.active {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border2));
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg2));
+  color: var(--accent);
+}
 .habit-calendar-empty {
   display: grid;
   grid-template-columns: 54px minmax(0, 1fr) auto;

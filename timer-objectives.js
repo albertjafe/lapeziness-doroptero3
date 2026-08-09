@@ -325,6 +325,36 @@
         gap: 8px;
         background: color-mix(in srgb, var(--bg2) 97%, var(--bg));
       }
+      .crono-habit-tracker-stack {
+        display: flex;
+        min-height: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+      .crono-habit-tracker-stack.is-multiple { gap: 7px; }
+      .crono-habit-tracker-label {
+        overflow: hidden;
+        color: var(--text2);
+        font: 650 9px/1.1 var(--font-mono, 'JetBrains Mono', monospace);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .crono-habit-tracker-add-icon {
+        display: grid;
+        width: 34px;
+        height: 34px;
+        min-height: 34px !important;
+        align-self: flex-end;
+        place-items: center;
+        padding: 0;
+        border: 1px solid var(--border2);
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--bg) 82%, transparent);
+        color: var(--accent);
+        cursor: pointer;
+      }
+      .crono-habit-tracker-add-icon svg { width: 16px; height: 16px; }
       .crono-habit-tracker-tools {
         display: flex;
         min-height: 40px;
@@ -430,6 +460,8 @@
           padding: 8px;
         }
         #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker-tools { min-height: 34px; }
+        #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker-label { font-size: 8px; }
+        #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker-add-icon { width: 30px; height: 30px; min-height: 30px !important; }
         #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker-action-icon,
         #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker-edit-icon {
           width: 34px;
@@ -515,35 +547,50 @@
   function renderTracker() {
     const panel = trackerPanel();
     if (!panel) return;
-    const habit = typeof window.habitActiveChallenge === 'function' ? window.habitActiveChallenge() : null;
+    const habits = typeof window.habitActiveChallenges === 'function'
+      ? window.habitActiveChallenges()
+      : (typeof window.habitActiveChallenge === 'function' && window.habitActiveChallenge() ? [window.habitActiveChallenge()] : []);
     const plus = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
     const pencil = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>';
-    if (!habit || typeof window.habitMetrics !== 'function' || typeof window.habitKeyAt !== 'function') {
+    if (!habits.length || typeof window.habitMetrics !== 'function' || typeof window.habitKeyAt !== 'function') {
       panel.innerHTML = '<section class="crono-habit-tracker-empty is-minimal"><div>' +
         '<button type="button" class="crono-habit-tracker-create-icon" onclick="openHabitChallengeModal()" aria-label="Crear objetivo" title="Crear objetivo">' + plus + '</button>' +
       '</div></section>';
       return;
     }
 
-    const metrics = window.habitMetrics(habit);
-    const marked = habit.mode === 'avoid' ? metrics.todayLog === 'failed' : metrics.todayLog === 'done';
-    let action = '';
-    if (metrics.complete) {
-      action = '<button type="button" class="crono-habit-tracker-action-icon is-success" onclick="openHabitChallengeModal()" aria-label="Objetivo completado" title="Objetivo completado">&#10003;</button>';
-    } else if (habit.mode === 'avoid') {
-      action = '<button type="button" class="crono-habit-tracker-action-icon' + (marked ? ' is-failure' : '') + '" onclick="registerHabitRelapse(event)" aria-label="' +
-        (marked ? 'Quitar recaída de hoy' : 'Registrar recaída hoy') + '" title="' + (marked ? 'Quitar recaída' : 'Registrar recaída') + '">!</button>';
-    } else {
-      action = '<button type="button" class="crono-habit-tracker-action-icon' + (marked ? ' is-success' : '') + '" onclick="toggleHabitToday(event)" aria-label="' +
-        (marked ? 'Desmarcar objetivo de hoy' : 'Marcar objetivo cumplido hoy') + '" title="' + (marked ? 'Desmarcar hoy' : 'Cumplir hoy') + '">&#10003;</button>';
-    }
-
-    panel.innerHTML = '<section class="crono-habit-tracker is-minimal' + (metrics.complete ? ' is-complete' : '') + '">' +
-      '<div class="crono-habit-tracker-tools">' + action +
-        '<button type="button" class="crono-habit-tracker-edit-icon" onclick="openHabitChallengeModal()" aria-label="Editar objetivo" title="Editar objetivo">' + pencil + '</button>' +
-      '</div>' +
-      '<div class="crono-habit-tracker-days" role="list" aria-label="Días del objetivo">' + trackerDaysHtml(habit, metrics) + '</div>' +
-    '</section>';
+    const multiple = habits.length > 1;
+    const jsId = id => String(id || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const cards = habits.map(habit => {
+      const metrics = window.habitMetrics(habit);
+      const marked = habit.mode === 'avoid' ? metrics.todayLog === 'failed' : metrics.todayLog === 'done';
+      let action = '';
+      if (metrics.complete) {
+        action = '<button type="button" class="crono-habit-tracker-action-icon is-success" onclick="openHabitChallengeModal(\'' + jsId(habit.id) + '\')" aria-label="Objetivo completado" title="Objetivo completado">&#10003;</button>';
+      } else if (habit.mode === 'avoid') {
+        action = '<button type="button" class="crono-habit-tracker-action-icon' + (marked ? ' is-failure' : '') + '" onclick="registerHabitRelapse(event,\'' + jsId(habit.id) + '\')" aria-label="' +
+          (marked ? 'Quitar recaída de hoy' : 'Registrar recaída hoy') + '" title="' + (marked ? 'Quitar recaída' : 'Registrar recaída') + '">!</button>';
+      } else {
+        action = '<button type="button" class="crono-habit-tracker-action-icon' + (marked ? ' is-success' : '') + '" onclick="toggleHabitToday(event,\'' + jsId(habit.id) + '\')" aria-label="' +
+          (marked ? 'Desmarcar objetivo de hoy' : 'Marcar objetivo cumplido hoy') + '" title="' + (marked ? 'Desmarcar hoy' : 'Cumplir hoy') + '">&#10003;</button>';
+      }
+      const label = multiple
+        ? '<div class="crono-habit-tracker-label" title="' + safeText(habit.title || 'Objetivo') + '">' + safeText(habit.title || 'Objetivo') + '</div>'
+        : '';
+      return '<section class="crono-habit-tracker is-minimal' + (multiple ? ' is-multiple' : '') + (metrics.complete ? ' is-complete' : '') + '">' +
+        label +
+        '<div class="crono-habit-tracker-tools">' + action +
+          '<button type="button" class="crono-habit-tracker-edit-icon" onclick="openHabitChallengeModal(\'' + jsId(habit.id) + '\')" aria-label="Editar objetivo" title="Editar objetivo">' + pencil + '</button>' +
+        '</div>' +
+        '<div class="crono-habit-tracker-days" role="list" aria-label="Días del objetivo ' + safeText(habit.title || '') + '">' + trackerDaysHtml(habit, metrics) + '</div>' +
+      '</section>';
+    }).join('');
+    const add = !multiple
+      ? '<button type="button" class="crono-habit-tracker-add-icon" onclick="openNewHabitChallengeModal()" aria-label="Añadir otro objetivo" title="Añadir otro objetivo">' + plus + '</button>'
+      : '';
+    panel.innerHTML = '<div class="crono-habit-tracker-stack' + (multiple ? ' is-multiple' : '') + '">' +
+      cards + add +
+    '</div>';
   }
 
   function installRenderHook() {

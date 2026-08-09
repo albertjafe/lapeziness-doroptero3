@@ -290,6 +290,7 @@ test('keeps one daily challenge visible in idle and running timer layouts', asyn
           id: 'avoid-test', title: 'No coger el móvil en el baño', mode: 'avoid', durationDays: 7,
           startDate: habitDayKey(), logs: {}, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
         };
+        db.habitChallenges = [];
         renderHabitChallenge();
       });
       page.once('dialog', dialog => dialog.accept());
@@ -314,6 +315,7 @@ test('uses a dedicated daily challenge composition on mobile', async ({ browser 
         id: 'mobile-habit', title: 'No coger el móvil en el baño', mode: 'avoid', durationDays: 21,
         startDate: habitDayKey(), logs: {}, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
       };
+      db.habitChallenges = [];
       renderHabitChallenge();
       await new Promise(resolve => setTimeout(resolve, 320));
       const rect = selector => {
@@ -372,6 +374,59 @@ test('uses a dedicated daily challenge composition on mobile', async ({ browser 
     }
     await context.close();
   }
+});
+
+test('gates a second objective behind a transparent stability threshold', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepare(page);
+  await page.evaluate(() => {
+    showView('cronometro');
+    const today = habitDayKey();
+    db.habitChallenge = {
+      id: 'stable-gate-test', title: 'No coger el móvil en el baño', mode: 'avoid', durationDays: 21,
+      startDate: habitKeyAt(today, -4), logs: {
+        [habitKeyAt(today, -4)]: { status: 'failed', at: new Date().toISOString() },
+        [habitKeyAt(today, -3)]: { status: 'failed', at: new Date().toISOString() },
+      }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    db.habitChallenges = [];
+    renderHabitChallenge();
+  });
+  await page.locator('[data-habit-slot="idle"] .crono-habit-trophy-add').click();
+  await expect(page.locator('#toast')).toHaveClass(/visible/);
+  await expect(page.locator('#toast')).toContainText('Segundo objetivo bloqueado');
+  await expect(page.locator('#modalHabitChallenge')).not.toHaveClass(/visible/);
+
+  await page.evaluate(() => {
+    const today = habitDayKey();
+    const habit = db.habitChallenge;
+    habit.startDate = habitKeyAt(today, -7);
+    habit.logs = {};
+    habit.updatedAt = new Date().toISOString();
+    db.habitChallenges = [habit];
+    renderHabitChallenge();
+  });
+  await page.locator('[data-habit-slot="idle"] .crono-habit-trophy-add').click();
+  await expect(page.locator('#modalHabitChallenge')).toHaveClass(/visible/);
+  await expect(page.locator('#modalHabitChallenge .habit-modal-kicker')).toHaveText('Segundo objetivo');
+  await page.locator('#habitTitleInput').fill('No coger el móvil en la cama');
+  await page.locator('#modalHabitChallenge .modal-btn.primary').click();
+  expect(await page.evaluate(() => habitActiveChallenges().map(habit => habit.title))).toEqual([
+    'No coger el móvil en el baño', 'No coger el móvil en la cama'
+  ]);
+  await expect(page.locator('[data-habit-slot="idle"] .crono-habit-trophy')).toHaveCount(2);
+  await expect(page.locator('[data-habit-slot="idle"] .crono-habit-trophy-add')).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await page.setViewportSize({ width: 834, height: 1194 });
+  await page.evaluate(() => {
+    showView('cronometro');
+    renderHabitChallenge();
+    renderHabitCalendar();
+  });
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker.is-multiple')).toHaveCount(2);
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-label')).toHaveText([
+    'No coger el móvil en el baño', 'No coger el móvil en la cama'
+  ]);
 });
 
 test('shows and updates the daily challenge history from calendar', async ({ browser }) => {
