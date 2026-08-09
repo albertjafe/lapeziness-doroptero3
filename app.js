@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-09-ipad-habit-tracker-v121';
+const APP_VERSION = '2026-08-09-mobile-controls-v122';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -991,7 +991,7 @@ function renderCombinedSessionStats() {
   _histListApplyPref();
 }
 
-const SWIPE_VIEW_ORDER = ['pulse', 'session', 'cronometro', 'obras'];
+const SWIPE_VIEW_ORDER = ['pulse', 'session', 'cronometro', 'obras', 'calendario'];
 let _viewSwipe = null;
 let _viewSwipeMultiTouch = false;
 

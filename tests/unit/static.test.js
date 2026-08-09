@@ -154,7 +154,7 @@ describe('quality wiring', () => {
     expect(app).not.toContain('function _pulseStudyIntervals(period)');
     expect(app).not.toContain('class="pulse-gap-line"');
     expect(app).toContain("closest?.('.pulse-trimmer, input[type=\"range\"], [data-no-view-swipe]')");
-    expect(app).toContain("const SWIPE_VIEW_ORDER = ['pulse', 'session', 'cronometro', 'obras']");
+    expect(app).toContain("const SWIPE_VIEW_ORDER = ['pulse', 'session', 'cronometro', 'obras', 'calendario']");
     expect(app).toContain('function renderPulseDashboard()');
     expect(html).toContain('id="view-pulse"');
     expect(html).toContain('id="pulseDashboard"');

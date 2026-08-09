@@ -17098,6 +17098,14 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
     width: 50px;
     height: 50px;
   }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-display-wrap,
+  [data-theme^="marmol"] body.crono-timer-mode #view-cronometro .crono-idle-display-wrap,
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-display-wrap {
+    flex: 0 0 var(--crono-interface-ring-size) !important;
+    height: var(--crono-interface-ring-size) !important;
+    min-height: var(--crono-interface-ring-size) !important;
+    max-height: var(--crono-interface-ring-size) !important;
+  }
 }
 
 /* Total diario en vivo, integrado en el estado de la sesion. */
@@ -17171,7 +17179,7 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
 /* iPad vertical: conserva la columna dentro del reloj y lejos del texto. */
 @media (min-width: 700px) and (max-width: 1199px) and (orientation: portrait) {
   #view-cronometro .crono-run-action-rail {
-    top: 75%;
+    top: calc(50% + (var(--crono-interface-ring-size) / 4));
     right: 0;
     gap: 10px;
   }
@@ -17766,6 +17774,14 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
   width: 24px;
   height: 24px;
 }
+#view-cronometro .crono-idle-action-spacer {
+  display: block;
+  width: var(--crono-action-size);
+  height: var(--crono-action-size);
+  flex: 0 0 var(--crono-action-size);
+  visibility: hidden;
+  pointer-events: none;
+}
 #view-cronometro .crono-run-action-rail .crono-run-side-destello {
   border-color: color-mix(in srgb, #d9a512 58%, var(--border2));
   background: color-mix(in srgb, #ffd95a 18%, var(--bg2));
@@ -17805,10 +17821,29 @@ body.crono-interface-pinching #view-cronometro .crono-run-action-rail {
 }
 
 @media (min-width: 700px) and (max-width: 1199px) and (orientation: portrait) {
+  [data-theme^="marmol"] body.crono-timer-mode #view-cronometro .crono-idle-display-wrap {
+    flex: 0 0 var(--crono-interface-ring-size) !important;
+    height: var(--crono-interface-ring-size) !important;
+    min-height: var(--crono-interface-ring-size) !important;
+    max-height: var(--crono-interface-ring-size) !important;
+  }
+  [data-theme^="marmol"] body.crono-timer-mode #view-cronometro .crono-timer-projection {
+    display: none !important;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-controls {
+    padding-top: 2px;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-controls .crono-mode-toggle {
+    margin-bottom: 0;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-controls .crono-plant-btn {
+    min-height: 44px;
+    padding-block: 6px;
+  }
   #view-cronometro .crono-run-action-rail {
     --crono-action-size: 54px;
     --crono-action-gap: 12px;
-    top: 75%;
+    top: calc(50% + (var(--crono-interface-ring-size) / 4));
   }
   #view-cronometro .crono-run-action-rail .crono-run-side-destello > span:first-child {
     font-size: 27px;

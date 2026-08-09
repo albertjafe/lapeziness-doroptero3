@@ -2028,20 +2028,42 @@ test('keeps large touch iPads in the two-row tablet layout', async ({ browser })
   }
 });
 
-test('places the dedicated pulse screen at the far left of swipe navigation', async ({ page }) => {
+test('places pulse and calendar at the ends of swipe navigation', async ({ page }) => {
   await prepare(page);
   const result = await page.evaluate(() => {
     showView('cronometro');
     showViewFromSwipe('pulse');
+    const pulseActive = document.body.getAttribute('data-view');
+    showViewFromSwipe('calendario');
     return {
       order: SWIPE_VIEW_ORDER.slice(),
+      pulseActive,
       active: document.body.getAttribute('data-view'),
     };
   });
   expect(result).toEqual({
-    order: ['pulse', 'session', 'cronometro', 'obras'],
-    active: 'pulse',
+    order: ['pulse', 'session', 'cronometro', 'obras', 'calendario'],
+    pulseActive: 'pulse',
+    active: 'calendario',
   });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => {
+    showView('obras');
+    const target = document.getElementById('view-obras');
+    const touch = (x, y) => ({ identifier: 7, target, clientX: x, clientY: y, pageX: x, pageY: y, screenX: x, screenY: y });
+    const dispatch = (type, touches, changedTouches) => {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'touches', { value: touches });
+      Object.defineProperty(event, 'changedTouches', { value: changedTouches || touches });
+      document.dispatchEvent(event);
+    };
+    dispatch('touchstart', [touch(340, 360)]);
+    dispatch('touchmove', [touch(90, 354)]);
+    dispatch('touchend', [], [touch(90, 354)]);
+  });
+  await page.waitForTimeout(650);
+  expect(await page.evaluate(() => document.body.getAttribute('data-view'))).toBe('calendario');
 });
 
 test('advances free timer progress to a 120 minute maximum and enlarges mode labels', async ({ page }) => {
@@ -2239,7 +2261,7 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
         dailyTotalVisible: getComputedStyle(document.getElementById('cronoRunTodayTotal')).display !== 'none',
         arcColor: getComputedStyle(document.getElementById('cronoRunProgressArc')).stroke,
         handleColor: getComputedStyle(document.getElementById('cronoRunProgressHandle')).fill,
-        tabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab),
+        tabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab || button.dataset.action),
         objectiveRemoved: !document.getElementById('cronoRunObjective') && !document.getElementById('cronoRunObjectiveText'),
         activeTab: document.getElementById('cronoRunDrawer').dataset.tab,
       };
@@ -2283,6 +2305,51 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
       expect(Math.abs(layout.idle.main.height - layout.running.main.height)).toBeLessThanOrEqual(2);
       expect(Math.abs(layout.idle.drawer.height - layout.running.drawer.height)).toBeLessThanOrEqual(2);
     }
+    await context.close();
+  }
+});
+
+test('keeps Destellos in the same clock position before and during a session', async ({ browser }) => {
+  for (const viewport of [{ width: 390, height: 844 }, { width: 834, height: 1194 }, { width: 1024, height: 768 }]) {
+    const context = await browser.newContext({ viewport });
+    const page = await context.newPage();
+    await prepare(page);
+
+    const layout = await page.evaluate(() => {
+      showView('cronometro');
+      cronoSetMode('timer');
+      cronoSetTimerPreset(25);
+      const select = document.getElementById('cronoObraSelect');
+      select.value = 'obra::obra_1';
+      cronoUpdateStartBtn();
+      cronoRender();
+      cronoSetInterfaceScale(1, { persist: false, announce: false });
+
+      const ringSize = parseFloat(getComputedStyle(document.getElementById('view-cronometro')).getPropertyValue('--crono-interface-ring-size'));
+      const relativePosition = (wrap, button) => {
+        const parent = wrap.getBoundingClientRect();
+        const child = button.getBoundingClientRect();
+        const ringTop = parent.top + ((parent.height - ringSize) / 2);
+        const ringRight = parent.left + ((parent.width + ringSize) / 2);
+        return {
+          right: ringRight - ((child.left + child.right) / 2),
+          yRatio: (((child.top + child.bottom) / 2) - ringTop) / ringSize,
+        };
+      };
+      const idle = relativePosition(
+        document.getElementById('cronoIdleDisplayWrap'),
+        document.querySelector('#cronoStageIdle .crono-quick-destello-btn')
+      );
+      cronoStart();
+      const running = relativePosition(
+        document.getElementById('cronoDisplayWrap'),
+        document.querySelector('#cronoStageRun .crono-quick-destello-btn')
+      );
+      return { idle, running };
+    });
+
+    expect(Math.abs(layout.idle.right - layout.running.right), JSON.stringify(viewport)).toBeLessThanOrEqual(2);
+    expect(Math.abs(layout.idle.yRatio - layout.running.yRatio), JSON.stringify({ viewport, layout })).toBeLessThanOrEqual(0.01);
     await context.close();
   }
 });
