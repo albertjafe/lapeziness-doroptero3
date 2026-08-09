@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=247">
+<link rel="stylesheet" href="styles.css?v=248">
 </head>
 <body>
 
@@ -282,6 +282,11 @@
         </div>
 
         <div class="crono-display-wrap crono-idle-display-wrap progress-active" id="cronoIdleDisplayWrap">
+          <div class="crono-tomorrow-note-rail" aria-label="Notas para mañana">
+            <button type="button" class="crono-tomorrow-note-btn" onclick="openCronoTomorrowTask()"
+                    aria-label="Añadir una nota para mañana" title="Añadir una nota para mañana">+</button>
+            <span class="crono-tomorrow-note-spacer" aria-hidden="true"></span>
+          </div>
           <svg class="crono-run-progress-svg crono-timer-svg" id="cronoTimerSvg" viewBox="0 0 220 220" aria-hidden="true">
             <circle class="crono-run-progress-track" cx="110" cy="110" r="94" fill="none"/>
             <circle class="crono-run-progress-arc crono-timer-arc" id="cronoTimerArc"
@@ -322,48 +327,20 @@
           <span>Antes de empezar</span>
           <strong>Foco actual</strong>
         </div>
-        <div class="crono-run-drawer-tabs" role="tablist" aria-label="Preparación de la sesión">
-          <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab" data-tab="pasajes" role="tab" aria-selected="false" onclick="cronoSetIdleDrawerTab('pasajes')">Pasajes</button>
-          <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab" data-tab="nota" role="tab" aria-selected="false" onclick="cronoSetIdleDrawerTab('nota')">
-            Notas <span id="cronoIdleDrawerNoteTabCount">+</span>
-          </button>
+        <div class="crono-run-drawer-tabs crono-minimal-tabs" role="tablist" aria-label="Herramientas de estudio">
           <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab active" data-tab="tareas" role="tab" aria-selected="true" onclick="cronoSetIdleDrawerTab('tareas')">
             Tareas <span class="crono-task-notification-dot" id="cronoIdleDrawerTaskTabCount" aria-hidden="true" hidden></span>
           </button>
-          <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab" data-tab="pase" role="tab" aria-selected="false" onclick="cronoSetIdleDrawerTab('pase')">Pase +</button>
+          <button type="button" class="crono-task-density-btn" data-task-density-toggle onclick="toggleCronoTaskDensity()"
+                  aria-label="Reducir tamaño de las tareas" title="Reducir tamaño de las tareas" aria-pressed="false"><span>A</span><small>−</small></button>
+          <button type="button" class="crono-run-drawer-tab crono-drawer-pase-action" data-action="pase" role="button" onclick="openCronoPaseRapido()">Pase +</button>
         </div>
 
         <div class="crono-run-drawer-panels crono-idle-drawer-panels">
-          <div class="crono-run-drawer-panel crono-idle-drawer-panel" data-panel="pasajes" role="tabpanel">
-            <div class="crono-idle-pasajes-shell">
-              <div class="crono-pasajes-section crono-pasajes-section-idle" id="cronoIdlePasajesSection"></div>
-            </div>
-          </div>
-          <div class="crono-run-drawer-panel crono-idle-drawer-panel" data-panel="nota" role="tabpanel">
-            <label class="crono-objective-field" for="cronoIdleObservation">
-              <textarea id="cronoIdleObservation" class="crono-observation-box crono-observation-box-idle"
-                rows="3" maxlength="1600" placeholder="Nota para esta sesión..."
-                oninput="cronoSetObservation(this.value)"></textarea>
-            </label>
-            <button class="crono-solidity-btn" id="cronoQuickSolBtn" onclick="openQuickSolidez('idle')" style="display:none">
-              <span>Solidez</span>
-              <strong id="cronoQuickSolValue">—</strong>
-            </button>
-            <div class="crono-fallidas-info" id="cronoFallidasInfo" style="display:none">
-              <span class="n" id="cronoFallidasN">0</span> · fallidas hoy
-            </div>
-          </div>
           <div class="crono-run-drawer-panel crono-idle-drawer-panel active" data-panel="tareas" role="tabpanel">
             <section class="crono-idle-tasks" aria-label="Tareas">
               <div class="crono-tasks-panel crono-tasks-panel-idle" id="cronoIdleTasksPanel"></div>
             </section>
-          </div>
-          <div class="crono-run-drawer-panel crono-idle-drawer-panel" data-panel="pase" role="tabpanel">
-            <button type="button" class="crono-drawer-pase-btn" id="cronoQuickPaseBtn" onclick="openCronoPaseRapido()">
-              <span>Registrar un pase</span>
-              <strong>＋</strong>
-            </button>
-            <div class="crono-drawer-pase-hint">Añade la obra, el tipo y el resultado sin salir del cronómetro.</div>
           </div>
         </div>
 
@@ -404,6 +381,11 @@
 
       <!-- Tiempo gigante con outline (Forest-style) -->
       <div class="crono-display-wrap" id="cronoDisplayWrap">
+        <div class="crono-tomorrow-note-rail" aria-label="Notas para mañana">
+          <button type="button" class="crono-tomorrow-note-btn" onclick="openCronoTomorrowTask()"
+                  aria-label="Añadir una nota para mañana" title="Añadir una nota para mañana">+</button>
+          <span class="crono-tomorrow-note-spacer" aria-hidden="true"></span>
+        </div>
         <svg class="crono-run-progress-svg" viewBox="0 0 220 220" aria-hidden="true">
           <circle class="crono-run-progress-track" cx="110" cy="110" r="94" fill="none"/>
           <circle class="crono-run-progress-arc" id="cronoRunProgressArc"
@@ -431,56 +413,25 @@
 
     </div>
 
-    <!-- Bandeja inferior compacta: pasajes / nota / pase. No ocupa altura en la columna central. -->
+    <!-- Bandeja inferior compacta: tareas y alta rápida de pase. -->
     <div class="crono-run-drawer" id="cronoRunDrawer" data-tab="tareas" aria-label="Herramientas de estudio">
       <div class="crono-run-drawer-handle" aria-hidden="true"></div>
       <div class="crono-run-drawer-head">
         <span>Durante la sesión</span>
         <strong>Foco actual</strong>
       </div>
-      <div class="crono-run-drawer-tabs" role="tablist" aria-label="Herramientas">
-        <button type="button" class="crono-run-drawer-tab" data-tab="pasajes" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('pasajes')">Pasajes</button>
-        <button type="button" class="crono-run-drawer-tab" data-tab="nota" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('nota')">
-          Notas <span id="cronoDrawerNoteTabCount">+</span>
-        </button>
+      <div class="crono-run-drawer-tabs crono-minimal-tabs" role="tablist" aria-label="Herramientas">
         <button type="button" class="crono-run-drawer-tab active" data-tab="tareas" role="tab" aria-selected="true" onclick="cronoSetRunDrawerTab('tareas')">
           Tareas <span class="crono-task-notification-dot" id="cronoDrawerTaskTabCount" aria-hidden="true" hidden></span>
         </button>
+        <button type="button" class="crono-task-density-btn" data-task-density-toggle onclick="toggleCronoTaskDensity()"
+                aria-label="Reducir tamaño de las tareas" title="Reducir tamaño de las tareas" aria-pressed="false"><span>A</span><small>−</small></button>
         <button type="button" class="crono-run-drawer-tab" data-action="pase" role="button" onclick="openCronoPaseRapido()">Pase +</button>
       </div>
 
       <div class="crono-run-drawer-panels">
-        <div class="crono-run-drawer-panel" data-panel="pasajes" role="tabpanel">
-          <div class="crono-pasajes-section" id="cronoPasajesSection"></div>
-        </div>
-        <div class="crono-run-drawer-panel" data-panel="nota" role="tabpanel">
-          <textarea id="cronoRunObservation" class="crono-observation-box crono-observation-box-run"
-            rows="2" maxlength="1600" placeholder="Observacion de la sesion..."
-            oninput="cronoSetObservation(this.value)"></textarea>
-          <div class="crono-drawer-note-actions">
-            <button class="crono-zone-btn crono-drawer-zone" id="cronoRunZoneBtn" onclick="showToast('La zona se registra al pulsar Hecho')">
-              <span>Zona</span>
-              <strong id="cronoRunZoneValue">al terminar</strong>
-            </button>
-            <button class="crono-zone-btn crono-note-btn-run" id="cronoRunNoteBtn" onclick="openCronoNote('during')">
-              <span>Nota con hora</span>
-              <strong id="cronoRunNoteCount">+</strong>
-            </button>
-            <button class="crono-solidity-btn crono-solidity-btn-run" id="cronoRunSolBtn" onclick="openQuickSolidez('running')" style="display:none">
-              <span>Solidez</span>
-              <strong id="cronoRunSolValue">—</strong>
-            </button>
-          </div>
-        </div>
         <div class="crono-run-drawer-panel active" data-panel="tareas" role="tabpanel">
           <div class="crono-tasks-panel" id="cronoTasksPanel"></div>
-        </div>
-        <div class="crono-run-drawer-panel" data-panel="pase" role="tabpanel">
-          <button type="button" class="crono-drawer-pase-btn" onclick="openCronoPaseRapido()">
-            <span>Registrar un pase</span>
-            <strong>＋</strong>
-          </button>
-          <div class="crono-drawer-pase-hint">Añade la obra, el tipo y el resultado sin detener la sesión.</div>
         </div>
       </div>
 
@@ -1552,16 +1503,25 @@
   </div>
 </div>
 
-<!-- MODAL: nota rapida de cronometro -->
+<!-- MODAL: nota para mañana vinculada a la obra activa -->
 <div class="modal-overlay" id="modalCronoNote">
-  <div class="modal crono-note-modal">
-    <div class="crono-note-kicker" id="cronoNoteContext">Nota de sesion</div>
-    <div class="modal-title crono-note-title">Observacion</div>
-    <textarea class="modal-input crono-note-input" id="cronoNoteInput" rows="4" placeholder="Dicta o escribe una observacion..."></textarea>
-    <div class="crono-note-hint">En iPad, toca el microfono del teclado para dictar.</div>
+  <div class="modal crono-note-modal crono-tomorrow-note-modal">
+    <div class="crono-note-kicker" id="cronoNoteContext">Para mañana</div>
+    <div class="modal-title crono-note-title">¿Qué quieres recordar?</div>
+    <div class="crono-tomorrow-note-compose">
+      <textarea class="modal-input crono-note-input" id="cronoNoteInput" rows="4" maxlength="500"
+                enterkeyhint="done" placeholder="Dicta o escribe la nota..."></textarea>
+      <button type="button" class="crono-tomorrow-voice-btn" id="cronoTomorrowVoiceBtn"
+              onclick="toggleCronoTomorrowVoice(event)" aria-label="Dictar nota" title="Dictar nota">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"></path>
+        </svg>
+      </button>
+    </div>
+    <div class="crono-note-hint">También puedes usar el micrófono del teclado del iPad.</div>
     <div class="modal-buttons">
-      <button class="modal-btn secondary" onclick="closeModal('modalCronoNote')">Cancelar</button>
-      <button class="modal-btn primary" onclick="confirmCronoNote()">Guardar nota</button>
+      <button class="modal-btn secondary" onclick="closeCronoTomorrowTask()">Cancelar</button>
+      <button class="modal-btn primary" onclick="confirmCronoTomorrowTask()">Guardar</button>
     </div>
   </div>
 </div>
@@ -2079,8 +2039,8 @@
 <script src="data-core.js?v=228"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=247"></script>
-<script src="timer-objectives.js?v=247"></script>
+<script src="app.js?v=248"></script>
+<script src="timer-objectives.js?v=248"></script>
 
 </body>
 <script>

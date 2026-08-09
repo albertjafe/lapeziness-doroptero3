@@ -511,10 +511,14 @@ test('shows objectives as a layer inside the monthly calendar', async ({ page })
     saveData();
     renderMesCalendario();
   });
-  await expect(page.locator('.calendar-habit-relapse')).toContainText('Registrar recaída');
-  await page.locator('.calendar-habit-relapse').click();
+  const relapse = page.locator('.calendar-habit-icon-action.is-relapse');
+  await expect(relapse).toHaveAttribute('aria-label', 'Registrar recaída hoy');
+  await expect(relapse).toHaveText('!');
+  await page.locator('.calendar-habit-icon-action.is-relapse').click();
   expect(await page.evaluate(() => habitLogStatus(db.habitChallenge.logs[habitDayKey()]))).toBe('failed');
-  await expect(page.locator('.calendar-habit-relapse')).toContainText('Quitar recaída');
+  await expect(page.locator('.calendar-habit-icon-action.is-relapse')).toHaveAttribute('aria-label', 'Quitar recaída de hoy');
+  await expect(page.locator('.calendar-habit-icon-edit')).toHaveAttribute('aria-label', 'Editar objetivo');
+  await expect(page.locator('#mesLeyenda')).toBeEmpty();
 });
 
 test('loads the calendar and objectives switch inside the stopwatch', async ({ page }) => {
@@ -537,21 +541,24 @@ test('loads the calendar and objectives switch inside the stopwatch', async ({ p
   await expect(calendarTab).toBeVisible();
   await expect(objectivesTab).toBeVisible();
   await expect(objectivesTab).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker')).toContainText('Practicar escalas');
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-action-icon')).toHaveAttribute('aria-label', 'Marcar objetivo cumplido hoy');
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-action-icon')).toHaveText(String.fromCodePoint(10003));
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-edit-icon')).toHaveAttribute('aria-label', 'Editar objetivo');
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-head')).toHaveCount(0);
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-stats')).toHaveCount(0);
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-foot')).toHaveCount(0);
 
   const portraitLayout = await page.evaluate(() => {
     const shell = document.getElementById('cronoCalendarObjectivesShell').getBoundingClientRect();
     const panel = document.getElementById('cronoObjectivesPanel').getBoundingClientRect();
     const tracker = document.querySelector('#cronoObjectivesPanel .crono-habit-tracker').getBoundingClientRect();
     const clock = document.querySelector('#cronoStageIdle .crono-idle-main').getBoundingClientRect();
-    const stats = getComputedStyle(document.querySelector('#cronoObjectivesPanel .crono-habit-tracker-stats'));
     const days = getComputedStyle(document.querySelector('#cronoObjectivesPanel .crono-habit-tracker-days'));
     const day = document.querySelector('#cronoObjectivesPanel .crono-habit-day').getBoundingClientRect();
     return {
       shellWidth: shell.width,
       panelContainsTracker: tracker.left >= panel.left - 1 && tracker.right <= panel.right + 1,
       balancedHeight: Math.abs(shell.height - clock.height),
-      statColumns: stats.gridTemplateColumns.split(' ').length,
       dayColumns: days.gridTemplateColumns.split(' ').length,
       dayWidth: day.width,
       documentFits: document.documentElement.scrollWidth <= innerWidth + 1,
@@ -560,7 +567,6 @@ test('loads the calendar and objectives switch inside the stopwatch', async ({ p
   expect(portraitLayout.shellWidth).toBeGreaterThan(300);
   expect(portraitLayout.panelContainsTracker).toBe(true);
   expect(portraitLayout.balancedHeight).toBeLessThanOrEqual(2);
-  expect(portraitLayout.statColumns).toBe(4);
   expect(portraitLayout.dayColumns).toBe(7);
   expect(portraitLayout.dayWidth).toBeGreaterThanOrEqual(32);
   expect(portraitLayout.documentFits).toBe(true);
@@ -752,7 +758,7 @@ test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) =>
       hoy,
       cronoStart: document.getElementById('cronoStartBtn')?.textContent.trim(),
       quickNoteButtons: document.querySelectorAll('#cronoQuickNoteBtn').length,
-      runTabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab),
+      runTabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab || button.dataset.action),
       bottomDisplay: getComputedStyle(document.querySelector('#view-cronometro .crono-bottom-row')).display,
       cronoRefresh: { label: cronoRefresh?.getAttribute('aria-label'), width: cronoRefreshBox?.width, height: cronoRefreshBox?.height, hasIcon: !!cronoRefresh?.querySelector('svg') },
     };
@@ -769,7 +775,7 @@ test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) =>
   expect(state.hoy.refresh).toBe(false);
   expect(state.cronoStart).toBe('Iniciar');
   expect(state.quickNoteButtons).toBe(0);
-  expect(state.runTabs).toEqual(['pasajes', 'nota', 'tareas', 'pase']);
+  expect(state.runTabs).toEqual(['tareas', 'pase']);
   expect(state.bottomDisplay).toBe('none');
   expect(state.cronoRefresh).toEqual({ label: 'Comprobar actualización', width: 44, height: 44, hasIcon: true });
 
@@ -879,8 +885,8 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
       displayRange.selectNodeContents(display);
       const displayTextWidth = displayRange.getBoundingClientRect().width;
       const sessionButton = document.querySelector('#cronoControls .crono-session-rail-main');
-      const actionRail = document.querySelector('.crono-run-action-rail').getBoundingClientRect();
-      const sideDestello = document.querySelector('.crono-run-side-destello').getBoundingClientRect();
+      const actionRail = document.querySelector('#cronoStageRun .crono-run-action-rail').getBoundingClientRect();
+      const sideDestello = document.querySelector('#cronoStageRun .crono-run-side-destello').getBoundingClientRect();
       const displayBox = document.getElementById('cronoDisplay').getBoundingClientRect();
       const sessionButtonBox = sessionButton?.getBoundingClientRect();
       return {
@@ -891,8 +897,7 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
         viewportHeight: innerHeight,
         fitsWidth: document.documentElement.scrollWidth <= innerWidth + 1,
         objectiveRemoved: !document.getElementById('cronoRunObjective') && !document.getElementById('cronoRunObjectiveText'),
-        observation: document.getElementById('cronoRunObservation').value,
-        passage: document.querySelector('.crono-focus-pasaje-copy strong')?.textContent,
+        removedDrawerSections: !document.getElementById('cronoRunObservation') && !document.getElementById('cronoPasajesSection'),
         displayRatio: displayTextWidth / ring.width,
         circleIsButton: document.getElementById('cronoDisplayWrap').hasAttribute('role'),
         hasSeparateControl: !!sessionButton,
@@ -906,8 +911,7 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
 
     expect(layout.fitsWidth).toBe(true);
     expect(layout.objectiveRemoved).toBe(true);
-    expect(layout.observation).toBe('Coda limpia, pulso estable');
-    expect(layout.passage).toBe('Coda · cc. 200–208');
+    expect(layout.removedDrawerSections).toBe(true);
     expect(layout.displayRatio).toBeLessThanOrEqual(0.78);
     expect(layout.circleIsButton).toBe(false);
     expect(layout.hasSeparateControl).toBe(true);
@@ -1485,7 +1489,7 @@ test('separates piano and personal tasks and only reminds piano work', async ({ 
     cronoSetIdleDrawerTab('pasajes');
     return { reminded: cronoMaybeRemindTasks('test'), tab: document.getElementById('cronoIdleDrawer').dataset.tab };
   });
-  expect(personalOnly).toEqual({ reminded: false, tab: 'pasajes' });
+  expect(personalOnly).toEqual({ reminded: false, tab: 'tareas' });
 
   await page.setViewportSize({ width: 834, height: 1194 });
   await page.evaluate(() => {
@@ -1545,6 +1549,76 @@ test('uses the task circle to toggle and the task name to edit', async ({ page }
   await completedRow.locator('.crono-task-toggle').click();
   await expect(panel.locator('.crono-task-row').first()).not.toHaveClass(/is-done/);
   expect(await page.evaluate(() => cronoTasks()[0].done)).toBe(false);
+});
+
+test('captures a dictated-style note for tomorrow and keeps the clock tools minimal', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await prepare(page);
+  const idlePosition = await page.evaluate(() => {
+    showView('cronometro');
+    const select = document.getElementById('cronoObraSelect');
+    select.value = 'obra::obra_1';
+    cronoUpdateStartBtn();
+    const ring = document.querySelector('#cronoStageIdle .crono-run-progress-svg').getBoundingClientRect();
+    const note = document.querySelector('#cronoStageIdle .crono-tomorrow-note-btn').getBoundingClientRect();
+    return {
+      x: (note.left + note.width / 2 - (ring.left + ring.width / 2)) / ring.width,
+      y: (note.top + note.height / 2 - (ring.top + ring.height / 2)) / ring.height,
+    };
+  });
+
+  await page.evaluate(() => cronoStart());
+  const runningPosition = await page.evaluate(() => {
+    const ring = document.querySelector('#cronoStageRun .crono-run-progress-svg').getBoundingClientRect();
+    const note = document.querySelector('#cronoStageRun .crono-tomorrow-note-btn').getBoundingClientRect();
+    return {
+      x: (note.left + note.width / 2 - (ring.left + ring.width / 2)) / ring.width,
+      y: (note.top + note.height / 2 - (ring.top + ring.height / 2)) / ring.height,
+    };
+  });
+  expect(Math.abs(idlePosition.x - runningPosition.x)).toBeLessThanOrEqual(0.02);
+  expect(Math.abs(idlePosition.y - runningPosition.y)).toBeLessThanOrEqual(0.02);
+  await expect(page.locator('#cronoRunDrawer .crono-run-drawer-tab')).toHaveCount(2);
+  await expect(page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-tab="tareas"]')).toContainText('Tareas');
+  await expect(page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-action="pase"]')).toHaveText('Pase +');
+
+  await page.locator('#cronoStageRun .crono-tomorrow-note-btn').click();
+  await expect(page.locator('#modalCronoNote')).toHaveClass(/visible/);
+  await expect(page.locator('#cronoNoteContext')).toContainText('Bach · Preludio');
+  await page.locator('#cronoNoteInput').fill('Revisar mañana la digitación de la coda y probar menos pedal.');
+  await page.locator('#modalCronoNote').getByRole('button', { name: 'Guardar', exact: true }).click();
+
+  const saved = await page.evaluate(() => {
+    const task = cronoTasks().find(item => item.source === 'tomorrow-note');
+    return task && {
+      text: task.text,
+      obraId: task.obraId,
+      obraName: task.obraName,
+      tomorrow: task.tomorrow,
+      dueDate: task.dueDate,
+      expectedDueDate: habitKeyAt(habitDayKey(), 1),
+      runId: task.runId,
+    };
+  });
+  expect(saved).toEqual(expect.objectContaining({
+    text: 'Revisar mañana la digitación de la coda y probar menos pedal.',
+    obraId: 'obra_1',
+    obraName: 'Bach · Preludio',
+    tomorrow: true,
+    dueDate: saved.expectedDueDate,
+  }));
+  expect(saved.runId).toBeTruthy();
+
+  const taskRow = page.locator('#cronoTasksPanel .crono-task-row.is-tomorrow-note');
+  await expect(taskRow.locator('.crono-task-work-name')).toHaveText('Bach · Preludio');
+  await expect(taskRow.locator('.crono-task-note-preview')).toContainText('Revisar mañana la digitación');
+  await expect(taskRow.locator('.crono-task-due-tag')).toHaveText('Mañana');
+
+  const normalFont = await taskRow.locator('.crono-task-work-name').evaluate(element => parseFloat(getComputedStyle(element).fontSize));
+  await page.locator('#cronoRunDrawer [data-task-density-toggle]').click();
+  const compactFont = await taskRow.locator('.crono-task-work-name').evaluate(element => parseFloat(getComputedStyle(element).fontSize));
+  expect(compactFont).toBeLessThan(normalFont);
+  expect(await page.evaluate(() => localStorage.getItem(CRONO_TASK_DENSITY_KEY))).toBe('compact');
 });
 
 test('records only concentration and discomfort across timer layouts', async ({ page }) => {
@@ -2236,7 +2310,7 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
         destello: rect(document.getElementById('cronoIdleMessage')),
         start: rect(document.getElementById('cronoStartBtn')),
         presetCount: document.querySelectorAll('#cronoDurationPresets button').length,
-        tabs: [...document.querySelectorAll('#cronoIdleDrawer .crono-idle-drawer-tab')].map(button => button.dataset.tab),
+        tabs: [...document.querySelectorAll('#cronoIdleDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab || button.dataset.action),
         objectiveRemoved: !document.getElementById('cronoIdleObjective') && !document.getElementById('cronoIdleObjectiveText'),
         display: document.getElementById('cronoTimerText').textContent,
         arcColor: getComputedStyle(document.getElementById('cronoTimerArc')).stroke,
@@ -2274,7 +2348,7 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
     });
 
     expect(layout.fitsWidth).toBe(true);
-    expect(layout.idle.tabs).toEqual(['pasajes', 'nota', 'tareas', 'pase']);
+    expect(layout.idle.tabs).toEqual(['tareas', 'pase']);
     expect(layout.running.tabs).toEqual(layout.idle.tabs);
     expect(layout.idle.activeTab).toBe('tareas');
     expect(layout.running.activeTab).toBe('tareas');

@@ -16663,6 +16663,268 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
   }
 }
 
+/* Cronómetro esencial: tareas, pase y captura rápida para mañana. */
+#view-cronometro .crono-minimal-tabs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr) !important;
+  gap: 6px;
+}
+#view-cronometro .crono-task-density-btn {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1px;
+  width: 42px;
+  min-width: 42px;
+  min-height: 40px;
+  padding: 0;
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  background: var(--bg2);
+  color: var(--text3);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 140ms ease, color 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+#view-cronometro .crono-task-density-btn span { font-size: 13px; font-weight: 760; }
+#view-cronometro .crono-task-density-btn small { font-size: 10px; font-weight: 800; }
+#view-cronometro .crono-task-density-btn.active {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border2));
+  background: color-mix(in srgb, var(--accent) 9%, var(--bg2));
+  color: var(--accent);
+}
+#view-cronometro .crono-task-density-btn:active { transform: scale(.94); }
+#view-cronometro .crono-task-density-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 48%, transparent);
+  outline-offset: 2px;
+}
+#view-cronometro .crono-run-drawer-panels,
+#view-cronometro .crono-idle-drawer-panels,
+#view-cronometro .crono-run-drawer-panel[data-panel="tareas"],
+#view-cronometro .crono-idle-drawer-panel[data-panel="tareas"] {
+  min-height: 0;
+}
+
+/* El + de mañana refleja la columna de Destellos y acompaña el zoom del aro. */
+#view-cronometro .crono-tomorrow-note-rail {
+  --crono-action-size: 52px;
+  --crono-action-gap: 12px;
+  position: absolute;
+  top: 50%;
+  left: max(10px, calc((100% - var(--crono-interface-ring-size)) / 2 - var(--crono-action-size) - 8px));
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--crono-action-gap);
+  transform: translateY(-50%);
+  transition: left 300ms cubic-bezier(.16, 1, .3, 1);
+}
+#view-cronometro .crono-tomorrow-note-btn {
+  display: grid;
+  width: var(--crono-action-size);
+  height: var(--crono-action-size);
+  flex: 0 0 var(--crono-action-size);
+  padding: 0 0 3px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border2));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg2));
+  box-shadow: 0 7px 20px rgba(0,0,0,.09), inset 0 1px 0 color-mix(in srgb, white 44%, transparent);
+  color: var(--accent);
+  font: 400 32px/1 -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  cursor: pointer;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 140ms cubic-bezier(.2,.8,.2,1), background-color 160ms ease, box-shadow 160ms ease;
+}
+#view-cronometro .crono-tomorrow-note-btn:hover {
+  background: color-mix(in srgb, var(--accent) 13%, var(--bg2));
+  box-shadow: 0 9px 24px rgba(0,0,0,.11), 0 0 0 5px color-mix(in srgb, var(--accent) 8%, transparent);
+  transform: scale(1.05);
+}
+#view-cronometro .crono-tomorrow-note-btn:active { transform: scale(.91); }
+#view-cronometro .crono-tomorrow-note-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  outline-offset: 3px;
+}
+#view-cronometro .crono-tomorrow-note-spacer {
+  display: block;
+  width: var(--crono-action-size);
+  height: var(--crono-action-size);
+  flex: 0 0 var(--crono-action-size);
+  visibility: hidden;
+  pointer-events: none;
+}
+body.crono-interface-pinching #view-cronometro .crono-tomorrow-note-rail { transition: none !important; }
+
+@media (min-width: 900px) and (max-width: 1399px) and (orientation: landscape) and (min-height: 620px) {
+  #view-cronometro .crono-tomorrow-note-rail {
+    --crono-action-size: 64px;
+    --crono-action-gap: 14px;
+  }
+  #view-cronometro .crono-tomorrow-note-btn { font-size: 38px; }
+}
+@media (min-width: 700px) and (max-width: 1199px) and (orientation: portrait) {
+  #view-cronometro .crono-tomorrow-note-rail {
+    --crono-action-size: 54px;
+    --crono-action-gap: 12px;
+    top: calc(50% + (var(--crono-interface-ring-size) / 4));
+  }
+}
+@media (max-width: 699px) {
+  #view-cronometro .crono-tomorrow-note-rail { --crono-action-size: 46px; --crono-action-gap: 8px; }
+  #view-cronometro .crono-tomorrow-note-btn { font-size: 29px; }
+  #view-cronometro .crono-minimal-tabs { grid-template-columns: minmax(0, 1fr) 38px minmax(0, 1fr) !important; gap: 4px; }
+  #view-cronometro .crono-task-density-btn { width: 38px; min-width: 38px; min-height: 34px; }
+}
+
+/* La nota especial conserva la obra visible y usa el dictado como previsualización. */
+#view-cronometro .crono-task-copy {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 2px;
+}
+#view-cronometro .crono-task-work-name {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+#view-cronometro .crono-task-note-preview {
+  display: -webkit-box;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--text3) 72%, transparent);
+  font-size: 9px;
+  font-weight: 520;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+#view-cronometro .crono-task-row.is-tomorrow-note .crono-task-open { align-items: center; }
+
+body.crono-task-density-compact #view-cronometro .crono-task-lane-head {
+  min-height: 23px;
+  margin-bottom: 4px;
+}
+body.crono-task-density-compact #view-cronometro .crono-task-lane-head strong { font-size: 10.5px; }
+body.crono-task-density-compact #view-cronometro .crono-task-lane .crono-task-list { gap: 3px; }
+body.crono-task-density-compact #view-cronometro .crono-task-lane .crono-task-row,
+body.crono-task-density-compact #view-cronometro .crono-task-completed-list .crono-task-row {
+  min-height: 35px;
+}
+body.crono-task-density-compact #view-cronometro .crono-task-toggle {
+  width: 36px;
+  min-width: 36px;
+  min-height: 35px;
+}
+body.crono-task-density-compact #view-cronometro .crono-task-open {
+  gap: 4px;
+  padding-block: 5px;
+}
+body.crono-task-density-compact #view-cronometro .crono-task-lane .crono-task-text { font-size: 9.5px; line-height: 1.16; }
+body.crono-task-density-compact #view-cronometro .crono-task-note-preview {
+  font-size: 7.8px;
+  line-height: 1.15;
+  -webkit-line-clamp: 1;
+}
+body.crono-task-density-compact #view-cronometro .crono-task-priority { min-width: 18px; transform: scale(.82); transform-origin: right center; }
+body.crono-task-density-compact #view-cronometro .crono-task-priority em { display: none; }
+body.crono-task-density-compact #view-cronometro .crono-task-due-tag { padding: 2px 3px; font-size: 5.8px; }
+body.crono-task-density-compact #view-cronometro .crono-task-clean { min-height: 42px; }
+
+/* Dictado de la nota de mañana. */
+.crono-tomorrow-note-modal { width: min(470px, calc(100vw - 28px)); }
+.crono-tomorrow-note-compose { position: relative; }
+.crono-tomorrow-note-compose .crono-note-input {
+  min-height: 122px;
+  padding-right: 58px;
+  resize: none;
+}
+.crono-tomorrow-voice-btn {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border2));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg2));
+  color: var(--accent);
+  cursor: pointer;
+}
+.crono-tomorrow-voice-btn svg { width: 20px; height: 20px; }
+.crono-tomorrow-voice-btn.is-listening {
+  border-color: color-mix(in srgb, var(--red) 58%, var(--border2));
+  background: color-mix(in srgb, var(--red) 12%, var(--bg2));
+  color: var(--red);
+  animation: crono-tomorrow-listening 1.35s ease-in-out infinite;
+}
+@keyframes crono-tomorrow-listening {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--red) 0%, transparent); }
+  50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--red) 13%, transparent); }
+}
+
+/* Objetivos: una única fila de acciones y la cuadrícula como protagonista. */
+#calPanelMes .calendar-habit-summary {
+  min-height: 44px;
+  height: 44px;
+  margin: 0 0 7px;
+}
+#calPanelMes .calendar-habit-compact {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  width: 100%;
+  min-height: 44px;
+  height: 44px;
+  padding: 0 2px;
+  box-sizing: border-box;
+}
+#calPanelMes .calendar-habit-compact.is-placeholder { visibility: hidden; }
+#calPanelMes .calendar-habit-compact.is-empty { justify-content: center; }
+#calPanelMes .calendar-habit-icon-action,
+#calPanelMes .calendar-habit-icon-edit {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: var(--bg2);
+  color: var(--text2);
+  cursor: pointer;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#calPanelMes .calendar-habit-icon-action { color: #b27716; font-size: 18px; font-weight: 850; }
+#calPanelMes .calendar-habit-icon-action.is-failure {
+  border-color: color-mix(in srgb, var(--red) 48%, var(--border2));
+  background: color-mix(in srgb, var(--red) 10%, var(--bg2));
+  color: var(--red);
+}
+#calPanelMes .calendar-habit-icon-action.is-success,
+#calPanelMes .calendar-habit-icon-action.is-complete {
+  border-color: color-mix(in srgb, var(--green) 45%, var(--border2));
+  background: color-mix(in srgb, var(--green) 9%, var(--bg2));
+  color: var(--green);
+}
+#calPanelMes .calendar-habit-icon-edit svg { width: 17px; height: 17px; }
+#calPanelMes .calendar-habit-icon-action:active,
+#calPanelMes .calendar-habit-icon-edit:active { transform: scale(.94); }
+
+@media (prefers-reduced-motion: reduce) {
+  #view-cronometro .crono-tomorrow-note-rail,
+  #view-cronometro .crono-tomorrow-note-btn,
+  #view-cronometro .crono-task-density-btn { transition: none; }
+  .crono-tomorrow-voice-btn.is-listening { animation: none; }
+}
+
 @keyframes crono-fluid-confirm {
   0% { transform: scale(.965); }
   24% {
@@ -18671,6 +18933,9 @@ body.crono-pulse-disabled #view-cronometro .crono-moment-monitor { display: none
 #view-calendario .calendar-action-row.is-objective-layer .calendar-action-buttons {
   visibility: hidden;
 }
+#view-calendario .calendar-action-row.is-objective-layer .view-local-label {
+  visibility: hidden;
+}
 #calPanelMes .calendar-habit-summary {
   min-height: 58px;
   margin-bottom: 12px;
@@ -18781,4 +19046,11 @@ body.crono-pulse-disabled #view-cronometro .crono-moment-monitor { display: none
   #view-cronometro .crono-task-row:not(.is-wide) .crono-task-priority em {
     display: none;
   }
+}
+
+/* Final cascade: la fila mínima de objetivo mantiene exactamente su altura. */
+#calPanelMes .calendar-habit-summary {
+  min-height: 44px;
+  height: 44px;
+  margin: 0 0 7px;
 }

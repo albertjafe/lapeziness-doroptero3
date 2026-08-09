@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-09-mobile-controls-v122';
+const APP_VERSION = '2026-08-09-tomorrow-notes-v123';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -746,6 +746,9 @@ function openModal(id) {
 function closeModal(id) {
   const overlay = document.getElementById(id);
   if (!overlay) return;
+  if (id === 'modalCronoNote' && typeof cronoStopTomorrowVoice === 'function') {
+    cronoStopTomorrowVoice(true);
+  }
   overlay.classList.remove('visible');
   // Limpiar el opacity inline que pusimos como salvavidas, así la próxima
   // apertura empieza desde la transición CSS y no salta visualmente.
@@ -11096,42 +11099,44 @@ function renderCalendarHabitLayer() {
   summary.hidden = false;
   summary.classList.toggle('is-objectives-visible', visible);
   if (!visible) {
-    summary.innerHTML = '<div class="calendar-habit-summary-main is-muted" aria-hidden="true">' +
-      '<span class="calendar-habit-summary-icon">&#127942;</span>' +
-      '<span class="calendar-habit-summary-copy"><small>Capa opcional</small><strong>Objetivos ocultos</strong></span>' +
-      '<span class="calendar-habit-summary-hint">Activa el toggle superior para ver el reto</span>' +
-    '</div>';
+    summary.innerHTML = '<div class="calendar-habit-compact is-placeholder" aria-hidden="true"></div>';
     return;
   }
 
   const habit = habitActiveChallenge();
   if (!habit) {
-    summary.innerHTML = '<div class="calendar-habit-empty"><span><strong>No hay un objetivo activo</strong><small>Crea un reto para ver sus días aquí.</small></span>' +
-      '<button type="button" onclick="openHabitChallengeModal()">Crear objetivo</button></div>';
+    summary.innerHTML = '<div class="calendar-habit-compact is-empty">' +
+      '<button type="button" class="calendar-habit-icon-action" onclick="openHabitChallengeModal()" aria-label="Crear objetivo" title="Crear objetivo">+</button>' +
+    '</div>';
     return;
   }
 
   const metrics = habitMetrics(habit);
   const marked = habit.mode === 'avoid' ? metrics.todayLog === 'failed' : metrics.todayLog === 'done';
-  const modeLabel = habit.mode === 'avoid' ? 'Evitar' : 'Hacer';
-  const dayLabel = metrics.complete ? 'Reto completado' : modeLabel + ' · día ' + metrics.day + '/' + metrics.duration;
-  let action = '';
+  let actionClass = '';
+  let actionLabel = '';
+  let actionHandler = '';
+  let actionIcon = '';
   if (metrics.complete) {
-    action = '<button type="button" class="calendar-habit-action" onclick="openHabitChallengeModal()">Nuevo objetivo</button>';
+    actionClass = ' is-complete';
+    actionLabel = 'Objetivo completado. Crear uno nuevo';
+    actionHandler = 'openHabitChallengeModal()';
+    actionIcon = '&#10003;';
   } else if (habit.mode === 'avoid') {
-    action = '<button type="button" class="calendar-habit-action calendar-habit-relapse' + (marked ? ' is-failure' : '') + '" onclick="registerHabitRelapse(event)">' +
-      (marked ? 'Quitar recaída' : 'Registrar recaída') + '</button>';
+    actionClass = ' is-relapse' + (marked ? ' is-failure' : '');
+    actionLabel = marked ? 'Quitar recaída de hoy' : 'Registrar recaída hoy';
+    actionHandler = 'registerHabitRelapse(event)';
+    actionIcon = '!';
   } else {
-    action = '<button type="button" class="calendar-habit-action' + (marked ? ' is-success' : '') + '" onclick="toggleHabitToday(event)">' +
-      (marked ? 'Cumplido hoy' : 'Marcar hoy') + '</button>';
+    actionClass = ' is-check' + (marked ? ' is-success' : '');
+    actionLabel = marked ? 'Desmarcar cumplimiento de hoy' : 'Marcar objetivo cumplido hoy';
+    actionHandler = 'toggleHabitToday(event)';
+    actionIcon = '&#10003;';
   }
-  summary.innerHTML = '<div class="calendar-habit-summary-main">' +
-    '<span class="calendar-habit-summary-icon" aria-hidden="true">&#127942;</span>' +
-    '<span class="calendar-habit-summary-copy"><small>' + dayLabel + '</small><strong>' + escapeHtmlSafe(habit.title || 'Objetivo') + '</strong></span>' +
-    '<span class="calendar-habit-summary-progress" aria-label="' + metrics.progress + '% del objetivo"><i style="width:' + metrics.progress + '%"></i></span>' +
-    '<span class="calendar-habit-summary-count">' + metrics.success + '<small>cumplidos</small></span>' +
-    action +
-    '<button type="button" class="calendar-habit-edit" onclick="openHabitChallengeModal()" aria-label="Editar objetivo" title="Editar objetivo">&#8942;</button>' +
+  const editIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>';
+  summary.innerHTML = '<div class="calendar-habit-compact" aria-label="Objetivo: ' + escapeHtmlSafe(habit.title || 'Objetivo') + '">' +
+    '<button type="button" class="calendar-habit-icon-action' + actionClass + '" onclick="' + actionHandler + '" aria-label="' + actionLabel + '" title="' + actionLabel + '"><span aria-hidden="true">' + actionIcon + '</span></button>' +
+    '<button type="button" class="calendar-habit-icon-edit" onclick="openHabitChallengeModal()" aria-label="Editar objetivo" title="Editar objetivo">' + editIcon + '</button>' +
   '</div>';
 }
 
@@ -11229,10 +11234,7 @@ function renderMesCalendario() {
   grid.innerHTML = html;
 
   if (objectiveMode) {
-    document.getElementById('mesLeyenda').innerHTML = '<div class="mes-leyenda-item"><span class="habit-legend-symbol success">&#10003;</span> Cumplido</div>' +
-      '<div class="mes-leyenda-item"><span class="habit-legend-symbol failure">&#215;</span> Fallado</div>' +
-      '<div class="mes-leyenda-item"><span class="habit-legend-symbol current">&#8226;</span> Hoy / pendiente</div>' +
-      '<div class="mes-leyenda-item"><span class="habit-legend-symbol victory">&#9873;</span> Meta alcanzada</div>';
+    document.getElementById('mesLeyenda').innerHTML = '';
     return;
   }
 
@@ -20305,35 +20307,166 @@ function cronoNoteContextText(phase) {
   return (crono.state === 'paused' ? 'En pausa' : 'En marcha') + ' · ' + cronoNotePhaseLabel('during', elapsed);
 }
 
-function openCronoNote(phase) {
-  const effectivePhase = (crono.state === 'idle' || phase === 'before') ? 'before' : 'during';
-  _cronoNoteDraftPhase = effectivePhase;
-  const ctx = document.getElementById('cronoNoteContext');
-  const input = document.getElementById('cronoNoteInput');
-  if (ctx) ctx.textContent = cronoNoteContextText(effectivePhase);
-  if (input) input.value = '';
-  openModal('modalCronoNote');
-  setTimeout(() => {
-    const el = document.getElementById('cronoNoteInput');
-    if (el) el.focus();
-  }, 140);
+let _cronoTomorrowTaskContext = null;
+let _cronoTomorrowRecognition = null;
+
+function cronoTomorrowTaskWork() {
+  const selected = crono.state === 'idle'
+    ? cronoResolveSelectValue(document.getElementById('cronoObraSelect')?.value || '')
+    : null;
+  const work = selected || {
+    obraId: crono.obraId,
+    movId: crono.movId,
+    displayName: crono.displayName,
+    subName: crono.subName,
+  };
+  if (!work?.obraId || work.obraId === '_rest_' || !String(work.displayName || '').trim()) return null;
+  return {
+    obraId: work.obraId,
+    movId: work.movId || null,
+    displayName: String(work.displayName || '').trim().slice(0, 140),
+    subName: String(work.subName || '').trim().slice(0, 180),
+  };
 }
 
-function confirmCronoNote() {
+function cronoSetTomorrowVoiceState(active) {
+  const button = document.getElementById('cronoTomorrowVoiceBtn');
+  if (!button) return;
+  button.classList.toggle('is-listening', !!active);
+  button.setAttribute('aria-label', active ? 'Detener dictado' : 'Dictar nota');
+  button.setAttribute('title', active ? 'Detener dictado' : 'Dictar nota');
+}
+
+function cronoStopTomorrowVoice(abort) {
+  const recognition = _cronoTomorrowRecognition;
+  _cronoTomorrowRecognition = null;
+  cronoSetTomorrowVoiceState(false);
+  if (!recognition) return;
+  try {
+    if (abort && typeof recognition.abort === 'function') recognition.abort();
+    else recognition.stop();
+  } catch (e) {}
+}
+
+function cronoStartTomorrowVoice(silentUnsupported) {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const input = document.getElementById('cronoNoteInput');
-  const text = (input?.value || '').trim();
-  if (!text) {
-    showToast('Escribe o dicta una nota');
+  if (!Recognition || !input) {
+    input?.focus({ preventScroll: true });
+    if (!silentUnsupported) showToast('Usa el micrófono del teclado para dictar');
+    return false;
+  }
+
+  const recognition = new Recognition();
+  const base = input.value.trim();
+  recognition.lang = 'es-ES';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+  recognition.onresult = event => {
+    let transcript = '';
+    for (let i = 0; i < event.results.length; i += 1) {
+      transcript += event.results[i][0]?.transcript || '';
+    }
+    const joined = (base ? base + ' ' : '') + transcript;
+    input.value = joined.trimStart().slice(0, 500);
+    input.setSelectionRange(input.value.length, input.value.length);
+  };
+  recognition.onerror = event => {
+    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+      showToast('Activa el permiso de micrófono o usa el dictado del teclado');
+    } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+      showToast('No se pudo iniciar el dictado');
+    }
+  };
+  recognition.onend = () => {
+    if (_cronoTomorrowRecognition === recognition) {
+      _cronoTomorrowRecognition = null;
+      cronoSetTomorrowVoiceState(false);
+    }
+  };
+  try {
+    _cronoTomorrowRecognition = recognition;
+    recognition.start();
+    cronoSetTomorrowVoiceState(true);
+    return true;
+  } catch (e) {
+    _cronoTomorrowRecognition = null;
+    cronoSetTomorrowVoiceState(false);
+    input.focus({ preventScroll: true });
+    if (!silentUnsupported) showToast('Usa el micrófono del teclado para dictar');
+    return false;
+  }
+}
+
+function toggleCronoTomorrowVoice(event) {
+  event?.stopPropagation();
+  if (_cronoTomorrowRecognition) cronoStopTomorrowVoice(false);
+  else cronoStartTomorrowVoice(false);
+}
+
+function openCronoTomorrowTask() {
+  const work = cronoTomorrowTaskWork();
+  if (!work) {
+    showToast('Elige una obra antes de añadir la nota');
     return;
   }
-  if (!Array.isArray(crono.notes)) crono.notes = [];
-  const note = cronoCreateSessionNote(text, _cronoNoteDraftPhase);
-  if (note) crono.notes.push(note);
-  crono.notes = crono.notes.slice(-80);
-  cronoSaveState();
-  cronoRenderNoteCounts();
+  _cronoTomorrowTaskContext = work;
+  const context = document.getElementById('cronoNoteContext');
+  const input = document.getElementById('cronoNoteInput');
+  if (context) context.textContent = 'Para mañana · ' + work.displayName;
+  if (input) input.value = '';
+  openModal('modalCronoNote');
+  try { input?.focus({ preventScroll: true }); } catch (e) { input?.focus(); }
+  cronoStartTomorrowVoice(true);
+  setTimeout(() => {
+    if (!_cronoTomorrowRecognition) input?.focus({ preventScroll: true });
+  }, 120);
+}
+
+function closeCronoTomorrowTask() {
+  cronoStopTomorrowVoice(true);
   closeModal('modalCronoNote');
-  showToast(_cronoNoteDraftPhase === 'before' ? 'Objetivo guardado' : 'Nota guardada');
+  _cronoTomorrowTaskContext = null;
+}
+
+function confirmCronoTomorrowTask() {
+  const input = document.getElementById('cronoNoteInput');
+  const text = (input?.value || '').replace(/\s+/g, ' ').trim().slice(0, 500);
+  if (!text) {
+    showToast('Escribe o dicta una nota');
+    input?.focus();
+    return;
+  }
+  const work = _cronoTomorrowTaskContext || cronoTomorrowTaskWork();
+  if (!work) {
+    showToast('No se ha encontrado la obra activa');
+    return;
+  }
+  cronoStopTomorrowVoice(false);
+  cronoTasks().push({
+    id: 'ct_tomorrow_' + Date.now(),
+    text,
+    kind: 'piano',
+    tomorrow: true,
+    dueDate: habitKeyAt(habitDayKey(), 1),
+    done: false,
+    priority: 0,
+    source: 'tomorrow-note',
+    obraId: work.obraId,
+    movId: work.movId,
+    obraName: work.displayName,
+    obraSubName: work.subName,
+    runId: crono.state === 'idle' ? null : crono.runId,
+    createdElapsedMs: crono.state === 'idle' ? 0 : cronoEffectiveElapsedMs(),
+    createdAt: new Date().toISOString(),
+  });
+  saveData();
+  closeModal('modalCronoNote');
+  _cronoTomorrowTaskContext = null;
+  renderCronoTasks();
+  try { Haptics.success(); } catch (e) {}
+  showToast('Nota guardada para mañana');
 }
 
 function cronoRenderNoteCounts() {
@@ -20377,6 +20510,47 @@ function cronoTaskPriority(task) {
 
 function cronoTaskPriorityLabel(priority) {
   return priority === 3 ? 'Urgentísima' : priority === 2 ? 'Urgente' : priority === 1 ? 'Importante' : 'Normal';
+}
+
+const CRONO_TASK_DENSITY_KEY = 'alberto_crono_task_density_v1';
+let _cronoTaskDensityCompact = null;
+
+function cronoTaskDensityCompact() {
+  if (_cronoTaskDensityCompact === null) {
+    try { _cronoTaskDensityCompact = localStorage.getItem(CRONO_TASK_DENSITY_KEY) === 'compact'; }
+    catch (e) { _cronoTaskDensityCompact = false; }
+  }
+  return _cronoTaskDensityCompact;
+}
+
+function cronoApplyTaskDensity() {
+  const compact = cronoTaskDensityCompact();
+  document.body.classList.toggle('crono-task-density-compact', compact);
+  document.querySelectorAll('[data-task-density-toggle]').forEach(button => {
+    button.classList.toggle('active', compact);
+    button.setAttribute('aria-pressed', compact ? 'true' : 'false');
+    button.setAttribute('aria-label', compact ? 'Usar tamaño normal en las tareas' : 'Reducir tamaño de las tareas');
+    button.setAttribute('title', compact ? 'Tamaño normal' : 'Tareas compactas');
+    const small = button.querySelector('small');
+    if (small) small.textContent = compact ? '+' : '−';
+  });
+}
+
+function toggleCronoTaskDensity() {
+  _cronoTaskDensityCompact = !cronoTaskDensityCompact();
+  try { localStorage.setItem(CRONO_TASK_DENSITY_KEY, _cronoTaskDensityCompact ? 'compact' : 'normal'); } catch (e) {}
+  cronoApplyTaskDensity();
+  try { Haptics.light(); } catch(e) {}
+}
+
+function cronoTaskDueLabel(task) {
+  if (!task?.tomorrow) return '';
+  if (!task.dueDate) return 'Mañana';
+  const today = habitDayKey();
+  const tomorrow = habitKeyAt(today, 1);
+  if (task.dueDate === today) return 'Hoy';
+  if (task.dueDate === tomorrow) return 'Mañana';
+  return habitDayNumber(task.dueDate) < habitDayNumber(today) ? 'Pendiente' : 'Próxima';
 }
 
 function cronoPendingTaskCount(kind) {
@@ -20644,9 +20818,15 @@ function renderCronoTasks() {
   const row = t => {
     const priority = cronoTaskPriority(t);
     const priorityLabel = cronoTaskPriorityLabel(priority);
-    const wide = String(t.text || '').trim().length > 48 ? ' is-wide' : '';
-    const cls = 'crono-task-row priority-' + priority + wide + (t.done ? ' is-done' : '');
+    const tomorrowNote = t.source === 'tomorrow-note' && String(t.obraName || '').trim();
+    const wide = !tomorrowNote && String(t.text || '').trim().length > 48 ? ' is-wide' : '';
+    const cls = 'crono-task-row priority-' + priority + wide + (tomorrowNote ? ' is-tomorrow-note' : '') + (t.done ? ' is-done' : '');
     const action = t.done ? 'Volver a abrir' : 'Marcar como hecha';
+    const dueLabel = cronoTaskDueLabel(t);
+    const taskCopy = tomorrowNote
+      ? '<span class="crono-task-copy"><span class="crono-task-text crono-task-work-name">' + escapeHtmlSafe(t.obraName) + '</span>' +
+          '<span class="crono-task-note-preview">' + escapeHtmlSafe(t.text) + '</span></span>'
+      : '<span class="crono-task-text">' + escapeHtmlSafe(t.text) + '</span>';
     return '<div class="' + cls + '" data-task-id="' + hechoJs(t.id) + '">' +
       '<button type="button" class="crono-task-toggle" onclick="toggleCronoTask(\'' + hechoJs(t.id) + '\',this)" aria-label="' + action + ': ' + escapeHtmlSafe(t.text) + '">' +
         '<span class="crono-task-check" aria-hidden="true"></span>' +
@@ -20656,9 +20836,9 @@ function renderCronoTasks() {
         'onpointerdown="cronoTaskPressStart(event,\'' + hechoJs(t.id) + '\',this)" ' +
         'onpointermove="cronoTaskPressMove(event)" onpointerup="cronoTaskPressEnd(event)" onpointercancel="cronoTaskPressCancel()" ' +
         'oncontextmenu="event.preventDefault()" aria-label="' + escapeHtmlSafe(t.text) + '. Prioridad ' + priorityLabel + '. Pulsa para cambiar; mantén pulsado para editar.">' +
-        '<span class="crono-task-text">' + escapeHtmlSafe(t.text) + '</span>' +
+        taskCopy +
         '<span class="crono-task-priority" aria-hidden="true"><i></i><i></i><i></i><i></i><em>' + priorityLabel + '</em></span>' +
-        (cronoTaskKind(t) === 'piano' && t.tomorrow ? '<span class="crono-task-due-tag">Mañana</span>' : '') +
+        (dueLabel ? '<span class="crono-task-due-tag">' + dueLabel + '</span>' : '') +
       '</button>' +
     '</div>';
   };
@@ -20718,6 +20898,7 @@ function renderCronoTasks() {
       input.setSelectionRange(input.value.length, input.value.length);
     }
   });
+  cronoApplyTaskDensity();
   cronoRenderTaskCount();
 }
 
@@ -20750,6 +20931,7 @@ function addCronoTask(source) {
     text,
     kind: composer.kind,
     tomorrow: composer.kind === 'piano' && composer.tomorrow,
+    dueDate: composer.kind === 'piano' && composer.tomorrow ? habitKeyAt(habitDayKey(), 1) : null,
     done: false,
     priority: 0,
     createdAt: new Date().toISOString(),
@@ -20992,8 +21174,7 @@ function cronoSessionButtonHtml(paused, extraClass) {
 }
 
 function cronoSetRunDrawerTab(tab) {
-  const valid = tab === 'nota' || tab === 'pasajes' || tab === 'tareas' || tab === 'pase' ? tab : 'pasajes';
-  _cronoRunDrawerTab = valid;
+  _cronoRunDrawerTab = 'tareas';
   cronoUpdateRunDrawer();
   try { Haptics.light(); } catch(e) {}
 }
@@ -21001,9 +21182,7 @@ function cronoSetRunDrawerTab(tab) {
 function cronoUpdateRunDrawer() {
   const drawer = document.getElementById('cronoRunDrawer');
   if (!drawer) return;
-  const tab = _cronoRunDrawerTab === 'nota' || _cronoRunDrawerTab === 'tareas' || _cronoRunDrawerTab === 'pase'
-    ? _cronoRunDrawerTab
-    : 'pasajes';
+  const tab = 'tareas';
   drawer.dataset.tab = tab;
   drawer.querySelectorAll('.crono-run-drawer-tab').forEach(btn => {
     if (btn.dataset.action) {
@@ -21028,8 +21207,7 @@ function cronoSetObservation(value) {
 }
 
 function cronoSetIdleDrawerTab(tab) {
-  const valid = tab === 'nota' || tab === 'pasajes' || tab === 'tareas' || tab === 'pase' ? tab : 'pasajes';
-  _cronoIdleDrawerTab = valid;
+  _cronoIdleDrawerTab = 'tareas';
   cronoUpdateIdleDrawer();
   try { Haptics.light(); } catch(e) {}
 }
@@ -21037,9 +21215,7 @@ function cronoSetIdleDrawerTab(tab) {
 function cronoUpdateIdleDrawer() {
   const drawer = document.getElementById('cronoIdleDrawer');
   if (!drawer) return;
-  const tab = _cronoIdleDrawerTab === 'nota' || _cronoIdleDrawerTab === 'tareas' || _cronoIdleDrawerTab === 'pase'
-    ? _cronoIdleDrawerTab
-    : 'pasajes';
+  const tab = 'tareas';
   drawer.dataset.tab = tab;
   drawer.querySelectorAll('.crono-idle-drawer-tab').forEach(btn => {
     const active = btn.dataset.tab === tab;

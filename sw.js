@@ -1,9 +1,9 @@
-const CACHE = 'estudio-v247';
+const CACHE = 'estudio-v248';
 const ASSETS = [
   './index.html',
-  './styles.css?v=247',
-  './app.js?v=247',
-  './timer-objectives.js?v=247',
+  './styles.css?v=248',
+  './app.js?v=248',
+  './timer-objectives.js?v=248',
   './timer-core.js?v=209',
   './data-core.js?v=228',
   './sync-core.js?v=209',

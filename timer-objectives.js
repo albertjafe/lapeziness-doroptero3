@@ -318,6 +318,77 @@
         font: 700 9px/1 var(--font-mono, 'JetBrains Mono', monospace);
       }
 
+      .crono-habit-tracker.is-minimal {
+        height: auto;
+        max-height: 100%;
+        padding: 10px;
+        gap: 8px;
+        background: color-mix(in srgb, var(--bg2) 97%, var(--bg));
+      }
+      .crono-habit-tracker-tools {
+        display: flex;
+        min-height: 40px;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 7px;
+      }
+      .crono-habit-tracker-action-icon,
+      .crono-habit-tracker-edit-icon,
+      .crono-habit-tracker-create-icon {
+        display: grid;
+        width: 40px;
+        height: 40px;
+        min-height: 40px !important;
+        place-items: center;
+        padding: 0;
+        border: 1px solid var(--border2);
+        border-radius: 9px;
+        background: color-mix(in srgb, var(--bg) 82%, transparent);
+        color: var(--text3);
+        cursor: pointer;
+        box-sizing: border-box;
+      }
+      .crono-habit-tracker-action-icon {
+        border-color: color-mix(in srgb, #b58a24 46%, var(--border2));
+        background: color-mix(in srgb, #d6a52e 7%, var(--bg2));
+        color: #956a0e;
+        font: 800 18px/1 Arial, sans-serif;
+      }
+      .crono-habit-tracker-action-icon.is-success {
+        border-color: color-mix(in srgb, var(--green) 52%, var(--border2));
+        background: color-mix(in srgb, var(--green) 9%, var(--bg2));
+        color: var(--green);
+      }
+      .crono-habit-tracker-action-icon.is-failure {
+        border-color: color-mix(in srgb, var(--red) 52%, var(--border2));
+        background: color-mix(in srgb, var(--red) 8%, var(--bg2));
+        color: var(--red);
+      }
+      .crono-habit-tracker-edit-icon svg,
+      .crono-habit-tracker-create-icon svg {
+        width: 17px;
+        height: 17px;
+      }
+      .crono-habit-tracker.is-minimal .crono-habit-tracker-days {
+        flex: 0 0 auto;
+        grid-auto-rows: clamp(40px, 5.2vh, 52px);
+        align-content: start;
+      }
+      .crono-habit-tracker-empty.is-minimal {
+        height: auto;
+        min-height: 120px;
+        padding: 18px;
+        border-style: solid;
+      }
+      .crono-habit-tracker-empty.is-minimal > div { gap: 0; }
+      .crono-habit-tracker-create-icon {
+        width: 48px !important;
+        height: 48px !important;
+        min-height: 48px !important;
+        padding: 0 !important;
+        color: var(--accent) !important;
+      }
+
       @media (min-width: 700px) and (max-width: 1199px) and (orientation: portrait),
              (min-width: 900px) and (max-width: 1399px) and (min-height: 820px) and (orientation: landscape) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 3/2) {
         [data-theme^="marmol"] #view-cronometro .crono-wrap,
@@ -357,6 +428,13 @@
         #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker {
           gap: 6px;
           padding: 8px;
+        }
+        #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker-tools { min-height: 34px; }
+        #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker-action-icon,
+        #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker-edit-icon {
+          width: 34px;
+          height: 34px;
+          min-height: 34px !important;
         }
         #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker-head { min-height: 52px; padding-block: 5px 8px; }
         #view-cronometro .crono-calendar-objectives-shell.is-compact .crono-habit-tracker-action { min-height: 32px; }
@@ -438,48 +516,33 @@
     const panel = trackerPanel();
     if (!panel) return;
     const habit = typeof window.habitActiveChallenge === 'function' ? window.habitActiveChallenge() : null;
-    const trophy = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 12v5M8.5 20h7M10 17h4"/></svg>';
+    const plus = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
+    const pencil = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>';
     if (!habit || typeof window.habitMetrics !== 'function' || typeof window.habitKeyAt !== 'function') {
-      panel.innerHTML = '<section class="crono-habit-tracker-empty"><div>' +
-        '<span class="crono-habit-tracker-icon">' + trophy + '</span>' +
-        '<strong>Sin objetivo activo</strong><span>Crea un reto y sigue aquí cada día.</span>' +
-        '<button type="button" onclick="openHabitChallengeModal()">Crear objetivo</button>' +
+      panel.innerHTML = '<section class="crono-habit-tracker-empty is-minimal"><div>' +
+        '<button type="button" class="crono-habit-tracker-create-icon" onclick="openHabitChallengeModal()" aria-label="Crear objetivo" title="Crear objetivo">' + plus + '</button>' +
       '</div></section>';
       return;
     }
 
     const metrics = window.habitMetrics(habit);
     const marked = habit.mode === 'avoid' ? metrics.todayLog === 'failed' : metrics.todayLog === 'done';
-    const remaining = Math.max(0, metrics.duration - metrics.elapsed);
-    const targetKey = window.habitKeyAt(habit.startDate, metrics.duration - 1);
-    const modeLabel = habit.mode === 'avoid' ? 'Evitar' : 'Hacer';
     let action = '';
     if (metrics.complete) {
-      action = '<button type="button" class="crono-habit-tracker-action is-success" onclick="openHabitChallengeModal()">Objetivo completado · crear otro</button>';
+      action = '<button type="button" class="crono-habit-tracker-action-icon is-success" onclick="openHabitChallengeModal()" aria-label="Objetivo completado" title="Objetivo completado">&#10003;</button>';
     } else if (habit.mode === 'avoid') {
-      action = '<button type="button" class="crono-habit-tracker-action' + (marked ? ' is-failure' : '') + '" onclick="registerHabitRelapse(event)">' +
-        (marked ? 'Recaída registrada · deshacer' : 'Registrar recaída') + '</button>';
+      action = '<button type="button" class="crono-habit-tracker-action-icon' + (marked ? ' is-failure' : '') + '" onclick="registerHabitRelapse(event)" aria-label="' +
+        (marked ? 'Quitar recaída de hoy' : 'Registrar recaída hoy') + '" title="' + (marked ? 'Quitar recaída' : 'Registrar recaída') + '">!</button>';
     } else {
-      action = '<button type="button" class="crono-habit-tracker-action' + (marked ? ' is-success' : '') + '" onclick="toggleHabitToday(event)">' +
-        (marked ? 'Cumplido hoy · desmarcar' : 'Marcar hoy como cumplido') + '</button>';
+      action = '<button type="button" class="crono-habit-tracker-action-icon' + (marked ? ' is-success' : '') + '" onclick="toggleHabitToday(event)" aria-label="' +
+        (marked ? 'Desmarcar objetivo de hoy' : 'Marcar objetivo cumplido hoy') + '" title="' + (marked ? 'Desmarcar hoy' : 'Cumplir hoy') + '">&#10003;</button>';
     }
 
-    panel.innerHTML = '<section class="crono-habit-tracker' + (metrics.complete ? ' is-complete' : '') + '">' +
-      '<header class="crono-habit-tracker-head">' +
-        '<span class="crono-habit-tracker-icon">' + trophy + '</span>' +
-        '<span class="crono-habit-tracker-copy"><small>' + modeLabel + ' · día ' + metrics.day + '/' + metrics.duration + '</small><strong>' + safeText(habit.title || 'Objetivo') + '</strong></span>' +
-        '<button type="button" class="crono-habit-tracker-edit" onclick="openHabitChallengeModal()" aria-label="Editar objetivo" title="Editar objetivo">&#8942;</button>' +
-        '<span class="crono-habit-tracker-progress" aria-label="' + metrics.progress + '% del reto"><i style="width:' + metrics.progress + '%"></i></span>' +
-      '</header>' +
-      action +
-      '<div class="crono-habit-tracker-stats" aria-label="Resumen del objetivo">' +
-        '<span class="crono-habit-tracker-stat"><strong>' + metrics.streak + '</strong><span>Racha</span><small>días</small></span>' +
-        '<span class="crono-habit-tracker-stat"><strong>' + metrics.success + '</strong><span>Hechos</span><small>de ' + metrics.duration + '</small></span>' +
-        '<span class="crono-habit-tracker-stat"><strong>' + metrics.failure + '</strong><span>Fallos</span><small>días</small></span>' +
-        '<span class="crono-habit-tracker-stat"><strong>' + remaining + '</strong><span>Quedan</span><small>días</small></span>' +
+    panel.innerHTML = '<section class="crono-habit-tracker is-minimal' + (metrics.complete ? ' is-complete' : '') + '">' +
+      '<div class="crono-habit-tracker-tools">' + action +
+        '<button type="button" class="crono-habit-tracker-edit-icon" onclick="openHabitChallengeModal()" aria-label="Editar objetivo" title="Editar objetivo">' + pencil + '</button>' +
       '</div>' +
       '<div class="crono-habit-tracker-days" role="list" aria-label="Días del objetivo">' + trackerDaysHtml(habit, metrics) + '</div>' +
-      '<footer class="crono-habit-tracker-foot"><span>Inicio ' + formatDayKey(habit.startDate) + '</span><span class="crono-habit-tracker-goal"><i aria-hidden="true">&#9873;</i> Meta ' + formatDayKey(targetKey) + '</span></footer>' +
     '</section>';
   }
 
