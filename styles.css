@@ -5831,6 +5831,7 @@ body.crono-running .crono-destellos-pill { display: none !important; }
   .pase-tipo-btn.active.informal { background: var(--orange);  color: var(--bg); border-color: var(--orange); }
   .pase-tipo-btn.active.escena   { background: #5a4aaa; color: #d0c8ff; border-color: #7a6acc; }
   .pase-tipo-btn.active.evento   { background: #5a4aaa; color: #d0c8ff; border-color: #7a6acc; }
+  .pase-tipo-btn.active.concurso { background: #8a5318; color: #fff3d7; border-color: #c58a3a; }
   .pase-tipo-btn.active.grabacion { background: #2e6f9e; color: #e7f5ff; border-color: #5aa2d2; }
   .pase-takes-wrap:not([hidden]) {
     display: grid;

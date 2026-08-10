@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-10-iphone-layout-v127';
+const APP_VERSION = '2026-08-10-competition-passes-v128';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -4644,7 +4644,8 @@ function recordEscHistory(obraId, val, context, dateIso) {
 
 function normalizePaseTipo(tipo) {
   if (tipo === 'grabacion' || tipo === 'grabación' || tipo === 'recording') return 'grabacion';
-  if (tipo === 'evento' || tipo === 'escena' || tipo === 'concierto' || tipo === 'concurso' || tipo === 'audicion') return 'evento';
+  if (tipo === 'concurso' || tipo === 'competition') return 'concurso';
+  if (tipo === 'evento' || tipo === 'escena' || tipo === 'concierto' || tipo === 'audicion') return 'evento';
   if (tipo === 'informal') return 'informal';
   return 'solo';
 }
@@ -4652,6 +4653,7 @@ function normalizePaseTipo(tipo) {
 function paseTipoShort(tipo) {
   const t = normalizePaseTipo(tipo);
   if (t === 'grabacion') return 'grabación';
+  if (t === 'concurso') return 'concurso';
   if (t === 'evento') return 'evento';
   if (t === 'informal') return 'amigos';
   return 'solo';
@@ -4668,7 +4670,7 @@ function linkPaseToTargetHistory(obraId, movId, score, tipo, dateIso) {
   const context = 'pase-' + t;
   if (movId) recordMovSolHistory(obraId, movId, pct, context, dateIso);
   else recordSolHistory(obraId, pct, context, dateIso);
-  if (t === 'evento') recordEscHistory(obraId, pct, 'pase-evento', dateIso);
+  if (t === 'evento' || t === 'concurso') recordEscHistory(obraId, pct, 'pase-' + t, dateIso);
 }
 
 function linkPaseToHistory(obraId, score, tipo, dateIso) {
@@ -4788,7 +4790,7 @@ function computeRobustness(obra) {
 
   // Pases en escena/concierto (cada uno reduce el decaimiento ~5%, máx 5)
   const pasesEscena = (obra.solHistory || []).filter(h =>
-    h.context === 'pase-escena' || h.context === 'pase-concierto' || h.context === 'pase-evento'
+    h.context === 'pase-escena' || h.context === 'pase-concierto' || h.context === 'pase-evento' || h.context === 'pase-concurso'
   ).length;
   m *= Math.pow(0.95, Math.min(pasesEscena, 5));
 
@@ -9424,7 +9426,7 @@ function renderObraCard_LEGACY(o, idx) {
     ? '<span class="origen-tag recuperacion">Recuperación</span>'
     : '';
 
-  const tipoIcons = { solo: 'solo', informal: 'amigos', evento: 'evento', grabacion: 'grabación', escena: 'evento', tecnico: 'tec', memoria: 'mem', concierto: 'evento' };
+  const tipoIcons = { solo: 'solo', informal: 'amigos', evento: 'evento', concurso: 'concurso', grabacion: 'grabación', escena: 'evento', tecnico: 'tec', memoria: 'mem', concierto: 'evento' };
   const paseHistHtml = (o.paseHistory||[]).slice(0,5).map(p => {
     const d = new Date(p.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
     const sc = p.score ?? null;
@@ -10145,7 +10147,7 @@ function renderMovimientoCard(obraId, mov) {
     ? `Último: ${new Date(mov.lastPase).toLocaleDateString('es-ES')}`
     : 'Sin pase';
 
-  const tipoIcons = { solo: 'solo', informal: 'amigos', evento: 'evento', grabacion: 'grabación', escena: 'evento', tecnico: 'tec', memoria: 'mem', concierto: 'evento' };
+  const tipoIcons = { solo: 'solo', informal: 'amigos', evento: 'evento', concurso: 'concurso', grabacion: 'grabación', escena: 'evento', tecnico: 'tec', memoria: 'mem', concierto: 'evento' };
   const paseHistHtml = (mov.paseHistory||[]).slice(0,3).map(p => {
     const d = new Date(p.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
     const sc = p.score ?? null;
@@ -15367,7 +15369,7 @@ function confirmPase() {
       const lastSpan = movCard.querySelector('.mov-actions span');
       if (lastSpan) lastSpan.textContent = 'Último pase: ' + new Date(paseEntry.date).toLocaleDateString('es-ES');
       const histDiv = movCard.querySelector('.mov-pase-hist');
-      const tipoIcons = { solo: 'solo', informal: 'amigos', evento: 'evento', grabacion: 'grabación', escena: 'evento', tecnico: 'tec', memoria: 'mem', concierto: 'evento' };
+      const tipoIcons = { solo: 'solo', informal: 'amigos', evento: 'evento', concurso: 'concurso', grabacion: 'grabación', escena: 'evento', tecnico: 'tec', memoria: 'mem', concierto: 'evento' };
       const d = new Date(paseEntry.date).toLocaleDateString('es-ES',{day:'numeric',month:'short'});
       const tipoLabel = paseEntry.tipo ? `<span style="color:var(--text3);font-size:8px;background:var(--bg2);border-radius:3px;padding:1px 4px;margin-left:2px">${tipoIcons[paseEntry.tipo]||paseEntry.tipo}</span>` : '';
       const takesLabel = paseEntry.takes ? `<span style="color:var(--text3);font-size:8px">${paseEntry.takes} takes</span>` : '';
@@ -16794,7 +16796,7 @@ function buildAiTextReport(options) {
   lines.push('- Bloque con hora: tramo real registrado por cronómetro/temporizador/Forest. Es el dato más fiable para saber cuándo estudié y cuánto tiempo.');
   lines.push('- Nota de sesión: observación escrita o dictada antes de empezar, en un minuto concreto del cronómetro/temporizador, o después de terminar. Es input directo del usuario; úsalo como contexto prioritario.');
   lines.push('- Tarjeta/sesión guardada: resumen diario o tarjeta de estudio. Puede incluir obra, minutos, tick, nota, destello y datos agregados de sub-sesiones.');
-  lines.push('- Pase: ejecución de una obra o movimiento. Es la medida principal de solidez. Tipos: solo = para mí; informal = ante pareja/amigos; evento = audición/concurso/concierto o situación formal. Resultado: Se cae, Frágil, Sale, Sólido o Listo.');
+  lines.push('- Pase: ejecución de una obra o movimiento. Es la medida principal de solidez. Tipos: solo = para mí; informal = ante pareja/amigos; evento = audición, concierto u otra situación formal; concurso = competición; grabación = sesión con takes. Resultado: Se cae, Frágil, Sale, Sólido o Listo.');
   lines.push('- Pasaje: fragmento concreto dentro de una obra. Puede tener estado actual, intensidad de trabajo, solidez antes/después, fallos de memoria o entradas de seguimiento. Si un pasaje aparece varias veces el mismo día, trátalo como foco recurrente, no como duplicado irrelevante.');
   lines.push('- Concentración/impulso/malestar/resistencia y el resto de estados: contexto momentáneo registrado por mí. Resistencia indica cuánta fricción interna siento para continuar. Úsalo como contexto, no como diagnóstico clínico ni como causa segura.');
   lines.push('- Tiempo disponible bruto: estimación diaria de cuánto margen teórico tuve para tocar. No equivale a horas estudiadas ni a obligación; sirve para distinguir falta real de tiempo de baja ejecución con tiempo disponible.');

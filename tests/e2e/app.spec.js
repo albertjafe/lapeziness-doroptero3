@@ -1358,6 +1358,32 @@ test('records recording passes with takes and a score for each work', async ({ p
   expect(state.plant).toMatchObject({ pase: true, paseTipo: 'grabacion', paseScore: 8, takes: 4 });
 });
 
+test('keeps competition passes distinct from general events', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepare(page);
+  await page.evaluate(() => {
+    db.obras = [
+      { id: 'obra_concurso', name: 'Prokofiev', composer: 'S.', tipo: 'obra', movimientos: [], paseHistory: [], solHistory: [], escHistory: [] },
+    ];
+    openCronoPaseRapido();
+  });
+
+  await page.locator('#cronoPaseSelectionList .crono-pase-picker-item').click();
+  await page.locator('#cronoPaseContinueBtn').click();
+  await page.locator('#modalCronoPaseRapido .pase-tipo-btn.concurso').click();
+  await page.locator('.crono-pase-item').first().locator('.crono-pase-score').nth(3).click();
+  await page.getByRole('button', { name: 'Guardar pases' }).click();
+
+  const state = await page.evaluate(() => ({
+    pase: findObra('obra_concurso').paseHistory[0],
+    plant: db.sessionPlants.find(item => item.source === 'pase'),
+    stageContext: findObra('obra_concurso').escHistory[0]?.context,
+  }));
+  expect(state.pase).toMatchObject({ tipo: 'concurso', score: 8 });
+  expect(state.plant).toMatchObject({ pase: true, paseTipo: 'concurso', paseScore: 8 });
+  expect(state.stageContext).toBe('pase-concurso');
+});
+
 test('keeps the pass save action visible and supports repeated passes per work', async ({ page }) => {
   await prepare(page);
   await page.evaluate(() => {
