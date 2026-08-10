@@ -1656,6 +1656,41 @@ test('separates piano and personal tasks and only reminds piano work', async ({ 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });
 
+test('starts task dictation automatically and keeps manual editing available', async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 932 });
+  await prepare(page);
+  await page.evaluate(() => {
+    window.__taskRecognitionInstances = [];
+    window.SpeechRecognition = class {
+      constructor() { window.__taskRecognitionInstances.push(this); }
+      start() { this.started = true; }
+      stop() { this.stopped = true; this.onend?.(); }
+      abort() { this.aborted = true; this.onend?.(); }
+    };
+    showView('cronometro');
+    cronoSetIdleDrawerTab('tareas');
+  });
+
+  const panel = page.locator('#cronoIdleTasksPanel');
+  await panel.getByRole('button', { name: 'Añadir tarea de Personal' }).click();
+  await expect(panel.locator('#cronoIdleTaskInput')).toBeFocused();
+  await expect(panel.locator('#cronoTaskVoiceBtn-idle')).toHaveClass(/is-listening/);
+  expect(await page.evaluate(() => window.__taskRecognitionInstances[0]?.started)).toBe(true);
+
+  await page.evaluate(() => {
+    window.__taskRecognitionInstances[0].onresult({ results: [[{ transcript: 'Recordar la postura' }]] });
+  });
+  await expect(panel.locator('#cronoIdleTaskInput')).toHaveValue('Recordar la postura');
+  await panel.locator('#cronoIdleTaskInput').fill('Recordar la postura al tocar');
+  await panel.locator('.crono-task-add-btn').click();
+
+  expect(await page.evaluate(() => cronoTasks().at(-1))).toMatchObject({
+    text: 'Recordar la postura al tocar', kind: 'personal', done: false,
+  });
+  expect(await page.evaluate(() => window.__taskRecognitionInstances[0]?.stopped)).toBe(true);
+  await expect(panel.locator('.crono-task-lane.personal')).toContainText('Recordar la postura al tocar');
+});
+
 test('uses the task circle to toggle and the task name to edit', async ({ page }) => {
   await page.setViewportSize({ width: 834, height: 1194 });
   await prepare(page);

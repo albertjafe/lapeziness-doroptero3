@@ -15597,6 +15597,38 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
   gap: 8px;
 }
 .crono-task-composer.is-open .crono-task-input { grid-area: input; }
+.crono-task-composer.is-open .crono-task-input-wrap {
+  position: relative;
+  grid-area: input;
+  min-width: 0;
+}
+.crono-task-composer.is-open .crono-task-input-wrap .crono-task-input {
+  width: 100%;
+  padding-right: 45px;
+}
+.crono-task-voice-btn {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border2));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg2));
+  color: var(--accent);
+  cursor: pointer;
+}
+.crono-task-voice-btn svg { width: 16px; height: 16px; }
+.crono-task-voice-btn.is-listening {
+  border-color: color-mix(in srgb, var(--red) 58%, var(--border2));
+  background: color-mix(in srgb, var(--red) 12%, var(--bg2));
+  color: var(--red);
+  animation: crono-tomorrow-listening 1.35s ease-in-out infinite;
+}
 .crono-task-composer.is-open .crono-task-tomorrow-btn { grid-area: tomorrow; }
 .crono-task-composer.is-open .crono-task-compose-actions { grid-area: actions; }
 .crono-session-main-btn {

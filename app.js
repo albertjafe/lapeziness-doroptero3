@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-10-mobile-task-list-v130';
+const APP_VERSION = '2026-08-10-voice-first-tasks-v131';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -21153,17 +21153,106 @@ const _cronoTaskComposer = {
   idle: { kind: 'piano', tomorrow: false, open: false },
   running: { kind: 'piano', tomorrow: false, open: false },
 };
+let _cronoTaskRecognition = null;
+let _cronoTaskVoiceSource = null;
 
 function cronoTaskComposerState(source) {
   return source === 'running' ? _cronoTaskComposer.running : _cronoTaskComposer.idle;
+}
+
+function cronoTaskVoiceInput(source) {
+  return document.getElementById(source === 'running' ? 'cronoTaskInput' : 'cronoIdleTaskInput');
+}
+
+function cronoSetTaskVoiceState(source, active) {
+  const button = document.getElementById('cronoTaskVoiceBtn-' + source);
+  if (!button) return;
+  button.classList.toggle('is-listening', !!active);
+  button.setAttribute('aria-label', active ? 'Detener dictado' : 'Dictar tarea');
+  button.setAttribute('title', active ? 'Detener dictado' : 'Dictar tarea');
+}
+
+function cronoStopTaskVoice(abort) {
+  const recognition = _cronoTaskRecognition;
+  const source = _cronoTaskVoiceSource;
+  _cronoTaskRecognition = null;
+  _cronoTaskVoiceSource = null;
+  if (source) cronoSetTaskVoiceState(source, false);
+  if (!recognition) return;
+  try {
+    if (abort && typeof recognition.abort === 'function') recognition.abort();
+    else recognition.stop();
+  } catch (_) {}
+}
+
+function cronoStartTaskVoice(source, silentUnsupported) {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const input = cronoTaskVoiceInput(source);
+  if (!Recognition || !input) {
+    try { input?.focus({ preventScroll: true }); } catch (_) { input?.focus(); }
+    if (!silentUnsupported) showToast('Usa el micrófono del teclado para dictar');
+    return false;
+  }
+  if (_cronoTaskRecognition) cronoStopTaskVoice(true);
+  if (_cronoTomorrowRecognition) cronoStopTomorrowVoice(true);
+
+  const recognition = new Recognition();
+  const base = input.value.trim();
+  recognition.lang = 'es-ES';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.maxAlternatives = 1;
+  recognition.onresult = event => {
+    let transcript = '';
+    for (let index = 0; index < event.results.length; index += 1) {
+      transcript += event.results[index][0]?.transcript || '';
+    }
+    input.value = ((base ? base + ' ' : '') + transcript).trimStart().slice(0, 140);
+    input.setSelectionRange(input.value.length, input.value.length);
+  };
+  recognition.onerror = event => {
+    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+      showToast('Activa el permiso de micrófono o usa el dictado del teclado');
+    } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+      showToast('No se pudo iniciar el dictado');
+    }
+  };
+  recognition.onend = () => {
+    if (_cronoTaskRecognition === recognition) {
+      _cronoTaskRecognition = null;
+      _cronoTaskVoiceSource = null;
+      cronoSetTaskVoiceState(source, false);
+    }
+  };
+  try {
+    _cronoTaskRecognition = recognition;
+    _cronoTaskVoiceSource = source;
+    recognition.start();
+    cronoSetTaskVoiceState(source, true);
+    return true;
+  } catch (_) {
+    _cronoTaskRecognition = null;
+    _cronoTaskVoiceSource = null;
+    cronoSetTaskVoiceState(source, false);
+    try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
+    if (!silentUnsupported) showToast('Usa el micrófono del teclado para dictar');
+    return false;
+  }
+}
+
+function toggleCronoTaskVoice(event, source) {
+  event?.stopPropagation();
+  if (_cronoTaskRecognition && _cronoTaskVoiceSource === source) cronoStopTaskVoice(false);
+  else cronoStartTaskVoice(source, false);
 }
 
 function cronoOpenTaskComposer(source) {
   const state = cronoTaskComposerState(source);
   state.open = true;
   renderCronoTasks();
+  cronoStartTaskVoice(source, false);
   requestAnimationFrame(() => {
-    const input = document.getElementById(source === 'running' ? 'cronoTaskInput' : 'cronoIdleTaskInput');
+    const input = cronoTaskVoiceInput(source);
     if (input) input.focus();
   });
 }
@@ -21176,6 +21265,7 @@ function cronoOpenTaskComposerForKind(source, kind) {
 }
 
 function cronoCloseTaskComposer(source) {
+  if (_cronoTaskVoiceSource === source) cronoStopTaskVoice(true);
   const state = cronoTaskComposerState(source);
   state.open = false;
   state.tomorrow = false;
@@ -21464,7 +21554,12 @@ function renderCronoTasks() {
     const currentDraft = activeInput ? (document.getElementById(target.inputId)?.value || '') : '';
     const composerHtml = composer.open
       ? '<div class="crono-task-add crono-task-composer is-open">' +
-        '<input id="' + target.inputId + '" class="crono-task-input" type="text" maxlength="140" placeholder="Algo por hacer..." onkeydown="cronoTaskInputKey(event,\'' + target.source + '\')">' +
+        '<div class="crono-task-input-wrap">' +
+          '<input id="' + target.inputId + '" class="crono-task-input" type="text" maxlength="140" placeholder="Dicta o escribe una tarea..." onkeydown="cronoTaskInputKey(event,\'' + target.source + '\')">' +
+          '<button type="button" class="crono-task-voice-btn" id="cronoTaskVoiceBtn-' + target.source + '" onclick="toggleCronoTaskVoice(event,\'' + target.source + '\')" aria-label="Dictar tarea" title="Dictar tarea">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"></path></svg>' +
+          '</button>' +
+        '</div>' +
         (composer.kind === 'piano' ? '<button type="button" class="crono-task-tomorrow-btn" onclick="cronoToggleTaskTomorrow(\'' + target.source + '\')" aria-pressed="false">Mañana</button>' : '') +
         '<div class="crono-task-compose-actions">' +
           '<button type="button" class="crono-task-cancel-btn" onclick="cronoCloseTaskComposer(\'' + target.source + '\')" aria-label="Cancelar">×</button>' +
@@ -21511,7 +21606,7 @@ function addCronoTask(source) {
   const input = document.getElementById(inputId);
   const text = (input?.value || '').replace(/\s+/g, ' ').trim();
   if (!text) {
-    showToast('Escribe una tarea');
+    showToast('Dicta o escribe una tarea');
     return;
   }
   cronoTasks().push({
@@ -21524,6 +21619,7 @@ function addCronoTask(source) {
     priority: 0,
     createdAt: new Date().toISOString(),
   });
+  if (_cronoTaskVoiceSource === source) cronoStopTaskVoice(false);
   composer.open = false;
   composer.tomorrow = false;
   saveData();
