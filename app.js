@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-10-mobile-redesign-v126';
+const APP_VERSION = '2026-08-10-iphone-layout-v127';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -20005,6 +20005,7 @@ let _cronoIdleDrawerTab = 'tareas';
 const CRONO_INTERFACE_SCALE_KEY = 'alberto_crono_interface_scale_v1';
 const CRONO_INTERFACE_SCALE_MIN_DESKTOP = 0.50;
 const CRONO_INTERFACE_SCALE_MIN_MOBILE = 0.68;
+const CRONO_INTERFACE_SCALE_MAX_MOBILE = 1.10;
 const CRONO_INTERFACE_SCALE_MAX = 1.22;
 let _cronoInterfaceScale = 1;
 let _cronoInterfacePinch = null;
@@ -20017,10 +20018,12 @@ let _cronoInterfaceAnimationLastTs = 0;
 let _cronoInterfacePersistOnSettle = false;
 
 function cronoClampInterfaceScale(value) {
-  const min = window.innerWidth < 700
+  const mobile = window.innerWidth < 700;
+  const min = mobile
     ? CRONO_INTERFACE_SCALE_MIN_MOBILE
     : window.innerHeight <= 600 ? .82 : CRONO_INTERFACE_SCALE_MIN_DESKTOP;
-  return Math.max(min, Math.min(CRONO_INTERFACE_SCALE_MAX, Number(value) || 1));
+  const max = mobile ? CRONO_INTERFACE_SCALE_MAX_MOBILE : CRONO_INTERFACE_SCALE_MAX;
+  return Math.max(min, Math.min(max, Number(value) || 1));
 }
 
 function cronoUsesLargeTabletLandscape() {

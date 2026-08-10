@@ -16969,6 +16969,14 @@ body.crono-task-density-compact #view-cronometro .crono-task-clean { min-height:
     right: max(6px, calc((100% - var(--crono-interface-ring-size)) / 2 - var(--crono-action-size) - 8px));
     gap: var(--crono-action-gap);
   }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-display-wrap .crono-display,
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-display {
+    font-size: clamp(36px, calc(var(--crono-interface-ring-size) * .25), 76px) !important;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-display-wrap.has-hours .crono-display,
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-display-wrap.has-hours .crono-display {
+    font-size: clamp(28px, calc(var(--crono-interface-ring-size) * .18), 58px) !important;
+  }
   #view-cronometro .crono-run-action-rail .crono-quick-destello-btn,
   #view-cronometro .crono-run-action-rail .crono-session-rail-main,
   #view-cronometro .crono-idle-action-spacer {
@@ -19444,11 +19452,25 @@ body.crono-pulse-disabled #view-cronometro .crono-moment-monitor { display: none
 
 /* Ultima cascada movil: prevalece sobre las reglas historicas del cronometro. */
 @media (max-width: 699px) {
+  #view-cronometro .crono-idle-display-wrap,
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-display-wrap {
+    width: var(--crono-interface-ring-size) !important;
+    max-width: var(--crono-interface-ring-size) !important;
+    margin-inline: auto;
+  }
+  #view-cronometro .crono-idle-display-wrap .crono-run-progress-svg,
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-run-progress-svg {
+    width: var(--crono-interface-ring-size) !important;
+    height: var(--crono-interface-ring-size) !important;
+  }
   #view-cronometro .crono-run-action-rail {
     --crono-action-size: 46px;
     --crono-action-gap: 8px;
-    right: max(6px, calc((100% - var(--crono-interface-ring-size)) / 2 - var(--crono-action-size) - 8px));
+    right: calc(-1 * (var(--crono-action-size) + 8px));
     gap: var(--crono-action-gap);
+  }
+  #view-cronometro .crono-tomorrow-note-rail {
+    left: calc(-1 * (var(--crono-action-size) + 8px));
   }
   #view-cronometro .crono-run-action-rail .crono-quick-destello-btn,
   #view-cronometro .crono-run-action-rail .crono-session-rail-main,
@@ -19486,14 +19508,22 @@ body.crono-pulse-disabled #view-cronometro .crono-moment-monitor { display: none
 }
 
 @media (min-width: 360px) and (max-width: 699px) and (orientation: portrait) {
-  #view-cronometro .crono-task-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  #view-cronometro .crono-task-columns { grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; }
   #view-cronometro .crono-task-lane { padding: 0; }
-  #view-cronometro .crono-task-lane + .crono-task-lane { padding: 0 0 0 10px; border-top: 0; border-left: 1px solid var(--border2); }
-  #view-cronometro .crono-task-lane .crono-task-list { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; }
+  #view-cronometro .crono-task-lane + .crono-task-lane { padding: 8px 0 0; border-top: 1px solid var(--border2); border-left: 0; }
+  #view-cronometro .crono-task-lane.is-clean {
+    display: grid;
+    grid-template-columns: minmax(112px, .42fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 9px;
+  }
+  #view-cronometro .crono-task-lane.is-clean .crono-task-lane-head { margin-bottom: 0; }
+  #view-cronometro .crono-task-lane.is-clean .crono-task-list { display: block; }
+  #view-cronometro .crono-task-lane .crono-task-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
   #view-cronometro .crono-task-lane .crono-task-row.is-wide,
   #view-cronometro .crono-task-lane .crono-task-clean,
   #view-cronometro .crono-task-lane .crono-task-completed { grid-column: 1 / -1; }
-  #view-cronometro .crono-task-completed-list { display: grid; grid-template-columns: minmax(0, 1fr); }
+  #view-cronometro .crono-task-completed-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 #calPanelMes .calendar-habit-compact-switch {

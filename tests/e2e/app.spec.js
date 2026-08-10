@@ -2196,28 +2196,57 @@ test('places pulse and calendar at the ends of swipe navigation', async ({ page 
 });
 
 test('keeps mobile tasks readable and swipes calendar months', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 430, height: 932 });
   await prepare(page);
 
-  const taskLayout = await page.evaluate(() => {
-    db.cronoTasks = [{
-      id: 'mobile_readable_task',
-      text: 'Revisar digitacion del salto',
-      kind: 'piano',
-      tomorrow: false,
-      done: false,
-      createdAt: new Date().toISOString(),
-    }];
+  const taskLayout = await page.evaluate(async () => {
+    db.cronoTasks = [
+      ...Array.from({ length: 6 }, (_, index) => ({
+        id: 'mobile_personal_task_' + index,
+        text: 'Tarea personal numero ' + (index + 1),
+        kind: 'personal',
+      })),
+    ].map(task => ({ ...task, tomorrow: false, done: false, createdAt: new Date().toISOString() }));
     showView('cronometro');
+    cronoSetMode('timer');
+    cronoSetInterfaceScale(CRONO_INTERFACE_SCALE_MIN_MOBILE, { persist: false, announce: false });
     renderCronoTasks();
-    const row = document.querySelector('#cronoIdleTasksPanel .crono-task-row').getBoundingClientRect();
+    await new Promise(resolve => setTimeout(resolve, 380));
+    const rect = element => {
+      const box = element.getBoundingClientRect();
+      return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height };
+    };
+    const row = rect(document.querySelector('#cronoIdleTasksPanel .personal .crono-task-row'));
+    const lanes = Array.from(document.querySelectorAll('#cronoIdleTasksPanel .crono-task-lane')).map(rect);
+    const personalList = document.querySelector('#cronoIdleTasksPanel .personal .crono-task-list');
+    const ring = rect(document.querySelector('#cronoIdleDisplayWrap .crono-run-progress-svg'));
+    const displayElement = document.querySelector('#cronoIdleDisplayWrap .crono-display');
+    const display = rect(displayElement);
+    const flash = rect(document.querySelector('#cronoStageIdle .crono-quick-destello-btn'));
+    const note = rect(document.querySelector('#cronoStageIdle .crono-tomorrow-note-btn'));
     return {
       width: row.width,
+      lanes,
+      personalColumns: getComputedStyle(personalList).gridTemplateColumns.split(' ').length,
       projectionDisplay: getComputedStyle(document.getElementById('cronoTimerProjection')).display,
+      clock: {
+        ring,
+        display,
+        flash,
+        note,
+        fontSize: parseFloat(getComputedStyle(displayElement).fontSize),
+      },
     };
   });
-  expect(taskLayout.width).toBeGreaterThanOrEqual(140);
+  expect(taskLayout.width).toBeGreaterThanOrEqual(170);
+  expect(taskLayout.lanes.every(lane => lane.width >= 380)).toBe(true);
+  expect(taskLayout.personalColumns).toBe(2);
   expect(taskLayout.projectionDisplay).toBe('none');
+  expect(taskLayout.clock.fontSize).toBeLessThan(50);
+  expect(taskLayout.clock.display.left).toBeGreaterThanOrEqual(taskLayout.clock.ring.left - 1);
+  expect(taskLayout.clock.display.right).toBeLessThanOrEqual(taskLayout.clock.ring.right + 1);
+  expect(taskLayout.clock.flash.left - taskLayout.clock.ring.right).toBeGreaterThanOrEqual(7);
+  expect(taskLayout.clock.ring.left - taskLayout.clock.note.right).toBeGreaterThanOrEqual(7);
 
   const monthSwipe = await page.evaluate(() => {
     showView('calendario');
