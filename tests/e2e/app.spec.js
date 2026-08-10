@@ -735,6 +735,43 @@ test('hides pulse by default and lets settings restore it while tasks remain scr
   expect(await page.evaluate(() => document.body.classList.contains('crono-pulse-enabled'))).toBe(true);
 });
 
+test('adds manual study to today from the compact quick row', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepare(page);
+  await page.evaluate(() => showView('session'));
+
+  const quick = page.locator('#sessionQuickStudy');
+  await expect(quick).toBeVisible();
+  await expect(page.locator('#modalStudyRegister')).not.toHaveClass(/visible/);
+  await page.locator('#sessionQuickStudyObra').selectOption('obra::obra_1');
+  await page.locator('[data-quick-study-minutes="25"]').click();
+  await expect(page.locator('#sessionQuickStudySave')).toBeEnabled();
+  await page.locator('#sessionQuickStudySave').click();
+
+  await expect(quick).toHaveClass(/is-saved/);
+  await expect(page.locator('#sessionQuickStudyFeedback')).toContainText('25 min añadidos');
+  await expect(page.locator('#sessionResumenCard .session-resumen-big')).toHaveText('25 min');
+  const saved = await page.evaluate(() => ({
+    sessions: db.sesiones.map(session => session.items.map(item => ({ obraId: item.obraId, minutes: item.minutosEstudiados, manual: item.manual }))),
+    plants: db.sessionPlants.map(plant => ({ obraId: plant.obraId, minutes: plant.mins, source: plant.source })),
+    pref: JSON.parse(localStorage.getItem('alberto_quick_study_v1')),
+    documentWidth: document.documentElement.scrollWidth,
+    viewportWidth: window.innerWidth,
+  }));
+  expect(saved.sessions).toEqual([[{ obraId: 'obra_1', minutes: 25, manual: true }]]);
+  expect(saved.plants).toEqual([{ obraId: 'obra_1', minutes: 25, source: 'manual' }]);
+  expect(saved.pref).toEqual({ value: 'obra::obra_1', minutes: 25 });
+  expect(saved.documentWidth).toBeLessThanOrEqual(saved.viewportWidth + 1);
+
+  await page.evaluate(() => {
+    document.getElementById('sessionQuickStudyObra').value = '';
+    document.getElementById('sessionQuickStudyMinutes').value = '';
+    renderSessionQuickStudy();
+  });
+  await expect(page.locator('#sessionQuickStudyObra')).toHaveValue('obra::obra_1');
+  await expect(page.locator('#sessionQuickStudyMinutes')).toHaveValue('25');
+});
+
 test('adds custom study quickly and persists both history and timed detail', async ({ page }) => {
   await prepare(page);
   await page.evaluate(() => showView('session'));

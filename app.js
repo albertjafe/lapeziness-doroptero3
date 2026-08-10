@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-10-mystery-house-prototype-v132';
+const APP_VERSION = '2026-08-10-quick-manual-study-v133';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -120,6 +120,7 @@ function refreshStudyViews() {
     if (typeof renderEficienciaSection === 'function') renderEficienciaSection();
     if (typeof renderEstadoSection === 'function') renderEstadoSection();
     if (typeof renderSesionesHistorial === 'function') renderSesionesHistorial();
+    if (typeof renderSessionQuickStudy === 'function') renderSessionQuickStudy();
     if (typeof renderHabitChallenge === 'function') renderHabitChallenge();
     if (typeof renderHabitCalendar === 'function') renderHabitCalendar();
     if (typeof renderMesCalendario === 'function') renderMesCalendario();
@@ -595,6 +596,7 @@ function renderSessionViewContent() {
   if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
   if (typeof renderSessionInsights === 'function') renderSessionInsights();
   if (typeof renderSessionJournal === 'function') renderSessionJournal();
+  if (typeof renderSessionQuickStudy === 'function') renderSessionQuickStudy();
   renderCombinedSessionStats();
 }
 
@@ -18510,6 +18512,134 @@ function buildObraSelectOptions(selectId) {
 let studyRegisterMode = 'plan';
 let studyRegisterTick = 'hecho';
 let studyRegisterQuick = false;
+const SESSION_QUICK_STUDY_PREF_KEY = 'alberto_quick_study_v1';
+let sessionQuickStudySaving = false;
+let sessionQuickStudyFeedbackTimer = null;
+
+function readSessionQuickStudyPref() {
+  try {
+    const value = JSON.parse(localStorage.getItem(SESSION_QUICK_STUDY_PREF_KEY) || 'null');
+    return value && typeof value === 'object' ? value : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function writeSessionQuickStudyPref(value, minutes) {
+  try {
+    localStorage.setItem(SESSION_QUICK_STUDY_PREF_KEY, JSON.stringify({
+      value: value || '',
+      minutes: Number(minutes) || '',
+    }));
+  } catch (error) {}
+}
+
+function sessionQuickStudyRecentValue(select) {
+  const recent = (db.sessionPlants || []).slice().sort((a, b) => {
+    const aTime = new Date(a.endedAt || a.startedAt || 0).getTime();
+    const bTime = new Date(b.endedAt || b.startedAt || 0).getTime();
+    return bTime - aTime;
+  });
+  for (const entry of recent) {
+    if (!entry || !entry.obraId) continue;
+    const value = entry.movId
+      ? 'mov::' + entry.obraId + '::' + entry.movId
+      : 'obra::' + entry.obraId;
+    if ([...select.options].some(option => option.value === value)) return value;
+  }
+  return '';
+}
+
+function renderSessionQuickStudy() {
+  const select = document.getElementById('sessionQuickStudyObra');
+  const minutesInput = document.getElementById('sessionQuickStudyMinutes');
+  if (!select || !minutesInput) return;
+  const currentValue = select.value;
+  const currentMinutes = minutesInput.value;
+  buildObraSelectOptions('sessionQuickStudyObra');
+  if (select.options.length) select.options[0].textContent = 'Obra o movimiento';
+  const pref = readSessionQuickStudyPref();
+  const candidates = [currentValue, pref.value, sessionQuickStudyRecentValue(select)];
+  select.value = candidates.find(value => value && [...select.options].some(option => option.value === value)) || '';
+  minutesInput.value = currentMinutes || pref.minutes || '';
+  syncSessionQuickStudy(false);
+}
+
+function syncSessionQuickStudy(persist = true) {
+  const select = document.getElementById('sessionQuickStudyObra');
+  const minutesInput = document.getElementById('sessionQuickStudyMinutes');
+  const saveButton = document.getElementById('sessionQuickStudySave');
+  if (!select || !minutesInput || !saveButton) return;
+  const minutes = parseInt(minutesInput.value || '0', 10);
+  document.querySelectorAll('[data-quick-study-minutes]').forEach(button => {
+    const active = Number(button.dataset.quickStudyMinutes) === minutes;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+  saveButton.disabled = sessionQuickStudySaving || !select.value || minutes < 1 || minutes > 480;
+  if (persist && (select.value || minutes)) writeSessionQuickStudyPref(select.value, minutes);
+}
+
+function setSessionQuickStudyMinutes(minutes) {
+  const input = document.getElementById('sessionQuickStudyMinutes');
+  if (!input) return;
+  input.value = String(minutes);
+  syncSessionQuickStudy();
+}
+
+function showSessionQuickStudyFeedback(message) {
+  const feedback = document.getElementById('sessionQuickStudyFeedback');
+  const shell = document.getElementById('sessionQuickStudy');
+  if (!feedback || !shell) return;
+  clearTimeout(sessionQuickStudyFeedbackTimer);
+  feedback.textContent = message;
+  shell.classList.add('is-saved');
+  sessionQuickStudyFeedbackTimer = setTimeout(() => {
+    shell.classList.remove('is-saved');
+    feedback.textContent = '';
+  }, 2600);
+}
+
+function refreshAfterManualStudy() {
+  if (typeof renderRacha === 'function') renderRacha();
+  if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+}
+
+function saveSessionQuickStudy(event) {
+  if (event) event.preventDefault();
+  if (sessionQuickStudySaving) return;
+  const value = document.getElementById('sessionQuickStudyObra')?.value || '';
+  const minutes = parseInt(document.getElementById('sessionQuickStudyMinutes')?.value || '0', 10);
+  const resolved = studyRegisterResolveValue(value);
+  if (!resolved) { showToast('Selecciona una obra o movimiento'); return; }
+  if (!minutes || minutes < 1 || minutes > 480) { showToast('Indica los minutos estudiados'); return; }
+  sessionQuickStudySaving = true;
+  syncSessionQuickStudy(false);
+  const saved = persistManualStudyHistory(resolved, minutes, sessionJournalDayKey(new Date()), {
+    tick: 'hecho',
+    note: '',
+    useCurrentTime: true,
+  });
+  if (!saved) {
+    sessionQuickStudySaving = false;
+    syncSessionQuickStudy(false);
+    showToast('No se ha podido guardar el estudio');
+    return;
+  }
+  writeSessionQuickStudyPref(value, minutes);
+  refreshAfterManualStudy();
+  showSessionQuickStudyFeedback(minutes + ' min añadidos · ' + resolved.name);
+  const summary = document.getElementById('sessionResumenCard');
+  summary?.classList.remove('is-quick-updated');
+  requestAnimationFrame(() => summary?.classList.add('is-quick-updated'));
+  setTimeout(() => summary?.classList.remove('is-quick-updated'), 700);
+  if (typeof SFX !== 'undefined' && SFX.save) SFX.save();
+  if (typeof Haptics !== 'undefined' && Haptics.success) Haptics.success();
+  setTimeout(() => {
+    sessionQuickStudySaving = false;
+    syncSessionQuickStudy(false);
+  }, 650);
+}
 
 function setStudyRegisterMode(mode, btn) {
   studyRegisterMode = mode === 'today' ? 'history' : (mode === 'history' ? 'history' : 'plan');
@@ -18658,6 +18788,55 @@ function studyRegisterSaveCompas(resolved) {
   }
 }
 
+function persistManualStudyHistory(resolved, minutos, fecha, options) {
+  const opts = options || {};
+  const date = new Date(fecha + 'T12:00:00');
+  if (!resolved || !Number.isFinite(date.getTime()) || !minutos || minutos < 1) return null;
+  const fechaStr = date.toDateString();
+  let sesion = db.sesiones.find(s => new Date(s.date).toDateString() === fechaStr);
+  if (!sesion) {
+    sesion = { date: date.toISOString(), energia: 'manual', items: [] };
+    db.sesiones.push(sesion);
+    db.sesiones.sort((a, b) => new Date(b.date) - new Date(a.date));
+  }
+  const item = {
+    obraId: resolved.obraId,
+    movId: resolved.movId,
+    obraName: resolved.name,
+    tick: opts.tick || 'hecho',
+    note: opts.note || '',
+    objetivo: '',
+    manual: true,
+    minutosEstudiados: minutos,
+    minutosReales: minutos,
+  };
+  sesion.items.push(item);
+
+  let started;
+  let ended;
+  const isToday = fecha === sessionJournalDayKey(new Date());
+  if (opts.useCurrentTime && isToday) {
+    ended = new Date();
+    started = new Date(ended.getTime() - minutos * 60000);
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    if (started < startOfToday) started = startOfToday;
+  } else if (/^\d{1,2}:\d{2}$/.test(opts.hora || '')) {
+    const hora = opts.hora.length === 4 ? '0' + opts.hora : opts.hora;
+    started = new Date(fecha + 'T' + hora + ':00');
+    if (isNaN(started.getTime())) { started = new Date(date); started.setHours(12, 0, 0, 0); }
+    ended = new Date(started.getTime() + minutos * 60000);
+  } else {
+    started = new Date(date);
+    started.setHours(12, Math.min(59, Math.max(0, sesion.items.length - 1)), 0, 0);
+    ended = new Date(started.getTime() + minutos * 60000);
+  }
+  recordSessionPlant(resolved.obraId, resolved.movId, started.toISOString(), ended.toISOString(), minutos, { source: 'manual' });
+  if (db.sesiones.length > 365) db.sesiones = db.sesiones.slice(0, 365);
+  saveData();
+  return { sesion, item, started, ended };
+}
+
 function confirmStudyRegister() {
   const val = document.getElementById('studyRegisterObra')?.value || '';
   const minutos = parseInt(document.getElementById('studyRegisterMinutos')?.value || '0', 10);
@@ -18679,45 +18858,14 @@ function confirmStudyRegister() {
     return;
   }
 
-  const date = new Date(fecha + 'T12:00:00');
-  const fechaStr = date.toDateString();
-  let sesion = db.sesiones.find(s => new Date(s.date).toDateString() === fechaStr);
-  if (!sesion) {
-    sesion = { date: date.toISOString(), energia: 'manual', items: [] };
-    db.sesiones.push(sesion);
-    db.sesiones.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }
-  const item = {
-    obraId: resolved.obraId,
-    movId: resolved.movId,
-    obraName: resolved.name,
+  const hora = (document.getElementById('studyRegisterHora')?.value || '').trim();
+  persistManualStudyHistory(resolved, minutos, fecha, {
     tick: studyRegisterTick || 'hecho',
     note: nota,
-    objetivo: '',
-    manual: true,
-    minutosEstudiados: minutos,
-    minutosReales: minutos,
-  };
-  sesion.items.push(item);
-  // Hora de inicio real (opcional): si se indica, el tramo se registra a esa
-  // hora exacta y aparece en el modal "Por horas"; si no, se coloca al mediodía.
-  const hora = (document.getElementById('studyRegisterHora')?.value || '').trim();
-  let started;
-  if (/^\d{1,2}:\d{2}$/.test(hora)) {
-    started = new Date(fecha + 'T' + (hora.length === 4 ? '0' + hora : hora) + ':00');
-    if (isNaN(started.getTime())) { started = new Date(date); started.setHours(12, 0, 0, 0); }
-  } else {
-    started = new Date(date);
-    started.setHours(12, Math.min(59, Math.max(0, sesion.items.length - 1)), 0, 0);
-  }
-  const ended = new Date(started.getTime() + minutos * 60000);
-  recordSessionPlant(resolved.obraId, resolved.movId, started.toISOString(), ended.toISOString(), minutos, { source: 'manual' });
-  if (db.sesiones.length > 365) db.sesiones = db.sesiones.slice(0, 365);
-  saveData();
+    hora,
+  });
   closeModal('modalStudyRegister');
-  if (typeof renderSesionesHistorial === 'function') renderSesionesHistorial();
-  if (typeof renderRacha === 'function') renderRacha();
-  if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+  refreshAfterManualStudy();
   showToast(minutos + ' min registrados · ' + resolved.name);
   if (typeof SFX !== 'undefined' && SFX.save) SFX.save();
 }
@@ -19553,6 +19701,7 @@ async function initApp() {
   if (typeof renderRacha === 'function') renderRacha();
   if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
   if (typeof renderSessionJournal === 'function') renderSessionJournal();
+  if (typeof renderSessionQuickStudy === 'function') renderSessionQuickStudy();
   if (typeof updateAiExportControls === 'function') updateAiExportControls();
   if (typeof StudyPush !== 'undefined' && StudyPush.refreshUI) StudyPush.refreshUI();
   // Programar el chequeo de medianoche y escuchar visibilitychange por si el

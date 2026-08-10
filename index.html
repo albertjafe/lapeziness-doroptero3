@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=260">
+<link rel="stylesheet" href="styles.css?v=261">
 </head>
 <body>
 
@@ -136,6 +136,31 @@
     </div>
   </section>
   <!-- Banner: "Hoy te has concentrado X" + opción discreta para día pasado -->
+  <section class="session-quick-study" id="sessionQuickStudy" aria-label="Añadir estudio manual a hoy">
+    <form id="sessionQuickStudyForm" onsubmit="saveSessionQuickStudy(event)">
+      <span class="session-quick-study-plus" aria-hidden="true">+</span>
+      <select id="sessionQuickStudyObra" aria-label="Obra o movimiento estudiado" onchange="syncSessionQuickStudy()">
+        <option value="">Obra o movimiento</option>
+      </select>
+      <div class="session-quick-study-time" role="group" aria-label="Minutos estudiados">
+        <button type="button" data-quick-study-minutes="15" onclick="setSessionQuickStudyMinutes(15)">15</button>
+        <button type="button" data-quick-study-minutes="25" onclick="setSessionQuickStudyMinutes(25)">25</button>
+        <button type="button" data-quick-study-minutes="45" onclick="setSessionQuickStudyMinutes(45)">45</button>
+        <label class="session-quick-study-custom">
+          <input id="sessionQuickStudyMinutes" type="number" min="1" max="480" step="1" inputmode="numeric" placeholder="0" aria-label="Otros minutos" oninput="syncSessionQuickStudy()">
+          <span>min</span>
+        </label>
+      </div>
+      <button class="session-quick-study-save" id="sessionQuickStudySave" type="submit" aria-label="Añadir estudio a hoy" title="Añadir a hoy" disabled>
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 8.2 15 16 5.5"/></svg>
+      </button>
+      <button class="session-quick-study-detail" type="button" onclick="openSesionManual()" aria-label="Añadir estudio de otra fecha o con detalles" title="Otra fecha o detalles">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2"/><path d="M3 8h14M6.5 2.8v3.4M13.5 2.8v3.4"/></svg>
+      </button>
+    </form>
+    <div class="session-quick-study-feedback" id="sessionQuickStudyFeedback" role="status" aria-live="polite"></div>
+  </section>
+
   <div class="session-concentrado-banner" id="sessionConcentradoBanner">
     <span class="session-concentrado-icon" aria-hidden="true">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
@@ -2153,7 +2178,7 @@
 <script src="data-core.js?v=228"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=260"></script>
+<script src="app.js?v=261"></script>
 <script src="timer-objectives.js?v=249"></script>
 <script type="module" src="mystery-house.js?v=260"></script>
 
@@ -2177,7 +2202,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=260', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=261', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
