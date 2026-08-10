@@ -19766,3 +19766,83 @@ body.crono-pulse-disabled #view-cronometro .crono-moment-monitor { display: none
   background: color-mix(in srgb, var(--accent) 8%, var(--bg2));
   color: var(--accent);
 }
+
+/* iPhone vertical: lista ordenada, sin mosaico de anchuras variables. */
+@media (max-width: 599px) and (orientation: portrait) {
+  #view-cronometro .crono-task-columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  #view-cronometro .crono-task-lane,
+  #view-cronometro .crono-task-lane.is-clean {
+    display: block;
+    min-width: 0;
+    padding: 0;
+  }
+  #view-cronometro .crono-task-lane + .crono-task-lane {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border2);
+    border-left: 0;
+  }
+  #view-cronometro .crono-task-lane-head,
+  #view-cronometro .crono-task-lane.is-clean .crono-task-lane-head {
+    min-height: 32px;
+    margin: 0 0 6px;
+  }
+  #view-cronometro .crono-task-lane .crono-task-list,
+  #view-cronometro .crono-task-lane.is-clean .crono-task-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    max-height: min(390px, 42dvh);
+    padding-right: 1px;
+  }
+  #view-cronometro .crono-task-lane .crono-task-row,
+  #view-cronometro .crono-task-lane .crono-task-row.is-wide {
+    grid-column: 1;
+    width: 100%;
+    min-height: 46px;
+    height: auto;
+    border-radius: 7px;
+  }
+  #view-cronometro .crono-task-toggle {
+    width: 40px;
+    min-width: 40px;
+    min-height: 46px;
+  }
+  #view-cronometro .crono-task-open {
+    min-width: 0;
+    padding: 7px 8px 7px 0;
+  }
+  #view-cronometro .crono-task-lane .crono-task-text,
+  #view-cronometro .crono-task-completed-list .crono-task-text {
+    font-size: 10.5px;
+    line-height: 1.22;
+  }
+  #view-cronometro .crono-task-priority {
+    min-width: 20px;
+    margin-left: auto;
+  }
+  #view-cronometro .crono-task-clean {
+    grid-column: 1;
+    min-height: 38px;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 7px;
+  }
+  #view-cronometro .crono-task-clean-check {
+    width: 25px;
+    height: 25px;
+  }
+  #view-cronometro .crono-task-clean strong { font-size: 10px; }
+  #view-cronometro .crono-task-completed {
+    grid-column: 1;
+    margin-top: 2px;
+  }
+  #view-cronometro .crono-task-completed-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}

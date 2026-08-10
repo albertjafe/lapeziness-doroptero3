@@ -2332,7 +2332,7 @@ test('keeps mobile tasks readable and swipes calendar months', async ({ page }) 
   });
   expect(taskLayout.width).toBeGreaterThanOrEqual(170);
   expect(taskLayout.lanes.every(lane => lane.width >= 380)).toBe(true);
-  expect(taskLayout.personalColumns).toBe(2);
+  expect(taskLayout.personalColumns).toBe(1);
   expect(taskLayout.projectionDisplay).toBe('none');
   expect(taskLayout.clock.fontSize).toBeLessThan(50);
   expect(taskLayout.clock.display.left).toBeGreaterThanOrEqual(taskLayout.clock.ring.left - 1);
