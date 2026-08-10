@@ -17670,6 +17670,7 @@ body.crono-task-density-compact #view-cronometro .crono-task-clean { min-height:
 }
 
 @media (max-width: 699px) {
+  #view-cronometro #cronoTimerProjection { display: none !important; }
   #view-cronometro .crono-run-action-rail {
     right: -44px;
     gap: 8px;
@@ -19467,6 +19468,20 @@ body.crono-pulse-disabled #view-cronometro .crono-moment-monitor { display: none
   #view-calendario #calPanelMes .mes-cell { height: 46px; min-height: 46px; }
   #view-calendario #calPanelMes .calendar-habit-summary,
   #view-calendario #calPanelMes .calendar-habit-compact { height: 44px; min-height: 44px; overflow: hidden; }
+  #view-calendario .calendar-action-row.is-objective-layer { display: none; }
+  #view-calendario #calPanelMes { touch-action: pan-y; }
+  #view-calendario #calPanelMes .mes-grid-header,
+  #view-calendario #calPanelMes .mes-grid,
+  #view-calendario #calPanelMes .mes-leyenda {
+    transform: translate3d(0, 0, 0);
+    transition: transform 150ms ease;
+  }
+  #view-calendario #calPanelMes.is-month-swiping .mes-grid-header,
+  #view-calendario #calPanelMes.is-month-swiping .mes-grid,
+  #view-calendario #calPanelMes.is-month-swiping .mes-leyenda {
+    transform: translate3d(var(--calendar-swipe-x, 0), 0, 0);
+    transition: none;
+  }
   #view-calendario .habit-calendar-objective-switch { max-width: 100%; touch-action: pan-x; overscroll-behavior-x: contain; }
 }
 
@@ -19474,9 +19489,40 @@ body.crono-pulse-disabled #view-cronometro .crono-moment-monitor { display: none
   #view-cronometro .crono-task-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   #view-cronometro .crono-task-lane { padding: 0; }
   #view-cronometro .crono-task-lane + .crono-task-lane { padding: 0 0 0 10px; border-top: 0; border-left: 1px solid var(--border2); }
-  #view-cronometro .crono-task-lane .crono-task-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  #view-cronometro .crono-task-lane .crono-task-list { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; }
   #view-cronometro .crono-task-lane .crono-task-row.is-wide,
   #view-cronometro .crono-task-lane .crono-task-clean,
   #view-cronometro .crono-task-lane .crono-task-completed { grid-column: 1 / -1; }
-  #view-cronometro .crono-task-completed-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #view-cronometro .crono-task-completed-list { display: grid; grid-template-columns: minmax(0, 1fr); }
+}
+
+#calPanelMes .calendar-habit-compact-switch {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  margin-right: auto;
+}
+#calPanelMes .calendar-habit-compact-switch button {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+}
+#calPanelMes .calendar-habit-compact-switch button span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+#calPanelMes .calendar-habit-compact-switch button.active {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border2));
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg2));
+  color: var(--accent);
 }

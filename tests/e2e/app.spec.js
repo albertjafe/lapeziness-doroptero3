@@ -2195,6 +2195,55 @@ test('places pulse and calendar at the ends of swipe navigation', async ({ page 
   expect(await page.evaluate(() => document.body.getAttribute('data-view'))).toBe('calendario');
 });
 
+test('keeps mobile tasks readable and swipes calendar months', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepare(page);
+
+  const taskLayout = await page.evaluate(() => {
+    db.cronoTasks = [{
+      id: 'mobile_readable_task',
+      text: 'Revisar digitacion del salto',
+      kind: 'piano',
+      tomorrow: false,
+      done: false,
+      createdAt: new Date().toISOString(),
+    }];
+    showView('cronometro');
+    renderCronoTasks();
+    const row = document.querySelector('#cronoIdleTasksPanel .crono-task-row').getBoundingClientRect();
+    return {
+      width: row.width,
+      projectionDisplay: getComputedStyle(document.getElementById('cronoTimerProjection')).display,
+    };
+  });
+  expect(taskLayout.width).toBeGreaterThanOrEqual(140);
+  expect(taskLayout.projectionDisplay).toBe('none');
+
+  const monthSwipe = await page.evaluate(() => {
+    showView('calendario');
+    switchCalTab('mes', document.getElementById('calTabMes'));
+    const panel = document.getElementById('calPanelMes');
+    const before = document.getElementById('mesNavLabel').textContent;
+    const touch = (x, y) => ({ identifier: 12, target: panel, clientX: x, clientY: y, pageX: x, pageY: y, screenX: x, screenY: y });
+    const dispatch = (type, touches, changedTouches) => {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'touches', { value: touches });
+      Object.defineProperty(event, 'changedTouches', { value: changedTouches || touches });
+      panel.dispatchEvent(event);
+    };
+    dispatch('touchstart', [touch(330, 430)]);
+    dispatch('touchmove', [touch(80, 430)]);
+    dispatch('touchend', [], [touch(80, 430)]);
+    return {
+      before,
+      after: document.getElementById('mesNavLabel').textContent,
+      view: document.body.getAttribute('data-view'),
+    };
+  });
+  expect(monthSwipe.after).not.toBe(monthSwipe.before);
+  expect(monthSwipe.view).toBe('calendario');
+});
+
 test('advances free timer progress to a 120 minute maximum and enlarges mode labels', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await prepare(page);

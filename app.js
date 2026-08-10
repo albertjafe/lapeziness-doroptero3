@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-10-mobile-redesign-v125';
+const APP_VERSION = '2026-08-10-mobile-redesign-v126';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -11128,6 +11128,67 @@ function cambiarMes(delta) {
   renderMesCalendario();
 }
 
+let _calendarMonthSwipe = null;
+
+function initCalendarMonthSwipe() {
+  const panel = document.getElementById('calPanelMes');
+  if (!panel || panel.dataset.monthSwipeReady === '1') return;
+  panel.dataset.monthSwipeReady = '1';
+
+  panel.addEventListener('touchstart', event => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (event.touches.length !== 1 || target?.closest('button, input, textarea, select, [data-horizontal-scroll]')) {
+      _calendarMonthSwipe = null;
+      return;
+    }
+    const touch = event.touches[0];
+    _calendarMonthSwipe = {
+      id: touch.identifier,
+      x: touch.clientX,
+      y: touch.clientY,
+      dx: 0,
+      dy: 0,
+      intent: null,
+    };
+  }, { passive: true });
+
+  panel.addEventListener('touchmove', event => {
+    const swipe = _calendarMonthSwipe;
+    if (!swipe || event.touches.length !== 1) return;
+    const touch = Array.from(event.touches).find(item => item.identifier === swipe.id);
+    if (!touch) return;
+    swipe.dx = touch.clientX - swipe.x;
+    swipe.dy = touch.clientY - swipe.y;
+    if (!swipe.intent && Math.hypot(swipe.dx, swipe.dy) >= 7) {
+      swipe.intent = Math.abs(swipe.dx) > Math.abs(swipe.dy) * 1.15 ? 'horizontal' : 'vertical';
+    }
+    if (swipe.intent !== 'horizontal') return;
+    event.preventDefault();
+    const offset = Math.max(-28, Math.min(28, swipe.dx * .18));
+    panel.style.setProperty('--calendar-swipe-x', offset + 'px');
+    panel.classList.add('is-month-swiping');
+  }, { passive: false });
+
+  const finish = event => {
+    const swipe = _calendarMonthSwipe;
+    _calendarMonthSwipe = null;
+    panel.classList.remove('is-month-swiping');
+    panel.style.removeProperty('--calendar-swipe-x');
+    if (!swipe || swipe.intent !== 'horizontal') return;
+    if (event?.changedTouches && !Array.from(event.changedTouches).some(item => item.identifier === swipe.id)) return;
+    if (Math.abs(swipe.dx) < 42 || Math.abs(swipe.dx) <= Math.abs(swipe.dy) * 1.15) return;
+    cambiarMes(swipe.dx < 0 ? 1 : -1);
+  };
+  panel.addEventListener('touchend', finish, { passive: true });
+  panel.addEventListener('touchcancel', () => {
+    _calendarMonthSwipe = null;
+    panel.classList.remove('is-month-swiping');
+    panel.style.removeProperty('--calendar-swipe-x');
+  }, { passive: true });
+}
+
+initCalendarMonthSwipe();
+
 function renderCalendarHabitLayer() {
   const toggle = document.getElementById('calendarHabitToggle');
   const summary = document.getElementById('calendarHabitSummary');
@@ -11179,7 +11240,13 @@ function renderCalendarHabitLayer() {
   const addSecond = habits.length < HABIT_MAX_ACTIVE
     ? '<button type="button" class="calendar-habit-icon-add" onclick="openNewHabitChallengeModal()" aria-label="Añadir otro objetivo" title="Añadir otro objetivo">+</button>'
     : '';
+  const compactSwitch = habits.length > 1
+    ? '<div class="calendar-habit-compact-switch" data-horizontal-scroll role="tablist" aria-label="Seleccionar objetivo">' +
+      habits.map(item => '<button type="button" role="tab" class="' + (item.id === habit.id ? 'active' : '') + '" aria-selected="' + (item.id === habit.id ? 'true' : 'false') + '" onclick="selectHabitCalendarChallenge(\'' + hechoJs(item.id) + '\')" aria-label="Mostrar objetivo: ' + escapeHtmlSafe(item.title || 'Objetivo') + '" title="' + escapeHtmlSafe(item.title || 'Objetivo') + '"><span aria-hidden="true"></span></button>').join('') +
+      '</div>'
+    : '';
   summary.innerHTML = '<div class="calendar-habit-compact" aria-label="Objetivo: ' + escapeHtmlSafe(habit.title || 'Objetivo') + '">' +
+    compactSwitch +
     '<button type="button" class="calendar-habit-icon-action' + actionClass + '" onclick="' + actionHandler + '" aria-label="' + actionLabel + '" title="' + actionLabel + '"><span aria-hidden="true">' + actionIcon + '</span></button>' +
     '<button type="button" class="calendar-habit-icon-edit" onclick="openHabitChallengeModal(\'' + hechoJs(habit.id) + '\')" aria-label="Editar objetivo" title="Editar objetivo">' + editIcon + '</button>' +
     addSecond +
