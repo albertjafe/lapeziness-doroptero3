@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-09-habit-gate-v124';
+const APP_VERSION = '2026-08-10-mobile-redesign-v125';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -10944,13 +10944,19 @@ function renderCronoCalendar() {
 }
 
 let mesOffset = 0; // 0 = mes actual, +1 = siguiente, etc.
-let _calendarMainTab = 'eventos';
+let _calendarMainTab = window.matchMedia?.('(max-width: 699px)').matches ? 'mes' : 'eventos';
 let _habitCalendarOffset = 0;
 let _calendarHabitLayerVisible = null;
 
 function calendarHabitLayerEnabled() {
   if (_calendarHabitLayerVisible === null) {
-    try { _calendarHabitLayerVisible = localStorage.getItem('calendar-habit-layer') === '1'; }
+    try {
+      const saved = localStorage.getItem('calendar-habit-layer');
+      const mobileCalendar = window.matchMedia?.('(max-width: 699px)').matches;
+      _calendarHabitLayerVisible = saved === null
+        ? !!mobileCalendar && habitActiveChallenges().length > 0
+        : saved === '1';
+    }
     catch (e) { _calendarHabitLayerVisible = false; }
   }
   return _calendarHabitLayerVisible;
@@ -11079,7 +11085,7 @@ function renderHabitCalendar() {
   const editLabel = metrics.complete ? 'Nuevo objetivo' : 'Editar';
 
   const objectiveSwitch = habits.length > 1
-    ? '<div class="habit-calendar-objective-switch" role="tablist" aria-label="Seleccionar objetivo">' +
+    ? '<div class="habit-calendar-objective-switch" data-no-view-swipe data-horizontal-scroll role="tablist" aria-label="Seleccionar objetivo">' +
       habits.map(item => '<button type="button" role="tab" class="' + (item.id === habit.id ? 'active' : '') + '" aria-selected="' + (item.id === habit.id ? 'true' : 'false') + '" onclick="selectHabitCalendarChallenge(\'' + hechoJs(item.id) + '\')" title="' + escapeHtmlSafe(item.title || 'Objetivo') + '">' + escapeHtmlSafe(item.title || 'Objetivo') + '</button>').join('') +
       '</div>'
     : '';
