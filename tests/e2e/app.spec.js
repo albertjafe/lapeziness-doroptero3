@@ -110,7 +110,7 @@ test('keeps mobile navigation visible after removing the daily state panel', asy
     }));
     expect(state.navFits).toBe(true);
     expect(state.documentFits).toBe(true);
-    expect(state.navButtons).toHaveLength(4);
+    expect(state.navButtons).toHaveLength(5);
     expect(state.navButtons.every(btn => btn.width > 0 && btn.height >= 44 && btn.label)).toBe(true);
     expect(state.hasLegacyStatePanel).toBe(false);
     expect(state.hasDayPlanner).toBe(true);
@@ -219,6 +219,53 @@ test('refreshes statistics immediately after a local study save', async ({ page 
     saveData();
   });
   await expect(page.locator('#statsDashboard')).toContainText('45 min');
+});
+
+test('renders and explores the mystery house prototype on mobile and iPad', async ({ browser }, testInfo) => {
+  test.setTimeout(60_000);
+  for (const viewport of [
+    { width: 430, height: 932, name: 'mobile' },
+    { width: 844, height: 390, name: 'mobile-landscape' },
+    { width: 834, height: 1194, name: 'ipad-portrait' },
+    { width: 1024, height: 768, name: 'ipad-landscape' },
+  ]) {
+    const context = await browser.newContext({ viewport });
+    const page = await context.newPage();
+    await prepare(page);
+    await page.evaluate(() => showView('casa'));
+    await expect(page.locator('#view-casa')).toHaveClass(/active/);
+    await expect(page.locator('#houseCanvasHost canvas')).toBeVisible();
+    await page.waitForFunction(() => window.__mysteryHouseDebug?.samplePixels().unique > 4);
+
+    const pixels = await page.evaluate(() => window.__mysteryHouseDebug.samplePixels());
+    expect(pixels.colored).toBeGreaterThan(40);
+    expect(pixels.unique).toBeGreaterThan(4);
+
+    await page.locator('[data-house-floor="3"]').click();
+    await expect(page.locator('#houseFloorTitle')).toHaveText('Planta sin número');
+    await page.locator('#houseDoorOpen').click();
+    const state = await page.evaluate(() => window.__mysteryHouseDebug.getState());
+    expect(state.discoveredDoors).toContain('small-sun');
+
+    const layout = await page.evaluate(() => ({
+      documentWidth: document.documentElement.scrollWidth,
+      viewportWidth: window.innerWidth,
+      stageX: document.getElementById('houseStage').getBoundingClientRect().x,
+      stageY: document.getElementById('houseStage').getBoundingClientRect().y,
+      stageHeight: document.getElementById('houseStage').getBoundingClientRect().height,
+      viewportHeight: window.innerHeight,
+    }));
+    expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
+    expect(layout.stageX).toBeLessThanOrEqual(1);
+    expect(layout.stageY).toBeLessThanOrEqual(1);
+    expect(layout.stageHeight).toBeLessThan(layout.viewportHeight);
+    expect(layout.stageHeight).toBeGreaterThan(layout.viewportHeight - 90);
+
+    const screenshotPath = testInfo.outputPath(`casa-${viewport.name}.png`);
+    await page.screenshot({ path: screenshotPath });
+    await testInfo.attach(`casa-${viewport.name}.png`, { path: screenshotPath, contentType: 'image/png' });
+    await context.close();
+  }
 });
 
 test('keeps one daily challenge visible in idle and running timer layouts', async ({ browser }) => {

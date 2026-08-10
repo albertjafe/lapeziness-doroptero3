@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-10-voice-first-tasks-v131';
+const APP_VERSION = '2026-08-10-mystery-house-prototype-v132';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -570,6 +570,7 @@ const VIEW_CONTEXT = {
   cronometro: { eyebrow: 'Práctica', title: 'Cronómetro' },
   obras: { eyebrow: 'Repertorio', title: 'Obras' },
   calendario: { eyebrow: 'Planificación', title: 'Calendario' },
+  casa: { eyebrow: 'Estratos', title: 'La Casa' },
   historial: { eyebrow: 'Resumen', title: 'Estadísticas' },
   ajustes: { eyebrow: 'Planificador de estudio', title: 'Ajustes' }
 };
@@ -608,6 +609,10 @@ function showView(name, options) {
     requestAnimationFrame(() => document.getElementById('sessionStatsSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
     return;
   }
+  const previousView = document.body.getAttribute('data-view');
+  if (previousView === 'casa' && name !== 'casa' && typeof window.mysteryHouseExit === 'function') {
+    window.mysteryHouseExit();
+  }
   document.body.setAttribute('data-view', name);
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active', 'view-swipe-arrived'));
   document.querySelectorAll('.nav-btn').forEach(b => {
@@ -634,6 +639,7 @@ function showView(name, options) {
   }
   if (name === 'obras' && !opts.swipePrepared) renderObras();
   if (name === 'calendario') renderCalendario();
+  window.dispatchEvent(new CustomEvent('app:viewchange', { detail: { name } }));
   if (name === 'historial')  {
     // Esqueleto inmediato; el cálculo pesado (todo el historial) corre en el
     // siguiente frame para que la vista aparezca al instante.

@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=259">
+<link rel="stylesheet" href="styles.css?v=260">
 </head>
 <body>
 
@@ -2039,6 +2039,73 @@
   </div>
 </div>
 
+<div class="view" id="view-casa">
+  <section class="house-shell" aria-label="Prototipo de la casa misteriosa">
+    <div class="house-stage" id="houseStage" data-no-view-swipe>
+      <div class="house-canvas-host" id="houseCanvasHost" aria-hidden="true"></div>
+      <div class="house-loading" id="houseLoading">
+        <span></span>
+        Preparando la casa
+      </div>
+
+      <header class="house-hud">
+        <div class="house-heading">
+          <span class="house-kicker" id="houseFloorKicker">ESTRATO 0</span>
+          <h1 id="houseFloorTitle">Vestíbulo</h1>
+          <p id="houseFloorSubtitle">La primera puerta siempre parece conocida.</p>
+        </div>
+        <button class="house-dev-toggle" id="houseDevToggle" type="button" aria-expanded="false" aria-controls="houseDevPanel">
+          <span></span>
+          Modo boceto
+        </button>
+      </header>
+
+      <div class="house-progress" aria-label="Progreso de exploración">
+        <span id="houseDiscoveryCount">0 de 12 puertas</span>
+        <div><i id="houseDiscoveryBar"></i></div>
+      </div>
+
+      <nav class="house-floor-rail" id="houseFloorRail" aria-label="Plantas de la casa"></nav>
+
+      <section class="house-door-panel" aria-live="polite">
+        <div class="house-door-copy">
+          <span class="house-door-status" id="houseDoorStatus">PUERTA 01</span>
+          <strong id="houseDoorTitle">Sala del reloj quieto</strong>
+          <small id="houseDoorHint">La luz permanece encendida aunque nadie entra.</small>
+        </div>
+        <div class="house-door-actions">
+          <button id="houseDoorPrev" type="button" aria-label="Puerta anterior">&#8249;</button>
+          <button class="house-door-open" id="houseDoorOpen" type="button">Abrir</button>
+          <button id="houseDoorNext" type="button" aria-label="Puerta siguiente">&#8250;</button>
+        </div>
+      </section>
+
+      <div class="house-objective-link" id="houseDoorObjective">
+        <span></span>
+        Prototipo libre: después conectaremos esta puerta a un objetivo.
+      </div>
+
+      <aside class="house-dev-panel" id="houseDevPanel" hidden>
+        <div class="house-dev-head">
+          <div>
+            <span>CONTROL DEL PROTOTIPO</span>
+            <strong>Acceso completo</strong>
+          </div>
+          <button id="houseDevClose" type="button" aria-label="Cerrar panel">&#215;</button>
+        </div>
+        <p>Puedes visitar cualquier planta y abrir cualquier puerta. Este acceso no modifica tus objetivos.</p>
+        <div class="house-dev-actions">
+          <button id="houseDevUnlockAll" type="button">Descubrir todas</button>
+          <button id="houseDevRevealFloor" type="button">Descubrir esta planta</button>
+          <button class="is-danger" id="houseDevReset" type="button">Restablecer</button>
+        </div>
+      </aside>
+
+      <div class="house-message" id="houseMessage" role="status" aria-live="polite"></div>
+    </div>
+  </section>
+</div>
+
 </div> <!-- end app-content -->
 
 <nav class="nav nav-bottom">
@@ -2057,6 +2124,10 @@
   <button class="nav-btn" aria-label="Calendario" data-view="calendario" data-short="Calend." onclick="showView('calendario')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
     <span>Calendario</span>
+  </button>
+  <button class="nav-btn" aria-label="Casa" data-view="casa" data-short="Casa" onclick="showView('casa')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4.8A1.8 1.8 0 0 1 6.8 3h10.4A1.8 1.8 0 0 1 19 4.8V21M3 21h18"/><path d="M9 21V8h6v13M12.8 14h.01"/></svg>
+    <span>Casa</span>
   </button>
 </nav>
 
@@ -2082,8 +2153,9 @@
 <script src="data-core.js?v=228"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=259"></script>
+<script src="app.js?v=260"></script>
 <script src="timer-objectives.js?v=249"></script>
+<script type="module" src="mystery-house.js?v=260"></script>
 
 </body>
 <script>
@@ -2105,7 +2177,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=247', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=260', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }
