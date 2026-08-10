@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=256">
+<link rel="stylesheet" href="styles.css?v=257">
 </head>
 <body>
 
@@ -1770,6 +1770,9 @@
       <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin:10px 0 6px">Fecha del pase · puede ser otro día</div>
       <input class="modal-input" id="paseQFecha" type="date" style="margin-bottom:0">
     </details>
+    <button type="button" class="pase-fault-launch" id="paseQFaultBtn" onclick="openPaseFaultMapFromQuality()">
+      <span>Mapa de fallos</span><strong>Sin marcas</strong>
+    </button>
     <div class="modal-buttons">
       <button class="modal-btn secondary" onclick="closeModal('modalPaseQuality')">Cancelar</button>
       <button class="modal-btn primary" id="paseQSaveBtn" onclick="confirmPase()">Guardar</button>
@@ -1829,6 +1832,43 @@
   </div>
 </div>
 
+<!-- MAPA VISUAL DE FALLOS DEL PASE -->
+<div class="modal-overlay" id="modalPaseFaultMap">
+  <div class="modal pase-fault-modal">
+    <div class="pase-fault-head">
+      <div>
+        <div class="modal-title" id="paseFaultTitle">Mapa de fallos</div>
+        <div class="pase-fault-target" id="paseFaultTarget"></div>
+      </div>
+      <button type="button" class="pase-fault-config-toggle" id="paseFaultConfigToggle" onclick="paseFaultToggleConfig()" aria-label="Configurar secciones">Editar mapa</button>
+    </div>
+
+    <div class="pase-fault-config" id="paseFaultConfig" hidden>
+      <label class="pase-fault-total-field">
+        <span>Total de compases</span>
+        <input type="number" id="paseFaultTotalBars" min="1" max="9999" inputmode="numeric" onchange="paseFaultConfigSetTotal(this.value)">
+      </label>
+      <div class="pase-fault-section-list" id="paseFaultSectionList"></div>
+      <button type="button" class="pase-fault-add-section" onclick="paseFaultConfigAddSection()">+ Sección</button>
+    </div>
+
+    <div class="pase-fault-type-row" role="group" aria-label="Tipo de marca">
+      <button type="button" class="pase-fault-type active fallo" data-fault-type="fallo" onclick="paseFaultSelectType('fallo',this)"><i>×</i><span>Fallo</span></button>
+      <button type="button" class="pase-fault-type suciedad" data-fault-type="suciedad" onclick="paseFaultSelectType('suciedad',this)"><i>•</i><span>Suciedad</span></button>
+      <button type="button" class="pase-fault-type memoria" data-fault-type="memoria" onclick="paseFaultSelectType('memoria',this)"><i>◆</i><span>Memoria</span></button>
+    </div>
+
+    <div class="pase-fault-timeline" id="paseFaultTimeline" onclick="paseFaultAddAt(event)" aria-label="Mapa temporal de la obra"></div>
+    <div class="pase-fault-hint">Toca el lugar aproximado del fallo. Puedes precisar el compás después.</div>
+    <div class="pase-fault-selected" id="paseFaultSelected" hidden></div>
+
+    <div class="modal-buttons pase-fault-actions">
+      <button type="button" class="modal-btn secondary" onclick="closeModal('modalPaseFaultMap')">Cancelar</button>
+      <button type="button" class="modal-btn primary" onclick="savePaseFaultMap()">Guardar mapa</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL EDITAR OBRA -->
 <!-- MODAL PASAJE SCORE -->
 <div class="modal-overlay" id="modalPasajeScore">
@@ -1847,14 +1887,15 @@
 
 <!-- MODAL GRÁFICO -->
 <div class="modal-overlay" id="modalGrafico">
-  <div class="modal" style="max-width:500px">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+  <div class="modal grafico-modal">
+    <div class="grafico-modal-head">
       <div class="modal-title" id="graficoTitle" style="margin-bottom:0"></div>
-      <button class="modal-btn secondary" onclick="closeModal('modalGrafico')" style="padding:4px 12px;font-size:10px">✕</button>
+      <button class="grafico-modal-close" onclick="closeModal('modalGrafico')" aria-label="Cerrar">✕</button>
     </div>
     <div id="graficoMovTabs" style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:12px"></div>
 <div id="graficoSvgWrap"></div>
     <div id="graficoAccessibleList" class="grafico-accessible-list"></div>
+    <div id="graficoFaultMap" class="pase-fault-aggregate"></div>
     <div id="graficoLeyenda" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px"></div>
   </div>
 </div>
@@ -2041,7 +2082,7 @@
 <script src="data-core.js?v=228"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=256"></script>
+<script src="app.js?v=257"></script>
 <script src="timer-objectives.js?v=249"></script>
 
 </body>

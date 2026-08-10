@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-10-competition-passes-v128';
+const APP_VERSION = '2026-08-10-visual-fault-maps-v129';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -15169,9 +15169,336 @@ let paseQualitySelected = null; // number 1-10, chosen from 5 coarse levels
 let paseTipoSelected = 'solo';
 let cronoPaseTipoSelected = 'solo';
 let paseEditingEntry = null;
+let paseFaultDraft = [];
+let paseFaultEditor = null;
+let paseFaultNextType = 'fallo';
+let paseFaultSelectedId = null;
+let paseFaultAggregateGroups = [];
+
+const PASE_FAULT_TYPES = {
+  fallo: { label: 'Fallo', symbol: '×' },
+  suciedad: { label: 'Suciedad', symbol: '•' },
+  memoria: { label: 'Memoria', symbol: '◆' },
+};
+const PASE_FAULT_SECTION_COLORS = ['#6d9b7b', '#658fb4', '#b86f62', '#a88a52', '#8775aa', '#4f9b9a'];
 
 function createPaseId() {
   return 'pase_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+}
+
+function paseFaultClone(value) {
+  try { return JSON.parse(JSON.stringify(value || [])); }
+  catch (_) { return []; }
+}
+
+function paseFaultTargetEntity(obraId, movId) {
+  return movId ? findMovimiento(obraId, movId) : findObra(obraId);
+}
+
+function paseFaultDefaultConfig() {
+  return {
+    totalBars: 100,
+    configured: false,
+    sections: [{ id: 'section_all', name: 'Obra completa', startBar: 1, endBar: 100, color: PASE_FAULT_SECTION_COLORS[0] }],
+  };
+}
+
+function normalizePaseFaultConfig(raw) {
+  const fallback = paseFaultDefaultConfig();
+  const totalBars = Math.max(1, Math.min(9999, parseInt(raw?.totalBars || fallback.totalBars, 10) || fallback.totalBars));
+  const sections = (Array.isArray(raw?.sections) ? raw.sections : fallback.sections).slice(0, 6).map((section, index) => {
+    const startBar = Math.max(1, Math.min(totalBars, parseInt(section?.startBar || 1, 10) || 1));
+    const endBar = Math.max(startBar, Math.min(totalBars, parseInt(section?.endBar || totalBars, 10) || totalBars));
+    return {
+      id: section?.id || ('section_' + Date.now() + '_' + index),
+      name: String(section?.name || ('Sección ' + (index + 1))).slice(0, 36),
+      startBar,
+      endBar,
+      color: /^#[0-9a-f]{6}$/i.test(section?.color || '') ? section.color : PASE_FAULT_SECTION_COLORS[index % PASE_FAULT_SECTION_COLORS.length],
+    };
+  }).sort((a, b) => a.startBar - b.startBar);
+  return {
+    totalBars,
+    configured: raw?.configured === true,
+    sections: sections.length ? sections : fallback.sections,
+  };
+}
+
+function paseFaultNormalizeMarker(marker, config) {
+  const positionFromBar = marker?.bar && config.totalBars > 1
+    ? (Number(marker.bar) - 1) / (config.totalBars - 1)
+    : null;
+  const position = Math.max(0, Math.min(1, Number.isFinite(Number(marker?.position)) ? Number(marker.position) : (positionFromBar ?? 0)));
+  return {
+    id: marker?.id || ('fault_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)),
+    type: PASE_FAULT_TYPES[marker?.type] ? marker.type : 'fallo',
+    position,
+    bar: config.configured ? Math.max(1, Math.min(config.totalBars, parseInt(marker?.bar || (1 + Math.round(position * (config.totalBars - 1))), 10))) : null,
+    label: String(marker?.label || '').slice(0, 80),
+  };
+}
+
+function paseFaultUpdateLaunchButton(button, faults) {
+  if (!button) return;
+  const count = Array.isArray(faults) ? faults.length : 0;
+  const value = button.querySelector('strong');
+  if (value) value.textContent = count ? (count + (count === 1 ? ' marca' : ' marcas')) : 'Sin marcas';
+  button.classList.toggle('has-faults', count > 0);
+}
+
+function updatePaseQualityFaultButton() {
+  paseFaultUpdateLaunchButton(document.getElementById('paseQFaultBtn'), paseFaultDraft);
+}
+
+function openPaseFaultMapFromQuality() {
+  if (!paseQualityObraId) return;
+  openPaseFaultMap({
+    source: 'quality',
+    obraId: paseQualityObraId,
+    movId: paseQualityMovId,
+    faults: paseFaultDraft,
+  });
+}
+
+function openPaseFaultMapFromCrono(key) {
+  const item = cronoPaseDraft.find(entry => entry.key === key);
+  if (!item) return;
+  openPaseFaultMap({ source: 'crono', key, obraId: item.obraId, movId: item.movId, faults: item.faults || [] });
+}
+
+function openPaseFaultMap(options) {
+  const entity = paseFaultTargetEntity(options.obraId, options.movId);
+  if (!entity) return;
+  const obra = findObra(options.obraId);
+  const config = normalizePaseFaultConfig(entity.paseFaultMap);
+  paseFaultEditor = {
+    ...options,
+    config,
+    faults: paseFaultClone(options.faults).map(marker => paseFaultNormalizeMarker(marker, config)),
+  };
+  paseFaultNextType = 'fallo';
+  paseFaultSelectedId = null;
+  document.getElementById('paseFaultTitle').textContent = 'Mapa de fallos';
+  document.getElementById('paseFaultTarget').textContent = options.movId
+    ? (obra?.name || '') + ' · ' + (entity.name || '')
+    : (entity.name || 'Obra');
+  const configPanel = document.getElementById('paseFaultConfig');
+  if (configPanel) configPanel.hidden = config.configured;
+  paseFaultRender();
+  const overlay = document.getElementById('modalPaseFaultMap');
+  if (overlay?.parentNode === document.body) document.body.appendChild(overlay);
+  openModal('modalPaseFaultMap');
+}
+
+function paseFaultToggleConfig() {
+  const panel = document.getElementById('paseFaultConfig');
+  if (!panel) return;
+  panel.hidden = !panel.hidden;
+  paseFaultRenderConfig();
+}
+
+function paseFaultRenderConfig() {
+  if (!paseFaultEditor) return;
+  const panel = document.getElementById('paseFaultConfig');
+  const toggle = document.getElementById('paseFaultConfigToggle');
+  if (toggle) toggle.textContent = panel?.hidden ? 'Editar mapa' : 'Ocultar edición';
+  const total = document.getElementById('paseFaultTotalBars');
+  if (total) total.value = paseFaultEditor.config.totalBars;
+  const list = document.getElementById('paseFaultSectionList');
+  if (!list) return;
+  list.innerHTML = paseFaultEditor.config.sections.map((section, index) =>
+    '<div class="pase-fault-section-row">' +
+      '<input type="color" value="' + escapeHtmlSafe(section.color) + '" onchange="paseFaultConfigSetSection(' + index + ',\'color\',this.value)" aria-label="Color de la sección">' +
+      '<input type="text" value="' + escapeHtmlSafe(section.name) + '" maxlength="36" oninput="paseFaultConfigSetSection(' + index + ',\'name\',this.value)" aria-label="Nombre de la sección">' +
+      '<label><span>De</span><input type="number" min="1" max="' + paseFaultEditor.config.totalBars + '" value="' + section.startBar + '" onchange="paseFaultConfigSetSection(' + index + ',\'startBar\',this.value)"></label>' +
+      '<label><span>A</span><input type="number" min="1" max="' + paseFaultEditor.config.totalBars + '" value="' + section.endBar + '" onchange="paseFaultConfigSetSection(' + index + ',\'endBar\',this.value)"></label>' +
+      '<button type="button" onclick="paseFaultConfigRemoveSection(' + index + ')" aria-label="Quitar sección">×</button>' +
+    '</div>'
+  ).join('');
+}
+
+function paseFaultConfigSetTotal(value) {
+  if (!paseFaultEditor) return;
+  const previous = paseFaultEditor.config.totalBars;
+  const total = Math.max(1, Math.min(9999, parseInt(value || previous, 10) || previous));
+  paseFaultEditor.config.totalBars = total;
+  paseFaultEditor.config.configured = true;
+  paseFaultEditor.config.sections.forEach(section => {
+    if (section.endBar === previous) section.endBar = total;
+    section.startBar = Math.min(total, section.startBar);
+    section.endBar = Math.max(section.startBar, Math.min(total, section.endBar));
+  });
+  paseFaultEditor.faults = paseFaultEditor.faults.map(marker => paseFaultNormalizeMarker(marker, paseFaultEditor.config));
+  paseFaultRenderConfig();
+  paseFaultRenderTimeline();
+}
+
+function paseFaultConfigSetSection(index, field, value) {
+  if (!paseFaultEditor?.config.sections[index]) return;
+  const section = paseFaultEditor.config.sections[index];
+  if (field === 'name') section.name = String(value || '').slice(0, 36);
+  else if (field === 'color' && /^#[0-9a-f]{6}$/i.test(value || '')) section.color = value;
+  else if (field === 'startBar') section.startBar = Math.max(1, Math.min(paseFaultEditor.config.totalBars, parseInt(value || 1, 10) || 1));
+  else if (field === 'endBar') section.endBar = Math.max(section.startBar, Math.min(paseFaultEditor.config.totalBars, parseInt(value || section.startBar, 10) || section.startBar));
+  if (section.endBar < section.startBar) section.endBar = section.startBar;
+  paseFaultEditor.config.configured = true;
+  paseFaultRenderTimeline();
+}
+
+function paseFaultConfigAddSection() {
+  if (!paseFaultEditor || paseFaultEditor.config.sections.length >= 6) {
+    showToast('Máximo 6 secciones');
+    return;
+  }
+  const sections = paseFaultEditor.config.sections;
+  const previousEnd = sections.reduce((max, section) => Math.max(max, section.endBar), 0);
+  const startBar = Math.min(paseFaultEditor.config.totalBars, previousEnd + 1);
+  const index = sections.length;
+  sections.push({
+    id: 'section_' + Date.now() + '_' + index,
+    name: 'Sección ' + (index + 1),
+    startBar,
+    endBar: paseFaultEditor.config.totalBars,
+    color: PASE_FAULT_SECTION_COLORS[index % PASE_FAULT_SECTION_COLORS.length],
+  });
+  paseFaultEditor.config.configured = true;
+  paseFaultRenderConfig();
+  paseFaultRenderTimeline();
+}
+
+function paseFaultConfigRemoveSection(index) {
+  if (!paseFaultEditor || paseFaultEditor.config.sections.length <= 1) return;
+  paseFaultEditor.config.sections.splice(index, 1);
+  paseFaultEditor.config.configured = true;
+  paseFaultRenderConfig();
+  paseFaultRenderTimeline();
+}
+
+function paseFaultSelectType(type, button) {
+  if (!PASE_FAULT_TYPES[type]) return;
+  paseFaultNextType = type;
+  document.querySelectorAll('#modalPaseFaultMap .pase-fault-type').forEach(item => item.classList.toggle('active', item === button || item.dataset.faultType === type));
+  const selected = paseFaultEditor?.faults.find(marker => marker.id === paseFaultSelectedId);
+  if (selected) {
+    selected.type = type;
+    paseFaultRenderTimeline();
+    paseFaultRenderSelected();
+  }
+}
+
+function paseFaultAddAt(event) {
+  if (!paseFaultEditor || event.target.closest('.pase-fault-marker')) return;
+  const rect = event.currentTarget.getBoundingClientRect();
+  const position = Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, rect.width)));
+  const config = paseFaultEditor.config;
+  const marker = paseFaultNormalizeMarker({ type: paseFaultNextType, position }, config);
+  paseFaultEditor.faults.push(marker);
+  paseFaultSelectedId = marker.id;
+  paseFaultRenderTimeline();
+  paseFaultRenderSelected();
+  try { Haptics.light(); } catch (_) {}
+}
+
+function paseFaultSelectMarker(event, index) {
+  event.stopPropagation();
+  if (!paseFaultEditor) return;
+  const marker = paseFaultEditor.faults[index];
+  if (!marker) return;
+  paseFaultSelectedId = marker.id;
+  if (marker) paseFaultNextType = marker.type;
+  paseFaultRender();
+}
+
+function paseFaultUpdateSelected(field, value) {
+  const marker = paseFaultEditor?.faults.find(item => item.id === paseFaultSelectedId);
+  if (!marker) return;
+  if (field === 'label') marker.label = String(value || '').slice(0, 80);
+  if (field === 'bar') {
+    marker.bar = Math.max(1, Math.min(paseFaultEditor.config.totalBars, parseInt(value || marker.bar || 1, 10) || 1));
+    marker.position = paseFaultEditor.config.totalBars > 1 ? (marker.bar - 1) / (paseFaultEditor.config.totalBars - 1) : 0;
+    paseFaultRenderTimeline();
+  }
+}
+
+function paseFaultDeleteSelected() {
+  if (!paseFaultEditor || !paseFaultSelectedId) return;
+  paseFaultEditor.faults = paseFaultEditor.faults.filter(marker => marker.id !== paseFaultSelectedId);
+  paseFaultSelectedId = null;
+  paseFaultRender();
+}
+
+function paseFaultTimelineHtml(config, faults, options = {}) {
+  const sections = config.sections.map(section => {
+    const left = ((section.startBar - 1) / config.totalBars) * 100;
+    const width = ((section.endBar - section.startBar + 1) / config.totalBars) * 100;
+    return '<div class="pase-fault-section" style="left:' + left.toFixed(3) + '%;width:' + width.toFixed(3) + '%;--section-color:' + escapeHtmlSafe(section.color) + '">' +
+      '<span>' + escapeHtmlSafe(section.name) + '</span>' +
+    '</div>';
+  }).join('');
+  const markers = faults.map((marker, index) => {
+    const meta = PASE_FAULT_TYPES[marker.type] || PASE_FAULT_TYPES.fallo;
+    const selected = marker.id === paseFaultSelectedId ? ' selected' : '';
+    const count = marker.count > 1 ? '<b>' + marker.count + '</b>' : '';
+    const title = marker.label || meta.label;
+    const handler = options.aggregate
+      ? 'paseFaultShowAggregateGroup(' + index + ',event)'
+      : 'paseFaultSelectMarker(event,' + index + ')';
+    return '<button type="button" class="pase-fault-marker ' + marker.type + selected + '" style="left:' + (marker.position * 100).toFixed(3) + '%" onclick="' + handler + '" title="' + escapeHtmlSafe(title) + '"><i>' + meta.symbol + '</i>' + count + '</button>';
+  }).join('');
+  return sections + markers;
+}
+
+function paseFaultRenderTimeline() {
+  const timeline = document.getElementById('paseFaultTimeline');
+  if (!timeline || !paseFaultEditor) return;
+  timeline.classList.toggle('is-configured', paseFaultEditor.config.configured);
+  timeline.innerHTML = paseFaultTimelineHtml(paseFaultEditor.config, paseFaultEditor.faults);
+}
+
+function paseFaultRenderSelected() {
+  const host = document.getElementById('paseFaultSelected');
+  if (!host || !paseFaultEditor) return;
+  const marker = paseFaultEditor.faults.find(item => item.id === paseFaultSelectedId);
+  host.hidden = !marker;
+  if (!marker) {
+    host.innerHTML = '';
+    return;
+  }
+  const location = paseFaultEditor.config.configured
+    ? '<label><span>Compás</span><input type="number" min="1" max="' + paseFaultEditor.config.totalBars + '" value="' + marker.bar + '" onchange="paseFaultUpdateSelected(\'bar\',this.value)"></label>'
+    : '<div class="pase-fault-position">Posición ' + Math.round(marker.position * 100) + '%</div>';
+  host.innerHTML =
+    '<label class="pase-fault-label"><span>Nombre del pasaje · opcional</span><input type="text" maxlength="80" value="' + escapeHtmlSafe(marker.label) + '" placeholder="Ej. entrada del desarrollo" oninput="paseFaultUpdateSelected(\'label\',this.value)"></label>' +
+    location +
+    '<button type="button" class="pase-fault-delete" onclick="paseFaultDeleteSelected()">Eliminar marca</button>';
+}
+
+function paseFaultRender() {
+  if (!paseFaultEditor) return;
+  document.querySelectorAll('#modalPaseFaultMap .pase-fault-type').forEach(item => item.classList.toggle('active', item.dataset.faultType === paseFaultNextType));
+  paseFaultRenderConfig();
+  paseFaultRenderTimeline();
+  paseFaultRenderSelected();
+}
+
+function savePaseFaultMap() {
+  if (!paseFaultEditor) return;
+  const entity = paseFaultTargetEntity(paseFaultEditor.obraId, paseFaultEditor.movId);
+  if (!entity) return;
+  const config = normalizePaseFaultConfig(paseFaultEditor.config);
+  const faults = paseFaultEditor.faults.map(marker => paseFaultNormalizeMarker(marker, config));
+  entity.paseFaultMap = config;
+  if (paseFaultEditor.source === 'quality') {
+    paseFaultDraft = faults;
+    updatePaseQualityFaultButton();
+  } else if (paseFaultEditor.source === 'crono') {
+    const item = cronoPaseDraft.find(entry => entry.key === paseFaultEditor.key);
+    if (item) item.faults = faults;
+    cronoPaseRender();
+  }
+  saveData();
+  closeModal('modalPaseFaultMap');
+  paseFaultEditor = null;
 }
 
 function dateInputValueFromIso(iso) {
@@ -15214,6 +15541,7 @@ function buildPaseScoreBtns() {
 
 function registerPase(obraId, movId) {
   paseEditingEntry = null;
+  paseFaultDraft = [];
   paseQualityObraId = obraId;
   paseQualityMovId = movId || null;
   paseQualitySelected = null;
@@ -15233,6 +15561,7 @@ function registerPase(obraId, movId) {
   document.querySelectorAll('#modalPaseQuality .pase-tipo-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('#modalPaseQuality .pase-tipo-btn.solo')?.classList.add('active');
   updatePaseTakesVisibility('solo');
+  updatePaseQualityFaultButton();
   openModal('modalPaseQuality');
 }
 
@@ -15258,6 +15587,7 @@ function openEditPase(obraId, movId, entryId, entryIndex) {
   paseQualityMovId = movId || null;
   paseQualitySelected = Number(entry.score) || ({ bien: 8, regular: 5, mal: 2 }[entry.quality] || null);
   paseTipoSelected = normalizePaseTipo(entry.tipo || 'solo');
+  paseFaultDraft = paseFaultClone(entry.faults || []);
   document.getElementById('paseQualityTitle').textContent = 'Editar pase';
   document.getElementById('paseQualityName').textContent = movId
     ? (obra?.name || '') + ' Â— ' + (findMovimiento(obraId, movId)?.name || '')
@@ -15274,6 +15604,7 @@ function openEditPase(obraId, movId, entryId, entryIndex) {
     button.classList.toggle('active', active);
   });
   updatePaseTakesVisibility(paseTipoSelected);
+  updatePaseQualityFaultButton();
   const scoreButton = [...document.querySelectorAll('#paseQScoreBtns .pscore-modal-btn')]
     .find(button => button.textContent.includes(PASE_SCORE_CHOICES.find(choice => choice.score === paseQualitySelected)?.label || ''));
   if (scoreButton && paseQualitySelected) selectPaseQ(paseQualitySelected, scoreButton);
@@ -15313,7 +15644,7 @@ function confirmPase() {
   const takesValue = parseInt(document.getElementById('paseQTakes')?.value || '', 10);
   const takes = tipo === 'grabacion' && Number.isFinite(takesValue) && takesValue > 0 ? Math.min(99, takesValue) : null;
   const quality = scoreToQuality(paseQualitySelected);
-  const paseEntry = { id: paseEditingEntry?.entryId || createPaseId(), date: paseDate, score: paseQualitySelected, solidezPct: paseScoreToPct(paseQualitySelected), quality, tipo, takes, note };
+  const paseEntry = { id: paseEditingEntry?.entryId || createPaseId(), date: paseDate, score: paseQualitySelected, solidezPct: paseScoreToPct(paseQualitySelected), quality, tipo, takes, note, faults: paseFaultClone(paseFaultDraft) };
 
   if (paseEditingEntry) {
     const entity = paseEditingEntry.movId
@@ -15466,6 +15797,7 @@ function cronoPaseDraftItem(resolved) {
     minutes: cronoPaseDefaultMinutes(resolved),
     score: null,
     takes: null,
+    faults: [],
     passNumber: 1,
     passCount: 1,
   };
@@ -15618,6 +15950,7 @@ function cronoPaseSetCount(targetKey, value) {
       passCount: desired,
       score: previous?.score ?? null,
       takes: previous?.takes ?? null,
+      faults: paseFaultClone(previous?.faults || []),
     });
   }
   cronoPaseDraft = cronoPaseDraft.filter(item => cronoPaseTargetKey(item) !== targetKey);
@@ -15683,6 +16016,7 @@ function cronoPaseRender() {
         ? '<label class="crono-pase-count"><span>N de pases de esta obra</span><input type="number" min="1" max="20" step="1" value="' + (group.items.length || 1) + '" onchange="cronoPaseSetCount(\'' + group.targetKey + '\',this.value)" oninput="cronoPaseSetCount(\'' + group.targetKey + '\',this.value)" aria-label="Numero de pases"></label>'
         : '') +
       '<div class="crono-pase-score-row">' + scoreBtns + '</div>' +
+      '<button type="button" class="pase-fault-launch compact ' + ((it.faults || []).length ? 'has-faults' : '') + '" onclick="openPaseFaultMapFromCrono(\'' + it.key + '\')"><span>Mapa de fallos</span><strong>' + ((it.faults || []).length ? ((it.faults || []).length + ((it.faults || []).length === 1 ? ' marca' : ' marcas')) : 'Sin marcas') + '</strong></button>' +
       (normalizePaseTipo(cronoPaseTipoSelected) === 'grabacion'
         ? '<label class="crono-pase-takes"><span>Takes de esta obra</span><input type="number" min="1" max="99" step="1" inputmode="numeric" value="' + (it.takes || '') + '" placeholder="—" onchange="cronoPaseSetTakes(\'' + it.key + '\',this.value)" aria-label="Takes de esta obra"></label>'
         : '') +
@@ -15702,6 +16036,7 @@ function cronoPaseRecordQuality(item, dateIso, comment) {
     quality: scoreToQuality(item.score),
     tipo,
     takes: tipo === 'grabacion' && item.takes ? item.takes : null,
+    faults: paseFaultClone(item.faults || []),
     note: (comment || '').trim(),
   };
   if (item.movId) {
@@ -15787,6 +16122,7 @@ function cronoPaseAddToStudy(item, startedAtIso, endedAtIso, comment) {
     score: item.score,
     tipo: normalizePaseTipo(cronoPaseTipoSelected),
     takes: normalizePaseTipo(cronoPaseTipoSelected) === 'grabacion' && item.takes ? item.takes : null,
+    faults: paseFaultClone(item.faults || []),
     note: passComment || null,
     sessionNotes: passNote ? [passNote] : null,
     notes: passNote ? [passNote] : null,
@@ -15816,6 +16152,7 @@ function cronoPaseAddToStudy(item, startedAtIso, endedAtIso, comment) {
     paseScore: item.score,
     paseTipo: normalizePaseTipo(cronoPaseTipoSelected),
     takes: normalizePaseTipo(cronoPaseTipoSelected) === 'grabacion' && item.takes ? item.takes : null,
+    faults: paseFaultClone(item.faults || []),
     notes: passNote ? [passNote] : [],
   });
   return { planId: targetPlanId, minutes };
@@ -16134,6 +16471,7 @@ function aiLatestPaseForObra(obra) {
     tipo: typeof normalizePaseTipo === 'function' ? normalizePaseTipo(p.tipo) : (p.tipo || ''),
     score: p.score != null ? p.score : null,
     takes: p.takes != null ? p.takes : null,
+    fallos: paseFaultClone(p.faults || []),
     resultado: aiPaseResultLabel(p.score),
     nota: p.note || p.nota || '',
   };
@@ -16229,6 +16567,7 @@ function aiBuildPaseRows() {
         tipo: typeof normalizePaseTipo === 'function' ? normalizePaseTipo(p.tipo) : (p.tipo || ''),
         score: p.score != null ? p.score : null,
         takes: p.takes != null ? p.takes : null,
+        fallos: paseFaultClone(p.faults || []),
         resultado: aiPaseResultLabel(p.score),
         solidezPct: p.solidezPct != null ? p.solidezPct : (p.score != null && typeof paseScoreToPct === 'function' ? paseScoreToPct(p.score) : null),
         nota: p.note || p.nota || '',
@@ -16249,6 +16588,7 @@ function aiBuildPaseRows() {
           tipo: typeof normalizePaseTipo === 'function' ? normalizePaseTipo(p.tipo) : (p.tipo || ''),
           score: p.score != null ? p.score : null,
           takes: p.takes != null ? p.takes : null,
+          fallos: paseFaultClone(p.faults || []),
           resultado: aiPaseResultLabel(p.score),
           solidezPct: p.solidezPct != null ? p.solidezPct : (p.score != null && typeof paseScoreToPct === 'function' ? paseScoreToPct(p.score) : null),
           nota: p.note || p.nota || '',
@@ -16797,6 +17137,7 @@ function buildAiTextReport(options) {
   lines.push('- Nota de sesión: observación escrita o dictada antes de empezar, en un minuto concreto del cronómetro/temporizador, o después de terminar. Es input directo del usuario; úsalo como contexto prioritario.');
   lines.push('- Tarjeta/sesión guardada: resumen diario o tarjeta de estudio. Puede incluir obra, minutos, tick, nota, destello y datos agregados de sub-sesiones.');
   lines.push('- Pase: ejecución de una obra o movimiento. Es la medida principal de solidez. Tipos: solo = para mí; informal = ante pareja/amigos; evento = audición, concierto u otra situación formal; concurso = competición; grabación = sesión con takes. Resultado: Se cae, Frágil, Sale, Sólido o Listo.');
+  lines.push('- Mapa de fallos del pase: marcas visuales por posición o compás. fallo = caída o interrupción; suciedad = imprecisión; memoria = problema de recuerdo. Las repeticiones cercanas señalan zonas recurrentes.');
   lines.push('- Pasaje: fragmento concreto dentro de una obra. Puede tener estado actual, intensidad de trabajo, solidez antes/después, fallos de memoria o entradas de seguimiento. Si un pasaje aparece varias veces el mismo día, trátalo como foco recurrente, no como duplicado irrelevante.');
   lines.push('- Concentración/impulso/malestar/resistencia y el resto de estados: contexto momentáneo registrado por mí. Resistencia indica cuánta fricción interna siento para continuar. Úsalo como contexto, no como diagnóstico clínico ni como causa segura.');
   lines.push('- Tiempo disponible bruto: estimación diaria de cuánto margen teórico tuve para tocar. No equivale a horas estudiadas ni a obligación; sirve para distinguir falta real de tiempo de baja ejecución con tiempo disponible.');
@@ -26084,14 +26425,86 @@ function _phase3HistoryListHtml(history) {
       const context = paseTipoShort(entry.tipo);
       const note = entry.note || entry.nota || '';
       const takes = entry.takes ? ' · ' + entry.takes + ' takes' : '';
+      const faults = Array.isArray(entry.faults) && entry.faults.length ? ' · ' + entry.faults.length + (entry.faults.length === 1 ? ' marca' : ' marcas') : '';
        return '<li>' +
          '<time datetime="' + escapeHtmlSafe(entry.date || '') + '">' + escapeHtmlSafe(_phase3DateTime(entry.date)) + '</time>' +
          '<strong>' + pct + '%</strong>' +
-         '<span>' + escapeHtmlSafe(context + takes) + '</span>' +
+         '<span>' + escapeHtmlSafe(context + takes + faults) + '</span>' +
          (note ? '<em>' + escapeHtmlSafe(note) + '</em>' : '') +
          '<button type="button" class="grafico-history-edit" data-pase-id="' + escapeHtmlSafe(entry.id || '') + '" data-pase-index="' + index + '" onclick="editPaseFromHistory(this)">Editar</button>' +
        '</li>';
     }).join('') + '</ol>';
+}
+
+function renderPaseFaultAggregate(history, entity) {
+  const host = document.getElementById('graficoFaultMap');
+  if (!host) return;
+  const config = normalizePaseFaultConfig(entity?.paseFaultMap);
+  const occurrences = [];
+  (history || []).forEach(entry => {
+    (Array.isArray(entry.faults) ? entry.faults : []).forEach(fault => {
+      const marker = paseFaultNormalizeMarker(fault, config);
+      occurrences.push({ ...marker, date: entry.date, paseTipo: entry.tipo || 'solo' });
+    });
+  });
+  if (!occurrences.length) {
+    paseFaultAggregateGroups = [];
+    host.innerHTML = '<div class="pase-fault-aggregate-empty"><strong>Mapa de fallos</strong><span>Las marcas de tus próximos pases aparecerán aquí.</span></div>';
+    return;
+  }
+
+  const groups = [];
+  occurrences.sort((a, b) => a.position - b.position).forEach(marker => {
+    const group = groups.find(item => item.type === marker.type && Math.abs(item.position - marker.position) <= 0.025);
+    if (group) {
+      group.items.push(marker);
+      group.position = group.items.reduce((sum, item) => sum + item.position, 0) / group.items.length;
+      if (!group.label && marker.label) group.label = marker.label;
+    } else {
+      groups.push({
+        id: 'aggregate_' + groups.length,
+        type: marker.type,
+        position: marker.position,
+        label: marker.label,
+        items: [marker],
+      });
+    }
+  });
+  paseFaultAggregateGroups = groups;
+  const displayMarkers = groups.map(group => ({
+    id: group.id,
+    type: group.type,
+    position: group.position,
+    label: group.label,
+    count: group.items.length,
+  }));
+  const recurrent = groups.filter(group => group.items.length > 1).length;
+  host.innerHTML =
+    '<div class="pase-fault-aggregate-head"><div><strong>Mapa de fallos</strong><span>' + occurrences.length + (occurrences.length === 1 ? ' marca' : ' marcas') + ' en ' + history.length + (history.length === 1 ? ' pase' : ' pases') + '</span></div>' +
+      (recurrent ? '<b>' + recurrent + (recurrent === 1 ? ' zona recurrente' : ' zonas recurrentes') + '</b>' : '') +
+    '</div>' +
+    '<div class="pase-fault-timeline is-aggregate">' + paseFaultTimelineHtml(config, displayMarkers, { aggregate: true }) + '</div>' +
+    '<div class="pase-fault-aggregate-legend"><span class="fallo">× Fallo</span><span class="suciedad">• Suciedad</span><span class="memoria">◆ Memoria</span></div>' +
+    '<div class="pase-fault-aggregate-detail" id="paseFaultAggregateDetail">Toca una marca para ver sus pases y notas.</div>';
+}
+
+function paseFaultShowAggregateGroup(index, event) {
+  event?.stopPropagation();
+  const group = paseFaultAggregateGroups[index];
+  const host = document.getElementById('paseFaultAggregateDetail');
+  if (!group || !host) return;
+  document.querySelectorAll('#graficoFaultMap .pase-fault-marker').forEach((marker, markerIndex) => marker.classList.toggle('selected', markerIndex === index));
+  const config = normalizePaseFaultConfig(paseFaultTargetEntity(graficoObraId, graficoMovId)?.paseFaultMap);
+  const location = config.configured
+    ? 'Compás ' + (group.items[0].bar || (1 + Math.round(group.position * (config.totalBars - 1))))
+    : 'Posición ' + Math.round(group.position * 100) + '%';
+  const meta = PASE_FAULT_TYPES[group.type] || PASE_FAULT_TYPES.fallo;
+  host.innerHTML = '<div class="pase-fault-aggregate-detail-title"><strong>' + meta.symbol + ' ' + escapeHtmlSafe(group.label || meta.label) + '</strong><span>' + location + ' · ' + group.items.length + (group.items.length === 1 ? ' vez' : ' veces') + '</span></div>' +
+    '<div class="pase-fault-occurrences">' + group.items.map(item => {
+      const date = new Date(item.date);
+      const dateLabel = Number.isNaN(date.getTime()) ? 'Sin fecha' : date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+      return '<span>' + escapeHtmlSafe(dateLabel + ' · ' + paseTipoShort(item.paseTipo) + (item.label ? ' · ' + item.label : '')) + '</span>';
+    }).join('') + '</div>';
 }
 
 renderGraficoSvg = function() {
@@ -26104,6 +26517,7 @@ renderGraficoSvg = function() {
   if (!wrap) return;
 
   if (list) list.innerHTML = _phase3HistoryListHtml(history);
+  renderPaseFaultAggregate(history, graficoMovId ? findMovimiento(graficoObraId, graficoMovId) : obra);
   const dates = new Set(history.map(entry => {
     const date = new Date(entry.date);
     return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-CA');
