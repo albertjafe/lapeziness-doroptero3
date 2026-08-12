@@ -4,9 +4,11 @@
   const STORAGE_KEY = 'alberto_metronome_v1';
   const MIN_BPM = 30;
   const MAX_BPM = 240;
+  const MIN_BEATS = 1;
+  const MAX_BEATS = 16;
   const LOOKAHEAD_MS = 25;
   const SCHEDULE_AHEAD_SECONDS = 0.12;
-  const BEAT_OPTIONS = [2, 3, 4, 6];
+  const BEAT_TYPES = ['accent', 'normal', 'mute'];
 
   let audioContext = null;
   let clickBuffer = null;
@@ -18,15 +20,34 @@
 
   const state = loadState();
 
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function defaultPattern(length, accented) {
+    const pattern = Array.from({ length: clamp(Number(length) || 4, MIN_BEATS, MAX_BEATS) }, function() {
+      return 'normal';
+    });
+    if (accented !== false) pattern[0] = 'accent';
+    return pattern;
+  }
+
+  function normalizePattern(pattern, legacyCount, legacyAccent) {
+    if (!Array.isArray(pattern) || !pattern.length) return defaultPattern(legacyCount, legacyAccent);
+    const normalized = pattern.slice(0, MAX_BEATS).map(function(type) {
+      return BEAT_TYPES.includes(type) ? type : 'normal';
+    });
+    return normalized.length ? normalized : defaultPattern(4, true);
+  }
+
   function loadState() {
-    const fallback = { bpm: 80, beatsPerBar: 4, accent: true, playing: false };
+    const fallback = { bpm: 80, pattern: defaultPattern(4, true), playing: false };
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
       if (!stored) return fallback;
       return {
         bpm: clamp(Number(stored.bpm) || fallback.bpm, MIN_BPM, MAX_BPM),
-        beatsPerBar: BEAT_OPTIONS.includes(Number(stored.beatsPerBar)) ? Number(stored.beatsPerBar) : fallback.beatsPerBar,
-        accent: stored.accent !== false,
+        pattern: normalizePattern(stored.pattern, stored.beatsPerBar, stored.accent),
         playing: false,
       };
     } catch (error) {
@@ -38,14 +59,10 @@
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         bpm: state.bpm,
-        beatsPerBar: state.beatsPerBar,
-        accent: state.accent,
+        pattern: state.pattern,
+        beatsPerBar: state.pattern.length,
       }));
     } catch (error) {}
-  }
-
-  function clamp(value, min, max) {
-    return Math.min(max, Math.max(min, value));
   }
 
   function tempoName(bpm) {
@@ -68,8 +85,8 @@
     return audioContext;
   }
 
-  // A very short, high-passed impulse: audible and dry, without a resonant
-  // wooden or metallic tail. It is generated locally and bypasses app SFX.
+  // Short high-passed impulse with no resonant tail. Accent and normal beats
+  // share its dry character but differ clearly in level and pitch.
   function createDryClickBuffer(context) {
     const duration = 0.016;
     const length = Math.max(1, Math.floor(context.sampleRate * duration));
@@ -86,18 +103,20 @@
     return buffer;
   }
 
-  function scheduleClick(time, accented) {
+  function scheduleClick(time, type) {
+    if (type === 'mute') return;
     const context = ensureAudio();
     if (!context || !clickBuffer) return;
+    const accented = type === 'accent';
     const source = context.createBufferSource();
     const gain = context.createGain();
     const filter = context.createBiquadFilter();
     source.buffer = clickBuffer;
-    source.playbackRate.value = accented ? 0.92 : 1.08;
+    source.playbackRate.value = accented ? 0.86 : 1.08;
     filter.type = 'bandpass';
-    filter.frequency.value = accented ? 1850 : 2350;
+    filter.frequency.value = accented ? 1650 : 2350;
     filter.Q.value = 0.72;
-    gain.gain.setValueAtTime(accented ? 0.95 : 0.68, time);
+    gain.gain.setValueAtTime(accented ? 0.98 : 0.58, time);
     gain.gain.exponentialRampToValueAtTime(0.001, time + 0.022);
     source.connect(filter);
     filter.connect(gain);
@@ -111,14 +130,13 @@
     visualTimers = [];
   }
 
-  function showBeat(index, accented, atTime) {
+  function showBeat(index, atTime) {
     const context = audioContext;
     const delay = context ? Math.max(0, (atTime - context.currentTime) * 1000) : 0;
     visualTimers.push(setTimeout(function() {
       document.querySelectorAll('.crono-metronome').forEach(function(surface) {
         surface.querySelectorAll('.crono-metronome-beat').forEach(function(dot, dotIndex) {
           dot.classList.toggle('active', dotIndex === index);
-          dot.classList.toggle('accented', dotIndex === index && accented);
         });
         surface.classList.remove('is-pulsing');
         void surface.offsetWidth;
@@ -130,11 +148,11 @@
   function scheduler() {
     if (!state.playing || !audioContext) return;
     while (nextBeatTime < audioContext.currentTime + SCHEDULE_AHEAD_SECONDS) {
-      const accented = state.accent && beatIndex === 0;
-      scheduleClick(nextBeatTime, accented);
-      showBeat(beatIndex, accented, nextBeatTime);
+      const type = state.pattern[beatIndex] || 'normal';
+      scheduleClick(nextBeatTime, type);
+      showBeat(beatIndex, nextBeatTime);
       nextBeatTime += 60 / state.bpm;
-      beatIndex = (beatIndex + 1) % state.beatsPerBar;
+      beatIndex = (beatIndex + 1) % state.pattern.length;
     }
   }
 
@@ -159,7 +177,7 @@
     schedulerTimer = null;
     clearVisualTimers();
     document.querySelectorAll('.crono-metronome-beat').forEach(function(dot) {
-      dot.classList.remove('active', 'accented');
+      dot.classList.remove('active');
     });
     if (shouldRender !== false) render();
   }
@@ -170,7 +188,7 @@
   }
 
   function reschedule() {
-    if (!state.playing) return;
+    if (!state.playing || !audioContext) return;
     clearVisualTimers();
     beatIndex = 0;
     nextBeatTime = audioContext.currentTime + 0.055;
@@ -190,20 +208,34 @@
     setBpm(state.bpm + Number(delta || 0), true);
   }
 
-  function setBeats(value) {
-    const beats = Number(value);
-    if (!BEAT_OPTIONS.includes(beats)) return;
-    state.beatsPerBar = beats;
+  function setBeatCount(value) {
+    const target = Math.round(clamp(Number(value) || state.pattern.length, MIN_BEATS, MAX_BEATS));
+    if (target === state.pattern.length) return;
+    if (target > state.pattern.length) {
+      while (state.pattern.length < target) state.pattern.push('normal');
+    } else {
+      state.pattern = state.pattern.slice(0, target);
+    }
     beatIndex = 0;
     saveState();
     reschedule();
     render();
+    try { Haptics.light(); } catch (error) {}
   }
 
-  function toggleAccent() {
-    state.accent = !state.accent;
+  function changeBeatCount(delta) {
+    setBeatCount(state.pattern.length + Number(delta || 0));
+  }
+
+  function cycleBeat(index) {
+    const position = Number(index);
+    if (!Number.isInteger(position) || position < 0 || position >= state.pattern.length) return;
+    const current = state.pattern[position];
+    state.pattern[position] = BEAT_TYPES[(BEAT_TYPES.indexOf(current) + 1) % BEAT_TYPES.length];
     saveState();
+    reschedule();
     render();
+    try { Haptics.tick(); } catch (error) {}
   }
 
   function tap() {
@@ -212,7 +244,7 @@
     tapTimes.push(now);
     if (tapTimes.length > 7) tapTimes.shift();
     const context = ensureAudio();
-    if (context) scheduleClick(context.currentTime + 0.005, false);
+    if (context) scheduleClick(context.currentTime + 0.005, 'normal');
     document.querySelectorAll('.crono-metronome-tap').forEach(function(button) {
       button.classList.remove('is-tapped');
       void button.offsetWidth;
@@ -229,17 +261,38 @@
     }
   }
 
+  function beatText(type) {
+    if (type === 'accent') return 'fuerte';
+    if (type === 'mute') return 'silencio';
+    return 'normal';
+  }
+
+  function nextBeatText(type) {
+    if (type === 'accent') return 'normal';
+    if (type === 'normal') return 'silencio';
+    return 'fuerte';
+  }
+
   function beatDots() {
-    let html = '';
-    for (let i = 0; i < state.beatsPerBar; i += 1) {
-      html += '<i class="crono-metronome-beat" aria-hidden="true"></i>';
-    }
-    return html;
+    return state.pattern.map(function(type, index) {
+      const label = 'Pulso ' + (index + 1) + ': ' + beatText(type) + '. Pulsa para cambiar a ' + nextBeatText(type);
+      return '<button type="button" class="crono-metronome-beat is-' + type + '" onclick="metronomeCycleBeat(' + index + ')" aria-label="' + label + '" title="' + label + '"><span>' + (index + 1) + '</span></button>';
+    }).join('');
   }
 
   function surfaceHtml() {
+    const count = state.pattern.length;
+    const mobileColumns = count > 8 ? Math.ceil(count / 2) : count;
     return '<div class="crono-metronome-shell' + (state.playing ? ' is-playing' : '') + '">' +
-      '<div class="crono-metronome-pulse-row"><span class="crono-metronome-status">' + (state.playing ? 'EN MARCHA' : 'LISTO') + '</span><div class="crono-metronome-beats">' + beatDots() + '</div><button type="button" class="crono-metronome-accent' + (state.accent ? ' active' : '') + '" onclick="metronomeToggleAccent()" aria-pressed="' + state.accent + '" aria-label="' + (state.accent ? 'Desactivar acento del primer pulso' : 'Activar acento del primer pulso') + '">1</button></div>' +
+      '<div class="crono-metronome-pattern">' +
+        '<div class="crono-metronome-pattern-meta"><span class="crono-metronome-status">' + (state.playing ? 'EN MARCHA' : 'LISTO') + '</span><strong>' + count + ' ' + (count === 1 ? 'pulso' : 'pulsos') + '</strong></div>' +
+        '<div class="crono-metronome-pattern-editor">' +
+          '<button type="button" class="crono-metronome-count-btn" onclick="metronomeChangeBeatCount(-1)" aria-label="Quitar un pulso"' + (count <= MIN_BEATS ? ' disabled' : '') + '>−</button>' +
+          '<div class="crono-metronome-beats" role="group" aria-label="Patrón del compás" style="--metro-beat-count:' + count + ';--metro-mobile-columns:' + mobileColumns + '">' + beatDots() + '</div>' +
+          '<button type="button" class="crono-metronome-count-btn" onclick="metronomeChangeBeatCount(1)" aria-label="Añadir un pulso"' + (count >= MAX_BEATS ? ' disabled' : '') + '>+</button>' +
+        '</div>' +
+        '<div class="crono-metronome-legend" aria-hidden="true"><span><i class="is-accent"></i>Fuerte</span><span><i class="is-normal"></i>Normal</span><span><i class="is-mute"></i>Silencio</span></div>' +
+      '</div>' +
       '<div class="crono-metronome-main">' +
         '<div class="crono-metronome-step crono-metronome-step-left"><button type="button" onclick="metronomeAdjust(-5)">−5</button><button type="button" onclick="metronomeAdjust(-1)">−1</button></div>' +
         '<div class="crono-metronome-tempo"><strong>' + state.bpm + '</strong><span>BPM · ' + tempoName(state.bpm) + '</span></div>' +
@@ -247,7 +300,6 @@
       '</div>' +
       '<input class="crono-metronome-slider" type="range" min="' + MIN_BPM + '" max="' + MAX_BPM + '" step="1" value="' + state.bpm + '" aria-label="Tempo en pulsos por minuto" oninput="metronomeSetBpm(this.value)">' +
       '<div class="crono-metronome-foot">' +
-        '<div class="crono-metronome-meter" role="group" aria-label="Pulsos por compás"><span>Compás</span>' + BEAT_OPTIONS.map(function(beats) { return '<button type="button" class="' + (state.beatsPerBar === beats ? 'active' : '') + '" onclick="metronomeSetBeats(' + beats + ')">' + beats + '</button>'; }).join('') + '</div>' +
         '<button type="button" class="crono-metronome-tap" onclick="metronomeTap()"><span>TAP</span><small>marca el tempo</small></button>' +
         '<button type="button" class="crono-metronome-play' + (state.playing ? ' is-playing' : '') + '" onclick="metronomeToggle()" aria-label="' + (state.playing ? 'Detener metrónomo' : 'Iniciar metrónomo') + '"><span aria-hidden="true"></span></button>' +
       '</div>' +
@@ -265,11 +317,14 @@
   window.metronomeToggle = toggle;
   window.metronomeAdjust = adjust;
   window.metronomeSetBpm = setBpm;
-  window.metronomeSetBeats = setBeats;
-  window.metronomeToggleAccent = toggleAccent;
+  window.metronomeSetBeats = setBeatCount;
+  window.metronomeChangeBeatCount = changeBeatCount;
+  window.metronomeCycleBeat = cycleBeat;
   window.metronomeTap = tap;
   window.__metronomeDebug = {
-    getState: function() { return Object.assign({}, state); },
+    getState: function() {
+      return { bpm: state.bpm, pattern: state.pattern.slice(), beatsPerBar: state.pattern.length, playing: state.playing };
+    },
     stop: stop,
   };
 

@@ -2954,9 +2954,44 @@ test('runs one persistent metronome from idle and active timer layouts', async (
   await expect(page.locator('#cronoIdleDrawer .crono-metronome-tempo strong')).toHaveText('80');
 
   await page.locator('#cronoIdleDrawer .crono-metronome-step-right button').last().click();
-  await page.locator('#cronoIdleDrawer .crono-metronome-meter button', { hasText: '3' }).click();
   await expect(page.locator('#cronoIdleDrawer .crono-metronome-tempo strong')).toHaveText('85');
-  expect(await page.evaluate(() => __metronomeDebug.getState())).toMatchObject({ bpm: 85, beatsPerBar: 3 });
+  const firstBeat = page.locator('#cronoIdleDrawer .crono-metronome-beat').first();
+  await expect(firstBeat).toHaveClass(/is-accent/);
+  await firstBeat.click();
+  await expect(firstBeat).toHaveClass(/is-normal/);
+  await firstBeat.click();
+  await expect(firstBeat).toHaveClass(/is-mute/);
+  await firstBeat.click();
+  await expect(firstBeat).toHaveClass(/is-accent/);
+  expect(await page.evaluate(() => __metronomeDebug.getState())).toMatchObject({
+    bpm: 85,
+    beatsPerBar: 4,
+    pattern: ['accent', 'normal', 'normal', 'normal'],
+  });
+
+  await page.locator('#cronoIdleDrawer .crono-metronome-count-btn[aria-label="Añadir un pulso"]').click();
+  expect(await page.locator('#cronoIdleDrawer .crono-metronome-beat').count()).toBe(5);
+  await page.locator('#cronoIdleDrawer .crono-metronome-count-btn[aria-label="Quitar un pulso"]').click();
+  expect(await page.locator('#cronoIdleDrawer .crono-metronome-beat').count()).toBe(4);
+  await page.evaluate(() => metronomeSetBeats(16));
+  expect(await page.locator('#cronoIdleDrawer .crono-metronome-beat').count()).toBe(16);
+  await expect(page.locator('#cronoIdleDrawer .crono-metronome-count-btn[aria-label="Añadir un pulso"]')).toBeDisabled();
+  const maxPatternLayout = await page.evaluate(() => {
+    const beats = document.querySelector('#cronoIdleDrawer .crono-metronome-beats');
+    const dots = [...document.querySelectorAll('#cronoIdleDrawer .crono-metronome-beat')];
+    const beatBox = beats.getBoundingClientRect();
+    const dotBox = dots[0].getBoundingClientRect();
+    return {
+      round: Math.abs(dotBox.width - dotBox.height) < 1,
+      rows: new Set(dots.map(dot => Math.round(dot.getBoundingClientRect().top))).size,
+      inside: dots.every(dot => {
+        const box = dot.getBoundingClientRect();
+        return box.left >= beatBox.left - 1 && box.right <= beatBox.right + 1;
+      }),
+      documentFits: document.documentElement.scrollWidth <= innerWidth + 1,
+    };
+  });
+  expect(maxPatternLayout).toMatchObject({ round: true, rows: 2, inside: true, documentFits: true });
 
   await page.locator('#cronoIdleDrawer .crono-metronome-play').click();
   expect(await page.evaluate(() => __metronomeDebug.getState().playing)).toBe(true);
@@ -2970,9 +3005,9 @@ test('runs one persistent metronome from idle and active timer layouts', async (
   });
   await expect(page.locator('#cronoRunDrawer [data-panel="metronomo"]')).toHaveClass(/active/);
   await expect(page.locator('#cronoRunDrawer .crono-metronome-tempo strong')).toHaveText('85');
-  expect(await page.evaluate(() => __metronomeDebug.getState())).toMatchObject({ bpm: 85, beatsPerBar: 3, playing: true });
+  expect(await page.evaluate(() => __metronomeDebug.getState())).toMatchObject({ bpm: 85, beatsPerBar: 16, playing: true });
 
   await page.locator('#cronoRunDrawer .crono-metronome-play').click();
   expect(await page.evaluate(() => __metronomeDebug.getState().playing)).toBe(false);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('alberto_metronome_v1')))).toMatchObject({ bpm: 85, beatsPerBar: 3 });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('alberto_metronome_v1')))).toMatchObject({ bpm: 85, beatsPerBar: 16 });
 });
