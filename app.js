@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-10-quick-manual-study-v133';
+const APP_VERSION = '2026-08-12-metronome-v134';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -22013,7 +22013,7 @@ function cronoSessionButtonHtml(paused, extraClass) {
 }
 
 function cronoSetRunDrawerTab(tab) {
-  _cronoRunDrawerTab = 'tareas';
+  _cronoRunDrawerTab = tab === 'metronomo' ? 'metronomo' : 'tareas';
   cronoUpdateRunDrawer();
   try { Haptics.light(); } catch(e) {}
 }
@@ -22021,7 +22021,7 @@ function cronoSetRunDrawerTab(tab) {
 function cronoUpdateRunDrawer() {
   const drawer = document.getElementById('cronoRunDrawer');
   if (!drawer) return;
-  const tab = 'tareas';
+  const tab = _cronoRunDrawerTab === 'metronomo' ? 'metronomo' : 'tareas';
   drawer.dataset.tab = tab;
   drawer.querySelectorAll('.crono-run-drawer-tab').forEach(btn => {
     if (btn.dataset.action) {
@@ -22037,7 +22037,10 @@ function cronoUpdateRunDrawer() {
     panel.classList.toggle('active', panel.dataset.panel === tab);
   });
   if (tab === 'tareas') renderCronoTasks();
-  else cronoRenderTaskCount();
+  else {
+    cronoRenderTaskCount();
+    if (typeof metronomeRender === 'function') metronomeRender();
+  }
 }
 
 function cronoSetObservation(value) {
@@ -22046,7 +22049,7 @@ function cronoSetObservation(value) {
 }
 
 function cronoSetIdleDrawerTab(tab) {
-  _cronoIdleDrawerTab = 'tareas';
+  _cronoIdleDrawerTab = tab === 'metronomo' ? 'metronomo' : 'tareas';
   cronoUpdateIdleDrawer();
   try { Haptics.light(); } catch(e) {}
 }
@@ -22054,7 +22057,7 @@ function cronoSetIdleDrawerTab(tab) {
 function cronoUpdateIdleDrawer() {
   const drawer = document.getElementById('cronoIdleDrawer');
   if (!drawer) return;
-  const tab = 'tareas';
+  const tab = _cronoIdleDrawerTab === 'metronomo' ? 'metronomo' : 'tareas';
   drawer.dataset.tab = tab;
   drawer.querySelectorAll('.crono-idle-drawer-tab').forEach(btn => {
     const active = btn.dataset.tab === tab;
@@ -22065,7 +22068,10 @@ function cronoUpdateIdleDrawer() {
     panel.classList.toggle('active', panel.dataset.panel === tab);
   });
   if (tab === 'tareas') renderCronoTasks();
-  else cronoRenderTaskCount();
+  else {
+    cronoRenderTaskCount();
+    if (typeof metronomeRender === 'function') metronomeRender();
+  }
 }
 
 function cronoSyncObservationInputs() {

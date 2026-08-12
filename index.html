@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=261">
+<link rel="stylesheet" href="styles.css?v=262">
 </head>
 <body>
 
@@ -358,6 +358,9 @@
           </button>
           <button type="button" class="crono-task-density-btn" data-task-density-toggle onclick="toggleCronoTaskDensity()"
                   aria-label="Reducir tamaño de las tareas" title="Reducir tamaño de las tareas" aria-pressed="false"><span>A</span><small>−</small></button>
+          <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab crono-metronome-tab" data-tab="metronomo" role="tab" aria-label="Metrónomo" aria-selected="false" onclick="cronoSetIdleDrawerTab('metronomo')">
+            <span class="crono-metronome-tab-icon" aria-hidden="true"></span><span class="crono-metronome-tab-label">Metrónomo</span>
+          </button>
           <button type="button" class="crono-run-drawer-tab crono-drawer-pase-action" data-action="pase" role="button" onclick="openCronoPaseRapido()">Pase +</button>
         </div>
 
@@ -366,6 +369,9 @@
             <section class="crono-idle-tasks" aria-label="Tareas">
               <div class="crono-tasks-panel crono-tasks-panel-idle" id="cronoIdleTasksPanel"></div>
             </section>
+          </div>
+          <div class="crono-run-drawer-panel crono-idle-drawer-panel" data-panel="metronomo" role="tabpanel">
+            <div class="crono-metronome" data-metronome-surface="idle"></div>
           </div>
         </div>
 
@@ -451,12 +457,18 @@
         </button>
         <button type="button" class="crono-task-density-btn" data-task-density-toggle onclick="toggleCronoTaskDensity()"
                 aria-label="Reducir tamaño de las tareas" title="Reducir tamaño de las tareas" aria-pressed="false"><span>A</span><small>−</small></button>
+        <button type="button" class="crono-run-drawer-tab crono-metronome-tab" data-tab="metronomo" role="tab" aria-label="Metrónomo" aria-selected="false" onclick="cronoSetRunDrawerTab('metronomo')">
+          <span class="crono-metronome-tab-icon" aria-hidden="true"></span><span class="crono-metronome-tab-label">Metrónomo</span>
+        </button>
         <button type="button" class="crono-run-drawer-tab" data-action="pase" role="button" onclick="openCronoPaseRapido()">Pase +</button>
       </div>
 
       <div class="crono-run-drawer-panels">
         <div class="crono-run-drawer-panel active" data-panel="tareas" role="tabpanel">
           <div class="crono-tasks-panel" id="cronoTasksPanel"></div>
+        </div>
+        <div class="crono-run-drawer-panel" data-panel="metronomo" role="tabpanel">
+          <div class="crono-metronome" data-metronome-surface="running"></div>
         </div>
       </div>
 
@@ -2178,8 +2190,9 @@
 <script src="data-core.js?v=228"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=209"></script>
-<script src="app.js?v=261"></script>
+<script src="app.js?v=262"></script>
 <script src="timer-objectives.js?v=249"></script>
+<script src="metronome.js?v=262"></script>
 <script type="module" src="mystery-house.js?v=260"></script>
 
 </body>
@@ -2202,7 +2215,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=261', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=262', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

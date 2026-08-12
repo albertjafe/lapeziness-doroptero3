@@ -20731,3 +20731,406 @@ body[data-view="casa"] #view-casa.active {
   }
   #view-session .session-resumen-card.is-quick-updated { animation: none; }
 }
+
+/* Metronome: one compact instrument shared by idle and running sessions. */
+#view-cronometro .crono-minimal-tabs {
+  grid-template-columns: minmax(72px, 1fr) 42px minmax(92px, 1fr) minmax(72px, .82fr) !important;
+}
+
+#view-cronometro .crono-metronome-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+#view-cronometro .crono-metronome-tab-icon {
+  position: relative;
+  display: inline-block;
+  width: 13px;
+  height: 15px;
+  flex: 0 0 13px;
+}
+
+#view-cronometro .crono-metronome-tab-icon::before {
+  position: absolute;
+  top: 1px;
+  left: 6px;
+  width: 1.5px;
+  height: 10px;
+  border-radius: 2px;
+  background: currentColor;
+  content: '';
+  transform: rotate(18deg);
+  transform-origin: 50% 0;
+}
+
+#view-cronometro .crono-metronome-tab-icon::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+}
+
+#view-cronometro .crono-run-drawer-panel[data-panel="metronomo"],
+#view-cronometro .crono-idle-drawer-panel[data-panel="metronomo"] {
+  min-height: 0;
+  overflow: hidden;
+}
+
+#view-cronometro .crono-run-drawer-panel[data-panel="metronomo"].active,
+#view-cronometro .crono-idle-drawer-panel[data-panel="metronomo"].active {
+  display: block;
+}
+
+#view-cronometro .crono-metronome {
+  --metro-color: color-mix(in srgb, var(--accent) 78%, #2875a7);
+  width: 100%;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+#view-cronometro .crono-metronome-shell {
+  display: grid;
+  width: 100%;
+  min-height: 260px;
+  box-sizing: border-box;
+  align-content: center;
+  gap: 17px;
+  padding: 18px clamp(14px, 3vw, 34px) 20px;
+  border: 1px solid color-mix(in srgb, var(--border2) 72%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg2) 94%, var(--accent) 2%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 36%, transparent);
+}
+
+#view-cronometro .crono-metronome-pulse-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 10px;
+}
+
+#view-cronometro .crono-metronome-status {
+  color: var(--text3);
+  font: 760 8px/1 var(--font-mono, 'JetBrains Mono', monospace);
+  letter-spacing: .08em;
+}
+
+#view-cronometro .crono-metronome-beats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 12px;
+}
+
+#view-cronometro .crono-metronome-beat {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border: 1px solid color-mix(in srgb, var(--metro-color) 42%, var(--border2));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--metro-color) 11%, var(--bg3));
+  transition: transform 65ms ease-out, background-color 65ms linear, box-shadow 90ms ease-out;
+}
+
+#view-cronometro .crono-metronome-beat.active {
+  background: var(--metro-color);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--metro-color) 13%, transparent);
+  transform: scale(1.25);
+}
+
+#view-cronometro .crono-metronome-beat.accented {
+  background: color-mix(in srgb, var(--accent) 76%, #d3a323);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+#view-cronometro .crono-metronome-accent {
+  display: grid;
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text3);
+  font: 750 10px/1 var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+#view-cronometro .crono-metronome-accent.active {
+  border-color: color-mix(in srgb, var(--accent) 44%, var(--border2));
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg2));
+  color: var(--accent);
+}
+
+#view-cronometro .crono-metronome-main {
+  display: grid;
+  grid-template-columns: minmax(86px, 1fr) minmax(112px, 150px) minmax(86px, 1fr);
+  align-items: center;
+  gap: 20px;
+}
+
+#view-cronometro .crono-metronome-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#view-cronometro .crono-metronome-step-left { justify-content: flex-end; }
+#view-cronometro .crono-metronome-step-right { justify-content: flex-start; }
+
+#view-cronometro .crono-metronome-step button {
+  min-width: 42px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text2);
+  font: 720 11px/1 var(--font-mono, 'JetBrains Mono', monospace);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 100ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+#view-cronometro .crono-metronome-step button:active {
+  border-color: color-mix(in srgb, var(--metro-color) 54%, var(--border2));
+  color: var(--metro-color);
+  transform: scale(.92);
+}
+
+#view-cronometro .crono-metronome-tempo {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+#view-cronometro .crono-metronome-tempo strong {
+  color: var(--text);
+  font: 500 56px/.84 var(--font-mono, 'JetBrains Mono', monospace);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+#view-cronometro .crono-metronome-tempo span {
+  max-width: 100%;
+  margin-top: 10px;
+  overflow: hidden;
+  color: var(--text3);
+  font: 690 9px/1 var(--font-mono, 'JetBrains Mono', monospace);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#view-cronometro .crono-metronome-slider {
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--metro-color);
+  cursor: pointer;
+  touch-action: pan-y;
+}
+
+#view-cronometro .crono-metronome-slider::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--metro-color) 24%, var(--border2));
+}
+
+#view-cronometro .crono-metronome-slider::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  margin-top: -7.5px;
+  border: 2px solid var(--bg2);
+  border-radius: 50%;
+  background: var(--metro-color);
+  box-shadow: 0 1px 5px rgba(0,0,0,.16);
+  appearance: none;
+}
+
+#view-cronometro .crono-metronome-foot {
+  display: grid;
+  grid-template-columns: minmax(170px, 1fr) minmax(104px, .7fr) 58px;
+  align-items: center;
+  gap: 16px;
+}
+
+#view-cronometro .crono-metronome-meter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#view-cronometro .crono-metronome-meter > span {
+  margin-right: 5px;
+  color: var(--text3);
+  font: 690 8px/1 var(--font-mono, 'JetBrains Mono', monospace);
+  text-transform: uppercase;
+}
+
+#view-cronometro .crono-metronome-meter button {
+  width: 32px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text3);
+  font: 720 10px/1 var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+#view-cronometro .crono-metronome-meter button.active {
+  border-color: color-mix(in srgb, var(--metro-color) 52%, var(--border2));
+  background: color-mix(in srgb, var(--metro-color) 9%, var(--bg2));
+  color: var(--metro-color);
+}
+
+#view-cronometro .crono-metronome-tap {
+  display: flex;
+  min-height: 42px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 10px;
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+#view-cronometro .crono-metronome-tap span {
+  font: 780 11px/1 var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+#view-cronometro .crono-metronome-tap small {
+  margin-top: 3px;
+  color: var(--text3);
+  font-size: 7px;
+}
+
+#view-cronometro .crono-metronome-tap.is-tapped { animation: crono-metronome-tap 150ms ease-out; }
+
+#view-cronometro .crono-metronome-play {
+  position: relative;
+  display: grid;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--metro-color) 60%, var(--border2));
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--metro-color) 10%, var(--bg2));
+  color: var(--metro-color);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 120ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+#view-cronometro .crono-metronome-play span {
+  width: 0;
+  height: 0;
+  margin-left: 3px;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 11px solid currentColor;
+}
+
+#view-cronometro .crono-metronome-play.is-playing {
+  background: var(--metro-color);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--metro-color) 10%, transparent);
+  color: var(--bg2);
+}
+
+#view-cronometro .crono-metronome-play.is-playing span {
+  width: 11px;
+  height: 13px;
+  margin: 0;
+  border: 0;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+#view-cronometro .crono-metronome-play:active { transform: scale(.91); }
+
+@keyframes crono-metronome-tap {
+  45% {
+    border-color: color-mix(in srgb, var(--metro-color) 70%, var(--border2));
+    background: color-mix(in srgb, var(--metro-color) 12%, var(--bg2));
+    transform: scale(.95);
+  }
+}
+
+@media (max-width: 699px) {
+  #view-cronometro .crono-minimal-tabs {
+    grid-template-columns: minmax(72px, 1fr) 38px minmax(82px, 1fr) minmax(64px, .8fr) !important;
+    gap: 4px;
+  }
+  #view-cronometro .crono-metronome-tab { gap: 4px; }
+  #view-cronometro .crono-metronome-tab-label { font-size: 9px; }
+  #view-cronometro .crono-metronome-tab-icon { width: 11px; flex-basis: 11px; transform: scale(.9); }
+  #view-cronometro .crono-metronome-shell {
+    min-height: 236px;
+    gap: 13px;
+    padding: 13px 11px 15px;
+  }
+  #view-cronometro .crono-metronome-pulse-row { grid-template-columns: 56px minmax(0, 1fr) 30px; gap: 5px; }
+  #view-cronometro .crono-metronome-status { font-size: 7px; }
+  #view-cronometro .crono-metronome-accent { width: 29px; height: 27px; }
+  #view-cronometro .crono-metronome-beats { gap: 10px; }
+  #view-cronometro .crono-metronome-main { grid-template-columns: minmax(70px, 1fr) 92px minmax(70px, 1fr); gap: 7px; }
+  #view-cronometro .crono-metronome-step { gap: 3px; }
+  #view-cronometro .crono-metronome-step button { min-width: 35px; height: 34px; padding: 0 5px; font-size: 9px; }
+  #view-cronometro .crono-metronome-tempo strong { font-size: 43px; }
+  #view-cronometro .crono-metronome-tempo span { margin-top: 8px; font-size: 7px; }
+  #view-cronometro .crono-metronome-foot { grid-template-columns: minmax(0, 1fr) 78px 48px; gap: 7px; }
+  #view-cronometro .crono-metronome-meter { gap: 2px; }
+  #view-cronometro .crono-metronome-meter > span { display: none; }
+  #view-cronometro .crono-metronome-meter button { width: 27px; height: 29px; }
+  #view-cronometro .crono-metronome-tap { min-height: 39px; padding-inline: 5px; }
+  #view-cronometro .crono-metronome-tap small { display: none; }
+  #view-cronometro .crono-metronome-play { width: 46px; height: 46px; }
+}
+
+@media (max-width: 390px) {
+  #view-cronometro .crono-metronome-tab-label { display: none; }
+  #view-cronometro .crono-minimal-tabs {
+    grid-template-columns: minmax(76px, 1fr) 38px 48px minmax(66px, .8fr) !important;
+  }
+  #view-cronometro .crono-metronome-main { grid-template-columns: 70px minmax(74px, 1fr) 70px; }
+  #view-cronometro .crono-metronome-step button { min-width: 32px; }
+  #view-cronometro .crono-metronome-meter button { width: 25px; }
+}
+
+@media (max-width: 899px) and (orientation: landscape) {
+  #view-cronometro .crono-metronome-shell {
+    min-height: 176px;
+    grid-template-columns: minmax(220px, .9fr) minmax(260px, 1.1fr);
+    grid-template-rows: auto auto auto;
+    gap: 8px 22px;
+    padding: 10px 16px;
+  }
+  #view-cronometro .crono-metronome-pulse-row { grid-column: 1; grid-row: 1; }
+  #view-cronometro .crono-metronome-main { grid-column: 1; grid-row: 2 / 4; gap: 8px; }
+  #view-cronometro .crono-metronome-slider { grid-column: 2; grid-row: 1; align-self: center; }
+  #view-cronometro .crono-metronome-foot { grid-column: 2; grid-row: 2 / 4; }
+  #view-cronometro .crono-metronome-tempo strong { font-size: 42px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #view-cronometro .crono-metronome-beat,
+  #view-cronometro .crono-metronome-play,
+  #view-cronometro .crono-metronome-step button { transition: none; }
+  #view-cronometro .crono-metronome-tap.is-tapped { animation: none; }
+}

@@ -2943,3 +2943,36 @@ test('uses a complete two-column timer layout on landscape phones', async ({ bro
     await context.close();
   }
 });
+
+test('runs one persistent metronome from idle and active timer layouts', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepare(page);
+  await page.evaluate(() => showView('cronometro'));
+
+  await page.locator('#cronoIdleDrawer .crono-metronome-tab').click();
+  await expect(page.locator('#cronoIdleDrawer [data-panel="metronomo"]')).toHaveClass(/active/);
+  await expect(page.locator('#cronoIdleDrawer .crono-metronome-tempo strong')).toHaveText('80');
+
+  await page.locator('#cronoIdleDrawer .crono-metronome-step-right button').last().click();
+  await page.locator('#cronoIdleDrawer .crono-metronome-meter button', { hasText: '3' }).click();
+  await expect(page.locator('#cronoIdleDrawer .crono-metronome-tempo strong')).toHaveText('85');
+  expect(await page.evaluate(() => __metronomeDebug.getState())).toMatchObject({ bpm: 85, beatsPerBar: 3 });
+
+  await page.locator('#cronoIdleDrawer .crono-metronome-play').click();
+  expect(await page.evaluate(() => __metronomeDebug.getState().playing)).toBe(true);
+
+  await page.evaluate(() => {
+    const select = document.getElementById('cronoObraSelect');
+    select.value = 'obra::obra_1';
+    cronoUpdateStartBtn();
+    cronoStart();
+    cronoSetRunDrawerTab('metronomo');
+  });
+  await expect(page.locator('#cronoRunDrawer [data-panel="metronomo"]')).toHaveClass(/active/);
+  await expect(page.locator('#cronoRunDrawer .crono-metronome-tempo strong')).toHaveText('85');
+  expect(await page.evaluate(() => __metronomeDebug.getState())).toMatchObject({ bpm: 85, beatsPerBar: 3, playing: true });
+
+  await page.locator('#cronoRunDrawer .crono-metronome-play').click();
+  expect(await page.evaluate(() => __metronomeDebug.getState().playing)).toBe(false);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('alberto_metronome_v1')))).toMatchObject({ bpm: 85, beatsPerBar: 3 });
+});
