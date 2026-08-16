@@ -24,7 +24,7 @@ describe('StudyPush timer snapshots', () => {
     expect(Date.parse(snapshot.ends_at) - now).toBe(17 * 60_000);
   });
 
-  it('describes a free session as a stopwatch without an end date', () => {
+  it('gives a free stopwatch a hard 120-minute server deadline', () => {
     const now = Date.parse('2026-07-23T12:00:00Z');
     const snapshot = globalThis.StudyPush.runSnapshot({
       state: 'running',
@@ -37,7 +37,7 @@ describe('StudyPush timer snapshots', () => {
     }, now);
 
     expect(snapshot.mode).toBe('stopwatch');
-    expect(snapshot.ends_at).toBeNull();
+    expect(Date.parse(snapshot.ends_at) - now).toBe(88 * 60_000);
     expect(Date.parse(snapshot.started_at)).toBe(now - 32 * 60_000);
   });
 });

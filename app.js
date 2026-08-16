@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-12-metronome-pattern-v135';
+const APP_VERSION = '2026-08-16-stopwatch-cap-v136';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -19619,6 +19619,9 @@ async function forceCloudResync() {
 async function onAuthSuccess() {
   // (la pantalla de login ha sido eliminada — esta función sólo carga datos
   // desde la nube si hay sesión válida)
+  if (typeof StudyPush !== 'undefined' && typeof StudyPush.reconcileStaleRuns === 'function') {
+    await StudyPush.reconcileStaleRuns();
+  }
   const reloaded = await loadFromCloud();
   if (reloaded) {
     renderObras();
@@ -19823,6 +19826,7 @@ if (window.ResizeObserver) {
 const CRONO_STORAGE_KEY = 'pianoCrono_v2';
 const CRONO_MIN_MIN = 10;                  // mínimo de minutos para que cuente
 const CRONO_PAUSE_LIMIT_MS = 5 * 60 * 1000; // 5 minutos máx de pausa
+const CRONO_FREE_LIMIT_MS = 120 * 60 * 1000; // corte duro del cronómetro libre
 
 // ── PALETA DE COLORES PERSONALIZABLES PARA OBRAS ────────────────────────────
 // 8 colores cuidados, calmados, distinguibles. Cada obra puede tener uno.
@@ -20777,7 +20781,10 @@ function cronoLoadState() {
     crono.quickDestelloNote = typeof s.quickDestelloNote === 'string'
       ? s.quickDestelloNote.slice(0, CRONO_DESTELLO_MAX_CHARS)
       : '';
-    if (!restoringActiveRun) return false;
+    if (!restoringActiveRun) {
+      if (s.runId && typeof StudyPush !== 'undefined') StudyPush.cancelRun(s.runId);
+      return false;
+    }
     crono.state = s.state;
     crono.targetMinutes = s.targetMinutes || null;
     crono.targetDurationMs = Number.isFinite(s.targetDurationMs) && s.targetDurationMs > 0
@@ -24506,7 +24513,7 @@ const TIMER_RADIUS = 94;
 const TIMER_CIRC = 2 * Math.PI * TIMER_RADIUS; // ≈ 590.62
 const CRONO_RUN_PROGRESS_RADIUS = 94;
 const CRONO_RUN_PROGRESS_CIRC = 2 * Math.PI * CRONO_RUN_PROGRESS_RADIUS;
-const CRONO_FREE_PROGRESS_MS = 120 * 60 * 1000;
+const CRONO_FREE_PROGRESS_MS = CRONO_FREE_LIMIT_MS;
 
 function cronoUpdateTimerProgress(elapsedMs) {
   const wrap = document.getElementById('cronoDisplayWrap');
@@ -25006,9 +25013,15 @@ function cronoStartTick() {
         cronoQueueFinish(crono.runId);
       }
     } else {
-      // El cronómetro libre no tiene objetivo ni límite artificial.
+      // El cronómetro libre se detiene a las dos horas para evitar sesiones
+      // huérfanas si el navegador queda cerrado o pierde su estado visual.
       if (disp) cronoSetMainDisplay(elapsedMs);
       cronoUpdateTimerProgress(elapsedMs);
+      if (cronoTargetReached()) {
+        clearInterval(crono.tickInterval);
+        crono.tickInterval = null;
+        cronoQueueFinish(crono.runId);
+      }
     }
     // Probabilidad en vivo de 4h/5h (recalcula solo al cambiar de minuto).
     if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI();
@@ -25406,11 +25419,7 @@ function cronoPlayHarvest(prevMin, totalMin, addedMin) {
 
 function cronoEffectiveEndedAtIso(elapsedMs) {
   if (!crono.startTs) return new Date().toISOString();
-  if (crono.state === 'paused' && crono.pauseStartTs) return new Date(crono.pauseStartTs).toISOString();
-  if (crono.targetDurationMs != null) {
-    return new Date(crono.startTs + (crono.pausedMs || 0) + elapsedMs).toISOString();
-  }
-  return new Date().toISOString();
+  return new Date(crono.startTs + (crono.pausedMs || 0) + elapsedMs).toISOString();
 }
 
 function cronoFinish(expectedRunId) {
@@ -25432,7 +25441,7 @@ function cronoFinish(expectedRunId) {
   }
 
   // Los objetivos se aplican también si el navegador despierta tarde. El modo
-  // libre conserva todo el tiempo activo, sin un límite artificial.
+  // libre queda limitado a 120 minutos para no guardar sesiones huérfanas.
   const ms = cronoEffectiveElapsedMs();
   const minutos = Math.floor(ms / 60000);
   const cronoSessionNotes = cronoBuildSessionNotes(ms, minutos);
@@ -26356,6 +26365,9 @@ function cronoOnLeaveView() {
 
 // Hidratar al cargar (si había sesión activa)
 function cronoHydrate() {
+  if (typeof StudyPush !== 'undefined' && typeof StudyPush.reconcileStaleRuns === 'function') {
+    StudyPush.reconcileStaleRuns();
+  }
   if (cronoLoadState()) {
     if (crono.state === 'paused' && cronoPauseRemainingMs() <= 0) {
       // La pausa expiró estando la app cerrada. En lugar de terminar (como
@@ -26376,7 +26388,7 @@ function cronoHydrate() {
     } else if (crono.state === 'paused') {
       cronoStartPauseCountdown();
     }
-    if (crono.state === 'running' && typeof StudyPush !== 'undefined') {
+    if (crono.state === 'running' && !cronoTargetReached() && typeof StudyPush !== 'undefined') {
       StudyPush.syncRun({ reason: 'hydrate' });
     }
   }

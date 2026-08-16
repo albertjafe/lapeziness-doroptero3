@@ -19,9 +19,11 @@ describe('TimerCore', () => {
     expect(TimerCore.activeElapsedMs(run, 19 * 60_000 + 1_000)).toBe(14 * 60_000);
   });
 
-  it('leaves a free stopwatch uncapped', () => {
+  it('caps a free stopwatch at 120 minutes', () => {
     const run = { state: 'running', startTs: 1_000, pausedMs: 0, targetDurationMs: null };
-    expect(TimerCore.effectiveElapsedMs(run, 1_000 + 8 * 60 * 60_000)).toBe(8 * 60 * 60_000);
+    expect(TimerCore.effectiveElapsedMs(run, 1_000 + 8 * 60 * 60_000)).toBe(120 * 60_000);
+    expect(TimerCore.isTargetReached(run, 1_000 + 119 * 60_000)).toBe(false);
+    expect(TimerCore.isTargetReached(run, 1_000 + 120 * 60_000)).toBe(true);
   });
 
   it('requests one warning at each of the final five timer minutes', () => {
@@ -74,6 +76,8 @@ describe('TimerCore', () => {
     const lateWake = TimerCore.notificationCheckpoint(run, 46 * 60_000, first);
     expect(lateWake.event).toEqual({ kind: 'stopwatch-milestone', milestoneMinutes: 45 });
     expect(TimerCore.notificationCheckpoint(run, 46 * 60_000, lateWake).event).toBeNull();
+    expect(TimerCore.notificationCheckpoint(run, 120 * 60_000, lateWake).event).toBeNull();
+    expect(TimerCore.notificationCheckpoint(run, 4 * 24 * 60 * 60_000, lateWake).event).toBeNull();
   });
 
   it('does not create stopwatch milestones during a rest', () => {

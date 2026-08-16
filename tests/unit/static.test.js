@@ -29,6 +29,19 @@ describe('quality wiring', () => {
     expect(dispatcher).toContain('pushTextMessage');
   });
 
+  it('caps orphaned server stopwatches at 120 minutes', () => {
+    const migration = fs.readFileSync(
+      path.join(root, 'supabase/migrations/202608160001_cap_stopwatch_runs.sql'),
+      'utf8'
+    );
+    expect(migration).toContain("interval '120 minutes'");
+    expect(migration).toContain('current_milestone between 15 and 105');
+    expect(migration).toContain("status = 'completed'");
+    const pushClient = fs.readFileSync(path.join(root, 'push-client.js'), 'utf8');
+    expect(pushClient).toContain('reconcileStaleRuns');
+    expect(pushClient).toContain(".eq('mode', 'stopwatch')");
+  });
+
   it('does not persist the legacy password payload', () => {
     const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
     expect(app).not.toContain('_saveStoredCredentials');

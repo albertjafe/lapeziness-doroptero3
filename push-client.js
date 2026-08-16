@@ -3,6 +3,8 @@
 
   const STORAGE_KEY = 'alberto_web_push_v1';
   const VAPID_PUBLIC_KEY = 'BPM7phxT-XUZ1b0SVL1ZDy6UN0eL8c1wQBYMIEiq2IEe1v56DGxeMVhQYEbepOpU0gi3fEW2pIyEn2ZIu2LninU';
+  const MAX_STOPWATCH_MS = 120 * 60_000;
+  const terminalRunIds = new Set();
 
   function readState() {
     try {
@@ -151,13 +153,16 @@
     const target = Number(run.targetDurationMs) > 0
       ? Number(run.targetDurationMs)
       : (Number(run.targetMinutes) > 0 ? Number(run.targetMinutes) * 60000 : null);
+    const stopwatchEnd = target == null
+      ? new Date(currentTime + Math.max(0, MAX_STOPWATCH_MS - elapsed)).toISOString()
+      : null;
     return {
       run_id: run.runId,
       mode: target == null ? 'stopwatch' : 'timer',
       is_rest: !!run.isRest,
       work_name: run.displayName || (run.isRest ? 'Descanso' : 'Sesión de estudio'),
       started_at: new Date(currentTime - elapsed).toISOString(),
-      ends_at: target == null ? null : new Date(currentTime + Math.max(0, target - elapsed)).toISOString(),
+      ends_at: target == null ? stopwatchEnd : new Date(currentTime + Math.max(0, target - elapsed)).toISOString(),
       status: 'active',
       updated_at: new Date(currentTime).toISOString(),
     };
@@ -170,7 +175,19 @@
     try {
       const user = await currentUser();
       if (!user) return false;
+      if (terminalRunIds.has(snapshot.run_id) || !root.crono ||
+          root.crono.runId !== snapshot.run_id || root.crono.state !== 'running') return false;
       snapshot.user_id = user.id;
+      if (options && (options.resetCountdown || options.resetMilestones)) {
+        const { error: staleError } = await root.getSB().from('push_timer_runs')
+          .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+          .eq('user_id', user.id)
+          .in('status', ['active', 'paused'])
+          .neq('run_id', snapshot.run_id);
+        if (staleError) throw staleError;
+      }
+      if (terminalRunIds.has(snapshot.run_id) || !root.crono ||
+          root.crono.runId !== snapshot.run_id || root.crono.state !== 'running') return false;
       if (options && options.resetCountdown) snapshot.sent_countdown = [];
       if (options && options.resetMilestones) snapshot.last_milestone_minutes = 0;
       const { error } = await root.getSB().from('push_timer_runs').upsert(snapshot, {
@@ -201,9 +218,35 @@
     }
   }
 
+  async function reconcileStaleRuns() {
+    if (typeof root.getSB !== 'function') return false;
+    try {
+      const user = await currentUser();
+      if (!user) return false;
+      const cutoff = new Date(Date.now() - MAX_STOPWATCH_MS).toISOString();
+      const { error } = await root.getSB().from('push_timer_runs')
+        .update({ status: 'completed', updated_at: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .eq('mode', 'stopwatch')
+        .in('status', ['active', 'paused'])
+        .lte('started_at', cutoff);
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.warn('Web Push stale timer cleanup failed', error);
+      return false;
+    }
+  }
+
+  function markTerminal(runId) {
+    if (!runId) return;
+    terminalRunIds.add(runId);
+    if (terminalRunIds.size > 100) terminalRunIds.delete(terminalRunIds.values().next().value);
+  }
+
   function pauseRun(runId) { return setRunStatus(runId, 'paused'); }
-  function cancelRun(runId) { return setRunStatus(runId, 'cancelled'); }
-  function completeRun(runId) { return setRunStatus(runId, 'completed'); }
+  function cancelRun(runId) { markTerminal(runId); return setRunStatus(runId, 'cancelled'); }
+  function completeRun(runId) { markTerminal(runId); return setRunStatus(runId, 'completed'); }
 
   root.StudyPush = {
     VAPID_PUBLIC_KEY,
@@ -213,6 +256,7 @@
     enableFromGesture,
     runSnapshot,
     syncRun,
+    reconcileStaleRuns,
     pauseRun,
     cancelRun,
     completeRun,

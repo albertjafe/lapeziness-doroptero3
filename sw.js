@@ -1,17 +1,17 @@
-const CACHE = 'estudio-v263';
+const CACHE = 'estudio-v264';
 const ASSETS = [
   './index.html',
   './styles.css?v=263',
-  './app.js?v=263',
+  './app.js?v=264',
   './metronome.js?v=263',
   './mystery-house.js?v=260',
   './vendor/three.module.min.js',
   './vendor/three.core.min.js',
   './timer-objectives.js?v=249',
-  './timer-core.js?v=209',
+  './timer-core.js?v=264',
   './data-core.js?v=228',
   './sync-core.js?v=209',
-  './push-client.js?v=209',
+  './push-client.js?v=264',
   './manifest.json',
   './icon.svg',
   './icon-192.png',

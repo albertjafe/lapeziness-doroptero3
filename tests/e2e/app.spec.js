@@ -2524,6 +2524,37 @@ test('advances free timer progress to a 120 minute maximum and enlarges mode lab
   expect(metrics.controlsInMain).toBe(true);
 });
 
+test('finishes a stale free stopwatch at exactly 120 minutes', async ({ page }) => {
+  await prepare(page);
+  const result = await page.evaluate(async () => {
+    showView('cronometro');
+    db.sessionPlants = [];
+    crono.state = 'running';
+    crono.mode = 'stopwatch';
+    crono.runId = 'stale-free-run';
+    crono.isRest = false;
+    crono.obraId = 'obra_1';
+    crono.movId = null;
+    crono.displayName = 'Bach · Preludio';
+    crono.startTs = Date.now() - 3 * 24 * 60 * 60_000;
+    crono.pausedMs = 0;
+    crono.pauseStartTs = 0;
+    crono.targetMinutes = null;
+    crono.targetDurationMs = null;
+    crono.notificationLastMilestoneMinutes = 105;
+    cronoHandleLifecycleResume();
+    await new Promise(resolve => setTimeout(resolve, 80));
+    const saved = db.sessionPlants.find(item => item.runId === 'stale-free-run');
+    return {
+      state: crono.state,
+      mins: saved && saved.mins,
+      spanMinutes: saved && Math.round((Date.parse(saved.endedAt) - Date.parse(saved.startedAt)) / 60_000),
+    };
+  });
+
+  expect(result).toEqual({ state: 'idle', mins: 120, spanMinutes: 120 });
+});
+
 test('retires until-time mode without breaking an active legacy timer', async ({ page }) => {
   await prepare(page);
   const result = await page.evaluate(() => {

@@ -3,6 +3,8 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.TimerCore = api;
 })(typeof window !== 'undefined' ? window : globalThis, function () {
+  const MAX_STOPWATCH_MS = 120 * 60_000;
+
   function createRunId(random) {
     if (typeof random === 'function') return 'run_' + random().toString(36).slice(2) + '_' + Date.now().toString(36);
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
@@ -20,15 +22,15 @@
     const active = activeElapsedMs(run, now);
     const target = Number.isFinite(run && run.targetDurationMs) && run.targetDurationMs > 0
       ? run.targetDurationMs
-      : null;
-    return target == null ? active : Math.min(active, target);
+      : MAX_STOPWATCH_MS;
+    return Math.min(active, target);
   }
 
   function isTargetReached(run, now) {
     const target = Number.isFinite(run && run.targetDurationMs) && run.targetDurationMs > 0
       ? run.targetDurationMs
-      : null;
-    return target != null && activeElapsedMs(run, now) >= target;
+      : MAX_STOPWATCH_MS;
+    return activeElapsedMs(run, now) >= target;
   }
 
   function notificationCheckpoint(run, elapsedMs, checkpoint) {
@@ -78,6 +80,14 @@
     }
 
     const previousMilestone = Math.max(0, Number(previous.lastMilestoneMinutes) || 0);
+    if (elapsed >= MAX_STOPWATCH_MS) {
+      return {
+        fiveMinuteSent: !!previous.fiveMinuteSent,
+        timerMinutesSent: Array.isArray(previous.timerMinutesSent) ? previous.timerMinutesSent.slice() : [],
+        lastMilestoneMinutes: Math.min(previousMilestone, 105),
+        event: null,
+      };
+    }
     const milestoneMinutes = Math.floor(elapsed / (15 * 60_000)) * 15;
     if (!(run && run.isRest) && milestoneMinutes >= 15 && milestoneMinutes > previousMilestone) {
       return {
@@ -95,5 +105,5 @@
     };
   }
 
-  return { createRunId, activeElapsedMs, effectiveElapsedMs, isTargetReached, notificationCheckpoint };
+  return { MAX_STOPWATCH_MS, createRunId, activeElapsedMs, effectiveElapsedMs, isTargetReached, notificationCheckpoint };
 });
