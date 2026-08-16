@@ -69,6 +69,57 @@ test('shows today study time prominently and includes the running stopwatch', as
   await expect(summary).toContainText('en directo');
 });
 
+test('keeps events readable, adds competition rounds and compacts completed history', async ({ page }) => {
+  await prepare(page);
+  const start = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+  const final = new Date(Date.now() + 33 * 86400000).toISOString().slice(0, 10);
+
+  await page.evaluate(() => {
+    showView('calendario');
+    switchCalTab('eventos', document.getElementById('calTabEventos'));
+    openAddEvento();
+  });
+  await expect(page.locator('#eventoRondasField')).toBeVisible();
+  await page.locator('#eventoNombre').fill('Concurso Internacional');
+  await page.locator('#eventoFecha').fill(start);
+  await page.locator('.evento-rondas-empty').click();
+  await page.locator('.evento-ronda-name').fill('Eliminatoria');
+  await page.locator('.evento-ronda-date').fill(start);
+  await page.locator('.evento-ronda-add').click();
+  await page.locator('.evento-ronda-name').nth(1).fill('Final');
+  await page.locator('.evento-ronda-date').nth(1).fill(final);
+  await page.locator('#modalAddEvento .modal-btn.primary').click();
+
+  const saved = await page.evaluate(() => db.eventos[0]);
+  expect(saved.rondas.map(ronda => ronda.nombre)).toEqual(['Eliminatoria', 'Final']);
+  expect(saved.fechaFin).toBe(final);
+  await expect(page.locator('#eventosList .evento-card')).toContainText('Concurso Internacional');
+  await expect(page.locator('#eventosList .evento-round-preview')).toHaveCount(2);
+  await expect(page.locator('#eventosList .evento-readiness')).toHaveCount(0);
+  await expect(page.locator('#eventosList .evento-meta80')).toHaveCount(0);
+
+  for (const viewport of [{ width: 390, height: 844 }, { width: 1024, height: 768 }]) {
+    await page.setViewportSize(viewport);
+    const layout = await page.evaluate(() => ({
+      documentFits: document.documentElement.scrollWidth <= window.innerWidth + 1,
+      cardFits: document.querySelector('#eventosList .evento-card').scrollWidth <= document.querySelector('#eventosList .evento-card').clientWidth + 1,
+    }));
+    expect(layout.documentFits, 'document at ' + viewport.width + 'px').toBe(true);
+    expect(layout.cardFits, 'event card at ' + viewport.width + 'px').toBe(true);
+  }
+
+  await page.evaluate(() => {
+    openEventoResultado(db.eventos[0].id);
+    confirmEventoResultado();
+  });
+  const historyCard = page.locator('#eventosPasadosList .evento-history-card');
+  await expect(historyCard).toHaveCount(1);
+  await expect(historyCard).toContainText('✓');
+  await expect(historyCard).toContainText('Concurso Internacional');
+  await expect(historyCard).toContainText('2 rondas');
+  await expect(historyCard.locator('.evento-score-badge')).toHaveCount(0);
+});
+
 test('keeps the app inside the viewport at the four target widths', async ({ browser }) => {
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 834, height: 1194 }, { width: 1024, height: 768 }, { width: 1280, height: 720 }]) {

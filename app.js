@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-16-push-guard-v137';
+const APP_VERSION = '2026-08-16-event-rounds-v138';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -10908,7 +10908,6 @@ function openAddEventoOnDate(dateIso) {
     end.value = '';
     end.min = dateIso || '';
   }
-  updateEventoModalPred();
 }
 
 function openCronoCalendarAdd(dateIso) {
@@ -11617,15 +11616,11 @@ function renderCalendario() {
 function renderEventoCard(ev, isPast, isCompletado) {
   const obras = (ev.obras || []).map(id => db.obras.find(o => o.id === id)).filter(Boolean);
 
+  if (isCompletado) return renderEventoHistoryCard(ev);
+
   // Days label - day 0 = critical
   let diasLabel;
-  if (isCompletado) {
-    const scoreTotal = ev.resultado?.scoreTotal;
-    const col = scoreTotal >= 80 ? 'var(--green)' : scoreTotal >= 55 ? 'var(--accent)' : 'var(--orange)';
-    diasLabel = scoreTotal != null
-      ? '<div class="evento-score-badge" style="background:' + col + '22;color:' + col + ';border:1px solid ' + col + '44">' + scoreTotal + '% éxito</div>'
-      : '<div style="font-size:9px;color:var(--green)">✓ Realizado</div>';
-  } else if (isPast) {
+  if (isPast) {
     diasLabel = '<div class="evento-dias" style="color:var(--text3)">−' + Math.abs(ev.dias) + '</div><div class="evento-dias-label">días atrás</div>';
   } else if (ev.dias === 0) {
     diasLabel = '<div class="evento-dias critico" style="font-size:16px">¡HOY!</div>';
@@ -11646,79 +11641,131 @@ function renderEventoCard(ev, isPast, isCompletado) {
 
   const obrasHtml = obras.map(o => {
     const faseClass = obraFase(o);
-    return '<span class="evento-obra-chip"><span class="evento-obra-dot ' + faseClass + '"></span>' + o.name + '</span>';
+    return '<span class="evento-obra-chip"><span class="evento-obra-dot ' + faseClass + '"></span>' + escapeHtmlSafe(o.name || 'Obra') + '</span>';
   }).join('');
 
-  // Readiness block (only for non-completed upcoming events with obras)
-  let readinessHtml = '';
-  if (!isCompletado && !isPast && obras.length) {
-    const r = computeEventoReadiness(ev);
-    if (r && r.global !== null) {
-      const col = readinessColor(r.global);
-      readinessHtml = '<div class="evento-readiness">' +
-        '<div class="readiness-label-row"><span style="font-size:8px;letter-spacing:0.1em;text-transform:uppercase">Preparación</span>' +
-        '<span class="readiness-pct" style="color:' + col + '">' + r.global + '%</span></div>' +
-        '<div class="readiness-bar-wrap"><div class="readiness-bar-fill" style="width:' + r.global + '%;background:' + col + '"></div></div>' +
-        '<div class="readiness-label-row"><span style="color:' + col + '">' + readinessLabel(r.global) + '</span>' +
-        '<span style="font-size:7px">' + r.detalles.map(d => d.nombre.split(' ')[0] + ' ' + Math.round(d.obraScore) + '%').join(' · ') + '</span></div>' +
-        '</div>';
-    }
-    // Meta de estudio: horas para llevar TODAS las obras al 80% de solidez.
-    const ha = _eventoHorasA80(ev, ev.dias);
-    if (ha) {
-      const fH = h => h >= 10 ? Math.round(h) + ' h' : (Math.round(h * 2) / 2) + ' h';
-      if (ha.faltan === 0) {
-        readinessHtml += '<div class="evento-meta80 ok">Todas tus obras ≥ 80% ✓</div>';
-      } else {
-        let perDia = '';
-        if (ha.porDia != null) {
-          perDia = '<span class="evento-meta80-sub">' + _eventoRitmoSub(ha.porDia) + '</span>';
-        }
-        const cuantas = ha.faltan < ha.total ? ' <span class="evento-meta80-n">(' + ha.faltan + '/' + ha.total + ')</span>' : '';
-        readinessHtml += '<div class="evento-meta80">' +
-          '<span>Para todo al 80%: <strong>' + fH(ha.horas) + '</strong>' + cuantas + '</span>' +
-          perDia + '</div>';
-      }
-    }
-  }
-
-  // Resultado detail for completed
-  let resultadoHtml = '';
-  if (isCompletado && ev.resultado?.obrasResultados?.length) {
-    const rows = ev.resultado.obrasResultados.map(r =>
-      '<div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text2);padding:2px 0">' +
-      '<span>' + (r.obraName || r.obraId) + '</span>' +
-      '<span style="color:' + readinessColor(r.obraScore) + ';font-family:\'JetBrains Mono\',monospace">' + r.obraScore + '%</span></div>'
-    ).join('');
-    resultadoHtml = '<div style="padding:8px 16px 4px;border-top:1px solid var(--border2)">' + rows + '</div>';
-  }
-
-  const doneBtn = isCompletado
-    ? '<button class="evento-done-btn completado" disabled>✓ Realizado</button>'
-    : '<button class="evento-done-btn" onclick="openEventoResultado(\'' + ev.id + '\')">✓ Marcar realizado</button>';
+  const rondasHtml = renderEventoRondasPreview(ev);
+  const doneBtn = '<button class="evento-done-btn" onclick="openEventoResultado(\'' + ev.id + '\')">✓ Marcar como hecho</button>';
 
   const cardOpacity = (isPast && !isCompletado) ? ' style="opacity:0.55"' : '';
 
   return '<div class="evento-card"' + cardOpacity + '>' +
     '<div class="evento-header"><div>' +
     '<span class="evento-tipo-badge ' + ev.tipo + '">' + (EVENT_LABEL[ev.tipo]||ev.tipo) + '</span>' +
-    '<div class="evento-nombre" style="margin-top:6px">' + ev.nombre + '</div>' +
+    '<div class="evento-nombre" style="margin-top:6px">' + escapeHtmlSafe(ev.nombre || 'Evento') + '</div>' +
     '<div style="font-size:9px;color:var(--text3);margin-top:2px">' + fechaStr + '</div>' +
     '</div>' +
     '<div class="evento-fecha">' + diasLabel + '</div></div>' +
+    rondasHtml +
     (obras.length ? '<div class="evento-obras-section"><div class="evento-obras-label">Obras (' + obras.length + ')</div>' + obrasHtml + '</div>' : '') +
-    readinessHtml +
-    resultadoHtml +
     '<div class="evento-actions">' +
     doneBtn +
-    (!isCompletado ? '<button class="evento-edit-btn" onclick="openEditEvento(\'' + ev.id + '\')">Editar</button>' : '') +
+    '<button class="evento-edit-btn" onclick="openEditEvento(\'' + ev.id + '\')">Editar</button>' +
     '<button class="evento-delete-btn" onclick="deleteEvento(\'' + ev.id + '\')">Eliminar</button>' +
     '</div></div>';
+}
+
+function renderEventoHistoryCard(ev) {
+  const completed = calendarDateFromISO(ev.completedDate) || calendarDateFromISO(ev.fecha);
+  const fecha = completed?.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }) || '';
+  const rondas = normalizeEventoRondas(ev.rondas);
+  const meta = [EVENT_LABEL[ev.tipo] || ev.tipo, fecha, rondas.length ? rondas.length + (rondas.length === 1 ? ' ronda' : ' rondas') : '']
+    .filter(Boolean).join(' · ');
+  return '<div class="evento-history-card">' +
+    '<div class="evento-history-tick" aria-hidden="true">✓</div>' +
+    '<div class="evento-history-copy">' +
+      '<div class="evento-history-name">' + escapeHtmlSafe(ev.nombre || 'Evento') + '</div>' +
+      '<div class="evento-history-meta">' + escapeHtmlSafe(meta) + '</div>' +
+    '</div>' +
+    '<button type="button" class="evento-history-delete" onclick="deleteEvento(\'' + ev.id + '\')" aria-label="Eliminar ' + escapeHtmlSafe(ev.nombre || 'evento') + '" title="Eliminar">×</button>' +
+  '</div>';
 }
 
 // ─── EVENTO MODAL ─────────────────────────────────────────────────────────────
 
 let eventoTipoSelected = 'concurso';
+
+function normalizeEventoRondas(rondas) {
+  if (!Array.isArray(rondas)) return [];
+  return rondas.map((ronda, index) => {
+    const rawId = String(ronda?.id || '');
+    const id = /^[a-zA-Z0-9_-]+$/.test(rawId) ? rawId : 'ronda_' + index;
+    return {
+      id,
+      nombre: String(ronda?.nombre || '').trim(),
+      fecha: /^\d{4}-\d{2}-\d{2}$/.test(String(ronda?.fecha || '')) ? String(ronda.fecha) : '',
+    };
+  });
+}
+
+function readEventoRondasEditor() {
+  return [...document.querySelectorAll('#eventoRondasList .evento-ronda-row')].map((row, index) => ({
+    id: row.dataset.roundId || 'ronda_' + index,
+    nombre: row.querySelector('.evento-ronda-name')?.value.trim() || '',
+    fecha: row.querySelector('.evento-ronda-date')?.value || '',
+  }));
+}
+
+function renderEventoRondasEditor(rondas) {
+  const list = document.getElementById('eventoRondasList');
+  if (!list) return;
+  const normalized = normalizeEventoRondas(rondas);
+  if (!normalized.length) {
+    list.innerHTML = '<button type="button" class="evento-rondas-empty" onclick="addEventoRonda()">+ Organizar este concurso por rondas</button>';
+    return;
+  }
+  list.innerHTML = normalized.map((ronda, index) =>
+    '<div class="evento-ronda-row" data-round-id="' + ronda.id + '">' +
+      '<span class="evento-ronda-index">' + (index + 1) + '</span>' +
+      '<input type="text" class="modal-input evento-ronda-name" value="' + escapeHtmlSafe(ronda.nombre) + '" placeholder="Nombre de la ronda">' +
+      '<input type="date" class="modal-input evento-ronda-date" value="' + ronda.fecha + '">' +
+      '<button type="button" class="evento-ronda-remove" onclick="removeEventoRonda(\'' + ronda.id + '\')" aria-label="Eliminar ronda" title="Eliminar ronda">×</button>' +
+    '</div>'
+  ).join('');
+}
+
+function updateEventoRondasVisibility() {
+  const field = document.getElementById('eventoRondasField');
+  if (field) field.hidden = eventoTipoSelected !== 'concurso';
+}
+
+function resetEventoModalScroll() {
+  requestAnimationFrame(() => {
+    const modal = document.querySelector('#modalAddEvento .evento-modal');
+    if (modal) modal.scrollTop = 0;
+  });
+}
+
+function addEventoRonda() {
+  const rondas = readEventoRondasEditor();
+  const fallbackDate = [...rondas].reverse().find(r => r.fecha)?.fecha || document.getElementById('eventoFecha')?.value || '';
+  rondas.push({
+    id: 'ronda_' + Date.now().toString(36) + '_' + rondas.length,
+    nombre: rondas.length === 0 ? 'Primera ronda' : 'Ronda ' + (rondas.length + 1),
+    fecha: fallbackDate,
+  });
+  renderEventoRondasEditor(rondas);
+  document.querySelector('#eventoRondasList .evento-ronda-row:last-child .evento-ronda-name')?.focus();
+}
+
+function removeEventoRonda(roundId) {
+  renderEventoRondasEditor(readEventoRondasEditor().filter(ronda => ronda.id !== roundId));
+}
+
+function renderEventoRondasPreview(ev) {
+  if (ev.tipo !== 'concurso') return '';
+  const rondas = normalizeEventoRondas(ev.rondas).filter(ronda => ronda.nombre || ronda.fecha);
+  if (!rondas.length) return '';
+  return '<div class="evento-rounds-preview">' + rondas.map((ronda, index) => {
+    const date = calendarDateFromISO(ronda.fecha);
+    const dateLabel = date ? date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) : 'Sin fecha';
+    return '<div class="evento-round-preview">' +
+      '<span class="evento-round-number">' + (index + 1) + '</span>' +
+      '<span class="evento-round-name">' + escapeHtmlSafe(ronda.nombre || 'Ronda ' + (index + 1)) + '</span>' +
+      '<span class="evento-round-date">' + escapeHtmlSafe(dateLabel) + '</span>' +
+    '</div>';
+  }).join('') + '</div>';
+}
 
 function openAddEvento() {
   document.getElementById('eventoEditId').value = '';
@@ -11732,8 +11779,11 @@ function openAddEvento() {
     b.classList.remove('active');
     if (b.classList.contains('concurso')) b.classList.add('active');
   });
+  renderEventoRondasEditor([]);
+  updateEventoRondasVisibility();
   renderObraCheckList([]);
   openModal('modalAddEvento');
+  resetEventoModalScroll();
 }
 
 function openEditEvento(eventoId) {
@@ -11750,14 +11800,18 @@ function openEditEvento(eventoId) {
     b.classList.remove('active');
     if (b.classList.contains(ev.tipo)) b.classList.add('active');
   });
+  renderEventoRondasEditor(ev.rondas || []);
+  updateEventoRondasVisibility();
   renderObraCheckList(ev.obras || []);
   openModal('modalAddEvento');
+  resetEventoModalScroll();
 }
 
 function selectEventoTipo(tipo, btn) {
   eventoTipoSelected = tipo;
   document.querySelectorAll('#eventoTipoSelector .evento-tipo-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active', tipo);
+  updateEventoRondasVisibility();
 }
 
 function syncEventoDateRange() {
@@ -11772,52 +11826,31 @@ function renderObraCheckList(selectedIds) {
   const container = document.getElementById('obraCheckList');
   container.innerHTML = (db.obras || []).map(o => `
     <label class="obra-check-item">
-      <input type="checkbox" value="${o.id}" ${selectedIds.includes(o.id) ? 'checked' : ''} onchange="updateEventoModalPred()">
+      <input type="checkbox" value="${o.id}" ${selectedIds.includes(o.id) ? 'checked' : ''}>
       <div class="obra-fase ${o.fase}" style="width:7px;height:7px;border-radius:50%;flex-shrink:0"></div>
       <span class="obra-check-name">${o.name}</span>
       <span class="obra-check-composer">${o.composer}</span>
     </label>`).join('');
-  updateEventoModalPred();
-}
-
-// Caja viva en el modal de evento: horas para llevar las obras marcadas al 80%,
-// con ritmo diario si hay fecha. Refleja la selección actual en tiempo real.
-function updateEventoModalPred() {
-  const box = document.getElementById('eventoMetaPred');
-  if (!box) return;
-  const ids = [...document.querySelectorAll('#obraCheckList input:checked')].map(el => el.value);
-  if (!ids.length) { box.style.display = 'none'; return; }
-  const fecha = (document.getElementById('eventoFecha') || {}).value;
-  let dias = null;
-  if (fecha) {
-    const d = new Date(fecha + 'T12:00:00');
-    if (!isNaN(d.getTime())) dias = Math.max(0, Math.ceil((d - Date.now()) / 86400000));
-  }
-  const ha = _eventoHorasA80({ obras: ids }, dias);
-  if (!ha) { box.style.display = 'none'; return; }
-  box.style.display = '';
-  const fH = h => h >= 10 ? Math.round(h) + ' h' : (Math.round(h * 2) / 2) + ' h';
-  if (ha.faltan === 0) {
-    box.className = 'evento-meta80 ok';
-    box.innerHTML = 'Todas estas obras ya están ≥ 80% ✓';
-    return;
-  }
-  box.className = 'evento-meta80';
-  let perDia = '';
-  if (ha.porDia != null) {
-    perDia = '<span class="evento-meta80-sub">' + _eventoRitmoSub(ha.porDia) + '</span>';
-  }
-  const cuantas = ha.faltan < ha.total ? ' <span class="evento-meta80-n">(' + ha.faltan + '/' + ha.total + ')</span>' : '';
-  box.innerHTML = '<span>Para todo al 80%: <strong>' + fH(ha.horas) + '</strong>' + cuantas + '</span>' + perDia;
 }
 
 function saveEvento() {
   const nombre = document.getElementById('eventoNombre').value.trim();
-  const fecha = document.getElementById('eventoFecha').value;
-  const fechaFin = document.getElementById('eventoFechaFin')?.value || '';
+  let fecha = document.getElementById('eventoFecha').value;
+  let fechaFin = document.getElementById('eventoFechaFin')?.value || '';
   if (!nombre) { showToast('Escribe el nombre del evento'); return; }
   if (!fecha) { showToast('Selecciona una fecha'); return; }
   if (fechaFin && fechaFin < fecha) { showToast('La fecha final no puede ser anterior al inicio'); return; }
+
+  const rondaDrafts = eventoTipoSelected === 'concurso' ? readEventoRondasEditor() : [];
+  const rondaIncompleta = rondaDrafts.find(ronda => !ronda.nombre || !ronda.fecha);
+  if (rondaIncompleta) { showToast('Completa el nombre y la fecha de cada ronda'); return; }
+  const rondas = normalizeEventoRondas(rondaDrafts);
+  if (rondas.length) {
+    const fechasRonda = rondas.map(ronda => ronda.fecha).sort();
+    if (fechasRonda[0] < fecha) fecha = fechasRonda[0];
+    const ultimaRonda = fechasRonda[fechasRonda.length - 1];
+    if (ultimaRonda > (fechaFin || fecha)) fechaFin = ultimaRonda;
+  }
 
   const obraIds = [...document.querySelectorAll('#obraCheckList input:checked')].map(el => el.value);
   const editId = document.getElementById('eventoEditId').value;
@@ -11826,9 +11859,9 @@ function saveEvento() {
 
   if (editId) {
     const ev = db.eventos.find(e => e.id === editId);
-    if (ev) { ev.nombre = nombre; ev.fecha = fecha; ev.fechaFin = fechaFin || null; ev.tipo = eventoTipoSelected; ev.obras = obraIds; }
+    if (ev) { ev.nombre = nombre; ev.fecha = fecha; ev.fechaFin = fechaFin || null; ev.tipo = eventoTipoSelected; ev.obras = obraIds; ev.rondas = rondas; }
   } else {
-    db.eventos.push({ id: 'ev_' + Date.now(), tipo: eventoTipoSelected, nombre, fecha, fechaFin: fechaFin || null, obras: obraIds });
+    db.eventos.push({ id: 'ev_' + Date.now(), tipo: eventoTipoSelected, nombre, fecha, fechaFin: fechaFin || null, obras: obraIds, rondas });
   }
 
   saveData();

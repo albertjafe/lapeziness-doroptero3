@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=263">
+<link rel="stylesheet" href="styles.css?v=266">
 </head>
 <body>
 
@@ -682,11 +682,11 @@
 
 <!-- MODALS -->
 <div class="modal-overlay" id="modalAddEvento">
-  <div class="modal" style="max-width:460px">
+  <div class="modal evento-modal">
     <div class="modal-title" id="eventoModalTitle">Nuevo evento</div>
     <input type="hidden" id="eventoEditId">
-    <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Tipo</div>
-    <div style="display:flex;gap:6px;margin-bottom:14px" id="eventoTipoSelector">
+    <div class="evento-form-label">Tipo</div>
+    <div id="eventoTipoSelector" class="evento-tipo-selector">
       <button class="evento-tipo-btn concurso active" onclick="selectEventoTipo('concurso',this)">Concurso</button>
       <button class="evento-tipo-btn grabacion" onclick="selectEventoTipo('grabacion',this)">Grabación</button>
       <button class="evento-tipo-btn concierto" onclick="selectEventoTipo('concierto',this)">Concierto</button>
@@ -694,14 +694,26 @@
       <button class="evento-tipo-btn ensayo" onclick="selectEventoTipo('ensayo',this)">Ensayo</button>
       <button class="evento-tipo-btn audicion" onclick="selectEventoTipo('audicion',this)">Audición</button>
     </div>
-    <input class="modal-input" id="eventoNombre" placeholder="nombre del evento (ej: Concurso ARD)" type="text">
+    <label class="evento-form-field">
+      <span>Nombre</span>
+      <input class="modal-input" id="eventoNombre" placeholder="Concurso ARD" type="text">
+    </label>
     <div class="evento-date-range">
-      <label><span>Empieza</span><input class="modal-input" id="eventoFecha" type="date" onchange="syncEventoDateRange();updateEventoModalPred()"></label>
-      <label><span>Termina <small>opcional</small></span><input class="modal-input" id="eventoFechaFin" type="date" onchange="updateEventoModalPred()"></label>
+      <label><span>Empieza</span><input class="modal-input" id="eventoFecha" type="date" onchange="syncEventoDateRange()"></label>
+      <label><span>Termina <small>opcional</small></span><input class="modal-input" id="eventoFechaFin" type="date"></label>
     </div>
-    <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin:10px 0 6px">Obras asignadas</div>
+    <section class="evento-rondas-field" id="eventoRondasField" hidden>
+      <div class="evento-rondas-head">
+        <div>
+          <div class="evento-form-label">Rondas</div>
+          <div class="evento-form-hint">Preliminar, semifinal, final...</div>
+        </div>
+        <button type="button" class="evento-ronda-add" onclick="addEventoRonda()">+ Añadir ronda</button>
+      </div>
+      <div id="eventoRondasList"></div>
+    </section>
+    <div class="evento-form-label evento-obras-form-label">Obras asignadas</div>
     <div class="obra-check-list" id="obraCheckList"></div>
-    <div class="evento-meta80" id="eventoMetaPred" style="display:none;margin-left:0;margin-right:0;margin-top:11px"></div>
     <div class="modal-buttons">
       <button class="modal-btn secondary" onclick="closeModal('modalAddEvento')">Cancelar</button>
       <button class="modal-btn primary" onclick="saveEvento()">Guardar</button>
@@ -2190,7 +2202,7 @@
 <script src="data-core.js?v=228"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=264"></script>
-<script src="app.js?v=265"></script>
+<script src="app.js?v=266"></script>
 <script src="timer-objectives.js?v=249"></script>
 <script src="metronome.js?v=263"></script>
 <script type="module" src="mystery-house.js?v=260"></script>
@@ -2215,7 +2227,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=265', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=266', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

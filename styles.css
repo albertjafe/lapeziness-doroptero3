@@ -21374,3 +21374,247 @@ body[data-view="casa"] #view-casa.active {
     row-gap: 5px;
   }
 }
+
+/* Eventos: lectura directa, rondas de concurso e historial compacto. */
+.evento-modal {
+  width: min(680px, calc(100vw - 28px));
+  max-width: 680px;
+  max-height: min(88dvh, 820px);
+  overflow-y: auto;
+}
+
+.evento-form-label,
+.evento-form-field > span {
+  display: block;
+  margin: 0 0 7px;
+  color: var(--text2);
+  font: 700 11px/1.2 var(--font-system, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+  letter-spacing: 0;
+}
+
+.evento-form-field { display: block; margin: 16px 0 12px; }
+.evento-form-field .modal-input { margin: 0; }
+.evento-tipo-selector {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin-bottom: 4px;
+}
+.evento-tipo-selector .evento-tipo-btn {
+  min-height: 42px;
+  padding: 8px 6px;
+  font-size: 11px;
+  letter-spacing: 0;
+}
+.evento-date-range { margin-top: 12px; }
+.evento-date-range label > span {
+  color: var(--text2);
+  font-family: var(--font-system, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.evento-rondas-field {
+  margin: 18px 0 16px;
+  padding: 14px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg3) 72%, transparent);
+}
+.evento-rondas-field[hidden] { display: none !important; }
+.evento-rondas-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.evento-rondas-head .evento-form-label { margin-bottom: 2px; }
+.evento-form-hint { color: var(--text3); font-size: 10px; line-height: 1.3; }
+.evento-ronda-add,
+.evento-rondas-empty {
+  min-height: 38px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border2));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg2));
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.evento-ronda-add { padding: 8px 12px; white-space: nowrap; }
+.evento-rondas-empty { width: 100%; padding: 10px; border-style: dashed; }
+.evento-ronda-row {
+  display: grid;
+  grid-template-columns: 30px minmax(150px, 1fr) minmax(142px, .7fr) 38px;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+.evento-ronda-index,
+.evento-round-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg2));
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+}
+.evento-ronda-row .modal-input { min-width: 0; margin: 0; }
+.evento-ronda-remove {
+  width: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text3);
+  font-size: 20px;
+  cursor: pointer;
+}
+.evento-obras-form-label { margin: 16px 0 5px; }
+.evento-modal .obra-check-list {
+  max-height: 190px;
+  margin: 0;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 4px;
+}
+.evento-modal .obra-check-item { min-height: 42px; }
+.evento-modal .obra-check-name { font-size: 12px; }
+
+#calPanelEventos .evento-card {
+  border-radius: 8px;
+  margin-bottom: 12px;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .035);
+}
+#calPanelEventos .evento-header { padding: 16px 18px 13px; align-items: flex-start; }
+#calPanelEventos .evento-header > div:first-child { min-width: 0; flex: 1; }
+#calPanelEventos .evento-tipo-badge {
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 9px;
+  letter-spacing: 0;
+}
+#calPanelEventos .evento-nombre { font-size: 21px; line-height: 1.15; }
+#calPanelEventos .evento-dias { font-size: 24px; }
+#calPanelEventos .evento-dias-label { font-size: 9px; letter-spacing: 0; text-transform: none; }
+#calPanelEventos .evento-obras-section { padding: 10px 18px 12px; }
+#calPanelEventos .evento-obras-label { padding: 0 0 5px; font-size: 10px; letter-spacing: 0; text-transform: none; }
+#calPanelEventos .evento-obra-chip {
+  margin: 3px 4px 3px 0;
+  padding: 5px 9px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+.evento-rounds-preview {
+  display: grid;
+  gap: 0;
+  margin: 0 18px 12px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.evento-round-preview {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  min-height: 42px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border2);
+}
+.evento-round-preview:last-child { border-bottom: 0; }
+.evento-round-number { width: 26px; height: 26px; }
+.evento-round-name { color: var(--text); font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.evento-round-date { color: var(--text2); font-size: 11px; font-variant-numeric: tabular-nums; }
+#calPanelEventos .evento-actions { padding: 2px 18px 16px; align-items: center; }
+#calPanelEventos .evento-done-btn {
+  min-height: 42px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-family: var(--font-system, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+#calPanelEventos .evento-edit-btn,
+#calPanelEventos .evento-delete-btn {
+  min-height: 42px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-family: var(--font-system, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+  font-size: 11px;
+}
+
+.cal-past-label { font-size: 11px; letter-spacing: 0; text-transform: none; }
+.evento-history-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 66px;
+  margin-bottom: 8px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--green) 24%, var(--border2));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--green) 5%, var(--bg2));
+}
+.evento-history-tick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 50%;
+  background: var(--green);
+  color: var(--bg);
+  font-size: 21px;
+  font-weight: 900;
+}
+.evento-history-copy { min-width: 0; flex: 1; }
+.evento-history-name { color: var(--text); font-size: 14px; font-weight: 750; line-height: 1.25; }
+.evento-history-meta { margin-top: 3px; color: var(--text3); font-size: 10px; line-height: 1.3; }
+.evento-history-delete {
+  width: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text3);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+@media (max-width: 699px) {
+  .evento-modal { width: calc(100vw - 18px); max-height: 92dvh; padding: 18px 14px; }
+  .evento-tipo-selector { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .evento-date-range { grid-template-columns: 1fr; }
+  .evento-rondas-field { padding: 12px 10px; }
+  .evento-rondas-head { align-items: flex-start; }
+  .evento-ronda-add { min-height: 40px; padding-inline: 9px; }
+  .evento-ronda-row {
+    grid-template-columns: 28px minmax(0, 1fr) 38px;
+    gap: 6px;
+    padding: 8px 0;
+    border-top: 1px solid var(--border2);
+  }
+  .evento-ronda-row .evento-ronda-date { grid-column: 2 / 3; }
+  .evento-ronda-row .evento-ronda-remove { grid-column: 3; grid-row: 1 / 3; }
+  #calPanelEventos .evento-header { padding: 14px 14px 11px; }
+  #calPanelEventos .evento-nombre { font-size: 19px; }
+  #calPanelEventos .evento-dias { font-size: 20px; }
+  .evento-rounds-preview { margin: 0 14px 10px; }
+  #calPanelEventos .evento-obras-section { padding: 9px 14px 11px; }
+  #calPanelEventos .evento-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 6px; padding: 2px 14px 14px; }
+  #calPanelEventos .evento-edit-btn,
+  #calPanelEventos .evento-delete-btn { padding-inline: 9px; }
+}
