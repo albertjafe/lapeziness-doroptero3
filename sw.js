@@ -1,8 +1,8 @@
-const CACHE = 'estudio-v264';
+const CACHE = 'estudio-v265';
 const ASSETS = [
   './index.html',
   './styles.css?v=263',
-  './app.js?v=264',
+  './app.js?v=265',
   './metronome.js?v=263',
   './mystery-house.js?v=260',
   './vendor/three.module.min.js',
@@ -39,9 +39,25 @@ self.addEventListener('message', e => {
   if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
+function stopwatchMilestoneMinutes(payload) {
+  const dataMinutes = Number(payload && payload.data && payload.data.milestoneMinutes);
+  if (Number.isFinite(dataMinutes)) return dataMinutes;
+
+  const tagMatch = String(payload && payload.tag || '').match(/^crono-milestone-.+-(\d+)$/);
+  if (tagMatch) return Number(tagMatch[1]);
+
+  const titleMatch = String(payload && payload.title || '').match(/Has logrado\s+(\d+)\s+minutos/i);
+  return titleMatch ? Number(titleMatch[1]) : null;
+}
+
 self.addEventListener('push', event => {
   let payload = {};
   try { payload = event.data ? event.data.json() : {}; } catch (error) {}
+  const milestoneMinutes = stopwatchMilestoneMinutes(payload);
+  if (milestoneMinutes != null && milestoneMinutes > 105) {
+    event.waitUntil(Promise.resolve());
+    return;
+  }
   const title = payload.title || 'Estudio en marcha';
   const icon = new URL('./icon-192.png', self.registration.scope).href;
   event.waitUntil(self.registration.showNotification(title, {

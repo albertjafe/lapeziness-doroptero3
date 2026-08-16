@@ -2190,7 +2190,7 @@
 <script src="data-core.js?v=228"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=264"></script>
-<script src="app.js?v=264"></script>
+<script src="app.js?v=265"></script>
 <script src="timer-objectives.js?v=249"></script>
 <script src="metronome.js?v=263"></script>
 <script type="module" src="mystery-house.js?v=260"></script>
@@ -2215,7 +2215,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=264', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=265', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

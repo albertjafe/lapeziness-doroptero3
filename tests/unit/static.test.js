@@ -25,6 +25,8 @@ describe('quality wiring', () => {
       'utf8'
     );
     expect(worker).toContain("addEventListener('push'");
+    expect(worker).toContain('milestoneMinutes > 105');
+    expect(worker).toContain('crono-milestone-');
     expect(migration).toContain('claim_due_push_events');
     expect(dispatcher).toContain('pushTextMessage');
   });
