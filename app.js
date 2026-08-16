@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-16-event-rounds-v138';
+const APP_VERSION = '2026-08-16-windows-desktop-v139';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1016,6 +1016,21 @@ function renderCombinedSessionStats() {
   _histListApplyPref();
 }
 
+function initWindowsDesktopNavigation() {
+  if (!document.documentElement.classList.contains('platform-windows')) return;
+  const nav = document.querySelector('body > .nav-bottom');
+  if (!nav || nav.querySelector('.windows-only-nav')) return;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'nav-btn windows-only-nav';
+  button.setAttribute('aria-label', 'Pulso');
+  button.dataset.view = 'pulse';
+  button.dataset.short = 'Pulso';
+  button.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.2-6 4.1 12 2.1-6H21"/></svg><span>Pulso</span>';
+  button.addEventListener('click', () => showView('pulse'));
+  nav.prepend(button);
+}
+
 const SWIPE_VIEW_ORDER = ['pulse', 'session', 'cronometro', 'obras', 'calendario'];
 let _viewSwipe = null;
 let _viewSwipeMultiTouch = false;
@@ -1446,6 +1461,7 @@ function initViewSwipeNavigation() {
   viewSwipeSyncPageZoom();
 }
 
+initWindowsDesktopNavigation();
 initViewSwipeNavigation();
 
 function _impulsoEventosLocal() {

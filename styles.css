@@ -21618,3 +21618,191 @@ body[data-view="casa"] #view-casa.active {
   #calPanelEventos .evento-edit-btn,
   #calPanelEventos .evento-delete-btn { padding-inline: 9px; }
 }
+
+/* WINDOWS DESKTOP
+   Platform-scoped on purpose: none of these rules can alter iPad or mobile. */
+.windows-only-nav { display: none !important; }
+
+html.platform-windows {
+  --desktop-rail-width: 96px;
+}
+
+html.platform-windows body:not(.crono-focus) .topbar {
+  left: var(--desktop-rail-width);
+}
+
+html.platform-windows body:not(.crono-focus) .header {
+  min-height: 72px;
+  padding: 12px clamp(22px, 3vw, 42px);
+}
+
+html.platform-windows body:not(.crono-focus) .app-content {
+  width: calc(100% - var(--desktop-rail-width));
+  margin-left: var(--desktop-rail-width);
+  padding-bottom: 28px !important;
+}
+
+html.platform-windows .nav.nav-bottom {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 180;
+  display: grid;
+  width: var(--desktop-rail-width);
+  height: 100dvh;
+  grid-template-columns: 1fr;
+  grid-auto-rows: 66px;
+  align-content: center;
+  gap: 6px;
+  overflow: hidden auto;
+  padding: 18px 10px;
+  border: 0;
+  border-right: 1px solid var(--border2);
+  background: color-mix(in srgb, var(--bg2) 96%, transparent);
+  box-shadow: 8px 0 28px rgba(0,0,0,.035);
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+}
+
+html.platform-windows .nav.nav-bottom .windows-only-nav {
+  display: flex !important;
+}
+
+html.platform-windows .nav.nav-bottom .nav-btn {
+  width: 100%;
+  min-width: 0;
+  min-height: 66px !important;
+  padding: 8px 4px !important;
+  gap: 6px;
+  border-radius: 10px;
+  font-size: 9px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+html.platform-windows .nav.nav-bottom .nav-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+html.platform-windows .nav.nav-bottom .nav-btn span {
+  position: static;
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: auto;
+  color: inherit;
+  font-size: 9px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html.platform-windows .nav.nav-bottom .nav-btn.active::after {
+  inset: 50% 3px auto auto;
+  width: 3px;
+  height: 22px;
+  transform: translateY(-50%);
+}
+
+html.platform-windows body:not(.crono-focus) .view {
+  max-width: 1280px;
+  padding-inline: clamp(24px, 3vw, 48px) !important;
+}
+
+html.platform-windows body:not(.crono-focus) #view-session,
+html.platform-windows body:not(.crono-focus) #view-obras,
+html.platform-windows body:not(.crono-focus) #view-calendario,
+html.platform-windows body:not(.crono-focus) #view-pulse {
+  max-width: 1320px;
+}
+
+html.platform-windows body:not(.crono-focus) #view-cronometro {
+  width: 100%;
+  max-width: 1560px;
+}
+
+html.platform-windows body.crono-focus .nav.nav-bottom {
+  display: grid !important;
+}
+
+html.platform-windows body.crono-focus .app-content {
+  width: calc(100% - var(--desktop-rail-width));
+  margin-left: var(--desktop-rail-width);
+}
+
+html.platform-windows body.crono-focus #view-cronometro {
+  width: min(1180px, calc(100vw - var(--desktop-rail-width) - 32px));
+  max-width: none;
+  margin-inline: auto;
+}
+
+html.platform-windows body.crono-focus #view-cronometro .crono-wrap {
+  width: 100%;
+  max-width: none;
+}
+
+html.platform-windows body.crono-focus .crono-screen-title {
+  left: calc(var(--desktop-rail-width) + 28px);
+}
+
+html.platform-windows body.crono-focus .crono-concentrado {
+  left: calc(50% + (var(--desktop-rail-width) / 2));
+}
+
+html.platform-windows body[data-view="casa"] .app-content {
+  width: calc(100% - var(--desktop-rail-width));
+  margin-left: var(--desktop-rail-width);
+  padding-bottom: 0 !important;
+}
+
+html.platform-windows body[data-view="casa"] .house-shell,
+html.platform-windows body[data-view="casa"] .house-stage,
+html.platform-windows body[data-view="casa"] .house-canvas-host {
+  height: 100dvh;
+}
+
+@media (min-width: 900px) and (orientation: landscape) {
+  html.platform-windows body:not(.crono-focus) #view-cronometro .crono-wrap,
+  html.platform-windows body:not(.crono-focus).crono-running #view-cronometro .crono-wrap {
+    width: 100%;
+    max-width: none;
+  }
+
+  html.platform-windows body:not(.crono-focus) #view-cronometro .crono-idle-console {
+    display: grid;
+    grid-template-columns: minmax(330px, .9fr) minmax(430px, 1.1fr);
+    gap: 16px;
+  }
+
+  html.platform-windows body:not(.crono-focus) #view-cronometro .crono-idle-main,
+  html.platform-windows body:not(.crono-focus) #view-cronometro .crono-idle-panel {
+    height: min(650px, calc(100dvh - 132px));
+    min-height: 500px;
+  }
+
+  html.platform-windows body:not(.crono-focus).crono-running #view-cronometro .crono-wrap {
+    display: grid;
+    grid-template-columns: minmax(330px, .9fr) minmax(430px, 1.1fr);
+    gap: 16px;
+    align-items: start;
+  }
+
+  html.platform-windows body:not(.crono-focus).crono-running #cronoStageRun,
+  html.platform-windows body:not(.crono-focus).crono-running #cronoRunDrawer {
+    width: 100%;
+    min-width: 0;
+    height: min(650px, calc(100dvh - 132px));
+    min-height: 500px;
+  }
+
+  html.platform-windows body:not(.crono-focus) #view-cronometro .crono-moment-monitor {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: none;
+    margin-top: 14px;
+  }
+}

@@ -8,13 +8,24 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Estudio">
 <title>Planificador de estudio</title>
+<script>
+  // La maquetacion de escritorio depende del sistema, no del ancho: un iPad
+  // horizontal puede tener la misma resolucion que una ventana de Windows.
+  (function detectDesktopPlatform() {
+    var ua = navigator.userAgent || '';
+    var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+    if (/Windows/i.test(platform) || /Windows NT/i.test(ua)) {
+      document.documentElement.classList.add('platform-windows');
+    }
+  }());
+</script>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="alternate icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=266">
+<link rel="stylesheet" href="styles.css?v=267">
 </head>
 <body>
 
@@ -2202,7 +2213,7 @@
 <script src="data-core.js?v=228"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=264"></script>
-<script src="app.js?v=266"></script>
+<script src="app.js?v=267"></script>
 <script src="timer-objectives.js?v=249"></script>
 <script src="metronome.js?v=263"></script>
 <script type="module" src="mystery-house.js?v=260"></script>
@@ -2227,7 +2238,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=266', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=267', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

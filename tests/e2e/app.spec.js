@@ -7,7 +7,20 @@ const fixture = {
   tiempoDisponibleEventos: [], dailyJournalEntries: [],
 };
 
-async function prepare(page) {
+async function prepare(page, options = {}) {
+  if (!options.preservePlatform) {
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'platform', { configurable: true, get: () => 'MacIntel' });
+      Object.defineProperty(navigator, 'userAgent', {
+        configurable: true,
+        get: () => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/140 Safari/537.36',
+      });
+      Object.defineProperty(navigator, 'userAgentData', {
+        configurable: true,
+        get: () => ({ platform: 'macOS' }),
+      });
+    });
+  }
   await page.route('https://cdn.jsdelivr.net/**', route => route.fulfill({
     status: 200,
     contentType: 'application/javascript',
@@ -38,6 +51,48 @@ test('opens every main view without page exceptions', async ({ page }) => {
   }
   expect(errors).toEqual([]);
   expect(await page.evaluate(() => localStorage.getItem('piano_auto_creds'))).toBeNull();
+});
+
+test('uses mouse navigation only on Windows and preserves the iPad navigation', async ({ browser }) => {
+  const windows = await browser.newContext({
+    viewport: { width: 1024, height: 768 },
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140 Safari/537.36',
+  });
+  const windowsPage = await windows.newPage();
+  await prepare(windowsPage, { preservePlatform: true });
+
+  await expect(windowsPage.locator('html')).toHaveClass(/platform-windows/);
+  const rail = windowsPage.locator('body > .nav-bottom');
+  const pulse = rail.locator('[data-view="pulse"]');
+  await expect(pulse).toBeVisible();
+  const railBox = await rail.boundingBox();
+  expect(railBox.x).toBeLessThan(2);
+  expect(railBox.width).toBeGreaterThanOrEqual(94);
+  expect(railBox.height).toBeGreaterThanOrEqual(760);
+  await pulse.click();
+  await expect(windowsPage.locator('#view-pulse')).toHaveClass(/active/);
+  await expect(windowsPage.locator('#headerTitle')).toContainText('Pulso');
+  expect(await windowsPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  await rail.locator('[data-view="cronometro"]').click();
+  await expect(windowsPage.locator('#view-cronometro')).toHaveClass(/active/);
+  await expect(rail).toBeVisible();
+  await pulse.click();
+  await expect(windowsPage.locator('#view-pulse')).toHaveClass(/active/);
+  await windows.close();
+
+  const ipad = await browser.newContext({
+    viewport: { width: 1024, height: 1366 },
+    userAgent: 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1',
+    hasTouch: true,
+  });
+  const ipadPage = await ipad.newPage();
+  await prepare(ipadPage, { preservePlatform: true });
+  await expect(ipadPage.locator('html')).not.toHaveClass(/platform-windows/);
+  await expect(ipadPage.locator('.windows-only-nav')).toBeHidden();
+  const ipadNavBox = await ipadPage.locator('body > .nav-bottom').boundingBox();
+  expect(ipadNavBox.y).toBeGreaterThan(1200);
+  expect(ipadNavBox.width).toBeGreaterThan(1000);
+  await ipad.close();
 });
 
 test('shows today study time prominently and includes the running stopwatch', async ({ page }) => {
