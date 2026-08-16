@@ -110,6 +110,49 @@
       .slice(-2000);
   }
 
+  function mergeWeeklyPlan(a, b) {
+    if (!a) return b || null;
+    if (!b) return a;
+    const aUpdated = String(a.updatedAt || a.generatedAt || '');
+    const bUpdated = String(b.updatedAt || b.generatedAt || '');
+    const newer = aUpdated.localeCompare(bUpdated) >= 0 ? a : b;
+    const older = newer === a ? b : a;
+    const merged = Object.assign({}, older, newer);
+    const slots = new Map();
+    const add = (slot, planUpdatedAt) => {
+      if (!slot || !slot.date || slot.position == null) return;
+      const key = slot.date + '::' + slot.position;
+      const current = slots.get(key);
+      const currentAt = String(current && (current.updatedAt || current._planUpdatedAt) || '');
+      const candidateAt = String(slot.updatedAt || planUpdatedAt || '');
+      if (!current || candidateAt.localeCompare(currentAt) >= 0) {
+        slots.set(key, Object.assign({}, slot, { _planUpdatedAt: planUpdatedAt || '' }));
+      }
+    };
+    (older.slots || []).forEach(slot => add(slot, older.updatedAt || older.generatedAt));
+    (newer.slots || []).forEach(slot => add(slot, newer.updatedAt || newer.generatedAt));
+    merged.slots = Array.from(slots.values())
+      .map(slot => {
+        const clean = Object.assign({}, slot);
+        delete clean._planUpdatedAt;
+        return clean;
+      })
+      .sort((x, y) => String(x.date).localeCompare(String(y.date)) || Number(x.position) - Number(y.position));
+    return merged;
+  }
+
+  function mergeWeeklyPlans(a, b) {
+    const byWeek = new Map();
+    (a || []).concat(b || []).forEach(plan => {
+      if (!plan || !plan.weekStart) return;
+      const current = byWeek.get(plan.weekStart);
+      byWeek.set(plan.weekStart, current ? mergeWeeklyPlan(current, plan) : plan);
+    });
+    return Array.from(byWeek.values())
+      .sort((x, y) => String(x.weekStart).localeCompare(String(y.weekStart)))
+      .slice(-104);
+  }
+
   function mergeHabitChallenge(a, b) {
     if (!a) return b || null;
     if (!b) return a;
@@ -156,6 +199,7 @@
     merged.tiempoDisponibleEventos = mergeTimeAvailableEvents(base.tiempoDisponibleEventos, other.tiempoDisponibleEventos);
     merged.dailyJournalEntries = mergeEvents(base.dailyJournalEntries, other.dailyJournalEntries, ['at', 'text'], 3000);
     merged.blockedDaySchedules = mergeBlockedDaySchedules(base.blockedDaySchedules, other.blockedDaySchedules);
+    merged.weeklyPlans = mergeWeeklyPlans(base.weeklyPlans, other.weeklyPlans);
     const baseHabits = (base.habitChallenges || []).concat(base.habitChallenge ? [base.habitChallenge] : []);
     const otherHabits = (other.habitChallenges || []).concat(other.habitChallenge ? [other.habitChallenge] : []);
     merged.habitChallenges = mergeHabitChallenges(baseHabits, otherHabits);
@@ -163,5 +207,5 @@
     return applyPulseDeletedIds(merged);
   }
 
-  return { mergeStudyHistory, mergePlants, mergeSessions, mergeBlockedDaySchedules, mergeHabitChallenge, mergeHabitChallenges, sessionRealMinutes };
+  return { mergeStudyHistory, mergePlants, mergeSessions, mergeBlockedDaySchedules, mergeWeeklyPlan, mergeWeeklyPlans, mergeHabitChallenge, mergeHabitChallenges, sessionRealMinutes };
 });

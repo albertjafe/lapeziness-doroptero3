@@ -25,7 +25,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=267">
+<link rel="stylesheet" href="styles.css?v=268">
 </head>
 <body>
 
@@ -140,6 +140,35 @@
 </div>
 
 <div class="view active" id="view-session">
+  <div class="session-mode-switch" role="tablist" aria-label="Vista de sesiones">
+    <button type="button" class="active" id="sessionModeToday" role="tab" aria-selected="true" onclick="setSessionSectionMode('today')">Hoy</button>
+    <button type="button" id="sessionModeWeek" role="tab" aria-selected="false" onclick="setSessionSectionMode('week')">Semana</button>
+  </div>
+
+  <section class="session-weekly-planner" id="sessionWeeklyPlanner" aria-labelledby="weeklyPlannerTitle" hidden>
+    <header class="weekly-planner-head">
+      <div class="weekly-planner-heading">
+        <span id="weeklyPlannerTitle">PLAN SEMANAL</span>
+        <strong id="weeklyPlannerRange"></strong>
+      </div>
+      <div class="weekly-planner-actions">
+        <button type="button" onclick="changeWeeklyPlannerWeek(-1)" aria-label="Semana anterior" title="Semana anterior">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12.5 4.5-5 5 5 5"/></svg>
+        </button>
+        <button type="button" class="weekly-planner-today" onclick="resetWeeklyPlannerWeek()" aria-label="Volver a esta semana" title="Esta semana">Hoy</button>
+        <button type="button" onclick="changeWeeklyPlannerWeek(1)" aria-label="Semana siguiente" title="Semana siguiente">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7.5 4.5 5 5-5 5"/></svg>
+        </button>
+        <button type="button" class="weekly-planner-regenerate" onclick="regenerateWeeklyPlan()" aria-label="Regenerar sugerencias" title="Regenerar sugerencias sin cambiar los bloques fijados">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.8 7A6.2 6.2 0 1 0 16 12"/><path d="M15.8 3.5V7h-3.5"/></svg>
+          <span>Reordenar</span>
+        </button>
+      </div>
+    </header>
+    <div class="weekly-planner-grid" id="weeklyPlannerGrid"></div>
+    <p class="weekly-planner-footnote" id="weeklyPlannerFootnote">Las sugerencias combinan eventos, solidez, pases y tiempo sin tocar cada obra.</p>
+  </section>
+
   <section class="session-resumen-card" id="sessionResumenCard" aria-label="Tiempo estudiado hoy">
     <div class="session-resumen-info">
       <div class="session-resumen-lbl">TIEMPO ESTUDIADO HOY</div>
@@ -243,6 +272,29 @@
       <div id="sesionesHistorial" style="display:none"></div>
     </div>
   </section>
+</div>
+
+<div class="modal-overlay" id="modalWeeklySlot">
+  <div class="modal weekly-slot-modal">
+    <div class="weekly-slot-modal-head">
+      <div>
+        <div class="modal-title">Editar bloque</div>
+        <div class="weekly-slot-modal-sub" id="weeklySlotModalSub"></div>
+      </div>
+      <button type="button" class="weekly-slot-modal-close" onclick="closeModal('modalWeeklySlot')" aria-label="Cerrar">&#215;</button>
+    </div>
+    <label class="weekly-slot-modal-label" for="weeklySlotObraSelect">Obra</label>
+    <select class="modal-input" id="weeklySlotObraSelect"></select>
+    <label class="weekly-slot-lock-option">
+      <input type="checkbox" id="weeklySlotLocked">
+      <span><strong>Fijar bloque</strong><small>No cambiará al reordenar la semana</small></span>
+    </label>
+    <div class="modal-buttons weekly-slot-modal-buttons">
+      <button type="button" class="modal-btn secondary weekly-slot-remove" id="weeklySlotRemove" onclick="removeWeeklySlot()">Vaciar</button>
+      <button type="button" class="modal-btn secondary" onclick="closeModal('modalWeeklySlot')">Cancelar</button>
+      <button type="button" class="modal-btn primary" onclick="saveWeeklySlotEdit()">Guardar</button>
+    </div>
+  </div>
 </div>
 
 <!-- CRONÓMETRO VIEW -->
@@ -2210,10 +2262,10 @@
 </div>
 
 <script src="timer-core.js?v=264"></script>
-<script src="data-core.js?v=228"></script>
+<script src="data-core.js?v=229"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=264"></script>
-<script src="app.js?v=267"></script>
+<script src="app.js?v=268"></script>
 <script src="timer-objectives.js?v=249"></script>
 <script src="metronome.js?v=263"></script>
 <script type="module" src="mystery-house.js?v=260"></script>
@@ -2238,7 +2290,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=267', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=268', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

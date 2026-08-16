@@ -114,4 +114,31 @@ describe('DataCore', () => {
     expect(merged.habitChallenges.map(habit => habit.id)).toEqual(['habit-bathroom', 'habit-bed']);
     expect(merged.habitChallenge.id).toBe('habit-bathroom');
   });
+
+  it('merges weekly planner edits per slot without losing another device changes', () => {
+    const merged = DataCore.mergeStudyHistory(
+      {
+        weeklyPlans: [{
+          weekStart: '2026-08-10', updatedAt: '2026-08-10T10:00:00Z',
+          slots: [
+            { date: '2026-08-10', position: 0, obraId: 'bach', locked: true, updatedAt: '2026-08-10T10:00:00Z' },
+            { date: '2026-08-10', position: 1, obraId: 'mozart', updatedAt: '2026-08-10T09:00:00Z' },
+          ],
+        }],
+      },
+      {
+        weeklyPlans: [{
+          weekStart: '2026-08-10', updatedAt: '2026-08-10T11:00:00Z',
+          slots: [
+            { date: '2026-08-10', position: 1, obraId: 'ligeti', locked: true, updatedAt: '2026-08-10T11:00:00Z' },
+          ],
+        }],
+      }
+    );
+    expect(merged.weeklyPlans).toHaveLength(1);
+    expect(merged.weeklyPlans[0].slots).toEqual([
+      { date: '2026-08-10', position: 0, obraId: 'bach', locked: true, updatedAt: '2026-08-10T10:00:00Z' },
+      { date: '2026-08-10', position: 1, obraId: 'ligeti', locked: true, updatedAt: '2026-08-10T11:00:00Z' },
+    ]);
+  });
 });

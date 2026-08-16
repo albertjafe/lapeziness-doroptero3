@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-16-windows-desktop-v139';
+const APP_VERSION = '2026-08-16-weekly-planner-v140';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -124,6 +124,7 @@ function refreshStudyViews() {
     if (typeof renderHabitChallenge === 'function') renderHabitChallenge();
     if (typeof renderHabitCalendar === 'function') renderHabitCalendar();
     if (typeof renderMesCalendario === 'function') renderMesCalendario();
+    if (typeof renderWeeklyPlanner === 'function' && _sessionSectionMode === 'week') renderWeeklyPlanner();
   };
   if (typeof requestAnimationFrame === 'function' && document.visibilityState !== 'hidden') {
     _studyViewsRefreshFrame = requestAnimationFrame(render);
@@ -261,6 +262,40 @@ function _mergeHabitChallenges(a, b) {
   });
   return Array.from(map.values()).sort((x, y) => String(x.createdAt || x.startDate || '').localeCompare(String(y.createdAt || y.startDate || '')));
 }
+function _mergeWeeklyPlans(a, b) {
+  const plans = new Map();
+  (a || []).concat(b || []).forEach(plan => {
+    if (!plan || !plan.weekStart) return;
+    const current = plans.get(plan.weekStart);
+    if (!current) { plans.set(plan.weekStart, plan); return; }
+    const currentAt = String(current.updatedAt || current.generatedAt || '');
+    const planAt = String(plan.updatedAt || plan.generatedAt || '');
+    const newer = planAt.localeCompare(currentAt) >= 0 ? plan : current;
+    const older = newer === plan ? current : plan;
+    const slotMap = new Map();
+    const addSlots = (items, updatedAt) => (items || []).forEach(slot => {
+      if (!slot || !slot.date || slot.position == null) return;
+      const key = slot.date + '::' + slot.position;
+      const existing = slotMap.get(key);
+      const candidateAt = String(slot.updatedAt || updatedAt || '');
+      const existingAt = String(existing && existing._mergedAt || '');
+      if (!existing || candidateAt.localeCompare(existingAt) >= 0) {
+        slotMap.set(key, Object.assign({}, slot, { _mergedAt: candidateAt }));
+      }
+    });
+    addSlots(older.slots, older.updatedAt || older.generatedAt);
+    addSlots(newer.slots, newer.updatedAt || newer.generatedAt);
+    const merged = Object.assign({}, older, newer, {
+      slots: Array.from(slotMap.values()).map(slot => {
+        const clean = Object.assign({}, slot);
+        delete clean._mergedAt;
+        return clean;
+      }).sort((x, y) => String(x.date).localeCompare(String(y.date)) || Number(x.position) - Number(y.position))
+    });
+    plans.set(plan.weekStart, merged);
+  });
+  return Array.from(plans.values()).sort((x, y) => String(x.weekStart).localeCompare(String(y.weekStart))).slice(-104);
+}
 function _sesionRealMin(s) {
   return (s.items || []).reduce((acc, it) =>
     acc + (typeof _itemMinReal === 'function' ? _itemMinReal(it) : (it.minutosReales || 0)), 0);
@@ -309,6 +344,7 @@ function _mergeStudyHistory(base, other) {
     if (!current || String(day.updatedAt || '').localeCompare(String(current.updatedAt || '')) >= 0) scheduleMap[day.date] = day;
   });
   merged.blockedDaySchedules = Object.values(scheduleMap).sort((x, y) => String(x.date).localeCompare(String(y.date))).slice(-2000);
+  merged.weeklyPlans = _mergeWeeklyPlans(base.weeklyPlans, other.weeklyPlans);
   return _applyPulseDeletedIds(merged);
 }
 
@@ -497,6 +533,7 @@ function getDefaultData() {
     tiempoDisponibleEventos: [],
     dailyJournalEntries: [],
     blockedDaySchedules: [],
+    weeklyPlans: [],
     habitChallenge: null,
     habitChallenges: []
   };
@@ -518,6 +555,7 @@ if (!db.triggerEventos) db.triggerEventos = [];
 if (!db.tiempoDisponibleEventos) db.tiempoDisponibleEventos = [];
 if (!db.dailyJournalEntries) db.dailyJournalEntries = [];
 if (!db.blockedDaySchedules) db.blockedDaySchedules = [];
+if (!db.weeklyPlans) db.weeklyPlans = [];
 if (!Array.isArray(db.habitChallenges)) db.habitChallenges = [];
 // db.sessionPlants[]: array paralelo a forestPlants con UN registro por sub-sesión
 // del cronómetro. Persiste los timestamps detallados aunque la sesión en
@@ -577,7 +615,10 @@ const VIEW_CONTEXT = {
 };
 
 function updateContextHeader(name) {
-  const context = VIEW_CONTEXT[name] || VIEW_CONTEXT.session;
+  const baseContext = VIEW_CONTEXT[name] || VIEW_CONTEXT.session;
+  const context = name === 'session' && document.getElementById('view-session')?.classList.contains('session-weekly-mode')
+    ? { eyebrow: baseContext.eyebrow, title: 'Semana' }
+    : baseContext;
   const eyebrow = document.getElementById('headerEyebrow');
   const title = document.getElementById('headerTitle');
   const date = document.getElementById('headerDate');
@@ -592,6 +633,10 @@ function updateContextHeader(name) {
 }
 
 function renderSessionViewContent() {
+  if (_sessionSectionMode === 'week') {
+    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+    return;
+  }
   renderRacha();
   if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
   if (typeof renderSessionInsights === 'function') renderSessionInsights();
@@ -22933,6 +22978,391 @@ function _nudgeLastStudyMap() {
     (s.items || []).forEach(it => { if (_itemEstudiado(it)) mark(it.obraId, t); });
   });
   return map;
+}
+
+// ── PLAN SEMANAL ─────────────────────────────────────────────────────────────
+// Dos bloques sin horas por día. La propuesta se calcula solo con datos que ya
+// existen en la app: eventos, solidez, tiempo sin tocar y fallos de pases.
+let _sessionSectionMode = 'today';
+let _weeklyPlannerOffset = 0;
+let _weeklyEditing = null;
+const WEEKLY_SLOT_LABELS = ['Principal', 'Repaso'];
+
+function _weeklyDateKey(date) {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
+function _weeklyDateFromKey(key) {
+  return new Date(String(key) + 'T12:00:00');
+}
+
+function _weeklyFindObra(id) {
+  return (db.obras || []).find(obra => String(obra.id) === String(id)) || null;
+}
+
+function _weeklyVisibleStart() {
+  const start = _weekStart(new Date());
+  start.setDate(start.getDate() + (_weeklyPlannerOffset * 7));
+  return start;
+}
+
+function _weeklyPlanForStart(start) {
+  const key = _weeklyDateKey(start);
+  return (db.weeklyPlans || []).find(plan => plan.weekStart === key) || null;
+}
+
+function _weeklyFaultCount(obra) {
+  const histories = [(obra && obra.paseHistory) || []]
+    .concat((obra && obra.movimientos || []).map(mov => mov.paseHistory || []));
+  return histories.reduce((total, history) => total + history.slice(0, 3)
+    .reduce((sum, entry) => sum + Math.min(4, (entry && entry.faults || []).length), 0), 0);
+}
+
+function _weeklyNearestEvent(obraId, date) {
+  let best = null;
+  (db.eventos || []).forEach(event => {
+    if (!event || !event.fecha || event.completado || (event.resultado && event.resultado.scoreTotal != null)) return;
+    if (!(event.obras || []).some(id => String(id) === String(obraId))) return;
+    const eventDate = _weeklyDateFromKey(event.fecha);
+    const days = Math.ceil((eventDate.getTime() - date.getTime()) / 86400000);
+    if (days < 0 || days > 120) return;
+    if (!best || days < best.days) best = { event, days };
+  });
+  return best;
+}
+
+function _weeklyCandidateScore(obra, date, assignmentCount, previousDayIds) {
+  const lastMap = _nudgeLastStudyMap();
+  const lastAt = lastMap[obra.id];
+  const idleDays = lastAt == null ? null : Math.max(0, Math.floor((date.getTime() - lastAt) / 86400000));
+  const solidity = Math.max(0, Math.min(100, Math.round(estimateSolActual(obra).val || 0)));
+  const faults = _weeklyFaultCount(obra);
+  const nearest = _weeklyNearestEvent(obra.id, date);
+  let score = (100 - solidity) * 0.72;
+  score += idleDays == null ? 20 : Math.min(36, idleDays * 1.45);
+  score += Math.min(25, faults * 4.2);
+  if (nearest) {
+    const severity = (typeof EVENT_SEVERITY !== 'undefined' && EVENT_SEVERITY[nearest.event.tipo]) || 0.42;
+    score += severity * Math.max(35, 170 - nearest.days * 3.1);
+  }
+  // La urgencia puede repetir una obra, pero no debe convertir toda la semana
+  // en una sola pieza: cada aparición adicional y los días consecutivos pesan.
+  score -= (assignmentCount || 0) * 52;
+  if ((previousDayIds || []).some(id => String(id) === String(obra.id))) score -= 42;
+
+  let reason = 'Rotación';
+  let reasonKind = 'rotation';
+  if (nearest && nearest.days <= 45) {
+    const type = String(nearest.event.tipo || 'evento');
+    reason = type.charAt(0).toUpperCase() + type.slice(1) + ' · ' + (nearest.days === 0 ? 'hoy' : nearest.days + 'd');
+    reasonKind = 'event';
+  } else if (solidity < 70) {
+    reason = 'Solidez ' + solidity + '%';
+    reasonKind = 'solidity';
+  } else if (faults > 0) {
+    reason = faults + (faults === 1 ? ' fallo en pases' : ' fallos en pases');
+    reasonKind = 'faults';
+  } else if (idleDays != null && idleDays >= 3) {
+    reason = idleDays + (idleDays === 1 ? ' día sin tocar' : ' días sin tocar');
+  }
+  return { obra, score, reason, reasonKind };
+}
+
+function _weeklyGeneratePlan(start, existing) {
+  const generatedAt = new Date().toISOString();
+  const works = (db.obras || [])
+    .filter(obra => obra && obra.tipo !== 'actividad')
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es'));
+  const locked = new Map();
+  (existing && existing.slots || []).forEach(slot => {
+    if (slot && slot.locked) locked.set(slot.date + '::' + slot.position, slot);
+  });
+  const previous = new Map((existing && existing.slots || []).map(slot => [slot.date + '::' + slot.position, slot]));
+  const assignmentCount = {};
+  const selectedByDay = {};
+  const slots = [];
+
+  for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + dayIndex);
+    const dateKey = _weeklyDateKey(date);
+    selectedByDay[dateKey] = [];
+    const previousDate = new Date(date);
+    previousDate.setDate(date.getDate() - 1);
+    const previousDayIds = selectedByDay[_weeklyDateKey(previousDate)] || [];
+
+    for (let position = 0; position < 2; position++) {
+      const key = dateKey + '::' + position;
+      const fixed = locked.get(key);
+      if (fixed) {
+        const kept = Object.assign({}, fixed);
+        slots.push(kept);
+        if (kept.obraId != null) {
+          assignmentCount[String(kept.obraId)] = (assignmentCount[String(kept.obraId)] || 0) + 1;
+          selectedByDay[dateKey].push(kept.obraId);
+        }
+        continue;
+      }
+
+      const ranked = works
+        .filter(obra => works.length === 1 || !selectedByDay[dateKey].some(id => String(id) === String(obra.id)))
+        .map(obra => _weeklyCandidateScore(obra, date, assignmentCount[String(obra.id)] || 0, previousDayIds))
+        .sort((a, b) => b.score - a.score || String(a.obra.name || '').localeCompare(String(b.obra.name || ''), 'es'));
+      const chosen = ranked[0];
+      if (!chosen) continue;
+      const old = previous.get(key);
+      const slot = {
+        date: dateKey,
+        position,
+        obraId: chosen.obra.id,
+        locked: false,
+        done: !!(old && String(old.obraId) === String(chosen.obra.id) && old.done),
+        reason: chosen.reason,
+        reasonKind: chosen.reasonKind,
+        score: Math.round(chosen.score),
+        updatedAt: generatedAt
+      };
+      slots.push(slot);
+      assignmentCount[String(chosen.obra.id)] = (assignmentCount[String(chosen.obra.id)] || 0) + 1;
+      selectedByDay[dateKey].push(chosen.obra.id);
+    }
+  }
+
+  return {
+    weekStart: _weeklyDateKey(start),
+    generatedAt: existing && existing.generatedAt || generatedAt,
+    updatedAt: generatedAt,
+    slots
+  };
+}
+
+function _weeklyEnsurePlan(start) {
+  if (!Array.isArray(db.weeklyPlans)) db.weeklyPlans = [];
+  let plan = _weeklyPlanForStart(start);
+  if (plan) return plan;
+  plan = _weeklyGeneratePlan(start, null);
+  db.weeklyPlans.push(plan);
+  saveData();
+  return plan;
+}
+
+function _weeklySlotActuallyStudied(slot) {
+  if (!slot || slot.obraId == null) return false;
+  const sameWork = id => String(id) === String(slot.obraId);
+  const sameDay = value => {
+    if (!value) return false;
+    const date = new Date(value);
+    return !isNaN(date.getTime()) && _weeklyDateKey(date) === slot.date;
+  };
+  if ((db.sessionPlants || []).some(plant => plant && !plant.failed && sameWork(plant.obraId) && sameDay(plant.endedAt || plant.startedAt))) return true;
+  if ((db.forestPlants || []).some(plant => plant && !plant.failed && sameWork(plant.obraId) && sameDay(plant.endedAt || plant.startedAt))) return true;
+  return (db.sesiones || []).some(session => sameDay(session.date) && (session.items || []).some(item => sameWork(item.obraId) && _itemEstudiado(item)));
+}
+
+function _weeklySlotDone(slot) {
+  return !!(slot && slot.done) || _weeklySlotActuallyStudied(slot);
+}
+
+function _weeklySafeColor(value) {
+  const color = String(value || '').trim();
+  return /^#[0-9a-f]{3,8}$/i.test(color) ? color : 'var(--accent)';
+}
+
+function _weeklyRangeLabel(start) {
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const month = date => date.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '');
+  if (start.getMonth() === end.getMonth()) return start.getDate() + '–' + end.getDate() + ' ' + month(end);
+  return start.getDate() + ' ' + month(start) + ' – ' + end.getDate() + ' ' + month(end);
+}
+
+function renderWeeklyPlanner() {
+  const host = document.getElementById('weeklyPlannerGrid');
+  if (!host) return;
+  const start = _weeklyVisibleStart();
+  const plan = _weeklyEnsurePlan(start);
+  const range = document.getElementById('weeklyPlannerRange');
+  if (range) range.textContent = _weeklyRangeLabel(start);
+  const todayKey = _weeklyDateKey(new Date());
+  const dayNames = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+  if (!(db.obras || []).some(obra => obra && obra.tipo !== 'actividad')) {
+    host.innerHTML = '<div class="weekly-planner-empty"><strong>Aún no hay obras</strong><span>Añade repertorio para crear la semana.</span></div>';
+    return;
+  }
+
+  host.innerHTML = dayNames.map((dayName, dayIndex) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + dayIndex);
+    const dateKey = _weeklyDateKey(date);
+    const isToday = dateKey === todayKey;
+    const isPast = dateKey < todayKey;
+    const daySlots = [0, 1].map(position => {
+      const slot = (plan.slots || []).find(item => item.date === dateKey && Number(item.position) === position);
+      const obra = slot && _weeklyFindObra(slot.obraId);
+      if (!slot || !obra) {
+        return '<div class="weekly-slot is-empty" role="button" tabindex="0" onclick="openWeeklySlotEditor(\'' + dateKey + '\',' + position + ')" onkeydown="weeklySlotKeyOpen(event,\'' + dateKey + '\',' + position + ')">' +
+          '<span class="weekly-slot-position">' + WEEKLY_SLOT_LABELS[position] + '</span>' +
+          '<strong>Añadir obra</strong>' +
+        '</div>';
+      }
+      const done = _weeklySlotDone(slot);
+      const color = _weeklySafeColor(obra.color);
+      return '<div class="weekly-slot weekly-reason-' + escapeHtmlSafe(slot.reasonKind || 'rotation') + (done ? ' is-done' : '') + (slot.locked ? ' is-locked' : '') + '" role="button" tabindex="0" style="--weekly-color:' + color + '" onclick="openWeeklySlotEditor(\'' + dateKey + '\',' + position + ')" onkeydown="weeklySlotKeyOpen(event,\'' + dateKey + '\',' + position + ')">' +
+        '<span class="weekly-slot-position">' + WEEKLY_SLOT_LABELS[position] + '</span>' +
+        '<strong>' + escapeHtmlSafe(obra.name || 'Sin título') + '</strong>' +
+        '<small><i></i>' + escapeHtmlSafe(slot.reason || 'Rotación') + '</small>' +
+        (slot.locked ? '<span class="weekly-slot-lock" aria-label="Bloque fijado" title="Bloque fijado"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3.5" y="7" width="9" height="6.5" rx="1.5"/><path d="M5.5 7V5.2a2.5 2.5 0 0 1 5 0V7"/></svg></span>' : '') +
+        '<button type="button" class="weekly-slot-check" onclick="event.stopPropagation();toggleWeeklySlotDone(\'' + dateKey + '\',' + position + ')" aria-label="' + (done ? 'Bloque completado' : 'Marcar como completado') + '" title="' + (done ? 'Completado' : 'Marcar como completado') + '">' +
+          '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4.5 9.4 2.7 2.8 6.3-6.5"/></svg>' +
+        '</button>' +
+      '</div>';
+    }).join('');
+    return '<article class="weekly-day-card' + (isToday ? ' is-today' : '') + (isPast ? ' is-past' : '') + '">' +
+      '<header><span>' + dayName + '</span><strong>' + date.getDate() + '</strong></header>' + daySlots +
+    '</article>';
+  }).join('');
+}
+
+function weeklySlotKeyOpen(event, date, position) {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  event.preventDefault();
+  openWeeklySlotEditor(date, position);
+}
+
+function setSessionSectionMode(mode) {
+  _sessionSectionMode = mode === 'week' ? 'week' : 'today';
+  const view = document.getElementById('view-session');
+  const planner = document.getElementById('sessionWeeklyPlanner');
+  const todayButton = document.getElementById('sessionModeToday');
+  const weekButton = document.getElementById('sessionModeWeek');
+  if (view) view.classList.toggle('session-weekly-mode', _sessionSectionMode === 'week');
+  if (planner) planner.hidden = _sessionSectionMode !== 'week';
+  if (todayButton) {
+    todayButton.classList.toggle('active', _sessionSectionMode === 'today');
+    todayButton.setAttribute('aria-selected', _sessionSectionMode === 'today' ? 'true' : 'false');
+  }
+  if (weekButton) {
+    weekButton.classList.toggle('active', _sessionSectionMode === 'week');
+    weekButton.setAttribute('aria-selected', _sessionSectionMode === 'week' ? 'true' : 'false');
+  }
+  const header = document.getElementById('headerTitle');
+  if (header && document.body.getAttribute('data-view') === 'session') header.textContent = _sessionSectionMode === 'week' ? 'Semana' : 'Hoy';
+  if (_sessionSectionMode === 'week') renderWeeklyPlanner();
+  else renderSessionViewContent();
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+}
+
+function changeWeeklyPlannerWeek(delta) {
+  _weeklyPlannerOffset += Number(delta) || 0;
+  renderWeeklyPlanner();
+}
+
+function resetWeeklyPlannerWeek() {
+  _weeklyPlannerOffset = 0;
+  renderWeeklyPlanner();
+}
+
+function regenerateWeeklyPlan() {
+  const start = _weeklyVisibleStart();
+  const existing = _weeklyPlanForStart(start);
+  const plan = _weeklyGeneratePlan(start, existing);
+  if (!Array.isArray(db.weeklyPlans)) db.weeklyPlans = [];
+  db.weeklyPlans = db.weeklyPlans.filter(item => item.weekStart !== plan.weekStart);
+  db.weeklyPlans.push(plan);
+  saveData();
+  renderWeeklyPlanner();
+  showToast('Semana reordenada · los bloques fijados se conservan');
+}
+
+function openWeeklySlotEditor(date, position) {
+  const start = _weeklyVisibleStart();
+  const plan = _weeklyEnsurePlan(start);
+  const slot = (plan.slots || []).find(item => item.date === date && Number(item.position) === Number(position));
+  _weeklyEditing = { weekStart: plan.weekStart, date, position: Number(position) };
+  const select = document.getElementById('weeklySlotObraSelect');
+  const works = (db.obras || []).filter(obra => obra && obra.tipo !== 'actividad')
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'es'));
+  if (select) {
+    select.innerHTML = '<option value="">Sin obra</option>' + works.map(obra =>
+      '<option value="' + escapeHtmlSafe(String(obra.id)) + '">' + escapeHtmlSafe(obra.name || 'Sin título') + '</option>'
+    ).join('');
+    select.value = slot && slot.obraId != null ? String(slot.obraId) : '';
+  }
+  const lock = document.getElementById('weeklySlotLocked');
+  if (lock) lock.checked = !!(slot && slot.locked);
+  const remove = document.getElementById('weeklySlotRemove');
+  if (remove) remove.hidden = !slot;
+  const sub = document.getElementById('weeklySlotModalSub');
+  if (sub) {
+    const dateObj = _weeklyDateFromKey(date);
+    sub.textContent = dateObj.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) + ' · ' + WEEKLY_SLOT_LABELS[position];
+  }
+  openModal('modalWeeklySlot');
+  setTimeout(() => select && select.focus(), 80);
+}
+
+function saveWeeklySlotEdit() {
+  if (!_weeklyEditing) return;
+  const plan = (db.weeklyPlans || []).find(item => item.weekStart === _weeklyEditing.weekStart);
+  if (!plan) return;
+  const select = document.getElementById('weeklySlotObraSelect');
+  const obra = _weeklyFindObra(select && select.value);
+  if (!obra) { removeWeeklySlot(); return; }
+  const now = new Date().toISOString();
+  const index = (plan.slots || []).findIndex(item => item.date === _weeklyEditing.date && Number(item.position) === _weeklyEditing.position);
+  const previous = index >= 0 ? plan.slots[index] : null;
+  const slot = {
+    date: _weeklyEditing.date,
+    position: _weeklyEditing.position,
+    obraId: obra.id,
+    locked: !!document.getElementById('weeklySlotLocked')?.checked,
+    done: !!(previous && String(previous.obraId) === String(obra.id) && previous.done),
+    reason: 'Elegida por ti',
+    reasonKind: 'manual',
+    score: null,
+    updatedAt: now
+  };
+  if (!Array.isArray(plan.slots)) plan.slots = [];
+  if (index >= 0) plan.slots[index] = slot;
+  else plan.slots.push(slot);
+  plan.updatedAt = now;
+  saveData();
+  closeModal('modalWeeklySlot');
+  renderWeeklyPlanner();
+  showSavedCheck();
+}
+
+function removeWeeklySlot() {
+  if (!_weeklyEditing) return;
+  const plan = (db.weeklyPlans || []).find(item => item.weekStart === _weeklyEditing.weekStart);
+  if (plan) {
+    plan.slots = (plan.slots || []).filter(item => !(item.date === _weeklyEditing.date && Number(item.position) === _weeklyEditing.position));
+    plan.updatedAt = new Date().toISOString();
+    saveData();
+  }
+  closeModal('modalWeeklySlot');
+  renderWeeklyPlanner();
+  showToast('Bloque vacío');
+}
+
+function toggleWeeklySlotDone(date, position) {
+  const plan = _weeklyPlanForStart(_weeklyVisibleStart());
+  const slot = plan && (plan.slots || []).find(item => item.date === date && Number(item.position) === Number(position));
+  if (!slot) return;
+  if (_weeklySlotActuallyStudied(slot)) {
+    showToast('Ya consta como estudiada ese día');
+    return;
+  }
+  slot.done = !slot.done;
+  slot.updatedAt = new Date().toISOString();
+  plan.updatedAt = slot.updatedAt;
+  saveData();
+  renderWeeklyPlanner();
 }
 
 function computeStudyNudge() {
