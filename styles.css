@@ -5930,6 +5930,139 @@ body.crono-running .crono-destellos-pill { display: none !important; }
   }
   .pscore-modal-btn.sel { color: var(--bg); border-color: transparent; }
 
+  /* Pase: un único depósito visual de 1–100. */
+  .pase-quality-modal .pscore-modal-row {
+    display: block;
+    margin: 14px 0 18px;
+  }
+  .pase-liquid-meter {
+    position: relative;
+    width: 100%;
+    height: 66px;
+    box-sizing: border-box;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .pase-liquid-meter.compact {
+    height: 50px;
+    margin-top: 9px;
+  }
+  .pase-liquid-reservoir {
+    position: absolute;
+    inset: 7px 1px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--pase-color) 34%, var(--border2));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg3) 88%, #000 12%);
+    box-shadow:
+      inset 0 1px 2px rgba(255,255,255,.08),
+      inset 0 -3px 8px rgba(0,0,0,.14),
+      0 0 var(--pase-glow-size) color-mix(in srgb, var(--pase-color) 34%, transparent);
+    transition: border-color .16s ease, box-shadow .16s ease;
+    pointer-events: none;
+  }
+  .pase-liquid-meter.compact .pase-liquid-reservoir { inset-block: 6px; }
+  .pase-liquid-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--pase-fill);
+    border-radius: inherit;
+    background: var(--pase-color);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.5),
+      inset 0 -8px 13px rgba(0,0,0,.13),
+      0 0 var(--pase-glow-size) var(--pase-color);
+    opacity: calc(.58 + var(--pase-glow) * .5);
+    transition: width .1s linear, background .14s ease, box-shadow .14s ease;
+  }
+  .pase-liquid-fill::before,
+  .pase-liquid-fill::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,.38);
+  }
+  .pase-liquid-fill::before {
+    width: 5px;
+    height: 5px;
+    right: 18%;
+    top: 22%;
+    box-shadow: -34px 14px 0 -1px rgba(255,255,255,.24), -70px -2px 0 -1px rgba(255,255,255,.2);
+  }
+  .pase-liquid-fill::after {
+    width: 3px;
+    height: 3px;
+    right: 34%;
+    bottom: 22%;
+    box-shadow: -48px -9px 0 rgba(255,255,255,.18);
+  }
+  .pase-liquid-glint {
+    position: absolute;
+    left: 3%;
+    right: 3%;
+    top: 12%;
+    height: 26%;
+    border-radius: 999px;
+    background: rgba(255,255,255,.17);
+    opacity: var(--pase-glow);
+  }
+  .pase-liquid-orb {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: clamp(4px, calc(var(--pase-fill) - 14px), calc(100% - 31px));
+    width: 27px;
+    height: 27px;
+    border: 2px solid rgba(255,255,255,.72);
+    border-radius: 50%;
+    background: var(--pase-color);
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--pase-color) 22%, transparent),
+      0 0 var(--pase-glow-size) var(--pase-color),
+      inset 0 1px 3px rgba(255,255,255,.54);
+    transform: translateY(-50%);
+    transition: left .1s linear, background .14s ease, box-shadow .14s ease;
+  }
+  .pase-liquid-meter.compact .pase-liquid-orb {
+    left: clamp(3px, calc(var(--pase-fill) - 11px), calc(100% - 25px));
+    width: 21px;
+    height: 21px;
+  }
+  .pase-liquid-input {
+    position: absolute;
+    z-index: 4;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: ew-resize;
+    touch-action: none;
+  }
+  .pase-liquid-meter:focus-within .pase-liquid-reservoir {
+    border-color: var(--pase-color);
+    box-shadow: inset 0 1px 2px rgba(255,255,255,.1), 0 0 calc(var(--pase-glow-size) + 4px) color-mix(in srgb, var(--pase-color) 48%, transparent);
+  }
+  .pase-history-liquid {
+    position: relative;
+    display: inline-block;
+    flex: 0 0 48px;
+    height: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border2);
+    border-radius: 999px;
+    background: var(--bg3);
+  }
+  .pase-history-liquid i {
+    display: block;
+    width: var(--pase-fill);
+    height: 100%;
+    border-radius: inherit;
+    background: var(--pase-color);
+    box-shadow: 0 0 var(--pase-glow-size) var(--pase-color);
+  }
+
   /* TEMPO EN PASAJES */
   .tempo-row {
     display: flex; align-items: center; gap: 4px;

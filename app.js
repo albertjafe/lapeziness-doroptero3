@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-17-memory-cards-v141';
+const APP_VERSION = '2026-08-17-liquid-pass-meter-v142';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -3965,6 +3965,7 @@ function recordSessionPlant(obraId, movId, startedAt, endedAt, mins, opts) {
     entry.pase = true;
     if (options.paseId) entry.paseId = options.paseId;
     if (options.paseScore != null) entry.paseScore = options.paseScore;
+    if (options.pasePct != null) entry.pasePct = paseClampPct(options.pasePct);
     if (options.paseTipo) entry.paseTipo = normalizePaseTipo(options.paseTipo);
     if (options.takes != null) entry.takes = options.takes;
   }
@@ -4763,13 +4764,85 @@ function paseScoreToPct(score) {
   return Math.round((s - 1) / 9 * 100);
 }
 
-function linkPaseToTargetHistory(obraId, movId, score, tipo, dateIso) {
+function paseClampPct(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback == null ? 50 : paseClampPct(fallback, 50);
+  return Math.max(1, Math.min(100, Math.round(n)));
+}
+
+function paseEntryPct(entry) {
+  if (!entry) return null;
+  if (entry.solidezPct != null && Number.isFinite(Number(entry.solidezPct))) {
+    return paseClampPct(entry.solidezPct);
+  }
+  if (entry.score != null && Number.isFinite(Number(entry.score))) {
+    return paseScoreToPct(entry.score);
+  }
+  const legacy = { bien: 78, regular: 50, mal: 22 };
+  return entry.quality && legacy[entry.quality] != null ? legacy[entry.quality] : null;
+}
+
+function pasePctToLegacyScore(pct) {
+  return Math.max(1, Math.min(10, Math.round(paseClampPct(pct) / 10)));
+}
+
+function pasePctToQuality(pct) {
+  const value = paseClampPct(pct);
+  if (value >= 70) return 'bien';
+  if (value >= 40) return 'regular';
+  return 'mal';
+}
+
+function paseLiquidStyle(pct) {
+  const value = paseClampPct(pct);
+  const glow = (0.12 + value / 100 * 0.58).toFixed(2);
+  const hue = value < 50
+    ? Math.round(4 + value * 0.8)
+    : Math.round(44 + (value - 50) * 1.8);
+  const glowSize = Math.round(3 + value * 0.15);
+  return '--pase-fill:' + value + '%;--pase-glow:' + glow + ';--pase-glow-size:' + glowSize + 'px;--pase-color:hsl(' + hue + ' 62% 55%)';
+}
+
+function paseLiquidMeterHtml(options) {
+  const opts = options || {};
+  const value = paseClampPct(opts.value);
+  const id = opts.id ? ' id="' + opts.id + '"' : '';
+  const inputId = opts.inputId ? ' id="' + opts.inputId + '"' : '';
+  const classes = 'pase-liquid-meter' + (opts.compact ? ' compact' : '');
+  const oninput = opts.oninput || '';
+  const onchange = opts.onchange || '';
+  return '<div' + id + ' class="' + classes + '" style="' + paseLiquidStyle(value) + '">' +
+    '<div class="pase-liquid-reservoir" aria-hidden="true">' +
+      '<span class="pase-liquid-fill"></span><span class="pase-liquid-glint"></span><span class="pase-liquid-orb"></span>' +
+    '</div>' +
+    '<input' + inputId + ' class="pase-liquid-input" type="range" min="1" max="100" step="1" value="' + value + '"' +
+      ' aria-label="Resultado del pase, de 1 a 100" aria-valuetext="' + value + ' por ciento"' +
+      (oninput ? ' oninput="' + oninput + '"' : '') + (onchange ? ' onchange="' + onchange + '"' : '') + '>' +
+  '</div>';
+}
+
+function updatePaseLiquidMeter(input, value) {
+  const pct = paseClampPct(value);
+  const meter = input?.closest?.('.pase-liquid-meter');
+  if (meter) meter.setAttribute('style', paseLiquidStyle(pct));
+  if (input) {
+    input.value = pct;
+    input.setAttribute('aria-valuetext', pct + ' por ciento');
+  }
+  return pct;
+}
+
+function linkPasePctToTargetHistory(obraId, movId, pct, tipo, dateIso) {
   const t = normalizePaseTipo(tipo);
-  const pct = paseScoreToPct(score);
+  const value = paseClampPct(pct);
   const context = 'pase-' + t;
-  if (movId) recordMovSolHistory(obraId, movId, pct, context, dateIso);
-  else recordSolHistory(obraId, pct, context, dateIso);
-  if (t === 'evento' || t === 'concurso') recordEscHistory(obraId, pct, 'pase-' + t, dateIso);
+  if (movId) recordMovSolHistory(obraId, movId, value, context, dateIso);
+  else recordSolHistory(obraId, value, context, dateIso);
+  if (t === 'evento' || t === 'concurso') recordEscHistory(obraId, value, 'pase-' + t, dateIso);
+}
+
+function linkPaseToTargetHistory(obraId, movId, score, tipo, dateIso) {
+  linkPasePctToTargetHistory(obraId, movId, paseScoreToPct(score), tipo, dateIso);
 }
 
 function linkPaseToHistory(obraId, score, tipo, dateIso) {
@@ -15297,7 +15370,7 @@ function renderPasajeRowGlobal(item, STATUS_LABEL, STATUS_COLOR, STATUS_BAR, sho
 
 let paseQualityObraId = null;
 let paseQualityMovId = null;
-let paseQualitySelected = null; // number 1-10, chosen from 5 coarse levels
+let paseQualitySelectedPct = 50;
 let paseTipoSelected = 'solo';
 let cronoPaseTipoSelected = 'solo';
 let paseEditingEntry = null;
@@ -15639,14 +15712,6 @@ function dateInputValueFromIso(iso) {
   return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
 }
 
-const PASE_SCORE_CHOICES = [
-  { score: 2, label: 'Se cae', sub: 'pierdo el hilo' },
-  { score: 4, label: 'Frágil', sub: 'sale con paradas' },
-  { score: 6, label: 'Sale', sub: 'con control' },
-  { score: 8, label: 'Sólido', sub: 'entero y estable' },
-  { score: 10, label: 'Listo', sub: 'para exponer' },
-];
-
 function scoreToQuality(n) {
   if (n === null || n === undefined) return null;
   if (n >= 8) return 'bien';
@@ -15663,12 +15728,13 @@ function scoreColor(n) {
 function buildPaseScoreBtns() {
   const row = document.getElementById('paseQScoreBtns');
   if (!row) return;
-  row.innerHTML = PASE_SCORE_CHOICES.map(ch =>
-    `<button class="pscore-modal-btn pase-quality-chip" onclick="selectPaseQ(${ch.score},this)">
-      <strong>${escapeHtmlSafe(ch.label)}</strong>
-      <span>${escapeHtmlSafe(ch.sub)}</span>
-    </button>`
-  ).join('');
+  row.innerHTML = paseLiquidMeterHtml({
+    id: 'paseQMeter',
+    inputId: 'paseQPercent',
+    value: paseQualitySelectedPct,
+    oninput: 'selectPasePct(this.value,this)',
+    onchange: 'paseLiquidCommitHaptic()',
+  });
 }
 
 function registerPase(obraId, movId) {
@@ -15676,7 +15742,7 @@ function registerPase(obraId, movId) {
   paseFaultDraft = [];
   paseQualityObraId = obraId;
   paseQualityMovId = movId || null;
-  paseQualitySelected = null;
+  paseQualitySelectedPct = 50;
   paseTipoSelected = 'solo';
   const obra = findObra(obraId);
   const mov = movId ? findMovimiento(obraId, movId) : null;
@@ -15684,7 +15750,7 @@ function registerPase(obraId, movId) {
     ? `${obra ? obra.name + ' — ' : ''}${mov.name}`
     : (obra ? obra.name : '');
   document.getElementById('paseQualityName').textContent = displayName;
-  document.getElementById('paseQualityTitle').textContent = 'Â¿CÃ³mo fue el pase?';
+  document.getElementById('paseQualityTitle').textContent = '¿Cómo fue el pase?';
   document.getElementById('paseQNote').value = '';
   const takes = document.getElementById('paseQTakes');
   if (takes) takes.value = '';
@@ -15717,12 +15783,12 @@ function openEditPase(obraId, movId, entryId, entryIndex) {
   paseEditingEntry = { obraId, movId: movId || null, entryId: entry.id, index };
   paseQualityObraId = obraId;
   paseQualityMovId = movId || null;
-  paseQualitySelected = Number(entry.score) || ({ bien: 8, regular: 5, mal: 2 }[entry.quality] || null);
+  paseQualitySelectedPct = paseEntryPct(entry) || 50;
   paseTipoSelected = normalizePaseTipo(entry.tipo || 'solo');
   paseFaultDraft = paseFaultClone(entry.faults || []);
   document.getElementById('paseQualityTitle').textContent = 'Editar pase';
   document.getElementById('paseQualityName').textContent = movId
-    ? (obra?.name || '') + ' Â— ' + (findMovimiento(obraId, movId)?.name || '')
+    ? (obra?.name || '') + ' — ' + (findMovimiento(obraId, movId)?.name || '')
     : (obra?.name || '');
   document.getElementById('paseQNote').value = entry.note || entry.nota || '';
   document.getElementById('paseQFecha').value = dateInputValueFromIso(entry.date);
@@ -15737,9 +15803,6 @@ function openEditPase(obraId, movId, entryId, entryIndex) {
   });
   updatePaseTakesVisibility(paseTipoSelected);
   updatePaseQualityFaultButton();
-  const scoreButton = [...document.querySelectorAll('#paseQScoreBtns .pscore-modal-btn')]
-    .find(button => button.textContent.includes(PASE_SCORE_CHOICES.find(choice => choice.score === paseQualitySelected)?.label || ''));
-  if (scoreButton && paseQualitySelected) selectPaseQ(paseQualitySelected, scoreButton);
   saveData();
   openModal('modalPaseQuality');
 }
@@ -15757,26 +15820,24 @@ function selectPaseTipo(tipo, btn) {
   updatePaseTakesVisibility(paseTipoSelected);
 }
 
-function selectPaseQ(n, btn) {
-  paseQualitySelected = n;
-  document.querySelectorAll('#paseQScoreBtns .pscore-modal-btn').forEach(b => {
-    b.classList.remove('sel'); b.style.background = ''; b.style.color = '';
-  });
-  btn.classList.add('sel');
-  btn.style.background = SCORE_COLORS[n];
-  btn.style.color = '#fff';
+function selectPasePct(value, input) {
+  paseQualitySelectedPct = updatePaseLiquidMeter(input, value);
+}
+
+function paseLiquidCommitHaptic() {
+  try { Haptics.light(); } catch (e) {}
 }
 
 function confirmPase() {
-  if (!paseQualitySelected) { showToast('Elige una puntuación'); return; }
+  const pct = paseClampPct(paseQualitySelectedPct);
   const note = document.getElementById('paseQNote').value.trim();
   const fechaStr = document.getElementById('paseQFecha').value;
   const paseDate = fechaStr ? new Date(fechaStr + 'T12:00:00').toISOString() : new Date().toISOString();
   const tipo = normalizePaseTipo(paseTipoSelected);
   const takesValue = parseInt(document.getElementById('paseQTakes')?.value || '', 10);
   const takes = tipo === 'grabacion' && Number.isFinite(takesValue) && takesValue > 0 ? Math.min(99, takesValue) : null;
-  const quality = scoreToQuality(paseQualitySelected);
-  const paseEntry = { id: paseEditingEntry?.entryId || createPaseId(), date: paseDate, score: paseQualitySelected, solidezPct: paseScoreToPct(paseQualitySelected), quality, tipo, takes, note, faults: paseFaultClone(paseFaultDraft) };
+  const score = pasePctToLegacyScore(pct);
+  const paseEntry = { id: paseEditingEntry?.entryId || createPaseId(), date: paseDate, score, solidezPct: pct, quality: pasePctToQuality(pct), tipo, takes, note, faults: paseFaultClone(paseFaultDraft) };
 
   if (paseEditingEntry) {
     const entity = paseEditingEntry.movId
@@ -15796,6 +15857,7 @@ function confirmPase() {
     const linkedPlants = (db.sessionPlants || []).filter(plant => plant.paseId === existing.id);
     linkedPlants.forEach(plant => {
       plant.paseScore = existing.score;
+      plant.pasePct = existing.solidezPct;
       plant.paseTipo = existing.tipo;
       plant.takes = existing.takes;
       if (previousDate !== existing.date) {
@@ -15823,7 +15885,7 @@ function confirmPase() {
     if (!mov.paseHistory) mov.paseHistory = [];
     mov.paseHistory.unshift(paseEntry);
     if (mov.paseHistory.length > 20) mov.paseHistory = mov.paseHistory.slice(0, 20);
-    linkPaseToTargetHistory(paseQualityObraId, paseQualityMovId, paseQualitySelected, tipo, paseDate);
+    linkPasePctToTargetHistory(paseQualityObraId, paseQualityMovId, pct, tipo, paseDate);
     saveData();
     closeModal('modalPaseQuality');
     showToast('Pase registrado ✓');
@@ -15837,7 +15899,7 @@ function confirmPase() {
       const tipoLabel = paseEntry.tipo ? `<span style="color:var(--text3);font-size:8px;background:var(--bg2);border-radius:3px;padding:1px 4px;margin-left:2px">${tipoIcons[paseEntry.tipo]||paseEntry.tipo}</span>` : '';
       const takesLabel = paseEntry.takes ? `<span style="color:var(--text3);font-size:8px">${paseEntry.takes} takes</span>` : '';
       const newRow = `<div style="display:flex;gap:8px;font-size:9px;color:var(--text3);padding:3px 0;align-items:center">
-        <span style="color:${scoreColor(paseEntry.score)};font-weight:bold">${paseEntry.score}</span>${tipoLabel}${takesLabel}<span>${d}</span>${note?`<span>· ${note}</span>`:''}
+        <span class="pase-history-liquid" style="${paseLiquidStyle(pct)}"><i></i></span>${tipoLabel}${takesLabel}<span>${d}</span>${note?`<span>· ${note}</span>`:''}
       </div>`;
       if (histDiv) histDiv.insertAdjacentHTML('afterbegin', newRow);
       else movCard.insertAdjacentHTML('beforeend', `<div class="mov-pase-hist">${newRow}</div>`);
@@ -15851,7 +15913,7 @@ function confirmPase() {
   if (!obra.paseHistory) obra.paseHistory = [];
   obra.paseHistory.unshift(paseEntry);
   if (obra.paseHistory.length > 20) obra.paseHistory = obra.paseHistory.slice(0, 20);
-  linkPaseToHistory(paseQualityObraId, paseQualitySelected, tipo, paseDate);
+  linkPasePctToTargetHistory(paseQualityObraId, null, pct, tipo, paseDate);
   saveData();
   closeModal('modalPaseQuality');
   showToast('Pase registrado ✓');
@@ -15862,13 +15924,6 @@ function confirmPase() {
 
 let cronoPaseDraft = [];
 let cronoPaseSelectionGroups = [];
-const CRONO_PASE_SCORE_CHOICES = [
-  { score: 2, label: 'Se cae' },
-  { score: 4, label: 'Frágil' },
-  { score: 6, label: 'Sale' },
-  { score: 8, label: 'Sólido' },
-  { score: 10, label: 'Listo' },
-];
 
 function cronoPaseDefaultMinutes(resolved) {
   if (!resolved) return 8;
@@ -15927,7 +15982,7 @@ function cronoPaseDraftItem(resolved) {
     movId: resolved.movId || null,
     name: resolved.name,
     minutes: cronoPaseDefaultMinutes(resolved),
-    score: null,
+    solidezPct: 50,
     takes: null,
     faults: [],
     passNumber: 1,
@@ -16050,11 +16105,10 @@ function cronoPaseBackToSelection() {
   cronoPaseRenderSelection();
 }
 
-function cronoPaseSetScore(key, score) {
+function cronoPaseSetPct(key, value, input) {
   const item = cronoPaseDraft.find(it => it.key === key);
   if (!item) return;
-  item.score = score;
-  cronoPaseRender();
+  item.solidezPct = updatePaseLiquidMeter(input, value);
 }
 
 function cronoPaseSetMinutes(key, value) {
@@ -16080,7 +16134,7 @@ function cronoPaseSetCount(targetKey, value) {
       targetKey,
       passNumber: index + 1,
       passCount: desired,
-      score: previous?.score ?? null,
+      solidezPct: previous?.solidezPct ?? 50,
       takes: previous?.takes ?? null,
       faults: paseFaultClone(previous?.faults || []),
     });
@@ -16132,11 +16186,12 @@ function cronoPaseRender() {
     group.items.push(item);
   });
   host.innerHTML = grouped.flatMap(group => group.items.map((it, groupIndex) => {
-    const scoreBtns = CRONO_PASE_SCORE_CHOICES.map(ch =>
-      '<button type="button" class="crono-pase-score ' + (it.score === ch.score ? 'active' : '') + '" onclick="cronoPaseSetScore(\'' + it.key + '\',' + ch.score + ')">' +
-        escapeHtmlSafe(ch.label) +
-      '</button>'
-    ).join('');
+    const meter = paseLiquidMeterHtml({
+      value: it.solidezPct,
+      compact: true,
+      oninput: 'cronoPaseSetPct(\'' + it.key + '\',this.value,this)',
+      onchange: 'paseLiquidCommitHaptic()',
+    });
     return '<div class="crono-pase-item">' +
       '<div class="crono-pase-item-top">' +
         '<div class="crono-pase-item-name">' + escapeHtmlSafe(it.name) + '<small>Pase ' + (it.passNumber || groupIndex + 1) + ' de ' + (group.items.length || 1) + '</small></div>' +
@@ -16147,7 +16202,7 @@ function cronoPaseRender() {
       (groupIndex === 0
         ? '<label class="crono-pase-count"><span>N de pases de esta obra</span><input type="number" min="1" max="20" step="1" value="' + (group.items.length || 1) + '" onchange="cronoPaseSetCount(\'' + group.targetKey + '\',this.value)" oninput="cronoPaseSetCount(\'' + group.targetKey + '\',this.value)" aria-label="Numero de pases"></label>'
         : '') +
-      '<div class="crono-pase-score-row">' + scoreBtns + '</div>' +
+      meter +
       '<button type="button" class="pase-fault-launch compact ' + ((it.faults || []).length ? 'has-faults' : '') + '" onclick="openPaseFaultMapFromCrono(\'' + it.key + '\')"><span>Mapa de fallos</span><strong>' + ((it.faults || []).length ? ((it.faults || []).length + ((it.faults || []).length === 1 ? ' marca' : ' marcas')) : 'Sin marcas') + '</strong></button>' +
       (normalizePaseTipo(cronoPaseTipoSelected) === 'grabacion'
         ? '<label class="crono-pase-takes"><span>Takes de esta obra</span><input type="number" min="1" max="99" step="1" inputmode="numeric" value="' + (it.takes || '') + '" placeholder="—" onchange="cronoPaseSetTakes(\'' + it.key + '\',this.value)" aria-label="Takes de esta obra"></label>'
@@ -16160,12 +16215,14 @@ function cronoPaseRender() {
 function cronoPaseRecordQuality(item, dateIso, comment) {
   const tipo = normalizePaseTipo(cronoPaseTipoSelected);
   item.paseId = item.paseId || createPaseId();
+  const pct = paseClampPct(item.solidezPct);
+  const score = pasePctToLegacyScore(pct);
   const paseEntry = {
     id: item.paseId,
     date: dateIso,
-    score: item.score,
-    solidezPct: paseScoreToPct(item.score),
-    quality: scoreToQuality(item.score),
+    score,
+    solidezPct: pct,
+    quality: pasePctToQuality(pct),
     tipo,
     takes: tipo === 'grabacion' && item.takes ? item.takes : null,
     faults: paseFaultClone(item.faults || []),
@@ -16178,7 +16235,7 @@ function cronoPaseRecordQuality(item, dateIso, comment) {
     if (!mov.paseHistory) mov.paseHistory = [];
     mov.paseHistory.unshift(paseEntry);
     if (mov.paseHistory.length > 20) mov.paseHistory = mov.paseHistory.slice(0, 20);
-    linkPaseToTargetHistory(item.obraId, item.movId, item.score, tipo, dateIso);
+    linkPasePctToTargetHistory(item.obraId, item.movId, pct, tipo, dateIso);
     return;
   }
   const obra = findObra(item.obraId);
@@ -16187,7 +16244,7 @@ function cronoPaseRecordQuality(item, dateIso, comment) {
   if (!obra.paseHistory) obra.paseHistory = [];
   obra.paseHistory.unshift(paseEntry);
   if (obra.paseHistory.length > 20) obra.paseHistory = obra.paseHistory.slice(0, 20);
-  linkPaseToHistory(item.obraId, item.score, tipo, dateIso);
+  linkPasePctToTargetHistory(item.obraId, null, pct, tipo, dateIso);
 }
 
 function cronoPaseAddToStudy(item, startedAtIso, endedAtIso, comment) {
@@ -16227,7 +16284,9 @@ function cronoPaseAddToStudy(item, startedAtIso, endedAtIso, comment) {
   }
 
   sessionTicks[targetPlanId] = 'hecho';
-  sessionProductivityRatings[targetPlanId] = Math.max(0, Math.min(100, item.score * 10));
+  const pct = paseClampPct(item.solidezPct);
+  const score = pasePctToLegacyScore(pct);
+  sessionProductivityRatings[targetPlanId] = pct;
   if (!sessionAggregate[targetPlanId]) sessionAggregate[targetPlanId] = { subsessions: [] };
   const passComment = (comment || '').trim();
   const passNote = passComment ? cronoNormalizeSessionNote({
@@ -16245,13 +16304,14 @@ function cronoPaseAddToStudy(item, startedAtIso, endedAtIso, comment) {
   }) : null;
   sessionAggregate[targetPlanId].subsessions.push({
     min: minutes,
-    prod: item.score * 10,
+    prod: pct,
     timestamp: endedAtIso,
     startedAt: startedAtIso,
     endedAt: endedAtIso,
     pase: true,
     paseId: item.paseId,
-    score: item.score,
+    score,
+    solidezPct: pct,
     tipo: normalizePaseTipo(cronoPaseTipoSelected),
     takes: normalizePaseTipo(cronoPaseTipoSelected) === 'grabacion' && item.takes ? item.takes : null,
     faults: paseFaultClone(item.faults || []),
@@ -16281,7 +16341,8 @@ function cronoPaseAddToStudy(item, startedAtIso, endedAtIso, comment) {
     source: 'pase',
     pase: true,
     paseId: item.paseId,
-    paseScore: item.score,
+    paseScore: score,
+    pasePct: pct,
     paseTipo: normalizePaseTipo(cronoPaseTipoSelected),
     takes: normalizePaseTipo(cronoPaseTipoSelected) === 'grabacion' && item.takes ? item.takes : null,
     faults: paseFaultClone(item.faults || []),
@@ -16293,11 +16354,6 @@ function cronoPaseAddToStudy(item, startedAtIso, endedAtIso, comment) {
 function confirmCronoPaseRapido() {
   if (!cronoPaseDraft.length) {
     showToast('Selecciona al menos una obra');
-    return;
-  }
-  const unrated = cronoPaseDraft.find(item => !item.score);
-  if (unrated) {
-    showToast('Valora el pase de ' + unrated.name);
     return;
   }
   const total = cronoPaseDraft.reduce((s, it) => s + (parseInt(it.minutes || 0, 10) || 0), 0);
@@ -16558,13 +16614,10 @@ function aiMinutesLabel(mins) {
   return m + ' min';
 }
 
-function aiPaseResultLabel(score) {
+function aiPaseResultLabel(score, solidezPct) {
+  if (solidezPct != null && Number.isFinite(Number(solidezPct))) return paseClampPct(solidezPct) + '%';
   const n = Number(score);
-  if (n >= 9) return 'Listo';
-  if (n >= 8) return 'Sólido';
-  if (n >= 6) return 'Sale';
-  if (n >= 4) return 'Frágil';
-  if (n > 0) return 'Se cae';
+  if (n > 0) return paseScoreToPct(n) + '%';
   return '';
 }
 
@@ -16604,7 +16657,7 @@ function aiLatestPaseForObra(obra) {
     score: p.score != null ? p.score : null,
     takes: p.takes != null ? p.takes : null,
     fallos: paseFaultClone(p.faults || []),
-    resultado: aiPaseResultLabel(p.score),
+    resultado: aiPaseResultLabel(p.score, p.solidezPct),
     nota: p.note || p.nota || '',
   };
 }
@@ -16700,7 +16753,7 @@ function aiBuildPaseRows() {
         score: p.score != null ? p.score : null,
         takes: p.takes != null ? p.takes : null,
         fallos: paseFaultClone(p.faults || []),
-        resultado: aiPaseResultLabel(p.score),
+        resultado: aiPaseResultLabel(p.score, p.solidezPct),
         solidezPct: p.solidezPct != null ? p.solidezPct : (p.score != null && typeof paseScoreToPct === 'function' ? paseScoreToPct(p.score) : null),
         nota: p.note || p.nota || '',
         raw: p,
@@ -16721,7 +16774,7 @@ function aiBuildPaseRows() {
           score: p.score != null ? p.score : null,
           takes: p.takes != null ? p.takes : null,
           fallos: paseFaultClone(p.faults || []),
-          resultado: aiPaseResultLabel(p.score),
+          resultado: aiPaseResultLabel(p.score, p.solidezPct),
           solidezPct: p.solidezPct != null ? p.solidezPct : (p.score != null && typeof paseScoreToPct === 'function' ? paseScoreToPct(p.score) : null),
           nota: p.note || p.nota || '',
           raw: p,
@@ -17268,7 +17321,7 @@ function buildAiTextReport(options) {
   lines.push('- Bloque con hora: tramo real registrado por cronómetro/temporizador/Forest. Es el dato más fiable para saber cuándo estudié y cuánto tiempo.');
   lines.push('- Nota de sesión: observación escrita o dictada antes de empezar, en un minuto concreto del cronómetro/temporizador, o después de terminar. Es input directo del usuario; úsalo como contexto prioritario.');
   lines.push('- Tarjeta/sesión guardada: resumen diario o tarjeta de estudio. Puede incluir obra, minutos, tick, nota, destello y datos agregados de sub-sesiones.');
-  lines.push('- Pase: ejecución de una obra o movimiento. Es la medida principal de solidez. Tipos: solo = para mí; informal = ante pareja/amigos; evento = audición, concierto u otra situación formal; concurso = competición; grabación = sesión con takes. Resultado: Se cae, Frágil, Sale, Sólido o Listo.');
+  lines.push('- Pase: ejecución de una obra o movimiento. Es la medida principal de solidez. Tipos: solo = para mí; informal = ante pareja/amigos; evento = audición, concierto u otra situación formal; concurso = competición; grabación = sesión con takes. Resultado: porcentaje de 1 a 100; cuanto mayor, mejor salió.');
   lines.push('- Mapa de fallos del pase: marcas visuales por posición o compás. fallo = caída o interrupción; suciedad = imprecisión; memoria = problema de recuerdo. Las repeticiones cercanas señalan zonas recurrentes.');
   lines.push('- Pasaje: fragmento concreto dentro de una obra. Puede tener estado actual, intensidad de trabajo, solidez antes/después, fallos de memoria o entradas de seguimiento. Si un pasaje aparece varias veces el mismo día, trátalo como foco recurrente, no como duplicado irrelevante.');
   lines.push('- Concentración/impulso/malestar/resistencia y el resto de estados: contexto momentáneo registrado por mí. Resistencia indica cuánta fricción interna siento para continuar. Úsalo como contexto, no como diagnóstico clínico ni como causa segura.');

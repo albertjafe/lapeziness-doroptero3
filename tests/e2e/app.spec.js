@@ -1523,9 +1523,9 @@ test('selects several recent works before rating and saving their passes', async
   await expect(page.locator('#cronoPaseDetailStage')).toBeVisible();
   const cards = page.locator('#cronoPaseItems .crono-pase-item');
   await expect(cards).toHaveCount(2);
-  await expect(cards.locator('.crono-pase-score.active')).toHaveCount(0);
-  await cards.nth(0).locator('.crono-pase-score').nth(1).click();
-  await cards.nth(1).locator('.crono-pase-score').nth(3).click();
+  await expect(cards.locator('.pase-liquid-input')).toHaveCount(2);
+  await cards.nth(0).locator('.pase-liquid-input').fill('35');
+  await cards.nth(1).locator('.pase-liquid-input').fill('82');
   await page.locator('#cronoPaseComment').fill('Afinar el ataque y sostener mejor el final');
   await modal.getByRole('button', { name: 'Guardar pases' }).click();
   await expect(modal).not.toHaveClass(/visible/);
@@ -1594,7 +1594,7 @@ test('records recording passes with takes and a score for each work', async ({ p
   await page.locator('#cronoPaseSelectionList .crono-pase-picker-item').click();
   await page.locator('#cronoPaseContinueBtn').click();
   await page.locator('#modalCronoPaseRapido .pase-tipo-btn.grabacion').click();
-  await page.locator('.crono-pase-item').first().locator('.crono-pase-score').nth(3).click();
+  await page.locator('.crono-pase-item').first().locator('.pase-liquid-input').fill('82');
   await page.locator('.crono-pase-item').first().locator('.crono-pase-takes input').fill('4');
   await page.getByRole('button', { name: 'Guardar pases' }).click();
 
@@ -1602,8 +1602,8 @@ test('records recording passes with takes and a score for each work', async ({ p
     pase: findObra('obra_grabacion').paseHistory[0],
     plant: db.sessionPlants.find(item => item.source === 'pase'),
   }));
-  expect(state.pase).toMatchObject({ tipo: 'grabacion', score: 8, takes: 4 });
-  expect(state.plant).toMatchObject({ pase: true, paseTipo: 'grabacion', paseScore: 8, takes: 4 });
+  expect(state.pase).toMatchObject({ tipo: 'grabacion', score: 8, solidezPct: 82, takes: 4 });
+  expect(state.plant).toMatchObject({ pase: true, paseTipo: 'grabacion', paseScore: 8, pasePct: 82, takes: 4 });
 });
 
 test('keeps competition passes distinct from general events', async ({ page }) => {
@@ -1619,7 +1619,7 @@ test('keeps competition passes distinct from general events', async ({ page }) =
   await page.locator('#cronoPaseSelectionList .crono-pase-picker-item').click();
   await page.locator('#cronoPaseContinueBtn').click();
   await page.locator('#modalCronoPaseRapido .pase-tipo-btn.concurso').click();
-  await page.locator('.crono-pase-item').first().locator('.crono-pase-score').nth(3).click();
+  await page.locator('.crono-pase-item').first().locator('.pase-liquid-input').fill('76');
   await page.getByRole('button', { name: 'Guardar pases' }).click();
 
   const state = await page.evaluate(() => ({
@@ -1627,8 +1627,8 @@ test('keeps competition passes distinct from general events', async ({ page }) =
     plant: db.sessionPlants.find(item => item.source === 'pase'),
     stageContext: findObra('obra_concurso').escHistory[0]?.context,
   }));
-  expect(state.pase).toMatchObject({ tipo: 'concurso', score: 8 });
-  expect(state.plant).toMatchObject({ pase: true, paseTipo: 'concurso', paseScore: 8 });
+  expect(state.pase).toMatchObject({ tipo: 'concurso', score: 8, solidezPct: 76 });
+  expect(state.plant).toMatchObject({ pase: true, paseTipo: 'concurso', paseScore: 8, pasePct: 76 });
   expect(state.stageContext).toBe('pase-concurso');
 });
 
@@ -1658,7 +1658,7 @@ test('configures a work map, records a visual fault and shows it in pass history
   await page.getByRole('button', { name: 'Guardar mapa' }).click();
 
   await expect(page.locator('.crono-pase-item .pase-fault-launch')).toContainText('1 marca');
-  await page.locator('.crono-pase-item .crono-pase-score').nth(3).click();
+  await page.locator('.crono-pase-item .pase-liquid-input').fill('74');
   await page.getByRole('button', { name: 'Guardar pases' }).click();
 
   const state = await page.evaluate(() => {
@@ -1740,15 +1740,15 @@ test('keeps the pass save action visible and supports repeated passes per work',
     .filter(item => item.name === 'Obra 1')
     .map(item => item.index));
   expect(firstPassIndices).toHaveLength(3);
-  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[0]).locator('.crono-pase-score').nth(0).click();
-  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[1]).locator('.crono-pase-score').nth(2).click();
-  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[2]).locator('.crono-pase-score').nth(4).click();
+  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[0]).locator('.pase-liquid-input').fill('18');
+  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[1]).locator('.pase-liquid-input').fill('61');
+  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[2]).locator('.pase-liquid-input').fill('97');
   await modal.getByRole('button', { name: 'Guardar pases' }).click();
-  const result = await page.evaluate(() => db.obras[0].paseHistory.map(entry => ({ score: entry.score, date: entry.date.slice(0, 10) })));
+  const result = await page.evaluate(() => db.obras[0].paseHistory.map(entry => ({ pct: entry.solidezPct, date: entry.date.slice(0, 10) })));
   expect(result).toEqual([
-    { score: 10, date: '2026-08-01' },
-    { score: 6, date: '2026-08-01' },
-    { score: 2, date: '2026-08-01' },
+    { pct: 97, date: '2026-08-01' },
+    { pct: 61, date: '2026-08-01' },
+    { pct: 18, date: '2026-08-01' },
   ]);
 });
 
@@ -1770,11 +1770,11 @@ test('edits a previous pass by date, type and result from the evolution history'
   await page.locator('#paseQFecha').fill('2026-08-03');
   await page.locator('#modalPaseQuality .pase-tipo-btn.grabacion').click();
   await page.locator('#paseQTakes').fill('4');
-  await page.locator('#paseQScoreBtns .pscore-modal-btn').nth(3).click();
+  await page.locator('#paseQPercent').fill('84');
   await page.locator('#paseQNote').fill('Ahora estable');
   await page.getByRole('button', { name: 'Guardar' }).click();
   const edited = await page.evaluate(() => db.obras[0].paseHistory[0]);
-  expect(edited).toMatchObject({ id: 'previous-pass', score: 8, tipo: 'grabacion', takes: 4, note: 'Ahora estable' });
+  expect(edited).toMatchObject({ id: 'previous-pass', score: 8, solidezPct: 84, tipo: 'grabacion', takes: 4, note: 'Ahora estable' });
   expect(edited.date.slice(0, 10)).toBe('2026-08-03');
 });
 
