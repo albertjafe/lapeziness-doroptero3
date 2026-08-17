@@ -141,4 +141,17 @@ describe('DataCore', () => {
       { date: '2026-08-10', position: 1, obraId: 'ligeti', locked: true, updatedAt: '2026-08-10T11:00:00Z' },
     ]);
   });
+
+  it('merges memory card reviews from two devices and keeps the newest schedule', () => {
+    const base = {
+      id: 'card-1', obraId: 'bach', label: 'Compases 1–8', createdAt: '2026-08-17T08:00:00Z',
+    };
+    const merged = DataCore.mergeStudyHistory(
+      { memoryCards: [{ ...base, dueDate: '2026-08-18', intervalDays: 1, updatedAt: '2026-08-17T09:00:00Z', reviews: [{ id: 'r1', rating: 'again', at: '2026-08-17T09:00:00Z' }] }] },
+      { memoryCards: [{ ...base, dueDate: '2026-08-21', intervalDays: 4, updatedAt: '2026-08-17T10:00:00Z', reviews: [{ id: 'r2', rating: 'good', at: '2026-08-17T10:00:00Z' }] }] }
+    );
+    expect(merged.memoryCards).toHaveLength(1);
+    expect(merged.memoryCards[0]).toMatchObject({ dueDate: '2026-08-21', intervalDays: 4 });
+    expect(merged.memoryCards[0].reviews.map(review => review.id)).toEqual(['r1', 'r2']);
+  });
 });

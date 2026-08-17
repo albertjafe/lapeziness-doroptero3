@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-16-weekly-planner-v140';
+const APP_VERSION = '2026-08-17-memory-cards-v141';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -125,6 +125,7 @@ function refreshStudyViews() {
     if (typeof renderHabitCalendar === 'function') renderHabitCalendar();
     if (typeof renderMesCalendario === 'function') renderMesCalendario();
     if (typeof renderWeeklyPlanner === 'function' && _sessionSectionMode === 'week') renderWeeklyPlanner();
+    if (typeof renderMemoryPanels === 'function') renderMemoryPanels();
   };
   if (typeof requestAnimationFrame === 'function' && document.visibilityState !== 'hidden') {
     _studyViewsRefreshFrame = requestAnimationFrame(render);
@@ -296,6 +297,28 @@ function _mergeWeeklyPlans(a, b) {
   });
   return Array.from(plans.values()).sort((x, y) => String(x.weekStart).localeCompare(String(y.weekStart))).slice(-104);
 }
+function _mergeMemoryCards(a, b) {
+  const cards = new Map();
+  (a || []).concat(b || []).forEach(card => {
+    if (!card || !card.id) return;
+    const current = cards.get(card.id);
+    if (!current) { cards.set(card.id, card); return; }
+    const currentAt = String(current.updatedAt || current.createdAt || '');
+    const cardAt = String(card.updatedAt || card.createdAt || '');
+    const newer = cardAt.localeCompare(currentAt) >= 0 ? card : current;
+    const older = newer === card ? current : card;
+    const reviews = new Map();
+    (older.reviews || []).concat(newer.reviews || []).forEach(review => {
+      if (!review) return;
+      const key = review.id || ((review.at || '') + '::' + (review.rating || ''));
+      if (key) reviews.set(key, review);
+    });
+    cards.set(card.id, Object.assign({}, older, newer, {
+      reviews: Array.from(reviews.values()).sort((x, y) => String(x.at || '').localeCompare(String(y.at || ''))).slice(-300)
+    }));
+  });
+  return Array.from(cards.values()).sort((x, y) => String(x.createdAt || '').localeCompare(String(y.createdAt || ''))).slice(-5000);
+}
 function _sesionRealMin(s) {
   return (s.items || []).reduce((acc, it) =>
     acc + (typeof _itemMinReal === 'function' ? _itemMinReal(it) : (it.minutosReales || 0)), 0);
@@ -345,6 +368,7 @@ function _mergeStudyHistory(base, other) {
   });
   merged.blockedDaySchedules = Object.values(scheduleMap).sort((x, y) => String(x.date).localeCompare(String(y.date))).slice(-2000);
   merged.weeklyPlans = _mergeWeeklyPlans(base.weeklyPlans, other.weeklyPlans);
+  merged.memoryCards = _mergeMemoryCards(base.memoryCards, other.memoryCards);
   return _applyPulseDeletedIds(merged);
 }
 
@@ -534,6 +558,7 @@ function getDefaultData() {
     dailyJournalEntries: [],
     blockedDaySchedules: [],
     weeklyPlans: [],
+    memoryCards: [],
     habitChallenge: null,
     habitChallenges: []
   };
@@ -556,6 +581,7 @@ if (!db.tiempoDisponibleEventos) db.tiempoDisponibleEventos = [];
 if (!db.dailyJournalEntries) db.dailyJournalEntries = [];
 if (!db.blockedDaySchedules) db.blockedDaySchedules = [];
 if (!db.weeklyPlans) db.weeklyPlans = [];
+if (!db.memoryCards) db.memoryCards = [];
 if (!Array.isArray(db.habitChallenges)) db.habitChallenges = [];
 // db.sessionPlants[]: array paralelo a forestPlants con UN registro por sub-sesión
 // del cronómetro. Persiste los timestamps detallados aunque la sesión en
@@ -815,6 +841,10 @@ function closeModal(id) {
   if (!overlay) return;
   if (id === 'modalCronoNote' && typeof cronoStopTomorrowVoice === 'function') {
     cronoStopTomorrowVoice(true);
+  }
+  if (id === 'modalMemoryCards') {
+    _memoryEditingCardId = null;
+    _memoryManagerObraId = null;
   }
   overlay.classList.remove('visible');
   // Limpiar el opacity inline que pusimos como salvavidas, así la próxima
@@ -22113,8 +22143,328 @@ function cronoSessionButtonHtml(paused, extraClass) {
     '</button>';
 }
 
+// ── TARJETAS DE MEMORIA ─────────────────────────────────────────────────────
+// Repaso espaciado ligado a la obra seleccionada. Una respuesta nunca detiene
+// ni modifica el cronómetro: solo agenda cuándo volverá a aparecer la tarjeta.
+let _memoryReviewStates = {};
+let _memoryManagerObraId = null;
+let _memoryEditingCardId = null;
+
+function memoryDateKey(date) {
+  const d = new Date(date || Date.now());
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function memoryDateAfter(days) {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + Math.max(0, Number(days) || 0));
+  return memoryDateKey(date);
+}
+
+function memoryCreateId(prefix) {
+  return (prefix || 'memory') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+}
+
+function memoryContextForSurface(surface) {
+  let obraId = null;
+  if (surface === 'running') {
+    if ((crono.state === 'running' || crono.state === 'paused') && !crono.isRest) obraId = crono.obraId;
+  } else {
+    const value = document.getElementById('cronoObraSelect')?.value || '';
+    const resolved = value ? cronoResolveSelectValue(value) : null;
+    obraId = resolved && resolved.obraId;
+  }
+  if (!obraId || obraId === '_rest_') return null;
+  const obra = findObra(obraId);
+  return obra ? { obraId, obra, supported: obra.tipo !== 'actividad' } : null;
+}
+
+function memoryActiveCards(obraId) {
+  return (db.memoryCards || [])
+    .filter(card => card && !card.deleted && String(card.obraId) === String(obraId))
+    .sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')) || String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+}
+
+function memoryDueCards(obraId) {
+  const today = memoryDateKey();
+  return memoryActiveCards(obraId).filter(card => !card.dueDate || card.dueDate <= today);
+}
+
+function memoryCardSignature(cards) {
+  return cards.map(card => card.id).sort().join('|');
+}
+
+function memoryBuildReviewState(obraId, cards, allCards) {
+  const source = allCards ? cards : cards.filter(card => !card.dueDate || card.dueDate <= memoryDateKey());
+  const ids = source.map(card => card.id);
+  const state = {
+    obraId,
+    queue: ids.slice(),
+    total: ids.length,
+    completed: new Set(),
+    retries: {},
+    signature: memoryCardSignature(cards),
+    allCards: !!allCards,
+  };
+  _memoryReviewStates[String(obraId)] = state;
+  return state;
+}
+
+function memoryReviewState(obraId, cards) {
+  const key = String(obraId);
+  let state = _memoryReviewStates[key];
+  const signature = memoryCardSignature(cards);
+  if (!state || state.signature !== signature) state = memoryBuildReviewState(obraId, cards, false);
+  const valid = new Set(cards.map(card => card.id));
+  state.queue = state.queue.filter(id => valid.has(id));
+  return state;
+}
+
+function memoryNextInterval(card, rating) {
+  const current = Math.max(0, Number(card && card.intervalDays) || 0);
+  if (rating === 'again') return 1;
+  if (rating === 'hard') return current ? Math.max(2, Math.round(current * 1.45)) : 2;
+  return current ? Math.max(4, Math.round(current * 2.2)) : 4;
+}
+
+function memoryRatingPreview(card, rating) {
+  const days = memoryNextInterval(card, rating);
+  return days === 1 ? 'mañana' : days + ' días';
+}
+
+function memoryDueLabel(dateKey) {
+  if (!dateKey || dateKey <= memoryDateKey()) return 'hoy';
+  const today = new Date(memoryDateKey() + 'T12:00:00');
+  const due = new Date(dateKey + 'T12:00:00');
+  const days = Math.max(1, Math.round((due - today) / 86400000));
+  return days === 1 ? 'mañana' : 'en ' + days + ' días';
+}
+
+function memoryPanelHtml(surface, context) {
+  if (!context) {
+    return '<div class="memory-empty-state"><span class="memory-empty-icon" aria-hidden="true"></span><strong>Elige una obra</strong><p>Sus tarjetas de memoria aparecerán aquí.</p></div>';
+  }
+  if (!context.supported) {
+    return '<div class="memory-empty-state"><span class="memory-empty-icon" aria-hidden="true"></span><strong>Solo para repertorio</strong><p>Las actividades no necesitan tarjetas de compases.</p></div>';
+  }
+  const cards = memoryActiveCards(context.obraId);
+  const state = memoryReviewState(context.obraId, cards);
+  const current = state.queue.length ? cards.find(card => card.id === state.queue[0]) : null;
+  const done = state.completed.size;
+  const total = Math.max(state.total, done);
+  const progress = total ? Math.round(done / total * 100) : 0;
+  const manage = '<button type="button" class="memory-manage-btn" onclick="openMemoryManager(\'' + surface + '\')" aria-label="Gestionar tarjetas" title="Gestionar tarjetas">' +
+    '<span aria-hidden="true">+</span><small>Tarjetas</small></button>';
+  const head = '<header class="memory-study-head"><div><span>MEMORIA</span><strong>' + escapeHtmlSafe(context.obra.name) + '</strong></div>' + manage + '</header>';
+
+  if (!cards.length) {
+    return head + '<div class="memory-empty-state is-work"><span class="memory-empty-icon" aria-hidden="true"></span><strong>Aún no hay tarjetas</strong><p>Añade compases o secciones que quieras recuperar sin partitura.</p><button type="button" onclick="openMemoryManager(\'' + surface + '\')">Crear la primera</button></div>';
+  }
+
+  if (!current) {
+    const due = memoryDueCards(context.obraId).length;
+    return head + '<div class="memory-finished"><span aria-hidden="true">✓</span><strong>' + (due ? 'Repaso terminado' : 'Todo al día') + '</strong><p>' + cards.length + (cards.length === 1 ? ' tarjeta preparada' : ' tarjetas preparadas') + '</p>' +
+      '<button type="button" onclick="memoryStartAll(\'' + surface + '\')">Repasar todas</button></div>';
+  }
+
+  const remaining = state.queue.length;
+  return head +
+    '<div class="memory-progress-row"><span>' + (done + 1) + ' de ' + Math.max(total, remaining) + '</span><div><i style="width:' + progress + '%"></i></div><small>' + remaining + ' pendiente' + (remaining === 1 ? '' : 's') + '</small></div>' +
+    '<article class="memory-flashcard" data-memory-card-id="' + escapeHtmlSafe(current.id) + '">' +
+      '<span>RECUERDA · SIN PARTITURA</span>' +
+      '<strong>' + escapeHtmlSafe(current.label) + '</strong>' +
+      '<small>Tócalo, cántalo o recórrelo mentalmente.</small>' +
+    '</article>' +
+    '<div class="memory-rating-row" aria-label="Cómo ha salido">' +
+      '<button type="button" class="is-again" onclick="rateMemoryCard(\'' + escapeHtmlSafe(current.id) + '\',\'again\')"><strong>Mal</strong><small>' + memoryRatingPreview(current, 'again') + '</small></button>' +
+      '<button type="button" class="is-hard" onclick="rateMemoryCard(\'' + escapeHtmlSafe(current.id) + '\',\'hard\')"><strong>Con dudas</strong><small>' + memoryRatingPreview(current, 'hard') + '</small></button>' +
+      '<button type="button" class="is-good" onclick="rateMemoryCard(\'' + escapeHtmlSafe(current.id) + '\',\'good\')"><strong>Bien</strong><small>' + memoryRatingPreview(current, 'good') + '</small></button>' +
+    '</div>';
+}
+
+function renderMemoryPanel(surface) {
+  const host = document.querySelector('[data-memory-surface="' + surface + '"]');
+  if (!host) return;
+  const context = memoryContextForSurface(surface);
+  host.innerHTML = memoryPanelHtml(surface, context);
+}
+
+function renderMemoryTabCounts() {
+  ['idle', 'running'].forEach(surface => {
+    const context = memoryContextForSurface(surface);
+    const count = context && context.supported ? memoryDueCards(context.obraId).length : 0;
+    const badge = document.querySelector('[data-memory-count="' + surface + '"]');
+    if (!badge) return;
+    badge.textContent = count > 99 ? '99+' : String(count);
+    badge.hidden = count < 1;
+  });
+}
+
+function renderMemoryPanels() {
+  renderMemoryPanel('idle');
+  renderMemoryPanel('running');
+  renderMemoryTabCounts();
+  if (_memoryManagerObraId) renderMemoryManagerList();
+}
+
+function memoryStartAll(surface) {
+  const context = memoryContextForSurface(surface);
+  if (!context || !context.supported) return;
+  memoryBuildReviewState(context.obraId, memoryActiveCards(context.obraId), true);
+  renderMemoryPanels();
+}
+
+function rateMemoryCard(cardId, rating) {
+  const card = (db.memoryCards || []).find(item => item && item.id === cardId && !item.deleted);
+  if (!card || !['again', 'hard', 'good'].includes(rating)) return;
+  const cards = memoryActiveCards(card.obraId);
+  const state = memoryReviewState(card.obraId, cards);
+  state.queue = state.queue.filter(id => id !== cardId);
+  if (rating === 'again' && (state.retries[cardId] || 0) < 1) {
+    state.retries[cardId] = 1;
+    state.queue.splice(Math.min(2, state.queue.length), 0, cardId);
+  } else {
+    state.completed.add(cardId);
+  }
+  const interval = memoryNextInterval(card, rating);
+  const now = new Date().toISOString();
+  card.intervalDays = interval;
+  card.dueDate = memoryDateAfter(interval);
+  card.streak = rating === 'again' ? 0 : (Number(card.streak) || 0) + 1;
+  card.lapses = (Number(card.lapses) || 0) + (rating === 'again' ? 1 : 0);
+  if (!Array.isArray(card.reviews)) card.reviews = [];
+  card.reviews.push({ id: memoryCreateId('review'), rating, at: now, intervalDays: interval });
+  card.reviews = card.reviews.slice(-300);
+  card.updatedAt = now;
+  saveData();
+  renderMemoryPanels();
+  try { rating === 'good' ? Haptics.medium() : Haptics.light(); } catch(e) {}
+}
+
+function memoryNormalizeLabel(value) {
+  const clean = String(value || '').trim().replace(/\s+/g, ' ');
+  let match = clean.match(/^(?:comp(?:á|a)s(?:es)?\s*)?(\d+)\s*(?:-|–|a)\s*(\d+)$/i);
+  if (match) return 'Compases ' + match[1] + '–' + match[2];
+  match = clean.match(/^(\d+)$/);
+  if (match) return 'Compás ' + match[1];
+  return clean;
+}
+
+function openMemoryManager(surface) {
+  const context = memoryContextForSurface(surface);
+  if (!context || !context.supported) { showToast('Elige una obra para añadir tarjetas'); return; }
+  _memoryManagerObraId = context.obraId;
+  _memoryEditingCardId = null;
+  const work = document.getElementById('memoryManagerWork');
+  if (work) work.textContent = context.obra.name;
+  cancelMemoryCardEdit();
+  renderMemoryManagerList();
+  openModal('modalMemoryCards');
+  setTimeout(() => document.getElementById('memoryCardLabel')?.focus(), 100);
+}
+
+function closeMemoryManager() {
+  closeModal('modalMemoryCards');
+  _memoryEditingCardId = null;
+  _memoryManagerObraId = null;
+  renderMemoryPanels();
+}
+
+function saveMemoryCardFromManager(event) {
+  event?.preventDefault();
+  const input = document.getElementById('memoryCardLabel');
+  const label = memoryNormalizeLabel(input?.value);
+  if (!label || !_memoryManagerObraId) { input?.focus(); return; }
+  const now = new Date().toISOString();
+  if (_memoryEditingCardId) {
+    const card = (db.memoryCards || []).find(item => item.id === _memoryEditingCardId && !item.deleted);
+    if (card) { card.label = label; card.updatedAt = now; }
+  } else {
+    if (!Array.isArray(db.memoryCards)) db.memoryCards = [];
+    db.memoryCards.push({
+      id: memoryCreateId('card'),
+      obraId: _memoryManagerObraId,
+      label,
+      dueDate: memoryDateKey(),
+      intervalDays: 0,
+      streak: 0,
+      lapses: 0,
+      reviews: [],
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+  saveData();
+  _memoryEditingCardId = null;
+  if (input) input.value = '';
+  cancelMemoryCardEdit();
+  renderMemoryManagerList();
+  renderMemoryPanels();
+  showSavedCheck();
+  setTimeout(() => input?.focus(), 50);
+}
+
+function renderMemoryManagerList() {
+  const host = document.getElementById('memoryManagerList');
+  if (!host || !_memoryManagerObraId) return;
+  const cards = memoryActiveCards(_memoryManagerObraId);
+  if (!cards.length) {
+    host.innerHTML = '<div class="memory-manager-empty">Añade varias secciones seguidas. Aparecerán hoy en el repaso.</div>';
+    return;
+  }
+  host.innerHTML = cards.map(card => {
+    const reviews = (card.reviews || []).length;
+    return '<div class="memory-manager-row">' +
+      '<button type="button" class="memory-manager-card" data-card-id="' + escapeHtmlSafe(card.id) + '" onclick="editMemoryCard(this.dataset.cardId)">' +
+        '<strong>' + escapeHtmlSafe(card.label) + '</strong><small>Próxima: ' + memoryDueLabel(card.dueDate) + (reviews ? ' · ' + reviews + (reviews === 1 ? ' repaso' : ' repasos') : '') + '</small>' +
+      '</button>' +
+      '<button type="button" class="memory-manager-delete" data-card-id="' + escapeHtmlSafe(card.id) + '" onclick="deleteMemoryCard(this.dataset.cardId)" aria-label="Eliminar ' + escapeHtmlSafe(card.label) + '" title="Eliminar">&#215;</button>' +
+    '</div>';
+  }).join('');
+}
+
+function editMemoryCard(cardId) {
+  const card = (db.memoryCards || []).find(item => item && item.id === cardId && !item.deleted);
+  if (!card) return;
+  _memoryEditingCardId = cardId;
+  const input = document.getElementById('memoryCardLabel');
+  const save = document.getElementById('memoryCardSaveBtn');
+  const cancel = document.getElementById('memoryCardEditCancel');
+  if (input) { input.value = card.label || ''; input.focus(); input.select(); }
+  if (save) save.textContent = 'Guardar';
+  if (cancel) cancel.hidden = false;
+}
+
+function cancelMemoryCardEdit() {
+  _memoryEditingCardId = null;
+  const input = document.getElementById('memoryCardLabel');
+  const save = document.getElementById('memoryCardSaveBtn');
+  const cancel = document.getElementById('memoryCardEditCancel');
+  if (input) input.value = '';
+  if (save) save.textContent = 'Añadir';
+  if (cancel) cancel.hidden = true;
+}
+
+function deleteMemoryCard(cardId) {
+  const card = (db.memoryCards || []).find(item => item && item.id === cardId && !item.deleted);
+  if (!card) return;
+  const before = Object.assign({}, card);
+  card.deleted = true;
+  card.updatedAt = new Date().toISOString();
+  saveData();
+  renderMemoryManagerList();
+  renderMemoryPanels();
+  showUndoToast('Tarjeta eliminada', () => {
+    Object.assign(card, before, { deleted: false, updatedAt: new Date().toISOString() });
+    saveData();
+    renderMemoryManagerList();
+    renderMemoryPanels();
+  });
+}
+
 function cronoSetRunDrawerTab(tab) {
-  _cronoRunDrawerTab = tab === 'metronomo' ? 'metronomo' : 'tareas';
+  _cronoRunDrawerTab = ['metronomo', 'memoria'].includes(tab) ? tab : 'tareas';
   cronoUpdateRunDrawer();
   try { Haptics.light(); } catch(e) {}
 }
@@ -22122,7 +22472,7 @@ function cronoSetRunDrawerTab(tab) {
 function cronoUpdateRunDrawer() {
   const drawer = document.getElementById('cronoRunDrawer');
   if (!drawer) return;
-  const tab = _cronoRunDrawerTab === 'metronomo' ? 'metronomo' : 'tareas';
+  const tab = ['metronomo', 'memoria'].includes(_cronoRunDrawerTab) ? _cronoRunDrawerTab : 'tareas';
   drawer.dataset.tab = tab;
   drawer.querySelectorAll('.crono-run-drawer-tab').forEach(btn => {
     if (btn.dataset.action) {
@@ -22138,10 +22488,14 @@ function cronoUpdateRunDrawer() {
     panel.classList.toggle('active', panel.dataset.panel === tab);
   });
   if (tab === 'tareas') renderCronoTasks();
-  else {
+  else if (tab === 'memoria') {
+    cronoRenderTaskCount();
+    renderMemoryPanels();
+  } else {
     cronoRenderTaskCount();
     if (typeof metronomeRender === 'function') metronomeRender();
   }
+  renderMemoryTabCounts();
 }
 
 function cronoSetObservation(value) {
@@ -22150,7 +22504,7 @@ function cronoSetObservation(value) {
 }
 
 function cronoSetIdleDrawerTab(tab) {
-  _cronoIdleDrawerTab = tab === 'metronomo' ? 'metronomo' : 'tareas';
+  _cronoIdleDrawerTab = ['metronomo', 'memoria'].includes(tab) ? tab : 'tareas';
   cronoUpdateIdleDrawer();
   try { Haptics.light(); } catch(e) {}
 }
@@ -22158,7 +22512,7 @@ function cronoSetIdleDrawerTab(tab) {
 function cronoUpdateIdleDrawer() {
   const drawer = document.getElementById('cronoIdleDrawer');
   if (!drawer) return;
-  const tab = _cronoIdleDrawerTab === 'metronomo' ? 'metronomo' : 'tareas';
+  const tab = ['metronomo', 'memoria'].includes(_cronoIdleDrawerTab) ? _cronoIdleDrawerTab : 'tareas';
   drawer.dataset.tab = tab;
   drawer.querySelectorAll('.crono-idle-drawer-tab').forEach(btn => {
     const active = btn.dataset.tab === tab;
@@ -22169,10 +22523,14 @@ function cronoUpdateIdleDrawer() {
     panel.classList.toggle('active', panel.dataset.panel === tab);
   });
   if (tab === 'tareas') renderCronoTasks();
-  else {
+  else if (tab === 'memoria') {
+    cronoRenderTaskCount();
+    renderMemoryPanels();
+  } else {
     cronoRenderTaskCount();
     if (typeof metronomeRender === 'function') metronomeRender();
   }
+  renderMemoryTabCounts();
 }
 
 function cronoSyncObservationInputs() {
@@ -24563,6 +24921,7 @@ function cronoUpdateStartBtn() {
   cronoUpdateTimerProjection();
   cronoRenderNoteCounts();
   cronoTimerRenderSlider(true);
+  renderMemoryPanels();
 }
 
 function cronoUpdateTimerProjection() {

@@ -25,7 +25,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=268">
+<link rel="stylesheet" href="styles.css?v=269">
 </head>
 <body>
 
@@ -421,6 +421,9 @@
           </button>
           <button type="button" class="crono-task-density-btn" data-task-density-toggle onclick="toggleCronoTaskDensity()"
                   aria-label="Reducir tamaño de las tareas" title="Reducir tamaño de las tareas" aria-pressed="false"><span>A</span><small>−</small></button>
+          <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab crono-memory-tab" data-tab="memoria" role="tab" aria-label="Tarjetas de memoria" title="Memoria" aria-selected="false" onclick="cronoSetIdleDrawerTab('memoria')">
+            <span class="crono-memory-tab-icon" aria-hidden="true"><i></i></span><span class="crono-memory-tab-label">Memoria</span><span class="crono-memory-tab-count" data-memory-count="idle" hidden></span>
+          </button>
           <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab crono-metronome-tab" data-tab="metronomo" role="tab" aria-label="Metrónomo" aria-selected="false" onclick="cronoSetIdleDrawerTab('metronomo')">
             <span class="crono-metronome-tab-icon" aria-hidden="true"></span><span class="crono-metronome-tab-label">Metrónomo</span>
           </button>
@@ -435,6 +438,9 @@
           </div>
           <div class="crono-run-drawer-panel crono-idle-drawer-panel" data-panel="metronomo" role="tabpanel">
             <div class="crono-metronome" data-metronome-surface="idle"></div>
+          </div>
+          <div class="crono-run-drawer-panel crono-idle-drawer-panel" data-panel="memoria" role="tabpanel">
+            <div class="crono-memory" data-memory-surface="idle"></div>
           </div>
         </div>
 
@@ -520,6 +526,9 @@
         </button>
         <button type="button" class="crono-task-density-btn" data-task-density-toggle onclick="toggleCronoTaskDensity()"
                 aria-label="Reducir tamaño de las tareas" title="Reducir tamaño de las tareas" aria-pressed="false"><span>A</span><small>−</small></button>
+        <button type="button" class="crono-run-drawer-tab crono-memory-tab" data-tab="memoria" role="tab" aria-label="Tarjetas de memoria" title="Memoria" aria-selected="false" onclick="cronoSetRunDrawerTab('memoria')">
+          <span class="crono-memory-tab-icon" aria-hidden="true"><i></i></span><span class="crono-memory-tab-label">Memoria</span><span class="crono-memory-tab-count" data-memory-count="running" hidden></span>
+        </button>
         <button type="button" class="crono-run-drawer-tab crono-metronome-tab" data-tab="metronomo" role="tab" aria-label="Metrónomo" aria-selected="false" onclick="cronoSetRunDrawerTab('metronomo')">
           <span class="crono-metronome-tab-icon" aria-hidden="true"></span><span class="crono-metronome-tab-label">Metrónomo</span>
         </button>
@@ -532,6 +541,9 @@
         </div>
         <div class="crono-run-drawer-panel" data-panel="metronomo" role="tabpanel">
           <div class="crono-metronome" data-metronome-surface="running"></div>
+        </div>
+        <div class="crono-run-drawer-panel" data-panel="memoria" role="tabpanel">
+          <div class="crono-memory" data-memory-surface="running"></div>
         </div>
       </div>
 
@@ -1857,6 +1869,28 @@
   </div>
 </div>
 
+<!-- MODAL TARJETAS DE MEMORIA -->
+<div class="modal-overlay" id="modalMemoryCards">
+  <div class="modal memory-cards-modal">
+    <div class="memory-manager-head">
+      <div>
+        <div class="modal-title">Tarjetas de memoria</div>
+        <div class="memory-manager-work" id="memoryManagerWork"></div>
+      </div>
+      <button type="button" class="memory-manager-close" onclick="closeMemoryManager()" aria-label="Cerrar">&#215;</button>
+    </div>
+    <form class="memory-manager-form" onsubmit="saveMemoryCardFromManager(event)">
+      <label for="memoryCardLabel">Sección o compases</label>
+      <div>
+        <input class="modal-input" id="memoryCardLabel" type="text" maxlength="90" autocomplete="off" placeholder="Compases 81–88 o Desarrollo">
+        <button type="submit" class="modal-btn primary" id="memoryCardSaveBtn">Añadir</button>
+      </div>
+      <button type="button" class="memory-manager-edit-cancel" id="memoryCardEditCancel" onclick="cancelMemoryCardEdit()" hidden>Cancelar edición</button>
+    </form>
+    <div class="memory-manager-list" id="memoryManagerList"></div>
+  </div>
+</div>
+
 <!-- MODAL PASE QUALITY -->
 <div class="modal-overlay" id="modalPaseQuality">
   <div class="modal pase-quality-modal">
@@ -2262,10 +2296,10 @@
 </div>
 
 <script src="timer-core.js?v=264"></script>
-<script src="data-core.js?v=229"></script>
+<script src="data-core.js?v=230"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=264"></script>
-<script src="app.js?v=268"></script>
+<script src="app.js?v=269"></script>
 <script src="timer-objectives.js?v=249"></script>
 <script src="metronome.js?v=263"></script>
 <script type="module" src="mystery-house.js?v=260"></script>
@@ -2290,7 +2324,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=268', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=269', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

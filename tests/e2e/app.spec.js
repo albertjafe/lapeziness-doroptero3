@@ -1078,7 +1078,7 @@ test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) =>
   expect(state.hoy.refresh).toBe(false);
   expect(state.cronoStart).toBe('Iniciar');
   expect(state.quickNoteButtons).toBe(0);
-  expect(state.runTabs).toEqual(['tareas', 'pase']);
+  expect(state.runTabs).toEqual(['tareas', 'memoria', 'metronomo', 'pase']);
   expect(state.bottomDisplay).toBe('none');
   expect(state.cronoRefresh).toEqual({ label: 'Comprobar actualización', width: 44, height: 44, hasIcon: true });
 
@@ -2887,7 +2887,7 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
     });
 
     expect(layout.fitsWidth).toBe(true);
-    expect(layout.idle.tabs).toEqual(['tareas', 'pase']);
+    expect(layout.idle.tabs).toEqual(['tareas', 'memoria', 'metronomo', 'pase']);
     expect(layout.running.tabs).toEqual(layout.idle.tabs);
     expect(layout.idle.activeTab).toBe('tareas');
     expect(layout.running.activeTab).toBe('tareas');
@@ -3205,4 +3205,48 @@ test('runs one persistent metronome from idle and active timer layouts', async (
   await page.locator('#cronoRunDrawer .crono-metronome-play').click();
   expect(await page.evaluate(() => __metronomeDebug.getState().playing)).toBe(false);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('alberto_metronome_v1')))).toMatchObject({ bpm: 85, beatsPerBar: 16 });
+});
+
+test('reviews work-specific memory cards before and during a timed session', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepare(page);
+  await page.evaluate(() => {
+    showView('cronometro');
+    const select = document.getElementById('cronoObraSelect');
+    select.value = 'obra::obra_1';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    cronoUpdateStartBtn();
+    cronoSetIdleDrawerTab('memoria');
+  });
+
+  await expect(page.locator('#cronoIdleDrawer [data-panel="memoria"]')).toHaveClass(/active/);
+  await expect(page.locator('#cronoIdleDrawer .memory-empty-state')).toContainText('Aún no hay tarjetas');
+  await page.locator('#cronoIdleDrawer .memory-empty-state button').click();
+  await page.locator('#memoryCardLabel').fill('81-88');
+  await page.locator('#memoryCardSaveBtn').click();
+  await page.locator('#memoryCardLabel').fill('Desarrollo');
+  await page.locator('#memoryCardSaveBtn').click();
+  await expect(page.locator('#memoryManagerList .memory-manager-row')).toHaveCount(2);
+  await page.locator('.memory-manager-close').click();
+
+  const idleMemory = page.locator('#cronoIdleDrawer [data-panel="memoria"]');
+  await expect(idleMemory.locator('.memory-flashcard')).toContainText('Compases 81–88');
+  await expect(page.locator('[data-memory-count="idle"]')).toHaveText('2');
+  await idleMemory.locator('.memory-rating-row .is-good').click();
+  await expect(idleMemory.locator('.memory-flashcard')).toContainText('Desarrollo');
+
+  await page.evaluate(() => cronoStart());
+  await page.evaluate(() => cronoSetRunDrawerTab('memoria'));
+  const runningMemory = page.locator('#cronoRunDrawer [data-panel="memoria"]');
+  await expect(runningMemory).toHaveClass(/active/);
+  await expect(runningMemory.locator('.memory-flashcard')).toContainText('Desarrollo');
+  await runningMemory.locator('.memory-rating-row .is-hard').click();
+  await expect(runningMemory.locator('.memory-finished')).toContainText('Todo al día');
+
+  const cards = await page.evaluate(() => db.memoryCards.map(card => ({ label: card.label, intervalDays: card.intervalDays, reviews: card.reviews.length })));
+  expect(cards).toEqual([
+    { label: 'Compases 81–88', intervalDays: 4, reviews: 1 },
+    { label: 'Desarrollo', intervalDays: 2, reviews: 1 },
+  ]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });

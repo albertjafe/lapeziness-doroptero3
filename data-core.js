@@ -153,6 +153,38 @@
       .slice(-104);
   }
 
+  function mergeMemoryCard(a, b) {
+    if (!a) return b || null;
+    if (!b) return a;
+    const aUpdated = String(a.updatedAt || a.createdAt || '');
+    const bUpdated = String(b.updatedAt || b.createdAt || '');
+    const newer = aUpdated.localeCompare(bUpdated) >= 0 ? a : b;
+    const older = newer === a ? b : a;
+    const reviews = new Map();
+    (older.reviews || []).concat(newer.reviews || []).forEach(review => {
+      if (!review) return;
+      const key = review.id || ((review.at || '') + '::' + (review.rating || ''));
+      if (key) reviews.set(key, review);
+    });
+    return Object.assign({}, older, newer, {
+      reviews: Array.from(reviews.values())
+        .sort((x, y) => String(x.at || '').localeCompare(String(y.at || '')))
+        .slice(-300)
+    });
+  }
+
+  function mergeMemoryCards(a, b) {
+    const byId = new Map();
+    (a || []).concat(b || []).forEach(card => {
+      if (!card || !card.id) return;
+      const current = byId.get(card.id);
+      byId.set(card.id, current ? mergeMemoryCard(current, card) : card);
+    });
+    return Array.from(byId.values())
+      .sort((x, y) => String(x.createdAt || '').localeCompare(String(y.createdAt || '')))
+      .slice(-5000);
+  }
+
   function mergeHabitChallenge(a, b) {
     if (!a) return b || null;
     if (!b) return a;
@@ -200,6 +232,7 @@
     merged.dailyJournalEntries = mergeEvents(base.dailyJournalEntries, other.dailyJournalEntries, ['at', 'text'], 3000);
     merged.blockedDaySchedules = mergeBlockedDaySchedules(base.blockedDaySchedules, other.blockedDaySchedules);
     merged.weeklyPlans = mergeWeeklyPlans(base.weeklyPlans, other.weeklyPlans);
+    merged.memoryCards = mergeMemoryCards(base.memoryCards, other.memoryCards);
     const baseHabits = (base.habitChallenges || []).concat(base.habitChallenge ? [base.habitChallenge] : []);
     const otherHabits = (other.habitChallenges || []).concat(other.habitChallenge ? [other.habitChallenge] : []);
     merged.habitChallenges = mergeHabitChallenges(baseHabits, otherHabits);
@@ -207,5 +240,5 @@
     return applyPulseDeletedIds(merged);
   }
 
-  return { mergeStudyHistory, mergePlants, mergeSessions, mergeBlockedDaySchedules, mergeWeeklyPlan, mergeWeeklyPlans, mergeHabitChallenge, mergeHabitChallenges, sessionRealMinutes };
+  return { mergeStudyHistory, mergePlants, mergeSessions, mergeBlockedDaySchedules, mergeWeeklyPlan, mergeWeeklyPlans, mergeMemoryCard, mergeMemoryCards, mergeHabitChallenge, mergeHabitChallenges, sessionRealMinutes };
 });

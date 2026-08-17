@@ -22211,3 +22211,367 @@ html.platform-windows body[data-view="casa"] .house-canvas-host {
 @media (prefers-reduced-motion: reduce) {
   #view-session .weekly-slot { transition: none; }
 }
+
+/* ── Tarjetas de memoria dentro del cronómetro ───────────────────────────── */
+#view-cronometro .crono-minimal-tabs {
+  grid-template-columns: minmax(68px, 1fr) 38px minmax(76px, .95fr) minmax(82px, 1fr) minmax(66px, .78fr) !important;
+}
+
+#view-cronometro .crono-memory-tab {
+  position: relative;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+#view-cronometro .crono-memory-tab-icon,
+#view-cronometro .memory-empty-icon {
+  position: relative;
+  width: 15px;
+  height: 14px;
+  flex: 0 0 15px;
+}
+
+#view-cronometro .crono-memory-tab-icon::before,
+#view-cronometro .crono-memory-tab-icon::after,
+#view-cronometro .crono-memory-tab-icon i,
+#view-cronometro .memory-empty-icon::before,
+#view-cronometro .memory-empty-icon::after {
+  position: absolute;
+  width: 10px;
+  height: 12px;
+  border: 1.4px solid currentColor;
+  border-radius: 2px;
+  background: var(--card);
+  content: '';
+}
+
+#view-cronometro .crono-memory-tab-icon::before,
+#view-cronometro .memory-empty-icon::before { left: 1px; top: 0; transform: rotate(-7deg); }
+#view-cronometro .crono-memory-tab-icon::after,
+#view-cronometro .memory-empty-icon::after { right: 0; bottom: 0; transform: rotate(5deg); }
+#view-cronometro .crono-memory-tab-icon i { left: 3px; top: 1px; transform: none; }
+
+#view-cronometro .crono-memory-tab-count {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #bd5454;
+  color: #fff;
+  font: 750 7px/1 var(--font-ui);
+}
+#view-cronometro .crono-memory-tab-count[hidden] { display: none; }
+
+#view-cronometro .crono-run-drawer-panel[data-panel="memoria"],
+#view-cronometro .crono-idle-drawer-panel[data-panel="memoria"] {
+  min-height: 0;
+  overflow: hidden;
+}
+
+#view-cronometro .crono-run-drawer-panel[data-panel="memoria"].active,
+#view-cronometro .crono-idle-drawer-panel[data-panel="memoria"].active { display: block; }
+
+#view-cronometro .crono-memory {
+  width: 100%;
+  min-width: 0;
+  min-height: 276px;
+  padding: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--border2) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg2) 95%, var(--accent) 2%);
+}
+
+#view-cronometro .memory-study-head {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#view-cronometro .memory-study-head > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+#view-cronometro .memory-study-head > div > span {
+  color: var(--text3);
+  font: 760 7px/1 var(--font-mono, 'JetBrains Mono', monospace);
+  letter-spacing: .13em;
+}
+
+#view-cronometro .memory-study-head > div > strong {
+  overflow: hidden;
+  color: var(--text2);
+  font: 650 12px/1.2 var(--font-ui);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#view-cronometro .memory-manage-btn {
+  min-width: 72px;
+  height: 34px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--text2);
+  cursor: pointer;
+}
+#view-cronometro .memory-manage-btn span { font-size: 17px; font-weight: 400; }
+#view-cronometro .memory-manage-btn small { font: 650 8px/1 var(--font-ui); }
+
+#view-cronometro .memory-progress-row {
+  display: grid;
+  grid-template-columns: auto minmax(48px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  color: var(--text3);
+  font: 650 7px/1 var(--font-ui);
+}
+#view-cronometro .memory-progress-row > div {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--border2);
+}
+#view-cronometro .memory-progress-row > div i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width .28s ease;
+}
+
+#view-cronometro .memory-flashcard {
+  min-width: 0;
+  min-height: 128px;
+  padding: 18px 16px;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border2));
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+  box-shadow: 0 8px 22px rgba(35, 42, 54, .06);
+}
+#view-cronometro .memory-flashcard > span {
+  color: var(--text3);
+  font: 750 7px/1 var(--font-mono, 'JetBrains Mono', monospace);
+  letter-spacing: .13em;
+}
+#view-cronometro .memory-flashcard > strong {
+  max-width: 100%;
+  color: var(--text);
+  font: 600 clamp(22px, 3vw, 31px)/1.1 var(--font-display, 'Cormorant Garamond', serif);
+  overflow-wrap: anywhere;
+}
+#view-cronometro .memory-flashcard > small { color: var(--text3); font: 520 8px/1.3 var(--font-ui); }
+
+#view-cronometro .memory-rating-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+#view-cronometro .memory-rating-row button {
+  min-width: 0;
+  min-height: 45px;
+  padding: 7px 5px;
+  display: grid;
+  place-content: center;
+  gap: 3px;
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--text2);
+  cursor: pointer;
+}
+#view-cronometro .memory-rating-row button:active { transform: scale(.96); }
+#view-cronometro .memory-rating-row strong { font: 700 9px/1 var(--font-ui); }
+#view-cronometro .memory-rating-row small { color: var(--text3); font: 550 7px/1 var(--font-ui); }
+#view-cronometro .memory-rating-row .is-again { border-color: rgba(190, 75, 75, .32); color: #a64747; }
+#view-cronometro .memory-rating-row .is-hard { border-color: rgba(191, 145, 47, .38); color: #997124; }
+#view-cronometro .memory-rating-row .is-good { border-color: rgba(48, 145, 93, .34); color: #32835a; }
+
+#view-cronometro .memory-empty-state,
+#view-cronometro .memory-finished {
+  min-height: 222px;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text3);
+  text-align: center;
+}
+#view-cronometro .memory-empty-state .memory-empty-icon { width: 23px; height: 22px; margin-bottom: 3px; color: var(--accent); transform: scale(1.35); }
+#view-cronometro .memory-empty-state strong,
+#view-cronometro .memory-finished strong { color: var(--text2); font: 650 15px/1.15 var(--font-display, 'Cormorant Garamond', serif); }
+#view-cronometro .memory-empty-state p,
+#view-cronometro .memory-finished p { max-width: 280px; margin: 0; font: 520 8px/1.45 var(--font-ui); }
+#view-cronometro .memory-empty-state button,
+#view-cronometro .memory-finished button {
+  min-height: 34px;
+  margin-top: 3px;
+  padding: 0 13px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border2));
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--accent);
+  font: 700 8px/1 var(--font-ui);
+  cursor: pointer;
+}
+#view-cronometro .memory-finished > span {
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #359667;
+  color: white;
+  font-size: 16px;
+}
+
+.memory-cards-modal {
+  width: min(540px, calc(100vw - 24px));
+  max-height: min(720px, 88dvh);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.memory-manager-head {
+  padding: 19px 20px 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border2);
+}
+.memory-manager-head .modal-title { margin: 0 0 3px; }
+.memory-manager-work { color: var(--text3); font: 600 10px/1.3 var(--font-ui); }
+.memory-manager-close {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--text2);
+  font-size: 20px;
+  cursor: pointer;
+}
+.memory-manager-form { padding: 15px 20px 13px; border-bottom: 1px solid var(--border2); }
+.memory-manager-form > label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text3);
+  font: 750 8px/1 var(--font-ui);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.memory-manager-form > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
+.memory-manager-form .modal-input { min-width: 0; min-height: 43px; margin: 0; }
+.memory-manager-form .modal-btn { min-width: 76px; min-height: 43px; }
+.memory-manager-edit-cancel {
+  margin: 8px 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text3);
+  font: 650 8px/1 var(--font-ui);
+  cursor: pointer;
+}
+.memory-manager-edit-cancel[hidden] { display: none; }
+.memory-manager-list {
+  min-height: 110px;
+  padding: 10px 20px 18px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.memory-manager-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  align-items: stretch;
+  gap: 6px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border2);
+}
+.memory-manager-row:last-child { border-bottom: 0; }
+.memory-manager-card {
+  min-width: 0;
+  min-height: 47px;
+  padding: 6px 4px;
+  display: grid;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.memory-manager-card strong { overflow: hidden; color: var(--text2); font: 650 10px/1.2 var(--font-ui); white-space: nowrap; text-overflow: ellipsis; }
+.memory-manager-card small { color: var(--text3); font: 520 8px/1.2 var(--font-ui); }
+.memory-manager-delete {
+  width: 34px;
+  min-height: 34px;
+  align-self: center;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text3);
+  font-size: 17px;
+  cursor: pointer;
+}
+.memory-manager-delete:hover { border-color: rgba(190, 75, 75, .24); color: #ad4c4c; }
+.memory-manager-empty { padding: 28px 12px; color: var(--text3); font: 520 9px/1.5 var(--font-ui); text-align: center; }
+
+@media (max-width: 699px) {
+  #view-cronometro .crono-minimal-tabs {
+    grid-template-columns: minmax(64px, 1fr) 34px 48px 48px minmax(55px, .78fr) !important;
+    gap: 3px;
+  }
+  #view-cronometro .crono-memory-tab-label,
+  #view-cronometro .crono-metronome-tab-label { display: none; }
+  #view-cronometro .crono-memory-tab { gap: 2px; }
+  #view-cronometro .crono-memory-tab-icon { transform: scale(.9); }
+  #view-cronometro .crono-memory-tab-count { position: absolute; top: 2px; right: 3px; min-width: 14px; height: 14px; font-size: 6px; }
+  #view-cronometro .crono-memory { min-height: 245px; padding: 10px; gap: 8px; }
+  #view-cronometro .memory-flashcard { min-height: 111px; padding: 14px 10px; }
+  #view-cronometro .memory-flashcard > strong { font-size: 24px; }
+  #view-cronometro .memory-rating-row button { min-height: 42px; }
+  #view-cronometro .memory-empty-state,
+  #view-cronometro .memory-finished { min-height: 194px; }
+  .memory-manager-head { padding: 16px 15px 12px; }
+  .memory-manager-form { padding: 13px 15px 11px; }
+  .memory-manager-list { padding: 8px 15px 16px; }
+}
+
+@media (max-width: 899px) and (orientation: landscape) {
+  #view-cronometro .crono-memory { min-height: 176px; }
+  #view-cronometro .memory-flashcard { min-height: 76px; padding-block: 9px; }
+  #view-cronometro .memory-flashcard > strong { font-size: 22px; }
+  #view-cronometro .memory-empty-state,
+  #view-cronometro .memory-finished { min-height: 144px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #view-cronometro .memory-progress-row > div i { transition: none; }
+}
