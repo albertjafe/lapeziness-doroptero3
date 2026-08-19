@@ -12,7 +12,7 @@
 
   let audioContext = null;
   let clickBuffer = null;
-  let clickCompressorNode = null;
+  let clickGraphNodes = null;
   let schedulerTimer = null;
   let nextBeatTime = 0;
   let beatIndex = 0;
@@ -127,17 +127,51 @@
     return buffer;
   }
 
-  function clickCompressor(context) {
-    if (!clickCompressorNode) {
-      clickCompressorNode = context.createDynamicsCompressor();
-      clickCompressorNode.threshold.value = -16;
-      clickCompressorNode.knee.value = 12;
-      clickCompressorNode.ratio.value = 8;
-      clickCompressorNode.attack.value = 0.001;
-      clickCompressorNode.release.value = 0.09;
-      clickCompressorNode.connect(context.destination);
+  // Reverberación corta y densa para que el click respire y suene más grande.
+  function createImpulseResponse(context, duration, decay) {
+    const sampleRate = context.sampleRate;
+    const length = Math.max(1, Math.floor(sampleRate * duration));
+    const impulse = context.createBuffer(2, length, sampleRate);
+    for (let channel = 0; channel < 2; channel += 1) {
+      const data = impulse.getChannelData(channel);
+      for (let i = 0; i < length; i += 1) {
+        const t = i / sampleRate;
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t / duration, decay);
+      }
     }
-    return clickCompressorNode;
+    return impulse;
+  }
+
+  function clickGraph(context) {
+    if (!clickGraphNodes) {
+      const compressor = context.createDynamicsCompressor();
+      compressor.threshold.value = -14;
+      compressor.knee.value = 8;
+      compressor.ratio.value = 8;
+      compressor.attack.value = 0.001;
+      compressor.release.value = 0.08;
+
+      const reverb = context.createConvolver();
+      reverb.buffer = createImpulseResponse(context, 0.7, 2.6);
+
+      const master = context.createGain();
+      master.gain.value = 1.65;
+
+      const limiter = context.createDynamicsCompressor();
+      limiter.threshold.value = -3;
+      limiter.knee.value = 0;
+      limiter.ratio.value = 20;
+      limiter.attack.value = 0.001;
+      limiter.release.value = 0.16;
+
+      compressor.connect(master);
+      reverb.connect(master);
+      master.connect(limiter);
+      limiter.connect(context.destination);
+
+      clickGraphNodes = { compressor: compressor, reverb: reverb };
+    }
+    return clickGraphNodes;
   }
 
   function scheduleClick(time, type) {
@@ -145,28 +179,37 @@
     const context = ensureAudio();
     if (!context || !clickBuffer) return;
     const accented = type === 'accent';
+    const graph = clickGraph(context);
 
     const source = context.createBufferSource();
     const filter = context.createBiquadFilter();
-    const gain = context.createGain();
+    const dryGain = context.createGain();
+    const wetGain = context.createGain();
 
     source.buffer = clickBuffer;
-    source.playbackRate.value = accented ? 0.88 : 1.05;
+    source.playbackRate.value = accented ? 0.86 : 1.05;
 
     filter.type = 'peaking';
     filter.frequency.value = accented ? 1500 : 1900;
     filter.Q.value = 0.9;
-    filter.gain.value = accented ? 4.5 : 3.2;
+    filter.gain.value = accented ? 5.2 : 4.2;
 
-    const peak = accented ? 1.4 : 0.95;
-    gain.gain.setValueAtTime(peak, time);
-    gain.gain.exponentialRampToValueAtTime(0.001, time + (accented ? 0.06 : 0.045));
+    const dryPeak = accented ? 2.1 : 1.45;
+    dryGain.gain.setValueAtTime(dryPeak, time);
+    dryGain.gain.exponentialRampToValueAtTime(0.001, time + (accented ? 0.075 : 0.055));
+
+    const wetLevel = accented ? 0.62 : 0.42;
+    wetGain.gain.setValueAtTime(wetLevel, time);
+    wetGain.gain.exponentialRampToValueAtTime(0.001, time + (accented ? 0.12 : 0.09));
 
     source.connect(filter);
-    filter.connect(gain);
-    gain.connect(clickCompressor(context));
+    filter.connect(dryGain);
+    filter.connect(wetGain);
+    dryGain.connect(graph.compressor);
+    wetGain.connect(graph.reverb);
+
     source.start(time);
-    source.stop(time + 0.07);
+    source.stop(time + 0.08);
   }
 
   function clearVisualTimers() {
