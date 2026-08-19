@@ -21227,6 +21227,16 @@ body[data-view="casa"] #view-casa.active {
 
 #view-cronometro .crono-metronome-play:active { transform: scale(.91); }
 
+#view-cronometro .crono-metronome-tempo strong.is-changing {
+  animation: crono-metronome-tempo-pop 180ms cubic-bezier(.2, .8, .2, 1);
+}
+
+@keyframes crono-metronome-tempo-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.14); color: var(--metro-color); }
+  100% { transform: scale(1); }
+}
+
 @keyframes crono-metronome-tap {
   45% {
     border-color: color-mix(in srgb, var(--metro-color) 70%, var(--border2));

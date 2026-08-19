@@ -12,6 +12,7 @@
 
   let audioContext = null;
   let clickBuffer = null;
+  let clickCompressorNode = null;
   let schedulerTimer = null;
   let nextBeatTime = 0;
   let beatIndex = 0;
@@ -81,26 +82,62 @@
     if (!AudioContextClass) return null;
     if (!audioContext) audioContext = new AudioContextClass({ latencyHint: 'interactive' });
     if (audioContext.state === 'suspended') audioContext.resume().catch(function() {});
-    if (!clickBuffer) clickBuffer = createDryClickBuffer(audioContext);
+    if (!clickBuffer) clickBuffer = createClickBuffer(audioContext);
     return audioContext;
   }
 
-  // Short high-passed impulse with no resonant tail. Accent and normal beats
-  // share its dry character but differ clearly in level and pitch.
-  function createDryClickBuffer(context) {
-    const duration = 0.016;
-    const length = Math.max(1, Math.floor(context.sampleRate * duration));
+  // Click con cuerpo: crujido agudo, resonancia de madera y un golpe grave.
+  // Suena como un metrónomo mecánico fuerte en vez de un pitido seco.
+  function createClickBuffer(context) {
+    const sampleRate = context.sampleRate;
+    const duration = 0.055;
+    const length = Math.max(1, Math.floor(sampleRate * duration));
     const buffer = context.createBuffer(1, length, context.sampleRate);
     const data = buffer.getChannelData(0);
     let previousNoise = 0;
     for (let i = 0; i < length; i += 1) {
+      const t = i / sampleRate;
+
+      // Crujido: transitorio de ruido pasa-altos muy corto.
       const noise = Math.random() * 2 - 1;
-      const highPassed = noise - previousNoise * 0.91;
-      const envelope = Math.exp(-i / (context.sampleRate * 0.0028));
-      data[i] = highPassed * envelope * 0.68;
+      const highPassed = noise - previousNoise * 0.86;
       previousNoise = noise;
+      const crack = highPassed * Math.exp(-t / 0.0009);
+
+      // Cuerpo de madera: dos senos amortiguados con un ligero barrido hacia abajo.
+      const sweep = 1 + 0.16 * Math.exp(-t / 0.0018);
+      const wood =
+        Math.sin(2 * Math.PI * 1500 * sweep * t) * 0.66 +
+        Math.sin(2 * Math.PI * 320 * t) * 0.34;
+      const woodEnv = Math.exp(-t / 0.012);
+
+      // Golpe grave para dar peso.
+      const thump = Math.sin(2 * Math.PI * 170 * t) * Math.exp(-t / 0.022);
+
+      data[i] = crack * 0.82 + wood * woodEnv * 0.92 + thump * 0.55;
+    }
+
+    // Normalizar a un pico alto pero sin recortar.
+    let peak = 0;
+    for (let i = 0; i < length; i += 1) peak = Math.max(peak, Math.abs(data[i]));
+    if (peak > 0) {
+      const scale = 0.92 / peak;
+      for (let i = 0; i < length; i += 1) data[i] *= scale;
     }
     return buffer;
+  }
+
+  function clickCompressor(context) {
+    if (!clickCompressorNode) {
+      clickCompressorNode = context.createDynamicsCompressor();
+      clickCompressorNode.threshold.value = -16;
+      clickCompressorNode.knee.value = 12;
+      clickCompressorNode.ratio.value = 8;
+      clickCompressorNode.attack.value = 0.001;
+      clickCompressorNode.release.value = 0.09;
+      clickCompressorNode.connect(context.destination);
+    }
+    return clickCompressorNode;
   }
 
   function scheduleClick(time, type) {
@@ -108,21 +145,28 @@
     const context = ensureAudio();
     if (!context || !clickBuffer) return;
     const accented = type === 'accent';
+
     const source = context.createBufferSource();
-    const gain = context.createGain();
     const filter = context.createBiquadFilter();
+    const gain = context.createGain();
+
     source.buffer = clickBuffer;
-    source.playbackRate.value = accented ? 0.86 : 1.08;
-    filter.type = 'bandpass';
-    filter.frequency.value = accented ? 1650 : 2350;
-    filter.Q.value = 0.72;
-    gain.gain.setValueAtTime(accented ? 0.98 : 0.58, time);
-    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.022);
+    source.playbackRate.value = accented ? 0.88 : 1.05;
+
+    filter.type = 'peaking';
+    filter.frequency.value = accented ? 1500 : 1900;
+    filter.Q.value = 0.9;
+    filter.gain.value = accented ? 4.5 : 3.2;
+
+    const peak = accented ? 1.4 : 0.95;
+    gain.gain.setValueAtTime(peak, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + (accented ? 0.06 : 0.045));
+
     source.connect(filter);
     filter.connect(gain);
-    gain.connect(context.destination);
+    gain.connect(clickCompressor(context));
     source.start(time);
-    source.stop(time + 0.028);
+    source.stop(time + 0.07);
   }
 
   function clearVisualTimers() {
@@ -198,7 +242,7 @@
     state.bpm = Math.round(clamp(Number(value) || state.bpm, MIN_BPM, MAX_BPM));
     saveState();
     reschedule();
-    render();
+    renderTempo();
     if (announce && typeof Haptics !== 'undefined') {
       try { Haptics.tick(); } catch (error) {}
     }
@@ -256,8 +300,6 @@
       const recent = intervals.slice(-5);
       const average = recent.reduce(function(sum, interval) { return sum + interval; }, 0) / recent.length;
       setBpm(60000 / average, false);
-    } else {
-      render();
     }
   }
 
@@ -306,6 +348,22 @@
     '</div>';
   }
 
+  function renderTempo() {
+    document.querySelectorAll('.crono-metronome').forEach(function(surface) {
+      const tempo = surface.querySelector('.crono-metronome-tempo strong');
+      const label = surface.querySelector('.crono-metronome-tempo span');
+      const slider = surface.querySelector('.crono-metronome-slider');
+      if (tempo) {
+        tempo.textContent = String(state.bpm);
+        tempo.classList.remove('is-changing');
+        void tempo.offsetWidth;
+        tempo.classList.add('is-changing');
+      }
+      if (label) label.textContent = 'BPM · ' + tempoName(state.bpm);
+      if (slider && document.activeElement !== slider) slider.value = String(state.bpm);
+    });
+  }
+
   function render() {
     document.querySelectorAll('.crono-metronome').forEach(function(surface) {
       surface.innerHTML = surfaceHtml();
@@ -327,6 +385,16 @@
     },
     stop: stop,
   };
+
+  // Permite ajustar el tempo con la rueda del ratón o el scroll del trackpad
+  // sobre el slider. Shift acelera el paso de 1 a 5 BPM.
+  document.addEventListener('wheel', function(event) {
+    const slider = event.target && event.target.closest && event.target.closest('.crono-metronome-slider');
+    if (!slider) return;
+    event.preventDefault();
+    const step = event.shiftKey ? 5 : 1;
+    setBpm(state.bpm + (event.deltaY < 0 ? step : -step), true);
+  }, { passive: false });
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
   else render();
