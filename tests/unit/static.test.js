@@ -31,6 +31,27 @@ describe('quality wiring', () => {
     expect(dispatcher).toContain('pushTextMessage');
   });
 
+  it('keeps Google Calendar read-only and stores OAuth tokens only in Supabase', () => {
+    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const client = fs.readFileSync(path.join(root, 'google-calendar.js'), 'utf8');
+    const edge = fs.readFileSync(path.join(root, 'supabase/functions/google-calendar/index.ts'), 'utf8');
+    const migration = fs.readFileSync(
+      path.join(root, 'supabase/migrations/202608170002_google_calendar.sql'),
+      'utf8'
+    );
+
+    expect(html).toContain('id="calendarGoogleToggle"');
+    expect(html).toContain('id="googleCalendarConnectBtn"');
+    expect(client).toContain("const STORAGE_KEY = 'alberto_google_calendar_v1'");
+    expect(client).not.toContain('refresh_token');
+    expect(edge).toContain('calendar.calendarlist.readonly');
+    expect(edge).toContain('calendar.events.readonly');
+    expect(edge).not.toContain('calendar.events.insert');
+    expect(edge).toContain('AES-GCM');
+    expect(migration).toContain('enable row level security');
+    expect(migration).toContain('revoke all');
+  });
+
   it('caps orphaned server stopwatches at 120 minutes', () => {
     const migration = fs.readFileSync(
       path.join(root, 'supabase/migrations/202608160001_cap_stopwatch_runs.sql'),
@@ -209,7 +230,7 @@ describe('quality wiring', () => {
     expect(app).toContain('_pulseOffset = 0;');
     expect(app).toContain('function cronoUsesLargeTabletLandscape()');
     expect(app).toContain('height < 900 ? Math.min(182, height * 0.22)');
-    expect(app).toContain('const CRONO_INTERFACE_SCALE_MIN_DESKTOP = 0.50');
+    expect(app).toContain('const CRONO_INTERFACE_SCALE_MIN_DESKTOP = 1');
     expect(app).toContain('function cronoSetIdleDestelloText(text)');
     expect(app).toContain('fechaFin: fechaFin || null');
     expect(styles).toContain('.crono-calendar-grid');

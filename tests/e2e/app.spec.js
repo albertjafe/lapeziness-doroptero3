@@ -58,6 +58,47 @@ test('opens every main view without page exceptions', async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem('piano_auto_creds'))).toBeNull();
 });
 
+test('shows cached Google events as a stable optional calendar layer', async ({ page }) => {
+  const now = new Date();
+  const date = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+  await page.addInitScript(({ date, lastSync }) => {
+    localStorage.setItem('alberto_google_calendar_v1', JSON.stringify({
+      connected: true,
+      layer: true,
+      calendars: [{ id: 'primary', name: 'Personal', primary: true, color: '#4285f4' }],
+      selectedIds: ['primary'],
+      events: [{
+        id: 'google-event', calendarId: 'primary', calendarName: 'Personal', color: '#4285f4',
+        title: 'Ensayo con Marta', start: date, end: nextDate(date), allDay: true,
+      }],
+      lastSync,
+    }));
+
+    function nextDate(value) {
+      const parts = value.split('-').map(Number);
+      const next = new Date(parts[0], parts[1] - 1, parts[2] + 1, 12);
+      return [next.getFullYear(), String(next.getMonth() + 1).padStart(2, '0'), String(next.getDate()).padStart(2, '0')].join('-');
+    }
+  }, { date, lastSync: new Date().toISOString() });
+  await prepare(page);
+
+  await page.evaluate(() => {
+    showView('calendario');
+    switchCalTab('mes', document.getElementById('calTabMes'));
+  });
+  const toggle = page.locator('#calendarGoogleToggle');
+  await expect(toggle).toBeVisible();
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.mes-dot.google[title="Ensayo con Marta"]')).toHaveCount(1);
+  const before = await page.locator('#mesGrid').evaluate(element => element.getBoundingClientRect().height);
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
+  await expect(page.locator('.mes-dot.google')).toHaveCount(0);
+  const after = await page.locator('#mesGrid').evaluate(element => element.getBoundingClientRect().height);
+  expect(Math.abs(after - before)).toBeLessThanOrEqual(1);
+});
+
 test('uses mouse navigation only on Windows and preserves the iPad navigation', async ({ browser }) => {
   const windows = await browser.newContext({
     viewport: { width: 1024, height: 768 },
@@ -2135,14 +2176,14 @@ test('records only concentration and discomfort across timer layouts', async ({ 
   expect(portraitTabletLayout.states.left).toBeGreaterThanOrEqual(portraitTabletLayout.tools.right - 1);
   expect(Math.abs(portraitTabletLayout.tools.height - portraitTabletLayout.states.height)).toBeLessThanOrEqual(2);
   expect(portraitTabletLayout.tools.width).toBeGreaterThan(portraitTabletLayout.states.width);
-  const reducedZoom = await page.evaluate(() => {
+  const fixedClock = await page.evaluate(() => {
     const timer = document.querySelector('#cronoStageIdle .crono-idle-main');
     const calendar = document.querySelector('.crono-calendar-panel');
     const ring = document.getElementById('cronoTimerSvg');
     cronoResetInterfaceScale();
-    const before = { timer: timer.getBoundingClientRect().height, calendar: calendar.getBoundingClientRect().height };
+    const before = { timer: timer.getBoundingClientRect().height, calendar: calendar.getBoundingClientRect().height, ring: ring.getBoundingClientRect().width };
     cronoSetInterfaceScale(0.1, { persist: false, announce: false });
-    const longText = 'Un destello suficientemente largo para comprobar que el texto se adapta al espacio disponible sin cortarse aunque el cronómetro se reduzca hasta su nuevo mínimo seguro de tamaño.';
+    const longText = 'Un destello suficientemente largo para comprobar que el texto se adapta al espacio disponible sin cortarse con el tamaño fijo del reloj.';
     cronoSetIdleDestelloText(longText);
     const message = document.getElementById('cronoIdleMessage');
     const result = {
@@ -2151,21 +2192,18 @@ test('records only concentration and discomfort across timer layouts', async ({ 
       calendar: calendar.getBoundingClientRect().height,
       ring: ring.getBoundingClientRect().width,
       messageFits: message.scrollHeight <= message.clientHeight + 1,
-      messageSize: parseFloat(getComputedStyle(message).fontSize),
       messageClass: message.className,
     };
     cronoSetIdleDestelloText(_cronoIdlePhrase());
     cronoResetInterfaceScale();
     return { before, result };
   });
-  expect(reducedZoom.result.scale).toBe(0.5);
-  expect(reducedZoom.result.timer).toBeLessThan(reducedZoom.before.timer - 80);
-  expect(reducedZoom.result.calendar).toBeLessThan(reducedZoom.before.calendar - 80);
-  expect(Math.abs(reducedZoom.result.timer - reducedZoom.result.calendar)).toBeLessThanOrEqual(2);
-  expect(reducedZoom.result.ring).toBeLessThanOrEqual(186);
-  expect(reducedZoom.result.messageFits).toBe(true);
-  expect(reducedZoom.result.messageSize).toBeLessThanOrEqual(10);
-  expect(reducedZoom.result.messageClass).toContain('size-xlong');
+  expect(fixedClock.result.scale).toBe(1);
+  expect(fixedClock.result.timer).toBe(fixedClock.before.timer);
+  expect(fixedClock.result.calendar).toBe(fixedClock.before.calendar);
+  expect(fixedClock.result.ring).toBe(fixedClock.before.ring);
+  expect(fixedClock.result.messageFits).toBe(true);
+  expect(fixedClock.result.messageClass).toContain('size-xlong');
   const tabletFluidBox = await momentMonitor.locator('.crono-fluid-panel').boundingBox();
   const tabletFluidVesselBox = await momentMonitor.locator('#cronoFluidConcentration .crono-fluid-vessel').boundingBox();
   expect(tabletFluidBox.y).toBeGreaterThanOrEqual(0);
@@ -2614,10 +2652,11 @@ test('keeps mobile tasks readable and swipes calendar months', async ({ page }) 
     };
   });
   expect(taskLayout.width).toBeGreaterThanOrEqual(170);
-  expect(taskLayout.lanes.every(lane => lane.width >= 380)).toBe(true);
+  expect(taskLayout.lanes.every(lane => lane.width >= 200)).toBe(true);
   expect(taskLayout.personalColumns).toBe(1);
   expect(taskLayout.projectionDisplay).toBe('none');
-  expect(taskLayout.clock.fontSize).toBeLessThan(50);
+  expect(taskLayout.clock.fontSize).toBeGreaterThan(50);
+  expect(taskLayout.clock.fontSize).toBeLessThanOrEqual(70);
   expect(taskLayout.clock.display.left).toBeGreaterThanOrEqual(taskLayout.clock.ring.left - 1);
   expect(taskLayout.clock.display.right).toBeLessThanOrEqual(taskLayout.clock.ring.right + 1);
   expect(taskLayout.clock.flash.left - taskLayout.clock.ring.right).toBeGreaterThanOrEqual(7);
@@ -2967,7 +3006,7 @@ test('keeps Destellos in the same clock position before and during a session', a
   }
 });
 
-test('uses pinch to distribute space inversely between timer and tools', async ({ page }) => {
+test('keeps a fixed clock size regardless of legacy zoom requests', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await prepare(page);
   const result = await page.evaluate(async () => {
@@ -2985,62 +3024,37 @@ test('uses pinch to distribute space inversely between timer and tools', async (
     const main = document.querySelector('.crono-idle-main');
     const drawer = document.getElementById('cronoIdleDrawer');
     const ring = document.getElementById('cronoTimerSvg');
-    const settle = () => new Promise(resolve => setTimeout(resolve, 260));
+    const view = document.getElementById('view-cronometro');
     const before = { main: rect(main).width, drawer: rect(drawer).width, ring: rect(ring).width };
     cronoSetInterfaceScale(0.84, { persist: false, announce: false });
-    await settle();
     const compactClock = { main: rect(main).width, drawer: rect(drawer).width, ring: rect(ring).width };
     cronoSetInterfaceScale(1.18, { persist: true, announce: false });
-    await settle();
     const largeClock = { main: rect(main).width, drawer: rect(drawer).width, ring: rect(ring).width };
-    const view = document.getElementById('view-cronometro');
-    cronoShowInterfaceScale(0.84, false);
-    const indicator = document.getElementById('cronoInterfaceZoomIndicator').textContent;
-    document.body.classList.add('crono-interface-pinching');
     cronoAnimateInterfaceScale(0.9, { persist: true, announce: false });
-    await new Promise(resolve => {
-      const startedAt = performance.now();
-      const waitForSettle = () => {
-        if (!document.body.classList.contains('crono-interface-pinching') || performance.now() - startedAt > 1200) {
-          resolve();
-          return;
-        }
-        requestAnimationFrame(waitForSettle);
-      };
-      waitForSettle();
-    });
     const animated = {
       scale: Number(view.dataset.interfaceScale),
-      saved: Number(localStorage.getItem(CRONO_INTERFACE_SCALE_KEY)),
-      settled: !document.body.classList.contains('crono-interface-pinching'),
+      saved: Number(localStorage.getItem(CRONO_INTERFACE_SCALE_KEY) || 0),
     };
     cronoResetInterfaceScale();
     return {
       before,
       compactClock,
       largeClock,
-      indicator,
       animated,
       scale: view.dataset.interfaceScale,
-      saved: localStorage.getItem(CRONO_INTERFACE_SCALE_KEY),
+      hasZoomIndicator: !!document.getElementById('cronoInterfaceZoomIndicator'),
     };
   });
 
-  expect(result.compactClock.main).toBeLessThan(result.before.main);
-  expect(result.compactClock.drawer).toBeGreaterThan(result.before.drawer);
-  expect(result.compactClock.ring).toBeLessThan(result.before.ring);
-  expect(result.largeClock.main).toBeGreaterThan(result.before.main);
-  expect(result.largeClock.drawer).toBeLessThan(result.before.drawer);
-  expect(result.largeClock.ring).toBeGreaterThan(result.before.ring);
-  expect(result.indicator).toContain('Reloj 84 · Tareas 116');
-  expect(result.animated.scale).toBeCloseTo(0.9, 2);
-  expect(result.animated.saved).toBeCloseTo(0.9, 2);
-  expect(result.animated.settled).toBe(true);
+  expect(result.compactClock).toEqual(result.before);
+  expect(result.largeClock).toEqual(result.before);
+  expect(result.animated.scale).toBe(1);
+  expect(result.animated.saved).toBe(0);
   expect(result.scale).toBe('1');
-  expect(result.saved).toBe('1');
+  expect(result.hasZoomIndicator).toBe(false);
 });
 
-test('keeps mobile portrait tools dense while inverse pinch exposes more tasks', async ({ page }) => {
+test('keeps a compact mobile task drawer with a fixed clock', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await prepare(page);
   const result = await page.evaluate(async () => {
@@ -3058,20 +3072,19 @@ test('keeps mobile portrait tools dense while inverse pinch exposes more tasks',
     const drawer = document.getElementById('cronoIdleDrawer');
     const before = { ring: ring.getBoundingClientRect().width, drawer: drawer.getBoundingClientRect().height };
     cronoSetInterfaceScale(0.84, { persist: false, announce: false });
-    await new Promise(resolve => setTimeout(resolve, 260));
-    const compact = { ring: ring.getBoundingClientRect().width, drawer: drawer.getBoundingClientRect().height };
+    const after = { ring: ring.getBoundingClientRect().width, drawer: drawer.getBoundingClientRect().height };
     return {
       before,
-      compact,
+      after,
       tabFont: parseFloat(getComputedStyle(document.querySelector('#cronoIdleDrawer .crono-run-drawer-tab')).fontSize),
       taskFont: parseFloat(getComputedStyle(document.querySelector('.crono-task-lane .crono-task-text')).fontSize),
     };
   });
 
-  expect(result.compact.ring).toBeLessThan(result.before.ring);
-  expect(result.compact.drawer).toBeGreaterThan(result.before.drawer);
-  expect(result.tabFont).toBeLessThanOrEqual(10);
-  expect(result.taskFont).toBeLessThanOrEqual(10);
+  expect(result.after.ring).toBe(result.before.ring);
+  expect(result.after.drawer).toBe(result.before.drawer);
+  expect(result.tabFont).toBeLessThanOrEqual(11);
+  expect(result.taskFont).toBeLessThanOrEqual(12);
 });
 
 test('uses a complete two-column timer layout on landscape phones', async ({ browser }) => {

@@ -25,7 +25,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=270">
+<link rel="stylesheet" href="styles.css?v=272">
 </head>
 <body>
 
@@ -345,7 +345,6 @@
   <div class="crono-concentrado" id="cronoConcentradoText">Hoy te has concentrado 0 minutos</div>
   <!-- Probabilidad EN VIVO de llegar hoy a 4h/5h según la hora y lo ya hecho -->
   <div class="crono-prob" id="cronoProbabilidad" style="display:none"></div>
-  <div class="crono-interface-zoom-indicator" id="cronoInterfaceZoomIndicator" aria-live="polite">100%</div>
 
   <div class="crono-wrap">
 
@@ -735,9 +734,14 @@
       <button class="mes-nav-btn" onclick="cambiarMes(-1)">‹</button>
       <div class="mes-nav-center">
         <div class="mes-nav-label" id="mesNavLabel"></div>
-        <button type="button" class="calendar-layer-toggle" id="calendarHabitToggle" role="switch" aria-checked="false" onclick="toggleCalendarHabitLayer(event)">
-          <span class="calendar-layer-toggle-dot" aria-hidden="true"></span> Objetivos
-        </button>
+        <div class="calendar-layer-toggles">
+          <button type="button" class="calendar-layer-toggle" id="calendarHabitToggle" role="switch" aria-checked="false" onclick="toggleCalendarHabitLayer(event)">
+            <span class="calendar-layer-toggle-dot" aria-hidden="true"></span> Objetivos
+          </button>
+          <button type="button" class="calendar-layer-toggle calendar-google-toggle" id="calendarGoogleToggle" role="switch" aria-checked="true" onclick="toggleGoogleCalendarLayer(event)" hidden>
+            <span class="calendar-layer-toggle-dot" aria-hidden="true"></span> Google
+          </button>
+        </div>
       </div>
       <button class="mes-nav-btn" onclick="cambiarMes(1)">›</button>
     </div>
@@ -1074,6 +1078,24 @@
         <button class="modal-btn secondary push-enable-btn" id="pushNotificationEnableBtn" type="button" onclick="enableReliableNotifications()">Activar avisos</button>
       </div>
       <div class="push-settings-schedule">Temporizador: 5, 4, 3, 2 y 1 min · Cronómetro: cada 15 min</div>
+    </div>
+
+    <div class="ajustes-group-label"><span class="ajustes-group-icon google-calendar-g" aria-hidden="true">G</span>Google Calendar</div>
+    <div class="ajustes-card google-calendar-settings-card">
+      <div class="google-calendar-settings-main">
+        <span class="push-status-dot" id="googleCalendarStatusDot" data-tone="neutral" aria-hidden="true"></span>
+        <div class="google-calendar-settings-copy">
+          <div class="ajustes-card-head">Calendarios visibles</div>
+          <div class="ajustes-hint" id="googleCalendarStatus">No conectado · solo lectura</div>
+        </div>
+        <button class="modal-btn primary google-calendar-connect" id="googleCalendarConnectBtn" type="button" onclick="googleCalendarConnect()">Conectar</button>
+        <button class="google-calendar-icon-btn" id="googleCalendarSyncBtn" type="button" onclick="googleCalendarSync({force:true})" aria-label="Actualizar Google Calendar" title="Actualizar" hidden>↻</button>
+      </div>
+      <div id="googleCalendarListHost"></div>
+      <div class="google-calendar-settings-foot">
+        <span>La app solo puede leer los calendarios elegidos.</span>
+        <button type="button" id="googleCalendarDisconnectBtn" onclick="googleCalendarDisconnect()" hidden>Desconectar</button>
+      </div>
     </div>
 
     <!-- ── DATOS ── -->
@@ -2298,7 +2320,8 @@
 <script src="data-core.js?v=230"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=264"></script>
-<script src="app.js?v=270"></script>
+<script src="app.js?v=272"></script>
+<script src="google-calendar.js?v=272"></script>
 <script src="timer-objectives.js?v=249"></script>
 <script src="metronome.js?v=263"></script>
 <script type="module" src="mystery-house.js?v=260"></script>

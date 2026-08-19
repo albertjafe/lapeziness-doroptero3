@@ -2,3 +2,6 @@ project_id = "fexfeekifzgszluemihs"
 
 [functions.study-push-dispatch]
 verify_jwt = false
+
+[functions.google-calendar]
+verify_jwt = false

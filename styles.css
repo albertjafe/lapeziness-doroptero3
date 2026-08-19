@@ -3779,6 +3779,10 @@
   .mes-dot.grabacion { background: #4090e0; }
   .mes-dot.clase     { background: #e0a030; }
   .mes-dot.ensayo    { background: #30c0c0; }
+  .mes-dot.google {
+    background: var(--google-calendar-color, #4285f4);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--google-calendar-color, #4285f4) 35%, transparent);
+  }
   .mes-leyenda {
     display: flex; flex-wrap: wrap; gap: 8px 14px;
     margin-top: 14px; padding-top: 12px;
@@ -14397,37 +14401,9 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
 [data-theme^="marmol"] #view-cronometro .crono-run-target {
   font-size: clamp(9px, calc(var(--crono-interface-ring-size) * .04), 15px);
 }
-.crono-interface-zoom-indicator {
-  position: fixed;
-  top: max(14px, env(safe-area-inset-top, 0px));
-  left: 50%;
-  z-index: 360;
-  min-width: 158px;
-  padding: 7px 11px;
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border2));
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--bg2) 92%, transparent);
-  box-shadow: 0 8px 26px rgba(0,0,0,.12);
-  color: var(--accent);
-  font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  font-size: 11px;
-  font-weight: 800;
-  text-align: center;
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, -7px) scale(.94);
-  transition: opacity 150ms ease, transform 180ms cubic-bezier(.2, .8, .2, 1);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-.crono-interface-zoom-indicator.visible {
-  opacity: 1;
-  transform: translate(-50%, 0) scale(1);
-}
 @media (prefers-reduced-motion: reduce) {
   [data-theme^="marmol"] #view-cronometro .crono-idle-console,
-  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap,
-  .crono-interface-zoom-indicator { transition: none; }
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap { transition: none; }
 }
 
 [data-theme^="marmol"] .crono-drawer-pase-btn {
@@ -19263,6 +19239,7 @@ body.crono-pulse-disabled #view-cronometro .crono-moment-monitor { display: none
   min-width: 0;
 }
 .mes-nav-center .mes-nav-label { line-height: 1; }
+.calendar-layer-toggles { display: flex; align-items: center; justify-content: center; gap: 5px; }
 .calendar-layer-toggle {
   display: inline-flex;
   align-items: center;
@@ -19294,6 +19271,59 @@ body.crono-pulse-disabled #view-cronometro .crono-moment-monitor { display: none
 .calendar-layer-toggle.is-active .calendar-layer-toggle-dot {
   background: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+.calendar-google-toggle .calendar-layer-toggle-dot { background: #4285f4; }
+.calendar-google-toggle.is-active {
+  color: #2566ca;
+  border-color: color-mix(in srgb, #4285f4 35%, var(--border2));
+  background: color-mix(in srgb, #4285f4 8%, var(--bg2));
+}
+
+.google-calendar-g {
+  display: inline-grid;
+  place-items: center;
+  font: 700 11px/1 Arial, sans-serif;
+  color: #4285f4;
+}
+.google-calendar-settings-card { grid-column: 1 / -1; }
+.google-calendar-settings-main { display: flex; align-items: center; gap: 11px; }
+.google-calendar-settings-copy { flex: 1; min-width: 0; }
+.google-calendar-settings-copy .ajustes-card-head { margin-bottom: 3px; }
+.google-calendar-icon-btn {
+  width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border2);
+  background: var(--bg); color: var(--accent); font-size: 20px; cursor: pointer;
+}
+.google-calendar-icon-btn:disabled { opacity: .45; }
+.google-calendar-list {
+  display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; padding-top: 13px;
+  border-top: 1px solid var(--border2);
+}
+.google-calendar-choice {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 6px 10px;
+  border: 1px solid var(--border2); border-radius: 8px; background: var(--bg); color: var(--text2);
+  font-size: 10px; font-weight: 600; cursor: pointer;
+}
+.google-calendar-choice input { position: absolute; opacity: 0; pointer-events: none; }
+.google-calendar-choice:has(input:checked) { border-color: color-mix(in srgb, #4285f4 45%, var(--border2)); color: var(--text); }
+.google-calendar-choice-dot {
+  width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%;
+  background: var(--google-calendar-color, #4285f4); opacity: .35;
+}
+.google-calendar-choice:has(input:checked) .google-calendar-choice-dot { opacity: 1; box-shadow: 0 0 0 3px color-mix(in srgb, var(--google-calendar-color, #4285f4) 15%, transparent); }
+.google-calendar-settings-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 12px; color: var(--text3); font-size: 9px;
+}
+.google-calendar-settings-foot button {
+  border: 0; background: transparent; color: var(--text3); font: inherit; text-decoration: underline;
+  text-underline-offset: 3px; cursor: pointer;
+}
+@media (max-width: 520px) {
+  .calendar-layer-toggles { gap: 3px; }
+  .calendar-layer-toggle { padding-inline: 7px; }
+  .google-calendar-settings-main { flex-wrap: wrap; }
+  .google-calendar-settings-copy { min-width: calc(100% - 24px); }
+  .google-calendar-connect { margin-left: 19px; }
 }
 .calendar-habit-summary[hidden] { display: none !important; }
 .calendar-habit-summary { margin: 0 0 12px; }
