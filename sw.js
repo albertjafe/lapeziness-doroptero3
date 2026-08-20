@@ -1,10 +1,10 @@
-const CACHE = 'estudio-v274';
+const CACHE = 'estudio-v275';
 const ASSETS = [
   './index.html',
-  './styles.css?v=273',
-  './app.js?v=273',
+  './styles.css?v=275',
+  './app.js?v=275',
   './google-calendar.js?v=272',
-  './metronome.js?v=274',
+  './metronome.js?v=275',
   './mystery-house.js?v=260',
   './vendor/three.module.min.js',
   './vendor/three.core.min.js',

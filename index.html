@@ -25,7 +25,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=273">
+<link rel="stylesheet" href="styles.css?v=275">
 </head>
 <body>
 
@@ -369,10 +369,13 @@
         </div>
 
         <div class="crono-display-wrap crono-idle-display-wrap progress-active" id="cronoIdleDisplayWrap">
-          <div class="crono-tomorrow-note-rail" aria-label="Notas para mañana">
+          <div class="crono-tomorrow-note-rail" aria-label="Notas para mañana y destello">
             <button type="button" class="crono-tomorrow-note-btn" onclick="openCronoTomorrowTask()"
                     aria-label="Añadir una nota para mañana" title="Añadir una nota para mañana">+</button>
-            <span class="crono-tomorrow-note-spacer" aria-hidden="true"></span>
+            <button type="button" class="crono-quick-destello-btn crono-run-side-destello" onclick="openQuickDestello()"
+                    aria-label="Añadir un destello" title="Añadir un destello">
+              <span aria-hidden="true">✦</span><small>+</small>
+            </button>
           </div>
           <svg class="crono-run-progress-svg crono-timer-svg" id="cronoTimerSvg" viewBox="0 0 220 220" aria-hidden="true">
             <circle class="crono-run-progress-track" cx="110" cy="110" r="94" fill="none"/>
@@ -385,13 +388,6 @@
           <div class="crono-display-inner">
             <div class="crono-display" id="cronoTimerText">00:00</div>
             <div class="crono-run-target" id="cronoIdleTarget" style="display:none"></div>
-          </div>
-          <div class="crono-run-action-rail crono-idle-action-rail" aria-label="Acciones de la sesión">
-            <button type="button" class="crono-quick-destello-btn crono-run-side-destello" onclick="openQuickDestello()"
-                    aria-label="Añadir un destello" title="Añadir un destello">
-              <span aria-hidden="true">✦</span><small>+</small>
-            </button>
-            <span class="crono-idle-action-spacer" aria-hidden="true"></span>
           </div>
         </div>
 
@@ -418,13 +414,11 @@
           <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab active" data-tab="tareas" role="tab" aria-selected="true" onclick="cronoSetIdleDrawerTab('tareas')">
             Tareas <span class="crono-task-notification-dot" id="cronoIdleDrawerTaskTabCount" aria-hidden="true" hidden></span>
           </button>
-          <button type="button" class="crono-task-density-btn" data-task-density-toggle onclick="toggleCronoTaskDensity()"
-                  aria-label="Reducir tamaño de las tareas" title="Reducir tamaño de las tareas" aria-pressed="false"><span>A</span><small>−</small></button>
           <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab crono-memory-tab" data-tab="memoria" role="tab" aria-label="Tarjetas de memoria" title="Memoria" aria-selected="false" onclick="cronoSetIdleDrawerTab('memoria')">
             <span class="crono-memory-tab-icon" aria-hidden="true"><i></i></span><span class="crono-memory-tab-label">Memoria</span><span class="crono-memory-tab-count" data-memory-count="idle" hidden></span>
           </button>
           <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab crono-metronome-tab" data-tab="metronomo" role="tab" aria-label="Metrónomo" aria-selected="false" onclick="cronoSetIdleDrawerTab('metronomo')">
-            <span class="crono-metronome-tab-icon" aria-hidden="true"></span><span class="crono-metronome-tab-label">Metrónomo</span>
+            <svg class="crono-metronome-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16"/><path d="M6 20 12 4l6 16"/><path d="M12 7v8"/><circle cx="12" cy="17.5" r="1.6"/></svg><span class="crono-metronome-tab-label">Metrónomo</span>
           </button>
           <button type="button" class="crono-run-drawer-tab crono-drawer-pase-action" data-action="pase" role="button" onclick="openCronoPaseRapido()">Pase +</button>
         </div>
@@ -480,10 +474,13 @@
 
       <!-- Tiempo gigante con outline (Forest-style) -->
       <div class="crono-display-wrap" id="cronoDisplayWrap">
-        <div class="crono-tomorrow-note-rail" aria-label="Notas para mañana">
+        <div class="crono-tomorrow-note-rail" aria-label="Notas para mañana y destello">
           <button type="button" class="crono-tomorrow-note-btn" onclick="openCronoTomorrowTask()"
                   aria-label="Añadir una nota para mañana" title="Añadir una nota para mañana">+</button>
-          <span class="crono-tomorrow-note-spacer" aria-hidden="true"></span>
+          <button type="button" class="crono-quick-destello-btn crono-run-side-destello" onclick="openQuickDestello()"
+                  aria-label="Añadir un destello" title="Añadir un destello">
+            <span aria-hidden="true">✦</span><small>+</small>
+          </button>
         </div>
         <svg class="crono-run-progress-svg" viewBox="0 0 220 220" aria-hidden="true">
           <circle class="crono-run-progress-track" cx="110" cy="110" r="94" fill="none"/>
@@ -500,10 +497,6 @@
           <div class="crono-run-target" id="cronoRunTarget" style="display:none"></div>
         </div>
         <div class="crono-run-action-rail" aria-label="Acciones de la sesion">
-          <button type="button" class="crono-quick-destello-btn crono-run-side-destello" onclick="openQuickDestello()"
-                  aria-label="Anadir un destello" title="Anadir un destello">
-            <span aria-hidden="true">&#10022;</span><small>+</small>
-          </button>
           <div class="crono-controls" id="cronoControls"></div>
         </div>
       </div>
@@ -523,13 +516,11 @@
         <button type="button" class="crono-run-drawer-tab active" data-tab="tareas" role="tab" aria-selected="true" onclick="cronoSetRunDrawerTab('tareas')">
           Tareas <span class="crono-task-notification-dot" id="cronoDrawerTaskTabCount" aria-hidden="true" hidden></span>
         </button>
-        <button type="button" class="crono-task-density-btn" data-task-density-toggle onclick="toggleCronoTaskDensity()"
-                aria-label="Reducir tamaño de las tareas" title="Reducir tamaño de las tareas" aria-pressed="false"><span>A</span><small>−</small></button>
         <button type="button" class="crono-run-drawer-tab crono-memory-tab" data-tab="memoria" role="tab" aria-label="Tarjetas de memoria" title="Memoria" aria-selected="false" onclick="cronoSetRunDrawerTab('memoria')">
           <span class="crono-memory-tab-icon" aria-hidden="true"><i></i></span><span class="crono-memory-tab-label">Memoria</span><span class="crono-memory-tab-count" data-memory-count="running" hidden></span>
         </button>
         <button type="button" class="crono-run-drawer-tab crono-metronome-tab" data-tab="metronomo" role="tab" aria-label="Metrónomo" aria-selected="false" onclick="cronoSetRunDrawerTab('metronomo')">
-          <span class="crono-metronome-tab-icon" aria-hidden="true"></span><span class="crono-metronome-tab-label">Metrónomo</span>
+          <svg class="crono-metronome-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16"/><path d="M6 20 12 4l6 16"/><path d="M12 7v8"/><circle cx="12" cy="17.5" r="1.6"/></svg><span class="crono-metronome-tab-label">Metrónomo</span>
         </button>
         <button type="button" class="crono-run-drawer-tab" data-action="pase" role="button" onclick="openCronoPaseRapido()">Pase +</button>
       </div>
@@ -2320,10 +2311,10 @@
 <script src="data-core.js?v=230"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=264"></script>
-<script src="app.js?v=273"></script>
+<script src="app.js?v=275"></script>
 <script src="google-calendar.js?v=272"></script>
 <script src="timer-objectives.js?v=249"></script>
-<script src="metronome.js?v=274"></script>
+<script src="metronome.js?v=275"></script>
 <script type="module" src="mystery-house.js?v=260"></script>
 
 </body>

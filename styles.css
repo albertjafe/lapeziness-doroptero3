@@ -20897,7 +20897,7 @@ body[data-view="casa"] #view-casa.active {
 
 /* Metronome: one compact instrument shared by idle and running sessions. */
 #view-cronometro .crono-minimal-tabs {
-  grid-template-columns: minmax(72px, 1fr) 42px minmax(92px, 1fr) minmax(72px, .82fr) !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
 }
 
 #view-cronometro .crono-metronome-tab {
@@ -20909,35 +20909,10 @@ body[data-view="casa"] #view-casa.active {
 }
 
 #view-cronometro .crono-metronome-tab-icon {
-  position: relative;
-  display: inline-block;
-  width: 13px;
-  height: 15px;
-  flex: 0 0 13px;
-}
-
-#view-cronometro .crono-metronome-tab-icon::before {
-  position: absolute;
-  top: 1px;
-  left: 6px;
-  width: 1.5px;
-  height: 10px;
-  border-radius: 2px;
-  background: currentColor;
-  content: '';
-  transform: rotate(18deg);
-  transform-origin: 50% 0;
-}
-
-#view-cronometro .crono-metronome-tab-icon::after {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-  content: '';
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  color: currentColor;
 }
 
 #view-cronometro .crono-run-drawer-panel[data-panel="metronomo"],
@@ -21252,7 +21227,7 @@ body[data-view="casa"] #view-casa.active {
   }
   #view-cronometro .crono-metronome-tab { gap: 4px; }
   #view-cronometro .crono-metronome-tab-label { font-size: 9px; }
-  #view-cronometro .crono-metronome-tab-icon { width: 11px; flex-basis: 11px; transform: scale(.9); }
+  #view-cronometro .crono-metronome-tab-icon { width: 12px; height: 12px; flex-basis: 12px; }
   #view-cronometro .crono-metronome-shell {
     min-height: 236px;
     gap: 13px;
@@ -22748,3 +22723,21 @@ html.platform-windows body[data-view="casa"] .house-canvas-host {
 @media (prefers-reduced-motion: reduce) {
   #view-cronometro .memory-progress-row > div i { transition: none; }
 }
+
+/* Tabs del cronómetro: 4 columnas iguales tras quitar el control de densidad. */
+#view-cronometro .crono-minimal-tabs {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+/* Destello integrado en la columna izquierda, junto a la nota de mañana. */
+#view-cronometro .crono-tomorrow-note-rail .crono-quick-destello-btn {
+  position: relative;
+  top: auto;
+  right: auto;
+  transform: none;
+  width: var(--crono-action-size);
+  height: var(--crono-action-size);
+  flex: 0 0 var(--crono-action-size);
+}
+#view-cronometro .crono-tomorrow-note-rail .crono-quick-destello-btn:hover { transform: scale(1.06); }
+#view-cronometro .crono-tomorrow-note-rail .crono-quick-destello-btn:active { transform: scale(.92); }

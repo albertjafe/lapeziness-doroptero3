@@ -2084,12 +2084,6 @@ test('captures a dictated-style note for tomorrow and keeps the clock tools mini
   await expect(taskRow.locator('.crono-task-work-name')).toHaveText('Bach · Preludio');
   await expect(taskRow.locator('.crono-task-note-preview')).toContainText('Revisar mañana la digitación');
   await expect(taskRow.locator('.crono-task-due-tag')).toHaveText('Mañana');
-
-  const normalFont = await taskRow.locator('.crono-task-work-name').evaluate(element => parseFloat(getComputedStyle(element).fontSize));
-  await page.locator('#cronoRunDrawer [data-task-density-toggle]').click();
-  const compactFont = await taskRow.locator('.crono-task-work-name').evaluate(element => parseFloat(getComputedStyle(element).fontSize));
-  expect(compactFont).toBeLessThan(normalFont);
-  expect(await page.evaluate(() => localStorage.getItem(CRONO_TASK_DENSITY_KEY))).toBe('compact');
 });
 
 test('records only concentration and discomfort across timer layouts', async ({ page }) => {
