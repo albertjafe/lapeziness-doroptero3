@@ -369,13 +369,10 @@
         </div>
 
         <div class="crono-display-wrap crono-idle-display-wrap progress-active" id="cronoIdleDisplayWrap">
-          <div class="crono-tomorrow-note-rail" aria-label="Notas para mañana y destello">
+          <div class="crono-tomorrow-note-rail" aria-label="Notas para mañana">
             <button type="button" class="crono-tomorrow-note-btn" onclick="openCronoTomorrowTask()"
                     aria-label="Añadir una nota para mañana" title="Añadir una nota para mañana">+</button>
-            <button type="button" class="crono-quick-destello-btn crono-run-side-destello" onclick="openQuickDestello()"
-                    aria-label="Añadir un destello" title="Añadir un destello">
-              <span aria-hidden="true">✦</span><small>+</small>
-            </button>
+            <span class="crono-tomorrow-note-spacer" aria-hidden="true"></span>
           </div>
           <svg class="crono-run-progress-svg crono-timer-svg" id="cronoTimerSvg" viewBox="0 0 220 220" aria-hidden="true">
             <circle class="crono-run-progress-track" cx="110" cy="110" r="94" fill="none"/>
@@ -388,6 +385,13 @@
           <div class="crono-display-inner">
             <div class="crono-display" id="cronoTimerText">00:00</div>
             <div class="crono-run-target" id="cronoIdleTarget" style="display:none"></div>
+          </div>
+          <div class="crono-run-action-rail crono-idle-action-rail" aria-label="Acciones de la sesión">
+            <button type="button" class="crono-quick-destello-btn crono-run-side-destello" onclick="openQuickDestello()"
+                    aria-label="Añadir un destello" title="Añadir un destello">
+              <span aria-hidden="true">✦</span><small>+</small>
+            </button>
+            <span class="crono-idle-action-spacer" aria-hidden="true"></span>
           </div>
         </div>
 
@@ -474,13 +478,10 @@
 
       <!-- Tiempo gigante con outline (Forest-style) -->
       <div class="crono-display-wrap" id="cronoDisplayWrap">
-        <div class="crono-tomorrow-note-rail" aria-label="Notas para mañana y destello">
+        <div class="crono-tomorrow-note-rail" aria-label="Notas para mañana">
           <button type="button" class="crono-tomorrow-note-btn" onclick="openCronoTomorrowTask()"
                   aria-label="Añadir una nota para mañana" title="Añadir una nota para mañana">+</button>
-          <button type="button" class="crono-quick-destello-btn crono-run-side-destello" onclick="openQuickDestello()"
-                  aria-label="Añadir un destello" title="Añadir un destello">
-            <span aria-hidden="true">✦</span><small>+</small>
-          </button>
+          <span class="crono-tomorrow-note-spacer" aria-hidden="true"></span>
         </div>
         <svg class="crono-run-progress-svg" viewBox="0 0 220 220" aria-hidden="true">
           <circle class="crono-run-progress-track" cx="110" cy="110" r="94" fill="none"/>
@@ -497,6 +498,10 @@
           <div class="crono-run-target" id="cronoRunTarget" style="display:none"></div>
         </div>
         <div class="crono-run-action-rail" aria-label="Acciones de la sesion">
+          <button type="button" class="crono-quick-destello-btn crono-run-side-destello" onclick="openQuickDestello()"
+                  aria-label="Anadir un destello" title="Anadir un destello">
+            <span aria-hidden="true">&#10022;</span><small>+</small>
+          </button>
           <div class="crono-controls" id="cronoControls"></div>
         </div>
       </div>

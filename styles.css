@@ -22728,16 +22728,3 @@ html.platform-windows body[data-view="casa"] .house-canvas-host {
 #view-cronometro .crono-minimal-tabs {
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
 }
-
-/* Destello integrado en la columna izquierda, junto a la nota de mañana. */
-#view-cronometro .crono-tomorrow-note-rail .crono-quick-destello-btn {
-  position: relative;
-  top: auto;
-  right: auto;
-  transform: none;
-  width: var(--crono-action-size);
-  height: var(--crono-action-size);
-  flex: 0 0 var(--crono-action-size);
-}
-#view-cronometro .crono-tomorrow-note-rail .crono-quick-destello-btn:hover { transform: scale(1.06); }
-#view-cronometro .crono-tomorrow-note-rail .crono-quick-destello-btn:active { transform: scale(.92); }
