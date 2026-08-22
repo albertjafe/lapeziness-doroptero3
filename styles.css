@@ -18547,6 +18547,40 @@ body.crono-task-density-compact #view-cronometro .crono-task-clean { min-height:
   text-overflow: ellipsis;
   text-transform: none;
 }
+#view-cronometro .crono-run-work-total-separator {
+  color: var(--text3);
+  font-size: 10px;
+  font-style: normal;
+  opacity: .55;
+}
+#view-cronometro .crono-run-work-total strong#cronoRunMovementTotal {
+  color: var(--text2);
+  opacity: .72;
+}
+
+/* El cierre usa el mismo deposito liquido que los pases, sin etiquetas ni numeros visibles. */
+#modalHechoDatos .hecho-solidez-meter {
+  height: 58px;
+  margin: 2px 0 0;
+}
+#modalHechoDatos .hecho-solidez-meter .pase-liquid-reservoir {
+  inset-block: 9px;
+}
+#modalHechoDatos .hecho-solidez-meter .pase-liquid-orb {
+  width: 24px;
+  height: 24px;
+}
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
 
 /* El texto del destello no se encoge con el aro. El zoom reparte espacio,
    pero conserva una lectura estable y limita la tarjeta a cuatro lineas. */

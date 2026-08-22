@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-22-habit-rewards-v145';
+const APP_VERSION = '2026-08-22-single-habit-liquid-solidity-v146';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -4642,10 +4642,26 @@ function getMinutosObra(obraId) {
 
 function getMinutosMovimiento(obraId, movId) {
   const obra = findObra(obraId);
-  if (!obra) return 0;
+  if (!obra || !movId) return getMinutosObra(obraId);
   const mov = findMovimiento(obraId, movId);
-  if (!mov || !mov.duracion) return getMinutosObra(obraId);
-  const totalDur = (obra.movimientos || []).reduce((s, m) => s + (m.duracion || 0), 0) || obra.duracion || 1;
+  if (!mov) return getMinutosObra(obraId);
+
+  // Los bloques con movimiento guardan su movId, así que podemos mostrar el
+  // tiempo real de ese movimiento. El reparto por duración solo queda como
+  // respaldo para sesiones antiguas que no conservaban ese vínculo.
+  const plants = (db.sessionPlants || []).concat(db.forestPlants || [])
+    .filter(plant => plant && !plant.failed && plant.tipo !== 'descanso' &&
+      plant.obraId === obraId && plant.movId === movId);
+  if (plants.length) {
+    return plants.reduce((sum, plant) => sum + Math.max(0, Number(plant.mins || plant.min || 0)), 0);
+  }
+
+  const sessionItems = (db.sesiones || []).flatMap(session => session.items || [])
+    .filter(item => item && item.obraId === obraId && item.movId === movId && _itemEstudiado(item));
+  if (sessionItems.length) return sessionItems.reduce((sum, item) => sum + _itemMinReal(item), 0);
+
+  if (!mov.duracion) return getMinutosObra(obraId);
+  const totalDur = (obra.movimientos || []).reduce((s, item) => s + (item.duracion || 0), 0) || obra.duracion || 1;
   return Math.round(getMinutosObra(obraId) * ((mov.duracion || 0) / totalDur));
 }
 
@@ -6648,14 +6664,15 @@ function hechoSelectSolidez(value, button) {
   const val = Math.max(0, Math.min(100, parseInt(value, 10) || 0));
   if (!val) return;
   _hechoQuickSolidezVal = val;
-  document.querySelectorAll('#hechoSolidezSection .hecho-solidez-options button').forEach(btn => {
-    const selected = btn === button || parseInt(btn.dataset.value || '0', 10) === val;
-    btn.classList.toggle('active', selected);
-    btn.setAttribute('aria-checked', selected ? 'true' : 'false');
-  });
+  const slider = document.getElementById('hechoSolidezSlider');
+  const meter = document.getElementById('hechoSolidezMeter');
+  if (slider) {
+    slider.value = val;
+    slider.setAttribute('aria-valuetext', 'Solidez seleccionada');
+  }
+  if (meter) meter.setAttribute('style', paseLiquidStyle(val));
   const selection = document.getElementById('hechoSolidezSelection');
-  if (selection) selection.textContent = solPctLabel(val) + ' · ' + val + '%';
-  try { Haptics.light(); } catch(e) {}
+  if (selection) selection.textContent = 'Solidez seleccionada';
 }
 
 function hechoToggleAdvanced() {
@@ -7247,13 +7264,17 @@ function openHechoDatos(planId, minPlan, opts) {
   if (quickSection) quickSection.style.display = _hechoShowSol ? '' : 'none';
   const previous = hechoCurrentSolidezValue(entity, !!movId);
   const previousEl = document.getElementById('hechoSolidezPrevious');
-  if (previousEl) previousEl.textContent = previous == null ? 'Sin medir' : 'Anterior · ' + previous + '%';
+  if (previousEl) previousEl.textContent = '';
+  const solidezSlider = document.getElementById('hechoSolidezSlider');
+  const solidezMeter = document.getElementById('hechoSolidezMeter');
+  const startingSolidez = previous == null ? 50 : previous;
+  if (solidezSlider) {
+    solidezSlider.value = startingSolidez;
+    solidezSlider.setAttribute('aria-valuetext', previous == null ? 'Sin registrar' : 'Valor anterior');
+  }
+  if (solidezMeter) solidezMeter.setAttribute('style', paseLiquidStyle(startingSolidez));
   const selectionEl = document.getElementById('hechoSolidezSelection');
-  if (selectionEl) selectionEl.textContent = 'Toca una opción para registrarla al guardar';
-  document.querySelectorAll('#hechoSolidezSection .hecho-solidez-options button').forEach(btn => {
-    btn.classList.remove('active');
-    btn.setAttribute('aria-checked', 'false');
-  });
+  if (selectionEl) selectionEl.textContent = 'Sin registrar';
   const hechoModal = document.querySelector('#modalHechoDatos .hecho-modal');
   if (hechoModal) hechoModal.classList.remove('show-details');
   const advancedToggle = document.getElementById('hechoAdvancedToggle');
@@ -7567,9 +7588,7 @@ function closeHechoDatos(save) {
   if (zoneSnapshot && entity) hechoStoreZoneSnapshot(entity, zoneSnapshot);
 
   if (_hechoQuickSolidezVal != null && obra && obra.tipo !== 'actividad') {
-    if (movId) recordMovSolHistory(obraId, movId, _hechoQuickSolidezVal, 'cierre-sesion');
-    else recordSolHistory(obraId, _hechoQuickSolidezVal, 'cierre-sesion');
-    sessionSolRatings[planId] = _hechoQuickSolidezVal;
+    sessionSolRatings[planId] = recordSessionSolidez(obraId, movId, _hechoQuickSolidezVal) || _hechoQuickSolidezVal;
   }
 
   // ★ Aplicar el cambio de minutos al estado en memoria.
@@ -8421,6 +8440,33 @@ function recordMovSolHistory(obraId, movId, val, context, dateIso) {
   // Also keep the 1-10 .sol field in sync
   mov.sol = Math.max(1, Math.min(10, Math.round(parseInt(val) / 10)));
   saveData();
+}
+
+// Las sensaciones de cierre se conservan como muestras y el valor actual se
+// suaviza con su media. Una edición del mismo día reemplaza esa muestra, no
+// la duplica.
+function recordSessionSolidez(obraId, movId, value, dateIso) {
+  const target = movId ? findMovimiento(obraId, movId) : findObra(obraId);
+  if (!target || value == null) return null;
+  const raw = Math.max(1, Math.min(100, Math.round(Number(value) || 1)));
+  const stamp = dateIso || new Date().toISOString();
+  if (!target.solHistory) target.solHistory = [];
+  const context = 'cierre-sesion';
+  const day = new Date(stamp).toDateString();
+  const samples = target.solHistory
+    .filter(entry => entry && entry.context === context)
+    .map(entry => ({ entry, value: Math.max(1, Math.min(100, Math.round(Number(entry.inputVal ?? entry.val) || 1))) }));
+  const sameDay = samples.find(item => new Date(item.entry.date).toDateString() === day);
+  const previousValues = samples.filter(item => item !== sameDay).map(item => item.value);
+  previousValues.push(raw);
+  const average = Math.round(previousValues.reduce((sum, item) => sum + item, 0) / previousValues.length);
+  const next = { date: stamp, val: average, inputVal: raw, samples: previousValues.length, context };
+  if (sameDay) target.solHistory[target.solHistory.indexOf(sameDay.entry)] = next;
+  else target.solHistory.unshift(next);
+  if (target.solHistory.length > 80) target.solHistory = target.solHistory.slice(0, 80);
+  target.sol = movId ? Math.max(1, Math.min(10, Math.round(average / 10))) : average;
+  saveData();
+  return average;
 }
 
 // ── Pesos del algoritmo de generación ───────────────────────────────────────
@@ -11213,7 +11259,10 @@ function habitTrophySvg() {
 }
 
 function habitCompletionDate(habit) {
-  const key = habit.completedAt ? habitDayKey(habit.completedAt) : habitKeyAt(habit.startDate, Math.max(0, habit.durationDays - 1));
+  const storedKey = /^\d{4}-\d{2}-\d{2}$/.test(String(habit.completedAt || ''))
+    ? String(habit.completedAt)
+    : (habit.completedAt ? habitDayKey(habit.completedAt) : '');
+  const key = storedKey || habitKeyAt(habit.startDate, Math.max(0, habit.durationDays - 1));
   const date = calendarDateFromISO(key) || new Date();
   return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }).format(date).replace('.', '');
 }
@@ -11222,12 +11271,15 @@ function habitRewardBalance() {
   return habitCompletedChallenges().filter(habit => habit.rewardClaimedAt).length;
 }
 
-function habitRewardCoinsHtml(count) {
-  const visible = Math.min(8, Math.max(0, count));
-  const coins = Array.from({ length: visible }, (_, index) =>
-    '<span class="habit-reward-coin" aria-label="Moneda de objetivo ' + (index + 1) + '">' + habitTrophySvg() + '</span>'
-  ).join('');
-  const extra = count > visible ? '<span class="habit-reward-coin-more">+' + (count - visible) + '</span>' : '';
+function habitRewardCoinsHtml(completed) {
+  const claimed = completed.filter(habit => habit.rewardClaimedAt);
+  const visible = Math.min(8, claimed.length);
+  const coins = claimed.slice(0, visible).map((habit, index) => {
+    const title = escapeHtmlSafe(habit.title || 'Objetivo');
+    const date = habitCompletionDate(habit);
+    return '<span class="habit-reward-coin" aria-label="Moneda de objetivo: ' + title + ', terminado el ' + date + '" title="' + title + ' · terminado el ' + date + '">' + habitTrophySvg() + '</span>';
+  }).join('');
+  const extra = claimed.length > visible ? '<span class="habit-reward-coin-more">+' + (claimed.length - visible) + '</span>' : '';
   return coins + extra || '<span class="habit-reward-coins-empty">Aún ninguna</span>';
 }
 
@@ -11249,7 +11301,7 @@ function habitCompletedRewardsHtml(completed) {
   }).join('');
   return '<section class="habit-completed-rewards" aria-label="Objetivos completados">' +
     '<header class="habit-completed-rewards-head"><div><span class="habit-completed-kicker">Colección</span><strong>Objetivos completados</strong></div><div class="habit-reward-balance"><span>' + balance + '</span><small>monedas</small></div></header>' +
-    '<div class="habit-reward-coin-shelf" aria-label="Monedas recogidas">' + habitRewardCoinsHtml(balance) + '</div>' +
+    '<div class="habit-reward-coin-shelf" aria-label="Monedas recogidas">' + habitRewardCoinsHtml(completed) + '</div>' +
     '<div class="habit-completed-list">' + cards + '</div>' +
   '</section>';
 }
@@ -11262,7 +11314,7 @@ function claimHabitReward(challengeId) {
     return;
   }
   const now = new Date().toISOString();
-  habit.completedAt = habit.completedAt || now;
+  habit.completedAt = habit.completedAt || habitKeyAt(habit.startDate, Math.max(0, habit.durationDays - 1));
   habit.rewardClaimedAt = now;
   habit.rewardCoins = 1;
   habit.updatedAt = now;
@@ -11451,7 +11503,6 @@ function renderCalendarHabitLayer() {
     return;
   }
 
-  const habits = habitActiveChallenges();
   const habit = habitCalendarSelectedChallenge();
   if (!habit) {
     summary.innerHTML = '<div class="calendar-habit-compact is-empty">' +
@@ -11483,19 +11534,9 @@ function renderCalendarHabitLayer() {
     actionIcon = '&#10003;';
   }
   const editIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>';
-  const addSecond = habits.length < HABIT_MAX_ACTIVE
-    ? '<button type="button" class="calendar-habit-icon-add" onclick="openNewHabitChallengeModal()" aria-label="Añadir otro objetivo" title="Añadir otro objetivo">+</button>'
-    : '';
-  const compactSwitch = habits.length > 1
-    ? '<div class="calendar-habit-compact-switch" data-horizontal-scroll role="tablist" aria-label="Seleccionar objetivo">' +
-      habits.map(item => '<button type="button" role="tab" class="' + (item.id === habit.id ? 'active' : '') + '" aria-selected="' + (item.id === habit.id ? 'true' : 'false') + '" onclick="selectHabitCalendarChallenge(\'' + hechoJs(item.id) + '\')" aria-label="Mostrar objetivo: ' + escapeHtmlSafe(item.title || 'Objetivo') + '" title="' + escapeHtmlSafe(item.title || 'Objetivo') + '"><span aria-hidden="true"></span></button>').join('') +
-      '</div>'
-    : '';
   summary.innerHTML = '<div class="calendar-habit-compact" aria-label="Objetivo: ' + escapeHtmlSafe(habit.title || 'Objetivo') + '">' +
-    compactSwitch +
     '<button type="button" class="calendar-habit-icon-action' + actionClass + '" onclick="' + actionHandler + '" aria-label="' + actionLabel + '" title="' + actionLabel + '"><span aria-hidden="true">' + actionIcon + '</span></button>' +
     '<button type="button" class="calendar-habit-icon-edit" onclick="openHabitChallengeModal(\'' + hechoJs(habit.id) + '\')" aria-label="Editar objetivo" title="Editar objetivo">' + editIcon + '</button>' +
-    addSecond +
   '</div>';
 }
 
@@ -20174,10 +20215,6 @@ function setObraColor(obraId, colorId) {
 // Los retos diarios se cierran automaticamente por día:
 // en "hacer", no marcar equivale a no cumplir; en "evitar", no registrar
 // una recaida equivale a haber mantenido el objetivo.
-const HABIT_MAX_ACTIVE = 2;
-const HABIT_STABILITY_MIN_DAYS = 7;
-const HABIT_STABILITY_MIN_STREAK = 5;
-const HABIT_STABILITY_MIN_COMPLIANCE = .8;
 let _habitModalMode = 'do';
 let _habitEditingExisting = false;
 let _habitEditingId = null;
@@ -20242,7 +20279,9 @@ function habitAllChallenges() {
 }
 
 function habitActiveChallenges() {
-  return habitAllChallenges().filter(habit => !habitIsCompleted(habit));
+  // Solo hay un objetivo activo. Los objetivos terminados siguen viviendo
+  // en habitAllChallenges() para alimentar la colección de recompensas.
+  return habitAllChallenges().filter(habit => !habitIsCompleted(habit)).slice(0, 1);
 }
 
 function habitCompletedChallenges() {
@@ -20256,8 +20295,16 @@ function habitActiveChallenge(id) {
 
 function habitPersistChallenges(challenges) {
   db.habitChallenges = Array.isArray(challenges) ? challenges : [];
-  const all = db.habitChallenges.map(habitNormalize).filter(Boolean);
+  let all = db.habitChallenges.map(habitNormalize).filter(Boolean);
   const active = all.filter(habit => !habitIsCompleted(habit));
+  if (active.length > 1) {
+    const keepId = active[0].id;
+    db.habitChallenges = db.habitChallenges.filter(item => {
+      const normalized = habitNormalize(item);
+      return !normalized || habitIsCompleted(normalized) || normalized.id === keepId;
+    });
+    all = db.habitChallenges.map(habitNormalize).filter(Boolean);
+  }
   db.habitChallenge = active[0] || all[0] || db.habitChallenges.find(habit => habit && habit.deleted) || null;
 }
 
@@ -20299,54 +20346,6 @@ function habitMetrics(habit, now) {
     complete,
     progress: Math.round(elapsed / duration * 100),
     compliance: Math.round(success / duration * 100),
-  };
-}
-
-function habitStability(habit, now) {
-  const metrics = habitMetrics(habit, now);
-  if (!metrics) return { stable: false, observed: 0, success: 0, failure: 0, compliance: 0, streak: 0, message: 'No hay un objetivo activo.' };
-  const observed = metrics.success + metrics.failure;
-  const compliance = observed ? metrics.success / observed : 0;
-  const requiredSuccess = Math.ceil(observed * HABIT_STABILITY_MIN_COMPLIANCE);
-  const reasons = [];
-  if (observed < HABIT_STABILITY_MIN_DAYS) {
-    reasons.push(observed + '/' + HABIT_STABILITY_MIN_DAYS + ' días observados');
-  }
-  if (compliance < HABIT_STABILITY_MIN_COMPLIANCE) {
-    reasons.push(Math.round(compliance * 100) + '% de cumplimiento; necesitas al menos 80%');
-  }
-  if (metrics.streak < HABIT_STABILITY_MIN_STREAK) {
-    reasons.push('racha de ' + metrics.streak + '/' + HABIT_STABILITY_MIN_STREAK + ' días');
-  }
-  const stable = observed >= HABIT_STABILITY_MIN_DAYS &&
-    metrics.success >= requiredSuccess &&
-    metrics.streak >= HABIT_STABILITY_MIN_STREAK;
-  return {
-    stable,
-    observed,
-    success: metrics.success,
-    failure: metrics.failure,
-    compliance: Math.round(compliance * 100),
-    streak: metrics.streak,
-    message: stable
-      ? 'El primer objetivo ya tiene una estabilidad suficiente.'
-      : 'Aún no está estable: ' + reasons.join(', ') + '.',
-  };
-}
-
-function habitCreateGate() {
-  const habits = habitActiveChallenges();
-  if (habits.length >= HABIT_MAX_ACTIVE) {
-    return { allowed: false, message: 'No puedes añadir otro objetivo: ya tienes 2 activos.' };
-  }
-  if (!habits.length) return { allowed: true, stability: null, message: '' };
-  const stability = habitStability(habits[0]);
-  return {
-    allowed: stability.stable,
-    stability,
-    message: stability.stable
-      ? 'Puedes añadir un segundo objetivo.'
-      : 'Segundo objetivo bloqueado. ' + stability.message,
   };
 }
 
@@ -20425,33 +20424,21 @@ function habitTrophyHtml(input) {
       trophy + '<span class="crono-habit-trophy-state" aria-hidden="true">' + stateMark + '</span>' +
     '</button>';
   }).join('');
-  const add = habits.length < HABIT_MAX_ACTIVE
-    ? '<button type="button" class="crono-habit-trophy-add" onclick="openNewHabitChallengeModal()" aria-label="Añadir otro objetivo" title="Añadir otro objetivo">+</button>'
-    : '';
-  return '<div class="crono-habit-trophy-stack' + (habits.length > 1 ? ' is-double' : '') + '">' + buttons + add + '</div>';
+  return '<div class="crono-habit-trophy-stack">' + buttons + '</div>';
 }
 
 function renderHabitChallenge() {
   const habits = habitActiveChallenges();
   document.querySelectorAll('[data-habit-slot]').forEach(slot => {
-    slot.classList.toggle('has-multiple', habits.length > 0);
+    slot.classList.toggle('has-multiple', false);
     const html = habitTrophyHtml(habits);
     if (slot.innerHTML !== html) slot.innerHTML = html;
   });
   renderHabitChallenge._dayKey = habitDayKey();
 }
 
-function openNewHabitChallengeModal() {
-  const gate = habitCreateGate();
-  if (!gate.allowed) {
-    showToast(gate.message);
-    return;
-  }
-  openHabitChallengeModal(null, true);
-}
-
-function openHabitChallengeModal(challengeId, forceCreate) {
-  const current = forceCreate ? null : habitActiveChallenge(challengeId);
+function openHabitChallengeModal(challengeId) {
+  const current = habitActiveChallenge(challengeId);
   const metrics = current ? habitMetrics(current) : null;
   const existing = !!(current && !metrics.complete);
   _habitEditingExisting = existing;
@@ -20464,7 +20451,7 @@ function openHabitChallengeModal(challengeId, forceCreate) {
   const todayBtn = document.getElementById('habitTodayBtn');
   const kicker = document.querySelector('#modalHabitChallenge .habit-modal-kicker');
   if (title) title.textContent = existing ? 'Editar el reto' : 'Crear un objetivo';
-  if (kicker) kicker.textContent = existing ? 'Objetivo diario' : (habitActiveChallenges().length ? 'Segundo objetivo' : 'Objetivo diario');
+  if (kicker) kicker.textContent = 'Objetivo diario';
   if (input) input.value = existing ? (current.title || '') : '';
   if (duration) duration.value = existing ? current.durationDays : 21;
   if (deleteBtn) deleteBtn.hidden = !existing;
@@ -20540,9 +20527,8 @@ function saveHabitChallenge() {
     if (index >= 0) stored[index] = current;
     habitPersistChallenges(stored);
   } else {
-    const gate = habitCreateGate();
-    if (!gate.allowed) {
-      showToast(gate.message);
+    if (habitActiveChallenges().length) {
+      showToast('Termina el objetivo actual antes de crear otro');
       return;
     }
     _habitCalendarOffset = 0;
@@ -24756,15 +24742,28 @@ function cronoUpdateRunTodayTotal() {
 function cronoUpdateRunWorkTotal() {
   const wrap = document.getElementById('cronoRunWorkTotalWrap');
   const el = document.getElementById('cronoRunWorkTotal');
+  const movementEl = document.getElementById('cronoRunMovementTotal');
+  const separator = wrap?.querySelector('.crono-run-work-total-separator');
   if (!wrap || !el) return;
   const hasWork = !crono.isRest && crono.obraId && crono.obraId !== '_rest_';
   wrap.hidden = !hasWork;
   if (!hasWork) return;
   const saved = typeof getMinutosObra === 'function' ? getMinutosObra(crono.obraId) : 0;
+  const savedMovement = crono.movId && typeof getMinutosMovimiento === 'function'
+    ? getMinutosMovimiento(crono.obraId, crono.movId)
+    : 0;
   const live = crono.state === 'running' || crono.state === 'paused'
     ? Math.floor(cronoEffectiveElapsedMs() / 60000)
     : 0;
   el.textContent = fmtMinutos(Math.max(0, Math.round(saved || 0) + live));
+  if (movementEl) {
+    const hasMovement = !!crono.movId;
+    movementEl.hidden = !hasMovement;
+    if (separator) separator.hidden = !hasMovement;
+    movementEl.textContent = fmtMinutos(Math.max(0, Math.round(savedMovement || 0) + live));
+    movementEl.setAttribute('aria-label', hasMovement ? 'Tiempo total de este movimiento: ' + movementEl.textContent : '');
+    el.setAttribute('aria-label', 'Tiempo total de la obra: ' + el.textContent);
+  }
 }
 
 // ── Render ──────────────────────────────────────────────────────────────────

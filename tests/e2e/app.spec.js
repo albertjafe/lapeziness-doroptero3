@@ -628,57 +628,39 @@ test('uses a dedicated daily challenge composition on mobile', async ({ browser 
   }
 });
 
-test('gates a second objective behind a transparent stability threshold', async ({ page }) => {
+test('keeps exactly one active objective and removes the second-objective controls', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await prepare(page);
   await page.evaluate(() => {
     showView('cronometro');
     const today = habitDayKey();
     db.habitChallenge = {
-      id: 'stable-gate-test', title: 'No coger el móvil en el baño', mode: 'avoid', durationDays: 21,
-      startDate: habitKeyAt(today, -4), logs: {
-        [habitKeyAt(today, -4)]: { status: 'failed', at: new Date().toISOString() },
-        [habitKeyAt(today, -3)]: { status: 'failed', at: new Date().toISOString() },
-      }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      id: 'single-active-test', title: 'No coger el móvil en el baño', mode: 'avoid', durationDays: 21,
+      startDate: habitKeyAt(today, -4), logs: {}, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
     db.habitChallenges = [];
     renderHabitChallenge();
   });
-  await page.locator('[data-habit-slot="idle"] .crono-habit-trophy-add').click();
-  await expect(page.locator('#toast')).toHaveClass(/visible/);
-  await expect(page.locator('#toast')).toContainText('Segundo objetivo bloqueado');
-  await expect(page.locator('#modalHabitChallenge')).not.toHaveClass(/visible/);
-
   await page.evaluate(() => {
     const today = habitDayKey();
     const habit = db.habitChallenge;
-    habit.startDate = habitKeyAt(today, -7);
-    habit.logs = {};
-    habit.updatedAt = new Date().toISOString();
-    db.habitChallenges = [habit];
+    const legacySecond = {
+      id: 'legacy-second', title: 'No coger el móvil en la cama', mode: 'avoid', durationDays: 21,
+      startDate: habitKeyAt(today, -2), logs: {}, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    db.habitChallenges = [habit, legacySecond];
+    db.habitChallenge = habit;
     renderHabitChallenge();
   });
-  await page.locator('[data-habit-slot="idle"] .crono-habit-trophy-add').click();
-  await expect(page.locator('#modalHabitChallenge')).toHaveClass(/visible/);
-  await expect(page.locator('#modalHabitChallenge .habit-modal-kicker')).toHaveText('Segundo objetivo');
-  await page.locator('#habitTitleInput').fill('No coger el móvil en la cama');
-  await page.locator('#modalHabitChallenge .modal-btn.primary').click();
-  expect(await page.evaluate(() => habitActiveChallenges().map(habit => habit.title))).toEqual([
-    'No coger el móvil en el baño', 'No coger el móvil en la cama'
-  ]);
-  await expect(page.locator('[data-habit-slot="idle"] .crono-habit-trophy')).toHaveCount(2);
+  await expect(page.locator('[data-habit-slot="idle"] .crono-habit-trophy')).toHaveCount(1);
   await expect(page.locator('[data-habit-slot="idle"] .crono-habit-trophy-add')).toHaveCount(0);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
-  await page.setViewportSize({ width: 834, height: 1194 });
-  await page.evaluate(() => {
-    showView('cronometro');
-    renderHabitChallenge();
-    renderHabitCalendar();
-  });
-  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker.is-multiple')).toHaveCount(2);
-  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-label')).toHaveText([
-    'No coger el móvil en el baño', 'No coger el móvil en la cama'
+  expect(await page.evaluate(() => habitActiveChallenges().map(habit => habit.title))).toEqual([
+    'No coger el móvil en el baño'
   ]);
+  await page.evaluate(() => openHabitChallengeModal());
+  await expect(page.locator('#modalHabitChallenge')).toHaveClass(/visible/);
+  await expect(page.locator('#modalHabitChallenge .habit-modal-kicker')).toHaveText('Objetivo diario');
+  await page.locator('#modalHabitChallenge .modal-btn.secondary').click();
 });
 
 test('shows and updates the daily challenge history from calendar', async ({ browser }) => {
@@ -855,6 +837,7 @@ test('moves expired objectives to the reward shelf while another objective stays
   await page.locator('.habit-reward-claim').click();
   await expect(page.locator('.habit-reward-claimed')).toContainText('Recogida');
   await expect(page.locator('.habit-reward-coin')).toHaveCount(1);
+  await expect(page.locator('.habit-reward-coin')).toHaveAttribute('aria-label', /No mirar el móvil al despertar/);
 
   await page.evaluate(() => {
     const expired = db.habitChallenges.find(habit => habit.id === 'expired-reward-test');
@@ -1338,7 +1321,7 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
   }
 });
 
-test('cancels or confirms a valid timer before saving and keeps one-tap solidity', async ({ page }) => {
+test('cancels or confirms a valid timer and saves visual solidity', async ({ page }) => {
   let nativeDialogs = 0;
   page.on('dialog', async dialog => {
     nativeDialogs += 1;
@@ -1379,9 +1362,11 @@ test('cancels or confirms a valid timer before saving and keeps one-tap solidity
   await expect(modal.locator('#hechoSavedMinutes')).toHaveText('25 min guardados');
   expect(nativeDialogs).toBe(0);
 
-  const stable = modal.locator('.hecho-solidez-options button[data-value="65"]');
-  await stable.click();
-  await expect(stable).toHaveAttribute('aria-checked', 'true');
+  const stable = modal.locator('#hechoSolidezSlider');
+  await expect(modal.locator('.hecho-solidez-meter')).toBeVisible();
+  await expect(modal.locator('.hecho-solidez-options')).toHaveCount(0);
+  await stable.fill('65');
+  await expect(stable).toHaveValue('65');
   await modal.getByRole('button', { name: 'Hecho' }).click();
   await expect(modal).not.toHaveClass(/visible/);
 
@@ -1390,7 +1375,7 @@ test('cancels or confirms a valid timer before saving and keeps one-tap solidity
   await expect(taskBreak).toContainText('¿Un descanso?');
   await expect(taskBreak).toContainText('Responder el mensaje pendiente');
   await expect(taskBreak.locator('.crono-task-break-item.priority-3')).toContainText('Urgentísima');
-  await taskBreak.getByRole('button', { name: /Responder el mensaje pendiente/ }).click();
+  await taskBreak.getByRole('button', { name: /Responder el mensaje pendiente/ }).click({ force: true });
   await expect(taskBreak.locator('.crono-task-break-item.is-completing')).toHaveCount(1);
   await expect.poll(() => page.evaluate(() => db.cronoTasks.find(task => task.id === 'ct_break')?.done)).toBe(true);
   await taskBreak.getByRole('button', { name: 'OK, cerrar' }).click();
@@ -1402,6 +1387,42 @@ test('cancels or confirms a valid timer before saving and keeps one-tap solidity
     current: db.obras[0].sol,
   }));
   expect(saved).toEqual({ value: 65, context: 'cierre-sesion', current: 65 });
+  const averaged = await page.evaluate(() => recordSessionSolidez('obra_1', null, 85, new Date(Date.now() + 86400000).toISOString()));
+  expect(averaged).toBe(75);
+});
+
+test('shows work and movement totals together while a movement is running', async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    db.obras[0].movimientos = [
+      { id: 'movement-a', name: 'I. Allegro', duracion: 100 },
+      { id: 'movement-b', name: 'II. Largo', duracion: 50 },
+    ];
+    const now = new Date();
+    db.sesiones = [{ date: now.toISOString(), items: [
+      { obraId: 'obra_1', movId: 'movement-a', estudiado: true, tick: 'hecho', minutosReales: 42 },
+      { obraId: 'obra_1', movId: 'movement-b', estudiado: true, tick: 'hecho', minutosReales: 18 },
+    ] }];
+    db.sessionPlants = [
+      { id: 'movement-a-history', obraId: 'obra_1', movId: 'movement-a', startedAt: new Date(now - 42 * 60000).toISOString(), endedAt: new Date(now - 5 * 60000).toISOString(), mins: 42 },
+      { id: 'movement-b-history', obraId: 'obra_1', movId: 'movement-b', startedAt: new Date(now - 80 * 60000).toISOString(), endedAt: new Date(now - 62 * 60000).toISOString(), mins: 18 },
+    ];
+    crono.state = 'running';
+    crono.isRest = false;
+    crono.obraId = 'obra_1';
+    crono.movId = 'movement-a';
+    crono.displayName = 'I. Allegro';
+    crono.subName = 'Bach · Preludio';
+    crono.startTs = Date.now() - 5 * 60000;
+    crono.pausedMs = 0;
+    crono.color = null;
+    showView('cronometro');
+    cronoRender();
+  });
+  await expect(page.locator('#cronoRunWorkTotal')).toHaveText('1h 5min');
+  await expect(page.locator('#cronoRunMovementTotal')).toHaveText('47 min');
+  await expect(page.locator('.crono-run-work-total-separator')).toBeVisible();
+  await expect(page.locator('#cronoRunMovementTotal')).toHaveAttribute('aria-label', 'Tiempo total de este movimiento: 47 min');
 });
 
 test('discards only the active timer and preserves earlier study from today', async ({ page }) => {
