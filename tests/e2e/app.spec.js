@@ -828,6 +828,69 @@ test('shows objectives as a layer inside the monthly calendar', async ({ page })
   await expect(page.locator('#mesLeyenda')).toBeEmpty();
 });
 
+test('moves expired objectives to the reward shelf while another objective stays active', async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    const today = habitDayKey();
+    const expired = {
+      id: 'expired-reward-test', title: 'No mirar el móvil al despertar', mode: 'avoid', durationDays: 7,
+      startDate: habitKeyAt(today, -10), logs: {},
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    const active = {
+      id: 'active-after-reward-test', title: 'Estudiar antes de abrir redes', mode: 'do', durationDays: 14,
+      startDate: today, logs: {},
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    db.habitChallenges = [expired, active];
+    db.habitChallenge = active;
+    saveData();
+    showView('calendario');
+    switchCalTab('objetivos', document.getElementById('calTabObjetivos'));
+  });
+
+  await expect(page.locator('.habit-calendar-dashboard')).toContainText('Estudiar antes de abrir redes');
+  await expect(page.locator('.habit-completed-card')).toHaveCount(1);
+  await expect(page.locator('.habit-completed-card')).toContainText('No mirar el móvil al despertar');
+  await page.locator('.habit-reward-claim').click();
+  await expect(page.locator('.habit-reward-claimed')).toContainText('Recogida');
+  await expect(page.locator('.habit-reward-coin')).toHaveCount(1);
+
+  await page.evaluate(() => {
+    const expired = db.habitChallenges.find(habit => habit.id === 'expired-reward-test');
+    db.habitChallenges = [expired];
+    db.habitChallenge = expired;
+    renderHabitCalendar();
+  });
+  await expect(page.locator('.habit-calendar-empty')).toContainText('Todos los objetivos están cerrados');
+  await expect(page.locator('.habit-calendar-dashboard')).toHaveCount(0);
+});
+
+test('marks today with a stronger border in both objective grids', async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    const today = habitDayKey();
+    db.habitChallenge = {
+      id: 'today-border-test', title: 'Hoy queda visible', mode: 'do', durationDays: 7,
+      startDate: habitKeyAt(today, -2), logs: {},
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    db.habitChallenges = [];
+    saveData();
+    showView('calendario');
+    switchCalTab('objetivos', document.getElementById('calTabObjetivos'));
+  });
+  await expect(page.locator('.habit-calendar-day.is-today')).toHaveCount(1);
+  await expect(page.locator('.habit-calendar-day.is-today')).toHaveCSS('border-width', '2px');
+  await page.evaluate(() => {
+    showView('calendario');
+    switchCalTab('mes', document.getElementById('calTabMes'));
+    document.getElementById('calendarHabitToggle').click();
+  });
+  await expect(page.locator('#mesGrid .habit-calendar-month-cell.is-today')).toHaveCount(1);
+  await expect(page.locator('#mesGrid .habit-calendar-month-cell.is-today')).toHaveCSS('border-width', '2px');
+});
+
 test('loads the calendar and objectives switch inside the stopwatch', async ({ page }) => {
   await page.setViewportSize({ width: 834, height: 1194 });
   await prepare(page);

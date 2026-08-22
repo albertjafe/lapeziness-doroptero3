@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-19-fixed-clock-google-calendar-v144';
+const APP_VERSION = '2026-08-22-habit-rewards-v145';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -11208,18 +11208,90 @@ function selectHabitCalendarChallenge(challengeId) {
   renderMesCalendario();
 }
 
+function habitTrophySvg() {
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 12v5M8.5 20h7M10 17h4"/></svg>';
+}
+
+function habitCompletionDate(habit) {
+  const key = habit.completedAt ? habitDayKey(habit.completedAt) : habitKeyAt(habit.startDate, Math.max(0, habit.durationDays - 1));
+  const date = calendarDateFromISO(key) || new Date();
+  return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }).format(date).replace('.', '');
+}
+
+function habitRewardBalance() {
+  return habitCompletedChallenges().filter(habit => habit.rewardClaimedAt).length;
+}
+
+function habitRewardCoinsHtml(count) {
+  const visible = Math.min(8, Math.max(0, count));
+  const coins = Array.from({ length: visible }, (_, index) =>
+    '<span class="habit-reward-coin" aria-label="Moneda de objetivo ' + (index + 1) + '">' + habitTrophySvg() + '</span>'
+  ).join('');
+  const extra = count > visible ? '<span class="habit-reward-coin-more">+' + (count - visible) + '</span>' : '';
+  return coins + extra || '<span class="habit-reward-coins-empty">Aún ninguna</span>';
+}
+
+function habitCompletedRewardsHtml(completed) {
+  if (!completed.length) return '';
+  const balance = habitRewardBalance();
+  const cards = completed.slice().sort((a, b) => String(b.completedAt || b.startDate).localeCompare(String(a.completedAt || a.startDate))).map(habit => {
+    const metrics = habitMetrics(habit);
+    const claimed = !!habit.rewardClaimedAt;
+    const title = escapeHtmlSafe(habit.title || 'Objetivo');
+    const claim = claimed
+      ? '<span class="habit-reward-claimed" aria-label="Recompensa recogida">Recogida</span>'
+      : '<button type="button" class="habit-reward-claim" onclick="claimHabitReward(\'' + hechoJs(habit.id) + '\')">Reclamar recompensa <b>+1</b></button>';
+    return '<article class="habit-completed-card' + (claimed ? ' is-claimed' : ' is-ready') + '">' +
+      '<span class="habit-completed-card-icon" aria-hidden="true">' + habitTrophySvg() + '</span>' +
+      '<div class="habit-completed-card-copy"><span>Completado · ' + habitCompletionDate(habit) + '</span><strong>' + title + '</strong><small>' + metrics.success + '/' + metrics.duration + ' días cumplidos</small></div>' +
+      claim +
+    '</article>';
+  }).join('');
+  return '<section class="habit-completed-rewards" aria-label="Objetivos completados">' +
+    '<header class="habit-completed-rewards-head"><div><span class="habit-completed-kicker">Colección</span><strong>Objetivos completados</strong></div><div class="habit-reward-balance"><span>' + balance + '</span><small>monedas</small></div></header>' +
+    '<div class="habit-reward-coin-shelf" aria-label="Monedas recogidas">' + habitRewardCoinsHtml(balance) + '</div>' +
+    '<div class="habit-completed-list">' + cards + '</div>' +
+  '</section>';
+}
+
+function claimHabitReward(challengeId) {
+  const habit = habitAllChallenges().find(item => item.id === challengeId);
+  if (!habit || !habitIsCompleted(habit)) return;
+  if (habit.rewardClaimedAt) {
+    showToast('Esta recompensa ya está en tu colección');
+    return;
+  }
+  const now = new Date().toISOString();
+  habit.completedAt = habit.completedAt || now;
+  habit.rewardClaimedAt = now;
+  habit.rewardCoins = 1;
+  habit.updatedAt = now;
+  const stored = habitStoredChallenges();
+  const index = stored.findIndex(item => item && item.id === habit.id);
+  if (index >= 0) stored[index] = habit;
+  habitPersistChallenges(stored);
+  saveData();
+  renderHabitChallenge();
+  renderHabitCalendar();
+  renderMesCalendario();
+  showToast('Recompensa recogida · moneda de objetivo +1');
+  try { Haptics.success(); } catch (e) {}
+}
+
 function renderHabitCalendar() {
   const root = document.getElementById('habitCalendarDashboard');
   if (!root) return;
   const habits = habitActiveChallenges();
+  const completed = habitCompletedChallenges();
   const habit = habitCalendarSelectedChallenge();
-  const trophy = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 12v5M8.5 20h7M10 17h4"/></svg>';
+  const trophy = habitTrophySvg();
+  const completedMarkup = habitCompletedRewardsHtml(completed);
   if (!habit) {
     root.innerHTML = '<section class="habit-calendar-empty">' +
       '<span class="habit-calendar-empty-icon">' + trophy + '</span>' +
-      '<div><h2>Sin objetivo activo</h2><p>Crea un reto para ver aquí los días cumplidos y fallados.</p></div>' +
+      '<div><h2>' + (completed.length ? 'Todos los objetivos están cerrados' : 'Sin objetivo activo') + '</h2><p>' + (completed.length ? 'Tus objetivos terminados quedan guardados abajo.' : 'Crea un reto para ver aquí los días cumplidos y fallados.') + '</p></div>' +
       '<button type="button" onclick="openHabitChallengeModal()">Crear objetivo</button>' +
-    '</section>';
+    '</section>' + completedMarkup;
     return;
   }
 
@@ -11242,7 +11314,7 @@ function renderHabitCalendar() {
     const otherMonth = date.getMonth() !== month;
     const isToday = key === todayKey;
     const mark = state === 'success' ? '&#10003;' : (state === 'failure' ? '&#215;' : (state === 'current' ? '&#8226;' : ''));
-    const label = date.getDate() + ' de ' + CALENDAR_MONTHS[date.getMonth()] + ': ' + habitCalendarStateLabel(state);
+    const label = date.getDate() + ' de ' + CALENDAR_MONTHS[date.getMonth()] + ': ' + habitCalendarStateLabel(state) + (isToday ? ' · hoy' : '');
     cells += '<div class="habit-calendar-day is-' + state + (otherMonth ? ' is-other-month' : '') + (isToday ? ' is-today' : '') + '" role="listitem" data-date="' + key + '" aria-label="' + label + '">' +
       '<span>' + date.getDate() + '</span><i aria-hidden="true">' + mark + '</i>' +
     '</div>';
@@ -11294,7 +11366,7 @@ function renderHabitCalendar() {
         '<div class="habit-calendar-legend"><span class="success">Cumplido</span><span class="failure">Fallado</span><span class="current">Hoy</span><span class="future">Futuro</span></div>' +
       '</div>' +
     '</div>' +
-  '</section>';
+  '</section>' + completedMarkup;
 }
 
 function cambiarMes(delta) {
@@ -11436,8 +11508,8 @@ function calendarHabitMonthCell(habit, key, date, month, todayKey) {
   const isToday = key === todayKey;
   const mark = target ? '&#9873;' : (state === 'success' ? '&#10003;' : (state === 'failure' ? '&#215;' : (state === 'current' || state === 'future' ? '&#8226;' : '')));
   const targetLabel = victory ? ' · meta alcanzada' : (target ? ' · día objetivo' : '');
-  const label = date.getDate() + ' de ' + CALENDAR_MONTHS[date.getMonth()] + ': ' + habitCalendarStateLabel(state) + targetLabel;
-  return '<div class="mes-cell habit-calendar-month-cell is-' + state + (otherMonth ? ' otro-mes' : '') + (isToday ? ' hoy' : '') + (target ? ' is-target' : '') + (victory ? ' is-victory' : '') + '" data-date="' + key + '" aria-label="' + label + '">' +
+  const label = date.getDate() + ' de ' + CALENDAR_MONTHS[date.getMonth()] + ': ' + habitCalendarStateLabel(state) + (isToday ? ' · hoy' : '') + targetLabel;
+  return '<div class="mes-cell habit-calendar-month-cell is-' + state + (otherMonth ? ' otro-mes' : '') + (isToday ? ' hoy is-today' : '') + (target ? ' is-target' : '') + (victory ? ' is-victory' : '') + '" data-date="' + key + '" aria-label="' + label + '">' +
     '<span class="mes-cell-num">' + date.getDate() + '</span><span class="habit-month-mark" aria-hidden="true">' + mark + '</span>' +
   '</div>';
 }
@@ -20157,8 +20229,24 @@ function habitNormalize(habit) {
   return habit;
 }
 
-function habitActiveChallenges() {
+function habitIsCompleted(habit, now) {
+  if (!habit) return false;
+  if (habit.completedAt) return true;
+  const todayNumber = habitDayNumber(habitDayKey(now));
+  const lastDayNumber = habitDayNumber(habitKeyAt(habit.startDate, Math.max(0, habit.durationDays - 1)));
+  return Number.isFinite(todayNumber) && Number.isFinite(lastDayNumber) && todayNumber > lastDayNumber;
+}
+
+function habitAllChallenges() {
   return habitStoredChallenges().map(habitNormalize).filter(Boolean);
+}
+
+function habitActiveChallenges() {
+  return habitAllChallenges().filter(habit => !habitIsCompleted(habit));
+}
+
+function habitCompletedChallenges() {
+  return habitAllChallenges().filter(habit => habitIsCompleted(habit));
 }
 
 function habitActiveChallenge(id) {
@@ -20168,8 +20256,9 @@ function habitActiveChallenge(id) {
 
 function habitPersistChallenges(challenges) {
   db.habitChallenges = Array.isArray(challenges) ? challenges : [];
-  const active = db.habitChallenges.map(habitNormalize).filter(Boolean);
-  db.habitChallenge = active[0] || db.habitChallenges.find(habit => habit && habit.deleted) || null;
+  const all = db.habitChallenges.map(habitNormalize).filter(Boolean);
+  const active = all.filter(habit => !habitIsCompleted(habit));
+  db.habitChallenge = active[0] || all[0] || db.habitChallenges.find(habit => habit && habit.deleted) || null;
 }
 
 function habitLogStatus(log) {
@@ -20196,7 +20285,7 @@ function habitMetrics(habit, now) {
   results.forEach(result => { streak = result === 'success' ? streak + 1 : 0; });
   const success = results.filter(result => result === 'success').length;
   const failure = results.filter(result => result === 'failure').length;
-  const complete = index >= duration;
+  const complete = index >= duration || !!habit.completedAt;
   const elapsed = Math.min(duration, Math.max(0, index + 1));
   return {
     todayKey,

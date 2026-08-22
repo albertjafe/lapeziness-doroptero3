@@ -16109,6 +16109,116 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
   #view-cronometro .crono-moment-note-compose input { height: 38px; }
 }
 
+.habit-completed-rewards {
+  position: relative;
+  margin-top: 16px;
+  padding: 15px;
+  border: 1px solid color-mix(in srgb, #bd8a1c 34%, var(--border2));
+  border-radius: 10px;
+  background: color-mix(in srgb, #d6a52e 5%, var(--bg2));
+}
+.habit-completed-rewards-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.habit-completed-rewards-head > div:first-child { display: grid; gap: 3px; min-width: 0; }
+.habit-completed-kicker {
+  color: #a87913;
+  font: 750 8px/1.2 var(--font-mono, "JetBrains Mono", monospace);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.habit-completed-rewards-head strong { color: var(--text); font-size: 14px; font-weight: 750; }
+.habit-reward-balance { display: grid; justify-items: end; gap: 1px; color: #a87913; }
+.habit-reward-balance span { font: 600 26px/1 "Cormorant Garamond", serif; }
+.habit-reward-balance small { color: var(--text3); font-size: 8px; }
+.habit-reward-coin-shelf {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  margin: 12px 0;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, #bd8a1c 25%, var(--border2));
+  border-radius: 7px;
+  background: color-mix(in srgb, #d6a52e 8%, var(--bg2));
+  overflow: hidden;
+}
+.habit-reward-coin {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, #d6a52e 65%, var(--border2));
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #fff5be, #d6a52e 62%, #9b6d16);
+  color: #fff9d7;
+  box-shadow: 0 2px 6px color-mix(in srgb, #bd8a1c 28%, transparent);
+}
+.habit-reward-coin svg { width: 14px; height: 14px; }
+.habit-reward-coin-more,
+.habit-reward-coins-empty { color: var(--text3); font-size: 9px; }
+.habit-completed-list { display: grid; gap: 7px; }
+.habit-completed-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 8px 9px;
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  background: var(--bg2);
+  overflow: hidden;
+}
+.habit-completed-card.is-ready {
+  border-color: color-mix(in srgb, #d6a52e 52%, var(--border2));
+  box-shadow: inset 3px 0 0 #d6a52e;
+}
+.habit-completed-card.is-claimed { opacity: .72; }
+.habit-completed-card-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, #bd8a1c 48%, var(--border2));
+  border-radius: 7px;
+  background: color-mix(in srgb, #d6a52e 11%, var(--bg2));
+  color: #a87913;
+}
+.habit-completed-card-icon svg { width: 18px; height: 18px; }
+.habit-completed-card-copy { display: grid; min-width: 0; gap: 2px; }
+.habit-completed-card-copy > span { color: #a87913; font: 750 8px/1.2 var(--font-mono, "JetBrains Mono", monospace); }
+.habit-completed-card-copy strong { overflow: hidden; color: var(--text); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.habit-completed-card-copy small { color: var(--text3); font-size: 9px; }
+.habit-reward-claim,
+.habit-reward-claimed {
+  min-height: 31px;
+  padding: 7px 9px;
+  border: 1px solid color-mix(in srgb, #bd8a1c 45%, var(--border2));
+  border-radius: 7px;
+  background: color-mix(in srgb, #d6a52e 10%, var(--bg2));
+  color: #956a0e;
+  font: 750 8px/1 var(--font-mono, "JetBrains Mono", monospace);
+  white-space: nowrap;
+}
+.habit-reward-claim { cursor: pointer; }
+.habit-reward-claim:hover { background: color-mix(in srgb, #d6a52e 18%, var(--bg2)); }
+.habit-reward-claim b { margin-left: 4px; font-size: 10px; }
+.habit-reward-claimed { border-color: color-mix(in srgb, var(--green) 40%, var(--border2)); color: var(--green); }
+@media (max-width: 560px) {
+  .habit-completed-rewards { margin-top: 12px; padding: 11px; }
+  .habit-completed-card { grid-template-columns: 28px minmax(0, 1fr); gap: 7px; min-height: 54px; padding: 7px; }
+  .habit-completed-card-icon { width: 27px; height: 27px; }
+  .habit-completed-card-icon svg { width: 16px; height: 16px; }
+  .habit-reward-claim, .habit-reward-claimed { grid-column: 2; justify-self: start; min-height: 27px; padding: 6px 8px; }
+}
+
 /* Navegación horizontal entre las tres vistas principales. */
 html, body { overflow-x: clip; }
 .app-content { touch-action: pan-y pinch-zoom; }
@@ -18381,7 +18491,7 @@ body.crono-task-density-compact #view-cronometro .crono-task-clean { min-height:
   #modalHabitChallenge .habit-modal-preview {
     align-self: stretch;
     align-content: center;
-    min-height: 72px;
+    min-height: 60px;
     padding: 8px 10px;
   }
   #modalHabitChallenge .habit-modal-preview span {
@@ -20898,6 +21008,30 @@ body[data-view="casa"] #view-casa.active {
 /* Metronome: one compact instrument shared by idle and running sessions. */
 #view-cronometro .crono-minimal-tabs {
   grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+/* Última capa visual: hoy siempre queda por encima de los estados del día. */
+.habit-calendar-day.is-today {
+  z-index: 1;
+  border-width: 2px !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent) !important;
+}
+.habit-calendar-day.is-today > span { color: var(--accent) !important; font-weight: 850; }
+.habit-calendar-day.is-today > i { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 24%, transparent); }
+#calPanelMes .habit-calendar-month-cell.is-today {
+  z-index: 1;
+  border-width: 2px !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent) !important;
+}
+#calPanelMes .habit-calendar-month-cell.is-today .mes-cell-num { color: var(--accent) !important; font-weight: 850; }
+
+/* El modal de objetivos cabe completo en pantallas tactiles horizontales pequenas. */
+@media (min-width: 560px) and (max-width: 1100px) and (max-height: 600px) and (orientation: landscape) {
+  #modalHabitChallenge .habit-modal {
+    padding-block: 11px 10px;
+  }
 }
 
 #view-cronometro .crono-metronome-tab {
