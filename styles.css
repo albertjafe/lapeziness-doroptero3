@@ -16219,6 +16219,108 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
   .habit-reward-claim, .habit-reward-claimed { grid-column: 2; justify-self: start; min-height: 27px; padding: 6px 8px; }
 }
 
+/* Bloqueo deliberado para tareas urgentisimas que llevan varios dias pendientes. */
+.crono-urgent-task-gate-modal {
+  width: min(430px, calc(100vw - 28px));
+  max-width: 430px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, #cf2944 36%, var(--border2));
+  box-shadow: 0 22px 70px rgba(70, 16, 28, .2);
+}
+.crono-urgent-task-gate-kicker {
+  color: #cf2944;
+  font: 800 9px/1.2 var(--font-mono, 'JetBrains Mono', monospace);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.crono-urgent-task-gate-title {
+  margin-top: 7px;
+  color: var(--text);
+  font: 500 27px/1.02 'Cormorant Garamond', serif;
+}
+.crono-urgent-task-gate-note {
+  margin: 9px 0 0;
+  color: var(--text2);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.crono-urgent-task-gate-count {
+  margin-top: 14px;
+  color: #cf2944;
+  font: 800 8px/1.2 var(--font-mono, 'JetBrains Mono', monospace);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.crono-urgent-task-gate-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 8px;
+}
+.crono-urgent-task-item {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 58px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, #cf2944 40%, var(--border2));
+  border-radius: 9px;
+  background: color-mix(in srgb, #cf2944 7%, var(--bg2));
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, background .18s ease, opacity .18s ease;
+}
+.crono-urgent-task-item:hover {
+  border-color: #cf2944;
+  background: color-mix(in srgb, #cf2944 12%, var(--bg2));
+}
+.crono-urgent-task-item:active { transform: scale(.985); }
+.crono-urgent-task-item.is-completing {
+  border-color: color-mix(in srgb, var(--green) 58%, var(--border2));
+  background: color-mix(in srgb, var(--green) 10%, var(--bg2));
+  opacity: .6;
+  transform: translateX(5px);
+}
+.crono-urgent-task-check {
+  position: relative;
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border: 2px solid #cf2944;
+  border-radius: 50%;
+}
+.crono-urgent-task-item.is-completing .crono-urgent-task-check {
+  border-color: var(--green);
+  background: var(--green);
+}
+.crono-urgent-task-item.is-completing .crono-urgent-task-check::after {
+  width: 9px;
+  height: 5px;
+  border-bottom: 2px solid #fff;
+  border-left: 2px solid #fff;
+  content: '';
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+.crono-urgent-task-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+.crono-urgent-task-copy strong {
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+}
+.crono-urgent-task-copy small {
+  color: #cf2944;
+  font: 700 8px/1 var(--font-mono, 'JetBrains Mono', monospace);
+  text-transform: uppercase;
+}
+
 /* Navegación horizontal entre las tres vistas principales. */
 html, body { overflow-x: clip; }
 .app-content { touch-action: pan-y pinch-zoom; }
@@ -18514,7 +18616,11 @@ body.crono-task-density-compact #view-cronometro .crono-task-clean { min-height:
 
 @media (prefers-reduced-motion: reduce) {
   #view-cronometro .crono-habit-progress i,
-  #view-cronometro .crono-habit-check { transition: none; }
+  #view-cronometro .crono-habit-check,
+  .pase-liquid-fill::before,
+  .pase-liquid-fill::after,
+  .pase-liquid-glint,
+  .pase-liquid-orb { animation: none !important; }
 }
 
 /* La obra conserva nombre y acumulado historico en una sola zona compacta. */
@@ -18560,15 +18666,20 @@ body.crono-task-density-compact #view-cronometro .crono-task-clean { min-height:
 
 /* El cierre usa el mismo deposito liquido que los pases, sin etiquetas ni numeros visibles. */
 #modalHechoDatos .hecho-solidez-meter {
-  height: 58px;
-  margin: 2px 0 0;
+  height: 78px;
+  margin: 5px 0 1px;
+  --pase-glow-size: 15px;
 }
 #modalHechoDatos .hecho-solidez-meter .pase-liquid-reservoir {
-  inset-block: 9px;
+  inset-block: 7px;
 }
 #modalHechoDatos .hecho-solidez-meter .pase-liquid-orb {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--pase-color) 22%, transparent),
+    0 0 var(--pase-glow-size) var(--pase-color),
+    inset 0 1px 4px rgba(255,255,255,.62);
 }
 .visually-hidden {
   position: absolute !important;
@@ -18685,6 +18796,55 @@ body.crono-task-density-compact #view-cronometro .crono-task-clean { min-height:
 }
 body.crono-interface-pinching #view-cronometro .crono-run-action-rail {
   transition: none !important;
+}
+
+/* Deposito de solidez: un brillo lento y pequenas burbujas hacen legible el
+   nivel sin recurrir a numeros. */
+.pase-liquid-fill {
+  filter: saturate(1.12);
+  will-change: width, filter;
+}
+.pase-liquid-fill::before {
+  animation: pase-liquid-bubble-one 4.2s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+.pase-liquid-fill::after {
+  animation: pase-liquid-bubble-two 3.5s ease-in-out 420ms infinite;
+  will-change: transform, opacity;
+}
+.pase-liquid-glint {
+  animation: pase-liquid-shimmer 3.1s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+.pase-liquid-orb {
+  animation: pase-liquid-orb-glow 2.7s ease-in-out infinite;
+  will-change: box-shadow, transform;
+}
+@keyframes pase-liquid-bubble-one {
+  0%, 100% { transform: translate3d(0, 3px, 0) scale(.82); opacity: .38; }
+  50% { transform: translate3d(-8px, -4px, 0) scale(1.12); opacity: .78; }
+}
+@keyframes pase-liquid-bubble-two {
+  0%, 100% { transform: translate3d(0, -2px, 0) scale(.8); opacity: .28; }
+  50% { transform: translate3d(10px, 4px, 0) scale(1.18); opacity: .66; }
+}
+@keyframes pase-liquid-shimmer {
+  0%, 100% { opacity: calc(var(--pase-glow) * .65); transform: translateX(-5%); }
+  50% { opacity: var(--pase-glow); transform: translateX(5%); }
+}
+@keyframes pase-liquid-orb-glow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--pase-color) 22%, transparent),
+      0 0 var(--pase-glow-size) var(--pase-color),
+      inset 0 1px 4px rgba(255,255,255,.62);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px color-mix(in srgb, var(--pase-color) 25%, transparent),
+      0 0 calc(var(--pase-glow-size) + 7px) var(--pase-color),
+      inset 0 1px 5px rgba(255,255,255,.78);
+  }
 }
 
 @media (min-width: 900px) and (max-width: 1399px) and (orientation: landscape) and (min-height: 620px) {

@@ -25,7 +25,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=277">
+<link rel="stylesheet" href="styles.css?v=278">
 </head>
 <body>
 
@@ -1470,7 +1470,7 @@
         </div>
         <span id="hechoSolidezPrevious" aria-hidden="true"></span>
       </div>
-      <div class="pase-liquid-meter hecho-solidez-meter" id="hechoSolidezMeter" style="--pase-fill:50%;--pase-glow:0.5;--pase-glow-size:10px;--pase-color:#c8a030">
+      <div class="pase-liquid-meter hecho-solidez-meter" id="hechoSolidezMeter" style="--pase-fill:50%;--pase-glow:0.5;--pase-glow-size:15px;--pase-color:#c8a030">
         <div class="pase-liquid-reservoir" aria-hidden="true">
           <span class="pase-liquid-fill"></span><span class="pase-liquid-glint"></span><span class="pase-liquid-orb"></span>
         </div>
@@ -2317,9 +2317,9 @@
 <script src="data-core.js?v=230"></script>
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=264"></script>
-<script src="app.js?v=277"></script>
+<script src="app.js?v=278"></script>
 <script src="google-calendar.js?v=272"></script>
-<script src="timer-objectives.js?v=249"></script>
+<script src="timer-objectives.js?v=250"></script>
 <script src="metronome.js?v=275"></script>
 <script type="module" src="mystery-house.js?v=260"></script>
 
@@ -2343,7 +2343,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=277', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=278', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-22-single-habit-liquid-solidity-v146';
+const APP_VERSION = '2026-08-22-objective-tracker-urgent-gate-v147';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -21388,6 +21388,116 @@ function cronoTaskPriorityLabel(priority) {
   return priority === 3 ? 'Urgentísima' : priority === 2 ? 'Urgente' : priority === 1 ? 'Importante' : 'Normal';
 }
 
+const CRONO_URGENT_TASK_STALE_DAYS = 3;
+let _cronoUrgentTaskGateOpen = false;
+
+function cronoTaskPendingDays(task, now) {
+  const createdAt = Date.parse(task?.createdAt || '');
+  if (!Number.isFinite(createdAt)) return 0;
+  const today = habitDayNumber(cronoTaskReminderDayKey(new Date(now || Date.now())));
+  const created = habitDayNumber(cronoTaskReminderDayKey(new Date(createdAt)));
+  return Number.isFinite(today) && Number.isFinite(created) ? Math.max(0, today - created) : 0;
+}
+
+function cronoUrgentTaskCandidates(now) {
+  return cronoTasks()
+    .filter(task =>
+      !task.done &&
+      cronoTaskPriority(task) === 3 &&
+      cronoTaskPendingDays(task, now) >= CRONO_URGENT_TASK_STALE_DAYS
+    )
+    .sort((a, b) => {
+      const age = cronoTaskPendingDays(b, now) - cronoTaskPendingDays(a, now);
+      return age || ((Date.parse(a.createdAt || '') || 0) - (Date.parse(b.createdAt || '') || 0));
+    });
+}
+
+function cronoUrgentTaskGateVisible() {
+  return !!document.getElementById('modalCronoUrgentTaskGate')?.classList.contains('visible');
+}
+
+function cronoRenderUrgentTaskGate() {
+  const list = document.getElementById('cronoUrgentTaskGateList');
+  const count = document.getElementById('cronoUrgentTaskGateCount');
+  if (!list) return false;
+  const tasks = cronoUrgentTaskCandidates();
+  if (count) count.textContent = tasks.length + (tasks.length === 1 ? ' tarea pendiente' : ' tareas pendientes');
+  if (!tasks.length) {
+    closeModal('modalCronoUrgentTaskGate');
+    _cronoUrgentTaskGateOpen = false;
+    return false;
+  }
+  list.innerHTML = tasks.map(task => {
+    const days = cronoTaskPendingDays(task);
+    return '<button type="button" class="crono-urgent-task-item priority-3" onclick="cronoCompleteUrgentTask(\'' + hechoJs(task.id) + '\',this)"' +
+      ' aria-label="Marcar como hecha: ' + escapeHtmlSafe(task.text) + '">' +
+      '<span class="crono-urgent-task-check" aria-hidden="true"></span>' +
+      '<span class="crono-urgent-task-copy"><strong>' + escapeHtmlSafe(task.text) + '</strong><small>Pendiente desde hace ' + days + (days === 1 ? ' día' : ' días') + '</small></span>' +
+    '</button>';
+  }).join('');
+  return true;
+}
+
+function cronoOpenUrgentTaskGate() {
+  let modal = document.getElementById('modalCronoUrgentTaskGate');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modalCronoUrgentTaskGate';
+    modal.className = 'modal-overlay';
+    modal.innerHTML =
+      '<div class="modal crono-urgent-task-gate-modal" role="dialog" aria-modal="true" aria-labelledby="cronoUrgentTaskGateTitle" aria-describedby="cronoUrgentTaskGateNote">' +
+        '<div class="crono-urgent-task-gate-kicker">Antes de empezar</div>' +
+        '<div class="crono-urgent-task-gate-title" id="cronoUrgentTaskGateTitle">Una tarea antes del estudio</div>' +
+        '<p class="crono-urgent-task-gate-note" id="cronoUrgentTaskGateNote">Lleva varios días pendiente. Márcala como hecha para desbloquear el cronómetro.</p>' +
+        '<div class="crono-urgent-task-gate-count" id="cronoUrgentTaskGateCount"></div>' +
+        '<div class="crono-urgent-task-gate-list" id="cronoUrgentTaskGateList"></div>' +
+      '</div>';
+    document.body.appendChild(modal);
+  }
+  if (cronoUrgentTaskGateVisible()) return true;
+  if (!cronoRenderUrgentTaskGate()) return false;
+  openModal('modalCronoUrgentTaskGate');
+  // Este bloqueo no tiene botón de cancelar ni se cierra tocando fuera:
+  // desaparece únicamente cuando ya no queda ninguna tarea elegible.
+  if (modal._outsideHandler) modal.removeEventListener('click', modal._outsideHandler);
+  modal._outsideHandler = event => {
+    if (event.target === modal) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+  modal.addEventListener('click', modal._outsideHandler);
+  _cronoUrgentTaskGateOpen = true;
+  return true;
+}
+
+function cronoMaybeBlockUrgentTasks(reason) {
+  if (crono.state !== 'idle') return false;
+  const tasks = cronoUrgentTaskCandidates();
+  if (!tasks.length) return false;
+  cronoOpenUrgentTaskGate(tasks, reason);
+  return true;
+}
+
+function cronoCompleteUrgentTask(id, button) {
+  const task = cronoTasks().find(item => item.id === id);
+  if (!task || task.done || !button || button.classList.contains('is-completing')) return;
+  task.done = true;
+  task.doneAt = new Date().toISOString();
+  saveData();
+  renderCronoTasks();
+  button.classList.add('is-completing');
+  button.disabled = true;
+  try { Haptics.success(); } catch (e) {}
+  const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  setTimeout(() => {
+    if (!cronoRenderUrgentTaskGate()) {
+      showToast('Tarea completada · cronómetro desbloqueado');
+      try { Haptics.heavy(); } catch (e) {}
+    }
+  }, reducedMotion ? 80 : 520);
+}
+
 const CRONO_TASK_DENSITY_KEY = 'alberto_crono_task_density_v1';
 let _cronoTaskDensityCompact = null;
 
@@ -25956,6 +26066,7 @@ function cronoResolveSelectValue(val) {
 // ── Acciones ────────────────────────────────────────────────────────────────
 
 function cronoStart() {
+  if (cronoMaybeBlockUrgentTasks('start')) return;
   const sel = document.getElementById('cronoObraSelect');
   if (!sel) return;
   const resolved = cronoResolveSelectValue(sel.value);
@@ -26025,6 +26136,7 @@ function cronoStartRest() {
     showToast('Termina la sesión actual antes de descansar');
     return;
   }
+  if (cronoMaybeBlockUrgentTasks('rest')) return;
   const pushEnable = cronoRequestNotificationPermissionFromGesture();
   _cronoRunDrawerTab = 'tareas';
   _cronoLastRunDestelloKey = '';
@@ -27198,7 +27310,9 @@ function cronoOnEnterView(options) {
   renderCronoCalendar();
   refreshCronoFluidUI();
   cronoStartTaskReminderLoop();
-  setTimeout(() => cronoMaybeRemindTasks('enter'), 80);
+  setTimeout(() => {
+    if (!cronoMaybeBlockUrgentTasks('enter')) cronoMaybeRemindTasks('enter');
+  }, 80);
   // El indicador del toggle necesita layout para medir; volver a moverlo tras frame
   if (!layoutPrepared) requestAnimationFrame(cronoMoveModeIndicator);
   if (crono.state === 'running' && !crono.tickInterval) cronoStartTick();

@@ -897,8 +897,11 @@ test('loads the calendar and objectives switch inside the stopwatch', async ({ p
   await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-action-icon')).toHaveAttribute('aria-label', 'Marcar objetivo cumplido hoy');
   await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-action-icon')).toHaveText(String.fromCodePoint(10003));
   await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-edit-icon')).toHaveAttribute('aria-label', 'Editar objetivo');
-  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-head')).toHaveCount(0);
-  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-stats')).toHaveCount(0);
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-head')).toHaveCount(1);
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-head')).toContainText('Hoy');
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-copy strong')).toHaveText('Practicar escalas');
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-meta')).toContainText('Día 1 de 14');
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-add-icon')).toHaveCount(0);
   await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-foot')).toHaveCount(0);
 
   const portraitLayout = await page.evaluate(() => {
@@ -1937,6 +1940,35 @@ test('opens pending tasks once per day and repeats the reminder after two hours'
   });
   await expect(drawer).toHaveAttribute('data-tab', 'tareas');
   expect(await page.evaluate(() => cronoTaskReminderState().reason)).toBe('session-end');
+});
+
+test('blocks the first study start for a three-day urgent task until it is completed', async ({ page }) => {
+  await page.setViewportSize({ width: 834, height: 1194 });
+  await prepare(page);
+  await page.evaluate(() => {
+    db.cronoTasks = [{
+      id: 'ct_urgent_gate',
+      text: 'Resolver el pasaje pendiente',
+      kind: 'piano',
+      priority: 3,
+      done: false,
+      createdAt: new Date(Date.now() - 4 * 86400000).toISOString(),
+    }];
+    showView('cronometro');
+  });
+
+  const gate = page.locator('#modalCronoUrgentTaskGate');
+  await expect(gate).toHaveClass(/visible/);
+  await expect(gate).toContainText('Una tarea antes del estudio');
+  await expect(gate.locator('.crono-urgent-task-item')).toHaveCount(1);
+  expect(await page.evaluate(() => {
+    cronoStart();
+    return crono.state;
+  })).toBe('idle');
+
+  await gate.locator('.crono-urgent-task-item').click();
+  await expect.poll(() => page.evaluate(() => db.cronoTasks[0].done)).toBe(true);
+  await expect(gate).not.toHaveClass(/visible/);
 });
 
 test('separates piano and personal tasks and only reminds piano work', async ({ page }) => {
