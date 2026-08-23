@@ -4,7 +4,8 @@
 (function () {
   'use strict';
 
-  const API_URL = (window.PIANO_ROOMS_API_URL || localStorage.getItem('pianoRoomsApiUrl') || 'http://127.0.0.1:8765/api/state').replace(/\/$/, '');
+  const defaultApi = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname) ? '/api/state' : 'http://127.0.0.1:8765/api/state';
+  const API_URL = (window.PIANO_ROOMS_API_URL || localStorage.getItem('pianoRoomsApiUrl') || defaultApi).replace(/\/$/, '');
   const POLL_MS = 60 * 1000;
   let pollTimer = null;
   let clockTimer = null;
