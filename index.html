@@ -85,6 +85,7 @@
   </div>
   <div class="header-actions">
     <div style="font-size:10px;color:var(--text3)" id="packNameHeader"></div>
+    <button type="button" class="piano-rooms-open" onclick="showView('salas')" aria-label="Abrir disponibilidad de salas" title="Disponibilidad de salas">▦ <span>Salas</span></button>
     <button class="settings-icon" id="sessionInfoBtn" onclick="toggleSessionInfo()" title="Mostrar u ocultar detalles" aria-label="Mostrar u ocultar detalles">ℹ</button>
     <button class="settings-icon" id="headerSettingsBtn" onclick="openSettings()" title="Ajustes" aria-label="Abrir ajustes">⚙</button>
   </div>
@@ -2319,10 +2320,6 @@
   <button class="nav-btn" aria-label="Calendario" data-view="calendario" data-short="Calend." onclick="showView('calendario')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
     <span>Calendario</span>
-  </button>
-  <button class="nav-btn" aria-label="Salas" data-view="salas" data-short="Salas" onclick="showView('salas')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M3.5 10h17M8 5v14M16 5v14"/></svg>
-    <span>Salas</span>
   </button>
   <button class="nav-btn" aria-label="Casa" data-view="casa" data-short="Casa" onclick="showView('casa')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4.8A1.8 1.8 0 0 1 6.8 3h10.4A1.8 1.8 0 0 1 19 4.8V21M3 21h18"/><path d="M9 21V8h6v13M12.8 14h.01"/></svg>
