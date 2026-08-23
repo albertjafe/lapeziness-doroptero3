@@ -26,6 +26,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=278">
+<link rel="stylesheet" href="piano-rooms.css?v=1">
 </head>
 <body>
 
@@ -702,6 +703,36 @@
   </div>
   <div id="obrasList"></div>
   <button class="add-obra-btn" onclick="openAddObra()">+ añadir obra</button>
+</div>
+
+<!-- PIANO ROOMS VIEW -->
+<div class="view" id="view-salas">
+  <section class="piano-rooms-page" aria-labelledby="pianoRoomsTitle">
+    <div class="piano-rooms-intro">
+      <div>
+        <div class="view-local-label">Disponibilidad en directo</div>
+        <h1 id="pianoRoomsTitle">Salas</h1>
+        <p id="pianoRoomsStatus" role="status" aria-live="polite">Conectando con el monitor local…</p>
+      </div>
+      <div class="piano-rooms-actions">
+        <label class="piano-rooms-date-label" for="pianoRoomsDate">Fecha</label>
+        <input id="pianoRoomsDate" type="date">
+        <button type="button" id="pianoRoomsRefresh" class="piano-rooms-refresh">Actualizar</button>
+      </div>
+    </div>
+    <div class="piano-rooms-legend" aria-label="Leyenda de estados">
+      <span class="pr-legend-item"><i class="pr-swatch pr-swatch-available"></i>Disponible</span>
+      <span class="pr-legend-item"><i class="pr-swatch pr-swatch-reserved"></i>Reservada durante la vigilancia</span>
+      <span class="pr-legend-item"><i class="pr-swatch pr-swatch-expired"></i>Pasó libre</span>
+      <span class="pr-legend-item"><i class="pr-swatch pr-swatch-mine"></i>Mi reserva</span>
+      <span class="pr-legend-item"><i class="pr-swatch pr-swatch-unknown"></i>Sin historial</span>
+    </div>
+    <div class="piano-rooms-grid-wrap" id="pianoRoomsGridWrap">
+      <div id="pianoRoomsGrid" class="piano-rooms-grid" role="grid" aria-label="Cuadrícula de disponibilidad de salas"></div>
+      <div id="pianoRoomsNowLine" class="piano-rooms-now-line" aria-hidden="true"><span>ahora</span></div>
+    </div>
+    <p class="piano-rooms-note">La línea indica la hora actual. El color naranja solo se asigna cuando una franja observada como disponible desaparece antes de comenzar.</p>
+  </section>
 </div>
 
 <!-- CALENDARIO VIEW -->
@@ -2289,6 +2320,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
     <span>Calendario</span>
   </button>
+  <button class="nav-btn" aria-label="Salas" data-view="salas" data-short="Salas" onclick="showView('salas')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M3.5 10h17M8 5v14M16 5v14"/></svg>
+    <span>Salas</span>
+  </button>
   <button class="nav-btn" aria-label="Casa" data-view="casa" data-short="Casa" onclick="showView('casa')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4.8A1.8 1.8 0 0 1 6.8 3h10.4A1.8 1.8 0 0 1 19 4.8V21M3 21h18"/><path d="M9 21V8h6v13M12.8 14h.01"/></svg>
     <span>Casa</span>
@@ -2318,6 +2353,7 @@
 <script src="sync-core.js?v=209"></script>
 <script src="push-client.js?v=264"></script>
 <script src="app.js?v=278"></script>
+<script src="piano-rooms.js?v=1"></script>
 <script src="google-calendar.js?v=272"></script>
 <script src="timer-objectives.js?v=250"></script>
 <script src="metronome.js?v=275"></script>
@@ -2343,7 +2379,7 @@
       });
     }
     window.addEventListener('load', function() {
-      navigator.serviceWorker.register('./sw.js?v=278', { updateViaCache: 'none' }).then(function(reg) {
+      navigator.serviceWorker.register('./sw.js?v=279', { updateViaCache: 'none' }).then(function(reg) {
         if (reg.waiting && navigator.serviceWorker.controller) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         }

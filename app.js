@@ -635,6 +635,7 @@ const VIEW_CONTEXT = {
   cronometro: { eyebrow: 'Práctica', title: 'Cronómetro' },
   obras: { eyebrow: 'Repertorio', title: 'Obras' },
   calendario: { eyebrow: 'Planificación', title: 'Calendario' },
+  salas: { eyebrow: 'Piano Rooms', title: 'Salas' },
   casa: { eyebrow: 'Estratos', title: 'La Casa' },
   historial: { eyebrow: 'Resumen', title: 'Estadísticas' },
   ajustes: { eyebrow: 'Planificador de estudio', title: 'Ajustes' }
@@ -27381,9 +27382,9 @@ if ('serviceWorker' in navigator) {
 window.addEventListener('load', function() {
   setTimeout(cronoHydrate, 100);
   try {
-    if (new URL(window.location.href).searchParams.get('view') === 'cronometro') {
-      setTimeout(cronoOpenFromSystemNotification, 140);
-    }
+    const requestedView = new URL(window.location.href).searchParams.get('view');
+    if (requestedView === 'cronometro') setTimeout(cronoOpenFromSystemNotification, 140);
+    if (requestedView === 'salas') setTimeout(() => showView('salas'), 140);
   } catch(e) {}
   _swUpdateInit();
 });
