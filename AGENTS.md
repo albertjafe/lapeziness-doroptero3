@@ -6,7 +6,7 @@ This repository uses an external planning -> implementation workflow designed to
 
 Before changing code:
 
-1. Read `.ai/REPO_MAP.md`.
+1. Read `.ai/runtime/REPO_MAP.md` if it exists; otherwise use the seed `.ai/REPO_MAP.md`.
 2. If `.ai/runtime/CURRENT_TASK.md` exists, read it in full.
 3. If `.ai/runtime/WORKPLAN.json` exists, use it as the execution breakdown.
 
@@ -40,6 +40,6 @@ Run only the suites relevant to a work packet; the final integrator should run t
 
 ## Repository map maintenance
 
-Keep `.ai/REPO_MAP.md` compact. Update it only when a change materially alters file responsibilities, architecture, important entry points, or important exported/public functions. Do not turn it into a changelog or duplicate source code.
+Keep `.ai/runtime/REPO_MAP.md` compact. Update it only when a change materially alters file responsibilities, architecture, important entry points, or important exported/public functions. Do not turn it into a changelog or duplicate source code.
 
-Files under `.ai/runtime/` are temporary coordination artifacts and must not be committed.
+Files under `.ai/runtime/` are temporary/local coordination artifacts and must not be committed.
