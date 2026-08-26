@@ -13,8 +13,8 @@ Este repo tiene un puente para que ChatGPT planifique y Codex ejecute sin volver
    ```
 
 4. El script hará automáticamente:
-   - descargar el último plan sin mezclar la rama `ai-control` con `main`;
-   - crear/actualizar el mapa del repo con Luna cuando haga falta;
+   - descargar el último plan sin mezclar la rama `ai-control` con tu rama local;
+   - crear/actualizar un mapa local del repo con Luna cuando haga falta;
    - pedir a Luna una división mecánica del plan en paquetes pequeños;
    - ejecutar esos paquetes con Luna, secuencialmente y sobre el mismo working tree;
    - lanzar una única pasada final con Sol medium para integrar, revisar, corregir y ejecutar las comprobaciones relevantes.
@@ -26,16 +26,18 @@ Este repo tiene un puente para que ChatGPT planifique y Codex ejecute sin volver
 .\ai.ps1 -Action status
 .\ai.ps1 -Action refresh-map
 .\ai.ps1 -TaskFile .\mi-plan.md
+.\ai.ps1 -AllowDirty
 ```
 
-`-TaskFile` sirve como alternativa manual: usa un plan local en vez del puente de GitHub.
+`-TaskFile` usa un plan local en vez del puente de GitHub. `-AllowDirty` permite ejecutar sobre un working tree que ya tenga cambios; por seguridad, el comportamiento normal es exigir un árbol limpio.
 
 ## Archivos
 
 - `AGENTS.md`: reglas permanentes para Codex.
-- `.ai/REPO_MAP.md`: mapa compacto del proyecto para evitar reexplorarlo entero.
+- `.ai/REPO_MAP.md`: mapa semilla que explica la forma general del proyecto.
+- `.ai/runtime/REPO_MAP.md`: mapa detallado generado por Luna en tu ordenador; persiste entre ejecuciones pero está ignorado por git.
 - `.ai/workplan.schema.json`: formato de los paquetes que genera Luna.
-- `.ai/runtime/`: archivos temporales creados al ejecutar el flujo; está ignorado por git.
+- `.ai/runtime/`: archivos temporales/locales creados al ejecutar el flujo; está ignorado por git.
 - Rama `ai-control` -> `.ai/CURRENT_TASK.md`: buzón donde ChatGPT deja el plan más reciente.
 
 ## Modelos
