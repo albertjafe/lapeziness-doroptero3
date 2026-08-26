@@ -1,8 +1,8 @@
-# Repository map
+# Repository map seed
 
 STATUS: SEED_ONLY
 
-This is a seed map. `ai.ps1` will replace it with a compact Luna-generated map on the first run (or when `-Action refresh-map` is used).
+This tracked file is only a lightweight fallback. `ai.ps1` generates the detailed local map at `.ai/runtime/REPO_MAP.md` on first use (or with `-Action refresh-map`) so routine map refreshes do not pollute git diffs.
 
 ## Project shape
 
@@ -32,4 +32,4 @@ CI uses Node 20 and runs:
 
 ## Map rules
 
-The refreshed map should remain short and navigational. For each important source file/module, record purpose, important entry points/functions, important dependencies/consumers, and relevant tests. Do not copy implementation bodies.
+The local detailed map should remain short and navigational. For each important source file/module, record purpose, important entry points/functions, important dependencies/consumers, and relevant tests. Do not copy implementation bodies.
