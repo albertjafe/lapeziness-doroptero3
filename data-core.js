@@ -213,6 +213,29 @@
     return Array.from(map.values()).sort((x, y) => String(x.createdAt || x.startDate || '').localeCompare(String(y.createdAt || y.startDate || '')));
   }
 
+  // Repertorio biográfico: se sincroniza por ID y gana la edición más reciente.
+  // Las horas estimadas viven aquí, separadas de sesiones/minutosExtra.
+  function mergeHistoricalRepertoire(a, b) {
+    const byId = new Map();
+    (a || []).concat(b || []).forEach(entry => {
+      if (!entry || !entry.id) return;
+      const current = byId.get(entry.id);
+      if (!current) {
+        byId.set(entry.id, entry);
+        return;
+      }
+      const currentAt = String(current.updatedAt || current.createdAt || '');
+      const candidateAt = String(entry.updatedAt || entry.createdAt || '');
+      if (candidateAt.localeCompare(currentAt) >= 0) byId.set(entry.id, entry);
+    });
+    return Array.from(byId.values())
+      .sort((x, y) =>
+        String(x.composer || '').localeCompare(String(y.composer || '')) ||
+        String(x.name || '').localeCompare(String(y.name || ''))
+      )
+      .slice(-5000);
+  }
+
   function mergeStudyHistory(base, other) {
     if (!base) return other;
     if (!other) return base;
@@ -233,6 +256,7 @@
     merged.blockedDaySchedules = mergeBlockedDaySchedules(base.blockedDaySchedules, other.blockedDaySchedules);
     merged.weeklyPlans = mergeWeeklyPlans(base.weeklyPlans, other.weeklyPlans);
     merged.memoryCards = mergeMemoryCards(base.memoryCards, other.memoryCards);
+    merged.historicalRepertoire = mergeHistoricalRepertoire(base.historicalRepertoire, other.historicalRepertoire);
     const baseHabits = (base.habitChallenges || []).concat(base.habitChallenge ? [base.habitChallenge] : []);
     const otherHabits = (other.habitChallenges || []).concat(other.habitChallenge ? [other.habitChallenge] : []);
     merged.habitChallenges = mergeHabitChallenges(baseHabits, otherHabits);
@@ -240,5 +264,28 @@
     return applyPulseDeletedIds(merged);
   }
 
-  return { mergeStudyHistory, mergePlants, mergeSessions, mergeBlockedDaySchedules, mergeWeeklyPlan, mergeWeeklyPlans, mergeMemoryCard, mergeMemoryCards, mergeHabitChallenge, mergeHabitChallenges, sessionRealMinutes };
+  return {
+    mergeStudyHistory,
+    mergePlants,
+    mergeSessions,
+    mergeBlockedDaySchedules,
+    mergeWeeklyPlan,
+    mergeWeeklyPlans,
+    mergeMemoryCard,
+    mergeMemoryCards,
+    mergeHabitChallenge,
+    mergeHabitChallenges,
+    mergeHistoricalRepertoire,
+    sessionRealMinutes
+  };
 });
+
+// Carga modular de la interfaz del archivo histórico. Se deja fuera del factory
+// para que los tests Node de DataCore sigan sin depender del DOM.
+if (typeof document !== 'undefined' && !document.querySelector('script[data-historical-repertoire]')) {
+  const script = document.createElement('script');
+  script.src = 'historical-repertoire.js?v=1';
+  script.async = true;
+  script.dataset.historicalRepertoire = '1';
+  document.head.appendChild(script);
+}
