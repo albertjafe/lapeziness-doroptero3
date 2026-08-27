@@ -71,7 +71,7 @@
     return rows;
   }
 
-  function currentObservation(entity) {
+  function currentObservation(entity, options) {
     const rows = observations(entity);
     if (rows.length) {
       rows.sort((a, b) => {
@@ -82,12 +82,12 @@
       });
       return rows[rows.length - 1];
     }
-    const score = scoreFromObservation(entity);
+    const score = scoreFromObservation(entity, options);
     return score == null ? null : { score, time: dateFrom(entity), source: 'current', sequence: 0, raw: entity };
   }
 
-  function currentScore(entity) {
-    const current = currentObservation(entity);
+  function currentScore(entity, options) {
+    const current = currentObservation(entity, options);
     return current ? Math.round(current.score) : null;
   }
 
