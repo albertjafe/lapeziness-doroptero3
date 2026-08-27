@@ -36,6 +36,14 @@
     if (item.val != null && item.val !== '') return percent(item.val);
     if (item.value != null && item.value !== '') return percent(item.value);
     if (item.solRating != null && item.solRating !== '') return percent(item.solRating);
+    if (item.sol != null && item.sol !== '') {
+      const raw = Number(item.sol);
+      if (!Number.isFinite(raw)) return null;
+      if (options && options.legacyScale && raw >= 1 && raw <= 10) return clamp(raw * 10, 0, 100);
+      // `sol` es la píldora actual y tiene prioridad sobre cualquier nota global
+      // de evento como obraScore. 10 aquí significa literalmente 10%.
+      return clamp(raw, 0, 100);
+    }
 
     if (item.score != null && item.score !== '') {
       const raw = Number(item.score);
@@ -48,12 +56,6 @@
       if (!Number.isFinite(raw)) return null;
       // obraScore pertenece al sistema porcentual actual de resultados de evento.
       // A diferencia del antiguo pase score=1..10, 10 aquí significa 10%, no 100%.
-      return clamp(raw, 0, 100);
-    }
-    if (item.sol != null && item.sol !== '') {
-      const raw = Number(item.sol);
-      if (!Number.isFinite(raw)) return null;
-      if (options && options.legacyScale && raw >= 1 && raw <= 10) return clamp(raw * 10, 0, 100);
       return clamp(raw, 0, 100);
     }
     return null;
