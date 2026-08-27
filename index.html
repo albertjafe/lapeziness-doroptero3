@@ -370,6 +370,12 @@
           <div class="crono-habit-slot" data-habit-slot="idle" aria-live="polite"></div>
         </div>
 
+        <button type="button" class="crono-readiness-chip" id="cronoIdleReadiness" hidden
+                onclick="openCronoReadinessDetail('idle')" aria-label="Ver estimación de preparación">
+          <span class="crono-readiness-chip-main" id="cronoIdleReadinessMain"></span>
+          <span class="crono-readiness-chip-confidence" id="cronoIdleReadinessConfidence"></span>
+        </button>
+
         <div class="crono-display-wrap crono-idle-display-wrap progress-active" id="cronoIdleDisplayWrap">
           <div class="crono-tomorrow-note-rail" aria-label="Notas para mañana">
             <button type="button" class="crono-tomorrow-note-btn" onclick="openCronoTomorrowTask()"
@@ -462,6 +468,8 @@
           <div class="crono-obra-pill-dot" id="cronoObraDot"></div>
           <div class="crono-obra-pill-copy">
             <div class="crono-obra-pill-name" id="cronoRunName">—</div>
+            <button type="button" class="crono-readiness-inline" id="cronoRunReadiness"
+                    onclick="event.stopPropagation(); openCronoReadinessDetail('running')" hidden></button>
             <div class="crono-run-work-total" id="cronoRunWorkTotalWrap">
               <strong id="cronoRunWorkTotal" title="Tiempo total de la obra">0 min</strong>
               <i class="crono-run-work-total-separator" aria-hidden="true">·</i>
@@ -1678,6 +1686,22 @@
   </div>
 </div>
 
+<!-- DETALLE DE ESTIMACIÓN DEL CRONÓMETRO -->
+<div class="modal-overlay" id="modalCronoReadiness">
+  <div class="modal crono-readiness-modal" role="dialog" aria-modal="true" aria-labelledby="cronoReadinessTitle">
+    <div class="crono-readiness-kicker">Estimación personal</div>
+    <div class="modal-title" id="cronoReadinessTitle">A punto</div>
+    <div class="crono-readiness-detail-lead" id="cronoReadinessLead"></div>
+    <div class="crono-readiness-detail-confidence" id="cronoReadinessDetailConfidence"></div>
+    <div class="crono-readiness-detail-copy" id="cronoReadinessCopy"></div>
+    <div class="crono-readiness-evidence" id="cronoReadinessEvidence"></div>
+    <div class="crono-readiness-calendar" id="cronoReadinessCalendar" hidden></div>
+    <div class="modal-buttons">
+      <button class="modal-btn primary" onclick="closeModal('modalCronoReadiness')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: nota para mañana vinculada a la obra activa -->
 <div class="modal-overlay" id="modalCronoNote">
   <div class="modal crono-note-modal crono-tomorrow-note-modal">
@@ -2348,6 +2372,7 @@
 <script src="timer-core.js?v=264"></script>
 <script src="data-core.js?v=230"></script>
 <script src="sync-core.js?v=209"></script>
+<script src="readiness-core.js?v=1"></script>
 <script src="push-client.js?v=264"></script>
 <script src="app.js?v=278"></script>
 <script src="piano-rooms.js?v=1"></script>
