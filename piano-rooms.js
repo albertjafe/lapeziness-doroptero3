@@ -33,8 +33,10 @@
   // clásica como herramienta avanzada.
   load('workStructureCatalogScript','./work-structure-catalog.js?v=1',function(){
     load('obraPremiumScript','./obra-premium.js?v=1',function(){
-      load('obrasRedesignScript','./obras-redesign.js?v=1',function(){
-        load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=1');
+      load('obraPremiumPolishScript','./obra-premium-polish.js?v=1',function(){
+        load('obrasRedesignScript','./obras-redesign.js?v=1',function(){
+          load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=1');
+        });
       });
     });
   });
