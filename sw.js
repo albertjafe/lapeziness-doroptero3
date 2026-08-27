@@ -1,10 +1,10 @@
-const CACHE = 'estudio-v284';
+const CACHE = 'estudio-v285';
 const ASSETS = [
   './index.html',
   './styles.css?v=278',
   './piano-rooms.css?v=1',
   './crono-readiness-layout.css?v=1',
-  './crono-idle-hierarchy.css?v=1',
+  './crono-idle-hierarchy.css?v=2',
   './app.js?v=278',
   './piano-rooms.js?v=1',
   './piano-rooms-core.js?v=1',
