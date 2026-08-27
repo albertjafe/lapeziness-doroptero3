@@ -18,6 +18,29 @@
 }
 #view-obras.obras-master-detail .obras-rd-title { font-size:17px; }
 
+/* Wide iPads are landscape at these CSS widths. This fallback avoids browser
+   orientation quirks while keeping portrait tablets in the single-column UI. */
+@media (min-width:1050px) {
+  html:not(.platform-windows) #view-obras .obras-rd-layout {
+    grid-template-columns:minmax(330px,.72fr) minmax(500px,1.28fr);
+    gap:22px;
+  }
+  html:not(.platform-windows) #view-obras .obras-rd-detail {
+    display:block;
+    position:sticky;
+    top:96px;
+    max-height:calc(100vh - 118px);
+    overflow:auto;
+    scrollbar-width:thin;
+  }
+  html:not(.platform-windows) #view-obras .obras-rd-row {
+    min-height:68px;
+    padding-top:8px;
+    padding-bottom:7px;
+  }
+  html:not(.platform-windows) #view-obras .obras-rd-title { font-size:17px; }
+}
+
 /* Invisible compatibility hooks for the former progressive Obras layout. */
 .obras-rd-legacy-primary-shim { display:none !important; }
 #view-obras.obras-more-open .obras-sort-row { display:flex !important; }
