@@ -4,11 +4,14 @@ import vm from 'node:vm';
 
 const source = readFileSync(new URL('../../obras-redesign.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../../obras-redesign.css', import.meta.url), 'utf8');
+const polish = readFileSync(new URL('../../obras-redesign-polish.js', import.meta.url), 'utf8');
+const polishCss = readFileSync(new URL('../../obras-redesign-polish.css', import.meta.url), 'utf8');
 const bootstrap = readFileSync(new URL('../../piano-rooms.js', import.meta.url), 'utf8');
 
 describe('repertorio redesign', () => {
-  it('compiles as standalone browser JavaScript', () => {
+  it('compiles the redesign and its final behavior layer as browser JavaScript', () => {
     expect(() => new vm.Script(source)).not.toThrow();
+    expect(() => new vm.Script(polish)).not.toThrow();
   });
 
   it('keeps a legacy escape hatch and the three repertoire scopes', () => {
@@ -21,7 +24,9 @@ describe('repertorio redesign', () => {
 
   it('implements the iPad master-detail composition and loads after the premium sheet', () => {
     expect(css).toContain('grid-template-columns:minmax(330px,.72fr) minmax(500px,1.28fr)');
-    expect(css).toContain('html:not(.platform-windows)');
+    expect(polishCss).toContain('#view-obras.obras-master-detail .obras-rd-layout');
+    expect(polish).toContain('window.innerWidth > window.innerHeight');
     expect(bootstrap.indexOf('obraPremiumScript')).toBeLessThan(bootstrap.indexOf('obrasRedesignScript'));
+    expect(bootstrap.indexOf('obrasRedesignScript')).toBeLessThan(bootstrap.indexOf('obrasRedesignPolishScript'));
   });
 });
