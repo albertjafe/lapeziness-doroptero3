@@ -24,6 +24,7 @@ async function prepare(page) {
   }, fixture);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof window.openPremiumWork === 'function');
+  await page.waitForFunction(() => typeof DB !== 'undefined' && Array.isArray(DB.obras) && DB.obras.some(item => item.id === 'waldstein'));
 }
 
 test('opens one premium work sheet and edits it without a second modal', async ({ page }) => {
