@@ -32,7 +32,7 @@
   // hecho de ser repertorio recuperado es solo contexto histórico automático.
   load('solidityModelScript','./solidity-model.js?v=5',function(){
     load('readinessPillModelScript','./readiness-pill-model.js?v=1',function(){
-      load('readinessRecoveryContextScript','./readiness-recovery-context.js?v=1');
+      load('readinessRecoveryContextScript','./readiness-recovery-context.js?v=2');
     });
 
     load('workStructureCatalogScript','./work-structure-catalog.js?v=1',function(){
