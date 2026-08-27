@@ -23,10 +23,13 @@ $runtimeDir = Join-Path $repoRoot '.ai/runtime'
 $lastTaskBlobPath = Join-Path $runtimeDir 'watcher-last-task-blob.txt'
 $aiScript = Join-Path $repoRoot 'ai.ps1'
 $handoffScript = Join-Path $repoRoot 'ai-handoff.ps1'
+if (-not (Test-Path $handoffScript)) {
+    $handoffScript = Join-Path $PSScriptRoot 'ai-handoff.ps1'
+}
 New-Item -ItemType Directory -Force -Path $runtimeDir | Out-Null
 
 if (-not (Test-Path $aiScript)) { throw 'No encuentro ai.ps1 en la raíz del repo.' }
-if (-not (Test-Path $handoffScript)) { throw 'No encuentro ai-handoff.ps1 en la raíz del repo.' }
+if (-not (Test-Path $handoffScript)) { throw 'No encuentro ai-handoff.ps1 ni en el repo ni junto a ai-watch.ps1.' }
 
 function Get-TaskState {
     & git fetch origin $ControlBranch --quiet
