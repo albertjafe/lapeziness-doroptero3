@@ -34,14 +34,13 @@
     load('readinessPillModelScript','./readiness-pill-model.js?v=1');
 
     // Ficha de obra: el catálogo se carga primero para que la ficha pueda
-    // completar nombres/duraciones sin depender de internet. El workbench se
-    // monta al final para poder reutilizar la ficha premium y conservar la vista
-    // clásica como herramienta avanzada.
+    // completar nombres/duraciones sin depender de internet. La compatibilidad
+    // antigua permanece solo internamente; la UI visible ya no expone fases.
     load('workStructureCatalogScript','./work-structure-catalog.js?v=1',function(){
       load('obraPremiumScript','./obra-premium.js?v=1',function(){
-        load('obraPremiumPolishScript','./obra-premium-polish.js?v=2',function(){
+        load('obraPremiumPolishScript','./obra-premium-polish.js?v=3',function(){
           load('obrasRedesignScript','./obras-redesign.js?v=1',function(){
-            load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=3');
+            load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=4');
           });
         });
       });
