@@ -69,4 +69,16 @@ describe('recovery readiness context', () => {
     expect(recovered.pointEstimateMinutes).toBeLessThan(newWork.pointEstimateMinutes);
     expect(recovered.factors).toContain('recuperación más rápida por repertorio previo');
   });
+
+  it('uses the speed band of the derived movement pill, not the stale 1% placeholder', () => {
+    const Ready = patchedCore();
+    const work = beethoven('nueva');
+    work.movimientos[0].solHistory = [{ val: 60, date: '2026-08-27T16:21:49Z' }];
+    work.movimientos[2].solHistory = [{ val: 70, date: '2026-08-27T15:28:33Z' }];
+    const result = Ready.estimateReadiness({ obras: [work], sesiones: [] }, 'w', { asOf: '2026-08-27T20:00:00Z' });
+    expect(result.rawScore).toBe(65);
+    expect(result.diagnostics.speed.band).toBe(2);
+    expect(result.diagnostics.speed.value).toBe(28);
+    expect(result.diagnostics.speed.derivedFromPill).toBe(true);
+  });
 });
