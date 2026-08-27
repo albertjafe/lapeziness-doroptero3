@@ -1,3 +1,5 @@
+@import url('./add-obra-premium.css?v=1');
+
 .piano-rooms-page { max-width: 1180px; margin: 0 auto; padding: 18px 0 40px; }
 .piano-rooms-open { display:inline-flex; align-items:center; gap:5px; border:1px solid var(--border2); background:var(--bg2); color:var(--text2); border-radius:8px; padding:6px 9px; cursor:pointer; font:11px 'JetBrains Mono',monospace; }
 .piano-rooms-open:hover, body[data-view="salas"] .piano-rooms-open { color:var(--accent); border-color:var(--accent); }
