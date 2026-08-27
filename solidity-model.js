@@ -25,26 +25,33 @@
     ));
   }
 
-  // La app actual usa una píldora porcentual real. 1 significa 1%, no 10%.
-  // Solo convertimos escalas antiguas 1-10 cuando el campo lo declara de forma
-  // inequívoca (legacyScale=true). Esto evita reinterpretar puntuaciones nuevas.
+  // La píldora actual es porcentual: sol=1 significa 1%, no 10%.
+  // Los pases antiguos son la excepción conocida: antes guardaban score=1..10
+  // y no tenían solidezPct. Si existe solidezPct, ese porcentaje manda.
   function scoreFromObservation(item, options) {
     if (item == null) return null;
     if (typeof item === 'number' || typeof item === 'string') return percent(item);
-    const candidates = [
-      ['solidezPct', false],
-      ['val', false],
-      ['value', false],
-      ['score', false],
-      ['obraScore', false],
-      ['solRating', false],
-      ['sol', Boolean(options && options.legacyScale)],
-    ];
-    for (const [key, legacy] of candidates) {
-      if (item[key] == null || item[key] === '') continue;
-      const raw = Number(item[key]);
-      if (!Number.isFinite(raw)) continue;
-      if (legacy && raw >= 1 && raw <= 10) return clamp(raw * 10, 0, 100);
+    if (item.solidezPct != null && item.solidezPct !== '') return percent(item.solidezPct);
+    if (item.val != null && item.val !== '') return percent(item.val);
+    if (item.value != null && item.value !== '') return percent(item.value);
+    if (item.solRating != null && item.solRating !== '') return percent(item.solRating);
+
+    if (item.score != null && item.score !== '') {
+      const raw = Number(item.score);
+      if (!Number.isFinite(raw)) return null;
+      const legacyPass = item.solidezPct == null && raw >= 1 && raw <= 10;
+      return legacyPass ? clamp(raw * 10, 0, 100) : clamp(raw, 0, 100);
+    }
+    if (item.obraScore != null && item.obraScore !== '') {
+      const raw = Number(item.obraScore);
+      if (!Number.isFinite(raw)) return null;
+      const legacy = raw >= 1 && raw <= 10;
+      return legacy ? clamp(raw * 10, 0, 100) : clamp(raw, 0, 100);
+    }
+    if (item.sol != null && item.sol !== '') {
+      const raw = Number(item.sol);
+      if (!Number.isFinite(raw)) return null;
+      if (options && options.legacyScale && raw >= 1 && raw <= 10) return clamp(raw * 10, 0, 100);
       return clamp(raw, 0, 100);
     }
     return null;
@@ -84,7 +91,8 @@
     return current ? Math.round(current.score) : null;
   }
 
-  // Son rótulos orientativos, nunca estados independientes guardados en datos.
+  // Rótulos derivados y deliberadamente orientativos. No se guardan como
+  // estados separados: si la píldora cambia, la palabra cambia con ella.
   function label(score) {
     const n = percent(score);
     if (n == null) return 'Sin medir';
@@ -112,9 +120,9 @@
     return n != null && n >= 40;
   }
 
-  // Si no existe información explícita de compases, la cobertura no necesita
-  // otro checkbox de "aprendida": se deriva suavemente de la propia píldora.
-  // A 40% consideramos que la obra ya está recorrida/aprendida de forma básica.
+  // Sin compases explícitos no necesitamos otro checkbox de "aprendida".
+  // La cobertura básica se infiere de la píldora; 40% equivale a haber
+  // recorrido/aprendido aproximadamente el conjunto, aunque aún sea frágil.
   function inferredCoverage(score) {
     const n = percent(score);
     return n == null ? 0 : clamp(n / 40, 0, 1);
