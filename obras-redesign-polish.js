@@ -18,6 +18,24 @@
     view.classList.toggle('obras-master-detail', isMasterDetail());
   }
 
+  function installLegacyMoreToggle() {
+    const button = document.getElementById('obrasMoreToggle');
+    if (!button || button.dataset.redesignCompat === '1') return;
+    button.dataset.redesignCompat = '1';
+    button.addEventListener('click', event => {
+      // The old control is hidden in the new UI, but remains fully functional
+      // inside "Vista clásica / herramientas" and for existing automations.
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const view = document.getElementById('view-obras');
+      if (!view) return;
+      const open = !view.classList.contains('obras-more-open');
+      view.classList.toggle('obras-more-open', open);
+      button.textContent = open ? 'Menos' : 'Más';
+      button.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }, true);
+  }
+
   function syncLegacyCompatibility() {
     const view = document.getElementById('view-obras');
     const d = appData();
@@ -33,6 +51,7 @@
       shim.textContent = 'Registrar pase';
       view.appendChild(shim);
     }
+    installLegacyMoreToggle();
   }
 
   function syncScopeSelection() {
