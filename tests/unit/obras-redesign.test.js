@@ -16,12 +16,28 @@ describe('repertorio redesign', () => {
     expect(() => new vm.Script(premiumPolish)).not.toThrow();
   });
 
-  it('keeps a legacy escape hatch and the three repertoire scopes', () => {
-    expect(source).toContain('Vista clásica / herramientas');
-    expect(source).toContain("data-scope=\"all\"");
-    expect(source).toContain("data-scope=\"active\"");
-    expect(source).toContain("data-scope=\"history\"");
-    expect(source).toContain('legacyRenderObras');
+  it('keeps the three repertoire scopes but closes visible legacy stage controls', () => {
+    expect(source).toContain('data-scope="all"');
+    expect(source).toContain('data-scope="active"');
+    expect(source).toContain('data-scope="history"');
+
+    // The old renderer remains in the bundle for backwards compatibility, but
+    // the polished UI removes every normal entry point that could make
+    // learningStage/estado look like a second source of truth.
+    expect(polish).toContain('disableLegacyStageEntryPoints');
+    expect(polish).toContain('#obrasRdMenu [data-menu="legacy"]');
+    expect(polish).toContain('more.hidden = true');
+    expect(polish).toContain("view.classList.remove('obras-legacy-mode', 'obras-more-open')");
+    expect(premiumPolish).toContain('disableLegacyDetails');
+    expect(premiumPolish).toContain('[data-action="advanced"]');
+  });
+
+  it('derives visible state from the solidity model rather than stored stages', () => {
+    expect(polish).toContain('model.shortLabel(score)');
+    expect(polish).toContain('model.label(score)');
+    expect(polish).toContain("work.learningStage = ''");
+    expect(polish).toContain("work.estado = ''");
+    expect(premiumPolish).toContain('model.label(score)');
   });
 
   it('implements the iPad master-detail composition and loads after the premium sheet', () => {
