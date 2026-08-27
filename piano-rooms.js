@@ -8,6 +8,15 @@
     script.async=false;
     document.head.appendChild(script);
   }
+  function loadStyle(id,href){
+    if(document.getElementById(id)) return;
+    const link=document.createElement('link');
+    link.id=id;
+    link.rel='stylesheet';
+    link.href=href;
+    document.head.appendChild(link);
+  }
+  loadStyle('cronoReadinessLayoutStyles','./crono-readiness-layout.css?v=1');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=1');
   load('historicalEventsScript','./historical-events.js?v=1');
 })();
