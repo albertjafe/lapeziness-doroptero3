@@ -17,9 +17,6 @@
 
   function disableLegacyDetails(overlay) {
     if (!overlay) return;
-    // La ficha clásica todavía conoce campos históricos como learningStage/estado.
-    // Se conservan en los datos por compatibilidad, pero ya no ofrecemos una
-    // puerta visible que permita volver a editarlos como una segunda verdad.
     const advanced = overlay.querySelector('[data-action="advanced"]');
     if (advanced) advanced.remove();
   }
@@ -28,17 +25,27 @@
     const model = window.SolidityModel;
     const overlay = document.getElementById('obraPremiumOverlay');
     const work = workById(activeId);
+    const d = appData();
     if (!model || !overlay || !work || !overlay.classList.contains('open')) return;
 
     disableLegacyDetails(overlay);
 
-    const score = model.currentScore(work);
+    const score = typeof model.currentWorkScore === 'function' ? model.currentWorkScore(work) : model.currentScore(work);
+    const status = typeof model.statusLabel === 'function' ? model.statusLabel(d, work) : model.label(score);
+    const details = typeof model.workScoreDetails === 'function' ? model.workScoreDetails(work) : null;
     const sub = overlay.querySelector('.obra-premium-sub');
     if (sub) {
       const spans = sub.querySelectorAll(':scope > span');
-      // headerHtml aún reserva el hueco de la antigua etapa. Lo convertimos
-      // siempre en una etiqueta derivada del 0–100, nunca en un campo guardado.
-      if (spans.length >= 3) spans[2].textContent = model.label(score);
+      if (spans.length >= 3) spans[2].textContent = status;
+      let partial = sub.querySelector('.obra-premium-derived-note');
+      if (details && details.source === 'movements' && details.partial) {
+        if (!partial) {
+          partial = document.createElement('span');
+          partial.className = 'obra-premium-derived-note';
+          sub.appendChild(partial);
+        }
+        partial.textContent = `· ${details.measuredMovements}/${details.totalMovements} mov. medidos`;
+      } else if (partial) partial.remove();
     }
 
     const stats = overlay.querySelectorAll('.obra-premium-stat');
@@ -83,9 +90,6 @@
       setTimeout(syncPremiumSolidity, 0);
       if (result !== false) return result;
 
-      // During app startup the sheet module can exist a fraction before the
-      // persisted repertoire has been hydrated. A real tap normally happens
-      // later, but retry briefly so opening a work is deterministic everywhere.
       let retries = 0;
       const retry = () => {
         retries += 1;
