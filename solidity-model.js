@@ -138,12 +138,15 @@
   // principio de esa meseta y puede contabilizar todo el trabajo intermedio.
   function plateauGroups(points, tolerance) {
     const tol = Number.isFinite(Number(tolerance)) ? Math.max(0, Number(tolerance)) : 3;
-    const valid = (Array.isArray(points) ? points : []).map((point, index) => ({
-      ...point,
-      score: scoreFromObservation(point && (point.raw || point.source || point)) ?? percent(point && point.score),
-      time: point && point.time != null ? Number(point.time) : dateFrom(point),
-      _index: index,
-    })).filter(point => point.score != null && point.time != null)
+    const valid = (Array.isArray(points) ? points : []).map((point, index) => {
+      const rawSource = point && (point.raw || point.source);
+      return {
+        ...point,
+        score: rawSource ? scoreFromObservation(rawSource) : percent(point && point.score),
+        time: point && point.time != null ? Number(point.time) : dateFrom(point),
+        _index: index,
+      };
+    }).filter(point => point.score != null && point.time != null)
       .sort((a, b) => a.time - b.time || a._index - b._index);
 
     const byTarget = new Map();
