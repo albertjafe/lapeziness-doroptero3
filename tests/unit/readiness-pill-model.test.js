@@ -164,4 +164,23 @@ describe('single-pill readiness patch', () => {
     expect(result.diagnostics.movementWeak).toBe(true);
     expect(result.isReady).toBe(false);
   });
+
+  it('keeps event aggregate score from replacing the solidity pill in readiness', () => {
+    const Ready = patchedCore();
+    const result = Ready.estimateReadiness({
+      obras: [work({ sol: 25 })],
+      sesiones: [],
+      eventos: [{
+        id: 'audition-low-solidity',
+        tipo: 'audicion',
+        completado: true,
+        completedDate: '2026-08-26T20:00:00Z',
+        obras: ['w'],
+        resultado: { obrasResultados: [{ obraId: 'w', sol: 10, obraScore: 92 }] },
+      }],
+    }, 'w', { asOf: '2026-08-27T20:00:00Z' });
+    expect(result.rawScore).toBe(10);
+    expect(result.effectiveScore).toBe(10);
+    expect(result.isReady).toBe(false);
+  });
 });
