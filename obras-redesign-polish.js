@@ -18,22 +18,25 @@
     view.classList.toggle('obras-master-detail', isMasterDetail());
   }
 
-  function installLegacyMoreToggle() {
-    const button = document.getElementById('obrasMoreToggle');
-    if (!button || button.dataset.redesignCompat === '1') return;
-    button.dataset.redesignCompat = '1';
-    button.addEventListener('click', event => {
-      // The old control is hidden in the new UI, but remains fully functional
-      // inside "Vista clásica / herramientas" and for existing automations.
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      const view = document.getElementById('view-obras');
-      if (!view) return;
-      const open = !view.classList.contains('obras-more-open');
-      view.classList.toggle('obras-more-open', open);
-      button.textContent = open ? 'Menos' : 'Más';
-      button.setAttribute('aria-expanded', open ? 'true' : 'false');
-    }, true);
+  function disableLegacyStageEntryPoints() {
+    const view = document.getElementById('view-obras');
+    if (!view) return;
+
+    // Los datos antiguos pueden conservar learningStage/estado para no romper
+    // sincronización ni históricos, pero el usuario ya no debe poder editarlos
+    // como una segunda variable independiente de la píldora 0–100.
+    const legacyMenu = document.querySelector('#obrasRdMenu [data-menu="legacy"]');
+    if (legacyMenu) legacyMenu.remove();
+
+    const more = document.getElementById('obrasMoreToggle');
+    if (more) more.hidden = true;
+
+    view.classList.remove('obras-legacy-mode', 'obras-more-open');
+    const returnButton = document.getElementById('obrasLegacyReturn');
+    if (returnButton) returnButton.hidden = true;
+
+    const api = window.ObrasRedesign;
+    if (api && api.state) api.state.legacy = false;
   }
 
   function syncLegacyCompatibility() {
@@ -41,8 +44,8 @@
     const d = appData();
     if (!view || !d) return;
     const realWorks = (d.obras || []).filter(item => item && item.tipo !== 'actividad');
-    // Preserve the old semantic hook for automation/accessibility without
-    // bringing the old sparse UI back into the visible redesign.
+    // Conservamos hooks internos para automatizaciones antiguas, pero no la UI
+    // que permitía editar fases manuales.
     view.classList.toggle('obras-sparse', realWorks.length <= 1);
     if (!view.querySelector('.obras-rd-legacy-primary-shim')) {
       const shim = document.createElement('span');
@@ -51,7 +54,7 @@
       shim.textContent = 'Registrar pase';
       view.appendChild(shim);
     }
-    installLegacyMoreToggle();
+    disableLegacyStageEntryPoints();
   }
 
   function workById(id) {
@@ -144,6 +147,7 @@
     syncMasterDetailClass();
     syncLegacyCompatibility();
     syncSolidityLabels();
+    disableLegacyStageEntryPoints();
   }
 
   // El renderer antiguo aún conoce learningStage/estado. Los ocultamos solo
