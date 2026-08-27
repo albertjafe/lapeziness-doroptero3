@@ -1,0 +1,234 @@
+/* Añadir obra · composición premium compartida.
+ * La distinción “obra nueva / ya la tocaba” deja de ser una decisión de UI.
+ * Los datos históricos antiguos se conservan por compatibilidad, pero no se muestran.
+ */
+
+#modalAddObra {
+  padding: clamp(16px, 3vw, 34px);
+  backdrop-filter: blur(18px) saturate(1.05);
+  -webkit-backdrop-filter: blur(18px) saturate(1.05);
+}
+
+#modalAddObra .add-obra-modal {
+  width: min(760px, calc(100vw - 32px));
+  max-width: 760px !important;
+  padding: clamp(24px, 3vw, 36px);
+  border-radius: 24px;
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 34%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg2) 97%, white 3%), var(--bg2));
+  box-shadow: 0 30px 90px rgba(0,0,0,.28), 0 1px 0 rgba(255,255,255,.08) inset;
+}
+
+#modalAddObra .modal-title {
+  margin: 0 0 6px;
+  font-size: clamp(29px, 4vw, 38px);
+  line-height: 1;
+  letter-spacing: -.025em;
+}
+
+#modalAddObra .modal-title::after {
+  content: "Busca una obra del catálogo o escríbela a mano";
+  display: block;
+  margin-top: 10px;
+  font-family: var(--ui-font, -apple-system, BlinkMacSystemFont, sans-serif);
+  font-size: 11px;
+  line-height: 1.45;
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0;
+  color: var(--text3);
+}
+
+#modalAddObra .modal-section-label {
+  display: none;
+}
+
+#modalAddObra #modalTipoSelector {
+  width: fit-content;
+  min-width: 220px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(104px, 1fr));
+  gap: 4px;
+  margin: 24px 0 22px !important;
+  padding: 4px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg3) 86%, transparent);
+  border: 1px solid var(--border2);
+}
+
+#modalAddObra #modalTipoSelector .origen-btn {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+}
+
+#modalAddObra #modalTipoSelector .origen-btn.recuperacion {
+  display: none !important;
+}
+
+#modalAddObra #modalTipoSelector .origen-btn.nueva {
+  font-size: 0;
+}
+
+#modalAddObra #modalTipoSelector .origen-btn.nueva::after {
+  content: "Obra";
+  font-size: 12px;
+}
+
+#modalAddObra .workcat-hint {
+  margin: 0 0 8px 2px;
+  font-size: 10px;
+  color: var(--text2);
+}
+
+#modalAddObra .workcat-hint strong {
+  color: var(--text);
+  font-weight: 650;
+}
+
+#modalAddObra #newObraName {
+  min-height: 58px;
+  padding: 0 18px;
+  border-radius: 15px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--border2));
+  background: color-mix(in srgb, var(--bg) 92%, var(--bg3));
+  box-shadow: 0 1px 0 rgba(255,255,255,.04) inset;
+}
+
+#modalAddObra #newObraName:focus {
+  border-color: color-mix(in srgb, var(--accent) 72%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+#modalAddObra #newObraComposer {
+  min-height: 48px;
+  margin-top: 10px !important;
+  padding-inline: 16px;
+  border-radius: 13px;
+  font-size: 13px;
+}
+
+#modalAddObra .workcat-results {
+  top: calc(100% + 8px);
+  max-height: min(420px, 50vh);
+  padding: 7px;
+  border-radius: 16px;
+  border-color: color-mix(in srgb, var(--accent) 18%, var(--border));
+  box-shadow: 0 24px 60px rgba(0,0,0,.28);
+}
+
+#modalAddObra .workcat-item {
+  padding: 13px 14px;
+  border-radius: 11px;
+}
+
+#modalAddObra .workcat-title {
+  font-size: 19px;
+  line-height: 1.12;
+}
+
+#modalAddObra .workcat-composer {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+#modalAddObra .workcat-meta {
+  margin-top: 5px;
+  font-size: 9px;
+}
+
+#modalAddObra #modalTipoObraExtra {
+  margin-top: 20px;
+  padding: 18px 18px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border2);
+  background: color-mix(in srgb, var(--bg3) 42%, transparent);
+}
+
+#modalAddObra .add-obra-quick-grid {
+  gap: 20px;
+}
+
+#modalAddObra .add-obra-state-note {
+  display: none !important;
+}
+
+#modalAddObra .add-obra-prediccion {
+  margin-top: 14px;
+  border-radius: 12px;
+}
+
+#modalAddObra .modal-buttons {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border2);
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+#modalAddObra .modal-buttons .modal-btn {
+  min-height: 46px;
+  padding-inline: 20px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+#modalAddObra .modal-buttons .primary {
+  min-width: 132px;
+}
+
+@media (max-width: 700px) {
+  #modalAddObra {
+    align-items: flex-end;
+    padding: 10px;
+  }
+
+  #modalAddObra .add-obra-modal {
+    width: 100%;
+    max-width: none !important;
+    max-height: 92dvh;
+    overflow-y: auto;
+    padding: 24px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+    border-radius: 22px 22px 16px 16px;
+  }
+
+  #modalAddObra .modal-title {
+    font-size: 31px;
+  }
+
+  #modalAddObra #modalTipoSelector {
+    width: 100%;
+    grid-template-columns: 1fr 1fr;
+    margin-top: 20px !important;
+  }
+
+  #modalAddObra #newObraName {
+    min-height: 54px;
+    font-size: 19px;
+  }
+
+  #modalAddObra #modalTipoObraExtra {
+    padding: 15px 14px 12px;
+  }
+
+  #modalAddObra .add-obra-quick-grid.two {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  #modalAddObra .modal-buttons {
+    position: sticky;
+    bottom: 0;
+    margin-inline: -18px;
+    padding: 14px 18px calc(4px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(180deg, color-mix(in srgb, var(--bg2) 72%, transparent), var(--bg2) 34%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
