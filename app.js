@@ -20796,7 +20796,7 @@ function cronoInterfaceRingBaseSize() {
   if (width < 700) return Math.min(250, width * 0.64);
   if (width <= 1199 && height > width && height >= 760) return Math.min(225, height * 0.20);
   if (cronoUsesLargeTabletLandscape()) {
-    return height < 900 ? Math.min(182, height * 0.22) : Math.min(255, height * 0.28);
+    return height < 900 ? Math.min(182, height * 0.22) : Math.min(225, height * 0.24);
   }
   if (width > height) return Math.min(370, height * 0.5);
   return 370;
@@ -24773,6 +24773,90 @@ function cronoEffectiveElapsedMs() {
   return crono.targetDurationMs ? Math.min(active, crono.targetDurationMs) : active;
 }
 
+// La estimación es derivada: nunca se guarda en db ni se reduce con cada tick.
+function cronoReadinessEstimate(selectionValue) {
+  if (typeof ReadinessCore === 'undefined' || typeof ReadinessCore.estimateReadiness !== 'function') return null;
+  const resolved = cronoResolveSelectValue(selectionValue);
+  if (!resolved || !resolved.obraId) return null;
+  const obra = findObra(resolved.obraId);
+  if (!obra || obra.tipo === 'actividad') return null;
+  try { return ReadinessCore.estimateReadiness(db, resolved.obraId, { now: new Date() }); } catch (e) { return null; }
+}
+
+function cronoReadinessHours(estimate) {
+  if (!estimate) return '';
+  const formatHours = value => Number.isInteger(value) ? String(value) : value.toFixed(1).replace('.', ',');
+  const low = Math.max(0.5, Math.floor((estimate.lowMinutes || 0) / 30) / 2);
+  const high = Math.max(low, Math.ceil((estimate.highMinutes || 0) / 30) / 2);
+  return low === high ? formatHours(low) + ' h' : formatHours(low) + '–' + formatHours(high) + ' h';
+}
+
+function cronoReadinessConfidence(confidence) {
+  return confidence === 'high' ? 'Confianza alta' : confidence === 'medium' ? 'Confianza media' : 'Confianza baja';
+}
+
+function cronoRenderReadinessEstimate() {
+  const idleEl = document.getElementById('cronoIdleReadiness');
+  const runEl = document.getElementById('cronoRunReadiness');
+  const sel = document.getElementById('cronoObraSelect');
+  const value = crono.state === 'idle' ? sel?.value : (crono.obraId ? (crono.movId ? 'mov::' + crono.obraId + '::' + crono.movId : 'obra::' + crono.obraId) : '');
+  const estimate = value ? cronoReadinessEstimate(value) : null;
+  const main = estimate?.isReady ? 'A punto · estable' : estimate ? 'A punto · ≈ ' + cronoReadinessHours(estimate) + ' netas' : '';
+  const confidence = estimate ? cronoReadinessConfidence(estimate.confidence) : '';
+  if (idleEl) {
+    idleEl.hidden = !estimate;
+    idleEl.classList.toggle('is-ready', !!estimate?.isReady);
+    const mainEl = document.getElementById('cronoIdleReadinessMain');
+    const confEl = document.getElementById('cronoIdleReadinessConfidence');
+    if (mainEl) mainEl.textContent = main;
+    if (confEl) confEl.textContent = confidence;
+  }
+  if (runEl) {
+    runEl.hidden = !estimate;
+    runEl.textContent = estimate ? (estimate.isReady ? 'A punto · estable' : 'A punto · ≈ ' + cronoReadinessHours(estimate) + ' netas · ' + confidence.toLowerCase()) : '';
+    runEl.title = estimate ? 'Ver detalle de la estimación' : '';
+  }
+  return estimate;
+}
+
+function openCronoReadinessDetail(source) {
+  const sel = document.getElementById('cronoObraSelect');
+  const value = source === 'running'
+    ? (crono.obraId ? (crono.movId ? 'mov::' + crono.obraId + '::' + crono.movId : 'obra::' + crono.obraId) : '')
+    : (sel?.value || '');
+  const estimate = cronoReadinessEstimate(value);
+  const modal = document.getElementById('modalCronoReadiness');
+  if (!estimate || !modal) return;
+  const resolved = cronoResolveSelectValue(value);
+  const obra = resolved && findObra(resolved.obraId);
+  const diag = estimate.diagnostics || {};
+  const timeline = diag.timeline || {};
+  const sessions = new Set((timeline.practice || []).map(item => item.sessionId).filter(Boolean)).size;
+  const passes = (timeline.checkpoints || []).filter(item => item.kind === 'pass').length;
+  const evidence = [];
+  if (sessions) evidence.push(sessions + (sessions === 1 ? ' sesión' : ' sesiones'));
+  if (passes) evidence.push(passes + (passes === 1 ? ' pase' : ' pases'));
+  if (estimate.rawScore != null) evidence.push('último nivel ' + Math.round(estimate.rawScore));
+  if (estimate.factors?.length) evidence.push(...estimate.factors);
+  const title = document.getElementById('cronoReadinessTitle');
+  const lead = document.getElementById('cronoReadinessLead');
+  const conf = document.getElementById('cronoReadinessDetailConfidence');
+  const copy = document.getElementById('cronoReadinessCopy');
+  const evidenceEl = document.getElementById('cronoReadinessEvidence');
+  const calendar = document.getElementById('cronoReadinessCalendar');
+  if (title) title.textContent = obra?.name || 'A punto';
+  if (lead) lead.textContent = estimate.isReady ? 'A punto · estabilidad suficiente' : 'A punto · ≈ ' + cronoReadinessHours(estimate) + ' netas';
+  if (conf) conf.textContent = cronoReadinessConfidence(estimate.confidence);
+  if (copy) copy.textContent = 'Nivel efectivo actual: ' + Math.round(estimate.effectiveScore || 0) + '/100 · objetivo 80 · cobertura ' + Math.round((estimate.coverage || 0) * 100) + '%. La cifra es un rango de esfuerzo neto, no una fecha exacta.';
+  if (evidenceEl) evidenceEl.textContent = evidence.length ? 'Basado en ' + evidence.join(' · ') + '.' : 'Estimación inicial · aún hay poca evidencia personal.';
+  if (calendar) {
+    const cal = estimate.calendarEstimate;
+    calendar.hidden = !cal;
+    calendar.textContent = cal ? 'A tu ritmo reciente · ~' + cal.lowDays + '–' + cal.highDays + ' días' : '';
+  }
+  openModal('modalCronoReadiness');
+}
+
 function cronoTargetReached() {
   if (typeof TimerCore !== 'undefined') return TimerCore.isTargetReached(crono, Date.now());
   return !!crono.targetDurationMs && cronoCurrentMs() >= crono.targetDurationMs;
@@ -24902,6 +24986,7 @@ function cronoRender() {
       else { info.style.display = 'none'; }
     }
     cronoUpdateStartBtn();
+    cronoRenderReadinessEstimate();
     cronoUpdateTimerProgress();
     cronoRenderNoteCounts();
     renderCronoTasks();
@@ -24921,6 +25006,7 @@ function cronoRender() {
   const nameEl = document.getElementById('cronoRunName');
   if (nameEl) nameEl.textContent = crono.displayName || '—';
   cronoUpdateRunWorkTotal();
+  cronoRenderReadinessEstimate();
 
   // Estado de la pildora: running activa halo y dot pulse, paused los atenúa
   const pill = document.getElementById('cronoObraPill');
@@ -25045,6 +25131,7 @@ function cronoUpdateStartBtn() {
   }
   cronoUpdateSolidityActions();
   cronoUpdateTimerProjection();
+  cronoRenderReadinessEstimate();
   cronoRenderNoteCounts();
   cronoTimerRenderSlider(true);
   renderMemoryPanels();

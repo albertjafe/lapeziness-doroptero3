@@ -1110,6 +1110,62 @@ test('shows pause as an accessible rest state', async ({ page }) => {
   await expect(page.locator('#cronoStageRun')).toHaveAttribute('inert', '');
 });
 
+test('shows a derived readiness estimate without counting down during a timer run', async ({ page }) => {
+  const now = Date.now();
+  const data = {
+    ...fixture,
+    obras: [{
+      ...fixture.obras[0],
+      sol: 72,
+      compasActual: 100,
+      compasesTotal: 100,
+      solHistory: [
+        { val: 72, date: new Date(now - 5 * 86400000).toISOString() },
+        { val: 68, date: new Date(now - 14 * 86400000).toISOString() },
+      ],
+    }],
+    sesiones: [{
+      id: 'readiness-session',
+      date: new Date(now - 6 * 86400000).toISOString(),
+      items: [{ obraId: 'obra_1', estudiado: true, minutosReales: 45 }],
+    }],
+  };
+  await prepare(page, { data });
+  await page.evaluate(() => {
+    showView('cronometro');
+    const select = document.getElementById('cronoObraSelect');
+    select.value = 'obra::obra_1';
+    cronoUpdateStartBtn();
+  });
+  const before = await page.evaluate(() => JSON.stringify(db));
+
+  const idle = page.locator('#cronoIdleReadiness');
+  await expect(idle).toBeVisible();
+  await expect(idle).toContainText('A punto · ≈');
+  await expect(idle).toContainText('netas');
+  const idleText = (await idle.locator('#cronoIdleReadinessMain').textContent()).trim();
+
+  await idle.click();
+  await expect(page.locator('#modalCronoReadiness')).toHaveClass(/visible/);
+  await expect(page.locator('#cronoReadinessCopy')).toContainText('objetivo 80');
+  await expect(page.locator('#cronoReadinessEvidence')).toContainText('sesión');
+  await page.getByRole('button', { name: 'Cerrar' }).click();
+
+  await page.evaluate(() => {
+    cronoStart();
+    crono.startTs = Date.now() - 30 * 60000;
+    cronoRender();
+  });
+  const running = page.locator('#cronoRunReadiness');
+  await expect(running).toBeVisible();
+  expect((await running.textContent()).trim()).toContain(idleText);
+  await page.evaluate(() => { cronoPause(); cronoResume(); });
+  expect((await running.textContent()).trim()).toContain(idleText);
+  expect(await page.evaluate(() => JSON.stringify(db))).toBe(before);
+  expect(await page.evaluate(() => Object.keys(db.obras[0]).some(key => /readiness/i.test(key)))).toBe(false);
+  await page.evaluate(() => { cronoReset('cancelled'); cronoRender(); });
+});
+
 test('can reload after going offline', async ({ browser }) => {
   const context = await browser.newContext({ serviceWorkers: 'allow' });
   const page = await context.newPage();
@@ -2446,7 +2502,7 @@ test('keeps running clock actions inside the timer card across pinch zoom levels
       };
       const layouts = [0.5, 1, 1.22].map(scale => {
         cronoSetInterfaceScale(scale, { announce: false });
-        const rail = rect('.crono-run-action-rail');
+        const rail = rect('#cronoStageRun .crono-run-action-rail');
         const display = rect('#cronoDisplay');
         const stage = rect('#cronoStageRun');
         const displayCenter = { x: (display.left + display.right) / 2, y: (display.top + display.bottom) / 2 };
@@ -2456,7 +2512,7 @@ test('keeps running clock actions inside the timer card across pinch zoom levels
           display,
           stage,
           calendar: rect('.crono-calendar-panel'),
-          destello: rect('.crono-run-side-destello'),
+          destello: rect('#cronoStageRun .crono-run-side-destello'),
           stop: rect('#cronoControls .crono-session-rail-main'),
           phrase: rect('#cronoRunDestello'),
           phraseFontSize: parseFloat(getComputedStyle(phraseCard).fontSize),
@@ -2636,6 +2692,9 @@ test('keeps large touch iPads in the two-row tablet layout', async ({ browser })
     await prepare(page);
     const layout = await page.evaluate(async () => {
       showView('cronometro');
+      localStorage.setItem(CRONO_PULSE_VISIBILITY_KEY, 'on');
+      cronoRefreshPulseVisibility();
+      setCronoCalendarObjectivesMode('calendar');
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const rect = selector => {
         const element = document.querySelector(selector);
@@ -2647,7 +2706,7 @@ test('keeps large touch iPads in the two-row tablet layout', async ({ browser })
         desktopPointer: matchMedia('(hover: hover) and (pointer: fine)').matches,
         tabletLandscape: matchMedia('(min-width: 900px) and (max-width: 1399px) and (min-height: 820px) and (orientation: landscape) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 3/2)').matches,
         clock: rect('.crono-idle-main'),
-        calendar: rect('.crono-calendar-panel'),
+        calendar: rect('.crono-calendar-objectives-shell'),
         tasks: rect('.crono-idle-drawer'),
         pulse: rect('.crono-fluid-panel'),
         ring: rect('.crono-idle-display-wrap .crono-run-progress-svg'),
