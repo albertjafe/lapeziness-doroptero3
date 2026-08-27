@@ -69,11 +69,20 @@ while ($true) {
             # -Repeat evita que ai.ps1 use como identidad el commit completo de
             # ai-control. El watcher usa el blob de CURRENT_TASK.md, por lo que
             # los commits del buzón CODEX_TO_CHATGPT no disparan otra ejecución.
-            & $aiScript -AllowDirty -Repeat
-            $runSucceeded = $?
+            $runSucceeded = $true
+            $runError = ''
+            try {
+                & $aiScript -AllowDirty -Repeat
+                $runSucceeded = $?
+            }
+            catch {
+                $runSucceeded = $false
+                $runError = $_.Exception.Message
+            }
 
             if (-not $runSucceeded) {
-                Write-Warning 'ai.ps1 terminó con error. Publicaré igualmente el estado actual para que ChatGPT pueda decidir el siguiente paso.'
+                $suffix = if ($runError) { " Detalle: $runError" } else { '' }
+                Write-Warning ("ai.ps1 terminó con error. Publicaré igualmente el estado actual para que ChatGPT pueda decidir el siguiente paso." + $suffix)
             }
 
             try {
