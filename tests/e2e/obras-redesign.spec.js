@@ -15,6 +15,12 @@ test('uses the compact repertoire list and master-detail sheet on wide tablets',
   await page.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ status:200, contentType:'application/javascript', body:'/* offline test */' }));
   await page.addInitScript(data => {
     Object.defineProperty(navigator, 'platform', { configurable:true, get:() => 'MacIntel' });
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable:true,
+      get:() => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/140 Safari/537.36',
+    });
+    Object.defineProperty(navigator, 'userAgentData', { configurable:true, get:() => ({ platform:'macOS' }) });
+    Object.defineProperty(navigator, 'maxTouchPoints', { configurable:true, get:() => 5 });
     localStorage.setItem('alberto_piano_v2', JSON.stringify(data));
     localStorage.setItem('alberto_sync_v1', JSON.stringify({ localRevision:0, dirtyRevision:0, lastSyncedRevision:0 }));
   }, fixture);
@@ -26,6 +32,8 @@ test('uses the compact repertoire list and master-detail sheet on wide tablets',
   await expect(page.locator('.obras-rd-section.now')).toContainText('Ahora');
   await expect(page.locator('.obras-rd-section.history')).toContainText('Histórico');
   await expect(page.locator('[data-work-id="w1"]')).toBeVisible();
+  await expect(page.locator('[data-work-id="w1"]')).toContainText('Sólida');
+  await expect(page.locator('[data-work-id="w1"]')).not.toContainText('Consolidando');
   await expect(page.locator('#obrasRdDetail')).toBeVisible();
   await expect(page.locator('#obrasRdDetail')).toContainText('Waldstein');
 
@@ -35,5 +43,5 @@ test('uses the compact repertoire list and master-detail sheet on wide tablets',
   await page.locator('#obrasRdDetail [data-detail-action="cancel"]').click();
 
   await page.locator('#obrasRdMenuBtn').click();
-  await expect(page.locator('#obrasRdMenu [data-menu="legacy"]')).toContainText('Vista clásica');
+  await expect(page.locator('#obrasRdMenu [data-menu="legacy"]')).toHaveCount(0);
 });
