@@ -32,6 +32,53 @@
     return clamp(prior, 0, .65);
   }
 
+  function bandOf(score) {
+    if (score < 40) return 0;
+    if (score < 60) return 1;
+    if (score < 70) return 2;
+    return 3;
+  }
+
+  function median(values) {
+    if (!values.length) return null;
+    const sorted = values.slice().sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length / 2)];
+  }
+
+  // El primer parche aprende muestras de velocidad a partir de las mesetas.
+  // Si después la píldora global se deriva de movimientos, seleccionamos de
+  // nuevo el tramo correcto usando ESA misma píldora derivada. Así no calculamos
+  // horas de una obra al 65% con la velocidad inicial de un placeholder al 1%.
+  function speedForDerivedScore(baseSpeed, score, targetScore) {
+    const band = bandOf(Math.min(score, targetScore - 1));
+    const samples = Array.isArray(baseSpeed && baseSpeed.samples) ? baseSpeed.samples : [];
+    const global = samples.filter(sample => sample && sample.band === band).map(sample => num(sample.minutesPerPoint)).filter(value => value > 0);
+    const own = samples.filter(sample => sample && sample.same && sample.band === band).map(sample => num(sample.minutesPerPoint)).filter(value => value > 0);
+    const fallback = [18, 22, 28, 36][band] || 30;
+    const globalValue = clamp(median(global) ?? fallback, 5, 240);
+    if (own.length < 2) {
+      return {
+        ...(baseSpeed || {}),
+        value: globalValue,
+        ownIntervals: own.length,
+        source: global.length ? 'global-plateau' : 'fallback',
+        samples,
+        band,
+        derivedFromPill: true,
+      };
+    }
+    const ownValue = clamp(median(own), 5, 240);
+    return {
+      ...(baseSpeed || {}),
+      value: ownValue * .72 + globalValue * .28,
+      ownIntervals: own.length,
+      source: 'obra+plateau',
+      samples,
+      band,
+      derivedFromPill: true,
+    };
+  }
+
   function estimateReadiness(db, obraId, options) {
     const data = db || {};
     const result = previousEstimate(data, obraId, options);
@@ -59,7 +106,8 @@
     if (context.priorMastery) remainingPoints *= 1 - prior * .55;
     remainingPoints *= 1 + (1 - coverage) * .55;
 
-    const speedValue = Math.max(5, num(diagnostics.speed && diagnostics.speed.value, 30));
+    const speed = speedForDerivedScore(diagnostics.speed, derivedScore, targetScore);
+    const speedValue = Math.max(5, num(speed.value, 30));
     let pointEstimateMinutes = Math.max(0, remainingPoints * speedValue);
     const isReady = Boolean(stable && !movementWeak && coverage >= .8 && derivedScore >= targetScore);
     if (isReady) pointEstimateMinutes = 0;
@@ -90,6 +138,7 @@
       factors,
       diagnostics: {
         ...diagnostics,
+        speed,
         familiarity: {
           ...(diagnostics.familiarity || {}),
           prior,
