@@ -36,6 +36,12 @@ describe('SolidityModel', () => {
     expect(Solidity.scoreFromObservation({ sol: 1 })).toBe(1);
   });
 
+  it('keeps event solidity separate from the aggregate event score', () => {
+    expect(Solidity.scoreFromObservation({ sol: 10, obraScore: 92 })).toBe(10);
+    expect(Solidity.scoreFromObservation({ sol: 72, obraScore: 80 })).toBe(72);
+    expect(Solidity.scoreFromObservation({ obraScore: 10 })).toBe(10);
+  });
+
   it('derives learned/solid/mastered labels instead of storing another state', () => {
     expect(Solidity.shortLabel(10)).toBe('Inicial');
     expect(Solidity.shortLabel(45)).toBe('Aprendida');
