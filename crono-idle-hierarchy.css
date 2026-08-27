@@ -1,0 +1,145 @@
+/* Cronómetro en reposo: jerarquía visual compacta sin perder funciones.
+ * Mantiene el reloj y «Iniciar» como protagonistas; utilidades y ayudas bajan de peso.
+ */
+
+/* Base: el bloque principal reserva espacio real a los controles finales. */
+#view-cronometro .crono-idle-main {
+  overflow: visible;
+}
+
+#view-cronometro .crono-idle-main .crono-idle-controls {
+  flex: 0 0 auto;
+  width: 100%;
+  margin-top: 0 !important;
+  padding-top: 7px !important;
+}
+
+#view-cronometro .crono-idle-main .crono-mode-toggle {
+  min-height: 36px;
+  margin-bottom: 6px !important;
+}
+
+#view-cronometro .crono-idle-main .crono-mode-opt {
+  min-height: 34px !important;
+  padding: 5px 8px !important;
+  font-size: 10px !important;
+}
+
+#view-cronometro .crono-idle-main .crono-plant-btn {
+  min-height: 44px !important;
+  margin: 0 !important;
+  padding: 8px 16px !important;
+  position: relative;
+  z-index: 6;
+}
+
+/* El consejo sigue visible, pero deja de competir con la acción principal. */
+#view-cronometro .crono-idle-main .crono-idle-message {
+  min-height: 34px !important;
+  margin: 5px auto 3px !important;
+  padding: 7px 10px !important;
+  font-size: 10.5px !important;
+  line-height: 1.28 !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Las dos utilidades del aro siguen a mano, pero ya no parecen acciones principales. */
+#view-cronometro .crono-tomorrow-note-rail,
+#view-cronometro .crono-idle-action-rail {
+  --crono-action-size: 42px !important;
+  --crono-action-gap: 8px !important;
+}
+
+#view-cronometro .crono-tomorrow-note-btn,
+#view-cronometro .crono-idle-action-rail .crono-run-side-destello {
+  width: 42px !important;
+  height: 42px !important;
+  min-width: 42px !important;
+  min-height: 42px !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.07) !important;
+}
+
+#view-cronometro .crono-tomorrow-note-btn {
+  font-size: 26px !important;
+  opacity: .82;
+}
+
+#view-cronometro .crono-idle-action-rail .crono-run-side-destello {
+  opacity: .88;
+}
+
+#view-cronometro .crono-idle-action-rail .crono-run-side-destello > span:first-child {
+  font-size: 22px !important;
+}
+
+/* iPad vertical: la captura real necesita ~50 px más para que Iniciar nunca
+   invada la bandeja de Tareas. Hay altura de sobra en este formato. */
+@media (min-width: 700px) and (max-width: 1199px) and (orientation: portrait) {
+  [data-theme^="marmol"] #view-cronometro .crono-wrap,
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
+    grid-template-rows: clamp(500px, 39dvh, 540px) clamp(300px, 31dvh, 340px) auto !important;
+  }
+
+  [data-theme^="marmol"] #view-cronometro #cronoStageIdle .crono-idle-main {
+    height: 100% !important;
+    min-height: 0 !important;
+    padding-bottom: 12px !important;
+    box-sizing: border-box;
+  }
+
+  /* El aro sigue siendo protagonista, pero no consume el espacio del CTA. */
+  [data-theme^="marmol"] #view-cronometro .crono-idle-display-wrap,
+  [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-centerpiece {
+    max-height: 225px !important;
+  }
+
+  [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-idle-controls {
+    margin-top: auto !important;
+  }
+
+  #view-cronometro .crono-tomorrow-note-rail {
+    --crono-action-size: 40px !important;
+    --crono-action-gap: 8px !important;
+  }
+
+  #view-cronometro .crono-idle-action-rail {
+    --crono-action-size: 40px !important;
+    --crono-action-gap: 8px !important;
+  }
+
+  #view-cronometro .crono-tomorrow-note-btn,
+  #view-cronometro .crono-idle-action-rail .crono-run-side-destello {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+  }
+}
+
+/* En pantallas bajas no hacemos crecer la tarjeta: compactamos más para
+   conservar el botón principal completo dentro del viewport. */
+@media (min-width: 900px) and (orientation: landscape) and (max-height: 820px) {
+  #view-cronometro .crono-idle-main > .crono-readiness-chip {
+    margin-top: 4px !important;
+    margin-bottom: 9px !important;
+    min-height: 30px !important;
+    padding-block: 5px !important;
+  }
+
+  #view-cronometro .crono-idle-main .crono-idle-message {
+    min-height: 30px !important;
+    margin-block: 3px 2px !important;
+    padding-block: 5px !important;
+  }
+
+  #view-cronometro .crono-idle-main .crono-mode-toggle {
+    min-height: 32px;
+  }
+
+  #view-cronometro .crono-idle-main .crono-plant-btn {
+    min-height: 40px !important;
+  }
+}
