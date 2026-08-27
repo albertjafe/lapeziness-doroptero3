@@ -53,10 +53,15 @@
       const total = num(movement.compasesTotal || movement.compasTotal || movement.totalBars || movement.bars);
       const current = num(movement.compasActual ?? movement.compasesActual ?? movement.currentBar);
       const explicitCoverage = total > 0 ? clamp(current / total, 0, 1) : null;
+      const hasHistory = (Array.isArray(movement.solHistory) && movement.solHistory.length > 0) ||
+        (Array.isArray(movement.paseHistory) && movement.paseHistory.length > 0);
+      const currentSignal = Number(movement.sol);
+      const measured = points.length > 0 || hasHistory || explicitCoverage != null || (Number.isFinite(currentSignal) && currentSignal > 1);
       return {
         id: movement.id,
         score: clamp(score, 0, 100),
         coverage: explicitCoverage == null ? model.inferredCoverage(score) : explicitCoverage,
+        measured,
       };
     });
   }
@@ -65,11 +70,15 @@
     const total = num(work && (work.compasesTotal || work.compasTotal || work.totalBars || work.bars));
     const current = num(work && (work.compasActual ?? work.compasesActual ?? work.currentBar));
     const explicit = total > 0 ? clamp(current / total, 0, 1) : null;
-    if (movements.length) {
+    const measuredMovements = movements.filter(movement => movement.measured);
+    if (measuredMovements.length) {
       const sourceMovements = Array.isArray(work.movimientos) ? work.movimientos : [];
-      const weights = movements.map((movement, index) => Math.max(.1, num(sourceMovements[index] && (sourceMovements[index].duracion || sourceMovements[index].duration), 1)));
-      const weighted = movements.reduce((sum, movement, index) => sum + movement.coverage * weights[index], 0) /
-        Math.max(.1, weights.reduce((sum, value) => sum + value, 0));
+      const weightFor = movement => {
+        const source = sourceMovements.find(item => idOf(item.id) === idOf(movement.id));
+        return Math.max(.1, num(source && (source.duracion || source.duration), 1));
+      };
+      const weighted = measuredMovements.reduce((sum, movement) => sum + movement.coverage * weightFor(movement), 0) /
+        Math.max(.1, measuredMovements.reduce((sum, movement) => sum + weightFor(movement), 0));
       return explicit == null ? clamp(weighted, 0, 1) : Math.min(explicit, weighted);
     }
     return explicit == null ? model.inferredCoverage(currentScore) : explicit;
@@ -82,7 +91,9 @@
       const time = item.date.getTime();
       if (time <= fromTime || time > toTime) return false;
       if (movementId != null && movementId !== '') return idOf(item.movementId) === idOf(movementId);
-      return item.movementId == null || item.movementId === '';
+      // Para la píldora de la obra completa cuenta todo el trabajo hecho en
+      // ella, también cuando la sesión estaba asignada a un movimiento.
+      return true;
     }).reduce((sum, item) => sum + Math.max(0, num(item.minutes)), 0);
   }
 
@@ -185,6 +196,7 @@
     const targetScore = num(options && options.targetScore, 80);
     const currentScore = currentWholeScore(work, timeline);
     const movements = movementState(work, timeline);
+    const measuredMovements = movements.filter(movement => movement.measured);
     const coverage = coverageFor(work, currentScore, movements);
     const points = wholePoints(timeline);
     const distinctHighDates = new Set(points.filter(point => point.score >= targetScore && point.date).map(point => dateKey(point.date))).size;
@@ -192,8 +204,8 @@
     const stable = formalHigh || distinctHighDates >= 2 || points.some((point, index) =>
       point.score >= targetScore && points.slice(index + 1).some(next => next.date && point.date && (next.date - point.date) >= 5 * DAY && next.score >= targetScore - 5)
     );
-    const movementWeak = movements.some(movement => movement.coverage < .9 || movement.score < targetScore - 8);
-    const weakestMovement = movements.length ? Math.min(...movements.map(movement => movement.score)) : null;
+    const movementWeak = measuredMovements.some(movement => movement.coverage < .9 || movement.score < targetScore - 8);
+    const weakestMovement = measuredMovements.length ? Math.min(...measuredMovements.map(movement => movement.score)) : null;
 
     // La píldora es la verdad presente. Ni el histórico ni el tiempo transcurrido
     // modifican este número. Esos datos solo cambian cuánto creemos que costará
@@ -265,6 +277,7 @@
         familiarity,
         stable,
         movementWeak,
+        measuredMovements: measuredMovements.length,
         volatility,
         distinctHighDates,
         singlePillModel: true,
