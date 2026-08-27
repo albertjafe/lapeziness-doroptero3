@@ -1,11 +1,15 @@
 /* Bootstrap pequeño de módulos independientes cargados después de app.js. */
 (function loadAppAddons(){
-  function load(id,src){
-    if(document.getElementById(id)) return;
+  function load(id,src,onload){
+    if(document.getElementById(id)){
+      if(onload) onload();
+      return;
+    }
     const script=document.createElement('script');
     script.id=id;
     script.src=src;
     script.async=false;
+    if(onload) script.addEventListener('load',onload,{once:true});
     document.head.appendChild(script);
   }
   function loadStyle(id,href){
@@ -20,4 +24,10 @@
   loadStyle('cronoIdleHierarchyStyles','./crono-idle-hierarchy.css?v=3');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=1');
   load('historicalEventsScript','./historical-events.js?v=1');
+
+  // Ficha de obra: el catálogo se carga primero para que la ficha pueda
+  // completar nombres/duraciones sin depender de internet.
+  load('workStructureCatalogScript','./work-structure-catalog.js?v=1',function(){
+    load('obraPremiumScript','./obra-premium.js?v=1');
+  });
 })();
