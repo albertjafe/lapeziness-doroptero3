@@ -257,6 +257,7 @@
     merged.weeklyPlans = mergeWeeklyPlans(base.weeklyPlans, other.weeklyPlans);
     merged.memoryCards = mergeMemoryCards(base.memoryCards, other.memoryCards);
     merged.historicalRepertoire = mergeHistoricalRepertoire(base.historicalRepertoire, other.historicalRepertoire);
+    merged.historicalEvents = mergeHistoricalRepertoire(base.historicalEvents, other.historicalEvents);
     const baseHabits = (base.habitChallenges || []).concat(base.habitChallenge ? [base.habitChallenge] : []);
     const otherHabits = (other.habitChallenges || []).concat(other.habitChallenge ? [other.habitChallenge] : []);
     merged.habitChallenges = mergeHabitChallenges(baseHabits, otherHabits);
