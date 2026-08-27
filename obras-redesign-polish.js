@@ -21,20 +21,13 @@
   function disableLegacyStageEntryPoints() {
     const view = document.getElementById('view-obras');
     if (!view) return;
-
-    // Los datos antiguos pueden conservar learningStage/estado para no romper
-    // sincronización ni históricos, pero el usuario ya no debe poder editarlos
-    // como una segunda variable independiente de la píldora 0–100.
     const legacyMenu = document.querySelector('#obrasRdMenu [data-menu="legacy"]');
     if (legacyMenu) legacyMenu.remove();
-
     const more = document.getElementById('obrasMoreToggle');
     if (more) more.hidden = true;
-
     view.classList.remove('obras-legacy-mode', 'obras-more-open');
     const returnButton = document.getElementById('obrasLegacyReturn');
     if (returnButton) returnButton.hidden = true;
-
     const api = window.ObrasRedesign;
     if (api && api.state) api.state.legacy = false;
   }
@@ -44,8 +37,6 @@
     const d = appData();
     if (!view || !d) return;
     const realWorks = (d.obras || []).filter(item => item && item.tipo !== 'actividad');
-    // Conservamos hooks internos para automatizaciones antiguas, pero no la UI
-    // que permitía editar fases manuales.
     view.classList.toggle('obras-sparse', realWorks.length <= 1);
     if (!view.querySelector('.obras-rd-legacy-primary-shim')) {
       const shim = document.createElement('span');
@@ -66,21 +57,30 @@
     return window.SolidityModel || null;
   }
 
+  function workScore(model, work) {
+    return typeof model.currentWorkScore === 'function' ? model.currentWorkScore(work) : model.currentScore(work);
+  }
+
+  function workStatus(model, d, work, compact) {
+    return typeof model.statusLabel === 'function' ? model.statusLabel(d, work, { compact }) : (compact ? model.shortLabel(workScore(model, work)) : model.label(workScore(model, work)));
+  }
+
   function syncSolidityLabels() {
     const model = solidityModel();
-    if (!model) return;
+    const d = appData();
+    if (!model || !d) return;
 
     document.querySelectorAll('#view-obras .obras-rd-row[data-work-id]').forEach(row => {
       const work = workById(row.dataset.workId);
       if (!work) return;
-      const score = model.currentScore(work);
+      const score = workScore(model, work);
       const meta = row.querySelector('.obras-rd-meta');
       let status = meta && meta.querySelector('span');
       if (meta && !status) {
         status = document.createElement('span');
         meta.appendChild(status);
       }
-      if (status) status.textContent = model.shortLabel(score);
+      if (status) status.textContent = workStatus(model, d, work, true);
       const value = row.querySelector('.obras-rd-row-side strong');
       if (value) value.textContent = score == null ? '—' : `${score}%`;
       const side = row.querySelector('.obras-rd-row-side span');
@@ -94,7 +94,7 @@
     const work = workById(api.state.selectedId);
     const detail = document.getElementById('obrasRdDetail');
     if (!work || !detail) return;
-    const score = model.currentScore(work);
+    const score = workScore(model, work);
     const stats = detail.querySelector('.obras-rd-stats');
     const solidityValue = stats && stats.querySelector('div:first-child strong');
     if (solidityValue) solidityValue.textContent = score == null ? '—' : `${score}%`;
@@ -103,8 +103,10 @@
     if (headerMeta && !detail.querySelector('.obras-rd-detail-card.edit')) {
       const parts = [];
       if (Number(work.duracion) > 0) parts.push(`${work.duracion} min`);
-      parts.push(model.label(score));
+      parts.push(workStatus(model, d, work, false));
       if (Number(work.dificultad) > 0) parts.push(`dificultad ${work.dificultad}/10`);
+      const details = typeof model.workScoreDetails === 'function' ? model.workScoreDetails(work) : null;
+      if (details && details.source === 'movements' && details.partial) parts.push(`${details.measuredMovements}/${details.totalMovements} mov. medidos`);
       headerMeta.textContent = parts.join(' · ');
     }
 
@@ -150,10 +152,6 @@
     disableLegacyStageEntryPoints();
   }
 
-  // El renderer antiguo aún conoce learningStage/estado. Los ocultamos solo
-  // durante el render síncrono para que no influyan ni en "Ahora" ni en las
-  // etiquetas. Los campos permanecen en datos para compatibilidad y se restauran
-  // inmediatamente; la píldora es la única verdad visible.
   function renderWithoutManualStages(renderFn, context, args) {
     const d = appData();
     const saved = [];
@@ -190,15 +188,12 @@
     };
     wrapped.__obrasPolished = true;
     window.renderObras = wrapped;
-    // Re-render once so the initial DOM also stops reflecting manual stages.
     wrapped();
   }
 
   document.addEventListener('click', event => {
     const scope = event.target.closest && event.target.closest('#obrasRedesignHead [data-scope]');
     if (!scope) return;
-    // The redesign's own click handler runs first and renders synchronously.
-    // Align the detail selection immediately afterwards.
     setTimeout(() => {
       if (syncScopeSelection() && typeof window.renderObras === 'function') window.renderObras();
       else postRender();
