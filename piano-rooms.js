@@ -27,20 +27,19 @@
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=1');
   load('historicalEventsScript','./historical-events.js?v=1');
 
-  // Una sola verdad de estado: la píldora 0–100. El modelo se carga antes de
-  // las fichas y del workbench para que todas las superficies deriven de ella
-  // etiquetas como "aprendida", "sólida" o "dominada" sin guardar estados extra.
-  load('solidityModelScript','./solidity-model.js?v=1',function(){
-    load('readinessPillModelScript','./readiness-pill-model.js?v=1');
+  // La píldora 0–100 sigue siendo la única verdad del estado presente. Si se
+  // trabaja por movimientos, la obra deriva su píldora de esas mediciones; el
+  // hecho de ser repertorio recuperado es solo contexto histórico automático.
+  load('solidityModelScript','./solidity-model.js?v=2',function(){
+    load('readinessPillModelScript','./readiness-pill-model.js?v=1',function(){
+      load('readinessRecoveryContextScript','./readiness-recovery-context.js?v=1');
+    });
 
-    // Ficha de obra: el catálogo se carga primero para que la ficha pueda
-    // completar nombres/duraciones sin depender de internet. La compatibilidad
-    // antigua permanece solo internamente; la UI visible ya no expone fases.
     load('workStructureCatalogScript','./work-structure-catalog.js?v=1',function(){
       load('obraPremiumScript','./obra-premium.js?v=1',function(){
-        load('obraPremiumPolishScript','./obra-premium-polish.js?v=3',function(){
+        load('obraPremiumPolishScript','./obra-premium-polish.js?v=4',function(){
           load('obrasRedesignScript','./obras-redesign.js?v=1',function(){
-            load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=4');
+            load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=5');
           });
         });
       });
