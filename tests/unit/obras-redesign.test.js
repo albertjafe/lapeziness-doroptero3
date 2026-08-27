@@ -20,10 +20,6 @@ describe('repertorio redesign', () => {
     expect(source).toContain('data-scope="all"');
     expect(source).toContain('data-scope="active"');
     expect(source).toContain('data-scope="history"');
-
-    // The old renderer remains in the bundle for backwards compatibility, but
-    // the polished UI removes every normal entry point that could make
-    // learningStage/estado look like a second source of truth.
     expect(polish).toContain('disableLegacyStageEntryPoints');
     expect(polish).toContain('#obrasRdMenu [data-menu="legacy"]');
     expect(polish).toContain('more.hidden = true');
@@ -32,12 +28,13 @@ describe('repertorio redesign', () => {
     expect(premiumPolish).toContain('[data-action="advanced"]');
   });
 
-  it('derives visible state from the solidity model rather than stored stages', () => {
-    expect(polish).toContain('model.shortLabel(score)');
-    expect(polish).toContain('model.label(score)');
+  it('derives visible state from the solidity/recovery model rather than stored stages', () => {
+    expect(polish).toContain('model.currentWorkScore');
+    expect(polish).toContain('model.statusLabel');
     expect(polish).toContain("work.learningStage = ''");
     expect(polish).toContain("work.estado = ''");
-    expect(premiumPolish).toContain('model.label(score)');
+    expect(premiumPolish).toContain('model.currentWorkScore');
+    expect(premiumPolish).toContain('model.statusLabel');
   });
 
   it('implements the iPad master-detail composition and loads after the premium sheet', () => {
