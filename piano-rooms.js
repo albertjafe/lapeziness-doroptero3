@@ -23,6 +23,7 @@
   loadStyle('cronoReadinessLayoutStyles','./crono-readiness-layout.css?v=1');
   loadStyle('cronoIdleHierarchyStyles','./crono-idle-hierarchy.css?v=3');
   loadStyle('obrasRedesignStyles','./obras-redesign.css?v=1');
+  loadStyle('obrasRedesignPolishStyles','./obras-redesign-polish.css?v=1');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=1');
   load('historicalEventsScript','./historical-events.js?v=1');
 
@@ -32,7 +33,9 @@
   // clásica como herramienta avanzada.
   load('workStructureCatalogScript','./work-structure-catalog.js?v=1',function(){
     load('obraPremiumScript','./obra-premium.js?v=1',function(){
-      load('obrasRedesignScript','./obras-redesign.js?v=1');
+      load('obrasRedesignScript','./obras-redesign.js?v=1',function(){
+        load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=1');
+      });
     });
   });
 })();
