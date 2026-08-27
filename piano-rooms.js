@@ -17,6 +17,7 @@
     document.head.appendChild(link);
   }
   loadStyle('cronoReadinessLayoutStyles','./crono-readiness-layout.css?v=1');
+  loadStyle('cronoIdleHierarchyStyles','./crono-idle-hierarchy.css?v=1');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=1');
   load('historicalEventsScript','./historical-events.js?v=1');
 })();
