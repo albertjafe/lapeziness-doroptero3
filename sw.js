@@ -1,11 +1,13 @@
-const CACHE = 'estudio-v281';
+const CACHE = 'estudio-v282';
 const ASSETS = [
   './index.html',
   './styles.css?v=278',
   './piano-rooms.css?v=1',
   './app.js?v=278',
   './piano-rooms.js?v=1',
+  './piano-rooms-core.js?v=1',
   './work-catalog.js?v=1',
+  './historical-events.js?v=1',
   './google-calendar.js?v=272',
   './metronome.js?v=275',
   './mystery-house.js?v=260',
