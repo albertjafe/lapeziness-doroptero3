@@ -98,15 +98,27 @@ describe('SolidityModel', () => {
     expect(Solidity.statusLabel({ obras: [work] }, work, { compact: true })).toBe('Recuperación');
   });
 
-  it('remembers formal performance as prior mastery without another manual flag', () => {
+  it('remembers a formal performance at learned level without another manual flag', () => {
     const work = { id: 'w', name: 'Work', composer: 'Composer', sol: 25, solHistory: [{ val: 25, date: '2026-08-27T18:00:00Z' }] };
     const db = {
       obras: [work],
-      eventos: [{ id: 'e', tipo: 'concierto', completado: true, obras: ['w'], completedDate: '2026-05-01T20:00:00Z' }],
+      eventos: [{ id: 'e', tipo: 'concierto', completado: true, obras: ['w'], completedDate: '2026-05-01T20:00:00Z', resultado: { obrasResultados: [{ obraId: 'w', sol: 72, obraScore: 80 }] } }],
     };
     const context = Solidity.historyContext(db, work);
     expect(context.priorMastery).toBe(true);
     expect(context.formalEvent).toBe(true);
     expect(Solidity.statusLabel(db, work)).toBe('Recuperación');
+  });
+
+  it('does not call a very low scored formal appearance prior mastery on its own', () => {
+    const work = { id: 'w', name: 'Work', composer: 'Composer', sol: 25, solHistory: [{ val: 25, date: '2026-08-27T18:00:00Z' }] };
+    const db = {
+      obras: [work],
+      eventos: [{ id: 'e', tipo: 'audicion', completado: true, obras: ['w'], completedDate: '2026-05-01T20:00:00Z', resultado: { obrasResultados: [{ obraId: 'w', sol: 10, obraScore: 10 }] } }],
+    };
+    const context = Solidity.historyContext(db, work);
+    expect(context.priorMastery).toBe(false);
+    expect(context.formalEvent).toBe(false);
+    expect(Solidity.statusLabel(db, work)).toBe('Tomando forma');
   });
 });
