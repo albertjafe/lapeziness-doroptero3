@@ -54,6 +54,67 @@
     installLegacyMoreToggle();
   }
 
+  function workById(id) {
+    const d = appData();
+    return d && (d.obras || []).find(item => String(item.id) === String(id));
+  }
+
+  function solidityModel() {
+    return window.SolidityModel || null;
+  }
+
+  function syncSolidityLabels() {
+    const model = solidityModel();
+    if (!model) return;
+
+    document.querySelectorAll('#view-obras .obras-rd-row[data-work-id]').forEach(row => {
+      const work = workById(row.dataset.workId);
+      if (!work) return;
+      const score = model.currentScore(work);
+      const meta = row.querySelector('.obras-rd-meta');
+      let status = meta && meta.querySelector('span');
+      if (meta && !status) {
+        status = document.createElement('span');
+        meta.appendChild(status);
+      }
+      if (status) status.textContent = model.shortLabel(score);
+      const value = row.querySelector('.obras-rd-row-side strong');
+      if (value) value.textContent = score == null ? '—' : `${score}%`;
+      const side = row.querySelector('.obras-rd-row-side span');
+      if (side) side.textContent = score != null && score >= 95 ? 'dominio' : score != null && score >= 80 ? 'segura' : '';
+      const bar = row.querySelector('.obras-rd-solbar i');
+      if (bar) bar.style.width = `${score == null ? 0 : score}%`;
+    });
+
+    const api = window.ObrasRedesign;
+    if (!api || !api.state || api.state.selectedKind !== 'work') return;
+    const work = workById(api.state.selectedId);
+    const detail = document.getElementById('obrasRdDetail');
+    if (!work || !detail) return;
+    const score = model.currentScore(work);
+    const stats = detail.querySelector('.obras-rd-stats');
+    const solidityValue = stats && stats.querySelector('div:first-child strong');
+    if (solidityValue) solidityValue.textContent = score == null ? '—' : `${score}%`;
+
+    const headerMeta = detail.querySelector('.obras-rd-detail-head p');
+    if (headerMeta && !detail.querySelector('.obras-rd-detail-card.edit')) {
+      const parts = [];
+      if (Number(work.duracion) > 0) parts.push(`${work.duracion} min`);
+      parts.push(model.label(score));
+      if (Number(work.dificultad) > 0) parts.push(`dificultad ${work.dificultad}/10`);
+      headerMeta.textContent = parts.join(' · ');
+    }
+
+    const movementRows = detail.querySelectorAll('.obras-rd-movement');
+    (work.movimientos || []).forEach((movement, index) => {
+      const row = movementRows[index];
+      if (!row) return;
+      const spans = row.querySelectorAll(':scope > span');
+      const movementScore = model.currentScore(movement);
+      if (spans.length >= 2) spans[spans.length - 1].textContent = movementScore == null ? '—' : `${movementScore}%`;
+    });
+  }
+
   function syncScopeSelection() {
     const api = window.ObrasRedesign;
     const d = appData();
@@ -82,6 +143,32 @@
   function postRender() {
     syncMasterDetailClass();
     syncLegacyCompatibility();
+    syncSolidityLabels();
+  }
+
+  // El renderer antiguo aún conoce learningStage/estado. Los ocultamos solo
+  // durante el render síncrono para que no influyan ni en "Ahora" ni en las
+  // etiquetas. Los campos permanecen en datos para compatibilidad y se restauran
+  // inmediatamente; la píldora es la única verdad visible.
+  function renderWithoutManualStages(renderFn, context, args) {
+    const d = appData();
+    const saved = [];
+    (d && d.obras || []).forEach(work => {
+      if (!work || work.tipo === 'actividad') return;
+      saved.push({ work, learningStage: work.learningStage, estado: work.estado });
+      work.learningStage = '';
+      work.estado = '';
+    });
+    try {
+      return renderFn.apply(context, args);
+    } finally {
+      saved.forEach(item => {
+        if (item.learningStage === undefined) delete item.work.learningStage;
+        else item.work.learningStage = item.learningStage;
+        if (item.estado === undefined) delete item.work.estado;
+        else item.work.estado = item.estado;
+      });
+    }
   }
 
   function installRenderWrapper(attempt) {
@@ -93,13 +180,14 @@
     if (!api || window.renderObras.__obrasPolished) return;
     const original = window.renderObras;
     const wrapped = function () {
-      const result = original.apply(this, arguments);
+      const result = renderWithoutManualStages(original, this, arguments);
       postRender();
       return result;
     };
     wrapped.__obrasPolished = true;
     window.renderObras = wrapped;
-    postRender();
+    // Re-render once so the initial DOM also stops reflecting manual stages.
+    wrapped();
   }
 
   document.addEventListener('click', event => {
@@ -113,6 +201,7 @@
     }, 0);
   });
 
+  window.addEventListener('solidity-model-ready', postRender);
   window.addEventListener('resize', postRender, { passive: true });
   window.addEventListener('orientationchange', () => setTimeout(postRender, 50), { passive: true });
 
