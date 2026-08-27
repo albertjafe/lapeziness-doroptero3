@@ -15,18 +15,29 @@
     return d && (d.obras || []).find(item => String(item.id) === String(id));
   }
 
+  function disableLegacyDetails(overlay) {
+    if (!overlay) return;
+    // La ficha clásica todavía conoce campos históricos como learningStage/estado.
+    // Se conservan en los datos por compatibilidad, pero ya no ofrecemos una
+    // puerta visible que permita volver a editarlos como una segunda verdad.
+    const advanced = overlay.querySelector('[data-action="advanced"]');
+    if (advanced) advanced.remove();
+  }
+
   function syncPremiumSolidity() {
     const model = window.SolidityModel;
     const overlay = document.getElementById('obraPremiumOverlay');
     const work = workById(activeId);
     if (!model || !overlay || !work || !overlay.classList.contains('open')) return;
 
+    disableLegacyDetails(overlay);
+
     const score = model.currentScore(work);
     const sub = overlay.querySelector('.obra-premium-sub');
     if (sub) {
       const spans = sub.querySelectorAll(':scope > span');
-      // headerHtml: duración · etapa · dificultad. Sustituimos la antigua etapa
-      // por una etiqueta derivada, sin crear un estado nuevo en la base de datos.
+      // headerHtml aún reserva el hueco de la antigua etapa. Lo convertimos
+      // siempre en una etiqueta derivada del 0–100, nunca en un campo guardado.
       if (spans.length >= 3) spans[2].textContent = model.label(score);
     }
 
@@ -67,6 +78,8 @@
       activeId = id;
       const result = original.call(this, id);
       observePremium();
+      const overlay = document.getElementById('obraPremiumOverlay');
+      disableLegacyDetails(overlay);
       setTimeout(syncPremiumSolidity, 0);
       if (result !== false) return result;
 
@@ -78,6 +91,7 @@
         retries += 1;
         const opened = original.call(window, id);
         observePremium();
+        disableLegacyDetails(document.getElementById('obraPremiumOverlay'));
         setTimeout(syncPremiumSolidity, 0);
         if (opened === false && retries < 20) setTimeout(retry, 75);
       };
