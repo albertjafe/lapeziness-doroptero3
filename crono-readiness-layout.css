@@ -1,0 +1,68 @@
+/* Ajuste de jerarquía del estimador de preparación en Cronómetro.
+ * El chip deja de flotar sobre el aro y ocupa una fila propia.
+ */
+#view-cronometro .crono-idle-main > .crono-readiness-chip {
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+  z-index: auto !important;
+  display: flex;
+  width: min(320px, calc(100% - 28px));
+  min-height: 34px;
+  margin: 8px auto 14px;
+  padding: 7px 13px;
+  gap: 7px;
+  box-sizing: border-box;
+}
+
+#view-cronometro .crono-readiness-chip-main {
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+#view-cronometro .crono-readiness-chip-confidence {
+  flex: 0 0 auto;
+  font-size: 9px;
+  line-height: 1.2;
+  white-space: nowrap;
+  opacity: .82;
+}
+
+/* El reloj recupera su papel protagonista y conserva aire respecto al chip. */
+#view-cronometro .crono-idle-display-wrap {
+  margin-top: 0 !important;
+}
+
+/* Durante una sesión la estimación queda reducida a una línea secundaria. */
+#view-cronometro .crono-readiness-inline {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  line-height: 1.25;
+  opacity: .78;
+}
+
+@media (min-width: 900px) and (orientation: landscape) {
+  #view-cronometro .crono-idle-main > .crono-readiness-chip {
+    width: min(310px, calc(100% - 36px));
+    margin-top: 6px;
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 699px) {
+  #view-cronometro .crono-idle-main > .crono-readiness-chip {
+    width: min(300px, calc(100% - 20px));
+    margin: 6px auto 12px;
+    padding: 7px 11px;
+    flex-wrap: wrap;
+    row-gap: 3px;
+  }
+
+  #view-cronometro .crono-readiness-chip-confidence {
+    width: 100%;
+  }
+}
