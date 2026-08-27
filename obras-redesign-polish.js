@@ -18,6 +18,24 @@
     view.classList.toggle('obras-master-detail', isMasterDetail());
   }
 
+  function installHiddenLegacyToggle() {
+    const button = document.getElementById('obrasMoreToggle');
+    if (!button || button.dataset.singlePillCompat === '1') return;
+    button.dataset.singlePillCompat = '1';
+    button.addEventListener('click', event => {
+      // Compatibilidad para automatizaciones antiguas: el control permanece
+      // oculto al usuario, pero un click programático conserva su semántica.
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const view = document.getElementById('view-obras');
+      if (!view) return;
+      const open = !view.classList.contains('obras-more-open');
+      view.classList.toggle('obras-more-open', open);
+      button.textContent = open ? 'Menos' : 'Más';
+      button.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }, true);
+  }
+
   function disableLegacyStageEntryPoints() {
     const view = document.getElementById('view-obras');
     if (!view) return;
@@ -25,6 +43,7 @@
     if (legacyMenu) legacyMenu.remove();
     const more = document.getElementById('obrasMoreToggle');
     if (more) more.hidden = true;
+    installHiddenLegacyToggle();
     view.classList.remove('obras-legacy-mode', 'obras-more-open');
     const returnButton = document.getElementById('obrasLegacyReturn');
     if (returnButton) returnButton.hidden = true;
