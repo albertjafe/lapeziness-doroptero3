@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v289';
+const CACHE = 'estudio-v290';
 const ASSETS = [
   './index.html',
   './styles.css?v=278',
@@ -7,6 +7,7 @@ const ASSETS = [
   './crono-idle-hierarchy.css?v=3',
   './obra-premium.css?v=1',
   './obras-redesign.css?v=1',
+  './obras-redesign-polish.css?v=1',
   './app.js?v=278',
   './piano-rooms.js?v=1',
   './piano-rooms-core.js?v=1',
@@ -14,6 +15,7 @@ const ASSETS = [
   './work-structure-catalog.js?v=1',
   './obra-premium.js?v=1',
   './obras-redesign.js?v=1',
+  './obras-redesign-polish.js?v=1',
   './historical-events.js?v=1',
   './google-calendar.js?v=272',
   './metronome.js?v=275',
@@ -112,8 +114,7 @@ self.addEventListener('fetch', e => {
 
   // Emergency updater must always come from the network.
   if (url.pathname.endsWith('/update.html') || url.searchParams.has('forceUpdate')) {
-    e.respondWith(fetch(new Request(e.request, { cache: 'reload' }))
-    );
+    e.respondWith(fetch(new Request(e.request, { cache: 'reload' })));
     return;
   }
 
