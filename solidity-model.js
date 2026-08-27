@@ -25,6 +25,10 @@
     ));
   }
 
+  function normalize(value) {
+    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  }
+
   // La píldora actual es porcentual: sol=1 significa 1%, no 10%.
   // Los pases antiguos son la excepción conocida: antes guardaban score=1..10
   // y no tenían solidezPct. Si existe solidezPct, ese porcentaje manda.
@@ -91,6 +95,90 @@
     return current ? Math.round(current.score) : null;
   }
 
+  // Una entidad cuenta como realmente medida si tiene una observación registrada.
+  // El viejo valor sol=1 sin historial se conserva como compatibilidad, pero no
+  // debe ganar a medidas reales de movimientos tomadas hoy.
+  function measuredObservation(entity) {
+    const rows = observations(entity);
+    if (rows.length) return currentObservation(entity);
+    const raw = Number(entity && entity.sol);
+    if (Number.isFinite(raw) && raw !== 1) {
+      return { score: clamp(raw, 0, 100), time: dateFrom(entity), source: 'current', sequence: 0, raw: entity };
+    }
+    return null;
+  }
+
+  function workScoreDetails(work) {
+    if (!work) return { score: null, source: 'none', measuredMovements: 0, totalMovements: 0, partial: false };
+    const whole = measuredObservation(work);
+    const movements = Array.isArray(work.movimientos) ? work.movimientos : [];
+    const movementRows = movements.map((movement, index) => {
+      const observation = measuredObservation(movement);
+      const duration = Number(movement && (movement.duracion ?? movement.duration));
+      return {
+        index,
+        movement,
+        observation,
+        score: observation ? observation.score : null,
+        time: observation ? observation.time : null,
+        weight: Number.isFinite(duration) && duration > 0 ? duration : 1,
+      };
+    });
+    const measured = movementRows.filter(row => row.observation && row.score != null);
+
+    if (!measured.length) {
+      const fallback = whole || currentObservation(work);
+      return {
+        score: fallback ? Math.round(fallback.score) : null,
+        source: whole ? 'whole' : fallback ? 'fallback' : 'none',
+        measuredMovements: 0,
+        totalMovements: movements.length,
+        partial: false,
+        observation: fallback || null,
+      };
+    }
+
+    const latestMovementTime = measured.reduce((latest, row) => row.time == null ? latest : Math.max(latest, row.time), -Infinity);
+    const wholeTime = whole && whole.time != null ? whole.time : -Infinity;
+    if (whole && wholeTime >= latestMovementTime) {
+      return {
+        score: Math.round(whole.score),
+        source: 'whole',
+        measuredMovements: measured.length,
+        totalMovements: movements.length,
+        partial: measured.length < movements.length,
+        observation: whole,
+      };
+    }
+
+    // Si un movimiento se ha medido después que la obra completa, esa información
+    // debe llegar a la píldora global. Los movimientos aún no medidos usan como
+    // referencia la última medición global si existe; si no, no inventamos datos.
+    let weightedScore = 0;
+    let weightTotal = 0;
+    movementRows.forEach(row => {
+      let score = row.score;
+      if (score == null && whole) score = whole.score;
+      if (score == null) return;
+      weightedScore += score * row.weight;
+      weightTotal += row.weight;
+    });
+    const score = weightTotal > 0 ? Math.round(weightedScore / weightTotal) : (whole ? Math.round(whole.score) : null);
+    return {
+      score,
+      source: 'movements',
+      measuredMovements: measured.length,
+      totalMovements: movements.length,
+      partial: measured.length < movements.length && !whole,
+      observation: null,
+      latestMovementTime: Number.isFinite(latestMovementTime) ? latestMovementTime : null,
+    };
+  }
+
+  function currentWorkScore(work) {
+    return workScoreDetails(work).score;
+  }
+
   // Rótulos derivados y deliberadamente orientativos. No se guardan como
   // estados separados: si la píldora cambia, la palabra cambia con ella.
   function label(score) {
@@ -118,6 +206,68 @@
   function learned(score) {
     const n = percent(score);
     return n != null && n >= 40;
+  }
+
+  function eventContainsWork(event, work) {
+    if (!event || !work) return false;
+    const id = String(work.id || '');
+    if (Array.isArray(event.obras) && event.obras.some(item => String(item && (item.id ?? item.refId ?? item.obraId) || item) === id)) return true;
+    const resultRows = event.resultado && Array.isArray(event.resultado.obrasResultados) ? event.resultado.obrasResultados : [];
+    if (resultRows.some(item => String(item && item.obraId || '') === id)) return true;
+    const works = Array.isArray(event.works) ? event.works : [];
+    return works.some(item => {
+      if (!item) return false;
+      if (String(item.refId || item.obraId || '') === id) return true;
+      const sameName = normalize(item.name) && normalize(item.name) === normalize(work.name);
+      const sameComposer = !item.composer || !work.composer || normalize(item.composer) === normalize(work.composer);
+      return sameName && sameComposer;
+    });
+  }
+
+  function formalEvent(event, historical) {
+    if (!event) return false;
+    const type = normalize(event.tipo || event.type);
+    if (['ensayo', 'clase', 'masterclass'].includes(type)) return false;
+    if (historical) return true;
+    return event.completado === true || Boolean(event.completedDate);
+  }
+
+  function pastPeakScore(work) {
+    const rows = observations(work).slice().sort((a, b) => {
+      const ta = a.time == null ? -Infinity : a.time;
+      const tb = b.time == null ? -Infinity : b.time;
+      return ta - tb || a.sequence - b.sequence;
+    });
+    if (rows.length < 2) return 0;
+    return rows.slice(0, -1).reduce((peak, row) => Math.max(peak, row.score), 0);
+  }
+
+  function historyContext(db, work) {
+    const data = db || {};
+    const originRecovery = normalize(work && work.origen) === 'recuperacion';
+    const archive = Array.isArray(data.historicalRepertoire) ? data.historicalRepertoire : [];
+    const archived = archive.some(item =>
+      String(item && item.id || '') === String(work && work.historicalSourceId || '') ||
+      String(item && item.reactivatedObraId || '') === String(work && work.id || '') ||
+      (normalize(item && item.name) && normalize(item && item.name) === normalize(work && work.name) &&
+       (!item.composer || !work.composer || normalize(item.composer) === normalize(work.composer)))
+    );
+    const formal = (Array.isArray(data.eventos) ? data.eventos : []).some(event => formalEvent(event, false) && eventContainsWork(event, work));
+    const historicalFormal = (Array.isArray(data.historicalEvents) ? data.historicalEvents : []).some(event => formalEvent(event, true) && eventContainsWork(event, work));
+    const previousPeak = pastPeakScore(work);
+    const priorMastery = originRecovery || archived || formal || historicalFormal || previousPeak >= 60;
+    return { priorMastery, originRecovery, archived, formalEvent: formal || historicalFormal, previousPeak };
+  }
+
+  function statusLabel(db, work, options) {
+    const score = currentWorkScore(work);
+    const context = historyContext(db, work);
+    const compact = options && options.compact;
+    if (context.priorMastery) {
+      if (score == null || score < 60) return 'Recuperación';
+      if (score < 80) return compact ? 'Repertorio' : 'Repertorio · en forma';
+    }
+    return compact ? shortLabel(score) : label(score);
   }
 
   // Sin compases explícitos no necesitamos otro checkbox de "aprendida".
@@ -191,9 +341,15 @@
     observations,
     currentObservation,
     currentScore,
+    measuredObservation,
+    workScoreDetails,
+    currentWorkScore,
     label,
     shortLabel,
     learned,
+    eventContainsWork,
+    historyContext,
+    statusLabel,
     inferredCoverage,
     plateauGroups,
   };
