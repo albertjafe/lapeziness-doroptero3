@@ -22,12 +22,17 @@
   }
   loadStyle('cronoReadinessLayoutStyles','./crono-readiness-layout.css?v=1');
   loadStyle('cronoIdleHierarchyStyles','./crono-idle-hierarchy.css?v=3');
+  loadStyle('obrasRedesignStyles','./obras-redesign.css?v=1');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=1');
   load('historicalEventsScript','./historical-events.js?v=1');
 
   // Ficha de obra: el catálogo se carga primero para que la ficha pueda
-  // completar nombres/duraciones sin depender de internet.
+  // completar nombres/duraciones sin depender de internet. El workbench se
+  // monta al final para poder reutilizar la ficha premium y conservar la vista
+  // clásica como herramienta avanzada.
   load('workStructureCatalogScript','./work-structure-catalog.js?v=1',function(){
-    load('obraPremiumScript','./obra-premium.js?v=1');
+    load('obraPremiumScript','./obra-premium.js?v=1',function(){
+      load('obrasRedesignScript','./obras-redesign.js?v=1');
+    });
   });
 })();
