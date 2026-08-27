@@ -57,12 +57,13 @@
   opacity: .82;
 }
 
-/* iPad vertical real: damos unos píxeles más al bloque superior para que el CTA
-   quede completamente dentro de la tarjeta y no invada Tareas. */
+/* iPad vertical: el bloque superior mantiene su jerarquía, pero Tareas ya no
+   vive dentro de una fila rígida. Crece con su contenido y la página puede
+   desplazarse si hace falta. */
 @media (min-width: 700px) and (max-width: 1199px) and (orientation: portrait) {
   [data-theme^="marmol"] #view-cronometro .crono-wrap,
   [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
-    grid-template-rows: clamp(508px, 40dvh, 548px) clamp(300px, 31dvh, 340px) auto !important;
+    grid-template-rows: clamp(508px, 40dvh, 548px) auto auto !important;
   }
 
   [data-theme^="marmol"] #view-cronometro #cronoStageIdle .crono-idle-main {
@@ -79,6 +80,23 @@
 
   [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-idle-controls {
     margin-top: auto !important;
+  }
+
+  [data-theme^="marmol"] #view-cronometro #cronoIdleDrawer {
+    height: auto !important;
+    min-height: 340px !important;
+    max-height: none !important;
+    align-self: start;
+    overflow: visible !important;
+  }
+
+  [data-theme^="marmol"] #view-cronometro #cronoIdleDrawer .crono-idle-drawer-panels,
+  [data-theme^="marmol"] #view-cronometro #cronoIdleDrawer .crono-idle-drawer-panel.active,
+  [data-theme^="marmol"] #view-cronometro #cronoIdleDrawer .crono-idle-tasks,
+  [data-theme^="marmol"] #view-cronometro #cronoIdleDrawer .crono-tasks-panel-idle {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
 }
 
