@@ -46,8 +46,9 @@
     if (item.obraScore != null && item.obraScore !== '') {
       const raw = Number(item.obraScore);
       if (!Number.isFinite(raw)) return null;
-      const legacy = raw >= 1 && raw <= 10;
-      return legacy ? clamp(raw * 10, 0, 100) : clamp(raw, 0, 100);
+      // obraScore pertenece al sistema porcentual actual de resultados de evento.
+      // A diferencia del antiguo pase score=1..10, 10 aquí significa 10%, no 100%.
+      return clamp(raw, 0, 100);
     }
     if (item.sol != null && item.sol !== '') {
       const raw = Number(item.sol);
