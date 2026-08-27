@@ -29,9 +29,6 @@
     return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   }
 
-  // La píldora actual es porcentual: sol=1 significa 1%, no 10%.
-  // Los pases antiguos son la excepción conocida: antes guardaban score=1..10
-  // y no tenían solidezPct. Si existe solidezPct, ese porcentaje manda.
   function scoreFromObservation(item, options) {
     if (item == null) return null;
     if (typeof item === 'number' || typeof item === 'string') return percent(item);
@@ -95,9 +92,6 @@
     return current ? Math.round(current.score) : null;
   }
 
-  // Una entidad cuenta como realmente medida si tiene una observación registrada.
-  // El viejo valor sol=1 sin historial se conserva como compatibilidad, pero no
-  // debe ganar a medidas reales de movimientos tomadas hoy.
   function measuredObservation(entity) {
     const rows = observations(entity);
     if (rows.length) return currentObservation(entity);
@@ -151,9 +145,6 @@
       };
     }
 
-    // Si un movimiento se ha medido después que la obra completa, esa información
-    // debe llegar a la píldora global. Los movimientos aún no medidos usan como
-    // referencia la última medición global si existe; si no, no inventamos datos.
     let weightedScore = 0;
     let weightTotal = 0;
     movementRows.forEach(row => {
@@ -179,8 +170,6 @@
     return workScoreDetails(work).score;
   }
 
-  // Rótulos derivados y deliberadamente orientativos. No se guardan como
-  // estados separados: si la píldora cambia, la palabra cambia con ella.
   function label(score) {
     const n = percent(score);
     if (n == null) return 'Sin medir';
@@ -208,12 +197,16 @@
     return n != null && n >= 40;
   }
 
+  function matchingEventResult(event, work) {
+    const rows = event && event.resultado && Array.isArray(event.resultado.obrasResultados) ? event.resultado.obrasResultados : [];
+    return rows.find(item => String(item && item.obraId || '') === String(work && work.id || '')) || null;
+  }
+
   function eventContainsWork(event, work) {
     if (!event || !work) return false;
     const id = String(work.id || '');
     if (Array.isArray(event.obras) && event.obras.some(item => String(item && (item.id ?? item.refId ?? item.obraId) || item) === id)) return true;
-    const resultRows = event.resultado && Array.isArray(event.resultado.obrasResultados) ? event.resultado.obrasResultados : [];
-    if (resultRows.some(item => String(item && item.obraId || '') === id)) return true;
+    if (matchingEventResult(event, work)) return true;
     const works = Array.isArray(event.works) ? event.works : [];
     return works.some(item => {
       if (!item) return false;
@@ -230,6 +223,18 @@
     if (['ensayo', 'clase', 'masterclass'].includes(type)) return false;
     if (historical) return true;
     return event.completado === true || Boolean(event.completedDate);
+  }
+
+  function formalPerformanceEvidence(event, work, historical) {
+    if (!formalEvent(event, historical) || !eventContainsWork(event, work)) return false;
+    if (historical) return true;
+    const row = matchingEventResult(event, work);
+    if (!row) return true;
+    const solidity = scoreFromObservation({ solidezPct: row.solidezPct, sol: row.sol, val: row.val, solRating: row.solRating });
+    const combined = scoreFromObservation({ obraScore: row.obraScore, score: row.score });
+    const scores = [solidity, combined].filter(value => value != null);
+    if (!scores.length) return true;
+    return Math.max(...scores) >= 40;
   }
 
   function pastPeakScore(work) {
@@ -252,8 +257,8 @@
       (normalize(item && item.name) && normalize(item && item.name) === normalize(work && work.name) &&
        (!item.composer || !work.composer || normalize(item.composer) === normalize(work.composer)))
     );
-    const formal = (Array.isArray(data.eventos) ? data.eventos : []).some(event => formalEvent(event, false) && eventContainsWork(event, work));
-    const historicalFormal = (Array.isArray(data.historicalEvents) ? data.historicalEvents : []).some(event => formalEvent(event, true) && eventContainsWork(event, work));
+    const formal = (Array.isArray(data.eventos) ? data.eventos : []).some(event => formalPerformanceEvidence(event, work, false));
+    const historicalFormal = (Array.isArray(data.historicalEvents) ? data.historicalEvents : []).some(event => formalPerformanceEvidence(event, work, true));
     const previousPeak = pastPeakScore(work);
     const priorMastery = originRecovery || archived || formal || historicalFormal || previousPeak >= 60;
     return { priorMastery, originRecovery, archived, formalEvent: formal || historicalFormal, previousPeak };
@@ -270,9 +275,6 @@
     return compact ? shortLabel(score) : label(score);
   }
 
-  // Sin compases explícitos no necesitamos otro checkbox de "aprendida".
-  // La cobertura básica se infiere de la píldora; 40% equivale a haber
-  // recorrido/aprendido aproximadamente el conjunto, aunque aún sea frágil.
   function inferredCoverage(score) {
     const n = percent(score);
     return n == null ? 0 : clamp(n / 40, 0, 1);
@@ -282,10 +284,6 @@
     return `${point && point.scope || 'whole'}:${point && (point.movementId ?? point.movimientoId ?? point.movId) || ''}`;
   }
 
-  // Agrupa observaciones casi iguales como una meseta. Así una secuencia
-  // 1,1,1,2,1 durante semanas seguida por 70 no se interpreta como que los
-  // 69 puntos aparecieron en la última sesión: la transición empieza al
-  // principio de esa meseta y puede contabilizar todo el trabajo intermedio.
   function plateauGroups(points, tolerance) {
     const tol = Number.isFinite(Number(tolerance)) ? Math.max(0, Number(tolerance)) : 3;
     const valid = (Array.isArray(points) ? points : []).map((point, index) => {
@@ -348,6 +346,7 @@
     shortLabel,
     learned,
     eventContainsWork,
+    formalPerformanceEvidence,
     historyContext,
     statusLabel,
     inferredCoverage,
