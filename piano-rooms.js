@@ -136,3 +136,14 @@
   }
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init) : init();
 })();
+
+// Pequeño bootstrap de módulos independientes cargados después de app.js.
+// Mantiene el catálogo fuera del gigantesco app.js sin cambiar su lógica.
+(function loadWorkCatalogAddon() {
+  if (document.getElementById('workCatalogScript')) return;
+  const script = document.createElement('script');
+  script.id = 'workCatalogScript';
+  script.src = './work-catalog.js?v=1';
+  script.defer = true;
+  document.head.appendChild(script);
+})();
