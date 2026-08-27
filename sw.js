@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v293';
+const CACHE = 'estudio-v294';
 const ASSETS = [
   './index.html',
   './styles.css?v=278',
@@ -13,12 +13,13 @@ const ASSETS = [
   './piano-rooms-core.js?v=1',
   './work-catalog.js?v=1',
   './work-structure-catalog.js?v=1',
-  './solidity-model.js?v=1',
+  './solidity-model.js?v=2',
   './readiness-pill-model.js?v=1',
+  './readiness-recovery-context.js?v=1',
   './obra-premium.js?v=1',
-  './obra-premium-polish.js?v=3',
+  './obra-premium-polish.js?v=4',
   './obras-redesign.js?v=1',
-  './obras-redesign-polish.js?v=4',
+  './obras-redesign-polish.js?v=5',
   './historical-events.js?v=1',
   './google-calendar.js?v=272',
   './metronome.js?v=275',
@@ -53,7 +54,6 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Allow the page to trigger an immediate activation of a newer worker.
 self.addEventListener('message', e => {
   if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
@@ -112,17 +112,13 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
 
-  // External requests (Supabase, CDN, Google Fonts) pass straight through.
   if (url.origin !== self.location.origin) return;
 
-  // Emergency updater must always come from the network.
   if (url.pathname.endsWith('/update.html') || url.searchParams.has('forceUpdate')) {
     e.respondWith(fetch(new Request(e.request, { cache: 'reload' })));
     return;
   }
 
-  // Network-first for local files: always serve the freshest version when
-  // online, and fall back to the cache when offline.
   e.respondWith(
     fetch(new Request(e.request, { cache: 'no-store' }))
       .then(res => {
