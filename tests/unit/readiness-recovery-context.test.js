@@ -46,7 +46,7 @@ function beethoven(origin = 'recuperacion') {
 }
 
 describe('recovery readiness context', () => {
-  it('uses today's movement pills for the work instead of the stale whole-work 1%', () => {
+  it("uses today's movement pills for the work instead of the stale whole-work 1%", () => {
     const Ready = patchedCore();
     const work = beethoven();
     const result = Ready.estimateReadiness({ obras: [work], sesiones: [] }, 'w', { asOf: '2026-08-27T20:00:00Z' });
