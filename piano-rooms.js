@@ -27,15 +27,22 @@
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=1');
   load('historicalEventsScript','./historical-events.js?v=1');
 
-  // Ficha de obra: el catálogo se carga primero para que la ficha pueda
-  // completar nombres/duraciones sin depender de internet. El workbench se
-  // monta al final para poder reutilizar la ficha premium y conservar la vista
-  // clásica como herramienta avanzada.
-  load('workStructureCatalogScript','./work-structure-catalog.js?v=1',function(){
-    load('obraPremiumScript','./obra-premium.js?v=1',function(){
-      load('obraPremiumPolishScript','./obra-premium-polish.js?v=1',function(){
-        load('obrasRedesignScript','./obras-redesign.js?v=1',function(){
-          load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=2');
+  // Una sola verdad de estado: la píldora 0–100. El modelo se carga antes de
+  // las fichas y del workbench para que todas las superficies deriven de ella
+  // etiquetas como "aprendida", "sólida" o "dominada" sin guardar estados extra.
+  load('solidityModelScript','./solidity-model.js?v=1',function(){
+    load('readinessPillModelScript','./readiness-pill-model.js?v=1');
+
+    // Ficha de obra: el catálogo se carga primero para que la ficha pueda
+    // completar nombres/duraciones sin depender de internet. El workbench se
+    // monta al final para poder reutilizar la ficha premium y conservar la vista
+    // clásica como herramienta avanzada.
+    load('workStructureCatalogScript','./work-structure-catalog.js?v=1',function(){
+      load('obraPremiumScript','./obra-premium.js?v=1',function(){
+        load('obraPremiumPolishScript','./obra-premium-polish.js?v=2',function(){
+          load('obrasRedesignScript','./obras-redesign.js?v=1',function(){
+            load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=3');
+          });
         });
       });
     });
