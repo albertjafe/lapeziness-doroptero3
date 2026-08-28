@@ -12,21 +12,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Locate relevant implementation
+      - name: Inspect remaining E2E failures
         shell: bash
         run: |
           set -euo pipefail
-          echo '=== relevant files ==='
-          find . -maxdepth 2 -type f \( -name '*.js' -o -name '*.css' -o -name '*.html' \) | sort
-          echo '=== matches ==='
-          grep -RniE 'modalCronoTaskEdit|crono-task-open|pulseWindow(Start|End|Label)|crono-calendar-panel|cronoStartBtn|crono-idle-main' --include='*.js' --include='*.css' --include='*.html' . || true
-          echo '=== app.js contexts ==='
-          for term in modalCronoTaskEdit crono-task-open pulseWindowStart pulseWindowEnd pulseWindowLabel crono-calendar-panel crono-idle-main; do
-            line=$(grep -n -m1 "$term" app.js | cut -d: -f1 || true)
+          context() {
+            file="$1"; term="$2"; before="${3:-45}"; after="${4:-100}"
+            line=$(grep -n -m1 -F "$term" "$file" | cut -d: -f1 || true)
             if [ -n "$line" ]; then
-              start=$(( line > 35 ? line - 35 : 1 ))
-              end=$(( line + 80 ))
-              echo "--- $term @ app.js:$line ---"
-              sed -n "${start},${end}p" app.js
+              start=$(( line > before ? line - before : 1 )); end=$(( line + after ))
+              echo "--- $file :: $term @ $line ---"
+              sed -n "${start},${end}p" "$file"
+            else
+              echo "--- NOT FOUND: $file :: $term ---"
             fi
-          done
+          }
+          echo '=== state/storage ==='
+          grep -RniE 'pianoAppDB_v2|alberto_piano_v2|const DB|let DB|var DB|function openModal' --include='*.js' --include='*.html' . | head -120 || true
+          context app.js 'function pulseTrimmerPointerDown' 35 170
+          context app.js 'function pulseTrimmerTrackPointerDown' 35 110
+          context app.js 'function cronoTaskPressStart' 25 110
+          context app.js 'function openModal' 20 70
+          context crono-idle-hierarchy.css '@media' 5 230
+          echo '=== landscape / challenge CSS candidates ==='
+          grep -nE '@media|crono-plant-btn|crono-idle-main|crono-idle-display-wrap|crono-idle-controls' crono-idle-hierarchy.css || true
+          sed -n '1,240p' crono-idle-hierarchy.css
