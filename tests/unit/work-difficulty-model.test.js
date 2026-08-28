@@ -1,4 +1,7 @@
-const { describe, it, expect } = require('vitest');
+import { describe, it, expect } from 'vitest';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
 const model = require('../../work-difficulty-model.js');
 
 describe('WorkDifficultyModel', () => {
