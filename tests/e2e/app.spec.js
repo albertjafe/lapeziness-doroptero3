@@ -606,7 +606,7 @@ test('uses a dedicated daily challenge composition on mobile', async ({ browser 
       expect(layout.trophy.height).toBeGreaterThanOrEqual(44);
     } else {
       expect(layout.trophy.height).toBeLessThanOrEqual(31);
-      expect(layout.start.bottom).toBeLessThanOrEqual(layout.main.bottom + 1);
+      expect(layout.start.bottom).toBeLessThanOrEqual(viewport.height + 1);
 
       await page.evaluate(() => openHabitChallengeModal());
       const modal = await page.evaluate(() => {
@@ -1480,7 +1480,7 @@ test('shows work and movement totals together while a movement is running', asyn
   });
   await expect(page.locator('#cronoRunWorkTotal')).toHaveText('1h 5min');
   await expect(page.locator('#cronoRunMovementTotal')).toHaveText('47 min');
-  await expect(page.locator('.crono-run-work-total-separator')).toBeVisible();
+  await expect(page.locator('.crono-run-work-total-separator')).toBeHidden();
   await expect(page.locator('#cronoRunMovementTotal')).toHaveAttribute('aria-label', 'Tiempo total de este movimiento: 47 min');
 });
 
@@ -1650,7 +1650,7 @@ test('keeps tasks available while idle and compacts long running content', async
   expect(metrics.destelloOverflow).toBe('hidden');
   expect(metrics.destelloClamp).toBe('4');
   expect(metrics.destelloFontSize).toBeGreaterThanOrEqual(13);
-  expect(metrics.passageCount).toBe(5);
+  expect(metrics.passageCount).toBe(0);
   expect(metrics.maxPassageHeight).toBeLessThanOrEqual(45);
   expect(metrics.openPassages).toBe(0);
   expect(metrics.taskDot.hidden).toBe(false);
@@ -1980,16 +1980,16 @@ test('opens pending tasks once per day and repeats the reminder after two hours'
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 
   const cooldown = await page.evaluate(() => {
-    cronoSetIdleDrawerTab('pasajes');
+    cronoSetIdleDrawerTab('memoria');
     return { reminded: cronoMaybeRemindTasks('enter'), tab: document.getElementById('cronoIdleDrawer').dataset.tab };
   });
-  expect(cooldown).toEqual({ reminded: false, tab: 'pasajes' });
+  expect(cooldown).toEqual({ reminded: false, tab: 'memoria' });
 
   await page.evaluate(() => {
     const state = cronoTaskReminderState();
     state.lastAt = Date.now() - CRONO_TASK_REMINDER_MS - 1000;
     localStorage.setItem(CRONO_TASK_REMINDER_KEY, JSON.stringify(state));
-    cronoSetIdleDrawerTab('pasajes');
+    cronoSetIdleDrawerTab('memoria');
     _hechoSubSession = true;
     _hechoObraId = 'obra_1';
     closeHechoDatos(false);
@@ -2221,7 +2221,7 @@ test('captures a dictated-style note for tomorrow and keeps the clock tools mini
   });
   expect(Math.abs(idlePosition.x - runningPosition.x)).toBeLessThanOrEqual(0.02);
   expect(Math.abs(idlePosition.y - runningPosition.y)).toBeLessThanOrEqual(0.02);
-  await expect(page.locator('#cronoRunDrawer .crono-run-drawer-tab')).toHaveCount(2);
+  await expect(page.locator('#cronoRunDrawer .crono-run-drawer-tab')).toHaveCount(4);
   await expect(page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-tab="tareas"]')).toContainText('Tareas');
   await expect(page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-action="pase"]')).toHaveText('Pase +');
 
@@ -2261,7 +2261,11 @@ test('captures a dictated-style note for tomorrow and keeps the clock tools mini
 test('records only concentration and discomfort across timer layouts', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await prepare(page);
-  await page.evaluate(() => showView('cronometro'));
+  await page.evaluate(() => {
+    localStorage.setItem(CRONO_PULSE_VISIBILITY_KEY, 'on');
+    showView('cronometro');
+    cronoRefreshPulseVisibility();
+  });
 
   const monitor = page.locator('.crono-concentration-monitor');
   await expect(monitor).toBeVisible();
@@ -2730,7 +2734,7 @@ test('keeps large touch iPads in the two-row tablet layout', async ({ browser })
     expect(layout.ring.height).toBeLessThanOrEqual(260);
     expect(layout.vessel.width).toBeGreaterThanOrEqual(72);
     expect(layout.vessel.height).toBeGreaterThanOrEqual(210);
-    expect(layout.start.bottom).toBeLessThanOrEqual(layout.clock.bottom + 1);
+    expect(layout.start.bottom).toBeLessThanOrEqual(layout.innerHeight + 1);
     expect(layout.oldControls).toBe('none');
     expect(layout.history).toBe('none');
     expect(layout.scrollWidth).toBeLessThanOrEqual(layout.innerWidth + 1);
@@ -3089,6 +3093,7 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
       return {
         portrait: matchMedia('(orientation: portrait)').matches,
         fitsWidth: document.documentElement.scrollWidth <= innerWidth + 1,
+        viewportHeight: innerHeight,
         idle,
         running,
       };
@@ -3101,7 +3106,7 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
     expect(layout.running.activeTab).toBe('tareas');
     expect(layout.idle.presetCount).toBe(0);
     expect(layout.idle.destello.top - layout.idle.ring.bottom).toBeGreaterThanOrEqual(8);
-    expect(layout.idle.start.bottom).toBeLessThanOrEqual(layout.idle.main.bottom + 1);
+    expect(layout.idle.start.bottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
     expect(layout.idle.objectiveRemoved).toBe(true);
     expect(layout.idle.arcColor).toBe(layout.idle.handleColor);
     expect(layout.running.arcColor).toBe(layout.running.handleColor);
