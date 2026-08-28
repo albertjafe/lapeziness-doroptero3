@@ -1,0 +1,17 @@
+/* Obras · actuales e históricas comparten la misma biblioteca visual. */
+.obras-rd-row.historical { opacity:1; }
+.obras-rd-row.historical .obras-rd-title { color:var(--text); }
+.obras-rd-row.historical:hover,
+.obras-rd-row.historical:focus-visible { background:color-mix(in srgb,var(--accent) 4%,transparent); }
+.obras-rd-archive-mark {
+  border-color:color-mix(in srgb,var(--text3) 32%,var(--border2));
+  background:color-mix(in srgb,var(--text3) 5%,transparent);
+  color:var(--text3);
+  padding:4px 8px;
+  font-size:7px;
+  font-weight:700;
+}
+.obras-rd-section.library > header span { color:var(--text2); }
+.obras-rd-section.library .obras-rd-row.historical .obras-rd-composer::after {
+  content:'';
+}
