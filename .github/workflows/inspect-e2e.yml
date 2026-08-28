@@ -1,0 +1,32 @@
+name: Inspect E2E implementation
+
+on:
+  push:
+    branches: [fix/e2e-quality-20260828]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate relevant implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== relevant files ==='
+          find . -maxdepth 2 -type f \( -name '*.js' -o -name '*.css' -o -name '*.html' \) | sort
+          echo '=== matches ==='
+          grep -RniE 'modalCronoTaskEdit|crono-task-open|pulseWindow(Start|End|Label)|crono-calendar-panel|cronoStartBtn|crono-idle-main' --include='*.js' --include='*.css' --include='*.html' . || true
+          echo '=== app.js contexts ==='
+          for term in modalCronoTaskEdit crono-task-open pulseWindowStart pulseWindowEnd pulseWindowLabel crono-calendar-panel crono-idle-main; do
+            line=$(grep -n -m1 "$term" app.js | cut -d: -f1 || true)
+            if [ -n "$line" ]; then
+              start=$(( line > 35 ? line - 35 : 1 ))
+              end=$(( line + 80 ))
+              echo "--- $term @ app.js:$line ---"
+              sed -n "${start},${end}p" app.js
+            fi
+          done
