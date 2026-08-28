@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v301';
+const CACHE = 'estudio-v302';
 const ASSETS = [
   './index.html',
   './styles.css?v=278',
@@ -8,6 +8,7 @@ const ASSETS = [
   './obra-premium.css?v=1',
   './obras-redesign.css?v=1',
   './obras-redesign-polish.css?v=2',
+  './obras-unified-library.css?v=1',
   './app.js?v=278',
   './piano-rooms.js?v=1',
   './piano-rooms-core.js?v=1',
@@ -20,6 +21,7 @@ const ASSETS = [
   './obra-premium-polish.js?v=4',
   './obras-redesign.js?v=1',
   './obras-redesign-polish.js?v=6',
+  './obras-unified-library.js?v=1',
   './historical-events.js?v=1',
   './historical-events-details.js?v=2',
   './google-calendar.js?v=272',
