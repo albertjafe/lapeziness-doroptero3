@@ -26,11 +26,13 @@
   loadStyle('obrasRedesignStyles','./obras-redesign.css?v=1');
   loadStyle('obrasRedesignPolishStyles','./obras-redesign-polish.css?v=2');
   loadStyle('obrasUnifiedLibraryStyles','./obras-unified-library.css?v=1');
+  loadStyle('workDifficultyStyles','./work-difficulty.css?v=1');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=1');
   load('localSaveResilienceScript','./local-save-resilience.js?v=1');
   load('cronoSaveResilienceScript','./crono-save-resilience.js?v=1');
   load('updateSafetyScript','./update-safety.js?v=1');
   load('cronoRunningPremiumScript','./crono-running-premium.js?v=1');
+  load('workDifficultyModelScript','./work-difficulty-model.js?v=1');
   load('historicalEventsScript','./historical-events.js?v=1',function(){
     load('historicalEventsDetailsScript','./historical-events-details.js?v=2');
   });
@@ -48,7 +50,9 @@
         load('obraPremiumPolishScript','./obra-premium-polish.js?v=4',function(){
           load('obrasRedesignScript','./obras-redesign.js?v=1',function(){
             load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=6',function(){
-              load('obrasUnifiedLibraryScript','./obras-unified-library.js?v=2');
+              load('obrasUnifiedLibraryScript','./obras-unified-library.js?v=2',function(){
+                load('workDifficultyIntegrationScript','./work-difficulty-integration.js?v=1');
+              });
             });
           });
         });
