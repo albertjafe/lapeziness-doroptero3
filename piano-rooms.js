@@ -22,10 +22,13 @@
   }
   loadStyle('cronoReadinessLayoutStyles','./crono-readiness-layout.css?v=1');
   loadStyle('cronoIdleHierarchyStyles','./crono-idle-hierarchy.css?v=3');
+  loadStyle('cronoRunningPremiumStyles','./crono-running-premium.css?v=1');
   loadStyle('obrasRedesignStyles','./obras-redesign.css?v=1');
   loadStyle('obrasRedesignPolishStyles','./obras-redesign-polish.css?v=2');
   loadStyle('obrasUnifiedLibraryStyles','./obras-unified-library.css?v=1');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=1');
+  load('cronoSaveResilienceScript','./crono-save-resilience.js?v=1');
+  load('cronoRunningPremiumScript','./crono-running-premium.js?v=1');
   load('historicalEventsScript','./historical-events.js?v=1',function(){
     load('historicalEventsDetailsScript','./historical-events-details.js?v=2');
   });
