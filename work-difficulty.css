@@ -1,0 +1,15 @@
+/* Dificultad técnica · ficha premium */
+#obraPremiumOverlay .obra-difficulty-chip{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px}
+#obraPremiumOverlay .obra-difficulty-source{display:block;width:100%;margin-top:2px;font-size:8px;line-height:1.2;color:var(--text3);font-weight:500}
+#obraPremiumOverlay .obra-premium-movement{grid-template-columns:minmax(0,1fr) auto auto auto}
+#obraPremiumOverlay .obra-premium-mov-difficulty{display:inline-flex;align-items:center;justify-content:center;min-width:39px;min-height:24px;padding:3px 7px;box-sizing:border-box;border:1px solid var(--border2);border-radius:999px;background:var(--bg3);color:var(--text2);font-size:9px;font-weight:750;font-variant-numeric:tabular-nums}
+#obraPremiumOverlay .obra-difficulty-detail{display:grid;gap:10px}
+#obraPremiumOverlay .obra-difficulty-hero{display:flex;align-items:baseline;gap:10px}
+#obraPremiumOverlay .obra-difficulty-hero strong{font-size:31px;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+#obraPremiumOverlay .obra-difficulty-hero span{color:var(--text2);font-size:11px;font-weight:700}
+#obraPremiumOverlay .obra-difficulty-note{max-width:620px;margin:0;color:var(--text2);font-size:10px;line-height:1.45}
+#obraPremiumOverlay .obra-difficulty-profile{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+#obraPremiumOverlay .obra-difficulty-profile span{min-width:0;padding:7px 8px;border:1px solid var(--border2);border-radius:10px;background:var(--bg3);color:var(--text3);font-size:8px;line-height:1.2}
+#obraPremiumOverlay .obra-difficulty-profile strong{display:block;margin-top:3px;color:var(--text);font-size:12px;font-variant-numeric:tabular-nums}
+#obraPremiumOverlay .obra-difficulty-foot{color:var(--text3);font-size:8px;letter-spacing:.02em}
+@media(max-width:699px){#obraPremiumOverlay .obra-premium-movement{grid-template-columns:minmax(0,1fr) auto auto}#obraPremiumOverlay .obra-premium-mov-difficulty{grid-column:2}#obraPremiumOverlay .obra-difficulty-profile{grid-template-columns:repeat(2,minmax(0,1fr))}}
