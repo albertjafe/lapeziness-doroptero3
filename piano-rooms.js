@@ -54,6 +54,7 @@
             load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=6',function(){
               load('obrasUnifiedLibraryScript','./obras-unified-library.js?v=2',function(){
                 load('workDifficultyIntegrationScript','./work-difficulty-integration.js?v=1');
+                load('historicalRealStudyPolishScript','./historical-real-study-polish.js?v=1');
               });
             });
           });
