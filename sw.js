@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v305';
+const CACHE = 'estudio-v306';
 const ASSETS = [
   './index.html',
   './styles.css?v=278',
@@ -10,6 +10,7 @@ const ASSETS = [
   './obras-redesign.css?v=1',
   './obras-redesign-polish.css?v=2',
   './obras-unified-library.css?v=1',
+  './work-difficulty.css?v=1',
   './app.js?v=278',
   './piano-rooms.js?v=1',
   './piano-rooms-core.js?v=1',
@@ -19,6 +20,8 @@ const ASSETS = [
   './crono-running-premium.js?v=1',
   './work-catalog.js?v=1',
   './work-structure-catalog.js?v=1',
+  './work-difficulty-model.js?v=1',
+  './work-difficulty-integration.js?v=1',
   './solidity-model.js?v=5',
   './readiness-pill-model.js?v=1',
   './readiness-recovery-context.js?v=2',
