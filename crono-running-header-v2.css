@@ -1,0 +1,115 @@
+/* Cronómetro en sesión · cabecera legible y sin elementos flotando sobre el aro. */
+#view-cronometro #cronoStageRun .crono-run-head {
+  align-items:flex-start !important;
+  min-height:66px !important;
+  margin-bottom:8px !important;
+}
+
+#view-cronometro #cronoStageRun .crono-obra-pill {
+  align-items:flex-start !important;
+  min-width:0;
+}
+
+#view-cronometro #cronoStageRun .crono-obra-pill-copy {
+  position:static !important;
+  display:grid !important;
+  grid-template-columns:auto minmax(0,1fr);
+  grid-template-areas:
+    "name name"
+    "total readiness";
+  align-items:center;
+  justify-content:start;
+  column-gap:8px;
+  row-gap:5px;
+  min-width:0;
+  width:100%;
+}
+
+#view-cronometro #cronoStageRun .crono-obra-pill-name {
+  grid-area:name;
+  min-width:0;
+  font-size:15px !important;
+  line-height:1.2 !important;
+  font-weight:700;
+  white-space:nowrap !important;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#view-cronometro #cronoStageRun .crono-run-work-total {
+  grid-area:total;
+  width:max-content;
+  max-width:100%;
+  min-height:24px;
+  padding:4px 8px;
+  box-sizing:border-box;
+  border:1px solid var(--border2);
+  border-radius:999px;
+  background:var(--bg3);
+  color:var(--text2);
+  font-size:9.5px !important;
+  line-height:1.1;
+  white-space:nowrap;
+}
+
+#view-cronometro #cronoStageRun .crono-run-work-total strong {
+  font-size:9.5px !important;
+  line-height:1.1;
+}
+
+/* Antes estaba position:absolute: era la causa del solapamiento con el reloj. */
+#view-cronometro #cronoStageRun .crono-obra-pill-copy > .crono-readiness-inline {
+  grid-area:readiness;
+  position:static !important;
+  inset:auto !important;
+  transform:none !important;
+  display:block;
+  width:max-content;
+  max-width:min(270px,100%) !important;
+  min-height:24px;
+  margin:0;
+  padding:4px 8px;
+  box-sizing:border-box;
+  border:1px solid color-mix(in srgb,var(--accent) 28%,var(--border2));
+  border-radius:999px;
+  background:color-mix(in srgb,var(--accent) 6%,var(--bg));
+  color:var(--text2);
+  font-size:9.5px !important;
+  line-height:1.25 !important;
+  text-align:left;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap !important;
+  opacity:.92 !important;
+}
+
+#view-cronometro #cronoStageRun .crono-display-wrap {
+  margin-top:0 !important;
+}
+
+@media (min-width:900px) and (orientation:landscape) {
+  #view-cronometro #cronoStageRun .crono-run-head {
+    min-height:70px !important;
+    margin-bottom:10px !important;
+  }
+  #view-cronometro #cronoStageRun .crono-obra-pill-copy > .crono-readiness-inline {
+    max-width:min(310px,100%) !important;
+    font-size:10px !important;
+  }
+  #view-cronometro #cronoStageRun .crono-run-work-total,
+  #view-cronometro #cronoStageRun .crono-run-work-total strong {
+    font-size:10px !important;
+  }
+}
+
+@media (max-width:699px) {
+  #view-cronometro #cronoStageRun .crono-run-head { min-height:72px !important; }
+  #view-cronometro #cronoStageRun .crono-obra-pill-copy {
+    grid-template-columns:1fr;
+    grid-template-areas:"name" "total" "readiness";
+    row-gap:4px;
+  }
+  #view-cronometro #cronoStageRun .crono-obra-pill-copy > .crono-readiness-inline {
+    max-width:100% !important;
+  }
+}
