@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v306';
+const CACHE = 'estudio-v307';
 const ASSETS = [
   './index.html',
   './styles.css?v=278',
@@ -21,6 +21,7 @@ const ASSETS = [
   './work-catalog.js?v=1',
   './work-structure-catalog.js?v=1',
   './work-difficulty-model.js?v=1',
+  './work-difficulty-stored-priority.js?v=1',
   './work-difficulty-integration.js?v=1',
   './solidity-model.js?v=5',
   './readiness-pill-model.js?v=1',
@@ -126,7 +127,7 @@ self.addEventListener('fetch', e => {
   if (url.origin !== self.location.origin) return;
 
   if (url.pathname.endsWith('/update.html') || url.searchParams.has('forceUpdate')) {
-    e.respondWith(fetch(new Request(e.request, { cache: 'reload' })));
+    e.respondWith(fetch(new Request(e.request, { cache: 'reload' }));
     return;
   }
 
