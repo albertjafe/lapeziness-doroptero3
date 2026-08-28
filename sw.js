@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v307';
+const CACHE = 'estudio-v308';
 const ASSETS = [
   './index.html',
   './styles.css?v=278',
@@ -127,7 +127,7 @@ self.addEventListener('fetch', e => {
   if (url.origin !== self.location.origin) return;
 
   if (url.pathname.endsWith('/update.html') || url.searchParams.has('forceUpdate')) {
-    e.respondWith(fetch(new Request(e.request, { cache: 'reload' }));
+    e.respondWith(fetch(new Request(e.request, { cache: 'reload' })));
     return;
   }
 
