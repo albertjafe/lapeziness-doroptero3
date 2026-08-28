@@ -167,3 +167,46 @@
     padding-block: 7px !important;
   }
 }
+
+/* Telefono horizontal: la vista dividida conserva el reloj y el inicio dentro
+   de una pantalla baja sin encoger los paneles de tareas del otro lado. */
+@media (min-width: 560px) and (max-width: 1100px) and (max-height: 600px) and (orientation: landscape) {
+  #view-cronometro {
+    --crono-interface-ring-size: min(150px, 40dvh) !important;
+  }
+  #view-cronometro .crono-idle-main {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+  #view-cronometro .crono-idle-main .crono-idle-controls {
+    margin-top: 0 !important;
+    padding-top: 2px !important;
+    border-top: 0;
+  }
+  #view-cronometro .crono-idle-main .crono-idle-message {
+    display: none !important;
+  }
+  #view-cronometro .crono-idle-main .crono-mode-toggle {
+    min-height: 32px !important;
+    height: 32px !important;
+    margin-bottom: 2px !important;
+    padding: 2px !important;
+  }
+  #view-cronometro .crono-idle-main .crono-mode-opt {
+    min-height: 26px !important;
+    height: 26px !important;
+    padding-block: 3px !important;
+    font-size: 10px !important;
+  }
+  #view-cronometro .crono-idle-main .crono-plant-btn {
+    min-height: 34px !important;
+    height: 34px !important;
+    padding-block: 5px !important;
+    font-size: 14px !important;
+  }
+  #view-cronometro .crono-idle-display-wrap,
+  body.crono-timer-mode #view-cronometro .crono-idle-display-wrap {
+    margin-top: 0 !important;
+    margin-bottom: 1px !important;
+  }
+}

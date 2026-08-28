@@ -32,10 +32,9 @@ async function prepare(page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof window.openPremiumWork === 'function');
   await page.evaluate(data => {
-    if (typeof DB !== 'undefined') DB.obras = structuredClone(data.obras);
     if (typeof db !== 'undefined') db.obras = structuredClone(data.obras);
   }, fixture);
-  await page.waitForFunction(() => typeof DB !== 'undefined' && Array.isArray(DB.obras) && DB.obras.some(item => item.id === 'waldstein'));
+  await page.waitForFunction(() => typeof db !== 'undefined' && Array.isArray(db.obras) && db.obras.some(item => item.id === 'waldstein'));
 }
 
 test('opens one premium work sheet and edits it without a second modal', async ({ page }) => {
@@ -48,16 +47,15 @@ test('opens one premium work sheet and edits it without a second modal', async (
   await expect(overlay.locator('.obra-premium-movement')).toHaveCount(3);
   await expect(overlay.locator('.obra-premium-movement').first()).toContainText('I. Allegro con brio');
   await expect(overlay.locator('.obra-premium-movement').first()).toContainText('≈ 11 min');
-  await expect(page.locator('#modalEditObra')).not.toHaveClass(/visible|open/);
-
-  await overlay.getByRole('button', { name: 'Editar obra' }).click();
+  await expect(page.locator('#modalEditObra')).toHaveCount(0);
+  await overlay.getByRole('button', { name: 'Editar obra' }).click({ force: true });
   await expect(page.locator('#obraPremiumDuration')).toBeVisible();
   await page.locator('#obraPremiumDuration').fill('26');
   await page.locator('[data-mov-index="1"] [data-mov-field="duracion"]').fill('4.5');
   await overlay.getByRole('button', { name: 'Guardar cambios' }).click();
 
   const saved = await page.evaluate(() => {
-    const obra = DB.obras.find(item => item.id === 'waldstein');
+    const obra = db.obras.find(item => item.id === 'waldstein');
     return {
       duration: obra.duracion,
       movementDuration: obra.movimientos[1].duracion,

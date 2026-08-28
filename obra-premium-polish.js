@@ -36,7 +36,7 @@
     const sub = overlay.querySelector('.obra-premium-sub');
     if (sub) {
       const spans = sub.querySelectorAll(':scope > span');
-      if (spans.length >= 3) spans[2].textContent = status;
+      if (spans.length >= 3 && spans[2].textContent !== status) spans[2].textContent = status;
       let partial = sub.querySelector('.obra-premium-derived-note');
       if (details && details.source === 'movements' && details.partial) {
         if (!partial) {
@@ -44,7 +44,8 @@
           partial.className = 'obra-premium-derived-note';
           sub.appendChild(partial);
         }
-        partial.textContent = `· ${details.measuredMovements}/${details.totalMovements} mov. medidos`;
+        const partialText = `· ${details.measuredMovements}/${details.totalMovements} mov. medidos`;
+        if (partial.textContent !== partialText) partial.textContent = partialText;
       } else if (partial) partial.remove();
     }
 
@@ -53,7 +54,8 @@
       const label = stat.querySelector('.obra-premium-stat-label');
       if (!label || label.textContent.trim() !== 'Solidez') return;
       const value = stat.querySelector('.obra-premium-stat-value');
-      if (value) value.textContent = score == null ? '—' : `${score}%`;
+      const nextValue = score == null ? '—' : `${score}%`;
+      if (value && value.textContent !== nextValue) value.textContent = nextValue;
     });
 
     const movementRows = overlay.querySelectorAll('.obra-premium-movement');
@@ -62,14 +64,19 @@
       if (!row) return;
       const value = row.querySelector('.obra-premium-mov-sol');
       const movementScore = model.currentScore(movement);
-      if (value) value.textContent = movementScore == null ? '—' : `${movementScore}%`;
+      const nextValue = movementScore == null ? '—' : `${movementScore}%`;
+      if (value && value.textContent !== nextValue) value.textContent = nextValue;
     });
   }
 
   function observePremium() {
     const overlay = document.getElementById('obraPremiumOverlay');
     if (!overlay || observer) return;
-    observer = new MutationObserver(() => syncPremiumSolidity());
+    observer = new MutationObserver(() => {
+      observer.disconnect();
+      syncPremiumSolidity();
+      observer.observe(overlay, { childList: true, subtree: true });
+    });
     observer.observe(overlay, { childList: true, subtree: true });
   }
 
