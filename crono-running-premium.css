@@ -1,0 +1,148 @@
+/* Cronómetro en marcha · cabecera legible y sin texto flotando sobre el aro. */
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoStageRun .crono-run-head {
+  align-items:flex-start !important;
+  min-height:76px !important;
+  margin:0 0 10px !important;
+  gap:12px !important;
+  overflow:visible !important;
+}
+
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoObraPill {
+  flex:1 1 auto !important;
+  min-width:0 !important;
+  max-width:calc(100% - 112px) !important;
+  align-items:flex-start !important;
+  padding-top:1px;
+}
+
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-obra-pill-copy {
+  display:flex !important;
+  flex-wrap:wrap !important;
+  align-items:center !important;
+  gap:6px 7px !important;
+  min-width:0 !important;
+  position:static !important;
+}
+
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunName {
+  flex:1 0 100%;
+  max-width:100% !important;
+  white-space:normal !important;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  font-size:15px !important;
+  line-height:1.17 !important;
+  font-weight:700 !important;
+  letter-spacing:-.01em;
+}
+
+/* Las horas dejan de ser una línea microscópica. Cada magnitud es una píldora. */
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunWorkTotalWrap {
+  order:2;
+  display:flex !important;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:5px !important;
+  margin:0 !important;
+  min-width:0;
+}
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunWorkTotalWrap > strong {
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  min-height:25px;
+  box-sizing:border-box;
+  padding:4px 8px;
+  border:1px solid var(--border2);
+  border-radius:999px;
+  background:var(--bg3);
+  color:var(--text2);
+  font-size:9.5px !important;
+  line-height:1 !important;
+  font-weight:650 !important;
+  white-space:nowrap;
+}
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunWorkTotal::before,
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunMovementTotal::before {
+  color:var(--text3);
+  font-size:7px;
+  font-weight:700;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+}
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunWorkTotal::before { content:'Obra'; }
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunMovementTotal::before { content:'Mov.'; }
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-run-work-total-separator { display:none !important; }
+
+/* La predicción ya no es position:absolute: ocupa espacio real y puede respirar. */
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-obra-pill-copy > #cronoRunReadiness {
+  order:3;
+  position:static !important;
+  inset:auto !important;
+  transform:none !important;
+  display:inline-flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:4px 6px;
+  width:auto;
+  max-width:min(100%,330px) !important;
+  min-height:25px;
+  box-sizing:border-box;
+  margin:0 !important;
+  padding:4px 8px !important;
+  border:1px solid color-mix(in srgb,var(--accent) 30%,var(--border2));
+  border-radius:999px;
+  background:color-mix(in srgb,var(--accent) 6%,var(--bg2));
+  color:var(--text2);
+  font-size:9.5px !important;
+  line-height:1.2 !important;
+  opacity:1 !important;
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  text-align:left;
+}
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunReadiness[hidden] { display:none !important; }
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-readiness-copy { min-width:0; }
+[data-theme^="marmol"] body.crono-running #view-cronometro .crono-readiness-confidence-chip {
+  display:inline-flex;
+  align-items:center;
+  min-height:17px;
+  padding:2px 5px;
+  border-radius:999px;
+  background:var(--bg3);
+  color:var(--text3);
+  font-size:7.5px;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+/* El aro empieza después de la información, nunca debajo de ella. */
+[data-theme^="marmol"] body.crono-running #view-cronometro #cronoStageRun .crono-display-wrap {
+  margin-top:2px !important;
+}
+
+@media (min-width:900px) and (orientation:landscape) {
+  [data-theme^="marmol"] body.crono-running #view-cronometro #cronoStageRun .crono-run-head {
+    min-height:82px !important;
+    margin-bottom:11px !important;
+  }
+  [data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunName { font-size:16px !important; }
+  [data-theme^="marmol"] body.crono-running #view-cronometro #cronoObraPill { max-width:calc(100% - 126px) !important; }
+}
+
+@media (max-width:699px) {
+  [data-theme^="marmol"] body.crono-running #view-cronometro #cronoStageRun .crono-run-head {
+    min-height:72px !important;
+    gap:7px !important;
+  }
+  [data-theme^="marmol"] body.crono-running #view-cronometro #cronoObraPill { max-width:calc(100% - 88px) !important; }
+  [data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunName { font-size:14px !important; -webkit-line-clamp:1; }
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-obra-pill-copy > #cronoRunReadiness {
+    max-width:100% !important;
+    border-radius:10px;
+  }
+}
