@@ -1,10 +1,11 @@
-const CACHE = 'estudio-v303';
+const CACHE = 'estudio-v304';
 const ASSETS = [
   './index.html',
   './styles.css?v=278',
   './piano-rooms.css?v=1',
   './crono-readiness-layout.css?v=1',
   './crono-idle-hierarchy.css?v=3',
+  './crono-running-premium.css?v=1',
   './obra-premium.css?v=1',
   './obras-redesign.css?v=1',
   './obras-redesign-polish.css?v=2',
@@ -12,6 +13,8 @@ const ASSETS = [
   './app.js?v=278',
   './piano-rooms.js?v=1',
   './piano-rooms-core.js?v=1',
+  './crono-save-resilience.js?v=1',
+  './crono-running-premium.js?v=1',
   './work-catalog.js?v=1',
   './work-structure-catalog.js?v=1',
   './solidity-model.js?v=5',
