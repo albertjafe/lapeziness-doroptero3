@@ -27,7 +27,8 @@
 
   function sortRows(host, mode, historyOnly){
     if(!host) return;
-    const rows=Array.from(host.children).filter(node=>node.classList && node.classList.contains('obras-rd-row'));
+    const current=Array.from(host.children).filter(node=>node.classList && node.classList.contains('obras-rd-row'));
+    const rows=current.slice();
     if(mode==='composer' || mode==='title'){
       rows.sort((a,b)=>rowKey(a,mode).localeCompare(rowKey(b,mode),'es'));
     } else if(historyOnly){
@@ -35,6 +36,7 @@
     } else {
       return; // smart/recent/solidity ya vienen ordenados por el renderer principal.
     }
+    if(rows.every((row,index)=>row===current[index])) return;
     rows.forEach(row=>host.appendChild(row));
   }
 
