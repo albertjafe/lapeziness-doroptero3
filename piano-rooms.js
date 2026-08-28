@@ -25,7 +25,9 @@
   loadStyle('obrasRedesignStyles','./obras-redesign.css?v=1');
   loadStyle('obrasRedesignPolishStyles','./obras-redesign-polish.css?v=2');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=1');
-  load('historicalEventsScript','./historical-events.js?v=1');
+  load('historicalEventsScript','./historical-events.js?v=1',function(){
+    load('historicalEventsDetailsScript','./historical-events-details.js?v=1');
+  });
 
   // La píldora 0–100 sigue siendo la única verdad del estado presente. Si se
   // trabaja por movimientos, la obra deriva su píldora de esas mediciones; el
