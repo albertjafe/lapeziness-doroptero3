@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v299';
+const CACHE = 'estudio-v300';
 const ASSETS = [
   './index.html',
   './styles.css?v=278',
@@ -21,6 +21,7 @@ const ASSETS = [
   './obras-redesign.js?v=1',
   './obras-redesign-polish.js?v=6',
   './historical-events.js?v=1',
+  './historical-events-details.js?v=1',
   './google-calendar.js?v=272',
   './metronome.js?v=275',
   './mystery-house.js?v=260',
