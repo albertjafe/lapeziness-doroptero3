@@ -2,6 +2,8 @@ name: Quality
 
 on:
   push:
+    branches: [main, fix/e2e-quality-20260828]
+  pull_request:
     branches: [main]
 
 jobs:
