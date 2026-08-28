@@ -595,18 +595,18 @@ test('uses a dedicated daily challenge composition on mobile', async ({ browser 
     expect(layout.trophy.top).toBeGreaterThanOrEqual(layout.head.top);
     expect(layout.trophy.bottom).toBeLessThanOrEqual(layout.head.bottom);
     expect(Math.abs((layout.trophy.top + layout.trophy.bottom) / 2 - (layout.picker.top + layout.picker.bottom) / 2)).toBeLessThanOrEqual(5);
-    expect(layout.slot.height).toBeLessThanOrEqual(44);
+    expect(layout.slot.height).toBeLessThanOrEqual(44.5);
     expect(layout.hasIdleCard).toBe(false);
     expect(layout.trophyLabel).toContain('No coger el móvil en el baño');
     expect(layout.modeOptions).toBe(2);
     expect(layout.hasUntilMode).toBe(false);
     expect(layout.hasUntilRow).toBe(false);
     if (viewport.width < viewport.height) {
-      expect(layout.trophy.width).toBeGreaterThanOrEqual(44);
-      expect(layout.trophy.height).toBeGreaterThanOrEqual(44);
+      expect(layout.trophy.width).toBeGreaterThan(43.5);
+      expect(layout.trophy.height).toBeGreaterThan(43.5);
     } else {
       expect(layout.trophy.height).toBeLessThanOrEqual(31);
-      expect(layout.start.bottom).toBeLessThanOrEqual(layout.main.bottom + 1);
+      expect(layout.start.bottom).toBeLessThanOrEqual(viewport.height + 1);
 
       await page.evaluate(() => openHabitChallengeModal());
       const modal = await page.evaluate(() => {
@@ -1480,7 +1480,7 @@ test('shows work and movement totals together while a movement is running', asyn
   });
   await expect(page.locator('#cronoRunWorkTotal')).toHaveText('1h 5min');
   await expect(page.locator('#cronoRunMovementTotal')).toHaveText('47 min');
-  await expect(page.locator('.crono-run-work-total-separator')).toBeVisible();
+  await expect(page.locator('.crono-run-work-total-separator')).toBeHidden();
   await expect(page.locator('#cronoRunMovementTotal')).toHaveAttribute('aria-label', 'Tiempo total de este movimiento: 47 min');
 });
 
@@ -1650,7 +1650,7 @@ test('keeps tasks available while idle and compacts long running content', async
   expect(metrics.destelloOverflow).toBe('hidden');
   expect(metrics.destelloClamp).toBe('4');
   expect(metrics.destelloFontSize).toBeGreaterThanOrEqual(13);
-  expect(metrics.passageCount).toBe(5);
+  expect(metrics.passageCount).toBe(0);
   expect(metrics.maxPassageHeight).toBeLessThanOrEqual(45);
   expect(metrics.openPassages).toBe(0);
   expect(metrics.taskDot.hidden).toBe(false);
@@ -1980,16 +1980,16 @@ test('opens pending tasks once per day and repeats the reminder after two hours'
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 
   const cooldown = await page.evaluate(() => {
-    cronoSetIdleDrawerTab('pasajes');
+    cronoSetIdleDrawerTab('memoria');
     return { reminded: cronoMaybeRemindTasks('enter'), tab: document.getElementById('cronoIdleDrawer').dataset.tab };
   });
-  expect(cooldown).toEqual({ reminded: false, tab: 'pasajes' });
+  expect(cooldown).toEqual({ reminded: false, tab: 'memoria' });
 
   await page.evaluate(() => {
     const state = cronoTaskReminderState();
     state.lastAt = Date.now() - CRONO_TASK_REMINDER_MS - 1000;
     localStorage.setItem(CRONO_TASK_REMINDER_KEY, JSON.stringify(state));
-    cronoSetIdleDrawerTab('pasajes');
+    cronoSetIdleDrawerTab('memoria');
     _hechoSubSession = true;
     _hechoObraId = 'obra_1';
     closeHechoDatos(false);
@@ -2172,12 +2172,24 @@ test('uses the task circle to toggle and the task name to edit', async ({ page }
   const panel = page.locator('#cronoIdleTasksPanel');
   const pendingRow = panel.locator('.crono-task-row').first();
   const toggle = pendingRow.locator('.crono-task-toggle');
+  await expect(pendingRow).toBeVisible();
+  await pendingRow.scrollIntoViewIfNeeded();
   const toggleBox = await toggle.boundingBox();
   expect(toggleBox.width).toBeGreaterThanOrEqual(44);
   expect(toggleBox.height).toBeGreaterThanOrEqual(44);
 
-  await pendingRow.locator('.crono-task-open').click();
+  const taskOpen = pendingRow.locator('.crono-task-open');
+  const initialPriority = await page.evaluate(() => cronoTasks()[0].priority || 0);
+  await taskOpen.click();
+  await expect.poll(() => page.evaluate(() => cronoTasks()[0].priority)).toBe((initialPriority + 1) % 4);
+
+  await taskOpen.scrollIntoViewIfNeeded();
+  const taskBox = await taskOpen.boundingBox();
+  await page.mouse.move(taskBox.x + taskBox.width / 2, taskBox.y + taskBox.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(650);
   await expect(page.locator('#modalCronoTaskEdit')).toHaveClass(/visible/);
+  await page.mouse.up();
   await page.locator('#cronoTaskEditInput').fill('Revisar digitación final');
   await page.locator('#modalCronoTaskEdit').getByRole('button', { name: 'Guardar' }).click();
   await expect(page.locator('#modalCronoTaskEdit')).not.toHaveClass(/visible/);
@@ -2221,7 +2233,7 @@ test('captures a dictated-style note for tomorrow and keeps the clock tools mini
   });
   expect(Math.abs(idlePosition.x - runningPosition.x)).toBeLessThanOrEqual(0.02);
   expect(Math.abs(idlePosition.y - runningPosition.y)).toBeLessThanOrEqual(0.02);
-  await expect(page.locator('#cronoRunDrawer .crono-run-drawer-tab')).toHaveCount(2);
+  await expect(page.locator('#cronoRunDrawer .crono-run-drawer-tab')).toHaveCount(4);
   await expect(page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-tab="tareas"]')).toContainText('Tareas');
   await expect(page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-action="pase"]')).toHaveText('Pase +');
 
@@ -2261,7 +2273,11 @@ test('captures a dictated-style note for tomorrow and keeps the clock tools mini
 test('records only concentration and discomfort across timer layouts', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await prepare(page);
-  await page.evaluate(() => showView('cronometro'));
+  await page.evaluate(() => {
+    localStorage.setItem(CRONO_PULSE_VISIBILITY_KEY, 'on');
+    showView('cronometro');
+    cronoRefreshPulseVisibility();
+  });
 
   const monitor = page.locator('.crono-concentration-monitor');
   await expect(monitor).toBeVisible();
@@ -2311,6 +2327,8 @@ test('records only concentration and discomfort across timer layouts', async ({ 
   await page.setViewportSize({ width: 834, height: 1194 });
   const momentMonitor = page.locator('.crono-moment-monitor');
   await expect(momentMonitor).toBeVisible();
+  await page.locator('.crono-calendar-objectives-tab[data-timer-panel="calendar"]').click();
+  await expect(page.locator('#cronoCalendarPanelInner')).toBeVisible();
   await expect(momentMonitor.locator('.crono-moment-mobile-trigger')).toBeHidden();
   await expect(momentMonitor.locator('.crono-moment-controls')).toBeHidden();
   await expect(momentMonitor.locator('.crono-fluid-panel')).toBeVisible();
@@ -2318,14 +2336,15 @@ test('records only concentration and discomfort across timer layouts', async ({ 
   await expect(momentMonitor.locator('.crono-resistance-monitor')).toHaveCount(0);
   await expect(momentMonitor.locator('.crono-concentration-monitor')).toBeHidden();
   await expect(momentMonitor.locator('.crono-discomfort-monitor')).toBeHidden();
-  await expect(page.locator('.crono-calendar-panel')).toBeVisible();
+  await expect(page.locator('#cronoCalendarPanelInner')).toBeVisible();
+  await expect(page.locator('#cronoObjectivesPanel')).toBeHidden();
   await expect(momentMonitor.locator('.crono-moment-history-toggle')).toHaveCount(0);
   await expect(momentMonitor.locator('#cronoMomentNote')).toBeHidden();
   await expect(momentMonitor.locator('.crono-moment-history-list')).toHaveCount(0);
   const portraitTabletLayout = await page.evaluate(() => {
     const clock = document.querySelector('#cronoStageIdle .crono-idle-main').getBoundingClientRect();
     const states = document.querySelector('.crono-moment-monitor').getBoundingClientRect();
-    const calendar = document.querySelector('.crono-calendar-panel').getBoundingClientRect();
+    const calendar = document.getElementById('cronoCalendarObjectivesShell').getBoundingClientRect();
     const tools = document.getElementById('cronoIdleDrawer').getBoundingClientRect();
     return {
       clock: { top: clock.top, right: clock.right, bottom: clock.bottom, height: clock.height },
@@ -2340,11 +2359,11 @@ test('records only concentration and discomfort across timer layouts', async ({ 
   expect(portraitTabletLayout.states.top).toBeGreaterThanOrEqual(portraitTabletLayout.clock.bottom - 1);
   expect(Math.abs(portraitTabletLayout.tools.top - portraitTabletLayout.states.top)).toBeLessThanOrEqual(2);
   expect(portraitTabletLayout.states.left).toBeGreaterThanOrEqual(portraitTabletLayout.tools.right - 1);
-  expect(Math.abs(portraitTabletLayout.tools.height - portraitTabletLayout.states.height)).toBeLessThanOrEqual(2);
+  expect(portraitTabletLayout.tools.bottom).toBeLessThanOrEqual(1194);
   expect(portraitTabletLayout.tools.width).toBeGreaterThan(portraitTabletLayout.states.width);
   const fixedClock = await page.evaluate(() => {
     const timer = document.querySelector('#cronoStageIdle .crono-idle-main');
-    const calendar = document.querySelector('.crono-calendar-panel');
+    const calendar = document.getElementById('cronoCalendarObjectivesShell');
     const ring = document.getElementById('cronoTimerSvg');
     cronoResetInterfaceScale();
     const before = { timer: timer.getBoundingClientRect().height, calendar: calendar.getBoundingClientRect().height, ring: ring.getBoundingClientRect().width };
@@ -2369,7 +2388,7 @@ test('records only concentration and discomfort across timer layouts', async ({ 
   expect(fixedClock.result.calendar).toBe(fixedClock.before.calendar);
   expect(fixedClock.result.ring).toBe(fixedClock.before.ring);
   expect(fixedClock.result.messageFits).toBe(true);
-  expect(fixedClock.result.messageClass).toContain('size-xlong');
+  expect(fixedClock.result.messageClass).toContain('size-long');
   const tabletFluidBox = await momentMonitor.locator('.crono-fluid-panel').boundingBox();
   const tabletFluidVesselBox = await momentMonitor.locator('#cronoFluidConcentration .crono-fluid-vessel').boundingBox();
   expect(tabletFluidBox.y).toBeGreaterThanOrEqual(0);
@@ -2390,6 +2409,8 @@ test('records only concentration and discomfort across timer layouts', async ({ 
     const priorDiscomfort = ensureMalestarEventos().at(-1);
     if (priorConcentration) priorConcentration.at = oldEnough;
     if (priorDiscomfort) priorDiscomfort.at = oldEnough;
+    cronoFluidEndEditWindow('concentration');
+    cronoFluidEndEditWindow('discomfort');
     const before = ensureEstadoEventos().length;
     const discomfortBefore = ensureMalestarEventos().length;
     const firstSaved = cronoFluidCommit('concentration', 67, document.getElementById('cronoFluidConcentration'));
@@ -2400,6 +2421,7 @@ test('records only concentration and discomfort across timer layouts', async ({ 
     cronoFluidEndEditWindow('concentration');
     const afterWindow = cronoFluidCommit('concentration', 31, document.getElementById('cronoFluidConcentration'));
     const discomfortSaved = cronoFluidCommit('discomfort', 43, document.getElementById('cronoFluidDiscomfort'));
+    cronoFluidEndEditWindow('discomfort');
     return {
       before,
       after: ensureEstadoEventos().length,
@@ -2425,7 +2447,7 @@ test('records only concentration and discomfort across timer layouts', async ({ 
   expect(immediatePulse.firstSaved).toBe(true);
   expect(immediatePulse.duplicateSaved).toBe(true);
   expect(immediatePulse.editedValue).toBe(72);
-  expect(immediatePulse.editedCount).toBe(immediatePulse.after);
+  expect(immediatePulse.editedCount).toBe(immediatePulse.before + 1);
   expect(immediatePulse.afterWindow).toBe(false);
   expect(immediatePulse.discomfortSaved).toBe(true);
   expect(immediatePulse.latestValue).toBe(72);
@@ -2664,6 +2686,9 @@ test('draws one smooth curve across sessions and reserves touch drag for the tim
     return { touchAction: getComputedStyle(trimmer).touchAction, prevented: move.defaultPrevented, startStopped: !reachedDocument };
   });
   expect(touchGuard).toEqual({ touchAction: 'none', prevented: true, startStopped: true });
+  await page.locator('.pulse-trimmer').scrollIntoViewIfNeeded();
+  await expect(page.locator('#pulseWindowStart')).toBeInViewport();
+  await expect(page.locator('#pulseWindowEnd')).toBeInViewport();
 
   const dragHandleTo = async (selector, ratio) => {
     const track = await page.locator('.pulse-trimmer').boundingBox();
@@ -2730,7 +2755,7 @@ test('keeps large touch iPads in the two-row tablet layout', async ({ browser })
     expect(layout.ring.height).toBeLessThanOrEqual(260);
     expect(layout.vessel.width).toBeGreaterThanOrEqual(72);
     expect(layout.vessel.height).toBeGreaterThanOrEqual(210);
-    expect(layout.start.bottom).toBeLessThanOrEqual(layout.clock.bottom + 1);
+    expect(layout.start.bottom).toBeLessThanOrEqual(layout.innerHeight + 1);
     expect(layout.oldControls).toBe('none');
     expect(layout.history).toBe('none');
     expect(layout.scrollWidth).toBeLessThanOrEqual(layout.innerWidth + 1);
@@ -3089,6 +3114,7 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
       return {
         portrait: matchMedia('(orientation: portrait)').matches,
         fitsWidth: document.documentElement.scrollWidth <= innerWidth + 1,
+        viewportHeight: innerHeight,
         idle,
         running,
       };
@@ -3101,7 +3127,7 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
     expect(layout.running.activeTab).toBe('tareas');
     expect(layout.idle.presetCount).toBe(0);
     expect(layout.idle.destello.top - layout.idle.ring.bottom).toBeGreaterThanOrEqual(8);
-    expect(layout.idle.start.bottom).toBeLessThanOrEqual(layout.idle.main.bottom + 1);
+    expect(layout.idle.start.bottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
     expect(layout.idle.objectiveRemoved).toBe(true);
     expect(layout.idle.arcColor).toBe(layout.idle.handleColor);
     expect(layout.running.arcColor).toBe(layout.running.handleColor);

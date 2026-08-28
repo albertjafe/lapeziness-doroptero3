@@ -6,8 +6,10 @@
   const originalToggleObra = typeof window.toggleObra === 'function' ? window.toggleObra : null;
   const originalOpenObraFocus = typeof window.openObraFocus === 'function' ? window.openObraFocus : null;
 
-  function db() {
-    try { return typeof DB !== 'undefined' ? DB : null; } catch (error) { return null; }
+  function appData() {
+    try { if (typeof DB !== 'undefined' && DB) return DB; } catch (error) {}
+    try { if (typeof db !== 'undefined' && db) return db; } catch (error) {}
+    return null;
   }
 
   function esc(value) {
@@ -17,7 +19,7 @@
   }
 
   function workById(id) {
-    const current = db();
+    const current = appData();
     return current && Array.isArray(current.obras) ? current.obras.find(item => String(item.id) === String(id)) : null;
   }
 
@@ -42,7 +44,7 @@
   }
 
   function studyMinutesFor(work) {
-    const current = db();
+    const current = appData();
     let total = Number(work && work.minutosExtra) || 0;
     (current && current.sesiones || []).forEach(session => {
       (session && session.items || []).forEach(item => {
