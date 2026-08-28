@@ -31,6 +31,10 @@ async function prepare(page) {
   }, fixture);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof window.openPremiumWork === 'function');
+  await page.evaluate(data => {
+    if (typeof DB !== 'undefined') DB.obras = structuredClone(data.obras);
+    if (typeof db !== 'undefined') db.obras = structuredClone(data.obras);
+  }, fixture);
   await page.waitForFunction(() => typeof DB !== 'undefined' && Array.isArray(DB.obras) && DB.obras.some(item => item.id === 'waldstein'));
 }
 
