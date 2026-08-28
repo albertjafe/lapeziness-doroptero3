@@ -43,7 +43,7 @@
         load('obraPremiumPolishScript','./obra-premium-polish.js?v=4',function(){
           load('obrasRedesignScript','./obras-redesign.js?v=1',function(){
             load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=6',function(){
-              load('obrasUnifiedLibraryScript','./obras-unified-library.js?v=1');
+              load('obrasUnifiedLibraryScript','./obras-unified-library.js?v=2');
             });
           });
         });
