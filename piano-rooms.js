@@ -24,6 +24,7 @@
   loadStyle('cronoIdleHierarchyStyles','./crono-idle-hierarchy.css?v=3');
   loadStyle('obrasRedesignStyles','./obras-redesign.css?v=1');
   loadStyle('obrasRedesignPolishStyles','./obras-redesign-polish.css?v=2');
+  loadStyle('obrasUnifiedLibraryStyles','./obras-unified-library.css?v=1');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=1');
   load('historicalEventsScript','./historical-events.js?v=1',function(){
     load('historicalEventsDetailsScript','./historical-events-details.js?v=2');
@@ -41,7 +42,9 @@
       load('obraPremiumScript','./obra-premium.js?v=1',function(){
         load('obraPremiumPolishScript','./obra-premium-polish.js?v=4',function(){
           load('obrasRedesignScript','./obras-redesign.js?v=1',function(){
-            load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=6');
+            load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=6',function(){
+              load('obrasUnifiedLibraryScript','./obras-unified-library.js?v=1');
+            });
           });
         });
       });
