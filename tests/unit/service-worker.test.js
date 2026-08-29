@@ -60,4 +60,16 @@ describe('service worker push guard', () => {
     expect(notifications).toHaveLength(1);
     expect(notifications[0].title).toBe('Has logrado 105 minutos');
   });
+
+  it('keeps cache-busted app assets aligned with index.html', () => {
+    const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+    const worker = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
+
+    for (const asset of ['styles.css', 'app.js']) {
+      const escaped = asset.replace('.', '\\.');
+      const match = index.match(new RegExp(`["'](${escaped}\\?v=\\d+)["']`));
+      expect(match, `${asset} should have a cache-busted reference in index.html`).not.toBeNull();
+      expect(worker).toContain(`'./${match[1]}'`);
+    }
+  });
 });
