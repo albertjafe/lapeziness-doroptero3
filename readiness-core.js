@@ -322,5 +322,115 @@
     };
   }
 
-  return { estimateReadiness, collectTimeline, realMinutes };
+
+function estimateMovementReadiness(db, obraId, movementId, options) {
+  const data = db || {};
+  const whole = estimateReadiness(data, obraId, options);
+  if (!whole || movementId == null) return null;
+  const timeline = whole.diagnostics && whole.diagnostics.timeline
+    ? whole.diagnostics.timeline
+    : collectTimeline(data, obraId);
+  const work = timeline && timeline.obra;
+  const movements = Array.isArray(work && work.movimientos) ? work.movimientos : [];
+  const movement = movements.find(item => idOf(item.id) === idOf(movementId));
+  if (!movement) return null;
+
+  const opts = options || {};
+  const observedDates = (timeline.practice || []).concat(timeline.checkpoints || []).map(item => item.date).filter(Boolean);
+  const latestObserved = observedDates.length ? new Date(Math.max(...observedDates.map(date => date.getTime()))) : null;
+  const asOf = dateOf(opts.asOf || opts.now) || latestObserved || new Date();
+  const targetScore = num(opts.targetScore, 80);
+  const points = (timeline.checkpoints || []).filter(point => idOf(point.movementId) === idOf(movementId));
+  const currentScore = points.length ? points[points.length - 1].score : (scoreOf(movement) ?? 0);
+
+  const total = num(movement.compasesTotal || movement.compasTotal || movement.totalBars || movement.bars);
+  const current = num(movement.compasActual ?? movement.compasesActual ?? movement.currentBar);
+  const explicitCoverage = total > 0 ? clamp(current / total, 0, 1) : null;
+  const coverage = explicitCoverage == null
+    ? (points.length ? 1 : clamp(currentScore / 100, 0.15, 1))
+    : explicitCoverage;
+
+  const datedHigh = points.filter(point => point.score >= targetScore && point.date);
+  const distinctHighDates = new Set(datedHigh.map(point => dateKey(point.date))).size;
+  const formalHigh = points.some(point => point.kind === 'event' && point.score >= targetScore);
+  const stable = formalHigh || distinctHighDates >= 2 || points.some((point, index) =>
+    point.score >= targetScore && points.slice(index + 1).some(next =>
+      next.date && point.date && (next.date - point.date) >= 5 * DAY && next.score >= targetScore - 5
+    )
+  );
+
+  let remainingPoints = Math.max(0, targetScore - currentScore);
+  if (currentScore >= targetScore && !stable) remainingPoints = Math.max(remainingPoints, 3);
+  const familiarity = whole.diagnostics && whole.diagnostics.familiarity;
+  if (familiarity && familiarity.recovery) remainingPoints *= 1 - clamp(num(familiarity.prior), 0, 0.6) * 0.35;
+  remainingPoints *= 1 + (1 - coverage) * 0.55;
+
+  const inheritedSpeed = whole.diagnostics && whole.diagnostics.speed;
+  const speedValue = clamp(num(inheritedSpeed && inheritedSpeed.value, 30), 5, 240);
+  let pointEstimateMinutes = Math.max(0, remainingPoints * speedValue);
+  const isReady = Boolean(stable && coverage >= 0.8 && currentScore >= targetScore);
+  if (isReady) pointEstimateMinutes = 0;
+
+  const movementPractice = (timeline.practice || []).filter(item => idOf(item.movementId) === idOf(movementId));
+  const practiceMinutes = movementPractice.reduce((sum, item) => sum + Math.max(0, num(item.minutes)), 0);
+  const scores = points.map(point => point.score);
+  const volatility = scores.length > 1 ? Math.max(...scores) - Math.min(...scores) : 0;
+  const movementObserved = movementPractice.concat(points).map(item => item.date).filter(Boolean);
+  const lastMovementDate = movementObserved.length ? new Date(Math.max(...movementObserved.map(date => date.getTime()))) : null;
+  const daysSince = lastMovementDate ? Math.max(0, (asOf.getTime() - lastMovementDate.getTime()) / DAY) : 0;
+
+  let confidence = 'low';
+  if (points.length >= 4 && movementPractice.length >= 3 && volatility < 25) confidence = 'high';
+  else if (points.length >= 1 || practiceMinutes >= 30) confidence = 'medium';
+  if (daysSince >= 30) confidence = confidence === 'high' ? 'medium' : 'low';
+  if (inheritedSpeed && inheritedSpeed.source === 'fallback' && confidence === 'high') confidence = 'medium';
+
+  const spread = confidence === 'high' ? 0.35 : confidence === 'medium' ? 0.65 : 1.05;
+  const stalenessUncertainty = daysSince >= 30 ? 0.3 : daysSince >= 14 ? 0.15 : 0;
+  const uncertainty = 1 + volatility / 100 + (1 - coverage) * 0.65 + stalenessUncertainty;
+  const lowMinutes = Math.max(0, pointEstimateMinutes * Math.max(0.25, 1 - spread));
+  const highMinutes = Math.max(pointEstimateMinutes, pointEstimateMinutes * (1 + spread * uncertainty));
+
+  const recentMinutes = movementPractice.filter(item => item.date && asOf.getTime() - item.date.getTime() >= 0 && asOf.getTime() - item.date.getTime() <= 28 * DAY)
+    .reduce((sum, item) => sum + Math.max(0, num(item.minutes)), 0);
+  const calendarEstimate = recentMinutes >= 30 && pointEstimateMinutes > 0
+    ? { lowDays: Math.max(1, Math.ceil(lowMinutes / (recentMinutes / 28))), highDays: Math.max(1, Math.ceil(highMinutes / (recentMinutes / 28))) }
+    : undefined;
+
+  const factors = [];
+  if (!points.length) factors.push('estimación inicial del movimiento');
+  if (coverage < 0.9) factors.push('cobertura incompleta del movimiento');
+  if (stable) factors.push('movimiento estable');
+
+  return {
+    scope: 'movement',
+    movementId,
+    movementName: movement.name || movement.nombre || movement.title || '',
+    targetScore,
+    rawScore: currentScore,
+    effectiveScore: currentScore,
+    coverage,
+    pointEstimateMinutes: Math.round(pointEstimateMinutes),
+    lowMinutes: Math.round(lowMinutes),
+    highMinutes: Math.round(highMinutes),
+    confidence,
+    isReady,
+    evidenceCount: points.length,
+    calendarEstimate,
+    factors,
+    diagnostics: {
+      timeline,
+      movement,
+      practiceMinutes,
+      movementPracticeCount: movementPractice.length,
+      speed: inheritedSpeed || { value: speedValue, source: 'fallback' },
+      stable,
+      volatility,
+      daysSince,
+      distinctHighDates,
+    },
+  };
+}
+
+  return { estimateReadiness, estimateMovementReadiness, collectTimeline, realMinutes };
 });
