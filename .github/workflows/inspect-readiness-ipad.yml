@@ -11,21 +11,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Readiness UI references
+      - name: Readiness render detail
         shell: bash
         run: |
-          set -u
-          echo '=== APP READINESS ==='
-          grep -n -C 14 -E 'ReadinessCore|estimateReadiness|crono-readiness|readiness-chip|poner a punto|Poner a punto|pointEstimateMinutes|lowMinutes|highMinutes' app.js | head -n 900 || true
-          echo '=== INDEX READINESS + ASSETS ==='
-          grep -n -C 8 -E 'crono-readiness|readiness-pill|readiness-core|crono-idle-hierarchy|crono-readiness-layout|app\.js' index.html | head -n 700 || true
-          echo '=== PILL MODEL MOVEMENTS ==='
-          grep -n -C 10 -E 'movementState|measuredMovements|pointEstimateMinutes|estimateReadiness' readiness-pill-model.js | head -n 700 || true
-      - name: Timer layout references
+          echo '=== READINESS RENDER ==='
+          sed -n '24770,24945p' app.js
+          echo '=== MODE MUTATIONS ==='
+          grep -n -C 8 -E 'crono-mode-opt|cronoModeToggle|insertAdjacentHTML|appendChild.*mode|Pomodoro' app.js | head -n 600 || true
+      - name: Asset order and tests
         shell: bash
         run: |
-          set -u
-          echo '=== APP TIMER DOM ==='
-          grep -n -C 14 -E 'crono-idle-main|crono-idle-controls|crono-mode-toggle|crono-plant-btn|cronoIdleDrawer|cronoStageIdle|crono-idle-action-rail' app.js index.html | head -n 1000 || true
-          echo '=== TIMER CSS ==='
-          grep -n -C 18 -E 'crono-idle-main|crono-idle-controls|crono-mode-toggle|crono-plant-btn|cronoIdleDrawer|cronoStageIdle|1194|orientation: landscape' crono-idle-hierarchy.css crono-readiness-layout.css styles.css | head -n 1400 || true
+          echo '=== CSS ORDER ==='
+          grep -n -E '<link[^>]+href=.*(styles|crono)[^>]*\.css' index.html || true
+          echo '=== SCRIPT ORDER ==='
+          grep -n -E '<script[^>]+src=.*(solidity|readiness|app\.js)' index.html || true
+          echo '=== PACKAGE ==='
+          cat package.json 2>/dev/null || true
+          echo '=== TEST FILES ==='
+          find . -maxdepth 3 -type f \( -name '*test*.js' -o -name '*spec*.js' -o -name '*playwright*' \) | sort | head -n 250
+          echo '=== IPAD ASSETS ==='
+          find . -maxdepth 4 -type f | grep -Ei 'ipad|landscape|screenshot' | head -n 250 || true
