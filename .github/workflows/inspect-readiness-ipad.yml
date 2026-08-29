@@ -1,0 +1,43 @@
+name: Inspect readiness and iPad layout
+
+on:
+  push:
+    branches: [fix/readiness-ipad-landscape-20260829]
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate readiness integration
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const text = fs.readFileSync('app.js','utf8');
+          const lines = text.split(/\r?\n/);
+          const needles = ['ReadinessCore','ReadinessPillModel','estimatedHours','readiness','movId','cronoSelected'];
+          for (const needle of needles) {
+            console.log(`\n===== ${needle} =====`);
+            lines.forEach((line, i) => {
+              if (!line.includes(needle)) return;
+              const a=Math.max(0,i-5), b=Math.min(lines.length,i+12);
+              console.log(`--- app.js:${i+1} ---`);
+              console.log(lines.slice(a,b).map((x,j)=>`${a+j+1}: ${x}`).join('\n'));
+            });
+          }
+          NODE
+      - name: Show relevant iPad tests
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const lines=fs.readFileSync('tests/e2e/app.spec.js','utf8').split(/\r?\n/);
+          ['keeps the idle and running timer in the same iPad composition','keeps large touch iPads','adapts the running timer to iPad'].forEach(n=>{
+            const i=lines.findIndex(x=>x.includes(n));
+            if(i<0)return;
+            console.log(`\n===== ${n} at ${i+1} =====`);
+            console.log(lines.slice(Math.max(0,i-8),Math.min(lines.length,i+115)).map((x,j)=>`${Math.max(0,i-8)+j+1}: ${x}`).join('\n'));
+          });
+          NODE
+      - name: Show idle landscape CSS
+        run: |
+          cat crono-idle-hierarchy.css
