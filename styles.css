@@ -23148,7 +23148,6 @@ body.crono-paused .crono-readiness-inline { visibility: hidden; }
   }
 }
 
-
 /* Cronómetro parado · iPad horizontal: usar el ancho, no comprimir la altura. */
 .crono-idle-controls .crono-mode-toggle,
 [data-theme^="marmol"] .crono-idle-controls .crono-mode-toggle {
