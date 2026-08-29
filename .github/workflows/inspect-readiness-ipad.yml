@@ -1,43 +1,31 @@
-name: Inspect readiness and iPad layout
-
+name: inspect readiness and ipad ui
 on:
   push:
-    branches: [fix/readiness-ipad-landscape-20260829]
-
+    branches:
+      - fix/readiness-ipad-landscape-20260829
+  workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Locate readiness integration
+      - name: Readiness UI references
+        shell: bash
         run: |
-          node <<'NODE'
-          const fs = require('fs');
-          const text = fs.readFileSync('app.js','utf8');
-          const lines = text.split(/\r?\n/);
-          const needles = ['ReadinessCore','ReadinessPillModel','estimatedHours','readiness','movId','cronoSelected'];
-          for (const needle of needles) {
-            console.log(`\n===== ${needle} =====`);
-            lines.forEach((line, i) => {
-              if (!line.includes(needle)) return;
-              const a=Math.max(0,i-5), b=Math.min(lines.length,i+12);
-              console.log(`--- app.js:${i+1} ---`);
-              console.log(lines.slice(a,b).map((x,j)=>`${a+j+1}: ${x}`).join('\n'));
-            });
-          }
-          NODE
-      - name: Show relevant iPad tests
+          set -u
+          echo '=== APP READINESS ==='
+          grep -n -C 14 -E 'ReadinessCore|estimateReadiness|crono-readiness|readiness-chip|poner a punto|Poner a punto|pointEstimateMinutes|lowMinutes|highMinutes' app.js | head -n 900 || true
+          echo '=== INDEX READINESS + ASSETS ==='
+          grep -n -C 8 -E 'crono-readiness|readiness-pill|readiness-core|crono-idle-hierarchy|crono-readiness-layout|app\.js' index.html | head -n 700 || true
+          echo '=== PILL MODEL MOVEMENTS ==='
+          grep -n -C 10 -E 'movementState|measuredMovements|pointEstimateMinutes|estimateReadiness' readiness-pill-model.js | head -n 700 || true
+      - name: Timer layout references
+        shell: bash
         run: |
-          node <<'NODE'
-          const fs=require('fs');
-          const lines=fs.readFileSync('tests/e2e/app.spec.js','utf8').split(/\r?\n/);
-          ['keeps the idle and running timer in the same iPad composition','keeps large touch iPads','adapts the running timer to iPad'].forEach(n=>{
-            const i=lines.findIndex(x=>x.includes(n));
-            if(i<0)return;
-            console.log(`\n===== ${n} at ${i+1} =====`);
-            console.log(lines.slice(Math.max(0,i-8),Math.min(lines.length,i+115)).map((x,j)=>`${Math.max(0,i-8)+j+1}: ${x}`).join('\n'));
-          });
-          NODE
-      - name: Show idle landscape CSS
-        run: |
-          cat crono-idle-hierarchy.css
+          set -u
+          echo '=== APP TIMER DOM ==='
+          grep -n -C 14 -E 'crono-idle-main|crono-idle-controls|crono-mode-toggle|crono-plant-btn|cronoIdleDrawer|cronoStageIdle|crono-idle-action-rail' app.js index.html | head -n 1000 || true
+          echo '=== TIMER CSS ==='
+          grep -n -C 18 -E 'crono-idle-main|crono-idle-controls|crono-mode-toggle|crono-plant-btn|cronoIdleDrawer|cronoStageIdle|1194|orientation: landscape' crono-idle-hierarchy.css crono-readiness-layout.css styles.css | head -n 1400 || true
