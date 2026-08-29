@@ -1,0 +1,60 @@
+name: align nonlinear pass rating tests
+on:
+  push:
+    branches:
+      - fix/pase-rating-scale-20260829
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: ${{ !startsWith(github.event.head_commit.message, 'Align tests with nonlinear pass rating') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update pass-rating test interactions
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tests/e2e/app.spec.js')
+          text = p.read_text()
+
+          replacements = [
+            ("  await stable.fill('65');\n  await expect(stable).toHaveValue('65');",
+             "  const position65 = await page.evaluate(() => pasePctToPosition(65).toFixed(2));\n  await stable.fill(position65);\n  await expect(stable).toHaveAttribute('data-pase-value', '65');"),
+            ("  await page.locator('.crono-pase-item').first().locator('.pase-liquid-input').fill('82');",
+             "  const position82 = await page.evaluate(() => pasePctToPosition(82).toFixed(2));\n  await page.locator('.crono-pase-item').first().locator('.pase-liquid-input').fill(position82);"),
+            ("  await page.locator('.crono-pase-item').first().locator('.pase-liquid-input').fill('76');",
+             "  const position76 = await page.evaluate(() => pasePctToPosition(76).toFixed(2));\n  await page.locator('.crono-pase-item').first().locator('.pase-liquid-input').fill(position76);"),
+            ("  await page.locator('.crono-pase-item .pase-liquid-input').fill('74');",
+             "  const position74 = await page.evaluate(() => pasePctToPosition(74).toFixed(2));\n  await page.locator('.crono-pase-item .pase-liquid-input').fill(position74);"),
+            ("  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[0]).locator('.pase-liquid-input').fill('18');\n  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[1]).locator('.pase-liquid-input').fill('61');\n  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[2]).locator('.pase-liquid-input').fill('97');",
+             "  const passPositions = await page.evaluate(() => [18, 61, 97].map(value => pasePctToPosition(value).toFixed(2)));\n  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[0]).locator('.pase-liquid-input').fill(passPositions[0]);\n  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[1]).locator('.pase-liquid-input').fill(passPositions[1]);\n  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[2]).locator('.pase-liquid-input').fill(passPositions[2]);"),
+            ("  await page.locator('#paseQPercent').fill('84');",
+             "  const position84 = await page.evaluate(() => pasePctToPosition(84).toFixed(2));\n  await page.locator('#paseQPercent').fill(position84);"),
+          ]
+          for old, new in replacements:
+              if old not in text:
+                  raise SystemExit('Missing expected test snippet: ' + old[:90])
+              text = text.replace(old, new, 1)
+          p.write_text(text)
+          PY
+          echo 'Remaining direct liquid range fills:'
+          grep -n -E "(pase-liquid-input|paseQPercent|hechoSolidezSlider).*fill\('[0-9]" tests/e2e/app.spec.js || true
+      - name: Validate feature-related tests
+        shell: bash
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run check
+          npm run test:unit
+          npx playwright test tests/e2e/pase-rating-scale.spec.js --project=chromium
+          npx playwright test tests/e2e/app.spec.js --project=chromium --grep "cancels or confirms a valid timer|records recording passes|keeps competition passes|configures a work map|keeps the pass save action|edits a previous pass"
+      - name: Commit aligned tests
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/e2e/app.spec.js
+          git commit -m "Align tests with nonlinear pass rating"
+          git push origin HEAD:fix/pase-rating-scale-20260829
