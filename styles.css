@@ -23234,3 +23234,37 @@ body.crono-paused .crono-readiness-inline { visibility: hidden; }
     grid-template-rows: 500px 250px auto !important;
   }
 }
+
+/* Pase rating scale v2 · referencia manual + escala logarítmica */
+.pase-liquid-meter.rating-scale-v2 { height:138px; padding:0 1px; }
+.pase-liquid-meter.rating-scale-v2.compact { height:104px; margin-top:10px; }
+.pase-liquid-meter.rating-scale-v2 .pase-liquid-readout { position:absolute; inset:0 2px auto; display:flex; align-items:baseline; justify-content:space-between; gap:10px; min-width:0; font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif; pointer-events:none; }
+.pase-liquid-meter.rating-scale-v2 .pase-liquid-readout span { min-width:0; overflow:hidden; color:var(--text3); font-size:10px; line-height:1.2; text-overflow:ellipsis; white-space:nowrap; }
+.pase-liquid-meter.rating-scale-v2 .pase-liquid-readout strong { flex:0 0 auto; color:var(--pase-color); font-size:13px; font-weight:800; line-height:1.2; font-variant-numeric:tabular-nums; }
+.pase-liquid-meter.rating-scale-v2.compact .pase-liquid-readout span { font-size:8px; }
+.pase-liquid-meter.rating-scale-v2.compact .pase-liquid-readout strong { font-size:11px; }
+.pase-liquid-meter.rating-scale-v2 .pase-liquid-reservoir { inset:25px 1px auto; height:58px; }
+.pase-liquid-meter.rating-scale-v2.compact .pase-liquid-reservoir { inset:21px 1px auto; height:42px; }
+.pase-liquid-meter.rating-scale-v2 .pase-liquid-orb { width:31px; height:31px; left:clamp(4px,calc(var(--pase-fill) - 16px),calc(100% - 35px)); }
+.pase-liquid-meter.rating-scale-v2.compact .pase-liquid-orb { width:23px; height:23px; left:clamp(3px,calc(var(--pase-fill) - 12px),calc(100% - 27px)); }
+.pase-liquid-meter.rating-scale-v2 .pase-liquid-guide-layer { position:absolute; top:87px; left:1px; right:1px; height:31px; pointer-events:none; }
+.pase-liquid-meter.rating-scale-v2.compact .pase-liquid-guide-layer { top:66px; height:29px; }
+.pase-liquid-meter.rating-scale-v2 .pase-liquid-guide { position:absolute; top:0; left:var(--guide-pos); display:grid; justify-items:center; min-width:34px; transform:translateX(-50%); color:var(--text3); font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif; line-height:1; text-align:center; }
+.pase-liquid-meter.rating-scale-v2 .pase-liquid-guide:nth-child(even) { top:12px; }
+.pase-liquid-meter.rating-scale-v2 .pase-liquid-guide i { position:absolute; top:-8px; width:1px; height:7px; background:color-mix(in srgb,var(--text3) 55%,transparent); }
+.pase-liquid-meter.rating-scale-v2 .pase-liquid-guide b { font-size:7px; font-weight:650; white-space:nowrap; }
+.pase-liquid-meter.rating-scale-v2 .pase-liquid-guide em { margin-top:2px; font-size:6px; font-style:normal; font-variant-numeric:tabular-nums; opacity:.72; }
+.pase-liquid-meter.rating-scale-v2.compact .pase-liquid-guide b { font-size:6.5px; }
+.pase-liquid-meter.rating-scale-v2.compact .pase-liquid-guide em { display:none; }
+.pase-liquid-meter.rating-scale-v2 .pase-liquid-scale-note { position:absolute; inset:auto 2px 0; color:var(--text3); font:600 8px/1.1 -apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif; text-align:right; opacity:.72; pointer-events:none; }
+.pase-liquid-meter.rating-scale-v2.compact .pase-liquid-scale-note { display:none; }
+#modalHechoDatos .hecho-solidez-meter.rating-scale-v2 { height:142px; margin:7px 0 2px; }
+#modalHechoDatos .hecho-solidez-meter.rating-scale-v2 .pase-liquid-reservoir { inset-block:auto; top:25px; height:62px; }
+#modalHechoDatos .hecho-solidez-meter.rating-scale-v2 .pase-liquid-guide-layer { top:91px; }
+@media (max-width:520px) {
+  .pase-liquid-meter.rating-scale-v2 .pase-liquid-readout { gap:6px; }
+  .pase-liquid-meter.rating-scale-v2 .pase-liquid-readout span { font-size:9px; }
+  .pase-liquid-meter.rating-scale-v2 .pase-liquid-readout strong { font-size:12px; }
+  .pase-liquid-meter.rating-scale-v2 .pase-liquid-guide { min-width:28px; }
+  .pase-liquid-meter.rating-scale-v2 .pase-liquid-guide b { font-size:6.3px; }
+}

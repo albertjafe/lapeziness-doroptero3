@@ -1424,8 +1424,9 @@ test('cancels or confirms a valid timer and saves visual solidity', async ({ pag
   const stable = modal.locator('#hechoSolidezSlider');
   await expect(modal.locator('.hecho-solidez-meter')).toBeVisible();
   await expect(modal.locator('.hecho-solidez-options')).toHaveCount(0);
-  await stable.fill('65');
-  await expect(stable).toHaveValue('65');
+  const position65 = await page.evaluate(() => pasePctToPosition(65).toFixed(2));
+  await stable.fill(position65);
+  await expect(stable).toHaveAttribute('data-pase-value', '65');
   await modal.getByRole('button', { name: 'Hecho' }).click();
   await expect(modal).not.toHaveClass(/visible/);
 
@@ -1778,7 +1779,8 @@ test('records recording passes with takes and a score for each work', async ({ p
   await page.locator('#cronoPaseSelectionList .crono-pase-picker-item').click();
   await page.locator('#cronoPaseContinueBtn').click();
   await page.locator('#modalCronoPaseRapido .pase-tipo-btn.grabacion').click();
-  await page.locator('.crono-pase-item').first().locator('.pase-liquid-input').fill('82');
+  const position82 = await page.evaluate(() => pasePctToPosition(82).toFixed(2));
+  await page.locator('.crono-pase-item').first().locator('.pase-liquid-input').fill(position82);
   await page.locator('.crono-pase-item').first().locator('.crono-pase-takes input').fill('4');
   await page.getByRole('button', { name: 'Guardar pases' }).click();
 
@@ -1803,7 +1805,8 @@ test('keeps competition passes distinct from general events', async ({ page }) =
   await page.locator('#cronoPaseSelectionList .crono-pase-picker-item').click();
   await page.locator('#cronoPaseContinueBtn').click();
   await page.locator('#modalCronoPaseRapido .pase-tipo-btn.concurso').click();
-  await page.locator('.crono-pase-item').first().locator('.pase-liquid-input').fill('76');
+  const position76 = await page.evaluate(() => pasePctToPosition(76).toFixed(2));
+  await page.locator('.crono-pase-item').first().locator('.pase-liquid-input').fill(position76);
   await page.getByRole('button', { name: 'Guardar pases' }).click();
 
   const state = await page.evaluate(() => ({
@@ -1842,7 +1845,8 @@ test('configures a work map, records a visual fault and shows it in pass history
   await page.getByRole('button', { name: 'Guardar mapa' }).click();
 
   await expect(page.locator('.crono-pase-item .pase-fault-launch')).toContainText('1 marca');
-  await page.locator('.crono-pase-item .pase-liquid-input').fill('74');
+  const position74 = await page.evaluate(() => pasePctToPosition(74).toFixed(2));
+  await page.locator('.crono-pase-item .pase-liquid-input').fill(position74);
   await page.getByRole('button', { name: 'Guardar pases' }).click();
 
   const state = await page.evaluate(() => {
@@ -1924,9 +1928,10 @@ test('keeps the pass save action visible and supports repeated passes per work',
     .filter(item => item.name === 'Obra 1')
     .map(item => item.index));
   expect(firstPassIndices).toHaveLength(3);
-  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[0]).locator('.pase-liquid-input').fill('18');
-  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[1]).locator('.pase-liquid-input').fill('61');
-  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[2]).locator('.pase-liquid-input').fill('97');
+  const passPositions = await page.evaluate(() => [18, 61, 97].map(value => pasePctToPosition(value).toFixed(2)));
+  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[0]).locator('.pase-liquid-input').fill(passPositions[0]);
+  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[1]).locator('.pase-liquid-input').fill(passPositions[1]);
+  await page.locator('#cronoPaseItems .crono-pase-item').nth(firstPassIndices[2]).locator('.pase-liquid-input').fill(passPositions[2]);
   await modal.getByRole('button', { name: 'Guardar pases' }).click();
   const result = await page.evaluate(() => db.obras[0].paseHistory.map(entry => ({ pct: entry.solidezPct, date: entry.date.slice(0, 10) })));
   expect(result).toEqual([
@@ -1954,7 +1959,8 @@ test('edits a previous pass by date, type and result from the evolution history'
   await page.locator('#paseQFecha').fill('2026-08-03');
   await page.locator('#modalPaseQuality .pase-tipo-btn.grabacion').click();
   await page.locator('#paseQTakes').fill('4');
-  await page.locator('#paseQPercent').fill('84');
+  const position84 = await page.evaluate(() => pasePctToPosition(84).toFixed(2));
+  await page.locator('#paseQPercent').fill(position84);
   await page.locator('#paseQNote').fill('Ahora estable');
   await page.getByRole('button', { name: 'Guardar' }).click();
   const edited = await page.evaluate(() => db.obras[0].paseHistory[0]);

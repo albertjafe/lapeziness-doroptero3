@@ -4788,6 +4788,107 @@ function paseClampPct(value, fallback) {
   return Math.max(1, Math.min(100, Math.round(n)));
 }
 
+const PASE_RATING_LOG_A = 3;
+const PASE_RATING_GUIDES = [
+  { value: 15, label: 'Leída' },
+  { value: 30, label: 'Digitada' },
+  { value: 50, label: 'Aprendida' },
+  { value: 65, label: 'Memoria' },
+  { value: 80, label: 'A punto' },
+  { value: 90, label: 'Concierto' },
+  { value: 97, label: 'Excelente' },
+];
+
+function pasePctToPosition(pct) {
+  const value = paseClampPct(pct) / 100;
+  return ((Math.pow(1 + PASE_RATING_LOG_A, value) - 1) / PASE_RATING_LOG_A) * 100;
+}
+
+function pasePositionToPct(position) {
+  const pos = Math.max(0, Math.min(100, Number(position) || 0)) / 100;
+  const pct = Math.log(1 + PASE_RATING_LOG_A * pos) / Math.log(1 + PASE_RATING_LOG_A) * 100;
+  return paseClampPct(pct);
+}
+
+function paseRatingStage(pct) {
+  const value = paseClampPct(pct);
+  if (value >= 97) return 'Excelente';
+  if (value >= 90) return 'Concierto';
+  if (value >= 80) return 'A punto';
+  if (value >= 72) return 'Estable';
+  if (value >= 60) return 'Memorizada';
+  if (value >= 45) return 'Aprendida';
+  if (value >= 30) return 'Digitada';
+  if (value >= 15) return 'Leída';
+  return 'Iniciada';
+}
+
+function paseManualHistoryValue(entry) {
+  if (!entry) return null;
+  if (entry.inputVal != null && Number.isFinite(Number(entry.inputVal))) return paseClampPct(entry.inputVal);
+  const context = String(entry.context || '');
+  if (context.indexOf('pase-') === 0 && entry.val != null) return paseClampPct(normalizeSolVal(entry.val));
+  return null;
+}
+
+function paseTargetPreviousPct(obraId, movId) {
+  const target = movId ? findMovimiento(obraId, movId) : findObra(obraId);
+  if (!target) return null;
+  const candidates = [];
+  (target.solHistory || []).forEach((entry, index) => {
+    const value = paseManualHistoryValue(entry);
+    if (value == null) return;
+    candidates.push({ value, date: new Date(entry.date || 0).getTime() || 0, order: index });
+  });
+  (target.paseHistory || []).forEach((entry, index) => {
+    const value = paseEntryPct(entry);
+    if (value == null) return;
+    candidates.push({ value, date: new Date(entry.date || 0).getTime() || 0, order: index + 1000 });
+  });
+  if (candidates.length) {
+    candidates.sort((a, b) => b.date - a.date || a.order - b.order);
+    return candidates[0].value;
+  }
+  // Compatibilidad con datos antiguos, anteriores a inputVal.
+  const legacy = target.solHistory?.[0]?.val;
+  if (legacy != null) return paseClampPct(normalizeSolVal(legacy));
+  return null;
+}
+
+function pasePreviousLabel(previousPct) {
+  if (previousPct == null) return 'Primera valoración · referencia 50%';
+  const value = paseClampPct(previousPct);
+  return 'Anterior · ' + value + '% · ' + paseRatingStage(value);
+}
+
+function paseGuideLayerHtml() {
+  return '<div class="pase-liquid-guide-layer" aria-hidden="true">' + PASE_RATING_GUIDES.map((guide, index) =>
+    '<span class="pase-liquid-guide g' + index + '" style="--guide-pos:' + pasePctToPosition(guide.value).toFixed(2) + '%">' +
+      '<i></i><b>' + guide.label + '</b><em>' + guide.value + '</em>' +
+    '</span>'
+  ).join('') + '</div>';
+}
+
+function paseMeterReadoutHtml(value, previousPct) {
+  const current = paseClampPct(value);
+  return '<div class="pase-liquid-readout">' +
+    '<span data-pase-previous>' + pasePreviousLabel(previousPct) + '</span>' +
+    '<strong data-pase-current>' + current + '% · ' + paseRatingStage(current) + '</strong>' +
+  '</div>';
+}
+
+function paseEnsureMeterChrome(meter, previousPct) {
+  if (!meter) return;
+  meter.classList.add('rating-scale-v2');
+  if (!meter.querySelector('.pase-liquid-readout')) meter.insertAdjacentHTML('afterbegin', paseMeterReadoutHtml(50, previousPct));
+  if (!meter.querySelector('.pase-liquid-guide-layer')) meter.insertAdjacentHTML('beforeend', paseGuideLayerHtml());
+  if (!meter.querySelector('.pase-liquid-scale-note')) meter.insertAdjacentHTML('beforeend', '<div class="pase-liquid-scale-note">Escala logarítmica · más precisión cerca de concierto</div>');
+  if (previousPct !== undefined) {
+    const previousEl = meter.querySelector('[data-pase-previous]');
+    if (previousEl) previousEl.textContent = pasePreviousLabel(previousPct);
+  }
+}
+
 function paseEntryPct(entry) {
   if (!entry) return null;
   if (entry.solidezPct != null && Number.isFinite(Number(entry.solidezPct))) {
@@ -4813,41 +4914,57 @@ function pasePctToQuality(pct) {
 
 function paseLiquidStyle(pct) {
   const value = paseClampPct(pct);
+  const position = pasePctToPosition(value);
   const glow = (0.12 + value / 100 * 0.58).toFixed(2);
-  const hue = value < 50
-    ? Math.round(4 + value * 0.8)
-    : Math.round(44 + (value - 50) * 1.8);
+  const hue = value < 50 ? Math.round(4 + value * 0.8) : Math.round(44 + (value - 50) * 1.8);
   const glowSize = Math.round(3 + value * 0.15);
-  return '--pase-fill:' + value + '%;--pase-glow:' + glow + ';--pase-glow-size:' + glowSize + 'px;--pase-color:hsl(' + hue + ' 62% 55%)';
+  return '--pase-fill:' + position.toFixed(2) + '%;--pase-value:' + value + ';--pase-glow:' + glow + ';--pase-glow-size:' + glowSize + 'px;--pase-color:hsl(' + hue + ' 62% 55%)';
 }
 
 function paseLiquidMeterHtml(options) {
   const opts = options || {};
   const value = paseClampPct(opts.value);
+  const previous = opts.previous == null ? null : paseClampPct(opts.previous);
+  const position = pasePctToPosition(value);
   const id = opts.id ? ' id="' + opts.id + '"' : '';
   const inputId = opts.inputId ? ' id="' + opts.inputId + '"' : '';
-  const classes = 'pase-liquid-meter' + (opts.compact ? ' compact' : '');
+  const classes = 'pase-liquid-meter rating-scale-v2' + (opts.compact ? ' compact' : '');
   const oninput = opts.oninput || '';
   const onchange = opts.onchange || '';
   return '<div' + id + ' class="' + classes + '" style="' + paseLiquidStyle(value) + '">' +
+    paseMeterReadoutHtml(value, previous) +
     '<div class="pase-liquid-reservoir" aria-hidden="true">' +
       '<span class="pase-liquid-fill"></span><span class="pase-liquid-glint"></span><span class="pase-liquid-orb"></span>' +
     '</div>' +
-    '<input' + inputId + ' class="pase-liquid-input" type="range" min="1" max="100" step="1" value="' + value + '"' +
-      ' aria-label="Resultado del pase, de 1 a 100" aria-valuetext="' + value + ' por ciento"' +
+    '<input' + inputId + ' class="pase-liquid-input" type="range" min="0" max="100" step="0.01" value="' + position.toFixed(2) + '" data-pase-value="' + value + '"' +
+      ' aria-label="Resultado del pase, de 1 a 100" aria-valuetext="' + value + ' por ciento, ' + paseRatingStage(value) + '"' +
       (oninput ? ' oninput="' + oninput + '"' : '') + (onchange ? ' onchange="' + onchange + '"' : '') + '>' +
+    paseGuideLayerHtml() +
+    '<div class="pase-liquid-scale-note">Escala logarítmica · más precisión cerca de concierto</div>' +
   '</div>';
 }
 
-function updatePaseLiquidMeter(input, value) {
-  const pct = paseClampPct(value);
+function paseSetMeterSemanticValue(input, pct) {
+  const value = paseClampPct(pct);
   const meter = input?.closest?.('.pase-liquid-meter');
-  if (meter) meter.setAttribute('style', paseLiquidStyle(pct));
-  if (input) {
-    input.value = pct;
-    input.setAttribute('aria-valuetext', pct + ' por ciento');
+  if (meter) {
+    paseEnsureMeterChrome(meter);
+    meter.setAttribute('style', paseLiquidStyle(value));
+    meter.dataset.paseValue = String(value);
+    const current = meter.querySelector('[data-pase-current]');
+    if (current) current.textContent = value + '% · ' + paseRatingStage(value);
   }
-  return pct;
+  if (input) {
+    input.min = '0'; input.max = '100'; input.step = '0.01';
+    input.value = pasePctToPosition(value).toFixed(2);
+    input.dataset.paseValue = String(value);
+    input.setAttribute('aria-valuetext', value + ' por ciento, ' + paseRatingStage(value));
+  }
+  return value;
+}
+
+function updatePaseLiquidMeter(input, position) {
+  return paseSetMeterSemanticValue(input, pasePositionToPct(position));
 }
 
 function linkPasePctToTargetHistory(obraId, movId, pct, tipo, dateIso) {
@@ -6661,19 +6778,13 @@ function hechoCurrentSolidezValue(entity, isMovement) {
   return normalizeSolVal(isMovement && raw <= 10 ? raw * 10 : raw);
 }
 
-function hechoSelectSolidez(value, button) {
-  const val = Math.max(0, Math.min(100, parseInt(value, 10) || 0));
+function hechoSelectSolidez(position, button) {
+  const slider = document.getElementById('hechoSolidezSlider');
+  const val = slider ? updatePaseLiquidMeter(slider, position) : pasePositionToPct(position);
   if (!val) return;
   _hechoQuickSolidezVal = val;
-  const slider = document.getElementById('hechoSolidezSlider');
-  const meter = document.getElementById('hechoSolidezMeter');
-  if (slider) {
-    slider.value = val;
-    slider.setAttribute('aria-valuetext', 'Solidez seleccionada');
-  }
-  if (meter) meter.setAttribute('style', paseLiquidStyle(val));
   const selection = document.getElementById('hechoSolidezSelection');
-  if (selection) selection.textContent = 'Solidez seleccionada';
+  if (selection) selection.textContent = val + '% · ' + paseRatingStage(val);
 }
 
 function hechoToggleAdvanced() {
@@ -7263,19 +7374,17 @@ function openHechoDatos(planId, minPlan, opts) {
   if (savedMinutes) savedMinutes.textContent = (minPlan || 0) + ' min guardados';
   const quickSection = document.getElementById('hechoSolidezSection');
   if (quickSection) quickSection.style.display = _hechoShowSol ? '' : 'none';
-  const previous = hechoCurrentSolidezValue(entity, !!movId);
+  const previous = paseTargetPreviousPct(obraId, movId || null);
   const previousEl = document.getElementById('hechoSolidezPrevious');
-  if (previousEl) previousEl.textContent = '';
+  if (previousEl) previousEl.textContent = previous == null ? 'Primera valoración' : ('Anterior: ' + previous + '% · ' + paseRatingStage(previous));
   const solidezSlider = document.getElementById('hechoSolidezSlider');
   const solidezMeter = document.getElementById('hechoSolidezMeter');
   const startingSolidez = previous == null ? 50 : previous;
-  if (solidezSlider) {
-    solidezSlider.value = startingSolidez;
-    solidezSlider.setAttribute('aria-valuetext', previous == null ? 'Sin registrar' : 'Valor anterior');
-  }
-  if (solidezMeter) solidezMeter.setAttribute('style', paseLiquidStyle(startingSolidez));
+  if (solidezMeter) paseEnsureMeterChrome(solidezMeter, previous);
+  if (solidezSlider) paseSetMeterSemanticValue(solidezSlider, startingSolidez);
   const selectionEl = document.getElementById('hechoSolidezSelection');
-  if (selectionEl) selectionEl.textContent = 'Sin registrar';
+  if (selectionEl) selectionEl.textContent = startingSolidez + '% · ' + paseRatingStage(startingSolidez);
+
   const hechoModal = document.querySelector('#modalHechoDatos .hecho-modal');
   if (hechoModal) hechoModal.classList.remove('show-details');
   const advancedToggle = document.getElementById('hechoAdvancedToggle');
@@ -15497,6 +15606,7 @@ function renderPasajeRowGlobal(item, STATUS_LABEL, STATUS_COLOR, STATUS_BAR, sho
 let paseQualityObraId = null;
 let paseQualityMovId = null;
 let paseQualitySelectedPct = 50;
+let paseQualityPreviousPct = null;
 let paseTipoSelected = 'solo';
 let cronoPaseTipoSelected = 'solo';
 let paseEditingEntry = null;
@@ -15855,11 +15965,9 @@ function buildPaseScoreBtns() {
   const row = document.getElementById('paseQScoreBtns');
   if (!row) return;
   row.innerHTML = paseLiquidMeterHtml({
-    id: 'paseQMeter',
-    inputId: 'paseQPercent',
-    value: paseQualitySelectedPct,
-    oninput: 'selectPasePct(this.value,this)',
-    onchange: 'paseLiquidCommitHaptic()',
+    id: 'paseQMeter', inputId: 'paseQPercent', value: paseQualitySelectedPct,
+    previous: paseQualityPreviousPct,
+    oninput: 'selectPasePct(this.value,this)', onchange: 'paseLiquidCommitHaptic()',
   });
 }
 
@@ -15868,25 +15976,21 @@ function registerPase(obraId, movId) {
   paseFaultDraft = [];
   paseQualityObraId = obraId;
   paseQualityMovId = movId || null;
-  paseQualitySelectedPct = 50;
+  paseQualityPreviousPct = paseTargetPreviousPct(obraId, movId || null);
+  paseQualitySelectedPct = paseQualityPreviousPct == null ? 50 : paseQualityPreviousPct;
   paseTipoSelected = 'solo';
   const obra = findObra(obraId);
   const mov = movId ? findMovimiento(obraId, movId) : null;
-  const displayName = mov
-    ? `${obra ? obra.name + ' — ' : ''}${mov.name}`
-    : (obra ? obra.name : '');
+  const displayName = mov ? `${obra ? obra.name + ' — ' : ''}${mov.name}` : (obra ? obra.name : '');
   document.getElementById('paseQualityName').textContent = displayName;
   document.getElementById('paseQualityTitle').textContent = '¿Cómo fue el pase?';
   document.getElementById('paseQNote').value = '';
-  const takes = document.getElementById('paseQTakes');
-  if (takes) takes.value = '';
+  const takes = document.getElementById('paseQTakes'); if (takes) takes.value = '';
   document.getElementById('paseQFecha').value = new Date().toISOString().split('T')[0];
   buildPaseScoreBtns();
   document.querySelectorAll('#modalPaseQuality .pase-tipo-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('#modalPaseQuality .pase-tipo-btn.solo')?.classList.add('active');
-  updatePaseTakesVisibility('solo');
-  updatePaseQualityFaultButton();
-  openModal('modalPaseQuality');
+  updatePaseTakesVisibility('solo'); updatePaseQualityFaultButton(); openModal('modalPaseQuality');
 }
 
 function editPaseFromHistory(button) {
@@ -15910,6 +16014,7 @@ function openEditPase(obraId, movId, entryId, entryIndex) {
   paseQualityObraId = obraId;
   paseQualityMovId = movId || null;
   paseQualitySelectedPct = paseEntryPct(entry) || 50;
+  paseQualityPreviousPct = null;
   paseTipoSelected = normalizePaseTipo(entry.tipo || 'solo');
   paseFaultDraft = paseFaultClone(entry.faults || []);
   document.getElementById('paseQualityTitle').textContent = 'Editar pase';
@@ -16101,18 +16206,12 @@ function cronoPaseBuildSelectionGroups() {
 function cronoPaseDraftItem(resolved) {
   if (!resolved || resolved.obra?.tipo === 'actividad') return null;
   const targetKey = cronoPaseDraftKey(resolved.obraId, resolved.movId);
+  const previousPct = paseTargetPreviousPct(resolved.obraId, resolved.movId || null);
   return {
-    key: targetKey,
-    targetKey,
-    obraId: resolved.obraId,
-    movId: resolved.movId || null,
-    name: resolved.name,
-    minutes: cronoPaseDefaultMinutes(resolved),
-    solidezPct: 50,
-    takes: null,
-    faults: [],
-    passNumber: 1,
-    passCount: 1,
+    key: targetKey, targetKey, obraId: resolved.obraId, movId: resolved.movId || null,
+    name: resolved.name, minutes: cronoPaseDefaultMinutes(resolved),
+    solidezPct: previousPct == null ? 50 : previousPct, previousPct,
+    takes: null, faults: [], passNumber: 1, passCount: 1,
   };
 }
 
@@ -16260,7 +16359,8 @@ function cronoPaseSetCount(targetKey, value) {
       targetKey,
       passNumber: index + 1,
       passCount: desired,
-      solidezPct: previous?.solidezPct ?? 50,
+      solidezPct: previous?.solidezPct ?? base.previousPct ?? 50,
+      previousPct: base.previousPct ?? previous?.previousPct ?? null,
       takes: previous?.takes ?? null,
       faults: paseFaultClone(previous?.faults || []),
     });
@@ -16314,6 +16414,7 @@ function cronoPaseRender() {
   host.innerHTML = grouped.flatMap(group => group.items.map((it, groupIndex) => {
     const meter = paseLiquidMeterHtml({
       value: it.solidezPct,
+      previous: it.previousPct,
       compact: true,
       oninput: 'cronoPaseSetPct(\'' + it.key + '\',this.value,this)',
       onchange: 'paseLiquidCommitHaptic()',

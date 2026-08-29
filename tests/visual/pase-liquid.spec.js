@@ -30,8 +30,9 @@ test('keeps the liquid pass meter clear on iPhone and iPad', async ({ page }, te
   await page.locator('#cronoPaseContinueBtn').click();
   const meters = page.locator('#cronoPaseItems .pase-liquid-input');
   await expect(meters).toHaveCount(2);
-  await meters.nth(0).fill('28');
-  await meters.nth(1).fill('91');
+  const positions = await page.evaluate(() => [pasePctToPosition(28).toFixed(2), pasePctToPosition(91).toFixed(2)]);
+  await meters.nth(0).fill(positions[0]);
+  await meters.nth(1).fill(positions[1]);
   await page.waitForTimeout(180);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('pases-liquidos-iphone.png'), fullPage: true });
@@ -41,16 +42,18 @@ test('keeps the liquid pass meter clear on iPhone and iPad', async ({ page }, te
     closeModal('modalCronoPaseRapido');
     registerPase('bach');
   });
-  await page.locator('#paseQPercent').fill('86');
-  await expect(page.locator('#paseQMeter')).toHaveCSS('--pase-fill', '86%');
+  const position86 = await page.evaluate(() => pasePctToPosition(86).toFixed(2));
+  await page.locator('#paseQPercent').fill(position86);
+  await expect(page.locator('#paseQMeter [data-pase-current]')).toContainText('86%');
   await page.waitForTimeout(180);
   const fillRatio = await page.locator('#paseQMeter').evaluate(meter => {
     const reservoir = meter.querySelector('.pase-liquid-reservoir').getBoundingClientRect();
     const fill = meter.querySelector('.pase-liquid-fill').getBoundingClientRect();
     return fill.width / reservoir.width;
   });
-  expect(fillRatio).toBeGreaterThan(0.84);
-  expect(fillRatio).toBeLessThan(0.88);
+  const expectedRatio = await page.evaluate(() => pasePctToPosition(86) / 100);
+  expect(fillRatio).toBeGreaterThan(expectedRatio - 0.02);
+  expect(fillRatio).toBeLessThan(expectedRatio + 0.02);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('pase-liquido-ipad.png'), fullPage: true });
 });
