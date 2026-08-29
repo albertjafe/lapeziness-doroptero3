@@ -195,4 +195,24 @@ describe('ReadinessCore', () => {
     expect(result.pointEstimateMinutes).toBe(0);
     expect(JSON.stringify(db)).toBe(before);
   });
+
+  it('estimates the selected movement separately from the whole work', () => {
+    const movements = [
+      { id: 'one', name: 'I', sol: 7, compasesTotal: 100, compasActual: 100, solHistory: [{ val: 70, date: '2026-08-20' }] },
+      { id: 'two', name: 'II', sol: 3, compasesTotal: 100, compasActual: 100, solHistory: [{ val: 30, date: '2026-08-20' }] },
+    ];
+    const data = dbWith(obra({ sol: 50, compasesTotal: 200, compasActual: 200, movimientos: movements }), [
+      { id: 's1', date: '2026-08-20', items: [item('2026-08-20T10:00:00Z', 45, { movId: 'one', solRating: 70 })] },
+    ]);
+    const whole = Readiness.estimateReadiness(data, 'bach', { now: new Date('2026-08-21T10:00:00Z') });
+    const movement = Readiness.estimateMovementReadiness(data, 'bach', 'one', { now: new Date('2026-08-21T10:00:00Z') });
+    expect(movement.scope).toBe('movement');
+    expect(movement.movementId).toBe('one');
+    expect(movement.rawScore).toBe(70);
+    expect(movement.pointEstimateMinutes).toBeGreaterThan(0);
+    expect(movement.pointEstimateMinutes).toBeLessThan(whole.pointEstimateMinutes);
+    expect(movement.lowMinutes).toBeLessThanOrEqual(movement.pointEstimateMinutes);
+    expect(movement.highMinutes).toBeGreaterThanOrEqual(movement.pointEstimateMinutes);
+  });
+
 });

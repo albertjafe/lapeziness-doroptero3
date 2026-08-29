@@ -24780,7 +24780,23 @@ function cronoReadinessEstimate(selectionValue) {
   if (!resolved || !resolved.obraId) return null;
   const obra = findObra(resolved.obraId);
   if (!obra || obra.tipo === 'actividad') return null;
-  try { return ReadinessCore.estimateReadiness(db, resolved.obraId, { now: new Date() }); } catch (e) { return null; }
+  try {
+    const workEstimate = ReadinessCore.estimateReadiness(db, resolved.obraId, { now: new Date() });
+    if (!workEstimate) return null;
+    const movementId = resolved.movId ?? resolved.movementId ?? resolved.movimientoId ?? null;
+    const movementEstimate = movementId != null && typeof ReadinessCore.estimateMovementReadiness === 'function'
+      ? ReadinessCore.estimateMovementReadiness(db, resolved.obraId, movementId, { now: new Date() })
+      : null;
+    return {
+      ...workEstimate,
+      workEstimate,
+      movementEstimate,
+      readinessScope: movementEstimate ? 'movement' : 'work',
+      selectedMovementId: movementId,
+    };
+  } catch (e) {
+    return null;
+  }
 }
 
 function cronoReadinessHours(estimate) {
@@ -24795,17 +24811,48 @@ function cronoReadinessConfidence(confidence) {
   return confidence === 'high' ? 'Confianza alta' : confidence === 'medium' ? 'Confianza media' : 'Confianza baja';
 }
 
+function cronoReadinessScopeLabel(estimate, compact) {
+  if (!estimate) return '';
+  if (estimate.isReady) return 'estable';
+  return '≈ ' + cronoReadinessHours(estimate) + (compact ? '' : ' netas');
+}
+
+function cronoReadinessMainText(bundle, compact) {
+  if (!bundle) return '';
+  const workEstimate = bundle.workEstimate || bundle;
+  const movementEstimate = bundle.movementEstimate || null;
+  if (movementEstimate) {
+    return (compact ? 'Mov. ' : 'Movimiento · ') + cronoReadinessScopeLabel(movementEstimate, !!compact)
+      + (compact ? ' · Obra ' : ' · Obra completa · ') + cronoReadinessScopeLabel(workEstimate, !!compact);
+  }
+  return (compact ? 'Obra ' : 'Obra completa · ') + cronoReadinessScopeLabel(workEstimate, !!compact);
+}
+
+function cronoReadinessConfidenceSummary(bundle, compact) {
+  if (!bundle) return '';
+  const workEstimate = bundle.workEstimate || bundle;
+  const movementEstimate = bundle.movementEstimate || null;
+  if (!movementEstimate) return cronoReadinessConfidence(workEstimate.confidence);
+  const mov = cronoReadinessConfidence(movementEstimate.confidence).replace('Confianza ', '');
+  const work = cronoReadinessConfidence(workEstimate.confidence).replace('Confianza ', '');
+  return compact ? ('Mov. ' + mov + ' · obra ' + work) : ('Movimiento: confianza ' + mov + ' · Obra: confianza ' + work);
+}
+
 function cronoRenderReadinessEstimate() {
   const idleEl = document.getElementById('cronoIdleReadiness');
   const runEl = document.getElementById('cronoRunReadiness');
   const sel = document.getElementById('cronoObraSelect');
   const value = crono.state === 'idle' ? sel?.value : (crono.obraId ? (crono.movId ? 'mov::' + crono.obraId + '::' + crono.movId : 'obra::' + crono.obraId) : '');
   const estimate = value ? cronoReadinessEstimate(value) : null;
-  const main = estimate?.isReady ? 'A punto · estable' : estimate ? 'A punto · ≈ ' + cronoReadinessHours(estimate) + ' netas' : '';
-  const confidence = estimate ? cronoReadinessConfidence(estimate.confidence) : '';
+  const main = estimate ? cronoReadinessMainText(estimate, false) : '';
+  const confidence = estimate ? cronoReadinessConfidenceSummary(estimate, true) : '';
+  const movementEstimate = estimate?.movementEstimate || null;
+  const workEstimate = estimate?.workEstimate || estimate;
+  const fullyReady = !!workEstimate?.isReady && (!movementEstimate || !!movementEstimate.isReady);
   if (idleEl) {
     idleEl.hidden = !estimate;
-    idleEl.classList.toggle('is-ready', !!estimate?.isReady);
+    idleEl.classList.toggle('is-ready', fullyReady);
+    idleEl.classList.toggle('has-movement', !!movementEstimate);
     const mainEl = document.getElementById('cronoIdleReadinessMain');
     const confEl = document.getElementById('cronoIdleReadinessConfidence');
     if (mainEl) mainEl.textContent = main;
@@ -24813,8 +24860,9 @@ function cronoRenderReadinessEstimate() {
   }
   if (runEl) {
     runEl.hidden = !estimate;
-    runEl.textContent = estimate ? (estimate.isReady ? 'A punto · estable' : 'A punto · ≈ ' + cronoReadinessHours(estimate) + ' netas · ' + confidence.toLowerCase()) : '';
-    runEl.title = estimate ? 'Ver detalle de la estimación' : '';
+    runEl.classList.toggle('has-movement', !!movementEstimate);
+    runEl.textContent = estimate ? cronoReadinessMainText(estimate, true) : '';
+    runEl.title = estimate ? (cronoReadinessConfidenceSummary(estimate, false) + ' · Ver detalle de la estimación') : '';
   }
   return estimate;
 }
@@ -24829,30 +24877,51 @@ function openCronoReadinessDetail(source) {
   if (!estimate || !modal) return;
   const resolved = cronoResolveSelectValue(value);
   const obra = resolved && findObra(resolved.obraId);
-  const diag = estimate.diagnostics || {};
+  const movementId = resolved && (resolved.movId ?? resolved.movementId ?? resolved.movimientoId ?? null);
+  const movement = movementId != null && Array.isArray(obra?.movimientos)
+    ? obra.movimientos.find(item => String(item.id) === String(movementId))
+    : null;
+  const workEstimate = estimate.workEstimate || estimate;
+  const movementEstimate = estimate.movementEstimate || null;
+  const diag = workEstimate.diagnostics || {};
   const timeline = diag.timeline || {};
   const sessions = new Set((timeline.practice || []).map(item => item.sessionId).filter(Boolean)).size;
   const passes = (timeline.checkpoints || []).filter(item => item.kind === 'pass').length;
   const evidence = [];
   if (sessions) evidence.push(sessions + (sessions === 1 ? ' sesión' : ' sesiones'));
   if (passes) evidence.push(passes + (passes === 1 ? ' pase' : ' pases'));
-  if (estimate.rawScore != null) evidence.push('último nivel ' + Math.round(estimate.rawScore));
-  if (estimate.factors?.length) evidence.push(...estimate.factors);
+  if (workEstimate.rawScore != null) evidence.push('obra: último nivel ' + Math.round(workEstimate.rawScore));
+  if (workEstimate.factors?.length) evidence.push(...workEstimate.factors);
+  if (movementEstimate) {
+    const movementDiag = movementEstimate.diagnostics || {};
+    const movementPoints = movementEstimate.evidenceCount || 0;
+    const movementMinutes = Math.round(movementDiag.practiceMinutes || 0);
+    evidence.push('movimiento: ' + movementPoints + (movementPoints === 1 ? ' medición' : ' mediciones') + (movementMinutes ? ' · ' + movementMinutes + ' min registrados' : ''));
+  }
   const title = document.getElementById('cronoReadinessTitle');
   const lead = document.getElementById('cronoReadinessLead');
   const conf = document.getElementById('cronoReadinessDetailConfidence');
   const copy = document.getElementById('cronoReadinessCopy');
   const evidenceEl = document.getElementById('cronoReadinessEvidence');
   const calendar = document.getElementById('cronoReadinessCalendar');
-  if (title) title.textContent = obra?.name || 'A punto';
-  if (lead) lead.textContent = estimate.isReady ? 'A punto · estabilidad suficiente' : 'A punto · ≈ ' + cronoReadinessHours(estimate) + ' netas';
-  if (conf) conf.textContent = cronoReadinessConfidence(estimate.confidence);
-  if (copy) copy.textContent = 'Nivel efectivo actual: ' + Math.round(estimate.effectiveScore || 0) + '/100 · objetivo 80 · cobertura ' + Math.round((estimate.coverage || 0) * 100) + '%. La cifra es un rango de esfuerzo neto, no una fecha exacta.';
+  const movementName = movementEstimate?.movementName || movement?.name || movement?.nombre || movement?.title || 'Movimiento';
+  if (title) title.textContent = movementEstimate ? ((obra?.name || 'Obra') + ' · ' + movementName) : (obra?.name || 'A punto');
+  if (lead) lead.textContent = cronoReadinessMainText(estimate, false);
+  if (conf) conf.textContent = cronoReadinessConfidenceSummary(estimate, false);
+  if (copy) {
+    if (movementEstimate) {
+      copy.textContent = movementName + ': nivel ' + Math.round(movementEstimate.effectiveScore || 0) + '/100 · cobertura ' + Math.round((movementEstimate.coverage || 0) * 100)
+        + '%. Obra completa: nivel ' + Math.round(workEstimate.effectiveScore || 0) + '/100 · cobertura ' + Math.round((workEstimate.coverage || 0) * 100)
+        + '%. Ambos rangos son esfuerzo neto para poner a punto, no una fecha exacta.';
+    } else {
+      copy.textContent = 'Nivel efectivo actual: ' + Math.round(workEstimate.effectiveScore || 0) + '/100 · objetivo 80 · cobertura ' + Math.round((workEstimate.coverage || 0) * 100) + '%. La cifra es un rango de esfuerzo neto, no una fecha exacta.';
+    }
+  }
   if (evidenceEl) evidenceEl.textContent = evidence.length ? 'Basado en ' + evidence.join(' · ') + '.' : 'Estimación inicial · aún hay poca evidencia personal.';
   if (calendar) {
-    const cal = estimate.calendarEstimate;
+    const cal = workEstimate.calendarEstimate;
     calendar.hidden = !cal;
-    calendar.textContent = cal ? 'A tu ritmo reciente · ~' + cal.lowDays + '–' + cal.highDays + ' días' : '';
+    calendar.textContent = cal ? 'Obra completa, a tu ritmo reciente · ~' + cal.lowDays + '–' + cal.highDays + ' días' : '';
   }
   openModal('modalCronoReadiness');
 }

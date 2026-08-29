@@ -23147,3 +23147,90 @@ body.crono-paused .crono-readiness-inline { visibility: hidden; }
     grid-template-rows: 381px 280px auto !important;
   }
 }
+
+/* Cronómetro parado · iPad horizontal: filas sin solape. */
+@media (min-width: 900px) and (max-width: 1399px) and (min-height: 700px) and (max-height: 1100px) and (orientation: landscape) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 3/2) {
+  [data-theme^="marmol"] #view-cronometro .crono-wrap,
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
+    grid-template-rows: 500px 185px auto !important;
+    align-content: center !important;
+  }
+  [data-theme^="marmol"] #view-cronometro #cronoStageIdle .crono-idle-main,
+  [data-theme^="marmol"] #view-cronometro #cronoIdleDrawer,
+  [data-theme^="marmol"] #view-cronometro #cronoCalendarObjectivesShell {
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+  }
+  [data-theme^="marmol"] #view-cronometro #cronoStageIdle .crono-idle-main {
+    padding: 10px 16px 12px !important;
+    overflow: hidden !important;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-display-wrap,
+  [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-centerpiece,
+  [data-theme^="marmol"] body.crono-timer-mode #view-cronometro .crono-idle-main .crono-centerpiece {
+    width: min(285px, 35dvh) !important;
+    height: min(285px, 35dvh) !important;
+    max-height: none !important;
+    flex: 0 0 auto !important;
+    margin: 0 auto 2px !important;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-idle-message {
+    width: min(460px, 100%) !important;
+    min-height: 36px !important;
+    margin: 2px auto 4px !important;
+    padding: 6px 10px !important;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+    -webkit-line-clamp: 2 !important;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-idle-controls {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(138px, .46fr) !important;
+    grid-template-areas: "mode start" "projection projection" !important;
+    column-gap: 10px !important;
+    row-gap: 5px !important;
+    width: min(470px, 100%) !important;
+    margin: auto auto 0 !important;
+    padding-top: 4px !important;
+    align-items: stretch !important;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-mode-toggle {
+    grid-area: mode !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    min-height: 44px !important;
+    height: auto !important;
+    margin: 0 !important;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-mode-opt {
+    min-height: 38px !important;
+    height: auto !important;
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-timer-projection {
+    grid-area: projection !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+  [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-plant-btn {
+    grid-area: start !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 7px 13px !important;
+    font-size: 15px !important;
+    z-index: 1 !important;
+  }
+}
+@media (min-width: 900px) and (max-width: 1399px) and (min-height: 700px) and (max-height: 899px) and (orientation: landscape) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 3/2) {
+  [data-theme^="marmol"] #view-cronometro .crono-wrap,
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
+    grid-template-rows: 500px 250px auto !important;
+  }
+}
