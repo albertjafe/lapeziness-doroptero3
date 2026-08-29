@@ -1,0 +1,255 @@
+name: fix ipad landscape timer overlap
+on:
+  push:
+    branches:
+      - fix/readiness-ipad-landscape-20260829
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace faulty landscape override and strengthen regression test
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          # Replace the previous end-of-file landscape experiment with a parent-grid fix.
+          path = Path('styles.css')
+          raw = path.read_bytes()
+          markers = [
+              '/* Cronómetro parado · iPad horizontal: usar el ancho, no comprimir la altura. */'.encode('utf-8'),
+              '/* Cronómetro parado · iPad horizontal: filas sin solape. */'.encode('utf-8'),
+          ]
+          positions = [raw.find(m) for m in markers]
+          positions = [p for p in positions if p >= 0]
+          if not positions:
+              raise SystemExit('landscape override marker not found')
+          cut = min(positions)
+          prefix = raw[:cut].rstrip(b'\r\n')
+          tail = raw[max(0, cut - 5000):cut]
+          crlf = tail.count(b'\r\n')
+          lf_only = tail.count(b'\n') - crlf
+          eol = b'\r\n' if crlf > lf_only else b'\n'
+          css = r'''/* Cronómetro parado · iPad horizontal: filas sin solape. */
+          @media (min-width: 900px) and (max-width: 1399px) and (min-height: 700px) and (max-height: 1100px) and (orientation: landscape) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 3/2) {
+            [data-theme^="marmol"] #view-cronometro .crono-wrap,
+            [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
+              grid-template-rows: 500px 185px auto !important;
+              align-content: center !important;
+            }
+            [data-theme^="marmol"] #view-cronometro #cronoStageIdle .crono-idle-main,
+            [data-theme^="marmol"] #view-cronometro #cronoIdleDrawer,
+            [data-theme^="marmol"] #view-cronometro #cronoCalendarObjectivesShell {
+              height: 100% !important;
+              min-height: 0 !important;
+              max-height: none !important;
+              box-sizing: border-box !important;
+            }
+            [data-theme^="marmol"] #view-cronometro #cronoStageIdle .crono-idle-main {
+              padding: 10px 16px 12px !important;
+              overflow: hidden !important;
+            }
+            [data-theme^="marmol"] #view-cronometro .crono-idle-main > .crono-readiness-chip {
+              width: min(460px, calc(100% - 22px)) !important;
+              min-height: 34px !important;
+              margin: 4px auto 6px !important;
+              padding: 6px 11px !important;
+              gap: 7px !important;
+            }
+            [data-theme^="marmol"] #view-cronometro .crono-readiness-chip-main {
+              font-size: 11px !important;
+              line-height: 1.25 !important;
+            }
+            [data-theme^="marmol"] #view-cronometro .crono-readiness-chip-confidence {
+              font-size: 9px !important;
+            }
+            [data-theme^="marmol"] #view-cronometro .crono-idle-display-wrap,
+            [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-centerpiece,
+            [data-theme^="marmol"] body.crono-timer-mode #view-cronometro .crono-idle-main .crono-centerpiece {
+              width: min(300px, 37dvh) !important;
+              height: min(300px, 37dvh) !important;
+              max-height: none !important;
+              flex: 0 0 auto !important;
+              margin: 0 auto 3px !important;
+            }
+            [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-idle-message {
+              width: min(460px, 100%) !important;
+              min-height: 38px !important;
+              margin: 3px auto 5px !important;
+              padding: 7px 11px !important;
+              font-size: 12px !important;
+              line-height: 1.28 !important;
+              -webkit-line-clamp: 2 !important;
+            }
+            [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-idle-controls {
+              display: grid !important;
+              grid-template-columns: minmax(0, 1fr) minmax(138px, .46fr) !important;
+              grid-template-areas: "mode start" "projection projection" !important;
+              column-gap: 10px !important;
+              row-gap: 6px !important;
+              width: min(470px, 100%) !important;
+              margin: auto auto 0 !important;
+              padding-top: 6px !important;
+              align-items: stretch !important;
+            }
+            [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-mode-toggle {
+              grid-area: mode !important;
+              grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+              width: 100% !important;
+              min-height: 46px !important;
+              height: auto !important;
+              margin: 0 !important;
+            }
+            [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-mode-opt {
+              min-height: 40px !important;
+              height: auto !important;
+              padding: 6px 8px !important;
+              font-size: 12px !important;
+            }
+            [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-timer-projection {
+              grid-area: projection !important;
+              width: 100% !important;
+              max-width: none !important;
+              margin: 0 !important;
+            }
+            [data-theme^="marmol"] #view-cronometro .crono-idle-main .crono-plant-btn {
+              grid-area: start !important;
+              width: 100% !important;
+              min-width: 0 !important;
+              min-height: 46px !important;
+              height: auto !important;
+              margin: 0 !important;
+              padding: 8px 14px !important;
+              font-size: 15px !important;
+              z-index: 1 !important;
+            }
+          }
+
+          @media (min-width: 900px) and (max-width: 1399px) and (min-height: 700px) and (max-height: 899px) and (orientation: landscape) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 3/2) {
+            [data-theme^="marmol"] #view-cronometro .crono-wrap,
+            [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
+              grid-template-rows: 500px 250px auto !important;
+            }
+          }
+          '''.strip() + '\n'
+          path.write_bytes(prefix + eol + eol + css.encode('utf-8').replace(b'\n', eol))
+
+          # Cache bust only the active stylesheet.
+          index = Path('index.html').read_bytes()
+          if b'styles.css?v=279' in index:
+              index = index.replace(b'styles.css?v=279', b'styles.css?v=280', 1)
+          elif b'styles.css?v=280' not in index:
+              raise SystemExit('styles cache marker not found')
+          Path('index.html').write_bytes(index)
+
+          # Stronger regression: controls must stay inside the timer card and before Tareas.
+          test = r'''import { test, expect } from '@playwright/test';
+
+          const fixture = {
+            obras: [{
+              id: 'bach', name: 'Bach · Suite', composer: 'J. S. Bach', tipo: 'obra', sol: 50,
+              compasesTotal: 200, compasActual: 200,
+              movimientos: [
+                { id: 'm1', name: 'I. Preludio', sol: 70, compasesTotal: 100, compasActual: 100, solHistory: [{ val: 70, date: '2026-08-20' }] },
+                { id: 'm2', name: 'II. Danza', sol: 35, compasesTotal: 100, compasActual: 100, solHistory: [{ val: 35, date: '2026-08-20' }] },
+              ],
+              solHistory: [{ val: 50, date: '2026-08-20' }],
+            }],
+            eventos: [], sesiones: [], registro: [], sessionPlants: [], forestPlants: [], estadoEventos: [], impulsoEventos: [],
+            deporteEventos: [], suenoEventos: [], triggerEventos: [], tiempoDisponibleEventos: [], dailyJournalEntries: [],
+          };
+
+          const viewports = [
+            { width: 1194, height: 834 },
+            { width: 1366, height: 1024 },
+          ];
+
+          for (const viewport of viewports) {
+            test(`iPad landscape idle timer stays inside its card at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+              await page.setViewportSize(viewport);
+              await page.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* offline test */' }));
+              await page.addInitScript(data => localStorage.setItem('alberto_piano_v2', JSON.stringify(data)), fixture);
+              await page.goto('/', { waitUntil: 'domcontentloaded' });
+              await page.waitForTimeout(700);
+              await page.evaluate(() => {
+                showView('cronometro');
+                const select = document.getElementById('cronoObraSelect');
+                select.value = 'mov::bach::m1';
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                cronoRenderReadinessEstimate();
+              });
+
+              const mainText = page.locator('#cronoIdleReadinessMain');
+              await expect(mainText).toContainText('Movimiento');
+              await expect(mainText).toContainText('Obra completa');
+
+              const geometry = await page.evaluate(() => {
+                const box = selector => {
+                  const el = document.querySelector(selector);
+                  const r = el.getBoundingClientRect();
+                  return { x: r.x, y: r.y, width: r.width, height: r.height, right: r.right, bottom: r.bottom };
+                };
+                const overlap = (a, b) => a.x < b.right && a.right > b.x && a.y < b.bottom && a.bottom > b.y;
+                const main = box('.crono-idle-main');
+                const drawer = box('#cronoIdleDrawer');
+                const mode = box('#cronoModeToggle');
+                const start = box('#cronoStartBtn');
+                const ring = box('#cronoIdleDisplayWrap');
+                const message = box('#cronoIdleMessage');
+                const readiness = box('#cronoIdleReadiness');
+                const view = box('#view-cronometro');
+                return {
+                  main, drawer, mode, start, ring, message, readiness, view,
+                  modeStartOverlap: overlap(mode, start),
+                  ringMessageOverlap: overlap(ring, message),
+                  readinessRingOverlap: overlap(readiness, ring),
+                  modeDrawerOverlap: overlap(mode, drawer),
+                  startDrawerOverlap: overlap(start, drawer),
+                  columns: getComputedStyle(document.querySelector('#cronoModeToggle')).gridTemplateColumns.split(' ').filter(Boolean).length,
+                };
+              });
+
+              expect(geometry.modeStartOverlap).toBe(false);
+              expect(geometry.ringMessageOverlap).toBe(false);
+              expect(geometry.readinessRingOverlap).toBe(false);
+              expect(geometry.modeDrawerOverlap).toBe(false);
+              expect(geometry.startDrawerOverlap).toBe(false);
+              expect(geometry.mode.bottom).toBeLessThanOrEqual(geometry.main.bottom + 1);
+              expect(geometry.start.bottom).toBeLessThanOrEqual(geometry.main.bottom + 1);
+              expect(geometry.drawer.top).toBeGreaterThanOrEqual(geometry.main.bottom + 8);
+              expect(geometry.drawer.bottom).toBeLessThanOrEqual(geometry.view.bottom + 1);
+              expect(geometry.columns).toBe(2);
+              expect(geometry.ring.width).toBeGreaterThanOrEqual(270);
+              expect(geometry.start.width).toBeGreaterThanOrEqual(130);
+              expect(geometry.mode.height).toBeGreaterThanOrEqual(40);
+              expect(geometry.main.height).toBeGreaterThanOrEqual(490);
+            });
+          }
+          '''
+          Path('tests/e2e/crono-readiness-ipad.spec.js').write_text(test, encoding='utf-8')
+          PY
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate logic and both landscape sizes
+        shell: bash
+        run: |
+          node --check app.js
+          node --check readiness-core.js
+          npx vitest run tests/unit/readiness-core.test.js
+          npx playwright install --with-deps chromium
+          npx playwright test tests/e2e/crono-readiness-ipad.spec.js --project=chromium
+      - name: Commit validated fix
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add styles.css index.html tests/e2e/crono-readiness-ipad.spec.js
+          if git diff --cached --quiet; then
+            echo 'No changes to commit.'
+            exit 0
+          fi
+          git commit -m "Fix idle timer overlap on iPad landscape"
+          git push origin HEAD:fix/readiness-ipad-landscape-20260829
