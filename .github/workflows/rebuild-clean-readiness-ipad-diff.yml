@@ -1,0 +1,151 @@
+name: rebuild clean readiness ipad diff
+on:
+  push:
+    branches:
+      - fix/readiness-ipad-landscape-20260829
+permissions:
+  contents: write
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Rebuild changed files from exact main bytes
+        shell: bash
+        run: |
+          cp app.js /tmp/app.desired
+          cp styles.css /tmp/styles.desired
+          git checkout origin/main -- app.js index.html styles.css
+          python - <<'PY'
+          from pathlib import Path
+
+          def normalize_newlines(data: bytes) -> bytes:
+              return data.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+
+          def choose_eol(region: bytes) -> bytes:
+              crlf = region.count(b'\r\n')
+              lf_only = region.count(b'\n') - crlf
+              return b'\r\n' if crlf > lf_only else b'\n'
+
+          def extract_normalized(data: bytes, start: bytes, end: bytes, label: str) -> bytes:
+              norm = normalize_newlines(data)
+              a = norm.find(start)
+              if a < 0:
+                  raise SystemExit(f'{label}: desired start not found')
+              b = norm.find(end, a)
+              if b < 0:
+                  raise SystemExit(f'{label}: desired end not found')
+              return norm[a:b]
+
+          def splice_exact(path: str, main_start: bytes, main_end: bytes, desired_block: bytes, label: str):
+              raw = Path(path).read_bytes()
+              a = raw.find(main_start)
+              if a < 0:
+                  raise SystemExit(f'{label}: main start not found')
+              b = raw.find(main_end, a)
+              if b < 0:
+                  raise SystemExit(f'{label}: main end not found')
+              eol = choose_eol(raw[a:b])
+              replacement = normalize_newlines(desired_block).replace(b'\n', eol)
+              Path(path).write_bytes(raw[:a] + replacement + raw[b:])
+
+          desired_app = Path('/tmp/app.desired').read_bytes()
+          desired_styles = Path('/tmp/styles.desired').read_bytes()
+
+          estimator = extract_normalized(
+              desired_app,
+              b'function cronoReadinessEstimate(selectionValue) {',
+              b'function cronoReadinessHours(estimate) {',
+              'estimator',
+          )
+          splice_exact(
+              'app.js',
+              b'function cronoReadinessEstimate(selectionValue) {',
+              b'function cronoReadinessHours(estimate) {',
+              estimator,
+              'estimator',
+          )
+
+          readiness_ui = extract_normalized(
+              desired_app,
+              b'function cronoReadinessScopeLabel(estimate, compact) {',
+              b'function cronoTargetReached() {',
+              'readiness ui',
+          )
+          splice_exact(
+              'app.js',
+              b'function cronoRenderReadinessEstimate() {',
+              b'function cronoTargetReached() {',
+              readiness_ui,
+              'readiness ui',
+          )
+
+          index = Path('index.html').read_bytes()
+          replacements = [
+              (b'styles.css?v=278', b'styles.css?v=279'),
+              (b'readiness-core.js?v=1', b'readiness-core.js?v=2'),
+              (b'app.js?v=278', b'app.js?v=279'),
+          ]
+          for old, new in replacements:
+              if old not in index:
+                  raise SystemExit(f'index marker missing: {old!r}')
+              index = index.replace(old, new, 1)
+          Path('index.html').write_bytes(index)
+
+          marker = '/* Cronómetro parado · iPad horizontal: usar el ancho, no comprimir la altura. */'.encode('utf-8')
+          desired_styles_norm = normalize_newlines(desired_styles)
+          pos = desired_styles_norm.find(marker)
+          if pos < 0:
+              raise SystemExit('iPad CSS marker missing in desired styles')
+          # Include the small two-column rule immediately before the marker.
+          rule_marker = b'.crono-idle-controls .crono-mode-toggle,'
+          rule_pos = desired_styles_norm.rfind(rule_marker, 0, pos)
+          if rule_pos < 0:
+              raise SystemExit('mode-toggle rule marker missing in desired styles')
+          suffix = desired_styles_norm[rule_pos:].rstrip(b'\n') + b'\n'
+          main_styles = Path('styles.css').read_bytes()
+          if marker in main_styles:
+              raise SystemExit('iPad CSS unexpectedly already exists in main')
+          eol = choose_eol(main_styles[-4000:])
+          suffix = suffix.replace(b'\n', eol)
+          separator = b'' if main_styles.endswith((b'\n', b'\r')) else eol
+          Path('styles.css').write_bytes(main_styles + separator + eol + suffix)
+          PY
+          echo '=== clean diff stat ==='
+          git diff --stat origin/main -- app.js index.html styles.css readiness-core.js tests/unit/readiness-core.test.js tests/e2e/crono-readiness-ipad.spec.js
+          echo '=== clean diff numstat ==='
+          git diff --numstat origin/main -- app.js index.html styles.css
+          python - <<'PY'
+          import subprocess
+          out = subprocess.check_output(['git','diff','--numstat','origin/main','--','app.js','index.html','styles.css'], text=True)
+          limits = {'app.js': 350, 'index.html': 20, 'styles.css': 300}
+          for line in out.splitlines():
+              a, d, path = line.split('\t')
+              total = int(a) + int(d)
+              print(path, total, 'changed lines')
+              if total > limits[path]:
+                  raise SystemExit(f'{path}: diff still suspiciously large ({total})')
+          PY
+      - name: Validate clean rebuild
+        shell: bash
+        run: |
+          npm ci
+          node --check app.js
+          node --check readiness-core.js
+          npx vitest run tests/unit/readiness-core.test.js
+          npx playwright install --with-deps chromium
+          npx playwright test tests/e2e/crono-readiness-ipad.spec.js --project=chromium
+      - name: Commit clean rebuild
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.js index.html styles.css
+          if git diff --cached --quiet; then
+            echo 'Already clean; nothing to commit.'
+            exit 0
+          fi
+          git commit -m "Keep readiness timer diff reviewable"
+          git push origin HEAD:fix/readiness-ipad-landscape-20260829
