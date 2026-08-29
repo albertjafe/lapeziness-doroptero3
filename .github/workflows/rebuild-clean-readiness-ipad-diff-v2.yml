@@ -1,0 +1,125 @@
+name: rebuild clean readiness ipad diff v2
+on:
+  push:
+    branches:
+      - fix/readiness-ipad-landscape-20260829
+permissions:
+  contents: write
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Rebuild only logical changes from exact main bytes
+        shell: bash
+        run: |
+          cp app.js /tmp/app.desired
+          cp styles.css /tmp/styles.desired
+          git checkout origin/main -- app.js index.html styles.css
+          python - <<'PY'
+          from pathlib import Path
+
+          def norm(data):
+              return data.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+
+          def eol_for(region):
+              crlf = region.count(b'\r\n')
+              lf = region.count(b'\n') - crlf
+              return b'\r\n' if crlf > lf else b'\n'
+
+          def desired_block(data, start, end, label):
+              data = norm(data)
+              a = data.find(start)
+              b = data.find(end, a)
+              if a < 0 or b < 0:
+                  raise SystemExit(f'{label}: desired markers not found')
+              return data[a:b]
+
+          def splice(path, start, end, block, label):
+              raw = Path(path).read_bytes()
+              a = raw.find(start)
+              b = raw.find(end, a)
+              if a < 0 or b < 0:
+                  raise SystemExit(f'{label}: main markers not found')
+              eol = eol_for(raw[a:b])
+              Path(path).write_bytes(raw[:a] + norm(block).replace(b'\n', eol) + raw[b:])
+
+          app_desired = Path('/tmp/app.desired').read_bytes()
+          styles_desired = Path('/tmp/styles.desired').read_bytes()
+
+          splice(
+              'app.js',
+              b'function cronoReadinessEstimate(selectionValue) {',
+              b'function cronoReadinessHours(estimate) {',
+              desired_block(app_desired, b'function cronoReadinessEstimate(selectionValue) {', b'function cronoReadinessHours(estimate) {', 'estimator'),
+              'estimator',
+          )
+          splice(
+              'app.js',
+              b'function cronoRenderReadinessEstimate() {',
+              b'function cronoTargetReached() {',
+              desired_block(app_desired, b'function cronoReadinessScopeLabel(estimate, compact) {', b'function cronoTargetReached() {', 'readiness ui'),
+              'readiness ui',
+          )
+
+          index = Path('index.html').read_bytes()
+          for old, new in [
+              (b'styles.css?v=278', b'styles.css?v=279'),
+              (b'readiness-core.js?v=1', b'readiness-core.js?v=2'),
+              (b'app.js?v=278', b'app.js?v=279'),
+          ]:
+              if old not in index:
+                  raise SystemExit(f'index marker missing: {old!r}')
+              index = index.replace(old, new, 1)
+          Path('index.html').write_bytes(index)
+
+          marker = '/* Cronómetro parado · iPad horizontal: usar el ancho, no comprimir la altura. */'.encode('utf-8')
+          desired = norm(styles_desired)
+          p = desired.find(marker)
+          if p < 0:
+              raise SystemExit('iPad CSS marker missing in desired styles')
+          suffix = desired[p:].rstrip(b'\n') + b'\n'
+          main = Path('styles.css').read_bytes()
+          if marker in main:
+              raise SystemExit('iPad CSS unexpectedly exists in main')
+          eol = eol_for(main[-4000:])
+          suffix = suffix.replace(b'\n', eol)
+          separator = b'' if main.endswith((b'\n', b'\r')) else eol
+          Path('styles.css').write_bytes(main + separator + eol + suffix)
+          PY
+          git diff --stat origin/main -- app.js index.html styles.css readiness-core.js tests/unit/readiness-core.test.js tests/e2e/crono-readiness-ipad.spec.js
+          git diff --numstat origin/main -- app.js index.html styles.css
+          python - <<'PY'
+          import subprocess
+          limits = {'app.js': 350, 'index.html': 20, 'styles.css': 300}
+          out = subprocess.check_output(['git','diff','--numstat','origin/main','--','app.js','index.html','styles.css'], text=True)
+          for line in out.splitlines():
+              a, d, path = line.split('\t')
+              total = int(a) + int(d)
+              print(path, total, 'changed lines')
+              if total > limits[path]:
+                  raise SystemExit(f'{path}: diff still suspiciously large ({total})')
+          PY
+      - name: Validate rebuilt files
+        shell: bash
+        run: |
+          npm ci
+          node --check app.js
+          node --check readiness-core.js
+          npx vitest run tests/unit/readiness-core.test.js
+          npx playwright install --with-deps chromium
+          npx playwright test tests/e2e/crono-readiness-ipad.spec.js --project=chromium
+      - name: Commit clean files
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.js index.html styles.css
+          if git diff --cached --quiet; then
+            echo 'Already clean.'
+            exit 0
+          fi
+          git commit -m "Keep readiness timer diff reviewable"
+          git push origin HEAD:fix/readiness-ipad-landscape-20260829
