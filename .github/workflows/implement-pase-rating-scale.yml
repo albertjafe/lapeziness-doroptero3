@@ -1,0 +1,583 @@
+name: implement semantic pass rating scale
+on:
+  push:
+    branches:
+      - fix/pase-rating-scale-20260829
+permissions:
+  contents: write
+jobs:
+  implement:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply rating scale changes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def dominant_eol(region: bytes) -> bytes:
+              crlf = region.count(b'\r\n')
+              lf = region.count(b'\n') - crlf
+              return b'\r\n' if crlf > lf else b'\n'
+
+          def normalize(data: bytes) -> bytes:
+              return data.replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+
+          def replace_region(path, start_text, end_text, replacement_text, label):
+              p = Path(path)
+              raw = p.read_bytes()
+              start = start_text.encode('utf-8')
+              end = end_text.encode('utf-8')
+              a = raw.find(start)
+              if a < 0:
+                  raise SystemExit(f'{label}: start marker not found')
+              b = raw.find(end, a)
+              if b < 0:
+                  raise SystemExit(f'{label}: end marker not found')
+              eol = dominant_eol(raw[a:b])
+              replacement = normalize(replacement_text.encode('utf-8')).replace(b'\n', eol)
+              p.write_bytes(raw[:a] + replacement.rstrip(b'\r\n') + eol + eol + raw[b:])
+
+          def replace_once(path, old_text, new_text, label):
+              p = Path(path)
+              raw = p.read_bytes()
+              for eol in (b'\r\n', b'\n'):
+                  old = old_text.replace('\n', eol.decode()).encode('utf-8')
+                  if old in raw:
+                      new = new_text.replace('\n', eol.decode()).encode('utf-8')
+                      p.write_bytes(raw.replace(old, new, 1))
+                      return
+              raise SystemExit(f'{label}: exact snippet not found')
+
+          scale_helpers = r'''function paseClampPct(value, fallback) {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return fallback == null ? 50 : paseClampPct(fallback, 50);
+            return Math.max(1, Math.min(100, Math.round(n)));
+          }
+
+          // Escala perceptiva: el porcentaje guardado sigue siendo 1–100, pero el
+          // recorrido físico es logarítmico. Así 80→90 ocupa aprox. el doble de
+          // espacio que 30→40 y hay mucha más precisión cerca de concierto.
+          const PASE_RATING_LOG_A = 3;
+          const PASE_RATING_GUIDES = [
+            { value: 15, label: 'Leída' },
+            { value: 30, label: 'Digitada' },
+            { value: 50, label: 'Aprendida' },
+            { value: 65, label: 'Memoria' },
+            { value: 80, label: 'A punto' },
+            { value: 90, label: 'Concierto' },
+            { value: 97, label: 'Excelente' },
+          ];
+
+          function pasePctToPosition(pct) {
+            const value = paseClampPct(pct) / 100;
+            return ((Math.pow(1 + PASE_RATING_LOG_A, value) - 1) / PASE_RATING_LOG_A) * 100;
+          }
+
+          function pasePositionToPct(position) {
+            const pos = Math.max(0, Math.min(100, Number(position) || 0)) / 100;
+            const pct = Math.log(1 + PASE_RATING_LOG_A * pos) / Math.log(1 + PASE_RATING_LOG_A) * 100;
+            return paseClampPct(pct);
+          }
+
+          function paseRatingStage(pct) {
+            const value = paseClampPct(pct);
+            if (value >= 97) return 'Excelente';
+            if (value >= 90) return 'Concierto';
+            if (value >= 80) return 'A punto';
+            if (value >= 72) return 'Estable';
+            if (value >= 60) return 'Memorizada';
+            if (value >= 45) return 'Aprendida';
+            if (value >= 30) return 'Digitada';
+            if (value >= 15) return 'Leída';
+            return 'Iniciada';
+          }
+
+          function paseManualHistoryValue(entry) {
+            if (!entry) return null;
+            if (entry.inputVal != null && Number.isFinite(Number(entry.inputVal))) return paseClampPct(entry.inputVal);
+            const context = String(entry.context || '');
+            if (context.indexOf('pase-') === 0 && entry.val != null) return paseClampPct(normalizeSolVal(entry.val));
+            return null;
+          }
+
+          function paseTargetPreviousPct(obraId, movId) {
+            const target = movId ? findMovimiento(obraId, movId) : findObra(obraId);
+            if (!target) return null;
+            const candidates = [];
+            (target.solHistory || []).forEach((entry, index) => {
+              const value = paseManualHistoryValue(entry);
+              if (value == null) return;
+              candidates.push({ value, date: new Date(entry.date || 0).getTime() || 0, order: index });
+            });
+            (target.paseHistory || []).forEach((entry, index) => {
+              const value = paseEntryPct(entry);
+              if (value == null) return;
+              candidates.push({ value, date: new Date(entry.date || 0).getTime() || 0, order: index + 1000 });
+            });
+            if (candidates.length) {
+              candidates.sort((a, b) => b.date - a.date || a.order - b.order);
+              return candidates[0].value;
+            }
+            const legacy = target.solHistory?.[0]?.val;
+            if (legacy != null) return paseClampPct(normalizeSolVal(legacy));
+            if (target.sol != null) return paseClampPct(normalizeSolVal(target.sol));
+            return null;
+          }
+
+          function pasePreviousLabel(previousPct) {
+            if (previousPct == null) return 'Primera valoración · referencia 50%';
+            const value = paseClampPct(previousPct);
+            return 'Anterior · ' + value + '% · ' + paseRatingStage(value);
+          }
+
+          function paseGuideLayerHtml() {
+            return '<div class="pase-liquid-guide-layer" aria-hidden="true">' + PASE_RATING_GUIDES.map((guide, index) =>
+              '<span class="pase-liquid-guide g' + index + '" style="--guide-pos:' + pasePctToPosition(guide.value).toFixed(2) + '%">' +
+                '<i></i><b>' + guide.label + '</b><em>' + guide.value + '</em>' +
+              '</span>'
+            ).join('') + '</div>';
+          }
+
+          function paseMeterReadoutHtml(value, previousPct) {
+            const current = paseClampPct(value);
+            return '<div class="pase-liquid-readout">' +
+              '<span data-pase-previous>' + pasePreviousLabel(previousPct) + '</span>' +
+              '<strong data-pase-current>' + current + '% · ' + paseRatingStage(current) + '</strong>' +
+            '</div>';
+          }
+
+          function paseEnsureMeterChrome(meter, previousPct) {
+            if (!meter) return;
+            meter.classList.add('rating-scale-v2');
+            if (!meter.querySelector('.pase-liquid-readout')) meter.insertAdjacentHTML('afterbegin', paseMeterReadoutHtml(50, previousPct));
+            if (!meter.querySelector('.pase-liquid-guide-layer')) meter.insertAdjacentHTML('beforeend', paseGuideLayerHtml());
+            if (!meter.querySelector('.pase-liquid-scale-note')) meter.insertAdjacentHTML('beforeend', '<div class="pase-liquid-scale-note">Escala logarítmica · más precisión cerca de concierto</div>');
+            if (previousPct !== undefined) {
+              const previousEl = meter.querySelector('[data-pase-previous]');
+              if (previousEl) previousEl.textContent = pasePreviousLabel(previousPct);
+            }
+          }
+          '''
+          replace_region('app.js', 'function paseClampPct(value, fallback) {', 'function paseEntryPct(entry) {', scale_helpers, 'scale helpers')
+
+          liquid_block = r'''function paseLiquidStyle(pct) {
+            const value = paseClampPct(pct);
+            const position = pasePctToPosition(value);
+            const glow = (0.12 + value / 100 * 0.58).toFixed(2);
+            const hue = value < 50
+              ? Math.round(4 + value * 0.8)
+              : Math.round(44 + (value - 50) * 1.8);
+            const glowSize = Math.round(3 + value * 0.15);
+            return '--pase-fill:' + position.toFixed(2) + '%;--pase-value:' + value + ';--pase-glow:' + glow + ';--pase-glow-size:' + glowSize + 'px;--pase-color:hsl(' + hue + ' 62% 55%)';
+          }
+
+          function paseLiquidMeterHtml(options) {
+            const opts = options || {};
+            const value = paseClampPct(opts.value);
+            const previous = opts.previous == null ? null : paseClampPct(opts.previous);
+            const position = pasePctToPosition(value);
+            const id = opts.id ? ' id="' + opts.id + '"' : '';
+            const inputId = opts.inputId ? ' id="' + opts.inputId + '"' : '';
+            const classes = 'pase-liquid-meter rating-scale-v2' + (opts.compact ? ' compact' : '');
+            const oninput = opts.oninput || '';
+            const onchange = opts.onchange || '';
+            return '<div' + id + ' class="' + classes + '" style="' + paseLiquidStyle(value) + '">' +
+              paseMeterReadoutHtml(value, previous) +
+              '<div class="pase-liquid-reservoir" aria-hidden="true">' +
+                '<span class="pase-liquid-fill"></span><span class="pase-liquid-glint"></span><span class="pase-liquid-orb"></span>' +
+              '</div>' +
+              '<input' + inputId + ' class="pase-liquid-input" type="range" min="0" max="100" step="0.1" value="' + position.toFixed(2) + '" data-pase-value="' + value + '"' +
+                ' aria-label="Resultado del pase, de 1 a 100" aria-valuetext="' + value + ' por ciento, ' + paseRatingStage(value) + '"' +
+                (oninput ? ' oninput="' + oninput + '"' : '') + (onchange ? ' onchange="' + onchange + '"' : '') + '>' +
+              paseGuideLayerHtml() +
+              '<div class="pase-liquid-scale-note">Escala logarítmica · más precisión cerca de concierto</div>' +
+            '</div>';
+          }
+
+          function paseSetMeterSemanticValue(input, pct) {
+            const value = paseClampPct(pct);
+            const meter = input?.closest?.('.pase-liquid-meter');
+            if (meter) {
+              paseEnsureMeterChrome(meter);
+              meter.setAttribute('style', paseLiquidStyle(value));
+              meter.dataset.paseValue = String(value);
+              const current = meter.querySelector('[data-pase-current]');
+              if (current) current.textContent = value + '% · ' + paseRatingStage(value);
+            }
+            if (input) {
+              input.min = '0';
+              input.max = '100';
+              input.step = '0.1';
+              input.value = pasePctToPosition(value).toFixed(2);
+              input.dataset.paseValue = String(value);
+              input.setAttribute('aria-valuetext', value + ' por ciento, ' + paseRatingStage(value));
+            }
+            return value;
+          }
+
+          function updatePaseLiquidMeter(input, position) {
+            const pct = pasePositionToPct(position);
+            return paseSetMeterSemanticValue(input, pct);
+          }
+          '''
+          replace_region('app.js', 'function paseLiquidStyle(pct) {', 'function linkPasePctToTargetHistory(obraId, movId, pct, tipo, dateIso) {', liquid_block, 'liquid meter block')
+
+          replace_once('app.js',
+            "let paseQualitySelectedPct = 50;\nlet paseTipoSelected = 'solo';",
+            "let paseQualitySelectedPct = 50;\nlet paseQualityPreviousPct = null;\nlet paseTipoSelected = 'solo';",
+            'pase previous state')
+
+          build_block = r'''function buildPaseScoreBtns() {
+            const row = document.getElementById('paseQScoreBtns');
+            if (!row) return;
+            row.innerHTML = paseLiquidMeterHtml({
+              id: 'paseQMeter',
+              inputId: 'paseQPercent',
+              value: paseQualitySelectedPct,
+              previous: paseQualityPreviousPct,
+              oninput: 'selectPasePct(this.value,this)',
+              onchange: 'paseLiquidCommitHaptic()',
+            });
+          }
+          '''
+          replace_region('app.js', 'function buildPaseScoreBtns() {', 'function registerPase(obraId, movId) {', build_block, 'build pass score')
+
+          register_block = r'''function registerPase(obraId, movId) {
+            paseEditingEntry = null;
+            paseFaultDraft = [];
+            paseQualityObraId = obraId;
+            paseQualityMovId = movId || null;
+            paseQualityPreviousPct = paseTargetPreviousPct(obraId, movId || null);
+            paseQualitySelectedPct = paseQualityPreviousPct == null ? 50 : paseQualityPreviousPct;
+            paseTipoSelected = 'solo';
+            const obra = findObra(obraId);
+            const mov = movId ? findMovimiento(obraId, movId) : null;
+            const displayName = mov
+              ? `${obra ? obra.name + ' — ' : ''}${mov.name}`
+              : (obra ? obra.name : '');
+            document.getElementById('paseQualityName').textContent = displayName;
+            document.getElementById('paseQualityTitle').textContent = '¿Cómo fue el pase?';
+            document.getElementById('paseQNote').value = '';
+            const takes = document.getElementById('paseQTakes');
+            if (takes) takes.value = '';
+            document.getElementById('paseQFecha').value = new Date().toISOString().split('T')[0];
+            buildPaseScoreBtns();
+            document.querySelectorAll('#modalPaseQuality .pase-tipo-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('#modalPaseQuality .pase-tipo-btn.solo')?.classList.add('active');
+            updatePaseTakesVisibility('solo');
+            updatePaseQualityFaultButton();
+            openModal('modalPaseQuality');
+          }
+          '''
+          replace_region('app.js', 'function registerPase(obraId, movId) {', 'function editPaseFromHistory(button) {', register_block, 'register pass')
+
+          replace_once('app.js',
+            '  paseQualitySelectedPct = paseEntryPct(entry) || 50;\n  paseTipoSelected = normalizePaseTipo(entry.tipo || \'solo\');',
+            '  paseQualitySelectedPct = paseEntryPct(entry) || 50;\n  paseQualityPreviousPct = null;\n  paseTipoSelected = normalizePaseTipo(entry.tipo || \'solo\');',
+            'edit pass previous')
+
+          crono_item = r'''function cronoPaseDraftItem(resolved) {
+            if (!resolved || resolved.obra?.tipo === 'actividad') return null;
+            const targetKey = cronoPaseDraftKey(resolved.obraId, resolved.movId);
+            const previousPct = paseTargetPreviousPct(resolved.obraId, resolved.movId || null);
+            return {
+              key: targetKey,
+              targetKey,
+              obraId: resolved.obraId,
+              movId: resolved.movId || null,
+              name: resolved.name,
+              minutes: cronoPaseDefaultMinutes(resolved),
+              solidezPct: previousPct == null ? 50 : previousPct,
+              previousPct,
+              takes: null,
+              faults: [],
+              passNumber: 1,
+              passCount: 1,
+            };
+          }
+          '''
+          replace_region('app.js', 'function cronoPaseDraftItem(resolved) {', 'function cronoPaseTargetKey(item) {', crono_item, 'crono pass draft')
+
+          replace_once('app.js',
+            "      value: it.solidezPct,\n      compact: true,\n      oninput: 'cronoPaseSetPct(\\'' + it.key + '\\',this.value,this)',",
+            "      value: it.solidezPct,\n      previous: it.previousPct,\n      compact: true,\n      oninput: 'cronoPaseSetPct(\\'' + it.key + '\\',this.value,this)',",
+            'crono meter previous')
+
+          replace_once('app.js',
+            '      solidezPct: previous?.solidezPct ?? 50,\n      takes: previous?.takes ?? null,',
+            '      solidezPct: previous?.solidezPct ?? base.previousPct ?? 50,\n      previousPct: base.previousPct ?? previous?.previousPct ?? null,\n      takes: previous?.takes ?? null,',
+            'crono repeated passes')
+
+          hecho_select = r'''function hechoSelectSolidez(position, button) {
+            const slider = document.getElementById('hechoSolidezSlider');
+            const val = slider ? updatePaseLiquidMeter(slider, position) : pasePositionToPct(position);
+            if (!val) return;
+            _hechoQuickSolidezVal = val;
+            const selection = document.getElementById('hechoSolidezSelection');
+            if (selection) selection.textContent = val + '% · ' + paseRatingStage(val);
+          }
+          '''
+          replace_region('app.js', 'function hechoSelectSolidez(value, button) {', 'function hechoToggleAdvanced() {', hecho_select, 'session close slider')
+
+          open_hecho = r'''  const previous = paseTargetPreviousPct(obraId, movId || null) ?? hechoCurrentSolidezValue(entity, !!movId);
+            const previousEl = document.getElementById('hechoSolidezPrevious');
+            if (previousEl) previousEl.textContent = previous == null ? 'Primera valoración' : ('Anterior: ' + previous + '% · ' + paseRatingStage(previous));
+            const solidezSlider = document.getElementById('hechoSolidezSlider');
+            const solidezMeter = document.getElementById('hechoSolidezMeter');
+            const startingSolidez = previous == null ? 50 : previous;
+            if (solidezMeter) paseEnsureMeterChrome(solidezMeter, previous);
+            if (solidezSlider) paseSetMeterSemanticValue(solidezSlider, startingSolidez);
+            const selectionEl = document.getElementById('hechoSolidezSelection');
+            if (selectionEl) selectionEl.textContent = startingSolidez + '% · ' + paseRatingStage(startingSolidez);
+          '''
+          replace_region('app.js', '  const previous = hechoCurrentSolidezValue(entity, !!movId);', "  const hechoModal = document.querySelector('#modalHechoDatos .hecho-modal');", open_hecho, 'session close previous display')
+
+          # Visual scale overrides live at the end to avoid disturbing legacy modal CSS.
+          styles = Path('styles.css')
+          raw = styles.read_bytes()
+          marker = '/* Pase rating scale v2 · referencia manual + escala logarítmica */'.encode('utf-8')
+          if marker not in raw:
+              eol = dominant_eol(raw[-8000:])
+              css = r'''
+          /* Pase rating scale v2 · referencia manual + escala logarítmica */
+          .pase-liquid-meter.rating-scale-v2 {
+            height: 138px;
+            padding: 0 1px;
+          }
+          .pase-liquid-meter.rating-scale-v2.compact {
+            height: 104px;
+            margin-top: 10px;
+          }
+          .pase-liquid-meter.rating-scale-v2 .pase-liquid-readout {
+            position: absolute;
+            inset: 0 2px auto;
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 10px;
+            min-width: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            pointer-events: none;
+          }
+          .pase-liquid-meter.rating-scale-v2 .pase-liquid-readout span {
+            min-width: 0;
+            overflow: hidden;
+            color: var(--text3);
+            font-size: 10px;
+            line-height: 1.2;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .pase-liquid-meter.rating-scale-v2 .pase-liquid-readout strong {
+            flex: 0 0 auto;
+            color: var(--pase-color);
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -.01em;
+            font-variant-numeric: tabular-nums;
+          }
+          .pase-liquid-meter.rating-scale-v2.compact .pase-liquid-readout span { font-size: 8px; }
+          .pase-liquid-meter.rating-scale-v2.compact .pase-liquid-readout strong { font-size: 11px; }
+          .pase-liquid-meter.rating-scale-v2 .pase-liquid-reservoir {
+            inset: 25px 1px auto;
+            height: 58px;
+          }
+          .pase-liquid-meter.rating-scale-v2.compact .pase-liquid-reservoir {
+            inset: 21px 1px auto;
+            height: 42px;
+          }
+          .pase-liquid-meter.rating-scale-v2 .pase-liquid-orb {
+            width: 31px;
+            height: 31px;
+            left: clamp(4px, calc(var(--pase-fill) - 16px), calc(100% - 35px));
+          }
+          .pase-liquid-meter.rating-scale-v2.compact .pase-liquid-orb {
+            width: 23px;
+            height: 23px;
+            left: clamp(3px, calc(var(--pase-fill) - 12px), calc(100% - 27px));
+          }
+          .pase-liquid-meter.rating-scale-v2 .pase-liquid-guide-layer {
+            position: absolute;
+            inset: 87px 1px auto;
+            height: 31px;
+            pointer-events: none;
+          }
+          .pase-liquid-meter.rating-scale-v2.compact .pase-liquid-guide-layer {
+            inset-top: 66px;
+            height: 29px;
+          }
+          .pase-liquid-meter.rating-scale-v2 .pase-liquid-guide {
+            position: absolute;
+            top: 0;
+            left: var(--guide-pos);
+            display: grid;
+            justify-items: center;
+            min-width: 34px;
+            transform: translateX(-50%);
+            color: var(--text3);
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            line-height: 1;
+            text-align: center;
+          }
+          .pase-liquid-meter.rating-scale-v2 .pase-liquid-guide:nth-child(even) { top: 12px; }
+          .pase-liquid-meter.rating-scale-v2 .pase-liquid-guide i {
+            position: absolute;
+            top: -8px;
+            width: 1px;
+            height: 7px;
+            background: color-mix(in srgb, var(--text3) 55%, transparent);
+          }
+          .pase-liquid-meter.rating-scale-v2 .pase-liquid-guide b {
+            font-size: 7px;
+            font-weight: 650;
+            white-space: nowrap;
+          }
+          .pase-liquid-meter.rating-scale-v2 .pase-liquid-guide em {
+            margin-top: 2px;
+            font-size: 6px;
+            font-style: normal;
+            font-variant-numeric: tabular-nums;
+            opacity: .72;
+          }
+          .pase-liquid-meter.rating-scale-v2.compact .pase-liquid-guide b { font-size: 6.5px; }
+          .pase-liquid-meter.rating-scale-v2.compact .pase-liquid-guide em { display: none; }
+          .pase-liquid-meter.rating-scale-v2 .pase-liquid-scale-note {
+            position: absolute;
+            inset: auto 2px 0;
+            color: var(--text3);
+            font: 600 8px/1.1 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            letter-spacing: .01em;
+            text-align: right;
+            opacity: .72;
+            pointer-events: none;
+          }
+          .pase-liquid-meter.rating-scale-v2.compact .pase-liquid-scale-note { display: none; }
+          #modalHechoDatos .hecho-solidez-meter.rating-scale-v2 {
+            height: 142px;
+            margin: 7px 0 2px;
+          }
+          #modalHechoDatos .hecho-solidez-meter.rating-scale-v2 .pase-liquid-reservoir {
+            inset-block: auto;
+            top: 25px;
+            height: 62px;
+          }
+          #modalHechoDatos .hecho-solidez-meter.rating-scale-v2 .pase-liquid-guide-layer { top: 91px; }
+          @media (max-width: 520px) {
+            .pase-liquid-meter.rating-scale-v2 .pase-liquid-readout { gap: 6px; }
+            .pase-liquid-meter.rating-scale-v2 .pase-liquid-readout span { font-size: 9px; }
+            .pase-liquid-meter.rating-scale-v2 .pase-liquid-readout strong { font-size: 12px; }
+            .pase-liquid-meter.rating-scale-v2 .pase-liquid-guide { min-width: 28px; }
+            .pase-liquid-meter.rating-scale-v2 .pase-liquid-guide b { font-size: 6.3px; }
+          }
+          '''.strip().encode('utf-8').replace(b'\n', eol)
+              styles.write_bytes(raw.rstrip(b'\r\n') + eol + eol + css + eol)
+
+          # Bump the app/style query strings without touching the service worker yet.
+          index = Path('index.html')
+          raw = index.read_bytes()
+          for old, new in [(b'styles.css?v=280', b'styles.css?v=281'), (b'app.js?v=279', b'app.js?v=280')]:
+              if old not in raw:
+                  raise SystemExit(f'index cache marker missing: {old!r}')
+              raw = raw.replace(old, new, 1)
+          index.write_bytes(raw)
+
+          # Update the existing visual regression for nonlinear physical position.
+          visual = Path('tests/visual/pase-liquid.spec.js')
+          text = visual.read_text()
+          text = text.replace("  await meters.nth(0).fill('28');\n  await meters.nth(1).fill('91');", "  const positions = await page.evaluate(() => [pasePctToPosition(28), pasePctToPosition(91)]);\n  await meters.nth(0).fill(String(positions[0]));\n  await meters.nth(1).fill(String(positions[1]));")
+          text = text.replace("  await page.locator('#paseQPercent').fill('86');\n  await expect(page.locator('#paseQMeter')).toHaveCSS('--pase-fill', '86%');", "  const position86 = await page.evaluate(() => pasePctToPosition(86));\n  await page.locator('#paseQPercent').fill(String(position86));\n  await expect(page.locator('#paseQMeter [data-pase-current]')).toContainText('86%');")
+          text = text.replace("  expect(fillRatio).toBeGreaterThan(0.84);\n  expect(fillRatio).toBeLessThan(0.88);", "  const expectedRatio = await page.evaluate(() => pasePctToPosition(86) / 100);\n  expect(fillRatio).toBeGreaterThan(expectedRatio - 0.02);\n  expect(fillRatio).toBeLessThan(expectedRatio + 0.02);")
+          visual.write_text(text)
+
+          e2e = r'''import { test, expect } from '@playwright/test';
+
+          const fixture = {
+            obras: [{
+              id: 'bach', name: 'Partita n.º 2', composer: 'J. S. Bach', tipo: 'obra', sol: 68,
+              movimientos: [], paseHistory: [],
+              solHistory: [{ date: '2026-08-28T12:00:00Z', val: 68, inputVal: 74, samples: 3, context: 'sesion' }],
+            }],
+            eventos: [], sesiones: [], registro: [], sessionPlants: [], forestPlants: [], estadoEventos: [], impulsoEventos: [],
+            deporteEventos: [], suenoEventos: [], triggerEventos: [], tiempoDisponibleEventos: [], dailyJournalEntries: [],
+          };
+
+          async function prepare(page) {
+            await page.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* offline */' }));
+            await page.addInitScript(data => localStorage.setItem('alberto_piano_v2', JSON.stringify(data)), fixture);
+            await page.goto('/', { waitUntil: 'domcontentloaded' });
+            await page.waitForTimeout(500);
+          }
+
+          test('uses the previous manual rating and a logarithmic physical scale', async ({ page }) => {
+            await page.setViewportSize({ width: 1024, height: 768 });
+            await prepare(page);
+            const metrics = await page.evaluate(() => ({
+              previous: paseTargetPreviousPct('bach', null),
+              p30: pasePctToPosition(30), p40: pasePctToPosition(40),
+              p50: pasePctToPosition(50), p80: pasePctToPosition(80), p90: pasePctToPosition(90),
+            }));
+            expect(metrics.previous).toBe(74);
+            expect(metrics.p50).toBeGreaterThan(32);
+            expect(metrics.p50).toBeLessThan(35);
+            expect(metrics.p90 - metrics.p80).toBeGreaterThan((metrics.p40 - metrics.p30) * 1.8);
+
+            await page.evaluate(() => registerPase('bach'));
+            await expect(page.locator('#paseQMeter [data-pase-previous]')).toContainText('Anterior · 74%');
+            await expect(page.locator('#paseQMeter [data-pase-current]')).toContainText('74%');
+            await expect(page.locator('#paseQMeter .pase-liquid-guide')).toHaveCount(7);
+
+            const fiftyGuideRatio = await page.locator('#paseQMeter .pase-liquid-guide').nth(2).evaluate((guide, meter) => {
+              const parent = guide.parentElement.getBoundingClientRect();
+              const item = guide.getBoundingClientRect();
+              return ((item.left + item.width / 2) - parent.left) / parent.width;
+            });
+            expect(fiftyGuideRatio).toBeGreaterThan(0.31);
+            expect(fiftyGuideRatio).toBeLessThan(0.36);
+
+            const pos90 = await page.evaluate(() => pasePctToPosition(90));
+            await page.locator('#paseQPercent').fill(String(pos90));
+            await expect(page.locator('#paseQMeter [data-pase-current]')).toContainText('90% · Concierto');
+          });
+
+          test('first rating starts neutral but says it is a first rating', async ({ page }) => {
+            const empty = structuredClone(fixture);
+            empty.obras[0].solHistory = [];
+            empty.obras[0].sol = null;
+            await page.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* offline */' }));
+            await page.addInitScript(data => localStorage.setItem('alberto_piano_v2', JSON.stringify(data)), empty);
+            await page.goto('/', { waitUntil: 'domcontentloaded' });
+            await page.waitForTimeout(500);
+            await page.evaluate(() => registerPase('bach'));
+            await expect(page.locator('#paseQMeter [data-pase-previous]')).toContainText('Primera valoración');
+            await expect(page.locator('#paseQMeter [data-pase-current]')).toContainText('50% · Aprendida');
+          });
+          '''
+          Path('tests/e2e/pase-rating-scale.spec.js').write_text(e2e)
+          PY
+          git diff --stat
+          git diff --numstat -- app.js styles.css index.html tests/visual/pase-liquid.spec.js tests/e2e/pase-rating-scale.spec.js
+      - name: Install dependencies
+        run: npm ci
+      - name: Validate logic and focused UI
+        shell: bash
+        run: |
+          npm run check
+          npm run test:unit
+          npx playwright install --with-deps chromium
+          npx playwright test tests/e2e/pase-rating-scale.spec.js --project=chromium
+          npx playwright test tests/visual/pase-liquid.spec.js --project=chromium
+      - name: Commit validated changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.js styles.css index.html tests/visual/pase-liquid.spec.js tests/e2e/pase-rating-scale.spec.js
+          if git diff --cached --quiet; then
+            echo 'No changes.'
+            exit 0
+          fi
+          git commit -m "Improve pass rating reference and nonlinear scale"
+          git push origin HEAD:fix/pase-rating-scale-20260829
