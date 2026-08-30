@@ -53,7 +53,7 @@ test('repairs a stale landscape-sized timer after resuming in iPad portrait', as
     const dr = drawer.getBoundingClientRect();
     const rr = ring.getBoundingClientRect();
     return {
-      ringCss: parseFloat(getComputedStyle(view).getPropertyValue('--crono-interface-ring-size')),
+      inlineRing: parseFloat(view.style.getPropertyValue('--crono-interface-ring-size')),
       ringWidth: rr.width,
       startDisplay: getComputedStyle(start).display,
       startVisibility: getComputedStyle(start).visibility,
@@ -65,7 +65,7 @@ test('repairs a stale landscape-sized timer after resuming in iPad portrait', as
     };
   });
 
-  expect(geometry.ringCss).toBeLessThanOrEqual(225.5);
+  expect(geometry.inlineRing).toBeLessThanOrEqual(225.5);
   expect(geometry.ringWidth).toBeLessThanOrEqual(226);
   expect(geometry.startDisplay).not.toBe('none');
   expect(geometry.startVisibility).not.toBe('hidden');
@@ -91,13 +91,14 @@ test('revalidates the timer when the PWA becomes visible again', async ({ page }
 
   const after = await page.evaluate(() => {
     const view = document.getElementById('view-cronometro');
+    const ring = document.querySelector('.crono-idle-display-wrap .crono-run-progress-svg');
     return {
       inlineRing: parseFloat(view.style.getPropertyValue('--crono-interface-ring-size')),
-      computedRing: parseFloat(getComputedStyle(view).getPropertyValue('--crono-interface-ring-size')),
+      ringWidth: ring.getBoundingClientRect().width,
       stamp: view.dataset.resumeViewport,
     };
   });
   expect(after.inlineRing).toBeLessThanOrEqual(225.5);
-  expect(after.computedRing).toBeLessThanOrEqual(225.5);
+  expect(after.ringWidth).toBeLessThanOrEqual(226);
   expect(after.stamp).toBe('1024x1366');
 });
