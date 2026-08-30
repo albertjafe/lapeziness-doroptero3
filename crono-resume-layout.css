@@ -1,0 +1,47 @@
+/* Recuperación del cronómetro tras reanudar la PWA en iPad.
+   Safari puede restaurar durante unos frames las dimensiones de la orientación
+   anterior. Si JS calcula el aro en ese momento, queda un tamaño de landscape
+   (≈370 px) pegado al modo portrait y empuja el botón Iniciar fuera de la tarjeta. */
+
+@media (min-width: 700px) and (max-width: 1199px) and (min-height: 760px) and (orientation: portrait) {
+  #view-cronometro {
+    /* Coincide con cronoInterfaceRingBaseSize(): es también un cortafuegos CSS
+       frente a un valor inline calculado con un viewport transitorio antiguo. */
+    --crono-interface-ring-size: min(225px, 20dvh) !important;
+    --crono-timer-min-width: 250px !important;
+  }
+
+  #view-cronometro .crono-idle-main,
+  #view-cronometro .crono-timer-card-idle {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #view-cronometro #cronoStartBtn {
+    position: relative;
+    z-index: 7;
+  }
+}
+
+/* Segunda red de seguridad: solo se activa si la comprobación geométrica
+   detecta que Iniciar ha salido de su tarjeta o invade el cajón inferior. */
+@media (min-width: 700px) and (max-width: 1199px) and (min-height: 760px) and (orientation: portrait) {
+  body.crono-resume-compact #view-cronometro {
+    --crono-interface-ring-size: min(194px, 18dvh) !important;
+  }
+
+  body.crono-resume-compact #view-cronometro .crono-idle-main {
+    padding-top: 7px !important;
+    padding-bottom: 8px !important;
+  }
+
+  body.crono-resume-compact #view-cronometro .crono-idle-head {
+    margin-bottom: 0 !important;
+  }
+
+  body.crono-resume-compact #view-cronometro .crono-idle-message,
+  body.crono-resume-compact #view-cronometro .crono-idle-destello {
+    margin-top: 2px !important;
+    margin-bottom: 2px !important;
+  }
+}
