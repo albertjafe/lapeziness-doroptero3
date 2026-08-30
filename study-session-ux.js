@@ -6,6 +6,14 @@
 
   const LAST_TARGET_KEY = 'cronoLastStudyTarget_v1';
 
+  function appDb() {
+    try { return typeof db !== 'undefined' ? db : null; } catch (error) { return null; }
+  }
+
+  function cronoState() {
+    try { return typeof crono !== 'undefined' ? crono : null; } catch (error) { return null; }
+  }
+
   function validTargetValue(value) {
     return /^(?:obra|mov)::[^:]+(?:::[^:]+)?$/.test(String(value || ''));
   }
@@ -41,7 +49,8 @@
   }
 
   function latestRecordedTarget(select) {
-    const plants = (window.db && Array.isArray(window.db.sessionPlants)) ? window.db.sessionPlants : [];
+    const database = appDb();
+    const plants = database && Array.isArray(database.sessionPlants) ? database.sessionPlants : [];
     const recent = plants.slice().sort((a, b) => {
       const aTime = new Date(a.endedAt || a.startedAt || 0).getTime() || 0;
       const bTime = new Date(b.endedAt || b.startedAt || 0).getTime() || 0;
@@ -71,7 +80,8 @@
     const originalSelectLastUsed = window.cronoSelectLastUsed;
     if (typeof originalSelectLastUsed === 'function' && !originalSelectLastUsed.__exactMovementWrapped) {
       const wrappedSelectLastUsed = function cronoSelectLastUsedExact() {
-        if (window.crono && (window.crono.state === 'running' || window.crono.state === 'paused')) return;
+        const currentCrono = cronoState();
+        if (currentCrono && (currentCrono.state === 'running' || currentCrono.state === 'paused')) return;
         const select = document.getElementById('cronoObraSelect');
         if (!select) return originalSelectLastUsed.apply(this, arguments);
 
@@ -92,9 +102,11 @@
       const wrappedStart = function cronoStartRememberExactTarget() {
         const select = document.getElementById('cronoObraSelect');
         const selectedValue = select ? select.value : '';
-        const beforeState = window.crono && window.crono.state;
+        const currentCrono = cronoState();
+        const beforeState = currentCrono && currentCrono.state;
         const persistIfStarted = () => {
-          if (selectedValue && window.crono && window.crono.state === 'running' && beforeState !== 'running') {
+          const afterCrono = cronoState();
+          if (selectedValue && afterCrono && afterCrono.state === 'running' && beforeState !== 'running') {
             writeLastTarget(selectedValue);
           }
         };
