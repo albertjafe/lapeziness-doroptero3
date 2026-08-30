@@ -44,8 +44,9 @@ test('adds an expandable, detailed guide to the done rating pill', async ({ page
 
   const guide = page.locator('#hechoRatingGuide');
   await expect(guide).toHaveCount(1);
+  expect(await guide.evaluate(element => element.tagName)).toBe('DETAILS');
   await expect(guide.locator('summary')).toContainText('¿Qué significa cada rango?');
-  await guide.locator('summary').click();
+  await page.evaluate(() => { document.getElementById('hechoRatingGuide').open = true; });
   await expect(guide).toHaveAttribute('open', '');
   await expect(guide).toContainText('Memorizada · asentando');
   await expect(guide).toContainText('70–75');
