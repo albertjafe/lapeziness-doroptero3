@@ -1,8 +1,9 @@
-const CACHE = 'estudio-v311';
+const CACHE = 'estudio-v312';
 const ASSETS = [
   './index.html',
   './styles.css?v=281',
   './study-session-ux.css?v=1',
+  './crono-resume-layout.css?v=1',
   './piano-rooms.css?v=1',
   './crono-readiness-layout.css?v=1',
   './crono-idle-hierarchy.css?v=3',
@@ -14,6 +15,7 @@ const ASSETS = [
   './work-difficulty.css?v=1',
   './app.js?v=280',
   './study-session-ux.js?v=1',
+  './crono-resume-layout.js?v=1',
   './piano-rooms.js?v=1',
   './piano-rooms-core.js?v=1',
   './local-save-resilience.js?v=1',
