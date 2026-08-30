@@ -3,6 +3,8 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.SyncCore = api;
 })(typeof window !== 'undefined' ? window : globalThis, function () {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
   function normalizeMeta(meta) {
     const src = meta || {};
     const localRevision = Math.max(0, Number(src.localRevision) || 0);
@@ -112,6 +114,146 @@
     return mergeAuthoritativeChildren(older && older.obras, fresher.obras);
   }
 
+  function civilDayOrdinal(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ''));
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const timestamp = Date.UTC(year, month - 1, day);
+    const check = new Date(timestamp);
+    if (check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 || check.getUTCDate() !== day) return null;
+    return Math.floor(timestamp / DAY_MS);
+  }
+
+  function civilDayFromOrdinal(ordinal) {
+    if (!Number.isFinite(ordinal)) return null;
+    return new Date(ordinal * DAY_MS).toISOString().slice(0, 10);
+  }
+
+  function localTodayCivilDay(now) {
+    const date = now instanceof Date ? now : new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
+  }
+
+  function habitLogStatus(log) {
+    return String(log && log.status || '').trim().toLowerCase();
+  }
+
+  function isFailureLog(log) {
+    const status = habitLogStatus(log);
+    return !status || ['failed', 'fail', 'failure', 'relapse', 'broken', 'missed'].includes(status);
+  }
+
+  function isDoneLog(log) {
+    return ['done', 'success', 'succeeded', 'complete', 'completed'].includes(habitLogStatus(log));
+  }
+
+  function summarizeHabitChallenge(habit, todayDay) {
+    if (!habit || !habit.id) return null;
+    const mode = String(habit.mode || '').trim().toLowerCase();
+    const startOrdinal = civilDayOrdinal(habit.startDate);
+    const durationDays = Math.max(1, Math.floor(Number(habit.durationDays) || 1));
+    const today = todayDay || localTodayCivilDay();
+    const todayOrdinal = civilDayOrdinal(today);
+    const completionOrdinal = startOrdinal == null ? null : startOrdinal + durationDays - 1;
+    const completionDate = civilDayFromOrdinal(completionOrdinal);
+
+    let phase = 'unknown';
+    let currentDay = 0;
+    let closedDays = 0;
+    let daysRemaining = durationDays;
+    if (habit.deleted) {
+      phase = 'deleted';
+    } else if (startOrdinal != null && todayOrdinal != null) {
+      if (todayOrdinal < startOrdinal) {
+        phase = 'scheduled';
+      } else if (todayOrdinal <= completionOrdinal) {
+        phase = 'active';
+        currentDay = Math.min(durationDays, todayOrdinal - startOrdinal + 1);
+        closedDays = Math.min(durationDays, Math.max(0, todayOrdinal - startOrdinal));
+        daysRemaining = Math.max(0, completionOrdinal - todayOrdinal + 1);
+      } else {
+        phase = 'maintenance';
+        currentDay = durationDays;
+        closedDays = durationDays;
+        daysRemaining = 0;
+      }
+    }
+
+    const failureDays = new Set();
+    const closedFailureDays = new Set();
+    const closedDoneDays = new Set();
+    Object.entries(habit.logs || {}).forEach(([day, log]) => {
+      const ordinal = civilDayOrdinal(day);
+      if (ordinal == null || startOrdinal == null || todayOrdinal == null) return;
+      if (ordinal < startOrdinal || ordinal > completionOrdinal || ordinal > todayOrdinal) return;
+      if (isFailureLog(log)) {
+        failureDays.add(day);
+        if (ordinal < todayOrdinal) closedFailureDays.add(day);
+      }
+      if (ordinal < todayOrdinal && isDoneLog(log)) closedDoneDays.add(day);
+    });
+
+    const avoidMode = mode === 'avoid';
+    const successfulClosedDays = avoidMode
+      ? Math.max(0, closedDays - closedFailureDays.size)
+      : Math.min(closedDays, closedDoneDays.size);
+    const successRateClosedDays = closedDays > 0
+      ? Math.round((successfulClosedDays / closedDays) * 100)
+      : null;
+
+    return {
+      id: habit.id,
+      title: habit.title || '',
+      mode: mode || null,
+      startDate: habit.startDate || null,
+      durationDays,
+      completionDate,
+      phase,
+      currentDay,
+      closedDays,
+      daysRemaining,
+      failureCount: failureDays.size,
+      failureDays: Array.from(failureDays).sort(),
+      successfulClosedDays,
+      successRateClosedDays,
+      challengeCompleted: phase === 'maintenance',
+      successRule: avoidMode ? 'closed_day_without_failure_log' : 'closed_day_with_done_log',
+      logSemantics: avoidMode ? 'failures_only' : 'explicit_daily_status',
+    };
+  }
+
+  function buildHabitObjectiveSummary(habits, todayDay) {
+    const today = todayDay || localTodayCivilDay();
+    const items = (habits || [])
+      .map(habit => summarizeHabitChallenge(habit, today))
+      .filter(Boolean);
+    const active = items
+      .filter(item => item.phase === 'active')
+      .sort((a, b) => String(b.startDate || '').localeCompare(String(a.startDate || '')))[0] || null;
+    return {
+      schemaVersion: 1,
+      asOf: today,
+      semantics: {
+        avoid: {
+          logSemantics: 'failures_only',
+          successRule: 'a closed day with no failure log counts as successful',
+        },
+        do: {
+          logSemantics: 'explicit_daily_status',
+          successRule: 'a closed day needs a done log to count as successful',
+        },
+      },
+      activeHabitId: active && active.id || null,
+      active,
+      items,
+    };
+  }
+
   function mergeRepertoireIntoResult(base, other, merged) {
     const result = Object.assign({}, merged || {});
     result.obras = mergeObrasFromFreshest(base || {}, other || {});
@@ -119,6 +261,10 @@
     if (maxRevision) result._localRevision = maxRevision;
     const freshest = compareDbFreshness(base || {}, other || {}) >= 0 ? (base || {}) : (other || {});
     if (freshest._savedAt) result._savedAt = freshest._savedAt;
+    const habits = Array.isArray(result.habitChallenges)
+      ? result.habitChallenges
+      : (result.habitChallenge ? [result.habitChallenge] : []);
+    result.habitObjectiveSummary = buildHabitObjectiveSummary(habits);
     return result;
   }
 
@@ -142,13 +288,15 @@
     mergeHistoryList,
     mergeObrasFromFreshest,
     mergeRepertoireIntoResult,
+    summarizeHabitChallenge,
+    buildHabitObjectiveSummary,
     installRepertoireSync
   };
 });
 
 // data-core.js is loaded immediately before this file in the app. Patch its
 // merge at startup so the very first cloud/local reconciliation also includes
-// repertoire metadata, not only sessions and habits.
+// repertoire metadata and a self-describing habit-objective summary.
 if (typeof window !== 'undefined' && window.SyncCore && window.DataCore) {
   window.SyncCore.installRepertoireSync(window.DataCore);
 }
