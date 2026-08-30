@@ -20,8 +20,7 @@ jobs:
           def replace_bytes(path, old, new, label):
               p = Path(path)
               raw = p.read_bytes()
-              variants = [(b'\r\n', '\r\n'), (b'\n', '\n')]
-              for eol_bytes, eol_text in variants:
+              for eol_text in ('\r\n', '\n'):
                   old_b = old.replace('\n', eol_text).encode('utf-8')
                   if old_b in raw:
                       new_b = new.replace('\n', eol_text).encode('utf-8')
@@ -55,7 +54,18 @@ jobs:
               "  './app.js?v=280',\n  './study-session-ux.js?v=1',",
               'service worker js')
           PY
-          git diff --check
+          echo 'Diff size:'
+          git diff --numstat -- index.html sw.js
+          python - <<'PY'
+          import subprocess
+          output = subprocess.check_output(['git', 'diff', '--numstat', '--', 'index.html', 'sw.js'], text=True).strip().splitlines()
+          changed = 0
+          for line in output:
+              added, deleted, _ = line.split('\t')
+              changed += int(added) + int(deleted)
+          if changed > 20:
+              raise SystemExit('Unexpectedly large index/sw diff: %s lines' % changed)
+          PY
       - name: Install dependencies
         run: npm ci
       - name: Syntax and unit tests
