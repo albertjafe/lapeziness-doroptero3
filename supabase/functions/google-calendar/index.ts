@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { SHEETS_SCOPE, syncAiActivityLog } from "./ai-log.ts";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -10,6 +11,7 @@ const REDIRECT_URI = Deno.env.get("GOOGLE_REDIRECT_URI") ||
 const SCOPES = [
   "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
   "https://www.googleapis.com/auth/calendar.events.readonly",
+  SHEETS_SCOPE,
 ];
 
 const corsHeaders = {
@@ -120,10 +122,14 @@ async function googleGet(path: string, token: string) {
 
 async function connectionFor(userId: string) {
   const { data, error } = await admin.from("google_calendar_connections")
-    .select("refresh_token_ciphertext,scopes,connected_at,updated_at")
+    .select("refresh_token_ciphertext,scopes,connected_at,updated_at,ai_log_spreadsheet_id,ai_log_synced_at")
     .eq("user_id", userId).maybeSingle();
   if (error) throw error;
   return data;
+}
+
+function hasScope(connection: any, scope: string) {
+  return Array.isArray(connection?.scopes) && connection.scopes.includes(scope);
 }
 
 async function authorize(userId: string) {
@@ -250,6 +256,15 @@ async function syncCalendars(connection: any, body: any) {
   return { calendars, selectedIds: selected, events: eventGroups.flat() };
 }
 
+async function syncAiLog(connection: any, userId: string) {
+  if (!hasScope(connection, SHEETS_SCOPE)) {
+    throw new Error("Vuelve a conectar Google en la app para autorizar el registro IA en Google Sheets");
+  }
+  const refreshToken = await decryptToken(connection.refresh_token_ciphertext);
+  const token = await accessToken(refreshToken);
+  return syncAiActivityLog({ admin, connection, userId, accessToken: token });
+}
+
 async function disconnect(connection: any, userId: string) {
   try {
     const token = await decryptToken(connection.refresh_token_ciphertext);
@@ -271,23 +286,34 @@ Deno.serve(async request => {
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   const user = await authenticatedUser(request);
-  if (!user) return json({ error: "Inicia sesión en la app para conectar Google Calendar" }, 401);
+  if (!user) return json({ error: "Inicia sesión en la app para conectar Google" }, 401);
 
   try {
     const body = await request.json().catch(() => ({}));
     const action = String(body.action || "status");
     const connection = await connectionFor(user.id);
-    if (action === "status") return json({ connected: Boolean(connection), connectedAt: connection?.connected_at || null });
+    if (action === "status") {
+      return json({
+        connected: Boolean(connection),
+        connectedAt: connection?.connected_at || null,
+        aiLogScopeGranted: Boolean(connection && hasScope(connection, SHEETS_SCOPE)),
+        aiLogSpreadsheetUrl: connection?.ai_log_spreadsheet_id
+          ? `https://docs.google.com/spreadsheets/d/${connection.ai_log_spreadsheet_id}/edit`
+          : null,
+        aiLogSyncedAt: connection?.ai_log_synced_at || null,
+      });
+    }
     if (action === "authorize") return json({ authUrl: await authorize(user.id) });
-    if (!connection) return json({ error: "Google Calendar no está conectado" }, 409);
+    if (!connection) return json({ error: "Google no está conectado" }, 409);
     if (action === "sync") return json({ connected: true, ...(await syncCalendars(connection, body)) });
+    if (action === "ai-log-sync") return json({ connected: true, ...(await syncAiLog(connection, user.id)) });
     if (action === "disconnect") {
       await disconnect(connection, user.id);
       return json({ connected: false });
     }
     return json({ error: "Unknown action" }, 400);
   } catch (error) {
-    console.error("Google Calendar function failed", error);
-    return json({ error: error instanceof Error ? error.message : "Google Calendar error" }, 500);
+    console.error("Google integration function failed", error);
+    return json({ error: error instanceof Error ? error.message : "Google integration error" }, 500);
   }
 });
