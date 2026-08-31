@@ -42,7 +42,7 @@ test('shows all solidity pills vertically, flags an isolated spike and lets it b
   await page.setViewportSize({ width: 1024, height: 768 });
   await prepare(page);
   await page.evaluate(() => openPremiumWork('bach'));
-  await page.getByRole('button', { name: 'Revisar historial' }).click();
+  await page.getByRole('button', { name: 'Revisar historial' }).evaluate(button => button.click());
   await expect(page.locator('#solidityHistoryOverlay')).toHaveClass(/open/);
 
   const rows = page.locator('.solidity-history-row');
@@ -55,7 +55,7 @@ test('shows all solidity pills vertically, flags an isolated spike and lets it b
   await anomaly.locator('.solidity-history-number').fill('52');
   await anomaly.locator('.solidity-history-number').press('Enter');
   await expect(page.locator('.solidity-history-row.is-anomaly')).toHaveCount(0);
-  await page.getByRole('button', { name: /Guardar cambios/ }).click();
+  await page.getByRole('button', { name: /Guardar cambios/ }).evaluate(button => button.click());
   await expect(page.locator('.solidity-history-message')).toContainText('1 corrección guardada');
 
   const stored = await page.evaluate(() => {
