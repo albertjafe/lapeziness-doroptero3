@@ -6,6 +6,20 @@
   const originalToggleObra = typeof window.toggleObra === 'function' ? window.toggleObra : null;
   const originalOpenObraFocus = typeof window.openObraFocus === 'function' ? window.openObraFocus : null;
 
+
+  function ensureCompanionScript(id, src) {
+    if (document.getElementById(id)) return;
+    const script = document.createElement('script');
+    script.id = id;
+    script.src = src;
+    script.async = true;
+    document.head.appendChild(script);
+  }
+
+  // Carga ligera y global: seguimiento 1:1 del dedo y editor histórico.
+  ensureCompanionScript('paseLiquidDirectTouchScript', './pase-liquid-direct-touch.js?v=1');
+  ensureCompanionScript('solidityHistoryEditorScript', './solidity-history-editor.js?v=1');
+
   function appData() {
     try { if (typeof DB !== 'undefined' && DB) return DB; } catch (error) {}
     try { if (typeof db !== 'undefined' && db) return db; } catch (error) {}
@@ -158,6 +172,13 @@
           <div class="obra-premium-stat"><div class="obra-premium-stat-label">Estudiado</div><div class="obra-premium-stat-value">${esc(fmtStudyMinutes(studyMinutesFor(work)))}</div></div>
           <div class="obra-premium-stat"><div class="obra-premium-stat-label">Pases</div><div class="obra-premium-stat-value">${passCount(work)}</div></div>
         </div>
+        <section class="obra-premium-section">
+          <div class="obra-premium-section-head">
+            <div class="obra-premium-section-title">Historial de solidez</div>
+            <button type="button" class="obra-premium-enrich" data-action="solidity-history">Revisar historial</button>
+          </div>
+          <div class="obra-premium-edit-note">Consulta todas las píldoras de la obra y sus movimientos, detecta saltos extraños y corrige un registro histórico concreto.</div>
+        </section>
         <section class="obra-premium-section">
           <div class="obra-premium-section-head">
             <div class="obra-premium-section-title">Movimientos</div>
@@ -333,6 +354,20 @@
           state.draft.movimientos.splice(index, 1);
           render();
         }
+        if (action === 'solidity-history') {
+          const id = state.id;
+          if (window.SolidityHistoryEditor && typeof window.SolidityHistoryEditor.open === 'function') {
+            window.SolidityHistoryEditor.open(id);
+          } else {
+            state.message = 'Preparando el historial de solidez…';
+            render();
+            window.addEventListener('solidity-history-editor-ready', () => {
+              if (window.SolidityHistoryEditor && typeof window.SolidityHistoryEditor.open === 'function') {
+                window.SolidityHistoryEditor.open(id);
+              }
+            }, { once: true });
+          }
+        }
         if (action === 'advanced') {
           const id = state.id;
           closePremium();
@@ -371,6 +406,7 @@
 
   window.openPremiumWork = openPremium;
   window.closePremiumWork = closePremium;
+  window.refreshPremiumWork = function () { if (state.id) render(); };
 
   if (originalToggleObra) {
     window.toggleObra = function (id) {

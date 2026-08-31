@@ -336,6 +336,66 @@
     return result.sort((a, b) => a.startTime - b.startTime);
   }
 
+
+  function median(values) {
+    const sorted = (values || []).filter(Number.isFinite).slice().sort((a, b) => a - b);
+    if (!sorted.length) return null;
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  }
+
+  // Señala saltos aislados para revisión humana. Nunca corrige automáticamente.
+  // Se compara cada medición solo con vecinos del mismo ámbito (obra/movimiento),
+  // para no confundir diferencias normales entre movimientos con errores de entrada.
+  function detectOutliers(points, options) {
+    const opts = options || {};
+    const radius = Math.max(1, Math.floor(Number(opts.neighborRadius) || 2));
+    const minNeighbors = Math.max(2, Math.floor(Number(opts.minNeighbors) || 2));
+    const minDelta = Math.max(1, Number(opts.minDelta) || 18);
+    const spreadMultiplier = Math.max(0, Number(opts.spreadMultiplier) || 2.2);
+    const spreadPadding = Math.max(0, Number(opts.spreadPadding) || 6);
+    const groups = new Map();
+
+    (Array.isArray(points) ? points : []).forEach((point, index) => {
+      const rawSource = point && point.raw;
+      const score = rawSource ? scoreFromObservation(rawSource) : percent(point && point.score);
+      const time = point && point.time != null ? Number(point.time) : dateFrom(point);
+      if (score == null || !Number.isFinite(time)) return;
+      const normalized = Object.assign({}, point, { score, time, _index: index });
+      const key = targetKey(normalized);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(normalized);
+    });
+
+    const flagged = [];
+    groups.forEach(list => {
+      list.sort((a, b) => a.time - b.time || a._index - b._index);
+      list.forEach((point, index) => {
+        const before = list.slice(Math.max(0, index - radius), index);
+        const after = list.slice(index + 1, index + 1 + radius);
+        const neighbors = before.concat(after);
+        if (neighbors.length < minNeighbors) return;
+        const scores = neighbors.map(item => item.score);
+        const baseline = median(scores);
+        if (baseline == null) return;
+        const spread = Math.max(...scores) - Math.min(...scores);
+        const threshold = Math.max(minDelta, spread * spreadMultiplier + spreadPadding);
+        const delta = Math.abs(point.score - baseline);
+        if (delta < threshold) return;
+        flagged.push({
+          point,
+          score: point.score,
+          baseline,
+          delta,
+          threshold,
+          neighborScores: scores.slice(),
+          target: targetKey(point),
+        });
+      });
+    });
+    return flagged.sort((a, b) => a.point._index - b.point._index);
+  }
+
   return {
     percent,
     scoreFromObservation,
@@ -353,6 +413,7 @@
     historyContext,
     statusLabel,
     inferredCoverage,
+    detectOutliers,
     plateauGroups,
   };
 });
