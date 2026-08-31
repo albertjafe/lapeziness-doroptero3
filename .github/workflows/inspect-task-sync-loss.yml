@@ -1,0 +1,31 @@
+name: inspect task sync reconciliation
+on:
+  push:
+    branches:
+      - fix/crono-task-sync-inspect
+permissions:
+  contents: write
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture sync and task code
+        shell: bash
+        run: |
+          {
+            echo '===== CLOUD SYNC ====='
+            grep -n -C 35 -E 'syncPendingCloudChanges|enqueueCloudSync|mergeStudyHistory|user_data|cloudData|remoteData|loadCloud|fetchCloud|saveCloud|uploadCloud|downloadCloud' app.js | head -n 3000 || true
+            echo '===== TASK MUTATIONS ====='
+            grep -n -C 30 -E 'cronoTasks|cronoTask|addCronoTask|deleteCronoTask|removeCronoTask|toggleCronoTask|priorityChangedAt|task.*priority' app.js | head -n 5000 || true
+            echo '===== DATA CORE ====='
+            grep -n -C 25 -E 'mergeStudyHistory|cronoTasks|pulseDeletedIds' data-core.js sync-core.js | head -n 2500 || true
+          } > _tmp_task_sync_diagnostic.txt
+      - name: Commit diagnostic
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add _tmp_task_sync_diagnostic.txt
+          git commit -m "Capture task sync diagnostic"
+          git push origin HEAD:fix/crono-task-sync-inspect
