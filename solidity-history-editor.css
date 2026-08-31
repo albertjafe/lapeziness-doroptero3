@@ -1,0 +1,273 @@
+/* Revisión histórica de solidez: lista vertical editable de mediciones. */
+.solidity-history-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2300;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: rgba(5, 7, 10, .72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.solidity-history-overlay.open { display: flex; }
+body.solidity-history-lock { overflow: hidden; }
+.solidity-history-sheet {
+  width: min(820px, 100%);
+  max-height: min(900px, calc(100vh - 32px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border2, rgba(255,255,255,.14));
+  border-radius: 22px;
+  background: var(--bg2, #111418);
+  box-shadow: 0 30px 90px rgba(0,0,0,.46);
+  color: var(--text, #f3f4f6);
+}
+.solidity-history-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 15px;
+  border-bottom: 1px solid var(--border, rgba(255,255,255,.09));
+}
+.solidity-history-kicker {
+  margin-bottom: 5px;
+  color: var(--accent, #c8a030);
+  font: 700 9px/1.2 'JetBrains Mono', monospace;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+.solidity-history-title {
+  margin: 0;
+  font: 600 clamp(23px, 3.3vw, 32px)/1.05 'Cormorant Garamond', serif;
+}
+.solidity-history-subtitle {
+  margin-top: 7px;
+  color: var(--text3, #9298a1);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.solidity-history-close {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border2, rgba(255,255,255,.14));
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text2, #d8dbe0);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+.solidity-history-toolbar {
+  padding: 12px 22px 13px;
+  border-bottom: 1px solid var(--border, rgba(255,255,255,.09));
+  background: color-mix(in srgb, var(--bg2, #111418) 94%, white 6%);
+}
+.solidity-history-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--text3, #9298a1);
+  font-size: 10px;
+}
+.solidity-history-summary strong { color: var(--text2, #d8dbe0); font-weight: 650; }
+.solidity-history-anomaly-count {
+  color: #e5a84b;
+  font-weight: 700;
+}
+.solidity-history-filters {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+.solidity-history-filters::-webkit-scrollbar { display: none; }
+.solidity-history-filter {
+  min-height: 38px;
+  flex: 0 0 auto;
+  padding: 0 13px;
+  border: 1px solid var(--border2, rgba(255,255,255,.14));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text3, #9298a1);
+  font-size: 10px;
+  cursor: pointer;
+}
+.solidity-history-filter.active {
+  border-color: color-mix(in srgb, var(--accent, #c8a030) 62%, transparent);
+  background: color-mix(in srgb, var(--accent, #c8a030) 13%, transparent);
+  color: var(--text, #f3f4f6);
+}
+.solidity-history-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px 22px 22px;
+}
+.solidity-history-empty {
+  padding: 40px 14px;
+  text-align: center;
+  color: var(--text3, #9298a1);
+  font-size: 12px;
+}
+.solidity-history-row {
+  position: relative;
+  margin-bottom: 10px;
+  padding: 13px 14px 14px;
+  border: 1px solid var(--border, rgba(255,255,255,.09));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg3, #181c22) 91%, transparent);
+  transition: border-color .12s ease, background .12s ease;
+}
+.solidity-history-row.is-anomaly {
+  border-color: rgba(229, 168, 75, .64);
+  background: linear-gradient(90deg, rgba(229,168,75,.11), color-mix(in srgb, var(--bg3, #181c22) 94%, transparent) 26%);
+  box-shadow: inset 3px 0 0 rgba(229,168,75,.72);
+}
+.solidity-history-row.is-dirty {
+  border-color: color-mix(in srgb, var(--accent, #c8a030) 58%, var(--border2, rgba(255,255,255,.14)));
+}
+.solidity-history-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.solidity-history-row-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 9px;
+}
+.solidity-history-date { color: var(--text2, #d8dbe0); font-size: 11px; font-weight: 650; }
+.solidity-history-scope,
+.solidity-history-context {
+  color: var(--text3, #9298a1);
+  font-size: 9px;
+}
+.solidity-history-scope { color: var(--accent, #c8a030); }
+.solidity-history-badges { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.solidity-history-badge {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(229,168,75,.12);
+  color: #e5a84b;
+  font: 700 8px/1.1 'JetBrains Mono', monospace;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.solidity-history-badge.corrected {
+  background: color-mix(in srgb, var(--accent, #c8a030) 12%, transparent);
+  color: var(--accent, #c8a030);
+}
+.solidity-history-editline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 78px 74px;
+  align-items: center;
+  gap: 10px;
+}
+.solidity-history-pill.pase-liquid-meter {
+  height: 50px;
+  min-width: 0;
+}
+.solidity-history-pill .pase-liquid-reservoir { inset-block: 6px; }
+.solidity-history-pill .pase-liquid-orb {
+  left: clamp(3px, calc(var(--pase-fill) - 11px), calc(100% - 25px));
+  width: 21px;
+  height: 21px;
+}
+.solidity-history-number {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  border: 1px solid var(--border2, rgba(255,255,255,.14));
+  border-radius: 10px;
+  background: var(--bg2, #111418);
+  color: var(--text, #f3f4f6);
+  font: 650 16px/1 'JetBrains Mono', monospace;
+  text-align: center;
+  outline: none;
+}
+.solidity-history-number:focus {
+  border-color: var(--accent, #c8a030);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #c8a030) 15%, transparent);
+}
+.solidity-history-reset {
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--text3, #9298a1);
+  font-size: 9px;
+  cursor: pointer;
+  visibility: hidden;
+}
+.solidity-history-row.is-dirty .solidity-history-reset { visibility: visible; }
+.solidity-history-anomaly-note {
+  margin-top: 8px;
+  color: #cf9d50;
+  font-size: 9px;
+  line-height: 1.45;
+}
+.solidity-history-correction-note {
+  margin-top: 6px;
+  color: var(--text3, #9298a1);
+  font-size: 9px;
+}
+.solidity-history-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 22px max(13px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border, rgba(255,255,255,.09));
+  background: var(--bg2, #111418);
+}
+.solidity-history-message {
+  min-height: 18px;
+  color: var(--text3, #9298a1);
+  font-size: 10px;
+}
+.solidity-history-message.success { color: #6fcf97; }
+.solidity-history-actions { display: flex; gap: 8px; margin-left: auto; }
+.solidity-history-button {
+  min-height: 44px;
+  padding: 0 15px;
+  border-radius: 11px;
+  border: 1px solid var(--border2, rgba(255,255,255,.14));
+  background: transparent;
+  color: var(--text2, #d8dbe0);
+  font-size: 10px;
+  cursor: pointer;
+}
+.solidity-history-button.primary {
+  border-color: var(--accent, #c8a030);
+  background: var(--accent, #c8a030);
+  color: #101114;
+  font-weight: 750;
+}
+.solidity-history-button.primary:disabled { opacity: .42; cursor: default; }
+
+@media (max-width: 620px) {
+  .solidity-history-overlay { padding: 0; align-items: stretch; }
+  .solidity-history-sheet { width: 100%; max-height: 100vh; border-radius: 0; border-inline: 0; }
+  .solidity-history-head { padding: 17px 16px 13px; }
+  .solidity-history-toolbar { padding: 11px 16px 12px; }
+  .solidity-history-list { padding: 10px 12px 18px; }
+  .solidity-history-row { padding: 12px; }
+  .solidity-history-editline { grid-template-columns: minmax(0, 1fr) 68px; }
+  .solidity-history-reset { grid-column: 1 / -1; justify-self: end; min-height: 30px; }
+  .solidity-history-footer { padding: 11px 14px max(11px, env(safe-area-inset-bottom)); flex-wrap: wrap; }
+  .solidity-history-message { flex: 1 1 100%; }
+  .solidity-history-actions { width: 100%; }
+  .solidity-history-button { flex: 1; }
+}
