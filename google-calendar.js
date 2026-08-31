@@ -3,9 +3,21 @@
 
   const STORAGE_KEY = 'alberto_google_calendar_v1';
   const ENDPOINT = 'https://fexfeekifzgszluemihs.supabase.co/functions/v1/google-calendar';
-  const EMPTY = { connected: false, layer: true, calendars: [], selectedIds: [], events: [], lastSync: null };
+  const AI_LOG_SYNC_MS = 2 * 60 * 1000;
+  const EMPTY = {
+    connected: false,
+    layer: true,
+    calendars: [],
+    selectedIds: [],
+    events: [],
+    lastSync: null,
+    aiLogScopeGranted: false,
+    aiLogUrl: null,
+    aiLogLastSync: null,
+  };
   let state = loadState();
   let requestInFlight = null;
+  let aiLogRequestInFlight = null;
 
   function loadState() {
     try {
@@ -35,7 +47,7 @@
 
   async function request(action, payload) {
     const token = await sessionToken();
-    if (!token) throw new Error('Inicia sesión en la app antes de conectar Google Calendar');
+    if (!token) throw new Error('Inicia sesión en la app antes de conectar Google');
     const response = await fetch(ENDPOINT, {
       method: 'POST',
       headers: {
@@ -46,7 +58,7 @@
       body: JSON.stringify({ action, ...(payload || {}) }),
     });
     const result = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(result.error || 'No se pudo contactar con Google Calendar');
+    if (!response.ok) throw new Error(result.error || 'No se pudo contactar con Google');
     return result;
   }
 
@@ -81,7 +93,8 @@
       const suffix = state.lastSync
         ? ' · ' + new Intl.DateTimeFormat('es', { hour: '2-digit', minute: '2-digit' }).format(new Date(state.lastSync))
         : '';
-      setStatus('Conectado' + suffix, 'success');
+      const ai = state.aiLogScopeGranted ? ' · registro IA' : '';
+      setStatus('Conectado' + ai + suffix, 'success');
     } else {
       setStatus('No conectado · solo lectura', 'neutral');
     }
@@ -93,14 +106,23 @@
     setStatus('Comprobando conexión…', 'loading');
     requestInFlight = request('status').then(async result => {
       state.connected = Boolean(result.connected);
+      state.aiLogScopeGranted = Boolean(result.aiLogScopeGranted);
+      state.aiLogUrl = result.aiLogSpreadsheetUrl || null;
+      state.aiLogLastSync = result.aiLogSyncedAt || state.aiLogLastSync || null;
       if (!state.connected) {
         state.calendars = [];
         state.events = [];
         state.selectedIds = [];
+        state.aiLogScopeGranted = false;
+        state.aiLogUrl = null;
+        state.aiLogLastSync = null;
       }
       saveState();
       refreshUI();
-      if (state.connected && opts.sync) await sync({ silent: true, force: true });
+      if (state.connected && opts.sync) {
+        await sync({ silent: true, force: true });
+        await syncAiLog({ silent: true, force: true });
+      }
       return result;
     }).catch(error => {
       setStatus(error.message, 'error');
@@ -153,6 +175,7 @@
       refreshUI();
       if (typeof renderMesCalendario === 'function') renderMesCalendario();
       if (!opts.silent && typeof showToast === 'function') showToast('Google Calendar actualizado');
+      syncAiLog({ silent: true, force: true });
     } catch (error) {
       setStatus(error.message, 'error');
       if (!opts.silent && typeof showToast === 'function') showToast(error.message);
@@ -161,15 +184,40 @@
     }
   }
 
+  async function syncAiLog(options) {
+    const opts = options || {};
+    if (!state.connected || !state.aiLogScopeGranted) return null;
+    if (aiLogRequestInFlight) return aiLogRequestInFlight;
+    if (!opts.force && state.aiLogLastSync && Date.now() - new Date(state.aiLogLastSync).getTime() < AI_LOG_SYNC_MS) {
+      return null;
+    }
+    aiLogRequestInFlight = request('ai-log-sync').then(result => {
+      state.aiLogLastSync = result.syncedAt || new Date().toISOString();
+      state.aiLogUrl = result.spreadsheetUrl || state.aiLogUrl || null;
+      saveState();
+      if (!opts.silent && typeof showToast === 'function') showToast('Registro IA actualizado');
+      return result;
+    }).catch(error => {
+      if (/vuelve a conectar google/i.test(error.message || '')) {
+        state.aiLogScopeGranted = false;
+        saveState();
+        refreshUI();
+      }
+      if (!opts.silent && typeof showToast === 'function') showToast(error.message);
+      return null;
+    }).finally(() => { aiLogRequestInFlight = null; });
+    return aiLogRequestInFlight;
+  }
+
   async function disconnect() {
-    if (!window.confirm('¿Desconectar Google Calendar de esta app?')) return;
+    if (!window.confirm('¿Desconectar Google de esta app?')) return;
     try {
       await request('disconnect');
       state = { ...EMPTY };
       saveState();
       refreshUI();
       if (typeof renderMesCalendario === 'function') renderMesCalendario();
-      if (typeof showToast === 'function') showToast('Google Calendar desconectado');
+      if (typeof showToast === 'function') showToast('Google desconectado');
     } catch (error) {
       if (typeof showToast === 'function') showToast(error.message);
     }
@@ -254,8 +302,19 @@
     return /^#[0-9a-f]{6}$/i.test(String(value || '')) ? value : '#4285f4';
   }
 
+  function installAiLogHeartbeat() {
+    window.setInterval(() => {
+      if (document.visibilityState === 'visible') syncAiLog({ silent: true });
+    }, AI_LOG_SYNC_MS);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') syncAiLog({ silent: true, force: true });
+    });
+    window.addEventListener('focus', () => syncAiLog({ silent: true }));
+  }
+
   function init() {
     refreshUI();
+    installAiLogHeartbeat();
     const url = new URL(window.location.href);
     const callback = url.searchParams.get('google_calendar');
     if (!callback) return;
@@ -265,10 +324,10 @@
     if (callback === 'connected') {
       state.connected = true;
       saveState();
-      if (typeof showToast === 'function') showToast('Google Calendar conectado');
+      if (typeof showToast === 'function') showToast('Google conectado');
       refreshStatus({ sync: true, silent: true });
     } else {
-      if (typeof showToast === 'function') showToast('No se pudo conectar Google Calendar');
+      if (typeof showToast === 'function') showToast('No se pudo conectar Google');
       refreshStatus({ silent: true });
     }
   }
@@ -284,6 +343,8 @@
   window.googleCalendarOnView = onView;
   window.googleCalendarSafeColor = safeColor;
   window.googleCalendarEscapeHtml = escapeHtml;
+  window.googleAiLogSync = options => syncAiLog(options || { force: true });
+  window.googleAiLogUrl = () => state.aiLogUrl;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();
