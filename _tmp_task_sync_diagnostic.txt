@@ -1,0 +1,1702 @@
+===== CLOUD SYNC =====
+65-  localStorage.setItem(SYNC_META_KEY, JSON.stringify(normalized));
+66-  return normalized;
+67-}
+68-
+69-function _writeLocalSnapshot(markDirty) {
+70-  const currentMeta = _readSyncMeta();
+71-  const nextMeta = markDirty && typeof SyncCore !== 'undefined'
+72-    ? SyncCore.markDirty(currentMeta)
+73-    : currentMeta;
+74-  db._savedAt = new Date().toISOString();
+75-  if (nextMeta.localRevision) db._localRevision = nextMeta.localRevision;
+76-  localStorage.setItem(DB_KEY, JSON.stringify(db));
+77-  _writeSyncMeta(nextMeta);
+78-  return nextMeta;
+79-}
+80-
+81-// Persistencia local síncrona: ninguna operación lógica debe depender de la red.
+82-function saveLocalNow() {
+83-  try {
+84-    return _writeLocalSnapshot(true);
+85-  } catch(e) {
+86-    showSyncIndicator('⚠ error al guardar en este dispositivo');
+87-    console.error('[sync] no se pudo guardar localmente', e);
+88-    throw e;
+89-  }
+90-}
+91-
+92-function saveData() {
+93-  try {
+94-    saveLocalNow();
+95-  } catch(e) {
+96-    // Los datos siguen en memoria para que el usuario pueda reintentar.
+97-    return false;
+98-  }
+99-  refreshStudyViews();
+100:  enqueueCloudSync();
+101-  return true;
+102-}
+103-
+104-// Una mutación de estudio debe actualizar todas las superficies que muestran
+105-// ese dato, aunque la vista activa no sea la que originó el guardado. Se
+106-// agrupa en un frame para evitar renders repetidos cuando una operación llama
+107-// a varias funciones de persistencia consecutivas.
+108-let _studyViewsRefreshFrame = null;
+109-function refreshStudyViews() {
+110-  if (_studyViewsRefreshFrame != null) return;
+111-  const render = () => {
+112-    _studyViewsRefreshFrame = null;
+113-    if (typeof renderRacha === 'function') renderRacha();
+114-    if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+115-    if (typeof renderCronoCalendar === 'function') renderCronoCalendar();
+116-    if (typeof renderPulseDashboard === 'function') renderPulseDashboard();
+117-    if (typeof renderStatsDashboard === 'function') renderStatsDashboard();
+118-    if (typeof renderMantenimientoSection === 'function') renderMantenimientoSection();
+119-    if (typeof renderSolidezSection === 'function') renderSolidezSection();
+120-    if (typeof renderEficienciaSection === 'function') renderEficienciaSection();
+121-    if (typeof renderEstadoSection === 'function') renderEstadoSection();
+122-    if (typeof renderSesionesHistorial === 'function') renderSesionesHistorial();
+123-    if (typeof renderSessionQuickStudy === 'function') renderSessionQuickStudy();
+124-    if (typeof renderHabitChallenge === 'function') renderHabitChallenge();
+125-    if (typeof renderHabitCalendar === 'function') renderHabitCalendar();
+126-    if (typeof renderMesCalendario === 'function') renderMesCalendario();
+127-    if (typeof renderWeeklyPlanner === 'function' && _sessionSectionMode === 'week') renderWeeklyPlanner();
+128-    if (typeof renderMemoryPanels === 'function') renderMemoryPanels();
+129-  };
+130-  if (typeof requestAnimationFrame === 'function' && document.visibilityState !== 'hidden') {
+131-    _studyViewsRefreshFrame = requestAnimationFrame(render);
+132-  } else {
+133-    _studyViewsRefreshFrame = setTimeout(render, 0);
+134-  }
+135-}
+--
+304-    const current = cards.get(card.id);
+305-    if (!current) { cards.set(card.id, card); return; }
+306-    const currentAt = String(current.updatedAt || current.createdAt || '');
+307-    const cardAt = String(card.updatedAt || card.createdAt || '');
+308-    const newer = cardAt.localeCompare(currentAt) >= 0 ? card : current;
+309-    const older = newer === card ? current : card;
+310-    const reviews = new Map();
+311-    (older.reviews || []).concat(newer.reviews || []).forEach(review => {
+312-      if (!review) return;
+313-      const key = review.id || ((review.at || '') + '::' + (review.rating || ''));
+314-      if (key) reviews.set(key, review);
+315-    });
+316-    cards.set(card.id, Object.assign({}, older, newer, {
+317-      reviews: Array.from(reviews.values()).sort((x, y) => String(x.at || '').localeCompare(String(y.at || ''))).slice(-300)
+318-    }));
+319-  });
+320-  return Array.from(cards.values()).sort((x, y) => String(x.createdAt || '').localeCompare(String(y.createdAt || ''))).slice(-5000);
+321-}
+322-function _sesionRealMin(s) {
+323-  return (s.items || []).reduce((acc, it) =>
+324-    acc + (typeof _itemMinReal === 'function' ? _itemMinReal(it) : (it.minutosReales || 0)), 0);
+325-}
+326-function _mergeSesiones(a, b) {
+327-  const map = {};
+328-  const add = s => {
+329-    if (!s || !s.date) return;
+330-    const k = new Date(s.date).toDateString();
+331-    const cur = map[k];
+332-    if (!cur) { map[k] = s; return; }
+333-    const ms = _sesionRealMin(s), mc = _sesionRealMin(cur);
+334-    if (ms > mc || (ms === mc && (s.items || []).length > (cur.items || []).length)) map[k] = s;
+335-  };
+336-  (a || []).forEach(add); (b || []).forEach(add);
+337-  return Object.values(map).sort((x, y) => new Date(y.date) - new Date(x.date)).slice(0, 365);
+338-}
+339:function _mergeStudyHistory(base, other) {
+340:  if (typeof DataCore !== 'undefined' && typeof DataCore.mergeStudyHistory === 'function') {
+341:    return DataCore.mergeStudyHistory(base, other);
+342-  }
+343-  if (!base) return other;
+344-  if (!other) return base;
+345-  const merged = Object.assign({}, base);
+346-  merged.sessionPlants = _mergePlants(base.sessionPlants, other.sessionPlants);
+347-  merged.forestPlants  = _mergePlants(base.forestPlants, other.forestPlants);
+348-  merged.sesiones      = _mergeSesiones(base.sesiones, other.sesiones);
+349-  merged.estadoEventos = _mergeEstadoEventos(base.estadoEventos, other.estadoEventos);
+350-  merged.impulsoEventos = _mergeEstadoEventos(base.impulsoEventos, other.impulsoEventos);
+351-  merged.malestarEventos = _mergeEstadoEventos(base.malestarEventos, other.malestarEventos);
+352-  merged.resistenciaEventos = _mergeEstadoEventos(base.resistenciaEventos, other.resistenciaEventos);
+353-  merged.pulseDeletedIds = _mergePulseDeletedIds(base.pulseDeletedIds, other.pulseDeletedIds);
+354-  merged.deporteEventos = _mergeDeporteEventos(base.deporteEventos, other.deporteEventos);
+355-  merged.suenoEventos = _mergeSuenoEventos(base.suenoEventos, other.suenoEventos);
+356-  merged.triggerEventos = _mergeTriggerEventos(base.triggerEventos, other.triggerEventos);
+357-  merged.tiempoDisponibleEventos = _mergeTiempoDisponibleEventos(base.tiempoDisponibleEventos, other.tiempoDisponibleEventos);
+358-  merged.dailyJournalEntries = _mergeDailyJournalEntries(base.dailyJournalEntries, other.dailyJournalEntries);
+359-  const baseHabits = (base.habitChallenges || []).concat(base.habitChallenge ? [base.habitChallenge] : []);
+360-  const otherHabits = (other.habitChallenges || []).concat(other.habitChallenge ? [other.habitChallenge] : []);
+361-  merged.habitChallenges = _mergeHabitChallenges(baseHabits, otherHabits);
+362-  merged.habitChallenge = merged.habitChallenges.find(habit => !habit.deleted) || merged.habitChallenges[0] || null;
+363-  const scheduleMap = {};
+364-  (base.blockedDaySchedules || []).concat(other.blockedDaySchedules || []).forEach(day => {
+365-    if (!day || !day.date || !Array.isArray(day.blocks)) return;
+366-    const current = scheduleMap[day.date];
+367-    if (!current || String(day.updatedAt || '').localeCompare(String(current.updatedAt || '')) >= 0) scheduleMap[day.date] = day;
+368-  });
+369-  merged.blockedDaySchedules = Object.values(scheduleMap).sort((x, y) => String(x.date).localeCompare(String(y.date))).slice(-2000);
+370-  merged.weeklyPlans = _mergeWeeklyPlans(base.weeklyPlans, other.weeklyPlans);
+371-  merged.memoryCards = _mergeMemoryCards(base.memoryCards, other.memoryCards);
+372-  return _applyPulseDeletedIds(merged);
+373-}
+374-
+375-async function syncToCloud(snapshotDb, revision) {
+376-  try {
+377-    const sb = getSB();
+378-    const { data: { user } } = await sb.auth.getUser();
+379-    if (!user) {
+380-      showSyncIndicator('Guardado en este dispositivo');
+381-      return false;
+382-    }
+383-    showSyncIndicator('Sincronizando…');
+384:    const { error } = await sb.from('user_data').upsert({
+385-      id: user.id,
+386-      data: snapshotDb || db,
+387-      updated_at: new Date().toISOString()
+388-    });
+389-    if (error) throw error;
+390-    const meta = _readSyncMeta();
+391-    _writeSyncMeta(typeof SyncCore !== 'undefined' ? SyncCore.markSynced(meta, revision || meta.dirtyRevision) : meta);
+392-    const after = _readSyncMeta();
+393-    showSyncIndicator(typeof SyncCore !== 'undefined' && SyncCore.isDirty(after) ? 'Sincronizando…' : '✓ sincronizado');
+394-    return true;
+395-  } catch(e) {
+396-    showSyncIndicator('⚠ Sin conexión · pendiente');
+397-    return false;
+398-  }
+399-}
+400-
+401:function enqueueCloudSync(options) {
+402-  const immediate = !!(options && options.immediate);
+403-  if (_syncTimer) clearTimeout(_syncTimer);
+404-  _syncTimer = setTimeout(() => {
+405-    _syncTimer = null;
+406:    syncPendingCloudChanges();
+407-  }, immediate ? 0 : 300);
+408-  return _syncPromise || Promise.resolve();
+409-}
+410-
+411:async function syncPendingCloudChanges() {
+412-  if (_syncInFlight) return _syncPromise;
+413-  _syncInFlight = true;
+414-  _syncPromise = (async () => {
+415-    try {
+416-      while (true) {
+417-        const meta = _readSyncMeta();
+418-        if (typeof SyncCore === 'undefined' || !SyncCore.isDirty(meta)) break;
+419-        const revision = meta.dirtyRevision;
+420-        let snapshot = db;
+421-        try {
+422-          const raw = localStorage.getItem(DB_KEY);
+423-          if (raw) snapshot = JSON.parse(raw);
+424-        } catch(e) {}
+425-        const ok = await syncToCloud(snapshot, revision);
+426-        if (!ok) break;
+427-        const after = _readSyncMeta();
+428-        if (!SyncCore.isDirty(after)) break;
+429-      }
+430-    } finally {
+431-      _syncInFlight = false;
+432-      _syncPromise = null;
+433-    }
+434-  })();
+435-  return _syncPromise;
+436-}
+437-
+438-async function loadFromCloud() {
+439-  try {
+440-    const sb = getSB();
+441-    const { data: { user } } = await sb.auth.getUser();
+442-    if (!user) return false;
+443-
+444-    showSyncIndicator('↓ cargando…');
+445:    const { data, error } = await sb.from('user_data')
+446-      .select('data,updated_at').eq('id', user.id).single();
+447-
+448-    const hasCloudData = !error && data && data.data &&
+449-      (data.data.obras?.length > 0 || data.data.sesiones?.length > 0);
+450-
+451-    if (!hasCloudData) {
+452-      // Cloud is empty — upload whatever we have locally
+453-      const localRaw = localStorage.getItem(DB_KEY);
+454-      if (localRaw) {
+455-        try {
+456-          const localDb = JSON.parse(localRaw);
+457-          const hasLocalData = (localDb.obras?.length > 0 || localDb.sesiones?.length > 0);
+458-          if (hasLocalData) {
+459-            showSyncIndicator('↑ subiendo datos locales…');
+460-            await syncToCloud(localDb, _readSyncMeta().dirtyRevision);
+461-            showSyncIndicator('✓ datos subidos a la nube');
+462-            return false; // local is already loaded
+463-          }
+464-        } catch(e) {}
+465-      }
+466-      showSyncIndicator('✓ cuenta nueva');
+467-      return false;
+468-    }
+469-
+470-    // Cloud has data — compare timestamps
+471-    const cloudDate = new Date(data.updated_at).getTime();
+472-    const localRaw = localStorage.getItem(DB_KEY);
+473-    let localDb = null;
+474-    let useCloud = true;
+475-    if (localRaw) {
+476-      try {
+477-        localDb = JSON.parse(localRaw);
+478-        const localDate = localDb._savedAt ? new Date(localDb._savedAt).getTime() : 0;
+479-        // Only use cloud if it isn't OLDER than local (60s de tolerancia).
+480-        useCloud = cloudDate >= (localDate - 60000);
+481-      } catch(e) {}
+482-    }
+483-
+484-    if (useCloud) {
+485-      // Aunque la nube "gane", FUSIONAMOS el historial de estudio local para no
+486-      // perder sesiones que la nube no tuviera (p. ej. subida nocturna fallida).
+487-      const beforeMeta = _readSyncMeta();
+488:      db = _mergeStudyHistory(data.data, localDb);
+489-      _writeLocalSnapshot(false);
+490-      // Si la fusión añadió estudio que la nube no tenía, devolvérselo.
+491-      try {
+492-        const localMin = localDb ? (localDb.sessionPlants || []).length + (localDb.forestPlants || []).length : 0;
+493-        const cloudMin = (data.data.sessionPlants || []).length + (data.data.forestPlants || []).length;
+494-        const localEstadoN = localDb ? (localDb.estadoEventos || []).length : 0;
+495-        const cloudEstadoN = (data.data.estadoEventos || []).length;
+496-        const localImpulsoN = localDb ? (localDb.impulsoEventos || []).length : 0;
+497-        const cloudImpulsoN = (data.data.impulsoEventos || []).length;
+498-        const localResistenciaN = localDb ? (localDb.resistenciaEventos || []).length : 0;
+499-        const cloudResistenciaN = (data.data.resistenciaEventos || []).length;
+500-        const localDeporteN = localDb ? (localDb.deporteEventos || []).length : 0;
+501-        const cloudDeporteN = (data.data.deporteEventos || []).length;
+502-        const localSuenoN = localDb ? (localDb.suenoEventos || []).length : 0;
+503-        const cloudSuenoN = (data.data.suenoEventos || []).length;
+504-        const localTriggerN = localDb ? (localDb.triggerEventos || []).length : 0;
+505-        const cloudTriggerN = (data.data.triggerEventos || []).length;
+506-        const localTiempoN = localDb ? (localDb.tiempoDisponibleEventos || []).length : 0;
+507-        const cloudTiempoN = (data.data.tiempoDisponibleEventos || []).length;
+508-        const localPulseDeletedN = localDb ? (localDb.pulseDeletedIds || []).length : 0;
+509-        const cloudPulseDeletedN = (data.data.pulseDeletedIds || []).length;
+510-        const localHasMore = localMin > cloudMin || localEstadoN > cloudEstadoN || localImpulsoN > cloudImpulsoN || localResistenciaN > cloudResistenciaN || localDeporteN > cloudDeporteN || localSuenoN > cloudSuenoN || localTriggerN > cloudTriggerN || localTiempoN > cloudTiempoN || localPulseDeletedN > cloudPulseDeletedN;
+511-        if (localHasMore || (typeof SyncCore !== 'undefined' && SyncCore.isDirty(beforeMeta))) {
+512-          if (typeof SyncCore !== 'undefined' && !SyncCore.isDirty(_readSyncMeta())) _writeLocalSnapshot(true);
+513:          await syncPendingCloudChanges();
+514-        }
+515-      } catch(e) {}
+516-      showSyncIndicator('✓ sincronizado');
+517-      return true;
+518-    }
+519-
+520-    // Local is newer — fusiona el estudio de la nube por si tuviera algo y sube.
+521:    db = _mergeStudyHistory(db, data.data);
+522-    _writeLocalSnapshot(true);
+523-    showSyncIndicator('↑ local más reciente, subiendo…');
+524:    await syncPendingCloudChanges();
+525-    showSyncIndicator('✓ sincronizado');
+526-    return false;
+527-
+528-  } catch(e) {
+529-    showSyncIndicator('offline');
+530-    return false;
+531-  }
+532-}
+533-
+534-function showSyncIndicator(msg) {
+535-  const el = document.getElementById('syncIndicator');
+536-  if (!el) return;
+537-  el.textContent = msg;
+538-  el.classList.add('visible');
+539-  clearTimeout(el._t);
+540-  el._t = setTimeout(() => el.classList.remove('visible'), 2500);
+541-}
+542-
+543-function getDefaultData() {
+544-  return {
+545-    obras: [],
+546-    eventos: [],
+547-    sesiones: [],
+548-    registro: [],
+549-    estadoEventos: [],
+550-    impulsoEventos: [],
+551-    malestarEventos: [],
+552-    resistenciaEventos: [],
+553-    pulseDeletedIds: [],
+554-    deporteEventos: [],
+555-    suenoEventos: [],
+556-    triggerEventos: [],
+557-    tiempoDisponibleEventos: [],
+558-    dailyJournalEntries: [],
+559-    blockedDaySchedules: [],
+--
+3968-    if (options.paseId) entry.paseId = options.paseId;
+3969-    if (options.paseScore != null) entry.paseScore = options.paseScore;
+3970-    if (options.pasePct != null) entry.pasePct = paseClampPct(options.pasePct);
+3971-    if (options.paseTipo) entry.paseTipo = normalizePaseTipo(options.paseTipo);
+3972-    if (options.takes != null) entry.takes = options.takes;
+3973-  }
+3974-  // Si la sesión es fallida, marcarla como tal. Esto
+3975-  // permite distinguir en estadísticas las sesiones exitosas de las fallidas.
+3976-  if (options.failed) entry.failed = true;
+3977-  const rawNotes = options.notes || options.sessionNotes;
+3978-  if (Array.isArray(rawNotes) && rawNotes.length) {
+3979-    const notes = rawNotes.map(cronoNormalizeSessionNote).filter(Boolean);
+3980-    if (notes.length) entry.notes = notes;
+3981-  }
+3982-  db.sessionPlants.push(entry);
+3983-  // Mantener orden cronológico
+3984-  db.sessionPlants.sort((a, b) => (a.startedAt < b.startedAt ? -1 : 1));
+3985-  return entry;
+3986-}
+3987-
+3988-// Transacción de finalización: crea el bloque, lo persiste localmente y sólo
+3989-// después permite abrir el modal de detalles. La red se encola aparte.
+3990-function finishStudyBlock(details) {
+3991-  const entry = recordSessionPlant(
+3992-    details.obraId,
+3993-    details.movId,
+3994-    details.startedAt,
+3995-    details.endedAt,
+3996-    details.mins,
+3997-    Object.assign({}, details.opts || {}, { runId: details.runId })
+3998-  );
+3999-  if (!entry) return { entry: null, persisted: false };
+4000-  try {
+4001-    saveLocalNow();
+4002-    refreshStudyViews();
+4003:    enqueueCloudSync();
+4004-    return { entry, persisted: true };
+4005-  } catch(e) {
+4006-    showToast('No se pudo guardar el tiempo en este dispositivo. Puedes reintentarlo.');
+4007-    return { entry, persisted: false, error: e };
+4008-  }
+4009-}
+4010-function _autoSaveTodayPlanNow() {
+4011-  try {
+4012-    if (!Array.isArray(currentPlan) || currentPlan.length === 0) {
+4013-      // Si no hay nada en el plan, no auto-guardamos (la sesión vacía no
+4014-      // tiene sentido). Si el usuario hizo todo y luego eliminó todas las
+4015-      // tarjetas, eso es algo que querría persistir? Por ahora no, lo
+4016-      // dejamos como está.
+4017-      return;
+4018-    }
+4019-    // ★ GUARDIAN DE FECHA: si el plan en memoria corresponde a un día anterior
+4020-    // (la app cruzó medianoche con sesión abierta), NO autoguardamos. En su
+4021-    // lugar disparamos un reset diario que limpia el plan y deja la pestaña
+4022-    // sesiones en cero. Las sesiones del día anterior ya están guardadas en
+4023-    // db.sesiones[] con su fecha real.
+4024-    const todayStr = new Date().toDateString();
+4025-    if (_currentPlanDay !== todayStr) {
+4026-      console.log('[crono] día cambió de', _currentPlanDay, 'a', todayStr, '— reset diario');
+4027-      handleDayChange();
+4028-      return;
+4029-    }
+4030-    const items = currentPlan.map(entity => {
+4031-      const planId = entity._planId || entity.id;
+4032-      const obraId = entity._obraId || entity.id;
+4033-      const movId = entity._movId || null;
+4034-      // Extraer hora de la primera y última sub-sesión, si existen
+4035-      const subs = (sessionAggregate[planId] && sessionAggregate[planId].subsessions) || [];
+4036-      const firstStartedAt = subs.length ? (subs[0].startedAt || subs[0].timestamp || null) : null;
+4037-      const lastEndedAt = subs.length ? (subs[subs.length - 1].endedAt || subs[subs.length - 1].timestamp || null) : null;
+4038-      const tickVal = sessionTicks[planId] || null;
+--
+14268-// Si el usuario habÃ­a recortado la grÃ¡fica antes de esa hora, ampliamos solo
+14269-// el extremo necesario y conservamos el resto de su encuadre.
+14270-function _pulseRevealTimestamp(value) {
+14271-  const at = value instanceof Date ? value : new Date(value);
+14272-  if (Number.isNaN(at.getTime())) return false;
+14273-  const minute = _pulseMinuteOfDay(at);
+14274-  let changed = false;
+14275-  if (minute < _pulseDayStartMinute) {
+14276-    _pulseDayStartMinute = Math.max(0, Math.floor((minute - PULSE_DAY_STEP_MINUTES) / PULSE_DAY_STEP_MINUTES) * PULSE_DAY_STEP_MINUTES);
+14277-    changed = true;
+14278-  }
+14279-  if (minute > _pulseDayEndMinute) {
+14280-    _pulseDayEndMinute = Math.min(PULSE_DAY_LIMIT_MINUTE, Math.ceil((minute + PULSE_DAY_STEP_MINUTES) / PULSE_DAY_STEP_MINUTES) * PULSE_DAY_STEP_MINUTES);
+14281-    changed = true;
+14282-  }
+14283-  if (!changed) return false;
+14284-  if (_pulseDayEndMinute - _pulseDayStartMinute < PULSE_DAY_MIN_SPAN_MINUTES) {
+14285-    _pulseDayEndMinute = Math.min(PULSE_DAY_LIMIT_MINUTE, _pulseDayStartMinute + PULSE_DAY_MIN_SPAN_MINUTES);
+14286-    _pulseDayStartMinute = Math.max(0, _pulseDayEndMinute - PULSE_DAY_MIN_SPAN_MINUTES);
+14287-  }
+14288-  try {
+14289-    localStorage.setItem('pulse_day_start', String(_pulseDayStartMinute));
+14290-    localStorage.setItem('pulse_day_end', String(_pulseDayEndMinute));
+14291-  } catch(e) {}
+14292-  return true;
+14293-}
+14294-
+14295-function persistPulseEntryImmediately(at) {
+14296-  _pulseRevealTimestamp(at);
+14297-  // Si Pulso se habÃ­a quedado navegando por un periodo anterior, vuelve al
+14298-  // periodo actual: el registro que acaba de hacerse debe ser el protagonista.
+14299-  _pulseOffset = 0;
+14300-  if (typeof saveData !== 'function' || saveData() === false) return;
+14301-  // La entrada ya estÃ¡ en memoria y en local; adelantamos tambiÃ©n la subida
+14302-  // para que los demÃ¡s dispositivos puedan recibirla cuanto antes.
+14303:  if (typeof enqueueCloudSync === 'function') enqueueCloudSync({ immediate: true });
+14304-}
+14305-
+14306-function _pulseAtNoon(date) {
+14307-  const d = new Date(date);
+14308-  d.setHours(12, 0, 0, 0);
+14309-  return d;
+14310-}
+14311-
+14312-function _pulsePeriod() {
+14313-  const base = _pulseAtNoon(new Date());
+14314-  let start, end, label;
+14315-  if (_pulseRange === 'dia') {
+14316-    start = new Date(base);
+14317-    start.setDate(start.getDate() + _pulseOffset);
+14318-    start.setHours(0, 0, 0, 0);
+14319-    end = new Date(start); end.setDate(end.getDate() + 1);
+14320-    label = start.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+14321-  } else if (_pulseRange === 'semana' || _pulseRange === 'tipico') {
+14322-    start = new Date(base);
+14323-    start.setDate(start.getDate() - ((start.getDay() + 6) % 7) + (_pulseOffset * 7));
+14324-    start.setHours(0, 0, 0, 0);
+14325-    end = new Date(start); end.setDate(end.getDate() + 7);
+14326-    const last = new Date(end); last.setDate(last.getDate() - 1);
+14327-    label = (_pulseRange === 'tipico' ? 'Semana base · ' : '') + start.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + '–' + last.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+14328-  } else {
+14329-    start = new Date(base.getFullYear(), base.getMonth() + _pulseOffset, 1);
+14330-    end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+14331-    label = start.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+14332-  }
+14333-  label = label.charAt(0).toUpperCase() + label.slice(1);
+14334-  return { start, end, label };
+14335-}
+14336-
+14337-function _pulseValue(value) {
+14338-  const n = Number(value);
+--
+18805-  showToast(enabled ? 'Pulso visible en el cronometro' : 'Pulso oculto en el cronometro');
+18806-}
+18807-
+18808-function toggleHaptics() { Haptics.toggle(); }
+18809-
+18810-function refreshHapticsUI() {
+18811-  const btn = document.getElementById('hapticsToggleBtn');
+18812-  if (!btn) return;
+18813-  const on = Haptics.isEnabled();
+18814-  btn.classList.toggle('on', on);
+18815-  btn.setAttribute('aria-checked', on ? 'true' : 'false');
+18816-}
+18817-
+18818-
+18819-// ─── RIPPLE ──────────────────────────────────────────────────────────────────
+18820-
+18821-function addRipple(el, e) {
+18822-  const rect = el.getBoundingClientRect();
+18823-  const r = document.createElement('span');
+18824-  r.className = 'ripple';
+18825-  const size = Math.max(rect.width, rect.height);
+18826-  r.style.cssText = `width:${size}px;height:${size}px;left:${(e.clientX||rect.left+rect.width/2) - rect.left - size/2}px;top:${(e.clientY||rect.top+rect.height/2) - rect.top - size/2}px`;
+18827-  el.classList.add('ripple-host');
+18828-  el.appendChild(r);
+18829-  r.addEventListener('animationend', () => r.remove());
+18830-}
+18831-
+18832-// ── iOS BACKGROUND PERSISTENCE ───────────────────────────────────────────────
+18833-// iOS Safari kills JS when app goes to background. Save everything on hide.
+18834-
+18835-document.addEventListener('visibilitychange', function() {
+18836-  if (document.visibilityState === 'hidden') {
+18837-    // Save draft + estado immediately when going to background
+18838-    saveDraft();
+18839-    saveEstadoDiario();
+18840:    enqueueCloudSync({ immediate: true });
+18841-  } else if (document.visibilityState === 'visible') {
+18842-    // Came back to foreground — always try to refresh session first
+18843-    _restoreSessionIfNeeded();
+18844-    // Restore estado sliders
+18845-    try {
+18846-      loadEstadoDiarioFromSources();
+18847-      initEstadoSliders();
+18848-    } catch(e) {}
+18849-  }
+18850-});
+18851-
+18852-async function _restoreSessionIfNeeded() {
+18853-  try {
+18854-    const sb = getSB();
+18855-
+18856-    // 1. Refrescar token (rápido si aún no expiró)
+18857-    const { data: refreshData } = await sb.auth.refreshSession();
+18858-    if (refreshData && refreshData.session) {
+18859-      return;
+18860-    }
+18861-
+18862-    // 2. Probar sesión desde almacenamiento
+18863-    const { data: { session } } = await sb.auth.getSession();
+18864-    if (session) {
+18865-      return;
+18866-    }
+18867-
+18868-    // 3. No se guardan contraseñas: el usuario decide cuándo volver a entrar.
+18869-  } catch(e) {
+18870-    // Sin red — la app sigue funcionando en local
+18871-  }
+18872-}
+18873-
+18874-// ── iPad/iOS keep-alive: refresh token every 45 min proactively ──────────────
+18875-// iOS kills JS timers when backgrounded, but this fires when the app IS visible,
+--
+19787-function toggleAuthMode() {}
+19788-async function doAuth() {}
+19789-function _clearLocalAccountData() {
+19790-  try {
+19791-    const raw = localStorage.getItem(DB_KEY);
+19792-    if (raw) localStorage.setItem('alberto_local_backup_v1', raw);
+19793-    localStorage.removeItem(DB_KEY);
+19794-    localStorage.removeItem(SYNC_META_KEY);
+19795-    localStorage.removeItem('pianoCrono_v2');
+19796-    localStorage.removeItem('alberto_forest_draft');
+19797-  } catch(e) {}
+19798-  db = getDefaultData();
+19799-  if (typeof currentPlan !== 'undefined' && Array.isArray(currentPlan)) currentPlan.length = 0;
+19800-  [typeof sessionTicks !== 'undefined' ? sessionTicks : null,
+19801-   typeof sessionMinPlan !== 'undefined' ? sessionMinPlan : null,
+19802-   typeof sessionAggregate !== 'undefined' ? sessionAggregate : null,
+19803-   typeof sessionSolRatings !== 'undefined' ? sessionSolRatings : null,
+19804-   typeof sessionProductivityRatings !== 'undefined' ? sessionProductivityRatings : null,
+19805-   typeof sessionDestello !== 'undefined' ? sessionDestello : null]
+19806-    .forEach(map => { if (map) Object.keys(map).forEach(key => delete map[key]); });
+19807-  if (typeof cronoReset === 'function') cronoReset();
+19808-  try {
+19809-    if (typeof renderObras === 'function') renderObras();
+19810-    if (typeof renderCalendario === 'function') renderCalendario();
+19811-    if (typeof renderSesionesHistorial === 'function') renderSesionesHistorial();
+19812-    if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+19813-    if (typeof updateHeader === 'function') updateHeader();
+19814-  } catch(e) {}
+19815-}
+19816-
+19817-async function doLogout(options) {
+19818-  options = options || {};
+19819-  const meta = _readSyncMeta();
+19820-  if (typeof SyncCore !== 'undefined' && SyncCore.isDirty(meta)) {
+19821-    const retry = options.silent || confirm('Hay cambios locales pendientes de sincronizar. ¿Reintentar ahora?');
+19822:    if (retry) await syncPendingCloudChanges();
+19823-    const stillDirty = typeof SyncCore !== 'undefined' && SyncCore.isDirty(_readSyncMeta());
+19824-    if (stillDirty && !options.silent && !confirm('La nube no responde. Puedes cerrar sesión conservando una copia local. ¿Continuar?')) return false;
+19825-  }
+19826-  let signOutError = null;
+19827-  try {
+19828-    const sb = getSB();
+19829-    const result = await sb.auth.signOut();
+19830-    if (result && result.error) signOutError = result.error;
+19831-  } catch(e) {
+19832-    signOutError = e;
+19833-  }
+19834-  _clearLocalAccountData();
+19835-  showView('session');
+19836-  updateSyncStatusInfo();
+19837-  updateAjustesAccountRow();
+19838-  if (signOutError) showToast('Sesión cerrada en este dispositivo; no se pudo contactar con la nube.');
+19839-  else if (!options.silent) showToast('Sesión cerrada');
+19840-  return true;
+19841-}
+19842-
+19843-async function switchAccount() {
+19844-  const ok = await doLogout();
+19845-  if (ok) openModal('modalCloudSync');
+19846-}
+19847-
+19848-// Llamado desde el modal "Recuperar datos" cuando una instalación nueva no
+19849-// tiene datos locales y el usuario quiere bajárselos de la nube.
+19850-async function doCloudSync() {
+19851-  const email = (document.getElementById('cloudEmail')?.value || '').trim();
+19852-  const pass = document.getElementById('cloudPass')?.value || '';
+19853-  const errEl = document.getElementById('cloudSyncError');
+19854-  const btn = document.getElementById('cloudSyncBtn');
+19855-  if (errEl) errEl.textContent = '';
+19856-  if (!email || !pass) { if (errEl) errEl.textContent = 'Email y contraseña requeridos'; return; }
+19857-  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+===== TASK MUTATIONS =====
+21395-  if (context) context.textContent = 'Para mañana · ' + work.displayName;
+21396-  if (input) input.value = '';
+21397-  openModal('modalCronoNote');
+21398-  try { input?.focus({ preventScroll: true }); } catch (e) { input?.focus(); }
+21399-  cronoStartTomorrowVoice(true);
+21400-  setTimeout(() => {
+21401-    if (!_cronoTomorrowRecognition) input?.focus({ preventScroll: true });
+21402-  }, 120);
+21403-}
+21404-
+21405-function closeCronoTomorrowTask() {
+21406-  cronoStopTomorrowVoice(true);
+21407-  closeModal('modalCronoNote');
+21408-  _cronoTomorrowTaskContext = null;
+21409-}
+21410-
+21411-function confirmCronoTomorrowTask() {
+21412-  const input = document.getElementById('cronoNoteInput');
+21413-  const text = (input?.value || '').replace(/\s+/g, ' ').trim().slice(0, 500);
+21414-  if (!text) {
+21415-    showToast('Escribe o dicta una nota');
+21416-    input?.focus();
+21417-    return;
+21418-  }
+21419-  const work = _cronoTomorrowTaskContext || cronoTomorrowTaskWork();
+21420-  if (!work) {
+21421-    showToast('No se ha encontrado la obra activa');
+21422-    return;
+21423-  }
+21424-  cronoStopTomorrowVoice(false);
+21425:  cronoTasks().push({
+21426-    id: 'ct_tomorrow_' + Date.now(),
+21427-    text,
+21428-    kind: 'piano',
+21429-    tomorrow: true,
+21430-    dueDate: habitKeyAt(habitDayKey(), 1),
+21431-    done: false,
+21432-    priority: 0,
+21433-    source: 'tomorrow-note',
+21434-    obraId: work.obraId,
+21435-    movId: work.movId,
+21436-    obraName: work.displayName,
+21437-    obraSubName: work.subName,
+21438-    runId: crono.state === 'idle' ? null : crono.runId,
+21439-    createdElapsedMs: crono.state === 'idle' ? 0 : cronoEffectiveElapsedMs(),
+21440-    createdAt: new Date().toISOString(),
+21441-  });
+21442-  saveData();
+21443-  closeModal('modalCronoNote');
+21444-  _cronoTomorrowTaskContext = null;
+21445-  renderCronoTasks();
+21446-  try { Haptics.success(); } catch (e) {}
+21447-  showToast('Nota guardada para mañana');
+21448-}
+21449-
+21450-function cronoRenderNoteCounts() {
+21451-  const count = Array.isArray(crono.notes) ? crono.notes.length : 0;
+21452-  const label = count ? String(count) : '+';
+21453-  ['cronoQuickNoteCount', 'cronoRunNoteCount'].forEach(id => {
+21454-    const el = document.getElementById(id);
+21455-    if (el) el.textContent = label;
+21456-  });
+21457-  ['cronoDrawerNoteTabCount', 'cronoIdleDrawerNoteTabCount'].forEach(id => {
+21458-    const badge = document.getElementById(id);
+21459-    if (badge) badge.textContent = label;
+21460-  });
+21461-  ['cronoQuickNoteBtn', 'cronoRunNoteBtn'].forEach(id => {
+21462-    const btn = document.getElementById(id);
+21463-    if (btn) btn.classList.toggle('has-notes', count > 0);
+21464-  });
+21465-  document.querySelectorAll('.crono-run-drawer-tab[data-tab="nota"]').forEach(tabBtn => {
+21466-    tabBtn.classList.toggle('has-notes', count > 0);
+21467-  });
+21468-}
+21469-
+21470:function cronoTasks() {
+21471:  if (!Array.isArray(db.cronoTasks)) db.cronoTasks = [];
+21472:  db.cronoTasks = db.cronoTasks.filter(t => t && typeof t.text === 'string');
+21473:  db.cronoTasks.forEach(task => {
+21474-    if (task.kind !== 'personal' && task.kind !== 'piano') task.kind = 'piano';
+21475-    if (task.kind === 'personal') task.tomorrow = false;
+21476:    task.priority = Math.max(0, Math.min(3, Math.round(Number(task.priority) || 0)));
+21477-  });
+21478:  return db.cronoTasks;
+21479-}
+21480-
+21481:function cronoTaskKind(task) {
+21482-  return task && task.kind === 'personal' ? 'personal' : 'piano';
+21483-}
+21484-
+21485:function cronoTaskPriority(task) {
+21486:  return Math.max(0, Math.min(3, Math.round(Number(task?.priority) || 0)));
+21487-}
+21488-
+21489:function cronoTaskPriorityLabel(priority) {
+21490-  return priority === 3 ? 'Urgentísima' : priority === 2 ? 'Urgente' : priority === 1 ? 'Importante' : 'Normal';
+21491-}
+21492-
+21493-const CRONO_URGENT_TASK_STALE_DAYS = 3;
+21494-let _cronoUrgentTaskGateOpen = false;
+21495-
+21496:function cronoTaskPendingDays(task, now) {
+21497-  const createdAt = Date.parse(task?.createdAt || '');
+21498-  if (!Number.isFinite(createdAt)) return 0;
+21499:  const today = habitDayNumber(cronoTaskReminderDayKey(new Date(now || Date.now())));
+21500:  const created = habitDayNumber(cronoTaskReminderDayKey(new Date(createdAt)));
+21501-  return Number.isFinite(today) && Number.isFinite(created) ? Math.max(0, today - created) : 0;
+21502-}
+21503-
+21504-function cronoUrgentTaskCandidates(now) {
+21505:  return cronoTasks()
+21506-    .filter(task =>
+21507-      !task.done &&
+21508:      cronoTaskPriority(task) === 3 &&
+21509:      cronoTaskPendingDays(task, now) >= CRONO_URGENT_TASK_STALE_DAYS
+21510-    )
+21511-    .sort((a, b) => {
+21512:      const age = cronoTaskPendingDays(b, now) - cronoTaskPendingDays(a, now);
+21513-      return age || ((Date.parse(a.createdAt || '') || 0) - (Date.parse(b.createdAt || '') || 0));
+21514-    });
+21515-}
+21516-
+21517-function cronoUrgentTaskGateVisible() {
+21518-  return !!document.getElementById('modalCronoUrgentTaskGate')?.classList.contains('visible');
+21519-}
+21520-
+21521-function cronoRenderUrgentTaskGate() {
+21522-  const list = document.getElementById('cronoUrgentTaskGateList');
+21523-  const count = document.getElementById('cronoUrgentTaskGateCount');
+21524-  if (!list) return false;
+21525-  const tasks = cronoUrgentTaskCandidates();
+21526-  if (count) count.textContent = tasks.length + (tasks.length === 1 ? ' tarea pendiente' : ' tareas pendientes');
+21527-  if (!tasks.length) {
+21528-    closeModal('modalCronoUrgentTaskGate');
+21529-    _cronoUrgentTaskGateOpen = false;
+21530-    return false;
+21531-  }
+21532-  list.innerHTML = tasks.map(task => {
+21533:    const days = cronoTaskPendingDays(task);
+21534:    return '<button type="button" class="crono-urgent-task-item priority-3" onclick="cronoCompleteUrgentTask(\'' + hechoJs(task.id) + '\',this)"' +
+21535-      ' aria-label="Marcar como hecha: ' + escapeHtmlSafe(task.text) + '">' +
+21536-      '<span class="crono-urgent-task-check" aria-hidden="true"></span>' +
+21537-      '<span class="crono-urgent-task-copy"><strong>' + escapeHtmlSafe(task.text) + '</strong><small>Pendiente desde hace ' + days + (days === 1 ? ' día' : ' días') + '</small></span>' +
+21538-    '</button>';
+21539-  }).join('');
+21540-  return true;
+21541-}
+21542-
+21543-function cronoOpenUrgentTaskGate() {
+21544-  let modal = document.getElementById('modalCronoUrgentTaskGate');
+21545-  if (!modal) {
+21546-    modal = document.createElement('div');
+21547-    modal.id = 'modalCronoUrgentTaskGate';
+21548-    modal.className = 'modal-overlay';
+21549-    modal.innerHTML =
+21550-      '<div class="modal crono-urgent-task-gate-modal" role="dialog" aria-modal="true" aria-labelledby="cronoUrgentTaskGateTitle" aria-describedby="cronoUrgentTaskGateNote">' +
+21551-        '<div class="crono-urgent-task-gate-kicker">Antes de empezar</div>' +
+21552-        '<div class="crono-urgent-task-gate-title" id="cronoUrgentTaskGateTitle">Una tarea antes del estudio</div>' +
+21553-        '<p class="crono-urgent-task-gate-note" id="cronoUrgentTaskGateNote">Lleva varios días pendiente. Márcala como hecha para desbloquear el cronómetro.</p>' +
+21554-        '<div class="crono-urgent-task-gate-count" id="cronoUrgentTaskGateCount"></div>' +
+21555-        '<div class="crono-urgent-task-gate-list" id="cronoUrgentTaskGateList"></div>' +
+21556-      '</div>';
+21557-    document.body.appendChild(modal);
+21558-  }
+21559-  if (cronoUrgentTaskGateVisible()) return true;
+21560-  if (!cronoRenderUrgentTaskGate()) return false;
+21561-  openModal('modalCronoUrgentTaskGate');
+21562-  // Este bloqueo no tiene botón de cancelar ni se cierra tocando fuera:
+21563-  // desaparece únicamente cuando ya no queda ninguna tarea elegible.
+21564-  if (modal._outsideHandler) modal.removeEventListener('click', modal._outsideHandler);
+21565-  modal._outsideHandler = event => {
+21566-    if (event.target === modal) {
+21567-      event.preventDefault();
+21568-      event.stopPropagation();
+21569-    }
+21570-  };
+21571-  modal.addEventListener('click', modal._outsideHandler);
+21572-  _cronoUrgentTaskGateOpen = true;
+21573-  return true;
+21574-}
+21575-
+21576-function cronoMaybeBlockUrgentTasks(reason) {
+21577-  if (crono.state !== 'idle') return false;
+21578-  const tasks = cronoUrgentTaskCandidates();
+21579-  if (!tasks.length) return false;
+21580-  cronoOpenUrgentTaskGate(tasks, reason);
+21581-  return true;
+21582-}
+21583-
+21584-function cronoCompleteUrgentTask(id, button) {
+21585:  const task = cronoTasks().find(item => item.id === id);
+21586-  if (!task || task.done || !button || button.classList.contains('is-completing')) return;
+21587-  task.done = true;
+21588-  task.doneAt = new Date().toISOString();
+21589-  saveData();
+21590-  renderCronoTasks();
+21591-  button.classList.add('is-completing');
+21592-  button.disabled = true;
+21593-  try { Haptics.success(); } catch (e) {}
+21594-  const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+21595-  setTimeout(() => {
+21596-    if (!cronoRenderUrgentTaskGate()) {
+21597-      showToast('Tarea completada · cronómetro desbloqueado');
+21598-      try { Haptics.heavy(); } catch (e) {}
+21599-    }
+21600-  }, reducedMotion ? 80 : 520);
+21601-}
+21602-
+21603-const CRONO_TASK_DENSITY_KEY = 'alberto_crono_task_density_v1';
+21604:let _cronoTaskDensityCompact = null;
+21605-
+21606:function cronoTaskDensityCompact() {
+21607:  if (_cronoTaskDensityCompact === null) {
+21608:    try { _cronoTaskDensityCompact = localStorage.getItem(CRONO_TASK_DENSITY_KEY) === 'compact'; }
+21609:    catch (e) { _cronoTaskDensityCompact = false; }
+21610-  }
+21611:  return _cronoTaskDensityCompact;
+21612-}
+21613-
+21614-function cronoApplyTaskDensity() {
+21615:  const compact = cronoTaskDensityCompact();
+21616-  document.body.classList.toggle('crono-task-density-compact', compact);
+21617-  document.querySelectorAll('[data-task-density-toggle]').forEach(button => {
+21618-    button.classList.toggle('active', compact);
+21619-    button.setAttribute('aria-pressed', compact ? 'true' : 'false');
+21620-    button.setAttribute('aria-label', compact ? 'Usar tamaño normal en las tareas' : 'Reducir tamaño de las tareas');
+21621-    button.setAttribute('title', compact ? 'Tamaño normal' : 'Tareas compactas');
+21622-    const small = button.querySelector('small');
+21623-    if (small) small.textContent = compact ? '+' : '−';
+21624-  });
+21625-}
+21626-
+21627:function toggleCronoTaskDensity() {
+21628:  _cronoTaskDensityCompact = !cronoTaskDensityCompact();
+21629:  try { localStorage.setItem(CRONO_TASK_DENSITY_KEY, _cronoTaskDensityCompact ? 'compact' : 'normal'); } catch (e) {}
+21630-  cronoApplyTaskDensity();
+21631-  try { Haptics.light(); } catch(e) {}
+21632-}
+21633-
+21634:function cronoTaskDueLabel(task) {
+21635-  if (!task?.tomorrow) return '';
+21636-  if (!task.dueDate) return 'Mañana';
+21637-  const today = habitDayKey();
+21638-  const tomorrow = habitKeyAt(today, 1);
+21639-  if (task.dueDate === today) return 'Hoy';
+21640-  if (task.dueDate === tomorrow) return 'Mañana';
+21641-  return habitDayNumber(task.dueDate) < habitDayNumber(today) ? 'Pendiente' : 'Próxima';
+21642-}
+21643-
+21644-function cronoPendingTaskCount(kind) {
+21645:  return cronoTasks().filter(task => !task.done && (!kind || cronoTaskKind(task) === kind)).length;
+21646-}
+21647-
+21648-function cronoActiveTaskCount() {
+21649-  return cronoPendingTaskCount();
+21650-}
+21651-
+21652:const _cronoTaskComposer = {
+21653-  idle: { kind: 'piano', tomorrow: false, open: false },
+21654-  running: { kind: 'piano', tomorrow: false, open: false },
+21655-};
+21656:let _cronoTaskRecognition = null;
+21657:let _cronoTaskVoiceSource = null;
+21658-
+21659:function cronoTaskComposerState(source) {
+21660:  return source === 'running' ? _cronoTaskComposer.running : _cronoTaskComposer.idle;
+21661-}
+21662-
+21663:function cronoTaskVoiceInput(source) {
+21664:  return document.getElementById(source === 'running' ? 'cronoTaskInput' : 'cronoIdleTaskInput');
+21665-}
+21666-
+21667-function cronoSetTaskVoiceState(source, active) {
+21668:  const button = document.getElementById('cronoTaskVoiceBtn-' + source);
+21669-  if (!button) return;
+21670-  button.classList.toggle('is-listening', !!active);
+21671-  button.setAttribute('aria-label', active ? 'Detener dictado' : 'Dictar tarea');
+21672-  button.setAttribute('title', active ? 'Detener dictado' : 'Dictar tarea');
+21673-}
+21674-
+21675-function cronoStopTaskVoice(abort) {
+21676:  const recognition = _cronoTaskRecognition;
+21677:  const source = _cronoTaskVoiceSource;
+21678:  _cronoTaskRecognition = null;
+21679:  _cronoTaskVoiceSource = null;
+21680-  if (source) cronoSetTaskVoiceState(source, false);
+21681-  if (!recognition) return;
+21682-  try {
+21683-    if (abort && typeof recognition.abort === 'function') recognition.abort();
+21684-    else recognition.stop();
+21685-  } catch (_) {}
+21686-}
+21687-
+21688-function cronoStartTaskVoice(source, silentUnsupported) {
+21689-  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+21690:  const input = cronoTaskVoiceInput(source);
+21691-  if (!Recognition || !input) {
+21692-    try { input?.focus({ preventScroll: true }); } catch (_) { input?.focus(); }
+21693-    if (!silentUnsupported) showToast('Usa el micrófono del teclado para dictar');
+21694-    return false;
+21695-  }
+21696:  if (_cronoTaskRecognition) cronoStopTaskVoice(true);
+21697-  if (_cronoTomorrowRecognition) cronoStopTomorrowVoice(true);
+21698-
+21699-  const recognition = new Recognition();
+21700-  const base = input.value.trim();
+21701-  recognition.lang = 'es-ES';
+21702-  recognition.continuous = true;
+21703-  recognition.interimResults = true;
+21704-  recognition.maxAlternatives = 1;
+21705-  recognition.onresult = event => {
+21706-    let transcript = '';
+21707-    for (let index = 0; index < event.results.length; index += 1) {
+21708-      transcript += event.results[index][0]?.transcript || '';
+21709-    }
+21710-    input.value = ((base ? base + ' ' : '') + transcript).trimStart().slice(0, 140);
+21711-    input.setSelectionRange(input.value.length, input.value.length);
+21712-  };
+21713-  recognition.onerror = event => {
+21714-    if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+21715-      showToast('Activa el permiso de micrófono o usa el dictado del teclado');
+21716-    } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+21717-      showToast('No se pudo iniciar el dictado');
+21718-    }
+21719-  };
+21720-  recognition.onend = () => {
+21721:    if (_cronoTaskRecognition === recognition) {
+21722:      _cronoTaskRecognition = null;
+21723:      _cronoTaskVoiceSource = null;
+21724-      cronoSetTaskVoiceState(source, false);
+21725-    }
+21726-  };
+21727-  try {
+21728:    _cronoTaskRecognition = recognition;
+21729:    _cronoTaskVoiceSource = source;
+21730-    recognition.start();
+21731-    cronoSetTaskVoiceState(source, true);
+21732-    return true;
+21733-  } catch (_) {
+21734:    _cronoTaskRecognition = null;
+21735:    _cronoTaskVoiceSource = null;
+21736-    cronoSetTaskVoiceState(source, false);
+21737-    try { input.focus({ preventScroll: true }); } catch (_) { input.focus(); }
+21738-    if (!silentUnsupported) showToast('Usa el micrófono del teclado para dictar');
+21739-    return false;
+21740-  }
+21741-}
+21742-
+21743:function toggleCronoTaskVoice(event, source) {
+21744-  event?.stopPropagation();
+21745:  if (_cronoTaskRecognition && _cronoTaskVoiceSource === source) cronoStopTaskVoice(false);
+21746-  else cronoStartTaskVoice(source, false);
+21747-}
+21748-
+21749-function cronoOpenTaskComposer(source) {
+21750:  const state = cronoTaskComposerState(source);
+21751-  state.open = true;
+21752-  renderCronoTasks();
+21753-  cronoStartTaskVoice(source, false);
+21754-  requestAnimationFrame(() => {
+21755:    const input = cronoTaskVoiceInput(source);
+21756-    if (input) input.focus();
+21757-  });
+21758-}
+21759-
+21760-function cronoOpenTaskComposerForKind(source, kind) {
+21761:  const state = cronoTaskComposerState(source);
+21762-  state.kind = kind === 'personal' ? 'personal' : 'piano';
+21763-  if (state.kind === 'personal') state.tomorrow = false;
+21764-  cronoOpenTaskComposer(source);
+21765-}
+21766-
+21767-function cronoCloseTaskComposer(source) {
+21768:  if (_cronoTaskVoiceSource === source) cronoStopTaskVoice(true);
+21769:  const state = cronoTaskComposerState(source);
+21770-  state.open = false;
+21771-  state.tomorrow = false;
+21772-  renderCronoTasks();
+21773-}
+21774-
+21775-function cronoSetTaskKind(source, kind) {
+21776:  const state = cronoTaskComposerState(source);
+21777-  state.kind = kind === 'personal' ? 'personal' : 'piano';
+21778-  if (state.kind === 'personal') state.tomorrow = false;
+21779-  cronoUpdateTaskComposer(source);
+21780-}
+21781-
+21782-function cronoToggleTaskTomorrow(source) {
+21783:  const state = cronoTaskComposerState(source);
+21784-  if (state.kind !== 'piano') return;
+21785-  state.tomorrow = !state.tomorrow;
+21786-  cronoUpdateTaskComposer(source);
+21787-}
+21788-
+21789-function cronoUpdateTaskComposer(source) {
+21790:  const panel = document.getElementById(source === 'running' ? 'cronoTasksPanel' : 'cronoIdleTasksPanel');
+21791-  if (!panel) return;
+21792:  const state = cronoTaskComposerState(source);
+21793-  panel.querySelectorAll('.crono-task-kind-btn').forEach(button => {
+21794-    const active = button.dataset.kind === state.kind;
+21795-    button.classList.toggle('active', active);
+21796-    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+21797-  });
+21798-  const tomorrow = panel.querySelector('.crono-task-tomorrow-btn');
+21799-  if (tomorrow) {
+21800-    tomorrow.hidden = state.kind !== 'piano';
+21801-    tomorrow.classList.toggle('active', state.tomorrow);
+21802-    tomorrow.setAttribute('aria-pressed', state.tomorrow ? 'true' : 'false');
+21803-  }
+21804-}
+21805-
+21806-const CRONO_TASK_REMINDER_KEY = 'alberto_crono_task_reminder_v1';
+21807-const CRONO_TASK_REMINDER_MS = 2 * 60 * 60 * 1000;
+21808:let _cronoTaskReminderInterval = null;
+21809-
+21810:function cronoTaskReminderDayKey(date) {
+21811-  const d = date || new Date();
+21812-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+21813-}
+21814-
+21815:function cronoTaskReminderState() {
+21816-  try {
+21817-    const saved = JSON.parse(localStorage.getItem(CRONO_TASK_REMINDER_KEY) || 'null');
+21818-    return saved && typeof saved === 'object' ? saved : {};
+21819-  } catch(e) {
+21820-    return {};
+21821-  }
+21822-}
+21823-
+21824-function cronoMaybeRemindTasks(reason) {
+21825-  const count = cronoPendingTaskCount('piano');
+21826-  if (!count) return false;
+21827-  const personalCount = cronoPendingTaskCount('personal');
+21828-  const now = Date.now();
+21829:  const day = cronoTaskReminderDayKey(new Date(now));
+21830:  const saved = cronoTaskReminderState();
+21831-  const due = saved.day !== day || !Number.isFinite(saved.lastAt) || now - saved.lastAt >= CRONO_TASK_REMINDER_MS;
+21832-  if (!due) return false;
+21833-
+21834-  const running = crono.state !== 'idle';
+21835-  if (running) cronoSetRunDrawerTab('tareas');
+21836-  else cronoSetIdleDrawerTab('tareas');
+21837-  const drawer = document.getElementById(running ? 'cronoRunDrawer' : 'cronoIdleDrawer');
+21838:  const panel = document.getElementById(running ? 'cronoTasksPanel' : 'cronoIdleTasksPanel');
+21839-  if (panel) {
+21840-    let reminder = panel.querySelector('.crono-task-reminder-banner');
+21841-    if (!reminder) {
+21842-      reminder = document.createElement('div');
+21843-      reminder.className = 'crono-task-reminder-banner';
+21844-      reminder.setAttribute('role', 'alert');
+21845-      reminder.setAttribute('aria-live', 'assertive');
+21846-      panel.prepend(reminder);
+21847-    }
+21848-    reminder.innerHTML = '<span aria-hidden="true">!</span><div><strong>Tienes ' + count + ' tarea' + (count === 1 ? '' : 's') + ' de piano pendiente' + (count === 1 ? '' : 's') + '</strong><small>Revísalas antes de seguir estudiando.' + (personalCount ? ' · ' + personalCount + ' apunte' + (personalCount === 1 ? '' : 's') + ' personal' + (personalCount === 1 ? '' : 'es') : '') + '</small></div>';
+21849-  }
+21850-  if (drawer) {
+21851-    drawer.classList.remove('task-reminder-active');
+21852-    void drawer.offsetWidth;
+21853-    drawer.classList.add('task-reminder-active');
+21854-    clearTimeout(drawer._taskReminderTimer);
+21855-    drawer._taskReminderTimer = setTimeout(() => drawer.classList.remove('task-reminder-active'), 6500);
+21856-  }
+21857-  try { localStorage.setItem(CRONO_TASK_REMINDER_KEY, JSON.stringify({ day, lastAt: now, reason: reason || 'interval' })); } catch(e) {}
+21858-  showToast(count + ' tarea' + (count === 1 ? '' : 's') + ' de piano pendiente' + (count === 1 ? '' : 's') + ' · revísalas');
+21859-  return true;
+21860-}
+21861-
+21862:function cronoTaskBreakPending() {
+21863:  return cronoTasks()
+21864-    .filter(task => !task.done)
+21865-    .sort((a, b) => {
+21866:      const priorityOrder = cronoTaskPriority(b) - cronoTaskPriority(a);
+21867-      if (priorityOrder) return priorityOrder;
+21868:      const kindOrder = (cronoTaskKind(a) === 'personal' ? 0 : 1) - (cronoTaskKind(b) === 'personal' ? 0 : 1);
+21869-      if (kindOrder) return kindOrder;
+21870-      return (Date.parse(a.createdAt || '') || 0) - (Date.parse(b.createdAt || '') || 0);
+21871-    });
+21872-}
+21873-
+21874-function cronoRenderTaskBreakPrompt() {
+21875:  const list = document.getElementById('cronoTaskBreakList');
+21876:  const count = document.getElementById('cronoTaskBreakCount');
+21877-  if (!list) return;
+21878:  const pending = cronoTaskBreakPending();
+21879-  if (count) count.textContent = pending.length
+21880-    ? pending.length + (pending.length === 1 ? ' pendiente' : ' pendientes')
+21881-    : 'Todo limpio';
+21882-  if (!pending.length) {
+21883-    list.innerHTML = '<div class="crono-task-break-clean" role="status"><span aria-hidden="true">✓</span><strong>Todo limpio</strong><small>No queda ninguna tarea pendiente.</small></div>';
+21884-    return;
+21885-  }
+21886-  const visible = pending.slice(0, 6);
+21887-  list.innerHTML = visible.map(task => {
+21888:    const kind = cronoTaskKind(task);
+21889:    const priority = cronoTaskPriority(task);
+21890:    const priorityLabel = cronoTaskPriorityLabel(priority);
+21891:    return '<button type="button" class="crono-task-break-item priority-' + priority + '" onclick="cronoCompleteTaskFromBreak(\'' + hechoJs(task.id) + '\',this)" aria-label="' + escapeHtmlSafe(task.text) + '. Prioridad ' + priorityLabel + '">' +
+21892-      '<span class="crono-task-break-check" aria-hidden="true"></span>' +
+21893-      '<span class="crono-task-break-copy"><strong>' + escapeHtmlSafe(task.text) + '</strong>' +
+21894-        '<small>' + (kind === 'personal' ? 'Personal' : 'Piano') + (kind === 'piano' && task.tomorrow ? ' · Mañana' : '') +
+21895-          (priority === 3 ? ' · <b>Urgentísima</b>' : '') + '</small>' +
+21896-      '</span>' +
+21897-    '</button>';
+21898-  }).join('') + (pending.length > visible.length
+21899-    ? '<div class="crono-task-break-more">+' + (pending.length - visible.length) + ' más</div>'
+21900-    : '');
+21901-}
+21902-
+21903-function cronoOpenTaskBreakPrompt() {
+21904-  if (!cronoPendingTaskCount()) return false;
+21905-  let modal = document.getElementById('modalCronoTaskBreak');
+21906-  if (!modal) {
+21907-    modal = document.createElement('div');
+21908-    modal.id = 'modalCronoTaskBreak';
+21909-    modal.className = 'modal-overlay';
+21910-    modal.innerHTML =
+21911:      '<div class="modal crono-task-break-modal" role="dialog" aria-modal="true" aria-labelledby="cronoTaskBreakTitle">' +
+21912-        '<div class="crono-task-break-kicker">¿Un descanso?</div>' +
+21913:        '<div class="crono-task-break-title" id="cronoTaskBreakTitle">Haz alguna de estas tareas</div>' +
+21914:        '<div class="crono-task-break-meta" id="cronoTaskBreakCount"></div>' +
+21915:        '<div class="crono-task-break-list" id="cronoTaskBreakList"></div>' +
+21916-        '<button type="button" class="modal-btn primary crono-task-break-close" onclick="closeCronoTaskBreakPrompt()">OK, cerrar</button>' +
+21917-      '</div>';
+21918-    document.body.appendChild(modal);
+21919-  }
+21920-  cronoRenderTaskBreakPrompt();
+21921-  const now = Date.now();
+21922:  const day = cronoTaskReminderDayKey(new Date(now));
+21923-  try { localStorage.setItem(CRONO_TASK_REMINDER_KEY, JSON.stringify({ day, lastAt: now, reason: 'session-end' })); } catch(e) {}
+21924-  openModal('modalCronoTaskBreak');
+21925-  return true;
+21926-}
+21927-
+21928-function closeCronoTaskBreakPrompt() {
+21929-  closeModal('modalCronoTaskBreak');
+21930-}
+21931-
+21932-function cronoCompleteTaskFromBreak(id, button) {
+21933:  const task = cronoTasks().find(item => item.id === id);
+21934-  if (!task || task.done || !button || button.classList.contains('is-completing')) return;
+21935-  task.done = true;
+21936-  task.doneAt = new Date().toISOString();
+21937-  saveData();
+21938-  renderCronoTasks();
+21939-  button.classList.add('is-completing');
+21940-  button.disabled = true;
+21941-  try { Haptics.success(); } catch(e) {}
+21942-  const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+21943-  setTimeout(cronoRenderTaskBreakPrompt, reducedMotion ? 100 : 620);
+21944-}
+21945-
+21946-function cronoStartTaskReminderLoop() {
+21947:  if (_cronoTaskReminderInterval) clearInterval(_cronoTaskReminderInterval);
+21948:  _cronoTaskReminderInterval = setInterval(() => {
+21949-    if (document.body.getAttribute('data-view') === 'cronometro' && crono.state === 'idle') {
+21950-      cronoMaybeRemindTasks('interval');
+21951-    }
+21952-  }, 60 * 1000);
+21953-}
+21954-
+21955-function cronoStopTaskReminderLoop() {
+21956:  if (_cronoTaskReminderInterval) {
+21957:    clearInterval(_cronoTaskReminderInterval);
+21958:    _cronoTaskReminderInterval = null;
+21959-  }
+21960-}
+21961-
+21962-function cronoRenderTaskCount() {
+21963-  const count = cronoActiveTaskCount();
+21964-  ['cronoDrawerTaskTabCount', 'cronoIdleDrawerTaskTabCount'].forEach(id => {
+21965-    const badge = document.getElementById(id);
+21966-    if (!badge) return;
+21967-    badge.textContent = count ? String(count) : '';
+21968-    badge.hidden = count === 0;
+21969-  });
+21970-  const idleCount = document.getElementById('cronoIdleTaskCount');
+21971-  if (idleCount) idleCount.textContent = count + (count === 1 ? ' pendiente' : ' pendientes');
+21972-  document.querySelectorAll('.crono-run-drawer-tab[data-tab="tareas"]').forEach(tabBtn => {
+21973-    tabBtn.classList.toggle('has-tasks', count > 0);
+21974-    tabBtn.setAttribute('aria-label', count
+21975-      ? 'Tareas, ' + count + (count === 1 ? ' pendiente' : ' pendientes')
+21976-      : 'Tareas');
+21977-  });
+21978-  if (!count) document.querySelectorAll('.crono-run-drawer.task-reminder-active').forEach(drawer => drawer.classList.remove('task-reminder-active'));
+21979-}
+21980-
+21981-function renderCronoTasks() {
+21982:  const tasks = cronoTasks();
+21983-  const doneTime = task => Date.parse(task.doneAt || task.createdAt || '') || 0;
+21984-  const pendingTime = task => Date.parse(task.createdAt || '') || 0;
+21985-  const byKind = kind => ({
+21986-    pending: tasks
+21987:      .filter(task => !task.done && cronoTaskKind(task) === kind)
+21988:      .sort((a, b) => (cronoTaskPriority(b) - cronoTaskPriority(a)) || (pendingTime(b) - pendingTime(a)))
+21989-      .slice(0, 12),
+21990-    done: tasks
+21991:      .filter(task => task.done && cronoTaskKind(task) === kind)
+21992-      .sort((a, b) => doneTime(b) - doneTime(a)),
+21993-  });
+21994-  const piano = byKind('piano');
+21995-  const personal = byKind('personal');
+21996-  const row = t => {
+21997:    const priority = cronoTaskPriority(t);
+21998:    const priorityLabel = cronoTaskPriorityLabel(priority);
+21999-    const tomorrowNote = t.source === 'tomorrow-note' && String(t.obraName || '').trim();
+22000-    const wide = !tomorrowNote && String(t.text || '').trim().length > 48 ? ' is-wide' : '';
+22001:    const cls = 'crono-task-row priority-' + priority + wide + (tomorrowNote ? ' is-tomorrow-note' : '') + (t.done ? ' is-done' : '');
+22002-    const action = t.done ? 'Volver a abrir' : 'Marcar como hecha';
+22003:    const dueLabel = cronoTaskDueLabel(t);
+22004-    const taskCopy = tomorrowNote
+22005-      ? '<span class="crono-task-copy"><span class="crono-task-text crono-task-work-name">' + escapeHtmlSafe(t.obraName) + '</span>' +
+22006-          '<span class="crono-task-note-preview">' + escapeHtmlSafe(t.text) + '</span></span>'
+22007-      : '<span class="crono-task-text">' + escapeHtmlSafe(t.text) + '</span>';
+22008-    return '<div class="' + cls + '" data-task-id="' + hechoJs(t.id) + '">' +
+22009:      '<button type="button" class="crono-task-toggle" onclick="toggleCronoTask(\'' + hechoJs(t.id) + '\',this)" aria-label="' + action + ': ' + escapeHtmlSafe(t.text) + '">' +
+22010-        '<span class="crono-task-check" aria-hidden="true"></span>' +
+22011-      '</button>' +
+22012-      '<button type="button" class="crono-task-open" ' +
+22013:        'onclick="cronoTaskBodyClick(event,\'' + hechoJs(t.id) + '\')" ' +
+22014:        'onpointerdown="cronoTaskPressStart(event,\'' + hechoJs(t.id) + '\',this)" ' +
+22015:        'onpointermove="cronoTaskPressMove(event)" onpointerup="cronoTaskPressEnd(event)" onpointercancel="cronoTaskPressCancel()" ' +
+22016-        'oncontextmenu="event.preventDefault()" aria-label="' + escapeHtmlSafe(t.text) + '. Prioridad ' + priorityLabel + '. Pulsa para cambiar; mantén pulsado para editar.">' +
+22017-        taskCopy +
+22018:        '<span class="crono-task-priority" aria-hidden="true"><i></i><i></i><i></i><i></i><em>' + priorityLabel + '</em></span>' +
+22019-        (dueLabel ? '<span class="crono-task-due-tag">' + dueLabel + '</span>' : '') +
+22020-      '</button>' +
+22021-    '</div>';
+22022-  };
+22023-  const lane = (kind, title, group, source) => {
+22024-    const clean = !group.pending.length;
+22025-    const completed = group.done.length
+22026-      ? '<details class="crono-task-completed">' +
+22027-          '<summary><span>' + group.done.length + (group.done.length === 1 ? ' hecha' : ' hechas') + '</span>' +
+22028-            '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="7 8 10 11 13 8"/></svg>' +
+22029-          '</summary>' +
+22030-          '<div class="crono-task-completed-list">' + group.done.map(row).join('') + '</div>' +
+22031-        '</details>'
+22032-      : '';
+22033-    return '<section class="crono-task-lane ' + kind + (clean ? ' is-clean' : '') + '">' +
+22034-      '<div class="crono-task-lane-head"><span class="crono-task-lane-dot"></span><strong>' + title + '</strong>' +
+22035-        (clean ? '' : '<span class="crono-task-lane-count">' + group.pending.length + '</span>') +
+22036-        '<button type="button" class="crono-task-lane-add" onclick="cronoOpenTaskComposerForKind(\'' + source + '\',\'' + kind + '\')" aria-label="Añadir tarea de ' + title + '">' +
+22037-          '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>' +
+22038-        '</button>' +
+22039-      '</div>' +
+22040-      '<div class="crono-task-list">' +
+22041-        (clean ? '<div class="crono-task-clean" role="status"><span class="crono-task-clean-check" aria-hidden="true"></span><strong>Todo limpio</strong></div>' : group.pending.map(row).join('')) +
+22042-        completed +
+22043-      '</div>' +
+22044-    '</section>';
+22045-  };
+22046-  [
+22047-    { id: 'cronoIdleTasksPanel', inputId: 'cronoIdleTaskInput', source: 'idle' },
+22048:    { id: 'cronoTasksPanel', inputId: 'cronoTaskInput', source: 'running' },
+22049-  ].forEach(target => {
+22050-    const el = document.getElementById(target.id);
+22051-    if (!el) return;
+22052:    const composer = cronoTaskComposerState(target.source);
+22053-    const activeInput = document.activeElement && document.activeElement.id === target.inputId;
+22054-    const currentDraft = activeInput ? (document.getElementById(target.inputId)?.value || '') : '';
+22055-    const composerHtml = composer.open
+22056-      ? '<div class="crono-task-add crono-task-composer is-open">' +
+22057-        '<div class="crono-task-input-wrap">' +
+22058:          '<input id="' + target.inputId + '" class="crono-task-input" type="text" maxlength="140" placeholder="Dicta o escribe una tarea..." onkeydown="cronoTaskInputKey(event,\'' + target.source + '\')">' +
+22059:          '<button type="button" class="crono-task-voice-btn" id="cronoTaskVoiceBtn-' + target.source + '" onclick="toggleCronoTaskVoice(event,\'' + target.source + '\')" aria-label="Dictar tarea" title="Dictar tarea">' +
+22060-            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"></path></svg>' +
+22061-          '</button>' +
+22062-        '</div>' +
+22063-        (composer.kind === 'piano' ? '<button type="button" class="crono-task-tomorrow-btn" onclick="cronoToggleTaskTomorrow(\'' + target.source + '\')" aria-pressed="false">Mañana</button>' : '') +
+22064-        '<div class="crono-task-compose-actions">' +
+22065-          '<button type="button" class="crono-task-cancel-btn" onclick="cronoCloseTaskComposer(\'' + target.source + '\')" aria-label="Cancelar">×</button>' +
+22066:          '<button type="button" class="crono-task-add-btn" onclick="addCronoTask(\'' + target.source + '\')" aria-label="Guardar tarea">✓</button>' +
+22067-        '</div>' +
+22068-      '</div>'
+22069-      : '';
+22070-    el.innerHTML =
+22071-      composerHtml +
+22072-      '<div class="crono-task-columns">' +
+22073-        lane('piano', 'Piano', piano, target.source) +
+22074-        lane('personal', 'Personal', personal, target.source) +
+22075-      '</div>';
+22076-    cronoUpdateTaskComposer(target.source);
+22077-    const input = document.getElementById(target.inputId);
+22078-    if (input && activeInput) {
+22079-      input.value = currentDraft;
+22080-      input.focus();
+22081-      input.setSelectionRange(input.value.length, input.value.length);
+22082-    }
+22083-  });
+22084-  cronoApplyTaskDensity();
+22085-  cronoRenderTaskCount();
+22086-}
+22087-
+22088:function cronoTaskInputKey(ev, source) {
+22089-  if (!ev) return;
+22090-  if (ev.key === 'Enter') {
+22091-    ev.preventDefault();
+22092:    addCronoTask(source);
+22093-  } else if (ev.key === 'Escape') {
+22094-    ev.preventDefault();
+22095-    cronoCloseTaskComposer(source);
+22096-  }
+22097-}
+22098-
+22099:function addCronoTask(source) {
+22100:  const composer = cronoTaskComposerState(source);
+22101-  if (!composer.open) {
+22102-    cronoOpenTaskComposer(source);
+22103-    return;
+22104-  }
+22105:  const inputId = source === 'idle' ? 'cronoIdleTaskInput' : 'cronoTaskInput';
+22106-  const input = document.getElementById(inputId);
+22107-  const text = (input?.value || '').replace(/\s+/g, ' ').trim();
+22108-  if (!text) {
+22109-    showToast('Dicta o escribe una tarea');
+22110-    return;
+22111-  }
+22112:  cronoTasks().push({
+22113-    id: 'ct' + Date.now(),
+22114-    text,
+22115-    kind: composer.kind,
+22116-    tomorrow: composer.kind === 'piano' && composer.tomorrow,
+22117-    dueDate: composer.kind === 'piano' && composer.tomorrow ? habitKeyAt(habitDayKey(), 1) : null,
+22118-    done: false,
+22119-    priority: 0,
+22120-    createdAt: new Date().toISOString(),
+22121-  });
+22122:  if (_cronoTaskVoiceSource === source) cronoStopTaskVoice(false);
+22123-  composer.open = false;
+22124-  composer.tomorrow = false;
+22125-  saveData();
+22126-  if (input) input.value = '';
+22127-  renderCronoTasks();
+22128-  showToast('Tarea añadida · ' + (composer.kind === 'piano' ? 'Piano' : 'Personal'));
+22129-}
+22130-
+22131:let _cronoTaskEditId = null;
+22132:let _cronoTaskPress = null;
+22133:let _cronoTaskSuppressClickUntil = 0;
+22134-
+22135:function cronoTaskPressCleanup() {
+22136:  if (!_cronoTaskPress) return;
+22137:  clearTimeout(_cronoTaskPress.timer);
+22138:  _cronoTaskPress.button?.classList.remove('is-pressing', 'is-long-pressed');
+22139:  _cronoTaskPress.button?.closest('.crono-task-row')?.classList.remove('is-pressing', 'is-long-pressed');
+22140:  _cronoTaskPress = null;
+22141-}
+22142-
+22143:function cronoTaskPressStart(event, id, button) {
+22144-  if (!event || !button || (event.button != null && event.button !== 0)) return;
+22145:  cronoTaskPressCleanup();
+22146-  const press = {
+22147-    id,
+22148-    button,
+22149-    x: event.clientX,
+22150-    y: event.clientY,
+22151-    pointerId: event.pointerId,
+22152-    long: false,
+22153-    timer: null,
+22154-  };
+22155:  _cronoTaskPress = press;
+22156-  button.classList.add('is-pressing');
+22157-  button.closest('.crono-task-row')?.classList.add('is-pressing');
+22158-  press.timer = setTimeout(() => {
+22159:    if (_cronoTaskPress !== press) return;
+22160-    press.long = true;
+22161-    button.classList.remove('is-pressing');
+22162-    button.classList.add('is-long-pressed');
+22163-    const row = button.closest('.crono-task-row');
+22164-    row?.classList.remove('is-pressing');
+22165-    row?.classList.add('is-long-pressed');
+22166:    _cronoTaskSuppressClickUntil = Date.now() + 900;
+22167-    try { Haptics.medium(); } catch(e) {}
+22168-    setTimeout(() => {
+22169-      openCronoTaskEdit(id);
+22170:      if (_cronoTaskPress === press) cronoTaskPressCleanup();
+22171-    }, 90);
+22172-  }, 520);
+22173-}
+22174-
+22175:function cronoTaskPressMove(event) {
+22176:  const press = _cronoTaskPress;
+22177-  if (!press || press.pointerId !== event.pointerId) return;
+22178:  if (Math.hypot(event.clientX - press.x, event.clientY - press.y) > 10) cronoTaskPressCleanup();
+22179-}
+22180-
+22181:function cronoTaskPressEnd(event) {
+22182:  if (!_cronoTaskPress || _cronoTaskPress.pointerId !== event.pointerId) return;
+22183:  if (_cronoTaskPress.long) {
+22184-    event.preventDefault();
+22185:    _cronoTaskSuppressClickUntil = Date.now() + 900;
+22186-  }
+22187:  cronoTaskPressCleanup();
+22188-}
+22189-
+22190:function cronoTaskPressCancel() {
+22191:  cronoTaskPressCleanup();
+22192-}
+22193-
+22194:function cronoTaskBodyClick(event, id) {
+22195:  if (Date.now() < _cronoTaskSuppressClickUntil) {
+22196-    event?.preventDefault();
+22197-    return;
+22198-  }
+22199:  const task = cronoTasks().find(item => item.id === id);
+22200-  if (!task) return;
+22201:  const next = (cronoTaskPriority(task) + 1) % 4;
+22202:  task.priority = next;
+22203:  task.priorityChangedAt = new Date().toISOString();
+22204-  saveData();
+22205-  renderCronoTasks();
+22206-  document.querySelectorAll('.crono-task-row[data-task-id="' + CSS.escape(String(id)) + '"]').forEach(row => {
+22207-    row.classList.add('is-priority-changing');
+22208-    setTimeout(() => row.classList.remove('is-priority-changing'), 440);
+22209-  });
+22210-  try { next === 3 ? Haptics.heavy() : next === 2 ? Haptics.medium() : Haptics.light(); } catch(e) {}
+22211:  showToast('Prioridad: ' + cronoTaskPriorityLabel(next));
+22212-}
+22213-
+22214-function openCronoTaskEdit(id) {
+22215:  const task = cronoTasks().find(item => item.id === id);
+22216-  if (!task) return;
+22217:  _cronoTaskEditId = id;
+22218:  const input = document.getElementById('cronoTaskEditInput');
+22219-  if (input) input.value = task.text;
+22220-  openModal('modalCronoTaskEdit');
+22221-  setTimeout(() => {
+22222-    if (!input) return;
+22223-    input.focus();
+22224-    input.select();
+22225-  }, 80);
+22226-}
+22227-
+22228:function cronoTaskEditKey(event) {
+22229-  if (!event) return;
+22230-  if (event.key === 'Enter') {
+22231-    event.preventDefault();
+22232-    saveCronoTaskEdit();
+22233-  } else if (event.key === 'Escape') {
+22234-    event.preventDefault();
+22235-    closeModal('modalCronoTaskEdit');
+22236-  }
+22237-}
+22238-
+22239-function saveCronoTaskEdit() {
+22240:  const task = cronoTasks().find(item => item.id === _cronoTaskEditId);
+22241:  const input = document.getElementById('cronoTaskEditInput');
+22242-  const text = (input?.value || '').replace(/\s+/g, ' ').trim();
+22243-  if (!task) {
+22244-    closeModal('modalCronoTaskEdit');
+22245-    return;
+22246-  }
+22247-  if (!text) {
+22248-    showToast('Escribe un nombre para la tarea');
+22249-    return;
+22250-  }
+22251-  task.text = text;
+22252-  task.updatedAt = new Date().toISOString();
+22253-  saveData();
+22254-  closeModal('modalCronoTaskEdit');
+22255:  _cronoTaskEditId = null;
+22256-  renderCronoTasks();
+22257-  showToast('Tarea actualizada');
+22258-}
+22259-
+22260:function toggleCronoTask(id, toggleButton) {
+22261:  const task = cronoTasks().find(t => t.id === id);
+22262-  if (!task) return;
+22263-  const rowEl = toggleButton?.closest('.crono-task-row');
+22264-  const commitToggle = () => {
+22265-    task.done = !task.done;
+22266-    task.doneAt = task.done ? new Date().toISOString() : null;
+22267-    saveData();
+22268-    renderCronoTasks();
+22269-  };
+22270-  if (task.done || !rowEl || !toggleButton) {
+22271-    commitToggle();
+22272-    try { Haptics.light(); } catch(e) {}
+22273-    return;
+22274-  }
+22275-  if (rowEl.classList.contains('is-completing')) return;
+22276-  rowEl.classList.add('is-completing');
+22277-  toggleButton.disabled = true;
+22278-  rowEl.setAttribute('aria-busy', 'true');
+22279-  try { Haptics.success(); } catch(e) {}
+22280-  const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+22281-  setTimeout(commitToggle, reducedMotion ? 80 : 520);
+22282-}
+22283-
+22284-let _cronoSessionButtonPress = null;
+22285-let _cronoSessionButtonSuppressClickUntil = 0;
+22286-
+22287-function cronoSessionButtonCleanup() {
+22288-  const press = _cronoSessionButtonPress;
+22289-  if (!press) return;
+22290-  clearTimeout(press.timer);
+22291-  (press.hapticTimers || []).forEach(clearTimeout);
+===== DATA CORE =====
+data-core.js-20-  }
+data-core.js-21-
+data-core.js-22-  function eventKey(e, fields) {
+data-core.js-23-    if (!e) return '';
+data-core.js-24-    if (e.id) return e.id;
+data-core.js-25-    return fields.map(field => e[field] || '').join('|');
+data-core.js-26-  }
+data-core.js-27-
+data-core.js-28-  function mergeEvents(a, b, fields, limit) {
+data-core.js-29-    const out = [], seen = new Set();
+data-core.js-30-    (a || []).concat(b || []).forEach(e => {
+data-core.js-31-      const key = eventKey(e, fields);
+data-core.js-32-      if (!key || seen.has(key)) return;
+data-core.js-33-      seen.add(key);
+data-core.js-34-      out.push(e);
+data-core.js-35-    });
+data-core.js-36-    out.sort((x, y) => String(x.at || '').localeCompare(String(y.at || '')));
+data-core.js-37-    return limit ? out.slice(-limit) : out;
+data-core.js-38-  }
+data-core.js-39-
+data-core.js-40-  function mergePulseDeletedIds(a, b) {
+data-core.js-41-    return Array.from(new Set((a || []).concat(b || []).map(String).filter(Boolean))).slice(-5000);
+data-core.js-42-  }
+data-core.js-43-
+data-core.js-44-  function applyPulseDeletedIds(merged) {
+data-core.js:45:    const deleted = new Set(merged.pulseDeletedIds || []);
+data-core.js-46-    const keep = (metric, items) => (items || []).filter(item => {
+data-core.js-47-      const id = eventKey(item, ['at', 'value', 'label']);
+data-core.js-48-      return !deleted.has(metric + '::' + id);
+data-core.js-49-    });
+data-core.js-50-    merged.estadoEventos = keep('concentration', merged.estadoEventos);
+data-core.js-51-    merged.impulsoEventos = keep('impulse', merged.impulsoEventos);
+data-core.js-52-    merged.malestarEventos = keep('discomfort', merged.malestarEventos);
+data-core.js-53-    merged.resistenciaEventos = keep('resistance', merged.resistenciaEventos);
+data-core.js-54-    return merged;
+data-core.js-55-  }
+data-core.js-56-
+data-core.js-57-  function itemRealMinutes(item) {
+data-core.js-58-    if (!item || item.estudiado === false) return 0;
+data-core.js-59-    return Number(item.minutosReales ?? item.min ?? item.minutos ?? 0) || 0;
+data-core.js-60-  }
+data-core.js-61-
+data-core.js-62-  function sessionRealMinutes(session) {
+data-core.js-63-    return (session && session.items || []).reduce((sum, item) => sum + itemRealMinutes(item), 0);
+data-core.js-64-  }
+data-core.js-65-
+data-core.js-66-  function mergeSessions(a, b) {
+data-core.js-67-    const byDay = new Map();
+data-core.js-68-    const add = session => {
+data-core.js-69-      if (!session || !session.date) return;
+data-core.js-70-      const key = new Date(session.date).toDateString();
+--
+data-core.js-214-  }
+data-core.js-215-
+data-core.js-216-  // Repertorio biográfico: se sincroniza por ID y gana la edición más reciente.
+data-core.js-217-  // Las horas estimadas viven aquí, separadas de sesiones/minutosExtra.
+data-core.js-218-  function mergeHistoricalRepertoire(a, b) {
+data-core.js-219-    const byId = new Map();
+data-core.js-220-    (a || []).concat(b || []).forEach(entry => {
+data-core.js-221-      if (!entry || !entry.id) return;
+data-core.js-222-      const current = byId.get(entry.id);
+data-core.js-223-      if (!current) {
+data-core.js-224-        byId.set(entry.id, entry);
+data-core.js-225-        return;
+data-core.js-226-      }
+data-core.js-227-      const currentAt = String(current.updatedAt || current.createdAt || '');
+data-core.js-228-      const candidateAt = String(entry.updatedAt || entry.createdAt || '');
+data-core.js-229-      if (candidateAt.localeCompare(currentAt) >= 0) byId.set(entry.id, entry);
+data-core.js-230-    });
+data-core.js-231-    return Array.from(byId.values())
+data-core.js-232-      .sort((x, y) =>
+data-core.js-233-        String(x.composer || '').localeCompare(String(y.composer || '')) ||
+data-core.js-234-        String(x.name || '').localeCompare(String(y.name || ''))
+data-core.js-235-      )
+data-core.js-236-      .slice(-5000);
+data-core.js-237-  }
+data-core.js-238-
+data-core.js:239:  function mergeStudyHistory(base, other) {
+data-core.js-240-    if (!base) return other;
+data-core.js-241-    if (!other) return base;
+data-core.js-242-    const merged = Object.assign({}, base);
+data-core.js-243-    merged.sessionPlants = mergePlants(base.sessionPlants, other.sessionPlants);
+data-core.js-244-    merged.forestPlants = mergePlants(base.forestPlants, other.forestPlants);
+data-core.js-245-    merged.sesiones = mergeSessions(base.sesiones, other.sesiones);
+data-core.js-246-    merged.estadoEventos = mergeEvents(base.estadoEventos, other.estadoEventos, ['at', 'value', 'label'], 2000);
+data-core.js-247-    merged.impulsoEventos = mergeEvents(base.impulsoEventos, other.impulsoEventos, ['at', 'value', 'label'], 2000);
+data-core.js-248-    merged.malestarEventos = mergeEvents(base.malestarEventos, other.malestarEventos, ['at', 'value', 'label'], 2000);
+data-core.js-249-    merged.resistenciaEventos = mergeEvents(base.resistenciaEventos, other.resistenciaEventos, ['at', 'value', 'label'], 2000);
+data-core.js:250:    merged.pulseDeletedIds = mergePulseDeletedIds(base.pulseDeletedIds, other.pulseDeletedIds);
+data-core.js-251-    merged.deporteEventos = mergeEvents(base.deporteEventos, other.deporteEventos, ['at', 'kind', 'value', 'label'], 2000);
+data-core.js-252-    merged.suenoEventos = mergeEvents(base.suenoEventos, other.suenoEventos, ['at', 'kind'], 2000);
+data-core.js-253-    merged.triggerEventos = mergeEvents(base.triggerEventos, other.triggerEventos, ['at', 'value', 'label'], 2000);
+data-core.js-254-    merged.tiempoDisponibleEventos = mergeTimeAvailableEvents(base.tiempoDisponibleEventos, other.tiempoDisponibleEventos);
+data-core.js-255-    merged.dailyJournalEntries = mergeEvents(base.dailyJournalEntries, other.dailyJournalEntries, ['at', 'text'], 3000);
+data-core.js-256-    merged.blockedDaySchedules = mergeBlockedDaySchedules(base.blockedDaySchedules, other.blockedDaySchedules);
+data-core.js-257-    merged.weeklyPlans = mergeWeeklyPlans(base.weeklyPlans, other.weeklyPlans);
+data-core.js-258-    merged.memoryCards = mergeMemoryCards(base.memoryCards, other.memoryCards);
+data-core.js-259-    merged.historicalRepertoire = mergeHistoricalRepertoire(base.historicalRepertoire, other.historicalRepertoire);
+data-core.js-260-    merged.historicalEvents = mergeHistoricalRepertoire(base.historicalEvents, other.historicalEvents);
+data-core.js-261-    const baseHabits = (base.habitChallenges || []).concat(base.habitChallenge ? [base.habitChallenge] : []);
+data-core.js-262-    const otherHabits = (other.habitChallenges || []).concat(other.habitChallenge ? [other.habitChallenge] : []);
+data-core.js-263-    merged.habitChallenges = mergeHabitChallenges(baseHabits, otherHabits);
+data-core.js-264-    merged.habitChallenge = merged.habitChallenges.find(habit => !habit.deleted) || merged.habitChallenges[0] || null;
+data-core.js-265-    return applyPulseDeletedIds(merged);
+data-core.js-266-  }
+data-core.js-267-
+data-core.js-268-  return {
+data-core.js:269:    mergeStudyHistory,
+data-core.js-270-    mergePlants,
+data-core.js-271-    mergeSessions,
+data-core.js-272-    mergeBlockedDaySchedules,
+data-core.js-273-    mergeWeeklyPlan,
+data-core.js-274-    mergeWeeklyPlans,
+data-core.js-275-    mergeMemoryCard,
+data-core.js-276-    mergeMemoryCards,
+data-core.js-277-    mergeHabitChallenge,
+data-core.js-278-    mergeHabitChallenges,
+data-core.js-279-    mergeHistoricalRepertoire,
+data-core.js-280-    sessionRealMinutes
+data-core.js-281-  };
+data-core.js-282-});
+data-core.js-283-
+data-core.js-284-// Carga modular de la interfaz del archivo histórico. Se deja fuera del factory
+data-core.js-285-// para que los tests Node de DataCore sigan sin depender del DOM.
+data-core.js-286-if (typeof document !== 'undefined' && !document.querySelector('script[data-historical-repertoire]')) {
+data-core.js-287-  const script = document.createElement('script');
+data-core.js-288-  script.src = 'historical-repertoire.js?v=1';
+data-core.js-289-  script.async = true;
+data-core.js-290-  script.dataset.historicalRepertoire = '1';
+data-core.js-291-  document.head.appendChild(script);
+data-core.js-292-}
+--
+sync-core.js-247-          logSemantics: 'explicit_daily_status',
+sync-core.js-248-          successRule: 'a closed day needs a done log to count as successful',
+sync-core.js-249-        },
+sync-core.js-250-      },
+sync-core.js-251-      activeHabitId: active && active.id || null,
+sync-core.js-252-      active,
+sync-core.js-253-      items,
+sync-core.js-254-    };
+sync-core.js-255-  }
+sync-core.js-256-
+sync-core.js-257-  function mergeRepertoireIntoResult(base, other, merged) {
+sync-core.js-258-    const result = Object.assign({}, merged || {});
+sync-core.js-259-    result.obras = mergeObrasFromFreshest(base || {}, other || {});
+sync-core.js-260-    const maxRevision = Math.max(dbRevision(base), dbRevision(other));
+sync-core.js-261-    if (maxRevision) result._localRevision = maxRevision;
+sync-core.js-262-    const freshest = compareDbFreshness(base || {}, other || {}) >= 0 ? (base || {}) : (other || {});
+sync-core.js-263-    if (freshest._savedAt) result._savedAt = freshest._savedAt;
+sync-core.js-264-    const habits = Array.isArray(result.habitChallenges)
+sync-core.js-265-      ? result.habitChallenges
+sync-core.js-266-      : (result.habitChallenge ? [result.habitChallenge] : []);
+sync-core.js-267-    result.habitObjectiveSummary = buildHabitObjectiveSummary(habits);
+sync-core.js-268-    return result;
+sync-core.js-269-  }
+sync-core.js-270-
+sync-core.js-271-  function installRepertoireSync(dataCore) {
+sync-core.js:272:    if (!dataCore || typeof dataCore.mergeStudyHistory !== 'function') return false;
+sync-core.js-273-    if (dataCore.__repertoireSyncInstalled) return true;
+sync-core.js:274:    const originalMerge = dataCore.mergeStudyHistory;
+sync-core.js:275:    dataCore.mergeStudyHistory = function (base, other) {
+sync-core.js-276-      return mergeRepertoireIntoResult(base, other, originalMerge(base, other));
+sync-core.js-277-    };
+sync-core.js-278-    Object.defineProperty(dataCore, '__repertoireSyncInstalled', { value: true, configurable: true });
+sync-core.js-279-    return true;
+sync-core.js-280-  }
+sync-core.js-281-
+sync-core.js-282-  return {
+sync-core.js-283-    normalizeMeta,
+sync-core.js-284-    markDirty,
+sync-core.js-285-    markSynced,
+sync-core.js-286-    isDirty,
+sync-core.js-287-    compareDbFreshness,
+sync-core.js-288-    mergeHistoryList,
+sync-core.js-289-    mergeObrasFromFreshest,
+sync-core.js-290-    mergeRepertoireIntoResult,
+sync-core.js-291-    summarizeHabitChallenge,
+sync-core.js-292-    buildHabitObjectiveSummary,
+sync-core.js-293-    installRepertoireSync
+sync-core.js-294-  };
+sync-core.js-295-});
+sync-core.js-296-
+sync-core.js-297-// data-core.js is loaded immediately before this file in the app. Patch its
+sync-core.js-298-// merge at startup so the very first cloud/local reconciliation also includes
+sync-core.js-299-// repertoire metadata and a self-describing habit-objective summary.
+sync-core.js-300-if (typeof window !== 'undefined' && window.SyncCore && window.DataCore) {
