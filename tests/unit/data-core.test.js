@@ -154,4 +154,36 @@ describe('DataCore', () => {
     expect(merged.memoryCards[0]).toMatchObject({ dueDate: '2026-08-21', intervalDays: 4 });
     expect(merged.memoryCards[0].reviews.map(review => review.id)).toEqual(['r1', 'r2']);
   });
+
+  it('keeps local cronometro tasks when a newer cloud snapshot does not contain them', () => {
+    const cloud = {
+      cronoTasks: [{ id: 'old-1', text: 'Tarea antigua', createdAt: '2026-08-20T10:00:00Z', updatedAt: '2026-08-20T10:00:00Z', done: false }],
+    };
+    const local = {
+      cronoTasks: [
+        { id: 'old-1', text: 'Tarea antigua', createdAt: '2026-08-20T10:00:00Z', updatedAt: '2026-08-20T10:00:00Z', done: false },
+        { id: 'new-1', text: 'Añadida ayer', createdAt: '2026-08-30T17:00:00Z', updatedAt: '2026-08-30T17:00:00Z', done: false },
+      ],
+    };
+    const merged = DataCore.mergeStudyHistory(cloud, local);
+    expect(merged.cronoTasks.map(task => task.id)).toEqual(['old-1', 'new-1']);
+  });
+
+  it('keeps a cloud-only cronometro task when local is the freshest snapshot', () => {
+    const merged = DataCore.mergeStudyHistory(
+      { cronoTasks: [{ id: 'local-1', text: 'Local', createdAt: '2026-08-30T17:00:00Z', updatedAt: '2026-08-30T17:00:00Z', done: false }] },
+      { cronoTasks: [{ id: 'cloud-1', text: 'Nube', createdAt: '2026-08-30T16:00:00Z', updatedAt: '2026-08-30T16:00:00Z', done: false }] }
+    );
+    expect(merged.cronoTasks.map(task => task.id)).toEqual(['cloud-1', 'local-1']);
+  });
+
+  it('uses the newest same-id cronometro task mutation instead of snapshot order', () => {
+    const older = { id: 'task-1', text: 'Texto viejo', createdAt: '2026-08-20T10:00:00Z', updatedAt: '2026-08-30T10:00:00Z', done: false, priority: 0 };
+    const newer = { id: 'task-1', text: 'Texto nuevo', createdAt: '2026-08-20T10:00:00Z', updatedAt: '2026-08-30T11:00:00Z', done: true, doneAt: '2026-08-30T11:00:00Z', priority: 2 };
+    const mergedA = DataCore.mergeStudyHistory({ cronoTasks: [newer] }, { cronoTasks: [older] });
+    const mergedB = DataCore.mergeStudyHistory({ cronoTasks: [older] }, { cronoTasks: [newer] });
+    expect(mergedA.cronoTasks[0]).toMatchObject({ text: 'Texto nuevo', done: true, priority: 2 });
+    expect(mergedB.cronoTasks[0]).toMatchObject({ text: 'Texto nuevo', done: true, priority: 2 });
+  });
+
 });

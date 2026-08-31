@@ -236,6 +236,39 @@
       .slice(-5000);
   }
 
+  function cronoTaskMutationAt(task) {
+    if (!task) return '';
+    return [task.updatedAt, task.priorityChangedAt, task.doneAt, task.createdAt]
+      .map(value => String(value || ''))
+      .sort()
+      .pop() || '';
+  }
+
+  function mergeCronoTasks(a, b) {
+    const byId = new Map();
+    const add = (task, sourceRank) => {
+      if (!task || typeof task !== 'object') return;
+      const id = String(task.id || '').trim();
+      if (!id) return;
+      const current = byId.get(id);
+      if (!current) {
+        byId.set(id, { task, sourceRank });
+        return;
+      }
+      const currentAt = cronoTaskMutationAt(current.task);
+      const candidateAt = cronoTaskMutationAt(task);
+      if (candidateAt > currentAt || (candidateAt === currentAt && sourceRank >= current.sourceRank)) {
+        byId.set(id, { task: Object.assign({}, current.task, task), sourceRank });
+      }
+    };
+    (a || []).forEach(task => add(task, 0));
+    (b || []).forEach(task => add(task, 1));
+    return Array.from(byId.values())
+      .map(entry => entry.task)
+      .sort((x, y) => String(x.createdAt || '').localeCompare(String(y.createdAt || '')) || String(x.id || '').localeCompare(String(y.id || '')))
+      .slice(-5000);
+  }
+
   function mergeStudyHistory(base, other) {
     if (!base) return other;
     if (!other) return base;
@@ -256,6 +289,9 @@
     merged.blockedDaySchedules = mergeBlockedDaySchedules(base.blockedDaySchedules, other.blockedDaySchedules);
     merged.weeklyPlans = mergeWeeklyPlans(base.weeklyPlans, other.weeklyPlans);
     merged.memoryCards = mergeMemoryCards(base.memoryCards, other.memoryCards);
+    // Las tareas son datos de usuario aditivos: una nube más reciente nunca debe
+    // borrar una tarea creada localmente y aún no subida.
+    merged.cronoTasks = mergeCronoTasks(base.cronoTasks, other.cronoTasks);
     merged.historicalRepertoire = mergeHistoricalRepertoire(base.historicalRepertoire, other.historicalRepertoire);
     merged.historicalEvents = mergeHistoricalRepertoire(base.historicalEvents, other.historicalEvents);
     const baseHabits = (base.habitChallenges || []).concat(base.habitChallenge ? [base.habitChallenge] : []);
@@ -274,6 +310,8 @@
     mergeWeeklyPlans,
     mergeMemoryCard,
     mergeMemoryCards,
+    mergeCronoTasks,
+    cronoTaskMutationAt,
     mergeHabitChallenge,
     mergeHabitChallenges,
     mergeHistoricalRepertoire,

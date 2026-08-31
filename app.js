@@ -507,7 +507,8 @@ async function loadFromCloud() {
         const cloudTiempoN = (data.data.tiempoDisponibleEventos || []).length;
         const localPulseDeletedN = localDb ? (localDb.pulseDeletedIds || []).length : 0;
         const cloudPulseDeletedN = (data.data.pulseDeletedIds || []).length;
-        const localHasMore = localMin > cloudMin || localEstadoN > cloudEstadoN || localImpulsoN > cloudImpulsoN || localResistenciaN > cloudResistenciaN || localDeporteN > cloudDeporteN || localSuenoN > cloudSuenoN || localTriggerN > cloudTriggerN || localTiempoN > cloudTiempoN || localPulseDeletedN > cloudPulseDeletedN;
+        const mergedTasksChangedCloud = JSON.stringify(db.cronoTasks || []) !== JSON.stringify(data.data.cronoTasks || []);
+        const localHasMore = localMin > cloudMin || localEstadoN > cloudEstadoN || localImpulsoN > cloudImpulsoN || localResistenciaN > cloudResistenciaN || localDeporteN > cloudDeporteN || localSuenoN > cloudSuenoN || localTriggerN > cloudTriggerN || localTiempoN > cloudTiempoN || localPulseDeletedN > cloudPulseDeletedN || mergedTasksChangedCloud;
         if (localHasMore || (typeof SyncCore !== 'undefined' && SyncCore.isDirty(beforeMeta))) {
           if (typeof SyncCore !== 'undefined' && !SyncCore.isDirty(_readSyncMeta())) _writeLocalSnapshot(true);
           await syncPendingCloudChanges();
@@ -21438,6 +21439,7 @@ function confirmCronoTomorrowTask() {
     runId: crono.state === 'idle' ? null : crono.runId,
     createdElapsedMs: crono.state === 'idle' ? 0 : cronoEffectiveElapsedMs(),
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   });
   saveData();
   closeModal('modalCronoNote');
@@ -22118,6 +22120,7 @@ function addCronoTask(source) {
     done: false,
     priority: 0,
     createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   });
   if (_cronoTaskVoiceSource === source) cronoStopTaskVoice(false);
   composer.open = false;
@@ -22199,8 +22202,10 @@ function cronoTaskBodyClick(event, id) {
   const task = cronoTasks().find(item => item.id === id);
   if (!task) return;
   const next = (cronoTaskPriority(task) + 1) % 4;
+  const changedAt = new Date().toISOString();
   task.priority = next;
-  task.priorityChangedAt = new Date().toISOString();
+  task.priorityChangedAt = changedAt;
+  task.updatedAt = changedAt;
   saveData();
   renderCronoTasks();
   document.querySelectorAll('.crono-task-row[data-task-id="' + CSS.escape(String(id)) + '"]').forEach(row => {
@@ -22262,8 +22267,10 @@ function toggleCronoTask(id, toggleButton) {
   if (!task) return;
   const rowEl = toggleButton?.closest('.crono-task-row');
   const commitToggle = () => {
+    const changedAt = new Date().toISOString();
     task.done = !task.done;
-    task.doneAt = task.done ? new Date().toISOString() : null;
+    task.doneAt = task.done ? changedAt : null;
+    task.updatedAt = changedAt;
     saveData();
     renderCronoTasks();
   };
