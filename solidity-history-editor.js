@@ -317,6 +317,22 @@
     return state.rows.find(row => row.id === id) || null;
   }
 
+  function refreshDirtyFooter() {
+    const dirtyCount = state.rows.filter(row => row.value !== row.originalValue).length;
+    const message = document.querySelector('#solidityHistoryOverlay .solidity-history-message');
+    if (message && !state.message) {
+      message.textContent = dirtyCount
+        ? `${dirtyCount} cambio${dirtyCount === 1 ? '' : 's'} sin guardar`
+        : 'Toca cualquier punto de una píldora para ajustar el valor.';
+      message.classList.remove('success');
+    }
+    const saveButton = document.querySelector('#solidityHistoryOverlay [data-history-save]');
+    if (saveButton) {
+      saveButton.disabled = !dirtyCount;
+      saveButton.textContent = `Guardar cambios${dirtyCount ? ` (${dirtyCount})` : ''}`;
+    }
+  }
+
   function updateRow(id, value, source) {
     const row = rowById(id);
     if (!row) return;
@@ -324,23 +340,20 @@
     row.value = next;
     state.message = '';
     state.success = false;
-    markOutliers();
     const element = document.querySelector(`[data-history-row="${CSS.escape(id)}"]`);
-    if (!element) return render();
+    if (!element) return;
     element.classList.toggle('is-dirty', row.value !== row.originalValue);
-    element.classList.toggle('is-anomaly', Boolean(row.anomaly));
     const meter = element.querySelector('.solidity-history-pill');
     if (meter) meter.setAttribute('style', pillStyle(next));
     const slider = element.querySelector('[data-history-slider]');
     const number = element.querySelector('[data-history-number]');
     if (slider && source !== 'slider') slider.value = sliderPosition(next).toFixed(2);
-    if (number && source !== 'number') number.value = String(next);
+    if (number && String(number.value) !== String(next)) number.value = String(next);
     if (slider) {
       slider.dataset.paseValue = String(next);
       slider.setAttribute('aria-valuetext', `${next} por ciento`);
     }
-    // Re-render to update anomaly badges/notes and save counter consistently.
-    render();
+    refreshDirtyFooter();
   }
 
   function bind(container) {
@@ -349,11 +362,15 @@
       state.filter = button.dataset.historyFilter || 'all';
       render();
     }));
-    container.querySelectorAll('[data-history-slider]').forEach(input => input.addEventListener('input', () => {
-      updateRow(input.dataset.historySlider, positionToPct(input.value), 'slider');
-    }));
+    container.querySelectorAll('[data-history-slider]').forEach(input => {
+      input.addEventListener('input', () => updateRow(input.dataset.historySlider, positionToPct(input.value), 'slider'));
+      input.addEventListener('change', () => render());
+    });
     container.querySelectorAll('[data-history-number]').forEach(input => {
-      input.addEventListener('change', () => updateRow(input.dataset.historyNumber, input.value, 'number'));
+      input.addEventListener('change', () => {
+        updateRow(input.dataset.historyNumber, input.value, 'number');
+        render();
+      });
       input.addEventListener('keydown', event => {
         if (event.key === 'Enter') { event.preventDefault(); input.blur(); }
       });

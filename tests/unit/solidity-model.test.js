@@ -127,4 +127,50 @@ describe('SolidityModel', () => {
     expect(context.formalEvent).toBe(false);
     expect(Solidity.statusLabel(db, work)).toBe('Tomando forma');
   });
+
+  it('flags an isolated historical solidity spike without changing it', () => {
+    const points = [51, 52, 51, 90].map((score, index) => ({
+      rowId: `r${index}`,
+      score,
+      time: Date.UTC(2026, 7, 27 + index),
+      scope: 'whole',
+    }));
+    const flagged = Solidity.detectOutliers(points);
+    expect(flagged).toHaveLength(1);
+    expect(flagged[0].point.rowId).toBe('r3');
+    expect(flagged[0].score).toBe(90);
+    expect(Math.round(flagged[0].baseline)).toBe(52);
+  });
+
+  it('flags a middle spike when both surrounding readings agree', () => {
+    const points = [51, 90, 52].map((score, index) => ({
+      rowId: `r${index}`,
+      score,
+      time: Date.UTC(2026, 7, 27 + index),
+      scope: 'whole',
+    }));
+    const flagged = Solidity.detectOutliers(points);
+    expect(flagged).toHaveLength(1);
+    expect(flagged[0].point.rowId).toBe('r1');
+  });
+
+  it('does not flag gradual improvement as an anomaly', () => {
+    const points = [50, 60, 70, 80].map((score, index) => ({
+      score,
+      time: Date.UTC(2026, 7, 27 + index),
+      scope: 'whole',
+    }));
+    expect(Solidity.detectOutliers(points)).toEqual([]);
+  });
+
+  it('never compares one movement against another movement to find anomalies', () => {
+    const points = [
+      { rowId: 'a1', score: 50, time: 1, scope: 'movement', movementId: 'a' },
+      { rowId: 'a2', score: 51, time: 2, scope: 'movement', movementId: 'a' },
+      { rowId: 'b1', score: 92, time: 1, scope: 'movement', movementId: 'b' },
+      { rowId: 'b2', score: 93, time: 2, scope: 'movement', movementId: 'b' },
+    ];
+    expect(Solidity.detectOutliers(points)).toEqual([]);
+  });
+
 });
