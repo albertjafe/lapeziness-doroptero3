@@ -5,6 +5,25 @@
 
   const activePointers = new Map();
 
+  function installImmediateMotionStyle() {
+    if (document.getElementById('paseLiquidImmediateMotionStyle')) return;
+    const style = document.createElement('style');
+    style.id = 'paseLiquidImmediateMotionStyle';
+    style.textContent = `
+      .pase-liquid-fill {
+        transition: background .08s ease, box-shadow .08s ease, opacity .08s ease !important;
+      }
+      .pase-liquid-orb {
+        transition: background .08s ease, box-shadow .08s ease !important;
+      }
+      .pase-liquid-meter.is-direct-touching .pase-liquid-fill,
+      .pase-liquid-meter.is-direct-touching .pase-liquid-orb {
+        transition: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
   }
@@ -78,4 +97,5 @@
 
   document.addEventListener('pointerup', finish, true);
   document.addEventListener('pointercancel', finish, true);
+  installImmediateMotionStyle();
 })();
