@@ -13,6 +13,7 @@ jobs:
       - name: Capture relevant code
         shell: bash
         run: |
+          set +o pipefail
           {
             echo '===== APP: PASE / SOLIDEZ ====='
             grep -n -A80 -B30 -E 'function (pasePctToPosition|pasePositionToPct|registerPase|renderPase|renderSolidez|savePase|open.*Solidez|solHistory)|pase-liquid|solHistory|paseHistory' app.js | head -n 2200
