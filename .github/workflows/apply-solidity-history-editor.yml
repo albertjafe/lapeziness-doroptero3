@@ -11,7 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Apply integration patch
-        run: python scripts/apply_solidity_history_patch.py
+        run: |
+          python scripts/apply_solidity_history_patch.py
+          sed -i 's/z-index: 2300;/z-index: 10150;/' solidity-history-editor.css
       - name: Inspect diff
         run: |
           git diff --stat
@@ -36,6 +38,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add solidity-model.js obra-premium.js solidity-history-editor.js tests/unit/solidity-model.test.js
+          git add solidity-model.js obra-premium.js solidity-history-editor.js solidity-history-editor.css tests/unit/solidity-model.test.js
           git commit -m "Integrate editable solidity history"
           git push origin HEAD:fix/solidity-history-editor-20260831
