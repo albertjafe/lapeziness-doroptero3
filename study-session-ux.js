@@ -271,3 +271,15 @@
   core.addEventListener('load', loadDashboard, { once: true });
   document.head.appendChild(core);
 }());
+
+
+// Uso de la propia PWA: solo visibilidad + sección, nunca contenido escrito.
+(function loadActivitySelfTracker() {
+  'use strict';
+  if (window.ActivitySelfTracker || document.getElementById('activitySelfTrackerScript')) return;
+  const script = document.createElement('script');
+  script.id = 'activitySelfTrackerScript';
+  script.src = './activity-self-tracker.js?v=1';
+  script.async = true;
+  document.head.appendChild(script);
+}());

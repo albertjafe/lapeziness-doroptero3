@@ -37,6 +37,8 @@ Archivos locales:
 - `%LOCALAPPDATA%\PianoAppActivityTracker\state.json`
 - `%LOCALAPPDATA%\PianoAppActivityTracker\activity-sync.ps1`
 
+El token se guarda cifrado con **Windows DPAPI**, ligado a tu usuario de Windows; no queda en texto plano dentro de `config.json`.
+
 Para probar manualmente:
 
 ```powershell
@@ -96,6 +98,12 @@ El servidor empareja apertura/cierre y guarda un único intervalo. Si un cierre 
 Para `local_date`, Atajos puede usar `Fecha actual` → `Formatear fecha` con formato personalizado `yyyy-MM-dd`.
 
 Categorías admitidas: `productive`, `piano`, `ai`, `communication`, `social`, `entertainment`, `browsing`, `private`, `other`.
+
+## Uso de la propia PWA
+
+Sin instalar nada adicional, la propia PWA registra cuando está **visible** y la sección abierta (`Hoy`, `Cronómetro`, `Obras`, etc.) en iPhone, iPad, Windows o Mac. Los bloques se encolan localmente si no hay conexión y se suben al volver a tener sesión/red.
+
+No registra texto de tareas, contenido de obras, teclas, campos escritos ni modales. El objetivo es saber cuándo y cuánto se usó la app en cada dispositivo.
 
 ## En la app
 

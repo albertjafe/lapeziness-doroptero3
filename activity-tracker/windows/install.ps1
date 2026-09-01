@@ -67,8 +67,9 @@ start "" /min powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Byp
 
 if ([string]::IsNullOrWhiteSpace($Token)) {
   Write-Host ''
-  Write-Host 'Pega el token personal del tracker que te dio ChatGPT.' -ForegroundColor Yellow
-  $Token = Read-Host 'Token'
+  Write-Host 'Pega el token personal del tracker que te dio ChatGPT. No se mostrará en pantalla.' -ForegroundColor Yellow
+  $secureToken = Read-Host 'Token' -AsSecureString
+  $Token = [System.Net.NetworkCredential]::new('', $secureToken).Password
 }
 if ([string]::IsNullOrWhiteSpace($Token) -or $Token.Length -lt 24) { throw 'El token no parece válido.' }
 
@@ -78,7 +79,7 @@ Invoke-WebRequest -Uri $SyncSource -OutFile $SyncPath -UseBasicParsing
 
 $config = [ordered]@{
   Endpoint = $Endpoint
-  Token = $Token.Trim()
+  TokenProtected = ConvertFrom-SecureString (ConvertTo-SecureString $Token.Trim() -AsPlainText -Force)
   DeviceId = ('windows-' + $env:COMPUTERNAME.ToLowerInvariant())
   InitialLookbackHours = 24
   InstalledAt = [datetimeoffset]::Now.ToString('o')
