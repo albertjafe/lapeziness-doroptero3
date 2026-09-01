@@ -16,10 +16,12 @@ describe('PWA self activity tracker', () => {
     expect(source).not.toMatch(/keydown|keyup|keypress|clipboard|input\.value|textarea\.value/i);
   });
 
-  it('uses the authenticated user id for inserts', () => {
+  it('uses the authenticated user id and idempotent writes', () => {
     expect(source).toContain("typeof sb.auth.getUser !== 'function'");
     expect(source).toContain('user_id: user.id');
-    expect(source).toContain("sb.from('activity_events').insert(batch)");
+    expect(source).toContain("sb.from('activity_events').upsert(batch");
+    expect(source).toContain("onConflict: 'user_id,device_id,source,external_id'");
+    expect(source).toContain('ignoreDuplicates: true');
   });
 
   it('protects the Windows token instead of writing it as plaintext', () => {
