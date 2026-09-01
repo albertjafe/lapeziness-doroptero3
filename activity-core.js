@@ -60,7 +60,13 @@
   }
 
   function canonicalize(rows) {
-    const source = (Array.isArray(rows) ? rows : []).filter(row => row && !row.is_afk && seconds(row) > 0);
+    const source = (Array.isArray(rows) ? rows : []).filter(row => {
+      if (!row || seconds(row) <= 0) return false;
+      // AFK es una capa paralela de ActivityWatch: tanto `active` como `afk`
+      // solapan las ventanas. Nunca entra en el tiempo rastreado normal.
+      if (String(row.source || '') === 'activitywatch_afk') return false;
+      return !row.is_afk;
+    });
     const webRows = source.filter(row => String(row.source || '') === 'activitywatch_web');
     return source.filter(row => {
       if (String(row.source || '') !== 'activitywatch_window') return true;
@@ -112,7 +118,11 @@
   }
 
   function summarize(rows) {
-    const canonical = canonicalize(rows);
+    const all = Array.isArray(rows) ? rows : [];
+    const idleSeconds = all
+      .filter(row => row && String(row.source || '') === 'activitywatch_afk' && row.is_afk)
+      .reduce((total, row) => total + seconds(row), 0);
+    const canonical = canonicalize(all);
     const timeline = mergeAdjacent(canonical, 25);
     const categories = {};
     const apps = {};
@@ -136,6 +146,7 @@
 
     return {
       trackedSeconds,
+      idleSeconds,
       switches,
       categories,
       topApps: top(apps, 6),
