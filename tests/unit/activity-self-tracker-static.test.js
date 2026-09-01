@@ -1,5 +1,5 @@
-const fs = require('fs');
-const { describe, it, expect } = require('vitest');
+import fs from 'node:fs';
+import { describe, it, expect } from 'vitest';
 
 const source = fs.readFileSync('activity-self-tracker.js', 'utf8');
 const installer = fs.readFileSync('activity-tracker/windows/install.ps1', 'utf8');
@@ -8,7 +8,7 @@ describe('PWA self activity tracker', () => {
   it('tracks only visible app sections and queues offline segments', () => {
     expect(source).toContain("document.visibilityState !== 'visible'");
     expect(source).toContain("label: `App · ${segment.view_label}`");
-    expect(source).toContain("source: SOURCE");
+    expect(source).toContain('source: SOURCE');
     expect(source).toContain('pianoAppActivityQueue_v1');
   });
 
