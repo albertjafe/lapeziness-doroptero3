@@ -37,13 +37,16 @@ describe('ActivityCore', () => {
     expect(summary.trackedSeconds).toBe(600);
   });
 
-  it('never counts AFK events as tracked activity', () => {
+  it('never double-counts ActivityWatch AFK overlay rows and reports idle time separately', () => {
     const summary = Activity.summarize([
-      row({ source: 'activitywatch_afk', app: 'Ausente', is_afk: true, category: 'other' }),
+      row({ source: 'activitywatch_afk', app: 'Activo', is_afk: false, category: 'other', started_at: '2026-09-01T09:00:00Z', ended_at: '2026-09-01T09:30:00Z' }),
+      row({ source: 'activitywatch_afk', app: 'Ausente', is_afk: true, category: 'other', started_at: '2026-09-01T09:30:00Z', ended_at: '2026-09-01T09:40:00Z' }),
       row({ app: 'musescore.exe', category: 'piano', started_at: '2026-09-01T09:00:00Z', ended_at: '2026-09-01T09:30:00Z' }),
     ]);
     expect(summary.trackedSeconds).toBe(1800);
+    expect(summary.idleSeconds).toBe(600);
     expect(summary.categories.piano).toBe(1800);
+    expect(summary.categories.other).toBeUndefined();
   });
 
   it('merges adjacent equal blocks and counts real context switches', () => {
