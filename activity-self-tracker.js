@@ -168,7 +168,12 @@
         label: item.label,
         is_afk: Boolean(item.is_afk),
       }));
-      const result = await sb.from('activity_events').insert(batch);
+      // Si el servidor guardó el bloque pero se perdió la respuesta, el reintento
+      // debe ser inocuo. La clave natural impide duplicar actividad.
+      const result = await sb.from('activity_events').upsert(batch, {
+        onConflict: 'user_id,device_id,source,external_id',
+        ignoreDuplicates: true,
+      });
       if (result && result.error) throw result.error;
       writeQueue(queue.slice(batch.length));
       if (queue.length > batch.length) setTimeout(flushQueue, 50);
