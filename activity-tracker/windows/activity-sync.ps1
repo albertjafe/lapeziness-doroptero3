@@ -17,6 +17,18 @@ function Write-JsonFile([string]$Path, $Value) {
   $Value | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $Path -Encoding UTF8
 }
 
+function Get-ConfigToken($Config) {
+  if ($Config -and -not [string]::IsNullOrWhiteSpace([string]$Config.TokenProtected)) {
+    try {
+      $secure = ConvertTo-SecureString ([string]$Config.TokenProtected)
+      return [System.Net.NetworkCredential]::new('', $secure).Password
+    } catch { return '' }
+  }
+  # Compatibilidad con una instalación antigua. El nuevo instalador ya no escribe esto.
+  if ($Config -and -not [string]::IsNullOrWhiteSpace([string]$Config.Token)) { return [string]$Config.Token }
+  return ''
+}
+
 function Get-Hash([string]$Text) {
   $sha = [System.Security.Cryptography.SHA256]::Create()
   try {
@@ -119,7 +131,7 @@ function Get-AwEvents([string]$BucketId, [datetimeoffset]$Start, [datetimeoffset
   return @(Invoke-RestMethod -Uri $url -Method Get -TimeoutSec 20)
 }
 
-function Send-Batch($Config, [array]$Events) {
+function Send-Batch($Config, [string]$Token, [array]$Events) {
   if (-not $Events.Count) { return 0 }
   $accepted = 0
   for ($i = 0; $i -lt $Events.Count; $i += 400) {
@@ -131,7 +143,7 @@ function Send-Batch($Config, [array]$Events) {
       device_type = 'windows'
       events = $chunk
     } | ConvertTo-Json -Depth 10
-    $result = Invoke-RestMethod -Uri ([string]$Config.Endpoint) -Method Post -ContentType 'application/json' -Headers @{ 'x-activity-token' = [string]$Config.Token } -Body $body -TimeoutSec 30
+    $result = Invoke-RestMethod -Uri ([string]$Config.Endpoint) -Method Post -ContentType 'application/json' -Headers @{ 'x-activity-token' = $Token } -Body $body -TimeoutSec 30
     $accepted += [int]$result.accepted
   }
   return $accepted
@@ -140,8 +152,9 @@ function Send-Batch($Config, [array]$Events) {
 function Invoke-SyncOnce {
   if (-not (Test-Path $TrackerRoot)) { New-Item -ItemType Directory -Path $TrackerRoot -Force | Out-Null }
   $config = Read-JsonFile $ConfigPath
-  if (-not $config -or [string]::IsNullOrWhiteSpace([string]$config.Token) -or [string]::IsNullOrWhiteSpace([string]$config.Endpoint)) {
-    throw "Falta $ConfigPath. Ejecuta primero install.ps1."
+  $token = Get-ConfigToken $config
+  if (-not $config -or [string]::IsNullOrWhiteSpace($token) -or [string]::IsNullOrWhiteSpace([string]$config.Endpoint)) {
+    throw "Falta o no se puede descifrar la configuración privada de $ConfigPath. Ejecuta primero install.ps1."
   }
 
   try {
@@ -176,7 +189,7 @@ function Invoke-SyncOnce {
   }
 
   $events = @($normalized | Sort-Object started_at)
-  $accepted = Send-Batch -Config $config -Events $events
+  $accepted = Send-Batch -Config $config -Token $token -Events $events
   Write-JsonFile $StatePath ([ordered]@{ lastSyncedAt = $end.UtcDateTime.ToString('o'); lastAccepted = $accepted; updatedAt = [datetimeoffset]::UtcNow.ToString('o') })
   Write-Host "Actividad sincronizada: $accepted bloques aceptados ($($events.Count) revisados)."
 }
