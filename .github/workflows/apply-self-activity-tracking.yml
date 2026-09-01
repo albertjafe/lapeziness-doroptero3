@@ -1,0 +1,38 @@
+name: validate self activity tracking
+on:
+  push:
+    branches: [feature/self-activity-tracking-20260901]
+permissions:
+  contents: write
+jobs:
+  validate:
+    if: ${{ !startsWith(github.event.head_commit.message, 'Integrate self activity tracking') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply integration patch
+        run: python scripts/apply_self_activity_tracking_patch.py
+      - name: Inspect diff
+        run: |
+          git diff --stat
+          git diff --check
+      - name: JavaScript syntax
+        run: |
+          node --check activity-self-tracker.js
+          node --check study-session-ux.js
+      - name: PowerShell syntax
+        shell: pwsh
+        run: |
+          [scriptblock]::Create((Get-Content 'activity-tracker/windows/install.ps1' -Raw)) | Out-Null
+          [scriptblock]::Create((Get-Content 'activity-tracker/windows/activity-sync.ps1' -Raw)) | Out-Null
+      - name: Unit tests
+        run: |
+          npm ci
+          npm run test:unit
+      - name: Commit validated integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add study-session-ux.js activity-tracker/windows/install.ps1 activity-tracker/windows/activity-sync.ps1 activity-tracker/README.md
+          git commit -m "Integrate self activity tracking"
+          git push origin HEAD:feature/self-activity-tracking-20260901
