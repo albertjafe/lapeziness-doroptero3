@@ -35,3 +35,4 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Activity dashboard e2e
         run: npx playwright test tests/e2e/activity-dashboard.spec.js --project=chromium
+      # Temporary workflow; removed before merge.
