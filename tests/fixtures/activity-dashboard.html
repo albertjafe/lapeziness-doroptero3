@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Activity dashboard fixture</title></head>
+<body>
+  <section id="view-session">
+    <section id="sessionWeeklyPlanner" hidden></section>
+    <section id="sessionResumenCard">Hoy</section>
+  </section>
+  <script>
+    window.getSB = function () {
+      return {
+        from: function () {
+          return {
+            select: function () { return this; },
+            eq: function () { return this; },
+            order: function () { return this; },
+            limit: async function () {
+              return {
+                error: null,
+                data: [
+                  { device_id:'pc', device_type:'windows', source:'activitywatch_window', started_at:'2026-09-01T08:00:00Z', ended_at:'2026-09-01T08:01:00Z', local_date:'2026-09-01', app:'code.exe', domain:null, category:'productive', label:null, is_afk:false },
+                  { device_id:'pc', device_type:'windows', source:'activitywatch_web', started_at:'2026-09-01T08:02:00Z', ended_at:'2026-09-01T08:03:00Z', local_date:'2026-09-01', app:'Navegador', domain:'youtube.com', category:'entertainment', label:null, is_afk:false }
+                ]
+              };
+            }
+          };
+        }
+      };
+    };
+  </script>
+  <script src="../../activity-core.js"></script>
+  <script src="../../activity-dashboard.js"></script>
+</body>
+</html>
