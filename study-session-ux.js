@@ -244,3 +244,30 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', buildRatingGuide, { once: true });
   else buildRatingGuide();
 }());
+
+// Actividad digital: se carga como módulo compañero para no aumentar todavía más app.js.
+(function loadPersonalActivityTracker() {
+  'use strict';
+  if (window.ActivityTracker || document.getElementById('activityDashboardScript')) return;
+
+  function loadDashboard() {
+    if (window.ActivityTracker || document.getElementById('activityDashboardScript')) return;
+    const script = document.createElement('script');
+    script.id = 'activityDashboardScript';
+    script.src = './activity-dashboard.js?v=1';
+    script.async = true;
+    document.head.appendChild(script);
+  }
+
+  if (window.ActivityCore) {
+    loadDashboard();
+    return;
+  }
+
+  const core = document.createElement('script');
+  core.id = 'activityCoreScript';
+  core.src = './activity-core.js?v=1';
+  core.async = true;
+  core.addEventListener('load', loadDashboard, { once: true });
+  document.head.appendChild(core);
+}());
