@@ -1,0 +1,37 @@
+name: validate activity tracker
+on:
+  push:
+    branches: [feature/free-activity-tracker-20260901]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: JavaScript syntax
+        run: |
+          node --check activity-core.js
+          node --check activity-dashboard.js
+          node --check study-session-ux.js
+          npm run check
+      - name: PowerShell syntax
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'activity-tracker/windows/activity-sync.ps1'), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors.Count) { $errors | Format-List | Out-String | Write-Error; exit 1 }
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'activity-tracker/windows/install.ps1'), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors.Count) { $errors | Format-List | Out-String | Write-Error; exit 1 }
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Browser
+        run: npx playwright install --with-deps chromium
+      - name: Activity dashboard e2e
+        run: npx playwright test tests/e2e/activity-dashboard.spec.js --project=chromium
