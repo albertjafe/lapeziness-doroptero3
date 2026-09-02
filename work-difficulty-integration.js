@@ -45,6 +45,22 @@ function patchReadiness(){
   patched.__technicalDifficultyModel=true;patched.__previous=previous;core.estimateReadiness=patched;return true;
 }
 function difficultyMetaHtml(result){const model=window.WorkDifficultyModel;if(!model||!result)return'';return `<span class="obra-difficulty-source">${model.sourceLabel(result.source)} · confianza ${model.confidenceLabel(result.confidence)}</span>`;}
+function syncDifficultyChip(meta,result,model){
+  if(!meta||!result||!model)return;
+  const all=Array.from(meta.querySelectorAll('.obra-premium-chip'));
+  let chip=all.find(el=>el.classList.contains('obra-difficulty-chip'))||all.find(el=>/^(Dificultad|Técnica)\b/i.test(String(el.textContent||'').trim()));
+  if(!chip){chip=document.createElement('span');chip.className='obra-premium-chip obra-difficulty-chip';meta.appendChild(chip);}
+  chip.classList.add('obra-difficulty-chip');
+  // Limpia tanto duplicados nuevos como los que ya pudieron acumularse antes
+  // de este fix. Solo el chip canónico conserva la clase/posición.
+  all.forEach(el=>{
+    if(el===chip)return;
+    const text=String(el.textContent||'').trim();
+    if(el.classList.contains('obra-difficulty-chip')||/^Técnica\s*·/i.test(text))el.remove();
+  });
+  const html=`Técnica · <strong>${result.score.toFixed(1)}/10</strong> · ${model.label(result.score)}${difficultyMetaHtml(result)}`;
+  if(chip.innerHTML!==html)chip.innerHTML=html;
+}
 function syncPremium(){
   const model=window.WorkDifficultyModel,overlay=document.getElementById('obraPremiumOverlay'),work=workById(activeWorkId);
   if(!model||!overlay||!work||!overlay.classList.contains('open'))return;
@@ -52,29 +68,31 @@ function syncPremium(){
   const input=overlay.querySelector('#obraPremiumDifficulty');
   if(input){
     input.step='0.1';input.min='1';input.max='10';
-    const label=input.closest('.obra-premium-field')?.querySelector('label');if(label)label.textContent='Dificultad técnica (1–10)';
-    if(String(work.dificultadFuente||'')!=='manual')input.value=String(result.score);
+    const label=input.closest('.obra-premium-field')?.querySelector('label');if(label&&label.textContent!=='Dificultad técnica (1–10)')label.textContent='Dificultad técnica (1–10)';
+    if(String(work.dificultadFuente||'')!=='manual'&&input.value!==String(result.score))input.value=String(result.score);
   }
   const sub=overlay.querySelector('.obra-premium-sub');
-  if(sub)Array.from(sub.querySelectorAll(':scope > span')).forEach(span=>{if(/^Dificultad\s/i.test(span.textContent||''))span.textContent=`Técnica ${result.score.toFixed(1)}/10`;});
-  const meta=overlay.querySelector('.obra-premium-meta');
-  if(meta){
-    let chip=Array.from(meta.querySelectorAll('.obra-premium-chip')).find(el=>/^Dificultad/i.test(el.textContent||''));
-    if(!chip){chip=document.createElement('span');chip.className='obra-premium-chip obra-difficulty-chip';meta.appendChild(chip);}
-    chip.classList.add('obra-difficulty-chip');chip.innerHTML=`Técnica · <strong>${result.score.toFixed(1)}/10</strong> · ${model.label(result.score)}${difficultyMetaHtml(result)}`;
-  }
+  if(sub)Array.from(sub.querySelectorAll(':scope > span')).forEach(span=>{
+    if(!/^(Dificultad|Técnica)\s/i.test(span.textContent||''))return;
+    const next=`Técnica ${result.score.toFixed(1)}/10`;
+    if(span.textContent!==next)span.textContent=next;
+  });
+  syncDifficultyChip(overlay.querySelector('.obra-premium-meta'),result,model);
   const rows=overlay.querySelectorAll('.obra-premium-movement');
   (work.movimientos||[]).forEach((movement,index)=>{
     const row=rows[index];if(!row)return;const mr=model.resolveMovement(work,movement,index);if(!mr)return;
     let pill=row.querySelector('.obra-premium-mov-difficulty');if(!pill){pill=document.createElement('div');pill.className='obra-premium-mov-difficulty';row.appendChild(pill);}
-    pill.textContent=`${mr.derived?'≈ ':''}${mr.score.toFixed(1)}`;pill.title=`Dificultad técnica · ${model.sourceLabel(mr.source)} · confianza ${model.confidenceLabel(mr.confidence)}`;
+    const text=`${mr.derived?'≈ ':''}${mr.score.toFixed(1)}`;
+    if(pill.textContent!==text)pill.textContent=text;
+    pill.title=`Dificultad técnica · ${model.sourceLabel(mr.source)} · confianza ${model.confidenceLabel(mr.confidence)}`;
   });
   let detail=overlay.querySelector('.obra-difficulty-detail');const body=overlay.querySelector('.obra-premium-body');
   if(body&&!input){
     if(!detail){detail=document.createElement('section');detail.className='obra-premium-section obra-difficulty-detail';body.appendChild(detail);}
     const profile=result.profile;
     const profileHtml=profile?`<div class="obra-difficulty-profile"><span>Digital <strong>${Number(profile.digital).toFixed(1)}</strong></span><span>Coordinación <strong>${Number(profile.coordination).toFixed(1)}</strong></span><span>Saltos/acordes <strong>${Number(profile.spatial).toFixed(1)}</strong></span><span>Densidad <strong>${Number(profile.density).toFixed(1)}</strong></span><span>Resistencia <strong>${Number(profile.endurance).toFixed(1)}</strong></span></div>`:'';
-    detail.innerHTML=`<div class="obra-premium-section-title">Dificultad técnica</div><div class="obra-difficulty-hero"><strong>${result.score.toFixed(1)}</strong><span>${model.label(result.score)}</span></div><p class="obra-difficulty-note">Escala 1–10 no lineal. Mide preparación técnico-motriz y cognitiva; no profundidad musical.</p>${profileHtml}<div class="obra-difficulty-foot">${model.sourceLabel(result.source)} · confianza ${model.confidenceLabel(result.confidence)}</div>`;
+    const html=`<div class="obra-premium-section-title">Dificultad técnica</div><div class="obra-difficulty-hero"><strong>${result.score.toFixed(1)}</strong><span>${model.label(result.score)}</span></div><p class="obra-difficulty-note">Escala 1–10 no lineal. Mide preparación técnico-motriz y cognitiva; no profundidad musical.</p>${profileHtml}<div class="obra-difficulty-foot">${model.sourceLabel(result.source)} · confianza ${model.confidenceLabel(result.confidence)}</div>`;
+    if(detail.innerHTML!==html)detail.innerHTML=html;
   }else if(detail&&input)detail.remove();
 }
 function observePremium(){const overlay=document.getElementById('obraPremiumOverlay');if(!overlay||observer)return;observer=new MutationObserver(()=>requestAnimationFrame(syncPremium));observer.observe(overlay,{childList:true,subtree:true});}
