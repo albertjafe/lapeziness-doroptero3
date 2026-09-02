@@ -28,6 +28,9 @@
     plant.correctedAt = now;
     plant.updatedAt = now;
     plant.minuteCorrection = { from: previous, to: minutes, at: now, source: 'hecho-modal' };
+    if (!Array.isArray(plant.minuteCorrections)) plant.minuteCorrections = [];
+    plant.minuteCorrections.push(plant.minuteCorrection);
+    plant.minuteCorrections = plant.minuteCorrections.slice(-10);
     return true;
   }
 
@@ -72,6 +75,55 @@
     };
     wrappedClose.__minuteCorrectionWrapped = true;
     window.closeHechoDatos = wrappedClose;
+  }
+
+  // El editor "Horas" ya permitía modificar sesiones antiguas, pero esas
+  // mutaciones no llevaban sello de versión. Ante dos dispositivos, una copia
+  // vieja podía volver a ganar. Marcamos la edición ANTES de que la función
+  // original llame a saveData(), de modo que minutos, obra/movimiento y hora
+  // viajen en la misma escritura con prioridad de sincronización.
+  const originalHistoricalSave = window.saveTimedStudyEdit;
+  if (typeof originalHistoricalSave === 'function' && !originalHistoricalSave.__minuteCorrectionWrapped) {
+    const wrappedHistoricalSave = function(source, index){
+      const data = database();
+      const list = source === 'forestPlants'
+        ? (data && Array.isArray(data.forestPlants) ? data.forestPlants : [])
+        : (data && Array.isArray(data.sessionPlants) ? data.sessionPlants : []);
+      const plant = list[index];
+      const form = document.getElementById('sesdet-edit-' + source + '-' + index);
+      const minutesInput = form && form.querySelector('[data-field="minutes"]');
+      const requested = Number(minutesInput && minutesInput.value);
+      if (plant && form) {
+        const previous = Number(plant.mins ?? plant.min ?? plant.minutes);
+        const finalMinutes = Number.isFinite(requested) && requested > 0
+          ? Math.max(1, Math.min(480, Math.round(requested)))
+          : previous;
+        const now = new Date().toISOString();
+        plant.updatedAt = now;
+        plant.historicalEdit = {
+          at: now,
+          source: 'sessions-by-hours',
+          from: {
+            mins: Number.isFinite(previous) ? previous : null,
+            startedAt: plant.startedAt || null,
+            obraId: plant.obraId || null,
+            movId: plant.movId || null
+          },
+          requestedMinutes: Number.isFinite(finalMinutes) ? finalMinutes : null
+        };
+        if (Number.isFinite(previous) && Number.isFinite(finalMinutes) && previous !== finalMinutes) {
+          if (plant.originalMins == null) plant.originalMins = previous;
+          plant.correctedAt = now;
+          plant.minuteCorrection = { from: previous, to: finalMinutes, at: now, source: 'sessions-by-hours' };
+          if (!Array.isArray(plant.minuteCorrections)) plant.minuteCorrections = [];
+          plant.minuteCorrections.push(plant.minuteCorrection);
+          plant.minuteCorrections = plant.minuteCorrections.slice(-10);
+        }
+      }
+      return originalHistoricalSave.apply(this, arguments);
+    };
+    wrappedHistoricalSave.__minuteCorrectionWrapped = true;
+    window.saveTimedStudyEdit = wrappedHistoricalSave;
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showMinutesField, {once:true});
