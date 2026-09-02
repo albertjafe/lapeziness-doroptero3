@@ -32,11 +32,13 @@ describe('Professor dashboard integration', () => {
     expect(migration).toContain('auth.uid() = user_id');
   });
 
-  it('loads the Professor engine before the dashboard and tracks its view label', () => {
+  it('loads engine, total normalizer and dashboard in order and tracks the Professor view', () => {
     expect(loader).toContain("profesor: 'Profesor'");
     expect(loader).toContain('professorCoreScript');
     expect(loader).toContain("core.src = './professor-core.js?v=1'");
-    expect(loader).toContain('core.onload');
+    expect(loader).toContain('professorReportNormalizerScript');
+    expect(loader).toContain("normalizer.src = './professor-report-normalizer.js?v=1'");
+    expect(loader).toContain('normalizer.onload = loadDashboard');
     expect(loader).toContain("dashboard.src = './professor-dashboard.js?v=1'");
   });
 });
