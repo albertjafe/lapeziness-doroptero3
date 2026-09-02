@@ -230,3 +230,13 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
   else boot();
 }());
+
+// El modal de fin de sesión necesita corregir el bloque permanente creado al parar el cronómetro.
+(function loadSessionMinutesCorrection(){
+  if (document.getElementById('sessionMinutesCorrectionScript')) return;
+  const script = document.createElement('script');
+  script.id = 'sessionMinutesCorrectionScript';
+  script.src = './session-minutes-correction.js?v=1';
+  script.async = false;
+  document.head.appendChild(script);
+}());
