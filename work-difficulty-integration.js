@@ -58,7 +58,8 @@ function syncDifficultyChip(meta,result,model){
     const text=String(el.textContent||'').trim();
     if(el.classList.contains('obra-difficulty-chip')||/^Técnica\s*·/i.test(text))el.remove();
   });
-  chip.innerHTML=`Técnica · <strong>${result.score.toFixed(1)}/10</strong> · ${model.label(result.score)}${difficultyMetaHtml(result)}`;
+  const html=`Técnica · <strong>${result.score.toFixed(1)}/10</strong> · ${model.label(result.score)}${difficultyMetaHtml(result)}`;
+  if(chip.innerHTML!==html)chip.innerHTML=html;
 }
 function syncPremium(){
   const model=window.WorkDifficultyModel,overlay=document.getElementById('obraPremiumOverlay'),work=workById(activeWorkId);
@@ -67,24 +68,31 @@ function syncPremium(){
   const input=overlay.querySelector('#obraPremiumDifficulty');
   if(input){
     input.step='0.1';input.min='1';input.max='10';
-    const label=input.closest('.obra-premium-field')?.querySelector('label');if(label)label.textContent='Dificultad técnica (1–10)';
-    if(String(work.dificultadFuente||'')!=='manual')input.value=String(result.score);
+    const label=input.closest('.obra-premium-field')?.querySelector('label');if(label&&label.textContent!=='Dificultad técnica (1–10)')label.textContent='Dificultad técnica (1–10)';
+    if(String(work.dificultadFuente||'')!=='manual'&&input.value!==String(result.score))input.value=String(result.score);
   }
   const sub=overlay.querySelector('.obra-premium-sub');
-  if(sub)Array.from(sub.querySelectorAll(':scope > span')).forEach(span=>{if(/^(Dificultad|Técnica)\s/i.test(span.textContent||''))span.textContent=`Técnica ${result.score.toFixed(1)}/10`;});
+  if(sub)Array.from(sub.querySelectorAll(':scope > span')).forEach(span=>{
+    if(!/^(Dificultad|Técnica)\s/i.test(span.textContent||''))return;
+    const next=`Técnica ${result.score.toFixed(1)}/10`;
+    if(span.textContent!==next)span.textContent=next;
+  });
   syncDifficultyChip(overlay.querySelector('.obra-premium-meta'),result,model);
   const rows=overlay.querySelectorAll('.obra-premium-movement');
   (work.movimientos||[]).forEach((movement,index)=>{
     const row=rows[index];if(!row)return;const mr=model.resolveMovement(work,movement,index);if(!mr)return;
     let pill=row.querySelector('.obra-premium-mov-difficulty');if(!pill){pill=document.createElement('div');pill.className='obra-premium-mov-difficulty';row.appendChild(pill);}
-    pill.textContent=`${mr.derived?'≈ ':''}${mr.score.toFixed(1)}`;pill.title=`Dificultad técnica · ${model.sourceLabel(mr.source)} · confianza ${model.confidenceLabel(mr.confidence)}`;
+    const text=`${mr.derived?'≈ ':''}${mr.score.toFixed(1)}`;
+    if(pill.textContent!==text)pill.textContent=text;
+    pill.title=`Dificultad técnica · ${model.sourceLabel(mr.source)} · confianza ${model.confidenceLabel(mr.confidence)}`;
   });
   let detail=overlay.querySelector('.obra-difficulty-detail');const body=overlay.querySelector('.obra-premium-body');
   if(body&&!input){
     if(!detail){detail=document.createElement('section');detail.className='obra-premium-section obra-difficulty-detail';body.appendChild(detail);}
     const profile=result.profile;
     const profileHtml=profile?`<div class="obra-difficulty-profile"><span>Digital <strong>${Number(profile.digital).toFixed(1)}</strong></span><span>Coordinación <strong>${Number(profile.coordination).toFixed(1)}</strong></span><span>Saltos/acordes <strong>${Number(profile.spatial).toFixed(1)}</strong></span><span>Densidad <strong>${Number(profile.density).toFixed(1)}</strong></span><span>Resistencia <strong>${Number(profile.endurance).toFixed(1)}</strong></span></div>`:'';
-    detail.innerHTML=`<div class="obra-premium-section-title">Dificultad técnica</div><div class="obra-difficulty-hero"><strong>${result.score.toFixed(1)}</strong><span>${model.label(result.score)}</span></div><p class="obra-difficulty-note">Escala 1–10 no lineal. Mide preparación técnico-motriz y cognitiva; no profundidad musical.</p>${profileHtml}<div class="obra-difficulty-foot">${model.sourceLabel(result.source)} · confianza ${model.confidenceLabel(result.confidence)}</div>`;
+    const html=`<div class="obra-premium-section-title">Dificultad técnica</div><div class="obra-difficulty-hero"><strong>${result.score.toFixed(1)}</strong><span>${model.label(result.score)}</span></div><p class="obra-difficulty-note">Escala 1–10 no lineal. Mide preparación técnico-motriz y cognitiva; no profundidad musical.</p>${profileHtml}<div class="obra-difficulty-foot">${model.sourceLabel(result.source)} · confianza ${model.confidenceLabel(result.confidence)}</div>`;
+    if(detail.innerHTML!==html)detail.innerHTML=html;
   }else if(detail&&input)detail.remove();
 }
 function observePremium(){const overlay=document.getElementById('obraPremiumOverlay');if(!overlay||observer)return;observer=new MutationObserver(()=>requestAnimationFrame(syncPremium));observer.observe(overlay,{childList:true,subtree:true});}
