@@ -19,6 +19,7 @@
     obras: 'Obras',
     calendario: 'Calendario',
     casa: 'Casa',
+    profesor: 'Profesor',
     pulse: 'Pulso',
     salas: 'Salas',
   };
@@ -239,4 +240,23 @@
   script.src = './session-minutes-correction.js?v=1';
   script.async = false;
   document.head.appendChild(script);
+}());
+
+// Profesor: motor primero, interfaz después. Se carga desde este companion para
+// no tocar la estructura grande de index.html ni forzar recargas del cronómetro.
+(function loadProfessor(){
+  if (document.getElementById('professorCoreScript')) return;
+  const core = document.createElement('script');
+  core.id = 'professorCoreScript';
+  core.src = './professor-core.js?v=1';
+  core.async = false;
+  core.onload = function(){
+    if (document.getElementById('professorDashboardScript')) return;
+    const dashboard = document.createElement('script');
+    dashboard.id = 'professorDashboardScript';
+    dashboard.src = './professor-dashboard.js?v=1';
+    dashboard.async = false;
+    document.head.appendChild(dashboard);
+  };
+  document.head.appendChild(core);
 }());
