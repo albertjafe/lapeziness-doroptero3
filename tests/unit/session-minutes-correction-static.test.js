@@ -18,6 +18,18 @@ describe('session minute correction bridge', () => {
     expect(source).toContain("source: 'hecho-modal'");
   });
 
+  it('keeps a bounded minute correction history', () => {
+    expect(source).toContain('plant.minuteCorrections.push(plant.minuteCorrection)');
+    expect(source).toContain('plant.minuteCorrections.slice(-10)');
+  });
+
+  it('makes edits from the Sessions by hours editor authoritative', () => {
+    expect(source).toContain('window.saveTimedStudyEdit');
+    expect(source).toContain("source: 'sessions-by-hours'");
+    expect(source).toContain('plant.updatedAt = now');
+    expect(source).toContain('plant.historicalEdit');
+  });
+
   it('minutes are visible without opening advanced details', () => {
     expect(source).toContain("field.classList.remove('hecho-advanced-only')");
   });
