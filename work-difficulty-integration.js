@@ -45,6 +45,21 @@ function patchReadiness(){
   patched.__technicalDifficultyModel=true;patched.__previous=previous;core.estimateReadiness=patched;return true;
 }
 function difficultyMetaHtml(result){const model=window.WorkDifficultyModel;if(!model||!result)return'';return `<span class="obra-difficulty-source">${model.sourceLabel(result.source)} · confianza ${model.confidenceLabel(result.confidence)}</span>`;}
+function syncDifficultyChip(meta,result,model){
+  if(!meta||!result||!model)return;
+  const all=Array.from(meta.querySelectorAll('.obra-premium-chip'));
+  let chip=all.find(el=>el.classList.contains('obra-difficulty-chip'))||all.find(el=>/^(Dificultad|Técnica)\b/i.test(String(el.textContent||'').trim()));
+  if(!chip){chip=document.createElement('span');chip.className='obra-premium-chip obra-difficulty-chip';meta.appendChild(chip);}
+  chip.classList.add('obra-difficulty-chip');
+  // Limpia tanto duplicados nuevos como los que ya pudieron acumularse antes
+  // de este fix. Solo el chip canónico conserva la clase/posición.
+  all.forEach(el=>{
+    if(el===chip)return;
+    const text=String(el.textContent||'').trim();
+    if(el.classList.contains('obra-difficulty-chip')||/^Técnica\s*·/i.test(text))el.remove();
+  });
+  chip.innerHTML=`Técnica · <strong>${result.score.toFixed(1)}/10</strong> · ${model.label(result.score)}${difficultyMetaHtml(result)}`;
+}
 function syncPremium(){
   const model=window.WorkDifficultyModel,overlay=document.getElementById('obraPremiumOverlay'),work=workById(activeWorkId);
   if(!model||!overlay||!work||!overlay.classList.contains('open'))return;
@@ -56,13 +71,8 @@ function syncPremium(){
     if(String(work.dificultadFuente||'')!=='manual')input.value=String(result.score);
   }
   const sub=overlay.querySelector('.obra-premium-sub');
-  if(sub)Array.from(sub.querySelectorAll(':scope > span')).forEach(span=>{if(/^Dificultad\s/i.test(span.textContent||''))span.textContent=`Técnica ${result.score.toFixed(1)}/10`;});
-  const meta=overlay.querySelector('.obra-premium-meta');
-  if(meta){
-    let chip=Array.from(meta.querySelectorAll('.obra-premium-chip')).find(el=>/^Dificultad/i.test(el.textContent||''));
-    if(!chip){chip=document.createElement('span');chip.className='obra-premium-chip obra-difficulty-chip';meta.appendChild(chip);}
-    chip.classList.add('obra-difficulty-chip');chip.innerHTML=`Técnica · <strong>${result.score.toFixed(1)}/10</strong> · ${model.label(result.score)}${difficultyMetaHtml(result)}`;
-  }
+  if(sub)Array.from(sub.querySelectorAll(':scope > span')).forEach(span=>{if(/^(Dificultad|Técnica)\s/i.test(span.textContent||''))span.textContent=`Técnica ${result.score.toFixed(1)}/10`;});
+  syncDifficultyChip(overlay.querySelector('.obra-premium-meta'),result,model);
   const rows=overlay.querySelectorAll('.obra-premium-movement');
   (work.movimientos||[]).forEach((movement,index)=>{
     const row=rows[index];if(!row)return;const mr=model.resolveMovement(work,movement,index);if(!mr)return;
