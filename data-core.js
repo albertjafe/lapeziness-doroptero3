@@ -269,12 +269,148 @@
       .slice(-5000);
   }
 
+  // Las obras no pueden tratarse como un único snapshot opaco. Un dispositivo
+  // puede tener una copia nueva del día pero una estructura vieja de una obra.
+  // Fusionamos únicamente la estructura que contiene evidencia de estudio para
+  // evitar que una reconciliación local borre movimientos, pases o solidez.
+  function historyDate(item) {
+    return String(item && (item.date || item.at || item.updatedAt || item.createdAt) || '');
+  }
+
+  function historyStableKey(item) {
+    if (!item || typeof item !== 'object') return '';
+    if (item.id) return String(item.id);
+    return [
+      historyDate(item),
+      item.val ?? item.inputVal ?? item.score ?? item.solidezPct ?? item.compas ?? '',
+      item.context || item.tipo || item.type || item.key || '',
+      item.label || item.note || item.nota || ''
+    ].join('|');
+  }
+
+  function mergeWorkHistory(a, b, limit) {
+    const out = [], seen = new Set();
+    (a || []).concat(b || []).forEach(item => {
+      const key = historyStableKey(item);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      out.push(item);
+    });
+    out.sort((x, y) => historyDate(x).localeCompare(historyDate(y)));
+    return limit ? out.slice(-limit) : out;
+  }
+
+  function movementActivityAt(movement) {
+    if (!movement) return '';
+    const dates = [movement.updatedAt, movement.correctedAt, movement.lastPase];
+    ['solHistory', 'paseHistory', 'zoneHistory', 'compasHistory'].forEach(field => {
+      (movement[field] || []).forEach(item => dates.push(historyDate(item)));
+    });
+    return dates.map(value => String(value || '')).sort().pop() || '';
+  }
+
+  function workActivityAt(work) {
+    if (!work) return '';
+    const dates = [work.updatedAt, work.correctedAt, work.lastPase];
+    ['solHistory', 'paseHistory', 'zoneHistory', 'compasHistory'].forEach(field => {
+      (work[field] || []).forEach(item => dates.push(historyDate(item)));
+    });
+    (work.movimientos || []).forEach(movement => dates.push(movementActivityAt(movement)));
+    return dates.map(value => String(value || '')).sort().pop() || '';
+  }
+
+  function movementHasStudyEvidence(movement, referencedMovements) {
+    if (!movement || !movement.id) return false;
+    if (referencedMovements && referencedMovements.has(String(movement.id))) return true;
+    if (movement.lastPase) return true;
+    return ['solHistory', 'paseHistory', 'zoneHistory', 'compasHistory']
+      .some(field => Array.isArray(movement[field]) && movement[field].length > 0);
+  }
+
+  function mergeMovement(baseMovement, otherMovement) {
+    if (!baseMovement) return otherMovement || null;
+    if (!otherMovement) return baseMovement;
+    const baseAt = movementActivityAt(baseMovement);
+    const otherAt = movementActivityAt(otherMovement);
+    const newer = otherAt > baseAt ? otherMovement : baseMovement;
+    const older = newer === baseMovement ? otherMovement : baseMovement;
+    const merged = Object.assign({}, older, newer);
+    merged.solHistory = mergeWorkHistory(baseMovement.solHistory, otherMovement.solHistory, 500);
+    merged.paseHistory = mergeWorkHistory(baseMovement.paseHistory, otherMovement.paseHistory, 500);
+    merged.zoneHistory = mergeWorkHistory(baseMovement.zoneHistory, otherMovement.zoneHistory, 1000);
+    merged.compasHistory = mergeWorkHistory(baseMovement.compasHistory, otherMovement.compasHistory, 1000);
+    return merged;
+  }
+
+  function mergeMovements(baseMovements, otherMovements, referencedMovements) {
+    const byId = new Map();
+    (baseMovements || []).forEach(movement => {
+      if (!movement || !movement.id) return;
+      byId.set(String(movement.id), movement);
+    });
+    (otherMovements || []).forEach(movement => {
+      if (!movement || !movement.id) return;
+      const id = String(movement.id);
+      const current = byId.get(id);
+      if (current) {
+        byId.set(id, mergeMovement(current, movement));
+      } else if (movementHasStudyEvidence(movement, referencedMovements)) {
+        byId.set(id, movement);
+      }
+    });
+    return Array.from(byId.values());
+  }
+
+  function mergeWork(baseWork, otherWork, referencedMovements) {
+    if (!baseWork) return otherWork || null;
+    if (!otherWork) return baseWork;
+    const baseAt = workActivityAt(baseWork);
+    const otherAt = workActivityAt(otherWork);
+    const newer = otherAt > baseAt ? otherWork : baseWork;
+    const older = newer === baseWork ? otherWork : baseWork;
+    const merged = Object.assign({}, older, newer);
+    merged.movimientos = mergeMovements(baseWork.movimientos, otherWork.movimientos, referencedMovements);
+    merged.solHistory = mergeWorkHistory(baseWork.solHistory, otherWork.solHistory, 500);
+    merged.paseHistory = mergeWorkHistory(baseWork.paseHistory, otherWork.paseHistory, 500);
+    merged.zoneHistory = mergeWorkHistory(baseWork.zoneHistory, otherWork.zoneHistory, 1000);
+    merged.compasHistory = mergeWorkHistory(baseWork.compasHistory, otherWork.compasHistory, 1000);
+    return merged;
+  }
+
+  function mergeWorks(baseWorks, otherWorks, sessionPlants) {
+    const referencedWorks = new Set();
+    const referencedMovements = new Set();
+    (sessionPlants || []).forEach(plant => {
+      if (!plant || plant.failed) return;
+      if (plant.obraId) referencedWorks.add(String(plant.obraId));
+      if (plant.movId) referencedMovements.add(String(plant.movId));
+    });
+
+    const byId = new Map();
+    (baseWorks || []).forEach(work => {
+      if (!work || !work.id) return;
+      byId.set(String(work.id), work);
+    });
+    (otherWorks || []).forEach(work => {
+      if (!work || !work.id) return;
+      const id = String(work.id);
+      const current = byId.get(id);
+      if (current) {
+        byId.set(id, mergeWork(current, work, referencedMovements));
+      } else if (referencedWorks.has(id)) {
+        byId.set(id, work);
+      }
+    });
+    return Array.from(byId.values());
+  }
+
   function mergeStudyHistory(base, other) {
     if (!base) return other;
     if (!other) return base;
     const merged = Object.assign({}, base);
     merged.sessionPlants = mergePlants(base.sessionPlants, other.sessionPlants);
     merged.forestPlants = mergePlants(base.forestPlants, other.forestPlants);
+    merged.obras = mergeWorks(base.obras, other.obras, merged.sessionPlants);
     merged.sesiones = mergeSessions(base.sesiones, other.sesiones);
     merged.estadoEventos = mergeEvents(base.estadoEventos, other.estadoEventos, ['at', 'value', 'label'], 2000);
     merged.impulsoEventos = mergeEvents(base.impulsoEventos, other.impulsoEventos, ['at', 'value', 'label'], 2000);
@@ -315,6 +451,12 @@
     mergeHabitChallenge,
     mergeHabitChallenges,
     mergeHistoricalRepertoire,
+    mergeWorks,
+    mergeWork,
+    mergeMovements,
+    mergeMovement,
+    movementActivityAt,
+    workActivityAt,
     sessionRealMinutes
   };
 });
