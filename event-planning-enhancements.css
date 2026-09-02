@@ -1,0 +1,18 @@
+/* Planning polish for the event modal and standby calendar items. */
+#modalAddEvento .evento-modal{max-width:760px}
+.evento-planning-meta{margin:14px 0 18px;padding:14px;border:1px solid var(--border);border-radius:18px;background:color-mix(in srgb,var(--bg2) 78%,transparent)}
+.evento-planning-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(180px,.8fr);gap:14px;align-items:start}
+.evento-status-selector{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.evento-status-selector button{min-width:0;text-align:left;padding:10px 11px;border:1px solid var(--border2);border-radius:13px;background:var(--bg);color:var(--text2);cursor:pointer;transition:.18s ease}
+.evento-status-selector button strong,.evento-status-selector button small{display:block}.evento-status-selector button strong{font:600 10px 'JetBrains Mono',monospace;letter-spacing:.03em}.evento-status-selector button small{margin-top:4px;font-size:9px;line-height:1.25;color:var(--text3)}
+.evento-status-selector button.active{border-color:color-mix(in srgb,var(--accent) 60%,var(--border));box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 10%,transparent);color:var(--accent)}
+.evento-planning-role span{display:block}.evento-planning-role .modal-input{margin:0}
+.evento-source-card{margin-top:12px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--accent) 7%,var(--bg));border:1px dashed color-mix(in srgb,var(--accent) 28%,var(--border));font-size:10px;line-height:1.55;color:var(--text2)}
+.evento-planning-notes{display:block;margin-top:12px}.evento-planning-notes textarea{resize:vertical;min-height:74px;margin:6px 0 0}
+.evento-movement-targets{margin:10px 0 18px;padding:14px;border-radius:18px;border:1px solid var(--border);background:var(--bg2)}
+.evento-movement-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.evento-movement-head p{margin:3px 0 0;font-size:9px;line-height:1.45;color:var(--text3)}#eventoMovementCount{font:500 9px 'JetBrains Mono',monospace;color:var(--text3);white-space:nowrap}
+.evento-movement-empty{padding:12px 0 2px;font-size:10px;line-height:1.45;color:var(--text3)}.evento-movement-group{padding-top:12px}.evento-movement-group+.evento-movement-group{margin-top:10px;border-top:1px solid var(--border)}.evento-movement-group>strong{display:block;margin-bottom:7px;font-size:11px;color:var(--text)}
+.evento-movement-chips{display:flex;flex-wrap:wrap;gap:7px}.evento-movement-chip{display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--border2);border-radius:999px;background:var(--bg);color:var(--text2);cursor:pointer}.evento-movement-chip span{font-size:10px}.evento-movement-chip i{font:400 8px 'JetBrains Mono',monospace;color:var(--text3);font-style:normal}.evento-movement-chip.active{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--bg));color:var(--accent)}.evento-movement-chip.active i{color:var(--accent)}
+.evento-tipo-btn.examen{--evento-type-color:#7257c9}.evento-tipo-btn.deadline{--evento-type-color:#c35b45}
+[data-event-id][data-planning-status="standby"]{opacity:.76;border-style:dashed!important}[data-event-id][data-planning-status="standby"]::after{content:' · standby';font-size:.8em;opacity:.72}[data-event-id][data-event-type-enhanced="examen"]{--event-color:#7257c9!important}[data-event-id][data-event-type-enhanced="deadline"]{--event-color:#c35b45!important}
+@media(max-width:700px){.evento-planning-grid{grid-template-columns:1fr}.evento-status-selector{grid-template-columns:1fr 1fr 1fr}.evento-status-selector button{padding:9px 8px}.evento-status-selector button small{display:none}}
