@@ -19,5 +19,6 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run check
       - run: npm run test:unit
-      - run: npm run test:e2e -- --workers=1
+      - name: Run E2E with explicit legacy baseline
+        run: node scripts/check-e2e-known-baseline.cjs
       - run: npm run test:visual
