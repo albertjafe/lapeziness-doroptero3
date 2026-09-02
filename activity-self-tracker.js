@@ -169,8 +169,6 @@
         label: item.label,
         is_afk: Boolean(item.is_afk),
       }));
-      // Si el servidor guardó el bloque pero se perdió la respuesta, el reintento
-      // debe ser inocuo. La clave natural impide duplicar actividad.
       const result = await sb.from('activity_events').upsert(batch, {
         onConflict: 'user_id,device_id,source,external_id',
         ignoreDuplicates: true,
@@ -232,7 +230,6 @@
   else boot();
 }());
 
-// El modal de fin de sesión necesita corregir el bloque permanente creado al parar el cronómetro.
 (function loadSessionMinutesCorrection(){
   if (document.getElementById('sessionMinutesCorrectionScript')) return;
   const script = document.createElement('script');
@@ -242,8 +239,7 @@
   document.head.appendChild(script);
 }());
 
-// Profesor: motor primero, interfaz después. Se carga desde este companion para
-// no tocar la estructura grande de index.html ni forzar recargas del cronómetro.
+// Profesor: motor → normalización de totales → interfaz.
 (function loadProfessor(){
   if (document.getElementById('professorCoreScript')) return;
   const core = document.createElement('script');
@@ -251,12 +247,21 @@
   core.src = './professor-core.js?v=1';
   core.async = false;
   core.onload = function(){
-    if (document.getElementById('professorDashboardScript')) return;
-    const dashboard = document.createElement('script');
-    dashboard.id = 'professorDashboardScript';
-    dashboard.src = './professor-dashboard.js?v=1';
-    dashboard.async = false;
-    document.head.appendChild(dashboard);
+    const loadDashboard = function(){
+      if (document.getElementById('professorDashboardScript')) return;
+      const dashboard = document.createElement('script');
+      dashboard.id = 'professorDashboardScript';
+      dashboard.src = './professor-dashboard.js?v=1';
+      dashboard.async = false;
+      document.head.appendChild(dashboard);
+    };
+    if (document.getElementById('professorReportNormalizerScript')) { loadDashboard(); return; }
+    const normalizer = document.createElement('script');
+    normalizer.id = 'professorReportNormalizerScript';
+    normalizer.src = './professor-report-normalizer.js?v=1';
+    normalizer.async = false;
+    normalizer.onload = loadDashboard;
+    document.head.appendChild(normalizer);
   };
   document.head.appendChild(core);
 }());
