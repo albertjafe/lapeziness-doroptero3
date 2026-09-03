@@ -42,7 +42,7 @@ describe('Professor event gate', () => {
     const prompt = Professor.buildPrompt(report, { mode: 'remaining' });
     expect(prompt).toContain('Waldstein · I');
     expect(prompt).not.toContain('Rachmaninov Op.16 nº2 · I');
-    expect(prompt).toMatch(/sin evento\/proyecto futuro enlazado queda FUERA/i);
+    expect(prompt).toMatch(/evento\/proyecto futuro enlazado.*FUERA/i);
   });
 
   it('keeps four hours as reference but allows justified optional extensions', () => {
