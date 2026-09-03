@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v331';
+const CACHE = 'estudio-v332';
 const ASSETS = [
   './index.html',
   './styles.css?v=281',
@@ -26,6 +26,7 @@ const ASSETS = [
   './crono-save-resilience.js?v=1',
   './task-sync-bootstrap.js?v=1',
   './task-sync-resilience.js?v=1',
+  './task-recovery-ui.js?v=1',
   './update-safety.js?v=1',
   './crono-running-premium.js?v=1',
   './event-planning.js?v=1',
@@ -105,7 +106,11 @@ function stopwatchMilestoneMinutes(payload) {
 
 self.addEventListener('push', event => {
   let payload = {};
-  try { payload = event.data ? event.data.json() : {}; } catch (error) {}
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (error) {
+    payload = {};
+  }
   const milestoneMinutes = stopwatchMilestoneMinutes(payload);
   if (milestoneMinutes != null && milestoneMinutes > 105) {
     event.waitUntil(Promise.resolve());
