@@ -1,0 +1,118 @@
+/* Planning enhancements v4: project section, ensemble guide and iOS keyboard dictation. */
+
+.solidity-guide-v3[data-ensemble-semantics="v4"] .solidity-guide-contexts {
+  grid-template-columns: repeat(2,minmax(0,1fr));
+}
+.solidity-guide-v3[data-ensemble-semantics="v4"] .solidity-guide-contexts section {
+  min-height: 100%;
+}
+.solidity-guide-v3[data-ensemble-semantics="v4"] .solidity-guide-contexts em {
+  color: var(--accent);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.personal-projects-section {
+  margin: 18px 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--bg2);
+}
+.personal-projects-section[hidden] { display:none !important; }
+.personal-projects-section > header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:14px 16px;
+  border-bottom:1px solid var(--border2);
+}
+.personal-projects-section > header span {
+  display:block;
+  color:var(--accent);
+  font-size:8px;
+  font-weight:750;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+.personal-projects-section > header strong {
+  display:block;
+  margin-top:2px;
+  font-family:'Cormorant Garamond',serif;
+  font-size:21px;
+  font-weight:600;
+}
+.personal-projects-section > header small {
+  display:grid;
+  place-items:center;
+  width:28px;
+  height:28px;
+  border-radius:999px;
+  background:var(--bg3);
+  color:var(--text2);
+  font-size:10px;
+}
+.personal-projects-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.personal-project-card {
+  appearance:none;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  min-width:0;
+  padding:14px 16px;
+  border:0;
+  border-bottom:1px solid var(--border2);
+  background:transparent;
+  color:var(--text);
+  text-align:left;
+  font:inherit;
+  cursor:pointer;
+}
+.personal-project-card:nth-child(odd) { border-right:1px solid var(--border2); }
+.personal-project-card:hover { background:var(--bg3); }
+.personal-project-card b {
+  display:block;
+  font-size:12px;
+  line-height:1.3;
+}
+.personal-project-card span {
+  display:block;
+  margin-top:4px;
+  color:var(--accent);
+  font-size:10px;
+  line-height:1.35;
+}
+.personal-project-card em {
+  flex:0 0 auto;
+  color:var(--text3);
+  font-size:8px;
+  font-style:normal;
+  line-height:1.4;
+  text-transform:capitalize;
+}
+#eventosList .evento-card.project-original-hidden { display:none !important; }
+
+.ios-keyboard-dictation-hint {
+  margin:5px 2px 8px;
+  color:var(--text3);
+  font-size:9px;
+  line-height:1.35;
+}
+html.planning-ios-keyboard-dictation [id^="cronoTaskVoiceBtn"],
+html.planning-ios-keyboard-dictation #cronoTomorrowVoiceBtn,
+html.planning-ios-keyboard-dictation .crono-task-voice-btn,
+html.planning-ios-keyboard-dictation .crono-tomorrow-voice-btn {
+  display:none !important;
+}
+
+@media (max-width:720px) {
+  .solidity-guide-v3[data-ensemble-semantics="v4"] .solidity-guide-contexts { grid-template-columns:1fr; }
+  .personal-projects-grid { grid-template-columns:1fr; }
+  .personal-project-card:nth-child(odd) { border-right:0; }
+  .personal-project-card { padding:13px 14px; }
+}
