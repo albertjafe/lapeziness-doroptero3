@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v330';
+const CACHE = 'estudio-v331';
 const ASSETS = [
   './index.html',
   './styles.css?v=281',
@@ -24,6 +24,8 @@ const ASSETS = [
   './piano-rooms-core.js?v=1',
   './local-save-resilience.js?v=1',
   './crono-save-resilience.js?v=1',
+  './task-sync-bootstrap.js?v=1',
+  './task-sync-resilience.js?v=1',
   './update-safety.js?v=1',
   './crono-running-premium.js?v=1',
   './event-planning.js?v=1',
@@ -64,7 +66,7 @@ const ASSETS = [
   './timer-core.js?v=264',
   './data-core.js?v=231',
   './historical-repertoire.js?v=1',
-  './sync-core.js?v=210',
+  './sync-core.js?v=209',
   './push-client.js?v=264',
   './manifest.json',
   './icon.svg',
