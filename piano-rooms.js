@@ -60,7 +60,7 @@
       load('eventPlanningUiV2Script','./event-planning-ui-v2.js?v=1',function(){
         load('planningEnhancementsV3Script','./planning-enhancements-v3.js?v=1',function(){
           load('planningEnhancementsV3FixScript','./planning-enhancements-v3-fix.js?v=1',function(){
-            load('planningEnhancementsV4Script','./planning-enhancements-v4.js?v=1');
+            load('planningEnhancementsV4Script','./planning-enhancements-v4.js?v=2');
           });
         });
       });
