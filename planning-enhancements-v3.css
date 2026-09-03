@@ -1,0 +1,183 @@
+/* Planning enhancements v3: Proyecto + guía completa de solidez + web oficial. */
+
+.evento-tipo-btn.proyecto { border-style: solid; }
+
+.event-project-timing {
+  margin: 12px 0 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--bg2) 94%, var(--accent) 6%);
+}
+.event-project-timing[hidden] { display: none !important; }
+.event-project-kicker {
+  margin-bottom: 9px;
+  color: var(--text3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.event-project-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--bg3);
+  margin-bottom: 11px;
+}
+.event-project-mode button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.event-project-mode button[aria-pressed="true"] {
+  background: var(--bg2);
+  color: var(--accent);
+  box-shadow: 0 1px 5px rgba(0,0,0,.08);
+}
+.event-project-month-field[hidden] { display: none !important; }
+.event-project-help {
+  margin: 8px 2px 0;
+  color: var(--text3);
+  font-size: 11px;
+  line-height: 1.45;
+}
+#modalAddEvento .evento-date-range.project-date-hidden { display: none !important; }
+
+.competition-official-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 12px;
+}
+.competition-official-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: 999px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg2));
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.competition-official-link:active { transform: translateY(1px); }
+
+.solidity-guide-hecho-wrap { margin-top: 16px; }
+.solidity-guide-v3 {
+  margin-top: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--bg2);
+}
+.solidity-guide-v3 > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 14px;
+  color: var(--text);
+  cursor: pointer;
+  list-style: none;
+  font-size: 12px;
+  font-weight: 750;
+}
+.solidity-guide-v3 > summary::-webkit-details-marker { display: none; }
+.solidity-guide-v3 > summary span {
+  color: var(--accent);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+}
+.solidity-guide-v3[open] > summary { border-bottom: 1px solid var(--border); }
+.solidity-guide-body { padding: 14px; }
+.solidity-guide-principle,
+.solidity-guide-foot {
+  margin: 0;
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.solidity-guide-principle { margin-bottom: 13px; }
+.solidity-guide-foot {
+  margin-top: 14px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: var(--bg3);
+}
+.solidity-guide-bands {
+  display: grid;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  overflow: hidden;
+}
+.solidity-guide-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0,1fr);
+  gap: 10px;
+  padding: 10px 11px;
+  border-bottom: 1px solid var(--border);
+}
+.solidity-guide-row:last-child { border-bottom: 0; }
+.solidity-guide-row > strong {
+  color: var(--accent);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.solidity-guide-row > span {
+  color: var(--text2);
+  font-size: 11px;
+  line-height: 1.48;
+}
+.solidity-guide-row b {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text);
+  font-size: 11.5px;
+}
+.solidity-guide-contexts {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 9px;
+  margin-top: 12px;
+}
+.solidity-guide-contexts section {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--bg3);
+}
+.solidity-guide-contexts h4 {
+  margin: 0 0 7px;
+  color: var(--text);
+  font-size: 12px;
+}
+.solidity-guide-contexts p {
+  margin: 0 0 8px;
+  color: var(--text2);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.solidity-guide-contexts p:last-child { margin-bottom: 0; }
+
+@media (max-width: 720px) {
+  .solidity-guide-contexts { grid-template-columns: 1fr; }
+  .solidity-guide-row { grid-template-columns: 54px minmax(0,1fr); }
+  .competition-official-link { width: 100%; }
+}
+
+.pase-liquid-meter,
+.pase-liquid-meter .pase-liquid-input { touch-action: none; }
