@@ -27,11 +27,13 @@
   loadStyle('obrasRedesignPolishStyles','./obras-redesign-polish.css?v=2');
   loadStyle('obrasUnifiedLibraryStyles','./obras-unified-library.css?v=1');
   loadStyle('workDifficultyStyles','./work-difficulty.css?v=1');
+  loadStyle('eventPlanningStyles','./event-planning.css?v=1');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=1');
   load('localSaveResilienceScript','./local-save-resilience.js?v=1');
   load('cronoSaveResilienceScript','./crono-save-resilience.js?v=1');
   load('updateSafetyScript','./update-safety.js?v=1');
   load('cronoRunningPremiumScript','./crono-running-premium.js?v=1');
+  load('eventPlanningScript','./event-planning.js?v=1');
   load('workDifficultyModelScript','./work-difficulty-model.js?v=1',function(){
     load('workDifficultyStoredPriorityScript','./work-difficulty-stored-priority.js?v=1');
   });
