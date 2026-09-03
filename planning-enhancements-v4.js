@@ -41,8 +41,7 @@
   }
 
   function stripPriorityKeyword(text){
-    let value = String(text || '');
-    value = value
+    return String(text || '')
       .replace(/\burgent[ií]sim[oa]\b/gi, ' ')
       .replace(/\burgente\b/gi, ' ')
       .replace(/\bnormal\b/gi, ' ')
@@ -51,7 +50,6 @@
       .replace(/[,;:]\s*$/g, '')
       .replace(/\s{2,}/g, ' ')
       .trim();
-    return value;
   }
 
   function parseTaskText(text){
@@ -118,20 +116,16 @@
   function installInlinePriorityCapture(){
     if(window.__planningV4InlinePriority) return;
     window.__planningV4InlinePriority = true;
-
     document.addEventListener('click', event => {
       const button = event.target && event.target.closest ? event.target.closest('.crono-task-add-btn') : null;
       if(!button) return;
-      const pending = prepareInlineTask(inputNearButton(button));
-      finishInlineTask(pending);
+      finishInlineTask(prepareInlineTask(inputNearButton(button)));
     }, true);
-
     document.addEventListener('keydown', event => {
       if(event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
       const input = event.target && event.target.matches && event.target.matches(TASK_INPUT_SELECTOR) ? event.target : null;
       if(!input) return;
-      const pending = prepareInlineTask(input);
-      finishInlineTask(pending);
+      finishInlineTask(prepareInlineTask(input));
     }, true);
   }
 
@@ -171,7 +165,6 @@
     if(!isIOS() || window.__planningV4SpeechSuppressed) return;
     window.__planningV4SpeechSuppressed = true;
     document.documentElement.classList.add('planning-ios-keyboard-dictation');
-
     ['SpeechRecognition','webkitSpeechRecognition'].forEach(name => {
       const Native = window[name];
       if(typeof Native !== 'function' || !Native.prototype || Native.prototype.__planningV4Suppressed) return;
@@ -194,11 +187,15 @@
   function installIosDictationHints(){
     if(!isIOS()) return;
     const tomorrowHint = document.querySelector('#modalCronoNote .crono-note-hint');
-    if(tomorrowHint) tomorrowHint.textContent = 'En iPhone/iPad, dicta con el micrófono del teclado. Así la web no necesita pedir permiso de micrófono.';
-
+    if(tomorrowHint && tomorrowHint.dataset.keyboardDictation !== 'v4'){
+      tomorrowHint.textContent = 'En iPhone/iPad, dicta con el micrófono del teclado. Así la web no necesita pedir permiso de micrófono.';
+      tomorrowHint.dataset.keyboardDictation = 'v4';
+    }
     document.querySelectorAll(TASK_INPUT_SELECTOR).forEach(input => {
+      if(input.dataset.keyboardDictationHint === 'v4') return;
+      input.dataset.keyboardDictationHint = 'v4';
       const parent = input.closest('.crono-task-add-row') || input.parentElement;
-      if(!parent || parent.querySelector('.ios-keyboard-dictation-hint')) return;
+      if(!parent) return;
       const hint = document.createElement('div');
       hint.className = 'ios-keyboard-dictation-hint';
       hint.textContent = 'Dictado: usa el micrófono del teclado del iPad/iPhone.';
@@ -212,26 +209,10 @@
       const contexts = guide.querySelector('.solidity-guide-contexts');
       if(!contexts) return;
       contexts.innerHTML = `
-        <section>
-          <h4>Obra nueva</h4>
-          <p>La cobertura cuenta. Una obra con páginas todavía no aprendidas no puede tener una puntuación alta porque los fragmentos conocidos salgan muy bien. El pase completo manda y, si hay movimientos, el más débil limita el conjunto.</p>
-          <p><b>Anclas:</b> 25 = se cae · 45 = frágil · 65 = sale con atención · 80 = segura · 95 = lista para exponer.</p>
-        </section>
-        <section>
-          <h4>Cámara · tu parte primero</h4>
-          <p><strong>Durante el estudio solo, puntúa tu propia parte.</strong> No bajes la píldora porque los demás músicos no estén presentes. Si se toca con partitura, la memoria tampoco se penaliza: valora continuidad, ritmo, entradas que puedes preparar, cambios, silencios, navegación y recuperación.</p>
-          <p>Cuando empiecen los ensayos, la experiencia conjunta añade evidencia sobre escucha, reacción, balance y coordinación. Pesa sobre todo para justificar el tramo final (aprox. 90–100), pero no reescribe artificialmente una preparación individual que aún no ha podido probarse con el grupo.</p>
-        </section>
-        <section>
-          <h4>Concierto con orquesta</h4>
-          <p>La base sigue siendo <strong>tu parte de piano</strong>: notas, continuidad, memoria si procede, tempi, cadencias, resistencias y capacidad de seguir tras un error. Eso se puede puntuar estudiando solo.</p>
-          <p>En la fase final cuentan además entradas orquestales, esperas, cues, flexibilidad con director y capacidad de encajar después de tuttis. Un ensayo con orquesta aporta evidencia especialmente importante para 90+. Antes de tenerlo, esa capa está <em>sin comprobar</em>, no automáticamente “mal”.</p>
-        </section>
-        <section>
-          <h4>Repertorio recuperado</h4>
-          <p>La píldora sigue describiendo <strong>cómo está hoy</strong>. Haberla tocado antes no conserva una nota antigua por decreto. Si hoy el primer pase es 45, registra 45.</p>
-          <p>El dominio previo sí sirve para otra cosa: la app espera que recuperes más deprisa y reduce las horas estimadas necesarias. Por eso una recuperación puede saltar de 40 a 75 mucho más rápido que una obra nueva sin falsear la medición actual.</p>
-        </section>`;
+        <section><h4>Obra nueva</h4><p>La cobertura cuenta. Una obra con páginas todavía no aprendidas no puede tener una puntuación alta porque los fragmentos conocidos salgan muy bien. El pase completo manda y, si hay movimientos, el más débil limita el conjunto.</p><p><b>Anclas:</b> 25 = se cae · 45 = frágil · 65 = sale con atención · 80 = segura · 95 = lista para exponer.</p></section>
+        <section><h4>Cámara · tu parte primero</h4><p><strong>Durante el estudio solo, puntúa tu propia parte.</strong> No bajes la píldora porque los demás músicos no estén presentes. Si se toca con partitura, la memoria tampoco se penaliza: valora continuidad, ritmo, entradas que puedes preparar, cambios, silencios, navegación y recuperación.</p><p>Cuando empiecen los ensayos, la experiencia conjunta añade evidencia sobre escucha, reacción, balance y coordinación. Pesa sobre todo para justificar el tramo final (aprox. 90–100), pero no reescribe artificialmente una preparación individual que aún no ha podido probarse con el grupo.</p></section>
+        <section><h4>Concierto con orquesta</h4><p>La base sigue siendo <strong>tu parte de piano</strong>: notas, continuidad, memoria si procede, tempi, cadencias, resistencias y capacidad de seguir tras un error. Eso se puede puntuar estudiando solo.</p><p>En la fase final cuentan además entradas orquestales, esperas, cues, flexibilidad con director y capacidad de encajar después de tuttis. Un ensayo con orquesta aporta evidencia especialmente importante para 90+. Antes de tenerlo, esa capa está <em>sin comprobar</em>, no automáticamente “mal”.</p></section>
+        <section><h4>Repertorio recuperado</h4><p>La píldora sigue describiendo <strong>cómo está hoy</strong>. Haberla tocado antes no conserva una nota antigua por decreto. Si hoy el primer pase es 45, registra 45.</p><p>El dominio previo sí sirve para otra cosa: la app espera que recuperes más deprisa y reduce las horas estimadas necesarias. Por eso una recuperación puede saltar de 40 a 75 mucho más rápido que una obra nueva sin falsear la medición actual.</p></section>`;
       const principle = guide.querySelector('.solidity-guide-principle');
       if(principle) principle.innerHTML = '<strong>Regla principal:</strong> la píldora mide lo que <em>tú</em> puedes hacer hoy. En cámara y concierto, el trabajo individual es la base; la coordinación conjunta se incorpora cuando existe evidencia real, sobre todo en el tramo de exposición.';
       guide.dataset.ensembleSemantics = 'v4';
@@ -258,6 +239,10 @@
     return 'Sin fecha';
   }
 
+  function projectSignature(projects){
+    return JSON.stringify(projects.map(project => [project.id,project.nombre,project.estado,project.fecha,project.fechaObjetivoMes,project.fechaFlexibleLabel,(project.obras||[]).length]));
+  }
+
   function renderProjectsSection(){
     const data = appDb();
     const panel = document.getElementById('calPanelEventos');
@@ -273,13 +258,25 @@
       const past = document.getElementById('eventosPasadosList');
       if(past) past.insertAdjacentElement('beforebegin', section); else panel.appendChild(section);
     }
-    if(!projects.length){ section.hidden = true; section.innerHTML=''; return; }
+    if(!projects.length){
+      if(!section.hidden || section.innerHTML){ section.hidden = true; section.innerHTML=''; section.dataset.signature=''; }
+      return;
+    }
     section.hidden = false;
-    section.innerHTML = `<header><div><span>Objetivos sin día rígido</span><strong>Proyectos personales</strong></div><small>${projects.length}</small></header><div class="personal-projects-grid">${projects.map(project => {
-      const works = Array.isArray(project.obras) ? project.obras.length : 0;
-      const flexible = project.fechaFlexibleTipo === 'mes' || project.fechaObjetivoMes;
-      return `<button type="button" class="personal-project-card" data-project-event-id="${esc(project.id)}"><div><b>${esc(project.nombre || 'Proyecto')}</b><span>${flexible?'Objetivo flexible':'Objetivo'} · ${esc(projectTarget(project))}</span></div><em>${works ? works+' obra'+(works===1?'':'s') : 'Proyecto'} · ${esc(project.estado || 'confirmado')}</em></button>`;
-    }).join('')}</div>`;
+    const signature = projectSignature(projects);
+    if(section.dataset.signature !== signature){
+      section.dataset.signature = signature;
+      section.innerHTML = `<header><div><span>Objetivos sin día rígido</span><strong>Proyectos personales</strong></div><small>${projects.length}</small></header><div class="personal-projects-grid">${projects.map(project => {
+        const works = Array.isArray(project.obras) ? project.obras.length : 0;
+        const flexible = project.fechaFlexibleTipo === 'mes' || project.fechaObjetivoMes;
+        return `<button type="button" class="personal-project-card" data-project-event-id="${esc(project.id)}"><div><b>${esc(project.nombre || 'Proyecto')}</b><span>${flexible?'Objetivo flexible':'Objetivo'} · ${esc(projectTarget(project))}</span></div><em>${works ? works+' obra'+(works===1?'':'s') : 'Proyecto'} · ${esc(project.estado || 'confirmado')}</em></button>`;
+      }).join('')}</div>`;
+      section.querySelectorAll('[data-project-event-id]').forEach(button => button.addEventListener('click', () => {
+        const id = button.dataset.projectEventId;
+        const original = Array.from(document.querySelectorAll('#eventosList .evento-card')).find(card => card.dataset.projectOriginalId === id);
+        if(original) original.click();
+      }));
+    }
 
     document.querySelectorAll('#eventosList .evento-card').forEach(card => {
       const text = normalize(card.textContent);
@@ -287,14 +284,11 @@
       if(event){
         card.dataset.projectOriginalId = String(event.id);
         card.classList.add('project-original-hidden');
+      } else {
+        card.classList.remove('project-original-hidden');
+        delete card.dataset.projectOriginalId;
       }
     });
-
-    section.querySelectorAll('[data-project-event-id]').forEach(button => button.addEventListener('click', () => {
-      const id = button.dataset.projectEventId;
-      const original = document.querySelector(`#eventosList .evento-card[data-project-original-id="${CSS.escape(id)}"]`);
-      if(original) original.click();
-    }));
   }
 
   function refreshUi(){
@@ -308,7 +302,7 @@
     let timer = null;
     const observer = new MutationObserver(() => {
       clearTimeout(timer);
-      timer = setTimeout(refreshUi, 20);
+      timer = setTimeout(refreshUi, 30);
     });
     observer.observe(document.documentElement,{subtree:true,childList:true});
     window.__planningV4Observer = observer;
@@ -318,18 +312,9 @@
     suppressWebSpeechOnIOS();
     installInlinePriorityCapture();
     patchTomorrowPriority();
-    refineSolidityGuide();
-    installIosDictationHints();
-    renderProjectsSection();
+    refreshUi();
     observeUi();
-    window.PlanningEnhancementsV4 = {
-      version:VERSION,
-      priorityFromText,
-      stripPriorityKeyword,
-      parseTaskText,
-      isIOS,
-      refreshUi,
-    };
+    window.PlanningEnhancementsV4 = { version:VERSION, priorityFromText, stripPriorityKeyword, parseTaskText, isIOS, refreshUi };
   }
 
   function boot(attempt){
