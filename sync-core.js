@@ -1,3 +1,49 @@
+// Emergency pre-sync snapshot: this file is loaded before app.js, so task state
+// is copied aside before any asynchronous cloud reconciliation can replace it.
+(function preSyncTaskRescue(root) {
+  'use strict';
+  try {
+    const storage = root && root.localStorage;
+    if (!storage) return;
+    const data = JSON.parse(storage.getItem('alberto_piano_v2') || 'null');
+    if (!data || !Array.isArray(data.cronoTasks)) return;
+    const sync = JSON.parse(storage.getItem('alberto_sync_v1') || '{}') || {};
+    const toMs = value => {
+      if (!value) return 0;
+      const n = Number(value);
+      if (Number.isFinite(n) && n > 1000000000000) return n;
+      const parsed = Date.parse(value);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+    const taskMs = task => {
+      if (!task || typeof task !== 'object') return 0;
+      let best = [task.updatedAt, task.createdAt, task.completedAt, task.doneAt, task.endedAt, task.endTime, task.at, task.date]
+        .reduce((max, value) => Math.max(max, toMs(value)), 0);
+      const match = String(task.id || '').match(/(\d{13})/);
+      if (match) best = Math.max(best, Number(match[1]) || 0);
+      return best;
+    };
+    const tasks = data.cronoTasks.map(task => task && typeof task === 'object' ? { ...task } : task);
+    const snapshot = {
+      capturedAt: new Date().toISOString(),
+      savedAt: data._savedAt || null,
+      revision: Math.max(Number(data._localRevision) || 0, Number(sync.localRevision) || 0, Number(sync.dirtyRevision) || 0, Number(sync.lastSyncedRevision) || 0),
+      newestTaskAt: tasks.reduce((max, task) => Math.max(max, taskMs(task)), 0),
+      taskCount: tasks.length,
+      tasks,
+      tombstones: Array.isArray(data.cronoTaskTombstones) ? data.cronoTaskTombstones.map(item => ({ ...item })) : [],
+    };
+    let state;
+    try { state = JSON.parse(storage.getItem('alberto_crono_tasks_rescue_v1') || 'null'); } catch (error) { state = null; }
+    if (!state || !Array.isArray(state.snapshots)) state = { version: 1, snapshots: [] };
+    const duplicate = state.snapshots.some(item => item && Number(item.revision) === snapshot.revision && String(item.savedAt || '') === String(snapshot.savedAt || '') && Number(item.newestTaskAt) === snapshot.newestTaskAt && Number(item.taskCount) === snapshot.taskCount);
+    if (!duplicate) state.snapshots.unshift(snapshot);
+    state.snapshots = state.snapshots.slice(0, 8);
+    state.updatedAt = snapshot.capturedAt;
+    storage.setItem('alberto_crono_tasks_rescue_v1', JSON.stringify(state));
+  } catch (error) {}
+})(typeof window !== 'undefined' ? window : globalThis);
+
 (function (root, factory) {
   const api = factory();
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
