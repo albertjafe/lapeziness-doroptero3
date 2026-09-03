@@ -178,38 +178,24 @@
   document.head.appendChild(script);
 }());
 
-// Profesor: motor → normalización → contexto del día/cache → interfaz.
+// Profesor: motor → normalización → contexto → planificación de eventos → horizonte 730 d → interfaz.
 (function loadProfessor(){
   if (document.getElementById('professorCoreScript')) return;
-  const core = document.createElement('script');
-  core.id = 'professorCoreScript';
-  core.src = './professor-core.js?v=1';
-  core.async = false;
-  core.onload = function(){
-    const loadDashboard = function(){
-      if (document.getElementById('professorDashboardScript')) return;
-      const dashboard = document.createElement('script');
-      dashboard.id = 'professorDashboardScript';
-      dashboard.src = './professor-dashboard.js?v=1';
-      dashboard.async = false;
-      document.head.appendChild(dashboard);
-    };
-    const loadEnrichment = function(){
-      if (document.getElementById('professorContextEnrichmentScript')) { loadDashboard(); return; }
-      const enrichment = document.createElement('script');
-      enrichment.id = 'professorContextEnrichmentScript';
-      enrichment.src = './professor-context-enrichment.js?v=1';
-      enrichment.async = false;
-      enrichment.onload = loadDashboard;
-      document.head.appendChild(enrichment);
-    };
-    if (document.getElementById('professorReportNormalizerScript')) { loadEnrichment(); return; }
-    const normalizer = document.createElement('script');
-    normalizer.id = 'professorReportNormalizerScript';
-    normalizer.src = './professor-report-normalizer.js?v=1';
-    normalizer.async = false;
-    normalizer.onload = loadEnrichment;
-    document.head.appendChild(normalizer);
-  };
-  document.head.appendChild(core);
+
+  function loadScript(id, src, next) {
+    if (document.getElementById(id)) { if (next) next(); return; }
+    const script = document.createElement('script');
+    script.id = id;
+    script.src = src;
+    script.async = false;
+    if (next) script.onload = next;
+    document.head.appendChild(script);
+  }
+
+  const loadDashboard = () => loadScript('professorDashboardScript', './professor-dashboard.js?v=1');
+  const loadDeadlineBridge = () => loadScript('professorCompetitionDeadlineBridgeScript', './professor-competition-deadline-bridge.js?v=1', loadDashboard);
+  const loadEventPlanning = () => loadScript('eventPlanningEnhancementsScript', './event-planning-enhancements.js?v=1', loadDeadlineBridge);
+  const loadEnrichment = () => loadScript('professorContextEnrichmentScript', './professor-context-enrichment.js?v=1', loadEventPlanning);
+  const loadNormalizer = () => loadScript('professorReportNormalizerScript', './professor-report-normalizer.js?v=1', loadEnrichment);
+  loadScript('professorCoreScript', './professor-core.js?v=1', loadNormalizer);
 }());
