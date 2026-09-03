@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v321';
+const CACHE = 'estudio-v322';
 const ASSETS = [
   './index.html',
   './styles.css?v=281',
@@ -31,7 +31,7 @@ const ASSETS = [
   './event-planning-ui-v2.js?v=1',
   './planning-enhancements-v3.js?v=1',
   './planning-enhancements-v3-fix.js?v=1',
-  './planning-enhancements-v4.js?v=1',
+  './planning-enhancements-v4.js?v=2',
   './pase-liquid-direct-touch.js?v=2',
   './work-catalog.js?v=1',
   './work-structure-catalog.js?v=1',
