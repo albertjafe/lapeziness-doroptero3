@@ -92,18 +92,23 @@ test('personal projects are isolated in their own events section with month targ
   await expect(page.locator('#eventosList .evento-card.project-original-hidden')).toHaveCount(1);
 });
 
-test('iPad does not auto-start website microphone for task dictation', async ({ page }) => {
+test('iPad auto-starts task dictation and writes the transcript again', async ({ page }) => {
   await page.setViewportSize({ width:834, height:1194 });
   await prepare(page, { ios:true });
+  await expect.poll(() => page.evaluate(() => Boolean(window.PlanningV4SpeechFix?.restored))).toBe(true);
   await page.evaluate(() => showView('cronometro'));
   const panel = page.locator('#cronoIdleTasksPanel');
   await panel.getByRole('button', { name:'Añadir tarea de Personal' }).click();
-  await expect(panel.locator('#cronoIdleTaskInput')).toBeFocused();
-  await page.waitForTimeout(100);
-  expect(await page.evaluate(() => window.__taskRecognitionInstances.some(instance => instance.started))).toBe(false);
-  await expect(page.locator('html')).toHaveClass(/planning-ios-keyboard-dictation/);
-  await expect(panel.locator('[id^="cronoTaskVoiceBtn"]')).toBeHidden();
-  await expect(page.locator('.ios-keyboard-dictation-hint')).toContainText('micrófono del teclado');
+  const input = panel.locator('#cronoIdleTaskInput');
+  await expect(input).toBeFocused();
+  await expect.poll(() => page.evaluate(() => window.__taskRecognitionInstances.some(instance => instance.started))).toBe(true);
+  await expect(page.locator('html')).not.toHaveClass(/planning-ios-keyboard-dictation/);
+  await expect(panel.locator('[id^="cronoTaskVoiceBtn"]')).toBeVisible();
+  await page.evaluate(() => {
+    const active = window.__taskRecognitionInstances.find(instance => instance.started && !instance.stopped);
+    active?.onresult?.({ results: [[{ transcript:'Recordar la postura urgentísima' }]] });
+  });
+  await expect(input).toHaveValue('Recordar la postura urgentísima');
 });
 
 test('slow pill drag keeps the last stable position after release', async ({ page }) => {
