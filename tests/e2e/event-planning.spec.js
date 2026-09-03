@@ -7,6 +7,7 @@ const fixture = {
   eventos: [], sesiones: [], registro: [], sessionPlants: [], forestPlants: [],
   estadoEventos: [], impulsoEventos: [], malestarEventos: [], deporteEventos: [], suenoEventos: [], triggerEventos: [],
   tiempoDisponibleEventos: [], dailyJournalEntries: [],
+  competitionPlanningSeedVersion: 1,
 };
 
 async function prepare(page, data = fixture) {
