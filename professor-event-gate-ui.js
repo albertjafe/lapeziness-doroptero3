@@ -1,6 +1,8 @@
 (function professorEventGateUi(){
   'use strict';
 
+  const HINT='Solo repertorio enlazado a eventos/proyectos';
+
   function apply(){
     const view=document.getElementById('view-profesor');
     if(!view) return;
@@ -14,7 +16,7 @@
 
     const section=list.closest('.prof-section');
     const hint=section && section.querySelector('.prof-section-head .prof-muted');
-    if(hint) hint.textContent='Solo repertorio enlazado a eventos/proyectos';
+    if(hint && hint.textContent!==HINT) hint.textContent=HINT;
 
     if(!list.querySelector('.prof-unit') && !list.querySelector('[data-prof-no-linked]')){
       const empty=document.createElement('div');
@@ -26,9 +28,11 @@
   }
 
   function boot(){
+    const view=document.getElementById('view-profesor');
     apply();
+    if(!view) return;
     const observer=new MutationObserver(apply);
-    observer.observe(document.body,{childList:true,subtree:true});
+    observer.observe(view,{childList:true,subtree:true});
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot,{once:true});
