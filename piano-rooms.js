@@ -1,15 +1,10 @@
 /* Bootstrap pequeño de módulos independientes cargados después de app.js. */
 (function loadAppAddons(){
-  // El prototipo 3D de "Casa" se retira de la aplicación. El marcado legacy
-  // permanece en index.html por compatibilidad, pero se oculta y desmonta antes
-  // de que el usuario pueda navegar a él. Cualquier navegación antigua a
-  // `casa` vuelve a Hoy.
   (function retireMysteryHouse(){
     const style=document.createElement('style');
     style.id='retiredMysteryHouseStyles';
     style.textContent='.nav-btn[data-view="casa"],#view-casa{display:none!important}';
     document.head.appendChild(style);
-
     function cleanup(){
       const nav=document.querySelector('.nav-btn[data-view="casa"]');
       const view=document.getElementById('view-casa');
@@ -18,40 +13,29 @@
       if(view) view.remove();
       if(wasActive&&typeof window.showView==='function') window.showView('session');
     }
-
     if(typeof window.showView==='function'&&!window.showView.__retiredMysteryHousePatched){
       const original=window.showView;
-      const patched=function(name){
-        return original.apply(this,[name==='casa'?'session':name].concat(Array.prototype.slice.call(arguments,1)));
-      };
+      const patched=function(name){ return original.apply(this,[name==='casa'?'session':name].concat(Array.prototype.slice.call(arguments,1))); };
       patched.__retiredMysteryHousePatched=true;
       patched.__original=original;
       window.showView=patched;
       try { showView=patched; } catch(error){}
     }
-
     cleanup();
     if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',cleanup,{once:true});
   })();
 
   function load(id,src,onload){
-    if(document.getElementById(id)){
-      if(onload) onload();
-      return;
-    }
+    if(document.getElementById(id)){ if(onload) onload(); return; }
     const script=document.createElement('script');
-    script.id=id;
-    script.src=src;
-    script.async=false;
+    script.id=id; script.src=src; script.async=false;
     if(onload) script.addEventListener('load',onload,{once:true});
     document.head.appendChild(script);
   }
   function loadStyle(id,href){
     if(document.getElementById(id)) return;
     const link=document.createElement('link');
-    link.id=id;
-    link.rel='stylesheet';
-    link.href=href;
+    link.id=id; link.rel='stylesheet'; link.href=href;
     document.head.appendChild(link);
   }
   loadStyle('cronoReadinessLayoutStyles','./crono-readiness-layout.css?v=1');
@@ -73,7 +57,9 @@
   load('eventPlanningScript','./event-planning.js?v=1',function(){
     load('competitionPlanningSeedScript','./competition-planning-seed.js?v=1',function(){
       load('eventPlanningUiV2Script','./event-planning-ui-v2.js?v=1',function(){
-        load('planningEnhancementsV3Script','./planning-enhancements-v3.js?v=1');
+        load('planningEnhancementsV3Script','./planning-enhancements-v3.js?v=1',function(){
+          load('planningEnhancementsV3FixScript','./planning-enhancements-v3-fix.js?v=1');
+        });
       });
     });
   });
@@ -83,15 +69,10 @@
   load('historicalEventsScript','./historical-events.js?v=1',function(){
     load('historicalEventsDetailsScript','./historical-events-details.js?v=2');
   });
-
-  // La píldora 0–100 sigue siendo la única verdad del estado presente. Si se
-  // trabaja por movimientos, la obra deriva su píldora de esas mediciones; el
-  // hecho de ser repertorio recuperado es solo contexto histórico automático.
   load('solidityModelScript','./solidity-model.js?v=5',function(){
     load('readinessPillModelScript','./readiness-pill-model.js?v=1',function(){
       load('readinessRecoveryContextScript','./readiness-recovery-context.js?v=2');
     });
-
     load('workStructureCatalogScript','./work-structure-catalog.js?v=1',function(){
       load('obraPremiumScript','./obra-premium.js?v=1',function(){
         load('obraPremiumPolishScript','./obra-premium-polish.js?v=4',function(){
