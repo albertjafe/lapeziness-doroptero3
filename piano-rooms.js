@@ -48,8 +48,9 @@
   loadStyle('eventPlanningStyles','./event-planning.css?v=1');
   loadStyle('eventPlanningUiV2Styles','./event-planning-ui-v2.css?v=1');
   loadStyle('planningEnhancementsV3Styles','./planning-enhancements-v3.css?v=1');
+  loadStyle('planningEnhancementsV4Styles','./planning-enhancements-v4.css?v=1');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=1');
-  load('paseLiquidDirectTouchScript','./pase-liquid-direct-touch.js?v=1');
+  load('paseLiquidDirectTouchScript','./pase-liquid-direct-touch.js?v=2');
   load('localSaveResilienceScript','./local-save-resilience.js?v=1');
   load('cronoSaveResilienceScript','./crono-save-resilience.js?v=1');
   load('updateSafetyScript','./update-safety.js?v=1');
@@ -58,7 +59,9 @@
     load('competitionPlanningSeedScript','./competition-planning-seed.js?v=1',function(){
       load('eventPlanningUiV2Script','./event-planning-ui-v2.js?v=1',function(){
         load('planningEnhancementsV3Script','./planning-enhancements-v3.js?v=1',function(){
-          load('planningEnhancementsV3FixScript','./planning-enhancements-v3-fix.js?v=1');
+          load('planningEnhancementsV3FixScript','./planning-enhancements-v3-fix.js?v=1',function(){
+            load('planningEnhancementsV4Script','./planning-enhancements-v4.js?v=1');
+          });
         });
       });
     });
