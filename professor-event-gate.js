@@ -21,7 +21,6 @@ DURACIÓN DEL DÍA
 - No asumas que más horas siempre es mejor: protege calidad, fatiga, concentración y saturación.`;
 
   const arr = value => Array.isArray(value) ? value : [];
-  const round1 = value => Math.round((Number(value) || 0) * 10) / 10;
 
   function isLinked(unit) {
     return Boolean(unit && unit.nextEvent);
@@ -105,6 +104,11 @@ DURACIÓN DEL DÍA
       ? unit => core.unitLine(unit)
       : unit => `${unit.key}|${unit.label}|P${Math.round(unit.priority && unit.priority.score || 0)}|evento=${unit.nextEvent ? unit.nextEvent.name : '-'}`;
     const excluded = Number(report && report.coverage && report.coverage.excludedUnlinkedPlanningUnits || 0);
+    const paceLines = units.filter(unit => unit.pace && unit.nextEvent).map(unit => {
+      const pace = unit.pace || {};
+      const velocity = pace.velocityEstimate;
+      return `${unit.key}|objetivo=${unit.nextEvent.name}/${unit.nextEvent.daysAway}d|actual7d=${pace.currentDaily7dMinutes == null ? '?' : pace.currentDaily7dMinutes}m/d|necesario≈${pace.requiredDailyMinutes == null ? '?' : pace.requiredDailyMinutes}m/d|ritmo=${pace.status || '?'}${velocity ? `|velocidad=${velocity.hours}h_estimadas_por_progreso_observado` : ''}`;
+    });
     return [
       `SUPERINFORME_PROFESOR_EVENTOS_V2 ${report && report.asOf || ''}`,
       `HOY total_conocido=${report && report.today ? report.today.totalKnownMinutes : 0}m; por_movimiento=${report && report.today ? report.today.movementMinutes : 0}m; sin_movimiento=${report && report.today ? report.today.unallocatedMinutes : 0}m; ${todayLines}`,
@@ -113,6 +117,7 @@ DURACIÓN DEL DÍA
       'EVENTOS\n' + (eventLines.join('\n') || 'ninguno'),
       `REGLA_RANKING solo repertorio con evento/proyecto enlazado; unidades sin evento omitidas=${excluded}`,
       'UNIDADES_PRIORIZABLES_ENLAZADAS_A_EVENTOS\n' + (units.map(unitLine).join('\n') || 'ninguna'),
+      paceLines.length ? 'HORIZONTE_Y_RITMO_ENLAZADO\n' + paceLines.join('\n') : 'HORIZONTE_Y_RITMO_ENLAZADO\nninguno',
     ].join('\n\n');
   }
 
