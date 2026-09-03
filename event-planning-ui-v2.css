@@ -1,0 +1,93 @@
+/* Competition planning UI v2 */
+.competition-source-card-superseded{display:none!important}
+.competition-source-control-hidden{display:none!important}
+
+.competition-dossier-hero{margin:10px 0 18px;padding:20px;border:1px solid var(--border);border-radius:20px;background:linear-gradient(150deg,color-mix(in srgb,var(--accent) 7%,var(--bg2)),var(--bg2) 54%);box-shadow:0 12px 38px rgba(0,0,0,.06)}
+.competition-dossier-hero[hidden],.competition-dossier-info[hidden],.competition-plan-kicker[hidden]{display:none!important}
+.competition-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.competition-hero-copy{min-width:0}
+.competition-hero-kicker{font-size:8px;line-height:1;text-transform:uppercase;letter-spacing:.14em;color:var(--accent);font-weight:750}
+.competition-hero-kicker span{opacity:.45;margin:0 3px}
+.competition-hero-copy h2{margin:6px 0 5px;font-family:'Cormorant Garamond',serif;font-size:31px;line-height:1.03;font-weight:600;color:var(--text);max-width:730px}
+.competition-hero-location{font-size:11px;color:var(--text2);line-height:1.35}
+.competition-hero-badges{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;flex:0 0 auto}
+.competition-live-badge,.competition-source-status{display:inline-flex;align-items:center;min-height:24px;padding:4px 8px;border-radius:999px;font-size:7px;line-height:1;text-transform:uppercase;letter-spacing:.07em;font-weight:750;white-space:nowrap}
+.competition-live-badge{color:#246e4f;background:color-mix(in srgb,#4da77c 14%,var(--bg));border:1px solid color-mix(in srgb,#4da77c 42%,var(--border2))}
+.competition-source-status{color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--bg));border:1px solid color-mix(in srgb,var(--accent) 28%,var(--border2))}
+
+.competition-key-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:17px}
+.competition-key-metric{min-width:0;padding:12px 13px;border:1px solid var(--border2);border-radius:13px;background:color-mix(in srgb,var(--bg) 88%,transparent)}
+.competition-key-metric>span{display:block;font-size:7px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);font-weight:700}
+.competition-key-metric>strong{display:block;margin-top:4px;font-size:13px;line-height:1.18;color:var(--text);font-weight:720;overflow-wrap:anywhere}
+.competition-key-metric>small{display:block;margin-top:3px;font-size:7px;line-height:1.25;color:var(--text3)}
+
+.competition-plan-kicker{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:4px 0 9px;padding-top:4px}
+.competition-plan-kicker span{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);font-weight:750}
+.competition-plan-kicker small{font-size:8px;color:var(--text3)}
+.is-dossier-competition #eventPlanningFields{margin-top:0}
+.is-dossier-competition #eventPlanningFields>.event-planning-row:first-child,
+.is-dossier-competition #eventCompetitionFields>.event-planning-row{grid-template-columns:minmax(0,1fr)}
+.is-dossier-competition #eventCompetitionFields{margin-top:10px;padding:16px}
+.is-dossier-competition #eventCompetitionFields>.event-planning-kicker{display:none}
+
+.competition-dossier-info{margin-top:14px}
+.competition-info-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 8px}
+.competition-info-head>span{font-size:9px;text-transform:uppercase;letter-spacing:.11em;color:var(--text2);font-weight:760}
+.competition-info-head>small{font-size:8px;color:var(--text3)}
+.competition-info-accordions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.competition-info-detail{border:1px solid var(--border2);border-radius:12px;background:var(--bg);overflow:hidden}
+.competition-info-detail summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;cursor:pointer;font-size:9px;color:var(--text2);font-weight:700}
+.competition-info-detail summary::-webkit-details-marker{display:none}
+.competition-info-detail summary b{font-size:15px;line-height:1;color:var(--accent);font-weight:400;transition:transform .15s ease}
+.competition-info-detail[open] summary b{transform:rotate(45deg)}
+.competition-info-detail>div{padding:0 12px 12px;font-size:9px;line-height:1.55;color:var(--text2);white-space:pre-line}
+.competition-source-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 2px 0;font-size:7px;color:var(--text3)}
+.competition-source-foot small{font-size:7px;font-style:italic;text-align:right}
+
+/* Large modal on iPad/desktop: this is a planning surface, not a tiny alert. */
+@media(min-width:701px){
+  #modalAddEvento .evento-modal{width:min(940px,calc(100vw - 58px));max-width:none;max-height:88dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:28px 30px 32px}
+}
+@media(min-width:820px) and (max-width:1180px){
+  #modalAddEvento .evento-modal{width:calc(100vw - 52px);max-width:1040px;max-height:90dvh;padding:30px 34px 34px;border-radius:24px}
+  .competition-hero-copy h2{font-size:34px}
+  .competition-key-metric>strong{font-size:14px}
+}
+
+/* Compact mobile deadline: full competition names do not belong in the top bar. */
+.mobile-competition-deadline{display:none}
+@media(max-width:700px){
+  .topbar{padding-top:max(env(safe-area-inset-top,0px),0px)}
+  #headerDate{display:none!important}
+  .piano-rooms-open span{display:none!important}
+  .piano-rooms-open{min-width:44px!important;width:44px!important;padding-inline:0!important;justify-content:center!important}
+  .mobile-competition-deadline{display:flex;width:calc(100% - 24px);margin:0 12px 8px;min-height:34px;align-items:center;gap:7px;min-width:0;padding:7px 9px;border:1px solid var(--border2);border-radius:11px;background:color-mix(in srgb,var(--accent) 4%,var(--bg2));color:var(--text2);text-align:left;cursor:pointer;box-sizing:border-box}
+  .mobile-competition-deadline[hidden]{display:none!important}
+  .mobile-deadline-kind{flex:0 0 auto;font-size:7px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:750}
+  .mobile-competition-deadline strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9.5px;line-height:1.1;color:var(--text2);font-weight:650}
+  .mobile-deadline-days{margin-left:auto;flex:0 0 auto;display:inline-grid;place-items:center;min-width:34px;height:22px;padding:0 6px;border-radius:999px;background:var(--bg3);color:var(--accent);font-size:8px;font-weight:750}
+
+  #modalAddEvento{align-items:flex-end!important;padding:0!important}
+  #modalAddEvento .evento-modal{width:100%!important;max-width:none!important;max-height:96dvh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch;border-radius:24px 24px 0 0!important;padding:19px 16px calc(20px + env(safe-area-inset-bottom,0px))!important}
+  .competition-dossier-hero{margin:7px 0 14px;padding:15px;border-radius:17px}
+  .competition-hero-top{gap:10px;flex-direction:column}
+  .competition-hero-copy h2{font-size:25px;line-height:1.03;margin-top:5px}
+  .competition-hero-location{font-size:10px}
+  .competition-hero-badges{justify-content:flex-start}
+  .competition-key-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:13px}
+  .competition-key-metric{padding:10px;border-radius:11px}
+  .competition-key-metric>strong{font-size:11px}
+  .competition-info-head{align-items:flex-start;flex-direction:column;gap:3px}
+  .competition-info-accordions{grid-template-columns:1fr}
+  .competition-info-detail summary{min-height:42px;padding:10px 11px;font-size:9px}
+  .competition-info-detail>div{font-size:9px;padding:0 11px 11px}
+  .competition-source-foot{align-items:flex-start;flex-direction:column;gap:3px}
+  .competition-source-foot small{text-align:left}
+  .competition-plan-kicker{align-items:flex-start;flex-direction:column;gap:2px;margin-top:1px}
+}
+
+@media(max-width:430px){
+  .mobile-deadline-kind{max-width:78px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mobile-competition-deadline strong{font-size:9px}
+  .competition-key-grid{grid-template-columns:1fr 1fr}
+}
