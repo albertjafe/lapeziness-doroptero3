@@ -54,6 +54,7 @@
       source: 'competition-plan',
       id: id(plan.id) + ':' + kind,
       competitionPlanId: plan.id,
+      googleEventId: deadline ? (plan.googleDeadlineEventId || null) : null,
       name: (deadline ? 'Deadline · ' : 'Concurso · ') + (plan.name || 'Concurso'),
       type: deadline ? (plan.deadlineKind || 'video_deadline') : 'concurso',
       role: deadline ? (plan.deadlineKind || 'video_deadline') : 'competition',
@@ -126,6 +127,24 @@
     unit.priority.band = unit.priority.score >= 70 ? 'urgente' : unit.priority.score >= 50 ? 'alta' : unit.priority.score >= 30 ? 'media' : 'mantenimiento';
   }
 
+  function mergeDeadlineIntoGoogleEvent(report, target) {
+    if (!target.googleEventId) return false;
+    const google = arr(report.events).find(event => event.source === 'google' && id(event.id) === id(target.googleEventId));
+    if (!google) return false;
+    Object.assign(google, {
+      competitionPlanId: target.competitionPlanId,
+      role: target.role,
+      status: target.status,
+      workIds: target.workIds,
+      movementTargets: target.movementTargets,
+      repertoireLinked: true,
+      videoRequirements: target.videoRequirements,
+      planningWeight: target.planningWeight,
+      linkedByProfessor: true,
+    });
+    return true;
+  }
+
   function enrich(report, database) {
     if (!report || !database) return report;
     const asOf = dateOf(report.asOf) || new Date();
@@ -139,7 +158,10 @@
     });
 
     const existingKeys = new Set(arr(report.events).map(event => event.key));
-    targets.forEach(target => { if (!existingKeys.has(target.key)) report.events.push(target); });
+    targets.forEach(target => {
+      if (/deadline/.test(target.role) && mergeDeadlineIntoGoogleEvent(report, target)) return;
+      if (!existingKeys.has(target.key)) report.events.push(target);
+    });
     report.events.sort((a, b) => num(a.daysAway, 99999) - num(b.daysAway, 99999));
 
     arr(report.units).forEach(unit => {
