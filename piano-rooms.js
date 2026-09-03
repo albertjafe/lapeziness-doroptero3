@@ -1,5 +1,39 @@
 /* Bootstrap pequeño de módulos independientes cargados después de app.js. */
 (function loadAppAddons(){
+  // El prototipo 3D de "Casa" se retira de la aplicación. El marcado legacy
+  // permanece en index.html por compatibilidad, pero se oculta y desmonta antes
+  // de que el usuario pueda navegar a él. Cualquier navegación antigua a
+  // `casa` vuelve a Hoy.
+  (function retireMysteryHouse(){
+    const style=document.createElement('style');
+    style.id='retiredMysteryHouseStyles';
+    style.textContent='.nav-btn[data-view="casa"],#view-casa{display:none!important}';
+    document.head.appendChild(style);
+
+    function cleanup(){
+      const nav=document.querySelector('.nav-btn[data-view="casa"]');
+      const view=document.getElementById('view-casa');
+      const wasActive=Boolean(nav&&nav.classList.contains('active'))||Boolean(view&&view.classList.contains('active'));
+      if(nav) nav.remove();
+      if(view) view.remove();
+      if(wasActive&&typeof window.showView==='function') window.showView('session');
+    }
+
+    if(typeof window.showView==='function'&&!window.showView.__retiredMysteryHousePatched){
+      const original=window.showView;
+      const patched=function(name){
+        return original.apply(this,[name==='casa'?'session':name].concat(Array.prototype.slice.call(arguments,1)));
+      };
+      patched.__retiredMysteryHousePatched=true;
+      patched.__original=original;
+      window.showView=patched;
+      try { showView=patched; } catch(error){}
+    }
+
+    cleanup();
+    if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',cleanup,{once:true});
+  })();
+
   function load(id,src,onload){
     if(document.getElementById(id)){
       if(onload) onload();
