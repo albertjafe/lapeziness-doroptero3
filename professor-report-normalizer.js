@@ -49,15 +49,3 @@
   wrapped.__professorNormalized = true;
   core.buildReport = wrapped;
 })();
-
-// Planning layer: status Standby/Idea/Confirmed, Exam + Deadline event types,
-// movement-level event repertoire and pace-to-deadline context for Professor.
-(function loadEventPlanningEnhancements(){
-  'use strict';
-  if (window.EventPlanning || document.getElementById('eventPlanningEnhancementsScript')) return;
-  const script = document.createElement('script');
-  script.id = 'eventPlanningEnhancementsScript';
-  script.src = './event-planning-enhancements.js?v=1';
-  script.async = false;
-  document.head.appendChild(script);
-})();
