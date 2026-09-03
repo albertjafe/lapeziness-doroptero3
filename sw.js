@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v323';
+const CACHE = 'estudio-v324';
 const ASSETS = [
   './index.html',
   './styles.css?v=281',
@@ -33,6 +33,11 @@ const ASSETS = [
   './planning-enhancements-v3-fix.js?v=1',
   './planning-enhancements-v4.js?v=2',
   './planning-enhancements-v4-speech-fix.js?v=1',
+  './professor-core.js?v=2',
+  './professor-report-normalizer.js?v=2',
+  './professor-context-enrichment.js?v=2',
+  './professor-competition-deadline-bridge.js?v=2',
+  './professor-dashboard.js?v=2',
   './pase-liquid-direct-touch.js?v=2',
   './work-catalog.js?v=1',
   './work-structure-catalog.js?v=1',

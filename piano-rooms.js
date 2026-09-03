@@ -3,19 +3,23 @@
   (function retireMysteryHouse(){
     const style=document.createElement('style');
     style.id='retiredMysteryHouseStyles';
-    style.textContent='.nav-btn[data-view="casa"],#view-casa{display:none!important}';
+    style.textContent='#view-casa{display:none!important}.nav-btn[data-view="casa"]{display:none!important}';
     document.head.appendChild(style);
     function cleanup(){
       const nav=document.querySelector('.nav-btn[data-view="casa"]');
       const view=document.getElementById('view-casa');
       const wasActive=Boolean(nav&&nav.classList.contains('active'))||Boolean(view&&view.classList.contains('active'));
-      if(nav) nav.remove();
+      // Conservamos el botón Casa oculto para que el Profesor pueda reutilizarlo
+      // cuando termine de cargar. Solo retiramos la vista 3D antigua.
       if(view) view.remove();
       if(wasActive&&typeof window.showView==='function') window.showView('session');
     }
     if(typeof window.showView==='function'&&!window.showView.__retiredMysteryHousePatched){
       const original=window.showView;
-      const patched=function(name){ return original.apply(this,[name==='casa'?'session':name].concat(Array.prototype.slice.call(arguments,1))); };
+      const patched=function(name){
+        const target=name==='casa'?(document.getElementById('view-profesor')?'profesor':'session'):name;
+        return original.apply(this,[target].concat(Array.prototype.slice.call(arguments,1)));
+      };
       patched.__retiredMysteryHousePatched=true;
       patched.__original=original;
       window.showView=patched;
@@ -38,6 +42,18 @@
     link.id=id; link.rel='stylesheet'; link.href=href;
     document.head.appendChild(link);
   }
+  function loadProfessor(){
+    load('professorCoreScript','./professor-core.js?v=2',function(){
+      load('professorReportNormalizerScript','./professor-report-normalizer.js?v=2',function(){
+        load('professorContextEnrichmentScript','./professor-context-enrichment.js?v=2',function(){
+          load('professorCompetitionDeadlineBridgeScript','./professor-competition-deadline-bridge.js?v=2',function(){
+            load('professorDashboardScript','./professor-dashboard.js?v=2');
+          });
+        });
+      });
+    });
+  }
+
   loadStyle('cronoReadinessLayoutStyles','./crono-readiness-layout.css?v=1');
   loadStyle('cronoIdleHierarchyStyles','./crono-idle-hierarchy.css?v=3');
   loadStyle('cronoRunningPremiumStyles','./crono-running-premium.css?v=1');
@@ -61,7 +77,7 @@
         load('planningEnhancementsV3Script','./planning-enhancements-v3.js?v=1',function(){
           load('planningEnhancementsV3FixScript','./planning-enhancements-v3-fix.js?v=1',function(){
             load('planningEnhancementsV4Script','./planning-enhancements-v4.js?v=2',function(){
-              load('planningEnhancementsV4SpeechFixScript','./planning-enhancements-v4-speech-fix.js?v=1');
+              load('planningEnhancementsV4SpeechFixScript','./planning-enhancements-v4-speech-fix.js?v=1',loadProfessor);
             });
           });
         });

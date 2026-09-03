@@ -35,14 +35,28 @@ try {
 }
 
 const failedTitles = new Set();
+const failureDetails = new Map();
 function resultFailed(result) {
   return result && ['failed', 'timedOut', 'interrupted'].includes(result.status);
 }
+function rememberFailure(spec, test, result) {
+  if (!spec?.title || failureDetails.has(spec.title)) return;
+  const error = result?.error || (Array.isArray(result?.errors) ? result.errors[0] : null) || test?.error || null;
+  const raw = error?.message || error?.stack || error?.value || '';
+  if (raw) failureDetails.set(spec.title, String(raw).replace(/\u001b\[[0-9;]*m/g, '').slice(0, 1400));
+}
 function walkSuite(suite) {
   for (const spec of suite.specs || []) {
-    const failed = (spec.tests || []).some(test =>
-      test.status === 'unexpected' || (test.results || []).some(resultFailed)
-    );
+    let failed = false;
+    for (const test of spec.tests || []) {
+      if (test.status === 'unexpected') failed = true;
+      for (const result of test.results || []) {
+        if (resultFailed(result)) {
+          failed = true;
+          rememberFailure(spec, test, result);
+        }
+      }
+    }
     if (failed && spec.title) failedTitles.add(spec.title);
   }
   for (const child of suite.suites || []) walkSuite(child);
@@ -67,7 +81,11 @@ if (infrastructureErrors.length) {
 }
 if (unexpected.length) {
   console.error('Unexpected E2E failures:');
-  unexpected.forEach(title => console.error(`  - ${title}`));
+  unexpected.forEach(title => {
+    console.error(`  - ${title}`);
+    const detail = failureDetails.get(title);
+    if (detail) console.error('    ' + detail.split('\n').join('\n    '));
+  });
   process.exit(1);
 }
 if (run.status !== 0 && failures.length === 0) {
