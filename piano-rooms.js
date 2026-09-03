@@ -33,7 +33,9 @@
   load('cronoSaveResilienceScript','./crono-save-resilience.js?v=1');
   load('updateSafetyScript','./update-safety.js?v=1');
   load('cronoRunningPremiumScript','./crono-running-premium.js?v=1');
-  load('eventPlanningScript','./event-planning.js?v=1');
+  load('eventPlanningScript','./event-planning.js?v=1',function(){
+    load('competitionPlanningSeedScript','./competition-planning-seed.js?v=1');
+  });
   load('workDifficultyModelScript','./work-difficulty-model.js?v=1',function(){
     load('workDifficultyStoredPriorityScript','./work-difficulty-stored-priority.js?v=1');
   });
