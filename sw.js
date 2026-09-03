@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v320';
+const CACHE = 'estudio-v321';
 const ASSETS = [
   './index.html',
   './styles.css?v=281',
@@ -16,6 +16,7 @@ const ASSETS = [
   './event-planning.css?v=1',
   './event-planning-ui-v2.css?v=1',
   './planning-enhancements-v3.css?v=1',
+  './planning-enhancements-v4.css?v=1',
   './app.js?v=281',
   './study-session-ux.js?v=1',
   './crono-resume-layout.js?v=1',
@@ -30,7 +31,8 @@ const ASSETS = [
   './event-planning-ui-v2.js?v=1',
   './planning-enhancements-v3.js?v=1',
   './planning-enhancements-v3-fix.js?v=1',
-  './pase-liquid-direct-touch.js?v=1',
+  './planning-enhancements-v4.js?v=1',
+  './pase-liquid-direct-touch.js?v=2',
   './work-catalog.js?v=1',
   './work-structure-catalog.js?v=1',
   './work-difficulty-model.js?v=1',
