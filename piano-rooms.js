@@ -48,8 +48,10 @@
         load('professorContextEnrichmentScript','./professor-context-enrichment.js?v=2',function(){
           load('professorCompetitionDeadlineBridgeScript','./professor-competition-deadline-bridge.js?v=2',function(){
             load('professorEventGateScript','./professor-event-gate.js?v=2',function(){
-              load('professorDashboardScript','./professor-dashboard.js?v=2',function(){
-                load('professorEventGateUiScript','./professor-event-gate-ui.js?v=2');
+              load('professorDurationPolicyScript','./professor-duration-policy.js?v=1',function(){
+                load('professorDashboardScript','./professor-dashboard.js?v=2',function(){
+                  load('professorEventGateUiScript','./professor-event-gate-ui.js?v=2');
+                });
               });
             });
           });
