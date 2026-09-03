@@ -1,61 +1,205 @@
-// Research corrections and additional long-range cello competition leads.
-const pauloLead = competitions.find(c => c.id === 'pauloLead');
-if (pauloLead) Object.assign(pauloLead, {
-  year:'Cycle watch',
-  dates:'No current call found · a 2028 return is plausible if the five-year cycle continues',
-  status:'watch',
-  eligibility:'Next-edition eligibility TBA. Do not reuse the 2023 age rules as if they were current.',
-  note:'Corrected from an earlier 2027 lead: the documented edition was in 2023 and institutional material describes the Paulo competition as taking place every five years. That points towards 2028 if the cycle continues, but no current organiser call was found, so this remains a watch item only.',
-  sources:[['2023 / five-year-cycle reference','https://musicamundischool.org/paulo-international-cello-competition-helsinki-finland-participation-of-liav-kerbel/']]
+const FX = Object.freeze({ EUR: 1, USD: 0.86153, GBP: 1.16273 });
+const TODAY = '2026-09-03';
+
+// Only current/relevant edition cash figures that are reliable enough to put in the scan table.
+// Historical prize amounts for an unannounced future cycle are intentionally NOT carried forward.
+const prizeOverrides = Object.freeze({
+  vienna26: [{ value: 4500 }],
+  dicc27: [{ value: 14000 }, { value: 8000 }, { value: 5000 }],
+  fmb27: [{ value: 6000 }, { value: 4000 }, { value: 2000 }],
+  split27: [{ value: 3000 }, { value: 1500 }, { value: 500 }],
+  geringas27: [{ value: 10000 }, { value: 7500 }, { value: 5000 }],
+  sphinx27: [
+    { value: 50000 * FX.USD, approx: true },
+    { value: 20000 * FX.USD, approx: true },
+    { value: 10000 * FX.USD, approx: true }
+  ],
+  bromsgrove27: [
+    { value: 4000 * FX.GBP, approx: true },
+    { value: 1500 * FX.GBP, approx: true },
+    { value: 1500 * FX.GBP, approx: true }
+  ],
+  johansen28: [
+    { value: 10000 * FX.USD, approx: true },
+    { value: 7000 * FX.USD, approx: true },
+    { value: 5000 * FX.USD, approx: true }
+  ]
 });
 
-competitions.push(
-{
- id:'janacek28',name:'International Leoš Janáček Competition in Brno · Cello',year:'2028',dates:'2028 · exact dates TBA',location:'Brno, Czech Republic',deadline:'TBA',status:'watch',tier:'professional',major:true,
- eligibility:'The competition’s general age ceiling is 35; the detailed 2028 cello rules are not yet published.',eligClass:'watch',video:'TBA for the 2028 cello cycle.',
- repertoire:'TBA. The official competition rotates disciplines over a five-year cycle; cello was held in 2023, making 2028 the next expected cello year if the published rotation continues.',
- prizes:'2028 cello prizes TBA.',jury:'2028 jury TBA.',note:'A well-grounded 2028 cycle watch: official Janáček competition information shows the rotating discipline structure and the recent cello edition in 2023.',
- sources:[['Official competition','https://hf.jamu.cz/en/projects/international-leos-janacek-competition-in-brno/']]
-},
-{
- id:'penderecki28',name:'International Krzysztof Penderecki Cello Competition',year:'2028',dates:'2028 · exact dates TBA',location:'Kraków, Poland',deadline:'TBA',status:'watch',tier:'major',major:true,
- eligibility:'2028 eligibility TBA.',eligClass:'watch',video:'TBA for the next edition.',
- repertoire:'TBA. The official 2023 competition information states that the event is held every five years; therefore 2028 is the expected next cycle, but a 2028 rulebook has not yet been published.',
- prizes:'2028 prizes TBA.',jury:'2028 jury TBA.',note:'Strong 2028 watch target because the organiser explicitly describes a five-year cycle. Wait for the actual 2028 call before fixing Penderecki-specific repertoire.',
- sources:[['Official competition','https://pendereckicello.amuz.krakow.pl/?lang=en&page_id=113']]
-},
-{
- id:'mahler27',name:'Gustav Mahler Prize Cello Competition',year:'2027 lead',dates:'2027 · call not yet found',location:'Online / Czech Republic',deadline:'TBA',status:'unconfirmed',tier:'secondary',major:false,
- eligibility:'2027 categories TBA. The 2026 edition included adult birth-year groups as well as younger categories.',eligClass:'watch',video:'Recent editions are video-based; 2027 requirements TBA.',
- repertoire:'2027 programme TBA. The 2026 edition used free-choice repertoire within category time limits.',prizes:'2027 prizes TBA; the 2026 edition advertised a €5,000 prize pool.',jury:'2027 jury TBA.',note:'Recent official editions ran in consecutive years, so this is worth checking for a 2027 call, but no 2027 announcement was verified in this research pass.',
- sources:[['Official 2026 edition','https://www.mahler.institute/en/cello-2026/']]
-},
-{
- id:'feuermann',name:'Grand Prix Emanuel Feuermann',year:'Cycle watch',dates:'Next edition not announced',location:'Berlin, Germany',deadline:'TBA',status:'watch',tier:'major',major:true,
- eligibility:'Next-edition rules TBA. The official site currently still displays the 2022 edition.',eligClass:'watch',video:'Next-edition requirements TBA. In 2022, preselection used four recent uncut YouTube recordings.',
- repertoire:'Next edition TBA. The 2022 programme combined Bach, Schubert, Strauss/Klengel preselection, commissioned work, Beethoven, Classical concerto repertoire and a major concerto final.',
- prizes:'Next-edition prizes TBA. In 2022 the Grand Prix was €15,000, with €10,000 / €5,000 second and third prizes plus special prizes and concert-promotion support.',jury:'Next-edition jury TBA.',note:'Prestigious cello-specific cycle to monitor. There is no new call on the official site yet, so old 2022 dates and repertoire are shown only as context, not as current rules.',
- sources:[['Official competition','https://www.gp-emanuelfeuermann.de/en/'],['Last published rules','https://www.gp-emanuelfeuermann.de/en/participation/']]
-},
-{
- id:'naumburg',name:'Walter W. Naumburg International Cello Competition',year:'Cycle watch',dates:'Next cello edition not announced',location:'New York, USA',deadline:'TBA',status:'watch',tier:'major',major:true,
- eligibility:'Next cello edition rules TBA.',eligClass:'watch',video:'TBA for the next cello edition.',repertoire:'TBA. The most recent cello competition was held in 2024; the foundation’s 2026 competition is violin, so there is no actionable cello call at present.',prizes:'Next cello edition prizes TBA.',jury:'Next cello jury TBA.',note:'Important American career competition to keep on the master watchlist, but not something to prepare specifically for until the foundation announces the next cello cycle.',
- sources:[['Official Naumburg Foundation','https://www.naumburg.org/']]
+const statusText = {
+  open: 'OPEN', future: 'FUTURE', watch: 'WATCH', conditional: 'CONDITIONAL',
+  unconfirmed: 'UNCONFIRMED', closed: 'CLOSED', dormant: 'DORMANT'
+};
+
+const scopeText = {
+  cello: 'CELLO', mixed: 'STRINGS / MIXED', youth: 'YOUTH', national: 'NATIONAL',
+  institution: 'INSTITUTION', online: 'ONLINE', dormant: 'DORMANT'
+};
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 }
-);
 
-const fmtDate = d => { if(!/^\d{4}-\d{2}-\d{2}$/.test(d||'')) return d||'TBA'; const x=new Date(d+'T12:00:00'); return x.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); };
-const daysLeft = d => { if(!/^\d{4}-\d{2}-\d{2}$/.test(d||'')) return null; const now=new Date(); now.setHours(0,0,0,0); const x=new Date(d+'T00:00:00'); return Math.ceil((x-now)/86400000); };
-const statusText={open:'OPEN',future:'FUTURE',watch:'WATCH',conditional:'CONDITIONAL',unconfirmed:'UNCONFIRMED'};
-function card(c){ const days=daysLeft(c.deadline); const soon=days!==null&&days>=0&&days<=30; const deadlineText = fmtDate(c.deadline)+(days!==null&&days>=0?` · ${days} day${days===1?'':'s'} left`: ''); const links=(c.sources||[]).map(s=>`<a class="source" href="${s[1]}" target="_blank" rel="noopener">${s[0]} ↗</a>`).join(''); return `<article class="card" data-year="${c.year}" data-status="${c.status}" data-tier="${c.tier}" data-major="${c.major}" data-search="${[c.name,c.location,c.repertoire,c.video,c.jury,c.note].join(' ').toLowerCase()}">
-<div class="card-top"><div class="card-row"><div><div class="eyebrow">${c.year}</div><h3>${c.name}</h3><div class="where">${c.location} · ${c.dates}</div></div><span class="tag ${c.status}">${statusText[c.status]}</span></div></div>
-<div class="facts"><div class="fact deadline ${soon?'soon':''}"><label>Application deadline</label><strong>${deadlineText}</strong></div><div class="fact"><label>Application opens</label><strong>${c.opens?fmtDate(c.opens):(c.status==='open'||c.status==='conditional'?'Open / check now':'TBA')}</strong></div><div class="fact"><label>Video / prescreen</label><strong>${c.video.startsWith('Required')?'Required':c.video.startsWith('No ')?'Not stated':'See details'}</strong></div><div class="fact"><label>Level</label><strong>${c.tier.charAt(0).toUpperCase()+c.tier.slice(1)}</strong></div></div>
-<div class="eligibility ${c.eligClass||''}"><strong>Eligibility:</strong> ${c.eligibility}</div><div class="summary">${c.note}</div>
-<details><summary>Repertoire, prizes & jury</summary><div class="detail-body"><h4>Video / preselection</h4><p>${c.video}</p><h4>Repertoire</h4><p>${c.repertoire}</p><h4>Prizes / support</h4><p>${c.prizes}</p><h4>Jury</h4><p>${c.jury}</p>${links?`<div class="sources">${links}</div>`:''}</div></details></article>`; }
+function fmtDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return value || 'TBA';
+  const d = new Date(value + 'T12:00:00');
+  return d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+}
 
-const cards=document.getElementById('cards'); cards.innerHTML=competitions.map(card).join('');
-document.getElementById('countAll').textContent=competitions.length; document.getElementById('countOpen').textContent=competitions.filter(c=>['open','conditional'].includes(c.status)).length; document.getElementById('countMajor').textContent=competitions.filter(c=>c.major).length;
-const sorted=[...competitions].sort((a,b)=>{const ad=/^\d/.test(a.deadline)?a.deadline:'9999',bd=/^\d/.test(b.deadline)?b.deadline:'9999';return ad.localeCompare(bd)});
-document.getElementById('calendarBody').innerHTML=sorted.map(c=>`<tr><td><strong>${fmtDate(c.deadline)}</strong></td><td>${c.name}</td><td>${c.dates}</td><td>${c.location}</td><td><span class="tag ${c.status}">${statusText[c.status]}</span></td></tr>`).join('');
-let filter='all'; const search=document.getElementById('search'); function apply(){ const q=search.value.trim().toLowerCase(); document.querySelectorAll('#cards .card').forEach(el=>{let ok=filter==='all'||(filter==='major'&&el.dataset.major==='true')||(filter==='watch'&&['watch','unconfirmed'].includes(el.dataset.status))||(filter==='secondary'&&['secondary','development'].includes(el.dataset.tier))||el.dataset.status===filter||el.dataset.year===filter; if(q&&!el.dataset.search.includes(q)) ok=false; el.classList.toggle('hidden',!ok);});}
-document.querySelectorAll('.filter').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');filter=b.dataset.filter;apply();}));search.addEventListener('input',apply);
+function euro(value, approx = false) {
+  const rounded = approx ? Math.round(value / 10) * 10 : Math.round(value);
+  return `${approx ? '≈' : ''}€${rounded.toLocaleString('en-GB')}`;
+}
+
+function prizeCell(c) {
+  const entries = prizeOverrides[c.id] || [];
+  if (!entries.length) return '<div class="prize-stack prize-empty">—</div>';
+  return `<div class="prize-stack">${entries.slice(0,3).map(p => `<span>${euro(p.value, p.approx)}</span>`).join('')}</div>`;
+}
+
+function sourceUrl(c) {
+  const sources = Array.isArray(c.sources) ? c.sources : [];
+  const first = sources.find(s => Array.isArray(s) && /^https?:\/\//.test(s[1] || ''));
+  return first ? first[1] : '';
+}
+
+function websiteCell(c) {
+  const url = sourceUrl(c);
+  if (!url) return '<span class="web-missing">—</span>';
+  return `<a class="web-link" href="${esc(url)}" target="_blank" rel="noopener">Open ↗</a>`;
+}
+
+function statusBadge(c) {
+  const status = c.status || 'watch';
+  return `<span class="tag ${esc(status)}">${esc(statusText[status] || status.toUpperCase())}</span>`;
+}
+
+function sourceBadge(c) {
+  const level = c.sourceLevel || 'official';
+  const label = level === 'federation' ? 'WFIMC / FEDERATION' : level.toUpperCase();
+  return `<span class="mini-badge source-${esc(level)}">${esc(label)}</span>`;
+}
+
+function scopeBadge(c) {
+  const scope = c.scope || (c.major ? 'cello' : 'mixed');
+  return `<span class="mini-badge">${esc(scopeText[scope] || scope.toUpperCase())}</span>`;
+}
+
+function videoText(c) {
+  const v = (c.video || '').trim();
+  if (!v) return 'TBA';
+  if (v === '—') return '—';
+  return v;
+}
+
+function competitionMeta(c) {
+  return `${c.location || 'Location TBA'} · ${c.year || ''}`;
+}
+
+function dataAttrs(c) {
+  const text = [c.name,c.location,c.year,c.dates,c.deadline,c.video,c.eligibility,c.repertoire,c.note,(c.tags||[]).join(' ')].join(' ').toLowerCase();
+  return `data-id="${esc(c.id)}" data-year="${esc(c.year || '')}" data-status="${esc(c.status || '')}" data-scope="${esc(c.scope || '')}" data-tier="${esc(c.tier || '')}" data-major="${c.major ? 'true' : 'false'}" data-source="${esc(c.sourceLevel || '')}" data-search="${esc(text)}"`;
+}
+
+function sortKey(c) {
+  const statusPenalty = c.status === 'closed' ? 8 : c.status === 'dormant' ? 9 : 0;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(c.deadline || '')) {
+    const past = c.deadline < TODAY ? 3 : 0;
+    return `${statusPenalty + past}-0-${c.deadline}-${c.name}`;
+  }
+  const combined = `${c.year || ''} ${c.dates || ''} ${c.deadline || ''}`;
+  const year = (combined.match(/20(?:26|27|28|29|30)/) || ['9999'])[0];
+  return `${statusPenalty}-1-${year}-${c.name}`;
+}
+
+function masterRow(c) {
+  return `<tr class="master-row" ${dataAttrs(c)}>
+    <td class="competition-cell">
+      <div class="comp-name">${esc(c.name)}</div>
+      <div class="comp-meta">${esc(competitionMeta(c))}</div>
+      <div class="comp-badges">${statusBadge(c)}${scopeBadge(c)}${sourceBadge(c)}</div>
+    </td>
+    <td class="prize-cell">${prizeCell(c)}</td>
+    <td class="date-cell">${esc(c.dates || 'TBA')}</td>
+    <td class="deadline-cell">${esc(fmtDate(c.deadline))}</td>
+    <td class="video-cell">${esc(videoText(c))}</td>
+    <td class="website-cell">${websiteCell(c)}</td>
+  </tr>`;
+}
+
+function detailCard(c) {
+  const links = (c.sources || []).filter(s => Array.isArray(s) && s[1]).map(s => `<a class="source" href="${esc(s[1])}" target="_blank" rel="noopener">${esc(s[0])} ↗</a>`).join('');
+  return `<article class="card" ${dataAttrs(c)}>
+    <div class="card-top">
+      <div class="card-row">
+        <div>
+          <div class="eyebrow">${esc(c.year || 'CYCLE WATCH')}</div>
+          <h3>${esc(c.name)}</h3>
+          <div class="where">${esc(c.location || 'Location TBA')} · ${esc(c.dates || 'TBA')}</div>
+        </div>
+        ${statusBadge(c)}
+      </div>
+      <div class="card-badges">${scopeBadge(c)}${sourceBadge(c)}</div>
+    </div>
+    <div class="facts">
+      <div class="fact"><label>Deadline</label><strong>${esc(fmtDate(c.deadline))}</strong></div>
+      <div class="fact"><label>Video</label><strong>${esc(videoText(c))}</strong></div>
+    </div>
+    <div class="eligibility ${esc(c.eligClass || '')}"><strong>Eligibility:</strong> ${esc(c.eligibility || 'TBA')}</div>
+    <details>
+      <summary>Full requirements & sources</summary>
+      <div class="detail-body">
+        <h4>Video / preselection</h4><p>${esc(c.video || 'TBA')}</p>
+        <h4>Repertoire</h4><p>${esc(c.repertoire || 'TBA')}</p>
+        <h4>Prize context</h4><p>${esc(c.prizes || 'TBA')}</p>
+        <h4>Jury</h4><p>${esc(c.jury || 'TBA')}</p>
+        ${c.note ? `<h4>Planning note</h4><p>${esc(c.note)}</p>` : ''}
+        ${links ? `<div class="sources">${links}</div>` : ''}
+      </div>
+    </details>
+  </article>`;
+}
+
+const ordered = [...competitions].sort((a,b) => sortKey(a).localeCompare(sortKey(b)));
+document.getElementById('masterBody').innerHTML = ordered.map(masterRow).join('');
+document.getElementById('cards').innerHTML = ordered.map(detailCard).join('');
+
+document.getElementById('countAll').textContent = competitions.length;
+document.getElementById('countLive').textContent = competitions.filter(c => ['open','future','conditional'].includes(c.status)).length;
+document.getElementById('countMajor').textContent = competitions.filter(c => c.major).length;
+document.getElementById('countOfficial').textContent = competitions.filter(c => ['official','federation'].includes(c.sourceLevel || 'official')).length;
+
+let activeFilter = 'all';
+const search = document.getElementById('search');
+
+function matchesFilter(el) {
+  switch (activeFilter) {
+    case 'all': return true;
+    case 'actionable': return ['open','future','conditional'].includes(el.dataset.status);
+    case '2027': return el.dataset.year.includes('2027') || el.dataset.search.includes('2027');
+    case '2028': return el.dataset.year.includes('2028') || el.dataset.search.includes('2028');
+    case 'major': return el.dataset.major === 'true';
+    case 'cello': return el.dataset.scope === 'cello';
+    case 'mixed': return ['mixed','institution','national'].includes(el.dataset.scope);
+    case 'watch': return ['watch','unconfirmed','dormant'].includes(el.dataset.status);
+    case 'youth': return el.dataset.scope === 'youth' || el.dataset.tier === 'youth';
+    case 'online': return el.dataset.scope === 'online' || el.dataset.source === 'directory' || el.dataset.tier === 'directory';
+    default: return true;
+  }
+}
+
+function applyFilters() {
+  const q = search.value.trim().toLowerCase();
+  document.querySelectorAll('.master-row, #cards .card').forEach(el => {
+    const visible = matchesFilter(el) && (!q || el.dataset.search.includes(q));
+    el.classList.toggle('hidden', !visible);
+  });
+}
+
+document.querySelectorAll('.filter').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('.filter').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeFilter = btn.dataset.filter;
+  applyFilters();
+}));
+search.addEventListener('input', applyFilters);
