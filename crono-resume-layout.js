@@ -109,3 +109,24 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', settleLayout, { once: true });
   else settleLayout();
 }());
+
+/* Pasajes difíciles: módulo compañero cargado después de app.js para poder
+   enganchar el cronómetro sin aumentar todavía más el archivo principal. */
+(function loadPassageTracker() {
+  'use strict';
+  if (window.PassageTracker || document.getElementById('passageTrackerScript')) return;
+
+  if (!document.getElementById('passageTrackerStyles')) {
+    const link = document.createElement('link');
+    link.id = 'passageTrackerStyles';
+    link.rel = 'stylesheet';
+    link.href = './passage-tracker.css?v=1';
+    document.head.appendChild(link);
+  }
+
+  const script = document.createElement('script');
+  script.id = 'passageTrackerScript';
+  script.src = './passage-tracker.js?v=1';
+  script.async = false;
+  document.head.appendChild(script);
+}());
