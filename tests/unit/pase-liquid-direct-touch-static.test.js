@@ -3,9 +3,12 @@ import { test, expect } from 'vitest';
 
 const source = fs.readFileSync(new URL('../../pase-liquid-direct-touch.js', import.meta.url), 'utf8');
 
-test('liquid pill commits the final pointerup position and guards against Safari snapback', () => {
-  expect(source).toMatch(/event\.type === 'pointerup'/);
-  expect(source).toMatch(/const finalValue = updateFromPointer/);
-  expect(source).toMatch(/setTimeout\(lockFinalValue, 40\)/);
+test('liquid pill commits last stable drag value without pointerup snapback', () => {
+  expect(source).toMatch(/const committed = active\.lastValue/);
+  expect(source).not.toMatch(/event\.type === ['"]pointerup['"]/);
+  expect(source).not.toMatch(/const finalValue = updateFromPointer/);
+  expect(source).toMatch(/pointer-events: none/);
+  expect(source).toMatch(/requestAnimationFrame/);
+  expect(source).toMatch(/setTimeout\(lock, 160\)/);
   expect(source).toMatch(/touch-action: none/);
 });
