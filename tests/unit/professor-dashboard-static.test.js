@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const dashboard = fs.readFileSync('professor-dashboard.js', 'utf8');
-const loader = fs.readFileSync('activity-self-tracker.js', 'utf8');
+const loader = fs.readFileSync('piano-rooms.js', 'utf8');
 const eventPlanning = fs.readFileSync('event-planning-enhancements.js', 'utf8');
 const deadlineBridge = fs.readFileSync('professor-competition-deadline-bridge.js', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/202609020001_professor_context_cache.sql', 'utf8');
@@ -13,6 +13,7 @@ describe('Professor dashboard integration', () => {
     expect(dashboard).toContain("button.dataset.view = 'profesor'");
     expect(dashboard).toContain('professorCronoOpen');
     expect(dashboard).toContain("window.showView('profesor')");
+    expect(loader).not.toContain('if(nav) nav.remove()');
   });
 
   it('offers the requested quick planning modes and full movement report', () => {
@@ -34,21 +35,21 @@ describe('Professor dashboard integration', () => {
     expect(migration).toContain('auth.uid() = user_id');
   });
 
-  it('loads core, normalizer, enrichment, event planning, deadline bridge and dashboard in order', () => {
-    expect(loader).toContain("profesor: 'Profesor'");
-    expect(loader).toContain("loadScript('professorCoreScript', './professor-core.js?v=1', loadNormalizer)");
-    expect(loader).toContain("loadScript('professorReportNormalizerScript', './professor-report-normalizer.js?v=1', loadEnrichment)");
-    expect(loader).toContain("loadScript('professorContextEnrichmentScript', './professor-context-enrichment.js?v=1', loadEventPlanning)");
-    expect(loader).toContain("loadScript('eventPlanningEnhancementsScript', './event-planning-enhancements.js?v=1', loadDeadlineBridge)");
-    expect(loader).toContain("loadScript('professorCompetitionDeadlineBridgeScript', './professor-competition-deadline-bridge.js?v=1', loadDashboard)");
-    expect(loader).toContain("loadScript('professorDashboardScript', './professor-dashboard.js?v=1')");
+  it('loads the Professor stack from the current bootstrap after planning enhancements', () => {
+    expect(loader).toContain("load('professorCoreScript','./professor-core.js?v=2'");
+    expect(loader).toContain("load('professorReportNormalizerScript','./professor-report-normalizer.js?v=2'");
+    expect(loader).toContain("load('professorContextEnrichmentScript','./professor-context-enrichment.js?v=2'");
+    expect(loader).toContain("load('professorCompetitionDeadlineBridgeScript','./professor-competition-deadline-bridge.js?v=2'");
+    expect(loader).toContain("load('professorDashboardScript','./professor-dashboard.js?v=2'");
+    expect(loader).toContain("load('planningEnhancementsV4SpeechFixScript','./planning-enhancements-v4-speech-fix.js?v=1',loadProfessor)");
   });
 
-  it('adds Examen, standby planning and movement-level event targets', () => {
+  it('keeps the old event-planning layer available for history but does not load it over the newer current system', () => {
     expect(eventPlanning).toContain("ensureTypeButton('examen', 'Examen'");
     expect(eventPlanning).toContain("standby: { label: 'Standby'");
     expect(eventPlanning).toContain('professorMovements');
     expect(eventPlanning).toContain('eventoMovementTargets');
+    expect(loader).not.toContain('eventPlanningEnhancementsScript');
   });
 
   it('extends musical planning to 730 days and keeps deadline and competition targets separate', () => {
