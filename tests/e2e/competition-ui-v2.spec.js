@@ -74,7 +74,8 @@ test('Montreal is present once and its iPad modal leads with place dates prize a
   await expect(hero).toBeVisible();
   await expect(hero).toContainText('Concours musical international de Montréal');
   await expect(hero).toContainText('Montréal, Canadá');
-  await expect(hero).toContainText('24–5');
+  await expect(hero).toContainText('24 abr');
+  await expect(hero).toContainText('5 may 2027');
   await expect(hero).toContainText('CAD 70.000');
   await expect(hero).toContainText('18–30 años');
   await expect(hero).toContainText('4 vídeos');
