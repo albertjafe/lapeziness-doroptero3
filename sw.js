@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v318';
+const CACHE = 'estudio-v319';
 const ASSETS = [
   './index.html',
   './styles.css?v=281',
@@ -29,6 +29,7 @@ const ASSETS = [
   './competition-planning-seed.js?v=1',
   './event-planning-ui-v2.js?v=1',
   './planning-enhancements-v3.js?v=1',
+  './planning-enhancements-v3-fix.js?v=1',
   './pase-liquid-direct-touch.js?v=1',
   './work-catalog.js?v=1',
   './work-structure-catalog.js?v=1',
@@ -83,10 +84,8 @@ self.addEventListener('message', e => {
 function stopwatchMilestoneMinutes(payload) {
   const dataMinutes = Number(payload && payload.data && payload.data.milestoneMinutes);
   if (Number.isFinite(dataMinutes)) return dataMinutes;
-
   const tagMatch = String(payload && payload.tag || '').match(/^crono-milestone-.+-(\d+)$/);
   if (tagMatch) return Number(tagMatch[1]);
-
   const titleMatch = String(payload && payload.title || '').match(/Has logrado\s+(\d+)\s+minutos/i);
   return titleMatch ? Number(titleMatch[1]) : null;
 }
@@ -133,12 +132,8 @@ self.addEventListener('notificationclick', event => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
-
   if (url.origin !== self.location.origin) return;
 
-  // El prototipo "Casa" 3D está retirado. index.html legacy aún referencia el
-  // módulo, así que devolvemos un módulo vacío para no descargar Three.js ni
-  // ejecutar el juego mientras se mantiene compatibilidad con instalaciones viejas.
   if (url.pathname.endsWith('/mystery-house.js')) {
     e.respondWith(Promise.resolve(new Response('/* retired 3D game */', {
       status: 200,
