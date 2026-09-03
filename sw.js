@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v316';
+const CACHE = 'estudio-v317';
 const ASSETS = [
   './index.html',
   './styles.css?v=281',
@@ -45,9 +45,6 @@ const ASSETS = [
   './historical-events-details.js?v=2',
   './google-calendar.js?v=272',
   './metronome.js?v=275',
-  './mystery-house.js?v=260',
-  './vendor/three.module.min.js',
-  './vendor/three.core.min.js',
   './timer-objectives.js?v=250',
   './timer-core.js?v=264',
   './data-core.js?v=231',
@@ -135,6 +132,17 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
   if (url.origin !== self.location.origin) return;
+
+  // El prototipo "Casa" 3D está retirado. index.html legacy aún referencia el
+  // módulo, así que devolvemos un módulo vacío para no descargar Three.js ni
+  // ejecutar el juego mientras se mantiene compatibilidad con instalaciones viejas.
+  if (url.pathname.endsWith('/mystery-house.js')) {
+    e.respondWith(Promise.resolve(new Response('/* retired 3D game */', {
+      status: 200,
+      headers: { 'Content-Type': 'application/javascript; charset=utf-8' },
+    })));
+    return;
+  }
 
   if (url.pathname.endsWith('/update.html') || url.searchParams.has('forceUpdate')) {
     e.respondWith(fetch(new Request(e.request, { cache: 'reload' })));
