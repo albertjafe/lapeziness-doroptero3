@@ -3,73 +3,89 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="description" content="Cello competition dossier 2026–2028: deadlines, eligibility, video requirements, repertoire, prizes and juries." />
-<title>Cello Competition Dossier · 2026–2028</title>
+<meta name="description" content="Cello Competition Master Radar: prizes, dates, deadlines, video requirements and official links." />
+<title>Cello Competition Master Radar · 2026–2028</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div class="wrap">
 <header class="hero">
   <div class="eyebrow">Cello · competition planning</div>
-  <h1>Cello Competition Dossier</h1>
-  <div class="lede">A working shortlist for 2026–2028, with the information that actually matters when deciding what to prepare: deadlines, age rules, video requirements, repertoire, prizes and juries.</div>
-  <div class="meta"><span class="pill">Last researched: 3 September 2026</span><span class="pill">Professional / emerging artist focus</span><span class="pill">Official sources prioritised</span><span class="pill">English dossier</span></div>
-  <div class="notice"><strong>Reading rule:</strong> “Open” means there is a usable published deadline now. “Future” means the event is confirmed but the application opens later. “Watch” means the competition is confirmed but key 2027/28 rules are still missing. “Conditional” means age may fit but another eligibility condition must be checked. Official regulations always prevail.</div>
+  <h1>Cello Competition Master Radar</h1>
+  <div class="lede">A broad working database of cello-only, string, mixed-instrument and future-cycle competitions. The master table puts the practical information first: money, dates, deadline, video and website.</div>
+  <div class="meta">
+    <span class="pill">Last researched: 3 September 2026</span>
+    <span class="pill">Official sources prioritised</span>
+    <span class="pill">Current + future cycles</span>
+    <span class="pill">English dossier</span>
+  </div>
+  <div class="notice"><strong>How to read it:</strong> a dash in the prize column means that a reliable cash amount for the relevant edition is not yet published. Watch and dormant competitions are deliberately retained so future cello cycles are not missed.</div>
 </header>
 
 <section class="section">
-  <div class="stats"><div class="stat"><b id="countAll">—</b><span>tracked competitions</span></div><div class="stat"><b id="countOpen">—</b><span>open / usable now</span></div><div class="stat"><b id="countMajor">—</b><span>major career targets</span></div><div class="stat"><b>2028</b><span>long-range horizon included</span></div></div>
-</section>
-
-<section class="section">
-  <div class="section-head"><div><h2>What I would look at first</h2><div class="section-sub">Not a ranking of artistic prestige only: this combines deadline urgency, career value and how concrete the current rules are.</div></div></div>
-  <div class="priority">
-    <article class="priority-card"><div class="rank">Priority 01 · apply now</div><h3>Danish International Cello Competition</h3><p>Exceptionally strong career package, free accommodation, substantial cash prizes and a straightforward preselection programme. Deadline 25 Oct 2026.</p></article>
-    <article class="priority-card"><div class="rank">Priority 02 · concrete 2027 target</div><h3>David Geringas Cello Competition</h3><p>Serious three-round professional category, €10,000 first prize, orchestra final and a 10–15 minute free-choice pre-audition video.</p></article>
-    <article class="priority-card"><div class="rank">Priority 03 · repertoire-efficient</div><h3>Split International Cello Competition</h3><p>Clear repertoire, manageable January calendar and repertoire that overlaps strongly with standard professional cello preparation.</p></article>
+  <div class="stats">
+    <div class="stat"><b id="countAll">—</b><span>tracked competitions</span></div>
+    <div class="stat"><b id="countLive">—</b><span>open / confirmed future</span></div>
+    <div class="stat"><b id="countMajor">—</b><span>major targets</span></div>
+    <div class="stat"><b id="countOfficial">—</b><span>official / federation sourced</span></div>
   </div>
 </section>
 
-<section class="section" id="calendar">
-  <div class="section-head"><div><h2>Competition calendar</h2><div class="section-sub">Chronological by application deadline where a deadline is published. TBA events sit at the bottom.</div></div></div>
-  <div class="table-wrap"><table><thead><tr><th>Deadline</th><th>Competition</th><th>Competition dates</th><th>Location</th><th>Status</th></tr></thead><tbody id="calendarBody"></tbody></table></div>
+<section class="section" id="master">
+  <div class="section-head">
+    <div>
+      <h2>Master competition table</h2>
+      <div class="section-sub">Designed for fast scanning. Prize amounts are cash awards for the relevant edition only; where three ranked awards are reliably known, all three appear vertically in the same cell.</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="filter active" data-filter="all">All</button>
+    <button class="filter" data-filter="actionable">Open / future</button>
+    <button class="filter" data-filter="2027">2027</button>
+    <button class="filter" data-filter="2028">2028</button>
+    <button class="filter" data-filter="major">Major</button>
+    <button class="filter" data-filter="cello">Cello-only</button>
+    <button class="filter" data-filter="mixed">Strings / mixed</button>
+    <button class="filter" data-filter="watch">Watch</button>
+    <button class="filter" data-filter="youth">Youth</button>
+    <button class="filter" data-filter="online">Online / directory</button>
+    <input id="search" class="search" type="search" placeholder="Search competition, country, video…" />
+  </div>
+
+  <div class="table-wrap master-wrap">
+    <table class="master-table">
+      <thead>
+        <tr>
+          <th>Competition</th>
+          <th>Prize (€)</th>
+          <th>Competition dates</th>
+          <th>Deadline</th>
+          <th>Video requirements</th>
+          <th>Website</th>
+        </tr>
+      </thead>
+      <tbody id="masterBody"></tbody>
+    </table>
+  </div>
+  <p class="fine">Non-euro cash prizes are converted at the research-date exchange rates of 3 September 2026 (USD→EUR 0.86153; GBP→EUR 1.16273). Converted amounts are marked ≈ and rounded for readability. Total prize pools are never presented as a first prize.</p>
 </section>
 
 <section class="section" id="dossier">
-  <div class="section-head"><div><h2>Full dossier</h2><div class="section-sub">Use the filters, then open “Repertoire, prizes & jury” only on the competitions worth planning.</div></div><div class="legend"><span class="tag open">Open</span><span class="tag future">Future</span><span class="tag watch">Watch</span><span class="tag conditional">Conditional</span></div></div>
-  <div class="controls">
-    <button class="filter active" data-filter="all">All</button><button class="filter" data-filter="open">Open now</button><button class="filter" data-filter="2027">2027</button><button class="filter" data-filter="2028">2028</button><button class="filter" data-filter="major">Major</button><button class="filter" data-filter="watch">Watchlist</button><button class="filter" data-filter="secondary">Secondary</button><input id="search" class="search" type="search" placeholder="Search competition, city, repertoire…" />
+  <div class="section-head">
+    <div>
+      <h2>Detailed dossier</h2>
+      <div class="section-sub">Open a competition below for eligibility, full video notes, repertoire, prize context, jury and source links. The same filters above control this section.</div>
+    </div>
   </div>
   <div class="grid" id="cards"></div>
 </section>
 
-<section class="section">
-  <div class="section-head"><div><h2>Additional current listings</h2><div class="section-sub">These are mixed-instrument or online opportunities found in current cello directories. They can be useful for CV-building or an easy video submission, but I would not let them dictate the main repertoire plan.</div></div></div>
-  <div class="table-wrap"><table><thead><tr><th>Opportunity</th><th>Format</th><th>Deadline</th><th>Comment</th></tr></thead><tbody>
-  <tr><td>International Svendsen & Grieg Competition 2026</td><td>Online · all instruments</td><td>31 Oct 2026</td><td>Cash/promotional awards; verify category and fee before applying.</td></tr>
-  <tr><td>Max Bruch International Music Competition 2026</td><td>Online · all instruments</td><td>6 Nov 2026</td><td>Professional category has no age limit; £65 for one category.</td></tr>
-  <tr><td>World Classical Music Awards 2026</td><td>Online · all instruments</td><td>21 Nov 2026</td><td>Low preparation overhead if an existing recording fits.</td></tr>
-  <tr><td>Elizabeth Loker International Concerto Competition</td><td>Concerto competition · Maryland, USA</td><td>12 Dec 2026</td><td>Potentially relevant if a concerto recording is already available; check travel/eligibility.</td></tr>
-  <tr><td>Dvořák Classical Music Competition 2027</td><td>Online · Prague-based</td><td>30 Jan 2027</td><td>Mixed-instrument online competition; secondary priority.</td></tr>
-  </tbody></table></div>
-  <p class="fine">Discovery source for this supplementary list: current Musical Chairs cello competition listings. Treat directory information as a lead, not as the final rulebook.</p>
-</section>
-
-<section class="section">
- <div class="section-head"><div><h2>Deliberately not in the main list</h2><div class="section-sub">Competitions whose cello application has already closed, or whose 2027/28 discipline is not cello, are kept out so the page stays actionable.</div></div></div>
- <div class="table-wrap"><table><thead><tr><th>Competition</th><th>Why not actionable now</th></tr></thead><tbody>
- <tr><td>Queen Elisabeth Competition · Cello 2026</td><td>2026 cello cycle already completed; next published editions are other disciplines.</td></tr>
- <tr><td>George Enescu Competition · Cello 2026</td><td>Application deadline already passed; the dossier tracks the confirmed 2028 cello edition instead.</td></tr>
- <tr><td>Khachaturian International Competition · Cello 2026</td><td>2026 cello deadline passed; next announced disciplines are piano/violin rather than cello.</td></tr>
- <tr><td>Markneukirchen 2027</td><td>Official 2027 disciplines are violin and double bass, not cello.</td></tr>
- <tr><td>Heran / Stulberg / Klein / Johansen</td><td>Strong youth competitions, but their published age limits are below the professional age profile targeted by this dossier.</td></tr>
- </tbody></table></div>
-</section>
-
-<footer class="footer">This is a planning dossier, not an official competition publication. Dates and regulations can change. Every card links to the strongest source found during the research pass. The page is intentionally self-contained so it can be shared as a single link and opened comfortably on phone, tablet or desktop.</footer>
+<footer class="footer">Planning database, not an official competition publication. Regulations can change; always check the linked organiser page before paying a fee, booking travel or recording repertoire.</footer>
 </div>
 
 <script src="data.js"></script>
+<script src="aggressive-data.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
