@@ -29,11 +29,14 @@ function loadWorker() {
     delete: () => Promise.resolve(true),
     match: () => Promise.resolve(undefined),
   };
+  class WorkerRequest {
+    constructor(url, options) { this.url = url; this.options = options || {}; this.method = 'GET'; this.mode = 'same-origin'; }
+  }
   vm.runInNewContext(fs.readFileSync(path.join(root, 'sw.js'), 'utf8'), {
     self,
     caches,
     URL,
-    Request,
+    Request: WorkerRequest,
     Response,
     fetch,
     Promise,
