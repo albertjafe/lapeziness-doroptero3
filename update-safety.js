@@ -52,3 +52,15 @@
   }
   boot(0);
 })();
+
+/* Capa de persistencia para eventos manuales. Se carga desde un módulo global
+   ya presente en todas las vistas para no depender del orden del modal. */
+(function loadEventDataProtection(){
+  'use strict';
+  if(window.EventDataProtection || document.getElementById('eventDataProtectionScript')) return;
+  const script=document.createElement('script');
+  script.id='eventDataProtectionScript';
+  script.src='./event-data-protection.js?v=1';
+  script.async=false;
+  document.head.appendChild(script);
+})();
