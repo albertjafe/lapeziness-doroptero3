@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v338';
+const CACHE = 'estudio-v339';
 const ASSETS = [
   './index.html',
   './styles.css?v=281',
@@ -25,9 +25,11 @@ const ASSETS = [
   './passage-tracker.js?v=1',
   './event-repertoire-picker.js?v=1',
   './professor-temporary-chat.js?v=1',
+  './professor-handoff-resilience.js?v=1',
+  './instant-sync-resilience.js?v=1',
   './piano-rooms.js?v=1',
   './piano-rooms-core.js?v=1',
-  './local-save-resilience.js?v=1',
+  './local-save-resilience.js?v=2',
   './crono-save-resilience.js?v=1',
   './task-sync-bootstrap.js?v=1',
   './task-sync-resilience.js?v=1',

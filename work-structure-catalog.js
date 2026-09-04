@@ -7,6 +7,9 @@
     { composer:'Bach', title:'Suite inglesa n.º 2 en la menor, BWV 807', aliases:['english suite 2 bwv 807','bach bwv 807'], movements:[
       {name:'I. Prélude',duration:5},{name:'II. Allemande',duration:4},{name:'III. Courante',duration:2.5},{name:'IV. Sarabande',duration:4.5},{name:'V. Bourrée I – Bourrée II',duration:4},{name:'VI. Gigue',duration:3.5}
     ]},
+    { composer:'Bartók', title:'Sonata para piano (1926), Sz. 80, BB 88', aliases:['bartok sonata 1926','bartok piano sonata sz 80','bartok bb 88','sonata para piano sz 80'], movements:[
+      {name:'I. Allegro moderato',duration:null},{name:'II. Sostenuto e pesante',duration:null},{name:'III. Allegro molto',duration:null}
+    ]},
     { composer:'Beethoven', title:'Concierto para piano n.º 3 en do menor, Op. 37', aliases:['beethoven piano concerto 3 op 37','beethoven concierto 3 op 37','concierto piano 3 op 37'], movements:[
       {name:'I. Allegro con brio',duration:17},{name:'II. Largo',duration:10},{name:'III. Rondo. Allegro',duration:10}
     ]},
