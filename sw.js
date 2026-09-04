@@ -1,4 +1,5 @@
-const CACHE = 'estudio-v344';
+const CACHE = 'estudio-v345';
+const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
   "./activity-dashboard.js?v=342",
@@ -103,16 +104,39 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys()
-      .then(keys => {
-        // Keep the previous shell while old tabs durably save on controllerchange.
-        const prior=keys.filter(k=>/^estudio-v\d+$/.test(k)&&k!==CACHE)
-          .sort((a,b)=>Number(b.slice(9))-Number(a.slice(9)))[0];
-        return Promise.all(keys.filter(k=>/^estudio-v\d+$/.test(k)&&k!==CACHE&&k!==prior).map(k=>caches.delete(k)));
-      })
-      .then(() => self.clients.claim())
-  );
+  e.waitUntil((async () => {
+    const keys = await caches.keys();
+    const prior = keys.filter(k => /^estudio-v\d+$/.test(k) && k !== CACHE)
+      .sort((a,b) => Number(b.slice(9)) - Number(a.slice(9)))[0];
+    await Promise.all(keys.filter(k => /^estudio-v\d+$/.test(k) && k !== CACHE && k !== prior).map(k => caches.delete(k)));
+
+    const cache = await caches.open(CACHE);
+    let marker = null;
+    try {
+      const response = await cache.match(SAFE_PROMOTION_MARKER);
+      if (response) marker = await response.json();
+      if (response && typeof cache.delete === 'function') await cache.delete(SAFE_PROMOTION_MARKER);
+    } catch (error) {}
+
+    await self.clients.claim();
+
+    /* iOS/PWA puede activar correctamente el worker pero no recargar la ventana
+       que inició la actualización. El mensaje SAFE_SKIP_WAITING solo se emite
+       después de snapshot + sync; por eso, y solo en ese caso, navegamos de
+       nuevo el cliente iniciador para que cargue el shell recién activado. */
+    if (marker && marker.clientId && self.clients.matchAll) {
+      const windowClients = await self.clients.matchAll({ type:'window', includeUncontrolled:true });
+      const client = windowClients.find(item => item.id === marker.clientId);
+      if (client) {
+        try {
+          if (typeof client.navigate === 'function') await client.navigate(client.url);
+          else if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED' });
+        } catch (error) {
+          try { if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED' }); } catch (_) {}
+        }
+      }
+    }
+  })());
 });
 
 self.addEventListener('message', e => {
@@ -120,7 +144,16 @@ self.addEventListener('message', e => {
      antiguas del cliente lo enviaban automáticamente y podían recargar justo
      después de introducir datos. */
   if (e.data && e.data.type === 'SAFE_SKIP_WAITING' && e.data.safe === true) {
-    self.skipWaiting();
+    e.waitUntil((async () => {
+      try {
+        const cache = await caches.open(CACHE);
+        await cache.put(SAFE_PROMOTION_MARKER, new Response(JSON.stringify({
+          clientId: e.source && e.source.id || null,
+          requestedAt: e.data.requestedAt || new Date().toISOString()
+        }), { headers:{ 'Content-Type':'application/json' } }));
+      } catch (error) {}
+      await self.skipWaiting();
+    })());
   }
 });
 
@@ -184,7 +217,7 @@ self.addEventListener('fetch', e => {
   if (url.pathname.endsWith('/mystery-house.js')) {
     e.respondWith(Promise.resolve(new Response('/* retired 3D game */', {
       status: 200,
-      headers: { 'Content-Type': 'application/javascript; charset=utf-8' },
+      headers: { 'Content-Type':'application/javascript; charset=utf-8' },
     })));
     return;
   }
