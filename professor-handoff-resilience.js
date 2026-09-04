@@ -5,63 +5,165 @@
 })(typeof window !== 'undefined' ? window : globalThis, function (root) {
   'use strict';
 
-  const MAX_URL_ENCODED = 7000;
-  const URL_RULES = [
-    'Actúa como profesor de planificación pianística.',
-    'Decide movimiento por movimiento; no repartas horas históricas entre movimientos.',
-    'Distingue solidez medida, antigüedad y confianza.',
-    'Prioriza riesgo, urgencia y coste restante sin enfriar otra unidad crítica.',
-    'Usa lo ya estudiado hoy y solo trata un evento como prioridad musical si tiene repertorio enlazado.',
-    'Da una respuesta compacta, concreta y accionable.',
-  ].join('\n');
+  /* El handoff anterior construía dos prompts: uno enorme para el portapapeles
+     y otro abreviado para la URL. En iPad eso podía bloquear el hilo principal.
+     V2 construye UNA sola representación densa con TODAS las unidades/eventos. */
+  const MAX_URL_ENCODED = 60000;
+  const CACHE_MAX_AGE_MS = 90 * 1000;
+  const RULES = [
+    'cada movimiento es unidad independiente',
+    'horas históricas de obra=familiaridad, no solidez actual',
+    'horas históricas no asignadas nunca se reparten entre movimientos',
+    'solidez debe leerse con antigüedad y confianza/evidencia',
+    'prioriza riesgo*urgencia*coste restante evitando enfriar otra unidad crítica',
+    'usa estudio de hoy; no reinicies el día',
+    'evento sin repertorio enlazado no crea prioridad musical',
+    'si falta evidencia expresa incertidumbre; no inventes datos',
+    'propón bloques concretos con duración y propósito',
+  ].join(';');
 
   let installed = false;
   let installTimer = null;
+  let cachedReport = null;
+  let cachedFingerprint = '';
+  let cachedAt = 0;
+  let prewarmTimer = null;
+
+  const arr = value => Array.isArray(value) ? value : [];
+  const val = value => value == null || value === '' ? '-' : String(value);
+  const n1 = value => {
+    const n = Number(value);
+    return Number.isFinite(n) ? String(Math.round(n * 10) / 10) : '-';
+  };
+  const clean = value => val(value)
+    .replace(/[\r\n\t]+/g, ' ')
+    .replace(/[|~]/g, '/')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  const day = value => {
+    if (!value) return '-';
+    const match = String(value).match(/\d{4}-\d{2}-\d{2}/);
+    return match ? match[0] : clean(value);
+  };
 
   function modeInstruction(mode) {
-    if (mode === 'remaining') return 'Organiza únicamente lo que queda de HOY desde ahora; no reinicies el día.';
-    if (mode === 'now') return 'Dime qué debería estudiar AHORA MISMO: decisión principal, duración y plan B corto.';
-    if (mode === 'week') return 'Haz balance de los próximos 7 días y distribuye el estudio estratégicamente por movimientos.';
-    return 'Organiza el día de hoy de forma realista, movimiento por movimiento.';
+    if (mode === 'remaining') return 'organiza solo lo que queda de HOY desde ahora; no reinicies el día';
+    if (mode === 'now') return 'dime qué estudiar AHORA: decisión principal, duración y plan B corto';
+    if (mode === 'week') return 'balance de próximos 7 días y distribución estratégica por movimientos';
+    return 'organiza HOY de forma realista movimiento por movimiento';
   }
 
-  function compactReport(report, unitLimit, eventLimit) {
-    const src = report || {};
-    return Object.assign({}, src, {
-      units: Array.isArray(src.units) ? src.units.slice(0, unitLimit) : [],
-      events: Array.isArray(src.events) ? src.events.slice(0, eventLimit) : [],
-      priorities: Array.isArray(src.priorities) ? src.priorities.slice(0, unitLimit) : [],
+  function dbFingerprint(data) {
+    const db = data || {};
+    return [
+      db._localRevision || 0,
+      db._savedAt || '',
+      arr(db.obras).length,
+      arr(db.eventos).length,
+      arr(db.sessionPlants).length,
+      arr(db.forestPlants).length,
+      arr(db.sesiones).length,
+    ].join('|');
+  }
+
+  function rememberReport(report, data) {
+    if (!report) return report;
+    cachedReport = report;
+    cachedFingerprint = dbFingerprint(data || database());
+    cachedAt = Date.now();
+    return report;
+  }
+
+  function eventTargetText(event) {
+    const targets = event && event.movementTargets;
+    if (!targets) return '-';
+    if (Array.isArray(targets)) return targets.map(clean).join(',');
+    if (typeof targets === 'object') {
+      return Object.entries(targets).map(([workId, movements]) =>
+        clean(workId) + ':' + arr(movements).map(clean).join(',')
+      ).join(';') || '-';
+    }
+    return clean(targets);
+  }
+
+  function denseContext(report) {
+    const r = report || {};
+    const today = r.today || {};
+    const events = arr(r.events);
+    const units = arr(r.units);
+    const warnings = arr(r.warnings);
+    const lines = [];
+    const eventIndex = new Map();
+
+    lines.push('PIANO_PROF_V2|' + clean(r.asOf || r.day || ''));
+    lines.push('LEYENDA|E=i,dia,dias,fuente,tipo,enlazado,obras,movs,nombre; W=obra,compositor,titulo,histH,noAsignMin,estado; U=clave,mov,nombre,dif,sol,evidEdad,evidTipo,evidDia,ultEst,diasSin,recientes(hoy/3/7/14/30/90/todo),movMin,recH(low/high/fuente/target),prioridad(banda/score/razones),eventos,lastPass,estado');
+    lines.push('HOY|' + [n1(today.totalKnownMinutes), n1(today.movementMinutes), n1(today.unallocatedMinutes), n1(today.unitsStudied)].join('|'));
+    if (today.byUnit && today.byUnit.length) {
+      lines.push('HOY_UNIDADES|' + today.byUnit.map(item => clean(item.key) + '=' + n1(item.minutes)).join(';'));
+    }
+    if (r.coverage) lines.push('COB|' + clean(JSON.stringify(r.coverage)));
+    warnings.forEach((warning, index) => lines.push('A|' + index + '|' + clean(warning)));
+
+    events.forEach((event, index) => {
+      eventIndex.set(String(event.key || event.id || index), index);
+      lines.push([
+        'E', index, day(event.day || event.at), n1(event.daysAway), clean(event.source), clean(event.type),
+        event.repertoireLinked ? '1' : '0', arr(event.workIds).map(clean).join(','), eventTargetText(event),
+        clean(event.name), clean(event.calendar || '')
+      ].join('|'));
     });
+
+    const seenWorks = new Set();
+    units.forEach(unit => {
+      const workId = clean(unit.obraId || unit.work || unit.key);
+      if (!seenWorks.has(workId)) {
+        seenWorks.add(workId);
+        lines.push([
+          'W', workId, clean(unit.composer), clean(unit.work), n1(unit.historicalWorkHours),
+          n1(unit.workUnallocatedModernMinutes), clean(unit.workState)
+        ].join('|'));
+      }
+      const recent = unit.recent || {};
+      const recovery = unit.recoveryHours || {};
+      const priority = unit.priority || {};
+      const linked = arr(unit.linkedEvents).map(event => {
+        const key = String(event && (event.key || event.id) || '');
+        if (eventIndex.has(key)) return eventIndex.get(key);
+        const direct = events.indexOf(event);
+        return direct >= 0 ? direct : clean(event && event.name);
+      }).join(',') || '-';
+      const pass = unit.lastPass || {};
+      lines.push([
+        'U', clean(unit.key), clean(unit.movId || 'FULL'), clean(unit.movement || 'obra completa'),
+        n1(unit.difficulty), unit.solidity == null ? '?' : n1(unit.solidity),
+        unit.daysSinceEvidence == null ? '?' : n1(unit.daysSinceEvidence), clean(unit.evidenceKind), day(unit.evidenceAt),
+        day(unit.lastStudyAt), n1(unit.daysSinceStudy),
+        [recent.today, recent.d3, recent.d7, recent.d14, recent.d30, recent.d90, recent.all].map(n1).join('/'),
+        n1(unit.movementModernMinutes),
+        [recovery.low, recovery.high, recovery.source, recovery.target].map(clean).join('/'),
+        [clean(priority.band), n1(priority.score), arr(priority.reasons).map(clean).join(',')].join('/'),
+        linked,
+        [day(pass.at), pass.score == null ? '-' : n1(pass.score), clean(pass.type)].join('/'),
+        clean(unit.movementState)
+      ].join('|'));
+    });
+    return lines.join('\n');
   }
 
-  function buildShortPrompt(report, options, core, unitLimit, eventLimit) {
+  function buildDensePrompt(report, options, core) {
     const opts = options || {};
-    const compact = compactReport(report, unitLimit == null ? 12 : unitLimit, eventLimit == null ? 12 : eventLimit);
-    const context = core && typeof core.compactContext === 'function'
-      ? core.compactContext(compact, unitLimit == null ? 12 : unitLimit)
-      : JSON.stringify(compact);
     const note = String(opts.note || '').trim();
-    return `${URL_RULES}\n\nTAREA\n${modeInstruction(opts.mode || 'today')}${note ? `\nCondición del usuario: ${note}` : ''}\n\n${context}`;
-  }
-
-  function fitUrlPrompt(report, options, core, maxEncoded) {
-    const limit = Math.max(1800, Number(maxEncoded) || MAX_URL_ENCODED);
-    const passes = [[12, 12], [9, 9], [6, 7], [4, 5]];
-    let prompt = '';
-    let encoded = '';
-    for (const [units, events] of passes) {
-      prompt = buildShortPrompt(report, options, core, units, events);
-      encoded = encodeURIComponent(prompt);
-      if (encoded.length <= limit) return { prompt, encoded, truncated: units < 12 || events < 12 };
-    }
-    const safeChars = Math.max(1200, Math.floor(limit * 0.54));
-    prompt = prompt.slice(0, safeChars) + '\n[contexto URL abreviado; el prompt completo se ha copiado al portapapeles]';
-    encoded = encodeURIComponent(prompt);
-    while (encoded.length > limit && prompt.length > 800) {
-      prompt = prompt.slice(0, Math.floor(prompt.length * 0.86));
-      encoded = encodeURIComponent(prompt);
-    }
-    return { prompt, encoded, truncated: true };
+    const customMaster = String(opts.masterPrompt || '').trim();
+    const defaultMaster = String(core && core.DEFAULT_MASTER_PROMPT || '').trim();
+    const customRules = customMaster && customMaster !== defaultMaster ? '\nREGLAS_PERSONALES\n' + customMaster : '';
+    return [
+      'Actúa como profesor de planificación pianística. Recibes un informe denso pero completo; interpreta la leyenda y usa TODAS las filas U/E, no solo las primeras.',
+      'REGLAS|' + RULES,
+      'TAREA|' + modeInstruction(opts.mode || 'today') + (note ? '|condición_usuario=' + clean(note) : ''),
+      customRules,
+      denseContext(report),
+      'SALIDA|primero plan compacto y accionable; luego solo razones importantes y qué dato cambiaría la decisión'
+    ].filter(Boolean).join('\n');
   }
 
   function withTemporaryChat(url) {
@@ -74,25 +176,24 @@
   }
 
   function buildSafeChatGptUrl(report, options, core) {
-    const api = core || (root && root.ProfessorCore);
-    if (!api) return null;
-    const opts = options || {};
-    const fullPrompt = typeof api.buildPrompt === 'function'
-      ? api.buildPrompt(report, opts)
-      : buildShortPrompt(report, opts, api, 12, 12);
-    const fitted = fitUrlPrompt(report, opts, api, MAX_URL_ENCODED);
-    const url = withTemporaryChat(`https://chatgpt.com/?prompt=${fitted.encoded}`);
+    const api = core || (root && root.ProfessorCore) || null;
+    const prompt = buildDensePrompt(report, options, api);
+    const encoded = encodeURIComponent(prompt);
     return {
-      url,
-      fullPrompt,
-      promptForUrl: fitted.prompt,
-      truncated: fitted.truncated || fitted.prompt !== fullPrompt,
-      encodedLength: fitted.encoded.length,
+      url: withTemporaryChat('https://chatgpt.com/?prompt=' + encoded),
+      promptForUrl: prompt,
+      truncated: false,
+      compressed: true,
+      encodedLength: encoded.length,
+      overAdvisoryLimit: encoded.length > MAX_URL_ENCODED,
+      unitCount: arr(report && report.units).length,
+      eventCount: arr(report && report.events).length,
     };
   }
 
   function database() {
-    try { return typeof db !== 'undefined' ? db : (root && root.db || null); } catch (error) { return root && root.db || null; }
+    try { return typeof db !== 'undefined' ? db : (root && root.db || null); }
+    catch (error) { return root && root.db || null; }
   }
 
   function optionsFor(mode) {
@@ -103,67 +204,52 @@
     return { mode: mode || 'today', note, masterPrompt };
   }
 
-  async function copyText(text) {
-    try {
-      if (root && root.navigator && root.navigator.clipboard) {
-        await root.navigator.clipboard.writeText(text);
-        return true;
-      }
-    } catch (error) {}
-    try {
-      const area = root.document.createElement('textarea');
-      area.value = text;
-      area.style.position = 'fixed';
-      area.style.opacity = '0';
-      root.document.body.appendChild(area);
-      area.select();
-      const ok = root.document.execCommand('copy');
-      area.remove();
-      return ok;
-    } catch (error) { return false; }
-  }
-
   function toast(message) {
     try { if (root && typeof root.showToast === 'function') root.showToast(message); } catch (error) {}
   }
 
   function navigatePopup(popup, url) {
     if (!popup) return false;
-    try {
-      popup.location.replace(url);
-      return true;
-    } catch (error) {
-      try { popup.location.href = url; return true; } catch (secondError) { return false; }
+    try { popup.location.replace(url); return true; }
+    catch (error) {
+      try { popup.location.href = url; return true; }
+      catch (secondError) { return false; }
     }
+  }
+
+  function freshCachedReport(data) {
+    if (!cachedReport) return null;
+    if (Date.now() - cachedAt > CACHE_MAX_AGE_MS) return null;
+    return cachedFingerprint === dbFingerprint(data) ? cachedReport : null;
+  }
+
+  function reportForHandoff(data) {
+    const cached = freshCachedReport(data);
+    if (cached) return cached;
+    if (!root || !root.ProfessorCore || typeof root.ProfessorCore.buildReport !== 'function') return null;
+    return rememberReport(root.ProfessorCore.buildReport(data, { asOf: new Date() }), data);
   }
 
   function openSafe(mode) {
     if (!root || !root.ProfessorCore) return;
-
     let popup = null;
     try {
       popup = root.open('about:blank', '_blank');
       if (popup) popup.opener = null;
     } catch (error) {}
 
-    toast('Preparando Profesor…');
-    root.setTimeout(async () => {
+    toast('Abriendo Profesor…');
+    root.setTimeout(() => {
       try {
         const data = database() || {};
-        const report = root.ProfessorCore.buildReport(data, { asOf: new Date() });
-        const opts = optionsFor(mode);
-        const built = buildSafeChatGptUrl(report, opts, root.ProfessorCore);
-        if (!built) throw new Error('ProfessorCore unavailable');
-
-        copyText(built.fullPrompt);
-        if (popup && navigatePopup(popup, built.url)) {
-          toast(built.truncated
-            ? 'ChatGPT abierto · contexto completo copiado también'
-            : 'ChatGPT abierto con el contexto del Profesor');
+        const report = reportForHandoff(data);
+        if (!report) throw new Error('Professor report unavailable');
+        const built = buildSafeChatGptUrl(report, optionsFor(mode), root.ProfessorCore);
+        if (!popup || !navigatePopup(popup, built.url)) {
+          toast('El navegador bloqueó la nueva pestaña');
           return;
         }
-
-        toast('El navegador bloqueó la nueva pestaña · superinforme copiado');
+        toast('ChatGPT abierto · contexto completo ' + built.unitCount + ' unidades / ' + built.eventCount + ' eventos');
       } catch (error) {
         try { if (popup && !popup.closed) popup.close(); } catch (closeError) {}
         toast('No se pudo abrir el Profesor · vuelve a intentarlo');
@@ -172,22 +258,53 @@
     }, 0);
   }
 
+  function patchReportCache() {
+    const core = root && root.ProfessorCore;
+    if (!core || typeof core.buildReport !== 'function') return false;
+    if (core.buildReport.__professorHandoffCached) return true;
+    const original = core.buildReport;
+    const wrapped = function cachedProfessorReport(data) {
+      const result = original.apply(this, arguments);
+      return rememberReport(result, data);
+    };
+    wrapped.__professorHandoffCached = true;
+    wrapped.__original = original;
+    core.buildReport = wrapped;
+    return true;
+  }
+
+  function schedulePrewarm() {
+    if (!root || !root.ProfessorCore || prewarmTimer) return;
+    const run = () => {
+      prewarmTimer = null;
+      try {
+        const data = database() || {};
+        if (!freshCachedReport(data)) reportForHandoff(data);
+      } catch (error) {}
+    };
+    if (typeof root.requestIdleCallback === 'function') {
+      prewarmTimer = root.requestIdleCallback(run, { timeout: 1600 });
+    } else {
+      prewarmTimer = root.setTimeout(run, 350);
+    }
+  }
+
   function patchCore() {
     const core = root && root.ProfessorCore;
     if (!core || typeof core.buildReport !== 'function') return false;
-    if (!core.buildChatGptUrl || !core.buildChatGptUrl.__responsiveProfessorHandoff) {
-      const safe = function responsiveBuildChatGptUrl(report, options) {
-        return buildSafeChatGptUrl(report, options, core);
-      };
-      safe.__responsiveProfessorHandoff = true;
-      core.buildChatGptUrl = safe;
-    }
+    patchReportCache();
+    const safe = function responsiveBuildChatGptUrl(report, options) {
+      return buildSafeChatGptUrl(report, options, core);
+    };
+    safe.__responsiveProfessorHandoff = true;
+    core.buildChatGptUrl = safe;
     root.openProfessorInChatGPT = openSafe;
+    schedulePrewarm();
     return true;
   }
 
   function installCapture() {
-    if (!root || !root.document || root.document.__responsiveProfessorHandoff) return true;
+    if (!root || !root.document || root.document.__responsiveProfessorHandoffV2) return true;
     root.document.addEventListener('click', event => {
       const button = event.target && event.target.closest && event.target.closest('[data-prof-mode]');
       if (!button || !button.closest('#view-profesor')) return;
@@ -196,7 +313,7 @@
       event.stopImmediatePropagation();
       openSafe(button.dataset.profMode);
     }, true);
-    root.document.__responsiveProfessorHandoff = true;
+    root.document.__responsiveProfessorHandoffV2 = true;
     return true;
   }
 
@@ -225,8 +342,8 @@
 
   return {
     MAX_URL_ENCODED,
-    buildShortPrompt,
-    fitUrlPrompt,
+    denseContext,
+    buildDensePrompt,
     buildSafeChatGptUrl,
     openSafe,
     install,
