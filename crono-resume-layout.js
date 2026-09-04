@@ -58,14 +58,11 @@
     if (!view) return;
     const size = viewportSize();
 
-    /* Primero dejamos que la lógica canónica haga su trabajo. */
     try {
       if (typeof cronoSetInterfaceScale === 'function') cronoSetInterfaceScale(1, {});
       else if (typeof cronoInitInterfaceZoom === 'function') cronoInitInterfaceZoom();
     } catch (error) {}
 
-    /* Y después escribimos explícitamente la medición ya asentada. Esto cubre
-       instalaciones antiguas y reanudaciones donde no se dispara resize. */
     const ring = desiredRingSize(size.width, size.height);
     view.style.setProperty('--crono-interface-ring-size', ring.toFixed(2) + 'px');
     view.dataset.resumeViewport = size.width + 'x' + size.height;
@@ -77,8 +74,6 @@
       if (geometryNeedsCompactMode()) {
         document.body.classList.add('crono-resume-compact');
         requestAnimationFrame(() => {
-          /* Si el primer reflow era todavía transitorio, una última medición
-             recalcula el aro pero conserva el modo compacto si sigue haciendo falta. */
           const second = viewportSize();
           const secondRing = desiredRingSize(second.width, second.height);
           view.style.setProperty('--crono-interface-ring-size', secondRing.toFixed(2) + 'px');
@@ -126,6 +121,14 @@ function loadPianoCompanion(id, src, cssId, cssHref) {
   document.head.appendChild(script);
 }
 
+/* Persistencia local + sincronización: cargadas después de app.js para envolver
+   las funciones canónicas sin sustituir su reconciliación de datos. */
+(function loadPersistenceResilience() {
+  'use strict';
+  if (!window.LocalSaveResilience) loadPianoCompanion('localSaveResilienceScript', './local-save-resilience.js?v=2');
+  if (!window.InstantSyncResilience) loadPianoCompanion('instantSyncResilienceScript', './instant-sync-resilience.js?v=1');
+}());
+
 /* Pasajes difíciles: módulo compañero cargado después de app.js para poder
    enganchar el cronómetro sin aumentar todavía más el archivo principal. */
 (function loadPassageTracker() {
@@ -141,9 +144,10 @@ function loadPianoCompanion(id, src, cssId, cssHref) {
   loadPianoCompanion('eventRepertoirePickerScript', './event-repertoire-picker.js?v=1', 'eventRepertoirePickerStyles', './event-repertoire-picker.css?v=1');
 }());
 
-/* Profesor: handoff a ChatGPT temporal por defecto. */
+/* Profesor: conserva Chat temporal y añade el handoff ligero que evita URLs
+   gigantes y trabajo síncrono pesado en el click. */
 (function loadProfessorTemporaryChat() {
   'use strict';
-  if (window.ProfessorTemporaryChat) return;
-  loadPianoCompanion('professorTemporaryChatScript', './professor-temporary-chat.js?v=1');
+  if (!window.ProfessorTemporaryChat) loadPianoCompanion('professorTemporaryChatScript', './professor-temporary-chat.js?v=1');
+  if (!window.ProfessorHandoffResilience) loadPianoCompanion('professorHandoffResilienceScript', './professor-handoff-resilience.js?v=1');
 }());
