@@ -122,10 +122,11 @@ function loadPianoCompanion(id, src, cssId, cssHref) {
 }
 
 /* Persistencia local + sincronización: cargadas después de app.js para envolver
-   las funciones canónicas sin sustituir su reconciliación de datos. */
+   las funciones canónicas sin sustituir su reconciliación de datos. El id v2
+   obliga a promover esta capa aunque una versión antigua ya estuviera cargada. */
 (function loadPersistenceResilience() {
   'use strict';
-  if (!window.LocalSaveResilience) loadPianoCompanion('localSaveResilienceScript', './local-save-resilience.js?v=2');
+  loadPianoCompanion('localSaveResilienceScriptV2', './local-save-resilience.js?v=2');
   if (!window.InstantSyncResilience) loadPianoCompanion('instantSyncResilienceScript', './instant-sync-resilience.js?v=1');
 }());
 
