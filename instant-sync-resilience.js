@@ -136,34 +136,11 @@
     return true;
   }
 
-  function wrapSaveData() {
-    const current = root && root.saveData;
-    if (typeof current !== 'function') return false;
-    if (current.__instantSyncAfterSave) return true;
-
-    const original = current;
-    const wrapped = function saveAndSyncImmediately() {
-      let result;
-      try {
-        result = original.apply(this, arguments);
-      } finally {
-        queueMicrotask(requestImmediateSync);
-      }
-      return result;
-    };
-    wrapped.__instantSyncAfterSave = true;
-    wrapped.__original = original;
-    root.saveData = wrapped;
-    try { saveData = wrapped; } catch (error) {}
-    return true;
-  }
-
   function install() {
     if (!root) return false;
     const pending = wrapPendingSync();
     const enqueue = wrapEnqueue();
-    const save = wrapSaveData();
-    if (!pending && !enqueue && !save) return false;
+    if (!pending && !enqueue) return false;
     installed = true;
     return true;
   }
