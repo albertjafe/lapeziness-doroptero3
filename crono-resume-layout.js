@@ -110,23 +110,40 @@
   else settleLayout();
 }());
 
+function loadPianoCompanion(id, src, cssId, cssHref) {
+  if (cssId && cssHref && !document.getElementById(cssId)) {
+    const link = document.createElement('link');
+    link.id = cssId;
+    link.rel = 'stylesheet';
+    link.href = cssHref;
+    document.head.appendChild(link);
+  }
+  if (!id || !src || document.getElementById(id)) return;
+  const script = document.createElement('script');
+  script.id = id;
+  script.src = src;
+  script.async = false;
+  document.head.appendChild(script);
+}
+
 /* Pasajes difíciles: módulo compañero cargado después de app.js para poder
    enganchar el cronómetro sin aumentar todavía más el archivo principal. */
 (function loadPassageTracker() {
   'use strict';
-  if (window.PassageTracker || document.getElementById('passageTrackerScript')) return;
+  if (window.PassageTracker) return;
+  loadPianoCompanion('passageTrackerScript', './passage-tracker.js?v=1', 'passageTrackerStyles', './passage-tracker.css?v=1');
+}());
 
-  if (!document.getElementById('passageTrackerStyles')) {
-    const link = document.createElement('link');
-    link.id = 'passageTrackerStyles';
-    link.rel = 'stylesheet';
-    link.href = './passage-tracker.css?v=1';
-    document.head.appendChild(link);
-  }
+/* Eventos: búsqueda de repertorio pensada para bibliotecas grandes. */
+(function loadEventRepertoirePicker() {
+  'use strict';
+  if (window.EventRepertoirePicker) return;
+  loadPianoCompanion('eventRepertoirePickerScript', './event-repertoire-picker.js?v=1', 'eventRepertoirePickerStyles', './event-repertoire-picker.css?v=1');
+}());
 
-  const script = document.createElement('script');
-  script.id = 'passageTrackerScript';
-  script.src = './passage-tracker.js?v=1';
-  script.async = false;
-  document.head.appendChild(script);
+/* Profesor: handoff a ChatGPT temporal por defecto. */
+(function loadProfessorTemporaryChat() {
+  'use strict';
+  if (window.ProfessorTemporaryChat) return;
+  loadPianoCompanion('professorTemporaryChatScript', './professor-temporary-chat.js?v=1');
 }());
