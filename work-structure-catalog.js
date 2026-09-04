@@ -93,7 +93,7 @@
     if(!work)return{work,changed:false,structure:null};const matched=structure||matchWorkStructure(work);if(!matched)return{work,changed:false,structure:null};
     const clone={...work,movimientos:Array.isArray(work.movimientos)?work.movimientos.map(m=>({...m})):[]};let changed=false;
     if(!clone.movimientos.length){clone.movimientos=matched.movements.map(makeMovement);changed=true;}
-    else if(clone.movimientos.length===matched.movements.length){clone.movimientos=clone.movimientos.map((movement,index)=>{const template=matched.movements[index],next={...movement};if(isGenericMovementName(next.name)&&template.name){next.name=template.name;changed=true;}if(next.duracion==null&&template.duration!=null){next.duracion=template.duration;next.duracionEstimada=true;next.duracionFuente:'catalogo-curado';changed=true;}return next;});}
+    else if(clone.movimientos.length===matched.movements.length){clone.movimientos=clone.movimientos.map((movement,index)=>{const template=matched.movements[index],next={...movement};if(isGenericMovementName(next.name)&&template.name){next.name=template.name;changed=true;}if(next.duracion==null&&template.duration!=null){next.duracion=template.duration;next.duracionEstimada=true;next.duracionFuente='catalogo-curado';changed=true;}return next;});}
     return{work:clone,changed,structure:matched};
   }
   return{WORKS,normalize,isGenericMovementName,matchWorkStructure,completeWorkStructure};
