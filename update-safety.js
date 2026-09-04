@@ -11,6 +11,8 @@
   let updating = false;
   let reloading = false;
   let controlled = Boolean(root.navigator?.serviceWorker?.controller);
+  let explicitPromotionRequested = false;
+  let promotionFallbackTimer = null;
 
   function wait(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
   function withTimeout(promise, ms, label){
@@ -27,14 +29,32 @@
   function toast(message){
     try { if(typeof root.showToast === 'function') root.showToast(message); } catch(error) {}
   }
+  function updateBanner(){ return root.document && root.document.getElementById('swUpdateBanner'); }
+  function hideBanner(){ const banner = updateBanner(); if(banner) banner.style.display = 'none'; }
+  function showBanner(){ const banner = updateBanner(); if(banner) banner.style.display = 'flex'; }
   function buttonState(text, disabled){
-    const banner = root.document && root.document.getElementById('swUpdateBanner');
+    const banner = updateBanner();
     const button = banner && banner.querySelector('button');
     if(button){
       if(text != null) button.textContent = text;
       button.disabled = !!disabled;
     }
     return button;
+  }
+  function clearPromotionFallback(){
+    if(promotionFallbackTimer) clearTimeout(promotionFallbackTimer);
+    promotionFallbackTimer = null;
+  }
+  function armPromotionFallback(){
+    clearPromotionFallback();
+    promotionFallbackTimer = setTimeout(() => {
+      promotionFallbackTimer = null;
+      if(reloading) return;
+      explicitPromotionRequested = false;
+      showBanner();
+      buttonState('Actualizar →', false);
+      toast('La actualización no terminó de aplicarse. Puedes volver a intentarlo.');
+    }, 12000);
   }
 
   function currentDbRaw(){
@@ -202,6 +222,8 @@
       return false;
     }
     updating = true;
+    explicitPromotionRequested = false;
+    clearPromotionFallback();
     const button = buttonState('Protegiendo datos…', true);
     try {
       await snapshotBeforeUpdate();
@@ -214,17 +236,24 @@
       await withTimeout(registration.update(), 9000, 'No se pudo comprobar la nueva versión');
       const waiting = await waitingWorker(registration);
       if(!waiting){
-        toast('Datos seguros. La nueva versión se aplicará al cerrar y volver a abrir la app.');
+        hideBanner();
+        toast('Datos seguros. No queda una versión en espera; al reabrir se comprobará de nuevo.');
         return true;
       }
       // Network checks may have yielded while the user entered more data.
       if (root.LocalSaveResilience?.flush) await root.LocalSaveResilience.flush();
       if (syncMetaPending() || resiliencePending() || timerActive()) throw new Error('State changed during update');
       if (root.localStorage.getItem(DB_KEY) !== currentDbRaw()) throw new Error('Unpersisted edits');
+      explicitPromotionRequested = true;
+      hideBanner();
       waiting.postMessage({ type:'SAFE_SKIP_WAITING', safe:true, requestedAt:new Date().toISOString() });
+      armPromotionFallback();
       return true;
     } catch(error) {
+      explicitPromotionRequested = false;
+      clearPromotionFallback();
       console.warn('[update-safety] actualización cancelada', error);
+      showBanner();
       toast('No se actualiza: tus datos todavía no están confirmados como seguros.');
       return false;
     } finally {
@@ -243,14 +272,25 @@
     try { swDoUpdate = safeUpdate; } catch(error) {}
     installed = true;
     root.navigator?.serviceWorker?.addEventListener?.('controllerchange', async () => {
-      if (!controlled) { controlled = true; return; }
+      const explicit = explicitPromotionRequested;
+      if (!controlled && !explicit) { controlled = true; return; }
+      controlled = true;
       if (reloading) return;
       reloading = true;
-      try { await snapshotBeforeUpdate(); root.location.reload(); }
-      catch (error) { reloading = false; toast('Guarda los cambios antes de reabrir la actualización.'); }
+      explicitPromotionRequested = false;
+      clearPromotionFallback();
+      try {
+        await snapshotBeforeUpdate();
+        hideBanner();
+        root.location.reload();
+      } catch (error) {
+        reloading = false;
+        showBanner();
+        toast('Guarda los cambios antes de reabrir la actualización.');
+      }
     });
     root.UpdateSafety = {
-      version:2,
+      version:3,
       safeUpdate,
       snapshotBeforeUpdate,
       syncEverything,
