@@ -9,14 +9,14 @@ const Solidity = require('../../solidity-model.js');
 const pillSource = readFileSync(new URL('../../readiness-pill-model.js', import.meta.url), 'utf8');
 const recoverySource = readFileSync(new URL('../../readiness-recovery-context.js', import.meta.url), 'utf8');
 
-function patchedCore() {
+function patchedCore(onReadinessRefresh = () => {}) {
   const core = { ...BaseReadiness };
   const context = {
     window: {
       ReadinessCore: core,
       SolidityModel: Solidity,
       renderObras: null,
-      updateCronoReadiness: null,
+      cronoRenderReadinessEstimate: onReadinessRefresh,
       dispatchEvent() {},
     },
     CustomEvent: class CustomEvent { constructor(type) { this.type = type; } },
@@ -46,6 +46,12 @@ function beethoven(origin = 'recuperacion') {
 }
 
 describe('recovery readiness context', () => {
+  it('refreshes the existing timer estimate when each deferred model becomes available', () => {
+    let refreshes = 0;
+    patchedCore(() => { refreshes += 1; });
+    expect(refreshes).toBe(2);
+  });
+
   it("uses today's movement pills for the work instead of the stale whole-work 1%", () => {
     const Ready = patchedCore();
     const work = beethoven();

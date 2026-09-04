@@ -37,7 +37,7 @@
 
   const wrapped = function buildNormalizedProfessorReport(db, options){
     const report = original.apply(this, arguments);
-    if (!report || !report.today) return report;
+    if (!report || !report.today || report.schemaVersion >= 3) return report;
     const asOf = options && options.asOf ? new Date(options.asOf) : new Date(report.asOf || Date.now());
     const corrected = correctedUnallocatedMinutes(db || {}, asOf);
     report.today.unallocatedMinutes = corrected;

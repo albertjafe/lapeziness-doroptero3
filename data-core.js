@@ -465,7 +465,7 @@
 // para que los tests Node de DataCore sigan sin depender del DOM.
 if (typeof document !== 'undefined' && !document.querySelector('script[data-historical-repertoire]')) {
   const script = document.createElement('script');
-  script.src = 'historical-repertoire.js?v=1';
+  script.src = 'historical-repertoire.js?v=342';
   script.async = true;
   script.dataset.historicalRepertoire = '1';
   document.head.appendChild(script);

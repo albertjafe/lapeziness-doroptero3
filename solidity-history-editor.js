@@ -184,7 +184,7 @@
     const link = document.createElement('link');
     link.id = 'solidityHistoryEditorStyles';
     link.rel = 'stylesheet';
-    link.href = './solidity-history-editor.css?v=1';
+    link.href = './solidity-history-editor.css?v=342';
     document.head.appendChild(link);
   }
 

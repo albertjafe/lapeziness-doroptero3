@@ -43,7 +43,8 @@
   function trackerShape(value) {
     const src = value && typeof value === 'object' ? value : {};
     return {
-      version: VERSION,
+      ...src,
+      version: Math.max(VERSION, Number(src.version) || 0),
       passages: Array.isArray(src.passages) ? src.passages.filter(Boolean).map(item => ({ ...item })) : [],
       observations: Array.isArray(src.observations) ? src.observations.filter(Boolean).map(item => ({ ...item })) : [],
       updatedAt: src.updatedAt || null,
@@ -61,6 +62,7 @@
   function mergeTrackers(left, right) {
     const a = trackerShape(left);
     const b = trackerShape(right);
+    if (window.DocumentSyncCore) return trackerShape({ ...window.DocumentSyncCore.merge(a, b), version: Math.max(a.version, b.version) });
     const passages = new Map();
     a.passages.forEach(item => { if (item.id) passages.set(String(item.id), item); });
     b.passages.forEach(item => {
@@ -79,7 +81,8 @@
     });
 
     const merged = {
-      version: VERSION,
+      ...a, ...b,
+      version: Math.max(a.version, b.version),
       passages: Array.from(passages.values()).sort((x, y) => parseTime(x.createdAt) - parseTime(y.createdAt)),
       observations: Array.from(observations.values()).sort((x, y) => parseTime(x.recordedAt) - parseTime(y.recordedAt)),
       updatedAt: parseTime(a.updatedAt) >= parseTime(b.updatedAt) ? a.updatedAt : b.updatedAt,
@@ -99,8 +102,15 @@
   function ensureTracker() {
     const database = appDb();
     if (!database) return trackerShape(null);
-    database[TRACKER_KEY] = trackerShape(database[TRACKER_KEY]);
-    return database[TRACKER_KEY];
+    // Reads must not replace the object that commitDraft is still filling.
+    let tracker = database[TRACKER_KEY];
+    if (!tracker || typeof tracker !== 'object' || Array.isArray(tracker)) {
+      tracker = database[TRACKER_KEY] = trackerShape(null);
+    }
+    if (!Array.isArray(tracker.passages)) tracker.passages = [];
+    if (!Array.isArray(tracker.observations)) tracker.observations = [];
+    tracker.version = Math.max(VERSION, Number(tracker.version) || 0);
+    return tracker;
   }
 
   function persistData() {
@@ -402,9 +412,9 @@
         panel.className = 'crono-passage-tracker';
         panel.hidden = true;
         panel.setAttribute('aria-label', 'Pasajes difíciles');
-        const calendar = wrap.querySelector('.crono-calendar-panel');
-        if (calendar) calendar.insertAdjacentElement('afterend', panel);
-        else wrap.appendChild(panel);
+        // The calendar may already live inside a hidden tab. Passages are an
+        // independent grid item and must never inherit that tab's visibility.
+        wrap.appendChild(panel);
       }
     }
 
@@ -768,7 +778,7 @@
     });
     draft.committed = true;
     tracker.updatedAt = recordedAt;
-    writeMirror(tracker);
+    persistData();
     return saved;
   }
 

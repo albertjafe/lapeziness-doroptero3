@@ -325,7 +325,7 @@
 
 function estimateMovementReadiness(db, obraId, movementId, options) {
   const data = db || {};
-  const whole = estimateReadiness(data, obraId, options);
+  const whole = options && options.wholeEstimate || estimateReadiness(data, obraId, options);
   if (!whole || movementId == null) return null;
   const timeline = whole.diagnostics && whole.diagnostics.timeline
     ? whole.diagnostics.timeline

@@ -473,6 +473,7 @@
       const formName=document.getElementById('eventoNombre')?.value?.trim() || '';
       const formDate=document.getElementById('eventoFecha')?.value || '';
       const result=original.apply(this,arguments);
+      if(result === false) return false;
       const finalize=()=>{
         if(!dbReady()) return;
         let ev=editId?db.eventos.find(item=>String(item.id)===String(editId)):null;

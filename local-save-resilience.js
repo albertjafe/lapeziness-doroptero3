@@ -77,7 +77,8 @@
 
   function rescueCurrentSnapshot(snapshot){
     show('Guardando copia segura…');
-    rescuePromise=putRescueSnapshot(snapshot).then(()=>{
+    const previous=rescuePromise;
+    const pending=Promise.resolve(previous).then(()=>putRescueSnapshot(snapshot)).then(()=>{
       show('✓ guardado en este dispositivo · sincronizando');
       enqueueImmediate();
       return true;
@@ -86,22 +87,26 @@
       show('⚠ copia local degradada · sincronización pendiente');
       enqueueImmediate();
       return false;
-    }).finally(()=>{ rescuePromise=null; });
-    return rescuePromise;
+    }).finally(()=>{ if(rescuePromise===pending) rescuePromise=null; });
+    rescuePromise=pending;
+    return pending;
   }
 
   function install(){
     if(typeof saveLocalNow!=='function' || saveLocalNow.__metadataTolerantV2) return false;
     const patched=function(){
+      if(typeof _prepareLocalDocument === 'function') _prepareLocalDocument(true);
       const live=currentDb();
       if(!live) return false;
       let nextMeta;
       try {
         const currentMeta=_readSyncMeta();
+        currentMeta.localRevision=Math.max(currentMeta.localRevision,Number(live._localRevision)||0);
         nextMeta=(typeof SyncCore!=='undefined') ? SyncCore.markDirty(currentMeta) : currentMeta;
         live._savedAt=new Date().toISOString();
         if(nextMeta && nextMeta.localRevision) live._localRevision=nextMeta.localRevision;
         localStorage.setItem(DB_KEY,JSON.stringify(live));
+        if(typeof _rememberLocalDocument === 'function') _rememberLocalDocument();
       } catch(error){
         pendingMeta=nextMeta||pendingMeta;
         console.warn('[sync] localStorage lleno/no disponible; usando IndexedDB',error);
@@ -163,12 +168,15 @@
       const comparison=(typeof SyncCore!=='undefined'&&typeof SyncCore.compareDbFreshness==='function')
         ? SyncCore.compareDbFreshness(row.data,live)
         : ((Number(row.data._localRevision)||0)-(Number(live._localRevision)||0));
-      if(comparison<=0) return false;
+      if(comparison<=0 && !window.DocumentSyncCore) return false;
       let recovered=row.data;
       if(window.DataCore&&typeof window.DataCore.mergeStudyHistory==='function'){
-        recovered=window.DataCore.mergeStudyHistory(live,row.data);
+        recovered=typeof _mergeStudyHistory === 'function' ? _mergeStudyHistory(live,row.data) : window.DataCore.mergeStudyHistory(live,row.data);
       }
-      replaceObject(live,recovered);
+      if(JSON.stringify(live) === JSON.stringify(recovered)) return false;
+      if(window.DocumentSyncCore) window.DocumentSyncCore.assign(live,recovered);
+      else replaceObject(live,recovered);
+      if(typeof saveLocalNow === 'function') saveLocalNow();
       try { localStorage.setItem(DB_KEY,JSON.stringify(live)); } catch(e) {}
       show('✓ copia local recuperada · sincronizando');
       enqueueImmediate();
@@ -189,6 +197,7 @@
 
   window.LocalSaveResilience={
     retryMeta,
+    flush:()=>rescuePromise || Promise.resolve(true),
     recoverSnapshot,
     getRescueSnapshot,
     hasPendingMeta:()=>!!pendingMeta,

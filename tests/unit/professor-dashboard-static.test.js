@@ -24,24 +24,23 @@ describe('Professor dashboard integration', () => {
   });
 
   it('hands the generated context to ChatGPT and copies a full fallback prompt', () => {
-    expect(dashboard).toContain('buildChatGptUrl');
-    expect(dashboard).toContain('copyText(built.fullPrompt)');
-    expect(dashboard).toContain("window.open(built.url, '_blank'");
+    expect(dashboard).toContain('ProfessorHandoffResilience.openSafe(mode)');
+    expect(dashboard).toContain('denseContext(report)');
   });
 
-  it('caches only a derived report in the protected Professor cache', () => {
-    expect(dashboard).toContain("from('professor_context_cache')");
+  it('does not write Supabase on dashboard renders and keeps legacy cache protected', () => {
+    expect(dashboard).not.toContain("from('professor_context_cache')");
     expect(migration).toContain('alter table public.professor_context_cache enable row level security');
     expect(migration).toContain('auth.uid() = user_id');
   });
 
   it('loads the Professor stack from the current bootstrap after planning enhancements', () => {
-    expect(loader).toContain("load('professorCoreScript','./professor-core.js?v=2'");
-    expect(loader).toContain("load('professorReportNormalizerScript','./professor-report-normalizer.js?v=2'");
-    expect(loader).toContain("load('professorContextEnrichmentScript','./professor-context-enrichment.js?v=2'");
-    expect(loader).toContain("load('professorCompetitionDeadlineBridgeScript','./professor-competition-deadline-bridge.js?v=2'");
-    expect(loader).toContain("load('professorDashboardScript','./professor-dashboard.js?v=2'");
-    expect(loader).toContain("load('planningEnhancementsV4SpeechFixScript','./planning-enhancements-v4-speech-fix.js?v=1',loadProfessor)");
+    expect(loader).toContain("load('professorCoreScript','./professor-core.js?v=342'");
+    expect(loader).toContain("load('professorReportNormalizerScript','./professor-report-normalizer.js?v=342'");
+    expect(loader).toContain("load('professorContextEnrichmentScript','./professor-context-enrichment.js?v=342'");
+    expect(loader).toContain("load('professorCompetitionDeadlineBridgeScript','./professor-competition-deadline-bridge.js?v=342'");
+    expect(loader).toContain("load('professorDashboardScript','./professor-dashboard.js?v=342'");
+    expect(loader).toContain("load('planningEnhancementsV4SpeechFixScript','./planning-enhancements-v4-speech-fix.js?v=342',loadProfessor)");
   });
 
   it('keeps the old event-planning layer available for history but does not load it over the newer current system', () => {
@@ -52,8 +51,8 @@ describe('Professor dashboard integration', () => {
     expect(loader).not.toContain('eventPlanningEnhancementsScript');
   });
 
-  it('extends musical planning to 730 days and keeps deadline and competition targets separate', () => {
-    expect(deadlineBridge).toContain('730 * DAY');
+  it('keeps all future deadlines and competition targets separate', () => {
+    expect(deadlineBridge).not.toContain('730 * DAY');
     expect(deadlineBridge).toContain("targetFor(plan, 'deadline'");
     expect(deadlineBridge).toContain("targetFor(plan, 'competition'");
     expect(deadlineBridge).toContain('videoWorkIds');

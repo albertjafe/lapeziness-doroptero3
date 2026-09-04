@@ -137,7 +137,7 @@
       if (!winner) return;
       const deleted = tombstones.get(id);
       if (deleted && tombstoneTimeMs(deleted) >= taskTimeMs(winner)) return;
-      tasks.push(winner);
+      tasks.push(a && b ? { ...(winner===a ? b : a), ...winner } : winner);
     });
 
     tasks.sort((a, b) => taskTimeMs(a) - taskTimeMs(b) || String(a.id || '').localeCompare(String(b.id || '')));
@@ -201,9 +201,7 @@
       const rescueHasNewerTaskEvidence = Boolean(rescue && num(rescue.newestTaskAt) > remoteNewest + 500);
       const localTasks = rescueWins && rescue ? arr(rescue.tasks) : arr(localData.cronoTasks);
       const localTombs = mergeTombstones(arr(localData.cronoTaskTombstones), arr(rescue && rescue.tombstones));
-      const absenceAt = rescueWins && rescueHasNewerTaskEvidence
-        ? Math.max(timeMs(rescue.savedAt), num(rescue.newestTaskAt))
-        : 0;
+      const absenceAt = 0;
       const merged = mergeTaskState(localTasks, remoteData.cronoTasks, Array.from(localTombs.values()), remoteData.cronoTaskTombstones, {
         preferLocalOnTie: rescueWins,
         authoritativeAbsenceAt: absenceAt,
@@ -213,17 +211,13 @@
       let effectiveRevision = revisionOf(remoteData);
       let savedAt = remoteData._savedAt || row.updated_at || null;
 
-      if (!remoteSame) {
-        const stamp = new Date().toISOString();
-        const rev = nextRevision(remoteData, localData, rescue, storage);
-        const nextData = { ...remoteData, cronoTasks: merged.tasks, cronoTaskTombstones: merged.tombstones, _localRevision: rev, _savedAt: stamp };
-        const write = await client.from('user_data').upsert({ id: user.id, data: nextData, updated_at: stamp });
-        if (write && write.error) throw write.error;
-        effectiveRevision = rev;
-        savedAt = stamp;
-      }
-
-      writeLocalTaskState(localData, merged.tasks, merged.tombstones, effectiveRevision, savedAt, storage);
+      // No second whole-document writer. Reconcile into live memory then use
+      // the common CAS queue; reread live tasks after any asynchronous operation.
+      const live = database() || localData;
+      const finalState = mergeTaskState(live.cronoTasks, merged.tasks, live.cronoTaskTombstones, merged.tombstones, { preferLocalOnTie:true });
+      live.cronoTasks = finalState.tasks; live.cronoTaskTombstones = finalState.tombstones;
+      if (!remoteSame && typeof root.saveData === 'function') root.saveData();
+      else writeLocalTaskState(live, finalState.tasks, finalState.tombstones, null, null, storage);
       shadow = taskMap(merged.tasks);
       return { ok: true, reason: reason || 'manual', rescueWins, wrote: !remoteSame, revision: effectiveRevision, taskCount: merged.tasks.length };
     })().catch(error => ({ ok: false, reason: 'error', error: String(error && error.message || error) })).finally(() => { inFlight = null; });
@@ -306,7 +300,7 @@
     root.addEventListener('online', () => scheduleReconcile('online', 250));
     root.addEventListener('pageshow', () => scheduleReconcile('pageshow', 300));
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleReconcile('visible', 300); });
-    [300, 1800, 6000, 18000].forEach(delay => root.setTimeout(() => reconcile('startup'), delay));
+    root.setTimeout(() => reconcile('startup'), 300);
   }
 
   const api = { taskTimeMs, tombstoneTimeMs, newestTaskAt, nextRevision, bestRescue, isRescueAuthoritative, mergeTaskState, reconcile, scheduleReconcile, install };

@@ -77,10 +77,10 @@ test('solidity guide covers new works, chamber with score and recovered repertoi
   await prepare(page);
   const guide = page.locator('#solidityGuideQuickV3');
   await expect(guide).toContainText('Obra nueva');
-  await expect(guide).toContainText('Cámara · con partitura');
-  await expect(guide).toContainText('No penalices por tocar con partitura');
+  await expect(guide).toContainText('Cámara · tu parte primero');
+  await expect(guide).toContainText('la memoria tampoco se penaliza');
   await expect(guide).toContainText('Repertorio recuperado');
-  await expect(guide).toContainText('no infla la píldora actual');
+  await expect(guide).toContainText('sin falsear la medición actual');
   await expect(guide).toContainText('90–96');
   await expect(guide).toContainText('100');
 });
@@ -94,8 +94,7 @@ test('competition dossier exposes a clickable official website', async ({ page }
   }];
   await prepare(page, data);
   await page.evaluate(() => {
-    document.getElementById('eventoEditId').value = 'maria';
-    document.getElementById('modalAddEvento').classList.add('open');
+    openEditEvento('maria');
   });
   const link = page.locator('#competitionDossierHero .competition-official-link');
   await expect(link).toBeVisible();

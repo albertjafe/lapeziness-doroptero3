@@ -65,8 +65,7 @@ test('Montreal is present once and its iPad modal leads with place dates prize a
   expect(state.deadlines).toBe(1);
 
   await page.evaluate(parentId => {
-    document.getElementById('eventoEditId').value = parentId;
-    document.getElementById('modalAddEvento').classList.add('open');
+    openEditEvento(parentId);
   }, state.parentId);
   await page.waitForTimeout(150);
 

@@ -1,6 +1,5 @@
-// Enriches the synchronous musical report with daily wellbeing metadata and a
-// privacy-preserving digital-activity summary. It also keeps a derived Supabase
-// cache fresh after saves so ChatGPT/connected tools can inspect one compact row.
+// Adds dated daily-state and digital-activity metadata. Cloud cache writing is
+// explicit; rendering or saving the user document does not write derived rows.
 (function professorContextEnrichment(){
   'use strict';
   const core = window.ProfessorCore;
@@ -11,7 +10,6 @@
   let latestDigital = { available: false, refreshedAt: null, todayMinutes: 0, d7Minutes: 0, todayByCategory: {}, d7ByCategory: {}, todayTopApps: [], d7TopApps: [], devices: [] };
   let refreshPromise = null;
   let cacheTimer = null;
-  let wrappedSave = false;
 
   const arr = value => Array.isArray(value) ? value : [];
   const num = value => Number.isFinite(Number(value)) ? Number(value) : 0;
@@ -28,7 +26,7 @@
     const state = db && db.estadoDiario && typeof db.estadoDiario === 'object' ? db.estadoDiario : null;
     if (!state) return { available: false };
     const stateDay = dateOf(state.date);
-    const sameDay = stateDay ? localDay(stateDay) === localDay(asOf) : true;
+    const sameDay = stateDay ? localDay(stateDay) === localDay(asOf) : false;
     if (!sameDay) return { available: false, reason: 'estadoDiario no corresponde al día del informe' };
     return {
       available: true,
@@ -97,7 +95,7 @@
         };
         return latestDigital;
       } catch (error) {
-        latestDigital = { ...latestDigital, refreshedAt: new Date().toISOString(), error: 'actividad digital no disponible' };
+        latestDigital = { ...latestDigital, stale: true, attemptedAt: new Date().toISOString(), error: 'actividad digital no disponible' };
         return latestDigital;
       } finally { refreshPromise = null; }
     })();
@@ -138,25 +136,9 @@
     cacheTimer = setTimeout(writeCache, delay);
   }
 
-  function wrapSaveData(){
-    if (wrappedSave) return;
-    const original = window.saveData;
-    if (typeof original !== 'function' || original.__professorCacheWrapped) return;
-    const wrapped = function saveDataWithProfessorCache(){
-      const result = original.apply(this, arguments);
-      if (result && typeof result.then === 'function') return result.finally(() => scheduleCache());
-      scheduleCache();
-      return result;
-    };
-    wrapped.__professorCacheWrapped = true;
-    window.saveData = wrapped;
-    wrappedSave = true;
-  }
-
-  window.ProfessorContextEnrichment = { refreshDigital, writeCache, scheduleCache, latestDigital: () => latestDigital };
-  wrapSaveData();
-  setTimeout(() => { refreshDigital(true).then(() => scheduleCache(50)); }, 1200);
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { wrapSaveData(); refreshDigital(false); scheduleCache(1800); } });
-  window.addEventListener('focus', () => { wrapSaveData(); refreshDigital(false); });
+  window.ProfessorContextEnrichment = { dailyState, refreshDigital, writeCache, scheduleCache, latestDigital: () => latestDigital };
+  setTimeout(() => { refreshDigital(true); }, 1200);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { refreshDigital(false); } });
+  window.addEventListener('focus', () => { refreshDigital(false); });
   setInterval(() => refreshDigital(false), 5 * 60 * 1000);
 })();

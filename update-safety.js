@@ -9,6 +9,8 @@
   const RESCUE_STORE = 'snapshots';
   let installed = false;
   let updating = false;
+  let reloading = false;
+  let controlled = Boolean(root.navigator?.serviceWorker?.controller);
 
   function wait(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
   function withTimeout(promise, ms, label){
@@ -19,6 +21,7 @@
     ]);
   }
   function timerActive(){
+    try { if(typeof crono !== 'undefined' && ['running','paused'].includes(crono.state)) return true; } catch (_) {}
     return !!(root.document && root.document.body && root.document.body.classList.contains('crono-running'));
   }
   function toast(message){
@@ -72,12 +75,21 @@
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error || new Error('indexedDB open failed'));
+      request.onblocked = () => reject(new Error('indexedDB blocked'));
     });
   }
 
   async function snapshotBeforeUpdate(){
     persistMemoryLocally();
+    if (root.LocalSaveResilience?.flush) await root.LocalSaveResilience.flush();
     const raw = currentDbRaw();
+    let durable = false;
+    try { durable = root.localStorage.getItem(DB_KEY) === raw; } catch (_) {}
+    if (!durable && root.LocalSaveResilience?.getRescueSnapshot) {
+      const rescue = await root.LocalSaveResilience.getRescueSnapshot();
+      durable = Boolean(rescue && JSON.stringify(rescue.data) === raw);
+    }
+    if (!durable) throw new Error('No durable local snapshot');
     if(!raw) throw new Error('No se pudo obtener el estado local');
     const stamp = new Date().toISOString();
     let snapshot;
@@ -95,7 +107,7 @@
     }
 
     try {
-      const database = await openRescueDb();
+      const database = await withTimeout(openRescueDb(),2500,'indexedDB timeout');
       if(database){
         await new Promise((resolve, reject) => {
           const tx = database.transaction(RESCUE_STORE, 'readwrite');
@@ -205,6 +217,10 @@
         toast('Datos seguros. La nueva versión se aplicará al cerrar y volver a abrir la app.');
         return true;
       }
+      // Network checks may have yielded while the user entered more data.
+      if (root.LocalSaveResilience?.flush) await root.LocalSaveResilience.flush();
+      if (syncMetaPending() || resiliencePending() || timerActive()) throw new Error('State changed during update');
+      if (root.localStorage.getItem(DB_KEY) !== currentDbRaw()) throw new Error('Unpersisted edits');
       waiting.postMessage({ type:'SAFE_SKIP_WAITING', safe:true, requestedAt:new Date().toISOString() });
       return true;
     } catch(error) {
@@ -226,6 +242,13 @@
     try { root.swDoUpdate = safeUpdate; } catch(error) {}
     try { swDoUpdate = safeUpdate; } catch(error) {}
     installed = true;
+    root.navigator?.serviceWorker?.addEventListener?.('controllerchange', async () => {
+      if (!controlled) { controlled = true; return; }
+      if (reloading) return;
+      reloading = true;
+      try { await snapshotBeforeUpdate(); root.location.reload(); }
+      catch (error) { reloading = false; toast('Guarda los cambios antes de reabrir la actualización.'); }
+    });
     root.UpdateSafety = {
       version:2,
       safeUpdate,
@@ -250,7 +273,7 @@
   if(window.EventDataProtection || document.getElementById('eventDataProtectionScript')) return;
   const script=document.createElement('script');
   script.id='eventDataProtectionScript';
-  script.src='./event-data-protection.js?v=1';
+  script.src='./event-data-protection.js?v=342';
   script.async=false;
   document.head.appendChild(script);
 })();

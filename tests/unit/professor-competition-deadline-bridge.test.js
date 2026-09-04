@@ -46,6 +46,16 @@ const base = {
 };
 
 describe('Professor competition deadline bridge', () => {
+  it('keeps an administrative application deadline separate from the recording target',()=>{
+    const core=loadBridge(base);
+    const report=core.buildReport({competitionPlans:[{id:'admin',name:'Audición',status:'confirmado',deadline:'2026-10-10',deadlineKind:'application_deadline',requiresVideo:false,
+      recordingTarget:'2026-10-01',videoWorkIds:['waldstein'],videoMovements:{waldstein:['III']},repertoireWorkIds:[]}]});
+    const deadline=report.events.find(e=>e.role==='application_deadline'),recording=report.events.find(e=>e.role==='recording_target');
+    expect(deadline.day).toBe('2026-10-10');expect(deadline.workIds).toEqual([]);
+    expect(recording.day).toBe('2026-10-01');expect(recording.workIds).toEqual(['waldstein']);
+    expect(report.units.find(u=>u.movId==='I').nextEvent).toBeNull();
+    expect(report.units.find(u=>u.movId==='III').nextEvent.role).toBe('recording_target');
+  });
   it('targets only explicitly selected movements for a video deadline', () => {
     const core = loadBridge(base);
     const report = core.buildReport({

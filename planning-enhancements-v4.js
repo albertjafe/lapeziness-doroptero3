@@ -161,34 +161,11 @@
     return /iPad|iPhone|iPod/i.test(ua) || (platform === 'MacIntel' && Number(navigator.maxTouchPoints || 0) > 1);
   }
 
-  function suppressWebSpeechOnIOS(){
-    if(!isIOS() || window.__planningV4SpeechSuppressed) return;
-    window.__planningV4SpeechSuppressed = true;
-    document.documentElement.classList.add('planning-ios-keyboard-dictation');
-    ['SpeechRecognition','webkitSpeechRecognition'].forEach(name => {
-      const Native = window[name];
-      if(typeof Native !== 'function' || !Native.prototype || Native.prototype.__planningV4Suppressed) return;
-      const proto = Native.prototype;
-      const originalStart = proto.start;
-      if(typeof originalStart !== 'function') return;
-      try {
-        proto.start = function(){
-          this.__planningV4StartSuppressed = true;
-          const instance = this;
-          const end = () => { try { if(typeof instance.onend === 'function') instance.onend(); } catch(error){} };
-          if(typeof queueMicrotask === 'function') queueMicrotask(end); else setTimeout(end,0);
-        };
-        proto.__planningV4Suppressed = true;
-        proto.__planningV4OriginalStart = originalStart;
-      } catch(error){ console.warn('[planning-v4] no se pudo suprimir Web Speech', name, error); }
-    });
-  }
-
   function installIosDictationHints(){
     if(!isIOS()) return;
     const tomorrowHint = document.querySelector('#modalCronoNote .crono-note-hint');
     if(tomorrowHint && tomorrowHint.dataset.keyboardDictation !== 'v4'){
-      tomorrowHint.textContent = 'En iPhone/iPad, dicta con el micrófono del teclado. Así la web no necesita pedir permiso de micrófono.';
+      tomorrowHint.textContent = 'Puedes dictar automáticamente; acepta el permiso de micrófono si el navegador lo solicita.';
       tomorrowHint.dataset.keyboardDictation = 'v4';
     }
     document.querySelectorAll(TASK_INPUT_SELECTOR).forEach(input => {
@@ -309,7 +286,6 @@
   }
 
   function install(){
-    suppressWebSpeechOnIOS();
     installInlinePriorityCapture();
     patchTomorrowPriority();
     refreshUi();

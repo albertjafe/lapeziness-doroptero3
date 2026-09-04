@@ -143,7 +143,7 @@
   if (document.getElementById('workCatalogScript')) return;
   const script = document.createElement('script');
   script.id = 'workCatalogScript';
-  script.src = './work-catalog.js?v=1';
+  script.src = './work-catalog.js?v=342';
   script.defer = true;
   document.head.appendChild(script);
 })();

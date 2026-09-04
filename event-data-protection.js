@@ -99,6 +99,7 @@
       };
 
       const result = current.apply(this, arguments);
+      if(result === false) return false;
       if(result && typeof result.then === 'function') return result.then(finalize);
       return finalize(result);
     };

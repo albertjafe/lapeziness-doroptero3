@@ -226,7 +226,27 @@ function patchWorkCatalog(){
   ['search','all','getAll'].forEach(method=>{if(typeof catalog[method]!=='function'||catalog[method].__difficultyPatched)return;const original=catalog[method].bind(catalog);const patched=function(){const result=original.apply(catalog,arguments);return Array.isArray(result)?result.map(decorateCatalogResult):decorateCatalogResult(result);};patched.__difficultyPatched=true;patched.__original=original;catalog[method]=patched;});
   catalog.__difficultyPatched=true;return true;
 }
-const api={MODEL_VERSION,loadFor,scoreForLoad,relativeFactor,label,confidenceLabel,sourceLabel,aggregateMovements,resolve,resolveMovement,enrichEntity,decorateCatalogResult,patchWorkCatalog};
-if(root&&root.dispatchEvent)setTimeout(()=>root.dispatchEvent(new CustomEvent('work-difficulty-model-ready')),0);
+// Shared by the browser and report Worker, after the pill/recovery models.
+// Installing twice must not multiply recovery cost twice.
+function installReadiness(core){
+  if(!core||typeof core.estimateReadiness!=='function')return false;
+  if(core.estimateReadiness.__technicalDifficultyModel)return true;
+  const previous=core.estimateReadiness.bind(core);
+  const patched=function(dbValue,obraId,options){
+    const result=previous(dbValue,obraId,options);if(!result)return result;
+    const work=(dbValue&&dbValue.obras||[]).find(item=>String(item&&item.id)===String(obraId));
+    const difficulty=api.resolve(work);if(!work||!difficulty)return result;
+    const own=Number(result.diagnostics&&result.diagnostics.speed&&result.diagnostics.speed.ownIntervals)||0;
+    const exponent=own>=2?.22:own===1?.38:.55;
+    const factor=relativeFactor(difficulty.score,7,exponent);
+    const scale=value=>value!=null&&Number.isFinite(Number(value))?Math.max(0,Math.round(Number(value)*factor)):value;
+    const calendar=result.calendarEstimate?{...result.calendarEstimate,lowDays:Math.max(1,Math.ceil(Number(result.calendarEstimate.lowDays||0)*factor)),highDays:Math.max(1,Math.ceil(Number(result.calendarEstimate.highDays||0)*factor))}:result.calendarEstimate;
+    const factors=Array.from(new Set([...(Array.isArray(result.factors)?result.factors:[]),`dificultad técnica ${difficulty.score.toFixed(1)}/10`]));
+    return{...result,pointEstimateMinutes:scale(result.pointEstimateMinutes),lowMinutes:scale(result.lowMinutes),highMinutes:scale(result.highMinutes),calendarEstimate:calendar,factors,diagnostics:{...(result.diagnostics||{}),technicalDifficulty:{score:difficulty.score,label:label(difficulty.score),source:difficulty.source,confidence:difficulty.confidence,rawLoad:loadFor(difficulty.score),factor,reference:7,exponent,model:MODEL_VERSION}}};
+  };
+  patched.__technicalDifficultyModel=true;patched.__previous=previous;core.estimateReadiness=patched;return true;
+}
+const api={MODEL_VERSION,loadFor,scoreForLoad,relativeFactor,label,confidenceLabel,sourceLabel,aggregateMovements,resolve,resolveMovement,enrichEntity,decorateCatalogResult,patchWorkCatalog,installReadiness};
+if(root&&root.dispatchEvent&&typeof CustomEvent==='function')setTimeout(()=>root.dispatchEvent(new CustomEvent('work-difficulty-model-ready')),0);
 return api;
 });

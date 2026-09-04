@@ -3,8 +3,24 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const model = require('../../work-difficulty-model.js');
+const readiness = require('../../readiness-core.js');
 
 describe('WorkDifficultyModel', () => {
+  it('shares the difficulty adjustment without changing evidence or multiplying it on reinstallation', () => {
+    const core = { ...readiness };
+    const data = { obras: [{ id: 'w', name: 'Obra', dificultad: 9, dificultadFuente: 'manual', sol: 40,
+      solHistory: [{ date: '2026-09-01T12:00:00Z', val: 40 }], movimientos: [] }], sesiones: [] };
+    const options = { now: new Date('2026-09-04T12:00:00Z') };
+    const original = core.estimateReadiness(data, 'w', options);
+    model.installReadiness(core);
+    const adjusted = core.estimateReadiness(data, 'w', options);
+    expect(adjusted.pointEstimateMinutes).toBeGreaterThan(original.pointEstimateMinutes);
+    expect(adjusted.rawScore).toBe(original.rawScore);
+    expect(adjusted.evidenceCount).toBe(original.evidenceCount);
+    model.installReadiness(core);
+    expect(core.estimateReadiness(data, 'w', options)).toEqual(adjusted);
+  });
+
   it('uses a nonlinear load scale', () => {
     expect(model.loadFor(1)).toBeCloseTo(1, 6);
     expect(model.loadFor(3)).toBeCloseTo(2, 6);

@@ -96,50 +96,14 @@
     return lastTargetObraId;
   }
 
-  async function protectCloud(targetObraId){
-    const local=globalDb();
-    if(!local || typeof getSB!=='function') return false;
+  async function protectCloud(){
     try {
-      const sb=getSB();
-      const auth=await sb.auth.getUser();
-      const user=auth && auth.data && auth.data.user;
-      if(!user) return false;
-      const read=await sb.from('user_data').select('data').eq('id',user.id).maybeSingle();
-      if(read.error) throw read.error;
-      const remote=clone(read.data && read.data.data || {});
-      remote.sessionPlants=mergePlantsPreferLocal(remote.sessionPlants,local.sessionPlants);
-
-      // El detalle Hecho puede cambiar la solidez/notas de la obra. Sustituimos
-      // solo ESA obra, no todo el repertorio, para no pisar otros dispositivos.
-      const obraId=targetObraId || currentHechoObraId();
-      if(obraId && Array.isArray(local.obras)){
-        const localWork=local.obras.find(work=>String(work && work.id)===String(obraId));
-        if(localWork){
-          const remoteWorks=Array.isArray(remote.obras)?remote.obras.slice():[];
-          const index=remoteWorks.findIndex(work=>String(work && work.id)===String(obraId));
-          if(index>=0) remoteWorks[index]=clone(localWork); else remoteWorks.push(clone(localWork));
-          remote.obras=remoteWorks;
-        }
-      }
-
-      // Mantener la sesión del día si existe, sin tocar calendarios, histórico ni
-      // otros campos que puedan ser más nuevos en otro dispositivo.
-      if(window.DataCore && typeof window.DataCore.mergeSessions==='function'){
-        remote.sesiones=window.DataCore.mergeSessions(remote.sesiones,local.sesiones);
-      }
-      const remoteRev=Number(remote._localRevision)||0;
-      const localRev=Number(local._localRevision)||0;
-      remote._localRevision=Math.max(remoteRev,localRev)+1;
-      remote._savedAt=new Date().toISOString();
-
-      const write=await sb.from('user_data').upsert({id:user.id,data:remote,updated_at:new Date().toISOString()});
-      if(write.error) throw write.error;
-      try { if(typeof showSyncIndicator==='function') showSyncIndicator('✓ sesión protegida en la nube'); } catch(e) {}
-      return true;
-    } catch(error){
-      try { if(typeof showSyncIndicator==='function') showSyncIndicator('⚠ sesión pendiente de sincronizar'); } catch(e) {}
-      return false;
-    }
+      if(typeof saveLocalNow === 'function') saveLocalNow();
+      if(window.LocalSaveResilience?.flush) await window.LocalSaveResilience.flush();
+      if(typeof syncPendingCloudChanges !== 'function') return false;
+      await syncPendingCloudChanges();
+      return typeof SyncCore !== 'undefined' && !SyncCore.isDirty(_readSyncMeta());
+    } catch(error) { return false; }
   }
 
   function scheduleProtection(targetObraId){
@@ -147,9 +111,9 @@
     if(protectTimer) clearTimeout(protectTimer);
     protectTimer=setTimeout(async()=>{
       protectTimer=null;
+      const rows=await rescueAll();
       const ok=await protectCloud(targetObraId||lastTargetObraId);
       if(ok){
-        const rows=await rescueAll();
         await Promise.all(rows.map(row=>rescueDelete(row.id)));
       }
     },40);
@@ -222,6 +186,7 @@
       }
     });
     if(changed) local.sessionPlants.sort((a,b)=>String(a.startedAt||'').localeCompare(String(b.startedAt||'')));
+    try { if(changed && typeof saveLocalNow==='function') saveLocalNow(); } catch (_) {}
     const ok=await protectCloud(rows[rows.length-1] && rows[rows.length-1].obraId);
     if(ok) await Promise.all(rows.map(row=>rescueDelete(row.id)));
     try { if(changed && typeof refreshStudyViews==='function') refreshStudyViews(); } catch(e) {}

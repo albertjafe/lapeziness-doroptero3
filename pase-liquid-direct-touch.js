@@ -88,7 +88,7 @@
     if (!active || active.inputFrame) return;
     active.inputFrame = requestAnimationFrame(() => {
       active.inputFrame = 0;
-      if (!active.finished) dispatchInput(active.found);
+      if (!active.finished) { dispatchInput(active.found); active.lastValue = active.found.input.value; }
     });
   }
 
@@ -127,6 +127,7 @@
     const meter = event.target && event.target.closest ? event.target.closest('.pase-liquid-meter') : null;
     const found = meter && parts(meter);
     if (!meter || !found) return;
+    commitEpoch.set(found.input, (commitEpoch.get(found.input) || 0) + 1);
 
     const active = {
       meter,
@@ -171,7 +172,7 @@
     // IMPORTANTE: no usamos event.clientX de pointerup. En iPadOS puede saltar a
     // una coordenada antigua/capturada y devolver la píldora hacia atrás.
     const found = active.found;
-    const committed = active.lastValue;
+    let committed = active.lastValue;
     active.finished = true;
     activePointers.delete(event.pointerId);
     active.meter.classList.remove('is-direct-touching');
@@ -182,6 +183,7 @@
       // Se fuerza una última actualización visual con el valor estable y después
       // se compromete una sola vez.
       flushLiveInput({ ...active, finished:false });
+      committed = found.input.value; // Keep the UI's normalized nonlinear position.
       found.input.dispatchEvent(new Event('change', { bubbles: true }));
       const epoch = (commitEpoch.get(found.input) || 0) + 1;
       commitEpoch.set(found.input, epoch);

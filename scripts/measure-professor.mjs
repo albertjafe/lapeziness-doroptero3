@@ -1,0 +1,20 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import {performance} from 'node:perf_hooks';
+const root=new URL('../',import.meta.url);
+const h={console,Date,Intl,setTimeout:()=>0,setInterval:()=>0,clearTimeout(){},clearInterval(){},document:{addEventListener(){}},addEventListener(){},localStorage:{getItem:()=>null}};
+h.window=h;vm.createContext(h);
+for(const name of ['readiness-core','solidity-model','readiness-pill-model','readiness-recovery-context','work-difficulty-model','work-difficulty-stored-priority','professor-core','professor-report-normalizer','professor-context-enrichment','professor-competition-deadline-bridge','professor-event-gate','professor-duration-policy','professor-handoff-resilience'])vm.runInContext(fs.readFileSync(new URL(name+'.js',root),'utf8'),h);
+h.WorkDifficultyModel.installReadiness(h.ReadinessCore);
+const asOf=new Date('2026-09-04T17:23:45Z');
+const count=Number(process.argv[2]||75),works=Math.ceil(count/5);
+const data={obras:Array.from({length:works},(_,i)=>({id:'w'+i,name:'Sonata '+i,composer:'Compositor '+i,tipo:i%2?'camara':'obra',dificultad:7.6,minutosExtra:4800,movimientos:Array.from({length:Math.min(5,count-i*5)},(_,m)=>({id:'m'+m,name:'Movimiento '+m,sol:40+m*10,solHistory:Array.from({length:6},(_,d)=>({date:`2026-08-${String(d+1).padStart(2,'0')}T10:30:00Z`,val:30+m*10+d,confidence:'manual'})),paseHistory:[]}))})),eventos:[],sessionPlants:[],sesiones:[],cronoTasks:[{id:'task',text:'Preparar el ensayo',priority:3}]};
+data.eventos=Array.from({length:3},(_,i)=>({id:'e'+i,nombre:'Compromiso '+i,fecha:`2026-${10+i}-12`,estado:i?'standby':'confirmado',obras:data.obras.map(w=>w.id),purpose:'Interpretación completa'}));
+const start=performance.now(),report=h.ProfessorCore.buildReport(data,{asOf,googleCalendarState:{}}),elapsed=performance.now()-start;
+const encoded=h.ProfessorHandoffResilience.denseContext(report),decoded=h.ProfessorHandoffResilience.decodeContext(encoded);
+const canonical=x=>JSON.stringify(x,(_,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
+if(canonical(report)!==canonical(decoded))throw Error('Lossless roundtrip failed');
+const occurrences=[...report.events,...report.units.flatMap(u=>[...u.linkedEvents,u.nextEvent].filter(Boolean)),...report.priorities.map(p=>p.nextEvent).filter(Boolean)];
+const counts=new Map();for(const e of occurrences){const key=JSON.stringify(e);counts.set(key,(counts.get(key)||0)+1);}
+const bytes=s=>Buffer.byteLength(s,'utf8');const rawBytes=bytes(JSON.stringify(report)),denseBytes=bytes(encoded);
+console.log(JSON.stringify({units:report.units.length,events:report.events.length,rawBytes,denseBytes,savedPercent:Number((100*(rawBytes-denseBytes)/rawBytes).toFixed(1)),eventOccurrences:occurrences.length,distinctEventRepresentations:counts.size,repeatedEventBytes:[...counts].reduce((n,[s,c])=>n+bytes(s)*(c-1),0),reportMilliseconds:Number(elapsed.toFixed(1)),roundtrip:'all JSON fields equal'},null,2));

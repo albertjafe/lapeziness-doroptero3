@@ -18,13 +18,13 @@ async function prepare(page) {
   await page.waitForTimeout(1000);
 }
 
-test('removes Casa from navigation and redirects legacy Casa navigation to Hoy', async ({ page }) => {
+test('removes Casa from navigation and redirects legacy Casa navigation to Profesor', async ({ page }) => {
   await prepare(page);
 
   await expect(page.locator('.nav-btn[data-view="casa"]')).toHaveCount(0);
   await expect(page.locator('#view-casa')).toHaveCount(0);
 
   await page.evaluate(() => showView('casa'));
-  await expect(page.locator('#view-session')).toHaveClass(/active/);
-  await expect(page.locator('.nav-btn[data-view="session"]')).toHaveClass(/active/);
+  await expect(page.locator('#view-profesor')).toHaveClass(/active/);
+  await expect(page.locator('.nav-btn[data-view="profesor"]')).toHaveClass(/active/);
 });

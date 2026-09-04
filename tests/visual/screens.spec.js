@@ -15,7 +15,7 @@ test('captures stable responsive views', async ({ page }, testInfo) => {
   await page.addInitScript(data => localStorage.setItem('alberto_piano_v2', JSON.stringify(data)), fixture);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1200);
-  for (const view of ['pulse', 'session', 'cronometro', 'obras', 'calendario', 'historial', 'ajustes']) {
+  for (const view of ['session', 'cronometro', 'obras', 'calendario', 'historial', 'profesor']) {
     await page.evaluate(name => { if (typeof showView !== 'function') throw new Error('showView no disponible'); showView(name); }, view);
     const screenshot = await page.screenshot({ fullPage: true });
     expect(screenshot.byteLength).toBeGreaterThan(1000);

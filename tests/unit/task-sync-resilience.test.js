@@ -57,8 +57,9 @@ describe('task sync resilience', () => {
     const loader = fs.readFileSync('piano-rooms.js', 'utf8');
     expect(syncCore.indexOf('preSyncTaskRescue')).toBeGreaterThanOrEqual(0);
     expect(syncCore.indexOf('preSyncTaskRescue')).toBeLessThan(syncCore.indexOf('root.SyncCore'));
-    expect(loader).toContain("./task-sync-bootstrap.js?v=1");
-    expect(loader).toContain("./task-sync-resilience.js?v=1");
+    const html = fs.readFileSync('index.html','utf8');
+    expect(html.indexOf('task-sync-bootstrap.js')).toBeLessThan(html.indexOf('src="app.js'));
+    expect(loader).toContain("./task-sync-resilience.js?v=342");
   });
 
   it('ships a database guard against revision regression', () => {

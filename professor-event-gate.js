@@ -99,8 +99,8 @@ DURACIÓN DEL DÍA
   }
 
   function buildCompactContext(core, report, maxUnits) {
-    const limit = maxUnits == null ? Infinity : Math.max(0, Number(maxUnits) || 0);
-    const units = arr(report && report.units).filter(isLinked).slice(0, limit);
+    if (root.ProfessorHandoffResilience) return root.ProfessorHandoffResilience.denseContext(report);
+    const units = arr(report && report.units);
     const eventLines = arr(report && report.events).map(event => `${event.day}|${event.name}|${event.type || '-'}|${event.daysAway}d|fuente=${event.source}|repertorio=${event.repertoireLinked ? arr(event.workIds).join(',') : 'NO_ENLAZADO'}`);
     const todayLines = arr(report && report.today && report.today.byUnit).map(item => `${item.label}=${item.minutes}m`).join('; ') || 'sin movimientos registrados';
     const unitLine = typeof core.unitLine === 'function'
@@ -118,7 +118,7 @@ DURACIÓN DEL DÍA
       `COBERTURA ${JSON.stringify(report && report.coverage || {})}`,
       arr(report && report.warnings).length ? `ADVERTENCIAS ${report.warnings.join(' | ')}` : 'ADVERTENCIAS ninguna',
       'EVENTOS\n' + (eventLines.join('\n') || 'ninguno'),
-      `REGLA_RANKING solo repertorio con evento/proyecto enlazado; unidades sin evento omitidas=${excluded}`,
+      `REGLA_RANKING solo repertorio con evento/proyecto enlazado; unidades presentes pero excluidas del plan=${excluded}`,
       'UNIDADES_PRIORIZABLES_ENLAZADAS_A_EVENTOS\n' + (units.map(unitLine).join('\n') || 'ninguna'),
       paceLines.length ? 'HORIZONTE_Y_RITMO_ENLAZADO\n' + paceLines.join('\n') : 'HORIZONTE_Y_RITMO_ENLAZADO\nninguno',
     ].join('\n\n');
@@ -161,17 +161,6 @@ DURACIÓN DEL DÍA
       let promptForUrl = fullPrompt;
       let encoded = encodeURIComponent(promptForUrl);
       let truncated = false;
-      if (encoded.length > 18000) {
-        truncated = true;
-        const master = String(opts.masterPrompt || target.DEFAULT_MASTER_PROMPT || '').trim();
-        const runtime = master.includes(RUNTIME_MARKER) ? '' : `\n\n${RUNTIME_RULES}`;
-        promptForUrl = `${master}${runtime}\n\nTAREA\n${modeInstruction(opts.mode || 'today')}${opts.note ? `\nNota: ${opts.note}` : ''}\n\n${compactContext(report, 36)}\n\nContexto compacto: recomienda exclusivamente repertorio enlazado a eventos/proyectos y, si amplías las horas, redistribuye libremente entre profundizar bloques existentes, repetirlos o incorporar otras unidades enlazadas según el valor marginal.`;
-        encoded = encodeURIComponent(promptForUrl);
-        if (encoded.length > 24000) {
-          promptForUrl = promptForUrl.slice(0, 15500) + '\n[contexto URL recortado por límite técnico]';
-          encoded = encodeURIComponent(promptForUrl);
-        }
-      }
       return { url: `https://chatgpt.com/?prompt=${encoded}`, fullPrompt, promptForUrl, truncated };
     };
     buildChatGptUrl.__professorEventGate = true;

@@ -25,25 +25,6 @@ function patchSave(){
   try{window.saveData=patched;}catch(e){} try{saveData=patched;}catch(e){}
   return true;
 }
-function patchReadiness(){
-  const core=window.ReadinessCore,model=window.WorkDifficultyModel;
-  if(!core||!model||typeof core.estimateReadiness!=='function')return false;
-  if(core.estimateReadiness.__technicalDifficultyModel)return true;
-  const previous=core.estimateReadiness.bind(core);
-  const patched=function(dbValue,obraId,options){
-    const result=previous(dbValue,obraId,options);if(!result)return result;
-    const work=(dbValue&&dbValue.obras||[]).find(item=>String(item&&item.id)===String(obraId));
-    const difficulty=model.resolve(work);if(!work||!difficulty)return result;
-    const own=Number(result.diagnostics&&result.diagnostics.speed&&result.diagnostics.speed.ownIntervals)||0;
-    const exponent=own>=2?.22:own===1?.38:.55;
-    const factor=model.relativeFactor(difficulty.score,7,exponent);
-    const scale=value=>Number.isFinite(Number(value))?Math.max(0,Math.round(Number(value)*factor)):value;
-    const calendar=result.calendarEstimate?{...result.calendarEstimate,lowDays:Math.max(1,Math.ceil(Number(result.calendarEstimate.lowDays||0)*factor)),highDays:Math.max(1,Math.ceil(Number(result.calendarEstimate.highDays||0)*factor))}:result.calendarEstimate;
-    const factors=Array.from(new Set([...(Array.isArray(result.factors)?result.factors:[]),`dificultad técnica ${difficulty.score.toFixed(1)}/10`]));
-    return{...result,pointEstimateMinutes:scale(result.pointEstimateMinutes),lowMinutes:scale(result.lowMinutes),highMinutes:scale(result.highMinutes),calendarEstimate:calendar,factors,diagnostics:{...(result.diagnostics||{}),technicalDifficulty:{score:difficulty.score,label:model.label(difficulty.score),source:difficulty.source,confidence:difficulty.confidence,rawLoad:model.loadFor(difficulty.score),factor,reference:7,exponent,model:model.MODEL_VERSION}}};
-  };
-  patched.__technicalDifficultyModel=true;patched.__previous=previous;core.estimateReadiness=patched;return true;
-}
 function difficultyMetaHtml(result){const model=window.WorkDifficultyModel;if(!model||!result)return'';return `<span class="obra-difficulty-source">${model.sourceLabel(result.source)} · confianza ${model.confidenceLabel(result.confidence)}</span>`;}
 function syncDifficultyChip(meta,result,model){
   if(!meta||!result||!model)return;
@@ -112,9 +93,9 @@ function installManualCapture(){
 }
 function boot(attempt=0){
   const model=window.WorkDifficultyModel;if(!model){if(attempt<100)setTimeout(()=>boot(attempt+1),60);return;}
-  patchCatalog();enrichAll();patchSave();patchReadiness();patchPremium();installManualCapture();observePremium();
-  try{if(typeof window.renderObras==='function')window.renderObras();}catch(e){} try{if(typeof window.updateCronoReadiness==='function')window.updateCronoReadiness();}catch(e){}
-  setTimeout(()=>{patchCatalog();patchReadiness();patchPremium();},250);
+  patchCatalog();enrichAll();patchSave();patchPremium();installManualCapture();observePremium();
+  try{if(typeof window.renderObras==='function')window.renderObras();}catch(e){} try{if(typeof window.cronoRenderReadinessEstimate==='function')window.cronoRenderReadinessEstimate();}catch(e){}
+  setTimeout(()=>{patchCatalog();patchPremium();},250);
 }
 window.addEventListener('work-difficulty-model-ready',()=>boot(0),{once:true});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>boot(0),{once:true});else boot(0);

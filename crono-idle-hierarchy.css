@@ -172,13 +172,34 @@
    de una pantalla baja sin encoger los paneles de tareas del otro lado. */
 @media (min-width: 560px) and (max-width: 1100px) and (max-height: 600px) and (orientation: landscape) {
   #view-cronometro {
-    --crono-interface-ring-size: min(150px, 40dvh) !important;
+    --crono-interface-ring-size: clamp(96px, calc(100dvh - 260px), 150px) !important;
   }
-  #view-cronometro .crono-idle-main {
+  [data-theme^="marmol"] #view-cronometro .crono-wrap,
+  [data-theme^="marmol"] body.crono-running #view-cronometro .crono-wrap {
+    width: 100% !important;
+    min-width: 0 !important;
     height: auto !important;
+    padding-top: 0 !important;
+    grid-template-rows: calc(100dvh - 112px) auto !important;
+    align-content: start !important;
+  }
+  [data-theme^="marmol"] #view-cronometro #cronoStageIdle,
+  [data-theme^="marmol"] #view-cronometro #cronoStageRun,
+  [data-theme^="marmol"] #view-cronometro #cronoIdleDrawer,
+  [data-theme^="marmol"] #view-cronometro #cronoRunDrawer,
+  [data-theme^="marmol"] #view-cronometro #cronoStageIdle .crono-idle-main {
+    height: 100% !important;
     min-height: 0 !important;
   }
+  #view-cronometro .crono-idle-main > .crono-readiness-chip {
+    min-height: 24px !important;
+    margin: 2px auto !important;
+    padding: 3px 8px !important;
+  }
   #view-cronometro .crono-idle-main .crono-idle-controls {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 90px !important;
+    gap: 8px !important;
     margin-top: 0 !important;
     padding-top: 2px !important;
     border-top: 0;
@@ -192,6 +213,7 @@
     margin-bottom: 2px !important;
     padding: 2px !important;
   }
+  #view-cronometro .crono-idle-main .crono-timer-projection { grid-column: 1 / -1; }
   #view-cronometro .crono-idle-main .crono-mode-opt {
     min-height: 26px !important;
     height: 26px !important;

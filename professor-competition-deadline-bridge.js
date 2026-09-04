@@ -41,13 +41,15 @@
   }
 
   function targetFor(plan, kind, asOf) {
-    const deadline = kind === 'deadline';
-    const atValue = deadline ? plan.deadline : plan.competitionStart;
+    const deadline = kind !== 'competition';
+    const recording = kind === 'recording';
+    const atValue = recording ? (plan.grabacionObjetivo || plan.recordingTarget) : deadline ? plan.deadline : plan.competitionStart;
     const at = dateOf(atValue);
-    if (!at || at < startOfDay(asOf) || at > new Date(startOfDay(asOf).getTime() + 730 * DAY)) return null;
-    const workIds = arr(deadline ? plan.videoWorkIds : plan.repertoireWorkIds).map(id).filter(Boolean);
+    if (!at || at < startOfDay(asOf)) return null;
+    const administrative = !recording && /application/.test(String(plan.deadlineKind)) && plan.requiresVideo !== true && !plan.videoRequirements;
+    const workIds = administrative ? [] : arr(deadline ? plan.videoWorkIds : plan.repertoireWorkIds).map(id).filter(Boolean);
     const movementTargets = deadline ? (plan.videoMovements || {}) : (plan.professorMovements || {});
-    if (!workIds.length) return null;
+
     const days = daysAway(at, asOf);
     return {
       key: 'competition-plan:' + id(plan.id) + ':' + kind,
@@ -55,20 +57,21 @@
       id: id(plan.id) + ':' + kind,
       competitionPlanId: plan.id,
       googleEventId: deadline ? (plan.googleDeadlineEventId || null) : null,
-      name: (deadline ? 'Deadline · ' : 'Concurso · ') + (plan.name || 'Concurso'),
-      type: deadline ? (plan.deadlineKind || 'video_deadline') : 'concurso',
-      role: deadline ? (plan.deadlineKind || 'video_deadline') : 'competition',
+      name: (recording ? 'Objetivo de grabación · ' : deadline ? 'Deadline · ' : 'Concurso · ') + (plan.name || 'Concurso'),
+      type: recording ? 'recording_target' : deadline ? (plan.deadlineKind || 'video_deadline') : 'concurso',
+      role: recording ? 'recording_target' : deadline ? (plan.deadlineKind || 'video_deadline') : 'competition',
+      sourcePlan: { ...plan },
       status: plan.status || 'standby',
       at: at.toISOString(),
       day: isoDay(at),
       daysAway: days,
       workIds,
       movementTargets,
-      repertoireLinked: true,
+      repertoireLinked: workIds.length > 0,
       videoRequirements: deadline ? (plan.videoRequirements || null) : null,
       competitionStart: plan.competitionStart || null,
       competitionEnd: plan.competitionEnd || null,
-      planningWeight: (plan.status || 'standby') === 'standby' ? 0.7 : (plan.status === 'idea' ? 0.45 : 1),
+      planningWeight: String(plan.status || 'standby').toLowerCase() === 'standby' ? 0.45 : (plan.status === 'idea' ? 0.45 : 1),
     };
   }
 
@@ -119,6 +122,7 @@
     const newUrgency = eventUrgency(num(target.daysAway, 9999), target.role || target.type);
     const weight = target.planningWeight == null ? 1 : target.planningWeight;
     const delta = Math.max(0, newUrgency - oldUrgency) * weight;
+    if (!oldEvent && weight < 1) unit.priority.score = round1(num(unit.priority.score) * weight);
     if (delta > 0) unit.priority.score = round1(Math.min(100, num(unit.priority.score) + delta));
     const reasons = arr(unit.priority.reasons);
     const reason = (/deadline/.test(target.role) ? 'deadline' : 'concurso') + ' en ' + target.daysAway + ' d' + (target.status === 'standby' ? ' · standby' : '');
@@ -148,13 +152,15 @@
   function enrich(report, database) {
     if (!report || !database) return report;
     const asOf = dateOf(report.asOf) || new Date();
-    const plans = arr(database.competitionPlans).filter(plan => plan && plan.status !== 'descartado');
+    const plans = arr(database.competitionPlans).filter(plan => plan && !/descartad|completad|cancel/i.test(plan.status || ''));
     const targets = [];
     plans.forEach(plan => {
       const deadline = targetFor(plan, 'deadline', asOf);
       const competition = targetFor(plan, 'competition', asOf);
       if (deadline) targets.push(deadline);
       if (competition) targets.push(competition);
+      const recording = targetFor(plan, 'recording', asOf);
+      if (recording) targets.push(recording);
     });
 
     const existingKeys = new Set(arr(report.events).map(event => event.key));
@@ -197,7 +203,7 @@
     plans.forEach(plan => {
       const deadline = dateOf(plan.deadline);
       const d = deadline ? daysAway(deadline, asOf) : null;
-      if (d != null && d <= 120 && !arr(plan.videoWorkIds).length) {
+      if (deadline >= startOfDay(asOf) && d != null && d <= 120 && !arr(plan.videoWorkIds).length) {
         const message = 'Deadline en ' + d + ' d · ' + plan.name + ': repertorio de vídeo pendiente de asignar.';
         if (!report.warnings.includes(message)) report.warnings.push(message);
       }
@@ -219,7 +225,7 @@
       const originalCompact = core.compactContext;
       const wrappedCompact = function (report) {
         let text = originalCompact.apply(this, arguments);
-        const paceLines = arr(report && report.units).filter(unit => unit.nextEvent && unit.pace).slice(0, 30).map(unit => {
+        const paceLines = arr(report && report.units).filter(unit => unit.nextEvent && unit.pace).map(unit => {
           const v = unit.pace.velocityEstimate;
           return unit.key + '|objetivo=' + unit.nextEvent.name + '/' + unit.nextEvent.daysAway + 'd|actual7d=' + unit.pace.currentDaily7dMinutes + 'm/d|necesario≈' + unit.pace.requiredDailyMinutes + 'm/d|ritmo=' + unit.pace.status + (v ? '|velocidad=' + v.hours + 'h_estimadas_por_progreso_observado' : '');
         });

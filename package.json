@@ -4,7 +4,7 @@
   "version": "2026.07.13",
   "description": "Planificador de estudio y cronómetro PWA",
   "scripts": {
-    "check": "node --check app.js",
+    "check": "node scripts/check-runtime.mjs",
     "test": "npm run check && npm run test:unit && npm run test:e2e",
     "test:unit": "vitest run tests/unit",
     "test:e2e": "playwright test tests/e2e",
@@ -12,6 +12,7 @@
     "test:all": "npm run check && npm run test:unit && npm run test:e2e && npm run test:visual"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@playwright/test": "^1.55.0",
     "vitest": "^3.2.4"
   },

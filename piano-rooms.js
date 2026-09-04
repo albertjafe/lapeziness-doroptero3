@@ -43,14 +43,17 @@
     document.head.appendChild(link);
   }
   function loadProfessor(){
-    load('professorCoreScript','./professor-core.js?v=2',function(){
-      load('professorReportNormalizerScript','./professor-report-normalizer.js?v=2',function(){
-        load('professorContextEnrichmentScript','./professor-context-enrichment.js?v=2',function(){
-          load('professorCompetitionDeadlineBridgeScript','./professor-competition-deadline-bridge.js?v=2',function(){
-            load('professorEventGateScript','./professor-event-gate.js?v=2',function(){
-              load('professorDurationPolicyScript','./professor-duration-policy.js?v=1',function(){
-                load('professorDashboardScript','./professor-dashboard.js?v=2',function(){
-                  load('professorEventGateUiScript','./professor-event-gate-ui.js?v=2');
+    load('professorCoreScript','./professor-core.js?v=342',function(){
+      load('professorReportNormalizerScript','./professor-report-normalizer.js?v=342',function(){
+        load('professorContextEnrichmentScript','./professor-context-enrichment.js?v=342',function(){
+          load('professorCompetitionDeadlineBridgeScript','./professor-competition-deadline-bridge.js?v=342',function(){
+            load('professorEventGateScript','./professor-event-gate.js?v=342',function(){
+              load('professorDurationPolicyScript','./professor-duration-policy.js?v=342',function(){
+                load('professorDashboardScript','./professor-dashboard.js?v=342',function(){
+                  load('professorEventGateUiScript','./professor-event-gate-ui.js?v=342');
+                  load('professorHandoffResilienceScript','./professor-handoff-resilience.js?v=342',function(){
+                    load('professorTemporaryChatScript','./professor-temporary-chat.js?v=342');
+                  });
                 });
               });
             });
@@ -60,58 +63,60 @@
     });
   }
 
-  loadStyle('cronoReadinessLayoutStyles','./crono-readiness-layout.css?v=1');
-  loadStyle('cronoIdleHierarchyStyles','./crono-idle-hierarchy.css?v=3');
-  loadStyle('cronoRunningPremiumStyles','./crono-running-premium.css?v=1');
-  loadStyle('obrasRedesignStyles','./obras-redesign.css?v=1');
-  loadStyle('obrasRedesignPolishStyles','./obras-redesign-polish.css?v=2');
-  loadStyle('obrasUnifiedLibraryStyles','./obras-unified-library.css?v=1');
-  loadStyle('workDifficultyStyles','./work-difficulty.css?v=1');
-  loadStyle('eventPlanningStyles','./event-planning.css?v=1');
-  loadStyle('eventPlanningUiV2Styles','./event-planning-ui-v2.css?v=1');
-  loadStyle('planningEnhancementsV3Styles','./planning-enhancements-v3.css?v=1');
-  loadStyle('planningEnhancementsV4Styles','./planning-enhancements-v4.css?v=1');
-  load('pianoRoomsCoreScript','./piano-rooms-core.js?v=1');
-  load('paseLiquidDirectTouchScript','./pase-liquid-direct-touch.js?v=2');
-  load('localSaveResilienceScript','./local-save-resilience.js?v=1');
-  load('cronoSaveResilienceScript','./crono-save-resilience.js?v=1',function(){
-    load('taskSyncBootstrapScript','./task-sync-bootstrap.js?v=1',function(){
-      load('taskSyncResilienceScript','./task-sync-resilience.js?v=1');
-    });
+  function finishReadinessModel(){
+    const model=window.WorkDifficultyModel,core=window.ReadinessCore;
+    if(!model?.__storedPriority||!core?.estimateReadiness?.__recoveryContextModel)return;
+    model.installReadiness(core);
+    if(typeof window.cronoRenderReadinessEstimate==='function')window.cronoRenderReadinessEstimate();
+  }
+
+  loadStyle('cronoReadinessLayoutStyles','./crono-readiness-layout.css?v=342');
+  loadStyle('cronoIdleHierarchyStyles','./crono-idle-hierarchy.css?v=342');
+  loadStyle('cronoRunningPremiumStyles','./crono-running-premium.css?v=342');
+  loadStyle('obrasRedesignStyles','./obras-redesign.css?v=342');
+  loadStyle('obrasRedesignPolishStyles','./obras-redesign-polish.css?v=342');
+  loadStyle('obrasUnifiedLibraryStyles','./obras-unified-library.css?v=342');
+  loadStyle('workDifficultyStyles','./work-difficulty.css?v=342');
+  loadStyle('eventPlanningStyles','./event-planning.css?v=342');
+  loadStyle('eventPlanningUiV2Styles','./event-planning-ui-v2.css?v=342');
+  loadStyle('planningEnhancementsV3Styles','./planning-enhancements-v3.css?v=342');
+  loadStyle('planningEnhancementsV4Styles','./planning-enhancements-v4.css?v=342');
+  load('pianoRoomsCoreScript','./piano-rooms-core.js?v=342');
+  load('paseLiquidDirectTouchScript','./pase-liquid-direct-touch.js?v=342');
+  load('cronoSaveResilienceScript','./crono-save-resilience.js?v=342',function(){
+    load('taskSyncResilienceScript','./task-sync-resilience.js?v=342');
   });
-  load('updateSafetyScript','./update-safety.js?v=1');
-  load('cronoRunningPremiumScript','./crono-running-premium.js?v=1');
-  load('eventPlanningScript','./event-planning.js?v=1',function(){
-    load('competitionPlanningSeedScript','./competition-planning-seed.js?v=1',function(){
-      load('eventPlanningUiV2Script','./event-planning-ui-v2.js?v=1',function(){
-        load('planningEnhancementsV3Script','./planning-enhancements-v3.js?v=1',function(){
-          load('planningEnhancementsV3FixScript','./planning-enhancements-v3-fix.js?v=1',function(){
-            load('planningEnhancementsV4Script','./planning-enhancements-v4.js?v=2',function(){
-              load('planningEnhancementsV4SpeechFixScript','./planning-enhancements-v4-speech-fix.js?v=1',loadProfessor);
-            });
+  load('updateSafetyScript','./update-safety.js?v=342');
+  load('cronoRunningPremiumScript','./crono-running-premium.js?v=342');
+  load('eventPlanningScript','./event-planning.js?v=342',function(){
+    load('competitionPlanningSeedScript','./competition-planning-seed.js?v=342',function(){
+      load('eventPlanningUiV2Script','./event-planning-ui-v2.js?v=342',function(){
+        load('planningEnhancementsV3Script','./planning-enhancements-v3.js?v=342',function(){
+          load('planningEnhancementsV4Script','./planning-enhancements-v4.js?v=342',function(){
+            load('planningEnhancementsV4SpeechFixScript','./planning-enhancements-v4-speech-fix.js?v=342',loadProfessor);
           });
         });
       });
     });
   });
-  load('workDifficultyModelScript','./work-difficulty-model.js?v=1',function(){
-    load('workDifficultyStoredPriorityScript','./work-difficulty-stored-priority.js?v=1');
+  load('workDifficultyModelScript','./work-difficulty-model.js?v=342',function(){
+    load('workDifficultyStoredPriorityScript','./work-difficulty-stored-priority.js?v=342',finishReadinessModel);
   });
-  load('historicalEventsScript','./historical-events.js?v=1',function(){
-    load('historicalEventsDetailsScript','./historical-events-details.js?v=2');
+  load('historicalEventsScript','./historical-events.js?v=342',function(){
+    load('historicalEventsDetailsScript','./historical-events-details.js?v=342');
   });
-  load('solidityModelScript','./solidity-model.js?v=5',function(){
-    load('readinessPillModelScript','./readiness-pill-model.js?v=1',function(){
-      load('readinessRecoveryContextScript','./readiness-recovery-context.js?v=2');
+  load('solidityModelScript','./solidity-model.js?v=342',function(){
+    load('readinessPillModelScript','./readiness-pill-model.js?v=342',function(){
+      load('readinessRecoveryContextScript','./readiness-recovery-context.js?v=342',finishReadinessModel);
     });
-    load('workStructureCatalogScript','./work-structure-catalog.js?v=1',function(){
-      load('obraPremiumScript','./obra-premium.js?v=1',function(){
-        load('obraPremiumPolishScript','./obra-premium-polish.js?v=4',function(){
-          load('obrasRedesignScript','./obras-redesign.js?v=1',function(){
-            load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=6',function(){
-              load('obrasUnifiedLibraryScript','./obras-unified-library.js?v=2',function(){
-                load('workDifficultyIntegrationScript','./work-difficulty-integration.js?v=1');
-                load('historicalRealStudyPolishScript','./historical-real-study-polish.js?v=1');
+    load('workStructureCatalogScript','./work-structure-catalog.js?v=342',function(){
+      load('obraPremiumScript','./obra-premium.js?v=342',function(){
+        load('obraPremiumPolishScript','./obra-premium-polish.js?v=342',function(){
+          load('obrasRedesignScript','./obras-redesign.js?v=342',function(){
+            load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=342',function(){
+              load('obrasUnifiedLibraryScript','./obras-unified-library.js?v=342',function(){
+                load('workDifficultyIntegrationScript','./work-difficulty-integration.js?v=342');
+                load('historicalRealStudyPolishScript','./historical-real-study-polish.js?v=342');
               });
             });
           });

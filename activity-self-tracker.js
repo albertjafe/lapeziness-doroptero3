@@ -236,7 +236,7 @@
   if (document.getElementById('sessionMinutesCorrectionScript')) return;
   const script = document.createElement('script');
   script.id = 'sessionMinutesCorrectionScript';
-  script.src = './session-minutes-correction.js?v=1';
+  script.src = './session-minutes-correction.js?v=342';
   script.async = false;
   document.head.appendChild(script);
 }());

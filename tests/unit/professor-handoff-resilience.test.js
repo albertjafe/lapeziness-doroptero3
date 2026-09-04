@@ -73,8 +73,11 @@ describe('ProfessorHandoffResilience', () => {
     expect(built.promptForUrl).toContain('EVENT_SENTINEL_0');
     expect(built.promptForUrl).toContain('EVENT_SENTINEL_67');
     expect(built.promptForUrl.match(/^U\|/gm)).toHaveLength(80);
-    expect(built.promptForUrl.match(/^E\|/gm)).toHaveLength(68);
-    expect(built.encodedLength).toBeLessThanOrEqual(Handoff.MAX_URL_ENCODED);
+    // Partial linked-event objects with differing names are preserved as separate
+    // dictionary entries; they must not be silently replaced by a namesake.
+    expect(Handoff.decodeContext(Handoff.denseContext(report))).toEqual(report);
+    expect(built.transport).toBe('clipboard');
+    expect(built.url.length).toBeLessThan(Handoff.MAX_URL_ENCODED);
     expect(built.fullPrompt).toBeUndefined();
   });
 

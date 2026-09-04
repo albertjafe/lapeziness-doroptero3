@@ -57,7 +57,8 @@
     button.setAttribute('aria-pressed', String(on));
     button.classList.toggle('is-active', on);
     const state = button.querySelector('[data-temp-state]');
-    if (state) state.textContent = on ? 'Activado' : 'Desactivado';
+    const text = on ? 'Activado' : 'Desactivado';
+    if (state && state.textContent !== text) state.textContent = text;
   }
 
   function injectStyles() {

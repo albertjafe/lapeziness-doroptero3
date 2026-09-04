@@ -1,86 +1,95 @@
-const CACHE = 'estudio-v341';
+const CACHE = 'estudio-v344';
 const ASSETS = [
-  './index.html',
-  './styles.css?v=281',
-  './study-session-ux.css?v=1',
-  './crono-resume-layout.css?v=1',
-  './passage-tracker.css?v=1',
-  './event-repertoire-picker.css?v=1',
-  './piano-rooms.css?v=1',
-  './crono-readiness-layout.css?v=1',
-  './crono-idle-hierarchy.css?v=3',
-  './crono-running-premium.css?v=1',
-  './obra-premium.css?v=1',
-  './obras-redesign.css?v=1',
-  './obras-redesign-polish.css?v=2',
-  './obras-unified-library.css?v=1',
-  './work-difficulty.css?v=1',
-  './event-planning.css?v=1',
-  './event-planning-ui-v2.css?v=1',
-  './planning-enhancements-v3.css?v=1',
-  './planning-enhancements-v4.css?v=1',
-  './app.js?v=281',
-  './study-session-ux.js?v=1',
-  './crono-resume-layout.js?v=1',
-  './passage-tracker.js?v=1',
-  './event-repertoire-picker.js?v=1',
-  './professor-temporary-chat.js?v=1',
-  './professor-handoff-resilience.js?v=2',
-  './instant-sync-resilience.js?v=1',
-  './piano-rooms.js?v=1',
-  './piano-rooms-core.js?v=1',
-  './local-save-resilience.js?v=2',
-  './crono-save-resilience.js?v=1',
-  './task-sync-bootstrap.js?v=1',
-  './task-sync-resilience.js?v=1',
-  './update-safety.js?v=2',
-  './event-data-protection.js?v=1',
-  './event-sync-core.js?v=1',
-  './crono-running-premium.js?v=1',
-  './event-planning.js?v=1',
-  './competition-planning-seed.js?v=1',
-  './event-planning-ui-v2.js?v=1',
-  './planning-enhancements-v3.js?v=1',
-  './planning-enhancements-v3-fix.js?v=1',
-  './planning-enhancements-v4.js?v=2',
-  './planning-enhancements-v4-speech-fix.js?v=1',
-  './professor-core.js?v=2',
-  './professor-report-normalizer.js?v=2',
-  './professor-context-enrichment.js?v=2',
-  './professor-competition-deadline-bridge.js?v=2',
-  './professor-event-gate.js?v=2',
-  './professor-duration-policy.js?v=1',
-  './professor-dashboard.js?v=2',
-  './professor-event-gate-ui.js?v=2',
-  './pase-liquid-direct-touch.js?v=2',
-  './work-catalog.js?v=1',
-  './work-structure-catalog.js?v=1',
-  './work-difficulty-model.js?v=1',
-  './work-difficulty-stored-priority.js?v=1',
-  './work-difficulty-integration.js?v=1',
-  './solidity-model.js?v=5',
-  './readiness-pill-model.js?v=1',
-  './readiness-recovery-context.js?v=2',
-  './obra-premium.js?v=1',
-  './obra-premium-polish.js?v=4',
-  './obras-redesign.js?v=1',
-  './obras-redesign-polish.js?v=6',
-  './obras-unified-library.js?v=2',
-  './historical-real-study-polish.js?v=1',
-  './historical-events.js?v=1',
-  './historical-events-details.js?v=2',
-  './google-calendar.js?v=272',
-  './metronome.js?v=275',
-  './timer-objectives.js?v=250',
-  './timer-core.js?v=264',
-  './data-core.js?v=231',
-  './historical-repertoire.js?v=1',
-  './sync-core.js?v=209',
-  './push-client.js?v=264',
-  './manifest.json',
-  './icon.svg',
-  './icon-192.png',
-  './icon-512.png',
+  "./activity-core.js?v=342",
+  "./activity-dashboard.js?v=342",
+  "./activity-self-tracker.js?v=342",
+  "./add-obra-premium.css?v=342",
+  "./app.js?v=344",
+  "./competition-planning-seed.js?v=342",
+  "./crono-idle-hierarchy.css?v=342",
+  "./crono-readiness-layout.css?v=342",
+  "./crono-resume-layout.css?v=342",
+  "./crono-resume-layout.js?v=343",
+  "./crono-running-premium.css?v=342",
+  "./crono-running-premium.js?v=342",
+  "./crono-save-resilience.js?v=342",
+  "./data-core.js?v=342",
+  "./document-sync-core.js?v=344",
+  "./event-data-protection.js?v=342",
+  "./event-planning-ui-v2.css?v=342",
+  "./event-planning-ui-v2.js?v=342",
+  "./event-planning.css?v=342",
+  "./event-planning.js?v=342",
+  "./event-repertoire-picker.css?v=342",
+  "./event-repertoire-picker.js?v=342",
+  "./event-sync-core.js?v=342",
+  "./google-calendar.js?v=342",
+  "./historical-events-details.js?v=342",
+  "./historical-events.js?v=342",
+  "./historical-real-study-polish.js?v=342",
+  "./historical-repertoire.js?v=342",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./icon.svg",
+  "./index.html",
+  "./instant-sync-resilience.js?v=342",
+  "./local-save-resilience.js?v=342",
+  "./manifest.json",
+  "./metronome.js?v=342",
+  "./obra-premium-polish.js?v=342",
+  "./obra-premium.css?v=342",
+  "./obra-premium.js?v=342",
+  "./obras-redesign-polish.css?v=342",
+  "./obras-redesign-polish.js?v=342",
+  "./obras-redesign.css?v=342",
+  "./obras-redesign.js?v=342",
+  "./obras-unified-library.css?v=342",
+  "./obras-unified-library.js?v=342",
+  "./pase-liquid-direct-touch.js?v=342",
+  "./passage-tracker.css?v=342",
+  "./passage-tracker.js?v=342",
+  "./piano-rooms-core.js?v=342",
+  "./piano-rooms.css?v=342",
+  "./piano-rooms.js?v=343",
+  "./planning-enhancements-v3.css?v=342",
+  "./planning-enhancements-v3.js?v=342",
+  "./planning-enhancements-v4-speech-fix.js?v=342",
+  "./planning-enhancements-v4.css?v=342",
+  "./planning-enhancements-v4.js?v=342",
+  "./professor-competition-deadline-bridge.js?v=342",
+  "./professor-context-enrichment.js?v=342",
+  "./professor-core.js?v=342",
+  "./professor-dashboard.js?v=342",
+  "./professor-duration-policy.js?v=342",
+  "./professor-event-gate-ui.js?v=342",
+  "./professor-event-gate.js?v=342",
+  "./professor-handoff-resilience.js?v=342",
+  "./professor-report-normalizer.js?v=342",
+  "./professor-report-worker.js?v=342",
+  "./professor-temporary-chat.js?v=342",
+  "./push-client.js?v=342",
+  "./readiness-core.js?v=342",
+  "./readiness-pill-model.js?v=342",
+  "./readiness-recovery-context.js?v=342",
+  "./session-minutes-correction.js?v=342",
+  "./solidity-history-editor.css?v=342",
+  "./solidity-history-editor.js?v=342",
+  "./solidity-model.js?v=342",
+  "./study-session-ux.css?v=342",
+  "./study-session-ux.js?v=342",
+  "./styles.css?v=342",
+  "./sync-core.js?v=342",
+  "./task-sync-bootstrap.js?v=342",
+  "./task-sync-resilience.js?v=342",
+  "./timer-core.js?v=342",
+  "./timer-objectives.js?v=342",
+  "./update-safety.js?v=342",
+  "./work-catalog.js?v=342",
+  "./work-difficulty-integration.js?v=342",
+  "./work-difficulty-model.js?v=342",
+  "./work-difficulty-stored-priority.js?v=342",
+  "./work-difficulty.css?v=342",
+  "./work-structure-catalog.js?v=342"
 ];
 
 /* Una versión nueva se instala en espera. Nunca se promociona sola mientras
@@ -96,7 +105,12 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(keys => {
+        // Keep the previous shell while old tabs durably save on controllerchange.
+        const prior=keys.filter(k=>/^estudio-v\d+$/.test(k)&&k!==CACHE)
+          .sort((a,b)=>Number(b.slice(9))-Number(a.slice(9)))[0];
+        return Promise.all(keys.filter(k=>/^estudio-v\d+$/.test(k)&&k!==CACHE&&k!==prior).map(k=>caches.delete(k)));
+      })
       .then(() => self.clients.claim())
   );
 });
@@ -175,24 +189,22 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  if (url.pathname.endsWith('/update.html') || url.searchParams.has('forceUpdate')) {
+  if (url.pathname.endsWith('/update.html')) {
     e.respondWith(fetch(new Request(e.request, { cache: 'reload' })));
     return;
   }
 
-  e.respondWith(
-    fetch(new Request(e.request, { cache: 'no-store' }))
-      .then(res => {
-        if (res && res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-        }
-        return res;
-      })
-      .catch(() =>
-        caches.match(e.request).then(cached =>
-          cached || (e.request.mode === 'navigate' ? caches.match('./index.html') : undefined)
-        )
-      )
-  );
+  e.respondWith((async()=>{
+    const cache=await caches.open(CACHE);
+    // A deployed B must not mix its scripts with the currently controlled A HTML.
+    if(e.request.mode==='navigate'){
+      const shell=await cache.match('./index.html');if(shell)return shell;
+    }
+    const cached=await cache.match(e.request) || await caches.match(e.request);
+    if(cached)return cached;
+    const known=ASSETS.some(asset=>new URL(asset,self.registration.scope).pathname===url.pathname);
+    const expected=ASSETS.some(asset=>new URL(asset,self.registration.scope).href===url.href);
+    if(known&&!expected)return new Response('Version no disponible. Reabre la aplicación.',{status:503});
+    return fetch(e.request);
+  })());
 });

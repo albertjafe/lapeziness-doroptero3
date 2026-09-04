@@ -1,7 +1,6 @@
 const { test, expect } = require('@playwright/test');
-const path = require('node:path');
 
-test('shows the supported Live Activity and the iPad overlay limitation', async ({ page }) => {
+test('shows the supported Live Activity and the iPad overlay limitation', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto('/native-ipad/preview.html');
 
@@ -11,7 +10,7 @@ test('shows the supported Live Activity and the iPad overlay limitation', async 
   await expect(page.locator('#finish')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await page.screenshot({
-    path: path.join(process.cwd(), 'native-ipad', 'screenshots', 'live-activity-lock-screen.png'),
+    path: testInfo.outputPath('live-activity-lock-screen.png'),
     fullPage: true,
   });
 
@@ -20,7 +19,7 @@ test('shows the supported Live Activity and the iPad overlay limitation', async 
   await expect(page.locator('.score-limit')).toContainText('no permite');
   await page.evaluate(() => scrollTo(0, 0));
   await page.screenshot({
-    path: path.join(process.cwd(), 'native-ipad', 'screenshots', 'live-activity-score-limit.png'),
+    path: testInfo.outputPath('live-activity-score-limit.png'),
     fullPage: true,
   });
 
@@ -29,7 +28,7 @@ test('shows the supported Live Activity and the iPad overlay limitation', async 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await expect(page.locator('.activity')).toBeVisible();
   await page.screenshot({
-    path: path.join(process.cwd(), 'native-ipad', 'screenshots', 'live-activity-portrait.png'),
+    path: testInfo.outputPath('live-activity-portrait.png'),
     fullPage: true,
   });
 });

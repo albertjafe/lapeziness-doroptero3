@@ -254,7 +254,7 @@
     if (window.ActivityTracker || document.getElementById('activityDashboardScript')) return;
     const script = document.createElement('script');
     script.id = 'activityDashboardScript';
-    script.src = './activity-dashboard.js?v=1';
+    script.src = './activity-dashboard.js?v=342';
     script.async = true;
     document.head.appendChild(script);
   }
@@ -266,7 +266,7 @@
 
   const core = document.createElement('script');
   core.id = 'activityCoreScript';
-  core.src = './activity-core.js?v=1';
+  core.src = './activity-core.js?v=342';
   core.async = true;
   core.addEventListener('load', loadDashboard, { once: true });
   document.head.appendChild(core);
@@ -279,7 +279,7 @@
   if (window.ActivitySelfTracker || document.getElementById('activitySelfTrackerScript')) return;
   const script = document.createElement('script');
   script.id = 'activitySelfTrackerScript';
-  script.src = './activity-self-tracker.js?v=1';
+  script.src = './activity-self-tracker.js?v=342';
   script.async = true;
   document.head.appendChild(script);
 }());

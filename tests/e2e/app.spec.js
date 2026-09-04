@@ -45,7 +45,7 @@ test('opens every main view without page exceptions', async ({ page }) => {
   page.on('console', message => { if (message.type() === 'error') recordError(message.text()); });
   await prepare(page);
 
-  for (const view of ['pulse', 'session', 'cronometro', 'obras', 'calendario', 'historial', 'ajustes']) {
+  for (const view of ['session', 'cronometro', 'obras', 'calendario', 'historial']) {
     await page.evaluate(name => { if (typeof showView !== 'function') throw new Error('showView no disponible'); showView(name); }, view);
     if (view === 'historial') {
       await expect(page.locator('#view-session')).toHaveClass(/active/);
@@ -109,21 +109,21 @@ test('uses mouse navigation only on Windows and preserves the iPad navigation', 
 
   await expect(windowsPage.locator('html')).toHaveClass(/platform-windows/);
   const rail = windowsPage.locator('body > .nav-bottom');
-  const pulse = rail.locator('[data-view="pulse"]');
+  const pulse = rail.locator('[data-view="profesor"]');
   await expect(pulse).toBeVisible();
   const railBox = await rail.boundingBox();
   expect(railBox.x).toBeLessThan(2);
   expect(railBox.width).toBeGreaterThanOrEqual(94);
   expect(railBox.height).toBeGreaterThanOrEqual(760);
   await pulse.click();
-  await expect(windowsPage.locator('#view-pulse')).toHaveClass(/active/);
-  await expect(windowsPage.locator('#headerTitle')).toContainText('Pulso');
+  await expect(windowsPage.locator('#view-profesor')).toHaveClass(/active/);
+  await expect(windowsPage.locator('#headerTitle')).toContainText('Profesor');
   expect(await windowsPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   await rail.locator('[data-view="cronometro"]').click();
   await expect(windowsPage.locator('#view-cronometro')).toHaveClass(/active/);
   await expect(rail).toBeVisible();
   await pulse.click();
-  await expect(windowsPage.locator('#view-pulse')).toHaveClass(/active/);
+  await expect(windowsPage.locator('#view-profesor')).toHaveClass(/active/);
   await windows.close();
 
   const ipad = await browser.newContext({
@@ -244,10 +244,10 @@ test('keeps events readable, adds competition rounds and compacts completed hist
   await page.locator('.evento-ronda-date').nth(1).fill(final);
   await page.locator('#modalAddEvento .modal-btn.primary').click();
 
-  const saved = await page.evaluate(() => db.eventos[0]);
+  const saved = await page.evaluate(() => db.eventos.find(e=>e.nombre==='Concurso Internacional'));
   expect(saved.rondas.map(ronda => ronda.nombre)).toEqual(['Eliminatoria', 'Final']);
   expect(saved.fechaFin).toBe(final);
-  await expect(page.locator('#eventosList .evento-card')).toContainText('Concurso Internacional');
+  await expect(page.locator('#eventosList .evento-card').filter({hasText:'Concurso Internacional'})).toBeVisible();
   await expect(page.locator('#eventosList .evento-round-preview')).toHaveCount(2);
   await expect(page.locator('#eventosList .evento-readiness')).toHaveCount(0);
   await expect(page.locator('#eventosList .evento-meta80')).toHaveCount(0);
@@ -263,7 +263,7 @@ test('keeps events readable, adds competition rounds and compacts completed hist
   }
 
   await page.evaluate(() => {
-    openEventoResultado(db.eventos[0].id);
+    openEventoResultado(db.eventos.find(e=>e.nombre==='Concurso Internacional').id);
     confirmEventoResultado();
   });
   const historyCard = page.locator('#eventosPasadosList .evento-history-card');
@@ -280,7 +280,7 @@ test('keeps the app inside the viewport at the four target widths', async ({ bro
     const context = await browser.newContext({ viewport });
     const page = await context.newPage();
     await prepare(page);
-    for (const view of ['pulse', 'session', 'cronometro', 'obras', 'calendario', 'historial', 'ajustes']) {
+    for (const view of ['session', 'cronometro', 'obras', 'calendario', 'historial']) {
       await page.evaluate(name => { if (typeof showView !== 'function') throw new Error('showView no disponible'); showView(name); }, view);
       const sizing = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth }));
       expect(sizing.scrollWidth, view + ' at ' + viewport.width + 'px').toBeLessThanOrEqual(sizing.innerWidth + 1);
@@ -426,52 +426,12 @@ test('refreshes statistics immediately after a local study save', async ({ page 
   await expect(page.locator('#statsDashboard')).toContainText('45 min');
 });
 
-test('renders and explores the mystery house prototype on mobile and iPad', async ({ browser }, testInfo) => {
-  test.setTimeout(60_000);
-  for (const viewport of [
-    { width: 430, height: 932, name: 'mobile' },
-    { width: 844, height: 390, name: 'mobile-landscape' },
-    { width: 834, height: 1194, name: 'ipad-portrait' },
-    { width: 1024, height: 768, name: 'ipad-landscape' },
-  ]) {
-    const context = await browser.newContext({ viewport });
-    const page = await context.newPage();
-    await prepare(page);
-    await page.evaluate(() => showView('casa'));
-    await expect(page.locator('#view-casa')).toHaveClass(/active/);
-    await expect(page.locator('#houseCanvasHost canvas')).toBeVisible();
-    await page.waitForFunction(() => window.__mysteryHouseDebug?.samplePixels().unique > 4);
-
-    const pixels = await page.evaluate(() => window.__mysteryHouseDebug.samplePixels());
-    expect(pixels.colored).toBeGreaterThan(40);
-    expect(pixels.unique).toBeGreaterThan(4);
-
-    await page.locator('[data-house-floor="3"]').click();
-    await expect(page.locator('#houseFloorTitle')).toHaveText('Planta sin número');
-    await page.locator('#houseDoorOpen').click();
-    const state = await page.evaluate(() => window.__mysteryHouseDebug.getState());
-    expect(state.discoveredDoors).toContain('small-sun');
-
-    const layout = await page.evaluate(() => ({
-      documentWidth: document.documentElement.scrollWidth,
-      viewportWidth: window.innerWidth,
-      stageX: document.getElementById('houseStage').getBoundingClientRect().x,
-      stageY: document.getElementById('houseStage').getBoundingClientRect().y,
-      stageHeight: document.getElementById('houseStage').getBoundingClientRect().height,
-      viewportHeight: window.innerHeight,
-    }));
-    expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
-    expect(layout.stageX).toBeLessThanOrEqual(1);
-    expect(layout.stageY).toBeLessThanOrEqual(1);
-    expect(layout.stageHeight).toBeLessThan(layout.viewportHeight);
-    expect(layout.stageHeight).toBeGreaterThan(layout.viewportHeight - 90);
-
-    const screenshotPath = testInfo.outputPath(`casa-${viewport.name}.png`);
-    await page.screenshot({ path: screenshotPath });
-    await testInfo.attach(`casa-${viewport.name}.png`, { path: screenshotPath, contentType: 'image/png' });
-    await context.close();
-  }
-});
+test('legacy Casa opens Profesor without starting the retired 3D runtime',async({page})=>{
+   await prepare(page); await page.waitForFunction(()=>window.ProfessorCore && document.getElementById('view-profesor'));
+   await page.evaluate(()=>showView('casa')); await expect(page.locator('#view-profesor')).toHaveClass(/active/);
+   await expect(page.locator('#view-casa, canvas[data-engine]')).toHaveCount(0);
+   expect(await page.evaluate(()=>performance.getEntriesByType('resource').some(x=>/mystery-house\.js|three\.module/.test(x.name)))).toBe(false);
+ });
 
 test('keeps one daily challenge visible in idle and running timer layouts', async ({ browser }) => {
   test.setTimeout(60_000);
@@ -958,36 +918,13 @@ test('loads the calendar and objectives switch inside the stopwatch', async ({ p
   await expect(page.locator('#cronoObjectivesPanel')).toBeHidden();
 });
 
-test('hides pulse by default and lets settings restore it while tasks remain scrollable', async ({ page }) => {
-  await page.setViewportSize({ width: 834, height: 1194 });
-  await prepare(page);
-  await page.evaluate(() => showView('cronometro'));
-
-  const pulse = page.locator('#view-cronometro .crono-moment-monitor');
-  await expect(pulse).toBeHidden();
-  expect(await page.evaluate(() => ({
-    stored: localStorage.getItem('alberto_crono_pulse_visible_v1'),
-    disabled: document.body.classList.contains('crono-pulse-disabled'),
-  }))).toEqual({ stored: null, disabled: true });
-  expect(await page.locator('#cronoIdleDrawer').evaluate(el => ({
-    gridColumn: getComputedStyle(el).gridColumn,
-    width: el.getBoundingClientRect().width,
-  }))).toEqual(expect.objectContaining({ gridColumn: '1 / -1' }));
-
-  const taskLists = page.locator('#cronoIdleTasksPanel .crono-task-lane .crono-task-list');
-  expect(await taskLists.count()).toBe(2);
-  const taskList = taskLists.nth(0);
-  expect(await taskList.evaluate(el => ({ overflowY: getComputedStyle(el).overflowY, maxHeight: getComputedStyle(el).maxHeight }))).toEqual(expect.objectContaining({ overflowY: 'auto' }));
-
-  await page.evaluate(() => showView('ajustes'));
-  const pulseToggle = page.locator('#cronoPulseToggleBtn');
-  await expect(pulseToggle).toHaveAttribute('aria-checked', 'false');
-  await pulseToggle.click();
-  await expect(pulseToggle).toHaveAttribute('aria-checked', 'true');
-  await page.evaluate(() => showView('cronometro'));
-  await expect(pulse).toBeVisible();
-  expect(await page.evaluate(() => document.body.classList.contains('crono-pulse-enabled'))).toBe(true);
-});
+test('Pulso has no setting or controls and the task drawer remains usable',async({page})=>{
+   await page.setViewportSize({width:834,height:1194});await prepare(page);await page.evaluate(()=>showView('cronometro'));
+   await expect(page.locator('#view-pulse,.crono-moment-monitor,#cronoPulseVisibilityToggle')).toHaveCount(0);
+   await page.evaluate(()=>cronoSetIdleDrawerTab('tareas'));
+   await expect(page.locator('#cronoIdleTasksPanel')).toBeVisible();
+   expect(await page.locator('#cronoIdleTasksPanel .crono-task-list').count()).toBeGreaterThan(0);
+ });
 
 test('adds manual study to today from the compact quick row', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -1111,6 +1048,12 @@ test('shows pause as an accessible rest state', async ({ page }) => {
 });
 
 test('shows a derived readiness estimate without counting down during a timer run', async ({ page }) => {
+  let releaseRecovery;
+  const recoveryLoading = new Promise(resolve => { releaseRecovery = resolve; });
+  await page.route('**/readiness-recovery-context.js?*', async route => {
+    await recoveryLoading;
+    await route.continue();
+  });
   const now = Date.now();
   const data = {
     ...fixture,
@@ -1137,13 +1080,20 @@ test('shows a derived readiness estimate without counting down during a timer ru
     select.value = 'obra::obra_1';
     cronoUpdateStartBtn();
   });
-  const before = await page.evaluate(() => JSON.stringify(db));
-
   const idle = page.locator('#cronoIdleReadiness');
   await expect(idle).toBeVisible();
-  await expect(idle).toContainText('A punto · ≈');
+  await expect(idle).toContainText('Obra completa · ≈');
   await expect(idle).toContainText('netas');
-  const idleText = (await idle.locator('#cronoIdleReadinessMain').textContent()).trim();
+  // Exercise a late model load: it must refresh an already visible estimate.
+  expect(await page.evaluate(() => Boolean(ReadinessCore.estimateReadiness.__recoveryContextModel))).toBe(false);
+  releaseRecovery();
+  await page.waitForFunction(() => ReadinessCore.estimateReadiness.__technicalDifficultyModel === true);
+  await page.waitForFunction(() => document.documentElement.dataset.difficultyManualCapture === '1');
+  expect(await page.evaluate(() => cronoReadinessEstimate('obra::obra_1').diagnostics.recoveryContextModel)).toBe(true);
+  const expectedIdle = await page.evaluate(() => cronoReadinessMainText(cronoReadinessEstimate('obra::obra_1'), false));
+  await expect(idle.locator('#cronoIdleReadinessMain')).toHaveText(expectedIdle);
+  const before = await page.evaluate(() => JSON.stringify(db));
+  const idleText = (await idle.locator('#cronoIdleReadinessMain').textContent()).match(/≈\s*[^h]+h/)[0];
 
   await idle.click();
   await expect(page.locator('#modalCronoReadiness')).toHaveClass(/visible/);
@@ -1373,8 +1323,8 @@ test('adapts the running timer to iPad landscape and portrait', async ({ browser
       expect(layout.drawer.top).toBeGreaterThanOrEqual(layout.stage.bottom);
       expect(layout.controlsBottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
     } else {
-      expect(layout.drawer.left).toBeGreaterThanOrEqual(layout.stage.right);
-      expect(Math.abs(layout.drawer.top - layout.stage.top)).toBeLessThanOrEqual(16);
+      // Current tablet layout uses two rows: clock/calendar, then tasks/passages.
+      expect(layout.drawer.top).toBeGreaterThanOrEqual(layout.stage.bottom);
     }
     await context.close();
   }
@@ -1644,7 +1594,9 @@ test('keeps tasks available while idle and compacts long running content', async
     };
   });
 
-  expect(metrics.ringWidth).toBeGreaterThanOrEqual(350);
+  // Responsive ring leaves room for the two-row tablet controls; the hour
+  // display must still fit the circle, including the 65-minute case below.
+  expect(metrics.ringWidth).toBeGreaterThanOrEqual(180);
   expect(metrics.hasHours).toBe(true);
   expect(metrics.displayWidth).toBeLessThanOrEqual(metrics.ringWidth * 0.78);
   expect(metrics.destelloFits).toBe(true);
@@ -2276,231 +2228,16 @@ test('captures a dictated-style note for tomorrow and keeps the clock tools mini
   await expect(taskRow.locator('.crono-task-due-tag')).toHaveText('Mañana');
 });
 
-test('records only concentration and discomfort across timer layouts', async ({ page }) => {
-  await page.setViewportSize({ width: 1024, height: 768 });
-  await prepare(page);
-  await page.evaluate(() => {
-    localStorage.setItem(CRONO_PULSE_VISIBILITY_KEY, 'on');
-    showView('cronometro');
-    cronoRefreshPulseVisibility();
-  });
-
-  const monitor = page.locator('.crono-concentration-monitor');
-  await expect(monitor).toBeVisible();
-  await expect(monitor).toContainText('Concentración');
-  await page.locator('#cronoMomentNote').fill('Concentrarme en la mano derecha');
-  await monitor.getByRole('radio', { name: 'Alta', exact: true }).click();
-  await expect(monitor.getByRole('radio', { name: 'Alta', exact: true })).toHaveAttribute('aria-checked', 'true');
-  await expect(page.locator('#cronoMomentNote')).toHaveValue('');
-
-  await page.locator('#cronoMomentNote').fill('Tensión física y pensamiento repetitivo');
-  const discomfort = page.locator('#cronoDiscomfortFaces');
-  await discomfort.getByRole('radio', { name: 'Medio', exact: true }).click();
-  await expect(discomfort.getByRole('radio', { name: 'Medio', exact: true })).toHaveAttribute('aria-checked', 'true');
-
-  const state = await page.evaluate(() => ({
-    value: estadoActualVal(),
-    lastLabel: ensureEstadoEventos().at(-1)?.label,
-    lastNote: ensureEstadoEventos().at(-1)?.note,
-    discomfortLabel: ensureMalestarEventos().at(-1)?.label,
-    discomfortNote: ensureMalestarEventos().at(-1)?.note,
-    impulseCount: ensureImpulsoEventos().length,
-    resistanceCount: ensureResistenciaEventos().length,
-  }));
-  expect(state).toEqual({
-    value: 78,
-    lastLabel: 'Alta',
-    lastNote: 'Concentrarme en la mano derecha',
-    discomfortLabel: 'Medio',
-    discomfortNote: 'Tensión física y pensamiento repetitivo',
-    impulseCount: 0,
-    resistanceCount: 0,
-  });
-
-  await expect(page.locator('#cronoMomentHistoryList')).toHaveCount(0);
-  await expect(page.locator('.crono-moment-history-toggle')).toHaveCount(0);
-  const horizontalLayout = await page.evaluate(() => {
-    const stage = document.getElementById('cronoStageIdle').getBoundingClientRect();
-    const monitorBox = document.querySelector('.crono-moment-monitor').getBoundingClientRect();
-    return { stageBottom: stage.bottom, monitorTop: monitorBox.top };
-  });
-  expect(horizontalLayout.monitorTop).toBeGreaterThanOrEqual(horizontalLayout.stageBottom - 1);
-
-  await page.waitForTimeout(900);
-  await expect(monitor.locator('.estado-face.active')).toHaveCount(0);
-  await expect(page.locator('#estadoFaces .estado-face.active')).toHaveCount(0);
-
-  await page.setViewportSize({ width: 834, height: 1194 });
-  const momentMonitor = page.locator('.crono-moment-monitor');
-  await expect(momentMonitor).toBeVisible();
-  await page.locator('.crono-calendar-objectives-tab[data-timer-panel="calendar"]').click();
-  await expect(page.locator('#cronoCalendarPanelInner')).toBeVisible();
-  await expect(momentMonitor.locator('.crono-moment-mobile-trigger')).toBeHidden();
-  await expect(momentMonitor.locator('.crono-moment-controls')).toBeHidden();
-  await expect(momentMonitor.locator('.crono-fluid-panel')).toBeVisible();
-  await expect(momentMonitor.locator('.crono-impulse-monitor')).toHaveCount(0);
-  await expect(momentMonitor.locator('.crono-resistance-monitor')).toHaveCount(0);
-  await expect(momentMonitor.locator('.crono-concentration-monitor')).toBeHidden();
-  await expect(momentMonitor.locator('.crono-discomfort-monitor')).toBeHidden();
-  await expect(page.locator('#cronoCalendarPanelInner')).toBeVisible();
-  await expect(page.locator('#cronoObjectivesPanel')).toBeHidden();
-  await expect(momentMonitor.locator('.crono-moment-history-toggle')).toHaveCount(0);
-  await expect(momentMonitor.locator('#cronoMomentNote')).toBeHidden();
-  await expect(momentMonitor.locator('.crono-moment-history-list')).toHaveCount(0);
-  const portraitTabletLayout = await page.evaluate(() => {
-    const clock = document.querySelector('#cronoStageIdle .crono-idle-main').getBoundingClientRect();
-    const states = document.querySelector('.crono-moment-monitor').getBoundingClientRect();
-    const calendar = document.getElementById('cronoCalendarObjectivesShell').getBoundingClientRect();
-    const tools = document.getElementById('cronoIdleDrawer').getBoundingClientRect();
-    return {
-      clock: { top: clock.top, right: clock.right, bottom: clock.bottom, height: clock.height },
-      states: { top: states.top, left: states.left, bottom: states.bottom, width: states.width, height: states.height },
-      calendar: { top: calendar.top, left: calendar.left, bottom: calendar.bottom, height: calendar.height },
-      tools: { top: tools.top, right: tools.right, bottom: tools.bottom, width: tools.width, height: tools.height },
-    };
-  });
-  expect(Math.abs(portraitTabletLayout.clock.top - portraitTabletLayout.calendar.top)).toBeLessThanOrEqual(2);
-  expect(Math.abs(portraitTabletLayout.clock.height - portraitTabletLayout.calendar.height)).toBeLessThanOrEqual(2);
-  expect(portraitTabletLayout.calendar.left).toBeGreaterThanOrEqual(portraitTabletLayout.clock.right - 1);
-  expect(portraitTabletLayout.states.top).toBeGreaterThanOrEqual(portraitTabletLayout.clock.bottom - 1);
-  expect(Math.abs(portraitTabletLayout.tools.top - portraitTabletLayout.states.top)).toBeLessThanOrEqual(2);
-  expect(portraitTabletLayout.states.left).toBeGreaterThanOrEqual(portraitTabletLayout.tools.right - 1);
-  expect(portraitTabletLayout.tools.bottom).toBeLessThanOrEqual(1194);
-  expect(portraitTabletLayout.tools.width).toBeGreaterThan(portraitTabletLayout.states.width);
-  const fixedClock = await page.evaluate(() => {
-    const timer = document.querySelector('#cronoStageIdle .crono-idle-main');
-    const calendar = document.getElementById('cronoCalendarObjectivesShell');
-    const ring = document.getElementById('cronoTimerSvg');
-    cronoResetInterfaceScale();
-    const before = { timer: timer.getBoundingClientRect().height, calendar: calendar.getBoundingClientRect().height, ring: ring.getBoundingClientRect().width };
-    cronoSetInterfaceScale(0.1, { persist: false, announce: false });
-    const longText = 'Un destello suficientemente largo para comprobar que el texto se adapta al espacio disponible sin cortarse con el tamaño fijo del reloj.';
-    cronoSetIdleDestelloText(longText);
-    const message = document.getElementById('cronoIdleMessage');
-    const result = {
-      scale: Number(document.getElementById('view-cronometro').dataset.interfaceScale),
-      timer: timer.getBoundingClientRect().height,
-      calendar: calendar.getBoundingClientRect().height,
-      ring: ring.getBoundingClientRect().width,
-      messageFits: message.scrollHeight <= message.clientHeight + 1,
-      messageClass: message.className,
-    };
-    cronoSetIdleDestelloText(_cronoIdlePhrase());
-    cronoResetInterfaceScale();
-    return { before, result };
-  });
-  expect(fixedClock.result.scale).toBe(1);
-  expect(fixedClock.result.timer).toBe(fixedClock.before.timer);
-  expect(fixedClock.result.calendar).toBe(fixedClock.before.calendar);
-  expect(fixedClock.result.ring).toBe(fixedClock.before.ring);
-  expect(fixedClock.result.messageFits).toBe(true);
-  expect(fixedClock.result.messageClass).toContain('size-long');
-  const tabletFluidBox = await momentMonitor.locator('.crono-fluid-panel').boundingBox();
-  const tabletFluidVesselBox = await momentMonitor.locator('#cronoFluidConcentration .crono-fluid-vessel').boundingBox();
-  expect(tabletFluidBox.y).toBeGreaterThanOrEqual(0);
-  expect(tabletFluidBox.y + tabletFluidBox.height).toBeLessThanOrEqual(1194);
-  expect(tabletFluidVesselBox.width).toBeGreaterThanOrEqual(62);
-  expect(tabletFluidVesselBox.height).toBeGreaterThanOrEqual(220);
-  await expect(momentMonitor.locator('.crono-moment-history')).toBeHidden();
-
-  const immediatePulse = await page.evaluate(() => {
-    _pulseRange = 'dia';
-    _pulseOffset = -1;
-    _pulseDayStartMinute = 9 * 60;
-    _pulseDayEndMinute = 14 * 60;
-    localStorage.setItem('pulse_day_start', String(_pulseDayStartMinute));
-    localStorage.setItem('pulse_day_end', String(_pulseDayEndMinute));
-    const oldEnough = new Date(Date.now() - CRONO_FLUID_COOLDOWN_MS - 1000).toISOString();
-    const priorConcentration = ensureEstadoEventos().at(-1);
-    const priorDiscomfort = ensureMalestarEventos().at(-1);
-    if (priorConcentration) priorConcentration.at = oldEnough;
-    if (priorDiscomfort) priorDiscomfort.at = oldEnough;
-    cronoFluidEndEditWindow('concentration');
-    cronoFluidEndEditWindow('discomfort');
-    const before = ensureEstadoEventos().length;
-    const discomfortBefore = ensureMalestarEventos().length;
-    const firstSaved = cronoFluidCommit('concentration', 67, document.getElementById('cronoFluidConcentration'));
-    const latest = ensureEstadoEventos().at(-1);
-    const duplicateSaved = cronoFluidCommit('concentration', 72, document.getElementById('cronoFluidConcentration'));
-    const editedValue = latest?.value;
-    const editedCount = ensureEstadoEventos().length;
-    cronoFluidEndEditWindow('concentration');
-    const afterWindow = cronoFluidCommit('concentration', 31, document.getElementById('cronoFluidConcentration'));
-    const discomfortSaved = cronoFluidCommit('discomfort', 43, document.getElementById('cronoFluidDiscomfort'));
-    cronoFluidEndEditWindow('discomfort');
-    return {
-      before,
-      after: ensureEstadoEventos().length,
-      discomfortBefore,
-      discomfortAfter: ensureMalestarEventos().length,
-      firstSaved,
-      duplicateSaved,
-      editedValue,
-      editedCount,
-      afterWindow,
-      discomfortSaved,
-      latestValue: latest?.value,
-      latestMinute: new Date(latest?.at).getHours() * 60 + new Date(latest?.at).getMinutes(),
-      visibleEnd: _pulseDayEndMinute,
-      offset: _pulseOffset,
-      savedClass: document.getElementById('cronoFluidConcentration').classList.contains('is-saved'),
-      concentrationCooling: document.getElementById('cronoFluidConcentration').getAttribute('aria-disabled'),
-      discomfortCooling: document.getElementById('cronoFluidDiscomfort').getAttribute('aria-disabled'),
-    };
-  });
-  expect(immediatePulse.after).toBe(immediatePulse.before + 1);
-  expect(immediatePulse.discomfortAfter).toBe(immediatePulse.discomfortBefore + 1);
-  expect(immediatePulse.firstSaved).toBe(true);
-  expect(immediatePulse.duplicateSaved).toBe(true);
-  expect(immediatePulse.editedValue).toBe(72);
-  expect(immediatePulse.editedCount).toBe(immediatePulse.before + 1);
-  expect(immediatePulse.afterWindow).toBe(false);
-  expect(immediatePulse.discomfortSaved).toBe(true);
-  expect(immediatePulse.latestValue).toBe(72);
-  expect(immediatePulse.visibleEnd).toBeGreaterThanOrEqual(immediatePulse.latestMinute);
-  expect(immediatePulse.offset).toBe(0);
-  expect(immediatePulse.savedClass).toBe(true);
-  expect(immediatePulse.concentrationCooling).toBe('true');
-  expect(immediatePulse.discomfortCooling).toBe('true');
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator('.crono-calendar-panel')).toBeHidden();
-  await expect(momentMonitor.locator('.crono-fluid-panel')).toBeHidden();
-  const mobileTrigger = momentMonitor.locator('.crono-moment-mobile-trigger');
-  await expect(mobileTrigger).toBeVisible();
-  await expect(momentMonitor.locator('.crono-moment-content')).toBeHidden();
-  await mobileTrigger.click();
-  await expect(mobileTrigger).toHaveAttribute('aria-expanded', 'true');
-  await expect(momentMonitor.locator('.crono-moment-content')).toBeVisible();
-  await expect(momentMonitor.locator('.crono-fluid-panel')).toBeVisible();
-  await expect(momentMonitor.locator('.crono-moment-controls')).toBeHidden();
-  await expect(momentMonitor.locator('#cronoConcentrationFaces')).toBeHidden();
-  await expect(momentMonitor.locator('#cronoDiscomfortFaces')).toBeHidden();
-  await expect(momentMonitor.locator('.crono-moment-history')).toBeHidden();
-  await expect(momentMonitor.locator('#cronoFluidConcentration')).toHaveAttribute('aria-disabled', 'true');
-  await expect(momentMonitor.locator('#cronoFluidDiscomfort')).toHaveAttribute('aria-disabled', 'true');
-  await expect(momentMonitor.locator('#cronoImpulseFaces')).toHaveCount(0);
-  await expect(momentMonitor.locator('#cronoResistanceFaces')).toHaveCount(0);
-  const mobileContentBox = await momentMonitor.locator('.crono-moment-content').boundingBox();
-  const mobileFluidVesselBox = await momentMonitor.locator('#cronoFluidConcentration .crono-fluid-vessel').boundingBox();
-  expect(mobileContentBox.x).toBeGreaterThanOrEqual(0);
-  expect(mobileContentBox.x + mobileContentBox.width).toBeLessThanOrEqual(390);
-  expect(mobileContentBox.y).toBeGreaterThanOrEqual(0);
-  expect(mobileContentBox.y + mobileContentBox.height).toBeLessThanOrEqual(844);
-  expect(mobileFluidVesselBox.width).toBeGreaterThanOrEqual(58);
-  expect(mobileFluidVesselBox.height).toBeGreaterThanOrEqual(150);
-
-  await page.evaluate(() => showView('pulse'));
-  await expect(page.locator('#pulseDashboard .pulse-card')).toContainText('4 registros');
-  await expect(page.locator('#pulseDashboard .pulse-metric')).toHaveText(['Concentración', 'Malestar']);
-  await expect(page.locator('#pulseDashboard .pulse-point')).toHaveCount(0);
-  const pulseChartBox = await page.locator('#pulseDashboard .pulse-chart').boundingBox();
-  expect(pulseChartBox.height).toBeGreaterThan(180);
-  expect(pulseChartBox.height).toBeLessThan(240);
-  await page.evaluate(() => showView('session'));
-  await expect(page.locator('#statsDashboard .pulse-shortcut')).toBeVisible();
-  await expect(page.locator('#statsDashboard .pulse-card')).toHaveCount(0);
-});
+test('retiring Pulso preserves the calendar, timer and task controls across sizes',async({page})=>{
+   await prepare(page);
+   for(const viewport of [{width:390,height:844},{width:1024,height:768},{width:834,height:1194}]){
+     await page.setViewportSize(viewport);await page.evaluate(()=>showView('cronometro'));
+     await expect(page.locator('.crono-moment-monitor,.crono-fluid-panel')).toHaveCount(0);
+     await expect(page.locator('#cronoStageIdle')).toBeVisible();
+     await page.evaluate(()=>cronoSetIdleDrawerTab('tareas'));
+     await expect(page.locator('#cronoIdleTasksPanel')).toBeVisible();
+   }
+ });
 
 test('keeps running clock actions inside the timer card across pinch zoom levels', async ({ page }) => {
   await prepare(page);
@@ -2587,134 +2324,22 @@ test('keeps running clock actions inside the timer card across pinch zoom levels
   }
 });
 
-test('allows a short pulse correction without creating a duplicate entry', async ({ page }) => {
-  await prepare(page);
-  const result = await page.evaluate(() => {
-    showView('cronometro');
-    const control = document.getElementById('cronoFluidConcentration');
-    const first = cronoFluidCommit('concentration', 40, control);
-    const countAfterFirst = ensureEstadoEventos().length;
-    const second = cronoFluidCommit('concentration', 72, control);
-    const latest = ensureEstadoEventos().at(-1);
-    const countAfterEdit = ensureEstadoEventos().length;
-    const editVisible = control.classList.contains('is-edit-window') && !control.hasAttribute('aria-disabled');
-    const editSeconds = Number(control.dataset.editSeconds);
-    cronoFluidEndEditWindow('concentration');
-    const blocked = cronoFluidCommit('concentration', 31, control);
-    return {
-      first,
-      second,
-      blocked,
-      countAfterFirst,
-      countAfterEdit,
-      latestValue: latest?.value,
-      editVisible,
-      editSeconds,
-    };
-  });
-  expect(result.first).toBe(true);
-  expect(result.second).toBe(true);
-  expect(result.blocked).toBe(false);
-  expect(result.countAfterEdit).toBe(result.countAfterFirst);
-  expect(result.latestValue).toBe(72);
-  expect(result.editVisible).toBe(true);
-  expect(result.editSeconds).toBe(30);
-});
+test('legacy Pulso records survive an unrelated task save without new entries',async({page})=>{
+   await prepare(page);
+   const result=await page.evaluate(()=>{
+     db.estadoEventos=[{id:'legacy-pulse',at:'2026-08-01T12:00:00Z',value:73}];db.pulseDeletedIds=['discomfort::old'];saveLocalNow();
+     db.cronoTasks=[...(db.cronoTasks||[]),{id:'new-task',text:'Afinar'}];saveLocalNow();
+     return JSON.parse(localStorage.getItem('alberto_piano_v2'));
+   });
+   expect(result.estadoEventos).toHaveLength(1);expect(result.estadoEventos[0].value).toBe(73);
+   expect(result.pulseDeletedIds).toContain('discomfort::old');
+ });
 
-test('draws one smooth curve across sessions and reserves touch drag for the time trimmer', async ({ page }) => {
-  await prepare(page);
-  await page.evaluate(() => {
-    const now = new Date();
-    const at = (hour, minute) => {
-      const value = new Date(now);
-      value.setHours(hour, minute, 0, 0);
-      return value;
-    };
-    db.sessionPlants = [
-      {
-        id: 'pulse-session-morning', obraId: 'obra_1', startedAt: at(9, 0).toISOString(),
-        endedAt: at(10, 0).toISOString(), mins: 60, source: 'app',
-      },
-      {
-        id: 'pulse-session-afternoon', obraId: 'obra_1', startedAt: at(16, 0).toISOString(),
-        endedAt: at(17, 0).toISOString(), mins: 60, source: 'app',
-      },
-    ];
-    db.estadoEventos = [
-      { id: 'pulse-1', at: at(9, 10).toISOString(), value: 78, label: 'Alta' },
-      { id: 'pulse-2', at: at(9, 40).toISOString(), value: 56, label: 'Media' },
-      { id: 'pulse-outside-session', at: at(13, 0).toISOString(), value: 96, label: 'Muy alta' },
-      { id: 'pulse-3', at: at(16, 10).toISOString(), value: 34, label: 'Baja' },
-      { id: 'pulse-4', at: at(16, 40).toISOString(), value: 78, label: 'Alta' },
-    ];
-    db.malestarEventos = [
-      { id: 'distress-night', at: at(2, 30).toISOString(), value: 80, label: 'Alto' },
-      { id: 'distress-1', at: at(9, 20).toISOString(), value: 80, label: 'Alto' },
-      { id: 'distress-2', at: at(9, 50).toISOString(), value: 40, label: 'Bajo' },
-    ];
-    db.pulseDeletedIds = [];
-    _pulseRange = 'dia';
-    _pulseOffset = 0;
-    renderPulseDashboard();
-  });
-  await page.evaluate(() => showView('pulse'));
-
-  await expect(page.locator('.pulse-line')).toHaveCount(2);
-  await expect(page.locator('.pulse-axis-x')).toHaveText(['09:00', '12:00', '15:00', '18:00', '21:00', '23:00']);
-  await expect(page.locator('.pulse-axis-x', { hasText: '00:00' })).toHaveCount(0);
-  await expect(page.locator('.pulse-point')).toHaveCount(0);
-  await expect(page.locator('.pulse-axis-y')).toHaveText(['0', '25', '50', '75', '100']);
-  const smoothPaths = await page.locator('.pulse-line').evaluateAll(paths => paths.map(path => path.getAttribute('d')));
-  expect(smoothPaths.every(path => / C[\d.]+,[\d.]+/.test(path || ''))).toBe(true);
-  await expect(page.locator('.pulse-gap-line')).toHaveCount(0);
-  await expect(page.locator('.pulse-band')).toHaveCount(0);
-  await expect(page.locator('.pulse-method')).toContainText('sin marcadores');
-  await page.locator('.pulse-record-manager summary').click();
-  await expect(page.locator('.pulse-record-manager')).toContainText('78/100');
-  const deletePulseButton = page.locator('.pulse-delete-record[data-record-id="pulse-1"]');
-  await deletePulseButton.click();
-  await expect(deletePulseButton).toHaveText('Confirmar');
-  expect(await page.evaluate(() => db.estadoEventos.some(item => item.id === 'pulse-1'))).toBe(true);
-  await deletePulseButton.click();
-  await expect(page.locator('.pulse-delete-record[data-record-id="pulse-1"]')).toHaveCount(0);
-  expect(await page.evaluate(() => ({
-    present: db.estadoEventos.some(item => item.id === 'pulse-1'),
-    deleted: db.pulseDeletedIds.includes('concentration::pulse-1'),
-  }))).toEqual({ present: false, deleted: true });
-  const touchGuard = await page.locator('.pulse-trimmer').evaluate(trimmer => {
-    let reachedDocument = false;
-    const observeStart = () => { reachedDocument = true; };
-    document.addEventListener('touchstart', observeStart);
-    trimmer.dispatchEvent(new Event('touchstart', { bubbles: true, cancelable: true }));
-    document.removeEventListener('touchstart', observeStart);
-    const move = new Event('touchmove', { bubbles: true, cancelable: true });
-    trimmer.dispatchEvent(move);
-    return { touchAction: getComputedStyle(trimmer).touchAction, prevented: move.defaultPrevented, startStopped: !reachedDocument };
-  });
-  expect(touchGuard).toEqual({ touchAction: 'none', prevented: true, startStopped: true });
-  await page.locator('.pulse-trimmer').scrollIntoViewIfNeeded();
-  await expect(page.locator('#pulseWindowStart')).toBeInViewport();
-  await expect(page.locator('#pulseWindowEnd')).toBeInViewport();
-
-  const dragHandleTo = async (selector, ratio) => {
-    const track = await page.locator('.pulse-trimmer').boundingBox();
-    const handle = await page.locator(selector).boundingBox();
-    await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(track.x + track.width * ratio, track.y + track.height / 2, { steps: 8 });
-    await page.mouse.up();
-  };
-  await dragHandleTo('#pulseWindowStart', .5);
-  await dragHandleTo('#pulseWindowEnd', .75);
-
-  await expect(page.locator('#pulseWindowLabel')).toHaveText('12:00–18:00');
-  await expect(page.locator('.pulse-axis-x')).toHaveText(['12:00', '14:00', '16:00', '18:00']);
-  await expect(page.locator('.pulse-point')).toHaveCount(0);
-  await expect(page.locator('.pulse-line')).toHaveCount(1);
-  await expect(page.locator('body')).toHaveAttribute('data-view', 'pulse');
-  await expect(page.locator('body')).not.toHaveClass(/view-swipe-dragging/);
-  expect(await page.evaluate(() => [localStorage.getItem('pulse_day_start'), localStorage.getItem('pulse_day_end')])).toEqual(['720', '1080']);
-});
+test('a saved Pulso navigation target redirects safely without recreating the feature',async({page})=>{
+   await prepare(page);await page.evaluate(()=>showView('pulse'));
+   await expect(page.locator('#view-session')).toHaveClass(/active/);
+   await expect(page.locator('#pulseDashboard,.pulse-trimmer,.pulse-record-manager')).toHaveCount(0);
+ });
 
 test('keeps large touch iPads in the two-row tablet layout', async ({ browser }) => {
   for (const viewport of [{ width: 1366, height: 1024 }, { width: 1194, height: 834 }]) {
@@ -2723,8 +2348,6 @@ test('keeps large touch iPads in the two-row tablet layout', async ({ browser })
     await prepare(page);
     const layout = await page.evaluate(async () => {
       showView('cronometro');
-      localStorage.setItem(CRONO_PULSE_VISIBILITY_KEY, 'on');
-      cronoRefreshPulseVisibility();
       setCronoCalendarObjectivesMode('calendar');
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const rect = selector => {
@@ -2739,12 +2362,8 @@ test('keeps large touch iPads in the two-row tablet layout', async ({ browser })
         clock: rect('.crono-idle-main'),
         calendar: rect('.crono-calendar-objectives-shell'),
         tasks: rect('.crono-idle-drawer'),
-        pulse: rect('.crono-fluid-panel'),
         ring: rect('.crono-idle-display-wrap .crono-run-progress-svg'),
-        vessel: rect('.crono-fluid-vessel'),
         start: rect('#cronoStartBtn'),
-        oldControls: getComputedStyle(document.querySelector('.crono-moment-controls')).display,
-        history: getComputedStyle(document.querySelector('.crono-moment-history')).display,
         scrollWidth: document.documentElement.scrollWidth,
         scrollHeight: document.documentElement.scrollHeight,
         innerWidth,
@@ -2756,57 +2375,24 @@ test('keeps large touch iPads in the two-row tablet layout', async ({ browser })
     expect(layout.tabletLandscape).toBe(true);
     expect(Math.abs(layout.clock.top - layout.calendar.top)).toBeLessThanOrEqual(1);
     expect(Math.abs(layout.clock.height - layout.calendar.height)).toBeLessThanOrEqual(1);
-    expect(Math.abs(layout.tasks.top - layout.pulse.top)).toBeLessThanOrEqual(1);
-    expect(layout.tasks.width).toBeGreaterThan(layout.pulse.width * 1.8);
+    expect(layout.tasks.width).toBeGreaterThan(300);
     expect(layout.ring.height).toBeLessThanOrEqual(260);
-    expect(layout.vessel.width).toBeGreaterThanOrEqual(72);
-    expect(layout.vessel.height).toBeGreaterThanOrEqual(210);
     expect(layout.start.bottom).toBeLessThanOrEqual(layout.innerHeight + 1);
-    expect(layout.oldControls).toBe('none');
-    expect(layout.history).toBe('none');
+    await expect(page.locator('.crono-fluid-panel,.crono-moment-controls')).toHaveCount(0);
     expect(layout.scrollWidth).toBeLessThanOrEqual(layout.innerWidth + 1);
     expect(layout.scrollHeight).toBeLessThanOrEqual(layout.innerHeight + 1);
     await context.close();
   }
 });
 
-test('places pulse and calendar at the ends of swipe navigation', async ({ page }) => {
-  await prepare(page);
-  const result = await page.evaluate(() => {
-    showView('cronometro');
-    showViewFromSwipe('pulse');
-    const pulseActive = document.body.getAttribute('data-view');
-    showViewFromSwipe('calendario');
-    return {
-      order: SWIPE_VIEW_ORDER.slice(),
-      pulseActive,
-      active: document.body.getAttribute('data-view'),
-    };
-  });
-  expect(result).toEqual({
-    order: ['pulse', 'session', 'cronometro', 'obras', 'calendario'],
-    pulseActive: 'pulse',
-    active: 'calendario',
-  });
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.evaluate(() => {
-    showView('obras');
-    const target = document.getElementById('view-obras');
-    const touch = (x, y) => ({ identifier: 7, target, clientX: x, clientY: y, pageX: x, pageY: y, screenX: x, screenY: y });
-    const dispatch = (type, touches, changedTouches) => {
-      const event = new Event(type, { bubbles: true, cancelable: true });
-      Object.defineProperty(event, 'touches', { value: touches });
-      Object.defineProperty(event, 'changedTouches', { value: changedTouches || touches });
-      document.dispatchEvent(event);
-    };
-    dispatch('touchstart', [touch(340, 360)]);
-    dispatch('touchmove', [touch(90, 354)]);
-    dispatch('touchend', [], [touch(90, 354)]);
-  });
-  await page.waitForTimeout(650);
-  expect(await page.evaluate(() => document.body.getAttribute('data-view'))).toBe('calendario');
-});
+test('Hoy and calendar are the boundaries of touch swipe navigation',async({page})=>{
+   await prepare(page);
+   expect(await page.evaluate(()=>SWIPE_VIEW_ORDER)).toEqual(['session','cronometro','obras','calendario']);
+   await page.evaluate(()=>showView('session'));
+   await page.mouse.move(200,350);await page.mouse.down();await page.mouse.move(350,350,{steps:8});await page.mouse.up();
+   await expect(page.locator('#view-session')).toHaveClass(/active/);
+   await page.evaluate(()=>showView('calendario'));await expect(page.locator('#view-calendario')).toHaveClass(/active/);
+ });
 
 test('keeps mobile tasks readable and swipes calendar months', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 932 });
@@ -3100,6 +2686,7 @@ test('keeps the idle and running timer in the same iPad composition', async ({ b
       };
 
       cronoStart();
+      await new Promise(resolve => setTimeout(resolve, 360)); // Wait for the card entrance transform before comparing geometry.
       const running = {
         main: rect(document.getElementById('cronoStageRun')),
         drawer: rect(document.getElementById('cronoRunDrawer')),
@@ -3178,15 +2765,12 @@ test('keeps Destellos in the same clock position before and during a session', a
       cronoRender();
       cronoSetInterfaceScale(1, { persist: false, announce: false });
 
-      const ringSize = parseFloat(getComputedStyle(document.getElementById('view-cronometro')).getPropertyValue('--crono-interface-ring-size'));
       const relativePosition = (wrap, button) => {
-        const parent = wrap.getBoundingClientRect();
+        const ring = wrap.querySelector('.crono-run-progress-svg').getBoundingClientRect();
         const child = button.getBoundingClientRect();
-        const ringTop = parent.top + ((parent.height - ringSize) / 2);
-        const ringRight = parent.left + ((parent.width + ringSize) / 2);
         return {
-          right: ringRight - ((child.left + child.right) / 2),
-          yRatio: (((child.top + child.bottom) / 2) - ringTop) / ringSize,
+          right: ring.right - ((child.left + child.right) / 2),
+          yRatio: (((child.top + child.bottom) / 2) - ring.top) / ring.height,
         };
       };
       const idle = relativePosition(

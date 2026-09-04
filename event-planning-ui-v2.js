@@ -188,12 +188,13 @@
 
   function ensureMontreal(){
     if(!ready()) return false;
+    if(db.competitionUiSeedVersion === 1) return true;
     let changed = false;
     if(!Array.isArray(db.competitionPlans)) db.competitionPlans = [];
     const index = db.competitionPlans.findIndex(item => item && item.id === MONTREAL_SOURCE);
     if(index >= 0){
       const before = JSON.stringify(db.competitionPlans[index]);
-      db.competitionPlans[index] = Object.assign({}, db.competitionPlans[index], MONTREAL, { updatedAt:new Date().toISOString() });
+      Object.assign(db.competitionPlans[index], Object.assign({}, MONTREAL, db.competitionPlans[index]));
       if(JSON.stringify(db.competitionPlans[index]) !== before) changed = true;
     } else {
       db.competitionPlans.push(Object.assign({}, MONTREAL, { updatedAt:new Date().toISOString() }));
@@ -209,16 +210,17 @@
       db.eventos.push(parent);
       changed = true;
     }
-    Object.assign(parent, {
+    Object.assign(parent, Object.assign({
       planSourceId:MONTREAL_SOURCE,
       lugar:MONTREAL.location,
       deadline:MONTREAL.deadline,
       videoRequisitos:MONTREAL.video,
       competition:Object.assign({}, parent.competition || {}, MONTREAL),
       planSource:{ type:'dossier', label:MONTREAL.sourceLabel, snapshot:MONTREAL.sourceSnapshot }
-    });
+    }, parent));
     if(!Array.isArray(parent.obras)) parent.obras = [];
     if(!Array.isArray(parent.rondas)) parent.rondas = [];
+    if(!Array.isArray(parent.repertorioPlanificado)) parent.repertorioPlanificado = [];
     if(!parent.estado) parent.estado = 'standby';
 
     let deadline = db.eventos.find(event => event && event.parentSourceId === MONTREAL_SOURCE && event.hitoTipo === 'deadline');
@@ -230,18 +232,20 @@
       db.eventos.push(deadline);
       changed = true;
     }
-    Object.assign(deadline, {
+    Object.assign(deadline, Object.assign({
       esHito:true,
       hitoTipo:'deadline',
       parentSourceId:MONTREAL_SOURCE,
       videoRequisitos:MONTREAL.video,
       competition:Object.assign({}, deadline.competition || {}, MONTREAL),
       planSource:{ type:'dossier', label:MONTREAL.sourceLabel, snapshot:MONTREAL.sourceSnapshot }
-    });
+    }, deadline));
     if(!deadline.estado) deadline.estado = parent.estado || 'standby';
     if(!Array.isArray(deadline.obras)) deadline.obras = parent.obras.slice();
+    if(!Array.isArray(deadline.repertorioPlanificado)) deadline.repertorioPlanificado = [];
 
-    if(changed) save();
+    db.competitionUiSeedVersion = 1;
+    save();
     return true;
   }
 

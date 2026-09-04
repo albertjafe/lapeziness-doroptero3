@@ -258,8 +258,9 @@
   }
 
   function patchSaveEventoForProjects(){
-    if(typeof window.saveEvento !== 'function' || window.saveEvento.__projectFlexibleV3) return false;
-    if(!window.saveEvento.__eventPlanningPatched) return false;
+    if(typeof window.saveEvento !== 'function') return false;
+    for(let fn = window.saveEvento; fn; fn = fn.__original) if(fn.__projectFlexibleV3) return true;
+    if(!window.EventPlanning) return false;
     const original = window.saveEvento;
     const patched = function(){
       const data = appDb();
@@ -275,6 +276,7 @@
         if(endInput) endInput.value = '';
       }
       const result = original.apply(this, arguments);
+      if(result === false) return false;
       const apply = () => {
         const current = appDb();
         if(!current || !Array.isArray(current.eventos)) return;
@@ -292,16 +294,17 @@
           event.fechaFin = '';
         } else {
           event.fechaFlexibleTipo = 'dia';
-          delete event.fechaObjetivoMes;
-          delete event.fechaFlexibleDesde;
-          delete event.fechaFlexibleHasta;
-          delete event.fechaFlexibleLabel;
+          event.fechaObjetivoMes = null;
+          event.fechaFlexibleDesde = null;
+          event.fechaFlexibleHasta = null;
+          event.fechaFlexibleLabel = null;
         }
         persist();
         try { if(typeof renderEventos === 'function') renderEventos(); } catch(error){}
         try { if(typeof renderMesCalendario === 'function') renderMesCalendario(); } catch(error){}
       };
-      Promise.resolve(result).finally(() => setTimeout(apply, 0));
+      if(result && typeof result.then === 'function') return result.then(value => { if(value !== false) apply(); return value; });
+      apply();
       return result;
     };
     patched.__projectFlexibleV3 = true;
@@ -353,6 +356,7 @@
     const url = event.competition?.officialUrl || event.officialUrl || competitionUrlFor(name, source);
     let host = hero.querySelector('.competition-official-actions');
     if(!url){ if(host) host.remove(); return; }
+    if(host?.querySelector('.competition-official-link')?.getAttribute('href') === url) return;
     if(!host){
       host = document.createElement('div');
       host.className = 'competition-official-actions';
@@ -448,7 +452,7 @@
   function boot(attempt){
     install();
     const taskReady = typeof window.confirmCronoTomorrowTask === 'function' && window.confirmCronoTomorrowTask.__priorityDictationV3;
-    const eventReady = typeof window.saveEvento === 'function' && window.saveEvento.__projectFlexibleV3;
+    const eventReady = patchSaveEventoForProjects();
     if(taskReady && eventReady) return;
     if(attempt < 120) setTimeout(() => boot(attempt + 1), 100);
   }

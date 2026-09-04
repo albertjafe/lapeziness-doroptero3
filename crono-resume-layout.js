@@ -121,13 +121,12 @@ function loadPianoCompanion(id, src, cssId, cssHref) {
   document.head.appendChild(script);
 }
 
-/* Persistencia local + sincronización: cargadas después de app.js para envolver
-   las funciones canónicas sin sustituir su reconciliación de datos. El id v2
-   obliga a promover esta capa aunque una versión antigua ya estuviera cargada. */
+/* Punto único de carga de persistencia local, después de app.js y antes de la
+   sincronización inmediata. El mismo ID identifica siempre esta capa. */
 (function loadPersistenceResilience() {
   'use strict';
-  loadPianoCompanion('localSaveResilienceScriptV2', './local-save-resilience.js?v=2');
-  if (!window.InstantSyncResilience) loadPianoCompanion('instantSyncResilienceScript', './instant-sync-resilience.js?v=1');
+  loadPianoCompanion('localSaveResilienceScript', './local-save-resilience.js?v=342');
+  if (!window.InstantSyncResilience) loadPianoCompanion('instantSyncResilienceScript', './instant-sync-resilience.js?v=342');
 }());
 
 /* Pasajes difíciles: módulo compañero cargado después de app.js para poder
@@ -135,20 +134,18 @@ function loadPianoCompanion(id, src, cssId, cssHref) {
 (function loadPassageTracker() {
   'use strict';
   if (window.PassageTracker) return;
-  loadPianoCompanion('passageTrackerScript', './passage-tracker.js?v=1', 'passageTrackerStyles', './passage-tracker.css?v=1');
+  loadPianoCompanion('passageTrackerScript', './passage-tracker.js?v=342', 'passageTrackerStyles', './passage-tracker.css?v=342');
 }());
 
 /* Eventos: búsqueda de repertorio pensada para bibliotecas grandes. */
 (function loadEventRepertoirePicker() {
   'use strict';
   if (window.EventRepertoirePicker) return;
-  loadPianoCompanion('eventRepertoirePickerScript', './event-repertoire-picker.js?v=1', 'eventRepertoirePickerStyles', './event-repertoire-picker.css?v=1');
+  loadPianoCompanion('eventRepertoirePickerScript', './event-repertoire-picker.js?v=342', 'eventRepertoirePickerStyles', './event-repertoire-picker.css?v=342');
 }());
 
 /* Profesor: conserva Chat temporal y añade el handoff ligero que evita URLs
    gigantes y trabajo síncrono pesado en el click. */
 (function loadProfessorTemporaryChat() {
   'use strict';
-  if (!window.ProfessorTemporaryChat) loadPianoCompanion('professorTemporaryChatScript', './professor-temporary-chat.js?v=1');
-  if (!window.ProfessorHandoffResilience) loadPianoCompanion('professorHandoffResilienceScript', './professor-handoff-resilience.js?v=1');
 }());

@@ -34,13 +34,14 @@ test('Professor handoff defaults to temporary ChatGPT without changing its promp
       temporary: url.searchParams.get('temporary-chat'),
       promptParam: url.searchParams.get('prompt'),
       promptForUrl: built.promptForUrl,
-      fullPrompt: built.fullPrompt,
+      transport: built.transport,
     };
   });
 
   expect(result.temporary).toBe('true');
-  expect(result.promptParam).toBe(result.promptForUrl);
-  expect(result.fullPrompt).toContain('Solo tengo 2 horas.');
+  if(result.transport === 'url') expect(result.promptParam).toBe(result.promptForUrl);
+  else expect(result.promptParam.length).toBeLessThan(1000);
+  expect(result.promptForUrl).toContain('Solo tengo 2 horas.');
 });
 
 test('temporary Professor handoff can be disabled from its persisted toggle', async ({ page }) => {

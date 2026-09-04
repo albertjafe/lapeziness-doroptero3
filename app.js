@@ -41,7 +41,7 @@ function loadData() {
         Object.values(parsed.packs).forEach(pack => {
           (pack.obras || []).forEach(o => obras.push(o));
         });
-        return { obras, eventos: parsed.eventos || [], sesiones: parsed.sesiones || [], registro: parsed.registro || [] };
+        return { ...parsed, obras, eventos: parsed.eventos || [], sesiones: parsed.sesiones || [], registro: parsed.registro || [] };
       }
       return parsed;
     }
@@ -66,14 +66,30 @@ function _writeSyncMeta(meta) {
   return normalized;
 }
 
+var _lastSavedDocument = null;
+function _prepareLocalDocument(markDirty) {
+  if (typeof DocumentSyncCore === 'undefined') return;
+  if (markDirty) {
+    const stamp = new Date(Math.max(Date.now(), Date.parse(db._savedAt || '') + 1 || 0)).toISOString();
+    let disk = {};
+    try { disk = JSON.parse(localStorage.getItem(DB_KEY) || '{}'); } catch (_) {}
+    const tracked = DocumentSyncCore.track(db, _lastSavedDocument || disk, stamp);
+    DocumentSyncCore.assign(db, DocumentSyncCore.merge(disk, tracked));
+  }
+}
+function _rememberLocalDocument() { _lastSavedDocument = JSON.parse(JSON.stringify(db)); }
+
 function _writeLocalSnapshot(markDirty) {
+  _prepareLocalDocument(markDirty);
   const currentMeta = _readSyncMeta();
+  currentMeta.localRevision = Math.max(currentMeta.localRevision, Number(db._localRevision) || 0);
   const nextMeta = markDirty && typeof SyncCore !== 'undefined'
     ? SyncCore.markDirty(currentMeta)
     : currentMeta;
   db._savedAt = new Date().toISOString();
   if (nextMeta.localRevision) db._localRevision = nextMeta.localRevision;
   localStorage.setItem(DB_KEY, JSON.stringify(db));
+  _rememberLocalDocument();
   _writeSyncMeta(nextMeta);
   return nextMeta;
 }
@@ -113,7 +129,6 @@ function refreshStudyViews() {
     if (typeof renderRacha === 'function') renderRacha();
     if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
     if (typeof renderCronoCalendar === 'function') renderCronoCalendar();
-    if (typeof renderPulseDashboard === 'function') renderPulseDashboard();
     if (typeof renderStatsDashboard === 'function') renderStatsDashboard();
     if (typeof renderMantenimientoSection === 'function') renderMantenimientoSection();
     if (typeof renderSolidezSection === 'function') renderSolidezSection();
@@ -338,7 +353,12 @@ function _mergeSesiones(a, b) {
 }
 function _mergeStudyHistory(base, other) {
   if (typeof DataCore !== 'undefined' && typeof DataCore.mergeStudyHistory === 'function') {
-    return DataCore.mergeStudyHistory(base, other);
+    const merged = DataCore.mergeStudyHistory(base, other);
+    if (typeof DocumentSyncCore === 'undefined') return merged;
+    const compatible = DocumentSyncCore.merge(other, base);
+    // Keep existing domain mergers for legacy aggregates; canonical records and
+    // all unknown fields use the conservative, field-aware document merge.
+    return Object.assign(merged, compatible);
   }
   if (!base) return other;
   if (!other) return base;
@@ -376,26 +396,34 @@ async function syncToCloud(snapshotDb, revision) {
   try {
     const sb = getSB();
     const { data: { user } } = await sb.auth.getUser();
-    if (!user) {
-      showSyncIndicator('Guardado en este dispositivo');
-      return false;
+    if (!user) { showSyncIndicator('Guardado en este dispositivo'); return false; }
+    const snapshot = JSON.parse(JSON.stringify(snapshotDb || db));
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const read = await sb.from('user_data').select('data,updated_at').eq('id',user.id).maybeSingle();
+      if (read.error) throw read.error; // A failed read is NOT an empty account.
+      const remote = read.data;
+      const merged = DocumentSyncCore.mergeRemote(remote?.data || {}, snapshot);
+      merged._localRevision = Math.max(Number(merged._localRevision)||0, Number(remote?.data?._localRevision)||0) + 1;
+      merged._savedAt = new Date().toISOString();
+      const row = { id:user.id, data:merged, updated_at:merged._savedAt };
+      const write = remote
+        ? await sb.from('user_data').update(row).eq('id',user.id).eq('updated_at',remote.updated_at).select('data,updated_at').maybeSingle()
+        : await sb.from('user_data').insert(row).select('data,updated_at').maybeSingle();
+      if (write.error) { if (write.error.code === '23505') continue; throw write.error; }
+      if (!write.data) continue; // CAS conflict: reread and merge, never overwrite.
+      const meta = _readSyncMeta();
+      const pending = meta.dirtyRevision > revision;
+      DocumentSyncCore.assign(db, DocumentSyncCore.mergeRemote(write.data.data, db));
+      const accepted = Math.max(Number(db._localRevision)||0, meta.localRevision);
+      db._localRevision = accepted + (pending ? 1 : 0);
+      localStorage.setItem(DB_KEY, JSON.stringify(db));
+      _rememberLocalDocument();
+      _writeSyncMeta({ localRevision:db._localRevision, dirtyRevision:db._localRevision, lastSyncedRevision:accepted });
+      showSyncIndicator(pending ? 'Sincronizando…' : '✓ sincronizado');
+      return true;
     }
-    showSyncIndicator('Sincronizando…');
-    const { error } = await sb.from('user_data').upsert({
-      id: user.id,
-      data: snapshotDb || db,
-      updated_at: new Date().toISOString()
-    });
-    if (error) throw error;
-    const meta = _readSyncMeta();
-    _writeSyncMeta(typeof SyncCore !== 'undefined' ? SyncCore.markSynced(meta, revision || meta.dirtyRevision) : meta);
-    const after = _readSyncMeta();
-    showSyncIndicator(typeof SyncCore !== 'undefined' && SyncCore.isDirty(after) ? 'Sincronizando…' : '✓ sincronizado');
-    return true;
-  } catch(e) {
-    showSyncIndicator('⚠ Sin conexión · pendiente');
-    return false;
-  }
+    throw new Error('Concurrent changes: retry required');
+  } catch(e) { showSyncIndicator('⚠ Sin conexión · pendiente'); return false; }
 }
 
 function enqueueCloudSync(options) {
@@ -417,10 +445,10 @@ async function syncPendingCloudChanges() {
         const meta = _readSyncMeta();
         if (typeof SyncCore === 'undefined' || !SyncCore.isDirty(meta)) break;
         const revision = meta.dirtyRevision;
-        let snapshot = db;
+        let snapshot = JSON.parse(JSON.stringify(db));
         try {
           const raw = localStorage.getItem(DB_KEY);
-          if (raw) snapshot = JSON.parse(raw);
+          if (raw) snapshot = _mergeStudyHistory(snapshot, JSON.parse(raw));
         } catch(e) {}
         const ok = await syncToCloud(snapshot, revision);
         if (!ok) break;
@@ -443,88 +471,30 @@ async function loadFromCloud() {
 
     showSyncIndicator('↓ cargando…');
     const { data, error } = await sb.from('user_data')
-      .select('data,updated_at').eq('id', user.id).single();
+      .select('data,updated_at').eq('id', user.id).maybeSingle();
 
-    const hasCloudData = !error && data && data.data &&
-      (data.data.obras?.length > 0 || data.data.sesiones?.length > 0);
-
-    if (!hasCloudData) {
-      // Cloud is empty — upload whatever we have locally
-      const localRaw = localStorage.getItem(DB_KEY);
-      if (localRaw) {
-        try {
-          const localDb = JSON.parse(localRaw);
-          const hasLocalData = (localDb.obras?.length > 0 || localDb.sesiones?.length > 0);
-          if (hasLocalData) {
-            showSyncIndicator('↑ subiendo datos locales…');
-            await syncToCloud(localDb, _readSyncMeta().dirtyRevision);
-            showSyncIndicator('✓ datos subidos a la nube');
-            return false; // local is already loaded
-          }
-        } catch(e) {}
-      }
-      showSyncIndicator('✓ cuenta nueva');
-      return false;
-    }
-
-    // Cloud has data — compare timestamps
-    const cloudDate = new Date(data.updated_at).getTime();
-    const localRaw = localStorage.getItem(DB_KEY);
-    let localDb = null;
-    let useCloud = true;
-    if (localRaw) {
-      try {
-        localDb = JSON.parse(localRaw);
-        const localDate = localDb._savedAt ? new Date(localDb._savedAt).getTime() : 0;
-        // Only use cloud if it isn't OLDER than local (60s de tolerancia).
-        useCloud = cloudDate >= (localDate - 60000);
-      } catch(e) {}
-    }
-
-    if (useCloud) {
-      // Aunque la nube "gane", FUSIONAMOS el historial de estudio local para no
-      // perder sesiones que la nube no tuviera (p. ej. subida nocturna fallida).
-      const beforeMeta = _readSyncMeta();
-      db = _mergeStudyHistory(data.data, localDb);
-      _writeLocalSnapshot(false);
-      // Si la fusión añadió estudio que la nube no tenía, devolvérselo.
-      try {
-        const localMin = localDb ? (localDb.sessionPlants || []).length + (localDb.forestPlants || []).length : 0;
-        const cloudMin = (data.data.sessionPlants || []).length + (data.data.forestPlants || []).length;
-        const localEstadoN = localDb ? (localDb.estadoEventos || []).length : 0;
-        const cloudEstadoN = (data.data.estadoEventos || []).length;
-        const localImpulsoN = localDb ? (localDb.impulsoEventos || []).length : 0;
-        const cloudImpulsoN = (data.data.impulsoEventos || []).length;
-        const localResistenciaN = localDb ? (localDb.resistenciaEventos || []).length : 0;
-        const cloudResistenciaN = (data.data.resistenciaEventos || []).length;
-        const localDeporteN = localDb ? (localDb.deporteEventos || []).length : 0;
-        const cloudDeporteN = (data.data.deporteEventos || []).length;
-        const localSuenoN = localDb ? (localDb.suenoEventos || []).length : 0;
-        const cloudSuenoN = (data.data.suenoEventos || []).length;
-        const localTriggerN = localDb ? (localDb.triggerEventos || []).length : 0;
-        const cloudTriggerN = (data.data.triggerEventos || []).length;
-        const localTiempoN = localDb ? (localDb.tiempoDisponibleEventos || []).length : 0;
-        const cloudTiempoN = (data.data.tiempoDisponibleEventos || []).length;
-        const localPulseDeletedN = localDb ? (localDb.pulseDeletedIds || []).length : 0;
-        const cloudPulseDeletedN = (data.data.pulseDeletedIds || []).length;
-        const mergedTasksChangedCloud = JSON.stringify(db.cronoTasks || []) !== JSON.stringify(data.data.cronoTasks || []);
-        const localHasMore = localMin > cloudMin || localEstadoN > cloudEstadoN || localImpulsoN > cloudImpulsoN || localResistenciaN > cloudResistenciaN || localDeporteN > cloudDeporteN || localSuenoN > cloudSuenoN || localTriggerN > cloudTriggerN || localTiempoN > cloudTiempoN || localPulseDeletedN > cloudPulseDeletedN || mergedTasksChangedCloud;
-        if (localHasMore || (typeof SyncCore !== 'undefined' && SyncCore.isDirty(beforeMeta))) {
-          if (typeof SyncCore !== 'undefined' && !SyncCore.isDirty(_readSyncMeta())) _writeLocalSnapshot(true);
-          await syncPendingCloudChanges();
-        }
-      } catch(e) {}
-      showSyncIndicator('✓ sincronizado');
-      return true;
-    }
-
-    // Local is newer — fusiona el estudio de la nube por si tuviera algo y sube.
-    db = _mergeStudyHistory(db, data.data);
-    _writeLocalSnapshot(true);
-    showSyncIndicator('↑ local más reciente, subiendo…');
-    await syncPendingCloudChanges();
-    showSyncIndicator('✓ sincronizado');
-    return false;
+    if (error) throw error; // An unavailable row is not an empty account.
+    if (!db || typeof db !== 'object' || Array.isArray(db)) return false;
+    let local = db;
+    try {
+      const disk = JSON.parse(localStorage.getItem(DB_KEY) || 'null');
+      if (disk && typeof disk === 'object' && !Array.isArray(disk)) local = DocumentSyncCore.merge(disk,local);
+    } catch (_) {}
+    const remote = data?.data;
+    // Use the canonical document here: domain normalizers add empty defaults
+    // that would otherwise manufacture a difference on every cold start.
+    const merged = DocumentSyncCore.mergeRemote(remote || {},local);
+    const needsUpload = !remote || !DocumentSyncCore.sameContent(merged,remote);
+    const meta = _readSyncMeta();
+    const revision = Math.max(meta.localRevision, meta.dirtyRevision, meta.lastSyncedRevision, Number(merged._localRevision)||0) + (needsUpload ? 1 : 0);
+    DocumentSyncCore.assign(db,merged);
+    db._localRevision = revision;
+    localStorage.setItem(DB_KEY, JSON.stringify(db));
+    _rememberLocalDocument();
+    _writeSyncMeta({ localRevision:revision, dirtyRevision:revision, lastSyncedRevision:needsUpload ? meta.lastSyncedRevision : revision });
+    if (needsUpload) enqueueCloudSync({ immediate:true });
+    else showSyncIndicator('✓ sincronizado');
+    return !!remote;
 
   } catch(e) {
     showSyncIndicator('offline');
@@ -566,6 +536,7 @@ function getDefaultData() {
 }
 
 let db = loadData();
+_rememberLocalDocument();
 if (!db.sesiones) db.sesiones = [];
 if (!db.eventos) db.eventos = [];
 if (!db.obras) db.obras = [];
@@ -631,7 +602,6 @@ if (!db.sessionPlants) db.sessionPlants = [];
 // ─── UI HELPERS ─────────────────────────────────────────────────────────────
 
 const VIEW_CONTEXT = {
-  pulse: { eyebrow: 'Análisis', title: 'Pulso' },
   session: { eyebrow: 'Estudio', title: 'Hoy' },
   cronometro: { eyebrow: 'Práctica', title: 'Cronómetro' },
   obras: { eyebrow: 'Repertorio', title: 'Obras' },
@@ -673,12 +643,11 @@ function renderSessionViewContent() {
   renderCombinedSessionStats();
 }
 
-function renderPulseViewContent() {
-  renderPulseDashboard();
-}
+
 
 function showView(name, options) {
   const opts = options || {};
+  if (name === 'pulse') name = 'session'; // Stored legacy navigation target.
   if (name === 'historial') {
     showView('session');
     requestAnimationFrame(() => document.getElementById('sessionStatsSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
@@ -706,7 +675,6 @@ function showView(name, options) {
   window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   // Modo concentración: activar/desactivar al entrar/salir de cronometro
   if (name !== 'cronometro' && typeof cronoOnLeaveView === 'function') cronoOnLeaveView();
-  if (name === 'pulse' && !opts.swipePrepared) renderPulseViewContent();
   if (name === 'session' && !opts.swipePrepared) renderSessionViewContent();
   if (name === 'cronometro') {
     cronoOnEnterView({ layoutPrepared: !!opts.swipePrepared });
@@ -1033,8 +1001,7 @@ function _setEstadoAll(n) {
 function pickEstado(idx, trigger) {
   const f = ESTADO_FACES[idx];
   if (!f) return;
-  if (!cronoFluidEditActive('concentration') && !cronoFluidCanCommit('concentration', true)) return;
-  if (!cronoFluidCommit('concentration', f.v, trigger, { label: f.label, note: consumeCronoMomentNote(trigger) })) return;
+  recordEstadoEvent(f);
   flashMomentSelection('concentration', idx);
   try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
   clearTimeout(pickEstado._t);
@@ -1094,22 +1061,9 @@ function renderCombinedSessionStats() {
   _histListApplyPref();
 }
 
-function initWindowsDesktopNavigation() {
-  if (!document.documentElement.classList.contains('platform-windows')) return;
-  const nav = document.querySelector('body > .nav-bottom');
-  if (!nav || nav.querySelector('.windows-only-nav')) return;
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'nav-btn windows-only-nav';
-  button.setAttribute('aria-label', 'Pulso');
-  button.dataset.view = 'pulse';
-  button.dataset.short = 'Pulso';
-  button.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2.2-6 4.1 12 2.1-6H21"/></svg><span>Pulso</span>';
-  button.addEventListener('click', () => showView('pulse'));
-  nav.prepend(button);
-}
 
-const SWIPE_VIEW_ORDER = ['pulse', 'session', 'cronometro', 'obras', 'calendario'];
+
+const SWIPE_VIEW_ORDER = ['session', 'cronometro', 'obras', 'calendario'];
 let _viewSwipe = null;
 let _viewSwipeMultiTouch = false;
 
@@ -1302,7 +1256,6 @@ function viewSwipePrepareNeighbor(swipe, direction) {
   // Renderizamos una sola vez, ya con la vista visible fuera del lienzo. Al
   // completar el gesto showView reutilizara este mismo DOM sin reconstruirlo.
   viewSwipePrepareCronoPreview(swipe, nextName === 'cronometro');
-  if (nextName === 'pulse') renderPulseViewContent();
   if (nextName === 'session') renderSessionViewContent();
   if (nextName === 'obras') renderObras();
   return true;
@@ -1418,7 +1371,7 @@ function initViewSwipeNavigation() {
   if (!root) return;
 
   root.addEventListener('touchstart', event => {
-    if (event.target?.closest?.('.pulse-trimmer, input[type="range"], [data-no-view-swipe]')) {
+    if (event.target?.closest?.('input[type="range"], [data-no-view-swipe]')) {
       viewSwipeReset(false);
       return;
     }
@@ -1539,7 +1492,6 @@ function initViewSwipeNavigation() {
   viewSwipeSyncPageZoom();
 }
 
-initWindowsDesktopNavigation();
 initViewSwipeNavigation();
 
 function _impulsoEventosLocal() {
@@ -1729,8 +1681,7 @@ function setSessionJournalExpanded(expanded) {
 function pickMalestar(idx, trigger) {
   const level = MALESTAR_LEVELS[idx];
   if (!level) return;
-  if (!cronoFluidEditActive('discomfort') && !cronoFluidCanCommit('discomfort', true)) return;
-  if (!cronoFluidCommit('discomfort', level.v, trigger, { label: level.label, note: consumeCronoMomentNote(trigger) })) return;
+  recordMalestarEvent(level);
   flashMomentSelection('discomfort', idx);
   try { if (typeof SFX !== 'undefined' && SFX.toggle) SFX.toggle(); } catch(e) {}
 }
@@ -1895,13 +1846,7 @@ function estadoSnapshot() {
   return { estado: n, bienestar: n, sueno: suenoActualVal(), energia: n, claridad: n, deporte, siestas, triggers, tiempoDisponible };
 }
 
-function consumeCronoMomentNote(trigger) {
-  if (!trigger?.closest?.('.crono-moment-monitor')) return '';
-  const input = document.getElementById('cronoMomentNote');
-  const note = String(input?.value || '').trim().slice(0, 180);
-  if (input) input.value = '';
-  return note;
-}
+
 
 function recordEstadoEvent(face, note) {
   const arr = ensureEstadoEventos();
@@ -1918,9 +1863,7 @@ function recordEstadoEvent(face, note) {
   if (arr.length > 2000) arr.splice(0, arr.length - 2000);
   _saveEstadoEventosLocal(arr);
   refreshEstadoEventSummary();
-  renderCronoMomentHistory();
-  persistPulseEntryImmediately(now);
-  cronoFluidApplyCooldown('concentration', CRONO_FLUID_COOLDOWN_MS);
+  persistMomentEntryImmediately(now);
   return entry;
 }
 
@@ -1939,287 +1882,54 @@ function recordMalestarEvent(level, note) {
   arr.push(entry);
   if (arr.length > 2000) arr.splice(0, arr.length - 2000);
   _saveMalestarEventosLocal(arr);
-  renderCronoMomentHistory();
-  persistPulseEntryImmediately(now);
-  cronoFluidApplyCooldown('discomfort', CRONO_FLUID_COOLDOWN_MS);
+  persistMomentEntryImmediately(now);
   return entry;
 }
 
-const CRONO_FLUID_COOLDOWN_MS = 30 * 1000;
-const CRONO_FLUID_EDIT_WINDOW_MS = 30 * 1000;
-let _cronoFluidDrag = null;
-const _cronoFluidEditWindow = {
-  concentration: { until: 0, id: null },
-  discomfort: { until: 0, id: null },
-};
 
-function cronoFluidControl(kind) {
-  return document.getElementById(kind === 'discomfort' ? 'cronoFluidDiscomfort' : 'cronoFluidConcentration');
-}
 
-function cronoFluidCooldownRemaining(kind, now) {
-  const items = kind === 'discomfort' ? ensureMalestarEventos() : ensureEstadoEventos();
-  const latestAt = (items || []).reduce((latest, item) => {
-    const at = Date.parse(item?.at || '');
-    return Number.isFinite(at) ? Math.max(latest, at) : latest;
-  }, 0);
-  if (!latestAt) return 0;
-  return Math.max(0, Math.min(CRONO_FLUID_COOLDOWN_MS, latestAt + CRONO_FLUID_COOLDOWN_MS - (now || Date.now())));
-}
 
-function cronoFluidEditRemaining(kind, now) {
-  const state = _cronoFluidEditWindow[kind];
-  if (!state) return 0;
-  return Math.max(0, state.until - (now || Date.now()));
-}
 
-function cronoFluidEditActive(kind) {
-  return cronoFluidEditRemaining(kind) > 0;
-}
 
-function cronoFluidEditableEntry(kind) {
-  const state = _cronoFluidEditWindow[kind];
-  const items = kind === 'discomfort' ? ensureMalestarEventos() : ensureEstadoEventos();
-  if (!state || !Array.isArray(items)) return null;
-  const byId = state.id && items.find(item => item && item.id === state.id);
-  if (byId) return byId;
-  return items.slice().reverse().find(item => {
-    const at = Date.parse(item?.at || '');
-    return Number.isFinite(at) && Date.now() - at <= CRONO_FLUID_EDIT_WINDOW_MS;
-  }) || null;
-}
 
-function cronoFluidEndEditWindow(kind) {
-  const state = _cronoFluidEditWindow[kind];
-  const control = cronoFluidControl(kind);
-  if (!state) return;
-  clearTimeout(control?._editWindowTimer);
-  state.until = 0;
-  state.id = null;
-  control?.classList.remove('is-edit-window');
-  if (control) control.removeAttribute('data-edit-seconds');
-  cronoFluidApplyCooldown(kind, cronoFluidCooldownRemaining(kind));
-}
 
-function cronoFluidStartEditWindow(kind, entry) {
-  const state = _cronoFluidEditWindow[kind];
-  const control = cronoFluidControl(kind);
-  if (!state || !control) return;
-  clearTimeout(control._editWindowTimer);
-  state.until = Date.now() + CRONO_FLUID_EDIT_WINDOW_MS;
-  state.id = entry?.id || null;
-  control.classList.add('is-edit-window');
-  control.dataset.editSeconds = String(Math.ceil(CRONO_FLUID_EDIT_WINDOW_MS / 1000));
-  control.removeAttribute('aria-disabled');
-  control.title = 'Puedes ajustar este registro durante ' + Math.ceil(CRONO_FLUID_EDIT_WINDOW_MS / 1000) + ' s';
-  control._editWindowTimer = setTimeout(() => cronoFluidEndEditWindow(kind), CRONO_FLUID_EDIT_WINDOW_MS + 40);
-}
 
-function cronoFluidApplyCooldown(kind, remaining) {
-  const control = cronoFluidControl(kind);
-  if (!control) return 0;
-  const safe = Math.max(0, Math.min(CRONO_FLUID_COOLDOWN_MS, Math.round(Number(remaining) || 0)));
-  const editRemaining = cronoFluidEditRemaining(kind);
-  clearTimeout(control._cooldownTimer);
-  control.classList.remove('is-cooling');
-  control.removeAttribute('aria-disabled');
-  control.removeAttribute('data-cooldown-seconds');
-  control.removeAttribute('title');
-  if (!safe) {
-    if (editRemaining) {
-      control.removeAttribute('aria-disabled');
-      control.dataset.editSeconds = String(Math.max(1, Math.ceil(editRemaining / 1000)));
-      control.title = 'Puedes ajustar este registro durante ' + Math.max(1, Math.ceil(editRemaining / 1000)) + ' s';
-    }
-    return 0;
-  }
-  const seconds = Math.max(1, Math.ceil(safe / 1000));
-  control.style.setProperty('--fluid-cooldown-start', String(safe / CRONO_FLUID_COOLDOWN_MS));
-  control.style.setProperty('--fluid-cooldown-duration', safe + 'ms');
-  control.style.setProperty('--fluid-cooldown-drain-duration', Math.max(1200, safe + 700) + 'ms');
-  if (editRemaining) {
-    control.dataset.editSeconds = String(Math.max(1, Math.ceil(editRemaining / 1000)));
-    control.title = 'Puedes ajustar este registro durante ' + Math.max(1, Math.ceil(editRemaining / 1000)) + ' s';
-  } else {
-    control.setAttribute('aria-disabled', 'true');
-    control.dataset.cooldownSeconds = String(seconds);
-    control.title = 'Disponible de nuevo en ' + seconds + ' s';
-  }
-  void control.offsetWidth;
-  control.classList.add('is-cooling');
-  control._cooldownTimer = setTimeout(() => cronoFluidApplyCooldown(kind, 0), safe + 760);
-  return safe;
-}
 
-function cronoFluidCanCommit(kind, announce) {
-  if (cronoFluidEditActive(kind)) return true;
-  const remaining = cronoFluidCooldownRemaining(kind);
-  if (remaining <= 0) {
-    cronoFluidApplyCooldown(kind, 0);
-    return true;
-  }
-  cronoFluidApplyCooldown(kind, remaining);
-  if (announce) {
-    const label = kind === 'discomfort' ? 'Malestar' : 'Concentración';
-    showToast(label + ' disponible en ' + Math.max(1, Math.ceil(remaining / 1000)) + ' s');
-    try { Haptics.light(); } catch(e) {}
-  }
-  return false;
-}
 
-function cronoFluidSetVisual(control, value) {
-  if (!control) return 50;
-  const safe = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
-  control.dataset.value = String(safe);
-  control.style.setProperty('--fluid-level', safe + '%');
-  control.setAttribute('aria-valuenow', String(safe));
-  control.setAttribute('aria-valuetext', safe + ' de 100');
-  return safe;
-}
 
-function cronoFluidValueFromPointer(control, event) {
-  const vessel = control?.querySelector('.crono-fluid-vessel');
-  if (!vessel) return Number(control?.dataset.value || 50);
-  const rect = vessel.getBoundingClientRect();
-  if (!rect.height) return Number(control.dataset.value || 50);
-  return ((rect.bottom - event.clientY) / rect.height) * 100;
-}
 
-function cronoFluidStart(event, kind) {
-  if (event.pointerType === 'mouse' && event.button !== 0) return;
-  const control = cronoFluidControl(kind);
-  if (!control) return;
-  event.preventDefault();
-  if (!cronoFluidCanCommit(kind, true)) return;
-  control.setPointerCapture?.(event.pointerId);
-  control.classList.add('is-dragging');
-  _cronoFluidDrag = { pointerId: event.pointerId, kind, control };
-  cronoFluidSetVisual(control, cronoFluidValueFromPointer(control, event));
-}
 
-function cronoFluidMove(event) {
-  const drag = _cronoFluidDrag;
-  if (!drag || event.pointerId !== drag.pointerId) return;
-  event.preventDefault();
-  cronoFluidSetVisual(drag.control, cronoFluidValueFromPointer(drag.control, event));
-}
 
-function cronoFluidEnd(event) {
-  const drag = _cronoFluidDrag;
-  if (!drag || event.pointerId !== drag.pointerId) return;
-  event.preventDefault();
-  if (event.type !== 'pointercancel') {
-    cronoFluidSetVisual(drag.control, cronoFluidValueFromPointer(drag.control, event));
-  }
-  drag.control.classList.remove('is-dragging');
-  drag.control.releasePointerCapture?.(event.pointerId);
-  _cronoFluidDrag = null;
-  cronoFluidCommit(drag.kind, Number(drag.control.dataset.value), drag.control);
-}
 
-function cronoFluidUpdateEditableEntry(kind, value, label, note) {
-  const entry = cronoFluidEditableEntry(kind);
-  if (!entry) return null;
-  const safe = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
-  entry.value = safe;
-  entry.label = label || safe + '%';
-  if (kind === 'discomfort') entry.level = Math.max(1, Math.ceil(safe / 20));
-  if (String(note || '').trim()) entry.note = String(note).trim().slice(0, 180);
-  if (kind === 'discomfort') _saveMalestarEventosLocal(ensureMalestarEventos());
-  else _saveEstadoEventosLocal(ensureEstadoEventos());
-  if (kind === 'concentration') {
-    refreshEstadoEventSummary();
-    _estadoUserSet = true;
-    _setEstadoAll(safe);
-    selectedEnergy = safe >= 65 ? 'alta' : safe >= 35 ? 'normal' : 'baja';
-    refreshEstadoFacesUI();
-  }
-  renderCronoMomentHistory();
-  persistPulseEntryImmediately(new Date(entry.at));
-  return entry;
-}
 
-function cronoFluidCommit(kind, value, trigger, options) {
-  const editing = cronoFluidEditActive(kind);
-  if (!editing && !cronoFluidCanCommit(kind, true)) return false;
-  const safe = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
-  const note = String(options?.note || '').trim().slice(0, 180);
-  const label = String(options?.label || '').trim() || safe + '%';
-  let entry;
-  if (editing) {
-    entry = cronoFluidUpdateEditableEntry(kind, safe, label, note);
-  } else if (kind === 'discomfort') {
-    entry = recordMalestarEvent({ v: safe, level: Math.max(1, Math.ceil(safe / 20)), label }, note);
-  } else {
-    _estadoUserSet = true;
-    _setEstadoAll(safe);
-    selectedEnergy = safe >= 65 ? 'alta' : safe >= 35 ? 'normal' : 'baja';
-    entry = recordEstadoEvent({ v: safe, label }, note);
-    refreshEstadoFacesUI();
-    clearTimeout(cronoFluidCommit._saveTimer);
-    cronoFluidCommit._saveTimer = setTimeout(() => {
-      saveEstadoDiario();
-      if (typeof autoSaveTodayPlan === 'function') autoSaveTodayPlan();
-      if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true);
-    }, 150);
-  }
-  if (!entry) return false;
-  if (!editing) cronoFluidStartEditWindow(kind, entry);
-  const control = cronoFluidControl(kind);
-  cronoFluidSetVisual(control, safe);
-  control?.classList.add('is-saved');
-  clearTimeout(control?._savedTimer);
-  if (control) control._savedTimer = setTimeout(() => control.classList.remove('is-saved'), 1100);
-  try { Haptics.medium(); } catch(e) {}
-  return true;
-}
 
-function cronoFluidKey(event, kind) {
-  const control = cronoFluidControl(kind);
-  if (!control) return;
-  const handled = ['ArrowUp', 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'Home', 'End', 'Enter', ' '].includes(event.key);
-  if (handled && !cronoFluidCanCommit(kind, event.key === 'Enter' || event.key === ' ')) {
-    event.preventDefault();
-    return;
-  }
-  const current = Number(control.dataset.value || 50);
-  if (event.key === 'ArrowUp' || event.key === 'ArrowRight') {
-    event.preventDefault();
-    cronoFluidSetVisual(control, current + 5);
-  } else if (event.key === 'ArrowDown' || event.key === 'ArrowLeft') {
-    event.preventDefault();
-    cronoFluidSetVisual(control, current - 5);
-  } else if (event.key === 'Home') {
-    event.preventDefault();
-    cronoFluidSetVisual(control, 0);
-  } else if (event.key === 'End') {
-    event.preventDefault();
-    cronoFluidSetVisual(control, 100);
-  } else if (event.key === 'Enter' || event.key === ' ') {
-    event.preventDefault();
-    cronoFluidCommit(kind, current, control);
-  }
-}
 
-function refreshCronoFluidUI() {
-  const today = new Date().toDateString();
-  const latest = items => (items || []).filter(item => item && item.date === today)
-    .sort((a, b) => String(a.at || '').localeCompare(String(b.at || ''))).at(-1);
-  const concentration = latest(ensureEstadoEventos());
-  const discomfort = latest(ensureMalestarEventos());
-  if (_cronoFluidDrag?.kind !== 'concentration') {
-    cronoFluidSetVisual(cronoFluidControl('concentration'), concentration?.value ?? 50);
-  }
-  if (_cronoFluidDrag?.kind !== 'discomfort') {
-    cronoFluidSetVisual(cronoFluidControl('discomfort'), discomfort?.value ?? 50);
-  }
-  cronoFluidApplyCooldown('concentration', cronoFluidCooldownRemaining('concentration'));
-  cronoFluidApplyCooldown('discomfort', cronoFluidCooldownRemaining('discomfort'));
-}
 
-document.addEventListener('pointermove', cronoFluidMove, { passive: false });
-document.addEventListener('pointerup', cronoFluidEnd, { passive: false });
-document.addEventListener('pointercancel', cronoFluidEnd, { passive: false });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function flashMomentSelection(kind, idx) {
   const isDiscomfort = kind === 'discomfort';
@@ -2256,54 +1966,11 @@ function momentEventTimeLabel(at) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-function toggleCronoMomentPanel(force) {
-  const monitor = document.querySelector('#view-cronometro .crono-moment-monitor');
-  if (!monitor) return;
-  const open = typeof force === 'boolean' ? force : !monitor.classList.contains('is-open');
-  monitor.classList.toggle('is-open', open);
-  const trigger = monitor.querySelector('.crono-moment-mobile-trigger');
-  if (trigger) trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
-  if (!open) toggleCronoMomentHistory(false);
-}
 
-function toggleCronoMomentHistory(force) {
-  const monitor = document.querySelector('#view-cronometro .crono-moment-monitor');
-  if (!monitor) return;
-  const open = typeof force === 'boolean' ? force : !monitor.classList.contains('history-open');
-  monitor.classList.toggle('history-open', open);
-  const trigger = monitor.querySelector('.crono-moment-history-toggle');
-  if (trigger) trigger.setAttribute('aria-expanded', open ? 'true' : 'false');
-}
 
-function renderCronoMomentHistory() {
-  const host = document.getElementById('cronoMomentHistoryList');
-  if (!host) return;
-  const today = new Date().toDateString();
-  const concentration = ensureEstadoEventos().filter(item => item && item.date === today)
-    .map(item => Object.assign({ kind: 'concentration', kindLabel: 'Concentración' }, item));
-  const discomfort = ensureMalestarEventos().filter(item => item && item.date === today)
-    .map(item => Object.assign({ kind: 'discomfort', kindLabel: 'Malestar' }, item));
-  const count = concentration.length + discomfort.length;
-  const countLabel = document.getElementById('cronoMomentHistoryCount');
-  if (countLabel) countLabel.textContent = 'Hoy · ' + count;
-  const recent = concentration.concat(discomfort)
-    .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
-    .slice(0, 6);
-  if (!recent.length) {
-    host.innerHTML = '<div class="crono-moment-empty">Sin registros todavía</div>';
-    return;
-  }
-  host.innerHTML = recent.map(item => {
-    const note = String(item.note || '').trim();
-    return '<div class="crono-moment-history-item" data-kind="' + item.kind + '">' +
-      '<span class="crono-moment-history-kind">' + item.kindLabel + '</span>' +
-      '<strong>' + (item.label || item.value || '') + '</strong>' +
-      '<time datetime="' + (item.at || '') + '">' + momentEventTimeLabel(item.at) + '</time>' +
-      '<button type="button" aria-label="Borrar ' + item.kindLabel.toLowerCase() + ' ' + (item.label || '') + '" onclick="deleteCronoMomentEvent(\'' + item.kind + '\',\'' + item.id + '\')">×</button>' +
-      (note ? '<p class="crono-moment-history-note">' + escapeHtmlSafe(note) + '</p>' : '') +
-    '</div>'
-  }).join('');
-}
+
+
+
 
 function deleteCronoMomentEvent(kind, id) {
   const isImpulse = kind === 'impulse';
@@ -2327,7 +1994,6 @@ function deleteCronoMomentEvent(kind, id) {
     saveEstadoDiario();
     refreshEstadoFacesUI();
   }
-  renderCronoMomentHistory();
   if (!isImpulse && !isDiscomfort && !isResistance) refreshEstadoEventSummary();
   if (typeof saveData === 'function') saveData();
   showToast('Registro borrado');
@@ -3003,7 +2669,6 @@ function initEstadoSliders() {
     triggerHost.dataset.built = '1';
   }
   refreshEstadoFacesUI();
-  renderCronoMomentHistory();
   refreshSuenoFacesUI();
   refreshSiestaSummary();
   refreshTiempoDisponibleFacesUI();
@@ -12237,13 +11902,13 @@ function saveEvento() {
   const nombre = document.getElementById('eventoNombre').value.trim();
   let fecha = document.getElementById('eventoFecha').value;
   let fechaFin = document.getElementById('eventoFechaFin')?.value || '';
-  if (!nombre) { showToast('Escribe el nombre del evento'); return; }
-  if (!fecha) { showToast('Selecciona una fecha'); return; }
-  if (fechaFin && fechaFin < fecha) { showToast('La fecha final no puede ser anterior al inicio'); return; }
+  if (!nombre) { showToast('Escribe el nombre del evento'); return false; }
+  if (!fecha) { showToast('Selecciona una fecha'); return false; }
+  if (fechaFin && fechaFin < fecha) { showToast('La fecha final no puede ser anterior al inicio'); return false; }
 
   const rondaDrafts = eventoTipoSelected === 'concurso' ? readEventoRondasEditor() : [];
   const rondaIncompleta = rondaDrafts.find(ronda => !ronda.nombre || !ronda.fecha);
-  if (rondaIncompleta) { showToast('Completa el nombre y la fecha de cada ronda'); return; }
+  if (rondaIncompleta) { showToast('Completa el nombre y la fecha de cada ronda'); return false; }
   const rondas = normalizeEventoRondas(rondaDrafts);
   if (rondas.length) {
     const fechasRonda = rondas.map(ronda => ronda.fecha).sort();
@@ -12270,6 +11935,7 @@ function saveEvento() {
   renderCronoCalendar();
   updateHeader();
   showToast(editId ? 'Evento actualizado ✓' : 'Evento añadido ✓');
+  return true;
 }
 
 function deleteEvento(eventoId) {
@@ -14212,612 +13878,9 @@ function _statsAvailabilityCard(start, end) {
     + '</div>';
 }
 
-// ── PULSO · curvas momentáneas ─────────────────────────────────────────────
-// Mantiene los registros reales visibles en una curva continua por métrica.
-// Las vistas agregadas conservan además el rango observado.
-let _pulseRange = localStorage.getItem('pulse_range') || 'dia';
-if (!['dia', 'semana', 'tipico', 'mes'].includes(_pulseRange)) _pulseRange = 'dia';
-let _pulseOffset = 0;
-const _pulseVisible = new Set(['concentration', 'discomfort']);
-const PULSE_METRICS = [
-  { key: 'concentration', label: 'Concentración', short: 'Concentración', color: '#4d9fe6' },
-  { key: 'discomfort', label: 'Malestar', short: 'Malestar', color: '#e36f72' },
-];
-const PULSE_DAY_LIMIT_MINUTE = 24 * 60;
-const PULSE_DAY_STEP_MINUTES = 30;
-const PULSE_DAY_MIN_SPAN_MINUTES = 2 * 60;
-let _pulseDayStartMinute = _pulseStoredMinute('pulse_day_start', 9 * 60);
-let _pulseDayEndMinute = _pulseStoredMinute('pulse_day_end', 23 * 60);
-if (_pulseDayEndMinute - _pulseDayStartMinute < PULSE_DAY_MIN_SPAN_MINUTES) {
-  _pulseDayStartMinute = 9 * 60;
-  _pulseDayEndMinute = 23 * 60;
-}
-
-function _pulseStoredMinute(key, fallback) {
-  try {
-    const stored = localStorage.getItem(key);
-    if (stored == null || stored === '') return fallback;
-    const value = Number(stored);
-    if (Number.isFinite(value) && value >= 0 && value <= PULSE_DAY_LIMIT_MINUTE) return value;
-  } catch(e) {}
-  return fallback;
-}
-
-function _pulseDaySpanMinutes() {
-  return _pulseDayEndMinute - _pulseDayStartMinute;
-}
-
-function _pulseMinuteOfDay(date) {
-  return date.getHours() * 60 + date.getMinutes();
-}
-
-function _pulseInDayWindow(date) {
-  const minute = _pulseMinuteOfDay(date);
-  return minute >= _pulseDayStartMinute && minute <= _pulseDayEndMinute;
-}
-
-function _pulseDayX(date) {
-  return (_pulseMinuteOfDay(date) - _pulseDayStartMinute) / _pulseDaySpanMinutes();
-}
-
-function _pulseHourLabel(minute) {
-  const safe = Math.max(0, Math.min(PULSE_DAY_LIMIT_MINUTE, Math.round(minute)));
-  return String(Math.floor(safe / 60)).padStart(2, '0') + ':' + String(safe % 60).padStart(2, '0');
-}
-
-// Un registro nuevo siempre debe quedar dentro de la ventana diaria visible.
-// Si el usuario habÃ­a recortado la grÃ¡fica antes de esa hora, ampliamos solo
-// el extremo necesario y conservamos el resto de su encuadre.
-function _pulseRevealTimestamp(value) {
-  const at = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(at.getTime())) return false;
-  const minute = _pulseMinuteOfDay(at);
-  let changed = false;
-  if (minute < _pulseDayStartMinute) {
-    _pulseDayStartMinute = Math.max(0, Math.floor((minute - PULSE_DAY_STEP_MINUTES) / PULSE_DAY_STEP_MINUTES) * PULSE_DAY_STEP_MINUTES);
-    changed = true;
-  }
-  if (minute > _pulseDayEndMinute) {
-    _pulseDayEndMinute = Math.min(PULSE_DAY_LIMIT_MINUTE, Math.ceil((minute + PULSE_DAY_STEP_MINUTES) / PULSE_DAY_STEP_MINUTES) * PULSE_DAY_STEP_MINUTES);
-    changed = true;
-  }
-  if (!changed) return false;
-  if (_pulseDayEndMinute - _pulseDayStartMinute < PULSE_DAY_MIN_SPAN_MINUTES) {
-    _pulseDayEndMinute = Math.min(PULSE_DAY_LIMIT_MINUTE, _pulseDayStartMinute + PULSE_DAY_MIN_SPAN_MINUTES);
-    _pulseDayStartMinute = Math.max(0, _pulseDayEndMinute - PULSE_DAY_MIN_SPAN_MINUTES);
-  }
-  try {
-    localStorage.setItem('pulse_day_start', String(_pulseDayStartMinute));
-    localStorage.setItem('pulse_day_end', String(_pulseDayEndMinute));
-  } catch(e) {}
-  return true;
-}
-
-function persistPulseEntryImmediately(at) {
-  _pulseRevealTimestamp(at);
-  // Si Pulso se habÃ­a quedado navegando por un periodo anterior, vuelve al
-  // periodo actual: el registro que acaba de hacerse debe ser el protagonista.
-  _pulseOffset = 0;
-  if (typeof saveData !== 'function' || saveData() === false) return;
-  // La entrada ya estÃ¡ en memoria y en local; adelantamos tambiÃ©n la subida
-  // para que los demÃ¡s dispositivos puedan recibirla cuanto antes.
-  if (typeof enqueueCloudSync === 'function') enqueueCloudSync({ immediate: true });
-}
-
-function _pulseAtNoon(date) {
-  const d = new Date(date);
-  d.setHours(12, 0, 0, 0);
-  return d;
-}
-
-function _pulsePeriod() {
-  const base = _pulseAtNoon(new Date());
-  let start, end, label;
-  if (_pulseRange === 'dia') {
-    start = new Date(base);
-    start.setDate(start.getDate() + _pulseOffset);
-    start.setHours(0, 0, 0, 0);
-    end = new Date(start); end.setDate(end.getDate() + 1);
-    label = start.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
-  } else if (_pulseRange === 'semana' || _pulseRange === 'tipico') {
-    start = new Date(base);
-    start.setDate(start.getDate() - ((start.getDay() + 6) % 7) + (_pulseOffset * 7));
-    start.setHours(0, 0, 0, 0);
-    end = new Date(start); end.setDate(end.getDate() + 7);
-    const last = new Date(end); last.setDate(last.getDate() - 1);
-    label = (_pulseRange === 'tipico' ? 'Semana base · ' : '') + start.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + '–' + last.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-  } else {
-    start = new Date(base.getFullYear(), base.getMonth() + _pulseOffset, 1);
-    end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
-    label = start.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
-  }
-  label = label.charAt(0).toUpperCase() + label.slice(1);
-  return { start, end, label };
-}
-
-function _pulseValue(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return null;
-  return Math.max(0, Math.min(100, n));
-}
-
-function _pulseSource(metric) {
-  if (metric === 'concentration') return ensureEstadoEventos();
-  if (metric === 'discomfort') return ensureMalestarEventos();
-  return [];
-}
-
-function _pulseRaw(period) {
-  const out = {};
-  PULSE_METRICS.forEach(metric => {
-    out[metric.key] = _pulseSource(metric.key).map(item => {
-      const at = new Date(item?.at || '');
-      const value = _pulseValue(item?.value);
-      if (!item || Number.isNaN(at.getTime()) || value == null || at < period.start || at >= period.end) return null;
-      const id = _pulseEventStableId(item);
-      return { at, value, note: String(item.note || ''), label: item.label || '', id };
-    }).filter(Boolean).sort((a, b) => a.at - b.at);
-  });
-  return out;
-}
-
-function _pulseAggregate(values) {
-  const sum = values.reduce((acc, value) => acc + value, 0);
-  return { value: sum / values.length, lo: Math.min(...values), hi: Math.max(...values), count: values.length };
-}
-
-function _pulseSeries(period) {
-  const raw = _pulseRaw(period);
-  const span = period.end - period.start;
-  const result = {};
-  PULSE_METRICS.forEach(metric => {
-    const rows = raw[metric.key];
-    if (_pulseRange === 'tipico') {
-      const bins = new Map();
-      rows.filter(row => _pulseInDayWindow(row.at)).forEach(row => {
-        const minute = _pulseMinuteOfDay(row.at);
-        const lastBin = Math.max(0, Math.ceil(_pulseDaySpanMinutes() / 120) - 1);
-        const bin = Math.min(lastBin, Math.floor((minute - _pulseDayStartMinute) / 120));
-        if (!bins.has(bin)) bins.set(bin, []);
-        bins.get(bin).push(row);
-      });
-      result[metric.key] = Array.from(bins.entries()).sort((a, b) => a[0] - b[0]).map(([bin, items]) => {
-        const agg = _pulseAggregate(items.map(item => item.value));
-        const startMinute = _pulseDayStartMinute + bin * 120;
-        const endMinute = Math.min(_pulseDayEndMinute, startMinute + 120);
-        const centerMinute = (startMinute + endMinute) / 2;
-        return Object.assign(agg, {
-          x: (centerMinute - _pulseDayStartMinute) / _pulseDaySpanMinutes(),
-          time: _pulseHourLabel(startMinute) + '–' + _pulseHourLabel(endMinute),
-          note: '',
-        });
-      });
-    } else if (_pulseRange === 'mes') {
-      const days = new Map();
-      rows.forEach(row => {
-        const key = _statsISO(row.at);
-        if (!days.has(key)) days.set(key, []);
-        days.get(key).push(row);
-      });
-      result[metric.key] = Array.from(days.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([key, items]) => {
-        const at = new Date(key + 'T12:00:00');
-        const agg = _pulseAggregate(items.map(item => item.value));
-        return Object.assign(agg, { x: (at - period.start) / span, time: at.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }), note: items.map(item => item.note).filter(Boolean).join(' · ') });
-      });
-    } else {
-      const visibleRows = _pulseRange === 'dia' ? rows.filter(row => _pulseInDayWindow(row.at)) : rows;
-      result[metric.key] = visibleRows.map(row => ({
-        x: _pulseRange === 'dia' ? _pulseDayX(row.at) : (row.at - period.start) / span,
-        value: row.value,
-        lo: row.value,
-        hi: row.value,
-        count: 1,
-        id: row.id,
-        time: _pulseRange === 'dia'
-          ? row.at.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-          : row.at.toLocaleDateString('es-ES', { weekday: 'short' }) + ' · ' + row.at.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-        note: row.note,
-      }));
-    }
-  });
-  return result;
-}
-
-function _pulseSegments(points) {
-  return points.length ? [points] : [];
-}
-
-function _pulseMonotonePath(points) {
-  if (!points.length) return '';
-  if (points.length === 1) return 'M' + points[0].px.toFixed(1) + ',' + points[0].py.toFixed(1);
-  const slopes = [];
-  const tangents = [];
-  for (let i = 0; i < points.length - 1; i++) {
-    slopes[i] = (points[i + 1].py - points[i].py) / Math.max(.001, points[i + 1].px - points[i].px);
-  }
-  tangents[0] = slopes[0];
-  tangents[points.length - 1] = slopes[slopes.length - 1];
-  for (let i = 1; i < points.length - 1; i++) {
-    tangents[i] = slopes[i - 1] * slopes[i] <= 0 ? 0 : (slopes[i - 1] + slopes[i]) / 2;
-  }
-  let path = 'M' + points[0].px.toFixed(1) + ',' + points[0].py.toFixed(1);
-  for (let i = 0; i < points.length - 1; i++) {
-    const dx = points[i + 1].px - points[i].px;
-    path += ' C' + (points[i].px + dx / 3).toFixed(1) + ',' + (points[i].py + tangents[i] * dx / 3).toFixed(1)
-      + ' ' + (points[i + 1].px - dx / 3).toFixed(1) + ',' + (points[i + 1].py - tangents[i + 1] * dx / 3).toFixed(1)
-      + ' ' + points[i + 1].px.toFixed(1) + ',' + points[i + 1].py.toFixed(1);
-  }
-  return path;
-}
-
-function _pulseDayTicks() {
-  const span = _pulseDaySpanMinutes();
-  const target = span / 5;
-  const step = [30, 60, 120, 180, 240, 360].find(value => value >= target) || 360;
-  const ticks = [_pulseDayStartMinute];
-  for (let minute = Math.ceil(_pulseDayStartMinute / step) * step; minute < _pulseDayEndMinute; minute += step) {
-    if (minute > _pulseDayStartMinute) ticks.push(minute);
-  }
-  if (ticks[ticks.length - 1] !== _pulseDayEndMinute) ticks.push(_pulseDayEndMinute);
-  return ticks.map(minute => ({
-    x: (minute - _pulseDayStartMinute) / span,
-    label: _pulseHourLabel(minute),
-  }));
-}
-
-function _pulseChartSVG(series, expanded) {
-  const mobileExpanded = expanded && window.matchMedia?.('(max-width: 560px)').matches;
-  const W = 760, H = expanded ? (mobileExpanded ? 430 : 380) : 300, left = 58, right = 18, top = expanded ? 24 : 18, bottom = expanded ? 46 : 38;
-  const plotW = W - left - right, plotH = H - top - bottom;
-  const px = x => left + Math.max(0, Math.min(1, x)) * plotW;
-  const py = value => top + (100 - Math.max(0, Math.min(100, value))) / 100 * plotH;
-  const yTicks = [0, 25, 50, 75, 100];
-  let grid = '';
-  yTicks.forEach(value => {
-    const y = py(value);
-    grid += '<line class="pulse-grid-line" x1="' + left + '" y1="' + y + '" x2="' + (W - right) + '" y2="' + y + '"/>'
-      + '<text class="pulse-axis-y" x="' + (left - 8) + '" y="' + (y + 3) + '" text-anchor="end">' + value + '</text>';
-  });
-  const xLabels = _pulseRange === 'semana'
-    ? ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'].map((label, i) => ({ x: (i + .5) / 7, label }))
-    : _pulseRange === 'mes'
-      ? [0, .25, .5, .75, 1].map((x, i) => ({ x, label: i === 0 ? '1' : i === 4 ? 'fin' : Math.max(1, Math.round(x * 30)) + '' }))
-      : _pulseDayTicks();
-  xLabels.forEach(item => {
-    grid += '<text class="pulse-axis-x" x="' + px(item.x) + '" y="' + (H - 13) + '" text-anchor="middle">' + item.label + '</text>';
-  });
-  let layers = '';
-  PULSE_METRICS.forEach(metric => {
-    if (!_pulseVisible.has(metric.key)) return;
-    const points = (series[metric.key] || []).map(point => Object.assign({}, point, { px: px(point.x), py: py(point.value) }));
-    const segments = _pulseSegments(points);
-    segments.forEach(segment => {
-      if (segment.length > 1) layers += '<path class="pulse-line" style="stroke:' + metric.color + '" d="' + _pulseMonotonePath(segment) + '"/>';
-    });
-  });
-  return '<svg class="pulse-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Curvas continuas de concentración y malestar">'
-    + '<g>' + grid + '</g><g clip-path="url(#pulsePlotClip)"><defs><clipPath id="pulsePlotClip"><rect x="' + left + '" y="' + (top - 7) + '" width="' + plotW + '" height="' + (plotH + 14) + '"/></clipPath></defs>' + layers + '</g></svg>';
-}
-
-function _pulseChartContent(series, total, expanded) {
-  return total
-    ? _pulseChartSVG(series, expanded)
-    : '<div class="pulse-empty"><strong>Aún no hay registros en esta franja</strong><span>Ajusta los tiradores o añade un registro desde el cronómetro.</span></div>';
-}
-
-function _pulseWindowText() {
-  return _pulseHourLabel(_pulseDayStartMinute) + '–' + _pulseHourLabel(_pulseDayEndMinute);
-}
-
-function _pulseWindowControl() {
-  if (_pulseRange !== 'dia' && _pulseRange !== 'tipico') return '';
-  const startPct = (_pulseDayStartMinute / PULSE_DAY_LIMIT_MINUTE * 100).toFixed(3) + '%';
-  const endPct = (_pulseDayEndMinute / PULSE_DAY_LIMIT_MINUTE * 100).toFixed(3) + '%';
-  return '<div class="pulse-window" id="pulseWindow" role="group" aria-label="Recortar horas visibles" data-no-view-swipe style="--pulse-window-start:' + startPct + ';--pulse-window-end:' + endPct + '">'
-    + '<div class="pulse-window-head"><span>Ventana visible</span><strong id="pulseWindowLabel">' + _pulseWindowText() + '</strong></div>'
-    + '<div class="pulse-trimmer" onpointerdown="pulseTrimmerTrackPointerDown(event)">'
-      + '<div class="pulse-trimmer-track"></div><div class="pulse-trimmer-selection"></div>'
-      + '<button type="button" id="pulseWindowStart" class="pulse-trimmer-handle pulse-trimmer-start" role="slider" aria-label="Hora inicial visible" aria-valuemin="0" aria-valuemax="' + (_pulseDayEndMinute - PULSE_DAY_MIN_SPAN_MINUTES) + '" aria-valuenow="' + _pulseDayStartMinute + '" aria-valuetext="' + _pulseHourLabel(_pulseDayStartMinute) + '" onpointerdown="pulseTrimmerPointerDown(event,\'start\')" onkeydown="pulseTrimmerKeyDown(event,\'start\')"></button>'
-      + '<button type="button" id="pulseWindowEnd" class="pulse-trimmer-handle pulse-trimmer-end" role="slider" aria-label="Hora final visible" aria-valuemin="' + (_pulseDayStartMinute + PULSE_DAY_MIN_SPAN_MINUTES) + '" aria-valuemax="' + PULSE_DAY_LIMIT_MINUTE + '" aria-valuenow="' + _pulseDayEndMinute + '" aria-valuetext="' + _pulseHourLabel(_pulseDayEndMinute) + '" onpointerdown="pulseTrimmerPointerDown(event,\'end\')" onkeydown="pulseTrimmerKeyDown(event,\'end\')"></button>'
-    + '</div>'
-    + '<div class="pulse-window-scale"><span>00:00</span><span>24:00</span></div>'
-    + '</div>';
-}
-
-function _pulseRecordManager(period) {
-  const raw = _pulseRaw(period);
-  const rows = [];
-  PULSE_METRICS.forEach(metric => {
-    (raw[metric.key] || []).forEach(row => {
-      if ((_pulseRange === 'dia' || _pulseRange === 'tipico') && !_pulseInDayWindow(row.at)) return;
-      rows.push({ metric, row });
-    });
-  });
-  rows.sort((a, b) => b.row.at - a.row.at);
-  if (!rows.length) return '';
-
-  const list = rows.map(({ metric, row }) => {
-    const exactValue = row.value.toFixed(row.value % 1 ? 1 : 0);
-    const time = _pulseRange === 'dia'
-      ? row.at.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-      : row.at.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + ' · ' + row.at.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-    const note = String(row.note || '').trim().slice(0, 180);
-    return '<div class="pulse-record-row">'
-      + '<i class="pulse-record-color" style="--pulse-color:' + metric.color + '" aria-hidden="true"></i>'
-      + '<span class="pulse-record-copy"><strong>' + escapeHtmlSafe(metric.label) + '</strong><small>' + escapeHtmlSafe(time) + ' · ' + exactValue + '/100</small>'
-      + (note ? '<em>' + escapeHtmlSafe(note) + '</em>' : '') + '</span>'
-      + '<button type="button" class="pulse-delete-record" data-no-view-swipe data-metric="' + metric.key + '" data-record-id="' + escapeHtmlSafe(row.id) + '" '
-      + 'aria-label="Eliminar registro de ' + escapeHtmlSafe(metric.label) + '" onclick="deletePulseRecord(this.dataset.metric,this.dataset.recordId,this)">Eliminar</button>'
-      + '</div>';
-  }).join('');
-
-  return '<details class="pulse-record-manager" data-no-view-swipe>'
-    + '<summary><span>Gestionar registros</span><strong>' + rows.length + '</strong></summary>'
-    + '<div class="pulse-record-list">' + list + '</div>'
-    + '</details>';
-}
-
-function _pulseCard(options) {
-  const expanded = !!options?.expanded;
-  const period = _pulsePeriod();
-  const series = _pulseSeries(period);
-  const total = PULSE_METRICS.reduce((sum, metric) => sum + (series[metric.key] || []).reduce((n, point) => n + (point.count || 1), 0), 0);
-  const tabs = [['dia', 'Día'], ['semana', 'Semana'], ['tipico', 'Día típico'], ['mes', 'Mes']].map(item =>
-    '<button type="button" class="pulse-range-btn' + (_pulseRange === item[0] ? ' active' : '') + '" onclick="setPulseRange(\'' + item[0] + '\')">' + item[1] + '</button>'
-  ).join('');
-  const legend = PULSE_METRICS.map(metric =>
-    '<button type="button" class="pulse-metric' + (_pulseVisible.has(metric.key) ? ' active' : '') + '" style="--pulse-color:' + metric.color + '" aria-pressed="' + _pulseVisible.has(metric.key) + '" onclick="togglePulseMetric(\'' + metric.key + '\')"><i></i>' + metric.short + '</button>'
-  ).join('');
-  const chart = _pulseChartContent(series, total, expanded);
-  const typical = _pulseRange === 'tipico'
-    ? '<div class="pulse-method"><span id="pulseWindowMethodRange">' + _pulseWindowText() + '</span>. Cada curva resume las mismas franjas horarias de los siete días.</div>'
-    : _pulseRange === 'mes'
-      ? '<div class="pulse-method">Cada curva representa la media diaria de los registros.</div>'
-      : '<div class="pulse-method">' + (_pulseRange === 'dia' ? '<span id="pulseWindowMethodRange">' + _pulseWindowText() + '</span> · ' : '') + 'Curvas continuas de concentración y malestar, sin marcadores.</div>';
-  return '<section class="stats-card pulse-card' + (expanded ? ' pulse-card-expanded' : '') + '">'
-    + '<div class="pulse-head"><div><div class="stats-card-title">' + (expanded ? 'Evolución' : 'Pulso') + '</div><div class="stats-card-sub">Concentración y malestar</div></div><span class="pulse-count" id="pulseCount">' + total + (total === 1 ? ' registro' : ' registros') + '</span></div>'
-    + '<div class="pulse-range">' + tabs + '</div>'
-    + '<div class="pulse-period"><button type="button" onclick="pulseNav(-1)" aria-label="Periodo anterior">‹</button><strong>' + escapeHtmlSafe(period.label) + '</strong><button type="button" onclick="pulseNav(1)" aria-label="Periodo siguiente"' + (_pulseOffset === 0 ? ' disabled' : '') + '>›</button></div>'
-    + _pulseWindowControl()
-    + '<div class="pulse-legend">' + legend + '</div>'
-    + '<div id="pulseChartHost">' + chart + '</div><div id="pulseRecordManagerHost">' + _pulseRecordManager(period) + '</div>' + typical
-    + '</section>';
-}
-
-function _pulseShortcut() {
-  const period = _pulsePeriod();
-  const series = _pulseSeries(period);
-  const total = PULSE_METRICS.reduce((sum, metric) => sum + (series[metric.key] || []).reduce((n, point) => n + (point.count || 1), 0), 0);
-  return '<button type="button" class="stats-card pulse-shortcut" onclick="showView(\'pulse\')" aria-label="Abrir Pulso">'
-    + '<span class="pulse-shortcut-copy"><span class="stats-card-title">Pulso</span><span class="stats-card-sub">' + total + (total === 1 ? ' registro' : ' registros') + ' · evolución en pantalla completa</span></span>'
-    + '<span class="pulse-shortcut-action"><span aria-hidden="true">‹</span> Desliza o abre</span>'
-    + '</button>';
-}
-
-function renderPulseDashboard() {
-  const el = document.getElementById('pulseDashboard');
-  if (!el) return;
-  el.innerHTML = _pulseCard({ expanded: true });
-  _bindPulseWindowTouch();
-}
-
-function _bindPulseWindowTouch() {
-  const trimmer = document.querySelector('#pulseDashboard .pulse-trimmer');
-  if (!trimmer || trimmer.dataset.touchBound === 'true') return;
-  trimmer.dataset.touchBound = 'true';
-  trimmer.addEventListener('touchstart', event => {
-    event.stopPropagation();
-    viewSwipeReset(false);
-  }, { passive: true });
-  trimmer.addEventListener('touchmove', event => {
-    if (event.cancelable) event.preventDefault();
-    event.stopPropagation();
-  }, { passive: false });
-  ['touchend', 'touchcancel'].forEach(type => trimmer.addEventListener(type, event => {
-    event.stopPropagation();
-  }, { passive: true }));
-  trimmer.addEventListener('gesturestart', event => {
-    if (event.cancelable) event.preventDefault();
-    event.stopPropagation();
-  }, { passive: false });
-}
-
-let _pulseTrimmerDrag = null;
-
-function _pulseTrimmerMinuteAtX(trimmer, clientX) {
-  const rect = trimmer.getBoundingClientRect();
-  if (!rect.width) return null;
-  const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-  return Math.round((ratio * PULSE_DAY_LIMIT_MINUTE) / PULSE_DAY_STEP_MINUTES) * PULSE_DAY_STEP_MINUTES;
-}
-
-function _pulseBeginPointerDrag(event, edge, captureTarget) {
-  if (event.pointerType === 'mouse' && event.button !== 0) return;
-  event.preventDefault();
-  event.stopPropagation();
-  viewSwipeReset(false);
-  const trimmer = captureTarget.closest?.('.pulse-trimmer') || captureTarget;
-  _pulseTrimmerDrag = { edge, pointerId: event.pointerId, trimmer, captureTarget };
-  try { captureTarget.setPointerCapture(event.pointerId); } catch(e) {}
-  document.addEventListener('pointermove', _pulseTrimmerPointerMove, { passive: false });
-  document.addEventListener('pointerup', _pulseTrimmerPointerEnd, { passive: false });
-  document.addEventListener('pointercancel', _pulseTrimmerPointerEnd, { passive: false });
-  document.body.classList.add('pulse-trimmer-dragging');
-}
-
-function pulseTrimmerPointerDown(event, edge) {
-  _pulseBeginPointerDrag(event, edge, event.currentTarget);
-}
-
-function pulseTrimmerTrackPointerDown(event) {
-  if (event.target.closest?.('.pulse-trimmer-handle')) return;
-  const trimmer = event.currentTarget;
-  const minute = _pulseTrimmerMinuteAtX(trimmer, event.clientX);
-  if (minute == null) return;
-  const edge = Math.abs(minute - _pulseDayStartMinute) <= Math.abs(minute - _pulseDayEndMinute) ? 'start' : 'end';
-  previewPulseWindow(edge, minute);
-  _pulseBeginPointerDrag(event, edge, trimmer);
-}
-
-function _pulseTrimmerPointerMove(event) {
-  const drag = _pulseTrimmerDrag;
-  if (!drag || event.pointerId !== drag.pointerId) return;
-  event.preventDefault();
-  event.stopPropagation();
-  const minute = _pulseTrimmerMinuteAtX(drag.trimmer, event.clientX);
-  if (minute != null) previewPulseWindow(drag.edge, minute);
-}
-
-function _pulseTrimmerPointerEnd(event) {
-  const drag = _pulseTrimmerDrag;
-  if (!drag || event.pointerId !== drag.pointerId) return;
-  event.preventDefault();
-  event.stopPropagation();
-  try { drag.captureTarget.releasePointerCapture(event.pointerId); } catch(e) {}
-  _pulseTrimmerDrag = null;
-  document.removeEventListener('pointermove', _pulseTrimmerPointerMove);
-  document.removeEventListener('pointerup', _pulseTrimmerPointerEnd);
-  document.removeEventListener('pointercancel', _pulseTrimmerPointerEnd);
-  document.body.classList.remove('pulse-trimmer-dragging');
-  commitPulseWindow();
-}
-
-function pulseTrimmerKeyDown(event, edge) {
-  let minute = edge === 'start' ? _pulseDayStartMinute : _pulseDayEndMinute;
-  if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') minute -= PULSE_DAY_STEP_MINUTES;
-  else if (event.key === 'ArrowRight' || event.key === 'ArrowUp') minute += PULSE_DAY_STEP_MINUTES;
-  else if (event.key === 'Home') minute = edge === 'start' ? 0 : _pulseDayStartMinute + PULSE_DAY_MIN_SPAN_MINUTES;
-  else if (event.key === 'End') minute = edge === 'start' ? _pulseDayEndMinute - PULSE_DAY_MIN_SPAN_MINUTES : PULSE_DAY_LIMIT_MINUTE;
-  else return;
-  event.preventDefault();
-  event.stopPropagation();
-  previewPulseWindow(edge, minute);
-  commitPulseWindow();
-}
-
-function previewPulseWindow(edge, rawValue) {
-  let minute = Math.round(Number(rawValue) / PULSE_DAY_STEP_MINUTES) * PULSE_DAY_STEP_MINUTES;
-  if (!Number.isFinite(minute)) return;
-  minute = Math.max(0, Math.min(PULSE_DAY_LIMIT_MINUTE, minute));
-  if (edge === 'start') {
-    _pulseDayStartMinute = Math.min(minute, _pulseDayEndMinute - PULSE_DAY_MIN_SPAN_MINUTES);
-  } else if (edge === 'end') {
-    _pulseDayEndMinute = Math.max(minute, _pulseDayStartMinute + PULSE_DAY_MIN_SPAN_MINUTES);
-  } else {
-    return;
-  }
-
-  const startHandle = document.getElementById('pulseWindowStart');
-  const endHandle = document.getElementById('pulseWindowEnd');
-  if (startHandle) {
-    startHandle.setAttribute('aria-valuenow', String(_pulseDayStartMinute));
-    startHandle.setAttribute('aria-valuetext', _pulseHourLabel(_pulseDayStartMinute));
-    startHandle.setAttribute('aria-valuemax', String(_pulseDayEndMinute - PULSE_DAY_MIN_SPAN_MINUTES));
-  }
-  if (endHandle) {
-    endHandle.setAttribute('aria-valuemin', String(_pulseDayStartMinute + PULSE_DAY_MIN_SPAN_MINUTES));
-    endHandle.setAttribute('aria-valuenow', String(_pulseDayEndMinute));
-    endHandle.setAttribute('aria-valuetext', _pulseHourLabel(_pulseDayEndMinute));
-  }
-  const control = document.getElementById('pulseWindow');
-  if (control) {
-    control.style.setProperty('--pulse-window-start', (_pulseDayStartMinute / PULSE_DAY_LIMIT_MINUTE * 100) + '%');
-    control.style.setProperty('--pulse-window-end', (_pulseDayEndMinute / PULSE_DAY_LIMIT_MINUTE * 100) + '%');
-  }
-  const label = document.getElementById('pulseWindowLabel');
-  if (label) label.textContent = _pulseWindowText();
-  const methodRange = document.getElementById('pulseWindowMethodRange');
-  if (methodRange) methodRange.textContent = _pulseWindowText();
-
-  const period = _pulsePeriod();
-  const series = _pulseSeries(period);
-  const total = PULSE_METRICS.reduce((sum, metric) => sum + (series[metric.key] || []).reduce((n, point) => n + (point.count || 1), 0), 0);
-  const chartHost = document.getElementById('pulseChartHost');
-  if (chartHost) chartHost.innerHTML = _pulseChartContent(series, total, true);
-  const count = document.getElementById('pulseCount');
-  if (count) count.textContent = total + (total === 1 ? ' registro' : ' registros');
-  const manager = document.getElementById('pulseRecordManagerHost');
-  if (manager) manager.innerHTML = _pulseRecordManager(period);
-}
-
-function commitPulseWindow() {
-  try {
-    localStorage.setItem('pulse_day_start', String(_pulseDayStartMinute));
-    localStorage.setItem('pulse_day_end', String(_pulseDayEndMinute));
-  } catch(e) {}
-  renderStatsDashboard();
-}
-
-function setPulseRange(range) {
-  if (!['dia', 'semana', 'tipico', 'mes'].includes(range)) return;
-  _pulseRange = range;
-  _pulseOffset = 0;
-  localStorage.setItem('pulse_range', range);
-  renderPulseDashboard();
-  renderStatsDashboard();
-}
-
-function pulseNav(direction) {
-  _pulseOffset = Math.min(0, _pulseOffset + direction);
-  renderPulseDashboard();
-  renderStatsDashboard();
-}
-
-function togglePulseMetric(metric) {
-  if (_pulseVisible.has(metric)) {
-    if (_pulseVisible.size === 1) return;
-    _pulseVisible.delete(metric);
-  } else {
-    _pulseVisible.add(metric);
-  }
-  renderPulseDashboard();
-  renderStatsDashboard();
-}
-
-function _savePulseSource(metric, items) {
-  if (metric === 'concentration') _saveEstadoEventosLocal(items);
-  else if (metric === 'discomfort') _saveMalestarEventosLocal(items);
-}
-
-function deletePulseRecord(metric, recordId, trigger) {
-  if (!PULSE_METRICS.some(item => item.key === metric) || !recordId) return;
-  if (trigger && trigger.dataset.confirmDelete !== 'true') {
-    trigger.dataset.confirmDelete = 'true';
-    trigger.classList.add('is-confirming');
-    trigger.textContent = 'Confirmar';
-    trigger.setAttribute('aria-label', 'Confirmar eliminación');
-    clearTimeout(trigger._confirmTimer);
-    trigger._confirmTimer = setTimeout(() => {
-      if (!trigger.isConnected) return;
-      trigger.dataset.confirmDelete = 'false';
-      trigger.classList.remove('is-confirming');
-      trigger.textContent = 'Eliminar';
-      trigger.setAttribute('aria-label', 'Eliminar registro');
-    }, 2800);
-    try { Haptics.light(); } catch(e) {}
-    return;
-  }
-
-  const items = _pulseSource(metric);
-  const index = items.findIndex(item => _pulseEventStableId(item) === recordId);
-  if (index < 0) {
-    showToast('Ese registro ya no existe');
-    renderPulseDashboard();
-    return;
-  }
-  items.splice(index, 1);
-  _savePulseSource(metric, items);
-  if (!Array.isArray(db.pulseDeletedIds)) db.pulseDeletedIds = [];
-  const deletionKey = metric + '::' + recordId;
-  db.pulseDeletedIds = db.pulseDeletedIds.filter(key => key !== deletionKey);
-  db.pulseDeletedIds.push(deletionKey);
-  if (db.pulseDeletedIds.length > 5000) db.pulseDeletedIds.splice(0, db.pulseDeletedIds.length - 5000);
-  renderPulseDashboard();
-  renderStatsDashboard();
-  refreshCronoFluidUI();
+function persistMomentEntryImmediately() {
   if (typeof saveData === 'function') saveData();
-  showToast('Registro de pulso eliminado');
-  try { Haptics.medium(); } catch(e) {}
+  if (typeof enqueueCloudSync === 'function') enqueueCloudSync({ immediate:true });
 }
 
 function renderStatsDashboard() {
@@ -14844,7 +13907,7 @@ function renderStatsDashboard() {
 
   // Tarjeta 1: tiempo de concentración (barras)
   const bars = _statsBarsData(porDia, periodo.start, periodo.end);
-  let cards = _pulseShortcut() + '<div class="stats-card">'
+  let cards = '<div class="stats-card">'
     + '<div class="stats-card-title">Tiempo de concentración</div>'
     + '<div class="stats-card-big">' + fmtMinutos(total) + '</div>'
     + (total > 0
@@ -18772,40 +17835,6 @@ const Haptics = (() => {
   };
 })();
 
-// Pulso es opcional: por defecto el cronometro prioriza reloj y tareas.
-const CRONO_PULSE_VISIBILITY_KEY = 'alberto_crono_pulse_visible_v1';
-
-function cronoPulseVisibilityEnabled() {
-  try { return localStorage.getItem(CRONO_PULSE_VISIBILITY_KEY) === 'on'; }
-  catch (e) { return false; }
-}
-
-function cronoRefreshPulseUI() {
-  const enabled = cronoPulseVisibilityEnabled();
-  const button = document.getElementById('cronoPulseToggleBtn');
-  if (!button) return;
-  button.classList.toggle('on', enabled);
-  button.setAttribute('aria-checked', enabled ? 'true' : 'false');
-}
-
-function cronoRefreshPulseVisibility() {
-  const enabled = cronoPulseVisibilityEnabled();
-  document.body.classList.toggle('crono-pulse-enabled', enabled);
-  document.body.classList.toggle('crono-pulse-disabled', !enabled);
-  document.querySelectorAll('#view-cronometro .crono-moment-monitor').forEach(monitor => {
-    monitor.hidden = !enabled;
-    if (!enabled) monitor.classList.remove('is-open', 'history-open');
-  });
-  cronoRefreshPulseUI();
-}
-
-function toggleCronoPulseVisibility() {
-  const enabled = !cronoPulseVisibilityEnabled();
-  try { localStorage.setItem(CRONO_PULSE_VISIBILITY_KEY, enabled ? 'on' : 'off'); } catch (e) {}
-  cronoRefreshPulseVisibility();
-  showToast(enabled ? 'Pulso visible en el cronometro' : 'Pulso oculto en el cronometro');
-}
-
 function toggleHaptics() { Haptics.toggle(); }
 
 function refreshHapticsUI() {
@@ -19905,7 +18934,6 @@ function openSettings() {
   if (typeof updateAjustesAccountRow === 'function') updateAjustesAccountRow();
   if (typeof refreshSoundOptionUI === 'function') refreshSoundOptionUI();
   if (typeof refreshHapticsUI === 'function') refreshHapticsUI();
-  if (typeof cronoRefreshPulseUI === 'function') cronoRefreshPulseUI();
   if (typeof updateForestPendientesBtn === 'function') updateForestPendientesBtn();
   if (typeof updateAppVersionInfo === 'function') updateAppVersionInfo();
   if (typeof updateAiExportControls === 'function') updateAiExportControls();
@@ -20350,8 +19378,12 @@ function habitStoredChallenges() {
     if (index < 0) stored.unshift(legacy);
     else if (stored[index] !== legacy) {
       const merged = _mergeHabitChallenge(stored[index], legacy);
+      // Keep the legacy singleton and the list on the same live object. A
+      // second read while editing must not swap out the object being changed.
+      const current = window.DocumentSyncCore ? DocumentSyncCore.assign(stored[index], merged) : Object.assign(stored[index], merged);
       stored.splice(index, 1);
-      stored.unshift(merged);
+      stored.unshift(current);
+      db.habitChallenge = current;
     }
     if (legacyWasNotPrimary && _habitCalendarChallengeId && _habitCalendarChallengeId !== legacy.id) {
       _habitCalendarChallengeId = legacy.id;
@@ -27561,7 +26593,6 @@ function _stopCronoClock() {
 function cronoOnEnterView(options) {
   const layoutPrepared = !!options?.layoutPrepared;
   cronoEnterFocus();
-  cronoRefreshPulseVisibility();
   if (!layoutPrepared) {
     cronoInitInterfaceZoom();
     cronoFillObraSelect();
@@ -27573,7 +26604,6 @@ function cronoOnEnterView(options) {
   }
   _startCronoClock();
   renderCronoCalendar();
-  refreshCronoFluidUI();
   cronoStartTaskReminderLoop();
   setTimeout(() => {
     if (!cronoMaybeBlockUrgentTasks('enter')) cronoMaybeRemindTasks('enter');
@@ -27676,7 +26706,7 @@ function _swUpdateInit() {
       });
     });
   });
-  navigator.serviceWorker.addEventListener('controllerchange', () => { window.location.reload(); });
+  // controllerchange is owned by UpdateSafety; no unconditional reload.
 }
 
 function _swShowBanner() {
@@ -27684,28 +26714,11 @@ function _swShowBanner() {
   if (b) b.style.display = 'flex';
 }
 
-async function swHardRefresh() {
-  try {
-    if ('serviceWorker' in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map(reg => reg.unregister().catch(() => false)));
-    }
-    if ('caches' in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map(k => caches.delete(k).catch(() => false)));
-    }
-  } catch(e) {}
-  const url = new URL(window.location.href);
-  url.searchParams.set('v', APP_VERSION + '-' + Date.now());
-  window.location.replace(url.toString());
-}
-
+async function swHardRefresh() { return swDoUpdate(); }
 function swDoUpdate() {
-  if (_swReg && _swReg.waiting) {
-    _swReg.waiting.postMessage({ type: 'SKIP_WAITING' });
-    return;
-  }
-  swHardRefresh();
+  if (window.UpdateSafety) return window.UpdateSafety.safeUpdate();
+  showToast('Preparando la protección de datos… vuelve a intentarlo.');
+  return false;
 }
 
 async function checkForAppUpdate(manual) {

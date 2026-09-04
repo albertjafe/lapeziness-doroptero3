@@ -94,8 +94,10 @@
     const wrapped = createSingleFlight(original, {
       before: () => state('Sincronizando…'),
       success: () => {
-        resetRetry();
-        state('✓ Supabase');
+        let dirty = false;
+        try { dirty = root.SyncCore.isDirty(JSON.parse(root.localStorage.getItem('alberto_sync_v1') || '{}')); } catch (_) { dirty = true; }
+        if (dirty) { state('⚠ pendiente de sincronizar'); scheduleRetry(); }
+        else { resetRetry(); state('✓ Supabase'); }
       },
       error: () => {
         state('⚠ pendiente de sincronizar');
@@ -118,15 +120,6 @@
     const wrapped = function enqueueImmediateCloudSync(options) {
       const opts = Object.assign({}, options || {}, { immediate: true });
       const result = original.call(this, opts);
-      queueMicrotask(() => {
-        try {
-          if (typeof root.syncPendingCloudChanges === 'function') {
-            Promise.resolve(root.syncPendingCloudChanges()).catch(() => {});
-          }
-        } catch (error) {
-          scheduleRetry();
-        }
-      });
       return result;
     };
     wrapped.__instantSyncImmediate = true;
@@ -152,7 +145,7 @@
     installTimer = setInterval(() => {
       attempts += 1;
       install();
-      if (attempts >= 80) clearInterval(installTimer);
+      if (installed || attempts >= 80) clearInterval(installTimer);
     }, 250);
   }
 

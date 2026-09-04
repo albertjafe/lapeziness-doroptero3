@@ -36,6 +36,6 @@ describe('session minute correction bridge', () => {
 
   it('the companion is loaded automatically', () => {
     expect(tracker).toContain('sessionMinutesCorrectionScript');
-    expect(tracker).toContain('session-minutes-correction.js?v=1');
+    expect(tracker).toContain('session-minutes-correction.js?v=342');
   });
 });

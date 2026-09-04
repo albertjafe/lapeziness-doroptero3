@@ -121,6 +121,10 @@ test('records cold score, explicit focus time and optional post score without as
   expect(result.saved[0].movId).toBe('m1');
   expect(result.saved[0].difficulty).toBe(8.7);
   expect(result.tracker.observations).toHaveLength(1);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('alberto_piano_v2')).passageTracker);
+  expect(stored.observations).toHaveLength(1);
+  expect(stored.observations[0].coldScore).toBe(58);
+  expect(stored.observations[0].postScore).toBe(73);
 });
 
 test('iPad landscape gives passage tracking its own non-overlapping slot beside tasks', async ({ page }) => {
@@ -136,7 +140,7 @@ test('iPad landscape gives passage tracking its own non-overlapping slot beside 
     return {
       passage: rect('#cronoPassageTracker'),
       tasks: rect('#cronoIdleDrawer'),
-      calendar: rect('.crono-calendar-panel'),
+      calendar: rect('#cronoCalendarObjectivesShell'),
     };
   });
 

@@ -271,11 +271,11 @@
   'use strict';
   if (typeof document === 'undefined' || window.EventSyncCore) return;
   if (document.readyState === 'loading') {
-    document.write('<script src="./event-sync-core.js?v=1"></' + 'script>');
+    document.write('<script src="./event-sync-core.js?v=342"></' + 'script>');
     return;
   }
   const script = document.createElement('script');
-  script.src = './event-sync-core.js?v=1';
+  script.src = './event-sync-core.js?v=342';
   script.async = false;
   document.head.appendChild(script);
 })();

@@ -4,6 +4,7 @@
   const VIEW_ID = 'view-profesor';
   const SETTINGS_KEY = 'professorSettings';
   let lastReport = null;
+  let renderGeneration = 0;
   let booted = false;
 
   function database() {
@@ -123,7 +124,7 @@
 
   function renderEvents(report) {
     if (!report.events.length) return '<div class="prof-card prof-muted">No hay eventos futuros disponibles en la app o Google Calendar.</div>';
-    return `<div class="prof-events">${report.events.slice(0, 12).map(event => `<div class="prof-event">
+    return `<div class="prof-events">${report.events.map(event => `<div class="prof-event">
       <div class="prof-event-date">${esc(event.day)} · ${event.daysAway} días</div>
       <div class="prof-event-name">${esc(event.name)}</div>
       <div class="prof-event-meta">${esc(event.source === 'google' ? 'Google Calendar' : (event.type || 'App'))}</div>
@@ -144,19 +145,25 @@
     }).join('')}</div>`;
   }
 
-  function render() {
+  async function render() {
     const host = ensureView();
     if (!host || !window.ProfessorCore) return;
     const data = database() || {};
-    const report = window.ProfessorCore.buildReport(data, { asOf: new Date() });
+    const generation=++renderGeneration;
+    if(!lastReport)host.textContent='Preparando el contexto completo…';
+    const report = window.ProfessorHandoffResilience
+      ? await window.ProfessorHandoffResilience.buildReportAsync(data)
+      : window.ProfessorCore.buildReport(data, { asOf: new Date() });
+    if(generation !== renderGeneration)return;
     lastReport = report;
+    const note=document.getElementById('professorUserNote')?.value || '';
     const studiedLines = report.today.byUnit.slice(0, 6).map(item => `<div>${esc(item.label)} · <strong>${fmtMinutes(item.minutes)}</strong></div>`).join('') || '<div>Aún no hay movimientos registrados hoy.</div>';
     host.innerHTML = `
       <section class="prof-hero">
         <div class="prof-card">
           <div class="prof-eyebrow">Superinforme · contexto vivo</div>
           <h2 class="prof-title">Profesor</h2>
-          <div class="prof-sub">Decide movimiento por movimiento con historial, dificultad, solidez, recuperación, actividad reciente y eventos. ChatGPT recibe este contexto automáticamente; no necesita una API de pago.</div>
+          <div class="prof-sub">Planifica movimiento por movimiento con todo el contexto. Si el informe es grande, copia o adjunta el archivo completo al abrir ChatGPT.</div>
           <textarea class="prof-note" id="professorUserNote" placeholder="Condición opcional para este turno: «he dormido 5 h», «Claudio quiere que hoy no toque Waldstein», «solo tengo 45 min»…"></textarea>
           <div class="prof-actions">
             <button class="prof-action primary" data-prof-mode="remaining">Organizar lo que queda de hoy</button>
@@ -174,8 +181,8 @@
         </div>
       </section>
 
-      <section class="prof-section"><div class="prof-section-head"><h3>PRIORIDADES AHORA</h3><span class="prof-muted">P0–100 · no es una orden, es riesgo relativo</span></div><div class="prof-priority-list">${report.units.slice(0, 10).map(unit => renderUnit(unit, false)).join('')}</div></section>
-      <section class="prof-section"><div class="prof-section-head"><h3>EVENTOS PRÓXIMOS</h3><span class="prof-muted">180 días</span></div>${renderEvents(report)}</section>
+      <section class="prof-section"><div class="prof-section-head"><h3>PRIORIDADES AHORA</h3><span class="prof-muted">P0–100 · no es una orden, es riesgo relativo</span></div><div class="prof-priority-list">${report.units.filter(unit => unit.planningEligible !== false).slice(0, 10).map(unit => renderUnit(unit, false)).join('')}</div></section>
+      <section class="prof-section"><div class="prof-section-head"><h3>EVENTOS PRÓXIMOS</h3><span class="prof-muted">Agenda futura</span></div>${renderEvents(report)}</section>
       <section class="prof-section"><div class="prof-section-head"><h3>FICHA MOVIMIENTO POR MOVIMIENTO</h3><span class="prof-muted">${report.coverage.movements} movimientos · ${report.coverage.worksWithoutMovements} obras completas</span></div>${renderRepertoire(report)}</section>
 
       <details class="prof-advanced"><summary>Ajustes avanzados · prompt maestro</summary><textarea class="prof-master" id="professorMasterPrompt">${esc(masterPrompt())}</textarea><div class="prof-actions" style="padding-bottom:12px"><button class="prof-action primary" id="professorSavePrompt">Guardar prompt maestro</button><button class="prof-action" id="professorResetPrompt">Restaurar predeterminado</button></div></details>
@@ -184,7 +191,8 @@
     host.querySelector('#professorCopyReport')?.addEventListener('click', copyReport);
     host.querySelector('#professorSavePrompt')?.addEventListener('click', saveMasterPrompt);
     host.querySelector('#professorResetPrompt')?.addEventListener('click', resetMasterPrompt);
-    cacheReport(report);
+    host.querySelector('#professorUserNote').value=note;
+
   }
 
   async function copyText(text) {
@@ -196,21 +204,17 @@
   }
 
   async function copyReport() {
-    if (!lastReport) render();
-    if (!lastReport) return;
-    const text = window.ProfessorCore.compactContext(lastReport);
+    const report = window.ProfessorHandoffResilience
+      ? await window.ProfessorHandoffResilience.buildReportAsync(database() || {})
+      : window.ProfessorCore.buildReport(database() || {}, { asOf:new Date() });
+    const text = window.ProfessorHandoffResilience ? window.ProfessorHandoffResilience.denseContext(report) : window.ProfessorCore.compactContext(report);
     const ok = await copyText(text);
     if (typeof showToast === 'function') showToast(ok ? 'Superinforme copiado' : 'No se pudo copiar');
   }
 
   function openChatGPT(mode) {
-    if (!lastReport) render();
-    if (!lastReport) return;
-    const built = window.ProfessorCore.buildChatGptUrl(lastReport, { mode, note: noteValue(), masterPrompt: masterPrompt() });
-    copyText(built.fullPrompt);
-    const popup = window.open(built.url, '_blank', 'noopener');
-    if (!popup) window.location.href = built.url;
-    if (typeof showToast === 'function') showToast(built.truncated ? 'ChatGPT abierto · contexto completo copiado también' : 'ChatGPT abierto con el contexto del Profesor');
+    if (window.ProfessorHandoffResilience) return window.ProfessorHandoffResilience.openSafe(mode);
+    if (typeof showToast === 'function') showToast('Preparando el Profesor… vuelve a pulsar en un momento.');
   }
 
   function saveMasterPrompt() {
@@ -227,17 +231,6 @@
     const area = document.getElementById('professorMasterPrompt');
     if (area) area.value = window.ProfessorCore.DEFAULT_MASTER_PROMPT;
     saveMasterPrompt();
-  }
-
-  async function cacheReport(report) {
-    try {
-      const sb = typeof window.getSB === 'function' ? window.getSB() : null;
-      if (!sb) return;
-      const auth = await sb.auth.getUser();
-      const user = auth && auth.data && auth.data.user;
-      if (!user || !user.id) return;
-      await sb.from('professor_context_cache').upsert({ user_id: user.id, context: report, generated_at: report.generatedAt, data_updated_at: database()?._savedAt || null }, { onConflict: 'user_id' });
-    } catch (error) {}
   }
 
   function wrapShowView() {

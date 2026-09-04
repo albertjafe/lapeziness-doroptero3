@@ -301,8 +301,7 @@
   font: 540 8px/1.35 var(--font-ui);
 }
 
-/* El hueco del iPad horizontal: tareas a la izquierda, pasajes en la columna
-   central estrecha y Pulso a la derecha. El calendario permanece arriba. */
+/* iPad horizontal: tareas a la izquierda y pasajes bajo el calendario. */
 @media (min-width: 900px) and (max-width: 1399px) and (min-height: 700px) and (max-height: 1100px) and (orientation: landscape) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 3/2) {
   [data-theme^="marmol"] #view-cronometro .crono-idle-drawer,
   [data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunDrawer {

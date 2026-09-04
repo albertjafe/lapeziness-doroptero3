@@ -104,7 +104,7 @@ describe('service worker push guard', () => {
       const escaped = asset.replace('.', '\\.');
       const match = index.match(new RegExp(`["'](${escaped}\\?v=\\d+)["']`));
       expect(match, `${asset} should have a cache-busted reference in index.html`).not.toBeNull();
-      expect(worker).toContain(`'./${match[1]}'`);
+      expect(worker).toContain(`"./${match[1]}"`);
     }
   });
 });

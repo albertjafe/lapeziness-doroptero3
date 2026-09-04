@@ -17,8 +17,8 @@
   }
 
   // Carga ligera y global: seguimiento 1:1 del dedo y editor histórico.
-  ensureCompanionScript('paseLiquidDirectTouchScript', './pase-liquid-direct-touch.js?v=1');
-  ensureCompanionScript('solidityHistoryEditorScript', './solidity-history-editor.js?v=1');
+  ensureCompanionScript('paseLiquidDirectTouchScript', './pase-liquid-direct-touch.js?v=342');
+  ensureCompanionScript('solidityHistoryEditorScript', './solidity-history-editor.js?v=342');
 
   function appData() {
     try { if (typeof DB !== 'undefined' && DB) return DB; } catch (error) {}
@@ -94,7 +94,7 @@
     const link = document.createElement('link');
     link.id = 'obraPremiumStyles';
     link.rel = 'stylesheet';
-    link.href = './obra-premium.css?v=1';
+    link.href = './obra-premium.css?v=342';
     document.head.appendChild(link);
   }
 

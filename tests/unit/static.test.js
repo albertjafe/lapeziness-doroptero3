@@ -165,92 +165,11 @@ describe('quality wiring', () => {
     expect(app).toContain("source: 'pase'");
   });
 
-  it('keeps legacy pulse data compatible but only measures concentration and discomfort', () => {
-    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  it('retires Pulso markup while retaining the shared calendar', () => {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-    const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
-
-    expect(html).toContain('<strong>Concentración · Malestar</strong>');
-    expect(html).not.toContain('id="cronoImpulseFaces"');
-    expect(html).not.toContain('id="cronoResistanceFaces"');
-    expect(app).toContain('merged.resistenciaEventos');
-    expect(app).toContain("const _pulseVisible = new Set(['concentration', 'discomfort']);");
-    expect(app).toContain("['dia', 'semana', 'tipico', 'mes']");
-    expect(app).toContain('function _pulseMonotonePath(points)');
-    expect(app).toContain('function _pulseValue(value)');
-    expect(app).toContain('function _pulseRecordManager(period)');
-    expect(app).toContain('function deletePulseRecord(metric, recordId, trigger)');
-    expect(app).toContain("metric + '::' + recordId");
-    expect(app).toContain("row.value.toFixed(row.value % 1 ? 1 : 0)");
-    expect(app).toContain("expanded ? (mobileExpanded ? 430 : 380) : 300");
-    expect(app).not.toContain('function _pulseLevel(value, key)');
-    expect(app).toContain('Curvas continuas de concentración y malestar, sin marcadores');
-    expect(app).not.toContain('class="pulse-point"');
-    expect(app).not.toContain('class="pulse-band"');
-    expect(app).not.toContain('function _pulseStudyIntervals(period)');
-    expect(app).not.toContain('class="pulse-gap-line"');
-    expect(app).toContain("closest?.('.pulse-trimmer, input[type=\"range\"], [data-no-view-swipe]')");
-    expect(app).toContain("const SWIPE_VIEW_ORDER = ['pulse', 'session', 'cronometro', 'obras', 'calendario']");
-    expect(app).toContain('function renderPulseDashboard()');
-    expect(html).toContain('id="view-pulse"');
-    expect(html).toContain('id="pulseDashboard"');
-    expect(styles).not.toContain('.pulse-point');
-    expect(styles).not.toContain('.pulse-band');
-    expect(styles).toContain('.pulse-trimmer');
-    expect(styles).toContain('.pulse-record-manager');
-    expect(styles).toContain('.pulse-delete-record');
-    expect(styles).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))');
-    expect(styles).toContain('touch-action: none');
-    expect(styles).toContain('.pulse-card-expanded');
-  });
-
-  it('adds an iPad month calendar and visceral liquid pulse controls on iPad and mobile', () => {
-    const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
-    const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-    const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
-
-    expect(html).toContain('class="crono-calendar-panel"');
+    expect(html).not.toContain('id="view-pulse"');
+    expect(html).not.toContain('id="cronoFluidConcentration"');
     expect(html).toContain('id="cronoCalendarGrid"');
-    expect(html).toContain('id="cronoFluidConcentration"');
-    expect(html).toContain('id="cronoFluidDiscomfort"');
-    expect(html).not.toContain('crono-moment-row crono-impulse-monitor');
-    expect(html).not.toContain('crono-moment-row crono-resistance-monitor');
-    expect(html).toContain('id="eventoFechaFin"');
-    expect(app).toContain('function renderCronoCalendar()');
-    expect(app).toContain('function calendarEventRange(evento)');
-    expect(app).toContain('function cronoFluidCommit(kind, value, trigger, options)');
-    expect(app).toContain('const CRONO_FLUID_COOLDOWN_MS = 30 * 1000');
-    expect(app).toContain('const CRONO_FLUID_EDIT_WINDOW_MS = 30 * 1000');
-    expect(app).toContain('function cronoFluidUpdateEditableEntry(kind, value, label, note)');
-    expect(app).toContain('function cronoFluidCooldownRemaining(kind, now)');
-    expect(app).toContain('function cronoFluidCanCommit(kind, announce)');
-    expect(app).toContain('function persistPulseEntryImmediately(at)');
-    expect(app).toContain('function _pulseRevealTimestamp(value)');
-    expect(app).toContain('enqueueCloudSync({ immediate: true })');
-    expect(app).toContain('_pulseOffset = 0;');
-    expect(app).toContain('function cronoUsesLargeTabletLandscape()');
-    expect(app).toContain('height < 900 ? Math.min(182, height * 0.22)');
-    expect(app).toContain('const CRONO_INTERFACE_SCALE_MIN_DESKTOP = 1');
-    expect(app).toContain('function cronoSetIdleDestelloText(text)');
-    expect(app).toContain('fechaFin: fechaFin || null');
-    expect(styles).toContain('.crono-calendar-grid');
-    expect(styles).toContain('.crono-fluid-liquid');
-    expect(styles).toContain('@keyframes crono-fluid-liquid-confirm');
-    expect(styles).toContain('@keyframes crono-fluid-cooldown-drain');
-    expect(styles).toContain('@keyframes crono-fluid-cooldown-rise');
-    expect(html.match(/class="crono-fluid-cooldown"/g)).toHaveLength(2);
-    expect(styles).toContain('0 0 76px 18px');
-    expect(styles).toContain('grid-column: 5 / -1');
-    expect(styles).toContain('height: clamp(220px, 30vw, 292px)');
-    expect(styles).toContain('width: min(258px, calc(100vw - 20px))');
-    expect(styles).toContain('height: clamp(150px, 22dvh, 184px)');
-    expect(styles).not.toContain('#view-cronometro .crono-impulse-monitor');
-    expect(styles).toContain('grid-template-rows: repeat(6, minmax(0, 1fr))');
-    expect(styles).toContain('calc(var(--crono-interface-ring-size) * .024)');
-    expect(styles).toContain('(max-aspect-ratio: 3/2)');
-    expect(styles).toContain('grid-template-rows: clamp(380px, 46dvh, 470px)');
-    expect(styles).toContain('width: clamp(72px, 6.5vw, 92px)');
-    expect(styles).toContain('touch-action: none');
   });
 
   it('keeps the idle and running timer cards structurally continuous', () => {

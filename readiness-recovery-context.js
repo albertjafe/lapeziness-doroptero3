@@ -162,7 +162,7 @@
 
   setTimeout(() => {
     try { if (typeof window.renderObras === 'function') window.renderObras(); } catch (error) {}
-    try { if (typeof window.updateCronoReadiness === 'function') window.updateCronoReadiness(); } catch (error) {}
+    try { if (typeof window.cronoRenderReadinessEstimate === 'function') window.cronoRenderReadinessEstimate(); } catch (error) {}
     try { window.dispatchEvent(new CustomEvent('solidity-model-ready')); } catch (error) {}
   }, 0);
 })();

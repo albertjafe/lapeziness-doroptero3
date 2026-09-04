@@ -7,13 +7,14 @@ import { fileURLToPath } from 'node:url';
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const source = fs.readFileSync(path.join(rootDir, 'update-safety.js'), 'utf8');
 
-function harness({ dirty = 1, synced = 1 } = {}) {
+function harness({ dirty = 1, synced = 1, controlled = true } = {}) {
   const storage = new Map([
     ['alberto_piano_v2', JSON.stringify({ _localRevision: dirty, _savedAt: '2026-09-04T10:00:00Z', sessionPlants: [{ id: 'recent' }], eventos: [] })],
     ['alberto_sync_v1', JSON.stringify({ localRevision: dirty, dirtyRevision: dirty, lastSyncedRevision: synced })],
   ]);
   const calls = [];
   const messages = [];
+  const listeners = {};
   const waiting = { postMessage(message) { calls.push('activate'); messages.push(message); } };
   const registration = {
     waiting,
@@ -32,7 +33,8 @@ function harness({ dirty = 1, synced = 1 } = {}) {
       getItem(key) { return storage.get(key) ?? null; },
       setItem(key, value) { storage.set(key, String(value)); },
     },
-    navigator: { serviceWorker: { getRegistration: () => Promise.resolve(registration) } },
+    navigator: { serviceWorker: { controller:controlled ? {} : null, getRegistration: () => Promise.resolve(registration), addEventListener:(type,fn)=>{listeners[type]=fn;} } },
+    location:{reload:()=>calls.push('reload')},
     swDoUpdate() {},
     saveLocalNow() { calls.push('save-local'); },
     enqueueCloudSync() { calls.push('enqueue'); },
@@ -63,7 +65,7 @@ function harness({ dirty = 1, synced = 1 } = {}) {
     console,
   };
   vm.runInNewContext(source, context);
-  return { window, calls, messages, storage };
+  return { window, calls, messages, storage, context, registration, listeners };
 }
 
 describe('UpdateSafety v2', () => {
@@ -89,5 +91,37 @@ describe('UpdateSafety v2', () => {
     expect(messages).toHaveLength(0);
     expect(calls).not.toContain('check-update');
     expect(calls.some(call => call.startsWith('toast:No se actualiza'))).toBe(true);
+  });
+  it('does not promote the worker if an edit arrives while update() awaits the server',async()=>{
+    const h=harness();
+    h.registration.update=async()=>{
+      h.context.db.eventos.push({id:'just-created'});
+      h.storage.set('alberto_piano_v2',JSON.stringify(h.context.db));
+      h.storage.set('alberto_sync_v1',JSON.stringify({dirtyRevision:2,lastSyncedRevision:1}));
+    };
+    expect(await h.window.UpdateSafety.safeUpdate()).toBe(false);
+    expect(h.messages).toHaveLength(0);
+    expect(JSON.parse(h.storage.get('alberto_piano_v2')).eventos[0].id).toBe('just-created');
+  });
+  it('blocks activation when neither localStorage nor the rescue durably holds current memory',async()=>{
+    const h=harness();h.context.db.obras=[{id:'unsaved'}];
+    expect(await h.window.UpdateSafety.safeUpdate()).toBe(false);
+    expect(h.messages).toHaveLength(0);
+  });
+  it('controllerchange snapshots once and cannot enter a reload loop',async()=>{
+    const h=harness();
+    await h.listeners.controllerchange();await h.listeners.controllerchange();
+    expect(h.calls.filter(x=>x==='reload')).toHaveLength(1);
+    expect(h.calls.indexOf('save-local')).toBeLessThan(h.calls.indexOf('reload'));
+  });
+  it('the first worker claim does not reload a newly opened app',async()=>{
+    const h=harness({controlled:false});await h.listeners.controllerchange();
+    expect(h.calls).not.toContain('reload');
+  });
+  it('temporary network failure keeps local data and does not activate',async()=>{
+    const h=harness({dirty:2,synced:1});const before=h.storage.get('alberto_piano_v2');
+    h.context.syncPendingCloudChanges=async()=>{throw Error('offline');};
+    expect(await h.window.UpdateSafety.safeUpdate()).toBe(false);
+    expect(h.messages).toHaveLength(0);expect(h.storage.get('alberto_piano_v2')).toBe(before);
   });
 });

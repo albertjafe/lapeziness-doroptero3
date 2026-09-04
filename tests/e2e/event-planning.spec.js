@@ -46,7 +46,7 @@ test('imports Maria Canals as standby plus one linked deadline and is idempotent
     const result = EventPlanning.importCompetitions(['maria-canals-2027'], true);
     const parent = db.eventos.find(event => event.planSourceId === 'dossier-2026-2027:maria-canals-2027' && !event.esHito);
     const deadline = db.eventos.find(event => event.parentSourceId === 'dossier-2026-2027:maria-canals-2027' && event.hitoTipo === 'deadline');
-    return { result, parent, deadline, count: db.eventos.length, plans: db.competitionPlans };
+    return { result, parent, deadline, count: db.eventos.filter(e => e.planSourceId === 'dossier-2026-2027:maria-canals-2027' || e.parentSourceId === 'dossier-2026-2027:maria-canals-2027').length, plans: db.competitionPlans.filter(p=>p.id==='dossier-2026-2027:maria-canals-2027') };
   });
 
   expect(first.parent).toMatchObject({
@@ -73,11 +73,14 @@ test('imports Maria Canals as standby plus one linked deadline and is idempotent
     return {
       parents: db.eventos.filter(event => event.planSourceId === 'dossier-2026-2027:maria-canals-2027' && !event.esHito).length,
       deadlines: db.eventos.filter(event => event.parentSourceId === 'dossier-2026-2027:maria-canals-2027' && event.hitoTipo === 'deadline').length,
-      count: db.eventos.length,
-      plans: db.competitionPlans.length,
+      // Other independent competition seeds may finish between these actions.
+      count: db.eventos.filter(e => e.planSourceId === 'dossier-2026-2027:maria-canals-2027' || e.parentSourceId === 'dossier-2026-2027:maria-canals-2027').length,
+      plans: db.competitionPlans.filter(p=>p.id==='dossier-2026-2027:maria-canals-2027').length,
+      uniqueIds: new Set(db.eventos.map(e=>e.id)).size === db.eventos.length,
     };
   });
-  expect(second).toEqual({ parents: 1, deadlines: 1, count: first.count, plans: 1 });
+  expect(first.count).toBe(2);
+  expect(second).toEqual({ parents: 1, deadlines: 1, count: first.count, plans: 1, uniqueIds: true });
 });
 
 test('keeps competitions without exact dates in follow-up instead of inventing calendar dates', async ({ page }) => {
@@ -87,7 +90,7 @@ test('keeps competitions without exact dates in follow-up instead of inventing c
     showView('calendario');
     return {
       eventNames: db.eventos.map(event => event.nombre),
-      plans: db.competitionPlans.map(plan => ({ name: plan.name, start: plan.start, dateNote: plan.dateNote })),
+      plans: db.competitionPlans.filter(p=>/ciurlionis|rncm-mottram|tchaikovsky/.test(p.id)).map(plan => ({ name: plan.name, start: plan.start, dateNote: plan.dateNote })),
     };
   });
 
