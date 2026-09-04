@@ -2311,7 +2311,7 @@
   // Activation/reload belongs exclusively to UpdateSafety.
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js?v=342', { updateViaCache:'none' }).catch(() => {});
+      navigator.serviceWorker.register('./sw.js?v=347', { updateViaCache:'none' }).catch(() => {});
     });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') navigator.serviceWorker.getRegistration()

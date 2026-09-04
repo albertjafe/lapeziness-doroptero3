@@ -16,6 +16,30 @@
     try { return db; } catch(e) { return null; }
   }
 
+  function sameDocumentContent(left,right){
+    if(left===right) return true;
+    if(!left || !right) return false;
+    try {
+      const core=window.DocumentSyncCore || (typeof DocumentSyncCore!=='undefined' ? DocumentSyncCore : null);
+      if(core && typeof core.sameContent==='function') return core.sameContent(JSON.parse(left),JSON.parse(right));
+      const a=JSON.parse(left),b=JSON.parse(right);
+      if(a && typeof a==='object'){ delete a._localRevision;delete a._savedAt; }
+      if(b && typeof b==='object'){ delete b._localRevision;delete b._savedAt; }
+      return JSON.stringify(a)===JSON.stringify(b);
+    } catch(e){ return false; }
+  }
+
+  function persistCurrentIfNeeded(){
+    const current=globalDb();
+    if(!current) return false;
+    let disk='';
+    try { disk=window.localStorage?.getItem('alberto_piano_v2') || ''; } catch(e) {}
+    const memory=JSON.stringify(current);
+    if(sameDocumentContent(memory,disk)) return false;
+    if(typeof saveLocalNow==='function') saveLocalNow();
+    return true;
+  }
+
   function isQuotaError(error){
     if(!error) return false;
     const name=String(error.name||'');
@@ -98,7 +122,7 @@
 
   async function protectCloud(){
     try {
-      if(typeof saveLocalNow === 'function') saveLocalNow();
+      persistCurrentIfNeeded();
       if(window.LocalSaveResilience?.flush) await window.LocalSaveResilience.flush();
       if(typeof syncPendingCloudChanges !== 'function') return false;
       await syncPendingCloudChanges();
@@ -199,6 +223,6 @@
     setTimeout(()=>boot(attempt+1),100);
   }
 
-  window.CronoSaveResilience={isQuotaError,mergePlantsPreferLocal,protectCloud,recoverPending};
+  window.CronoSaveResilience={isQuotaError,mergePlantsPreferLocal,protectCloud,recoverPending,persistCurrentIfNeeded};
   boot(0);
 })();

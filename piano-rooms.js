@@ -83,10 +83,10 @@
   loadStyle('planningEnhancementsV4Styles','./planning-enhancements-v4.css?v=342');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=342');
   load('paseLiquidDirectTouchScript','./pase-liquid-direct-touch.js?v=342');
-  load('cronoSaveResilienceScript','./crono-save-resilience.js?v=342',function(){
+  load('cronoSaveResilienceScript','./crono-save-resilience.js?v=347',function(){
     load('taskSyncResilienceScript','./task-sync-resilience.js?v=342');
   });
-  load('updateSafetyScript','./update-safety.js?v=342');
+  load('updateSafetyScript','./update-safety.js?v=347');
   load('cronoRunningPremiumScript','./crono-running-premium.js?v=342');
   load('eventPlanningScript','./event-planning.js?v=342',function(){
     load('competitionPlanningSeedScript','./competition-planning-seed.js?v=342',function(){

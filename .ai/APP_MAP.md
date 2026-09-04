@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-04 · auditoría sobre `main` c2c7fd4 · caché runtime v344
+**Estado:** CANÓNICO · actualizado 2026-09-04 · caché runtime v347
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -68,7 +68,7 @@ Capas actuales:
 - `task-sync-bootstrap.js`: captura temprana del estado de tareas antes de reconciliar.
 - `task-sync-resilience.js`: merge **por tarea**, timestamps, tombstones y rescates locales; evita que una lista vieja resucite tareas o borre tareas nuevas.
 - `persistence-guard.js`: archivo legado **no cargado**. Las rutas activas usan `local-save-resilience.js` y `update-safety.js`; no reintroducir otro escritor.
-- `update-safety.js`: exige una copia durable, espera los guardados, sincroniza y vuelve a verificar pendientes tras los `await` antes de promover la PWA.
+- `update-safety.js`: exige una copia durable, guarda memoria solo cuando difiere semánticamente del disco, sincroniza y vuelve a verificar pendientes tras los `await` antes de promover la PWA. Así una comprobación limpia no incrementa la revisión ni fuerza otra subida completa.
 
 `app.js`: `_prepareLocalDocument` reconcilia memoria/disco antes de guardar; `_mergeStudyHistory` combina el merge de dominio con `DocumentSyncCore`. **Un único escritor de `user_data`: `syncToCloud`** lee la fila y hace update condicional por `updated_at` (CAS), con relectura y merge si hay conflicto. Los addons de tareas/cronómetro llaman al guardado común; no hacen upserts completos independientes. La descarga, cada intento CAS y la aceptación de su respuesta usan `mergeRemote(servidor, cliente)`, igual que `document_merge(OLD, NEW)` en SQL. Los cambios locales explícitos durante la petición siguen pendientes.
 
@@ -287,10 +287,10 @@ Schema 3 conserva `works`, todas las unidades/movimientos con `sourceMovement`, 
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- En la revisión de este mapa, el cache es `estudio-v344`; **no asumir ese número en el futuro: mirar `sw.js`**. `app.js` y `document-sync-core.js` usan `?v=344`; `crono-resume-layout.js` y `piano-rooms.js` conservan `?v=343` y los demás assets `?v=342`, con una única URL por asset en loaders/precache. Los archivos del Profesor no cambiaron.
+- En la revisión de este mapa, el cache es `estudio-v347`; **no asumir ese número en el futuro: mirar `sw.js`**. `update-safety.js` y `crono-save-resilience.js` usan `?v=347`; `app.js` y `document-sync-core.js` conservan `?v=344`; los demás assets mantienen su versión previa, con una única URL por asset en loaders/precache. Los archivos del Profesor no cambiaron.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
 - `update-safety.js` protege el estado antes de activar nueva versión.
-- Solo acepta `SAFE_SKIP_WAITING` con `safe: true`. Sin cronómetro activo ni cambios pendientes y con copia durable. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` redirige a la ruta segura; no borra cachés ni desregistra SW.
+- Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro activo ni cambios pendientes y con copia durable. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los 90 assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
 - `push-client.js` + migraciones `202607230001/2_*`: notificaciones push.

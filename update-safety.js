@@ -65,7 +65,33 @@
     catch(error) { return ''; }
   }
 
+  function sameDocumentContent(leftRaw, rightRaw){
+    if(leftRaw === rightRaw) return true;
+    if(!leftRaw || !rightRaw) return false;
+    try {
+      const left = JSON.parse(leftRaw);
+      const right = JSON.parse(rightRaw);
+      const core = root.DocumentSyncCore || (typeof DocumentSyncCore !== 'undefined' ? DocumentSyncCore : null);
+      if(core && typeof core.sameContent === 'function') return core.sameContent(left, right);
+      if(left && typeof left === 'object') { delete left._localRevision; delete left._savedAt; }
+      if(right && typeof right === 'object') { delete right._localRevision; delete right._savedAt; }
+      return JSON.stringify(left) === JSON.stringify(right);
+    } catch(error) { return false; }
+  }
+
+  function memoryNeedsLocalSave(){
+    let memoryRaw = '';
+    try { if(typeof db !== 'undefined' && db) memoryRaw = JSON.stringify(db); } catch(error) {}
+    if(!memoryRaw) return false;
+    let diskRaw = '';
+    try { diskRaw = root.localStorage && root.localStorage.getItem(DB_KEY) || ''; } catch(error) {}
+    return !sameDocumentContent(memoryRaw, diskRaw);
+  }
+
   function persistMemoryLocally(){
+    // A no-op save increments the document revision and marks the complete
+    // document dirty. Avoid another multi-megabyte upload during an update.
+    if(!memoryNeedsLocalSave()) return true;
     try {
       if(typeof root.saveLocalNow === 'function') {
         root.saveLocalNow();
@@ -104,10 +130,10 @@
     if (root.LocalSaveResilience?.flush) await root.LocalSaveResilience.flush();
     const raw = currentDbRaw();
     let durable = false;
-    try { durable = root.localStorage.getItem(DB_KEY) === raw; } catch (_) {}
+    try { durable = sameDocumentContent(root.localStorage.getItem(DB_KEY), raw); } catch (_) {}
     if (!durable && root.LocalSaveResilience?.getRescueSnapshot) {
       const rescue = await root.LocalSaveResilience.getRescueSnapshot();
-      durable = Boolean(rescue && JSON.stringify(rescue.data) === raw);
+      durable = Boolean(rescue && sameDocumentContent(JSON.stringify(rescue.data), raw));
     }
     if (!durable) throw new Error('No durable local snapshot');
     if(!raw) throw new Error('No se pudo obtener el estado local');
@@ -243,7 +269,7 @@
       // Network checks may have yielded while the user entered more data.
       if (root.LocalSaveResilience?.flush) await root.LocalSaveResilience.flush();
       if (syncMetaPending() || resiliencePending() || timerActive()) throw new Error('State changed during update');
-      if (root.localStorage.getItem(DB_KEY) !== currentDbRaw()) throw new Error('Unpersisted edits');
+      if (!sameDocumentContent(root.localStorage.getItem(DB_KEY), currentDbRaw())) throw new Error('Unpersisted edits');
       explicitPromotionRequested = true;
       hideBanner();
       waiting.postMessage({ type:'SAFE_SKIP_WAITING', safe:true, requestedAt:new Date().toISOString() });

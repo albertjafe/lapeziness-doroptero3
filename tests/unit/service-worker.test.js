@@ -83,13 +83,16 @@ describe('service worker push guard', () => {
     expect(getSkipWaitingCalls()).toBe(0);
   });
 
-  it('ignores legacy automatic SKIP_WAITING and only accepts the explicit safe message', () => {
+  it('ignores legacy automatic SKIP_WAITING and keeps safe promotion alive', async () => {
     const { handlers, getSkipWaitingCalls } = loadWorker();
 
     handlers.message({ data: { type: 'SKIP_WAITING' } });
     expect(getSkipWaitingCalls()).toBe(0);
 
-    handlers.message({ data: { type: 'SAFE_SKIP_WAITING', safe: true } });
+    let promotion;
+    handlers.message({ data: { type: 'SAFE_SKIP_WAITING', safe: true }, waitUntil(promise) { promotion = promise; } });
+    expect(promotion).toBeDefined();
+    await promotion;
     expect(getSkipWaitingCalls()).toBe(1);
 
     handlers.message({ data: { type: 'SAFE_SKIP_WAITING', safe: false } });

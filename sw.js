@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v346';
+const CACHE = 'estudio-v347';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
@@ -13,7 +13,7 @@ const ASSETS = [
   "./crono-resume-layout.js?v=343",
   "./crono-running-premium.css?v=342",
   "./crono-running-premium.js?v=342",
-  "./crono-save-resilience.js?v=342",
+  "./crono-save-resilience.js?v=347",
   "./data-core.js?v=342",
   "./document-sync-core.js?v=344",
   "./event-data-protection.js?v=342",
@@ -84,7 +84,7 @@ const ASSETS = [
   "./task-sync-resilience.js?v=342",
   "./timer-core.js?v=342",
   "./timer-objectives.js?v=342",
-  "./update-safety.js?v=342",
+  "./update-safety.js?v=347",
   "./work-catalog.js?v=342",
   "./work-difficulty-integration.js?v=342",
   "./work-difficulty-model.js?v=342",
@@ -136,13 +136,13 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '346');
+            target.searchParams.set('__pwa', '347');
             await client.navigate(target.href);
             navigated = true;
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'346', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'347', navigated });
         } catch (error) {}
       }
     }
