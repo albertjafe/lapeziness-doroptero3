@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v345';
+const CACHE = 'estudio-v346';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
@@ -120,20 +120,30 @@ self.addEventListener('activate', e => {
 
     await self.clients.claim();
 
-    /* iOS/PWA puede activar correctamente el worker pero no recargar la ventana
-       que inició la actualización. El mensaje SAFE_SKIP_WAITING solo se emite
-       después de snapshot + sync; por eso, y solo en ese caso, navegamos de
-       nuevo el cliente iniciador para que cargue el shell recién activado. */
-    if (marker && marker.clientId && self.clients.matchAll) {
+    /* En iOS/PWA el worker puede activarse correctamente y aun así la ventana
+       que pulsó Actualizar quedarse mostrando el shell antiguo. SAFE_SKIP_WAITING
+       solo llega aquí después del snapshot + sync, así que una promoción explícita
+       puede forzar una navegación real. Si WebKit no conserva e.source.id (o el ID
+       cambia durante activate), se refrescan como fallback todas las ventanas del
+       scope. El query __pwa fuerza una navegación nueva; el worker activo devuelve
+       siempre el index.html de esta misma caché, por lo que no mezcla versiones. */
+    if (marker && self.clients.matchAll) {
       const windowClients = await self.clients.matchAll({ type:'window', includeUncontrolled:true });
-      const client = windowClients.find(item => item.id === marker.clientId);
-      if (client) {
+      let targets = marker.clientId ? windowClients.filter(item => item.id === marker.clientId) : [];
+      if (!targets.length) targets = windowClients.filter(item => item.url && item.url.startsWith(self.registration.scope));
+      for (const client of targets) {
+        let navigated = false;
         try {
-          if (typeof client.navigate === 'function') await client.navigate(client.url);
-          else if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED' });
-        } catch (error) {
-          try { if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED' }); } catch (_) {}
-        }
+          if (typeof client.navigate === 'function') {
+            const target = new URL(client.url);
+            target.searchParams.set('__pwa', '346');
+            await client.navigate(target.href);
+            navigated = true;
+          }
+        } catch (error) {}
+        try {
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'346', navigated });
+        } catch (error) {}
       }
     }
   })());
