@@ -12,6 +12,16 @@ describe('WorkStructureCatalog', () => {
     expect(match.movements[2].name).toContain('Rondo');
   });
 
+  it('matches the Bartók Sonata and keeps its three movements explicit', () => {
+    const match = Catalog.matchWorkStructure({ composer: 'Bartók', name: 'Sonata para piano (1926), Sz. 80, BB 88' });
+    expect(match).not.toBeNull();
+    expect(match.movements.map(m => m.name)).toEqual([
+      'I. Allegro moderato',
+      'II. Sostenuto e pesante',
+      'III. Allegro molto',
+    ]);
+  });
+
   it('fills generic movement names and missing durations without touching history', () => {
     const work = {
       id: 'waldstein', composer: 'Beethoven', name: 'Waldstein Op. 53',
