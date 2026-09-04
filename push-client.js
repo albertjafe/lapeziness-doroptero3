@@ -263,3 +263,19 @@
   };
   root.enableReliableNotifications = function() { return enableFromGesture({ silent: false }); };
 })(typeof window !== 'undefined' ? window : globalThis);
+
+/* EventSyncCore must run before app.js starts cloud/local reconciliation.
+   push-client.js is the last parser-blocking script before app.js, so
+   document.write here guarantees ordering even on a very fast connection. */
+(function loadEventSyncCoreBeforeApp(){
+  'use strict';
+  if (typeof document === 'undefined' || window.EventSyncCore) return;
+  if (document.readyState === 'loading') {
+    document.write('<script src="./event-sync-core.js?v=1"><\\/script>');
+    return;
+  }
+  const script = document.createElement('script');
+  script.src = './event-sync-core.js?v=1';
+  script.async = false;
+  document.head.appendChild(script);
+})();
