@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v339';
+const CACHE = 'estudio-v340';
 const ASSETS = [
   './index.html',
   './styles.css?v=281',
@@ -25,7 +25,7 @@ const ASSETS = [
   './passage-tracker.js?v=1',
   './event-repertoire-picker.js?v=1',
   './professor-temporary-chat.js?v=1',
-  './professor-handoff-resilience.js?v=1',
+  './professor-handoff-resilience.js?v=2',
   './instant-sync-resilience.js?v=1',
   './piano-rooms.js?v=1',
   './piano-rooms-core.js?v=1',
@@ -33,7 +33,7 @@ const ASSETS = [
   './crono-save-resilience.js?v=1',
   './task-sync-bootstrap.js?v=1',
   './task-sync-resilience.js?v=1',
-  './update-safety.js?v=1',
+  './update-safety.js?v=2',
   './event-data-protection.js?v=1',
   './event-sync-core.js?v=1',
   './crono-running-premium.js?v=1',
@@ -83,11 +83,13 @@ const ASSETS = [
   './icon-512.png',
 ];
 
+/* Una versión nueva se instala en espera. Nunca se promociona sola mientras
+   haya una instancia de la PWA abierta: la promoción solo ocurre después de
+   que update-safety haya persistido y sincronizado los datos. */
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
       .then(c => c.addAll(ASSETS.map(asset => new Request(asset, { cache: 'reload' }))))
-      .then(() => self.skipWaiting())
   );
 });
 
@@ -100,7 +102,12 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('message', e => {
-  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+  /* Ignoramos deliberadamente el mensaje legado SKIP_WAITING: versiones
+     antiguas del cliente lo enviaban automáticamente y podían recargar justo
+     después de introducir datos. */
+  if (e.data && e.data.type === 'SAFE_SKIP_WAITING' && e.data.safe === true) {
+    self.skipWaiting();
+  }
 });
 
 function stopwatchMilestoneMinutes(payload) {
