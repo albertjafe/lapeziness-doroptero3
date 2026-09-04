@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v336';
+const CACHE = 'estudio-v337';
 const ASSETS = [
   './index.html',
   './styles.css?v=281',
@@ -32,6 +32,7 @@ const ASSETS = [
   './task-sync-bootstrap.js?v=1',
   './task-sync-resilience.js?v=1',
   './update-safety.js?v=1',
+  './event-data-protection.js?v=1',
   './crono-running-premium.js?v=1',
   './event-planning.js?v=1',
   './competition-planning-seed.js?v=1',
