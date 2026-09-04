@@ -15,6 +15,7 @@ function harness({ dirty = 1, synced = 1, controlled = true } = {}) {
   const calls = [];
   const messages = [];
   const listeners = {};
+  const schedule = (fn, ms) => { const timer = setTimeout(fn, ms); if (ms >= 10000 && timer && typeof timer.unref === 'function') timer.unref(); return timer; };
   const waiting = { postMessage(message) { calls.push('activate'); messages.push(message); } };
   const registration = {
     waiting,
@@ -46,7 +47,8 @@ function harness({ dirty = 1, synced = 1, controlled = true } = {}) {
     },
     CronoSaveResilience: { protectCloud() { calls.push('verify-cloud'); return Promise.resolve(true); } },
     showToast(message) { calls.push(`toast:${message}`); },
-    setTimeout,
+    setTimeout:schedule,
+    clearTimeout,
   };
   const context = {
     window,
@@ -56,7 +58,7 @@ function harness({ dirty = 1, synced = 1, controlled = true } = {}) {
     saveLocalNow: window.saveLocalNow,
     syncPendingCloudChanges: window.syncPendingCloudChanges,
     enqueueCloudSync: window.enqueueCloudSync,
-    setTimeout,
+    setTimeout:schedule,
     clearTimeout,
     Promise,
     Date,
@@ -68,7 +70,7 @@ function harness({ dirty = 1, synced = 1, controlled = true } = {}) {
   return { window, calls, messages, storage, context, registration, listeners };
 }
 
-describe('UpdateSafety v2', () => {
+describe('UpdateSafety v3', () => {
   it('persists, syncs and verifies before activating the waiting worker', async () => {
     const { window, calls, messages } = harness({ dirty: 4, synced: 4 });
     const result = await window.UpdateSafety.safeUpdate();
@@ -114,9 +116,17 @@ describe('UpdateSafety v2', () => {
     expect(h.calls.filter(x=>x==='reload')).toHaveLength(1);
     expect(h.calls.indexOf('save-local')).toBeLessThan(h.calls.indexOf('reload'));
   });
-  it('the first worker claim does not reload a newly opened app',async()=>{
+  it('the first passive worker claim does not reload a newly opened app',async()=>{
     const h=harness({controlled:false});await h.listeners.controllerchange();
     expect(h.calls).not.toContain('reload');
+  });
+  it('an explicit update reloads even if iOS reported no initial controller',async()=>{
+    const h=harness({controlled:false});
+    expect(await h.window.UpdateSafety.safeUpdate()).toBe(true);
+    expect(h.messages).toHaveLength(1);
+    await h.listeners.controllerchange();
+    expect(h.calls.filter(x=>x==='reload')).toHaveLength(1);
+    expect(h.calls.indexOf('save-local')).toBeLessThan(h.calls.indexOf('reload'));
   });
   it('temporary network failure keeps local data and does not activate',async()=>{
     const h=harness({dirty:2,synced:1});const before=h.storage.get('alberto_piano_v2');
