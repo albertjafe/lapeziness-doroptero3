@@ -31,7 +31,7 @@ function dayRange() {
 }
 
 describe('daily study minutes', () => {
-  it('deduplicates repeated timer plants and does not add the session summary again', () => {
+  it('deduplicates repeated timer plants and ignores their crono session mirrors', () => {
     const plants = [
       { obraId: 'general', mins: 26, startedAt: '2026-09-05T08:42:32.164Z', endedAt: '2026-09-05T09:11:40.344Z' },
       { obraId: 'general', mins: 26, startedAt: '2026-09-05T08:42:32.164Z', endedAt: '2026-09-05T09:11:40.344Z' },
@@ -48,9 +48,9 @@ describe('daily study minutes', () => {
       sesiones: [{
         date: '2026-09-05T09:11:41.445Z',
         items: [
-          { obraId: 'general', _planId: 'general-1', estudiado: true, minutosReales: 26 },
-          { obraId: 'beethoven', movId: 'I', _planId: 'beth-I-1', estudiado: true, minutosReales: 40 },
-          { obraId: 'beethoven', movId: 'II', _planId: 'beth-II-1', estudiado: true, minutosReales: 25 },
+          { obraId: 'general', _planId: 'crono_general_1', estudiado: true, minutosReales: 26 },
+          { obraId: 'beethoven', movId: 'I', _planId: 'crono_beth_I_1', estudiado: true, minutosReales: 40 },
+          { obraId: 'beethoven', movId: 'II', _planId: 'crono_beth_II_1', estudiado: true, minutosReales: 25 },
         ],
       }],
     };
@@ -59,7 +59,7 @@ describe('daily study minutes', () => {
     expect(api.minutesByDay(start, end)['2026-09-05']).toBe(184);
   });
 
-  it('reproduces the Sep 5 bug: repeated snapshots with the same plan id count once', () => {
+  it('reproduces Sep 5 exactly: accumulated crono snapshots do not inflate 216 real minutes', () => {
     const db = {
       sessionPlants: [
         { obraId: 'general', mins: 26, startedAt: '2026-09-05T08:42:32.164Z', endedAt: '2026-09-05T09:11:40.344Z', runId: 'r1' },
@@ -75,23 +75,23 @@ describe('daily study minutes', () => {
       sesiones: [{
         date: '2026-09-05T09:11:41.445Z',
         items: [
-          { obraId: 'general', _planId: 'general-1', estudiado: true, minutosReales: 26 },
-          { obraId: 'general', _planId: 'general-1', estudiado: true, minutosReales: 52 },
-          { obraId: 'beethoven', movId: 'I', _planId: 'beth-I-1', estudiado: true, minutosReales: 40 },
-          { obraId: 'beethoven', movId: 'I', _planId: 'beth-I-1', estudiado: true, minutosReales: 80 },
-          { obraId: 'beethoven', movId: 'II', _planId: 'beth-II-1', estudiado: true, minutosReales: 25 },
-          { obraId: 'brahms', movId: 'I', _planId: 'brahms-I-1', estudiado: true, minutosReales: 35 },
-          { obraId: 'brahms', movId: 'IV', _planId: 'brahms-IV-1', estudiado: true, minutosReales: 11 },
+          { obraId: 'general', _planId: 'crono_general_1', estudiado: true, minutosReales: 26 },
+          { obraId: 'general', _planId: 'crono_general_1', estudiado: true, minutosReales: 52, startedAt: '2026-09-05T08:42:32.164Z', endedAt: '2026-09-05T09:11:40.344Z' },
+          { obraId: 'beethoven', movId: 'I', _planId: 'crono_beth_I_1', estudiado: true, minutosReales: 40 },
+          { obraId: 'beethoven', movId: 'I', _planId: 'crono_beth_I_1', estudiado: true, minutosReales: 80, startedAt: '2026-09-05T09:37:13.408Z', endedAt: '2026-09-05T10:17:16.199Z' },
+          { obraId: 'beethoven', movId: 'II', _planId: 'crono_beth_II_1', estudiado: true, minutosReales: 25 },
+          { obraId: 'brahms', movId: 'I', _planId: 'crono_brahms_I_1', estudiado: true, minutosReales: 35 },
+          { obraId: 'brahms', movId: 'IV', _planId: 'crono_brahms_IV_1', estudiado: true, minutosReales: 11 },
         ],
       }],
     };
     const api = loadFix(db);
     const { start, end } = dayRange();
-    expect(api.version).toBe(2);
+    expect(api.version).toBe(3);
     expect(api.minutesByDay(start, end)['2026-09-05']).toBe(216);
   });
 
-  it('preserves legitimate manual extra time from distinct plan ids', () => {
+  it('adds a genuine manual block that does not overlap timed study', () => {
     const db = {
       sessionPlants: [
         { obraId: 'beethoven', movId: 'II', mins: 25, startedAt: '2026-09-05T10:33:37.636Z', endedAt: '2026-09-05T10:59:21.714Z' },
@@ -100,13 +100,47 @@ describe('daily study minutes', () => {
       sesiones: [{
         date: '2026-09-05T10:59:30.000Z',
         items: [
-          { obraId: 'beethoven', movId: 'II', _planId: 'manual-a', estudiado: true, minutosReales: 25 },
-          { obraId: 'beethoven', movId: 'II', _planId: 'manual-b', estudiado: true, minutosReales: 20 },
+          { obraId: 'beethoven', movId: 'II', _planId: 'extra_manual_1', estudiado: true, minutosReales: 20, startedAt: '2026-09-05T11:20:00.000Z', endedAt: '2026-09-05T11:40:00.000Z' },
         ],
       }],
     };
     const api = loadFix(db);
     const { start, end } = dayRange();
     expect(api.minutesByDay(start, end)['2026-09-05']).toBe(45);
+  });
+
+  it('does not add an old extra summary when it overlaps the same timed work', () => {
+    const db = {
+      sessionPlants: [
+        { obraId: 'rach', mins: 47, startedAt: '2026-09-05T11:20:55.284Z', endedAt: '2026-09-05T12:23:12.206Z' },
+        { obraId: 'rach', mins: 16, startedAt: '2026-09-05T12:33:30.696Z', endedAt: '2026-09-05T12:50:22.918Z' },
+      ],
+      forestPlants: [],
+      sesiones: [{
+        date: '2026-09-05T12:50:30.000Z',
+        items: [
+          { obraId: 'rach', _planId: 'extra_rach_1', estudiado: true, minutosReales: 78, startedAt: '2026-09-05T11:20:33.766Z', endedAt: '2026-09-05T12:50:22.918Z' },
+        ],
+      }],
+    };
+    const api = loadFix(db);
+    const { start, end } = dayRange();
+    expect(api.minutesByDay(start, end)['2026-09-05']).toBe(63);
+  });
+
+  it('uses session history as fallback when timed plants do not exist', () => {
+    const db = {
+      sessionPlants: [],
+      forestPlants: [],
+      sesiones: [{
+        date: '2026-09-05T12:00:00.000Z',
+        items: [
+          { obraId: 'legacy', _planId: 'crono_legacy_1', estudiado: true, minutosReales: 30 },
+        ],
+      }],
+    };
+    const api = loadFix(db);
+    const { start, end } = dayRange();
+    expect(api.minutesByDay(start, end)['2026-09-05']).toBe(30);
   });
 });
