@@ -98,7 +98,32 @@ function harness({ dirty = 1, synced = 1, controlled = true, syncCompletes = tru
   return { window, calls, messages, storage, context, registration, listeners };
 }
 
-describe('UpdateSafety v3', () => {
+describe('UpdateSafety v4', () => {
+  it('checking for an update never saves, syncs, or promotes a clean document', async () => {
+    const h = harness();
+    const result = await h.window.UpdateSafety.checkForUpdate();
+    expect(result.waiting).toBe(h.registration.waiting);
+    expect(h.calls).toEqual(['check-update']);
+  });
+  it('waits for installation to finish before declaring a check complete', async () => {
+    const h = harness();
+    let changed;
+    const worker = { state: 'installing', addEventListener: (_, fn) => { changed = fn; } };
+    h.registration.waiting = null;
+    h.registration.installing = worker;
+    const checking = h.window.UpdateSafety.checkForUpdate();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    worker.state = 'installed';
+    h.registration.waiting = worker;
+    changed();
+    expect((await checking).waiting).toBe(worker);
+  });
+  it('does not treat a failed install as no update pending', async () => {
+    const h = harness();
+    h.registration.waiting = null;
+    h.registration.installing = { state: 'redundant', addEventListener() {} };
+    await expect(h.window.UpdateSafety.checkForUpdate()).rejects.toThrow('No se pudo instalar');
+  });
   it('does not create a revision or cloud write for an already durable clean document', async () => {
     const { window, calls, messages } = harness({ dirty: 4, synced: 4 });
     const result = await window.UpdateSafety.safeUpdate();

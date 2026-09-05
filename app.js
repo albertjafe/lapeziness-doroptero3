@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-08-22-objective-tracker-urgent-gate-v147';
+const APP_VERSION = '2026-09-05-pwa-v348';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -26738,31 +26738,22 @@ async function checkForAppUpdate(manual) {
   updateAppVersionInfo('Buscando actualización...');
 
   try {
-    if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (reg) {
-        _swReg = reg;
-        await reg.update().catch(() => {});
-        if (reg.waiting) {
-          _swShowBanner();
-          updateAppVersionInfo('Nueva versión lista. Pulsa Actualizar.');
-          if (manual) showToast('Nueva versión disponible');
-          return;
-        }
-      }
-    }
-
-    const res = await fetch('./app.js?update=' + Date.now(), { cache: 'no-store' });
-    const txt = await res.text();
-    const markerA = "APP_VERSION = '" + APP_VERSION + "'";
-    const markerB = 'APP_VERSION = "' + APP_VERSION + '"';
-    if (txt && !txt.includes(markerA) && !txt.includes(markerB)) {
-      updateAppVersionInfo('Hay una versión distinta. Recargando...');
-      if (manual) showToast('Nueva versión encontrada · recargando');
-      setTimeout(() => { swHardRefresh(); }, 650);
+    if (!window.UpdateSafety?.checkForUpdate) {
+      updateAppVersionInfo('Preparando la comprobación. Vuelve a intentarlo.');
       return;
     }
-
+    // The worker registration is the version authority. A cache error page
+    // from app.js?update=... is not evidence of a newer application.
+    const { registration, waiting } = await window.UpdateSafety.checkForUpdate();
+    _swReg = registration;
+    if (waiting) {
+      _swShowBanner();
+      updateAppVersionInfo('Nueva versión lista. Pulsa Actualizar.');
+      if (manual) showToast('Nueva versión disponible');
+      return;
+    }
+    const banner = document.getElementById('swUpdateBanner');
+    if (banner) banner.style.display = 'none';
     updateAppVersionInfo('Versión local: ' + APP_VERSION + ' · al día');
     if (manual) showToast('No hay actualización pendiente');
   } catch (err) {

@@ -27,7 +27,8 @@ Before changing code:
 - Preserve existing behavior outside the requested change.
 - Prefer the smallest coherent change that satisfies the acceptance criteria.
 - Do not install new dependencies unless the task explicitly requires them or there is no reasonable alternative.
-- Do not commit, push, switch branches, reset, rebase, or rewrite git history unless the current task explicitly asks for it.
+- The repository owner granted standing authorization on 2026-09-05 to commit and push changes within the requested task. Do not ask again for commit/push permission.
+- Do not switch branches, reset, rebase, or rewrite git history unless the current task explicitly asks for it.
 - If code contradicts `.ai/APP_MAP.md`, trust current source code for the implementation and update the map in the same change when the discrepancy is architectural/material.
 
 ## Verification

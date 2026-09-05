@@ -32,7 +32,7 @@ describe('network recovery update page',()=>{
     expect(h.messages).toHaveLength(1);
     expect(h.messages[0]).toMatchObject({type:'SAFE_SKIP_WAITING',safe:true,recoveryPage:true});
     expect(h.navigations).toHaveLength(1);
-    expect(h.navigations[0]).toContain('updated=347');
+    expect(h.navigations[0]).toContain('updated=348');
   });
 
   it('does not promote a worker when no valid local document exists',async()=>{

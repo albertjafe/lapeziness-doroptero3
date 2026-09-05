@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-04 · caché runtime v347
+**Estado:** CANÓNICO · actualizado 2026-09-05 · caché runtime v348
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -68,7 +68,7 @@ Capas actuales:
 - `task-sync-bootstrap.js`: captura temprana del estado de tareas antes de reconciliar.
 - `task-sync-resilience.js`: merge **por tarea**, timestamps, tombstones y rescates locales; evita que una lista vieja resucite tareas o borre tareas nuevas.
 - `persistence-guard.js`: archivo legado **no cargado**. Las rutas activas usan `local-save-resilience.js` y `update-safety.js`; no reintroducir otro escritor.
-- `update-safety.js`: exige una copia durable, guarda memoria solo cuando difiere semánticamente del disco, sincroniza y vuelve a verificar pendientes tras los `await` antes de promover la PWA. Así una comprobación limpia no incrementa la revisión ni fuerza otra subida completa.
+- `update-safety.js`: exige una copia durable, guarda memoria solo cuando difiere semánticamente del disco, sincroniza y vuelve a verificar pendientes tras los `await` antes de promover la PWA. Así una comprobación limpia no incrementa la revisión ni fuerza otra subida completa. `checkForUpdate()` solo consulta el registro del SW y espera a la instalación; no guarda, sincroniza ni activa. Una descarga fallida/agotada se informa como error, no como ausencia de actualización.
 
 `app.js`: `_prepareLocalDocument` reconcilia memoria/disco antes de guardar; `_mergeStudyHistory` combina el merge de dominio con `DocumentSyncCore`. **Un único escritor de `user_data`: `syncToCloud`** lee la fila y hace update condicional por `updated_at` (CAS), con relectura y merge si hay conflicto. Los addons de tareas/cronómetro llaman al guardado común; no hacen upserts completos independientes. La descarga, cada intento CAS y la aceptación de su respuesta usan `mergeRemote(servidor, cliente)`, igual que `document_merge(OLD, NEW)` en SQL. Los cambios locales explícitos durante la petición siguen pendientes.
 
@@ -287,10 +287,10 @@ Schema 3 conserva `works`, todas las unidades/movimientos con `sourceMovement`, 
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- En la revisión de este mapa, el cache es `estudio-v347`; **no asumir ese número en el futuro: mirar `sw.js`**. `update-safety.js` y `crono-save-resilience.js` usan `?v=347`; `app.js` y `document-sync-core.js` conservan `?v=344`; los demás assets mantienen su versión previa, con una única URL por asset en loaders/precache. Los archivos del Profesor no cambiaron.
+- En la revisión de este mapa, el cache es `estudio-v348`; **no asumir ese número en el futuro: mirar `sw.js`**. `app.js`, `piano-rooms.js` y `update-safety.js` usan `?v=348`; `crono-save-resilience.js` conserva `?v=347` y `document-sync-core.js`, `?v=344`; los demás assets mantienen su versión previa, con una única URL por asset en loaders/precache. Los archivos del Profesor no cambiaron.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado antes de activar nueva versión.
-- Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro activo ni cambios pendientes y con copia durable. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
+- `update-safety.js` protege el estado antes de activar nueva versión. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v348 en Ajustes.
+- Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro activo ni cambios pendientes y con copia durable. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los 90 assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
 - `push-client.js` + migraciones `202607230001/2_*`: notificaciones push.
@@ -349,7 +349,7 @@ Ejecutar checks dirigidos durante implementación; al final, la batería más am
 
 Tests representativos relevantes actualmente incluyen sincronización de datos/tareas, eventos, Profesor, historial, readiness, UI de concursos y gestos táctiles. Buscar por nombre de feature dentro de `tests/` antes de crear un test duplicado.
 
-Auditoría 2026-09-04: `document-compatibility`, `document-postgres` (PGlite), `sync-protocol-audit`, `service-worker-audit`, `professor-audit`, `update-safety-v2`; E2E `professor-persistence-audit` y `pwa-offline-audit`. Métrica reproducible: `node scripts/measure-professor.mjs 75`. Informe y límites: `docs/AUDITORIA_PROFESOR_PERSISTENCIA_2026-09-04.md`.
+Auditoría 2026-09-04: `document-compatibility`, `document-postgres` (PGlite), `sync-protocol-audit`, `service-worker-audit`, `professor-audit`, `update-safety-v2`; E2E `professor-persistence-audit` y `pwa-offline-audit`. `pwa-update-lifecycle` prueba A→B con SW, precache y navegación reales (sin red de nube), conserva la sesión y comprueba reapertura; detecta la espera circular que los mocks VM no modelan. Métrica reproducible: `node scripts/measure-professor.mjs 75`. Informe y límites: `docs/AUDITORIA_PROFESOR_PERSISTENCIA_2026-09-04.md`.
 
 ---
 

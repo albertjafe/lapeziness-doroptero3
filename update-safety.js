@@ -229,16 +229,24 @@
     const worker = registration.installing;
     if(!worker) return null;
     if(worker.state === 'installed') return registration.waiting || worker;
-    try {
-      await withTimeout(new Promise(resolve => {
+    await withTimeout(new Promise(resolve => {
         const check = () => {
           if(worker.state === 'installed' || worker.state === 'redundant') resolve();
         };
         worker.addEventListener('statechange', check);
         check();
       }), 9000, 'La actualización no terminó de descargarse');
-    } catch(error) {}
+    if(worker.state === 'redundant') throw new Error('No se pudo instalar la actualización');
     return registration.waiting || (worker.state === 'installed' ? worker : null);
+  }
+
+  async function checkForUpdate(){
+    if(!root.navigator?.serviceWorker) throw new Error('Service worker no disponible');
+    const registration = await root.navigator.serviceWorker.getRegistration();
+    if(!registration) throw new Error('No hay actualización registrada');
+    await withTimeout(registration.update(), 9000, 'No se pudo comprobar la nueva versión');
+    const waiting = await waitingWorker(registration);
+    return { registration, waiting };
   }
 
   async function safeUpdate(){
@@ -256,11 +264,7 @@
       await syncEverything();
       if(button) button.textContent = 'Datos seguros · actualizando…';
 
-      if(!root.navigator || !root.navigator.serviceWorker) throw new Error('Service worker no disponible');
-      const registration = await root.navigator.serviceWorker.getRegistration();
-      if(!registration) throw new Error('No hay actualización registrada');
-      await withTimeout(registration.update(), 9000, 'No se pudo comprobar la nueva versión');
-      const waiting = await waitingWorker(registration);
+      const { waiting } = await checkForUpdate();
       if(!waiting){
         hideBanner();
         toast('Datos seguros. No queda una versión en espera; al reabrir se comprobará de nuevo.');
@@ -316,8 +320,9 @@
       }
     });
     root.UpdateSafety = {
-      version:3,
+      version:4,
       safeUpdate,
+      checkForUpdate,
       snapshotBeforeUpdate,
       syncEverything,
       syncMetaPending,
