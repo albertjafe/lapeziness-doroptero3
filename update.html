@@ -153,7 +153,7 @@
           const waiting=await waitingWorker(registration);
           if(!waiting){
             setStatus('versión actual comprobada · reabriendo…');
-            location.replace('./?updated=349&t='+Date.now());
+            location.replace('./?updated=354&t='+Date.now());
             return true;
           }
           if(localStorage.getItem(DB_KEY)!==raw) throw new Error('Los datos cambiaron antes de activar la versión');
@@ -163,7 +163,7 @@
           waiting.postMessage({type:'SAFE_SKIP_WAITING',safe:true,recoveryPage:true,requestedAt:new Date().toISOString()});
           if(!await changed) throw new Error('iOS no terminó de activar la versión');
           setStatus('actualizada · reabriendo…');
-          location.replace('./?updated=349&t='+Date.now());
+          location.replace('./?updated=354&t='+Date.now());
           return true;
         } catch(error) {
           console.warn('[update-page]',error);

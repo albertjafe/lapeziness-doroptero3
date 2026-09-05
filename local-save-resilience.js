@@ -176,6 +176,13 @@
       if(JSON.stringify(live) === JSON.stringify(recovered)) return false;
       if(window.DocumentSyncCore) window.DocumentSyncCore.assign(live,recovered);
       else replaceObject(live,recovered);
+      // Quota may have preserved an old running timer while its completed block
+      // was rescued here. Reconcile only the exact run, never a different one.
+      try {
+        if(typeof crono !== 'undefined' && crono.runId && (live.sessionPlants || []).some(p=>p && (p.runId===crono.runId || p.id==='run_'+crono.runId))) {
+          cronoStopTick();cronoReset('completed');cronoRender();
+        }
+      } catch(error) { console.warn('[sync] timer recovery',error); }
       if(typeof saveLocalNow === 'function') saveLocalNow();
       try { localStorage.setItem(DB_KEY,JSON.stringify(live)); } catch(e) {}
       show('✓ copia local recuperada · sincronizando');

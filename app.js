@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-05-professor-v349';
+const APP_VERSION = '2026-09-05-timer-update-v354';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -2929,7 +2929,15 @@ function saveDraft() {
     dests: JSON.parse(JSON.stringify(sessionDestello || {})),
     aggregate: JSON.parse(JSON.stringify(sessionAggregate || {})),
   };
-  localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+    return true;
+  } catch(error) {
+    // This UI draft is secondary to the permanent study block. In particular,
+    // quota failure must not abort cronoReset or the Hecho/auto-save workflow.
+    console.warn('[session-draft] no se pudo guardar el borrador local', error);
+    return false;
+  }
 }
 
 // Reconstruye currentPlan desde db.sesiones del día de hoy, en formato de
@@ -20028,6 +20036,12 @@ function cronoLoadState() {
     const raw = localStorage.getItem(CRONO_STORAGE_KEY);
     if (!raw) return false;
     const s = JSON.parse(raw);
+    // A previous failed close may have left an active timer snapshot even
+    // though its canonical block was saved. Never resume/count that run twice.
+    if (s.runId && (db.sessionPlants || []).some(p => p && (p.runId === s.runId || p.id === 'run_' + s.runId))) {
+      try { localStorage.removeItem(CRONO_STORAGE_KEY); } catch (_) {}
+      return false;
+    }
     const restoringActiveRun = (s.state === 'running' || s.state === 'paused') && !!s.obraId && !!s.startTs;
     // "Hasta una hora" ya no se ofrece. Solo se conserva para terminar una
     // sesión antigua que estuviera activa cuando se actualizó la aplicación.

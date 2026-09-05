@@ -5,10 +5,12 @@ import fs from 'node:fs';
 // Real browser lifecycle: VM mocks cannot reproduce activate -> navigate ->
 // fetch dependencies. All documents are synthetic, with no cloud connection.
 test.use({ serviceWorkers: 'allow' });
-test('explicit promotion finishes activation and serves the new shell without a reload loop', async ({ page }) => {
+for(const legacyUrl of [false,true]) test(`explicit promotion preserves data without a reload loop (legacy URL=${legacyUrl})`, async ({ page }) => {
   test.setTimeout(45000);
   const sw = fs.readFileSync('sw.js', 'utf8');
   const safety = fs.readFileSync('update-safety.js', 'utf8');
+  const registrationCode = fs.readFileSync('index.html','utf8').split('\n').find(line=>line.includes('navigator.serviceWorker.getRegistration().then(reg'));
+  expect(registrationCode).toBeTruthy();
   let version = '900';
   const server = http.createServer((req, res) => {
     const pathname = new URL(req.url, 'http://localhost').pathname;
@@ -27,9 +29,10 @@ test('explicit promotion finishes activation and serves the new shell without a 
           var db = JSON.parse(localStorage.getItem('alberto_piano_v2') || '{"sesiones":[{"id":"recent","mins":40}]}');
           localStorage.setItem('alberto_piano_v2', JSON.stringify(db));
           window.swDoUpdate = function(){};
+          ${legacyUrl ? `localStorage.setItem('alberto_sync_v1',JSON.stringify({dirtyRevision:5,lastSyncedRevision:4}));window.syncPendingCloudChanges=async()=>{throw Error('offline fixture');};` : ''}
           window.showToast = function(message){ console.log(message); };
         </script><script src="/update-safety.js?v=348"></script>
-        <script>navigator.serviceWorker.register('/sw.js', {updateViaCache:'none'});</script>`);
+        <script>${legacyUrl && version==='900' ? `navigator.serviceWorker.register('/sw.js?v=900',{updateViaCache:'none'});` : registrationCode}</script>`);
     } else {
       res.setHeader('Content-Type', 'text/javascript');
       res.end('/* synthetic precache asset */');
@@ -50,7 +53,12 @@ test('explicit promotion finishes activation and serves the new shell without a 
     expect(await page.evaluate(() => localStorage.getItem('alberto_piano_v2'))).toBe(before);
     await page.reload();
     await expect(page.locator('#version')).toHaveText('901');
+    await page.evaluate(async()=>{const reg=await navigator.serviceWorker.getRegistration();await reg.update();});
     expect(await page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting)).toBe(false);
+    if(legacyUrl){
+      expect(await page.evaluate(()=>navigator.serviceWorker.controller.scriptURL)).toContain('sw.js?v=900');
+      expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alberto_sync_v1')))).toEqual({dirtyRevision:5,lastSyncedRevision:4});
+    }
   } finally {
     server.closeAllConnections();
     await new Promise(resolve => server.close(resolve));

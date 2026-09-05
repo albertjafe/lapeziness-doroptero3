@@ -1,5 +1,5 @@
-/* Actualizaciones de PWA transaccionales: primero persistir + sincronizar,
-   después (y solo después) permitir que el service worker cambie de versión. */
+/* Actualizaciones de PWA: primero una copia local durable y verificable.
+   La sincronización remota pendiente se conserva durante el cambio de versión. */
 (function updateSafety(root){
   'use strict';
 
@@ -24,6 +24,7 @@
   }
   function timerActive(){
     try { if(typeof crono !== 'undefined' && ['running','paused'].includes(crono.state)) return true; } catch (_) {}
+    if(root.document?.getElementById('modalHechoDatos')?.classList?.contains('visible')) return true;
     return !!(root.document && root.document.body && root.document.body.classList.contains('crono-running'));
   }
   function toast(message){
@@ -125,16 +126,21 @@
     });
   }
 
-  async function snapshotBeforeUpdate(){
-    persistMemoryLocally();
-    if (root.LocalSaveResilience?.flush) await root.LocalSaveResilience.flush();
-    const raw = currentDbRaw();
+  async function hasDurableCopy(raw){
     let durable = false;
     try { durable = sameDocumentContent(root.localStorage.getItem(DB_KEY), raw); } catch (_) {}
     if (!durable && root.LocalSaveResilience?.getRescueSnapshot) {
       const rescue = await root.LocalSaveResilience.getRescueSnapshot();
       durable = Boolean(rescue && sameDocumentContent(JSON.stringify(rescue.data), raw));
     }
+    return durable;
+  }
+
+  async function snapshotBeforeUpdate(){
+    persistMemoryLocally();
+    if (root.LocalSaveResilience?.flush) await root.LocalSaveResilience.flush();
+    const raw = currentDbRaw();
+    const durable = await hasDurableCopy(raw);
     if (!durable) throw new Error('No durable local snapshot');
     if(!raw) throw new Error('No se pudo obtener el estado local');
     const stamp = new Date().toISOString();
@@ -252,7 +258,7 @@
   async function safeUpdate(){
     if(updating) return false;
     if(timerActive()){
-      toast('Hay un cronómetro activo. Termínalo antes de actualizar.');
+      toast('Termina el cronómetro y guarda la píldora Hecho antes de actualizar.');
       return false;
     }
     updating = true;
@@ -261,8 +267,13 @@
     const button = buttonState('Protegiendo datos…', true);
     try {
       await snapshotBeforeUpdate();
-      await syncEverything();
-      if(button) button.textContent = 'Datos seguros · actualizando…';
+      // Updating code does not remove local data. A remote outage must not
+      // prevent installing the fix when the full current document is durable.
+      // Keep dirty metadata intact so synchronization resumes after reopening.
+      try { await syncEverything(); }
+      catch(error) { console.warn('[update-safety] copia local protegida; nube pendiente',error); }
+      const protectedSnapshot = await snapshotBeforeUpdate();
+      if(button) button.textContent = 'Copia local segura · actualizando…';
 
       const { waiting } = await checkForUpdate();
       if(!waiting){
@@ -272,8 +283,10 @@
       }
       // Network checks may have yielded while the user entered more data.
       if (root.LocalSaveResilience?.flush) await root.LocalSaveResilience.flush();
-      if (syncMetaPending() || resiliencePending() || timerActive()) throw new Error('State changed during update');
-      if (!sameDocumentContent(root.localStorage.getItem(DB_KEY), currentDbRaw())) throw new Error('Unpersisted edits');
+      if (timerActive() || !sameDocumentContent(protectedSnapshot.raw,currentDbRaw())) throw new Error('State changed during update');
+      if (!await hasDurableCopy(currentDbRaw())) throw new Error('Unpersisted edits');
+      // The durable-copy lookup can yield to new input too.
+      if (timerActive() || !sameDocumentContent(protectedSnapshot.raw,currentDbRaw())) throw new Error('State changed during update');
       explicitPromotionRequested = true;
       hideBanner();
       waiting.postMessage({ type:'SAFE_SKIP_WAITING', safe:true, requestedAt:new Date().toISOString() });
@@ -320,7 +333,7 @@
       }
     });
     root.UpdateSafety = {
-      version:4,
+      version:5,
       safeUpdate,
       checkForUpdate,
       snapshotBeforeUpdate,

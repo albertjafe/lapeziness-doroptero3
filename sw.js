@@ -1,16 +1,16 @@
-const CACHE = 'estudio-v353';
+const CACHE = 'estudio-v354';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
   "./activity-dashboard.js?v=342",
   "./activity-self-tracker.js?v=342",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=349",
+  "./app.js?v=354",
   "./competition-planning-seed.js?v=342",
   "./crono-idle-hierarchy.css?v=342",
   "./crono-readiness-layout.css?v=342",
   "./crono-resume-layout.css?v=342",
-  "./crono-resume-layout.js?v=343",
+  "./crono-resume-layout.js?v=354",
   "./crono-running-premium.css?v=342",
   "./crono-running-premium.js?v=342",
   "./crono-save-resilience.js?v=347",
@@ -35,7 +35,7 @@ const ASSETS = [
   "./icon.svg",
   "./index.html",
   "./instant-sync-resilience.js?v=342",
-  "./local-save-resilience.js?v=342",
+  "./local-save-resilience.js?v=354",
   "./manifest.json",
   "./metronome.js?v=342",
   "./obra-premium-polish.js?v=342",
@@ -53,7 +53,7 @@ const ASSETS = [
   "./passage-tracker-resilience.js?v=353",
   "./piano-rooms-core.js?v=342",
   "./piano-rooms.css?v=342",
-  "./piano-rooms.js?v=349",
+  "./piano-rooms.js?v=354",
   "./planning-enhancements-v3.css?v=342",
   "./planning-enhancements-v3.js?v=342",
   "./planning-enhancements-v4-speech-fix.js?v=342",
@@ -86,7 +86,7 @@ const ASSETS = [
   "./task-sync-resilience.js?v=342",
   "./timer-core.js?v=342",
   "./timer-objectives.js?v=342",
-  "./update-safety.js?v=348",
+  "./update-safety.js?v=354",
   "./work-catalog.js?v=342",
   "./work-difficulty-integration.js?v=342",
   "./work-difficulty-model.js?v=342",
@@ -138,7 +138,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '353');
+            target.searchParams.set('__pwa', '354');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -146,7 +146,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'353', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'354', navigated });
         } catch (error) {}
       }
     }

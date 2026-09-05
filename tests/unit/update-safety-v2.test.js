@@ -98,7 +98,7 @@ function harness({ dirty = 1, synced = 1, controlled = true, syncCompletes = tru
   return { window, calls, messages, storage, context, registration, listeners };
 }
 
-describe('UpdateSafety v4', () => {
+describe('UpdateSafety v5', () => {
   it('checking for an update never saves, syncs, or promotes a clean document', async () => {
     const h = harness();
     const result = await h.window.UpdateSafety.checkForUpdate();
@@ -138,14 +138,14 @@ describe('UpdateSafety v4', () => {
     expect(calls.indexOf('activate')).toBeGreaterThan(calls.indexOf('check-update'));
   });
 
-  it('refuses activation when a local revision is still pending', async () => {
+  it('allows a durably saved pending revision without marking it synchronized', async () => {
     const { window, calls, messages } = harness({ dirty: 5, synced: 4, syncCompletes:false });
     const result = await window.UpdateSafety.safeUpdate();
 
-    expect(result).toBe(false);
-    expect(messages).toHaveLength(0);
-    expect(calls).not.toContain('check-update');
-    expect(calls.some(call => call.startsWith('toast:No se actualiza'))).toBe(true);
+    expect(result).toBe(true);
+    expect(messages).toHaveLength(1);
+    expect(calls).toContain('check-update');
+    expect(window.UpdateSafety.syncMetaPending()).toBe(true);
   });
   it('persists and uploads an actual in-memory edit before promotion',async()=>{
     const h=harness();h.context.db.eventos.push({id:'new-event'});
@@ -179,6 +179,14 @@ describe('UpdateSafety v4', () => {
     expect(await h.window.UpdateSafety.safeUpdate()).toBe(false);
     expect(h.messages).toHaveLength(0);
   });
+  it('accepts an exact IndexedDB rescue when localStorage is full',async()=>{
+    const h=harness({dirty:2,synced:1,syncCompletes:false});
+    h.context.db.eventos.push({id:'in-rescue'});
+    h.window.saveLocalNow=()=>{};h.context.saveLocalNow=h.window.saveLocalNow;
+    h.window.LocalSaveResilience.getRescueSnapshot=async()=>({data:structuredClone(h.context.db)});
+    expect(await h.window.UpdateSafety.safeUpdate()).toBe(true);
+    expect(h.messages).toHaveLength(1);
+  });
   it('controllerchange snapshots once and cannot enter a reload loop',async()=>{
     const h=harness();
     await h.listeners.controllerchange();await h.listeners.controllerchange();
@@ -196,11 +204,12 @@ describe('UpdateSafety v4', () => {
     expect(h.calls.filter(x=>x==='reload')).toHaveLength(1);
     expect(h.calls).not.toContain('save-local');
   });
-  it('temporary network failure keeps local data and does not activate',async()=>{
+  it('temporary network failure keeps local data and pending synchronization while applying the fix',async()=>{
     const h=harness({dirty:2,synced:1});const before=h.storage.get('alberto_piano_v2');
     h.window.syncPendingCloudChanges=async()=>{throw Error('offline');};
     h.context.syncPendingCloudChanges=h.window.syncPendingCloudChanges;
-    expect(await h.window.UpdateSafety.safeUpdate()).toBe(false);
-    expect(h.messages).toHaveLength(0);expect(h.storage.get('alberto_piano_v2')).toBe(before);
+    expect(await h.window.UpdateSafety.safeUpdate()).toBe(true);
+    expect(h.messages).toHaveLength(1);expect(h.storage.get('alberto_piano_v2')).toBe(before);
+    expect(h.window.UpdateSafety.syncMetaPending()).toBe(true);
   });
 });
