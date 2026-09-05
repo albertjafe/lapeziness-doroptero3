@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v349';
+const CACHE = 'estudio-v350';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
@@ -14,6 +14,7 @@ const ASSETS = [
   "./crono-running-premium.css?v=342",
   "./crono-running-premium.js?v=342",
   "./crono-save-resilience.js?v=347",
+  "./daily-study-minutes.js?v=350",
   "./data-core.js?v=342",
   "./document-sync-core.js?v=344",
   "./event-data-protection.js?v=342",
@@ -136,7 +137,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '349');
+            target.searchParams.set('__pwa', '350');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -144,7 +145,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'349', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'350', navigated });
         } catch (error) {}
       }
     }
