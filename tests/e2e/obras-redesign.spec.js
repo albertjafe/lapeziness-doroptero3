@@ -34,6 +34,9 @@ test('uses the compact repertoire list and master-detail sheet on wide tablets',
   await expect(page.locator('[data-work-id="w1"]')).toBeVisible();
   await expect(page.locator('[data-work-id="w1"]')).toContainText('Sólida');
   await expect(page.locator('[data-work-id="w1"]')).not.toContainText('Consolidando');
+  // Smart priority can select another work as evidence ages. Select the work
+  // whose detail/edit behavior this test actually exercises.
+  await page.locator('[data-work-id="w1"]').click();
   await expect(page.locator('#obrasRdDetail')).toBeVisible();
   await expect(page.locator('#obrasRdDetail')).toContainText('Waldstein');
 

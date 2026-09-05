@@ -9,8 +9,12 @@ async function boot(page){
   });
   await page.goto('/');
   await page.waitForFunction(()=>window.ProfessorHandoffResilience && window.PlanningEnhancementsV4 && window.TaskSyncResilience);
-  // A first-time local account offers cloud recovery; use its ordinary dismiss action.
-  if(await page.locator('#modalCloudSync').isVisible()) await page.locator('#modalCloudSync').getByRole('button',{name:'Empezar de cero'}).click();
+  // The empty fixture opens recovery after a 400 ms timer. Wait for it even
+  // when modules load faster: otherwise it appears over the next test action.
+  const recovery=page.locator('#modalCloudSync');
+  await expect(recovery).toBeVisible();
+  await recovery.getByRole('button',{name:'Empezar de cero'}).click();
+  await expect(recovery).not.toBeVisible();
 }
 test('real workflow: repertoire, two movements, readiness, study, events, monthly project, task, timer, handoff and reopen',async({page,context})=>{
   test.setTimeout(120000);

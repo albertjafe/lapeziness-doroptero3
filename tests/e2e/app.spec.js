@@ -2131,7 +2131,9 @@ test('uses the task circle to toggle and the task name to edit', async ({ page }
   const pendingRow = panel.locator('.crono-task-row').first();
   const toggle = pendingRow.locator('.crono-task-toggle');
   await expect(pendingRow).toBeVisible();
-  await pendingRow.scrollIntoViewIfNeeded();
+  // Trial actions re-resolve the locator if a scheduled task render replaces
+  // the row while scrolling, without toggling it during geometry checks.
+  await toggle.click({ trial: true });
   const toggleBox = await toggle.boundingBox();
   expect(toggleBox.width).toBeGreaterThanOrEqual(44);
   expect(toggleBox.height).toBeGreaterThanOrEqual(44);
@@ -2141,7 +2143,7 @@ test('uses the task circle to toggle and the task name to edit', async ({ page }
   await taskOpen.click();
   await expect.poll(() => page.evaluate(() => cronoTasks()[0].priority)).toBe((initialPriority + 1) % 4);
 
-  await taskOpen.scrollIntoViewIfNeeded();
+  await taskOpen.click({ trial: true });
   const taskBox = await taskOpen.boundingBox();
   await page.mouse.move(taskBox.x + taskBox.width / 2, taskBox.y + taskBox.height / 2);
   await page.mouse.down();
