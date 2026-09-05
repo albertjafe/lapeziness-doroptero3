@@ -38,17 +38,17 @@ describe('PWA version boundary',()=>{
     await h.message({type:'SAFE_SKIP_WAITING',safe:true,requestedAt:'2026-09-04T18:00:00Z'});
     expect(h.calls).toContain('skip');
     await h.lifecycle('activate');
-    expect(h.calls.filter(x=>x.startsWith('navigate:'))).toEqual(['navigate:https://piano.test/?__pwa=350']);
+    expect(h.calls.filter(x=>x.startsWith('navigate:'))).toEqual(['navigate:https://piano.test/?__pwa=351']);
     expect(h.calls).toContain('client-message:SAFE_UPDATE_ACTIVATED');
   });
   it('falls back to all scoped clients when iOS does not expose the message source id',async()=>{
     const h=harness();await h.message({type:'SAFE_SKIP_WAITING',safe:true},null);await h.lifecycle('activate');
-    expect(h.calls.filter(x=>x.startsWith('navigate:'))).toEqual(['navigate:https://piano.test/?__pwa=350']);
+    expect(h.calls.filter(x=>x.startsWith('navigate:'))).toEqual(['navigate:https://piano.test/?__pwa=351']);
   });
   it('activation preserves unrelated caches and the previous shell for old tabs',async()=>{
     const h=harness();['estudio-v340','estudio-v341','user-content'].forEach(k=>h.stores.set(k,new Map()));
     await h.lifecycle('install');await h.lifecycle('activate');
-    expect([...h.stores.keys()].sort()).toEqual(['estudio-v341','estudio-v350','user-content']);
+    expect([...h.stores.keys()].sort()).toEqual(['estudio-v341','estudio-v351','user-content']);
     expect(h.calls.some(x=>x.startsWith('navigate:'))).toBe(false);
   });
   it('never serves a new script under an uncached old version URL',async()=>{
