@@ -1,17 +1,24 @@
-/* Tiempo diario real: una sola cuenta por bloque cronometrado.
-   sessionPlants/forestPlants son la evidencia temporal; db.sesiones conserva
-   además el resumen diario y puede contener la misma práctica varias veces.
+/* Tiempo diario real sin doble conteo.
+
+   sessionPlants/forestPlants son la evidencia temporal canónica. db.sesiones
+   contiene resúmenes y registros manuales, pero muchos resúmenes vuelven a
+   representar exactamente los mismos bloques (a veces incluso con minutos
+   acumulados erróneos).
 
    Regla:
    1) deduplicar plantas por run/timestamp;
-   2) deduplicar items de db.sesiones por _planId/id ANTES de sumarlos;
-   3) por obra/movimiento tomar MAX(tiempo cronometrado, resumen de sesiones).
-
-   Así una copia acumulada como 26 + 52 con el mismo _planId cuenta 52, no 78. */
+   2) deduplicar items de sesiones por _planId/id;
+   3) si un item de sesiones está respaldado por un bloque cronometrado del
+      mismo objetivo (crono_/pase_ o solapamiento temporal), NO sumarlo;
+   4) conservar y añadir los registros manuales/legados que no estén respaldados
+      por plantas; si no existe ninguna planta para ese objetivo, sesiones actúa
+      como fallback completo.
+*/
 (function dailyStudyMinutesFix(){
   'use strict';
 
-  const FIX_VERSION = 2;
+  const FIX_VERSION = 3;
+  const OVERLAP_TOLERANCE_MS = 30000;
 
   function appDb(){
     try { if (typeof db !== 'undefined' && db) return db; } catch (error) {}
@@ -44,13 +51,18 @@
     return Math.max(0, Number(plant && (plant.mins ?? plant.min)) || 0);
   }
 
+  function parseMs(value){
+    const ms = Date.parse(value || '');
+    return Number.isFinite(ms) ? ms : null;
+  }
+
   function duplicatePlantKey(plant){
     const mins = plantMinutes(plant);
-    const startMs = Date.parse(plant && plant.startedAt || '');
-    const endMs = Date.parse(plant && plant.endedAt || '');
+    const startMs = parseMs(plant && plant.startedAt);
+    const endMs = parseMs(plant && plant.endedAt);
     if (plant && plant.runId) return 'run::' + String(plant.runId);
-    const startBucket = Number.isFinite(startMs) ? Math.round(startMs / 2000) : String(plant && plant.startedAt || '');
-    const endBucket = Number.isFinite(endMs) ? Math.round(endMs / 2000) : String(plant && plant.endedAt || '');
+    const startBucket = startMs != null ? Math.round(startMs / 2000) : String(plant && plant.startedAt || '');
+    const endBucket = endMs != null ? Math.round(endMs / 2000) : String(plant && plant.endedAt || '');
     return targetKey(plant) + '::' + startBucket + '::' + endBucket + '::' + Math.round(mins * 100) / 100;
   }
 
@@ -61,8 +73,6 @@
     const started = item && (item.startedAt || item.startAt) || '';
     const ended = item && (item.endedAt || item.endAt) || '';
     if (started || ended) return 'time::' + targetKey(item) + '::' + started + '::' + ended;
-    // Sin identidad persistente no debemos fusionar dos registros manuales
-    // distintos por accidente. El índice los mantiene separados.
     return 'anon::' + String(session && session.date || '') + '::' + targetKey(item) + '::' + index;
   }
 
@@ -76,10 +86,64 @@
     return map[key];
   }
 
-  function sessionTotalsByTarget(bucket){
+  function ensureTimedTarget(day, target){
+    if (!day.timed[target]) day.timed[target] = { mins: 0, entries: [] };
+    return day.timed[target];
+  }
+
+  function normalizedTimedInterval(entry){
+    if (!entry) return null;
+    const startMs = entry.startMs;
+    if (startMs == null) return null;
+    const endMs = entry.endMs != null && entry.endMs >= startMs
+      ? entry.endMs
+      : startMs + Math.max(1, Number(entry.mins) || 0) * 60000;
+    return { startMs, endMs };
+  }
+
+  function intervalsOverlap(aStart, aEnd, bStart, bEnd){
+    return aStart <= bEnd + OVERLAP_TOLERANCE_MS && bStart <= aEnd + OVERLAP_TOLERANCE_MS;
+  }
+
+  function mergeSessionPlan(previous, item, mins, target, planId){
+    const startMs = parseMs(item && (item.startedAt || item.startAt));
+    const endMs = parseMs(item && (item.endedAt || item.endAt));
+    if (!previous) {
+      return { target, mins, planId: planId || '', startMs, endMs };
+    }
+    return {
+      target: previous.target || target,
+      mins: Math.max(previous.mins || 0, mins || 0),
+      planId: previous.planId || planId || '',
+      startMs: previous.startMs == null ? startMs : (startMs == null ? previous.startMs : Math.min(previous.startMs, startMs)),
+      endMs: previous.endMs == null ? endMs : (endMs == null ? previous.endMs : Math.max(previous.endMs, endMs)),
+    };
+  }
+
+  function sessionPlanBackedByTimed(entry, timedTarget){
+    if (!entry || !timedTarget || !(timedTarget.mins > 0)) return false;
+    const planId = String(entry.planId || '');
+    // Las familias modernas crono_/pase_ son resúmenes del propio cronómetro.
+    if (planId.startsWith('crono_') || planId.startsWith('pase_')) return true;
+
+    if (entry.startMs == null) return false;
+    const sessionStart = entry.startMs;
+    const sessionEnd = entry.endMs != null && entry.endMs >= sessionStart
+      ? entry.endMs
+      : sessionStart + Math.max(1, entry.mins || 0) * 60000;
+
+    return (timedTarget.entries || []).some(timed => {
+      const interval = normalizedTimedInterval(timed);
+      return interval && intervalsOverlap(sessionStart, sessionEnd, interval.startMs, interval.endMs);
+    });
+  }
+
+  function sessionExtraByTarget(bucket){
     const out = Object.create(null);
     Object.values(bucket.sessionPlans || {}).forEach(entry => {
       if (!entry || !(entry.mins > 0)) return;
+      const timedTarget = bucket.timed[entry.target];
+      if (timedTarget && timedTarget.mins > 0 && sessionPlanBackedByTimed(entry, timedTarget)) return;
       out[entry.target] = (out[entry.target] || 0) + entry.mins;
     });
     return out;
@@ -103,9 +167,14 @@
       const duplicateKey = duplicatePlantKey(plant);
       if (seenPlants.has(duplicateKey)) return;
       seenPlants.add(duplicateKey);
+
       const day = ensureDay(days, dayKey(when));
-      const key = targetKey(plant);
-      day.timed[key] = (day.timed[key] || 0) + mins;
+      const target = targetKey(plant);
+      const timedTarget = ensureTimedTarget(day, target);
+      const pStart = parseMs(plant.startedAt) ?? ms;
+      const pEnd = parseMs(plant.endedAt);
+      timedTarget.mins += mins;
+      timedTarget.entries.push({ startMs: pStart, endMs: pEnd, mins });
     };
 
     (database.sessionPlants || []).forEach(addPlant);
@@ -122,21 +191,20 @@
         if (!(mins > 0)) return;
         const planKey = sessionItemKey(item, session, index);
         const target = targetKey(item);
-        const previous = day.sessionPlans[planKey];
-        // La app puede persistir snapshots acumulativos del mismo plan, p. ej.
-        // 26 min y luego 52 min. El más alto sustituye al anterior.
-        if (!previous || mins > previous.mins) day.sessionPlans[planKey] = { target, mins };
+        const planId = item && (item._planId || item.id || item.runId) || '';
+        day.sessionPlans[planKey] = mergeSessionPlan(day.sessionPlans[planKey], item, mins, target, planId);
       });
     });
 
     const out = {};
     Object.keys(days).forEach(key => {
       const bucket = days[key];
-      const session = sessionTotalsByTarget(bucket);
-      const targets = new Set(Object.keys(bucket.timed).concat(Object.keys(session)));
+      const extras = sessionExtraByTarget(bucket);
+      const targets = new Set(Object.keys(bucket.timed).concat(Object.keys(extras)));
       let total = 0;
       targets.forEach(target => {
-        total += Math.max(bucket.timed[target] || 0, session[target] || 0);
+        const timed = bucket.timed[target] ? bucket.timed[target].mins : 0;
+        total += timed + (extras[target] || 0);
       });
       out[key] = Math.max(0, Math.round(total));
     });
@@ -153,19 +221,26 @@
   }
 
   function install(){
-    if (window.getMinutosConcentradoHoy && window.getMinutosConcentradoHoy.__realTimedDedupV2) return true;
+    if (window.getMinutosConcentradoHoy && window.getMinutosConcentradoHoy.__realTimedDedupV3) return true;
     if (!appDb()) return false;
 
     const byDay = function correctedStatsMinutesByDay(start, end){ return minutesByDay(start, end); };
-    byDay.__realTimedDedupV2 = true;
+    byDay.__realTimedDedupV3 = true;
     const today = function correctedTodayStudyMinutes(){ return todayMinutes(); };
-    today.__realTimedDedupV2 = true;
+    today.__realTimedDedupV3 = true;
 
     try { _statsMinsPorDia = byDay; } catch (error) {}
     try { getMinutosConcentradoHoy = today; } catch (error) {}
     window._statsMinsPorDia = byDay;
     window.getMinutosConcentradoHoy = today;
-    window.DailyStudyMinutes = { version: FIX_VERSION, minutesByDay, todayMinutes, duplicatePlantKey, sessionItemKey };
+    window.DailyStudyMinutes = {
+      version: FIX_VERSION,
+      minutesByDay,
+      todayMinutes,
+      duplicatePlantKey,
+      sessionItemKey,
+      sessionPlanBackedByTimed,
+    };
 
     try { if (typeof refreshStudyViews === 'function') refreshStudyViews(); } catch (error) {}
     try { if (typeof cronoUpdateRunTodayTotal === 'function') cronoUpdateRunTodayTotal(); } catch (error) {}
