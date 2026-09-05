@@ -5,10 +5,10 @@ const policy = fs.readFileSync('professor-duration-policy.js', 'utf8');
 const loader = fs.readFileSync('piano-rooms.js', 'utf8');
 
 describe('Professor duration fallback policy', () => {
-  it('keeps professional advice separate from mandatory 5h and 6h alternatives', () => {
+  it('keeps professional advice separate from optional preference-based alternatives', () => {
     expect(policy).toContain('Si aun así quieres ampliar');
-    expect(policy).toMatch(/5 horas TOTALES/i);
-    expect(policy).toMatch(/6 horas TOTALES/i);
+    expect(policy).toContain('PREFERENCIA_DURACION');
+    expect(policy).toContain('preferencia diaria guardada');
     expect(policy).toMatch(/obra \+ movimiento, minutos y propósito/i);
     expect(policy).toMatch(/NO implica que recomiendes esas horas/i);
   });

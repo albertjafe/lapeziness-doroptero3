@@ -25,7 +25,8 @@ describe('Professor dashboard integration', () => {
 
   it('hands the generated context to ChatGPT and copies a full fallback prompt', () => {
     expect(dashboard).toContain('ProfessorHandoffResilience.openSafe(mode)');
-    expect(dashboard).toContain('denseContext(report)');
+    expect(dashboard).not.toContain('denseContext(report)');
+    expect(dashboard).toContain('Preparar contexto completo');
   });
 
   it('does not write Supabase on dashboard renders and keeps legacy cache protected', () => {
@@ -35,11 +36,11 @@ describe('Professor dashboard integration', () => {
   });
 
   it('loads the Professor stack from the current bootstrap after planning enhancements', () => {
-    expect(loader).toContain("load('professorCoreScript','./professor-core.js?v=342'");
+    expect(loader).toContain("load('professorCoreScript','./professor-core.js?v=349'");
     expect(loader).toContain("load('professorReportNormalizerScript','./professor-report-normalizer.js?v=342'");
     expect(loader).toContain("load('professorContextEnrichmentScript','./professor-context-enrichment.js?v=342'");
     expect(loader).toContain("load('professorCompetitionDeadlineBridgeScript','./professor-competition-deadline-bridge.js?v=342'");
-    expect(loader).toContain("load('professorDashboardScript','./professor-dashboard.js?v=342'");
+    expect(loader).toContain("load('professorDashboardScript','./professor-dashboard.js?v=349'");
     expect(loader).toContain("load('planningEnhancementsV4SpeechFixScript','./planning-enhancements-v4-speech-fix.js?v=342',loadProfessor)");
   });
 

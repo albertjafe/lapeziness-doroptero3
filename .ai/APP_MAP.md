@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-05 · caché runtime v348
+**Estado:** CANÓNICO · actualizado 2026-09-05 · caché runtime v349
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -216,11 +216,11 @@ El Profesor es una feature central. **No sustituirlo por un ranking determinista
 6. `professor-duration-policy.js` — duración diaria + hora real + alternativas.
 7. `professor-dashboard.js` — vista Profesor, botones y prompt maestro.
 8. `professor-event-gate-ui.js` — UI auxiliar del filtro; su observer debe ser acotado para no crear bucles de MutationObserver.
-9. `professor-handoff-resilience.js` — `buildReportAsync()`, codec reversible `PIANO_PROF_V3`, transporte completo y apertura segura.
+9. `professor-handoff-resilience.js` — `buildReportAsync()`, codec reversible `PIANO_PROF_V4`, archivo Blob con instrucciones + contexto y transferencia única.
 10. `professor-temporary-chat.js` — apertura de chat temporal cuando está disponible.
 11. `professor-report-worker.js` — ejecuta los mismos algoritmos musicales sobre una captura inmutable, fuera del hilo de interfaz. El fallback usa el mismo informe completo.
 
-Schema 3 conserva `works`, todas las unidades/movimientos con `sourceMovement`, registros originales en `sourceContext` (historial, sesiones, eventos, concursos, tareas, pasajes, horarios y sesión en curso). Los tiempos de obra sin movimiento nunca se distribuyen. Dificultad desconocida y valor usado para estimar se distinguen. La solidez mantiene fecha original y confianza. Proyectos mensuales: `datePrecision: 'month'`, `day: 'YYYY-MM'`, `at: null`; `calculationRange` es solo auxiliar. Los IDs, nunca nombres parecidos, identifican entidades.
+Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/movimiento a partir de la misma práctica deduplicada; el historial completo permanece en `sourceContext`. Conserva `works`, todas las unidades/movimientos con `sourceMovement`, registros originales en `sourceContext` (historial, sesiones, eventos, concursos, tareas, pasajes, horarios y sesión en curso). Los tiempos de obra sin movimiento nunca se distribuyen. Dificultad desconocida y valor usado para estimar se distinguen. La solidez mantiene fecha original y confianza. Proyectos mensuales: `datePrecision: 'month'`, `day: 'YYYY-MM'`, `at: null`; `calculationRange` es solo auxiliar. Los IDs, nunca nombres parecidos, identifican entidades.
 
 ### Regla de ranking actual — CRÍTICA
 
@@ -235,10 +235,10 @@ Schema 3 conserva `works`, todas las unidades/movimientos con `sourceMovement`, 
 
 ### Duración del día — CRÍTICA
 
-`professor-duration-policy.js` (`PROFESSOR_DURATION_FALLBACK_V2`):
+`professor-duration-policy.js` (`PROFESSOR_DURATION_PREFERENCE_V3`):
 
-- 4 h totales es **referencia**, no techo ni obligación.
-- El Profesor puede recomendar menos de 4 h o 5 / 5,5 / 6 h si la carga real lo justifica.
+- `professorSettings.dailyHours` guarda 4, 5 o 6 (6 = «6+» en la UI). Es referencia TOTAL diaria, descontando lo ya estudiado; no techo ni obligación. Sin ajuste previo, 4 h. Condición del turno > preferencia guardada > cifras antiguas del prompt. El event gate ya no impone 4 h.
+- El Profesor puede recomendar menos o ampliar según carga real, calidad y disponibilidad. `6+` no obliga a 7 h ni fija un techo.
 - Usa la **hora local real del instante de la consulta** y reconstruye el informe al pedir consejo.
 - Al ampliar tiempo puede:
   - ampliar un bloque existente;
@@ -246,14 +246,14 @@ Schema 3 conserva `works`, todas las unidades/movimientos con `sourceMovement`, 
   - añadir otra unidad enlazada;
   - combinar las anteriores.
 - Debe optimizar valor marginal, no variedad artificial ni “más de lo mismo” automáticamente.
-- Aunque desaconseje ampliar, para planes de hoy debe dar un apartado **“Si aun así quieres ampliar”** con alternativas concretas a 5 h y 6 h (obra + movimiento + minutos + propósito), si el usuario lo pide/flujo lo requiere.
+- Para HOY/LO QUE QUEDA: **“Si aun así quieres ampliar”** usa escalones relativos a la preferencia: 4→5/6, 5→6, 6+→7 opcional. Siempre obra + movimiento + minutos + propósito; no rellenar si falta trabajo útil. En semana la referencia es diaria, no una cuota semanal rígida.
 
 ### Handoff a ChatGPT
 
-- `PIANO_PROF_V3`: R metadatos, W campos idénticos de obra, E eventos idénticos, U todas las unidades con referencias W/E, P referencias de prioridades. `decodeContext(denseContext(report))` reproduce todos los campos JSON sin redondeos adicionales ni top-N.
+- `PIANO_PROF_V4`: R metadatos, W campos idénticos de obra, E eventos idénticos, C columnas comunes, U todas las unidades (schema→C, work→W, refs→E), P prioridades. Las listas de objetos homogéneos pueden usar `$columns`/`$rows` si ahorran espacio; `$object` escapa claves reservadas. `decodeContext(denseContext(report))` reproduce todos los campos JSON, incluidos desconocidos, nulls y vacíos, sin redondeos ni top-N. Conserva lectura V3; V4 incompleto se rechaza si falta el marcador final.
 - Evitar volver al patrón antiguo de construir un prompt completo enorme **y** otro URL-prompt separado: podía congelar iPad.
-- Se reserva la pestaña dentro del clic y se calcula una única versión completa. Si supera 12.000 caracteres codificados, abre una URL corta y muestra copia/descarga del informe completo para pegarlo o adjuntarlo. No existe envío automático de archivos entre sitios.
-- Informe nuevo con hora local real en cada consulta; sin caché temporal de informes. Si cambió la revisión durante el cálculo, se vuelve a capturar. Se comparte un solo recorrido de sesiones y un cálculo de recuperación por obra durante cada informe.
+- Los botones preparan un único archivo con prompt, condición del turno, preferencia, hora local y contexto. `transferArtifact()` crea el Blob en el Worker, que devuelve solo archivo/metadatos, nunca informe + strings enormes al DOM. La vista ofrece guardar/compartir archivo, copiar todo como un mensaje y abrir ChatGPT vacío (sin mensaje preliminar). Por encima de 32.000 caracteres recomienda archivo. No se vuelca el informe en un textarea; copiar usa ClipboardItem/Blob si está disponible. `buildSafeChatGptUrl()` conserva compatibilidad para consumidores directos pequeños (12.000 caracteres URL), pero la transferencia visible siempre abre ChatGPT vacío. No existe adjunto automático entre sitios.
+- Informe nuevo con hora local real en cada consulta. Si cambian revisión, condición o preferencia durante el cálculo se vuelve a capturar; 3 intentos como máximo. Preparación concurrente bloqueada y Worker con timeout de 30 s. Copiar/descargar/compartir rechaza un archivo preparado con revisión u opciones antiguas; editar nota/horas/prompt invalida la transferencia. Fallos de Worker se muestran, sin caer silenciosamente en el cálculo pesado del hilo de interfaz; navegadores sin Worker conservan fallback.
 - La sesión activa se captura con notas, pausas y minutos efectivos; entra una sola vez en HOY, queda marcada como no guardada y no cuenta si es descanso o su runId ya está registrado.
 - Botones/modes habituales: organizar hoy, lo que queda de hoy, qué estudiar ahora, próximos 7 días.
 - `professorSettings.masterPrompt` permite prompt maestro personalizado.
@@ -287,9 +287,9 @@ Schema 3 conserva `works`, todas las unidades/movimientos con `sourceMovement`, 
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- En la revisión de este mapa, el cache es `estudio-v348`; **no asumir ese número en el futuro: mirar `sw.js`**. `app.js`, `piano-rooms.js` y `update-safety.js` usan `?v=348`; `crono-save-resilience.js` conserva `?v=347` y `document-sync-core.js`, `?v=344`; los demás assets mantienen su versión previa, con una única URL por asset en loaders/precache. Los archivos del Profesor no cambiaron.
+- En la revisión de este mapa, el cache es `estudio-v349`; **no asumir ese número en el futuro: mirar `sw.js`**. `app.js`, `piano-rooms.js`, Profesor core/dashboard/event-gate/duration-policy/handoff-resilience/report-worker usan `?v=349`; `update-safety.js` conserva `?v=348`, `crono-save-resilience.js`, `?v=347`, y `document-sync-core.js`, `?v=344`. Los demás assets mantienen su versión previa, con una única URL por asset en loaders/precache.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado antes de activar nueva versión. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v348 en Ajustes.
+- `update-safety.js` protege el estado antes de activar nueva versión. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v349 en Ajustes.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro activo ni cambios pendientes y con copia durable. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los 90 assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
@@ -349,7 +349,7 @@ Ejecutar checks dirigidos durante implementación; al final, la batería más am
 
 Tests representativos relevantes actualmente incluyen sincronización de datos/tareas, eventos, Profesor, historial, readiness, UI de concursos y gestos táctiles. Buscar por nombre de feature dentro de `tests/` antes de crear un test duplicado.
 
-Auditoría 2026-09-04: `document-compatibility`, `document-postgres` (PGlite), `sync-protocol-audit`, `service-worker-audit`, `professor-audit`, `update-safety-v2`; E2E `professor-persistence-audit` y `pwa-offline-audit`. `pwa-update-lifecycle` prueba A→B con SW, precache y navegación reales (sin red de nube), conserva la sesión y comprueba reapertura; detecta la espera circular que los mocks VM no modelan. Métrica reproducible: `node scripts/measure-professor.mjs 75`. Informe y límites: `docs/AUDITORIA_PROFESOR_PERSISTENCIA_2026-09-04.md`.
+Auditoría 2026-09-04: `document-compatibility`, `document-postgres` (PGlite), `sync-protocol-audit`, `service-worker-audit`, `professor-audit`, `update-safety-v2`; E2E `professor-persistence-audit` y `pwa-offline-audit`. `pwa-update-lifecycle` prueba A→B con SW, precache y navegación reales (sin red de nube), conserva la sesión y comprueba reapertura; detecta la espera circular que los mocks VM no modelan. Regresiones del Profesor V4: `professor-transfer-v4` (tablas reversibles, archivo único, presupuesto y diario) y `professor-file-transfer` (80 movimientos/3.001 registros, sin cálculo pesado en main ni textarea, archivo íntegro, rechazo de copia obsoleta y persistencia de horas). Métrica reproducible: `node scripts/measure-professor.mjs 75`. Informe y límites: `docs/AUDITORIA_PROFESOR_PERSISTENCIA_2026-09-04.md`.
 
 ---
 

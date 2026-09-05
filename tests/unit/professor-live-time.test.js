@@ -11,8 +11,8 @@ describe('Professor live time policy', () => {
     expect(policy).toContain('hora aproximada de finalización');
   });
 
-  it('treats four hours as a reference rather than a fixed ceiling', () => {
-    expect(policy).toMatch(/Cuatro horas son una referencia, no un techo/i);
-    expect(policy).toMatch(/recomendar 5, 5 h 30 o 6 horas/i);
+  it('treats the selected hours as a reference rather than a fixed ceiling', () => {
+    expect(policy).toContain('La referencia no es una obligación ni un techo');
+    expect(policy).toContain('No impongas siempre 4 horas');
   });
 });

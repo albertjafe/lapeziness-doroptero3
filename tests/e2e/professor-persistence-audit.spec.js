@@ -142,8 +142,11 @@ test('worker and main report are equivalent; opening ChatGPT keeps every unit an
   await page.locator('#professorUserNote').fill('No perder ningún movimiento');
   const openedAfter=Date.now();
   await page.locator('[data-prof-mode="remaining"]').click();
-  await expect.poll(()=>page.evaluate(()=>window.__auditOpened.length)).toBe(1);
-  const sent=await page.evaluate(()=>({url:window.__auditOpened[0],text:window.__auditClipboard,
+  await expect(page.locator('#professorTransfer')).toBeVisible();
+  expect(await page.evaluate(()=>window.__auditOpened.length)).toBe(0);
+  await page.locator('#professorTransfer').getByRole('button',{name:'Copiar todo · un mensaje'}).click();
+  await expect.poll(()=>page.evaluate(()=>window.__auditClipboard.length)).toBeGreaterThan(0);
+  const sent=await page.evaluate(()=>({url:document.querySelector('#professorTransfer a[target]').href,text:window.__auditClipboard,
     report:ProfessorHandoffResilience.decodeContext(window.__auditClipboard)}));
   expect(sent.url.length).toBeLessThan(1000);expect(sent.report.units).toHaveLength(76);
   expect(sent.text).toContain('No perder ningún movimiento');expect(sent.text).toContain('HORA_LOCAL_REAL');

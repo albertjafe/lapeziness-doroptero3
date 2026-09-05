@@ -1,23 +1,34 @@
 (function professorDurationPolicy(root){
   'use strict';
 
-  const MARKER = 'PROFESSOR_DURATION_FALLBACK_V2';
+  const MARKER = 'PROFESSOR_DURATION_PREFERENCE_V3';
   const RULES = `${MARKER}
-POLÍTICA DE DURACIÓN, HORA REAL Y PLAN CONDICIONAL
-- Separa SIEMPRE dos cosas: (1) tu recomendación profesional sobre cuánto conviene estudiar y (2) qué hacer si el usuario decide estudiar más de todos modos.
-- Puedes recomendar con total libertad no ampliar el día, parar en 4 horas, hacer menos, o recomendar 5, 5 h 30 o 6 horas si la carga, urgencia y calidad de trabajo disponible lo justifican. Cuatro horas son una referencia, no un techo ni una respuesta automática.
-- La HORA ACTUAL REAL es una restricción importante. Para HOY, LO QUE QUEDA DE HOY o AHORA, construye el horario desde la hora local indicada en el contexto temporal de este turno, no desde una mañana imaginaria ni desde la hora a la que se abrió anteriormente la pantalla del Profesor.
-- Ten en cuenta pausas y hora aproximada de finalización. Si llegar a 5 o 6 horas totales obligaría a terminar demasiado tarde o haría poco realista el plan, dilo claramente y úsalo al decidir tu recomendación principal.
-- Aun cuando desaconsejes ampliar por la hora, fatiga o poco valor marginal, ofrece igualmente las alternativas condicionales pedidas para 5 h y 6 h, indicando su hora aproximada de finalización cuando sea relevante.
-- En las peticiones de organizar HOY o LO QUE QUEDA DE HOY nunca termines solo con «yo no ampliaría», «no hace falta estudiar más» o equivalente.
-- Después de tu recomendación incluye siempre un apartado claramente separado: «Si aun así quieres ampliar».
-- En ese apartado da un plan CONCRETO para llegar a 5 horas TOTALES y otro para llegar a 6 horas TOTALES, contando todo lo que ya se haya estudiado hoy. Indica cuánto tiempo adicional falta para cada total.
-- Para cada alternativa de 5 h y 6 h, especifica obra + movimiento, minutos y propósito del bloque. No basta con decir «más de lo mismo» o «repasa repertorio».
-- El plan condicional NO implica que recomiendes esas horas. Si crees que 4 h es mejor, dilo primero y luego ofrece igualmente las alternativas de 5 h y 6 h para que el usuario pueda decidir.
-- Mantén el filtro musical existente: solo repertorio con evento/proyecto futuro enlazado. No introduzcas una obra sin evento solo para rellenar horas.
-- Si al ampliar no merece la pena incorporar otra obra, usa el tiempo adicional en los movimientos enlazados con mayor valor marginal: segundo bloque, trabajo de puntos concretos, pase, memoria, recuperación, resistencia, tempo o consolidación, según los datos.
-- Si de verdad no existe trabajo musical útil para completar 5 h o 6 h, dilo explícitamente, pero aun así ofrece la opción menos mala y concreta dentro del repertorio enlazado en vez de omitir la alternativa.
-- Si el usuario ya ha superado uno de esos totales hoy, no inventes tiempo negativo: marca ese escalón como ya superado y adapta el siguiente bloque útil desde la hora actual.`;
+POLÍTICA DE DURACIÓN Y PLAN REALISTA
+- La referencia diaria es la PREFERENCIA_DURACION de este turno (4, 5 o 6+ horas TOTALES), contando lo ya estudiado hoy. No impongas siempre 4 horas.
+- Orden de precedencia: condición explícita del usuario para este turno > preferencia diaria guardada > cifras por defecto de prompts antiguos. La preferencia nueva sustituye cualquier antigua regla fija de 4 horas.
+- Separa tu recomendación profesional de las ampliaciones opcionales. La referencia no es una obligación ni un techo: puedes recomendar menos, parar, o ampliar si lo justifican preparación, fatiga y compromisos reales.
+- Construye HOY, LO QUE QUEDA DE HOY y AHORA desde HORA_LOCAL_REAL. Cuenta pausas y da la hora aproximada de finalización; no empieces desde una mañana imaginaria.
+- Resta todo lo estudiado HOY, incluido el tiempo de sesión activa ya incluido en el total. Nunca sumes dos veces ni generes minutos negativos.
+- Para HOY/LO QUE QUEDA DE HOY: plan principal con obra + movimiento, minutos y propósito; después «Si aun así quieres ampliar», con los escalones de este turno y su tiempo adicional. Una ampliación NO implica que recomiendes esas horas. Si no hay trabajo útil, dilo; no rellenes.
+- Para AHORA: bloque concreto desde este instante y alternativa breve. Para 7 días: usa la referencia por día, ajustada a disponibilidad, compromisos y recuperación; no conviertas referencia × 7 en una cuota obligatoria.
+- Mantén solo repertorio con evento/proyecto futuro enlazado en el plan. No introduzcas una obra sin evento solo para rellenar horas. Ampliar puede reforzar o repetir movimientos elegidos, incorporar otras unidades enlazadas o combinar ambas opciones según valor marginal.`;
+
+  function normalizeHours(value) {
+    const hours = Number(value);
+    return [4,5,6].includes(hours) ? hours : 4;
+  }
+
+  function budgetContext(value, report, mode) {
+    const hours = normalizeHours(value);
+    const studied = Math.max(0, Number(report?.today?.totalKnownMinutes) || 0);
+    const alternatives = hours === 4 ? [5,6] : hours === 5 ? [6] : [7];
+    return `PREFERENCIA_DURACION
+Referencia guardada: ${hours === 6 ? '6+':hours} horas TOTALES al día; base para calcular = ${hours * 60} min.
+Ya estudiado HOY = ${studied} min; para alcanzar la base faltan ${Math.max(0,hours * 60-studied)} min.
+${mode === 'week' ? 'Esta referencia es diaria, no el total semanal. ' : ''}${hours === 6 ? '6+ permite ampliar sobre 6 h si hay valor real; no obliga a 7 h ni fija un techo. ' : ''}
+Escalones opcionales de este turno: ${alternatives.map(h => `${h} horas TOTALES (adicionales desde ahora: ${Math.max(0,h*60-studied)} min${studied>=h*60 ? '; ya alcanzado':''})`).join('; ')}.
+Si la condición del usuario cambia la disponibilidad, recalcula estos números antes de planificar.`;
+  }
 
   function database(){
     try { return typeof db !== 'undefined' ? db : (root && root.db ? root.db : null); }
@@ -69,8 +80,9 @@ POLÍTICA DE DURACIÓN, HORA REAL Y PLAN CONDICIONAL
       professor.buildPrompt = function(report, options){
         const now = new Date();
         const opts = Object.assign({}, options || {});
-        opts.masterPrompt = promptWithTime(opts.masterPrompt || professor.DEFAULT_MASTER_PROMPT, now);
-        return originalBuildPrompt.call(this, freshReport(professor, report, now), opts);
+        const fresh = freshReport(professor, report, now);
+        opts.masterPrompt = promptWithTime(opts.masterPrompt || professor.DEFAULT_MASTER_PROMPT, now) + '\n\n' + budgetContext(opts.dailyHours ?? database()?.professorSettings?.dailyHours,fresh,opts.mode);
+        return originalBuildPrompt.call(this, fresh, opts);
       };
       professor.buildPrompt.__professorDurationPolicy = true;
     }
@@ -80,8 +92,9 @@ POLÍTICA DE DURACIÓN, HORA REAL Y PLAN CONDICIONAL
       professor.buildChatGptUrl = function(report, options){
         const now = new Date();
         const opts = Object.assign({}, options || {});
-        opts.masterPrompt = promptWithTime(opts.masterPrompt || professor.DEFAULT_MASTER_PROMPT, now);
-        return originalBuildChatGptUrl.call(this, freshReport(professor, report, now), opts);
+        const fresh = freshReport(professor, report, now);
+        opts.masterPrompt = promptWithTime(opts.masterPrompt || professor.DEFAULT_MASTER_PROMPT, now) + '\n\n' + budgetContext(opts.dailyHours ?? database()?.professorSettings?.dailyHours,fresh,opts.mode);
+        return originalBuildChatGptUrl.call(this, fresh, opts);
       };
       professor.buildChatGptUrl.__professorDurationPolicy = true;
     }
@@ -90,6 +103,6 @@ POLÍTICA DE DURACIÓN, HORA REAL Y PLAN CONDICIONAL
     return true;
   }
 
-  root.ProfessorDurationPolicy = { MARKER, RULES, ensurePolicy, temporalContext, promptWithTime, install };
+  root.ProfessorDurationPolicy = { MARKER, RULES, normalizeHours, budgetContext, ensurePolicy, temporalContext, promptWithTime, install };
   install();
 })(typeof window !== 'undefined' ? window : globalThis);

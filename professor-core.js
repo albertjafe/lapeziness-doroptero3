@@ -401,6 +401,23 @@ Cuando pida organizar el día, responde primero con una propuesta compacta y acc
       return at && at <= asOf && isoDay(at) === isoDay(asOf);
     }).reduce((sum, p) => sum + p._minutes, 0);
     const unallocatedToday = Math.max(0, totalToday - today.movementMinutes);
+    // A daily view of the same de-duplicated practice, not an additional total.
+    // Keep the entire original history below, including records older than 90d.
+    const days = new Map();
+    const firstDay = new Date(asOf); firstDay.setHours(0,0,0,0); firstDay.setDate(firstDay.getDate()-89);
+    practice.forEach(p => {
+      const at = dateOf(p.endedAt || p.startedAt || p.at);
+      if(!at || at < firstDay || at > asOf) return;
+      const day = isoDay(at), obraId = id(p.obraId), movId = id(p.movId ?? p.movimientoId ?? p.movementId) || null;
+      if(!days.has(day)) days.set(day, new Map());
+      const key = JSON.stringify([obraId,movId]), units = days.get(day);
+      if(!units.has(key)) units.set(key,{obraId,movId,minutes:0});
+      units.get(key).minutes += p._minutes;
+    });
+    const recentStudyDays = [...days].sort(([a],[b]) => b.localeCompare(a)).map(([day,items]) => ({
+      day, totalMinutes:round1([...items.values()].reduce((sum,item)=>sum+item.minutes,0)),
+      byUnit:[...items.values()].map(item=>({...item,minutes:round1(item.minutes)})),
+    }));
     return {
       schemaVersion: 3,
       generatedAt: asOf.toISOString(),
@@ -417,6 +434,7 @@ Cuando pida organizar el día, responde primero con una propuesta compacta y acc
       },
       asOf: asOf.toISOString(),
       day: isoDay(asOf),
+      recentStudyDays,
       today: { ...today, activeUnsavedMinutes: round1(activeMinutes), unallocatedMinutes: round1(unallocatedToday), totalKnownMinutes: round1(today.movementMinutes + unallocatedToday) },
       events,
       units,

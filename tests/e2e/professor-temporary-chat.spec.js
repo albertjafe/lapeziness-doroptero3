@@ -40,7 +40,7 @@ test('Professor handoff defaults to temporary ChatGPT without changing its promp
 
   expect(result.temporary).toBe('true');
   if(result.transport === 'url') expect(result.promptParam).toBe(result.promptForUrl);
-  else expect(result.promptParam.length).toBeLessThan(1000);
+  else expect(result.promptParam).toBeNull();
   expect(result.promptForUrl).toContain('Solo tengo 2 horas.');
 });
 

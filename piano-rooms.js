@@ -43,15 +43,15 @@
     document.head.appendChild(link);
   }
   function loadProfessor(){
-    load('professorCoreScript','./professor-core.js?v=342',function(){
+    load('professorCoreScript','./professor-core.js?v=349',function(){
       load('professorReportNormalizerScript','./professor-report-normalizer.js?v=342',function(){
         load('professorContextEnrichmentScript','./professor-context-enrichment.js?v=342',function(){
           load('professorCompetitionDeadlineBridgeScript','./professor-competition-deadline-bridge.js?v=342',function(){
-            load('professorEventGateScript','./professor-event-gate.js?v=342',function(){
-              load('professorDurationPolicyScript','./professor-duration-policy.js?v=342',function(){
-                load('professorDashboardScript','./professor-dashboard.js?v=342',function(){
+            load('professorEventGateScript','./professor-event-gate.js?v=349',function(){
+              load('professorDurationPolicyScript','./professor-duration-policy.js?v=349',function(){
+                load('professorDashboardScript','./professor-dashboard.js?v=349',function(){
                   load('professorEventGateUiScript','./professor-event-gate-ui.js?v=342');
-                  load('professorHandoffResilienceScript','./professor-handoff-resilience.js?v=342',function(){
+                  load('professorHandoffResilienceScript','./professor-handoff-resilience.js?v=349',function(){
                     load('professorTemporaryChatScript','./professor-temporary-chat.js?v=342');
                   });
                 });

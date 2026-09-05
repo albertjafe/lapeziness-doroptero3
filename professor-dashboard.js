@@ -46,6 +46,9 @@
       .prof-action{border:1px solid var(--border);background:var(--bg);color:var(--text);border-radius:999px;padding:10px 13px;font-size:12px;cursor:pointer;min-height:42px}
       .prof-action.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700}
       .prof-note{width:100%;box-sizing:border-box;margin-top:12px;min-height:68px;resize:vertical;border:1px solid var(--border);border-radius:12px;background:var(--bg);color:var(--text);padding:10px 12px;font:12px/1.45 inherit}
+      .prof-duration{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px;font-size:12px;color:var(--text2)}
+      .prof-duration select{min-height:44px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font:inherit}
+      .prof-duration small{flex-basis:100%;font-size:11px;color:var(--text3)}
       .prof-today-number{font:600 34px 'Cormorant Garamond',serif;color:var(--text);line-height:1}
       .prof-today-lines{margin-top:9px;display:grid;gap:5px;font-size:11px;color:var(--text2)}
       .prof-section{margin-top:16px}.prof-section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:0 2px 8px}
@@ -151,9 +154,16 @@
     const data = database() || {};
     const generation=++renderGeneration;
     if(!lastReport)host.textContent='Preparando el contexto completo…';
-    const report = window.ProfessorHandoffResilience
-      ? await window.ProfessorHandoffResilience.buildReportAsync(data)
-      : window.ProfessorCore.buildReport(data, { asOf: new Date() });
+    let report;
+    try {
+      report = window.ProfessorHandoffResilience
+        ? await window.ProfessorHandoffResilience.buildReportAsync(data)
+        : window.ProfessorCore.buildReport(data, { asOf: new Date() });
+    } catch(error) {
+      if(generation === renderGeneration) host.textContent='No se pudo preparar el Profesor. Vuelve a abrir esta pantalla para intentarlo de nuevo.';
+      console.warn('[professor-dashboard]',error);
+      return;
+    }
     if(generation !== renderGeneration)return;
     lastReport = report;
     const note=document.getElementById('professorUserNote')?.value || '';
@@ -163,14 +173,15 @@
         <div class="prof-card">
           <div class="prof-eyebrow">Superinforme · contexto vivo</div>
           <h2 class="prof-title">Profesor</h2>
-          <div class="prof-sub">Planifica movimiento por movimiento con todo el contexto. Si el informe es grande, copia o adjunta el archivo completo al abrir ChatGPT.</div>
+          <div class="prof-sub">Prepara tu plan con instrucciones y contexto en un solo archivo o mensaje. Incluye lo estudiado cada día, el historial de cada movimiento y tus próximos compromisos.</div>
+          <div class="prof-duration"><label for="professorDailyHours">Referencia diaria</label><select id="professorDailyHours" aria-label="Referencia diaria de estudio">${[4,5,6].map(h=>`<option value="${h}" ${h === (window.ProfessorDurationPolicy?.normalizeHours(settings().dailyHours) || 4) ? 'selected' : ''}>${h===6?'6+':h} horas</option>`).join('')}</select><small>Total del día, incluido lo ya estudiado. Tu condición de este turno tiene prioridad.</small></div>
           <textarea class="prof-note" id="professorUserNote" placeholder="Condición opcional para este turno: «he dormido 5 h», «Claudio quiere que hoy no toque Waldstein», «solo tengo 45 min»…"></textarea>
           <div class="prof-actions">
             <button class="prof-action primary" data-prof-mode="remaining">Organizar lo que queda de hoy</button>
             <button class="prof-action" data-prof-mode="now">¿Qué estudio ahora?</button>
             <button class="prof-action" data-prof-mode="today">Organizar hoy</button>
             <button class="prof-action" data-prof-mode="week">Próximos 7 días</button>
-            <button class="prof-action" id="professorCopyReport">Copiar superinforme</button>
+            <button class="prof-action" id="professorCopyReport">Preparar contexto completo</button>
           </div>
         </div>
         <div class="prof-card">
@@ -189,27 +200,25 @@
     `;
     host.querySelectorAll('[data-prof-mode]').forEach(button => button.addEventListener('click', () => openChatGPT(button.dataset.profMode)));
     host.querySelector('#professorCopyReport')?.addEventListener('click', copyReport);
+    host.querySelector('#professorDailyHours')?.addEventListener('change', saveDailyHours);
+    host.querySelector('#professorUserNote')?.addEventListener('input',()=>window.ProfessorHandoffResilience?.invalidateTransfer());
     host.querySelector('#professorSavePrompt')?.addEventListener('click', saveMasterPrompt);
     host.querySelector('#professorResetPrompt')?.addEventListener('click', resetMasterPrompt);
     host.querySelector('#professorUserNote').value=note;
 
   }
 
-  async function copyText(text) {
-    try { await navigator.clipboard.writeText(text); return true; } catch (error) {}
-    try {
-      const area = document.createElement('textarea'); area.value = text; area.style.position = 'fixed'; area.style.opacity = '0'; document.body.appendChild(area); area.select();
-      const ok = document.execCommand('copy'); area.remove(); return ok;
-    } catch (error) { return false; }
+  function copyReport() {
+    return openChatGPT('today');
   }
 
-  async function copyReport() {
-    const report = window.ProfessorHandoffResilience
-      ? await window.ProfessorHandoffResilience.buildReportAsync(database() || {})
-      : window.ProfessorCore.buildReport(database() || {}, { asOf:new Date() });
-    const text = window.ProfessorHandoffResilience ? window.ProfessorHandoffResilience.denseContext(report) : window.ProfessorCore.compactContext(report);
-    const ok = await copyText(text);
-    if (typeof showToast === 'function') showToast(ok ? 'Superinforme copiado' : 'No se pudo copiar');
+  function saveDailyHours(event) {
+    const data = database(); if(!data) return;
+    const dailyHours = window.ProfessorDurationPolicy.normalizeHours(event.target.value);
+    data[SETTINGS_KEY] = {...settings(), dailyHours, updatedAt:new Date().toISOString()};
+    window.ProfessorHandoffResilience?.invalidateTransfer();
+    if(typeof window.saveData === 'function') window.saveData();
+    if(typeof showToast === 'function') showToast('Referencia diaria guardada: ' + (dailyHours===6?'6+':dailyHours) + ' h');
   }
 
   function openChatGPT(mode) {
@@ -223,6 +232,7 @@
     const data = database();
     if (!data) return;
     data[SETTINGS_KEY] = { ...(data[SETTINGS_KEY] || {}), masterPrompt: value, updatedAt: new Date().toISOString() };
+    window.ProfessorHandoffResilience?.invalidateTransfer();
     if (typeof window.saveData === 'function') window.saveData();
     if (typeof showToast === 'function') showToast('Prompt maestro guardado');
   }

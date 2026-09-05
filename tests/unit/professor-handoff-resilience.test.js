@@ -76,7 +76,8 @@ describe('ProfessorHandoffResilience', () => {
     // Partial linked-event objects with differing names are preserved as separate
     // dictionary entries; they must not be silently replaced by a namesake.
     expect(Handoff.decodeContext(Handoff.denseContext(report))).toEqual(report);
-    expect(built.transport).toBe('clipboard');
+    expect(built.transport).toBe('file');
+    expect(new URL(built.url).searchParams.has('prompt')).toBe(false);
     expect(built.url.length).toBeLessThan(Handoff.MAX_URL_ENCODED);
     expect(built.fullPrompt).toBeUndefined();
   });

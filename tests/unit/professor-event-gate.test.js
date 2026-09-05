@@ -45,8 +45,8 @@ describe('Professor event gate', () => {
     expect(prompt).toMatch(/evento\/proyecto futuro enlazado.*FUERA/i);
   });
 
-  it('keeps four hours as reference but allows justified optional extensions', () => {
-    expect(Professor.DEFAULT_MASTER_PROMPT).toMatch(/4 horas TOTALES/i);
-    expect(Professor.DEFAULT_MASTER_PROMPT).toMatch(/4 h 30, 5 h, 5 h 30 o 6 h/i);
+  it('delegates the chosen duration to the preference policy instead of hardcoding four hours', () => {
+    expect(Professor.DEFAULT_MASTER_PROMPT).toContain('preferencia diaria');
+    expect(Professor.DEFAULT_MASTER_PROMPT).not.toContain('usa 4 horas TOTALES');
   });
 });

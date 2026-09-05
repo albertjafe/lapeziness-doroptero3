@@ -15,13 +15,8 @@ REGLA DE ENTRADA AL PLAN
 - Solo después de pasar este filtro de evento/proyecto, ordena los movimientos por urgencia, riesgo, coste restante, solidez, dificultad, estudio reciente, velocidad y saturación.
 
 DURACIÓN DEL DÍA
-- Si el usuario no especifica otra cifra, usa 4 horas TOTALES de estudio como referencia diaria, contando lo que ya haya hecho hoy.
-- No rellenes tiempo por rellenarlo: si los objetivos reales enlazados no justifican 4 horas, dilo y propone menos.
-- Si el volumen o la urgencia REAL del repertorio enlazado justifican estudiar más y el usuario está dispuesto, ofrece extensiones opcionales y concretas a 4 h 30, 5 h, 5 h 30 o 6 h.
-- Una extensión NO significa por defecto añadir obras nuevas al final del plan. Al aumentar el presupuesto de tiempo, REORGANIZA el plan completo y decide libremente qué tiene más valor marginal: (a) dar más minutos o un segundo bloque a movimientos ya elegidos que realmente lo necesitan, (b) incorporar otras unidades enlazadas que habían quedado fuera por falta de tiempo, o (c) combinar ambas cosas.
-- Tampoco alargues automáticamente todos los bloques existentes. Solo aumenta tiempo de una unidad si su riesgo, coste restante, estado actual o respuesta esperada al trabajo adicional lo justifican. Añade una unidad nueva solo si su necesidad relativa supera el valor de seguir profundizando en las ya elegidas.
-- Para cada escalón de 4 h 30 / 5 h / 5 h 30 / 6 h explica brevemente QUÉ CAMBIA respecto al plan más corto: qué bloques se amplían, cuáles se repiten, cuáles se incorporan y por qué.
-- No asumas que más horas siempre es mejor: protege calidad, fatiga, concentración y saturación.`;
+- Usa la preferencia diaria y la condición del turno definidas por ProfessorDurationPolicy; no fijes aquí un presupuesto distinto.
+- No rellenes tiempo por rellenarlo. Al ampliar, reorganiza bloques según valor marginal y protege calidad, fatiga y saturación.`;
 
   const arr = value => Array.isArray(value) ? value : [];
 
@@ -150,7 +145,7 @@ DURACIÓN DEL DÍA
       const master = String(opts.masterPrompt || target.DEFAULT_MASTER_PROMPT || '').trim();
       const note = String(opts.note || '').trim();
       const runtime = master.includes(RUNTIME_MARKER) ? '' : `\n\n${RUNTIME_RULES}`;
-      return `${master}${runtime}\n\nTAREA DE ESTE TURNO\n${modeInstruction(opts.mode || 'today')}${note ? `\nCondición/mensaje adicional del usuario: ${note}` : ''}\n\n${compactContext(report)}\n\nAntes de recomendar, comprueba explícitamente: (1) lo estudiado hoy, (2) qué eventos/proyectos tienen repertorio realmente enlazado, (3) que ninguna obra sin evento se cuele por enfriamiento o historial, (4) cada movimiento por separado, (5) urgencia y coste restante, (6) saturación reciente y (7) si 4 h bastan o existe una extensión opcional justificada a 4 h 30 / 5 h / 5 h 30 / 6 h, recalculando con flexibilidad si conviene reforzar/repetir bloques ya elegidos, incorporar otros nuevos o combinar ambas cosas.`;
+      return `${master}${runtime}\n\nTAREA DE ESTE TURNO\n${modeInstruction(opts.mode || 'today')}${note ? `\nCondición/mensaje adicional del usuario: ${note}` : ''}\n\n${compactContext(report)}\n\nAntes de recomendar, comprueba explícitamente: (1) lo estudiado hoy, (2) qué eventos/proyectos tienen repertorio realmente enlazado, (3) que ninguna obra sin evento se cuele por enfriamiento o historial, (4) cada movimiento por separado, (5) urgencia y coste restante, (6) saturación reciente y (7) si la referencia diaria elegida es adecuada o existe una extensión opcional justificada, recalculando con flexibilidad si conviene reforzar/repetir bloques ya elegidos, incorporar otros nuevos o combinar ambas cosas.`;
     };
     buildPrompt.__professorEventGate = true;
     target.buildPrompt = buildPrompt;

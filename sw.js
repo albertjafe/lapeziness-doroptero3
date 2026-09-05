@@ -1,11 +1,11 @@
-const CACHE = 'estudio-v348';
+const CACHE = 'estudio-v349';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
   "./activity-dashboard.js?v=342",
   "./activity-self-tracker.js?v=342",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=348",
+  "./app.js?v=349",
   "./competition-planning-seed.js?v=342",
   "./crono-idle-hierarchy.css?v=342",
   "./crono-readiness-layout.css?v=342",
@@ -51,7 +51,7 @@ const ASSETS = [
   "./passage-tracker.js?v=342",
   "./piano-rooms-core.js?v=342",
   "./piano-rooms.css?v=342",
-  "./piano-rooms.js?v=348",
+  "./piano-rooms.js?v=349",
   "./planning-enhancements-v3.css?v=342",
   "./planning-enhancements-v3.js?v=342",
   "./planning-enhancements-v4-speech-fix.js?v=342",
@@ -59,14 +59,14 @@ const ASSETS = [
   "./planning-enhancements-v4.js?v=342",
   "./professor-competition-deadline-bridge.js?v=342",
   "./professor-context-enrichment.js?v=342",
-  "./professor-core.js?v=342",
-  "./professor-dashboard.js?v=342",
-  "./professor-duration-policy.js?v=342",
+  "./professor-core.js?v=349",
+  "./professor-dashboard.js?v=349",
+  "./professor-duration-policy.js?v=349",
   "./professor-event-gate-ui.js?v=342",
-  "./professor-event-gate.js?v=342",
-  "./professor-handoff-resilience.js?v=342",
+  "./professor-event-gate.js?v=349",
+  "./professor-handoff-resilience.js?v=349",
   "./professor-report-normalizer.js?v=342",
-  "./professor-report-worker.js?v=342",
+  "./professor-report-worker.js?v=349",
   "./professor-temporary-chat.js?v=342",
   "./push-client.js?v=342",
   "./readiness-core.js?v=342",
@@ -136,7 +136,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '348');
+            target.searchParams.set('__pwa', '349');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -144,7 +144,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'348', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'349', navigated });
         } catch (error) {}
       }
     }

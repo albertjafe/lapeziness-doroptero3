@@ -2297,10 +2297,10 @@
 <script src="task-sync-bootstrap.js?v=342" id="taskSyncBootstrapScript"></script>
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=342"></script>
-<script src="app.js?v=348"></script>
+<script src="app.js?v=349"></script>
 <script src="study-session-ux.js?v=342"></script>
 <script src="crono-resume-layout.js?v=343"></script>
-<script src="piano-rooms.js?v=348"></script>
+<script src="piano-rooms.js?v=349"></script>
 <script src="google-calendar.js?v=342"></script>
 <script src="timer-objectives.js?v=342"></script>
 <script src="metronome.js?v=342"></script>
@@ -2311,7 +2311,7 @@
   // Activation/reload belongs exclusively to UpdateSafety.
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js?v=348', { updateViaCache:'none' }).catch(() => {});
+      navigator.serviceWorker.register('./sw.js?v=349', { updateViaCache:'none' }).catch(() => {});
     });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') navigator.serviceWorker.getRegistration()
