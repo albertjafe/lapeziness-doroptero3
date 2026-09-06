@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-06 · caché runtime v355
+**Estado:** CANÓNICO · actualizado 2026-09-06 · caché runtime v356
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -173,7 +173,8 @@ Tipos habituales:
 Estados:
 `Confirmado · Planificado · Standby · Descartado · Completado`
 
-- Un evento puede tener obras enlazadas (`event.obras`) y opcionalmente objetivos por movimiento.
+- `event.obras` conserva el conjunto de obras enlazadas a nivel padre/compatibilidad. Si una obra tiene movimientos, la selección explícita actual se refleja además en `professorMovements`, `movimientosObjetivo` y `repertorioPlanificado` (`obraId + movimientoId`).
+- Al marcar una obra con movimientos se incluyen todos por defecto; el usuario puede dejar un subconjunto. Un evento antiguo con la obra marcada pero sin detalle de movimientos se interpreta como **obra completa**. Los hitos de concurso que espejan el repertorio padre conservan también la selección por movimiento.
 - Deadlines/milestones pertenecen al evento padre.
 - Diferenciar deadline oficial, fecha objetivo de grabación y requisito real de vídeo.
 - Un concurso en Standby pesa menos que un compromiso confirmado, pero **solo puede influir musicalmente si tiene repertorio enlazado**.
@@ -185,7 +186,8 @@ Estados:
 - `competition-planning-seed.js`: import/seed inicial de concursos.
 - `event-planning-ui-v2.js/css`: interfaz móvil/modal de concurso.
 - `event-planning-enhancements.js/css`: mejoras posteriores del modelo/UI.
-- `event-repertoire-picker.js/css`: selector de repertorio de un evento.
+- `event-repertoire-picker.js/css`: búsqueda, filtrado y presentación del selector de repertorio de un evento.
+- `event-movement-selector.js`: selección explícita por movimiento; mantiene compatibilidad con `event.obras`, persiste el subconjunto y sincroniza las relaciones por movimiento.
 - `event-sync-core.js`: fusión/sync de eventos.
 - `event-data-protection.js`: protección de eventos frente a pérdidas/reemplazos.
 - `historical-events.js` / `historical-events-details.js`: histórico y detalle.
@@ -289,12 +291,12 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- Caché actual `estudio-v355`: app, loaders piano-rooms/crono-resume-layout, professor-dashboard y passage-tracker.js/css usan v355. local-save-resilience/update-safety conservan v354; los demás módulos Profesor v349; daily-study-minutes v352 y passage-tracker-resilience v353. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
+- Caché actual `estudio-v356`: `event-movement-selector.js` y `event-repertoire-picker.js` usan v356; app, loaders piano-rooms/crono-resume-layout, professor-dashboard y passage-tracker.js/css usan v355; local-save-resilience/update-safety conservan v354; los demás módulos Profesor v349; daily-study-minutes v352 y passage-tracker-resilience v353. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v355 en Ajustes.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v355 en Ajustes; v356 es el límite de caché PWA para el selector de movimientos.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
-- `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los 92 assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
+- `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los 93 assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
 - `push-client.js` + migraciones `202607230001/2_*`: notificaciones push.
 
 Documentación pura (`.md`, instrucciones de IA) no necesita bump de SW porque no altera la PWA servida al usuario.
@@ -324,7 +326,7 @@ Documentación pura (`.md`, instrucciones de IA) no necesita bump de SW porque n
 | solidez/readiness | `solidity-model.js`, `readiness-core.js`, `readiness-pill-model.js` |
 | slider/píldora táctil | `pase-liquid-direct-touch.js` |
 | pases | buscar `Pase`/`paseHistory` en `app.js`; módulos `passage-*` si es pasaje difícil |
-| eventos | `event-planning.js`, `event-repertoire-picker.js`, `event-sync-core.js` |
+| eventos | `event-planning.js`, `event-repertoire-picker.js`, `event-movement-selector.js`, `event-sync-core.js` |
 | concursos | `event-planning.js`, `competition-planning-seed.js`, `event-planning-ui-v2.js` |
 | proyectos personales | `planning-enhancements-v4.js` |
 | Profesor / ranking | `professor-core.js`, `professor-event-gate.js` |
