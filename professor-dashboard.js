@@ -99,7 +99,7 @@
 
   function addCronoButton() {
     const crono = document.getElementById('view-cronometro');
-    if (!crono || document.getElementById('professorCronoOpen')) return;
+    if (!crono || crono.querySelector('.crono-professor-link') || document.getElementById('professorCronoOpen')) return;
     const button = document.createElement('button');
     button.id = 'professorCronoOpen';
     button.className = 'prof-crono-open';

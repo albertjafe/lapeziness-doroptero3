@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-05 · caché runtime v354
+**Estado:** CANÓNICO · actualizado 2026-09-06 · caché runtime v355
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -135,18 +135,19 @@ Migraciones Supabase importantes para este tema:
 - `crono-resume-layout.js`: layout de reanudación/estado.
 - `crono-running-premium.js`: refinamiento de UI en marcha.
 - `session-minutes-correction.js`: corrección de minutos/sesiones.
+- Los drawers ofrecen Tareas, Pasajes y Metrónomo, con acceso estable a Profesor. Memoria queda retirada de la interfaz sin borrar tarjetas. Hecho muestra los minutos directamente y conserva los destellos del botón del cronómetro; ya no duplica la caja de destello ni el desplegable de detalles.
 - `saveDraft()` es secundario al bloque permanente: un fallo de cuota no interrumpe el cierre, la píldora ni el guardado posterior. `cronoLoadState()` descarta un timer antiguo cuyo runId ya está registrado; la recuperación de IndexedDB hace la misma reconciliación cuando los bloques llegan después del arranque.
 
 ### Pases / pasajes
 
 - Pases y su modal principal todavía tienen bastante lógica histórica en `app.js`.
 - `passage-tracker.js/css`: tracker moderno de pasajes difíciles.
-- El tracker es hijo directo de `.crono-wrap`, nunca de una pestaña oculta del calendario. Su normalizador conserva propiedades futuras y referencias; `commitDraft()` guarda las observaciones en la copia principal además del espejo.
+- El tracker es una única instancia que se mueve a la pestaña Pasajes del drawer activo (reposo o marcha), conservando borrador y tiempo al alternar pestañas. Su normalizador conserva propiedades futuras y referencias; `commitDraft()` guarda las observaciones en la copia principal además del espejo.
 - `pase-liquid-direct-touch.js`: gesto táctil de valoración/solidez.
 
 ### Tareas
 
-- Datos: `db.cronoTasks`.
+- Datos: `db.cronoTasks`. El cronómetro muestra y cuenta solo tareas personales; las tareas Piano antiguas se conservan sin mostrarse.
 - UI/CRUD histórico: buscar `cronoTask`, `renderCronoTasks` y modal `modalCronoTaskEdit` en `app.js`/`index.html`.
 - Prioridad dictada (`planning-enhancements-v4.js`):
   - `urgentísimo/urgentísima` → 3
@@ -288,9 +289,9 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- En la revisión de este mapa, el cache es `estudio-v354`; mirar `sw.js` para futuras versiones. `app.js`, `piano-rooms.js`, `crono-resume-layout.js`, `local-save-resilience.js` y `update-safety.js` usan `?v=354`. Profesor mantiene v349; `daily-study-minutes.js`, v352; `passage-tracker-resilience.js`, v353. El registro conserva la URL de un SW existente y llama a update(); una instalación nueva usa `./sw.js` sin query de versión para evitar reinstalaciones de código idéntico.
+- Caché actual `estudio-v355`: app, loaders piano-rooms/crono-resume-layout, professor-dashboard y passage-tracker.js/css usan v355. local-save-resilience/update-safety conservan v354; los demás módulos Profesor v349; daily-study-minutes v352 y passage-tracker-resilience v353. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v354 en Ajustes.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v355 en Ajustes.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los 92 assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.

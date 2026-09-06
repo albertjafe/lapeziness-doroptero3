@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-05-timer-update-v354';
+const APP_VERSION = '2026-09-06-crono-tools-v355';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -7564,17 +7564,9 @@ function closeHechoDatos(save) {
     }
   }
 
-  // Capturar destello: solo cuenta si la caja está visible (slider ≥ umbral) y
-  // la casilla "guardar destello" sigue marcada. La nota es opcional.
-  const destBox = document.getElementById('hechoDestelloBox');
-  const destChk = document.getElementById('hechoDestelloChk');
-  const destOn = !!(destBox && destBox.style.display !== 'none' && destChk && destChk.checked);
-  const destNota = destOn ? (document.getElementById('hechoDestelloNota')?.value || '').trim() : '';
-  if (destOn) {
-    const prevDest = sessionDestello[planId] || {};
-    sessionDestello[planId] = Object.assign({}, prevDest, { on: true, nota: destNota });
-  }
-  else delete sessionDestello[planId];
+  // Destellos se editan desde su botón del cronómetro, no desde Hecho.
+  const destOn = !!sessionDestello[planId]?.on;
+  const destNota = destOn ? (sessionDestello[planId].nota || '') : '';
 
   // Registro de la sub-sesión (timestamps, minutos, zona, destello). La
   // productividad se eliminó: prodVal queda null y no se puntúa la sesión.
@@ -20690,7 +20682,7 @@ function cronoTaskDueLabel(task) {
 }
 
 function cronoPendingTaskCount(kind) {
-  return cronoTasks().filter(task => !task.done && (!kind || cronoTaskKind(task) === kind)).length;
+  return cronoTasks().filter(task => !task.done && cronoTaskKind(task) === 'personal' && (!kind || kind === 'personal')).length;
 }
 
 function cronoActiveTaskCount() {
@@ -20698,8 +20690,8 @@ function cronoActiveTaskCount() {
 }
 
 const _cronoTaskComposer = {
-  idle: { kind: 'piano', tomorrow: false, open: false },
-  running: { kind: 'piano', tomorrow: false, open: false },
+  idle: { kind: 'personal', tomorrow: false, open: false },
+  running: { kind: 'personal', tomorrow: false, open: false },
 };
 let _cronoTaskRecognition = null;
 let _cronoTaskVoiceSource = null;
@@ -20909,7 +20901,7 @@ function cronoMaybeRemindTasks(reason) {
 
 function cronoTaskBreakPending() {
   return cronoTasks()
-    .filter(task => !task.done)
+    .filter(task => !task.done && cronoTaskKind(task) === 'personal')
     .sort((a, b) => {
       const priorityOrder = cronoTaskPriority(b) - cronoTaskPriority(a);
       if (priorityOrder) return priorityOrder;
@@ -21118,7 +21110,6 @@ function renderCronoTasks() {
     el.innerHTML =
       composerHtml +
       '<div class="crono-task-columns">' +
-        lane('piano', 'Piano', piano, target.source) +
         lane('personal', 'Personal', personal, target.source) +
       '</div>';
     cronoUpdateTaskComposer(target.source);
@@ -21731,7 +21722,7 @@ function deleteMemoryCard(cardId) {
 }
 
 function cronoSetRunDrawerTab(tab) {
-  _cronoRunDrawerTab = ['metronomo', 'memoria'].includes(tab) ? tab : 'tareas';
+  _cronoRunDrawerTab = ['metronomo', 'pasajes'].includes(tab) ? tab : 'tareas';
   cronoUpdateRunDrawer();
   try { Haptics.light(); } catch(e) {}
 }
@@ -21739,7 +21730,7 @@ function cronoSetRunDrawerTab(tab) {
 function cronoUpdateRunDrawer() {
   const drawer = document.getElementById('cronoRunDrawer');
   if (!drawer) return;
-  const tab = ['metronomo', 'memoria'].includes(_cronoRunDrawerTab) ? _cronoRunDrawerTab : 'tareas';
+  const tab = ['metronomo', 'pasajes'].includes(_cronoRunDrawerTab) ? _cronoRunDrawerTab : 'tareas';
   drawer.dataset.tab = tab;
   drawer.querySelectorAll('.crono-run-drawer-tab').forEach(btn => {
     if (btn.dataset.action) {
@@ -21755,9 +21746,9 @@ function cronoUpdateRunDrawer() {
     panel.classList.toggle('active', panel.dataset.panel === tab);
   });
   if (tab === 'tareas') renderCronoTasks();
-  else if (tab === 'memoria') {
+  else if (tab === 'pasajes') {
     cronoRenderTaskCount();
-    renderMemoryPanels();
+    window.PassageTracker?.render();
   } else {
     cronoRenderTaskCount();
     if (typeof metronomeRender === 'function') metronomeRender();
@@ -21771,7 +21762,7 @@ function cronoSetObservation(value) {
 }
 
 function cronoSetIdleDrawerTab(tab) {
-  _cronoIdleDrawerTab = ['metronomo', 'memoria'].includes(tab) ? tab : 'tareas';
+  _cronoIdleDrawerTab = ['metronomo', 'pasajes'].includes(tab) ? tab : 'tareas';
   cronoUpdateIdleDrawer();
   try { Haptics.light(); } catch(e) {}
 }
@@ -21779,7 +21770,7 @@ function cronoSetIdleDrawerTab(tab) {
 function cronoUpdateIdleDrawer() {
   const drawer = document.getElementById('cronoIdleDrawer');
   if (!drawer) return;
-  const tab = ['metronomo', 'memoria'].includes(_cronoIdleDrawerTab) ? _cronoIdleDrawerTab : 'tareas';
+  const tab = ['metronomo', 'pasajes'].includes(_cronoIdleDrawerTab) ? _cronoIdleDrawerTab : 'tareas';
   drawer.dataset.tab = tab;
   drawer.querySelectorAll('.crono-idle-drawer-tab').forEach(btn => {
     const active = btn.dataset.tab === tab;
@@ -21790,9 +21781,9 @@ function cronoUpdateIdleDrawer() {
     panel.classList.toggle('active', panel.dataset.panel === tab);
   });
   if (tab === 'tareas') renderCronoTasks();
-  else if (tab === 'memoria') {
+  else if (tab === 'pasajes') {
     cronoRenderTaskCount();
-    renderMemoryPanels();
+    window.PassageTracker?.render();
   } else {
     cronoRenderTaskCount();
     if (typeof metronomeRender === 'function') metronomeRender();

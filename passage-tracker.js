@@ -472,6 +472,10 @@
       overlay.querySelector('#passageRatingSave').addEventListener('click', savePassageRating);
     }
 
+    const panel = document.getElementById('cronoPassageTracker');
+    const running = ['running','paused'].includes(cronoState()?.state);
+    const slot = document.querySelector((running ? '#cronoRunDrawer' : '#cronoIdleDrawer') + ' [data-panel="pasajes"]');
+    if(panel && slot && panel.parentElement !== slot) slot.appendChild(panel);
     ensureHechoSummary();
   }
 
@@ -578,6 +582,7 @@
     const slider = document.getElementById('passageRatingSlider');
     if (!slider) return;
     const value = clamp(slider.value, 1, 100);
+    slider.style.setProperty('--passage-fill', ((value-1)/99*100)+'%');
     document.getElementById('passageRatingValue').textContent = String(Math.round(value));
     document.getElementById('passageRatingDescriptor').textContent = scoreDescriptor(value);
   }
@@ -653,7 +658,7 @@
       const strong = document.createElement('strong');
       strong.textContent = passage.name;
       const meta = document.createElement('small');
-      meta.textContent = 'D ' + Number(passage.difficulty || 0).toFixed(1);
+      meta.textContent = 'Dificultad ' + Number(passage.difficulty || 0).toFixed(1) + ' · editar';
       nameBtn.append(strong, meta);
       nameBtn.addEventListener('click', () => openPassageEditor(passage.id));
 
@@ -672,7 +677,8 @@
       const time = document.createElement('strong');
       time.dataset.passageTime = passage.id;
       time.textContent = formatMs(liveFocusedMs(passage.id));
-      timerBtn.append(icon, time);
+      const action = document.createElement('small');action.textContent = idEqual(activePassageId, passage.id) ? 'Parar' : 'Estudiar';
+      timerBtn.append(icon, time, action);
       timerBtn.addEventListener('click', () => togglePassageTimer(passage.id));
 
       row.append(nameBtn, scoreBtn, timerBtn);

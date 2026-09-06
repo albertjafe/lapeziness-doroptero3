@@ -42,6 +42,7 @@ async function prepare(page) {
     select.value = 'mov::obra_passage::m1';
     cronoUpdateSelectBtn();
     cronoUpdateStartBtn();
+    cronoSetIdleDrawerTab('pasajes');
     PassageTracker.render();
   });
 }
@@ -70,13 +71,14 @@ test('passages belong to the exact movement and empty scopes only show add', asy
 
   await addPassage(page);
   await expect(page.locator('#cronoPassageTracker')).toContainText('Octavas finales');
-  await expect(page.locator('#cronoPassageTracker')).toContainText('D 8.7');
+  await expect(page.locator('#cronoPassageTracker')).toContainText('Dificultad 8.7');
 
   await page.evaluate(() => {
     const select = document.getElementById('cronoObraSelect');
     select.value = 'mov::obra_passage::m2';
     cronoUpdateSelectBtn();
     cronoUpdateStartBtn();
+    cronoSetIdleDrawerTab('pasajes');
     PassageTracker.render();
   });
   await expect(page.locator('#cronoPassageTracker .crono-passage-row')).toHaveCount(0);
@@ -91,6 +93,7 @@ test('records cold score, explicit focus time and optional post score without as
     crono.mode = 'stopwatch';
     cronoUpdateStartBtn();
     cronoStart();
+    cronoSetRunDrawerTab('pasajes');
   });
   await expect.poll(() => page.evaluate(() => crono.state)).toBe('running');
 
@@ -127,26 +130,16 @@ test('records cold score, explicit focus time and optional post score without as
   expect(stored.observations[0].postScore).toBe(73);
 });
 
-test('iPad landscape gives passage tracking its own non-overlapping slot beside tasks', async ({ page }) => {
+test('iPad landscape alternates tasks and passages in the same drawer', async ({ page }) => {
   await page.setViewportSize({ width: 1194, height: 834 });
   await prepare(page);
   await addPassage(page);
-
-  const geometry = await page.evaluate(() => {
-    const rect = id => {
-      const r = document.querySelector(id).getBoundingClientRect();
-      return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
-    };
-    return {
-      passage: rect('#cronoPassageTracker'),
-      tasks: rect('#cronoIdleDrawer'),
-      calendar: rect('#cronoCalendarObjectivesShell'),
-    };
-  });
-
-  expect(geometry.passage.width).toBeGreaterThan(110);
-  expect(geometry.passage.height).toBeGreaterThan(120);
-  expect(geometry.tasks.right).toBeLessThanOrEqual(geometry.passage.left + 2);
-  expect(geometry.calendar.left).toBeLessThanOrEqual(geometry.passage.left + 2);
-  expect(geometry.calendar.right).toBeGreaterThanOrEqual(geometry.passage.right - 2);
+  const drawer = page.locator('#cronoIdleDrawer');
+  await expect(drawer.locator('#cronoPassageTracker')).toBeVisible();
+  await expect(drawer.locator('[data-panel="tareas"]')).toBeHidden();
+  await drawer.getByRole('tab', {name:'Tareas'}).click();
+  await expect(drawer.locator('#cronoPassageTracker')).toBeHidden();
+  await expect(drawer.locator('[data-panel="tareas"]')).toBeVisible();
+  await drawer.getByRole('tab', {name:'Pasajes', exact:true}).click();
+  await expect(drawer.locator('.crono-passage-row')).toHaveCount(1);
 });

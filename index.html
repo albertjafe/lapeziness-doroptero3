@@ -366,12 +366,7 @@
         </button>
 
         <div class="crono-display-wrap crono-idle-display-wrap progress-active" id="cronoIdleDisplayWrap">
-          <div class="crono-tomorrow-note-rail" aria-label="Notas para mañana">
-            <button type="button" class="crono-tomorrow-note-btn" onclick="openCronoTomorrowTask()"
-                    aria-label="Añadir una nota para mañana" title="Añadir una nota para mañana">+</button>
-            <span class="crono-tomorrow-note-spacer" aria-hidden="true"></span>
-          </div>
-          <svg class="crono-run-progress-svg crono-timer-svg" id="cronoTimerSvg" viewBox="0 0 220 220" aria-hidden="true">
+            <svg class="crono-run-progress-svg crono-timer-svg" id="cronoTimerSvg" viewBox="0 0 220 220" aria-hidden="true">
             <circle class="crono-run-progress-track" cx="110" cy="110" r="94" fill="none"/>
             <circle class="crono-run-progress-arc crono-timer-arc" id="cronoTimerArc"
                     cx="110" cy="110" r="94" fill="none"
@@ -409,15 +404,13 @@
         <div class="crono-run-drawer-handle" aria-hidden="true"></div>
         <div class="crono-run-drawer-head crono-idle-panel-head">
           <span>Antes de empezar</span>
-          <strong>Foco actual</strong>
+          <button type="button" class="crono-professor-link" onclick="showView('profesor')">Profesor ↗</button>
         </div>
         <div class="crono-run-drawer-tabs crono-minimal-tabs" role="tablist" aria-label="Herramientas de estudio">
           <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab active" data-tab="tareas" role="tab" aria-selected="true" onclick="cronoSetIdleDrawerTab('tareas')">
             Tareas <span class="crono-task-notification-dot" id="cronoIdleDrawerTaskTabCount" aria-hidden="true" hidden></span>
           </button>
-          <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab crono-memory-tab" data-tab="memoria" role="tab" aria-label="Tarjetas de memoria" title="Memoria" aria-selected="false" onclick="cronoSetIdleDrawerTab('memoria')">
-            <span class="crono-memory-tab-icon" aria-hidden="true"><i></i></span><span class="crono-memory-tab-label">Memoria</span><span class="crono-memory-tab-count" data-memory-count="idle" hidden></span>
-          </button>
+          <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab" data-tab="pasajes" role="tab" aria-selected="false" onclick="cronoSetIdleDrawerTab('pasajes')">Pasajes</button>
           <button type="button" class="crono-run-drawer-tab crono-idle-drawer-tab crono-metronome-tab" data-tab="metronomo" role="tab" aria-label="Metrónomo" aria-selected="false" onclick="cronoSetIdleDrawerTab('metronomo')">
             <svg class="crono-metronome-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16"/><path d="M6 20 12 4l6 16"/><path d="M12 7v8"/><circle cx="12" cy="17.5" r="1.6"/></svg><span class="crono-metronome-tab-label">Metrónomo</span>
           </button>
@@ -433,9 +426,7 @@
           <div class="crono-run-drawer-panel crono-idle-drawer-panel" data-panel="metronomo" role="tabpanel">
             <div class="crono-metronome" data-metronome-surface="idle"></div>
           </div>
-          <div class="crono-run-drawer-panel crono-idle-drawer-panel" data-panel="memoria" role="tabpanel">
-            <div class="crono-memory" data-memory-surface="idle"></div>
-          </div>
+          <div class="crono-run-drawer-panel crono-idle-drawer-panel" data-panel="pasajes" role="tabpanel"></div>
         </div>
 
         <div class="crono-idle-dot-wrap">
@@ -478,12 +469,7 @@
 
       <!-- Tiempo gigante con outline (Forest-style) -->
       <div class="crono-display-wrap" id="cronoDisplayWrap">
-        <div class="crono-tomorrow-note-rail" aria-label="Notas para mañana">
-          <button type="button" class="crono-tomorrow-note-btn" onclick="openCronoTomorrowTask()"
-                  aria-label="Añadir una nota para mañana" title="Añadir una nota para mañana">+</button>
-          <span class="crono-tomorrow-note-spacer" aria-hidden="true"></span>
-        </div>
-        <svg class="crono-run-progress-svg" viewBox="0 0 220 220" aria-hidden="true">
+                <svg class="crono-run-progress-svg" viewBox="0 0 220 220" aria-hidden="true">
           <circle class="crono-run-progress-track" cx="110" cy="110" r="94" fill="none"/>
           <circle class="crono-run-progress-arc" id="cronoRunProgressArc"
                   cx="110" cy="110" r="94" fill="none"
@@ -515,15 +501,13 @@
       <div class="crono-run-drawer-handle" aria-hidden="true"></div>
       <div class="crono-run-drawer-head">
         <span>Durante la sesión</span>
-        <strong>Foco actual</strong>
+        <button type="button" class="crono-professor-link" onclick="showView('profesor')">Profesor ↗</button>
       </div>
       <div class="crono-run-drawer-tabs crono-minimal-tabs" role="tablist" aria-label="Herramientas">
         <button type="button" class="crono-run-drawer-tab active" data-tab="tareas" role="tab" aria-selected="true" onclick="cronoSetRunDrawerTab('tareas')">
           Tareas <span class="crono-task-notification-dot" id="cronoDrawerTaskTabCount" aria-hidden="true" hidden></span>
         </button>
-        <button type="button" class="crono-run-drawer-tab crono-memory-tab" data-tab="memoria" role="tab" aria-label="Tarjetas de memoria" title="Memoria" aria-selected="false" onclick="cronoSetRunDrawerTab('memoria')">
-          <span class="crono-memory-tab-icon" aria-hidden="true"><i></i></span><span class="crono-memory-tab-label">Memoria</span><span class="crono-memory-tab-count" data-memory-count="running" hidden></span>
-        </button>
+        <button type="button" class="crono-run-drawer-tab" data-tab="pasajes" role="tab" aria-selected="false" onclick="cronoSetRunDrawerTab('pasajes')">Pasajes</button>
         <button type="button" class="crono-run-drawer-tab crono-metronome-tab" data-tab="metronomo" role="tab" aria-label="Metrónomo" aria-selected="false" onclick="cronoSetRunDrawerTab('metronomo')">
           <svg class="crono-metronome-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h16"/><path d="M6 20 12 4l6 16"/><path d="M12 7v8"/><circle cx="12" cy="17.5" r="1.6"/></svg><span class="crono-metronome-tab-label">Metrónomo</span>
         </button>
@@ -537,9 +521,7 @@
         <div class="crono-run-drawer-panel" data-panel="metronomo" role="tabpanel">
           <div class="crono-metronome" data-metronome-surface="running"></div>
         </div>
-        <div class="crono-run-drawer-panel" data-panel="memoria" role="tabpanel">
-          <div class="crono-memory" data-memory-surface="running"></div>
-        </div>
+        <div class="crono-run-drawer-panel" data-panel="pasajes" role="tabpanel"></div>
       </div>
 
     </div>
@@ -1448,7 +1430,7 @@
     </div>
 
     <!-- Minutos -->
-    <div class="hecho-advanced-only hecho-minutes-field">
+    <div class="hecho-minutes-field">
       <div class="hecho-field-label">Minutos estudiados</div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
         <input type="number" id="hechoMinutos" min="1" max="480" step="5"
@@ -1577,26 +1559,12 @@
       <textarea id="hechoCronoFinalNote" class="modal-input hecho-crono-final-note" rows="2" placeholder="nota final dictada o escrita..." style="display:none"></textarea>
     </div>
 
-    <!-- Destello: marcar la sesión como memorable (sin productividad) -->
-    <div class="hecho-advanced-only hecho-destello-field" style="margin-top:6px;padding-top:14px;border-top:1px dashed var(--border2)">
-      <label class="hecho-destello-toggle">
-        <input type="checkbox" id="hechoDestelloChk" onchange="toggleHechoDestello(this.checked)">
-        <span class="hecho-destello-toggle-track"><span class="hecho-destello-toggle-knob"></span></span>
-        <span class="hecho-destello-toggle-text"><span class="spark">✨</span> Marcar como destello</span>
-      </label>
-      <div id="hechoDestelloBox" class="hecho-destello-box" style="display:none">
-        <input type="text" id="hechoDestelloNota" class="modal-input hecho-destello-input" placeholder="¿Qué la hizo especial?">
-      </div>
-    </div>
-
     <!-- Observacion unica -->
     <div class="hecho-note-section">
       <div class="hecho-field-label">Nota final <span>opcional</span></div>
       <textarea id="hechoNota" class="modal-input hecho-session-note" rows="2" maxlength="1600" placeholder="Qué funcionó o qué retomarás mañana"></textarea>
     </div>
 
-    <button type="button" class="hecho-advanced-toggle" id="hechoAdvancedToggle"
-      aria-expanded="false" onclick="hechoToggleAdvanced()">Añadir detalles</button>
 
     </div><!-- /.hecho-modal-body -->
 
@@ -2297,10 +2265,10 @@
 <script src="task-sync-bootstrap.js?v=342" id="taskSyncBootstrapScript"></script>
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=342"></script>
-<script src="app.js?v=354"></script>
+<script src="app.js?v=355"></script>
 <script src="study-session-ux.js?v=342"></script>
-<script src="crono-resume-layout.js?v=354"></script>
-<script src="piano-rooms.js?v=354"></script>
+<script src="crono-resume-layout.js?v=355"></script>
+<script src="piano-rooms.js?v=355"></script>
 <script src="google-calendar.js?v=342"></script>
 <script src="timer-objectives.js?v=342"></script>
 <script src="metronome.js?v=342"></script>
