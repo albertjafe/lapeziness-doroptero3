@@ -8,6 +8,7 @@
   let listObserver = null;
   let modalObserver = null;
   let changeBound = false;
+  let movementClickGuardBound = false;
   let bootTimer = null;
 
   function normalize(value) {
@@ -156,6 +157,16 @@
     if (!listObserver) {
       listObserver = new MutationObserver(() => { decorateRows(); applyFilter(); });
       listObserver.observe(host, { childList: true, subtree: true });
+    }
+    if (!movementClickGuardBound) {
+      movementClickGuardBound = true;
+      host.addEventListener('click', event => {
+        if (!event.target?.closest?.('[data-event-movement]')) return;
+        // Movement buttons live inside the legacy work <label>. Without
+        // cancelling the label's default click, the browser toggles the parent
+        // work checkbox after EventMovementSelector updates the movement.
+        event.preventDefault();
+      });
     }
     if (!changeBound) {
       changeBound = true;
