@@ -113,13 +113,15 @@
       load('readinessRecoveryContextScript','./readiness-recovery-context.js?v=342',finishReadinessModel);
     });
     load('workStructureCatalogScript','./work-structure-catalog.js?v=342',function(){
-      load('obraPremiumScript','./obra-premium.js?v=342',function(){
-        load('obraPremiumPolishScript','./obra-premium-polish.js?v=342',function(){
-          load('obrasRedesignScript','./obras-redesign.js?v=342',function(){
-            load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=342',function(){
-              load('obrasUnifiedLibraryScript','./obras-unified-library.js?v=342',function(){
-                load('workDifficultyIntegrationScript','./work-difficulty-integration.js?v=342');
-                load('historicalRealStudyPolishScript','./historical-real-study-polish.js?v=342');
+      load('ensembleRepertoireCatalogScript','./ensemble-repertoire-catalog.js?v=359',function(){
+        load('obraPremiumScript','./obra-premium.js?v=342',function(){
+          load('obraPremiumPolishScript','./obra-premium-polish.js?v=342',function(){
+            load('obrasRedesignScript','./obras-redesign.js?v=342',function(){
+              load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=342',function(){
+                load('obrasUnifiedLibraryScript','./obras-unified-library.js?v=342',function(){
+                  load('workDifficultyIntegrationScript','./work-difficulty-integration.js?v=342');
+                  load('historicalRealStudyPolishScript','./historical-real-study-polish.js?v=342');
+                });
               });
             });
           });
