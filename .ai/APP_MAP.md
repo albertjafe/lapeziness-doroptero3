@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-06 · caché runtime v356
+**Estado:** CANÓNICO · actualizado 2026-09-06 · caché runtime v358
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -132,16 +132,20 @@ Migraciones Supabase importantes para este tema:
 - `timer-core.js`: helpers de temporización.
 - `timer-objectives.js`: objetivos vinculados al timer.
 - `study-session-ux.js`: mejoras de UX de sesión/Hoy.
-- `crono-resume-layout.js`: layout de reanudación/estado.
+- `crono-resume-layout.js`: layout de reanudación/estado y carga única del tracker de pasajes.
 - `crono-running-premium.js`: refinamiento de UI en marcha.
 - `session-minutes-correction.js`: corrección de minutos/sesiones.
+- `daily-study-minutes.js`: total diario canónico desde `sessionPlants`/`forestPlants`, evitando espejos de `sesiones` duplicados; reconoce también los repartos General→pasajes sin revivir el resumen General antiguo.
 - Los drawers ofrecen Tareas, Pasajes y Metrónomo, con acceso estable a Profesor. Memoria queda retirada de la interfaz sin borrar tarjetas. Hecho muestra los minutos directamente y conserva los destellos del botón del cronómetro; ya no duplica la caja de destello ni el desplegable de detalles.
 - `saveDraft()` es secundario al bloque permanente: un fallo de cuota no interrumpe el cierre, la píldora ni el guardado posterior. `cronoLoadState()` descarta un timer antiguo cuyo runId ya está registrado; la recuperación de IndexedDB hace la misma reconciliación cuando los bloques llegan después del arranque.
 
 ### Pases / pasajes
 
 - Pases y su modal principal todavía tienen bastante lógica histórica en `app.js`.
-- `passage-tracker.js/css`: tracker moderno de pasajes difíciles.
+- `passage-tracker.js/css`: tracker moderno de pasajes difíciles. Cada pasaje conserva `obraId` y, cuando procede, `movId`.
+- Con una obra/movimiento concreto seleccionado, Pasajes muestra solo los pasajes de esa unidad. Con **General**, muestra todos los pasajes guardados de todas las obras; General no crea pasajes sin dueño, por lo que los nuevos se añaden desde una obra/movimiento concreto.
+- Si el cronómetro maestro está en General y se activa el timer de un pasaje, ese subtramo se atribuye en `sessionPlants` a la `obraId`/`movId` propietaria del pasaje. El bloque General conserva únicamente el residual no etiquetado. **Invariante:** residual General + atribuciones de pasajes = duración original del cronómetro maestro; nunca sumar el tiempo de pasaje por encima del total.
+- El reparto General→pasajes usa hijos canónicos con `passageAllocationSource: 'passage-general-v1'` y metadatos en el padre para que sea idempotente. Un padre General con residual 0 sigue siendo evidencia temporal y bloquea el fallback del espejo antiguo de `sesiones`.
 - El tracker es una única instancia que se mueve a la pestaña Pasajes del drawer activo (reposo o marcha), conservando borrador y tiempo al alternar pestañas. Su normalizador conserva propiedades futuras y referencias; `commitDraft()` guarda las observaciones en la copia principal además del espejo.
 - `pase-liquid-direct-touch.js`: gesto táctil de valoración/solidez.
 
@@ -291,9 +295,9 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- Caché actual `estudio-v356`: `event-movement-selector.js` y `event-repertoire-picker.js` usan v356; app, loaders piano-rooms/crono-resume-layout, professor-dashboard y passage-tracker.js/css usan v355; local-save-resilience/update-safety conservan v354; los demás módulos Profesor v349; daily-study-minutes v352 y passage-tracker-resilience v353. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
+- Caché actual `estudio-v358`: `passage-tracker.js` y `daily-study-minutes.js` usan v358; `event-movement-selector.js` y `event-repertoire-picker.js` conservan sus URLs v356 dentro de la caché actual; app, loaders piano-rooms/crono-resume-layout, professor-dashboard y `passage-tracker.css` usan v355; local-save-resilience/update-safety conservan v354; los demás módulos Profesor v349; passage-tracker-resilience v353. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v355 en Ajustes; v356 es el límite de caché PWA para el selector de movimientos.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v355 en Ajustes; v358 es el límite de caché PWA actual.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los 93 assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
@@ -325,7 +329,7 @@ Documentación pura (`.md`, instrucciones de IA) no necesita bump de SW porque n
 | dificultad | `work-difficulty-model.js`, `work-difficulty-integration.js` |
 | solidez/readiness | `solidity-model.js`, `readiness-core.js`, `readiness-pill-model.js` |
 | slider/píldora táctil | `pase-liquid-direct-touch.js` |
-| pases | buscar `Pase`/`paseHistory` en `app.js`; módulos `passage-*` si es pasaje difícil |
+| pases/pasajes | `passage-tracker.js`, `daily-study-minutes.js`; buscar `Pase`/`paseHistory` en `app.js` para pases históricos |
 | eventos | `event-planning.js`, `event-repertoire-picker.js`, `event-movement-selector.js`, `event-sync-core.js` |
 | concursos | `event-planning.js`, `competition-planning-seed.js`, `event-planning-ui-v2.js` |
 | proyectos personales | `planning-enhancements-v4.js` |
