@@ -22,6 +22,19 @@ describe('WorkStructureCatalog', () => {
     ]);
   });
 
+  it('matches Ravel Sonatine and creates its three canonical movements', () => {
+    const match = Catalog.matchWorkStructure({ composer: 'Maurice Ravel', name: 'Sonatine, M.40' });
+    expect(match).not.toBeNull();
+    expect(match.movements.map(m => m.name)).toEqual([
+      'I. Modéré',
+      'II. Mouvement de menuet',
+      'III. Animé',
+    ]);
+    const result = Catalog.completeWorkStructure({ composer: 'Ravel', name: 'Sonatina Ravel M. 40', movimientos: [] });
+    expect(result.changed).toBe(true);
+    expect(result.work.movimientos).toHaveLength(3);
+  });
+
   it('fills generic movement names and missing durations without touching history', () => {
     const work = {
       id: 'waldstein', composer: 'Beethoven', name: 'Waldstein Op. 53',
