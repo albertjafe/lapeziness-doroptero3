@@ -52,6 +52,9 @@
     { composer:'Rachmaninov', title:'Momentos musicales, Op. 16', aliases:['rachmaninov op 16','moments musicaux op 16','momentos op 16'], movements:[
       {name:'I. Andantino',duration:6},{name:'II. Allegretto',duration:2},{name:'III. Andante cantabile',duration:4},{name:'IV. Presto',duration:3},{name:'V. Adagio sostenuto',duration:4},{name:'VI. Maestoso',duration:4}
     ]},
+    { composer:'Ravel', title:'Sonatine en fa sostenido menor, M. 40', aliases:['ravel sonatine m 40','maurice ravel sonatine m 40','sonatine m 40','sonatina ravel','ravel sonatina'], movements:[
+      {name:'I. Modéré',duration:4.5},{name:'II. Mouvement de menuet',duration:3},{name:'III. Animé',duration:4}
+    ]},
     { composer:'Schumann', title:'Concierto para piano en la menor, Op. 54', aliases:['schumann piano concerto op 54','schumann concierto op 54'], movements:[
       {name:'I. Allegro affettuoso',duration:14},{name:'II. Intermezzo. Andantino grazioso',duration:5},{name:'III. Allegro vivace',duration:10}
     ]},
