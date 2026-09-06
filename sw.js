@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v359';
+const CACHE = 'estudio-v360';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
@@ -94,7 +94,7 @@ const ASSETS = [
   "./work-difficulty-model.js?v=342",
   "./work-difficulty-stored-priority.js?v=342",
   "./work-difficulty.css?v=342",
-  "./work-structure-catalog.js?v=342"
+  "./work-structure-catalog.js?v=360"
 ];
 
 /* Una versión nueva se instala en espera. Nunca se promociona sola mientras
@@ -140,7 +140,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '359');
+            target.searchParams.set('__pwa', '360');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -148,7 +148,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'359', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'360', navigated });
         } catch (error) {}
       }
     }
