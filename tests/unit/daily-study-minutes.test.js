@@ -87,8 +87,39 @@ describe('daily study minutes', () => {
     };
     const api = loadFix(db);
     const { start, end } = dayRange();
-    expect(api.version).toBe(3);
+    expect(api.version).toBe(4);
     expect(api.minutesByDay(start, end)['2026-09-05']).toBe(216);
+  });
+
+  it('keeps a fully allocated General session at its original total instead of reviving its legacy mirror', () => {
+    const db = {
+      sessionPlants: [
+        {
+          obraId: 'general', mins: 0, runId: 'general-run',
+          startedAt: '2026-09-05T08:00:00.000Z', endedAt: '2026-09-05T08:03:00.000Z',
+          passageAllocation: { source: 'passage-general-v1', originalMins: 3, residualMins: 0, allocatedMins: 3 },
+        },
+        {
+          obraId: 'beethoven', movId: 'I', mins: 1, runId: 'general-run::passage::1',
+          startedAt: '2026-09-05T08:00:00.000Z', endedAt: '2026-09-05T08:01:00.000Z',
+          passageAllocationParentKey: 'general-run', passageAllocationSource: 'passage-general-v1',
+        },
+        {
+          obraId: 'bach', movId: 'II', mins: 2, runId: 'general-run::passage::2',
+          startedAt: '2026-09-05T08:01:00.000Z', endedAt: '2026-09-05T08:03:00.000Z',
+          passageAllocationParentKey: 'general-run', passageAllocationSource: 'passage-general-v1',
+        },
+      ],
+      forestPlants: [],
+      sesiones: [{
+        date: '2026-09-05T08:03:01.000Z',
+        items: [{ obraId: 'general', _planId: 'crono_general_run', estudiado: true, minutosReales: 3 }],
+      }],
+    };
+    const api = loadFix(db);
+    const { start, end } = dayRange();
+    expect(api.isPassageAllocationParent(db.sessionPlants[0])).toBe(true);
+    expect(api.minutesByDay(start, end)['2026-09-05']).toBe(3);
   });
 
   it('adds a genuine manual block that does not overlap timed study', () => {
