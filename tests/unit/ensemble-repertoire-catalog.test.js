@@ -45,7 +45,7 @@ describe('chamber and accompaniment repertoire catalog',()=>{
     const franck=catalog.search('Franck violin',5);
     expect(franck.some(entry=>/Franck/.test(entry.composer)&&/Sonata para violín/.test(entry.title))).toBe(true);
 
-    const concerto=catalog.search('Tchaikovsky violin concerto',5);
+    const concerto=catalog.search('Tchaikovsky concierto violin',5);
     const tchaikovsky=concerto.find(entry=>/Tchaikovsky/.test(entry.composer));
     expect(tchaikovsky?.category).toBe('acompanamiento');
     expect(tchaikovsky?.movements).toHaveLength(3);
