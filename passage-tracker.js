@@ -1,13 +1,14 @@
 /* Seguimiento de pasajes difíciles dentro del cronómetro.
-   El cronómetro maestro nunca se reparte automáticamente: solo se etiqueta el
-   tiempo que el usuario activa explícitamente en un pasaje. */
+   En una obra concreta solo se muestran sus pasajes. En General se muestran
+   todos y el tiempo activado se redistribuye a su obra sin duplicar el total. */
 (function passageTrackerFeature() {
   'use strict';
 
   const TRACKER_KEY = 'passageTracker';
   const MIRROR_KEY = 'alberto_passage_tracker_v1';
-  const VERSION = 1;
+  const VERSION = 2;
   const TICK_MS = 200;
+  const GENERAL_ALLOCATION_SOURCE = 'passage-general-v1';
 
   let draft = null;
   let activePassageId = null;
@@ -34,6 +35,9 @@
   }
   function idEqual(a, b) { return String(a ?? '') === String(b ?? ''); }
   function clamp(value, min, max) { return Math.min(max, Math.max(min, Number(value) || 0)); }
+  function normalized(value) {
+    return String(value == null ? '' : value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+  }
 
   function parseTime(value) {
     const t = Date.parse(value || '');
@@ -80,14 +84,13 @@
       observations.set(key, !previous || parseTime(item.recordedAt) >= parseTime(previous.recordedAt) ? item : previous);
     });
 
-    const merged = {
+    return {
       ...a, ...b,
       version: Math.max(a.version, b.version),
       passages: Array.from(passages.values()).sort((x, y) => parseTime(x.createdAt) - parseTime(y.createdAt)),
       observations: Array.from(observations.values()).sort((x, y) => parseTime(x.recordedAt) - parseTime(y.recordedAt)),
       updatedAt: parseTime(a.updatedAt) >= parseTime(b.updatedAt) ? a.updatedAt : b.updatedAt,
     };
-    return merged;
   }
 
   function readMirror() {
@@ -102,11 +105,8 @@
   function ensureTracker() {
     const database = appDb();
     if (!database) return trackerShape(null);
-    // Reads must not replace the object that commitDraft is still filling.
     let tracker = database[TRACKER_KEY];
-    if (!tracker || typeof tracker !== 'object' || Array.isArray(tracker)) {
-      tracker = database[TRACKER_KEY] = trackerShape(null);
-    }
+    if (!tracker || typeof tracker !== 'object' || Array.isArray(tracker)) tracker = database[TRACKER_KEY] = trackerShape(null);
     if (!Array.isArray(tracker.passages)) tracker.passages = [];
     if (!Array.isArray(tracker.observations)) tracker.observations = [];
     tracker.version = Math.max(VERSION, Number(tracker.version) || 0);
@@ -121,6 +121,19 @@
     writeMirror(tracker);
     try {
       if (typeof saveData === 'function') {
+        const result = saveData();
+        if (result && typeof result.catch === 'function') result.catch(() => {});
+      }
+    } catch (error) {}
+  }
+
+  function persistStudyAllocation() {
+    try { if (typeof saveLocalNow === 'function') saveLocalNow(); } catch (error) {}
+    try { if (typeof refreshStudyViews === 'function') refreshStudyViews(); } catch (error) {}
+    try { if (typeof cronoUpdateRunTodayTotal === 'function') cronoUpdateRunTodayTotal(); } catch (error) {}
+    try {
+      if (typeof enqueueCloudSync === 'function') enqueueCloudSync();
+      else if (typeof saveData === 'function') {
         const result = saveData();
         if (result && typeof result.catch === 'function') result.catch(() => {});
       }
@@ -149,12 +162,8 @@
             }
           } catch (error) {}
         }
-      } else {
-        writeMirror(before);
-      }
-    } finally {
-      reconcileBusy = false;
-    }
+      } else writeMirror(before);
+    } finally { reconcileBusy = false; }
   }
 
   function installSyncMerge() {
@@ -202,45 +211,70 @@
     return match ? { obraId: match[1], movId: null } : null;
   }
 
-  function currentTarget() {
+  function resolvedCurrentSelection() {
     const current = cronoState();
-    let resolved = null;
     if (current && current.state !== 'idle' && current.obraId) {
-      resolved = { obraId: String(current.obraId), movId: current.movId != null ? String(current.movId) : null };
-    } else {
-      const select = document.getElementById('cronoObraSelect');
-      resolved = parseSelection(select && select.value);
-      if (resolved && resolved.movId != null) resolved.movId = String(resolved.movId);
+      return { obraId: String(current.obraId), movId: current.movId != null ? String(current.movId) : null };
     }
+    const select = document.getElementById('cronoObraSelect');
+    const resolved = parseSelection(select && select.value);
+    if (resolved && resolved.movId != null) resolved.movId = String(resolved.movId);
+    return resolved;
+  }
+
+  function isGeneralSelection(resolved) {
+    if (!resolved || !resolved.obraId) return false;
+    if (normalized(resolved.obraId) === 'general') return true;
+    const obra = findWork(resolved.obraId);
+    return normalized(obra && (obra.name || obra.nombre || obra.title || obra.titulo)) === 'general';
+  }
+
+  function currentTarget() {
+    const resolved = resolvedCurrentSelection();
     if (!resolved || !resolved.obraId) return null;
+    if (isGeneralSelection(resolved)) return { obraId: String(resolved.obraId), movId: null, general: true };
     const obra = findWork(resolved.obraId);
     if (!obra || obra.tipo === 'actividad') return null;
-    return { obraId: String(resolved.obraId), movId: resolved.movId == null ? null : String(resolved.movId) };
+    return { obraId: String(resolved.obraId), movId: resolved.movId == null ? null : String(resolved.movId), general: false };
   }
 
   function targetKey(target) {
-    return target ? target.obraId + '::' + (target.movId == null ? '' : target.movId) : '';
+    if (!target) return '';
+    return (target.general ? 'general:' : '') + target.obraId + '::' + (target.movId == null ? '' : target.movId);
   }
 
   function movementForTarget(target) {
-    const obra = target && findWork(target.obraId);
+    if (!target || target.general) return null;
+    const obra = findWork(target.obraId);
     if (!obra || target.movId == null || !Array.isArray(obra.movimientos)) return null;
     return obra.movimientos.find(item => item && idEqual(item.id, target.movId)) || null;
   }
 
   function targetLabel(target) {
     if (!target) return '';
+    if (target.general) return 'General';
     const obra = findWork(target.obraId);
     const mov = movementForTarget(target);
     const workName = obra ? (obra.name || obra.nombre || 'Obra') : 'Obra';
     return mov ? workName + ' · ' + (mov.name || mov.nombre || 'Movimiento') : workName;
   }
 
+  function passageMatchesTarget(passage, target) {
+    if (!passage || !target) return false;
+    if (target.general) return true;
+    return idEqual(passage.obraId, target.obraId)
+      && (passage.movId == null ? target.movId == null : idEqual(passage.movId, target.movId));
+  }
+
   function activePassages(target) {
     if (!target) return [];
-    return ensureTracker().passages.filter(item => item && !item.deletedAt
-      && idEqual(item.obraId, target.obraId)
-      && (item.movId == null ? target.movId == null : idEqual(item.movId, target.movId)));
+    const passages = ensureTracker().passages.filter(item => item && !item.deletedAt && passageMatchesTarget(item, target));
+    if (!target.general) return passages;
+    return passages.slice().sort((a, b) => {
+      const left = targetLabel({ obraId: a.obraId, movId: a.movId, general: false }) + ' · ' + (a.name || '');
+      const right = targetLabel({ obraId: b.obraId, movId: b.movId, general: false }) + ' · ' + (b.name || '');
+      return left.localeCompare(right, 'es', { sensitivity: 'base' });
+    });
   }
 
   function passageById(id) {
@@ -265,10 +299,13 @@
   function ensureDraft() {
     const state = cronoState();
     if (!draft) {
+      const masterTarget = currentTarget();
       draft = {
         id: uid('passession'),
         startedAt: nowIso(),
         cronoStartedAt: state && state.startTs ? new Date(state.startTs).toISOString() : nowIso(),
+        cronoRunId: state && (state.runId || state.currentRunId || state.sessionRunId || state.id) || null,
+        masterTarget: masterTarget ? { obraId: masterTarget.obraId, movId: masterTarget.movId, general: !!masterTarget.general } : null,
         entries: {},
         committed: false,
       };
@@ -337,7 +374,8 @@
       return;
     }
     const passage = passageById(id);
-    if (!passage || passage.deletedAt) return;
+    const target = currentTarget();
+    if (!passage || passage.deletedAt || !passageMatchesTarget(passage, target)) return;
     if (idEqual(activePassageId, id)) {
       stopActive('manual-stop');
       renderPanel();
@@ -385,9 +423,7 @@
   }
 
   function toast(message) {
-    try {
-      if (typeof showToast === 'function') { showToast(message); return; }
-    } catch (error) {}
+    try { if (typeof showToast === 'function') { showToast(message); return; } } catch (error) {}
     console.info('[Pasajes]', message);
   }
 
@@ -412,8 +448,6 @@
         panel.className = 'crono-passage-tracker';
         panel.hidden = true;
         panel.setAttribute('aria-label', 'Pasajes difíciles');
-        // The calendar may already live inside a hidden tab. Passages are an
-        // independent grid item and must never inherit that tab's visibility.
         wrap.appendChild(panel);
       }
     }
@@ -475,7 +509,7 @@
     const panel = document.getElementById('cronoPassageTracker');
     const running = ['running','paused'].includes(cronoState()?.state);
     const slot = document.querySelector((running ? '#cronoRunDrawer' : '#cronoIdleDrawer') + ' [data-panel="pasajes"]');
-    if(panel && slot && panel.parentElement !== slot) slot.appendChild(panel);
+    if (panel && slot && panel.parentElement !== slot) slot.appendChild(panel);
     ensureHechoSummary();
   }
 
@@ -495,11 +529,15 @@
   function openPassageEditor(id) {
     ensureUi();
     const target = currentTarget();
-    if (!target) { toast('Elige primero una obra o movimiento'); return; }
     const passage = id ? passageById(id) : null;
+    if (!passage && (!target || target.general)) {
+      toast(target && target.general ? 'Selecciona una obra o movimiento para añadir un pasaje' : 'Elige primero una obra o movimiento');
+      return;
+    }
     editingPassageId = passage ? passage.id : null;
+    const contextTarget = passage ? { obraId: passage.obraId, movId: passage.movId, general: false } : target;
     document.getElementById('passageEditorTitle').textContent = passage ? 'Editar pasaje' : 'Añadir pasaje';
-    document.getElementById('passageEditorContext').textContent = targetLabel(target);
+    document.getElementById('passageEditorContext').textContent = targetLabel(contextTarget);
     document.getElementById('passageEditorName').value = passage ? passage.name || '' : '';
     document.getElementById('passageEditorDifficulty').value = passage && passage.difficulty != null ? Number(passage.difficulty).toFixed(1) : '7.0';
     document.getElementById('passageDeleteBtn').hidden = !passage;
@@ -509,19 +547,18 @@
 
   function savePassageEditor() {
     const target = currentTarget();
-    if (!target) { toast('La obra o movimiento ha cambiado'); return; }
+    const existing = editingPassageId ? passageById(editingPassageId) : null;
+    if (!existing && (!target || target.general)) { toast('Selecciona una obra o movimiento para añadir este pasaje'); return; }
     const name = String(document.getElementById('passageEditorName')?.value || '').trim();
     const difficulty = clamp(document.getElementById('passageEditorDifficulty')?.value, 1, 10);
     if (!name) { toast('Pon un nombre al pasaje'); return; }
     if (!difficulty) { toast('La dificultad debe estar entre 1 y 10'); return; }
     const tracker = ensureTracker();
     const stamp = nowIso();
-    if (editingPassageId) {
-      const passage = passageById(editingPassageId);
-      if (!passage) return;
-      passage.name = name;
-      passage.difficulty = Math.round(difficulty * 10) / 10;
-      passage.updatedAt = stamp;
+    if (existing) {
+      existing.name = name;
+      existing.difficulty = Math.round(difficulty * 10) / 10;
+      existing.updatedAt = stamp;
     } else {
       tracker.passages.push({
         id: uid('passage'),
@@ -570,7 +607,7 @@
     slider.value = String(clamp(initial, 1, 100));
     document.getElementById('passageRatingKicker').textContent = ratingMode === 'cold' ? 'En frío' : 'Después de trabajarlo';
     document.getElementById('passageRatingTitle').textContent = passage.name || 'Pasaje';
-    document.getElementById('passageRatingContext').textContent = targetLabel({ obraId: passage.obraId, movId: passage.movId });
+    document.getElementById('passageRatingContext').textContent = targetLabel({ obraId: passage.obraId, movId: passage.movId, general: false });
     document.getElementById('passageRatingHint').textContent = ratingMode === 'cold'
       ? 'Tócalo una o dos veces sin trabajarlo y registra cómo responde. Puedes corregir este valor mientras aún no hayas cronometrado el pasaje.'
       : 'Esta segunda medida es opcional. Sirve para separar mejora inmediata de retención en la próxima sesión.';
@@ -582,7 +619,7 @@
     const slider = document.getElementById('passageRatingSlider');
     if (!slider) return;
     const value = clamp(slider.value, 1, 100);
-    slider.style.setProperty('--passage-fill', ((value-1)/99*100)+'%');
+    slider.style.setProperty('--passage-fill', ((value - 1) / 99 * 100) + '%');
     document.getElementById('passageRatingValue').textContent = String(Math.round(value));
     document.getElementById('passageRatingDescriptor').textContent = scoreDescriptor(value);
   }
@@ -631,9 +668,16 @@
     panel.replaceChildren();
 
     if (!passages.length) {
-      const add = makeButton('crono-passage-add crono-passage-add-empty', '＋ Añadir pasaje', 'Añadir un pasaje difícil');
-      add.addEventListener('click', () => openPassageEditor(null));
-      panel.appendChild(add);
+      if (target.general) {
+        const empty = document.createElement('div');
+        empty.className = 'crono-passage-empty-general';
+        empty.innerHTML = '<strong>No hay pasajes guardados</strong><span>Añádelos desde una obra o movimiento y aparecerán aquí para tus calentamientos.</span>';
+        panel.appendChild(empty);
+      } else {
+        const add = makeButton('crono-passage-add crono-passage-add-empty', '＋ Añadir pasaje', 'Añadir un pasaje difícil');
+        add.addEventListener('click', () => openPassageEditor(null));
+        panel.appendChild(add);
+      }
       return;
     }
 
@@ -643,7 +687,7 @@
     title.innerHTML = '<span>PASAJES</span><strong>' + passages.length + '</strong>';
     const context = document.createElement('small');
     const movement = movementForTarget(target);
-    context.textContent = movement ? (movement.name || movement.nombre || 'Movimiento') : 'Obra completa';
+    context.textContent = target.general ? 'Todas las obras' : (movement ? (movement.name || movement.nombre || 'Movimiento') : 'Obra completa');
     head.append(title, context);
     panel.appendChild(head);
 
@@ -658,7 +702,8 @@
       const strong = document.createElement('strong');
       strong.textContent = passage.name;
       const meta = document.createElement('small');
-      meta.textContent = 'Dificultad ' + Number(passage.difficulty || 0).toFixed(1) + ' · editar';
+      const owner = target.general ? targetLabel({ obraId: passage.obraId, movId: passage.movId, general: false }) + ' · ' : '';
+      meta.textContent = owner + 'Dificultad ' + Number(passage.difficulty || 0).toFixed(1) + ' · editar';
       nameBtn.append(strong, meta);
       nameBtn.addEventListener('click', () => openPassageEditor(passage.id));
 
@@ -677,7 +722,8 @@
       const time = document.createElement('strong');
       time.dataset.passageTime = passage.id;
       time.textContent = formatMs(liveFocusedMs(passage.id));
-      const action = document.createElement('small');action.textContent = idEqual(activePassageId, passage.id) ? 'Parar' : 'Estudiar';
+      const action = document.createElement('small');
+      action.textContent = idEqual(activePassageId, passage.id) ? 'Parar' : 'Estudiar';
       timerBtn.append(icon, time, action);
       timerBtn.addEventListener('click', () => togglePassageTimer(passage.id));
 
@@ -686,9 +732,11 @@
     });
     panel.appendChild(list);
 
-    const add = makeButton('crono-passage-add', '＋ Añadir', 'Añadir otro pasaje difícil');
-    add.addEventListener('click', () => openPassageEditor(null));
-    panel.appendChild(add);
+    if (!target.general) {
+      const add = makeButton('crono-passage-add', '＋ Añadir', 'Añadir otro pasaje difícil');
+      add.addEventListener('click', () => openPassageEditor(null));
+      panel.appendChild(add);
+    }
   }
 
   function renderLiveTimes() {
@@ -735,7 +783,9 @@
       section.appendChild(row);
     });
     const note = document.createElement('small');
-    note.textContent = 'Solo este tiempo etiquetado se atribuirá a los pasajes; el resto sigue siendo estudio general.';
+    note.textContent = draft && draft.masterTarget && draft.masterTarget.general
+      ? 'En General, el tiempo de cada pasaje se asigna a su obra; el resto permanece en General. El total no cambia.'
+      : 'El tiempo del pasaje está incluido dentro del cronómetro maestro; no se suma dos veces.';
     section.appendChild(note);
   }
 
@@ -747,6 +797,156 @@
       }
     } catch (error) {}
     return null;
+  }
+
+  function generalAllocationSnapshot() {
+    if (!draft || !draft.masterTarget || !draft.masterTarget.general) return null;
+    const allocations = [];
+    Object.values(draft.entries || {}).forEach(entry => {
+      const passage = passageById(entry && entry.passageId);
+      const focusedMs = Math.max(0, Math.round(Number(entry && entry.focusedMs) || 0));
+      if (!passage || focusedMs <= 0) return;
+      allocations.push({
+        passageId: passage.id,
+        obraId: passage.obraId,
+        movId: passage.movId == null ? null : passage.movId,
+        focusedMs,
+        chunks: Array.isArray(entry.chunks) ? entry.chunks.map(chunk => ({ ...chunk })) : [],
+      });
+    });
+    if (!allocations.length) return null;
+    return {
+      generalObraId: draft.masterTarget.obraId,
+      runId: draft.cronoRunId,
+      startedAt: draft.cronoStartedAt,
+      allocations,
+    };
+  }
+
+  function plantMinutes(plant) {
+    return Math.max(0, Number(plant && (plant.mins ?? plant.min)) || 0);
+  }
+
+  function setPlantMinutes(plant, value) {
+    const next = Math.max(0, Math.round((Number(value) || 0) * 1000000) / 1000000);
+    if ('mins' in plant || !('min' in plant)) plant.mins = next;
+    if ('min' in plant) plant.min = next;
+    return next;
+  }
+
+  function parentPlantKey(plant) {
+    return String(plant && (plant.id || plant.runId || [plant.obraId || '', plant.startedAt || '', plant.endedAt || ''].join('|')) || '');
+  }
+
+  function locateGeneralPlant(database, snapshot) {
+    const plants = Array.isArray(database && database.sessionPlants) ? database.sessionPlants : [];
+    const candidates = plants.filter(plant => plant && !plant.passageAllocationParentKey && idEqual(plant.obraId, snapshot.generalObraId));
+    if (snapshot.runId) {
+      const exact = candidates.find(plant => idEqual(plant.runId, snapshot.runId) || idEqual(plant.id, snapshot.runId));
+      if (exact) return exact;
+    }
+    const started = parseTime(snapshot.startedAt);
+    const nearby = candidates.filter(plant => started && Math.abs(parseTime(plant.startedAt) - started) <= 10000);
+    if (nearby.length) return nearby.sort((a, b) => parseTime(b.endedAt) - parseTime(a.endedAt))[0];
+    return candidates.slice().sort((a, b) => parseTime(b.endedAt || b.startedAt) - parseTime(a.endedAt || a.startedAt))[0] || null;
+  }
+
+  function allocationGroups(snapshot) {
+    const groups = new Map();
+    snapshot.allocations.forEach(item => {
+      if (!item || !item.obraId || idEqual(item.obraId, snapshot.generalObraId)) return;
+      const key = String(item.obraId) + '::' + String(item.movId == null ? '' : item.movId);
+      let group = groups.get(key);
+      if (!group) {
+        group = { obraId: item.obraId, movId: item.movId, focusedMs: 0, passageIds: new Set(), chunks: [] };
+        groups.set(key, group);
+      }
+      group.focusedMs += Math.max(0, Number(item.focusedMs) || 0);
+      group.passageIds.add(String(item.passageId));
+      if (Array.isArray(item.chunks)) group.chunks.push(...item.chunks);
+    });
+    return Array.from(groups.values());
+  }
+
+  function applyGeneralAllocation(snapshot) {
+    if (!snapshot || !snapshot.allocations || !snapshot.allocations.length) return false;
+    const database = appDb();
+    if (!database || !Array.isArray(database.sessionPlants)) return false;
+    const parent = locateGeneralPlant(database, snapshot);
+    if (!parent) return false;
+    const parentKey = parentPlantKey(parent);
+    if (!parentKey) return false;
+
+    for (let index = database.sessionPlants.length - 1; index >= 0; index -= 1) {
+      const plant = database.sessionPlants[index];
+      if (plant && plant.passageAllocationParentKey === parentKey && plant.passageAllocationSource === GENERAL_ALLOCATION_SOURCE) {
+        database.sessionPlants.splice(index, 1);
+      }
+    }
+
+    const originalMins = Math.max(0, Number(parent.passageAllocation && parent.passageAllocation.originalMins) || plantMinutes(parent));
+    if (!(originalMins > 0)) return false;
+    const groups = allocationGroups(snapshot).filter(group => group.focusedMs > 0);
+    if (!groups.length) return false;
+
+    const requestedMins = groups.reduce((sum, group) => sum + group.focusedMs / 60000, 0);
+    const scale = requestedMins > originalMins && requestedMins > 0 ? originalMins / requestedMins : 1;
+    let allocatedMins = 0;
+    const children = [];
+
+    groups.forEach((group, index) => {
+      const remaining = Math.max(0, originalMins - allocatedMins);
+      const raw = group.focusedMs / 60000 * scale;
+      const mins = index === groups.length - 1
+        ? Math.min(remaining, Math.max(0, Math.round(raw * 1000000) / 1000000))
+        : Math.min(remaining, Math.max(0, Math.round(raw * 1000000) / 1000000));
+      if (!(mins > 0)) return;
+      allocatedMins += mins;
+      const chunks = group.chunks.filter(Boolean).slice().sort((a, b) => parseTime(a.startedAt) - parseTime(b.startedAt));
+      const work = findWork(group.obraId);
+      const movement = group.movId != null && work && Array.isArray(work.movimientos)
+        ? work.movimientos.find(item => item && idEqual(item.id, group.movId)) || null : null;
+      const suffix = String(index + 1);
+      const child = { ...parent };
+      delete child.passageAllocation;
+      child.id = parent.id ? String(parent.id) + '__passage_' + suffix : uid('passplant');
+      child.runId = String(parent.runId || parent.id || parentKey) + '::passage::' + suffix;
+      child.obraId = group.obraId;
+      child.movId = group.movId == null ? null : group.movId;
+      if (work) child.obraName = work.name || work.nombre || child.obraName;
+      if (movement) child.movName = movement.name || movement.nombre || child.movName;
+      child.startedAt = chunks[0] && chunks[0].startedAt || parent.startedAt;
+      child.endedAt = chunks[chunks.length - 1] && chunks[chunks.length - 1].endedAt || parent.endedAt;
+      child.passageAllocationParentKey = parentKey;
+      child.passageAllocationSource = GENERAL_ALLOCATION_SOURCE;
+      child.passageIds = Array.from(group.passageIds);
+      setPlantMinutes(child, mins);
+      children.push(child);
+    });
+
+    allocatedMins = Math.min(originalMins, children.reduce((sum, child) => sum + plantMinutes(child), 0));
+    const residualMins = setPlantMinutes(parent, Math.max(0, originalMins - allocatedMins));
+    parent.passageAllocation = {
+      version: 1,
+      source: GENERAL_ALLOCATION_SOURCE,
+      originalMins,
+      allocatedMins: Math.round(allocatedMins * 1000000) / 1000000,
+      residualMins,
+      children: children.map(child => child.runId),
+      appliedAt: nowIso(),
+    };
+    database.sessionPlants.push(...children);
+    database.sessionPlants.sort((a, b) => String(a.startedAt || '').localeCompare(String(b.startedAt || '')));
+    persistStudyAllocation();
+    return true;
+  }
+
+  function applyGeneralAllocationEventually(snapshot, attempt) {
+    if (!snapshot) return;
+    if (applyGeneralAllocation(snapshot)) return;
+    const n = Number(attempt) || 0;
+    if (n >= 4) return;
+    setTimeout(() => applyGeneralAllocationEventually(snapshot, n + 1), [20, 80, 180, 420][n] || 420);
   }
 
   function commitDraft() {
@@ -772,12 +972,13 @@
         sessionStartedAt: draft.cronoStartedAt || draft.startedAt,
         focusedMs,
         masterSessionMs: sessionTotalMs,
+        masterWasGeneral: !!(draft.masterTarget && draft.masterTarget.general),
         coldScore: entry.coldScore == null ? null : Number(entry.coldScore),
         coldCapturedAt: entry.coldCapturedAt || null,
         postScore: entry.postScore == null ? null : Number(entry.postScore),
         postCapturedAt: entry.postCapturedAt || null,
         focusChunks: (entry.chunks || []).map(chunk => ({ ...chunk })),
-        source: 'passage-tracker-v1',
+        source: 'passage-tracker-v2',
       };
       tracker.observations.push(observation);
       saved.push(observation);
@@ -836,10 +1037,12 @@
     if (typeof originalCloseHecho === 'function' && !originalCloseHecho.__passageTrackerWrapped) {
       const wrapped = function closeHechoWithPassages(saved) {
         const shouldSave = saved === true;
+        const allocationSnapshot = shouldSave ? generalAllocationSnapshot() : null;
         if (shouldSave) commitDraft();
         const result = originalCloseHecho.apply(this, arguments);
         const after = value => {
           if (shouldSave) {
+            applyGeneralAllocationEventually(allocationSnapshot, 0);
             const tracker = ensureTracker();
             writeMirror(tracker);
             resetDraft();
@@ -857,13 +1060,12 @@
   function monitorApp() {
     const state = cronoState();
     const stateName = state && state.state || 'idle';
-    const currentKey = targetKey(currentTarget());
+    const target = currentTarget();
+    const currentKey = targetKey(target);
     if (activePassageId && stateName !== 'running') stopActive('master-' + stateName);
     if (activePassageId) {
       const passage = passageById(activePassageId);
-      if (!passage || targetKey({ obraId: String(passage.obraId), movId: passage.movId == null ? null : String(passage.movId) }) !== currentKey) {
-        stopActive('target-change');
-      }
+      if (!passage || !passageMatchesTarget(passage, target)) stopActive('target-change');
     }
     if (stateName === 'running' && !draft) ensureDraft();
     if (currentKey !== lastTargetKey || stateName !== lastCronoState) {
@@ -871,9 +1073,7 @@
       lastCronoState = stateName;
       renderPanel();
       renderHechoSummary();
-    } else {
-      renderLiveTimes();
-    }
+    } else renderLiveTimes();
   }
 
   function boot() {
@@ -906,6 +1106,7 @@
     toggleTimer: togglePassageTimer,
     commitDraft,
     resetDraft,
+    applyGeneralAllocation,
     getDraft: () => draft,
     getTracker: () => trackerShape(ensureTracker()),
   };
