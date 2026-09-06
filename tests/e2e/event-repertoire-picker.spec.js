@@ -10,7 +10,11 @@ function work(index) {
     fase: 'activa',
     sol: 60,
     solHistory: [],
-    movimientos: [],
+    movimientos: index === 37 ? [
+      { id:'wald_1', name:'I. Allegro con brio' },
+      { id:'wald_2', name:'II. Introduzione' },
+      { id:'wald_3', name:'III. Rondo' },
+    ] : [],
   };
 }
 
@@ -35,12 +39,14 @@ async function prepare(page) {
   }, fixture());
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect.poll(() => page.evaluate(() => !!window.EventRepertoirePicker)).toBe(true);
+  await expect.poll(() => page.evaluate(() => !!window.EventMovementSelector)).toBe(true);
   await page.evaluate(() => {
     renderObraCheckList(['work_2', 'work_37']);
     const modal = document.getElementById('modalAddEvento');
     modal.classList.add('active');
     modal.style.display = 'flex';
     EventRepertoirePicker.enhance({ reset: true });
+    EventMovementSelector.render();
   });
 }
 
@@ -66,6 +72,47 @@ test('event repertoire picker filters 80 works without losing checked selections
   const selectedVisible = page.locator('#obraCheckList .obra-check-item:not([hidden])');
   expect(await selectedVisible.count()).toBeGreaterThanOrEqual(1);
   await expect(page.locator('#obraCheckList input:checked')).toHaveCount(2);
+});
+
+test('a selected work starts with all movements and persists any subset', async ({ page }) => {
+  await page.setViewportSize({ width: 1194, height: 834 });
+  await prepare(page);
+  await expect.poll(() => page.evaluate(() => Boolean(window.saveEvento?.__eventMovementSelectorWrapped))).toBe(true);
+
+  const buttons = page.locator('#obraCheckList .obra-check-item').filter({ hasText:'Waldstein' }).locator('[data-event-movement]');
+  await expect(buttons).toHaveCount(3);
+  await expect(page.locator('#obraCheckList .obra-check-item').filter({ hasText:'Waldstein' }).locator('[data-event-movement][aria-pressed="true"]')).toHaveCount(3);
+
+  await page.evaluate(() => {
+    closeModal('modalAddEvento');
+    db.eventos.push({
+      id:'event_movements', nombre:'Clase Waldstein', tipo:'clase', fecha:'2026-10-01', fechaFin:'',
+      obras:['work_37'], rondas:[],
+      repertorioPlanificado:[{ obraId:'work_37', movimientoId:null, uso:'general', notas:'' }],
+    });
+    openEditEvento('event_movements');
+  });
+
+  const editRow = page.locator('#obraCheckList .obra-check-item').filter({ hasText:'Waldstein' });
+  await expect(editRow.locator('[data-event-movement]')).toHaveCount(3);
+  await expect(editRow.locator('[data-event-movement][aria-pressed="true"]')).toHaveCount(3);
+
+  await editRow.locator('[data-event-movement="wald_2"]').click();
+  await expect(editRow.locator('[data-event-movement][aria-pressed="true"]')).toHaveCount(2);
+
+  await page.evaluate(() => saveEvento());
+  await expect.poll(() => page.evaluate(() => {
+    const event = db.eventos.find(item => item.id === 'event_movements');
+    return {
+      movements:event?.professorMovements?.work_37 || [],
+      relations:(event?.repertorioPlanificado || []).filter(rel => rel.obraId === 'work_37').map(rel => rel.movimientoId),
+    };
+  })).toEqual({ movements:['wald_1','wald_3'], relations:['wald_1','wald_3'] });
+
+  await page.evaluate(() => openEditEvento('event_movements'));
+  const reopened = page.locator('#obraCheckList .obra-check-item').filter({ hasText:'Waldstein' });
+  await expect(reopened.locator('[data-event-movement][aria-pressed="true"]')).toHaveCount(2);
+  await expect(reopened.locator('[data-event-movement="wald_2"]')).toHaveAttribute('aria-pressed', 'false');
 });
 
 test('iPad event modal is wider and repertoire uses two columns', async ({ page }) => {
