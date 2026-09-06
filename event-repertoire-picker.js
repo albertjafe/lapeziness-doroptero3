@@ -25,13 +25,22 @@
   }
   function selectedCount() {
     const host = list();
-    return host ? host.querySelectorAll('input[type="checkbox"]:checked').length : 0;
+    return host ? Array.from(host.querySelectorAll('.obra-check-item input[type="checkbox"]:checked')).length : 0;
   }
   function toolbar() { return document.getElementById(TOOLBAR_ID); }
   function searchInput() { return document.getElementById('eventRepertoireSearch'); }
   function selectedOnlyButton() { return document.getElementById('eventRepertoireSelectedOnly'); }
   function emptyState() { return document.getElementById('eventRepertoireEmpty'); }
   function isSelectedOnly() { return selectedOnlyButton()?.getAttribute('aria-pressed') === 'true'; }
+
+  function loadMovementSelector() {
+    if (window.EventMovementSelector || document.getElementById('eventMovementSelectorScript')) return;
+    const script = document.createElement('script');
+    script.id = 'eventMovementSelectorScript';
+    script.src = './event-movement-selector.js?v=356';
+    script.async = false;
+    document.head.appendChild(script);
+  }
 
   function rowSearchText(row) {
     if (!row) return '';
@@ -195,6 +204,7 @@
   }
 
   function boot() {
+    loadMovementSelector();
     clearInterval(bootTimer);
     let attempts = 0;
     const settle = () => {
