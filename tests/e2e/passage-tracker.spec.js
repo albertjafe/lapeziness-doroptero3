@@ -1,5 +1,14 @@
 import { test, expect } from '@playwright/test';
 
+const general = {
+  id: 'general',
+  name: 'General',
+  tipo: 'actividad',
+  sol: 0,
+  solHistory: [],
+  movimientos: [],
+};
+
 const work = {
   id: 'obra_passage',
   name: 'Sonata de pasajes',
@@ -13,9 +22,21 @@ const work = {
   ],
 };
 
+const secondWork = {
+  id: 'obra_second',
+  name: 'Segunda obra',
+  composer: 'Otra compositora',
+  tipo: 'obra',
+  sol: 61,
+  solHistory: [],
+  movimientos: [
+    { id: 's1', name: 'I. Vivo', sol: 61, solHistory: [] },
+  ],
+};
+
 function fixture() {
   return {
-    obras: [work],
+    obras: [general, work, secondWork],
     eventos: [], sesiones: [], registro: [], sessionPlants: [], forestPlants: [],
     estadoEventos: [], impulsoEventos: [], malestarEventos: [], deporteEventos: [], suenoEventos: [], triggerEventos: [],
     tiempoDisponibleEventos: [], dailyJournalEntries: [],
@@ -83,6 +104,64 @@ test('passages belong to the exact movement and empty scopes only show add', asy
   });
   await expect(page.locator('#cronoPassageTracker .crono-passage-row')).toHaveCount(0);
   await expect(page.locator('#cronoPassageTracker .crono-passage-add')).toHaveCount(1);
+});
+
+test('General shows passages from every work and splits its minutes without changing the total', async ({ page }) => {
+  await prepare(page);
+  const state = await page.evaluate(() => {
+    db.passageTracker = {
+      version: 2,
+      passages: [
+        { id:'warm_a', obraId:'obra_passage', movId:'m1', name:'Octavas de calentamiento', difficulty:8, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(), deletedAt:null },
+        { id:'warm_b', obraId:'obra_second', movId:'s1', name:'Acordes rápidos', difficulty:7, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(), deletedAt:null },
+      ],
+      observations: [],
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem('alberto_passage_tracker_v1', JSON.stringify(db.passageTracker));
+    const select = document.getElementById('cronoObraSelect');
+    const option = Array.from(select.options).find(item => /^general$/i.test(String(item.textContent || '').trim()));
+    if (option) select.value = option.value;
+    else select.value = 'obra::general';
+    cronoUpdateSelectBtn();
+    cronoUpdateStartBtn();
+    cronoSetIdleDrawerTab('pasajes');
+    PassageTracker.render();
+    return { value: select.value, target: PassageTracker.currentTarget() };
+  });
+
+  expect(state.target?.general).toBe(true);
+  await expect(page.locator('#cronoPassageTracker .crono-passage-row')).toHaveCount(2);
+  await expect(page.locator('#cronoPassageTracker')).toContainText('Sonata de pasajes');
+  await expect(page.locator('#cronoPassageTracker')).toContainText('Segunda obra');
+  await expect(page.locator('#cronoPassageTracker .crono-passage-add')).toHaveCount(0);
+
+  const allocation = await page.evaluate(() => {
+    db.sessionPlants = [{
+      id:'general_plant', runId:'general_run', obraId:'general', movId:null, mins:5,
+      startedAt:'2026-09-06T08:00:00.000Z', endedAt:'2026-09-06T08:05:00.000Z', kind:'study',
+    }];
+    const ok = PassageTracker.applyGeneralAllocation({
+      generalObraId:'general', runId:'general_run', startedAt:'2026-09-06T08:00:00.000Z',
+      allocations:[
+        { passageId:'warm_a', obraId:'obra_passage', movId:'m1', focusedMs:60000, chunks:[{startedAt:'2026-09-06T08:00:20.000Z',endedAt:'2026-09-06T08:01:20.000Z',ms:60000}] },
+        { passageId:'warm_b', obraId:'obra_second', movId:'s1', focusedMs:120000, chunks:[{startedAt:'2026-09-06T08:02:00.000Z',endedAt:'2026-09-06T08:04:00.000Z',ms:120000}] },
+      ],
+    });
+    return {
+      ok,
+      plants: db.sessionPlants.map(plant => ({
+        obraId:plant.obraId, movId:plant.movId, mins:Number(plant.mins ?? plant.min),
+        source:plant.passageAllocationSource || plant.passageAllocation?.source || null,
+      })),
+    };
+  });
+
+  expect(allocation.ok).toBe(true);
+  expect(allocation.plants.reduce((sum, plant) => sum + plant.mins, 0)).toBeCloseTo(5, 5);
+  expect(allocation.plants.find(plant => plant.obraId === 'general')?.mins).toBeCloseTo(2, 5);
+  expect(allocation.plants.find(plant => plant.obraId === 'obra_passage' && plant.movId === 'm1')?.mins).toBeCloseTo(1, 5);
+  expect(allocation.plants.find(plant => plant.obraId === 'obra_second' && plant.movId === 's1')?.mins).toBeCloseTo(2, 5);
 });
 
 test('records cold score, explicit focus time and optional post score without assigning the master session', async ({ page }) => {
