@@ -22,6 +22,6 @@ describe('runtime loader graph',()=>{
     expect(assertUniqueDynamicScriptLoads(sources,{'persist.js':'Test-only independent instances'})).toHaveLength(2);
   });
   it('validates the actual reachable runtime graph without duplicate persistence loaders',()=>{
-    expect(runtimeAssets()).toContain('./local-save-resilience.js?v=342');
+    expect(runtimeAssets()).toContain('./local-save-resilience.js?v=354');
   });
 });
