@@ -13,12 +13,15 @@
    4) conservar y añadir los registros manuales/legados que no estén respaldados
       por plantas; si no existe ninguna planta para ese objetivo, sesiones actúa
       como fallback completo.
+   5) un bloque General repartido entre pasajes sigue siendo evidencia canónica
+      aunque su residual General sea 0; sus hijos ya contienen esos minutos.
 */
 (function dailyStudyMinutesFix(){
   'use strict';
 
-  const FIX_VERSION = 3;
+  const FIX_VERSION = 4;
   const OVERLAP_TOLERANCE_MS = 30000;
+  const PASSAGE_GENERAL_SOURCE = 'passage-general-v1';
 
   function appDb(){
     try { if (typeof db !== 'undefined' && db) return db; } catch (error) {}
@@ -49,6 +52,10 @@
 
   function plantMinutes(plant){
     return Math.max(0, Number(plant && (plant.mins ?? plant.min)) || 0);
+  }
+
+  function isPassageAllocationParent(plant){
+    return !!(plant && plant.passageAllocation && plant.passageAllocation.source === PASSAGE_GENERAL_SOURCE);
   }
 
   function parseMs(value){
@@ -87,7 +94,7 @@
   }
 
   function ensureTimedTarget(day, target){
-    if (!day.timed[target]) day.timed[target] = { mins: 0, entries: [] };
+    if (!day.timed[target]) day.timed[target] = { mins: 0, entries: [], canonicalTimer: false };
     return day.timed[target];
   }
 
@@ -121,9 +128,8 @@
   }
 
   function sessionPlanBackedByTimed(entry, timedTarget){
-    if (!entry || !timedTarget || !(timedTarget.mins > 0)) return false;
+    if (!entry || !timedTarget || (!(timedTarget.mins > 0) && !timedTarget.canonicalTimer)) return false;
     const planId = String(entry.planId || '');
-    // Las familias modernas crono_/pase_ son resúmenes del propio cronómetro.
     if (planId.startsWith('crono_') || planId.startsWith('pase_')) return true;
 
     if (entry.startMs == null) return false;
@@ -143,7 +149,7 @@
     Object.values(bucket.sessionPlans || {}).forEach(entry => {
       if (!entry || !(entry.mins > 0)) return;
       const timedTarget = bucket.timed[entry.target];
-      if (timedTarget && timedTarget.mins > 0 && sessionPlanBackedByTimed(entry, timedTarget)) return;
+      if (timedTarget && sessionPlanBackedByTimed(entry, timedTarget)) return;
       out[entry.target] = (out[entry.target] || 0) + entry.mins;
     });
     return out;
@@ -163,7 +169,8 @@
       const ms = when.getTime();
       if (!Number.isFinite(ms) || ms < startMs || ms >= endMs) return;
       const mins = plantMinutes(plant);
-      if (!(mins > 0)) return;
+      const allocationParent = isPassageAllocationParent(plant);
+      if (!(mins > 0) && !allocationParent) return;
       const duplicateKey = duplicatePlantKey(plant);
       if (seenPlants.has(duplicateKey)) return;
       seenPlants.add(duplicateKey);
@@ -174,6 +181,7 @@
       const pStart = parseMs(plant.startedAt) ?? ms;
       const pEnd = parseMs(plant.endedAt);
       timedTarget.mins += mins;
+      timedTarget.canonicalTimer = true;
       timedTarget.entries.push({ startMs: pStart, endMs: pEnd, mins });
     };
 
@@ -221,13 +229,13 @@
   }
 
   function install(){
-    if (window.getMinutosConcentradoHoy && window.getMinutosConcentradoHoy.__realTimedDedupV3) return true;
+    if (window.getMinutosConcentradoHoy && window.getMinutosConcentradoHoy.__realTimedDedupV4) return true;
     if (!appDb()) return false;
 
     const byDay = function correctedStatsMinutesByDay(start, end){ return minutesByDay(start, end); };
-    byDay.__realTimedDedupV3 = true;
+    byDay.__realTimedDedupV4 = true;
     const today = function correctedTodayStudyMinutes(){ return todayMinutes(); };
-    today.__realTimedDedupV3 = true;
+    today.__realTimedDedupV4 = true;
 
     try { _statsMinsPorDia = byDay; } catch (error) {}
     try { getMinutosConcentradoHoy = today; } catch (error) {}
@@ -240,6 +248,7 @@
       duplicatePlantKey,
       sessionItemKey,
       sessionPlanBackedByTimed,
+      isPassageAllocationParent,
     };
 
     try { if (typeof refreshStudyViews === 'function') refreshStudyViews(); } catch (error) {}
