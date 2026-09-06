@@ -141,7 +141,7 @@ function loadPianoCompanion(id, src, cssId, cssHref) {
 (function loadEventRepertoirePicker() {
   'use strict';
   if (window.EventRepertoirePicker) return;
-  loadPianoCompanion('eventRepertoirePickerScript', './event-repertoire-picker.js?v=342', 'eventRepertoirePickerStyles', './event-repertoire-picker.css?v=342');
+  loadPianoCompanion('eventRepertoirePickerScript', './event-repertoire-picker.js?v=356', 'eventRepertoirePickerStyles', './event-repertoire-picker.css?v=342');
 }());
 
 /* Profesor: conserva Chat temporal y añade el handoff ligero que evita URLs
