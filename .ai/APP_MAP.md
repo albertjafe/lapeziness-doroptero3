@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-06 · caché runtime v358
+**Estado:** CANÓNICO · actualizado 2026-09-06 · caché runtime v359
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -95,8 +95,10 @@ Migraciones Supabase importantes para este tema:
 - `obras-redesign.js` / `obras-redesign-polish.js`: rediseño de biblioteca.
 - `obras-unified-library.js`: presentación unificada actual.
 - `historical-repertoire.js`: repertorio/historial antiguo y compatibilidad.
-- `work-catalog.js`: catálogo/normalización de obras conocidas.
-- `work-structure-catalog.js`: estructura y movimientos conocidos.
+- `work-catalog.js`: catálogo/autocompletado principal de repertorio pianístico solista.
+- `work-structure-catalog.js`: estructura y movimientos conocidos del repertorio ya curado.
+- `ensemble-repertoire-catalog.js`: catálogo curado adicional de cámara con piano y reducciones pianísticas de conciertos solistas. Se muestra como sección separada **Cámara y acompañamientos** dentro de «Añadir obra»; sus entradas son sugerencias disponibles y nunca se añaden solas al repertorio activo. Cada entrada conserva instrumentación y movimientos.
+- Al cargar v359, `ensemble-repertoire-catalog.js` audita de forma conservadora las obras activas: si `WorkStructureCatalog` o el catálogo adicional reconocen una obra con `movimientos` vacío, completa su estructura y persiste el cambio. También puede sustituir nombres puramente genéricos cuando el número de movimientos ya coincide. **Nunca reemplaza una estructura personalizada no vacía cuyo número de movimientos difiere del catálogo.** Ejemplos cubiertos: Prokófiev Sonata n.º 7 Op.83 → 3 movimientos; una entrada Bach «Preludio y fuga» del WTC → Preludio + Fuga.
 
 ### Dificultad
 
@@ -287,7 +289,7 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `piano-rooms-core.js`: lógica de disponibilidad/estado del monitor local.
 - `piano-rooms.css`: UI.
-- `piano-rooms.js`: **además** de Piano Rooms, hoy es el bootstrap general de muchos addons. No renombrarlo/refactorizarlo casualmente.
+- `piano-rooms.js`: **además** de Piano Rooms, hoy es el bootstrap general de muchos addons. No renombrarlo/refactorizarlo casualmente. En v359 carga `ensemble-repertoire-catalog.js` justo después de `work-structure-catalog.js`.
 
 ---
 
@@ -295,12 +297,12 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- Caché actual `estudio-v358`: `passage-tracker.js` y `daily-study-minutes.js` usan v358; `event-movement-selector.js` y `event-repertoire-picker.js` conservan sus URLs v356 dentro de la caché actual; app, loaders piano-rooms/crono-resume-layout, professor-dashboard y `passage-tracker.css` usan v355; local-save-resilience/update-safety conservan v354; los demás módulos Profesor v349; passage-tracker-resilience v353. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
+- Caché actual `estudio-v359`: `ensemble-repertoire-catalog.js` usa v359; `passage-tracker.js` y `daily-study-minutes.js` usan v358; `event-movement-selector.js` y `event-repertoire-picker.js` conservan sus URLs v356 dentro de la caché actual; app, loaders `piano-rooms.js`/`crono-resume-layout.js`, professor-dashboard y `passage-tracker.css` usan v355; local-save-resilience/update-safety conservan v354; los demás módulos Profesor v349; passage-tracker-resilience v353. La caché v359 contiene 94 assets. `piano-rooms.js?v=355` mantiene su URL histórica, pero la instalación v359 lo solicita con `cache:'reload'`, por lo que contiene el loader nuevo sin mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v355 en Ajustes; v358 es el límite de caché PWA actual.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v355 en Ajustes; v359 es el límite de caché PWA actual.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
-- `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los 93 assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
+- `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
 - `push-client.js` + migraciones `202607230001/2_*`: notificaciones push.
 
 Documentación pura (`.md`, instrucciones de IA) no necesita bump de SW porque no altera la PWA servida al usuario.
@@ -325,7 +327,8 @@ Documentación pura (`.md`, instrucciones de IA) no necesita bump de SW porque n
 | tareas | `app.js` (`cronoTask*`) + `planning-enhancements-v4.js` + `task-sync-*` |
 | sync/pérdida de datos | `document-sync-core.js`, `data-core.js`, `sync-core.js`, `*-resilience.js`, migraciones Supabase |
 | biblioteca de obras | `obras-unified-library.js`, `obras-redesign.js`, `obra-premium.js` |
-| movimientos/estructura | `work-structure-catalog.js`, `app.js`, modelo de obra |
+| catálogo de obra nueva | `work-catalog.js`, `ensemble-repertoire-catalog.js` |
+| movimientos/estructura | `work-structure-catalog.js`, `ensemble-repertoire-catalog.js`, `app.js`, modelo de obra |
 | dificultad | `work-difficulty-model.js`, `work-difficulty-integration.js` |
 | solidez/readiness | `solidity-model.js`, `readiness-core.js`, `readiness-pill-model.js` |
 | slider/píldora táctil | `pase-liquid-direct-touch.js` |
@@ -355,7 +358,7 @@ Documentación pura (`.md`, instrucciones de IA) no necesita bump de SW porque n
 
 Ejecutar checks dirigidos durante implementación; al final, la batería más amplia razonable para el alcance. No afirmar CI verde sin comprobarla.
 
-Tests representativos relevantes actualmente incluyen sincronización de datos/tareas, eventos, Profesor, historial, readiness, UI de concursos y gestos táctiles. Buscar por nombre de feature dentro de `tests/` antes de crear un test duplicado.
+Tests representativos relevantes actualmente incluyen sincronización de datos/tareas, eventos, Profesor, historial, readiness, UI de concursos, catálogo de cámara/acompñamientos y gestos táctiles. Buscar por nombre de feature dentro de `tests/` antes de crear un test duplicado.
 
 Auditoría 2026-09-04: `document-compatibility`, `document-postgres` (PGlite), `sync-protocol-audit`, `service-worker-audit`, `professor-audit`, `update-safety-v2`; E2E `professor-persistence-audit` y `pwa-offline-audit`. `pwa-update-lifecycle` prueba A→B con SW, precache y navegación reales (sin red de nube), conserva la sesión y comprueba reapertura; detecta la espera circular que los mocks VM no modelan. Regresión de cierre `crono-finish-regression`: sesión de 36 min con pasaje activo, cuota de borrador y cuota completa, Hecho, persistencia y reapertura sin reactivar el run. `pwa-update-lifecycle` incluye registro con URL antigua y nube pendiente. Regresiones del Profesor V4: `professor-transfer-v4` (tablas reversibles, archivo único, presupuesto y diario) y `professor-file-transfer` (80 movimientos/3.001 registros, sin cálculo pesado en main ni textarea, archivo íntegro, rechazo de copia obsoleta y persistencia de horas). Métrica reproducible: `node scripts/measure-professor.mjs 75`. Informe y límites: `docs/AUDITORIA_PROFESOR_PERSISTENCIA_2026-09-04.md`.
 
