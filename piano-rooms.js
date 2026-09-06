@@ -112,7 +112,7 @@
     load('readinessPillModelScript','./readiness-pill-model.js?v=342',function(){
       load('readinessRecoveryContextScript','./readiness-recovery-context.js?v=342',finishReadinessModel);
     });
-    load('workStructureCatalogScript','./work-structure-catalog.js?v=360',function(){
+    load('workStructureCatalogScript','./work-structure-catalog.js?v=362',function(){
       load('soloRepertoireStructureScript','./solo-repertoire-structure.js?v=361',function(){
         load('ensembleRepertoireCatalogScript','./ensemble-repertoire-catalog.js?v=359',function(){
           load('obraPremiumScript','./obra-premium.js?v=342',function(){
