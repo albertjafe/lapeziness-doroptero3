@@ -69,11 +69,20 @@
       .replace(/\bno\.?\b|\bnro\.?\b|\bnum\.?\b|\bnumero\b/g,'n').replace(/[^a-z0-9]+/g,' ').trim();
   }
   function tokens(value){ return new Set(normalize(value).split(/\s+/).filter(Boolean)); }
+  function explicitSonataNumber(value){
+    const n=normalize(value);
+    const patterns=[/\bpiano sonata n (\d+)\b/,/\bsonata para [a-z]+(?: y piano)? n (\d+)\b/,/\bsonata n (\d+)\b/];
+    for(const pattern of patterns){const match=n.match(pattern);if(match)return Number(match[1]);}
+    return null;
+  }
   function scoreCandidate(entry, composer, title) {
     const query=normalize(`${composer||''} ${title||''}`); if(!query) return 0;
+    const querySonata=explicitSonataNumber(query);
     const candidates=[entry.title].concat(entry.aliases||[]).map(alias=>normalize(`${entry.composer} ${alias}`));
     let best=0;
     candidates.forEach(candidate=>{
+      const candidateSonata=explicitSonataNumber(candidate);
+      if(querySonata!=null&&candidateSonata!=null&&querySonata!==candidateSonata)return;
       if(query===candidate) best=Math.max(best,100);
       if(query.includes(candidate)||candidate.includes(query)) best=Math.max(best,92);
       const q=tokens(query),c=tokens(candidate),common=Array.from(q).filter(token=>c.has(token)).length;
