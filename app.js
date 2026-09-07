@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-06-crono-tools-v355';
+const APP_VERSION = '2026-09-07-audio-notifications-v368';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -17319,6 +17319,8 @@ function loadTheme() {
 
 let _ac = null;
 let _acFailureCount = 0;
+let _acNeedsGestureReset = false;
+let _acResetReason = '';
 // Diagnóstico opcional accesible desde consola: window._audioDiag()
 window._audioDiag = function() {
   if (!_ac) return { status: 'no-context' };
@@ -17327,8 +17329,31 @@ window._audioDiag = function() {
     sampleRate: _ac.sampleRate,
     currentTime: _ac.currentTime,
     failures: _acFailureCount,
+    needsGestureReset: _acNeedsGestureReset,
+    resetReason: _acResetReason,
   };
 };
+
+function _discardAudioContext(reason) {
+  const old = _ac;
+  _ac = null;
+  _acFailureCount = 0;
+  _acLastCheckTime = 0;
+  _acLastCheckAt = 0;
+  _acResetReason = reason || '';
+  if (old && old.state !== 'closed') {
+    try {
+      const closing = old.close();
+      if (closing && typeof closing.catch === 'function') closing.catch(() => {});
+    } catch(e) {}
+  }
+}
+
+function _markAudioFailure(reason) {
+  _acFailureCount++;
+  _acResetReason = reason || _acResetReason || 'audio-failure';
+  if (_acFailureCount >= 2) _acNeedsGestureReset = true;
+}
 
 function getAC() {
   // Si no hay contexto, o está cerrado (suspensión muy larga, iOS lo
@@ -17336,8 +17361,20 @@ function getAC() {
   if (!_ac || _ac.state === 'closed') {
     try {
       _ac = new (window.AudioContext || window.webkitAudioContext)();
+      const created = _ac;
+      created.addEventListener?.('statechange', () => {
+        if (_ac !== created) return;
+        if (created.state === 'closed') {
+          _ac = null;
+          _acNeedsGestureReset = true;
+          _acResetReason = 'closed';
+        } else if (created.state === 'interrupted') {
+          _acNeedsGestureReset = true;
+          _acResetReason = 'interrupted';
+        }
+      });
     } catch(e) {
-      _acFailureCount++;
+      _markAudioFailure('create-failed');
       return null;
     }
   }
@@ -17348,12 +17385,11 @@ function getAC() {
     // tras un resume exitoso ya tendrá el contexto running. Si falla, el
     // failure-count se incrementa y eventualmente recreamos el contexto.
     _ac.resume().catch(() => {
-      _acFailureCount++;
+      _markAudioFailure('resume-failed');
       // Tras varios fallos consecutivos, descartamos y forzamos recreación
       if (_acFailureCount >= 3) {
-        try { _ac.close(); } catch(e) {}
-        _ac = null;
-        _acFailureCount = 0;
+        _discardAudioContext('resume-failed');
+        _acNeedsGestureReset = true;
       }
     });
   } else if (_ac.state === 'running') {
@@ -17447,11 +17483,11 @@ function playTone(freq, type = 'triangle', dur = 0.25, vol = 0.10, delay = 0) {
       _scheduleCleanup(osc, stopAt, ac);
       _scheduleCleanup(gain, stopAt, ac);
     } catch(e) {
-      _acFailureCount++;
+      _markAudioFailure('tone-failed');
     }
   };
   if (ac.state === 'running') schedule();
-  else ac.resume().then(schedule).catch(() => { _acFailureCount++; });
+  else ac.resume().then(schedule).catch(() => { _markAudioFailure('tone-resume-failed'); });
 }
 
 function playPianoTone(freq, dur = 0.25, vol = 0.10, delay = 0) {
@@ -17499,11 +17535,11 @@ function playNoiseBurst(cutoff, q, dur, vol, delay = 0) {
       _scheduleCleanup(filt, stopAt, ac);
       _scheduleCleanup(gain, stopAt, ac);
     } catch(e) {
-      _acFailureCount++;
+      _markAudioFailure('noise-failed');
     }
   };
   if (ac.state === 'running') schedule();
-  else ac.resume().then(schedule).catch(() => { _acFailureCount++; });
+  else ac.resume().then(schedule).catch(() => { _markAudioFailure('noise-resume-failed'); });
 }
 
 // Despertar el contexto de audio cuando la app vuelve al foreground.
@@ -17513,17 +17549,16 @@ function _wakeAudioContext() {
   // Si iOS lo cerró tras una inactividad larga, descartamos la referencia:
   // la próxima llamada a getAC() creará uno nuevo en respuesta a un gesto.
   if (_ac.state === 'closed') {
-    _ac = null;
-    _acFailureCount = 0;
+    _discardAudioContext('closed');
+    _acNeedsGestureReset = true;
     return;
   }
   if (_ac.state === 'suspended' || _ac.state === 'interrupted') {
     _ac.resume().catch(() => {
-      _acFailureCount++;
+      _markAudioFailure('foreground-resume-failed');
       if (_acFailureCount >= 2) {
-        try { _ac.close(); } catch(e) {}
-        _ac = null;
-        _acFailureCount = 0;
+        _discardAudioContext('foreground-resume-failed');
+        _acNeedsGestureReset = true;
       }
     });
   }
@@ -17541,9 +17576,9 @@ function _ensureAudioContextAlive() {
   const ct = _ac.currentTime;
   if (_acLastCheckAt && now - _acLastCheckAt > 400 && ct === _acLastCheckTime) {
     // No avanzó en >400ms estando supuestamente "running" → AC zombi.
-    try { _ac.close(); } catch(e) {}
-    _ac = null;
-    _acFailureCount = 0;
+    _discardAudioContext('stalled-clock');
+    _acNeedsGestureReset = true;
+    return;
   }
   _acLastCheckTime = ct;
   _acLastCheckAt = now;
@@ -17551,14 +17586,20 @@ function _ensureAudioContextAlive() {
 
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') _wakeAudioContext();
+    if (document.visibilityState === 'hidden' && _ac) {
+      // iOS puede devolver un contexto que dice "running" pero ya no está
+      // conectado a la salida. El próximo gesto lo recrea de forma fiable.
+      _acNeedsGestureReset = true;
+      _acResetReason = 'backgrounded';
+    } else if (document.visibilityState === 'visible') _wakeAudioContext();
   });
   // window.focus también porque iOS no siempre dispara visibilitychange
   window.addEventListener('focus', _wakeAudioContext);
   // pageshow tras volver del bfcache (Safari): el AC viejo suele estar muerto.
   window.addEventListener('pageshow', (e) => {
     if (e.persisted) {
-      if (_ac) { try { _ac.close(); } catch(_) {} _ac = null; _acFailureCount = 0; }
+      _discardAudioContext('bfcache');
+      _acNeedsGestureReset = true;
     } else {
       _wakeAudioContext();
     }
@@ -17567,6 +17608,10 @@ if (typeof document !== 'undefined') {
   // el resume venga acompañado de un gesto reciente cada vez que el AC haya
   // pasado por suspended.
   const wakeOnGesture = () => {
+    if (_acNeedsGestureReset) {
+      _discardAudioContext(_acResetReason || 'gesture-refresh');
+      _acNeedsGestureReset = false;
+    }
     _ensureAudioContextAlive();
     if (!_ac) getAC();
     else _wakeAudioContext();
@@ -20071,7 +20116,7 @@ function cronoLoadState() {
     crono.notificationTimerMinutesSent = Array.isArray(s.notificationTimerMinutesSent)
       ? s.notificationTimerMinutesSent
           .map(Number)
-          .filter(value => Number.isInteger(value) && value >= 1 && value <= 5)
+          .filter(value => Number.isInteger(value) && [10, 5, 1].includes(value))
       : (crono.notificationFiveMinuteSent ? [5] : []);
     crono.notificationLastMilestoneMinutes = Math.max(0, Number(s.notificationLastMilestoneMinutes) || 0);
     return true;
@@ -20119,6 +20164,33 @@ function cronoRequestNotificationPermissionFromGesture() {
       return permission === 'granted';
     }).catch(() => false);
   } catch(e) { return Promise.resolve(false); }
+}
+
+function cronoRegisterBackgroundNotifications(pushEnable) {
+  const runId = crono.runId;
+  const isTimer = !crono.isRest && crono.targetDurationMs != null;
+  return Promise.resolve(pushEnable).then(async enabled => {
+    if (!enabled || typeof StudyPush === 'undefined') {
+      if (isTimer && !window.__ESTUDIO_NATIVE__) {
+        cronoNotificationToastOnce(
+          'crono_timer_push_inactive',
+          'Temporizador activo · activa Avisos en Ajustes para recibir 10, 5 y 1 min fuera de la app'
+        );
+      }
+      return false;
+    }
+    const synced = await StudyPush.syncRun({ resetCountdown: true, resetMilestones: true });
+    if (crono.runId !== runId || crono.state !== 'running') return false;
+    if (isTimer) {
+      cronoNotificationToastOnce(
+        synced ? 'crono_timer_push_ready' : 'crono_timer_push_failed',
+        synced
+          ? 'Avisos programados · 10, 5 y 1 min'
+          : 'No se pudieron programar los avisos · revisa conexión y Ajustes'
+      );
+    }
+    return synced;
+  }).catch(() => false);
 }
 
 function cronoNotificationDurationText(minutes) {
@@ -24096,6 +24168,9 @@ function cronoHandleLifecycleResume() {
   }
   const elapsedMs = cronoEffectiveElapsedMs();
   cronoCheckSessionNotifications(elapsedMs, !isVisible || resumedFromBackground);
+  if (resumedFromBackground && typeof StudyPush !== 'undefined' && StudyPush.isActive()) {
+    StudyPush.syncRun({ reason: 'foreground' });
+  }
   if (cronoTargetReached()) {
     cronoStopTick();
     cronoQueueFinish(crono.runId);
@@ -25416,11 +25491,7 @@ function cronoStart() {
   crono.runId = typeof TimerCore !== 'undefined' ? TimerCore.createRunId() : ('run_' + Date.now() + '_' + Math.random().toString(36).slice(2));
 
   cronoSaveState();
-  Promise.resolve(pushEnable).then(enabled => {
-    if (enabled && typeof StudyPush !== 'undefined') {
-      StudyPush.syncRun({ resetCountdown: true, resetMilestones: true });
-    }
-  });
+  cronoRegisterBackgroundNotifications(pushEnable);
   renderCronoPasajes();
   cronoRender();
   cronoResetViewScroll();

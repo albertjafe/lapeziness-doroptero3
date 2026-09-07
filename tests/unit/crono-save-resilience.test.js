@@ -15,7 +15,7 @@ describe('cronometro resilient save and readable header', () => {
 
   it('keeps the Hecho flow alive when local persistence fails', () => {
     expect(rescue).toContain('persisted:true,degradedPersistence:true');
-    expect(rescue).toContain('rescuePut(entry)');
+    expect(rescue).toContain('queueRescue(entry)');
     expect(rescue).toContain('protectCloud');
     expect(rescue).toContain("piano_timer_rescue_v1");
   });

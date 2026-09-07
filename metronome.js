@@ -12,7 +12,12 @@
 
   let audioContext = null;
   let clickBuffer = null;
+  let clickBufferContext = null;
   let clickGraphNodes = null;
+  let audioRecoveryPromise = null;
+  let forceRecoveryRequested = false;
+  let audioNeedsGestureReset = false;
+  let audioFailureCount = 0;
   let schedulerTimer = null;
   let nextBeatTime = 0;
   let beatIndex = 0;
@@ -77,17 +82,74 @@
     return 'Prestissimo';
   }
 
+  function disconnectClickGraph() {
+    if (!clickGraphNodes) return;
+    ['compressor', 'reverb', 'master', 'limiter'].forEach(function(key) {
+      try { clickGraphNodes[key] && clickGraphNodes[key].disconnect(); } catch (error) {}
+    });
+    clickGraphNodes = null;
+  }
+
+  function resetAudio(reason) {
+    const old = audioContext;
+    audioContext = null;
+    clickBuffer = null;
+    clickBufferContext = null;
+    disconnectClickGraph();
+    audioFailureCount = 0;
+    if (old && old.state !== 'closed') {
+      try {
+        const closing = old.close();
+        if (closing && typeof closing.catch === 'function') closing.catch(function() {});
+      } catch (error) {}
+    }
+    if (reason) document.documentElement.dataset.metronomeAudioReset = reason;
+  }
+
   function ensureAudio() {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return null;
-    if (!audioContext) audioContext = new AudioContextClass({ latencyHint: 'interactive' });
-    if (audioContext.state === 'suspended') audioContext.resume().catch(function() {});
-    if (!clickBuffer) clickBuffer = createClickBuffer(audioContext);
+    if (audioContext && audioContext.state === 'closed') resetAudio('closed');
+    if (!audioContext) {
+      try {
+        audioContext = new AudioContextClass({ latencyHint: 'interactive' });
+        const created = audioContext;
+        created.addEventListener?.('statechange', function() {
+          if (audioContext !== created) return;
+          if (created.state === 'closed' || created.state === 'interrupted') {
+            audioNeedsGestureReset = true;
+          }
+        });
+      } catch (error) {
+        audioFailureCount += 1;
+        return null;
+      }
+    }
+    if (!clickBuffer || clickBufferContext !== audioContext) {
+      clickBuffer = createClickBuffer(audioContext);
+      clickBufferContext = audioContext;
+    }
     return audioContext;
   }
 
-  // Click con cuerpo: crujido agudo, resonancia de madera y un golpe grave.
-  // Suena como un metrónomo mecánico fuerte en vez de un pitido seco.
+  async function activateAudio(forceReset) {
+    if (forceReset) resetAudio('gesture-refresh');
+    const context = ensureAudio();
+    if (!context) return null;
+    if (context.state === 'suspended' || context.state === 'interrupted') {
+      try { await context.resume(); } catch (error) { audioFailureCount += 1; }
+    }
+    if (context.state !== 'running') {
+      audioFailureCount += 1;
+      if (audioFailureCount >= 2) audioNeedsGestureReset = true;
+      return null;
+    }
+    audioFailureCount = 0;
+    return context;
+  }
+
+  // Click deliberadamente brillante y estridente: atraviesa el sonido del piano
+  // sin depender de graves que los altavoces pequeños del iPad apenas reproducen.
   function createClickBuffer(context) {
     const sampleRate = context.sampleRate;
     const duration = 0.055;
@@ -100,28 +162,28 @@
 
       // Crujido: transitorio de ruido pasa-altos muy corto.
       const noise = Math.random() * 2 - 1;
-      const highPassed = noise - previousNoise * 0.86;
+      const highPassed = noise - previousNoise * 0.92;
       previousNoise = noise;
-      const crack = highPassed * Math.exp(-t / 0.0009);
+      const crack = highPassed * Math.exp(-t / 0.0016);
 
-      // Cuerpo de madera: dos senos amortiguados con un ligero barrido hacia abajo.
-      const sweep = 1 + 0.16 * Math.exp(-t / 0.0018);
-      const wood =
-        Math.sin(2 * Math.PI * 1500 * sweep * t) * 0.66 +
-        Math.sin(2 * Math.PI * 320 * t) * 0.34;
-      const woodEnv = Math.exp(-t / 0.012);
+      // Campana metálica corta: varias parciales agudas y no armónicas.
+      const edge =
+        Math.sin(2 * Math.PI * 2700 * t) * 0.62 +
+        Math.sin(2 * Math.PI * 4100 * t) * 0.42 +
+        Math.sin(2 * Math.PI * 6100 * t) * 0.18;
+      const edgeEnv = Math.exp(-t / 0.019);
 
-      // Golpe grave para dar peso.
-      const thump = Math.sin(2 * Math.PI * 170 * t) * Math.exp(-t / 0.022);
+      // Un núcleo medio evita que el click se vuelva fino sin restarle ataque.
+      const body = Math.sin(2 * Math.PI * 980 * t) * Math.exp(-t / 0.027);
 
-      data[i] = crack * 0.82 + wood * woodEnv * 0.92 + thump * 0.55;
+      data[i] = crack * 1.05 + edge * edgeEnv * 1.1 + body * 0.38;
     }
 
     // Normalizar a un pico alto pero sin recortar.
     let peak = 0;
     for (let i = 0; i < length; i += 1) peak = Math.max(peak, Math.abs(data[i]));
     if (peak > 0) {
-      const scale = 0.92 / peak;
+      const scale = 0.98 / peak;
       for (let i = 0; i < length; i += 1) data[i] *= scale;
     }
     return buffer;
@@ -143,22 +205,23 @@
   }
 
   function clickGraph(context) {
-    if (!clickGraphNodes) {
+    if (!clickGraphNodes || clickGraphNodes.context !== context) {
+      disconnectClickGraph();
       const compressor = context.createDynamicsCompressor();
-      compressor.threshold.value = -14;
-      compressor.knee.value = 8;
-      compressor.ratio.value = 8;
+      compressor.threshold.value = -18;
+      compressor.knee.value = 5;
+      compressor.ratio.value = 10;
       compressor.attack.value = 0.001;
-      compressor.release.value = 0.08;
+      compressor.release.value = 0.11;
 
       const reverb = context.createConvolver();
       reverb.buffer = createImpulseResponse(context, 0.7, 2.6);
 
       const master = context.createGain();
-      master.gain.value = 1.65;
+      master.gain.value = 2.35;
 
       const limiter = context.createDynamicsCompressor();
-      limiter.threshold.value = -3;
+      limiter.threshold.value = -1;
       limiter.knee.value = 0;
       limiter.ratio.value = 20;
       limiter.attack.value = 0.001;
@@ -169,7 +232,7 @@
       master.connect(limiter);
       limiter.connect(context.destination);
 
-      clickGraphNodes = { compressor: compressor, reverb: reverb };
+      clickGraphNodes = { context: context, compressor: compressor, reverb: reverb, master: master, limiter: limiter };
     }
     return clickGraphNodes;
   }
@@ -177,7 +240,7 @@
   function scheduleClick(time, type) {
     if (type === 'mute') return;
     const context = ensureAudio();
-    if (!context || !clickBuffer) return;
+    if (!context || context.state !== 'running' || !clickBuffer) return;
     const accented = type === 'accent';
     const graph = clickGraph(context);
 
@@ -187,18 +250,18 @@
     const wetGain = context.createGain();
 
     source.buffer = clickBuffer;
-    source.playbackRate.value = accented ? 0.86 : 1.05;
+    source.playbackRate.value = accented ? 0.92 : 1.12;
 
     filter.type = 'peaking';
-    filter.frequency.value = accented ? 1500 : 1900;
-    filter.Q.value = 0.9;
-    filter.gain.value = accented ? 5.2 : 4.2;
+    filter.frequency.value = accented ? 2700 : 3400;
+    filter.Q.value = 1.15;
+    filter.gain.value = accented ? 9 : 7;
 
-    const dryPeak = accented ? 2.1 : 1.45;
+    const dryPeak = accented ? 2.8 : 2.1;
     dryGain.gain.setValueAtTime(dryPeak, time);
     dryGain.gain.exponentialRampToValueAtTime(0.001, time + (accented ? 0.075 : 0.055));
 
-    const wetLevel = accented ? 0.62 : 0.42;
+    const wetLevel = accented ? 0.38 : 0.26;
     wetGain.gain.setValueAtTime(wetLevel, time);
     wetGain.gain.exponentialRampToValueAtTime(0.001, time + (accented ? 0.12 : 0.09));
 
@@ -234,28 +297,65 @@
 
   function scheduler() {
     if (!state.playing || !audioContext) return;
+    if (audioContext.state !== 'running') {
+      recoverAudio(false);
+      return;
+    }
+    if (nextBeatTime < audioContext.currentTime - 0.5) {
+      beatIndex = 0;
+      nextBeatTime = audioContext.currentTime + 0.055;
+    }
+    let scheduled = 0;
     while (nextBeatTime < audioContext.currentTime + SCHEDULE_AHEAD_SECONDS) {
       const type = state.pattern[beatIndex] || 'normal';
       scheduleClick(nextBeatTime, type);
       showBeat(beatIndex, nextBeatTime);
       nextBeatTime += 60 / state.bpm;
       beatIndex = (beatIndex + 1) % state.pattern.length;
+      scheduled += 1;
+      if (scheduled >= 16) break;
     }
   }
 
-  function start() {
-    const context = ensureAudio();
-    if (!context) {
-      if (typeof showToast === 'function') showToast('El audio no está disponible en este dispositivo');
-      return;
-    }
+  async function start() {
     stop(false);
     state.playing = true;
+    render();
+    const context = await activateAudio(audioNeedsGestureReset);
+    audioNeedsGestureReset = false;
+    if (!context) {
+      audioNeedsGestureReset = true;
+      if (typeof showToast === 'function') showToast('El audio no está disponible en este dispositivo');
+      stop();
+      return;
+    }
+    if (!state.playing) return;
     beatIndex = 0;
     nextBeatTime = context.currentTime + 0.055;
     scheduler();
     schedulerTimer = setInterval(scheduler, LOOKAHEAD_MS);
     render();
+  }
+
+  function recoverAudio(forceReset) {
+    if (forceReset) forceRecoveryRequested = true;
+    if (audioRecoveryPromise) return audioRecoveryPromise;
+    const shouldForceReset = forceRecoveryRequested;
+    forceRecoveryRequested = false;
+    if (schedulerTimer) clearInterval(schedulerTimer);
+    schedulerTimer = null;
+    audioRecoveryPromise = activateAudio(shouldForceReset).then(function(context) {
+      if (!context || !state.playing) return false;
+      beatIndex = 0;
+      nextBeatTime = context.currentTime + 0.055;
+      scheduler();
+      schedulerTimer = setInterval(scheduler, LOOKAHEAD_MS);
+      return true;
+    }).finally(function() {
+      audioRecoveryPromise = null;
+      if (forceRecoveryRequested && state.playing) recoverAudio(true);
+    });
+    return audioRecoveryPromise;
   }
 
   function stop(shouldRender) {
@@ -325,12 +425,14 @@
     try { Haptics.tick(); } catch (error) {}
   }
 
-  function tap() {
+  async function tap() {
     const now = performance.now();
     if (!tapTimes.length || now - tapTimes[tapTimes.length - 1] > 2200) tapTimes = [];
     tapTimes.push(now);
     if (tapTimes.length > 7) tapTimes.shift();
-    const context = ensureAudio();
+    const context = await activateAudio(audioNeedsGestureReset);
+    audioNeedsGestureReset = false;
+    if (!context) audioNeedsGestureReset = true;
     if (context) scheduleClick(context.currentTime + 0.005, 'normal');
     document.querySelectorAll('.crono-metronome-tap').forEach(function(button) {
       button.classList.remove('is-tapped');
@@ -427,7 +529,38 @@
       return { bpm: state.bpm, pattern: state.pattern.slice(), beatsPerBar: state.pattern.length, playing: state.playing };
     },
     stop: stop,
+    audio: function() {
+      return { state: audioContext ? audioContext.state : 'none', failures: audioFailureCount, needsGestureReset: audioNeedsGestureReset };
+    },
+    recoverAudio: recoverAudio,
   };
+
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'hidden') {
+      audioNeedsGestureReset = true;
+      if (schedulerTimer) clearInterval(schedulerTimer);
+      schedulerTimer = null;
+    } else if (state.playing) {
+      // Primero intentamos reanudar el contexto existente. El siguiente gesto
+      // fuerza uno nuevo para los casos en que iOS devuelve un contexto zombi.
+      recoverAudio(false);
+    }
+  });
+  window.addEventListener('focus', function() {
+    if (state.playing) recoverAudio(false);
+  });
+  window.addEventListener('pageshow', function(event) {
+    if (event.persisted) resetAudio('bfcache');
+    if (state.playing) recoverAudio(Boolean(event.persisted));
+  });
+  ['pointerdown', 'touchstart', 'keydown'].forEach(function(eventName) {
+    document.addEventListener(eventName, function() {
+      if (state.playing && audioNeedsGestureReset) {
+        audioNeedsGestureReset = false;
+        recoverAudio(true);
+      }
+    }, eventName === 'keydown' ? false : { passive: true });
+  });
 
   // Permite ajustar el tempo con la rueda del ratón o el scroll del trackpad
   // sobre el slider. Shift acelera el paso de 1 a 5 BPM.

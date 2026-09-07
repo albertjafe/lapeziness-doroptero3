@@ -4,6 +4,7 @@
   else root.TimerCore = api;
 })(typeof window !== 'undefined' ? window : globalThis, function () {
   const MAX_STOPWATCH_MS = 120 * 60_000;
+  const TIMER_WARNING_MINUTES = [10, 5, 1];
 
   function createRunId(random) {
     if (typeof random === 'function') return 'run_' + random().toString(36).slice(2) + '_' + Date.now().toString(36);
@@ -45,16 +46,17 @@
       const timerMinutesSent = Array.isArray(previous.timerMinutesSent)
         ? previous.timerMinutesSent
             .map(Number)
-            .filter(value => Number.isInteger(value) && value >= 1 && value <= 5)
+            .filter(value => TIMER_WARNING_MINUTES.includes(value))
         : [];
-      // Compatibility with sessions saved before per-minute warnings existed.
+      // Compatibility with sessions saved before the 10–5–1 schedule existed.
       if (previous.fiveMinuteSent && !timerMinutesSent.includes(5)) timerMinutesSent.push(5);
 
-      if (remainingMs > 0 && remainingMs <= 5 * 60_000) {
-        const warningMinutes = Math.max(1, Math.min(5, Math.ceil(remainingMs / 60_000)));
-        const alreadySent = timerMinutesSent.includes(warningMinutes);
+      if (remainingMs > 0 && remainingMs <= TIMER_WARNING_MINUTES[0] * 60_000) {
+        const currentMinute = Math.max(1, Math.ceil(remainingMs / 60_000));
+        const warningMinutes = TIMER_WARNING_MINUTES.includes(currentMinute) ? currentMinute : null;
+        const alreadySent = warningMinutes == null || timerMinutesSent.includes(warningMinutes);
         const nextTimerMinutesSent = Array.from(new Set(
-          timerMinutesSent.concat([1, 2, 3, 4, 5].filter(value => value >= warningMinutes))
+          timerMinutesSent.concat(TIMER_WARNING_MINUTES.filter(value => remainingMs <= value * 60_000))
         )).sort((a, b) => b - a);
         if (!alreadySent) {
           return {
@@ -105,5 +107,5 @@
     };
   }
 
-  return { MAX_STOPWATCH_MS, createRunId, activeElapsedMs, effectiveElapsedMs, isTargetReached, notificationCheckpoint };
+  return { MAX_STOPWATCH_MS, TIMER_WARNING_MINUTES, createRunId, activeElapsedMs, effectiveElapsedMs, isTargetReached, notificationCheckpoint };
 });

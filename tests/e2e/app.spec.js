@@ -2609,16 +2609,16 @@ test('deduplicates background timer and stopwatch notifications', async ({ page 
     crono.notificationFiveMinuteSent = false;
     crono.notificationTimerMinutesSent = [];
     crono.notificationLastMilestoneMinutes = 0;
-    cronoCheckSessionNotifications(21 * 60_000, false);
+    cronoCheckSessionNotifications(15 * 60_000 + 1, false);
     const beforeBackground = {
       sent: sent.length,
       marked: crono.notificationTimerMinutesSent.slice(),
     };
-    cronoCheckSessionNotifications(21 * 60_000, true);
-    cronoCheckSessionNotifications(21 * 60_000, true);
-    for (const elapsedMinutes of [22, 23, 24]) {
-      cronoCheckSessionNotifications(elapsedMinutes * 60_000, true);
-      cronoCheckSessionNotifications(elapsedMinutes * 60_000, true);
+    cronoCheckSessionNotifications(15 * 60_000 + 1, true);
+    cronoCheckSessionNotifications(15 * 60_000 + 1, true);
+    for (const elapsedMinutes of [20, 24]) {
+      cronoCheckSessionNotifications(elapsedMinutes * 60_000 + 1, true);
+      cronoCheckSessionNotifications(elapsedMinutes * 60_000 + 1, true);
     }
 
     const saved = JSON.parse(localStorage.getItem(CRONO_STORAGE_KEY));
@@ -2634,15 +2634,44 @@ test('deduplicates background timer and stopwatch notifications', async ({ page 
 
   expect(result.sent).toEqual([
     { kind: 'stopwatch-milestone', milestoneMinutes: 45 },
-    { kind: 'timer-countdown', remainingMs: 4 * 60_000, warningMinutes: 4 },
-    { kind: 'timer-countdown', remainingMs: 3 * 60_000, warningMinutes: 3 },
-    { kind: 'timer-countdown', remainingMs: 2 * 60_000, warningMinutes: 2 },
-    { kind: 'timer-countdown', remainingMs: 1 * 60_000, warningMinutes: 1 },
+    { kind: 'timer-countdown', remainingMs: 10 * 60_000 - 1, warningMinutes: 10 },
+    { kind: 'timer-countdown', remainingMs: 5 * 60_000 - 1, warningMinutes: 5 },
+    { kind: 'timer-countdown', remainingMs: 1 * 60_000 - 1, warningMinutes: 1 },
   ]);
   expect(result.beforeBackground).toEqual({ sent: 1, marked: [] });
   expect(result.fiveMinuteSent).toBe(true);
-  expect(result.timerMinutesSent).toEqual([5, 4, 3, 2, 1]);
+  expect(result.timerMinutesSent).toEqual([10, 5, 1]);
   expect(result.lastMilestoneMinutes).toBe(0);
+});
+
+test('registers a timed session for push notifications when study starts', async ({ page }) => {
+  await prepare(page);
+  const registration = await page.evaluate(async () => {
+    const calls = [];
+    StudyPush.enableFromGesture = () => Promise.resolve(true);
+    StudyPush.syncRun = options => {
+      calls.push({ options, runId: crono.runId, state: crono.state, targetDurationMs: crono.targetDurationMs });
+      return Promise.resolve(true);
+    };
+    showView('cronometro');
+    cronoSetMode('timer');
+    cronoSetTimerPreset(25);
+    const select = document.getElementById('cronoObraSelect');
+    select.value = 'obra::obra_1';
+    cronoUpdateStartBtn();
+    cronoStart();
+    await new Promise(resolve => setTimeout(resolve, 20));
+    const result = { calls, runId: crono.runId };
+    cronoReset();
+    return result;
+  });
+
+  expect(registration.calls).toEqual([{
+    options: { resetCountdown: true, resetMilestones: true },
+    runId: registration.runId,
+    state: 'running',
+    targetDurationMs: 25 * 60_000,
+  }]);
 });
 
 test('keeps the idle and running timer in the same iPad composition', async ({ browser }) => {
@@ -2989,6 +3018,9 @@ test('runs one persistent metronome from idle and active timer layouts', async (
   expect(maxPatternLayout).toMatchObject({ round: true, rows: 2, inside: true, documentFits: true });
 
   await page.locator('#cronoIdleDrawer .crono-metronome-play').click();
+  expect(await page.evaluate(() => __metronomeDebug.getState().playing)).toBe(true);
+  expect(await page.evaluate(() => __metronomeDebug.recoverAudio(true))).toBe(true);
+  expect(await page.evaluate(() => __metronomeDebug.audio().state)).toBe('running');
   expect(await page.evaluate(() => __metronomeDebug.getState().playing)).toBe(true);
 
   await page.evaluate(() => {

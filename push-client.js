@@ -4,6 +4,7 @@
   const STORAGE_KEY = 'alberto_web_push_v1';
   const VAPID_PUBLIC_KEY = 'BPM7phxT-XUZ1b0SVL1ZDy6UN0eL8c1wQBYMIEiq2IEe1v56DGxeMVhQYEbepOpU0gi3fEW2pIyEn2ZIu2LninU';
   const MAX_STOPWATCH_MS = 120 * 60_000;
+  const SYNC_RETRY_DELAYS_MS = [0, 1200, 4000];
   const terminalRunIds = new Set();
 
   function readState() {
@@ -168,7 +169,7 @@
     };
   }
 
-  async function syncRun(options) {
+  async function syncRunAttempt(options) {
     if (!isActive() || !root.crono) return false;
     const snapshot = runSnapshot(root.crono, Date.now());
     if (!snapshot) return false;
@@ -199,6 +200,20 @@
       console.warn('Web Push timer sync failed', error);
       return false;
     }
+  }
+
+  async function syncRun(options) {
+    const runId = root.crono && root.crono.runId;
+    if (!runId) return false;
+    for (let attempt = 0; attempt < SYNC_RETRY_DELAYS_MS.length; attempt += 1) {
+      const delay = SYNC_RETRY_DELAYS_MS[attempt];
+      if (delay) await new Promise(resolve => setTimeout(resolve, delay));
+      if (!root.crono || root.crono.runId !== runId || root.crono.state !== 'running' || terminalRunIds.has(runId)) {
+        return false;
+      }
+      if (await syncRunAttempt(options)) return true;
+    }
+    return false;
   }
 
   async function setRunStatus(runId, status) {

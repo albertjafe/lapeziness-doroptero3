@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-06 · caché runtime v359
+**Estado:** CANÓNICO · actualizado 2026-09-07 · caché runtime v368
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -133,6 +133,8 @@ Migraciones Supabase importantes para este tema:
 - Núcleo histórico de UI y funciones: buscar en `app.js` por `cronoStart`, `cronoFinish`, `renderCronoTasks`, IDs `#view-cronometro`, etc.
 - `timer-core.js`: helpers de temporización.
 - `timer-objectives.js`: objetivos vinculados al timer.
+- Los avisos del modo temporizador se producen al quedar 10, 5 y 1 minutos. `push-client.js` registra el run activo en Supabase para que el aviso llegue también con la PWA fuera de primer plano y reintenta/resincroniza tras arranque o reanudación. El modo libre mantiene sus hitos propios de tiempo estudiado.
+- El audio común de `app.js` y el contexto separado de `metronome.js` detectan estados `suspended`, `interrupted` y `closed`, reconstruyen el grafo tras volver del segundo plano y hacen el último reintento en un gesto del usuario. El clic del metrónomo usa un perfil brillante, estridente y con limitador.
 - `study-session-ux.js`: mejoras de UX de sesión/Hoy.
 - `crono-resume-layout.js`: layout de reanudación/estado y carga única del tracker de pasajes.
 - `crono-running-premium.js`: refinamiento de UI en marcha.
@@ -297,13 +299,13 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- Caché actual `estudio-v359`: `ensemble-repertoire-catalog.js` usa v359; `passage-tracker.js` y `daily-study-minutes.js` usan v358; `event-movement-selector.js` y `event-repertoire-picker.js` conservan sus URLs v356 dentro de la caché actual; app, loaders `piano-rooms.js`/`crono-resume-layout.js`, professor-dashboard y `passage-tracker.css` usan v355; local-save-resilience/update-safety conservan v354; los demás módulos Profesor v349; passage-tracker-resilience v353. La caché v359 contiene 94 assets. `piano-rooms.js?v=355` mantiene su URL histórica, pero la instalación v359 lo solicita con `cache:'reload'`, por lo que contiene el loader nuevo sin mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
+- Caché actual `estudio-v368`: `app.js`, `timer-core.js`, `push-client.js` y `metronome.js` usan v368; el resto de módulos conserva su URL versionada anterior. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v355 en Ajustes; v359 es el límite de caché PWA actual.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v368 en Ajustes; v368 es el límite de caché PWA actual.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
-- `push-client.js` + migraciones `202607230001/2_*`: notificaciones push.
+- `push-client.js` + migraciones `202607230001/2_*` y `20260907205158_timer_notifications_10_5_1.sql`: notificaciones push y calendario de avisos del temporizador.
 
 Documentación pura (`.md`, instrucciones de IA) no necesita bump de SW porque no altera la PWA servida al usuario.
 

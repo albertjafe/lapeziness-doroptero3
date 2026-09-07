@@ -1,11 +1,11 @@
-const CACHE = 'estudio-v367';
+const CACHE = 'estudio-v368';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
   "./activity-dashboard.js?v=342",
   "./activity-self-tracker.js?v=342",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=355",
+  "./app.js?v=368",
   "./competition-planning-seed.js?v=342",
   "./crono-idle-hierarchy.css?v=342",
   "./crono-readiness-layout.css?v=342",
@@ -39,7 +39,7 @@ const ASSETS = [
   "./instant-sync-resilience.js?v=342",
   "./local-save-resilience.js?v=354",
   "./manifest.json",
-  "./metronome.js?v=342",
+  "./metronome.js?v=368",
   "./obra-premium-polish.js?v=342",
   "./obra-premium.css?v=342",
   "./obra-premium.js?v=342",
@@ -73,7 +73,7 @@ const ASSETS = [
   "./professor-report-normalizer.js?v=342",
   "./professor-report-worker.js?v=349",
   "./professor-temporary-chat.js?v=342",
-  "./push-client.js?v=342",
+  "./push-client.js?v=368",
   "./readiness-core.js?v=342",
   "./readiness-pill-model.js?v=342",
   "./readiness-recovery-context.js?v=342",
@@ -88,7 +88,7 @@ const ASSETS = [
   "./sync-core.js?v=342",
   "./task-sync-bootstrap.js?v=342",
   "./task-sync-resilience.js?v=342",
-  "./timer-core.js?v=342",
+  "./timer-core.js?v=368",
   "./timer-objectives.js?v=342",
   "./update-safety.js?v=354",
   "./work-catalog.js?v=342",
@@ -142,7 +142,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '367');
+            target.searchParams.set('__pwa', '368');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -150,7 +150,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'367', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'368', navigated });
         } catch (error) {}
       }
     }

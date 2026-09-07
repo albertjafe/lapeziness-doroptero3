@@ -26,20 +26,20 @@ describe('TimerCore', () => {
     expect(TimerCore.isTargetReached(run, 1_000 + 120 * 60_000)).toBe(true);
   });
 
-  it('requests one warning at each of the final five timer minutes', () => {
+  it('requests timer warnings at 10, 5 and 1 minutes', () => {
     const run = { targetDurationMs: 25 * 60_000, isRest: false };
-    let checkpoint = TimerCore.notificationCheckpoint(run, 19 * 60_000, {});
+    let checkpoint = TimerCore.notificationCheckpoint(run, 14 * 60_000, {});
     expect(checkpoint.event).toBeNull();
 
-    checkpoint = TimerCore.notificationCheckpoint(run, 20 * 60_000 + 1, checkpoint);
+    checkpoint = TimerCore.notificationCheckpoint(run, 15 * 60_000 + 1, checkpoint);
     expect(checkpoint.event).toEqual({
       kind: 'timer-countdown',
-      remainingMs: 5 * 60_000 - 1,
-      warningMinutes: 5,
+      remainingMs: 10 * 60_000 - 1,
+      warningMinutes: 10,
     });
-    expect(TimerCore.notificationCheckpoint(run, 20 * 60_000 + 1, checkpoint).event).toBeNull();
+    expect(TimerCore.notificationCheckpoint(run, 15 * 60_000 + 1, checkpoint).event).toBeNull();
 
-    for (const warningMinutes of [4, 3, 2, 1]) {
+    for (const warningMinutes of [5, 1]) {
       checkpoint = TimerCore.notificationCheckpoint(
         run,
         (25 - warningMinutes) * 60_000 + 1,
@@ -51,21 +51,24 @@ describe('TimerCore', () => {
         warningMinutes,
       });
     }
-    expect(checkpoint.timerMinutesSent).toEqual([5, 4, 3, 2, 1]);
+    expect(checkpoint.timerMinutesSent).toEqual([10, 5, 1]);
   });
 
-  it('reports only the current timer minute after a late background wake', () => {
+  it('does not emit an inaccurate warning after a late background wake', () => {
     const run = { targetDurationMs: 25 * 60_000, isRest: false };
-    const before = TimerCore.notificationCheckpoint(run, 19 * 60_000, {});
+    const before = TimerCore.notificationCheckpoint(run, 14 * 60_000, {});
     expect(before.event).toBeNull();
 
-    const warning = TimerCore.notificationCheckpoint(run, 22 * 60_000 + 1, before);
-    expect(warning.event).toEqual({
+    const lateWake = TimerCore.notificationCheckpoint(run, 17 * 60_000, before);
+    expect(lateWake.event).toBeNull();
+    expect(lateWake.timerMinutesSent).toEqual([10]);
+
+    const fiveMinuteWarning = TimerCore.notificationCheckpoint(run, 20 * 60_000 + 1, lateWake);
+    expect(fiveMinuteWarning.event).toEqual({
       kind: 'timer-countdown',
-      remainingMs: 3 * 60_000 - 1,
-      warningMinutes: 3,
+      remainingMs: 5 * 60_000 - 1,
+      warningMinutes: 5,
     });
-    expect(warning.timerMinutesSent).toEqual([5, 4, 3]);
   });
 
   it('reports only the latest crossed 15-minute stopwatch milestone', () => {
