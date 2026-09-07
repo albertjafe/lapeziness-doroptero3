@@ -7,13 +7,14 @@ import { fileURLToPath } from 'node:url';
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const source = fs.readFileSync(path.join(rootDir, 'update-safety.js'), 'utf8');
 
-function harness({ dirty = 1, synced = 1, controlled = true, syncCompletes = true, memoryDocument, diskDocument } = {}) {
+function harness({ dirty = 1, synced = 1, controlled = true, syncCompletes = true, memoryDocument, diskDocument, timerSnapshot } = {}) {
   const baseline = diskDocument || { _localRevision: dirty, _savedAt: '2026-09-04T10:00:00Z', sessionPlants: [{ id: 'recent' }], eventos: [] };
   const memory = memoryDocument || structuredClone(baseline);
   const storage = new Map([
     ['alberto_piano_v2', JSON.stringify(baseline)],
     ['alberto_sync_v1', JSON.stringify({ localRevision: dirty, dirtyRevision: dirty, lastSyncedRevision: synced })],
   ]);
+  if (timerSnapshot) storage.set('pianoCrono_v2', JSON.stringify(timerSnapshot));
   const calls = [];
   const messages = [];
   const listeners = {};
@@ -98,7 +99,7 @@ function harness({ dirty = 1, synced = 1, controlled = true, syncCompletes = tru
   return { window, calls, messages, storage, context, registration, listeners };
 }
 
-describe('UpdateSafety v5', () => {
+describe('UpdateSafety v6', () => {
   it('checking for an update never saves, syncs, or promotes a clean document', async () => {
     const h = harness();
     const result = await h.window.UpdateSafety.checkForUpdate();
@@ -187,15 +188,36 @@ describe('UpdateSafety v5', () => {
     expect(await h.window.UpdateSafety.safeUpdate()).toBe(true);
     expect(h.messages).toHaveLength(1);
   });
-  it('controllerchange snapshots once and cannot enter a reload loop',async()=>{
+  it('blocks an update when a timer snapshot has no permanent study block yet', async () => {
+    const h = harness({ timerSnapshot:{ state:'idle', runId:'run-pending', obraId:'obra-1', startTs:Date.now()-26*60000 } });
+    expect(h.window.UpdateSafety.hasUncommittedTimer()).toBe(true);
+    expect(await h.window.UpdateSafety.safeUpdate()).toBe(false);
+    expect(h.calls).not.toContain('check-update');
+    expect(h.messages).toHaveLength(0);
+    expect(h.calls.some(call => call.includes('sesión de estudio aún sin consolidar'))).toBe(true);
+  });
+  it('does not block on a stale timer snapshot once that run is already permanent', async () => {
+    const document = { _localRevision:3, _savedAt:'2026-09-04T10:00:00Z', sessionPlants:[{ id:'run_run-safe', runId:'run-safe' }], eventos:[] };
+    const h = harness({ dirty:3, synced:3, diskDocument:document, timerSnapshot:{ state:'idle', runId:'run-safe', obraId:'obra-1', startTs:Date.now()-26*60000 } });
+    expect(h.window.UpdateSafety.hasUncommittedTimer()).toBe(false);
+    expect(await h.window.UpdateSafety.safeUpdate()).toBe(true);
+    expect(h.messages).toHaveLength(1);
+  });
+  it('an unsolicited controllerchange never reloads an already controlled study page',async()=>{
     const h=harness();
     await h.listeners.controllerchange();await h.listeners.controllerchange();
-    expect(h.calls.filter(x=>x==='reload')).toHaveLength(1);
+    expect(h.calls).not.toContain('reload');
     expect(h.calls).not.toContain('save-local');
   });
   it('the first worker claim does not reload a newly opened app',async()=>{
     const h=harness({controlled:false});await h.listeners.controllerchange();
     expect(h.calls).not.toContain('reload');
+  });
+  it('an explicitly requested update reloads exactly once on controllerchange',async()=>{
+    const h=harness();
+    expect(await h.window.UpdateSafety.safeUpdate()).toBe(true);
+    await h.listeners.controllerchange();await h.listeners.controllerchange();
+    expect(h.calls.filter(x=>x==='reload')).toHaveLength(1);
   });
   it('an explicit update reloads even if iOS reported no initial controller',async()=>{
     const h=harness({controlled:false});
