@@ -18,6 +18,15 @@ describe('completed study rescue regression', () => {
     expect(localSaveAt).toBeGreaterThan(rescueAt);
   });
 
+  it('forces the Today session writer before capturing the Hecho rescue', () => {
+    const start = source.indexOf('function installHechoPatch()');
+    const flushAt = source.indexOf('flushTodaySessionNow();', start);
+    const rescueAt = source.indexOf('queueDocumentRescue(obraId);', start);
+    expect(source).toContain("typeof window._autoSaveTodayPlanNow==='function'");
+    expect(flushAt).toBeGreaterThan(start);
+    expect(rescueAt).toBeGreaterThan(flushAt);
+  });
+
   it('captures the whole document after the Hecho modal closes', () => {
     expect(source).toContain('function installHechoPatch()');
     expect(source).toContain("typeof closeHechoDatos!=='function'");
