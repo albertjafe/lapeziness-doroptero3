@@ -5,6 +5,7 @@
 
   const DB_KEY = 'alberto_piano_v2';
   const SYNC_KEY = 'alberto_sync_v1';
+  const CRONO_STORAGE_KEY = 'pianoCrono_v2';
   const RESCUE_DB = 'piano_pre_update_rescue_v1';
   const RESCUE_STORE = 'snapshots';
   let installed = false;
@@ -22,9 +23,36 @@
       new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(label || 'timeout')), ms); })
     ]);
   }
+
+  function uncommittedTimerSnapshot(){
+    let raw = '';
+    try { raw = root.localStorage?.getItem(CRONO_STORAGE_KEY) || ''; } catch (_) {}
+    if(!raw) return null;
+    try {
+      const snapshot = JSON.parse(raw);
+      if(!snapshot || !snapshot.runId || !snapshot.obraId || !snapshot.startTs) return null;
+      let current = null;
+      try { if(typeof db !== 'undefined' && db) current = db; } catch (_) {}
+      if(!current){
+        try {
+          const dbRaw = root.localStorage?.getItem(DB_KEY) || '';
+          current = dbRaw ? JSON.parse(dbRaw) : null;
+        } catch (_) {}
+      }
+      const plants = Array.isArray(current?.sessionPlants) ? current.sessionPlants : [];
+      const alreadyCommitted = plants.some(plant => plant && (
+        plant.runId === snapshot.runId ||
+        plant.rid === snapshot.runId ||
+        plant.id === 'run_' + snapshot.runId
+      ));
+      return alreadyCommitted ? null : snapshot;
+    } catch (_) { return null; }
+  }
+
   function timerActive(){
     try { if(typeof crono !== 'undefined' && ['running','paused'].includes(crono.state)) return true; } catch (_) {}
     if(root.document?.getElementById('modalHechoDatos')?.classList?.contains('visible')) return true;
+    if(uncommittedTimerSnapshot()) return true;
     return !!(root.document && root.document.body && root.document.body.classList.contains('crono-running'));
   }
   function toast(message){
@@ -137,8 +165,10 @@
   }
 
   async function snapshotBeforeUpdate(){
+    if(timerActive()) throw new Error('Timer finalization pending');
     persistMemoryLocally();
     if (root.LocalSaveResilience?.flush) await root.LocalSaveResilience.flush();
+    if(timerActive()) throw new Error('Timer finalization pending');
     const raw = currentDbRaw();
     const durable = await hasDurableCopy(raw);
     if (!durable) throw new Error('No durable local snapshot');
@@ -257,8 +287,11 @@
 
   async function safeUpdate(){
     if(updating) return false;
+    const pendingTimer = uncommittedTimerSnapshot();
     if(timerActive()){
-      toast('Termina el cronómetro y guarda la píldora Hecho antes de actualizar.');
+      toast(pendingTimer
+        ? 'Hay una sesión de estudio aún sin consolidar. No se actualizará hasta que quede guardada.'
+        : 'Termina el cronómetro y guarda la píldora Hecho antes de actualizar.');
       return false;
     }
     updating = true;
@@ -316,8 +349,12 @@
     installed = true;
     root.navigator?.serviceWorker?.addEventListener?.('controllerchange', async () => {
       const explicit = explicitPromotionRequested;
-      if (!controlled && !explicit) { controlled = true; return; }
       controlled = true;
+      // WebKit can occasionally hand control to a newly activated worker even
+      // when this page never requested promotion. Never turn that unsolicited
+      // controllerchange into a reload: the old page can keep running safely
+      // and the new shell will load on the next normal reopen.
+      if (!explicit) return;
       if (reloading) return;
       reloading = true;
       explicitPromotionRequested = false;
@@ -333,13 +370,14 @@
       }
     });
     root.UpdateSafety = {
-      version:5,
+      version:6,
       safeUpdate,
       checkForUpdate,
       snapshotBeforeUpdate,
       syncEverything,
       syncMetaPending,
       resiliencePending,
+      hasUncommittedTimer:() => !!uncommittedTimerSnapshot(),
     };
     return true;
   }
