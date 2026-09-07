@@ -51,9 +51,93 @@ many('Robert Schumann',[["Carnaval","Op. 9","",0,['Carnaval Schumann']],["Fantai
 const brahms='Johannes Brahms';many(brahms,[["Piano Sonata No. 1","Op. 1","C major"],["Piano Sonata No. 2","Op. 2","F-sharp minor"],["Piano Sonata No. 3","Op. 5","F minor"],["Variations and Fugue on a Theme by Handel","Op. 24","B-flat major",27,['Handel Variations','Variaciones Handel']],["Variations on a Theme by Paganini","Op. 35","A minor",25,['Paganini Variations']],["Rhapsody No. 1","Op. 79 No. 1","B minor"],["Rhapsody No. 2","Op. 79 No. 2","G minor"]]);[['Op. 117',3],['Op. 118',6],['Op. 119',4]].forEach(([op,n])=>{for(let i=1;i<=n;i++)add(brahms,`Klavierstück ${op} No. ${i}`,`${op} No. ${i}`);});
 const schubert='Franz Schubert';[['D 664','A major'],['D 784','A minor'],['D 840','C major'],['D 845','A minor'],['D 850','D major'],['D 894','G major'],['D 958','C minor'],['D 959','A major'],['D 960','B-flat major']].forEach(r=>add(schubert,'Piano Sonata',r[0],r[1]));add(schubert,'Wanderer Fantasy','D 760','C major',22,['Wanderer-Fantasie','Fantasía Wanderer']);[['D 899','Op. 90'],['D 935','Op. 142']].forEach(([d,op])=>{for(let i=1;i<=4;i++)add(schubert,`Impromptu No. ${i}`,`${d} / ${op} No. ${i}`);});for(let i=1;i<=6;i++)add(schubert,`Moments musicaux No. ${i}`,`D 780 / Op. 94 No. ${i}`);
 
-// Debussy y Ravel.
-const debussy='Claude Debussy';const prel1=['Danseuses de Delphes','Voiles','Le vent dans la plaine',"Les sons et les parfums tournent dans l'air du soir","Les collines d'Anacapri",'Des pas sur la neige',"Ce qu'a vu le vent d'ouest",'La fille aux cheveux de lin','La sérénade interrompue','La cathédrale engloutie','La danse de Puck','Minstrels'];const prel2=['Brouillards','Feuilles mortes','La puerta del Vino',"Les fées sont d'exquises danseuses",'Bruyères','General Lavine – eccentric','La terrasse des audiences du clair de lune','Ondine','Hommage à S. Pickwick Esq. P.P.M.P.C.','Canope','Les tierces alternées',"Feux d'artifice"];
-prel1.forEach((t,i)=>add(debussy,`Préludes, Book I No. ${i+1}: ${t}`,'L.117'));prel2.forEach((t,i)=>add(debussy,`Préludes, Book II No. ${i+1}: ${t}`,'L.123'));['Pagodes','La soirée dans Grenade','Jardins sous la pluie'].forEach(t=>add(debussy,t,'Estampes, L.100'));add(debussy,'Clair de lune','Suite bergamasque, L.75','',5,['Claro de luna']);add(debussy,"L'isle joyeuse",'L.106','A major',6,['Isle joyeuse']);
+// Debussy · repertorio pianístico solista amplio, incluidos ciclos completos y rarezas publicadas.
+const debussy='Claude Debussy';
+many(debussy,[
+  ['Danse bohémienne','L.9','',0,['Danza bohemia']],
+  ['Arabesque No. 1','Deux arabesques, L.66/1','',0,['Première Arabesque','Arabesque 1','Arabesca 1']],
+  ['Arabesque No. 2','Deux arabesques, L.66/2','',0,['Deuxième Arabesque','Arabesque 2','Arabesca 2']],
+  ['Mazurka','L.67'],
+  ['Rêverie','L.68','',0,['Reverie']],
+  ['Danse (Tarantelle styrienne)','L.69','',0,['Tarantelle styrienne','Danza']],
+  ['Ballade','L.70','',0,['Ballade slave','Balada']],
+  ['Valse romantique','L.71','',0,['Vals romantico','Vals romántico']],
+  ['Nocturne','L.82'],
+  ['Intermède','','',0,['Intermezzo','Piano Trio Intermezzo']],
+]);
+[
+  ['Prélude',['Preludio']],
+  ['Menuet',['Minueto']],
+  ['Clair de lune',['Claro de luna']],
+  ['Passepied',['Pasapie','Pasapié']],
+].forEach((r,i)=>add(debussy,r[0],`Suite bergamasque, L.75/${i+1}`,'',i===2?5:0,r[1]));
+[
+  ['Lent, mélancolique et doux',[]],
+  ['Souvenir du Louvre',['Sarabande first version']],
+  ['Quelques aspects de “Nous n’irons plus au bois”',[]],
+].forEach((r,i)=>add(debussy,r[0],`Images oubliées, L.87/${i+1}`,'',0,[`Images oubliees ${i+1}`,...r[1]]));
+['Prélude','Sarabande','Toccata'].forEach((t,i)=>add(debussy,t,`Pour le piano, L.95/${i+1}`,'',0,[`Pour le piano ${i+1}`]));
+[
+  ["Reflets dans l'eau",['Reflejos en el agua']],
+  ['Hommage à Rameau',['Homenaje a Rameau','Homenaje a Rameau']],
+  ['Mouvement',['Movimiento']],
+].forEach((r,i)=>add(debussy,r[0],`Images, Book I, L.110/${i+1}`,'',0,[`Images I ${i+1}`,`Images 1 ${i+1}`,...r[1]]));
+['Pagodes','La soirée dans Grenade','Jardins sous la pluie'].forEach((t,i)=>add(debussy,t,`Estampes, L.100/${i+1}`,'',0,[`Estampes ${i+1}`]));
+add(debussy,"L'isle joyeuse",'L.106','A major',6,['Isle joyeuse','La isla alegre']);
+add(debussy,'Masques','L.105','',0,['Mascaras','Máscaras']);
+add(debussy,"D'un cahier d'esquisses",'L.99','',0,["D'un cahier d'esquisse",'Cuaderno de esbozos']);
+add(debussy,'Pièce pour piano (Morceau de concours)','L.108','',0,['Morceau de concours','Pieza de concurso']);
+add(debussy,'Les accords de septième regrettent !!!','','',0,['Les accords de septieme regrettent','Accords de septieme']);
+[
+  ['Doctor Gradus ad Parnassum',[]],
+  ["Jimbo's Lullaby",['Berceuse des elephants']],
+  ['Serenade of the Doll',['Serenade de la poupee']],
+  ['The Snow Is Dancing',['La nieve baila']],
+  ['The Little Shepherd',['El pequeño pastor','El pequeno pastor']],
+  ["Golliwogg's Cakewalk",['Cakewalk']],
+].forEach((r,i)=>add(debussy,r[0],`Children's Corner, L.113/${i+1}`,'',0,[`Childrens Corner ${i+1}`,...r[1]]));
+[
+  ['Cloches à travers les feuilles',['Campanas a traves de las hojas']],
+  ['Et la lune descend sur le temple qui fut',['Y la luna desciende sobre el templo que fue']],
+  ["Poissons d'or",['Peces de oro']],
+].forEach((r,i)=>add(debussy,r[0],`Images, Book II, L.111/${i+1}`,'',0,[`Images II ${i+1}`,`Images 2 ${i+1}`,...r[1]]));
+add(debussy,'Le petit Nègre','L.114','',0,['Cake-Walk','Le petit Negre']);
+add(debussy,'Hommage à Haydn','L.115','',0,['Homenaje a Haydn','Homenaje a Haydn']);
+const prel1=['Danseuses de Delphes','Voiles','Le vent dans la plaine',"Les sons et les parfums tournent dans l'air du soir","Les collines d'Anacapri",'Des pas sur la neige',"Ce qu'a vu le vent d'ouest",'La fille aux cheveux de lin','La sérénade interrompue','La cathédrale engloutie','La danse de Puck','Minstrels'];
+const prel2=['Brouillards','Feuilles mortes','La puerta del Vino',"Les fées sont d'exquises danseuses",'Bruyères','Général Lavine – eccentric','La terrasse des audiences du clair de lune','Ondine','Hommage à S. Pickwick Esq. P.P.M.P.C.','Canope','Les tierces alternées',"Feux d'artifice"];
+prel1.forEach((t,i)=>add(debussy,`Préludes, Book I No. ${i+1}: ${t}`,'L.117','',0,[`Preludio Debussy libro 1 ${i+1}`,`Prelude Debussy book 1 ${i+1}`]));
+add(debussy,'La plus que lente','L.121a','',0,['Valse La plus que lente','Vals La plus que lente']);
+prel2.forEach((t,i)=>add(debussy,`Préludes, Book II No. ${i+1}: ${t}`,'L.123','',0,[`Preludio Debussy libro 2 ${i+1}`,`Prelude Debussy book 2 ${i+1}`]));
+[
+  ["Pour invoquer Pan, dieu du vent d'été",[]],
+  ['Pour un tombeau sans nom',[]],
+  ['Pour que la nuit soit propice',[]],
+  ['Pour la danseuse aux crotales',[]],
+  ["Pour l'Égyptienne",[]],
+  ['Pour remercier la pluie au matin',[]],
+].forEach((r,i)=>add(debussy,r[0],`Six Épigraphes antiques, L.131b/${i+1}`,'',0,[`Six Epigraphes antiques ${i+1}`,`Epigrafes antiguas ${i+1}`,...r[1]]));
+add(debussy,'Berceuse héroïque','L.132a','',0,['Berceuse heroique','Cancion de cuna heroica']);
+add(debussy,"Pièce pour l'œuvre du Vêtement du blessé (Page d'album)",'L.133','',0,['Page album','Vetement du blesse']);
+const debussyEtudes=[
+  'Pour les cinq doigts, d’après Monsieur Czerny',
+  'Pour les tierces',
+  'Pour les quartes',
+  'Pour les sixtes',
+  'Pour les octaves',
+  'Pour les huit doigts',
+  'Pour les degrés chromatiques',
+  'Pour les agréments',
+  'Pour les notes répétées',
+  'Pour les sonorités opposées',
+  'Pour les arpèges composés',
+  'Pour les accords',
+];
+debussyEtudes.forEach((t,i)=>add(debussy,`Étude No. ${i+1}: ${t}`,`Douze Études, L.136/${i+1}`,'',0,[`Debussy etude ${i+1}`,`Estudio Debussy ${i+1}`]));
+add(debussy,'Étude retrouvée: Pour les arpèges composés','L.143a','',0,['Etude retrouvee','Estudio encontrado','Alternate arpeggios étude']);
+add(debussy,'Élégie','L.138','',0,['Elegie','Elegía','Elegia']);
+add(debussy,"Les Soirs illuminés par l'ardeur du charbon",'L.150','',0,['Les Soirs illumines','Soirs illumines']);
+
+// Ravel.
 const ravel='Maurice Ravel';add(ravel,"Jeux d'eau",'M.30','E major',6,['Juegos de agua']);add(ravel,'Sonatine','M.40','F-sharp minor',12);add(ravel,'Pavane pour une infante défunte','M.19','G major',6,['Pavana para una infanta difunta']);['Noctuelles','Oiseaux tristes',"Une barque sur l'océan",'Alborada del gracioso','La vallée des cloches'].forEach((t,i)=>add(ravel,t,`Miroirs, M.43/${i+1}`));['Ondine','Le Gibet','Scarbo'].forEach((t,i)=>add(ravel,t,`Gaspard de la nuit, M.55/${i+1}`));['Prélude','Fugue','Forlane','Rigaudon','Menuet','Toccata'].forEach((t,i)=>add(ravel,t,`Le Tombeau de Couperin, M.68/${i+1}`));
 
 // Rachmaninoff, Prokofiev y Scriabin.
