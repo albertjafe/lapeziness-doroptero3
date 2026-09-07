@@ -31,6 +31,14 @@ describe('WorkCatalog', () => {
     expect(Catalog.searchWorks(works, 'rachmaninov op 16 4', 1)[0].catalog).toBe('Op. 16 No. 4');
   });
 
+  it('contains a broad Debussy solo-piano catalogue including Images and Études', () => {
+    const debussy = works.filter(item => item.composer === 'Claude Debussy');
+    expect(debussy.length).toBeGreaterThan(80);
+    expect(Catalog.searchWorks(works, "debussy reflets dans l'eau images", 1)[0].catalog).toContain('Images, Book I');
+    expect(Catalog.searchWorks(works, "debussy poissons d'or images", 1)[0].catalog).toContain('Images, Book II');
+    expect(Catalog.searchWorks(works, 'debussy etude accords', 1)[0].title).toContain('Pour les accords');
+  });
+
   it('formats the selected result with key and catalogue number', () => {
     const item = Catalog.searchWorks(works, 'beethoven op 49 1', 1)[0];
     expect(Catalog.displayTitle(item)).toBe('Piano Sonata No. 19 in G minor, Op. 49 No. 1');
