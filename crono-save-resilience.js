@@ -241,12 +241,29 @@
     return true;
   }
 
+  function flushTodaySessionNow(){
+    try {
+      const immediate=typeof window._autoSaveTodayPlanNow==='function'
+        ? window._autoSaveTodayPlanNow
+        : (typeof _autoSaveTodayPlanNow==='function' ? _autoSaveTodayPlanNow : null);
+      if(immediate){ immediate(); return true; }
+    } catch(e) {}
+    try {
+      if(typeof autoSaveTodayPlan==='function') autoSaveTodayPlan();
+    } catch(e) {}
+    return false;
+  }
+
   function installHechoPatch(){
     if(typeof closeHechoDatos!=='function' || closeHechoDatos.__resilientTimerSave) return false;
     const original=closeHechoDatos;
     const patched=function(){
       const obraId=currentHechoObraId();
       const finalize=()=>{
+        // closeHechoDatos actualiza UI/aggregate y el autosave normal puede ser
+        // diferido. Forzamos el escritor inmediato antes de capturar el rescate,
+        // para que minutos, solidez y el item de Hoy estén en db ya mismo.
+        flushTodaySessionNow();
         try { persistCurrentIfNeeded(); } catch(e) {}
         queueDocumentRescue(obraId);
         scheduleProtection(obraId);
@@ -350,6 +367,7 @@
     getDocumentRescue,
     hasDocumentSnapshot,
     queueDocumentRescue,
+    flushTodaySessionNow,
   };
   boot(0);
 })();
