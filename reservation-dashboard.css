@@ -1,0 +1,126 @@
+.reservation-dashboard { max-width:1120px; margin:0 auto; padding:14px 0 44px; color:var(--text); }
+.rd-topline { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:16px; }
+.rd-title-group h1 { margin:3px 0 3px; font-size:clamp(30px,4vw,46px); font-weight:500; letter-spacing:-.04em; }
+.rd-title-group p { margin:0; min-height:17px; color:var(--text3); font:10px/1.6 'JetBrains Mono',monospace; }
+.rd-title-group p[data-kind="ok"] { color:#447b5a; }
+.rd-title-group p[data-kind="stale"] { color:#9a7136; }
+.rd-title-group p[data-kind="error"] { color:#a6574e; }
+.rd-head-actions { display:flex; align-items:center; gap:8px; padding-top:8px; }
+.rd-source-switch,.rd-pane-tabs { display:inline-flex; padding:3px; gap:2px; border:1px solid var(--border2); background:color-mix(in srgb,var(--bg2) 88%,transparent); border-radius:10px; }
+.rd-source-switch[hidden] { display:none!important; }
+.rd-source-switch button,.rd-pane-tabs button { border:0; background:transparent; color:var(--text3); border-radius:7px; padding:7px 11px; cursor:pointer; font:10px 'JetBrains Mono',monospace; transition:.18s ease; }
+.rd-source-switch button.active,.rd-pane-tabs button.active { background:var(--bg); color:var(--text); box-shadow:0 2px 9px rgba(45,38,30,.09); }
+.rd-refresh { width:34px; height:34px; border:1px solid var(--border2); border-radius:10px; background:var(--bg2); color:var(--text2); cursor:pointer; font-size:17px; }
+.rd-refresh:hover { color:var(--accent); border-color:var(--accent); }
+.rd-pane-tabs { margin-bottom:18px; }
+.rd-pane-tabs button { min-width:112px; }
+.rd-pane-tabs button.active { color:var(--accent); }
+.rd-hero { position:relative; display:flex; justify-content:space-between; align-items:flex-end; min-height:155px; margin-bottom:14px; padding:24px 26px; overflow:hidden; border:1px solid color-mix(in srgb,var(--accent) 22%,var(--border2)); border-radius:18px; background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 12%,var(--bg2)),var(--bg2) 60%); box-shadow:0 12px 35px rgba(43,36,28,.06); }
+.rd-hero::after { content:'♪'; position:absolute; right:118px; top:-48px; color:var(--accent); opacity:.07; font:220px/1 'Cormorant Garamond',serif; transform:rotate(8deg); }
+.rd-hero.is-offline { filter:saturate(.65); }
+.rd-hero-copy,.rd-hero-time { position:relative; z-index:1; display:flex; flex-direction:column; }
+.rd-kicker { color:var(--accent); text-transform:uppercase; letter-spacing:.14em; font:9px 'JetBrains Mono',monospace; }
+.rd-hero-copy strong { margin:8px 0 4px; font:500 clamp(31px,5vw,50px)/.95 'Cormorant Garamond',serif; letter-spacing:-.035em; }
+.rd-hero-copy>span:last-child { color:var(--text2); font:11px 'JetBrains Mono',monospace; }
+.rd-hero-time { align-items:flex-end; gap:4px; color:var(--text3); font:9px 'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:.08em; }
+.rd-hero-time b { color:var(--text); font:400 25px/1 'Cormorant Garamond',serif; letter-spacing:0; }
+.rd-control-card { margin-bottom:14px; padding:15px; border:1px solid var(--border2); border-radius:15px; background:var(--bg2); }
+.rd-section-label { display:flex; justify-content:space-between; align-items:center; margin:0 2px 10px; color:var(--text3); text-transform:uppercase; letter-spacing:.12em; font:9px 'JetBrains Mono',monospace; }
+.rd-section-label small { text-transform:none; letter-spacing:0; opacity:.75; }
+.rd-mode-controls { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+.rd-mode-controls button { position:relative; min-height:48px; border:1px solid var(--border2); border-radius:10px; background:var(--bg); color:var(--text2); cursor:pointer; font:10px 'JetBrains Mono',monospace; }
+.rd-mode-controls button span { display:block; }
+.rd-mode-controls button small { display:block; margin-top:3px; color:var(--accent); font-size:8px; text-transform:uppercase; letter-spacing:.08em; }
+.rd-mode-controls button.active { color:var(--accent); border-color:color-mix(in srgb,var(--accent) 58%,var(--border2)); background:color-mix(in srgb,var(--accent) 8%,var(--bg)); box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 12%,transparent); }
+.rd-mode-controls button:disabled,.rd-action:disabled,.rd-toggle:disabled { cursor:not-allowed; opacity:.45; }
+.rd-mode-controls button.is-sending,.rd-action.is-sending,.rd-toggle.is-sending { animation:rdPulse 1s ease-in-out infinite; }
+@keyframes rdPulse { 50% { opacity:.48; } }
+.rd-grid { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(260px,.85fr); gap:14px; align-items:start; }
+.rd-column { display:grid; gap:14px; }
+.rd-card { border:1px solid var(--border2); border-radius:15px; background:var(--bg2); box-shadow:0 8px 24px rgba(43,36,28,.035); }
+.rd-card-head { display:flex; align-items:center; justify-content:space-between; padding:15px 17px 11px; border-bottom:1px solid color-mix(in srgb,var(--border2) 62%,transparent); color:var(--text2); font:10px 'JetBrains Mono',monospace; }
+.rd-card-head>span { color:var(--text); text-transform:uppercase; letter-spacing:.11em; font-size:9px; }
+.rd-card-head small { color:var(--text3); }
+.rd-booking-list { padding:4px 16px 10px; }
+.rd-booking { display:grid; grid-template-columns:48px 14px minmax(0,1fr) auto; align-items:center; gap:9px; min-height:63px; border-bottom:1px solid color-mix(in srgb,var(--border2) 55%,transparent); }
+.rd-booking:last-child { border-bottom:0; }
+.rd-booking-time { display:flex; flex-direction:column; font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; }
+.rd-booking-time b { color:var(--text); font-size:11px; font-weight:400; }
+.rd-booking-time span { color:var(--text3); font-size:9px; }
+.rd-booking-line { position:relative; height:100%; display:flex; justify-content:center; }
+.rd-booking-line::before { content:''; width:1px; height:100%; background:var(--border2); }
+.rd-booking-line i { position:absolute; top:50%; width:7px; height:7px; margin-top:-4px; border:2px solid var(--bg2); border-radius:50%; background:var(--text3); box-shadow:0 0 0 1px var(--border2); }
+.rd-booking.is-current .rd-booking-line i { width:9px; height:9px; margin-top:-5px; background:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 14%,transparent); }
+.rd-booking.is-past { opacity:.55; }
+.rd-booking-main { min-width:0; display:flex; flex-direction:column; gap:3px; }
+.rd-booking-main strong { font:500 20px/1 'Cormorant Garamond',serif; }
+.rd-booking-main span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text3); font:9px 'JetBrains Mono',monospace; }
+.rd-booking-flags { display:flex; align-items:flex-end; flex-direction:column; gap:3px; }
+.rd-booking-flags span { padding:3px 5px; border-radius:5px; background:var(--bg3); color:var(--text2); font:8px 'JetBrains Mono',monospace; }
+.rd-booking-flags span.is-confirmed { color:#39704d; background:rgba(82,151,104,.11); }
+.rd-booking-flags small { color:var(--text3); font:8px 'JetBrains Mono',monospace; }
+.rd-empty-line { display:flex; flex-direction:column; align-items:center; padding:38px 14px; color:var(--text2); font:500 21px 'Cormorant Garamond',serif; }
+.rd-empty-line small { margin-top:4px; color:var(--text3); font:9px 'JetBrains Mono',monospace; }
+.rd-quota-card { padding-bottom:14px; }
+.rd-quota-row { display:grid; grid-template-columns:78px 1fr; gap:12px; align-items:center; padding:14px 17px 4px; }
+.rd-quota-row>div { display:flex; align-items:baseline; gap:5px; }
+.rd-quota-row b { font:500 27px/1 'Cormorant Garamond',serif; }
+.rd-quota-row span { color:var(--text3); font:8px 'JetBrains Mono',monospace; }
+.rd-quota-row>i { height:5px; overflow:hidden; border-radius:9px; background:var(--bg3); }
+.rd-quota-row>i em { display:block; height:100%; border-radius:inherit; background:var(--accent); opacity:.72; }
+.rd-quota-row.is-secondary>i em { opacity:.35; }
+.rd-card-note { margin:13px 17px 2px; color:var(--text3); font:9px 'JetBrains Mono',monospace; }
+.rd-monitor-card { padding-bottom:13px; }
+.rd-live-dot { display:inline-flex; align-items:center; gap:5px; }
+.rd-live-dot i { width:6px; height:6px; border-radius:50%; background:#aa5d54; }
+.rd-live-dot.online i { background:#4b9a66; box-shadow:0 0 0 3px rgba(75,154,102,.1); }
+.rd-monitor-mode { display:flex; justify-content:space-between; align-items:baseline; padding:13px 17px 8px; }
+.rd-monitor-mode span { color:var(--text3); font:9px 'JetBrains Mono',monospace; }
+.rd-monitor-mode b { font:500 22px 'Cormorant Garamond',serif; }
+.rd-chip-row { display:flex; flex-wrap:wrap; gap:5px; padding:0 17px 12px; }
+.rd-chip-row span { padding:4px 7px; border:1px solid var(--border2); border-radius:999px; color:var(--text2); font:8px 'JetBrains Mono',monospace; }
+.rd-monitor-meta { display:grid; grid-template-columns:1fr 1fr; margin:0; padding:0 17px; gap:9px 12px; }
+.rd-monitor-meta div { min-width:0; }
+.rd-monitor-meta dt { color:var(--text3); font:8px 'JetBrains Mono',monospace; }
+.rd-monitor-meta dd { margin:2px 0 0; color:var(--text2); font:10px 'JetBrains Mono',monospace; }
+.rd-quick-controls { display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:6px; padding:13px 14px; }
+.rd-action { min-height:49px; display:flex; align-items:center; justify-content:center; gap:7px; border:1px solid var(--border2); border-radius:10px; background:var(--bg); color:var(--text2); cursor:pointer; }
+.rd-action span { color:var(--accent); font:14px 'JetBrains Mono',monospace; }
+.rd-action b { font:400 9px 'JetBrains Mono',monospace; }
+.rd-action.is-pause { border-color:color-mix(in srgb,#b46a5d 38%,var(--border2)); }
+.rd-action.is-resume { border-color:color-mix(in srgb,#4b9a66 45%,var(--border2)); }
+.rd-settings { display:grid; grid-template-columns:1fr 1fr; gap:7px; padding:13px 14px 15px; }
+.rd-toggle { display:flex; align-items:center; justify-content:space-between; min-height:36px; padding:0 9px 0 11px; border:1px solid var(--border2); border-radius:9px; background:var(--bg); color:var(--text3); cursor:pointer; font:9px 'JetBrains Mono',monospace; }
+.rd-toggle i { position:relative; width:25px; height:14px; border-radius:10px; background:var(--bg3); transition:.18s ease; }
+.rd-toggle i::after { content:''; position:absolute; width:10px; height:10px; left:2px; top:2px; border-radius:50%; background:var(--text3); transition:.18s ease; }
+.rd-toggle.active { color:var(--text2); }
+.rd-toggle.active i { background:color-mix(in srgb,var(--accent) 35%,var(--bg3)); }
+.rd-toggle.active i::after { left:13px; background:var(--accent); }
+.rd-transition { margin-top:14px; }
+.rd-empty { display:flex; min-height:320px; flex-direction:column; align-items:center; justify-content:center; text-align:center; border:1px dashed var(--border2); border-radius:16px; background:color-mix(in srgb,var(--bg2) 74%,transparent); }
+.rd-empty-mark { width:48px; height:48px; display:grid; place-items:center; margin-bottom:13px; border:1px solid var(--border2); border-radius:50%; color:var(--accent); font-size:22px; }
+.rd-empty strong { font:500 27px 'Cormorant Garamond',serif; }
+.rd-empty p { max-width:390px; margin:5px 18px; color:var(--text3); font:10px/1.6 'JetBrains Mono',monospace; }
+#reservationLegacyPanel .piano-rooms-page { padding-top:0; }
+#reservationLegacyPanel .piano-rooms-intro h2 { margin:3px 0 4px; font:500 clamp(27px,4vw,40px) 'Cormorant Garamond',serif; }
+@media(max-width:760px){
+  .reservation-dashboard { padding-left:10px; padding-right:10px; }
+  .rd-topline { flex-direction:column; gap:6px; }
+  .rd-head-actions { width:100%; justify-content:space-between; }
+  .rd-pane-tabs { display:flex; }
+  .rd-pane-tabs button { min-width:0; flex:1; }
+  .rd-hero { min-height:138px; padding:20px; }
+  .rd-hero-time { display:none; }
+  .rd-mode-controls { grid-template-columns:repeat(3,1fr); }
+  .rd-grid { grid-template-columns:1fr; }
+  .rd-booking { grid-template-columns:45px 12px minmax(0,1fr); }
+  .rd-booking-flags { display:none; }
+}
+@media(max-width:430px){
+  .rd-source-switch button,.rd-pane-tabs button { padding:7px 8px; }
+  .rd-mode-controls { grid-template-columns:1fr 1fr; }
+  .rd-mode-controls button:first-child { grid-column:span 2; }
+  .rd-quick-controls { grid-template-columns:1fr 1fr; }
+  .rd-quick-controls .rd-action:first-child { grid-column:span 2; }
+}
+@media(prefers-reduced-motion:reduce){ .rd-mode-controls button.is-sending,.rd-action.is-sending,.rd-toggle.is-sending { animation:none; } }

@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-07-audio-notifications-v368';
+const APP_VERSION = '2026-09-08-reservation-dashboard-v369';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -606,7 +606,7 @@ const VIEW_CONTEXT = {
   cronometro: { eyebrow: 'Práctica', title: 'Cronómetro' },
   obras: { eyebrow: 'Repertorio', title: 'Obras' },
   calendario: { eyebrow: 'Planificación', title: 'Calendario' },
-  salas: { eyebrow: 'Piano Rooms', title: 'Salas' },
+  salas: { eyebrow: 'Reservas Asimut', title: 'Aulas' },
   casa: { eyebrow: 'Estratos', title: 'La Casa' },
   historial: { eyebrow: 'Resumen', title: 'Estadísticas' },
   ajustes: { eyebrow: 'Planificador de estudio', title: 'Ajustes' }

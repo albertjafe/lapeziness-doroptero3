@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-07 · caché runtime v368
+**Estado:** CANÓNICO · actualizado 2026-09-08 · caché runtime v369
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -34,9 +34,10 @@ Orden aproximado relevante:
 8. `study-session-ux.js`
 9. `crono-resume-layout.js`
 10. `piano-rooms.js` → carga numerosos addons
-11. `google-calendar.js`
-12. `timer-objectives.js`
-13. `metronome.js`
+11. `reservation-dashboard.js`
+12. `google-calendar.js`
+13. `timer-objectives.js`
+14. `metronome.js`
 
 `mystery-house.js` y `planning-enhancements-v3-fix.js` ya no se cargan ni se precachean.
 
@@ -272,7 +273,7 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 ---
 
-## 7. Calendario, actividad y Piano Rooms
+## 7. Calendario, actividad y aulas
 
 ### Google Calendar
 
@@ -289,9 +290,18 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 ### Piano Rooms
 
-- `piano-rooms-core.js`: lógica de disponibilidad/estado del monitor local.
+- La vista visible `salas` se presenta como **Aulas** y conserva dos paneles internos: `Mis reservas` (Asimut, predeterminado) y `Piano Rooms` (legado/local).
+- `reservation-dashboard.js` + `reservation-dashboard.css`: estado Asimut en vivo, selector Alberto/Emma, reservas, cuotas, salud del monitor y controles permitidos. Lee `reservation_monitor_state` y escribe únicamente en `reservation_monitor_commands`; nunca llama a Asimut.
+- `piano-rooms-core.js`: lógica de disponibilidad/estado del monitor local. Sólo sondea `localhost:8765` mientras su panel interno está visible.
 - `piano-rooms.css`: UI.
 - `piano-rooms.js`: **además** de Piano Rooms, hoy es el bootstrap general de muchos addons. No renombrarlo/refactorizarlo casualmente. En v359 carga `ensemble-repertoire-catalog.js` justo después de `work-structure-catalog.js`.
+
+### Puente del monitor Asimut
+
+- Migración `202609080001_reservation_monitor_dashboard.sql`: tablas separadas para tokens, estado y órdenes; RLS por `auth.uid()`, privilegios mínimos y publicación Realtime.
+- Edge Function `reservation-monitor-ingest`: autentica el monitor con un token local hasheado en servidor, sanea la instantánea, entrega órdenes y recibe acuses. La clave `service_role` nunca llega a Python ni al navegador.
+- El archivo externo `study_dashboard_bridge.py`, junto al monitor de escritorio, publica con cola no bloqueante y entrega las órdenes al hilo principal. Las llamadas al dashboard reutilizan la lectura ya hecha para Telegram y no aumentan peticiones a Asimut.
+- Los controles web son declarativos y están limitados por constraint/whitelist: pausa, objetivo hoy/mañana, modos operativos y toggles de monitor. Cancelar o modificar reservas no forma parte de esta primera superficie.
 
 ---
 
@@ -299,9 +309,9 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- Caché actual `estudio-v368`: `app.js`, `timer-core.js`, `push-client.js` y `metronome.js` usan v368; el resto de módulos conserva su URL versionada anterior. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
+- Caché actual `estudio-v369`: `app.js`, `reservation-dashboard.js`, `reservation-dashboard.css`, `piano-rooms-core.js` y `piano-rooms.css` usan v369; los módulos de audio/push conservan v368 y el resto su URL anterior. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v368 en Ajustes; v368 es el límite de caché PWA actual.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v369 en Ajustes; v369 es el límite de caché PWA actual.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
@@ -344,6 +354,7 @@ Documentación pura (`.md`, instrucciones de IA) no necesita bump de SW porque n
 | Google Calendar | `google-calendar.js` |
 | PWA/cache/update | `sw.js`, `update-safety.js`, `index.html` |
 | Piano Rooms | `piano-rooms-core.js`; recordar que `piano-rooms.js` es loader general |
+| reservas Asimut en vivo | `reservation-dashboard.js`, `reservation-dashboard.css`, `supabase/functions/reservation-monitor-ingest`, migración `202609080001_*`; monitor externo `study_dashboard_bridge.py` |
 | histórico | `historical-repertoire.js`, `historical-events.js` |
 
 ---

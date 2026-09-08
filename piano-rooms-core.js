@@ -121,6 +121,7 @@
   }
   function start() {
     if (!el('view-salas')) return;
+    if (el('reservationLegacyPanel')?.hidden) return;
     if (!el('pianoRoomsDate').value) el('pianoRoomsDate').value = localDate();
     clearInterval(pollTimer);
     clearInterval(clockTimer);
@@ -128,12 +129,26 @@
     pollTimer = setInterval(refresh, POLL_MS);
     clockTimer = setInterval(() => { if (lastState) positionNowLine(lastState); }, 15000);
   }
+  function stop() {
+    clearInterval(pollTimer);
+    clearInterval(clockTimer);
+    pollTimer = null;
+    clockTimer = null;
+  }
   function init() {
     el('pianoRoomsRefresh')?.addEventListener('click', refresh);
     el('pianoRoomsDate')?.addEventListener('change', refresh);
-    window.addEventListener('app:viewchange', event => { if (event.detail?.name === 'salas') start(); });
-    if (document.body.dataset.view === 'salas') start();
+    window.addEventListener('app:viewchange', event => {
+      if (event.detail?.name === 'salas' && !el('reservationLegacyPanel')?.hidden) start();
+      else if (event.detail?.name !== 'salas') stop();
+    });
+    window.addEventListener('reservation-dashboard:pane', event => {
+      if (event.detail?.name === 'piano-rooms') start();
+      else stop();
+    });
+    if (document.body.dataset.view === 'salas' && !el('reservationLegacyPanel')?.hidden) start();
   }
+  window.PianoRoomsLegacy = { start, stop, refresh };
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init) : init();
 })();
 

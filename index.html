@@ -28,7 +28,8 @@
 <link rel="stylesheet" href="styles.css?v=342">
 <link rel="stylesheet" href="study-session-ux.css?v=342">
 <link rel="stylesheet" href="crono-resume-layout.css?v=342">
-<link rel="stylesheet" href="piano-rooms.css?v=342">
+<link rel="stylesheet" href="piano-rooms.css?v=369">
+<link rel="stylesheet" href="reservation-dashboard.css?v=369">
 </head>
 <body>
 
@@ -87,7 +88,7 @@
   </div>
   <div class="header-actions">
     <div style="font-size:10px;color:var(--text3)" id="packNameHeader"></div>
-    <button type="button" class="piano-rooms-open" onclick="showView('salas')" aria-label="Abrir disponibilidad de salas" title="Disponibilidad de salas">▦ <span>Salas</span></button>
+    <button type="button" class="piano-rooms-open" onclick="showView('salas')" aria-label="Abrir reservas y aulas" title="Reservas y aulas">▦ <span>Aulas</span></button>
     <button class="settings-icon" id="sessionInfoBtn" onclick="toggleSessionInfo()" title="Mostrar u ocultar detalles" aria-label="Mostrar u ocultar detalles">ℹ</button>
     <button class="settings-icon" id="headerSettingsBtn" onclick="openSettings()" title="Ajustes" aria-label="Abrir ajustes">⚙</button>
   </div>
@@ -625,33 +626,91 @@
   <button class="add-obra-btn" onclick="openAddObra()">+ añadir obra</button>
 </div>
 
-<!-- PIANO ROOMS VIEW -->
+<!-- RESERVAS Y AULAS VIEW -->
 <div class="view" id="view-salas">
-  <section class="piano-rooms-page" aria-labelledby="pianoRoomsTitle">
-    <div class="piano-rooms-intro">
-      <div>
-        <div class="view-local-label">Disponibilidad en directo</div>
-        <h1 id="pianoRoomsTitle">Salas</h1>
-        <p id="pianoRoomsStatus" role="status" aria-live="polite">Conectando con el monitor local…</p>
+  <section class="reservation-dashboard" aria-labelledby="reservationDashboardTitle">
+    <div class="rd-topline">
+      <div class="rd-title-group">
+        <div class="view-local-label">Reservas Asimut</div>
+        <h1 id="reservationDashboardTitle">Aulas</h1>
+        <p id="reservationDashboardStatus" role="status" aria-live="polite">Conectando con el monitor…</p>
       </div>
-      <div class="piano-rooms-actions">
-        <label class="piano-rooms-date-label" for="pianoRoomsDate">Fecha</label>
-        <input id="pianoRoomsDate" type="date">
-        <button type="button" id="pianoRoomsRefresh" class="piano-rooms-refresh">Actualizar</button>
+      <div class="rd-head-actions">
+        <div class="rd-source-switch" id="reservationSourceSwitch" aria-label="Perfil del monitor" hidden></div>
+        <button type="button" id="reservationRefresh" class="rd-refresh" title="Actualizar" aria-label="Actualizar reservas">↻</button>
       </div>
     </div>
-    <div class="piano-rooms-legend" aria-label="Leyenda de estados">
-      <span class="pr-legend-item"><i class="pr-swatch pr-swatch-available"></i>Disponible</span>
-      <span class="pr-legend-item"><i class="pr-swatch pr-swatch-reserved"></i>Reservada durante la vigilancia</span>
-      <span class="pr-legend-item"><i class="pr-swatch pr-swatch-expired"></i>Pasó libre</span>
-      <span class="pr-legend-item"><i class="pr-swatch pr-swatch-mine"></i>Mi reserva</span>
-      <span class="pr-legend-item"><i class="pr-swatch pr-swatch-unknown"></i>Sin historial</span>
+
+    <div class="rd-pane-tabs" role="tablist" aria-label="Secciones de aulas">
+      <button type="button" class="active" data-reservation-pane="reservations" role="tab" aria-selected="true">Mis reservas</button>
+      <button type="button" data-reservation-pane="piano-rooms" role="tab" aria-selected="false">Piano Rooms</button>
     </div>
-    <div class="piano-rooms-grid-wrap" id="pianoRoomsGridWrap">
-      <div id="pianoRoomsGrid" class="piano-rooms-grid" role="grid" aria-label="Cuadrícula de disponibilidad de salas"></div>
-      <div id="pianoRoomsNowLine" class="piano-rooms-now-line" aria-hidden="true"><span>ahora</span></div>
+
+    <div id="reservationLivePanel">
+      <div class="rd-empty" id="reservationDashboardEmpty" hidden></div>
+      <div id="reservationDashboardContent" hidden>
+        <section class="rd-hero" id="reservationHero" aria-live="polite"></section>
+
+        <section class="rd-control-card" aria-labelledby="reservationModeTitle">
+          <div class="rd-section-label"><span id="reservationModeTitle">Modo del monitor</span><small>cambio inmediato</small></div>
+          <div class="rd-mode-controls" id="reservationModeControls"></div>
+        </section>
+
+        <div class="rd-grid">
+          <div class="rd-column">
+            <section class="rd-card">
+              <div class="rd-card-head"><span>Agenda</span><small>orden cronológico</small></div>
+              <div class="rd-booking-list" id="reservationBookingList"></div>
+            </section>
+            <section class="rd-card rd-transition" id="reservationTransition" hidden>
+              <div class="rd-card-head"><span data-transition-title>También mañana</span><small>transición</small></div>
+              <div class="rd-booking-list" id="reservationTransitionList"></div>
+            </section>
+          </div>
+          <aside class="rd-column">
+            <div id="reservationQuotaCard"></div>
+            <div id="reservationMonitorCard"></div>
+            <section class="rd-card">
+              <div class="rd-card-head"><span>Acciones rápidas</span><small>desde la app</small></div>
+              <div class="rd-quick-controls" id="reservationQuickControls"></div>
+            </section>
+            <section class="rd-card">
+              <div class="rd-card-head"><span>Ajustes activos</span><small>monitor</small></div>
+              <div class="rd-settings" id="reservationSettingControls"></div>
+            </section>
+          </aside>
+        </div>
+      </div>
     </div>
-    <p class="piano-rooms-note">La línea indica la hora actual. El color naranja solo se asigna cuando una franja observada como disponible desaparece antes de comenzar.</p>
+
+    <div id="reservationLegacyPanel" hidden>
+      <section class="piano-rooms-page" aria-labelledby="pianoRoomsTitle">
+        <div class="piano-rooms-intro">
+          <div>
+            <div class="view-local-label">Disponibilidad local</div>
+            <h2 id="pianoRoomsTitle">Piano Rooms</h2>
+            <p id="pianoRoomsStatus" role="status" aria-live="polite">Monitor local en espera.</p>
+          </div>
+          <div class="piano-rooms-actions">
+            <label class="piano-rooms-date-label" for="pianoRoomsDate">Fecha</label>
+            <input id="pianoRoomsDate" type="date">
+            <button type="button" id="pianoRoomsRefresh" class="piano-rooms-refresh">Actualizar</button>
+          </div>
+        </div>
+        <div class="piano-rooms-legend" aria-label="Leyenda de estados">
+          <span class="pr-legend-item"><i class="pr-swatch pr-swatch-available"></i>Disponible</span>
+          <span class="pr-legend-item"><i class="pr-swatch pr-swatch-reserved"></i>Reservada durante la vigilancia</span>
+          <span class="pr-legend-item"><i class="pr-swatch pr-swatch-expired"></i>Pasó libre</span>
+          <span class="pr-legend-item"><i class="pr-swatch pr-swatch-mine"></i>Mi reserva</span>
+          <span class="pr-legend-item"><i class="pr-swatch pr-swatch-unknown"></i>Sin historial</span>
+        </div>
+        <div class="piano-rooms-grid-wrap" id="pianoRoomsGridWrap">
+          <div id="pianoRoomsGrid" class="piano-rooms-grid" role="grid" aria-label="Cuadrícula de disponibilidad de salas"></div>
+          <div id="pianoRoomsNowLine" class="piano-rooms-now-line" aria-hidden="true"><span>ahora</span></div>
+        </div>
+        <p class="piano-rooms-note">La línea indica la hora actual. El color naranja sólo aparece si una franja observada como disponible desaparece antes de comenzar.</p>
+      </section>
+    </div>
   </section>
 </div>
 
@@ -2265,10 +2324,11 @@
 <script src="task-sync-bootstrap.js?v=342" id="taskSyncBootstrapScript"></script>
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=368"></script>
-<script src="app.js?v=368"></script>
+<script src="app.js?v=369"></script>
 <script src="study-session-ux.js?v=342"></script>
 <script src="crono-resume-layout.js?v=355"></script>
 <script src="piano-rooms.js?v=355"></script>
+<script src="reservation-dashboard.js?v=369"></script>
 <script src="google-calendar.js?v=342"></script>
 <script src="timer-objectives.js?v=342"></script>
 <script src="metronome.js?v=368"></script>
