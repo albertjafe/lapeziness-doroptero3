@@ -87,7 +87,7 @@ describe('daily study minutes', () => {
     };
     const api = loadFix(db);
     const { start, end } = dayRange();
-    expect(api.version).toBe(5);
+    expect(api.version).toBe(6);
     expect(api.minutesByDay(start, end)['2026-09-05']).toBe(216);
   });
 
@@ -154,6 +154,22 @@ describe('daily study minutes', () => {
     const api = loadFix(db);
     const { start, end } = dayRange();
     expect(api.minutesByDay(start, end)['2026-09-05']).toBe(25);
+  });
+
+  it('counts an edited timed block once when its session mirror has an arbitrary plan id', () => {
+    const db = {
+      sessionPlants: [
+        { obraId: 'bach', mins: 90, source: 'app', startedAt: '2026-09-05T10:00:00.000Z', endedAt: '2026-09-05T11:30:00.000Z' },
+      ],
+      forestPlants: [],
+      sesiones: [{
+        date: '2026-09-05T11:30:00.000Z',
+        items: [{ obraId: 'bach', _planId: 'plan_edit', estudiado: true, minutosReales: 90 }],
+      }],
+    };
+    const api = loadFix(db);
+    const { start, end } = dayRange();
+    expect(api.minutesByDay(start, end)['2026-09-05']).toBe(90);
   });
 
   it('matches repeated manual mirrors one by one and preserves an unmatched legacy entry', () => {

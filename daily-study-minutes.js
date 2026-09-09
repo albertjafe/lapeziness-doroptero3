@@ -19,7 +19,7 @@
 (function dailyStudyMinutesFix(){
   'use strict';
 
-  const FIX_VERSION = 5;
+  const FIX_VERSION = 6;
   const OVERLAP_TOLERANCE_MS = 30000;
   const PASSAGE_GENERAL_SOURCE = 'passage-general-v1';
 
@@ -147,19 +147,23 @@
 
   function sessionExtraByTarget(bucket){
     const out = Object.create(null);
-    const manualTimedByTarget = Object.create(null);
+    const unmatchedTimedByTarget = Object.create(null);
     Object.keys(bucket.timed || {}).forEach(target => {
-      manualTimedByTarget[target] = (bucket.timed[target].entries || [])
-        .filter(entry => entry && entry.source === 'manual' && entry.mins > 0)
-        .map(entry => entry.mins);
+      unmatchedTimedByTarget[target] = (bucket.timed[target].entries || [])
+        .filter(entry => entry && entry.mins > 0)
+        .map(entry => ({ mins: entry.mins, source: entry.source }));
     });
     Object.values(bucket.sessionPlans || {}).forEach(entry => {
       if (!entry || !(entry.mins > 0)) return;
       const timedTarget = bucket.timed[entry.target];
       if (timedTarget && sessionPlanBackedByTimed(entry, timedTarget)) return;
-      if (entry.manual) {
-        const pool = manualTimedByTarget[entry.target] || [];
-        const match = pool.findIndex(minutes => Math.abs(minutes - entry.mins) < 0.01);
+      if (entry.manual || entry.planId) {
+        const pool = unmatchedTimedByTarget[entry.target] || [];
+        const match = pool.findIndex(timed => {
+          if (entry.manual && timed.source !== 'manual') return false;
+          if (!entry.manual && timed.source === 'manual') return false;
+          return Math.abs(timed.mins - entry.mins) < 0.01;
+        });
         if (match >= 0) {
           pool.splice(match, 1);
           return;
@@ -244,13 +248,13 @@
   }
 
   function install(){
-    if (window.getMinutosConcentradoHoy && window.getMinutosConcentradoHoy.__realTimedDedupV5) return true;
+    if (window.getMinutosConcentradoHoy && window.getMinutosConcentradoHoy.__realTimedDedupV6) return true;
     if (!appDb()) return false;
 
     const byDay = function correctedStatsMinutesByDay(start, end){ return minutesByDay(start, end); };
-    byDay.__realTimedDedupV5 = true;
+    byDay.__realTimedDedupV6 = true;
     const today = function correctedTodayStudyMinutes(){ return todayMinutes(); };
-    today.__realTimedDedupV5 = true;
+    today.__realTimedDedupV6 = true;
 
     try { _statsMinsPorDia = byDay; } catch (error) {}
     try { getMinutosConcentradoHoy = today; } catch (error) {}

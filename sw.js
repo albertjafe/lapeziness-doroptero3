@@ -1,11 +1,11 @@
-const CACHE = 'estudio-v370';
+const CACHE = 'estudio-v371';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
   "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=342",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=370",
+  "./app.js?v=371",
   "./competition-planning-seed.js?v=342",
   "./crono-idle-hierarchy.css?v=342",
   "./crono-readiness-layout.css?v=342",
@@ -14,7 +14,7 @@ const ASSETS = [
   "./crono-running-premium.css?v=342",
   "./crono-running-premium.js?v=342",
   "./crono-save-resilience.js?v=347",
-  "./daily-study-minutes.js?v=370",
+  "./daily-study-minutes.js?v=371",
   "./data-core.js?v=342",
   "./document-sync-core.js?v=344",
   "./ensemble-repertoire-catalog.js?v=359",
@@ -55,7 +55,7 @@ const ASSETS = [
   "./passage-tracker-resilience.js?v=353",
   "./piano-rooms-core.js?v=369",
   "./piano-rooms.css?v=369",
-  "./piano-rooms.js?v=355",
+  "./piano-rooms.js?v=371",
   "./reservation-dashboard.css?v=370",
   "./reservation-dashboard.js?v=370",
   "./planning-enhancements-v3.css?v=342",
@@ -145,7 +145,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '370');
+            target.searchParams.set('__pwa', '371');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -153,7 +153,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'370', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'371', navigated });
         } catch (error) {}
       }
     }

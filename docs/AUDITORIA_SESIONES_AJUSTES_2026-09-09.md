@@ -34,7 +34,7 @@ Las funciones existentes no se han eliminado por ser poco frecuentes. Se han sep
 - Interruptores históricos de “información” y “vista limpia”: dejaron de ser necesarios al convertir Hoy en una vista limpia por diseño.
 - Markup y botón de navegación de **Casa** que se creaban para ser retirados inmediatamente al arrancar: ya no se entregan en el HTML.
 - Renderizado ansioso de estadísticas: las agregaciones pesadas se calculan al entrar en **Historial**, no en cada refresco de Hoy.
-- Doble conteo del registro rápido: el bloque temporal manual y su espejo en `db.sesiones` podían sumar dos veces. `daily-study-minutes.js` v5 los empareja uno a uno por obra/movimiento y minutos, sin ocultar registros históricos que no tengan pareja.
+- Doble conteo de espejos: un registro rápido o un bloque horario editado podían sumar su planta temporal y su resumen en `db.sesiones`. `daily-study-minutes.js` v6 los empareja uno a uno por obra/movimiento, fuente y minutos, sin ocultar registros históricos que no tengan pareja.
 
 ## Funciones conservadas deliberadamente
 

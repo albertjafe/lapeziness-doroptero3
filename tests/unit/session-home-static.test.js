@@ -55,10 +55,10 @@ describe('focused session home', () => {
     expect(index).toContain('onclick="openHoraComienzo(event)"');
   });
 
-  it('ships the complete v370 runtime offline', () => {
+  it('ships the complete v371 runtime offline', () => {
     expect(index).toContain('session-home.css?v=370');
-    expect(index).toContain('app.js?v=370');
-    expect(worker).toContain("const CACHE = 'estudio-v370'");
+    expect(index).toContain('app.js?v=371');
+    expect(worker).toContain("const CACHE = 'estudio-v371'");
     expect(worker).toContain('"./session-home.css?v=370"');
   });
 });
