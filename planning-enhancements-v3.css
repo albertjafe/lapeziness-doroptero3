@@ -131,6 +131,10 @@
   border-bottom: 1px solid var(--border);
 }
 .solidity-guide-row:last-child { border-bottom: 0; }
+.solidity-guide-row.is-current {
+  background: color-mix(in srgb, var(--accent) 9%, var(--bg2));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
 .solidity-guide-row > strong {
   color: var(--accent);
   font-family: 'JetBrains Mono', ui-monospace, monospace;
@@ -172,6 +176,22 @@
   line-height: 1.5;
 }
 .solidity-guide-contexts p:last-child { margin-bottom: 0; }
+.solidity-guide-evidence {
+  margin-top: 10px !important;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+  color: var(--text3) !important;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 9px !important;
+}
+
+@media (min-width: 760px) {
+  #solidityGuideHechoV3 .solidity-guide-bands { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  #solidityGuideHechoV3 .solidity-guide-row { min-height: 66px; box-sizing: border-box; }
+  #solidityGuideHechoV3 .solidity-guide-row:nth-child(odd) { border-right: 1px solid var(--border); }
+  #solidityGuideHechoV3 .solidity-guide-row:nth-last-child(-n+2) { border-bottom: 0; }
+  #solidityGuideHechoV3 .solidity-guide-contexts { grid-template-columns: 1fr; }
+}
 
 @media (max-width: 720px) {
   .solidity-guide-contexts { grid-template-columns: 1fr; }

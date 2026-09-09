@@ -32,7 +32,7 @@ describe('chamber and accompaniment repertoire catalog',()=>{
   it('contains a broad standard catalog with movement metadata',()=>{
     const {catalog}=loadCatalog();
     const entries=catalog.getCatalog();
-    expect(catalog.version).toBe(1);
+    expect(catalog.version).toBe(2);
     expect(entries.length).toBeGreaterThanOrEqual(130);
     expect(entries.every(entry=>entry.composer&&entry.title&&entry.instrumentation)).toBe(true);
     expect(entries.every(entry=>Array.isArray(entry.movements)&&entry.movements.length>0)).toBe(true);
@@ -84,11 +84,13 @@ describe('chamber and accompaniment repertoire catalog',()=>{
         {id:'custom-b',name:'Bloque personal B',sol:64},
       ],
     };
-    expect(catalog.completeWork(work)).toBe(false);
+    expect(catalog.completeWork(work)).toBe(true);
     expect(work.movimientos).toEqual([
       {id:'custom-a',name:'Bloque personal A',sol:73},
       {id:'custom-b',name:'Bloque personal B',sol:64},
     ]);
+    expect(work.repertoireCategory).toBe('camara');
+    expect(work.instrumentation).toBe('Violín + piano');
   });
 
   it('can add movement structure to a chamber catalog work without adding the work itself',()=>{
@@ -98,5 +100,18 @@ describe('chamber and accompaniment repertoire catalog',()=>{
     expect(work.movimientos).toHaveLength(4);
     expect(work.movimientos[0].name).toBe('I. Moderato');
     expect(work.movimientos[3].name).toBe('IV. Allegro con brio');
+    expect(work.repertoireCategory).toBe('camara');
+  });
+
+  it('stores accompaniment semantics without replacing an explicit user category',()=>{
+    const {catalog}=loadCatalog();
+    const inferred={composer:'Pyotr Ilyich Tchaikovsky',name:'Concierto para violín en re mayor, Op. 35',movimientos:[]};
+    expect(catalog.completeWork(inferred)).toBe(true);
+    expect(inferred.repertoireCategory).toBe('acompanamiento');
+    expect(inferred.instrumentation).toBe('Violín + reducción de piano');
+
+    const custom={composer:'César Franck',name:'Sonata para violín y piano en la mayor, FWV 8',repertoireCategory:'personal',movimientos:[]};
+    expect(catalog.completeWork(custom)).toBe(true);
+    expect(custom.repertoireCategory).toBe('personal');
   });
 });

@@ -7,7 +7,7 @@
 (function planningEnhancementsV3(){
   'use strict';
 
-  const VERSION = 3;
+  const VERSION = 4;
   const MONTH_FMT = new Intl.DateTimeFormat('es-ES', { month:'long', year:'numeric' });
 
   const COMPETITION_LINKS = [
@@ -373,8 +373,47 @@
     host.appendChild(link);
   }
 
+  function guideBandLimits(range){
+    const values=String(range||'').split(/[–-]/).map(value=>Number(value.trim())).filter(Number.isFinite);
+    return {min:values[0]||0,max:values.length>1?values[1]:(values[0]||0)};
+  }
+
+  function guideRatingValue(slider){
+    const semantic=Number(slider?.dataset?.paseValue);
+    if(Number.isFinite(semantic))return semantic;
+    try{
+      if(typeof window.pasePositionToPct==='function')return Number(window.pasePositionToPct(slider?.value))||50;
+    }catch(error){}
+    return Number(slider?.value)||50;
+  }
+
+  function refreshGuideCurrentBand(guide,slider){
+    if(!guide||!slider)return;
+    const value=guideRatingValue(slider);
+    guide.querySelectorAll('[data-rating-min]').forEach(row=>{
+      const current=value>=Number(row.dataset.ratingMin)&&value<=Number(row.dataset.ratingMax);
+      row.classList.toggle('is-current',current);
+      if(current)row.setAttribute('aria-current','true');
+      else row.removeAttribute('aria-current');
+    });
+  }
+
+  function bindHechoGuideCurrentBand(guide){
+    const slider=document.getElementById('hechoSolidezSlider');
+    if(!guide||!slider||guide.dataset.currentBandBound==='1')return;
+    guide.dataset.currentBandBound='1';
+    const refresh=()=>refreshGuideCurrentBand(guide,slider);
+    slider.addEventListener('input',refresh);
+    slider.addEventListener('change',refresh);
+    try{new MutationObserver(refresh).observe(slider,{attributes:true,attributeFilter:['data-pase-value','value']});}catch(error){}
+    refresh();
+  }
+
   function guideHtml(){
-    const rows = GUIDE_BANDS.map(([range,label,copy]) => `<div class="solidity-guide-row"><strong>${range}</strong><span><b>${label}</b>${copy}</span></div>`).join('');
+    const rows = GUIDE_BANDS.map(([range,label,copy]) => {
+      const limits=guideBandLimits(range);
+      return `<div class="solidity-guide-row" data-rating-min="${limits.min}" data-rating-max="${limits.max}"><strong>${range}</strong><span><b>${label}</b>${copy}</span></div>`;
+    }).join('');
     return `<details class="solidity-guide-v3" open>
       <summary>Guía completa para puntuar la píldora <span>0–100</span></summary>
       <div class="solidity-guide-body">
@@ -405,6 +444,16 @@
       wrap.className = 'solidity-guide-hecho-wrap';
       wrap.innerHTML = guideHtml();
       section.appendChild(wrap);
+    }
+    const hechoGuide=document.querySelector('#solidityGuideHechoV3 .solidity-guide-v3');
+    const legacyGuide=document.getElementById('hechoRatingGuide');
+    if(hechoGuide){
+      bindHechoGuideCurrentBand(hechoGuide);
+      if(legacyGuide){
+        legacyGuide.hidden=true;
+        legacyGuide.setAttribute('aria-hidden','true');
+        legacyGuide.dataset.supersededBy='solidityGuideHechoV3';
+      }
     }
   }
 

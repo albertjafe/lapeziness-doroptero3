@@ -81,7 +81,7 @@
   loadStyle('workDifficultyStyles','./work-difficulty.css?v=342');
   loadStyle('eventPlanningStyles','./event-planning.css?v=342');
   loadStyle('eventPlanningUiV2Styles','./event-planning-ui-v2.css?v=342');
-  loadStyle('planningEnhancementsV3Styles','./planning-enhancements-v3.css?v=342');
+  loadStyle('planningEnhancementsV3Styles','./planning-enhancements-v3.css?v=373');
   loadStyle('planningEnhancementsV4Styles','./planning-enhancements-v4.css?v=342');
   load('dailyStudyMinutesFixScript','./daily-study-minutes.js?v=371');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=372');
@@ -96,8 +96,8 @@
   load('eventPlanningScript','./event-planning.js?v=342',function(){
     load('competitionPlanningSeedScript','./competition-planning-seed.js?v=342',function(){
       load('eventPlanningUiV2Script','./event-planning-ui-v2.js?v=342',function(){
-        load('planningEnhancementsV3Script','./planning-enhancements-v3.js?v=342',function(){
-          load('planningEnhancementsV4Script','./planning-enhancements-v4.js?v=342',function(){
+        load('planningEnhancementsV3Script','./planning-enhancements-v3.js?v=373',function(){
+          load('planningEnhancementsV4Script','./planning-enhancements-v4.js?v=373',function(){
             load('planningEnhancementsV4SpeechFixScript','./planning-enhancements-v4-speech-fix.js?v=342',loadProfessor);
           });
         });
@@ -116,7 +116,7 @@
     });
     load('workStructureCatalogScript','./work-structure-catalog.js?v=362',function(){
       load('soloRepertoireStructureScript','./solo-repertoire-structure.js?v=361',function(){
-        load('ensembleRepertoireCatalogScript','./ensemble-repertoire-catalog.js?v=359',function(){
+        load('ensembleRepertoireCatalogScript','./ensemble-repertoire-catalog.js?v=373',function(){
           load('obraPremiumScript','./obra-premium.js?v=342',function(){
             load('obraPremiumPolishScript','./obra-premium-polish.js?v=342',function(){
               load('obrasRedesignScript','./obras-redesign.js?v=342',function(){

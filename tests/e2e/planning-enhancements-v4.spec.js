@@ -71,6 +71,74 @@ test('readiness guide scores own part first and adds ensemble evidence at the en
   await expect(guide).toContainText('cómo está hoy');
 });
 
+test('Hecho adapts its scale and guide to chamber works and real study history', async ({ page }, testInfo) => {
+  const data = structuredClone(base);
+  data.obras[0] = {
+    id:'obra_1', name:'Sonata para violín y piano', composer:'César Franck', tipo:'camara',
+    repertoireCategory:'camara', instrumentation:'Violín + piano', movimientos:[], sol:64, solHistory:[],
+  };
+  const now = Date.now();
+  data.sessionPlants = [
+    {id:'s1',obraId:'obra_1',mins:45,startedAt:new Date(now-5*86400000).toISOString()},
+    {id:'s2',obraId:'obra_1',mins:45,startedAt:new Date(now-2*86400000).toISOString()},
+  ];
+  await page.setViewportSize({ width:1024, height:900 });
+  await prepare(page, { data });
+  await page.evaluate(() => openHechoDatos('obra_1', 20));
+
+  await expect(page.locator('#hechoSolidezTitle')).toHaveText('¿Cómo quedó tu parte?');
+  await expect(page.locator('#hechoSolidezMeter .pase-liquid-guide-layer')).toHaveAttribute('data-rating-profile','camara');
+  await expect(page.locator('#hechoSolidezMeter')).toContainText('Flexible');
+  await expect(page.locator('#hechoSolidezMeter')).not.toContainText('Memoria');
+  const guide = page.locator('#solidityGuideHechoV3');
+  await expect(guide.locator('summary')).toContainText('Cámara');
+  await expect(guide).toContainText('La partitura es parte normal de la interpretación');
+  await expect(guide).toContainText('1 h 30 min de estudio real en 2 sesiones');
+  expect((await page.locator('#modalHechoDatos .hecho-modal').boundingBox()).width).toBeGreaterThan(800);
+  await page.screenshot({path:testInfo.outputPath('hecho-camara.png')});
+});
+
+test('Hecho uses accompaniment semantics without memory criteria', async ({ page }) => {
+  const data = structuredClone(base);
+  data.obras[0] = {
+    id:'obra_1', name:'Lieder para voz y piano', composer:'Schubert', tipo:'obra',
+    repertoireCategory:'acompanamiento', instrumentation:'Voz + piano', movimientos:[], sol:64, solHistory:[],
+  };
+  await prepare(page, { data });
+  await page.evaluate(() => openHechoDatos('obra_1', 20));
+
+  await expect(page.locator('#hechoSolidezTitle')).toHaveText('¿Cómo respondió el acompañamiento?');
+  await expect(page.locator('#hechoSolidezMeter .pase-liquid-guide-layer')).toHaveAttribute('data-rating-profile','acompanamiento');
+  await expect(page.locator('#hechoSolidezMeter')).toContainText('Atenta');
+  await expect(page.locator('#hechoSolidezMeter')).not.toContainText('Memoria');
+  const guide = page.locator('#solidityGuideHechoV3');
+  await expect(guide.locator('summary')).toContainText('Acompañamiento');
+  await expect(guide).toContainText('seguir al solista');
+  await expect(guide).toContainText('La memoria no forma parte de la puntuación');
+});
+
+test('Hecho treats historical-only or long-dormant solo repertoire as new, then recognises recent real work', async ({ page }) => {
+  const data = structuredClone(base);
+  data.historicalRepertoire = [{id:'old',name:'Bach · Preludio',estimatedHours:80,lastPlayedYear:2018}];
+  data.sessionPlants = [{id:'old-study',obraId:'obra_1',mins:180,startedAt:'2020-01-10T12:00:00.000Z'}];
+  await prepare(page, { data });
+  await page.evaluate(() => openHechoDatos('obra_1', 20));
+  const guide = page.locator('#solidityGuideHechoV3');
+  await expect(guide.locator('summary')).toContainText('Reinicio tras larga pausa');
+  await expect(guide).toContainText('últimos 3 años');
+
+  await page.evaluate(() => {
+    const now=Date.now();
+    db.sessionPlants.push(
+      {id:'recent-a',obraId:'obra_1',mins:35,startedAt:new Date(now-3*86400000).toISOString()},
+      {id:'recent-b',obraId:'obra_1',mins:35,startedAt:new Date(now-86400000).toISOString()},
+    );
+    openHechoDatos('obra_1',20);
+  });
+  await expect(guide.locator('summary')).toContainText('Obra ya trabajada');
+  await expect(guide).toContainText('estudio real en 3 sesiones');
+});
+
 test('personal projects are isolated in their own events section with month target', async ({ page }) => {
   const data = structuredClone(base);
   data.eventos = [{

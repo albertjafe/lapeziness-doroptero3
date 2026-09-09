@@ -12822,9 +12822,9 @@ body.crono-running .crono-concentrado { display: none; }
 
 /* Cierre en diez segundos: Solidez visible y detalles progresivos. */
 #modalHechoDatos .hecho-modal {
-  width: min(640px, calc(100vw - 32px)) !important;
-  max-width: 640px !important;
-  max-height: min(88dvh, 760px) !important;
+  width: min(920px, calc(100vw - 24px)) !important;
+  max-width: 920px !important;
+  max-height: min(94dvh, 920px) !important;
   border-radius: 8px !important;
 }
 #modalHechoDatos .hecho-modal-body {

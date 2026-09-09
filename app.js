@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-09-live-study-dashboard-v372';
+const APP_VERSION = '2026-09-09-contextual-solidity-v373';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -4453,15 +4453,74 @@ function paseClampPct(value, fallback) {
 }
 
 const PASE_RATING_LOG_A = 3;
-const PASE_RATING_GUIDES = [
-  { value: 15, label: 'Leída' },
-  { value: 30, label: 'Digitada' },
-  { value: 50, label: 'Aprendida' },
-  { value: 65, label: 'Memoria' },
-  { value: 80, label: 'A punto' },
-  { value: 90, label: 'Concierto' },
-  { value: 97, label: 'Excelente' },
-];
+const PASE_RATING_PROFILES = {
+  solo: {
+    guides: [[15,'Leída'],[30,'Digitada'],[50,'Aprendida'],[65,'Memoria'],[80,'A punto'],[90,'Escena'],[97,'Excelente']],
+    stages: [[97,'Excelente'],[90,'Lista para escena'],[80,'A punto'],[72,'Estable'],[60,'Memorizada'],[45,'Aprendida'],[30,'Digitada'],[15,'Leída'],[0,'Iniciada']],
+    note: 'Escala logarítmica · más precisión cerca de escena',
+  },
+  camara: {
+    guides: [[15,'Orientada'],[30,'Montada'],[50,'Continua'],[65,'Flexible'],[80,'Segura'],[90,'Ensayada'],[97,'Escena']],
+    stages: [[97,'Lista para escena'],[90,'Ensayada'],[80,'Segura'],[72,'Estable'],[60,'Flexible'],[45,'Continua'],[30,'Montada'],[15,'Orientada'],[0,'Iniciada']],
+    note: 'Tu parte primero · el conjunto añade evidencia real',
+  },
+  acompanamiento: {
+    guides: [[15,'Orientada'],[30,'Montada'],[50,'Continua'],[65,'Atenta'],[80,'Flexible'],[90,'Ensayada'],[97,'Lista']],
+    stages: [[97,'Lista para audición'],[90,'Ensayada'],[80,'Flexible'],[72,'Estable'],[60,'Atenta'],[45,'Continua'],[30,'Montada'],[15,'Orientada'],[0,'Iniciada']],
+    note: 'Continuidad, escucha y capacidad de seguir al solista',
+  },
+};
+
+function paseNormalizeProfile(value) {
+  const normalized = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (/acompan|reduccion|reduction/.test(normalized)) return 'acompanamiento';
+  if (/camara|chamber|ensemble/.test(normalized)) return 'camara';
+  return 'solo';
+}
+
+function paseWorkRatingProfile(obra) {
+  if (!obra) return 'solo';
+  const explicit = [obra.repertoireCategory, obra.categoria, obra.category, obra.tipoObra, obra.instrumentation, obra.instrumentacion, obra.tipo]
+    .filter(Boolean).join(' ');
+  const direct = paseNormalizeProfile(explicit);
+  if (direct !== 'solo') return direct;
+  try {
+    const match = window.EnsembleRepertoireCatalog?.matchEntry?.(obra);
+    if (match?.category === 'acompanamiento') return 'acompanamiento';
+    if (match?.category === 'camara') return 'camara';
+  } catch (error) {}
+  return 'solo';
+}
+
+function paseWorkStudyContext(obraId) {
+  const cutoffYears = 3;
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - cutoffYears);
+  const seen = new Set();
+  const evidence = [];
+  [...(db.sessionPlants || []), ...(db.forestPlants || [])].forEach(plant => {
+    if (!plant || plant.failed || plant.tipo === 'descanso' || String(plant.obraId || '') !== String(obraId || '')) return;
+    const minutes = Math.max(0, Number(plant.mins ?? plant.min) || 0);
+    const at = new Date(plant.startedAt || plant.endedAt || 0).getTime();
+    if (!(minutes > 0) || !Number.isFinite(at) || at <= 0) return;
+    const key = String(plant.runId || plant.id || [plant.startedAt || '', plant.endedAt || '', plant.movId || '', minutes].join('::'));
+    if (seen.has(key)) return;
+    seen.add(key);
+    evidence.push({ minutes, at });
+  });
+  const totalMinutes = Math.round(evidence.reduce((sum, item) => sum + item.minutes, 0));
+  const recent = evidence.filter(item => item.at >= cutoff.getTime());
+  const recentMinutes = Math.round(recent.reduce((sum, item) => sum + item.minutes, 0));
+  const lastAt = evidence.length ? Math.max(...evidence.map(item => item.at)) : null;
+  const meaningful = totalMinutes >= 60 || evidence.length >= 2;
+  const meaningfullyRecent = recentMinutes >= 60 || recent.length >= 2;
+  const state = !meaningful ? 'nueva' : (!meaningfullyRecent ? 'larga-pausa' : 'trabajada');
+  return { state, cutoffYears, totalMinutes, recentMinutes, sessions: evidence.length, recentSessions: recent.length, lastAt };
+}
+
+function paseProfileDefinition(profile) {
+  return PASE_RATING_PROFILES[paseNormalizeProfile(profile)] || PASE_RATING_PROFILES.solo;
+}
 
 function pasePctToPosition(pct) {
   const value = paseClampPct(pct) / 100;
@@ -4474,17 +4533,9 @@ function pasePositionToPct(position) {
   return paseClampPct(pct);
 }
 
-function paseRatingStage(pct) {
+function paseRatingStage(pct, profile) {
   const value = paseClampPct(pct);
-  if (value >= 97) return 'Excelente';
-  if (value >= 90) return 'Concierto';
-  if (value >= 80) return 'A punto';
-  if (value >= 72) return 'Estable';
-  if (value >= 60) return 'Memorizada';
-  if (value >= 45) return 'Aprendida';
-  if (value >= 30) return 'Digitada';
-  if (value >= 15) return 'Leída';
-  return 'Iniciada';
+  return paseProfileDefinition(profile).stages.find(([threshold]) => value >= threshold)?.[1] || 'Iniciada';
 }
 
 function paseManualHistoryValue(entry) {
@@ -4519,37 +4570,50 @@ function paseTargetPreviousPct(obraId, movId) {
   return null;
 }
 
-function pasePreviousLabel(previousPct) {
+function pasePreviousLabel(previousPct, profile) {
   if (previousPct == null) return 'Primera valoración · referencia 50%';
   const value = paseClampPct(previousPct);
-  return 'Anterior · ' + value + '% · ' + paseRatingStage(value);
+  return 'Anterior · ' + value + '% · ' + paseRatingStage(value, profile);
 }
 
-function paseGuideLayerHtml() {
-  return '<div class="pase-liquid-guide-layer" aria-hidden="true">' + PASE_RATING_GUIDES.map((guide, index) =>
-    '<span class="pase-liquid-guide g' + index + '" style="--guide-pos:' + pasePctToPosition(guide.value).toFixed(2) + '%">' +
-      '<i></i><b>' + guide.label + '</b><em>' + guide.value + '</em>' +
+function paseGuideLayerHtml(profile) {
+  const profileKey = paseNormalizeProfile(profile);
+  return '<div class="pase-liquid-guide-layer" data-rating-profile="' + profileKey + '" aria-hidden="true">' + paseProfileDefinition(profileKey).guides.map((guide, index) =>
+    '<span class="pase-liquid-guide g' + index + '" style="--guide-pos:' + pasePctToPosition(guide[0]).toFixed(2) + '%">' +
+      '<i></i><b>' + guide[1] + '</b><em>' + guide[0] + '</em>' +
     '</span>'
   ).join('') + '</div>';
 }
 
-function paseMeterReadoutHtml(value, previousPct) {
+function paseMeterReadoutHtml(value, previousPct, profile) {
   const current = paseClampPct(value);
   return '<div class="pase-liquid-readout">' +
-    '<span data-pase-previous>' + pasePreviousLabel(previousPct) + '</span>' +
-    '<strong data-pase-current>' + current + '% · ' + paseRatingStage(current) + '</strong>' +
+    '<span data-pase-previous>' + pasePreviousLabel(previousPct, profile) + '</span>' +
+    '<strong data-pase-current>' + current + '% · ' + paseRatingStage(current, profile) + '</strong>' +
   '</div>';
 }
 
-function paseEnsureMeterChrome(meter, previousPct) {
+function paseEnsureMeterChrome(meter, previousPct, profile) {
   if (!meter) return;
+  const profileKey = paseNormalizeProfile(profile || meter.dataset.ratingProfile || 'solo');
+  meter.dataset.ratingProfile = profileKey;
   meter.classList.add('rating-scale-v2');
-  if (!meter.querySelector('.pase-liquid-readout')) meter.insertAdjacentHTML('afterbegin', paseMeterReadoutHtml(50, previousPct));
-  if (!meter.querySelector('.pase-liquid-guide-layer')) meter.insertAdjacentHTML('beforeend', paseGuideLayerHtml());
-  if (!meter.querySelector('.pase-liquid-scale-note')) meter.insertAdjacentHTML('beforeend', '<div class="pase-liquid-scale-note">Escala logarítmica · más precisión cerca de concierto</div>');
+  if (!meter.querySelector('.pase-liquid-readout')) meter.insertAdjacentHTML('afterbegin', paseMeterReadoutHtml(50, previousPct, profileKey));
+  const guideLayer = meter.querySelector('.pase-liquid-guide-layer');
+  if (!guideLayer) meter.insertAdjacentHTML('beforeend', paseGuideLayerHtml(profileKey));
+  else if (guideLayer.dataset.ratingProfile !== profileKey) guideLayer.outerHTML = paseGuideLayerHtml(profileKey);
+  let note = meter.querySelector('.pase-liquid-scale-note');
+  if (!note) {
+    meter.insertAdjacentHTML('beforeend', '<div class="pase-liquid-scale-note"></div>');
+    note = meter.querySelector('.pase-liquid-scale-note');
+  }
+  if (note) note.textContent = paseProfileDefinition(profileKey).note;
+  const currentValue = paseClampPct(meter.dataset.paseValue || meter.querySelector('.pase-liquid-input')?.dataset?.paseValue || 50);
+  const currentEl = meter.querySelector('[data-pase-current]');
+  if (currentEl) currentEl.textContent = currentValue + '% · ' + paseRatingStage(currentValue, profileKey);
   if (previousPct !== undefined) {
     const previousEl = meter.querySelector('[data-pase-previous]');
-    if (previousEl) previousEl.textContent = pasePreviousLabel(previousPct);
+    if (previousEl) previousEl.textContent = pasePreviousLabel(previousPct, profileKey);
   }
 }
 
@@ -4589,40 +4653,42 @@ function paseLiquidMeterHtml(options) {
   const opts = options || {};
   const value = paseClampPct(opts.value);
   const previous = opts.previous == null ? null : paseClampPct(opts.previous);
+  const profile = paseNormalizeProfile(opts.ratingProfile || 'solo');
   const position = pasePctToPosition(value);
   const id = opts.id ? ' id="' + opts.id + '"' : '';
   const inputId = opts.inputId ? ' id="' + opts.inputId + '"' : '';
   const classes = 'pase-liquid-meter rating-scale-v2' + (opts.compact ? ' compact' : '');
   const oninput = opts.oninput || '';
   const onchange = opts.onchange || '';
-  return '<div' + id + ' class="' + classes + '" style="' + paseLiquidStyle(value) + '">' +
-    paseMeterReadoutHtml(value, previous) +
+  return '<div' + id + ' class="' + classes + '" data-rating-profile="' + profile + '" style="' + paseLiquidStyle(value) + '">' +
+    paseMeterReadoutHtml(value, previous, profile) +
     '<div class="pase-liquid-reservoir" aria-hidden="true">' +
       '<span class="pase-liquid-fill"></span><span class="pase-liquid-glint"></span><span class="pase-liquid-orb"></span>' +
     '</div>' +
     '<input' + inputId + ' class="pase-liquid-input" type="range" min="0" max="100" step="0.01" value="' + position.toFixed(2) + '" data-pase-value="' + value + '"' +
-      ' aria-label="Resultado del pase, de 1 a 100" aria-valuetext="' + value + ' por ciento, ' + paseRatingStage(value) + '"' +
+      ' aria-label="Resultado del pase, de 1 a 100" aria-valuetext="' + value + ' por ciento, ' + paseRatingStage(value, profile) + '"' +
       (oninput ? ' oninput="' + oninput + '"' : '') + (onchange ? ' onchange="' + onchange + '"' : '') + '>' +
-    paseGuideLayerHtml() +
-    '<div class="pase-liquid-scale-note">Escala logarítmica · más precisión cerca de concierto</div>' +
+    paseGuideLayerHtml(profile) +
+    '<div class="pase-liquid-scale-note">' + paseProfileDefinition(profile).note + '</div>' +
   '</div>';
 }
 
 function paseSetMeterSemanticValue(input, pct) {
   const value = paseClampPct(pct);
   const meter = input?.closest?.('.pase-liquid-meter');
+  const profile = paseNormalizeProfile(meter?.dataset?.ratingProfile || input?.dataset?.ratingProfile || 'solo');
   if (meter) {
-    paseEnsureMeterChrome(meter);
+    paseEnsureMeterChrome(meter, undefined, profile);
     meter.setAttribute('style', paseLiquidStyle(value));
     meter.dataset.paseValue = String(value);
     const current = meter.querySelector('[data-pase-current]');
-    if (current) current.textContent = value + '% · ' + paseRatingStage(value);
+    if (current) current.textContent = value + '% · ' + paseRatingStage(value, profile);
   }
   if (input) {
     input.min = '0'; input.max = '100'; input.step = '0.01';
     input.value = pasePctToPosition(value).toFixed(2);
     input.dataset.paseValue = String(value);
-    input.setAttribute('aria-valuetext', value + ' por ciento, ' + paseRatingStage(value));
+    input.setAttribute('aria-valuetext', value + ' por ciento, ' + paseRatingStage(value, profile));
   }
   return value;
 }
@@ -4650,6 +4716,7 @@ function cronoSolidityTarget() {
     entity,
     key: String(resolved.obraId) + '::' + String(movId == null ? '' : movId),
     label: movId == null ? obra.name : (entity.name || entity.nombre || obra.name),
+    ratingProfile: paseWorkRatingProfile(obra),
   };
 }
 
@@ -4667,6 +4734,7 @@ function cronoLatestSolidityValue(target) {
 
 function cronoSetTargetSolidityVisual(input, rawValue) {
   const value = paseClampPct(rawValue);
+  const profile = paseNormalizeProfile(input?.dataset?.ratingProfile || 'solo');
   const meter = input?.closest?.('.pase-liquid-meter');
   if (meter) {
     meter.setAttribute('style', paseLiquidStyle(value));
@@ -4675,10 +4743,10 @@ function cronoSetTargetSolidityVisual(input, rawValue) {
   if (input) {
     input.value = pasePctToPosition(value).toFixed(2);
     input.dataset.paseValue = String(value);
-    input.setAttribute('aria-valuetext', value + ' por ciento, ' + paseRatingStage(value));
+    input.setAttribute('aria-valuetext', value + ' por ciento, ' + paseRatingStage(value, profile));
   }
   const readout = document.getElementById('cronoTargetSolidityValue');
-  if (readout) readout.textContent = value + '% · ' + paseRatingStage(value);
+  if (readout) readout.textContent = value + '% · ' + paseRatingStage(value, profile);
   return value;
 }
 
@@ -4765,6 +4833,7 @@ function renderCronoTargetSolidity() {
   const previous = document.getElementById('cronoTargetSolidityPrevious');
   if (title) title.textContent = target.label;
   if (previous) previous.textContent = latest == null ? 'Primera valoración · referencia 50%' : 'Último valor · ' + latest + '%';
+  input.dataset.ratingProfile = target.ratingProfile;
   cronoSetTargetSolidityVisual(input, value);
   cronoUpdateSolidityPendingLabel();
 }
@@ -6597,8 +6666,9 @@ function hechoSelectSolidez(position, button) {
   const val = slider ? updatePaseLiquidMeter(slider, position) : pasePositionToPct(position);
   if (!val) return;
   _hechoQuickSolidezVal = val === _hechoStartingSolidez ? null : val;
+  const profile = paseNormalizeProfile(slider?.closest?.('.pase-liquid-meter')?.dataset?.ratingProfile || 'solo');
   const selection = document.getElementById('hechoSolidezSelection');
-  if (selection) selection.textContent = val + '% · ' + paseRatingStage(val);
+  if (selection) selection.textContent = val + '% · ' + paseRatingStage(val, profile);
 }
 
 function hechoSetPassOccurred(value) {
@@ -7208,16 +7278,21 @@ function openHechoDatos(planId, minPlan, opts) {
   const quickSection = document.getElementById('hechoSolidezSection');
   if (quickSection) quickSection.style.display = _hechoShowSol ? '' : 'none';
   const previous = paseTargetPreviousPct(obraId, movId || null);
+  const ratingProfile = paseWorkRatingProfile(obra);
   const previousEl = document.getElementById('hechoSolidezPrevious');
-  if (previousEl) previousEl.textContent = previous == null ? 'Primera valoración' : ('Anterior: ' + previous + '% · ' + paseRatingStage(previous));
+  if (previousEl) previousEl.textContent = previous == null ? 'Primera valoración' : ('Anterior: ' + previous + '% · ' + paseRatingStage(previous, ratingProfile));
   const solidezSlider = document.getElementById('hechoSolidezSlider');
   const solidezMeter = document.getElementById('hechoSolidezMeter');
   const startingSolidez = previous == null ? 50 : previous;
   _hechoStartingSolidez = startingSolidez;
-  if (solidezMeter) paseEnsureMeterChrome(solidezMeter, previous);
+  if (solidezMeter) paseEnsureMeterChrome(solidezMeter, previous, ratingProfile);
   if (solidezSlider) paseSetMeterSemanticValue(solidezSlider, startingSolidez);
+  const solidezTitle = document.getElementById('hechoSolidezTitle');
+  if (solidezTitle) solidezTitle.textContent = ratingProfile === 'camara'
+    ? '¿Cómo quedó tu parte?'
+    : ratingProfile === 'acompanamiento' ? '¿Cómo respondió el acompañamiento?' : '¿Cómo quedó?';
   const selectionEl = document.getElementById('hechoSolidezSelection');
-  if (selectionEl) selectionEl.textContent = startingSolidez + '% · ' + paseRatingStage(startingSolidez);
+  if (selectionEl) selectionEl.textContent = startingSolidez + '% · ' + paseRatingStage(startingSolidez, ratingProfile);
 
   const hechoModal = document.querySelector('#modalHechoDatos .hecho-modal');
   if (hechoModal) hechoModal.classList.remove('show-details');
@@ -7495,6 +7570,7 @@ function openHechoDatos(planId, minPlan, opts) {
 
   // El resumen animado del tiempo no debe cubrir las decisiones del cierre.
   document.querySelectorAll('.crono-harvest-burst').forEach(el => el.remove());
+  window.PlanningEnhancementsV4?.refreshSolidityGuide?.();
   openModal('modalHechoDatos');
 }
 

@@ -7,7 +7,7 @@
 (function planningEnhancementsV4(){
   'use strict';
 
-  const VERSION = 4;
+  const VERSION = 5;
   const TASK_INPUT_SELECTOR = [
     '#cronoIdleTaskInput', '#cronoTaskInput',
     'input[id*="TaskInput"]', 'textarea[id*="TaskInput"]',
@@ -180,19 +180,86 @@
     });
   }
 
+  function formatStudyMinutes(minutes){
+    const total=Math.max(0,Math.round(Number(minutes)||0));
+    const hours=Math.floor(total/60),rest=total%60;
+    if(hours&&rest)return `${hours} h ${rest} min`;
+    if(hours)return `${hours} h`;
+    return `${rest} min`;
+  }
+
+  function currentHechoGuideContext(){
+    const data=appDb();
+    let obraId=null;
+    try{obraId=typeof _hechoObraId!=='undefined'?_hechoObraId:null;}catch(error){}
+    const work=(data?.obras||[]).find(item=>item&&String(item.id)===String(obraId))||null;
+    let profile='solo';
+    try{if(typeof window.paseWorkRatingProfile==='function')profile=window.paseWorkRatingProfile(work);}catch(error){}
+    let study={state:'nueva',cutoffYears:3,totalMinutes:0,recentMinutes:0,sessions:0,recentSessions:0,lastAt:null};
+    try{if(typeof window.paseWorkStudyContext==='function')study=window.paseWorkStudyContext(obraId);}catch(error){}
+    return {work,profile,study};
+  }
+
+  function studyEvidenceCopy(study){
+    if(study.state==='trabajada')return `La app reconoce ${formatStudyMinutes(study.totalMinutes)} de estudio real en ${study.sessions} sesiones. Ya no la trata como una primera lectura: compara la fiabilidad de hoy con una obra que conoces.`;
+    if(study.state==='larga-pausa')return `No hay al menos dos sesiones o una hora de estudio real en los últimos ${study.cutoffYears} años. Se trata como un reinicio: el dominio antiguo puede acelerar la recuperación, pero no sube la nota de hoy.`;
+    return `Aún no constan dos sesiones o una hora de estudio real. Se trata como obra nueva; el repertorio histórico por sí solo no cambia esta lectura.`;
+  }
+
+  function contextualGuideCopy(context){
+    const evidence=studyEvidenceCopy(context.study);
+    if(context.profile==='camara')return {
+      label:'Cámara',
+      principle:'<strong>Regla principal:</strong> puntúa la fiabilidad de <em>tu parte</em> hoy. La partitura es parte normal de la interpretación y no resta puntos.',
+      contexts:`<section><h4>Cámara · con partitura</h4><p>Valora continuidad, pulso, entradas preparables, cambios, silencios, navegación de página, recuperación tras un error y libertad para escuchar. “Memorizada” no interviene en esta escala.</p><p>El ensayo conjunto añade evidencia de coordinación, balance y reacción, sobre todo para justificar 90–100; antes del ensayo esa capa está sin comprobar, no suspendida.</p><p class="solidity-guide-evidence">${evidence}</p></section>`,
+      foot:'<strong>Tramo final:</strong> 90+ significa que tu parte funciona repetidamente y que, cuando ya hubo ensayo, también responde dentro del conjunto.',
+    };
+    if(context.profile==='acompanamiento')return {
+      label:'Acompañamiento',
+      principle:'<strong>Regla principal:</strong> mide si puedes sostener, escuchar y seguir al solista con continuidad; no si puedes tocar la reducción de memoria.',
+      contexts:`<section><h4>Acompañamiento · con partitura</h4><p>Valora lectura estable, reducciones practicables, entradas, cortes, respiración, flexibilidad de tempo, balance y capacidad de reencontrarte si el solista cambia algo. La memoria no forma parte de la puntuación.</p><p>Sin solista puedes medir tu parte y la preparación de los puntos de reacción. Para 90–100 conviene evidencia real de ensayo, clase o audición.</p><p class="solidity-guide-evidence">${evidence}</p></section>`,
+      foot:'<strong>Tramo final:</strong> una ejecución individual impecable no sustituye la capacidad demostrada de acompañar y reaccionar.',
+    };
+    const title=context.study.state==='trabajada'?'Obra ya trabajada':context.study.state==='larga-pausa'?'Reinicio tras larga pausa':'Obra nueva';
+    return {
+      label:title,
+      principle:'<strong>Regla principal:</strong> puntúa lo que la obra puede hacer <em>hoy</em>. Las horas acumuladas explican la velocidad de aprendizaje, no conceden fiabilidad automática.',
+      contexts:`<section><h4>${title}</h4><p>${context.study.state==='trabajada'?'Mide continuidad, recuperación, estabilidad y libertad musical. Ya no importa demostrar que conoces las notas, sino cuánto puedes confiar en un pase completo hoy.':'La cobertura manda: fragmentos brillantes no compensan páginas que todavía no están disponibles. El pase completo y el movimiento más débil limitan la nota.'}</p><p class="solidity-guide-evidence">${evidence}</p></section>`,
+      foot:'<strong>Para escena, grabación o concurso:</strong> reserva 90+ para varios pases completos, en más de un día y bajo condiciones parecidas a la exposición real.',
+    };
+  }
+
   function refineSolidityGuide(){
     document.querySelectorAll('.solidity-guide-v3').forEach(guide => {
-      if(guide.dataset.ensembleSemantics === 'v4') return;
-      const contexts = guide.querySelector('.solidity-guide-contexts');
-      if(!contexts) return;
-      contexts.innerHTML = `
-        <section><h4>Obra nueva</h4><p>La cobertura cuenta. Una obra con páginas todavía no aprendidas no puede tener una puntuación alta porque los fragmentos conocidos salgan muy bien. El pase completo manda y, si hay movimientos, el más débil limita el conjunto.</p><p><b>Anclas:</b> 25 = se cae · 45 = frágil · 65 = sale con atención · 80 = segura · 95 = lista para exponer.</p></section>
-        <section><h4>Cámara · tu parte primero</h4><p><strong>Durante el estudio solo, puntúa tu propia parte.</strong> No bajes la píldora porque los demás músicos no estén presentes. Si se toca con partitura, la memoria tampoco se penaliza: valora continuidad, ritmo, entradas que puedes preparar, cambios, silencios, navegación y recuperación.</p><p>Cuando empiecen los ensayos, la experiencia conjunta añade evidencia sobre escucha, reacción, balance y coordinación. Pesa sobre todo para justificar el tramo final (aprox. 90–100), pero no reescribe artificialmente una preparación individual que aún no ha podido probarse con el grupo.</p></section>
-        <section><h4>Concierto con orquesta</h4><p>La base sigue siendo <strong>tu parte de piano</strong>: notas, continuidad, memoria si procede, tempi, cadencias, resistencias y capacidad de seguir tras un error. Eso se puede puntuar estudiando solo.</p><p>En la fase final cuentan además entradas orquestales, esperas, cues, flexibilidad con director y capacidad de encajar después de tuttis. Un ensayo con orquesta aporta evidencia especialmente importante para 90+. Antes de tenerlo, esa capa está <em>sin comprobar</em>, no automáticamente “mal”.</p></section>
-        <section><h4>Repertorio recuperado</h4><p>La píldora sigue describiendo <strong>cómo está hoy</strong>. Haberla tocado antes no conserva una nota antigua por decreto. Si hoy el primer pase es 45, registra 45.</p><p>El dominio previo sí sirve para otra cosa: la app espera que recuperes más deprisa y reduce las horas estimadas necesarias. Por eso una recuperación puede saltar de 40 a 75 mucho más rápido que una obra nueva sin falsear la medición actual.</p></section>`;
-      const principle = guide.querySelector('.solidity-guide-principle');
-      if(principle) principle.innerHTML = '<strong>Regla principal:</strong> la píldora mide lo que <em>tú</em> puedes hacer hoy. En cámara y concierto, el trabajo individual es la base; la coordinación conjunta se incorpora cuando existe evidencia real, sobre todo en el tramo de exposición.';
-      guide.dataset.ensembleSemantics = 'v4';
+      const contexts=guide.querySelector('.solidity-guide-contexts');
+      if(!contexts)return;
+      const hecho=!!guide.closest('#solidityGuideHechoV3');
+      if(!hecho){
+        if(guide.dataset.ensembleSemantics==='v4')return;
+        contexts.innerHTML=`
+          <section><h4>Obra nueva</h4><p>La cobertura cuenta. Una obra con páginas todavía no aprendidas no puede tener una puntuación alta porque los fragmentos conocidos salgan muy bien. El pase completo manda y, si hay movimientos, el más débil limita el conjunto.</p><p><b>Anclas:</b> 25 = se cae · 45 = frágil · 65 = sale con atención · 80 = segura · 95 = lista para exponer.</p></section>
+          <section><h4>Cámara · tu parte primero</h4><p><strong>Durante el estudio solo, puntúa tu propia parte.</strong> No bajes la píldora porque los demás músicos no estén presentes. Si se toca con partitura, la memoria tampoco se penaliza: valora continuidad, ritmo, entradas que puedes preparar, cambios, silencios, navegación y recuperación.</p><p>Cuando empiecen los ensayos, la experiencia conjunta añade evidencia sobre escucha, reacción, balance y coordinación. Pesa sobre todo para justificar el tramo final (aprox. 90–100), pero no reescribe artificialmente una preparación individual que aún no ha podido probarse con el grupo.</p></section>
+          <section><h4>Concierto con orquesta</h4><p>La base sigue siendo <strong>tu parte de piano</strong>: notas, continuidad, memoria si procede, tempi, cadencias, resistencias y capacidad de seguir tras un error. Eso se puede puntuar estudiando solo.</p><p>En la fase final cuentan además entradas orquestales, esperas, cues, flexibilidad con director y capacidad de encajar después de tuttis. Un ensayo con orquesta aporta evidencia especialmente importante para 90+. Antes de tenerlo, esa capa está <em>sin comprobar</em>, no automáticamente “mal”.</p></section>
+          <section><h4>Repertorio recuperado</h4><p>La píldora sigue describiendo <strong>cómo está hoy</strong>. Haberla tocado antes no conserva una nota antigua por decreto. Si hoy el primer pase es 45, registra 45.</p><p>El dominio previo sí sirve para otra cosa: la app espera que recuperes más deprisa y reduce las horas estimadas necesarias. Por eso una recuperación puede saltar de 40 a 75 mucho más rápido que una obra nueva sin falsear la medición actual.</p></section>`;
+        const principle=guide.querySelector('.solidity-guide-principle');
+        if(principle)principle.innerHTML='<strong>Regla principal:</strong> la píldora mide lo que <em>tú</em> puedes hacer hoy. En cámara y concierto, el trabajo individual es la base; la coordinación conjunta se incorpora cuando existe evidencia real, sobre todo en el tramo de exposición.';
+        guide.dataset.ensembleSemantics='v4';
+        return;
+      }
+      const context=currentHechoGuideContext();
+      const signature=[context.profile,context.study.state,context.study.totalMinutes,context.study.sessions].join('::');
+      if(guide.dataset.contextSignature===signature)return;
+      const copy=contextualGuideCopy(context);
+      guide.dataset.contextSignature=signature;
+      guide.dataset.ratingProfile=context.profile;
+      const summary=guide.querySelector('summary');
+      if(summary)summary.innerHTML=`Guía para puntuar · ${copy.label} <span>0–100</span>`;
+      const principle=guide.querySelector('.solidity-guide-principle');
+      if(principle)principle.innerHTML=copy.principle;
+      contexts.innerHTML=copy.contexts;
+      const foot=guide.querySelector('.solidity-guide-foot');
+      if(foot)foot.innerHTML=copy.foot;
+      guide.dataset.ensembleSemantics='v5-contextual';
     });
   }
 
@@ -290,7 +357,7 @@
     patchTomorrowPriority();
     refreshUi();
     observeUi();
-    window.PlanningEnhancementsV4 = { version:VERSION, priorityFromText, stripPriorityKeyword, parseTaskText, isIOS, refreshUi };
+    window.PlanningEnhancementsV4 = { version:VERSION, priorityFromText, stripPriorityKeyword, parseTaskText, isIOS, refreshUi, refreshSolidityGuide:refineSolidityGuide };
   }
 
   function boot(attempt){

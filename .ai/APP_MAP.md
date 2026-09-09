@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-09 · caché runtime v372
+**Estado:** CANÓNICO · actualizado 2026-09-09 · caché runtime v373
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -99,7 +99,7 @@ Migraciones Supabase importantes para este tema:
 - `work-catalog.js`: catálogo/autocompletado principal de repertorio pianístico solista.
 - `work-structure-catalog.js`: estructura y movimientos conocidos del repertorio ya curado.
 - `ensemble-repertoire-catalog.js`: catálogo curado adicional de cámara con piano y reducciones pianísticas de conciertos solistas. Se muestra como sección separada **Cámara y acompañamientos** dentro de «Añadir obra»; sus entradas son sugerencias disponibles y nunca se añaden solas al repertorio activo. Cada entrada conserva instrumentación y movimientos.
-- Al cargar v359, `ensemble-repertoire-catalog.js` audita de forma conservadora las obras activas: si `WorkStructureCatalog` o el catálogo adicional reconocen una obra con `movimientos` vacío, completa su estructura y persiste el cambio. También puede sustituir nombres puramente genéricos cuando el número de movimientos ya coincide. **Nunca reemplaza una estructura personalizada no vacía cuyo número de movimientos difiere del catálogo.** Ejemplos cubiertos: Prokófiev Sonata n.º 7 Op.83 → 3 movimientos; una entrada Bach «Preludio y fuga» del WTC → Preludio + Fuga.
+- Al cargar v373, `ensemble-repertoire-catalog.js` audita de forma conservadora las obras activas: si `WorkStructureCatalog` o el catálogo adicional reconocen una obra con `movimientos` vacío, completa su estructura y persiste el cambio. También puede sustituir nombres puramente genéricos cuando el número de movimientos ya coincide. **Nunca reemplaza una estructura personalizada no vacía cuyo número de movimientos difiere del catálogo.** Para entradas reconocidas añade `repertoireCategory` e `instrumentation` solo cuando faltan; jamás pisa una categoría o instrumentación elegida por el usuario. Ejemplos cubiertos: Prokófiev Sonata n.º 7 Op.83 → 3 movimientos; una entrada Bach «Preludio y fuga» del WTC → Preludio + Fuga.
 
 ### Dificultad
 
@@ -154,6 +154,8 @@ Migraciones Supabase importantes para este tema:
 - Los drawers ofrecen Tareas, Pasajes y Metrónomo, con acceso estable a Profesor. Memoria queda retirada de la interfaz sin borrar tarjetas. Hecho muestra los minutos directamente y conserva los destellos del botón del cronómetro; ya no duplica la caja de destello ni el desplegable de detalles.
 - Al seleccionar obra o movimiento, el cronómetro muestra una píldora horizontal de solidez bajo calendario/objetivos y antes de las herramientas. Guarda una observación libre cinco segundos después del último movimiento; pasar a segundo plano o cerrar la sesión vacía de forma segura cualquier valor pendiente.
 - El modal Hecho parte del último valor disponible. Si no se modifica —o se vuelve exactamente al valor inicial— no crea un duplicado. La opción «¿Ha habido un pase?» añade un registro a `paseHistory` con el valor actual, fecha, tiempo activo y `runId`.
+- En v373 la píldora y su guía usan tres perfiles semánticos: `solo`, `camara` y `acompanamiento`. Cámara/acompañamiento no incluyen memoria como criterio; valoran continuidad, lectura, entradas, escucha, flexibilidad y evidencia real de ensayo. `paseWorkRatingProfile()` respeta primero metadatos explícitos y usa el catálogo curado como fallback.
+- `paseWorkStudyContext()` clasifica la obra solista como `nueva`, `larga-pausa` o `trabajada` usando únicamente bloques temporizados canónicos de `sessionPlants`/`forestPlants`. Se considera trabajada con ≥60 min o ≥2 sesiones en los últimos 3 años; el repertorio histórico estimado por sí solo no infla el estado. La guía Hecho muestra solo el contexto aplicable, resalta el rango actual y oculta la antigua guía redundante sin eliminar su fallback del DOM.
 - `saveDraft()` es secundario al bloque permanente: un fallo de cuota no interrumpe el cierre, la píldora ni el guardado posterior. `cronoLoadState()` descarta un timer antiguo cuyo runId ya está registrado; la recuperación de IndexedDB hace la misma reconciliación cuando los bloques llegan después del arranque.
 
 ### Pases / pasajes
@@ -306,7 +308,7 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 - `reservation-dashboard.js` + `reservation-dashboard.css`: estado Asimut en vivo, selector Alberto/Emma, reservas, cuotas, salud del monitor y controles permitidos. Lee `reservation_monitor_state` y escribe únicamente en `reservation_monitor_commands`; nunca llama a Asimut. La misma superficie usa Realtime y sondeo de respaldo de 60 s.
 - `piano-rooms-core.js`: lógica de disponibilidad/estado del monitor local. Sólo sondea `localhost:8765` mientras su panel interno está visible.
 - `piano-rooms.css`: UI.
-- `piano-rooms.js`: **además** de Piano Rooms, hoy es el bootstrap general de muchos addons. No renombrarlo/refactorizarlo casualmente. En v359 carga `ensemble-repertoire-catalog.js` justo después de `work-structure-catalog.js`.
+- `piano-rooms.js`: **además** de Piano Rooms, hoy es el bootstrap general de muchos addons. No renombrarlo/refactorizarlo casualmente. En v373 carga `ensemble-repertoire-catalog.js` justo después de `work-structure-catalog.js` y las versiones contextuales de `planning-enhancements-v3/v4`.
 
 ### Puente del monitor Asimut
 
@@ -321,9 +323,9 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- Caché actual `estudio-v372`: `app.js`, `crono-resume-layout.js`, `piano-rooms.js`, `reservation-dashboard.js`, `session-home.css`, `reservation-dashboard.css` y el tracker de pasajes usan v372. Los módulos no modificados conservan su URL anterior. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
+- Caché actual `estudio-v373`: `app.js`, `styles.css`, `piano-rooms.js`, `planning-enhancements-v3.js/css`, `planning-enhancements-v4.js` y `ensemble-repertoire-catalog.js` usan v373. Otros módulos no modificados conservan su URL anterior. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v372 en Ajustes; v372 es el límite de caché PWA actual.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v373 en Ajustes; v373 es el límite de caché PWA actual.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.

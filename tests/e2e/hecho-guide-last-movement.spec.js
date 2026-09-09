@@ -39,24 +39,23 @@ async function prepare(page, { data = fixture(), lastTarget = '' } = {}) {
   await page.waitForTimeout(1000);
 }
 
-test('adds an expandable, detailed guide to the done rating pill', async ({ page }) => {
+test('shows one detailed guide and highlights the current done-rating range', async ({ page }) => {
   await prepare(page);
 
-  const guide = page.locator('#hechoRatingGuide');
+  await page.evaluate(() => openHechoDatos('obra_multi', 20));
+  const guide = page.locator('#solidityGuideHechoV3 .solidity-guide-v3');
   await expect(guide).toHaveCount(1);
   expect(await guide.evaluate(element => element.tagName)).toBe('DETAILS');
-  await expect(guide.locator('summary')).toContainText('¿Qué significa cada rango?');
-  await page.evaluate(() => { document.getElementById('hechoRatingGuide').open = true; });
+  await expect(guide.locator('summary')).toContainText('Guía para puntuar');
   await expect(guide).toHaveAttribute('open', '');
-  await expect(guide).toContainText('Memorizada · asentando');
-  await expect(guide).toContainText('70–75');
-  await expect(guide).toContainText('Nivel concierto');
-  await expect(guide).toContainText('100 no significa perfección humana');
+  await expect(guide).toContainText('70–79');
+  await expect(guide).toContainText('Brillante · lista para exponer');
+  await expect(page.locator('#hechoRatingGuide')).toBeHidden();
 
   await page.evaluate(() => hechoSelectSolidez(pasePctToPosition(72)));
-  const current = guide.locator('.hecho-rating-guide-row.is-current');
+  const current = guide.locator('.solidity-guide-row.is-current');
   await expect(current).toHaveCount(1);
-  await expect(current).toContainText('65–79');
+  await expect(current).toContainText('70–79');
 });
 
 test('restores the exact last planted movement after reopening the stopwatch', async ({ page }) => {
