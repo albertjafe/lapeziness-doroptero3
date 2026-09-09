@@ -143,20 +143,21 @@
 
   function ensureCard() {
     if (document.getElementById(CARD_ID)) return true;
-    const anchor = document.getElementById('sessionResumenCard');
-    if (!anchor) return false;
+    const stats = document.getElementById('sessionStatsSection');
+    const summary = document.getElementById('sessionResumenCard');
+    if (!stats && !summary) return false;
     const card = document.createElement('section');
     card.id = CARD_ID;
     card.className = 'activity-daily-card';
     card.setAttribute('aria-label', 'Actividad digital de hoy');
-    anchor.insertAdjacentElement('afterend', card);
-    renderCard();
-    const weekly = document.getElementById('sessionWeeklyPlanner');
-    if (weekly) {
-      const syncVisibility = () => { card.hidden = !weekly.hidden; };
-      new MutationObserver(syncVisibility).observe(weekly, { attributes: true, attributeFilter: ['hidden'] });
-      syncVisibility();
+    if (stats) {
+      const statsHead = stats.querySelector('.view-action-row');
+      if (statsHead) statsHead.insertAdjacentElement('afterend', card);
+      else stats.insertAdjacentElement('afterbegin', card);
+    } else {
+      summary.insertAdjacentElement('afterend', card);
     }
+    renderCard();
     return true;
   }
 

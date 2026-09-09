@@ -169,6 +169,43 @@
       </div>`;
   }
 
+  function renderSessionReservationOverview(row) {
+    const host = el('sessionReservationOverview');
+    if (!host) return;
+    host.classList.remove('is-loading', 'is-offline', 'has-current');
+    if (!row) {
+      host.classList.add('is-loading');
+      host.innerHTML = `<span class="session-room-icon" aria-hidden="true">▦</span>
+        <span class="session-room-copy"><small>Aulas</small><strong>Esperando al monitor</strong><span>Las reservas aparecerán al recibir la primera lectura.</span></span>
+        <span class="session-room-chevron" aria-hidden="true">›</span>`;
+      return;
+    }
+    const state = row.state || {};
+    const reservations = Array.isArray(state.reservations) ? state.reservations : [];
+    const current = reservations.find(item => timelineStatus(state.date, item) === 'current');
+    const next = reservations.find(item => timelineStatus(state.date, item) === 'upcoming');
+    const focus = current || next || null;
+    const offline = ageMs(row) > OFFLINE_MS || state.monitor?.online === false;
+    if (offline) host.classList.add('is-offline');
+    if (current) host.classList.add('has-current');
+    const kicker = offline ? `Sin conexión · ${relativeAge(row.heartbeat_at)}` : current ? 'Ahora mismo' : next ? 'Siguiente reserva' : 'Agenda';
+    const title = focus ? `Aula ${escapeHtml(focus.room || '—')}` : 'Sin reservas';
+    const schedule = focus
+      ? `${escapeHtml(focus.start || '—')}–${escapeHtml(focus.end || '—')} · ${durationLabel(reservationMinutes(focus))}`
+      : `Libre · ${escapeHtml(formatDate(state.date))}`;
+    const later = current && next && next !== current
+      ? `<span class="session-room-next">Después · ${escapeHtml(next.start || '—')} · aula ${escapeHtml(next.room || '—')}</span>`
+      : '';
+    host.innerHTML = `<span class="session-room-icon" aria-hidden="true"><i></i>▦</span>
+      <span class="session-room-copy">
+        <small><b>Aulas</b><em>${escapeHtml(kicker)}</em></small>
+        <strong>${title}</strong>
+        <span>${schedule}</span>${later}
+      </span>
+      <span class="session-room-side"><small>${escapeHtml(sourceLabel(row.source))}</small><b>${reservations.length}</b><em>${reservations.length === 1 ? 'reserva' : 'reservas'}</em></span>
+      <span class="session-room-chevron" aria-hidden="true">›</span>`;
+  }
+
   function renderReservations(day, reservations, targetId) {
     const list = el(targetId);
     if (!list) return;
@@ -306,6 +343,7 @@
   function render() {
     renderSourceSwitch();
     const row = currentRow();
+    renderSessionReservationOverview(row);
     const shell = el('reservationDashboardContent');
     const empty = el('reservationDashboardEmpty');
     if (!shell || !empty) return;
@@ -440,7 +478,8 @@
   }
 
   function start() {
-    if (el('reservationLivePanel')?.hidden) return;
+    const sessionVisible = document.body.dataset.view === 'session' || el('view-session')?.classList.contains('active');
+    if (el('reservationLivePanel')?.hidden && !sessionVisible) return;
     clearInterval(pollTimer);
     clearInterval(clockTimer);
     refresh(false);
@@ -454,12 +493,12 @@
     });
     bindRefresh();
     window.addEventListener('app:viewchange', event => {
-      if (event.detail?.name === 'salas' && !el('reservationLivePanel')?.hidden) start();
+      if (event.detail?.name === 'session' || (event.detail?.name === 'salas' && !el('reservationLivePanel')?.hidden)) start();
     });
     try {
       getSB().auth.onAuthStateChange(() => window.setTimeout(() => refresh(false), 0));
     } catch (error) {}
-    if (document.body.dataset.view === 'salas') start();
+    if (document.body.dataset.view === 'salas' || document.body.dataset.view === 'session' || el('view-session')?.classList.contains('active')) start();
   }
 
   window.ReservationDashboard = { refresh, setPane };

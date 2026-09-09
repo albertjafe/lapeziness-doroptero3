@@ -1650,16 +1650,6 @@
   }
 
   /* MODO LIMPIO en Sesión: oculta textos pequeños de apoyo (botón ℹ los revela) */
-  #sessionInfoBtn { display: none; }
-  body[data-view="session"] #sessionInfoBtn { display: inline-flex; }
-  #sessionInfoBtn.active { color: var(--accent); border-color: var(--accent); }
-  body.session-clean #view-session .session-insight-sub,
-  body.session-clean #view-session .prob-tip,
-  body.session-clean #view-session .prob-context,
-  body.session-clean #view-session .prob-scope,
-  body.session-clean #view-session .prob-proj-extra {
-    display: none !important;
-  }
 
   /* COZY SHAPE OVERRIDES */
   [data-theme="cozy"] .card { border-radius: var(--cozy-radius) !important; }

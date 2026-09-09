@@ -1,11 +1,11 @@
-const CACHE = 'estudio-v369';
+const CACHE = 'estudio-v370';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
-  "./activity-dashboard.js?v=342",
+  "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=342",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=369",
+  "./app.js?v=370",
   "./competition-planning-seed.js?v=342",
   "./crono-idle-hierarchy.css?v=342",
   "./crono-readiness-layout.css?v=342",
@@ -14,7 +14,7 @@ const ASSETS = [
   "./crono-running-premium.css?v=342",
   "./crono-running-premium.js?v=342",
   "./crono-save-resilience.js?v=347",
-  "./daily-study-minutes.js?v=358",
+  "./daily-study-minutes.js?v=370",
   "./data-core.js?v=342",
   "./document-sync-core.js?v=344",
   "./ensemble-repertoire-catalog.js?v=359",
@@ -56,8 +56,8 @@ const ASSETS = [
   "./piano-rooms-core.js?v=369",
   "./piano-rooms.css?v=369",
   "./piano-rooms.js?v=355",
-  "./reservation-dashboard.css?v=369",
-  "./reservation-dashboard.js?v=369",
+  "./reservation-dashboard.css?v=370",
+  "./reservation-dashboard.js?v=370",
   "./planning-enhancements-v3.css?v=342",
   "./planning-enhancements-v3.js?v=342",
   "./planning-enhancements-v4-speech-fix.js?v=342",
@@ -80,13 +80,14 @@ const ASSETS = [
   "./readiness-pill-model.js?v=342",
   "./readiness-recovery-context.js?v=342",
   "./session-minutes-correction.js?v=342",
+  "./session-home.css?v=370",
   "./solo-repertoire-structure.js?v=361",
   "./solidity-history-editor.css?v=342",
   "./solidity-history-editor.js?v=342",
   "./solidity-model.js?v=342",
   "./study-session-ux.css?v=342",
   "./study-session-ux.js?v=342",
-  "./styles.css?v=342",
+  "./styles.css?v=370",
   "./sync-core.js?v=342",
   "./task-sync-bootstrap.js?v=342",
   "./task-sync-resilience.js?v=342",
@@ -144,7 +145,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '369');
+            target.searchParams.set('__pwa', '370');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -152,7 +153,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'369', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'370', navigated });
         } catch (error) {}
       }
     }

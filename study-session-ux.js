@@ -254,7 +254,7 @@
     if (window.ActivityTracker || document.getElementById('activityDashboardScript')) return;
     const script = document.createElement('script');
     script.id = 'activityDashboardScript';
-    script.src = './activity-dashboard.js?v=342';
+    script.src = './activity-dashboard.js?v=370';
     script.async = true;
     document.head.appendChild(script);
   }

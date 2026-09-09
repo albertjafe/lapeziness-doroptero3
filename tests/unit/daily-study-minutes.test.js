@@ -87,7 +87,7 @@ describe('daily study minutes', () => {
     };
     const api = loadFix(db);
     const { start, end } = dayRange();
-    expect(api.version).toBe(4);
+    expect(api.version).toBe(5);
     expect(api.minutesByDay(start, end)['2026-09-05']).toBe(216);
   });
 
@@ -138,6 +138,43 @@ describe('daily study minutes', () => {
     const api = loadFix(db);
     const { start, end } = dayRange();
     expect(api.minutesByDay(start, end)['2026-09-05']).toBe(45);
+  });
+
+  it('counts a quick manual registration once when its session item mirrors a manual plant', () => {
+    const db = {
+      sessionPlants: [
+        { obraId: 'bach', mins: 25, source: 'manual', startedAt: '2026-09-05T10:00:00.000Z', endedAt: '2026-09-05T10:25:00.000Z' },
+      ],
+      forestPlants: [],
+      sesiones: [{
+        date: '2026-09-05T12:00:00.000Z',
+        items: [{ obraId: 'bach', manual: true, tick: 'hecho', minutosEstudiados: 25, minutosReales: 25 }],
+      }],
+    };
+    const api = loadFix(db);
+    const { start, end } = dayRange();
+    expect(api.minutesByDay(start, end)['2026-09-05']).toBe(25);
+  });
+
+  it('matches repeated manual mirrors one by one and preserves an unmatched legacy entry', () => {
+    const db = {
+      sessionPlants: [
+        { obraId: 'bach', mins: 25, source: 'manual', startedAt: '2026-09-05T10:00:00.000Z', endedAt: '2026-09-05T10:25:00.000Z' },
+        { obraId: 'bach', mins: 25, source: 'manual', startedAt: '2026-09-05T11:00:00.000Z', endedAt: '2026-09-05T11:25:00.000Z' },
+      ],
+      forestPlants: [],
+      sesiones: [{
+        date: '2026-09-05T12:00:00.000Z',
+        items: [
+          { obraId: 'bach', manual: true, tick: 'hecho', minutosReales: 25 },
+          { obraId: 'bach', manual: true, tick: 'hecho', minutosReales: 25 },
+          { obraId: 'bach', manual: true, tick: 'hecho', minutosReales: 25 },
+        ],
+      }],
+    };
+    const api = loadFix(db);
+    const { start, end } = dayRange();
+    expect(api.minutesByDay(start, end)['2026-09-05']).toBe(75);
   });
 
   it('does not add an old extra summary when it overlaps the same timed work', () => {

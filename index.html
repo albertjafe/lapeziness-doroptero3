@@ -25,11 +25,12 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=342">
+<link rel="stylesheet" href="styles.css?v=370">
 <link rel="stylesheet" href="study-session-ux.css?v=342">
 <link rel="stylesheet" href="crono-resume-layout.css?v=342">
 <link rel="stylesheet" href="piano-rooms.css?v=369">
-<link rel="stylesheet" href="reservation-dashboard.css?v=369">
+<link rel="stylesheet" href="reservation-dashboard.css?v=370">
+<link rel="stylesheet" href="session-home.css?v=370">
 </head>
 <body>
 
@@ -89,7 +90,6 @@
   <div class="header-actions">
     <div style="font-size:10px;color:var(--text3)" id="packNameHeader"></div>
     <button type="button" class="piano-rooms-open" onclick="showView('salas')" aria-label="Abrir reservas y aulas" title="Reservas y aulas">▦ <span>Aulas</span></button>
-    <button class="settings-icon" id="sessionInfoBtn" onclick="toggleSessionInfo()" title="Mostrar u ocultar detalles" aria-label="Mostrar u ocultar detalles">ℹ</button>
     <button class="settings-icon" id="headerSettingsBtn" onclick="openSettings()" title="Ajustes" aria-label="Abrir ajustes">⚙</button>
   </div>
 </div>
@@ -135,6 +135,7 @@
   <div class="session-mode-switch" role="tablist" aria-label="Vista de sesiones">
     <button type="button" class="active" id="sessionModeToday" role="tab" aria-selected="true" onclick="setSessionSectionMode('today')">Hoy</button>
     <button type="button" id="sessionModeWeek" role="tab" aria-selected="false" onclick="setSessionSectionMode('week')">Semana</button>
+    <button type="button" id="sessionModeHistory" role="tab" aria-selected="false" onclick="setSessionSectionMode('history')">Historial</button>
   </div>
 
   <section class="session-weekly-planner" id="sessionWeeklyPlanner" aria-labelledby="weeklyPlannerTitle" hidden>
@@ -161,14 +162,34 @@
     <p class="weekly-planner-footnote" id="weeklyPlannerFootnote">Las sugerencias combinan eventos, solidez, pases y tiempo sin tocar cada obra.</p>
   </section>
 
-  <section class="session-resumen-card" id="sessionResumenCard" aria-label="Tiempo estudiado hoy">
-    <div class="session-resumen-info">
-      <div class="session-resumen-lbl">TIEMPO ESTUDIADO HOY</div>
-      <div class="session-resumen-big">0 min</div>
+  <section class="session-resumen-card session-focus-card" id="sessionResumenCard" aria-label="Resumen de estudio de hoy">
+    <div class="session-focus-metrics">
+      <div class="session-focus-metric">
+        <span>Llevas</span>
+        <strong>0 min</strong>
+      </div>
+      <div class="session-focus-divider" aria-hidden="true"></div>
+      <div class="session-focus-metric is-projection">
+        <span>Proyección</span>
+        <strong>—</strong>
+      </div>
     </div>
+    <div class="session-focus-finish">
+      <span>Fin previsto</span>
+      <strong>—</strong>
+    </div>
+    <div class="session-focus-status"><span id="sessionConcentradoText">Hoy · 0 min</span><small>Estimación aún no disponible</small></div>
   </section>
-  <!-- Banner: "Hoy te has concentrado X" + opción discreta para día pasado -->
-  <section class="session-quick-study" id="sessionQuickStudy" aria-label="Añadir estudio manual a hoy">
+
+  <button type="button" class="session-room-card is-loading" id="sessionReservationOverview" onclick="showView('salas')" aria-label="Abrir aulas y reservas">
+    <span class="session-room-icon" aria-hidden="true">▦</span>
+    <span class="session-room-copy"><small>Aulas</small><strong>Consultando reservas…</strong></span>
+    <span class="session-room-chevron" aria-hidden="true">›</span>
+  </button>
+
+  <details class="session-quick-disclosure">
+    <summary><span>Registro rápido</span><small>Añadir estudio sin abrir el cronómetro</small></summary>
+    <section class="session-quick-study" id="sessionQuickStudy" aria-label="Añadir estudio manual a hoy">
     <form id="sessionQuickStudyForm" onsubmit="saveSessionQuickStudy(event)">
       <span class="session-quick-study-plus" aria-hidden="true">+</span>
       <select id="sessionQuickStudyObra" aria-label="Obra o movimiento estudiado" onchange="syncSessionQuickStudy()">
@@ -191,33 +212,8 @@
       </button>
     </form>
     <div class="session-quick-study-feedback" id="sessionQuickStudyFeedback" role="status" aria-live="polite"></div>
-  </section>
-
-  <div class="session-concentrado-banner" id="sessionConcentradoBanner">
-    <span class="session-concentrado-icon" aria-hidden="true">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="8" cy="8.5" r="5.5"/>
-        <path d="M8 3v2.1M6.2 1.8h3.6M8 8.5l2.4-2.2"/>
-      </svg>
-    </span>
-    <span id="sessionConcentradoText" style="flex:1">Hoy · 0 min</span>
-    <button class="session-concentrado-past-btn" onclick="checkDayChange();showToast('Día actualizado')" title="Comprobar cambio de día (refrescar a hoy)">
-      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M11.5 6.5 A4.5 4.5 0 1 1 10 3.5"/>
-        <polyline points="11.5 1.5 11.5 4 9 4"/>
-      </svg>
-    </button>
-    <button class="session-concentrado-past-btn" onclick="openSavePastDate()" title="Registrar sesión de un día pasado">
-      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="2" y="3" width="10" height="9" rx="1.5"/>
-        <line x1="2" y1="6" x2="12" y2="6"/>
-        <line x1="5" y1="1.5" x2="5" y2="4"/>
-        <line x1="9" y1="1.5" x2="9" y2="4"/>
-      </svg>
-    </button>
-  </div>
-
-  <div class="session-insight-stack" id="sessionInsightStack" style="display:none"></div>
+    </section>
+  </details>
 
   <section class="session-journal-card is-collapsed" id="sessionJournalCard" aria-label="Diario del día">
     <button type="button" class="session-journal-toggle" id="sessionJournalToggle" onclick="toggleSessionJournal()" aria-expanded="false" aria-controls="sessionJournalPanel" aria-label="Añadir una entrada al diario" title="Añadir al diario">
@@ -240,7 +236,7 @@
 
   <div class="session-plan" id="sessionPlan"></div>
 
-  <section class="session-stats-section" id="sessionStatsSection" aria-labelledby="sessionStatsTitle">
+  <section class="session-stats-section" id="sessionStatsSection" aria-labelledby="sessionStatsTitle" hidden>
     <div class="view-action-row stats-action-row">
       <div>
         <div class="view-local-label" id="sessionStatsTitle">Estadísticas</div>
@@ -253,7 +249,6 @@
       <div id="mantenimientoSection" style="margin-bottom:20px"></div>
       <div id="solidezSection" style="margin-bottom:20px"></div>
       <div id="eficienciaSection" style="margin-bottom:20px"></div>
-      <div id="estadoSection" style="margin-bottom:20px"></div>
       <div class="session-history-heading" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border2)">
         <div class="history-section-label">Sesiones registradas</div>
         <div style="display:flex;gap:8px;align-items:center">
@@ -1061,11 +1056,7 @@
     </div>
 
     <!-- ── NOTIFICACIONES ── -->
-    <div class="ajustes-group-label"><span class="ajustes-group-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.5 1.5M9 3h6M12 3v2.5"/></svg></span>Cronometro</div>
-    <div class="ajustes-card">
-    </div>
-
-    <div class="ajustes-group-label">Notificaciones</div>
+    <div class="ajustes-group-label"><span class="ajustes-group-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.5 1.5M9 3h6M12 3v2.5"/></svg></span>Notificaciones</div>
     <div class="ajustes-card push-settings-card">
       <div class="push-settings-main">
         <span class="push-status-dot" id="pushNotificationDot" data-tone="neutral" aria-hidden="true"></span>
@@ -1096,21 +1087,26 @@
       </div>
     </div>
 
-    <!-- ── DATOS ── -->
-    <div class="ajustes-group-label"><span class="ajustes-group-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h3.5l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></span>Datos</div>
-    <div class="ajustes-card">
+    <!-- ── DATOS Y HERRAMIENTAS DE USO OCASIONAL ── -->
+    <details class="ajustes-fold">
+      <summary>
+        <span><strong>Datos y herramientas</strong><small>Exportación, importación y planificación avanzada</small></span>
+        <i aria-hidden="true">⌄</i>
+      </summary>
+      <div class="ajustes-fold-body">
+      <div class="ajustes-card">
       <div class="ajustes-card-head">IA / Codex · exportar contexto</div>
       <div class="ajustes-hint" style="margin-bottom:12px">Genera un paquete con sesiones, pases, notas, sueño, concentración, deporte, tiempo disponible, siestas, gatillos y eventos. Incluye datos privados: úsalo sólo para pegarlo o adjuntarlo donde quieras.</div>
       <div class="ai-export-mode-row" id="aiExportModeRow">
         <button type="button" class="ai-export-mode active" data-range="today" onclick="setAiExportRange('today')">Hoy</button>
         <button type="button" class="ai-export-mode" data-range="yesterday" onclick="setAiExportRange('yesterday')">Ayer</button>
         <button type="button" class="ai-export-mode" data-range="today_yesterday" onclick="setAiExportRange('today_yesterday')">Hoy + ayer</button>
-        <button type="button" class="ai-export-mode" data-range="3" onclick="setAiExportRange('3')">3 dÃ­as</button>
+        <button type="button" class="ai-export-mode" data-range="3" onclick="setAiExportRange('3')">3 días</button>
         <button type="button" class="ai-export-mode" data-range="selected" onclick="setAiExportRange('selected')">Elegir</button>
       </div>
       <div class="ai-export-context-row" id="aiExportContextRow">
         <button type="button" class="ai-export-context active" data-context="context" onclick="setAiExportContext('context')">Con contexto</button>
-        <button type="button" class="ai-export-context" data-context="data" onclick="setAiExportContext('data')">SÃ³lo datos</button>
+        <button type="button" class="ai-export-context" data-context="data" onclick="setAiExportContext('data')">Solo datos</button>
       </div>
       <div class="ai-export-controls">
         <select class="modal-input ai-export-select" id="aiExportRange" onchange="updateAiExportControls()">
@@ -1150,6 +1146,19 @@
       <input type="file" id="forestCsvInput" accept=".csv" style="display:none" onchange="loadForestCSV(this)">
       <div id="forestFeedback" style="font-size:9px;color:var(--green);margin-top:4px;display:none"></div>
     </div>
+
+      <div class="ajustes-card ajustes-projection-tools">
+        <div>
+          <div class="ajustes-card-head">Proyección del día</div>
+          <div class="ajustes-hint">Corrige una hora de comienzo futura o marca periodos no disponibles. Estas opciones solo afinan la estimación de hoy.</div>
+        </div>
+        <div class="ajustes-btn-row">
+          <button class="modal-btn secondary" type="button" onclick="openHoraComienzo(event)">Hora de comienzo</button>
+          <button class="modal-btn secondary" type="button" onclick="openHorasBloqueadas(event)">Disponibilidad</button>
+        </div>
+      </div>
+      </div>
+    </details>
 
     <!-- ── CUENTA ── -->
     <div class="ajustes-group-label"><span class="ajustes-group-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg></span>Cuenta</div>
@@ -2067,28 +2076,6 @@
   </div>
 </div>
 
-<!-- MODAL ESTADO CHART (versión ampliada) -->
-<div class="modal-overlay" id="modalEstadoChart">
-  <div class="modal" style="max-width:720px;padding:18px 20px">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px">
-      <div class="modal-title" style="margin-bottom:0">Estado diario</div>
-      <button class="modal-btn secondary" onclick="closeModal('modalEstadoChart')" style="padding:4px 12px;font-size:10px">✕</button>
-    </div>
-    <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">Rango temporal</div>
-    <div style="display:flex;gap:6px;margin-bottom:14px" id="estadoChartRangeBtns">
-      <button class="sort-btn active" onclick="setEstadoChartRange(null,this)">Todo</button>
-      <button class="sort-btn" onclick="setEstadoChartRange(365,this)">Año</button>
-      <button class="sort-btn" onclick="setEstadoChartRange(90,this)">3 meses</button>
-      <button class="sort-btn" onclick="setEstadoChartRange(30,this)">Mes</button>
-      <button class="sort-btn" onclick="setEstadoChartRange(7,this)">Semana</button>
-    </div>
-    <div id="estadoChartModalSvg" style="min-height:80px"></div>
-    <div class="modal-buttons" style="margin-top:14px">
-      <button class="modal-btn primary" onclick="closeModal('modalEstadoChart')">Cerrar</button>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL OBRAS CHART -->
 <div class="modal-overlay" id="modalObrasChart">
   <div class="modal" style="max-width:560px">
@@ -2206,73 +2193,6 @@
   </div>
 </div>
 
-<div class="view" id="view-casa">
-  <section class="house-shell" aria-label="Prototipo de la casa misteriosa">
-    <div class="house-stage" id="houseStage" data-no-view-swipe>
-      <div class="house-canvas-host" id="houseCanvasHost" aria-hidden="true"></div>
-      <div class="house-loading" id="houseLoading">
-        <span></span>
-        Preparando la casa
-      </div>
-
-      <header class="house-hud">
-        <div class="house-heading">
-          <span class="house-kicker" id="houseFloorKicker">ESTRATO 0</span>
-          <h1 id="houseFloorTitle">Vestíbulo</h1>
-          <p id="houseFloorSubtitle">La primera puerta siempre parece conocida.</p>
-        </div>
-        <button class="house-dev-toggle" id="houseDevToggle" type="button" aria-expanded="false" aria-controls="houseDevPanel">
-          <span></span>
-          Modo boceto
-        </button>
-      </header>
-
-      <div class="house-progress" aria-label="Progreso de exploración">
-        <span id="houseDiscoveryCount">0 de 12 puertas</span>
-        <div><i id="houseDiscoveryBar"></i></div>
-      </div>
-
-      <nav class="house-floor-rail" id="houseFloorRail" aria-label="Plantas de la casa"></nav>
-
-      <section class="house-door-panel" aria-live="polite">
-        <div class="house-door-copy">
-          <span class="house-door-status" id="houseDoorStatus">PUERTA 01</span>
-          <strong id="houseDoorTitle">Sala del reloj quieto</strong>
-          <small id="houseDoorHint">La luz permanece encendida aunque nadie entra.</small>
-        </div>
-        <div class="house-door-actions">
-          <button id="houseDoorPrev" type="button" aria-label="Puerta anterior">&#8249;</button>
-          <button class="house-door-open" id="houseDoorOpen" type="button">Abrir</button>
-          <button id="houseDoorNext" type="button" aria-label="Puerta siguiente">&#8250;</button>
-        </div>
-      </section>
-
-      <div class="house-objective-link" id="houseDoorObjective">
-        <span></span>
-        Prototipo libre: después conectaremos esta puerta a un objetivo.
-      </div>
-
-      <aside class="house-dev-panel" id="houseDevPanel" hidden>
-        <div class="house-dev-head">
-          <div>
-            <span>CONTROL DEL PROTOTIPO</span>
-            <strong>Acceso completo</strong>
-          </div>
-          <button id="houseDevClose" type="button" aria-label="Cerrar panel">&#215;</button>
-        </div>
-        <p>Puedes visitar cualquier planta y abrir cualquier puerta. Este acceso no modifica tus objetivos.</p>
-        <div class="house-dev-actions">
-          <button id="houseDevUnlockAll" type="button">Descubrir todas</button>
-          <button id="houseDevRevealFloor" type="button">Descubrir esta planta</button>
-          <button class="is-danger" id="houseDevReset" type="button">Restablecer</button>
-        </div>
-      </aside>
-
-      <div class="house-message" id="houseMessage" role="status" aria-live="polite"></div>
-    </div>
-  </section>
-</div>
-
 </div> <!-- end app-content -->
 
 <nav class="nav nav-bottom">
@@ -2291,10 +2211,6 @@
   <button class="nav-btn" aria-label="Calendario" data-view="calendario" data-short="Calend." onclick="showView('calendario')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
     <span>Calendario</span>
-  </button>
-  <button class="nav-btn" aria-label="Casa" data-view="casa" data-short="Casa" onclick="showView('casa')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4.8A1.8 1.8 0 0 1 6.8 3h10.4A1.8 1.8 0 0 1 19 4.8V21M3 21h18"/><path d="M9 21V8h6v13M12.8 14h.01"/></svg>
-    <span>Casa</span>
   </button>
 </nav>
 
@@ -2324,11 +2240,11 @@
 <script src="task-sync-bootstrap.js?v=342" id="taskSyncBootstrapScript"></script>
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=368"></script>
-<script src="app.js?v=369"></script>
+<script src="app.js?v=370"></script>
 <script src="study-session-ux.js?v=342"></script>
 <script src="crono-resume-layout.js?v=355"></script>
 <script src="piano-rooms.js?v=355"></script>
-<script src="reservation-dashboard.js?v=369"></script>
+<script src="reservation-dashboard.js?v=370"></script>
 <script src="google-calendar.js?v=342"></script>
 <script src="timer-objectives.js?v=342"></script>
 <script src="metronome.js?v=368"></script>

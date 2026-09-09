@@ -19,7 +19,7 @@
 (function dailyStudyMinutesFix(){
   'use strict';
 
-  const FIX_VERSION = 4;
+  const FIX_VERSION = 5;
   const OVERLAP_TOLERANCE_MS = 30000;
   const PASSAGE_GENERAL_SOURCE = 'passage-general-v1';
 
@@ -116,12 +116,13 @@
     const startMs = parseMs(item && (item.startedAt || item.startAt));
     const endMs = parseMs(item && (item.endedAt || item.endAt));
     if (!previous) {
-      return { target, mins, planId: planId || '', startMs, endMs };
+      return { target, mins, planId: planId || '', manual: !!(item && item.manual), startMs, endMs };
     }
     return {
       target: previous.target || target,
       mins: Math.max(previous.mins || 0, mins || 0),
       planId: previous.planId || planId || '',
+      manual: previous.manual || !!(item && item.manual),
       startMs: previous.startMs == null ? startMs : (startMs == null ? previous.startMs : Math.min(previous.startMs, startMs)),
       endMs: previous.endMs == null ? endMs : (endMs == null ? previous.endMs : Math.max(previous.endMs, endMs)),
     };
@@ -146,10 +147,24 @@
 
   function sessionExtraByTarget(bucket){
     const out = Object.create(null);
+    const manualTimedByTarget = Object.create(null);
+    Object.keys(bucket.timed || {}).forEach(target => {
+      manualTimedByTarget[target] = (bucket.timed[target].entries || [])
+        .filter(entry => entry && entry.source === 'manual' && entry.mins > 0)
+        .map(entry => entry.mins);
+    });
     Object.values(bucket.sessionPlans || {}).forEach(entry => {
       if (!entry || !(entry.mins > 0)) return;
       const timedTarget = bucket.timed[entry.target];
       if (timedTarget && sessionPlanBackedByTimed(entry, timedTarget)) return;
+      if (entry.manual) {
+        const pool = manualTimedByTarget[entry.target] || [];
+        const match = pool.findIndex(minutes => Math.abs(minutes - entry.mins) < 0.01);
+        if (match >= 0) {
+          pool.splice(match, 1);
+          return;
+        }
+      }
       out[entry.target] = (out[entry.target] || 0) + entry.mins;
     });
     return out;
@@ -182,7 +197,7 @@
       const pEnd = parseMs(plant.endedAt);
       timedTarget.mins += mins;
       timedTarget.canonicalTimer = true;
-      timedTarget.entries.push({ startMs: pStart, endMs: pEnd, mins });
+      timedTarget.entries.push({ startMs: pStart, endMs: pEnd, mins, source: String(plant.source || '') });
     };
 
     (database.sessionPlants || []).forEach(addPlant);
@@ -229,13 +244,13 @@
   }
 
   function install(){
-    if (window.getMinutosConcentradoHoy && window.getMinutosConcentradoHoy.__realTimedDedupV4) return true;
+    if (window.getMinutosConcentradoHoy && window.getMinutosConcentradoHoy.__realTimedDedupV5) return true;
     if (!appDb()) return false;
 
     const byDay = function correctedStatsMinutesByDay(start, end){ return minutesByDay(start, end); };
-    byDay.__realTimedDedupV4 = true;
+    byDay.__realTimedDedupV5 = true;
     const today = function correctedTodayStudyMinutes(){ return todayMinutes(); };
-    today.__realTimedDedupV4 = true;
+    today.__realTimedDedupV5 = true;
 
     try { _statsMinsPorDia = byDay; } catch (error) {}
     try { getMinutosConcentradoHoy = today; } catch (error) {}

@@ -193,12 +193,14 @@ describe('quality wiring', () => {
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
-    expect(html).toContain('id="sessionResumenCard" aria-label="Tiempo estudiado hoy"');
-    expect(html).toContain('TIEMPO ESTUDIADO HOY');
+    expect(html).toContain('id="sessionResumenCard" aria-label="Resumen de estudio de hoy"');
+    expect(html).toContain('<span>Llevas</span>');
+    expect(html).toContain('<span>Proyección</span>');
     expect(app).toContain("const done = (typeof _doneMinHoy === 'function')");
-    expect(app).toContain('session-resumen-live');
+    expect(app).toContain('session-focus-status');
+    const sessionHome = fs.readFileSync(path.join(root, 'session-home.css'), 'utf8');
     expect(styles).toContain('#view-session .session-resumen-card');
-    expect(styles).toContain('display: flex !important');
+    expect(sessionHome).toContain('#view-session .session-focus-card');
   });
 
   it('ships one vector music mark and correctly sized app icons', () => {

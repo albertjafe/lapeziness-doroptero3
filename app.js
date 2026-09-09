@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-08-reservation-dashboard-v369';
+const APP_VERSION = '2026-09-09-session-focus-v370';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -129,12 +129,13 @@ function refreshStudyViews() {
     if (typeof renderRacha === 'function') renderRacha();
     if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
     if (typeof renderCronoCalendar === 'function') renderCronoCalendar();
-    if (typeof renderStatsDashboard === 'function') renderStatsDashboard();
-    if (typeof renderMantenimientoSection === 'function') renderMantenimientoSection();
-    if (typeof renderSolidezSection === 'function') renderSolidezSection();
-    if (typeof renderEficienciaSection === 'function') renderEficienciaSection();
-    if (typeof renderEstadoSection === 'function') renderEstadoSection();
-    if (typeof renderSesionesHistorial === 'function') renderSesionesHistorial();
+    if (_sessionSectionMode === 'history') {
+      if (typeof renderStatsDashboard === 'function') renderStatsDashboard();
+      if (typeof renderMantenimientoSection === 'function') renderMantenimientoSection();
+      if (typeof renderSolidezSection === 'function') renderSolidezSection();
+      if (typeof renderEficienciaSection === 'function') renderEficienciaSection();
+      if (typeof renderSesionesHistorial === 'function') renderSesionesHistorial();
+    }
     if (typeof renderSessionQuickStudy === 'function') renderSessionQuickStudy();
     if (typeof renderHabitChallenge === 'function') renderHabitChallenge();
     if (typeof renderHabitCalendar === 'function') renderHabitCalendar();
@@ -635,12 +636,14 @@ function renderSessionViewContent() {
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
     return;
   }
+  if (_sessionSectionMode === 'history') {
+    renderCombinedSessionStats();
+    return;
+  }
   renderRacha();
   if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
-  if (typeof renderSessionInsights === 'function') renderSessionInsights();
   if (typeof renderSessionJournal === 'function') renderSessionJournal();
   if (typeof renderSessionQuickStudy === 'function') renderSessionQuickStudy();
-  renderCombinedSessionStats();
 }
 
 
@@ -650,7 +653,7 @@ function showView(name, options) {
   if (name === 'pulse') name = 'session'; // Stored legacy navigation target.
   if (name === 'historial') {
     showView('session');
-    requestAnimationFrame(() => document.getElementById('sessionStatsSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    setSessionSectionMode('history');
     return;
   }
   const previousView = document.body.getAttribute('data-view');
@@ -675,7 +678,11 @@ function showView(name, options) {
   window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   // Modo concentración: activar/desactivar al entrar/salir de cronometro
   if (name !== 'cronometro' && typeof cronoOnLeaveView === 'function') cronoOnLeaveView();
-  if (name === 'session' && !opts.swipePrepared) renderSessionViewContent();
+  if (name === 'session' && !opts.swipePrepared) {
+    renderSessionViewContent();
+    const sessionHeader = document.getElementById('headerTitle');
+    if (sessionHeader) sessionHeader.textContent = _sessionSectionMode === 'week' ? 'Semana' : _sessionSectionMode === 'history' ? 'Historial' : 'Hoy';
+  }
   if (name === 'cronometro') {
     cronoOnEnterView({ layoutPrepared: !!opts.swipePrepared });
     if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true);
@@ -684,31 +691,6 @@ function showView(name, options) {
   if (name === 'calendario') renderCalendario();
   if (typeof googleCalendarOnView === 'function') googleCalendarOnView(name);
   window.dispatchEvent(new CustomEvent('app:viewchange', { detail: { name } }));
-  if (name === 'historial')  {
-    // Esqueleto inmediato; el cálculo pesado (todo el historial) corre en el
-    // siguiente frame para que la vista aparezca al instante.
-    const sd = document.getElementById('statsDashboard');
-    if (sd) sd.innerHTML = _statsSkeleton();
-    requestAnimationFrame(() => {
-      renderStatsDashboard(); renderMantenimientoSection(); renderSolidezSection(); renderEficienciaSection(); renderEstadoSection();
-    });
-    renderSesionesHistorial(); _histListApplyPref();
-  }
-}
-
-// Modo limpio de la pantalla Sesión: oculta los textos pequeños de apoyo
-// (subtítulos de insights, contexto/ánimo de la proyección) para quitar ruido.
-// El botón ℹ alterna entre limpio y detallado; la preferencia se persiste.
-function _applySessionClean() {
-  const clean = localStorage.getItem('alberto_session_clean') !== '0';
-  document.body.classList.toggle('session-clean', clean);
-  const btn = document.getElementById('sessionInfoBtn');
-  if (btn) btn.classList.toggle('active', !clean);
-}
-function toggleSessionInfo() {
-  const clean = localStorage.getItem('alberto_session_clean') !== '0';
-  localStorage.setItem('alberto_session_clean', clean ? '0' : '1');
-  _applySessionClean();
 }
 
 function showToast(msg) {
@@ -1056,7 +1038,6 @@ function renderCombinedSessionStats() {
   renderMantenimientoSection();
   renderSolidezSection();
   renderEficienciaSection();
-  renderEstadoSection();
   renderSesionesHistorial();
   _histListApplyPref();
 }
@@ -12708,7 +12689,8 @@ function _probTextHoy() {
   const fromMin = startedLater ? startOv : nowMin;
   const eta4 = done >= 240 ? { reached: true } : _liveTargetETA(fromMin, done, 240);
   const eta5 = done >= 300 ? { reached: true } : _liveTargetETA(fromMin, done, 300);
-  return { proj, prob, sub, cronoLine, p4: r.p4, p5: r.p5, done, projVal, projExtra, tip, reward, celebrate, base4, scope: r.scope, hhmm, doneTxt, eta4, eta5, startMin: startOv, startedLater, estadoAdj: r.estado };
+  const etaProjected = projMin <= done ? { reached: true } : _liveTargetETA(fromMin, done, projMin);
+  return { proj, prob, sub, cronoLine, p4: r.p4, p5: r.p5, done, projMin, p75, projVal, projExtra, tip, reward, celebrate, base4, scope: r.scope, hhmm, doneTxt, eta4, eta5, etaProjected, startMin: startOv, startedLater, estadoAdj: r.estado };
 }
 
 // Chip "ajustado a cómo estás hoy": solo si hay señal real (≥3 días parecidos).
@@ -12960,18 +12942,16 @@ function clearBlockedDay() {
   _afterBlockedChange();
 }
 function _afterBlockedChange() {
-  if (typeof renderSessionInsights === 'function') renderSessionInsights();
   if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true);
 }
 
-// Refresca los dos sitios donde vive la probabilidad de hoy: el cronómetro
-// (#cronoProbabilidad) y la tarjeta de insight de la pantalla de Sesión.
+// Refresca el cronómetro y el resumen principal de Hoy.
 // Throttle por (minuto del día + minutos hechos): solo recalcula cuando cambian.
 let _probLastKey = '';
 function updateLiveProbabilityUI(force) {
   const cEl = document.getElementById('cronoProbabilidad');
-  const sCard = document.getElementById('sessionProbCard');
-  if (!cEl && !sCard) return;
+  const sessionVisible = document.body.getAttribute('data-view') === 'session' && _sessionSectionMode === 'today';
+  if (!cEl && !sessionVisible) return;
   const now = new Date();
   const key = (now.getHours() * 60 + now.getMinutes()) + '|' + _doneMinHoy();
   if (!force && key === _probLastKey) return;
@@ -12985,10 +12965,7 @@ function updateLiveProbabilityUI(force) {
       cEl.innerHTML = '<span class="crono-prob-line">' + t.cronoLine + '</span>';
     }
   }
-  if (sCard) {
-    if (!t) { sCard.style.display = 'none'; }
-    else { sCard.style.display = ''; sCard.innerHTML = _probRichHTML(t); }
-  }
+  if (sessionVisible && typeof renderSessionResumen === 'function') renderSessionResumen(t);
   // PREMIO: celebra una sola vez al día al cruzar 4h / 5h.
   if (t && t.celebrate) {
     const s = _probDayState();
@@ -18693,7 +18670,6 @@ function confirmEditarSesion() {
   saveData();
   closeModal('modalEditarSesion');
   renderSesionesHistorial();
-  if (typeof renderEstadoSection === 'function') renderEstadoSection();
   if (typeof renderRacha === 'function') renderRacha();
   if (editamosHoy) {
     if (typeof saveDraft === 'function') saveDraft();
@@ -19076,7 +19052,6 @@ async function forceCloudResync() {
       renderObras();
       renderCalendario();
       renderSesionesHistorial();
-      if (typeof renderEstadoSection === 'function') renderEstadoSection();
       if (typeof renderRacha === 'function') renderRacha();
       updateHeader();
       updateSyncStatusInfo();
@@ -19105,10 +19080,9 @@ async function onAuthSuccess() {
   if (reloaded) {
     renderObras();
     renderCalendario();
-    if (document.getElementById('view-session')?.classList.contains('active')) {
+    if (document.getElementById('view-session')?.classList.contains('active') && _sessionSectionMode === 'history') {
       renderSesionesHistorial();
       renderEficienciaSection();
-      renderEstadoSection();
     }
     updateHeader();
     // ★ Tras bajar de nube, recargar los sliders de estado diario si la nube
@@ -19285,7 +19259,6 @@ function adjustTopPadding() {
 // Run immediately, after 100ms, and on resize/orientation change
 adjustTopPadding();
 if (!document.body.getAttribute('data-view')) document.body.setAttribute('data-view', 'session');
-_applySessionClean();
 setTimeout(adjustTopPadding, 100);
 setTimeout(adjustTopPadding, 500);
 setTimeout(initEstadoSliders, 300);
@@ -22923,13 +22896,17 @@ function weeklySlotKeyOpen(event, date, position) {
 }
 
 function setSessionSectionMode(mode) {
-  _sessionSectionMode = mode === 'week' ? 'week' : 'today';
+  _sessionSectionMode = mode === 'week' || mode === 'history' ? mode : 'today';
   const view = document.getElementById('view-session');
   const planner = document.getElementById('sessionWeeklyPlanner');
+  const stats = document.getElementById('sessionStatsSection');
   const todayButton = document.getElementById('sessionModeToday');
   const weekButton = document.getElementById('sessionModeWeek');
+  const historyButton = document.getElementById('sessionModeHistory');
   if (view) view.classList.toggle('session-weekly-mode', _sessionSectionMode === 'week');
+  if (view) view.classList.toggle('session-history-mode', _sessionSectionMode === 'history');
   if (planner) planner.hidden = _sessionSectionMode !== 'week';
+  if (stats) stats.hidden = _sessionSectionMode !== 'history';
   if (todayButton) {
     todayButton.classList.toggle('active', _sessionSectionMode === 'today');
     todayButton.setAttribute('aria-selected', _sessionSectionMode === 'today' ? 'true' : 'false');
@@ -22938,10 +22915,15 @@ function setSessionSectionMode(mode) {
     weekButton.classList.toggle('active', _sessionSectionMode === 'week');
     weekButton.setAttribute('aria-selected', _sessionSectionMode === 'week' ? 'true' : 'false');
   }
+  if (historyButton) {
+    historyButton.classList.toggle('active', _sessionSectionMode === 'history');
+    historyButton.setAttribute('aria-selected', _sessionSectionMode === 'history' ? 'true' : 'false');
+  }
   const header = document.getElementById('headerTitle');
-  if (header && document.body.getAttribute('data-view') === 'session') header.textContent = _sessionSectionMode === 'week' ? 'Semana' : 'Hoy';
-  if (_sessionSectionMode === 'week') renderWeeklyPlanner();
-  else renderSessionViewContent();
+  if (header && document.body.getAttribute('data-view') === 'session') {
+    header.textContent = _sessionSectionMode === 'week' ? 'Semana' : _sessionSectionMode === 'history' ? 'Historial' : 'Hoy';
+  }
+  renderSessionViewContent();
   window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
 }
 
@@ -23835,57 +23817,61 @@ function _pasajeChartSVG(p) {
   return '<svg viewBox="0 0 ' + W + ' ' + H + '" class="pasaje-chart-svg">' + g + line + dots + '</svg>';
 }
 
-// Dato principal de Hoy: tiempo diario, incluyendo en vivo la sesión activa.
-function renderSessionResumen() {
+// Resumen principal de Hoy: realizado, proyección y hora física de salida.
+function renderSessionResumen(projection) {
   const el = document.getElementById('sessionResumenCard');
   if (!el) return;
   const done = (typeof _doneMinHoy === 'function')
     ? _doneMinHoy()
     : ((typeof getMinutosConcentradoHoy === 'function') ? getMinutosConcentradoHoy() : 0);
-  const todayKey = sessionJournalDayKey(new Date());
-  const activity = [];
-  (db.sessionPlants || []).forEach(plant => {
-    if (!plant || plant.failed || plant.tipo === 'descanso' || !plant.startedAt) return;
-    if (sessionJournalDayKey(plant.startedAt) === todayKey) {
-      activity.push({ at: plant.startedAt, label: 'Estudio' });
-    }
-  });
-  sessionJournalTodayEntries().forEach(entry => activity.push({ at: entry.at, label: 'Diario' }));
-  activity.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
-  const lastActivity = activity.length ? activity[activity.length - 1] : null;
-  const lastActivityText = lastActivity
-    ? 'Última actividad · ' + lastActivity.label.toLowerCase() + ' a las ' + new Date(lastActivity.at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
-    : 'Aún sin actividad registrada';
-  let racha = 0;
-  try { racha = (typeof computeRacha === 'function') ? (computeRacha().racha || 0) : 0; } catch (e) {}
-  const rachaHtml = racha > 0
-    ? '<div class="session-resumen-racha">racha ' + racha + (racha === 1 ? ' día' : ' días') + '</div>'
-    : '';
+  const t = projection === undefined && typeof _probTextHoy === 'function' ? _probTextHoy() : projection;
   const live = typeof crono !== 'undefined' && crono && crono.state === 'running';
-  const statusHtml = live
-    ? '<div class="session-resumen-live"><i></i> en directo</div>'
-    : rachaHtml;
-  el.classList.remove('is-neutral');
-  el.innerHTML = '<div class="session-resumen-info">' +
-      '<div class="session-resumen-lbl">TIEMPO ESTUDIADO HOY</div>' +
-      '<div class="session-resumen-big">' + fmtMinutos(done) + '</div>' +
-      '<div class="session-resumen-last">' + lastActivityText + '</div>' +
+  const projected = t && Number.isFinite(Number(t.projMin)) ? Math.max(done, Number(t.projMin)) : null;
+  let finishLabel = t && t.startedLater ? 'Quédate hasta' : 'Fin previsto';
+  let finishValue = '—';
+  let finishDetail = 'Se calculará con suficiente historial';
+  const eta = t && t.etaProjected;
+  if (eta?.reached) {
+    finishValue = done > 0 ? 'Ahora' : '—';
+    finishDetail = 'La proyección de hoy ya está alcanzada';
+  } else if (eta?.none) {
+    finishValue = 'Fuera de límite';
+    finishDetail = 'No cabe antes de tu hora tope';
+  } else if (eta && Number.isFinite(eta.etaMin)) {
+    finishValue = _probEtaFmt(eta.etaMin);
+    finishDetail = eta.breakMin > 0
+      ? 'Incluye ' + fmtMinutos(eta.breakMin) + ' de pausas'
+      : 'A tu ritmo habitual';
+  }
+  const modelLabel = t ? 'Ritmo de ' + (t.scope || 'tu historial') : 'Estimación aún no disponible';
+  el.classList.toggle('is-live', live);
+  el.innerHTML = '<div class="session-focus-metrics">' +
+      '<div class="session-focus-metric">' +
+        '<span>Llevas</span><strong>' + fmtMinutos(done) + '</strong>' +
+      '</div>' +
+      '<div class="session-focus-divider" aria-hidden="true"></div>' +
+      '<div class="session-focus-metric is-projection">' +
+        '<span>Proyección</span><strong>' + (projected == null ? '—' : '≈ ' + fmtMinutos(projected)) + '</strong>' +
+      '</div>' +
     '</div>' +
-    statusHtml;
+    '<div class="session-focus-finish">' +
+      '<span>' + finishLabel + '</span><strong>' + finishValue + '</strong><small>' + finishDetail + '</small>' +
+    '</div>' +
+    '<div class="session-focus-status">' +
+      (live ? '<span class="is-live" id="sessionConcentradoText"><i></i> ' + fmtMinutos(done) + ' en directo</span>' : '<span id="sessionConcentradoText">Hoy · ' + fmtMinutos(done) + '</span>') +
+      '<small>' + modelLabel + '</small>' +
+    '</div>';
 }
 
 function refreshConcentradoUI() {
   const min = getMinutosConcentradoHoy();
   if (typeof renderSessionResumen === 'function') renderSessionResumen();
-  // Cronómetro: texto completo. Sesión: pill corto ("Hoy · 0 min").
+  // Cronómetro: texto completo.
   const cronoEl = document.getElementById('cronoConcentradoText');
   if (cronoEl) cronoEl.textContent = 'Hoy te has concentrado ' + fmtMinutosLargo(min);
-  const sessEl = document.getElementById('sessionConcentradoText');
-  if (sessEl) sessEl.textContent = 'Hoy · ' + fmtMinutos(min);
 
   // Pill de destellos (abajo a la izquierda en el cronómetro en reposo)
   if (typeof refreshDestellosPill === 'function') refreshDestellosPill();
-  if (typeof renderSessionInsights === 'function') renderSessionInsights();
   if (typeof renderCronoGarden === 'function') renderCronoGarden();
   if (typeof renderCronoWeekCard === 'function') renderCronoWeekCard();
   if (typeof renderCronoDestellosCard === 'function') renderCronoDestellosCard();

@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-08 · caché runtime v369
+**Estado:** CANÓNICO · actualizado 2026-09-09 · caché runtime v370
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -129,6 +129,15 @@ Migraciones Supabase importantes para este tema:
 
 ## 4. Cronómetro, Hoy, pases, pasajes y tareas
 
+### Hoy / Sesiones
+
+- `#view-session` tiene tres superficies explícitas: **Hoy**, **Semana** e **Historial**.
+- **Hoy** muestra únicamente el resumen `Llevas · Proyección · Fin previsto`, la tarjeta compacta de aulas, el registro rápido plegado y el diario. Sus estilos propios están en `session-home.css`.
+- La proyección usa el modelo existente de `app.js`; la hora de fin no es una meta inventada por la UI. Las correcciones de hora de comienzo y disponibilidad siguen activas en `Ajustes → Datos y herramientas → Proyección del día`.
+- **Historial** contiene estadísticas, sesiones registradas y la tarjeta de actividad digital. Las agregaciones estadísticas se calculan de forma perezosa al abrir esta pestaña.
+- La antigua gráfica de estado diario ya no tiene DOM ni llamadas de render. Los datos de estado/sueño/concentración se conservan porque siguen alimentando Profesor, exportaciones y sincronización.
+- Auditoría y candidatos de código dormido: `docs/AUDITORIA_SESIONES_AJUSTES_2026-09-09.md`.
+
 ### Cronómetro / sesión
 
 - Núcleo histórico de UI y funciones: buscar en `app.js` por `cronoStart`, `cronoFinish`, `renderCronoTasks`, IDs `#view-cronometro`, etc.
@@ -141,6 +150,7 @@ Migraciones Supabase importantes para este tema:
 - `crono-running-premium.js`: refinamiento de UI en marcha.
 - `session-minutes-correction.js`: corrección de minutos/sesiones.
 - `daily-study-minutes.js`: total diario canónico desde `sessionPlants`/`forestPlants`, evitando espejos de `sesiones` duplicados; reconoce también los repartos General→pasajes sin revivir el resumen General antiguo.
+- Su deduplicador v5 empareja además cada registro manual con su planta `source: manual` por objetivo y minutos; conserva cualquier entrada manual antigua que no tenga una pareja verificable.
 - Los drawers ofrecen Tareas, Pasajes y Metrónomo, con acceso estable a Profesor. Memoria queda retirada de la interfaz sin borrar tarjetas. Hecho muestra los minutos directamente y conserva los destellos del botón del cronómetro; ya no duplica la caja de destello ni el desplegable de detalles.
 - `saveDraft()` es secundario al bloque permanente: un fallo de cuota no interrumpe el cierre, la píldora ni el guardado posterior. `cronoLoadState()` descarta un timer antiguo cuyo runId ya está registrado; la recuperación de IndexedDB hace la misma reconciliación cuando los bloques llegan después del arranque.
 
@@ -284,14 +294,14 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 ### Actividad
 
 - `activity-core.js`: helpers/modelo.
-- `activity-dashboard.js`: dashboard.
+- `activity-dashboard.js`: dashboard de actividad digital, visible dentro de **Sesiones → Historial**; la fixture aislada conserva el fallback junto al resumen.
 - `activity-self-tracker.js`: registro automático/propio.
 - `activity-tracker/`: recursos relacionados.
 
 ### Piano Rooms
 
 - La vista visible `salas` se presenta como **Aulas** y conserva dos paneles internos: `Mis reservas` (Asimut, predeterminado) y `Piano Rooms` (legado/local).
-- `reservation-dashboard.js` + `reservation-dashboard.css`: estado Asimut en vivo, selector Alberto/Emma, reservas, cuotas, salud del monitor y controles permitidos. Lee `reservation_monitor_state` y escribe únicamente en `reservation_monitor_commands`; nunca llama a Asimut.
+- `reservation-dashboard.js` + `reservation-dashboard.css`: estado Asimut en vivo, selector Alberto/Emma, reservas, cuotas, salud del monitor y controles permitidos. Lee `reservation_monitor_state` y escribe únicamente en `reservation_monitor_commands`; nunca llama a Asimut. También alimenta la tarjeta resumida de aula actual/próxima en **Sesiones → Hoy**, con el mismo Realtime y sondeo de respaldo de 60 s.
 - `piano-rooms-core.js`: lógica de disponibilidad/estado del monitor local. Sólo sondea `localhost:8765` mientras su panel interno está visible.
 - `piano-rooms.css`: UI.
 - `piano-rooms.js`: **además** de Piano Rooms, hoy es el bootstrap general de muchos addons. No renombrarlo/refactorizarlo casualmente. En v359 carga `ensemble-repertoire-catalog.js` justo después de `work-structure-catalog.js`.
@@ -309,9 +319,9 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- Caché actual `estudio-v369`: `app.js`, `reservation-dashboard.js`, `reservation-dashboard.css`, `piano-rooms-core.js` y `piano-rooms.css` usan v369; los módulos de audio/push conservan v368 y el resto su URL anterior. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
+- Caché actual `estudio-v370`: `app.js`, `styles.css`, `session-home.css`, `reservation-dashboard.js` y `reservation-dashboard.css` usan v370; `activity-dashboard.js` se carga también con v370. Los módulos de audio/push conservan v368 y otros módulos estables mantienen su URL anterior. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v369 en Ajustes; v369 es el límite de caché PWA actual.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v370 en Ajustes; v370 es el límite de caché PWA actual.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
@@ -323,7 +333,7 @@ Documentación pura (`.md`, instrucciones de IA) no necesita bump de SW porque n
 
 ## 9. Código dormido / documentos históricos
 
-- `mystery-house.js` y el markup Casa siguen presentes, pero `piano-rooms.js` retira/oculta la vista actual y redirige Casa hacia Profesor/sesión. Tratarlo como **dormido/retirado**, no como feature visible activa.
+- `mystery-house.js` y los estilos `.house-*` siguen en el repositorio, pero ya no se entrega markup ni navegación Casa. `piano-rooms.js` conserva la redirección de compatibilidad hacia Profesor/sesión. Tratar el paquete como **dormido/retirado**, no como feature visible activa.
 - **Pulso eliminado**: sin vista `view-pulse`, navegación, gráficos, barras fluidas, ajuste de visibilidad, listeners ni renderizadores. La navegación legacy `pulse` abre Hoy. Se conservan datos antiguos (`pulseDeletedIds`, colecciones de registros y preferencias locales) sin uso de esa interfaz. El pulso musical del metrónomo y las animaciones de guardado permanecen.
 - `CLAUDE.md` contiene mucha historia útil pero también estados ya superados y contradicciones actuales. **No usarlo como mapa canónico.** Consultarlo solo si una tarea necesita contexto histórico concreto.
 - `AUDITORIA_GRAFICA_Y_FRONTEND.md` y `AUDITORIA_Y_HOJA_DE_RUTA.md` son grandes; leer solo si la tarea trata de esas auditorías/roadmap.

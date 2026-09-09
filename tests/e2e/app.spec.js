@@ -146,7 +146,9 @@ test('shows today study time prominently and includes the running stopwatch', as
   await page.evaluate(() => showView('session'));
   const summary = page.locator('#sessionResumenCard');
   await expect(summary).toBeVisible();
-  await expect(summary).toContainText('TIEMPO ESTUDIADO HOY');
+  await expect(summary).toContainText('Llevas');
+  await expect(summary).toContainText('Proyección');
+  await expect(summary).toContainText('Fin previsto');
   await expect(summary).toContainText('0 min');
 
   await page.evaluate(() => {
@@ -931,6 +933,7 @@ test('adds manual study to today from the compact quick row', async ({ page }) =
   await prepare(page);
   await page.evaluate(() => showView('session'));
 
+  await page.locator('.session-quick-disclosure > summary').click();
   const quick = page.locator('#sessionQuickStudy');
   await expect(quick).toBeVisible();
   await expect(page.locator('#modalStudyRegister')).not.toHaveClass(/visible/);
@@ -941,7 +944,7 @@ test('adds manual study to today from the compact quick row', async ({ page }) =
 
   await expect(quick).toHaveClass(/is-saved/);
   await expect(page.locator('#sessionQuickStudyFeedback')).toContainText('25 min añadidos');
-  await expect(page.locator('#sessionResumenCard .session-resumen-big')).toHaveText('25 min');
+  await expect(page.locator('#sessionResumenCard .session-focus-metric').first().locator('strong')).toHaveText('25 min');
   const saved = await page.evaluate(() => ({
     sessions: db.sesiones.map(session => session.items.map(item => ({ obraId: item.obraId, minutes: item.minutosEstudiados, manual: item.manual }))),
     plants: db.sessionPlants.map(plant => ({ obraId: plant.obraId, minutes: plant.mins, source: plant.source })),
@@ -966,7 +969,8 @@ test('adds manual study to today from the compact quick row', async ({ page }) =
 test('adds custom study quickly and persists both history and timed detail', async ({ page }) => {
   await prepare(page);
   await page.evaluate(() => showView('session'));
-  await page.locator('#sessionStatsSection .stats-primary-add').click();
+  await page.locator('.session-quick-disclosure > summary').click();
+  await page.locator('.session-quick-study-detail').click();
 
   const modal = page.locator('#modalStudyRegister');
   await expect(modal).toHaveClass(/visible/);
@@ -1012,7 +1016,8 @@ test('adds custom study quickly and persists both history and timed detail', asy
 test('adds manual study to today total immediately', async ({ page }) => {
   await prepare(page);
   await page.evaluate(() => showView('session'));
-  await page.locator('#sessionStatsSection .stats-primary-add').click();
+  await page.locator('.session-quick-disclosure > summary').click();
+  await page.locator('.session-quick-study-detail').click();
   await page.locator('#studyRegisterObra').selectOption('obra::obra_1');
   await page.locator('#studyMinutePresets [data-minutes="25"]').click();
   await page.locator('#studyRegisterSaveBtn').click();
