@@ -9,6 +9,7 @@ for(const size of [{width:1194,height:834},{width:834,height:1194},{width:390,he
   await page.goto('/');
   await page.waitForFunction(()=>window.PassageTrackerResilience&&window.ProfessorHandoffResilience);
   await page.evaluate(()=>{showView('cronometro');document.getElementById('cronoObraSelect').value='mov::w::iii';cronoUpdateStartBtn();PassageTracker.render();});
+  await expect(page.locator('#cronoTargetSolidity')).toBeVisible();
   const idle=page.locator('#cronoIdleDrawer');
   await expect(idle.getByRole('button',{name:'Profesor'})).toBeVisible();
   await expect(idle.locator('[data-tab="memoria"]')).toHaveCount(0);
@@ -18,16 +19,22 @@ for(const size of [{width:1194,height:834},{width:834,height:1194},{width:390,he
   await expect(idle.locator('#cronoPassageTracker')).toBeVisible();
   await page.screenshot({path:test.info().outputPath('idle.png')});
   await page.evaluate(()=>{crono.mode='stopwatch';cronoStart();crono.startTs=Date.now()-36*60000;crono.quickDestelloNote='Destello desde el botón';cronoSaveState();});
+  await page.locator('#cronoTargetSoliditySlider').evaluate(slider=>{
+    slider.value=pasePctToPosition(67).toFixed(2);
+    slider.dispatchEvent(new Event('input',{bubbles:true}));
+    commitCronoSolidityPending('test');
+  });
+  await expect.poll(()=>page.evaluate(()=>db.obras[0].movimientos[0].solHistory?.map(item=>item.inputVal)||[])).toEqual([67]);
   const run=page.locator('#cronoRunDrawer');
   await run.getByRole('tab',{name:'Pasajes',exact:true}).click();
   await expect(run.locator('#cronoPassageTracker')).toBeVisible();
-  await run.locator('.crono-passage-score').click();
-  await page.locator('#passageRatingSlider').focus();
-  await page.locator('#passageRatingSlider').press('Home');
-  for(let i=0;i<71;i++)await page.locator('#passageRatingSlider').press('ArrowRight');
-  await expect(page.locator('#passageRatingValue')).toHaveText('72');
-  await page.screenshot({path:test.info().outputPath('rating.png')});
-  await page.locator('#passageRatingSave').click();
+  await run.locator('.passage-inline-meter .pase-liquid-input').evaluate(slider=>{
+    slider.value=pasePctToPosition(72).toFixed(2);
+    slider.dispatchEvent(new Event('input',{bubbles:true}));
+    PassageTracker.flushPendingScores('test');
+  });
+  await expect(run.locator('.crono-passage-inline-score')).toContainText('72');
+  await page.screenshot({path:test.info().outputPath('rating-inline.png')});
   await expect(page.locator('.crono-tomorrow-note-btn')).toHaveCount(0);
   await expect(page.locator('#cronoStageRun .crono-quick-destello-btn')).toHaveCount(1);
   await run.getByRole('button',{name:'Profesor'}).click();
@@ -44,8 +51,16 @@ for(const size of [{width:1194,height:834},{width:834,height:1194},{width:390,he
   await expect(page.locator('#hechoAdvancedToggle')).toHaveCount(0);
   await expect(page.locator('#hechoDestelloChk')).toHaveCount(0);
   await expect(page.locator('#hechoMinutos')).toBeVisible();
+  await expect(page.locator('#hechoPassOccurredSection')).toBeVisible();
+  await page.locator('#hechoPassOccurredSection').getByRole('button',{name:'Sí'}).click();
   await page.screenshot({path:test.info().outputPath('hecho.png')});
   await page.locator('#modalHechoDatos').getByRole('button',{name:'Hecho',exact:true}).click();
   await expect.poll(()=>page.evaluate(()=>JSON.stringify(db.sesiones))).toContain('Destello desde el botón');
+  await expect.poll(()=>page.evaluate(()=>db.obras[0].movimientos[0].paseHistory?.length||0)).toBe(1);
+  expect(await page.evaluate(()=>({
+    scores:db.obras[0].movimientos[0].solHistory.map(item=>item.inputVal),
+    context:db.obras[0].movimientos[0].solHistory[0].context,
+    passScore:db.obras[0].movimientos[0].paseHistory[0].solidezPct,
+  }))).toEqual({scores:[67],context:'observacion-libre',passScore:67});
   expect(await page.evaluate(()=>db.cronoTasks.some(t=>t.id==='piano'))).toBe(true);
 });

@@ -84,10 +84,10 @@
   loadStyle('planningEnhancementsV3Styles','./planning-enhancements-v3.css?v=342');
   loadStyle('planningEnhancementsV4Styles','./planning-enhancements-v4.css?v=342');
   load('dailyStudyMinutesFixScript','./daily-study-minutes.js?v=371');
-  load('pianoRoomsCoreScript','./piano-rooms-core.js?v=369');
+  load('pianoRoomsCoreScript','./piano-rooms-core.js?v=372');
   load('paseLiquidDirectTouchScript','./pase-liquid-direct-touch.js?v=342');
   load('cronoSaveResilienceScript','./crono-save-resilience.js?v=347',function(){
-    load('passageTrackerResilienceScript','./passage-tracker-resilience.js?v=353',function(){
+    load('passageTrackerResilienceScript','./passage-tracker-resilience.js?v=372',function(){
       load('taskSyncResilienceScript','./task-sync-resilience.js?v=342');
     });
   });

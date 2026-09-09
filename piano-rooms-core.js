@@ -120,7 +120,7 @@
     }
   }
   function start() {
-    if (!el('view-salas')) return;
+    if (!el('sessionAulasDashboard')) return;
     if (el('reservationLegacyPanel')?.hidden) return;
     if (!el('pianoRoomsDate').value) el('pianoRoomsDate').value = localDate();
     clearInterval(pollTimer);
@@ -139,14 +139,14 @@
     el('pianoRoomsRefresh')?.addEventListener('click', refresh);
     el('pianoRoomsDate')?.addEventListener('change', refresh);
     window.addEventListener('app:viewchange', event => {
-      if (event.detail?.name === 'salas' && !el('reservationLegacyPanel')?.hidden) start();
-      else if (event.detail?.name !== 'salas') stop();
+      if (event.detail?.name === 'session' && !el('reservationLegacyPanel')?.hidden) start();
+      else if (event.detail?.name !== 'session') stop();
     });
     window.addEventListener('reservation-dashboard:pane', event => {
       if (event.detail?.name === 'piano-rooms') start();
       else stop();
     });
-    if (document.body.dataset.view === 'salas' && !el('reservationLegacyPanel')?.hidden) start();
+    if (document.body.dataset.view === 'session' && !el('reservationLegacyPanel')?.hidden) start();
   }
   window.PianoRoomsLegacy = { start, stop, refresh };
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init) : init();

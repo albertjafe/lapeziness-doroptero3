@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-09-session-focus-v371';
+const APP_VERSION = '2026-09-09-live-study-dashboard-v372';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -649,8 +649,14 @@ function renderSessionViewContent() {
 
 
 function showView(name, options) {
-  const opts = options || {};
+  const opts = { ...(options || {}) };
   if (name === 'pulse') name = 'session'; // Stored legacy navigation target.
+  if (name === 'salas') {
+    // Compatibilidad con accesos guardados de versiones anteriores: Aulas ya
+    // forma parte del resumen principal y no vive en una vista independiente.
+    name = 'session';
+    opts.reservationAnchor = true;
+  }
   if (name === 'historial') {
     showView('session');
     setSessionSectionMode('history');
@@ -682,6 +688,9 @@ function showView(name, options) {
     renderSessionViewContent();
     const sessionHeader = document.getElementById('headerTitle');
     if (sessionHeader) sessionHeader.textContent = _sessionSectionMode === 'week' ? 'Semana' : _sessionSectionMode === 'history' ? 'Historial' : 'Hoy';
+    if (opts.reservationAnchor) requestAnimationFrame(() => {
+      document.getElementById('sessionAulasDashboard')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
   }
   if (name === 'cronometro') {
     cronoOnEnterView({ layoutPrepared: !!opts.swipePrepared });
@@ -4622,6 +4631,149 @@ function updatePaseLiquidMeter(input, position) {
   return paseSetMeterSemanticValue(input, pasePositionToPct(position));
 }
 
+function cronoSolidityTarget() {
+  let resolved = null;
+  if (typeof crono !== 'undefined' && crono && crono.state !== 'idle' && crono.obraId) {
+    resolved = { obraId: crono.obraId, movId: crono.movId || null };
+  } else {
+    resolved = cronoResolveSelectValue(document.getElementById('cronoObraSelect')?.value || '');
+  }
+  if (!resolved?.obraId) return null;
+  const obra = findObra(resolved.obraId);
+  if (!obra || obra.tipo === 'actividad') return null;
+  const movId = resolved.movId ?? resolved.movementId ?? resolved.movimientoId ?? null;
+  const entity = movId != null ? findMovimiento(resolved.obraId, movId) : obra;
+  if (!entity) return null;
+  return {
+    obraId: resolved.obraId,
+    movId: movId == null ? null : movId,
+    entity,
+    key: String(resolved.obraId) + '::' + String(movId == null ? '' : movId),
+    label: movId == null ? obra.name : (entity.name || entity.nombre || obra.name),
+  };
+}
+
+function cronoLatestSolidityValue(target) {
+  if (!target?.entity) return null;
+  const history = (target.entity.solHistory || []).slice().sort((a, b) =>
+    (new Date(b?.date || 0).getTime() || 0) - (new Date(a?.date || 0).getTime() || 0)
+  );
+  for (const entry of history) {
+    const raw = entry?.inputVal ?? entry?.val;
+    if (raw != null && Number.isFinite(Number(raw))) return paseClampPct(normalizeSolVal(raw));
+  }
+  return hechoCurrentSolidezValue(target.entity, target.movId != null);
+}
+
+function cronoSetTargetSolidityVisual(input, rawValue) {
+  const value = paseClampPct(rawValue);
+  const meter = input?.closest?.('.pase-liquid-meter');
+  if (meter) {
+    meter.setAttribute('style', paseLiquidStyle(value));
+    meter.dataset.paseValue = String(value);
+  }
+  if (input) {
+    input.value = pasePctToPosition(value).toFixed(2);
+    input.dataset.paseValue = String(value);
+    input.setAttribute('aria-valuetext', value + ' por ciento, ' + paseRatingStage(value));
+  }
+  const readout = document.getElementById('cronoTargetSolidityValue');
+  if (readout) readout.textContent = value + '% · ' + paseRatingStage(value);
+  return value;
+}
+
+function cronoUpdateSolidityPendingLabel() {
+  const label = document.getElementById('cronoTargetSolidityPending');
+  if (!label) return;
+  const target = cronoSolidityTarget();
+  if (!_cronoSolidityPending || !target || target.key !== _cronoSolidityPending.key) {
+    label.textContent = 'Mueve la píldora para registrar';
+    label.classList.remove('is-pending');
+    return;
+  }
+  const remaining = Math.max(0, _cronoSolidityPending.dueAt - Date.now());
+  label.textContent = remaining > 0 ? 'Guardando en ' + Math.max(1, Math.ceil(remaining / 1000)) + ' s' : 'Guardando…';
+  label.classList.add('is-pending');
+}
+
+function commitCronoSolidityPending(source) {
+  const pending = _cronoSolidityPending;
+  if (!pending) return null;
+  _cronoSolidityPending = null;
+  clearTimeout(_cronoSolidityPendingTimer);
+  _cronoSolidityPendingTimer = null;
+  clearInterval(_cronoSolidityCountdownTimer);
+  _cronoSolidityCountdownTimer = null;
+  if (pending.value === pending.previous) {
+    cronoUpdateSolidityPendingLabel();
+    return null;
+  }
+  const activeElapsedMs = typeof crono !== 'undefined' && crono && crono.state !== 'idle' && String(crono.obraId) === String(pending.obraId)
+    ? Math.max(0, Math.round(cronoCurrentMs())) : 0;
+  const saved = recordSessionSolidez(pending.obraId, pending.movId, pending.value, null, {
+    source: source || 'cronometro-inline',
+    activeElapsedMs,
+    runId: (typeof crono !== 'undefined' && crono && (crono.runId || crono.currentRunId)) || null,
+  });
+  const previous = document.getElementById('cronoTargetSolidityPrevious');
+  if (previous) previous.textContent = 'Registrado ahora · ' + saved + '%';
+  const label = document.getElementById('cronoTargetSolidityPending');
+  if (label) {
+    label.textContent = 'Guardado';
+    label.classList.remove('is-pending');
+  }
+  if (typeof showSavedCheck === 'function') showSavedCheck();
+  return saved;
+}
+
+function cronoTargetSolidityInput(input) {
+  const target = cronoSolidityTarget();
+  if (!target || !input) return;
+  const value = cronoSetTargetSolidityVisual(input, pasePositionToPct(input.value));
+  const previous = cronoLatestSolidityValue(target);
+  clearTimeout(_cronoSolidityPendingTimer);
+  clearInterval(_cronoSolidityCountdownTimer);
+  if (value === previous) {
+    _cronoSolidityPending = null;
+    cronoUpdateSolidityPendingLabel();
+    return;
+  }
+  _cronoSolidityPending = {
+    key: target.key,
+    obraId: target.obraId,
+    movId: target.movId,
+    value,
+    previous,
+    dueAt: Date.now() + CRONO_SOLIDITY_SETTLE_MS,
+  };
+  _cronoSolidityPendingTimer = setTimeout(() => commitCronoSolidityPending('cronometro-inline'), CRONO_SOLIDITY_SETTLE_MS);
+  _cronoSolidityCountdownTimer = setInterval(cronoUpdateSolidityPendingLabel, 250);
+  cronoUpdateSolidityPendingLabel();
+}
+
+function renderCronoTargetSolidity() {
+  const host = document.getElementById('cronoTargetSolidity');
+  const input = document.getElementById('cronoTargetSoliditySlider');
+  if (!host || !input) return;
+  const target = cronoSolidityTarget();
+  host.hidden = !target;
+  if (!target) return;
+  const latest = cronoLatestSolidityValue(target);
+  const pending = _cronoSolidityPending?.key === target.key ? _cronoSolidityPending : null;
+  const value = pending ? pending.value : (latest == null ? 50 : latest);
+  const title = document.getElementById('cronoTargetSolidityTitle');
+  const previous = document.getElementById('cronoTargetSolidityPrevious');
+  if (title) title.textContent = target.label;
+  if (previous) previous.textContent = latest == null ? 'Primera valoración · referencia 50%' : 'Último valor · ' + latest + '%';
+  cronoSetTargetSolidityVisual(input, value);
+  cronoUpdateSolidityPendingLabel();
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') commitCronoSolidityPending('salida-app');
+});
+window.addEventListener('pagehide', () => commitCronoSolidityPending('salida-app'));
+
 function linkPasePctToTargetHistory(obraId, movId, pct, tipo, dateIso) {
   const t = normalizePaseTipo(tipo);
   const value = paseClampPct(pct);
@@ -6401,6 +6553,13 @@ let _hechoZoneStage = 'digitando';
 let _hechoZoneStart = null;
 let _hechoZoneEnd = null;
 let _hechoQuickSolidezVal = null;
+let _hechoStartingSolidez = null;
+let _hechoPassOccurred = false;
+
+const CRONO_SOLIDITY_SETTLE_MS = 5000;
+let _cronoSolidityPending = null;
+let _cronoSolidityPendingTimer = null;
+let _cronoSolidityCountdownTimer = null;
 
 function solPctColor(pct) {
   if (pct >= 85) return 'var(--green)';
@@ -6437,9 +6596,22 @@ function hechoSelectSolidez(position, button) {
   const slider = document.getElementById('hechoSolidezSlider');
   const val = slider ? updatePaseLiquidMeter(slider, position) : pasePositionToPct(position);
   if (!val) return;
-  _hechoQuickSolidezVal = val;
+  _hechoQuickSolidezVal = val === _hechoStartingSolidez ? null : val;
   const selection = document.getElementById('hechoSolidezSelection');
   if (selection) selection.textContent = val + '% · ' + paseRatingStage(val);
+}
+
+function hechoSetPassOccurred(value) {
+  _hechoPassOccurred = value === true;
+  document.querySelectorAll('[data-hecho-pass]').forEach(button => {
+    const active = (button.dataset.hechoPass === 'yes') === _hechoPassOccurred;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+  const hint = document.getElementById('hechoPassOccurredHint');
+  if (hint) hint.textContent = _hechoPassOccurred
+    ? 'Se guardará un pase con el valor visible en la píldora.'
+    : 'Si marcas Sí, el valor de la píldora quedará asociado al pase.';
 }
 
 function hechoToggleAdvanced() {
@@ -6967,6 +7139,7 @@ function hechoRenderCronoNotes(planId, isEditMode) {
 
 function openHechoDatos(planId, minPlan, opts) {
   opts = opts || {};
+  commitCronoSolidityPending('fin-sesion');
   const isSubSession = !!opts.subSession;
   const isEditMode = !!opts.editMode;
   const { obraId: parsedObraId, movId: parsedMovId } = parsePlanId(planId);
@@ -6994,6 +7167,8 @@ function openHechoDatos(planId, minPlan, opts) {
   _hechoZoneStart = null;
   _hechoZoneEnd = null;
   _hechoQuickSolidezVal = null;
+  _hechoStartingSolidez = null;
+  _hechoPassOccurred = false;
 
   const obra = findObra(obraId);
   const entity = movId ? findMovimiento(obraId, movId) : obra;
@@ -7004,6 +7179,9 @@ function openHechoDatos(planId, minPlan, opts) {
   // no tiene estructura de aprendizaje: no preguntamos por compases, pases,
   // memoria ni pasajes. Sólo productividad y tiempo.
   const isActividad = obra && obra.tipo === 'actividad';
+  const passOccurredSection = document.getElementById('hechoPassOccurredSection');
+  if (passOccurredSection) passOccurredSection.style.display = !isActividad && !isEditMode ? '' : 'none';
+  hechoSetPassOccurred(false);
 
   _hechoShowCompas = !isActividad && !!(entity && entity.compasesTotal) && fase === 'digitando';
   // Los pases iniciales/finales y el fallo de memoria deben preguntarse tanto
@@ -7035,6 +7213,7 @@ function openHechoDatos(planId, minPlan, opts) {
   const solidezSlider = document.getElementById('hechoSolidezSlider');
   const solidezMeter = document.getElementById('hechoSolidezMeter');
   const startingSolidez = previous == null ? 50 : previous;
+  _hechoStartingSolidez = startingSolidez;
   if (solidezMeter) paseEnsureMeterChrome(solidezMeter, previous);
   if (solidezSlider) paseSetMeterSemanticValue(solidezSlider, startingSolidez);
   const selectionEl = document.getElementById('hechoSolidezSelection');
@@ -7349,11 +7528,44 @@ function closeHechoDatos(save) {
   const shouldOfferTaskBreak = !!(save && _hechoSubSession && !_hechoEditMode && cronoPendingTaskCount() > 0);
   const nota = document.getElementById('hechoNota').value.trim();
   const zoneSnapshot = obra && obra.tipo !== 'actividad' ? hechoCurrentZoneSnapshot(true) : null;
+  const pendingSessionTimes = sessionAggregate[planId]?._pendingTimes || null;
   const legacyPaseSlidersEnabled = false;
   if (zoneSnapshot && entity) hechoStoreZoneSnapshot(entity, zoneSnapshot);
 
   if (_hechoQuickSolidezVal != null && obra && obra.tipo !== 'actividad') {
-    sessionSolRatings[planId] = recordSessionSolidez(obraId, movId, _hechoQuickSolidezVal) || _hechoQuickSolidezVal;
+    sessionSolRatings[planId] = recordSessionSolidez(obraId, movId, _hechoQuickSolidezVal, null, {
+      source: 'cierre-sesion',
+      activeElapsedMs: Math.max(0, Number(minutos) || 0) * 60000,
+      runId: pendingSessionTimes?.runId || null,
+    }) || _hechoQuickSolidezVal;
+  }
+
+  if (_hechoPassOccurred && obra && obra.tipo !== 'actividad' && !_hechoEditMode) {
+    const passTarget = movId ? entity : obra;
+    const passSlider = document.getElementById('hechoSolidezSlider');
+    const passPct = _hechoQuickSolidezVal != null
+      ? _hechoQuickSolidezVal
+      : paseClampPct(passSlider?.dataset?.paseValue ?? cronoLatestSolidityValue({ entity: passTarget, movId } ) ?? 50);
+    const passAt = new Date().toISOString();
+    if (passTarget) {
+      if (!Array.isArray(passTarget.paseHistory)) passTarget.paseHistory = [];
+      passTarget.paseHistory.unshift({
+        id: 'pase_session_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8),
+        date: passAt,
+        tipo: 'informal',
+        score: pasePctToLegacyScore(passPct),
+        solidezPct: passPct,
+        quality: pasePctToQuality(passPct),
+        nota,
+        momento: 'durante',
+        source: 'cierre-sesion',
+        activeElapsedMs: Math.max(0, Number(minutos) || 0) * 60000,
+        runId: pendingSessionTimes?.runId || null,
+        timingPrecision: 'session-total',
+      });
+      if (passTarget.paseHistory.length > 40) passTarget.paseHistory = passTarget.paseHistory.slice(0, 40);
+      passTarget.lastPase = passAt;
+    }
   }
 
   // ★ Aplicar el cambio de minutos al estado en memoria.
@@ -8199,31 +8411,31 @@ function recordMovSolHistory(obraId, movId, val, context, dateIso) {
   saveData();
 }
 
-// Las sensaciones de cierre se conservan como muestras y el valor actual se
-// suaviza con su media. Una edición del mismo día reemplaza esa muestra, no
-// la duplica.
-function recordSessionSolidez(obraId, movId, value, dateIso) {
+// Cada valoración es una observación independiente. El momento exacto y el
+// tiempo activo transcurrido permiten derivar después frío/caliente sin pedir
+// al usuario que clasifique la muestra ni destruir mediciones del mismo día.
+function recordSessionSolidez(obraId, movId, value, dateIso, metadata) {
   const target = movId ? findMovimiento(obraId, movId) : findObra(obraId);
   if (!target || value == null) return null;
   const raw = Math.max(1, Math.min(100, Math.round(Number(value) || 1)));
   const stamp = dateIso || new Date().toISOString();
+  const meta = metadata || {};
   if (!target.solHistory) target.solHistory = [];
-  const context = 'cierre-sesion';
-  const day = new Date(stamp).toDateString();
-  const samples = target.solHistory
-    .filter(entry => entry && entry.context === context)
-    .map(entry => ({ entry, value: Math.max(1, Math.min(100, Math.round(Number(entry.inputVal ?? entry.val) || 1))) }));
-  const sameDay = samples.find(item => new Date(item.entry.date).toDateString() === day);
-  const previousValues = samples.filter(item => item !== sameDay).map(item => item.value);
-  previousValues.push(raw);
-  const average = Math.round(previousValues.reduce((sum, item) => sum + item, 0) / previousValues.length);
-  const next = { date: stamp, val: average, inputVal: raw, samples: previousValues.length, context };
-  if (sameDay) target.solHistory[target.solHistory.indexOf(sameDay.entry)] = next;
-  else target.solHistory.unshift(next);
-  if (target.solHistory.length > 80) target.solHistory = target.solHistory.slice(0, 80);
-  target.sol = movId ? Math.max(1, Math.min(10, Math.round(average / 10))) : average;
+  const next = {
+    id: 'solobs_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8),
+    date: stamp,
+    val: raw,
+    inputVal: raw,
+    context: 'observacion-libre',
+    source: meta.source || 'cierre-sesion',
+    activeElapsedMs: Math.max(0, Math.round(Number(meta.activeElapsedMs) || 0)),
+    runId: meta.runId || null,
+  };
+  target.solHistory.unshift(next);
+  if (target.solHistory.length > 200) target.solHistory = target.solHistory.slice(0, 200);
+  target.sol = movId ? Math.max(1, Math.min(10, Math.round(raw / 10))) : raw;
   saveData();
-  return average;
+  return raw;
 }
 
 // ── Pesos del algoritmo de generación ───────────────────────────────────────
@@ -23844,6 +24056,18 @@ function renderSessionResumen(projection) {
       : 'A tu ritmo habitual';
   }
   const modelLabel = t ? 'Ritmo de ' + (t.scope || 'tu historial') : 'Estimación aún no disponible';
+  const probabilityRow = (label, value, etaValue, className, reached) => {
+    const pct = reached ? 100 : Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+    let etaLabel = 'sin hora estimada';
+    if (reached) etaLabel = 'conseguido';
+    else if (etaValue?.none) etaLabel = 'fuera de alcance hoy';
+    else if (etaValue && Number.isFinite(etaValue.etaMin)) etaLabel = 'hacia las ' + _probEtaFmt(etaValue.etaMin);
+    return '<div class="session-focus-probability ' + className + (reached ? ' is-done' : '') + '">' +
+      '<span>' + label + '</span><strong>' + (reached ? '✓' : pct + '%') + '</strong>' +
+      '<i role="progressbar" aria-label="Probabilidad de alcanzar ' + label + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><em style="width:' + pct + '%"></em></i>' +
+      '<small>' + etaLabel + '</small>' +
+    '</div>';
+  };
   el.classList.toggle('is-live', live);
   el.innerHTML = '<div class="session-focus-metrics">' +
       '<div class="session-focus-metric">' +
@@ -23856,6 +24080,10 @@ function renderSessionResumen(projection) {
     '</div>' +
     '<div class="session-focus-finish">' +
       '<span>' + finishLabel + '</span><strong>' + finishValue + '</strong><small>' + finishDetail + '</small>' +
+    '</div>' +
+    '<div class="session-focus-probabilities" aria-label="Probabilidad de alcanzar cuatro y cinco horas">' +
+      probabilityRow('4 horas', t?.p4, t?.eta4, 'p4', done >= 240) +
+      probabilityRow('5 horas', t?.p5, t?.eta5, 'p5', done >= 300) +
     '</div>' +
     '<div class="session-focus-status">' +
       (live ? '<span class="is-live" id="sessionConcentradoText"><i></i> ' + fmtMinutos(done) + ' en directo</span>' : '<span id="sessionConcentradoText">Hoy · ' + fmtMinutos(done) + '</span>') +
@@ -24787,6 +25015,7 @@ function cronoUpdateSolidityActions() {
   if (runRow) runRow.style.display = paseZonePreview ? '' : 'none';
   if (runZoneBtn) runZoneBtn.style.display = paseZonePreview ? '' : 'none';
   if (runZoneVal) runZoneVal.textContent = paseZonePreview || 'al terminar';
+  renderCronoTargetSolidity();
   return;
 
   const idleBase = _quickSolCurrentBase('idle');
@@ -25749,6 +25978,7 @@ function cronoEffectiveEndedAtIso(elapsedMs) {
 function cronoFinish(expectedRunId) {
   const runId = crono.runId;
   if (crono.state === 'idle' || !runId || (expectedRunId && expectedRunId !== runId) || _cronoFinalizingRunId === runId) return;
+  commitCronoSolidityPending('fin-sesion');
   _cronoFinalizingRunId = runId;
   const confirmModal = document.getElementById('modalCronoConfirmFinish');
   if (confirmModal && confirmModal.classList.contains('visible')) closeModal('modalCronoConfirmFinish');
@@ -25935,6 +26165,7 @@ function cronoFinish(expectedRunId) {
   // antes de hacer reset.
   if (!sessionAggregate[targetPlanId]) sessionAggregate[targetPlanId] = { subsessions: [] };
   sessionAggregate[targetPlanId]._pendingTimes = {
+    runId,
     startedAt: startedAtIso,
     endedAt: endedAtIso,
     notes: cronoSessionNotes,

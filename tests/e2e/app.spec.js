@@ -1401,9 +1401,10 @@ test('cancels or confirms a valid timer and saves visual solidity', async ({ pag
     context: db.obras[0].solHistory[0]?.context,
     current: db.obras[0].sol,
   }));
-  expect(saved).toEqual({ value: 65, context: 'cierre-sesion', current: 65 });
-  const averaged = await page.evaluate(() => recordSessionSolidez('obra_1', null, 85, new Date(Date.now() + 86400000).toISOString()));
-  expect(averaged).toBe(75);
+  expect(saved).toEqual({ value: 65, context: 'observacion-libre', current: 65 });
+  const nextObservation = await page.evaluate(() => recordSessionSolidez('obra_1', null, 85, new Date(Date.now() + 86400000).toISOString()));
+  expect(nextObservation).toBe(85);
+  expect(await page.evaluate(() => db.obras[0].solHistory.filter(entry => entry.context === 'observacion-libre').length)).toBe(2);
 });
 
 test('shows work and movement totals together while a movement is running', async ({ page }) => {

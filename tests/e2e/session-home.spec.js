@@ -87,8 +87,14 @@ test('shows a compact daily forecast, live classrooms and separate history', asy
   await expect(page.locator('#sessionResumenCard')).toContainText('Llevas');
   await expect(page.locator('#sessionResumenCard')).toContainText('Proyección');
   await expect(page.locator('#sessionResumenCard')).toContainText(/Fin previsto|Quédate hasta/);
+  await expect(page.locator('#sessionResumenCard')).toContainText('4 horas');
+  await expect(page.locator('#sessionResumenCard')).toContainText('5 horas');
   await expect(page.locator('#sessionConcentradoText')).toContainText(/1\s*h\s*15\s*min/);
-  await expect(page.locator('#sessionReservationOverview')).toContainText('Aula 113');
+  await expect(page.locator('#sessionAulasDashboard')).toBeVisible();
+  await expect(page.locator('#reservationDashboardEmpty')).toBeHidden();
+  await expect(page.locator('#reservationHero')).toContainText('Aula 113');
+  await expect(page.locator('#reservationModeControls')).toBeVisible();
+  await expect(page.locator('.piano-rooms-open')).toBeHidden();
   await expect(page.locator('#activityDailyCard')).toBeHidden();
   await expect(page.locator('#sessionStatsSection')).toBeHidden();
 

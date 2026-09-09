@@ -1,4 +1,6 @@
-/* Pantalla Hoy v370: una sola lectura de tiempo, proyección y aulas. */
+/* Resumen principal: tiempo, proyección, probabilidades y Aulas en vivo. */
+
+body[data-view="session"] .piano-rooms-open { display: none !important; }
 
 #view-session .session-mode-switch {
   width: min(318px, 100%);
@@ -29,6 +31,7 @@
   grid-template-columns: minmax(0, 1.6fr) minmax(180px, .72fr);
   grid-template-areas:
     "metrics finish"
+    "probabilities probabilities"
     "status status";
   align-items: stretch;
   gap: 0;
@@ -162,128 +165,78 @@
 
 @keyframes session-home-live { 50% { opacity: .48; transform: scale(.82); } }
 
-#view-session .session-room-card {
-  appearance: none;
-  width: 100%;
-  min-height: 96px;
-  margin: 0 0 12px;
-  padding: 16px 18px;
+#view-session .session-focus-probabilities {
+  grid-area: probabilities;
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 13px clamp(22px, 4vw, 40px) 15px;
+  border-top: 1px solid color-mix(in srgb, var(--border2) 75%, transparent);
+}
+
+#view-session .session-focus-probability {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
-  border: 1px solid var(--border2);
-  border-radius: 16px;
-  background: var(--card);
-  color: var(--text);
-  text-align: left;
-  box-shadow: 0 14px 35px -32px rgba(20, 30, 45, .5);
-  cursor: pointer;
-  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
-}
-
-#view-session .session-room-card:hover {
-  transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--accent) 34%, var(--border2));
-  box-shadow: 0 20px 42px -32px rgba(20, 30, 45, .58);
-}
-
-#view-session .session-room-card:active { transform: scale(.995); }
-
-#view-session .session-room-card:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 48%, transparent);
-  outline-offset: 2px;
-}
-
-#view-session .session-room-icon {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 13px;
-  background: color-mix(in srgb, var(--accent) 10%, var(--bg2));
-  color: var(--accent);
-  font: 600 20px/1 var(--font-ui, sans-serif);
-}
-
-#view-session .session-room-icon > i {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 8px;
-  height: 8px;
-  border: 2px solid var(--card);
-  border-radius: 50%;
-  background: #22a06b;
-}
-
-#view-session .session-room-card.is-offline .session-room-icon > i { background: #c77b30; }
-#view-session .session-room-card.is-loading .session-room-icon > i { display: none; }
-
-#view-session .session-room-copy {
-  display: flex;
-  flex-direction: column;
+  gap: 5px 12px;
   min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--border2) 82%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg2) 72%, transparent);
 }
 
-#view-session .session-room-copy > small {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+#view-session .session-focus-probability > span {
   color: var(--text3);
-  font: 700 8px/1 var(--font-mono, "JetBrains Mono", monospace);
-  letter-spacing: .1em;
+  font: 750 8px/1 var(--font-mono, "JetBrains Mono", monospace);
+  letter-spacing: .09em;
   text-transform: uppercase;
 }
 
-#view-session .session-room-copy > small b { color: var(--accent); }
-#view-session .session-room-copy > small em { overflow: hidden; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+#view-session .session-focus-probability > strong {
+  color: var(--accent);
+  font: 780 17px/1 var(--font-mono, "JetBrains Mono", monospace);
+  font-variant-numeric: tabular-nums;
+}
 
-#view-session .session-room-copy > strong {
+#view-session .session-focus-probability.p5 > strong { color: var(--orange); }
+#view-session .session-focus-probability.is-done > strong { color: var(--green); }
+
+#view-session .session-focus-probability > i {
+  grid-column: 1 / -1;
+  height: 5px;
   overflow: hidden;
-  color: var(--text);
-  font: 720 18px/1.12 var(--font-ui, -apple-system, BlinkMacSystemFont, sans-serif);
-  letter-spacing: -.015em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  border-radius: 999px;
+  background: var(--border2);
 }
 
-#view-session .session-room-copy > span {
-  margin-top: 4px;
-  overflow: hidden;
-  color: var(--text2);
-  font: 600 10px/1.2 var(--font-mono, "JetBrains Mono", monospace);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+#view-session .session-focus-probability > i em {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 420ms cubic-bezier(.2,.8,.2,1);
 }
 
-#view-session .session-room-copy .session-room-next { color: var(--text3); font-size: 9px; }
+#view-session .session-focus-probability.p5 > i em { background: var(--orange); }
+#view-session .session-focus-probability.is-done > i em { background: var(--green); }
 
-#view-session .session-room-side {
-  display: grid;
-  grid-template-columns: auto auto;
-  align-items: baseline;
-  justify-items: end;
-  gap: 2px 5px;
-  min-width: 68px;
-  padding-left: 16px;
-  border-left: 1px solid var(--border2);
-}
-
-#view-session .session-room-side small {
+#view-session .session-focus-probability > small {
   grid-column: 1 / -1;
   color: var(--text3);
-  font: 700 8px/1 var(--font-mono, "JetBrains Mono", monospace);
-  letter-spacing: .08em;
-  text-transform: uppercase;
+  font: 600 8px/1.2 var(--font-ui, sans-serif);
 }
 
-#view-session .session-room-side b { font: 740 22px/1 var(--font-ui, sans-serif); }
-#view-session .session-room-side em { color: var(--text3); font: 600 8px/1 var(--font-ui, sans-serif); font-style: normal; }
-#view-session .session-room-side > i { display: none; }
-#view-session .session-room-chevron { display: none; margin-left: auto; color: var(--text3); font-size: 24px; }
+#view-session .session-aulas-dashboard {
+  max-width: none;
+  margin: 4px 0 18px;
+  padding: 18px 0 22px;
+  border-top: 1px solid var(--border2);
+}
+
+#view-session .session-aulas-dashboard .rd-title-group h1 { font-size: clamp(28px, 4vw, 40px); }
+#view-session .session-aulas-dashboard .rd-hero { min-height: 132px; }
 
 #view-session .session-quick-disclosure {
   width: 100%;
@@ -386,27 +339,16 @@
   #view-session .session-focus-finish > small { font-size: 8px; }
   #view-session .session-focus-status { padding: 9px 17px; font-size: 8px; }
 
-  #view-session .session-room-card {
-    min-height: 88px;
-    grid-template-columns: 38px minmax(0, 1fr) 20px;
-    gap: 11px;
-    padding: 14px;
-    border-radius: 14px;
-  }
-
-  #view-session .session-room-icon { width: 38px; height: 38px; border-radius: 11px; font-size: 18px; }
-  #view-session .session-room-side { display: none; }
-  #view-session .session-room-chevron { display: block; }
-  #view-session .session-room-copy > strong { font-size: 16px; }
-  #view-session .session-room-copy > span { font-size: 9px; }
-  #view-session .session-room-copy .session-room-next { display: none; }
+  #view-session .session-focus-probabilities { padding-inline: 17px; gap: 8px; }
+  #view-session .session-focus-probability { padding: 9px 10px; }
+  #view-session .session-aulas-dashboard { padding-inline: 0; }
   #view-session .session-quick-disclosure > summary small { display: none; }
 }
 
 @media (max-width: 390px) {
   #view-session .session-focus-card {
     grid-template-columns: 1fr;
-    grid-template-areas: "metrics" "finish" "status";
+    grid-template-areas: "metrics" "finish" "probabilities" "status";
   }
   #view-session .session-focus-finish {
     display: grid;
@@ -427,5 +369,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   #view-session .session-focus-status .is-live i { animation: none; }
-  #view-session .session-room-card, .ajustes-fold > summary i { transition: none; }
+  #view-session .session-focus-probability > i em, .ajustes-fold > summary i { transition: none; }
 }

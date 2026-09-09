@@ -10,7 +10,8 @@ const worker = fs.readFileSync('sw.js', 'utf8');
 describe('focused session home', () => {
   it('keeps only the essential daily readout in the foreground', () => {
     expect(index).toContain('id="sessionResumenCard"');
-    expect(index).toContain('id="sessionReservationOverview"');
+    expect(index).toContain('id="sessionAulasDashboard"');
+    expect(index).not.toContain('id="view-salas"');
     expect(index).toContain('id="sessionModeHistory"');
     expect(index).toContain('id="sessionStatsSection" aria-labelledby="sessionStatsTitle" hidden');
     expect(index).not.toContain('id="sessionInsightStack"');
@@ -26,6 +27,9 @@ describe('focused session home', () => {
     expect(summary).toContain('t.projMin');
     expect(summary).toContain('t.etaProjected');
     expect(summary).toContain('_probEtaFmt');
+    expect(summary).toContain('session-focus-probabilities');
+    expect(summary).toContain("probabilityRow('4 horas'");
+    expect(summary).toContain("probabilityRow('5 horas'");
     expect(app).toContain('etaProjected, startMin: startOv');
   });
 
@@ -40,7 +44,8 @@ describe('focused session home', () => {
   });
 
   it('keeps reservations live on the session view without browser access to Asimut', () => {
-    expect(dashboard).toContain('function renderSessionReservationOverview');
+    expect(index).toContain('id="reservationLivePanel"');
+    expect(index).toContain('id="reservationModeControls"');
     expect(dashboard).toContain("event.detail?.name === 'session'");
     expect(dashboard).not.toMatch(/asimut\.net/i);
     expect(dashboard).toContain("from('reservation_monitor_state')");
@@ -55,10 +60,10 @@ describe('focused session home', () => {
     expect(index).toContain('onclick="openHoraComienzo(event)"');
   });
 
-  it('ships the complete v371 runtime offline', () => {
-    expect(index).toContain('session-home.css?v=370');
-    expect(index).toContain('app.js?v=371');
-    expect(worker).toContain("const CACHE = 'estudio-v371'");
-    expect(worker).toContain('"./session-home.css?v=370"');
+  it('ships the complete v372 runtime offline', () => {
+    expect(index).toContain('session-home.css?v=372');
+    expect(index).toContain('app.js?v=372');
+    expect(worker).toContain("const CACHE = 'estudio-v372'");
+    expect(worker).toContain('"./session-home.css?v=372"');
   });
 });

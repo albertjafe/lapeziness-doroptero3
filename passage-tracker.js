@@ -6,8 +6,9 @@
 
   const TRACKER_KEY = 'passageTracker';
   const MIRROR_KEY = 'alberto_passage_tracker_v1';
-  const VERSION = 2;
+  const VERSION = 3;
   const TICK_MS = 200;
+  const SCORE_SETTLE_MS = 5000;
   const GENERAL_ALLOCATION_SOURCE = 'passage-general-v1';
 
   let draft = null;
@@ -20,6 +21,7 @@
   let ratingPassageId = null;
   let ratingMode = 'cold';
   let reconcileBusy = false;
+  const pendingScores = new Map();
 
   function appDb() {
     try { return typeof db !== 'undefined' ? db : null; } catch (error) { return null; }
@@ -290,9 +292,13 @@
   }
 
   function latestScore(id) {
-    const observation = latestObservation(id);
+    const observation = passageObservations(id)
+      .filter(item => item && (item.score != null || item.postScore != null || item.coldScore != null))
+      .sort((a, b) => parseTime(b.recordedAt) - parseTime(a.recordedAt))[0] || null;
     if (!observation) return null;
-    const value = observation.postScore != null ? observation.postScore : observation.coldScore;
+    const value = observation.score != null
+      ? observation.score
+      : (observation.postScore != null ? observation.postScore : observation.coldScore);
     return Number.isFinite(Number(value)) ? Number(value) : null;
   }
 
@@ -420,6 +426,158 @@
       if (entry.focusedMs > 0 || idEqual(activePassageId, id)) return { label: 'Ahora', value: null, current: true };
     }
     return { label: 'Últ.', value: latestScore(id), current: false };
+  }
+
+  function scoreToPosition(value) {
+    try { if (typeof pasePctToPosition === 'function') return pasePctToPosition(value); } catch (error) {}
+    return clamp(value, 1, 100);
+  }
+
+  function positionToScore(value) {
+    try { if (typeof pasePositionToPct === 'function') return pasePositionToPct(value); } catch (error) {}
+    return Math.round(clamp(value, 1, 100));
+  }
+
+  function liquidStyle(value) {
+    try { if (typeof paseLiquidStyle === 'function') return paseLiquidStyle(value); } catch (error) {}
+    const pct = clamp(value, 1, 100);
+    return '--pase-fill:' + pct + '%;--pase-value:' + pct + ';--pase-glow:.45;--pase-glow-size:12px;--pase-color:var(--accent)';
+  }
+
+  function setInlineScoreVisual(input, rawValue) {
+    const value = Math.round(clamp(rawValue, 1, 100));
+    const meter = input && input.closest('.pase-liquid-meter');
+    if (meter) {
+      meter.setAttribute('style', liquidStyle(value));
+      meter.dataset.paseValue = String(value);
+    }
+    if (input) {
+      input.value = Number(scoreToPosition(value)).toFixed(2);
+      input.dataset.paseValue = String(value);
+      input.setAttribute('aria-valuetext', value + ' por ciento, ' + scoreDescriptor(value));
+      const control = input.closest('.crono-passage-inline-score');
+      const readout = control && control.querySelector('[data-passage-score-value]');
+      if (readout) readout.textContent = String(value);
+    }
+    return value;
+  }
+
+  function updatePendingScoreLabel(passageId) {
+    const node = Array.from(document.querySelectorAll('[data-passage-score-pending]'))
+      .find(candidate => candidate.dataset.passageScorePending === String(passageId));
+    if (!node) return;
+    const pending = pendingScores.get(String(passageId));
+    if (!pending) {
+      node.textContent = 'registrado';
+      node.classList.remove('is-pending');
+      return;
+    }
+    const remaining = Math.max(0, pending.dueAt - Date.now());
+    node.textContent = remaining > 0 ? Math.max(1, Math.ceil(remaining / 1000)) + ' s' : 'guardando';
+    node.classList.add('is-pending');
+  }
+
+  function commitInlineScore(passageId, source) {
+    const key = String(passageId);
+    const pending = pendingScores.get(key);
+    if (!pending) return null;
+    clearTimeout(pending.timer);
+    clearInterval(pending.countdown);
+    pendingScores.delete(key);
+    if (pending.value === pending.previous) {
+      updatePendingScoreLabel(key);
+      return null;
+    }
+    const passage = passageById(key);
+    if (!passage || passage.deletedAt) return null;
+    const state = cronoState();
+    const session = draft;
+    const observation = {
+      id: uid('passobs'),
+      passageId: passage.id,
+      obraId: passage.obraId,
+      movId: passage.movId == null ? null : passage.movId,
+      passageName: passage.name,
+      difficulty: passage.difficulty == null ? null : Number(passage.difficulty),
+      score: pending.value,
+      recordedAt: nowIso(),
+      activeElapsedMs: Math.max(0, Math.round(liveFocusedMs(passage.id))),
+      masterSessionMs: masterSessionMs(),
+      sessionId: session && session.id || null,
+      sessionStartedAt: session && (session.cronoStartedAt || session.startedAt) || null,
+      runId: session && session.cronoRunId || state && (state.runId || state.currentRunId) || null,
+      source: source || 'passage-inline-v3',
+    };
+    const tracker = ensureTracker();
+    tracker.observations.push(observation);
+    tracker.updatedAt = observation.recordedAt;
+    persistData();
+    const visibleInput = Array.from(document.querySelectorAll('[data-passage-score-input]'))
+      .find(candidate => candidate.dataset.passageScoreInput === key);
+    if (visibleInput) setInlineScoreVisual(visibleInput, pending.value);
+    updatePendingScoreLabel(key);
+    return observation;
+  }
+
+  function queueInlineScore(passageId, input) {
+    const key = String(passageId);
+    const previousPending = pendingScores.get(key);
+    if (previousPending) {
+      clearTimeout(previousPending.timer);
+      clearInterval(previousPending.countdown);
+    }
+    const value = setInlineScoreVisual(input, positionToScore(input.value));
+    const previous = latestScore(key);
+    if (value === previous) {
+      pendingScores.delete(key);
+      updatePendingScoreLabel(key);
+      return;
+    }
+    const pending = {
+      passageId: key,
+      value,
+      previous,
+      dueAt: Date.now() + SCORE_SETTLE_MS,
+      timer: null,
+      countdown: null,
+    };
+    pending.timer = setTimeout(() => commitInlineScore(key, 'passage-inline-v3'), SCORE_SETTLE_MS);
+    pending.countdown = setInterval(() => updatePendingScoreLabel(key), 250);
+    pendingScores.set(key, pending);
+    updatePendingScoreLabel(key);
+  }
+
+  function flushPendingScores(source) {
+    return Array.from(pendingScores.keys()).map(id => commitInlineScore(id, source || 'passage-inline-flush-v3')).filter(Boolean);
+  }
+
+  function makeInlineScore(passage) {
+    const control = document.createElement('div');
+    control.className = 'crono-passage-inline-score';
+    const committed = latestScore(passage.id);
+    const pending = pendingScores.get(String(passage.id));
+    const value = pending ? pending.value : (committed == null ? 50 : committed);
+    const meta = document.createElement('div');
+    meta.className = 'crono-passage-inline-meta';
+    meta.innerHTML = '<span>Solidez</span><strong data-passage-score-value>' + value + '</strong><small data-passage-score-pending="' + String(passage.id).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">' + (pending ? '5 s' : (committed == null ? 'mueve para guardar' : 'último valor')) + '</small>';
+    const meter = document.createElement('div');
+    meter.className = 'pase-liquid-meter passage-inline-meter';
+    meter.setAttribute('style', liquidStyle(value));
+    meter.innerHTML = '<div class="pase-liquid-reservoir" aria-hidden="true"><span class="pase-liquid-fill"></span><span class="pase-liquid-glint"></span><span class="pase-liquid-orb"></span></div>';
+    const input = document.createElement('input');
+    input.className = 'pase-liquid-input';
+    input.type = 'range';
+    input.min = '0';
+    input.max = '100';
+    input.step = '0.01';
+    input.dataset.passageScoreInput = String(passage.id);
+    input.setAttribute('aria-label', 'Solidez de ' + passage.name);
+    input.addEventListener('input', () => queueInlineScore(passage.id, input));
+    meter.appendChild(input);
+    control.append(meta, meter);
+    setInlineScoreVisual(input, value);
+    if (pending) updatePendingScoreLabel(passage.id);
+    return control;
   }
 
   function toast(message) {
@@ -579,6 +737,12 @@
   function deleteEditingPassage() {
     const passage = editingPassageId && passageById(editingPassageId);
     if (!passage) return;
+    const pending = pendingScores.get(String(passage.id));
+    if (pending) {
+      clearTimeout(pending.timer);
+      clearInterval(pending.countdown);
+      pendingScores.delete(String(passage.id));
+    }
     if (idEqual(activePassageId, passage.id)) stopActive('passage-deleted');
     passage.deletedAt = nowIso();
     passage.updatedAt = passage.deletedAt;
@@ -707,14 +871,7 @@
       nameBtn.append(strong, meta);
       nameBtn.addEventListener('click', () => openPassageEditor(passage.id));
 
-      const score = scoreDisplay(passage.id);
-      const scoreBtn = makeButton('crono-passage-score' + (score.current ? ' is-current' : ''), '', 'Valorar ' + passage.name);
-      const scoreLabel = document.createElement('span');
-      scoreLabel.textContent = score.label;
-      const scoreValue = document.createElement('strong');
-      scoreValue.textContent = score.value == null ? '—' : String(Math.round(score.value));
-      scoreBtn.append(scoreLabel, scoreValue);
-      scoreBtn.addEventListener('click', () => openPassageRating(passage.id));
+      const scoreControl = makeInlineScore(passage);
 
       const timerBtn = makeButton('crono-passage-timer' + (idEqual(activePassageId, passage.id) ? ' is-active' : ''), '', (idEqual(activePassageId, passage.id) ? 'Parar ' : 'Cronometrar ') + passage.name);
       const icon = document.createElement('span');
@@ -727,7 +884,7 @@
       timerBtn.append(icon, time, action);
       timerBtn.addEventListener('click', () => togglePassageTimer(passage.id));
 
-      row.append(nameBtn, scoreBtn, timerBtn);
+      row.append(nameBtn, scoreControl, timerBtn);
       list.appendChild(row);
     });
     panel.appendChild(list);
@@ -775,10 +932,14 @@
       name.textContent = passage.name;
       const detail = document.createElement('strong');
       const focused = liveFocusedMs(entry.passageId);
-      const scores = entry.postScore != null
-        ? ((entry.coldScore != null ? entry.coldScore : '—') + '→' + entry.postScore)
-        : (entry.coldScore != null ? 'frío ' + entry.coldScore : 'sin medida');
-      detail.textContent = formatMs(focused) + ' · ' + scores;
+      const sessionObservations = passageObservations(entry.passageId)
+        .filter(item => item && draft && item.sessionId === draft.id && item.score != null)
+        .sort((a, b) => parseTime(a.recordedAt) - parseTime(b.recordedAt));
+      const lastSessionScore = sessionObservations.length ? sessionObservations[sessionObservations.length - 1].score : null;
+      const legacyScore = entry.postScore != null ? entry.postScore : entry.coldScore;
+      const score = lastSessionScore != null ? lastSessionScore : legacyScore;
+      detail.textContent = formatMs(focused) + ' · ' + (score == null ? 'sin medida' : score + '%') +
+        (sessionObservations.length > 1 ? ' · ' + sessionObservations.length + ' medidas' : '');
       row.append(name, detail);
       section.appendChild(row);
     });
@@ -951,6 +1112,7 @@
 
   function commitDraft() {
     if (!draft || draft.committed) return [];
+    flushPendingScores('session-finish-v3');
     if (activePassageId) stopActive('session-finish');
     const tracker = ensureTracker();
     const sessionTotalMs = masterSessionMs();
@@ -978,7 +1140,7 @@
         postScore: entry.postScore == null ? null : Number(entry.postScore),
         postCapturedAt: entry.postCapturedAt || null,
         focusChunks: (entry.chunks || []).map(chunk => ({ ...chunk })),
-        source: 'passage-tracker-v2',
+        source: 'passage-tracker-v3',
       };
       tracker.observations.push(observation);
       saved.push(observation);
@@ -1089,6 +1251,10 @@
       if (activePassageId) stopActive('target-change');
       renderPanel();
     });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') flushPendingScores('passage-background-v3');
+    });
+    window.addEventListener('pagehide', () => flushPendingScores('passage-background-v3'));
     setInterval(monitorApp, TICK_MS);
     setInterval(() => {
       installSyncMerge();
@@ -1104,6 +1270,8 @@
     openEditor: openPassageEditor,
     rate: openPassageRating,
     toggleTimer: togglePassageTimer,
+    recordObservation: commitInlineScore,
+    flushPendingScores,
     commitDraft,
     resetDraft,
     applyGeneralAllocation,

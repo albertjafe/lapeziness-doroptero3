@@ -63,6 +63,15 @@
     return map;
   }
 
+  function latestSessionScore(passageId){
+    const api = tracker();
+    const data = api && typeof api.getTracker === 'function' ? api.getTracker() : null;
+    const draft = api && typeof api.getDraft === 'function' ? api.getDraft() : null;
+    return (data && data.observations || [])
+      .filter(item => item && String(item.passageId) === String(passageId) && item.score != null && (!draft || item.sessionId === draft.id))
+      .sort((a,b) => new Date(b.recordedAt || 0) - new Date(a.recordedAt || 0))[0]?.score ?? null;
+  }
+
   function touchedEntries(){
     const api = tracker();
     const draft = api && typeof api.getDraft === 'function' ? api.getDraft() : null;
@@ -98,10 +107,10 @@
       const name = document.createElement('span');
       name.textContent = passage && passage.name ? passage.name : 'Pasaje';
       const detail = document.createElement('strong');
-      const scores = entry.postScore != null
-        ? ((entry.coldScore != null ? entry.coldScore : '—') + '→' + entry.postScore)
-        : (entry.coldScore != null ? 'frío ' + entry.coldScore : 'sin medida');
-      detail.textContent = formatMs(entry.focusedMs) + ' · ' + scores;
+      const freeScore = latestSessionScore(entry.passageId);
+      const legacyScore = entry.postScore != null ? entry.postScore : entry.coldScore;
+      const score = freeScore != null ? freeScore : legacyScore;
+      detail.textContent = formatMs(entry.focusedMs) + ' · ' + (score == null ? 'sin medida' : score + '%');
       row.append(name, detail);
       section.appendChild(row);
     });

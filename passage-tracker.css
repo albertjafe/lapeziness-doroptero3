@@ -374,3 +374,141 @@ html body.crono-running #view-cronometro #cronoRunDrawer[data-tab="pasajes"] .cr
 
 #modalHechoDatos .hecho-minutes-field { order:3; }
 #modalHechoDatos #hechoPassageSummary { order:7; }
+
+/* Observaciones libres: la píldora vive en la tarjeta y no abre un modal. */
+#view-cronometro .crono-passage-row {
+  grid-template-columns: minmax(130px, 1fr) minmax(170px, 1.25fr) 100px;
+  align-items: center;
+}
+#view-cronometro .crono-passage-inline-score {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 4px 7px 3px;
+  border: 1px solid color-mix(in srgb, var(--border2) 86%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg3) 68%, transparent);
+}
+#view-cronometro .crono-passage-inline-meta {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+}
+#view-cronometro .crono-passage-inline-meta span {
+  color: var(--text3);
+  font: 750 7px/1 var(--font-mono, monospace);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+#view-cronometro .crono-passage-inline-meta strong {
+  color: var(--pase-color, var(--accent));
+  font: 800 13px/1 var(--font-mono, monospace);
+  font-variant-numeric: tabular-nums;
+}
+#view-cronometro .crono-passage-inline-meta small {
+  overflow: hidden;
+  color: var(--text3);
+  font: 600 7px/1 var(--font-ui, sans-serif);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#view-cronometro .crono-passage-inline-meta small.is-pending { color: var(--accent); }
+#view-cronometro .passage-inline-meter { height: 34px; }
+#view-cronometro .passage-inline-meter .pase-liquid-reservoir { inset: 5px 1px; }
+#view-cronometro .passage-inline-meter .pase-liquid-orb { width: 19px; height: 19px; left: clamp(3px, calc(var(--pase-fill) - 10px), calc(100% - 23px)); }
+
+/* Píldora de la obra/movimiento: siempre accesible y, en iPad, justo bajo el
+   panel de calendario/objetivos y antes de las herramientas. */
+#view-cronometro .crono-target-solidity[hidden] { display: none !important; }
+#view-cronometro .crono-target-solidity {
+  width: min(620px, 100%);
+  margin: 10px auto 0;
+  padding: 10px 12px 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border2));
+  border-radius: 15px;
+  background: color-mix(in srgb, var(--bg2) 96%, var(--accent) 4%);
+  box-shadow: 0 13px 30px -28px rgba(0,0,0,.55);
+  box-sizing: border-box;
+}
+#view-cronometro .crono-target-solidity > header,
+#view-cronometro .crono-target-solidity > footer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+#view-cronometro .crono-target-solidity > header > div { display: grid; gap: 2px; min-width: 0; }
+#view-cronometro .crono-target-solidity > header span {
+  color: var(--text3);
+  font: 750 7px/1 var(--font-mono, monospace);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+#view-cronometro .crono-target-solidity > header strong {
+  overflow: hidden;
+  color: var(--text);
+  font: 700 11px/1.2 var(--font-ui, sans-serif);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#view-cronometro .crono-target-solidity > header b {
+  flex: 0 0 auto;
+  color: var(--pase-color, var(--accent));
+  font: 780 11px/1 var(--font-mono, monospace);
+}
+#view-cronometro .crono-target-solidity-meter { height: 39px; margin: 3px 0 2px; }
+#view-cronometro .crono-target-solidity-meter .pase-liquid-reservoir { inset: 5px 1px; }
+#view-cronometro .crono-target-solidity-meter .pase-liquid-orb { width: 21px; height: 21px; left: clamp(3px, calc(var(--pase-fill) - 11px), calc(100% - 25px)); }
+#view-cronometro .crono-target-solidity > footer { color: var(--text3); font: 600 7px/1.2 var(--font-ui, sans-serif); }
+#view-cronometro .crono-target-solidity > footer small.is-pending { color: var(--accent); font-weight: 750; }
+
+#modalHechoDatos .hecho-pass-check {
+  order: 5;
+  margin: 2px 20px 13px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px 14px;
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg3) 72%, transparent);
+}
+#modalHechoDatos .hecho-pass-check > div:first-child { display: grid; gap: 3px; }
+#modalHechoDatos .hecho-pass-check > div:first-child span { color: var(--text3); font: 750 7px/1 var(--font-mono, monospace); letter-spacing: .1em; text-transform: uppercase; }
+#modalHechoDatos .hecho-pass-check > div:first-child strong { color: var(--text); font: 700 11px/1.25 var(--font-ui, sans-serif); }
+#modalHechoDatos .hecho-pass-options { display: inline-flex; gap: 3px; padding: 3px; border: 1px solid var(--border2); border-radius: 10px; background: var(--bg2); }
+#modalHechoDatos .hecho-pass-options button { min-width: 44px; min-height: 34px; border: 0; border-radius: 7px; background: transparent; color: var(--text3); font: 750 10px/1 var(--font-ui, sans-serif); cursor: pointer; }
+#modalHechoDatos .hecho-pass-options button.active { background: color-mix(in srgb, var(--accent) 12%, var(--bg)); color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+#modalHechoDatos .hecho-pass-check > small { grid-column: 1 / -1; color: var(--text3); font: 550 8px/1.35 var(--font-ui, sans-serif); }
+
+@media (min-width: 700px) and (max-width: 1199px) and (orientation: portrait),
+       (min-width: 900px) and (max-width: 1399px) and (min-height: 820px) and (orientation: landscape) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 3/2) {
+  #view-cronometro #cronoCalendarObjectivesShell { padding-bottom: 86px; box-sizing: border-box; }
+  #view-cronometro .crono-target-solidity {
+    grid-column: 4 / -1;
+    grid-row: 1;
+    align-self: end;
+    z-index: 4;
+    width: calc(100% - 18px);
+    margin: 0 9px 8px;
+  }
+}
+
+@media (max-width: 760px) {
+  #view-cronometro .crono-passage-row { grid-template-columns: minmax(0, 1fr) 92px; }
+  #view-cronometro .crono-passage-name { grid-column: 1 / -1; }
+  #view-cronometro .crono-passage-inline-score { min-width: 0; }
+  #view-cronometro .crono-target-solidity { width: 100%; }
+}
+
+@media (max-width: 430px) {
+  #modalHechoDatos .hecho-pass-check { grid-template-columns: 1fr; margin-inline: 14px; }
+  #modalHechoDatos .hecho-pass-options { width: 100%; }
+  #modalHechoDatos .hecho-pass-options button { flex: 1; }
+}

@@ -77,12 +77,11 @@ async function addPassage(page, name = 'Octavas finales', difficulty = '8.7') {
 }
 
 async function setRating(page, value) {
-  await page.locator('#cronoPassageTracker .crono-passage-score').click();
-  await page.locator('#passageRatingSlider').evaluate((slider, next) => {
-    slider.value = String(next);
+  await page.locator('#cronoPassageTracker .passage-inline-meter .pase-liquid-input').evaluate((slider, next) => {
+    slider.value = pasePctToPosition(next).toFixed(2);
     slider.dispatchEvent(new Event('input', { bubbles: true }));
   }, value);
-  await page.locator('#passageRatingSave').click();
+  await page.evaluate(() => PassageTracker.flushPendingScores('test'));
 }
 
 test('passages belong to the exact movement and empty scopes only show add', async ({ page }) => {
@@ -104,6 +103,29 @@ test('passages belong to the exact movement and empty scopes only show add', asy
   });
   await expect(page.locator('#cronoPassageTracker .crono-passage-row')).toHaveCount(0);
   await expect(page.locator('#cronoPassageTracker .crono-passage-add')).toHaveCount(1);
+});
+
+test('waits five seconds after the last slider change and only saves the final value', async ({ page }) => {
+  await prepare(page);
+  await addPassage(page);
+
+  const moveSlider = value => page.locator('#cronoPassageTracker .passage-inline-meter .pase-liquid-input').evaluate((slider, next) => {
+    slider.value = pasePctToPosition(next).toFixed(2);
+    slider.dispatchEvent(new Event('input', { bubbles: true }));
+  }, value);
+
+  await moveSlider(61);
+  await page.waitForTimeout(900);
+  await moveSlider(64);
+  await expect(page.locator('#cronoPassageTracker [data-passage-score-value]')).toHaveText('64');
+  await page.waitForTimeout(4200);
+  await expect.poll(() => page.evaluate(() => PassageTracker.getTracker().observations.length)).toBe(0);
+  await expect(page.locator('#cronoPassageTracker [data-passage-score-pending]')).toHaveClass(/is-pending/);
+
+  await expect.poll(
+    () => page.evaluate(() => PassageTracker.getTracker().observations.map(item => item.score)),
+    { timeout: 2200 },
+  ).toEqual([64]);
 });
 
 test('General shows passages from every work and splits its minutes without changing the total', async ({ page }) => {
@@ -164,7 +186,7 @@ test('General shows passages from every work and splits its minutes without chan
   expect(allocation.plants.find(plant => plant.obraId === 'obra_second' && plant.movId === 's1')?.mins).toBeCloseTo(2, 5);
 });
 
-test('records cold score, explicit focus time and optional post score without assigning the master session', async ({ page }) => {
+test('records free score observations with exact passage time without assigning the master session', async ({ page }) => {
   await prepare(page);
   await addPassage(page);
 
@@ -177,7 +199,7 @@ test('records cold score, explicit focus time and optional post score without as
   await expect.poll(() => page.evaluate(() => crono.state)).toBe('running');
 
   await setRating(page, 58);
-  await expect(page.locator('#cronoPassageTracker .crono-passage-score')).toContainText('58');
+  await expect(page.locator('#cronoPassageTracker .crono-passage-inline-score')).toContainText('58');
 
   await page.locator('#cronoPassageTracker .crono-passage-timer').click();
   await page.waitForTimeout(1150);
@@ -194,19 +216,15 @@ test('records cold score, explicit focus time and optional post score without as
   });
 
   expect(result.saved).toHaveLength(1);
-  expect(result.saved[0].coldScore).toBe(58);
-  expect(result.saved[0].postScore).toBe(73);
   expect(result.saved[0].focusedMs).toBeGreaterThanOrEqual(900);
   expect(result.saved[0].focusedMs).toBeLessThan(2500);
   expect(result.saved[0].focusChunks).toHaveLength(1);
-  expect(result.saved[0].obraId).toBe('obra_passage');
-  expect(result.saved[0].movId).toBe('m1');
-  expect(result.saved[0].difficulty).toBe(8.7);
-  expect(result.tracker.observations).toHaveLength(1);
+  expect(result.tracker.observations).toHaveLength(3);
+  expect(result.tracker.observations.filter(item => item.score != null).map(item => item.score)).toEqual([58, 73]);
+  expect(result.tracker.observations[1].activeElapsedMs).toBeGreaterThanOrEqual(900);
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('alberto_piano_v2')).passageTracker);
-  expect(stored.observations).toHaveLength(1);
-  expect(stored.observations[0].coldScore).toBe(58);
-  expect(stored.observations[0].postScore).toBe(73);
+  expect(stored.observations).toHaveLength(3);
+  expect(stored.observations.filter(item => item.score != null).map(item => item.score)).toEqual([58, 73]);
 });
 
 test('iPad landscape alternates tasks and passages in the same drawer', async ({ page }) => {
