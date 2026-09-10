@@ -1,5 +1,11 @@
 body.solidity-scale-modal-open { overflow: hidden; }
 
+#view-cronometro .crono-target-solidity-guide.is-modal-trigger {
+  margin: 0;
+}
+#view-cronometro .crono-target-solidity-guide.is-modal-trigger > :not(summary) {
+  display: none !important;
+}
 #view-cronometro .crono-target-solidity-guide-button {
   width: 100%;
   margin: 0 0 7px;
@@ -8,6 +14,7 @@ body.solidity-scale-modal-open { overflow: hidden; }
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  list-style: none;
   border: 1px solid color-mix(in srgb, var(--border2) 86%, transparent);
   border-radius: 9px;
   background: color-mix(in srgb, var(--bg3) 72%, transparent);
@@ -17,6 +24,8 @@ body.solidity-scale-modal-open { overflow: hidden; }
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
+#view-cronometro .crono-target-solidity-guide-button::-webkit-details-marker { display: none; }
+#view-cronometro .crono-target-solidity-guide-button::marker { content: ''; }
 #view-cronometro .crono-target-solidity-guide-button b {
   flex: 0 0 auto;
   color: var(--accent);
