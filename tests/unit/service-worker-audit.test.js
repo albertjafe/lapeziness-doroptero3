@@ -24,6 +24,7 @@ describe('PWA version boundary',()=>{
     expect(h.calls).not.toContain('skip');
     expect(await (await h.fetch('/?view=cronometro','navigate')).text()).toContain('A:');
     expect(await (await h.fetch('/app.js?v=374')).text()).toContain('A:');
+    expect(await (await h.fetch('/solidity-guide-modal.js?v=375')).text()).toContain('A:');
     expect(h.calls).not.toContain('network');
   });
   it('offline navigation and scripts come from the same precache',async()=>{
@@ -36,6 +37,7 @@ describe('PWA version boundary',()=>{
     expect((await h.fetch('/work-structure-catalog.js?v=362')).status).toBe(200);
     expect((await h.fetch('/solo-repertoire-structure.js?v=361')).status).toBe(200);
     expect((await h.fetch('/professor-practice-dedup.js?v=363')).status).toBe(200);
+    expect((await h.fetch('/solidity-guide-modal.css?v=375')).status).toBe(200);
   });
   it('ignores unsafe promotion and forces a real navigation after explicit promotion',async()=>{
     const h=harness();
@@ -44,17 +46,17 @@ describe('PWA version boundary',()=>{
     await h.message({type:'SAFE_SKIP_WAITING',safe:true,requestedAt:'2026-09-04T18:00:00Z'});
     expect(h.calls).toContain('skip');
     await h.lifecycle('activate');
-    expect(h.calls.filter(x=>x.startsWith('navigate:'))).toEqual(['navigate:https://piano.test/?__pwa=371']);
+    expect(h.calls.filter(x=>x.startsWith('navigate:'))).toEqual(['navigate:https://piano.test/?__pwa=375']);
     expect(h.calls).toContain('client-message:SAFE_UPDATE_ACTIVATED');
   });
   it('falls back to all scoped clients when iOS does not expose the message source id',async()=>{
     const h=harness();await h.message({type:'SAFE_SKIP_WAITING',safe:true},null);await h.lifecycle('activate');
-    expect(h.calls.filter(x=>x.startsWith('navigate:'))).toEqual(['navigate:https://piano.test/?__pwa=371']);
+    expect(h.calls.filter(x=>x.startsWith('navigate:'))).toEqual(['navigate:https://piano.test/?__pwa=375']);
   });
   it('activation preserves unrelated caches and the previous shell for old tabs',async()=>{
     const h=harness();['estudio-v340','estudio-v341','user-content'].forEach(k=>h.stores.set(k,new Map()));
     await h.lifecycle('install');await h.lifecycle('activate');
-    expect([...h.stores.keys()].sort()).toEqual(['estudio-v341','estudio-v374','user-content']);
+    expect([...h.stores.keys()].sort()).toEqual(['estudio-v341','estudio-v375','user-content']);
     expect(h.calls.some(x=>x.startsWith('navigate:'))).toBe(false);
   });
   it('never serves a new script under an uncached old version URL',async()=>{
