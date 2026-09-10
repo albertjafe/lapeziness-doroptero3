@@ -112,7 +112,9 @@
   function renderUnit(unit, compact) {
     const solidity = unit.solidity == null ? '?' : `${Math.round(unit.solidity)}%`;
     const recovery = `${unit.recoveryHours.low}–${unit.recoveryHours.high} h`;
-    const event = unit.nextEvent ? `${esc(unit.nextEvent.name)} · ${unit.nextEvent.daysAway} d` : 'sin evento enlazado';
+    const event = unit.nextEvent
+      ? `${esc(unit.nextEvent.name)} · ${unit.nextEvent.daysAway == null ? 'sin fecha' : unit.nextEvent.daysAway + ' d'}`
+      : 'sin evento enlazado';
     return `<div class="prof-unit">
       <div class="prof-score" data-band="${esc(unit.priority.band)}">${Math.round(unit.priority.score)}</div>
       <div>
@@ -126,12 +128,12 @@
   }
 
   function renderEvents(report) {
-    if (!report.events.length) return '<div class="prof-card prof-muted">No hay eventos futuros disponibles en la app o Google Calendar.</div>';
+    if (!report.events.length) return '<div class="prof-card prof-muted">No hay eventos futuros ni proyectos activos disponibles en la app o Google Calendar.</div>';
     return `<div class="prof-events">${report.events.map(event => `<div class="prof-event">
-      <div class="prof-event-date">${esc(event.day)} · ${event.daysAway} días</div>
+      <div class="prof-event-date">${esc(event.day === 'sin-fecha' ? 'Sin fecha límite' : event.day)}${event.daysAway == null ? '' : ' · ' + event.daysAway + ' días'}</div>
       <div class="prof-event-name">${esc(event.name)}</div>
-      <div class="prof-event-meta">${esc(event.source === 'google' ? 'Google Calendar' : (event.type || 'App'))}</div>
-      ${event.repertoireLinked ? `<div class="prof-event-meta">Repertorio enlazado: ${event.workIds.length} obra(s)</div>` : '<div class="prof-warning">Sin repertorio enlazado: cuenta como agenda, no como prioridad musical.</div>'}
+      <div class="prof-event-meta">${esc(event.source === 'google' ? 'Google Calendar' : (event.type || 'App'))}${event.type === 'proyecto' && event.progress != null ? ' · ' + event.progress + '% completado' : ''}</div>
+      ${event.repertoireLinked ? `<div class="prof-event-meta">Repertorio enlazado: ${event.workIds.length} obra(s)</div>` : (event.type === 'proyecto' ? '<div class="prof-event-meta">Proyecto general · el Profesor puede organizarlo sin alterar la prioridad musical.</div>' : '<div class="prof-warning">Sin repertorio enlazado: cuenta como agenda, no como prioridad musical.</div>')}
     </div>`).join('')}</div>`;
   }
 

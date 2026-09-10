@@ -1,13 +1,13 @@
 /* Planning enhancements v3
  * - Dictated task priorities: urgentísima/urgente/normal/default blank.
- * - Project events with exact or month-flexible targets.
+ * - Projects with no deadline, month-flexible or exact targets and visible progress.
  * - Complete 0–100 solidity guide for new, chamber-with-score and recovered repertoire.
  * - Official website links in every imported competition dossier.
  */
 (function planningEnhancementsV3(){
   'use strict';
 
-  const VERSION = 4;
+  const VERSION = 5;
   const MONTH_FMT = new Intl.DateTimeFormat('es-ES', { month:'long', year:'numeric' });
 
   const COMPETITION_LINKS = [
@@ -145,6 +145,7 @@
     button.textContent = 'Proyecto';
     button.addEventListener('click', () => {
       if(typeof selectEventoTipo === 'function') selectEventoTipo('proyecto', button);
+      if(!document.getElementById('eventoEditId')?.value) setProjectMode('none');
       setTimeout(updateProjectVisibility, 0);
     });
     selector.appendChild(button);
@@ -167,32 +168,58 @@
     section.className = 'event-project-timing';
     section.hidden = true;
     section.innerHTML = `
-      <div class="event-project-kicker">Fecha objetivo del proyecto</div>
+      <div class="event-project-kicker">Horizonte y avance del proyecto</div>
       <div class="event-project-mode" role="radiogroup" aria-label="Precisión de la fecha objetivo">
-        <button type="button" data-project-mode="exact" aria-pressed="true">Día concreto</button>
+        <button type="button" data-project-mode="none" aria-pressed="true">Sin fecha</button>
         <button type="button" data-project-mode="month" aria-pressed="false">Mes flexible</button>
+        <button type="button" data-project-mode="exact" aria-pressed="false">Día concreto</button>
       </div>
       <label class="evento-form-field event-project-month-field" hidden>
         <span>Quiero tenerlo para <small>mes aproximado</small></span>
         <input class="modal-input" id="eventoProyectoMes" type="month">
       </label>
-      <p class="event-project-help">“Mes flexible” crea una ventana de planificación hasta el final del mes, sin fingir que existe un día exacto. La IA puede repartir el trabajo dentro de esa ventana.</p>`;
+      <label class="evento-form-field event-project-progress-field">
+        <span>Progreso actual <output id="eventoProyectoProgresoValue">0%</output></span>
+        <input id="eventoProyectoProgreso" type="range" min="0" max="100" step="1" value="0" aria-label="Progreso actual del proyecto">
+      </label>
+      <p class="event-project-help">Sin fecha mantiene el proyecto activo sin fabricar urgencia. Si eliges un mes o un día, el Profesor podrá repartir el trabajo hacia ese objetivo.</p>`;
     dateRange.insertAdjacentElement('afterend', section);
     section.querySelectorAll('[data-project-mode]').forEach(button => button.addEventListener('click', () => setProjectMode(button.dataset.projectMode)));
+    const progress = section.querySelector('#eventoProyectoProgreso');
+    progress?.addEventListener('input', () => setProjectProgressVisual(progress.value));
+    setProjectProgressVisual(0);
     return true;
   }
 
   function projectMode(){
-    return document.querySelector('#eventProjectTiming [data-project-mode][aria-pressed="true"]')?.dataset.projectMode || 'exact';
+    return document.querySelector('#eventProjectTiming [data-project-mode][aria-pressed="true"]')?.dataset.projectMode || 'none';
   }
 
   function setProjectMode(mode){
-    const next = mode === 'month' ? 'month' : 'exact';
+    const next = ['none','month','exact'].includes(mode) ? mode : 'none';
     document.querySelectorAll('#eventProjectTiming [data-project-mode]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.projectMode === next)));
     const monthField = document.querySelector('#eventProjectTiming .event-project-month-field');
     const dateRange = document.querySelector('#modalAddEvento .evento-date-range');
     if(monthField) monthField.hidden = next !== 'month';
-    if(dateRange) dateRange.classList.toggle('project-date-hidden', activeEventType() === 'proyecto' && next === 'month');
+    if(dateRange) dateRange.classList.toggle('project-date-hidden', activeEventType() === 'proyecto' && next !== 'exact');
+  }
+
+  function clampProjectProgress(value){
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.max(0, Math.min(100, Math.round(number))) : 0;
+  }
+
+  function setProjectProgressVisual(value){
+    const progress = clampProjectProgress(value);
+    const input = document.getElementById('eventoProyectoProgreso');
+    const output = document.getElementById('eventoProyectoProgresoValue');
+    if(input){
+      input.value = String(progress);
+      input.style.setProperty('--project-progress', progress + '%');
+      input.setAttribute('aria-valuetext', progress + ' por ciento completado');
+    }
+    if(output) output.textContent = progress + '%';
+    return progress;
   }
 
   function isoEndOfMonth(month){
@@ -245,14 +272,18 @@
           button.classList.add('active');
         }
       }
-      const mode = event.fechaFlexibleTipo === 'mes' || event.fechaObjetivoMes ? 'month' : 'exact';
+      const mode = event.fechaFlexibleTipo === 'sin-fecha' || (!event.fecha && !event.fechaObjetivoMes)
+        ? 'none'
+        : (event.fechaFlexibleTipo === 'mes' || event.fechaObjetivoMes ? 'month' : 'exact');
       setProjectMode(mode);
       const input = document.getElementById('eventoProyectoMes');
       if(input) input.value = event.fechaObjetivoMes || String(event.fechaFlexibleDesde || '').slice(0,7) || String(event.fecha || '').slice(0,7);
+      setProjectProgressVisual(event.projectProgress ?? event.progreso ?? 0);
     } else {
-      setProjectMode('exact');
+      setProjectMode('none');
       const input = document.getElementById('eventoProyectoMes');
       if(input) input.value = '';
+      setProjectProgressVisual(0);
     }
     updateProjectVisibility();
   }
@@ -269,10 +300,22 @@
       const type = activeEventType();
       const mode = projectMode();
       const month = document.getElementById('eventoProyectoMes')?.value || '';
+      const progress = setProjectProgressVisual(document.getElementById('eventoProyectoProgreso')?.value || 0);
+      const dateInput = document.getElementById('eventoFecha');
+      const endInput = document.getElementById('eventoFechaFin');
+      if(type === 'proyecto' && mode === 'month' && !month){
+        if(typeof showToast === 'function') showToast('Elige el mes objetivo del proyecto');
+        return false;
+      }
+      if(type === 'proyecto' && mode === 'exact' && !dateInput?.value){
+        if(typeof showToast === 'function') showToast('Elige la fecha objetivo del proyecto');
+        return false;
+      }
       if(type === 'proyecto' && mode === 'month' && month){
-        const dateInput = document.getElementById('eventoFecha');
-        const endInput = document.getElementById('eventoFechaFin');
         if(dateInput) dateInput.value = isoEndOfMonth(month);
+        if(endInput) endInput.value = '';
+      } else if(type === 'proyecto' && mode === 'none'){
+        if(dateInput) dateInput.value = '';
         if(endInput) endInput.value = '';
       }
       const result = original.apply(this, arguments);
@@ -284,6 +327,8 @@
         if(!event) event = current.eventos.find(item => item && !before.has(String(item.id || '')));
         if(!event || type !== 'proyecto') return;
         event.tipo = 'proyecto';
+        event.projectProgress = progress;
+        event.projectProgressUpdatedAt = new Date().toISOString();
         if(mode === 'month' && month){
           event.fechaFlexibleTipo = 'mes';
           event.fechaObjetivoMes = month;
@@ -291,6 +336,14 @@
           event.fechaFlexibleHasta = isoEndOfMonth(month);
           event.fechaFlexibleLabel = monthLabel(month);
           event.fecha = event.fechaFlexibleHasta;
+          event.fechaFin = '';
+        } else if(mode === 'none') {
+          event.fechaFlexibleTipo = 'sin-fecha';
+          event.fechaObjetivoMes = null;
+          event.fechaFlexibleDesde = null;
+          event.fechaFlexibleHasta = null;
+          event.fechaFlexibleLabel = null;
+          event.fecha = '';
           event.fechaFin = '';
         } else {
           event.fechaFlexibleTipo = 'dia';
@@ -300,6 +353,8 @@
           event.fechaFlexibleLabel = null;
         }
         persist();
+        try { if(typeof renderCalendario === 'function') renderCalendario(); } catch(error){}
+        try { if(typeof renderCronoCalendar === 'function') renderCronoCalendar(); } catch(error){}
         try { if(typeof renderEventos === 'function') renderEventos(); } catch(error){}
         try { if(typeof renderMesCalendario === 'function') renderMesCalendario(); } catch(error){}
       };
@@ -490,6 +545,7 @@
       version: VERSION,
       priorityFromText,
       competitionUrlFor,
+      clampProjectProgress,
       projectWindow(event){
         if(!event) return null;
         if(event.fechaFlexibleTipo === 'mes' && event.fechaFlexibleDesde && event.fechaFlexibleHasta) return { start:event.fechaFlexibleDesde, end:event.fechaFlexibleHasta, flexible:true };

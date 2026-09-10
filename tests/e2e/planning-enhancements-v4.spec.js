@@ -144,7 +144,7 @@ test('personal projects are isolated in their own events section with month targ
   data.eventos = [{
     id:'project_oct', nombre:'Terminar nueva composición', tipo:'proyecto', estado:'planificado',
     fecha:'2026-10-31', fechaFlexibleTipo:'mes', fechaObjetivoMes:'2026-10',
-    fechaFlexibleDesde:'2026-10-01', fechaFlexibleHasta:'2026-10-31', fechaFlexibleLabel:'Octubre de 2026', obras:[]
+    fechaFlexibleDesde:'2026-10-01', fechaFlexibleHasta:'2026-10-31', fechaFlexibleLabel:'Octubre de 2026', projectProgress:42, obras:[]
   }];
   await prepare(page, { data });
   await page.evaluate(() => {
@@ -157,7 +157,45 @@ test('personal projects are isolated in their own events section with month targ
   await expect(section).toContainText('Proyectos personales');
   await expect(section).toContainText('Terminar nueva composición');
   await expect(section).toContainText('Objetivo flexible · Octubre de 2026');
+  await expect(section).toContainText('42%');
+  await expect(section.locator('[role="progressbar"]')).toHaveAttribute('aria-valuenow','42');
   await expect(page.locator('#eventosList .evento-card.project-original-hidden')).toHaveCount(1);
+  if(process.env.CAPTURE_PROJECTS) await section.screenshot({path:'test-results/projects-dashboard.png'});
+  await section.locator('[data-project-event-id="project_oct"]').click();
+  await expect(page.locator('#modalAddEvento')).toBeVisible();
+  await expect(page.locator('#eventoProyectoProgreso')).toHaveValue('42');
+  if(process.env.CAPTURE_PROJECTS) await page.locator('#modalAddEvento .evento-modal').screenshot({path:'test-results/project-editor.png'});
+});
+
+test('deadline-free general projects remain visible and editable', async ({ page }) => {
+  const data = structuredClone(base);
+  data.eventos = [{
+    id:'project_open', nombre:'Leer En busca del tiempo perdido', tipo:'proyecto', estado:'confirmado',
+    fecha:'', fechaFin:'', fechaFlexibleTipo:'sin-fecha', projectProgress:18, obras:[]
+  }];
+  await prepare(page, { data });
+  await page.evaluate(() => {
+    showView('calendario');
+    switchCalTab('eventos', document.getElementById('calTabEventos'));
+    PlanningEnhancementsV4.refreshUi();
+  });
+  const section = page.locator('#personalProjectsSection');
+  await expect(section).toContainText('Horizonte abierto · Sin fecha límite');
+  await expect(section).toContainText('Proyecto general · Activo');
+  await expect(section.locator('[role="progressbar"]')).toHaveAttribute('aria-valuenow','18');
+  await section.locator('[data-project-event-id="project_open"]').click();
+  await expect(page.locator('[data-project-mode="none"]')).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('#eventoProyectoProgreso')).toHaveValue('18');
+  await expect.poll(() => page.evaluate(() => Boolean(window.ProfessorCore && window.renderProfessorDashboard))).toBe(true);
+  await page.evaluate(async () => {
+    closeModal('modalAddEvento');
+    showView('profesor');
+    await renderProfessorDashboard();
+  });
+  await expect(page.locator('#view-profesor')).toContainText('Leer En busca del tiempo perdido');
+  await expect(page.locator('#view-profesor')).toContainText('Sin fecha límite');
+  await expect(page.locator('#view-profesor')).toContainText('18% completado');
+  await expect(page.locator('#view-profesor')).not.toContainText('null días');
 });
 
 test('iPad auto-starts task dictation and writes the transcript again', async ({ page }) => {

@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-10-learning-curves-v374';
+const APP_VERSION = '2026-09-12-projects-v377';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -4835,6 +4835,7 @@ function renderCronoTargetSolidity() {
   if (!host || !input) return;
   const target = cronoSolidityTarget();
   host.hidden = !target;
+  cronoSyncTargetSolidityLayout();
   if (!target) return;
   const latest = cronoLatestSolidityValue(target);
   const pending = _cronoSolidityPending?.key === target.key ? _cronoSolidityPending : null;
@@ -4848,6 +4849,29 @@ function renderCronoTargetSolidity() {
   input.dataset.ratingProfile = target.ratingProfile;
   cronoSetTargetSolidityVisual(input, value);
   cronoUpdateSolidityPendingLabel();
+}
+
+let _cronoTargetSolidityResizeObserver = null;
+function cronoSyncTargetSolidityLayout() {
+  const host = document.getElementById('cronoTargetSolidity');
+  const sync = () => {
+    const shell = document.getElementById('cronoCalendarObjectivesShell');
+    if (!shell || !host) return;
+    const height = host.hidden ? 0 : Math.ceil(host.getBoundingClientRect().height + 16);
+    shell.style.setProperty('--crono-solidity-reserved-height', height + 'px');
+  };
+  if (host && !_cronoTargetSolidityResizeObserver && window.ResizeObserver) {
+    _cronoTargetSolidityResizeObserver = new ResizeObserver(sync);
+    _cronoTargetSolidityResizeObserver.observe(host);
+  }
+  if (host && !host.dataset.layoutSyncBound) {
+    host.dataset.layoutSyncBound = '1';
+    host.addEventListener('toggle', event => {
+      if (event.target?.classList?.contains('crono-target-solidity-guide')) requestAnimationFrame(sync);
+    }, true);
+  }
+  requestAnimationFrame(sync);
+  setTimeout(sync, 0);
 }
 
 document.addEventListener('visibilitychange', () => {
@@ -12184,7 +12208,7 @@ function saveEvento() {
   let fecha = document.getElementById('eventoFecha').value;
   let fechaFin = document.getElementById('eventoFechaFin')?.value || '';
   if (!nombre) { showToast('Escribe el nombre del evento'); return false; }
-  if (!fecha) { showToast('Selecciona una fecha'); return false; }
+  if (!fecha && eventoTipoSelected !== 'proyecto') { showToast('Selecciona una fecha'); return false; }
   if (fechaFin && fechaFin < fecha) { showToast('La fecha final no puede ser anterior al inicio'); return false; }
 
   const rondaDrafts = eventoTipoSelected === 'concurso' ? readEventoRondasEditor() : [];
@@ -12198,7 +12222,9 @@ function saveEvento() {
     if (ultimaRonda > (fechaFin || fecha)) fechaFin = ultimaRonda;
   }
 
-  const obraIds = [...document.querySelectorAll('#obraCheckList input:checked')].map(el => el.value);
+  const obraIds = [...document.querySelectorAll('#obraCheckList .obra-check-item input[type="checkbox"]')]
+    .filter(el => el.checked)
+    .map(el => el.value);
   const editId = document.getElementById('eventoEditId').value;
 
   if (!db.eventos) db.eventos = [];

@@ -217,18 +217,19 @@
     return db.eventos.find(ev => String(ev.fecha||'')===date && titleMatches(ev.nombre||ev.titulo||'', comp.name));
   }
 
-  function relationForWork(ev, obraId, previous){
-    const old = previous && previous.get(String(obraId));
-    return old || { obraId:String(obraId), movimientoId:null, uso:'general', notas:'' };
-  }
   function syncRelations(ev, overrideUses){
-    const previous = new Map((Array.isArray(ev.repertorioPlanificado)?ev.repertorioPlanificado:[]).filter(Boolean).map(rel => [String(rel.obraId||''), rel]));
+    const previous = (Array.isArray(ev.repertorioPlanificado)?ev.repertorioPlanificado:[]).filter(Boolean);
     const works = Array.isArray(ev.obras) ? ev.obras : [];
-    ev.repertorioPlanificado = works.map(id => {
-      const rel = Object.assign({}, relationForWork(ev,id,previous));
-      if(overrideUses && overrideUses[String(id)]) rel.uso = overrideUses[String(id)];
-      if(!rel.uso) rel.uso='general';
-      return rel;
+    ev.repertorioPlanificado = works.flatMap(id => {
+      const workId = String(id);
+      const existing = previous.filter(rel => String(rel.obraId||'') === workId);
+      const rows = existing.length ? existing : [{ obraId:workId, movimientoId:null, uso:'general', notas:'' }];
+      return rows.map(item => {
+        const rel = Object.assign({}, item, { obraId:workId });
+        if(overrideUses && overrideUses[workId]) rel.uso = overrideUses[workId];
+        if(!rel.uso) rel.uso='general';
+        return rel;
+      });
     });
   }
 
@@ -417,7 +418,7 @@
     const list=document.getElementById('obraCheckList');
     if(!host || !list) return;
     const previous=new Map((Array.isArray(ev?.repertorioPlanificado)?ev.repertorioPlanificado:[]).map(rel=>[String(rel.obraId||''),rel.uso||'general']));
-    const checked=Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map(input=>({input,id:readWorkId(input),label:workLabel(input)})).filter(item=>item.id);
+    const checked=Array.from(list.querySelectorAll('.obra-check-item input[type="checkbox"]')).filter(input=>input.checked).map(input=>({input,id:readWorkId(input),label:workLabel(input)})).filter(item=>item.id);
     if(!checked.length){ host.innerHTML=''; host.hidden=true; return; }
     host.hidden=false;
     host.innerHTML='<div class="event-planning-kicker">Uso previsto</div>'+checked.map(item=>`<label class="evento-uso-row"><span>${esc(item.label)}</span><select class="modal-input evento-uso-select" data-obra-id="${esc(item.id)}">${Object.entries(USE_LABELS).map(([value,label])=>`<option value="${value}" ${previous.get(item.id)===value?'selected':''}>${label}</option>`).join('')}</select></label>`).join('');
@@ -616,7 +617,7 @@
     decorateCards();
     document.addEventListener('keydown',event=>{ if(event.key==='Escape'&&importOpen) closeImportModal(); });
     window.EventPlanning={
-      version:1, sourceSnapshot:SOURCE_SNAPSHOT, competitions:COMPETITIONS.map(item=>Object.assign({},item)),
+      version:2, sourceSnapshot:SOURCE_SNAPSHOT, competitions:COMPETITIONS.map(item=>Object.assign({},item)),
       importCompetitions, openImportModal, closeImportModal, renderWatchlist, decorateCards,
       statuses:Object.assign({},STATUS_LABELS),
     };

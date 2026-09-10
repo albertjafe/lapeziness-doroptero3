@@ -564,7 +564,11 @@ html body.crono-running #view-cronometro #cronoRunDrawer[data-tab="pasajes"] .cr
 
 @media (min-width: 700px) and (max-width: 1199px) and (orientation: portrait),
        (min-width: 900px) and (max-width: 1399px) and (min-height: 820px) and (orientation: landscape) and (min-aspect-ratio: 4/3) and (max-aspect-ratio: 3/2) {
-  #view-cronometro #cronoCalendarObjectivesShell { padding-bottom: 86px; box-sizing: border-box; }
+  #view-cronometro #cronoCalendarObjectivesShell {
+    padding-bottom: var(--crono-solidity-reserved-height, 110px);
+    box-sizing: border-box;
+    transition: padding-bottom .16s ease;
+  }
   #view-cronometro .crono-target-solidity {
     grid-column: 4 / -1;
     grid-row: 1;

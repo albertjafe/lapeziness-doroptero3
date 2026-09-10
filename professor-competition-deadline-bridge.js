@@ -9,7 +9,7 @@
   const DAY = 86400000;
   const arr = value => Array.isArray(value) ? value : [];
   const id = value => value == null ? '' : String(value);
-  const num = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+  const num = (value, fallback = 0) => value == null || value === '' ? fallback : (Number.isFinite(Number(value)) ? Number(value) : fallback);
   const dateOf = value => {
     if (!value) return null;
     const date = value instanceof Date ? value : new Date(value);

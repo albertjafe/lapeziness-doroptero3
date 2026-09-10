@@ -26,7 +26,7 @@
   }
   function selectedCount() {
     const host = list();
-    return host ? Array.from(host.querySelectorAll('.obra-check-item input[type="checkbox"]:checked')).length : 0;
+    return host ? Array.from(host.querySelectorAll('.obra-check-item input[type="checkbox"]')).filter(checkbox => checkbox.checked).length : 0;
   }
   function toolbar() { return document.getElementById(TOOLBAR_ID); }
   function searchInput() { return document.getElementById('eventRepertoireSearch'); }
@@ -38,7 +38,7 @@
     if (window.EventMovementSelector || document.getElementById('eventMovementSelectorScript')) return;
     const script = document.createElement('script');
     script.id = 'eventMovementSelectorScript';
-    script.src = './event-movement-selector.js?v=356';
+    script.src = './event-movement-selector.js?v=377';
     script.async = false;
     document.head.appendChild(script);
   }

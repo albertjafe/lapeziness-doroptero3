@@ -1,16 +1,16 @@
-const CACHE = 'estudio-v376';
+const CACHE = 'estudio-v377';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
   "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=342",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=374",
+  "./app.js?v=377",
   "./competition-planning-seed.js?v=342",
   "./crono-idle-hierarchy.css?v=342",
   "./crono-readiness-layout.css?v=342",
   "./crono-resume-layout.css?v=342",
-  "./crono-resume-layout.js?v=374",
+  "./crono-resume-layout.js?v=377",
   "./crono-running-premium.css?v=342",
   "./crono-running-premium.js?v=342",
   "./crono-save-resilience.js?v=347",
@@ -19,13 +19,13 @@ const ASSETS = [
   "./document-sync-core.js?v=344",
   "./ensemble-repertoire-catalog.js?v=373",
   "./event-data-protection.js?v=342",
-  "./event-movement-selector.js?v=356",
+  "./event-movement-selector.js?v=377",
   "./event-planning-ui-v2.css?v=342",
   "./event-planning-ui-v2.js?v=342",
   "./event-planning.css?v=342",
-  "./event-planning.js?v=342",
+  "./event-planning.js?v=377",
   "./event-repertoire-picker.css?v=342",
-  "./event-repertoire-picker.js?v=356",
+  "./event-repertoire-picker.js?v=377",
   "./event-sync-core.js?v=342",
   "./google-calendar.js?v=342",
   "./historical-events-details.js?v=342",
@@ -50,30 +50,30 @@ const ASSETS = [
   "./obras-unified-library.css?v=342",
   "./obras-unified-library.js?v=342",
   "./pase-liquid-direct-touch.js?v=342",
-  "./passage-tracker.css?v=374",
+  "./passage-tracker.css?v=377",
   "./passage-tracker.js?v=374",
   "./passage-tracker-resilience.js?v=372",
   "./piano-rooms-core.js?v=372",
   "./piano-rooms.css?v=369",
-  "./piano-rooms.js?v=373",
+  "./piano-rooms.js?v=377",
   "./reservation-dashboard.css?v=372",
   "./reservation-dashboard.js?v=372",
-  "./planning-enhancements-v3.css?v=373",
-  "./planning-enhancements-v3.js?v=373",
+  "./planning-enhancements-v3.css?v=377",
+  "./planning-enhancements-v3.js?v=377",
   "./planning-enhancements-v4-speech-fix.js?v=342",
-  "./planning-enhancements-v4.css?v=342",
-  "./planning-enhancements-v4.js?v=373",
-  "./professor-competition-deadline-bridge.js?v=342",
+  "./planning-enhancements-v4.css?v=377",
+  "./planning-enhancements-v4.js?v=377",
+  "./professor-competition-deadline-bridge.js?v=377",
   "./professor-context-enrichment.js?v=342",
-  "./professor-core.js?v=349",
+  "./professor-core.js?v=377",
   "./professor-practice-dedup.js?v=363",
-  "./professor-dashboard.js?v=355",
+  "./professor-dashboard.js?v=377",
   "./professor-duration-policy.js?v=349",
   "./professor-event-gate-ui.js?v=342",
-  "./professor-event-gate.js?v=349",
-  "./professor-handoff-resilience.js?v=349",
+  "./professor-event-gate.js?v=377",
+  "./professor-handoff-resilience.js?v=377",
   "./professor-report-normalizer.js?v=342",
-  "./professor-report-worker.js?v=349",
+  "./professor-report-worker.js?v=377",
   "./professor-temporary-chat.js?v=342",
   "./push-client.js?v=368",
   "./readiness-core.js?v=342",
@@ -82,8 +82,8 @@ const ASSETS = [
   "./session-minutes-correction.js?v=342",
   "./session-home.css?v=374",
   "./solo-repertoire-structure.js?v=361",
-  "./solidity-guide-modal.css?v=375",
-  "./solidity-guide-modal.js?v=375",
+  "./solidity-guide-modal.css?v=377",
+  "./solidity-guide-modal.js?v=377",
   "./solidity-history-editor.css?v=342",
   "./solidity-history-editor.js?v=342",
   "./solidity-model.js?v=342",
@@ -147,7 +147,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '376');
+            target.searchParams.set('__pwa', '377');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -155,7 +155,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'376', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'377', navigated });
         } catch (error) {}
       }
     }

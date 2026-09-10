@@ -49,4 +49,17 @@ describe('Professor event gate', () => {
     expect(Professor.DEFAULT_MASTER_PROMPT).toContain('preferencia diaria');
     expect(Professor.DEFAULT_MASTER_PROMPT).not.toContain('usa 4 horas TOTALES');
   });
+
+  it('organizes general projects by progress without inventing musical urgency', () => {
+    const report = Professor.buildReport({
+      obras: [work('wald', 'Waldstein')], sessionPlants: [],
+      eventos: [{ id:'book', nombre:'Leer tratado de armonía', tipo:'proyecto', fecha:'', fechaFlexibleTipo:'sin-fecha', projectProgress:28, obras:[] }],
+    }, { asOf, googleCalendarState:{} });
+    const prompt = Professor.buildPrompt(report, { mode:'today' });
+    expect(report.events[0]).toMatchObject({ daysAway:null, progress:28, repertoireLinked:false });
+    expect(report.units[0].priority.score).toBe(0);
+    expect(prompt).toContain('PROYECTOS_PERSONALES');
+    expect(prompt).toContain('Leer tratado de armonía|estado=activo|progreso=28%|horizonte=sin fecha|repertorio=proyecto general');
+    expect(prompt).toMatch(/sin repertorio.*línea de trabajo válida/i);
+  });
 });

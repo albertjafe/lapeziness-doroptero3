@@ -20,7 +20,7 @@
 }
 .event-project-mode {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   padding: 4px;
   border-radius: 12px;
@@ -44,6 +44,48 @@
   box-shadow: 0 1px 5px rgba(0,0,0,.08);
 }
 .event-project-month-field[hidden] { display: none !important; }
+.event-project-progress-field { margin-top: 11px; }
+.event-project-progress-field > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.event-project-progress-field output {
+  color: var(--accent);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 800;
+}
+#eventoProyectoProgreso {
+  appearance: none;
+  width: 100%;
+  height: 9px;
+  margin: 11px 0 5px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg,
+    var(--accent) 0 var(--project-progress, 0%),
+    color-mix(in srgb, var(--border2) 72%, transparent) var(--project-progress, 0%) 100%);
+  cursor: pointer;
+  touch-action: none;
+}
+#eventoProyectoProgreso::-webkit-slider-thumb {
+  appearance: none;
+  width: 23px;
+  height: 23px;
+  border: 4px solid var(--bg2);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 2px 9px rgba(0,0,0,.2);
+}
+#eventoProyectoProgreso::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border: 4px solid var(--bg2);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 2px 9px rgba(0,0,0,.2);
+}
 .event-project-help {
   margin: 8px 2px 0;
   color: var(--text3);

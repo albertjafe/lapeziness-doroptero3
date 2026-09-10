@@ -28,10 +28,11 @@ test('Professor is visible, opens, and exposes ChatGPT planning actions', async 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect.poll(() => page.evaluate(() => Boolean(window.ProfessorCore && window.renderProfessorDashboard))).toBe(true);
 
-  const nav = page.locator('body > .nav-bottom .nav-btn[data-view="profesor"]');
-  await expect(nav).toBeVisible();
-  await expect(nav).toContainText('Profesor');
-  await nav.click();
+  await page.evaluate(() => showView('cronometro'));
+  const shortcut = page.locator('#cronoIdleDrawer .crono-professor-link');
+  await expect(shortcut).toBeVisible();
+  await expect(shortcut).toContainText('Profesor');
+  await shortcut.click();
 
   await expect(page.locator('#view-profesor')).toHaveClass(/active/);
   await expect(page.locator('#view-profesor')).toContainText('Superinforme');

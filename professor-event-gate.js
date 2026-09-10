@@ -5,13 +5,15 @@
 })(typeof window !== 'undefined' ? window : globalThis, function (root) {
   'use strict';
 
-  const RUNTIME_MARKER = 'PROFESSOR_EVENT_GATE_V2';
+  const RUNTIME_MARKER = 'PROFESSOR_EVENT_GATE_V3';
   const RUNTIME_RULES = `${RUNTIME_MARKER}
 REGLA DE ENTRADA AL PLAN
 - El Profesor organiza el estudio a partir de EVENTOS y PROYECTOS futuros que tengan repertorio explícitamente enlazado.
 - Una obra o movimiento SIN ningún evento/proyecto futuro enlazado queda FUERA del ranking diario: prioridad musical 0 por defecto.
 - No recomiendes mantener, reactivar, refrescar, "vacunar contra el enfriamiento" ni recuperar una obra solo porque tenga solidez baja, medición antigua, dificultad alta, muchas horas históricas o lleve días/semanas sin tocarse. Si no está exigida por un evento/proyecto enlazado, puede enfriarse sin problema.
 - Si un evento existe pero NO tiene repertorio enlazado, menciónalo como dato pendiente y NO lo uses para elevar ninguna obra.
+- Excepción semántica: un PROYECTO personal sin repertorio (por ejemplo, leer un libro o componer) no es un dato pendiente. Es una línea de trabajo válida: intégrala en la organización según estado y progreso, sin mezclarla con el ranking pianístico.
+- Un proyecto sin fecha no vence hoy: no inventes días restantes, urgencia ni fecha límite. Puede recibir un bloque realista por continuidad o intención explícita.
 - Solo después de pasar este filtro de evento/proyecto, ordena los movimientos por urgencia, riesgo, coste restante, solidez, dificultad, estudio reciente, velocidad y saturación.
 
 DURACIÓN DEL DÍA
@@ -96,7 +98,8 @@ DURACIÓN DEL DÍA
   function buildCompactContext(core, report, maxUnits) {
     if (root.ProfessorHandoffResilience) return root.ProfessorHandoffResilience.denseContext(report);
     const units = arr(report && report.units);
-    const eventLines = arr(report && report.events).map(event => `${event.day}|${event.name}|${event.type || '-'}|${event.daysAway}d|fuente=${event.source}|repertorio=${event.repertoireLinked ? arr(event.workIds).join(',') : 'NO_ENLAZADO'}`);
+    const eventLines = arr(report && report.events).map(event => `${event.day}|${event.name}|${event.type || '-'}|${event.daysAway == null ? 'sin plazo' : event.daysAway + 'd'}|progreso=${event.progress == null ? '-' : event.progress + '%'}|fuente=${event.source}|repertorio=${event.repertoireLinked ? arr(event.workIds).join(',') : 'NO_ENLAZADO'}`);
+    const projectLines = arr(report && report.events).filter(event => event.type === 'proyecto').map(event => `${event.name}|estado=${event.status || 'activo'}|progreso=${event.progress == null ? 0 : event.progress}%|horizonte=${event.datePrecision === 'none' ? 'sin fecha' : event.day}|repertorio=${event.repertoireLinked ? arr(event.workIds).join(',') : 'proyecto general'}`);
     const todayLines = arr(report && report.today && report.today.byUnit).map(item => `${item.label}=${item.minutes}m`).join('; ') || 'sin movimientos registrados';
     const unitLine = typeof core.unitLine === 'function'
       ? unit => core.unitLine(unit)
@@ -108,11 +111,12 @@ DURACIÓN DEL DÍA
       return `${unit.key}|objetivo=${unit.nextEvent.name}/${unit.nextEvent.daysAway}d|actual7d=${pace.currentDaily7dMinutes == null ? '?' : pace.currentDaily7dMinutes}m/d|necesario≈${pace.requiredDailyMinutes == null ? '?' : pace.requiredDailyMinutes}m/d|ritmo=${pace.status || '?'}${velocity ? `|velocidad=${velocity.hours}h_estimadas_por_progreso_observado` : ''}`;
     });
     return [
-      `SUPERINFORME_PROFESOR_EVENTOS_V2 ${report && report.asOf || ''}`,
+      `SUPERINFORME_PROFESOR_EVENTOS_V3 ${report && report.asOf || ''}`,
       `HOY total_conocido=${report && report.today ? report.today.totalKnownMinutes : 0}m; por_movimiento=${report && report.today ? report.today.movementMinutes : 0}m; sin_movimiento=${report && report.today ? report.today.unallocatedMinutes : 0}m; ${todayLines}`,
       `COBERTURA ${JSON.stringify(report && report.coverage || {})}`,
       arr(report && report.warnings).length ? `ADVERTENCIAS ${report.warnings.join(' | ')}` : 'ADVERTENCIAS ninguna',
       'EVENTOS\n' + (eventLines.join('\n') || 'ninguno'),
+      'PROYECTOS_PERSONALES\n' + (projectLines.join('\n') || 'ninguno'),
       `REGLA_RANKING solo repertorio con evento/proyecto enlazado; unidades presentes pero excluidas del plan=${excluded}`,
       'UNIDADES_PRIORIZABLES_ENLAZADAS_A_EVENTOS\n' + (units.map(unitLine).join('\n') || 'ninguna'),
       paceLines.length ? 'HORIZONTE_Y_RITMO_ENLAZADO\n' + paceLines.join('\n') : 'HORIZONTE_Y_RITMO_ENLAZADO\nninguno',
@@ -145,7 +149,7 @@ DURACIÓN DEL DÍA
       const master = String(opts.masterPrompt || target.DEFAULT_MASTER_PROMPT || '').trim();
       const note = String(opts.note || '').trim();
       const runtime = master.includes(RUNTIME_MARKER) ? '' : `\n\n${RUNTIME_RULES}`;
-      return `${master}${runtime}\n\nTAREA DE ESTE TURNO\n${modeInstruction(opts.mode || 'today')}${note ? `\nCondición/mensaje adicional del usuario: ${note}` : ''}\n\n${compactContext(report)}\n\nAntes de recomendar, comprueba explícitamente: (1) lo estudiado hoy, (2) qué eventos/proyectos tienen repertorio realmente enlazado, (3) que ninguna obra sin evento se cuele por enfriamiento o historial, (4) cada movimiento por separado, (5) urgencia y coste restante, (6) saturación reciente y (7) si la referencia diaria elegida es adecuada o existe una extensión opcional justificada, recalculando con flexibilidad si conviene reforzar/repetir bloques ya elegidos, incorporar otros nuevos o combinar ambas cosas.`;
+      return `${master}${runtime}\n\nTAREA DE ESTE TURNO\n${modeInstruction(opts.mode || 'today')}${note ? `\nCondición/mensaje adicional del usuario: ${note}` : ''}\n\n${compactContext(report)}\n\nAntes de recomendar, comprueba explícitamente: (1) lo estudiado hoy, (2) qué eventos/proyectos tienen repertorio realmente enlazado, (3) qué proyectos generales deben organizarse por progreso sin inventarles urgencia, (4) que ninguna obra sin evento se cuele por enfriamiento o historial, (5) cada movimiento por separado, (6) urgencia y coste restante, (7) saturación reciente y (8) si la referencia diaria elegida es adecuada o existe una extensión opcional justificada, recalculando con flexibilidad si conviene reforzar/repetir bloques ya elegidos, incorporar otros nuevos o combinar ambas cosas.`;
     };
     buildPrompt.__professorEventGate = true;
     target.buildPrompt = buildPrompt;

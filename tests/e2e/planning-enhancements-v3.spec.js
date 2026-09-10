@@ -38,10 +38,11 @@ test('dictated task keywords set urgentissima, urgente, normal or blank priority
     select.value = 'obra::obra_1';
     cronoUpdateStartBtn();
   });
-  await page.locator('#cronoStageIdle .crono-tomorrow-note-btn').click();
-  await page.locator('#cronoNoteInput').fill('Revisar el final urgentísima');
-  await page.locator('#modalCronoNote').getByRole('button', { name:'Guardar', exact:true }).click();
-  await expect.poll(() => page.evaluate(() => cronoTasks().find(item => item.source === 'tomorrow-note')?.priority)).toBe(3);
+  const tasks = page.locator('#cronoIdleTasksPanel');
+  await tasks.getByRole('button', { name:'Añadir tarea de Personal' }).click();
+  await tasks.locator('#cronoIdleTaskInput').fill('Revisar el final urgentísima');
+  await tasks.locator('.crono-task-add-btn').click();
+  await expect.poll(() => page.evaluate(() => cronoTasks().find(item => item.text === 'Revisar el final')?.priority)).toBe(3);
 });
 
 test('project event can use a month instead of inventing an exact date', async ({ page }) => {
@@ -71,6 +72,28 @@ test('project event can use a month instead of inventing an exact date', async (
   });
   expect(saved.fechaFlexibleLabel.toLowerCase()).toContain('octubre');
   expect(await page.evaluate(event => PlanningEnhancementsV3.projectWindow(event), saved)).toEqual({ start:'2026-10-01', end:'2026-10-31', flexible:true });
+});
+
+test('project can stay deadline-free and persists its progress', async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    showView('calendario');
+    switchCalTab('eventos', document.getElementById('calTabEventos'));
+    openAddEvento();
+  });
+  await page.locator('#eventoTipoSelector [data-evento-tipo="proyecto"]').click();
+  await expect(page.locator('[data-project-mode="none"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#modalAddEvento .evento-date-range')).toBeHidden();
+  await page.locator('#eventoNombre').fill('Leer la biografía de Ravel');
+  await page.locator('#eventoProyectoProgreso').fill('37');
+  await expect(page.locator('#eventoProyectoProgresoValue')).toHaveText('37%');
+  await page.locator('#modalAddEvento .modal-btn.primary').click();
+
+  const saved = await page.evaluate(() => db.eventos.find(item => item.nombre === 'Leer la biografía de Ravel'));
+  expect(saved).toMatchObject({
+    tipo:'proyecto', fecha:'', fechaFin:'', fechaFlexibleTipo:'sin-fecha', projectProgress:37,
+  });
+  expect(await page.evaluate(event => PlanningEnhancementsV3.projectWindow(event), saved)).toBeNull();
 });
 
 test('solidity guide covers new works, chamber with score and recovered repertoire', async ({ page }) => {

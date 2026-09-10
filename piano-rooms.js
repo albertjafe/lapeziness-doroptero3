@@ -43,16 +43,16 @@
     document.head.appendChild(link);
   }
   function loadProfessor(){
-    load('professorCoreScript','./professor-core.js?v=349',function(){
+    load('professorCoreScript','./professor-core.js?v=377',function(){
       load('professorPracticeDedupScript','./professor-practice-dedup.js?v=363',function(){
         load('professorReportNormalizerScript','./professor-report-normalizer.js?v=342',function(){
           load('professorContextEnrichmentScript','./professor-context-enrichment.js?v=342',function(){
-            load('professorCompetitionDeadlineBridgeScript','./professor-competition-deadline-bridge.js?v=342',function(){
-              load('professorEventGateScript','./professor-event-gate.js?v=349',function(){
+            load('professorCompetitionDeadlineBridgeScript','./professor-competition-deadline-bridge.js?v=377',function(){
+              load('professorEventGateScript','./professor-event-gate.js?v=377',function(){
                 load('professorDurationPolicyScript','./professor-duration-policy.js?v=349',function(){
-                  load('professorDashboardScript','./professor-dashboard.js?v=355',function(){
+                  load('professorDashboardScript','./professor-dashboard.js?v=377',function(){
                     load('professorEventGateUiScript','./professor-event-gate-ui.js?v=342');
-                    load('professorHandoffResilienceScript','./professor-handoff-resilience.js?v=349',function(){
+                    load('professorHandoffResilienceScript','./professor-handoff-resilience.js?v=377',function(){
                       load('professorTemporaryChatScript','./professor-temporary-chat.js?v=342');
                     });
                   });
@@ -81,9 +81,9 @@
   loadStyle('workDifficultyStyles','./work-difficulty.css?v=342');
   loadStyle('eventPlanningStyles','./event-planning.css?v=342');
   loadStyle('eventPlanningUiV2Styles','./event-planning-ui-v2.css?v=342');
-  loadStyle('planningEnhancementsV3Styles','./planning-enhancements-v3.css?v=373');
-  loadStyle('planningEnhancementsV4Styles','./planning-enhancements-v4.css?v=342');
-  loadStyle('solidityGuideModalStyles','./solidity-guide-modal.css?v=375');
+  loadStyle('planningEnhancementsV3Styles','./planning-enhancements-v3.css?v=377');
+  loadStyle('planningEnhancementsV4Styles','./planning-enhancements-v4.css?v=377');
+  loadStyle('solidityGuideModalStyles','./solidity-guide-modal.css?v=377');
   load('dailyStudyMinutesFixScript','./daily-study-minutes.js?v=371');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=372');
   load('paseLiquidDirectTouchScript','./pase-liquid-direct-touch.js?v=342');
@@ -94,12 +94,12 @@
   });
   load('updateSafetyScript','./update-safety.js?v=354');
   load('cronoRunningPremiumScript','./crono-running-premium.js?v=342');
-  load('eventPlanningScript','./event-planning.js?v=342',function(){
+  load('eventPlanningScript','./event-planning.js?v=377',function(){
     load('competitionPlanningSeedScript','./competition-planning-seed.js?v=342',function(){
       load('eventPlanningUiV2Script','./event-planning-ui-v2.js?v=342',function(){
-        load('planningEnhancementsV3Script','./planning-enhancements-v3.js?v=373',function(){
-          load('solidityGuideModalScript','./solidity-guide-modal.js?v=375');
-          load('planningEnhancementsV4Script','./planning-enhancements-v4.js?v=373',function(){
+        load('planningEnhancementsV3Script','./planning-enhancements-v3.js?v=377',function(){
+          load('solidityGuideModalScript','./solidity-guide-modal.js?v=377');
+          load('planningEnhancementsV4Script','./planning-enhancements-v4.js?v=377',function(){
             load('planningEnhancementsV4SpeechFixScript','./planning-enhancements-v4-speech-fix.js?v=342',loadProfessor);
           });
         });

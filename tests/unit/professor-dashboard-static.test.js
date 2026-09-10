@@ -36,11 +36,11 @@ describe('Professor dashboard integration', () => {
   });
 
   it('loads the Professor stack from the current bootstrap after planning enhancements', () => {
-    expect(loader).toContain("load('professorCoreScript','./professor-core.js?v=349'");
+    expect(loader).toContain("load('professorCoreScript','./professor-core.js?v=377'");
     expect(loader).toContain("load('professorReportNormalizerScript','./professor-report-normalizer.js?v=342'");
     expect(loader).toContain("load('professorContextEnrichmentScript','./professor-context-enrichment.js?v=342'");
-    expect(loader).toContain("load('professorCompetitionDeadlineBridgeScript','./professor-competition-deadline-bridge.js?v=342'");
-    expect(loader).toContain("load('professorDashboardScript','./professor-dashboard.js?v=355'");
+    expect(loader).toContain("load('professorCompetitionDeadlineBridgeScript','./professor-competition-deadline-bridge.js?v=377'");
+    expect(loader).toContain("load('professorDashboardScript','./professor-dashboard.js?v=377'");
     expect(loader).toContain("load('planningEnhancementsV4SpeechFixScript','./planning-enhancements-v4-speech-fix.js?v=342',loadProfessor)");
   });
 

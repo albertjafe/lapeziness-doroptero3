@@ -4,7 +4,7 @@
 (function eventMovementSelector(root) {
   'use strict';
 
-  const VERSION = 1;
+  const VERSION = 2;
   const HOST_ID = 'obraCheckList';
   const MODAL_ID = 'modalAddEvento';
   const EDIT_ID = 'eventoEditId';
@@ -170,6 +170,11 @@
   function onHostClick(event) {
     const button = event.target && event.target.closest && event.target.closest('[data-event-movement]');
     if (!button) return;
+    // Los botones viven dentro de un <label>. Sin cancelar su acción por
+    // defecto, Safari/Chromium alternan también el checkbox padre al soltar,
+    // vaciando el repertorio aunque queden movimientos seleccionados.
+    event.preventDefault();
+    event.stopPropagation();
     const group = button.closest('.event-movement-options');
     const workId = id(group && group.dataset.workId);
     const movId = id(button.dataset.eventMovement);

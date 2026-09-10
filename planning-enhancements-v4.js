@@ -1,13 +1,13 @@
 /* Planning enhancements v4
  * - Chamber/concerto readiness semantics: own part first, ensemble evidence late.
- * - Personal projects get their own event section and month-target language.
+ * - Personal projects get their own event section, deadline-free mode and progress bar.
  * - Dictated task priority works in inline tasks and tomorrow notes, stripping keywords.
  * - On iPhone/iPad, automatic Web Speech is suppressed: use keyboard dictation without a web microphone prompt.
  */
 (function planningEnhancementsV4(){
   'use strict';
 
-  const VERSION = 5;
+  const VERSION = 6;
   const TASK_INPUT_SELECTOR = [
     '#cronoIdleTaskInput', '#cronoTaskInput',
     'input[id*="TaskInput"]', 'textarea[id*="TaskInput"]',
@@ -268,6 +268,7 @@
   }
 
   function projectTarget(event){
+    if(event.fechaFlexibleTipo === 'sin-fecha' || (!event.fecha && !event.fechaObjetivoMes)) return 'Sin fecha límite';
     if(event.fechaFlexibleTipo === 'mes' && event.fechaFlexibleLabel) return event.fechaFlexibleLabel;
     if(event.fechaObjetivoMes){
       const [year,month] = String(event.fechaObjetivoMes).split('-').map(Number);
@@ -283,8 +284,23 @@
     return 'Sin fecha';
   }
 
+  function projectProgress(event){
+    const value = Number(event?.projectProgress ?? event?.progreso ?? 0);
+    return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 0;
+  }
+
+  function projectTargetPrefix(event){
+    if(event.fechaFlexibleTipo === 'sin-fecha' || (!event.fecha && !event.fechaObjetivoMes)) return 'Horizonte abierto';
+    if(event.fechaFlexibleTipo === 'mes' || event.fechaObjetivoMes) return 'Objetivo flexible';
+    return 'Fecha objetivo';
+  }
+
+  function projectStatus(event){
+    return ({ confirmado:'Activo', planificado:'Planificado', standby:'En pausa', completado:'Completado' })[event.estado] || event.estado || 'Activo';
+  }
+
   function projectSignature(projects){
-    return JSON.stringify(projects.map(project => [project.id,project.nombre,project.estado,project.fecha,project.fechaObjetivoMes,project.fechaFlexibleLabel,(project.obras||[]).length]));
+    return JSON.stringify(projects.map(project => [project.id,project.nombre,project.estado,project.fecha,project.fechaObjetivoMes,project.fechaFlexibleLabel,projectProgress(project),(project.obras||[]).length]));
   }
 
   function renderProjectsSection(){
@@ -310,15 +326,25 @@
     const signature = projectSignature(projects);
     if(section.dataset.signature !== signature){
       section.dataset.signature = signature;
-      section.innerHTML = `<header><div><span>Objetivos sin día rígido</span><strong>Proyectos personales</strong></div><small>${projects.length}</small></header><div class="personal-projects-grid">${projects.map(project => {
+      section.innerHTML = `<header><div><span>Trabajo a largo plazo</span><strong>Proyectos personales</strong></div><small>${projects.length}</small></header><div class="personal-projects-grid">${projects.map(project => {
         const works = Array.isArray(project.obras) ? project.obras.length : 0;
-        const flexible = project.fechaFlexibleTipo === 'mes' || project.fechaObjetivoMes;
-        return `<button type="button" class="personal-project-card" data-project-event-id="${esc(project.id)}"><div><b>${esc(project.nombre || 'Proyecto')}</b><span>${flexible?'Objetivo flexible':'Objetivo'} · ${esc(projectTarget(project))}</span></div><em>${works ? works+' obra'+(works===1?'':'s') : 'Proyecto'} · ${esc(project.estado || 'confirmado')}</em></button>`;
+        const progress = projectProgress(project);
+        return `<article class="personal-project-card">
+          <button type="button" class="personal-project-open" data-project-event-id="${esc(project.id)}" aria-label="Editar proyecto ${esc(project.nombre || 'Proyecto')}">
+            <div class="personal-project-copy"><b>${esc(project.nombre || 'Proyecto')}</b><span>${projectTargetPrefix(project)} · ${esc(projectTarget(project))}</span></div>
+            <div class="personal-project-meta"><em>${works ? works+' obra'+(works===1?'':'s') : 'Proyecto general'} · ${esc(projectStatus(project))}</em><strong>${progress}%</strong></div>
+            <div class="personal-project-progress" role="progressbar" aria-label="Progreso de ${esc(project.nombre || 'Proyecto')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><i style="width:${progress}%"></i></div>
+          </button>
+          <button type="button" class="personal-project-delete" data-project-delete-id="${esc(project.id)}" aria-label="Eliminar proyecto ${esc(project.nombre || 'Proyecto')}" title="Eliminar">×</button>
+        </article>`;
       }).join('')}</div>`;
       section.querySelectorAll('[data-project-event-id]').forEach(button => button.addEventListener('click', () => {
         const id = button.dataset.projectEventId;
-        const original = Array.from(document.querySelectorAll('#eventosList .evento-card')).find(card => card.dataset.projectOriginalId === id);
-        if(original) original.click();
+        if(typeof openEditEvento === 'function') openEditEvento(id);
+      }));
+      section.querySelectorAll('[data-project-delete-id]').forEach(button => button.addEventListener('click', () => {
+        const id = button.dataset.projectDeleteId;
+        if(typeof deleteEvento === 'function') deleteEvento(id);
       }));
     }
 
@@ -357,7 +383,7 @@
     patchTomorrowPriority();
     refreshUi();
     observeUi();
-    window.PlanningEnhancementsV4 = { version:VERSION, priorityFromText, stripPriorityKeyword, parseTaskText, isIOS, refreshUi, refreshSolidityGuide:refineSolidityGuide };
+    window.PlanningEnhancementsV4 = { version:VERSION, priorityFromText, stripPriorityKeyword, parseTaskText, projectProgress, isIOS, refreshUi, refreshSolidityGuide:refineSolidityGuide };
   }
 
   function boot(attempt){

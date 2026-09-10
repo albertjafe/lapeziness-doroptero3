@@ -17,6 +17,7 @@ REGLAS FUNDAMENTALES
 - Ten en cuenta dificultad técnica, estudio reciente (hoy/3/7/14/30/90 días), última práctica, pases, eventos, días restantes, horas estimadas de recuperación y saturación reciente.
 - Prioriza riesgo x urgencia x coste restante, pero evita sobreconcentración si otra unidad crítica se está enfriando.
 - Si un evento no tiene repertorio enlazado, dilo; no inventes que una obra pertenece a ese evento.
+- Los proyectos personales son válidos aunque no tengan fecha ni repertorio. Organízalos según su estado y progreso como una línea de trabajo propia, sin convertirlos en urgencia musical ni inventar un plazo.
 - Si faltan datos, expresa la incertidumbre. No conviertas correlaciones en causalidad.
 - Usa el estudio que ya he hecho HOY: el plan debe organizar lo que queda, no empezar el día de cero.
 - La sesión en curso, si existe, está marcada como no guardada. Sus minutos ya incluidos en HOY no se suman otra vez; las notas y pausas conservan su estado real.
@@ -116,19 +117,24 @@ Cuando pida organizar el día, responde primero con una propuesta compacta y acc
 
     const events = [];
     arr(db && db.eventos).forEach(event => {
+      const isProject = String(event.tipo || '').toLowerCase() === 'proyecto';
       const monthly = event.fechaFlexibleTipo === 'mes' || Boolean(event.fechaObjetivoMes);
+      const undated = isProject && (event.fechaFlexibleTipo === 'sin-fecha' || (!event.fecha && !event.fechaObjetivoMes));
       const month = event.fechaObjetivoMes || String(event.fechaFlexibleDesde || event.fecha || '').slice(0, 7);
-      const rangeStart = monthly ? dateOf(month + '-01') : dateOf(event.fecha || event.start || event.date);
-      const rangeEnd = monthly && rangeStart ? new Date(rangeStart.getFullYear(), rangeStart.getMonth() + 1, 0) : dateOf(event.fechaFin) || rangeStart;
+      const rangeStart = undated ? null : (monthly ? dateOf(month + '-01') : dateOf(event.fecha || event.start || event.date));
+      const rangeEnd = undated ? null : (monthly && rangeStart ? new Date(rangeStart.getFullYear(), rangeStart.getMonth() + 1, 0) : dateOf(event.fechaFin) || rangeStart);
       const at = rangeStart;
-      if (!at || rangeEnd < startDay || event.completado === true || !planningWeight(event.estado || event.status)) return;
+      if ((!undated && (!at || rangeEnd < startDay)) || event.completado === true || !planningWeight(event.estado || event.status)) return;
+      const progressValue = Number(event.projectProgress ?? event.progreso ?? 0);
+      const progress = isProject && Number.isFinite(progressValue) ? clamp(Math.round(progressValue), 0, 100) : null;
       events.push({
         key: `internal:${id(event.id || event.nombre || event.fecha)}`,
         source: 'app', id: event.id || null, name: event.nombre || event.title || 'Evento', type: event.tipo || '',
-        at: monthly ? null : at.toISOString(), day: monthly ? month : isoDay(at),
-        datePrecision: monthly ? 'month' : 'day', targetMonth: monthly ? month : null,
-        calculationRange: { start: isoDay(rangeStart), end: isoDay(rangeEnd) },
-        daysAway: Math.max(0, Math.ceil((rangeStart - startDay) / DAY)),
+        at: monthly || undated ? null : at.toISOString(), day: undated ? 'sin-fecha' : (monthly ? month : isoDay(at)),
+        datePrecision: undated ? 'none' : (monthly ? 'month' : 'day'), targetMonth: monthly ? month : null,
+        calculationRange: undated ? null : { start: isoDay(rangeStart), end: isoDay(rangeEnd) },
+        daysAway: undated ? null : Math.max(0, Math.ceil((rangeStart - startDay) / DAY)),
+        deadlineFree: undated, progress,
         status: event.estado || event.status || null, planningWeight: planningWeight(event.estado || event.status),
         sourceEvent: { ...event },
         workIds: arr(event.obras).map(id), movementTargets: event.professorMovements || event.movimientosObjetivo || null,
@@ -150,7 +156,8 @@ Cuando pida organizar el día, responde primero con una propuesta compacta y acc
       });
     });
     const seen = new Set();
-    return events.sort((a, b) => a.daysAway - b.daysAway || a.key.localeCompare(b.key)).filter(event => {
+    const eventOrder = event => typeof event.daysAway === 'number' && Number.isFinite(event.daysAway) ? event.daysAway : Number.POSITIVE_INFINITY;
+    return events.sort((a, b) => eventOrder(a) - eventOrder(b) || a.key.localeCompare(b.key)).filter(event => {
       const sig = event.key;
       if (seen.has(sig)) return false;
       seen.add(sig); return true;
@@ -201,7 +208,8 @@ Cuando pida organizar el día, responde primero con una propuesta compacta y acc
   }
 
   function fallbackRecoveryHours(score, difficulty, daysSinceEvidence, historicalWorkHours, recentMinutes, linkedEvents) {
-    const target = linkedEvents.length && linkedEvents[0].daysAway <= 14 ? 90 : 82;
+    const nextDays = linkedEvents.length ? linkedEvents[0].daysAway : null;
+    const target = typeof nextDays === 'number' && Number.isFinite(nextDays) && nextDays <= 14 ? 90 : 82;
     const gap = Math.max(0, target - (score == null ? 35 : score));
     const difficultyFactor = Math.pow(1.17, clamp(difficulty, 1, 10) - 5);
     const familiarity = clamp(Math.log1p(Math.max(0, historicalWorkHours)) / Math.log(201), 0, 1);
@@ -251,8 +259,9 @@ Cuando pida organizar el día, responde primero con una propuesta compacta y acc
 
   function priorityFor(unit) {
     const event = unit.nextEvent;
+    const hasDeadline = Boolean(event && typeof event.daysAway === 'number' && Number.isFinite(event.daysAway));
     let urgency = 0;
-    if (event) {
+    if (hasDeadline) {
       if (event.daysAway <= 3) urgency = 34;
       else if (event.daysAway <= 7) urgency = 29;
       else if (event.daysAway <= 14) urgency = 24;
@@ -262,7 +271,7 @@ Cuando pida organizar el día, responde primero con una propuesta compacta y acc
       if (/concurso|examen|audici[oó]n|competition|exam/i.test(event.type + ' ' + event.name)) urgency += 4;
     }
     const score = unit.solidity == null ? 35 : unit.solidity;
-    const gap = Math.max(0, (event && event.daysAway <= 14 ? 90 : 82) - score);
+    const gap = Math.max(0, (hasDeadline && event.daysAway <= 14 ? 90 : 82) - score);
     const solidityRisk = Math.min(30, gap * 0.5);
     const staleRisk = Math.min(14, Math.max(0, unit.daysSinceStudy - 4) * 0.45);
     const evidenceRisk = unit.daysSinceEvidence == null ? 7 : Math.min(10, Math.max(0, unit.daysSinceEvidence - 7) * 0.25);
@@ -275,7 +284,8 @@ Cuando pida organizar el día, responde primero con una propuesta compacta y acc
     const noEventDiscount = event ? 0 : 9;
     const value = clamp((urgency + solidityRisk + staleRisk + evidenceRisk + difficultyRisk + recoveryRisk - saturation - noEventDiscount) * (event ? (event.planningWeight ?? 1) : 1), 0, 100);
     const reasons = [];
-    if (event) reasons.push(`${event.name} en ${event.daysAway} d`);
+    if (hasDeadline) reasons.push(`${event.name} en ${event.daysAway} d`);
+    else if (event) reasons.push(`${event.name} · proyecto sin fecha`);
     if (unit.solidity == null) reasons.push('solidez desconocida; falta evidencia');
     else if (score < 60) reasons.push(`solidez ${Math.round(score)}%`);
     else if (score < 75) reasons.push(`solidez todavía ${Math.round(score)}%`);
@@ -336,7 +346,9 @@ Cuando pida organizar el día, responde primero con una propuesta compacta y acc
         units.push(unit);
       });
     });
-    return units.sort((a, b) => b.priority.score - a.priority.score || (a.nextEvent ? a.nextEvent.daysAway : 999) - (b.nextEvent ? b.nextEvent.daysAway : 999));
+    const eventOrder = unit => unit.nextEvent && typeof unit.nextEvent.daysAway === 'number' && Number.isFinite(unit.nextEvent.daysAway)
+      ? unit.nextEvent.daysAway : 99999;
+    return units.sort((a, b) => b.priority.score - a.priority.score || eventOrder(a) - eventOrder(b));
   }
 
   function todaySummary(units) {
@@ -394,7 +406,8 @@ Cuando pida organizar el día, responde primero con una propuesta compacta y acc
       startedAt: activeSession.startTs ? new Date(activeSession.startTs).toISOString() : asOf.toISOString(),
       endedAt: asOf.toISOString(), _minutes: activeMinutes, unsaved: true });
     const units = buildUnits(db || {}, asOf, events, practice);
-    const noLinkedUpcoming = events.filter(event => !event.repertoireLinked);
+    const noLinkedUpcoming = events.filter(event => !event.repertoireLinked && event.type !== 'proyecto');
+    const standaloneProjects = events.filter(event => event.type === 'proyecto' && !event.repertoireLinked);
     const today = todaySummary(units);
     const totalToday = practice.filter(p => {
       const at = dateOf(p.endedAt || p.startedAt || p.at);
@@ -443,20 +456,23 @@ Cuando pida organizar el día, responde primero con una propuesta compacta y acc
         internalFutureEvents: events.filter(e => e.source === 'app').length,
         googleFutureEvents: events.filter(e => e.source === 'google').length,
         eventsWithoutRepertoire: noLinkedUpcoming.length,
+        personalProjects: events.filter(e => e.type === 'proyecto').length,
+        standaloneProjects: standaloneProjects.length,
         units: units.length,
         movements: units.filter(u => u.movId).length,
         worksWithoutMovements: units.filter(u => !u.movId).length,
       },
       warnings: [
-        ...(events.length ? [] : ['No hay eventos futuros disponibles en la app/Google Calendar para este informe.']),
+        ...(events.length ? [] : ['No hay eventos futuros ni proyectos activos disponibles en la app/Google Calendar para este informe.']),
         ...(noLinkedUpcoming.length ? [`${noLinkedUpcoming.length} evento(s) de calendario no tienen repertorio enlazado; sirven como contexto de agenda, no como fuente de prioridad musical.`] : []),
+        ...(standaloneProjects.length ? [`${standaloneProjects.length} proyecto(s) personal(es) sin repertorio enlazado deben organizarse como trabajo propio según estado y progreso, sin crear urgencia musical.`] : []),
         ...(unallocatedToday > 0 ? [`Hay ${round1(unallocatedToday)} min de hoy sin movimiento asignado; no se reparten artificialmente entre movimientos.`] : []),
       ],
     };
   }
 
   function unitLine(unit) {
-    const ev = unit.nextEvent ? `${unit.nextEvent.name}/${unit.nextEvent.daysAway}d` : '-';
+    const ev = unit.nextEvent ? `${unit.nextEvent.name}/${unit.nextEvent.daysAway == null ? 'sin-fecha' : unit.nextEvent.daysAway + 'd'}` : '-';
     const sol = unit.solidity == null ? '?' : Math.round(unit.solidity);
     const age = unit.daysSinceEvidence == null ? '?' : Math.round(unit.daysSinceEvidence);
     return `${unit.key}|${unit.composer ? unit.composer + ' · ' : ''}${unit.label}|P${Math.round(unit.priority.score)} ${unit.priority.band}|sol=${sol}% obs=${age}d|dif=${unit.difficulty}|hoy=${unit.recent.today}m 3d=${unit.recent.d3}m 7d=${unit.recent.d7}m 14d=${unit.recent.d14}m 30d=${unit.recent.d30}m 90d=${unit.recent.d90}m|ult=${unit.lastStudyAt ? isoDay(unit.lastStudyAt) : '-'}|histObra=${unit.historicalWorkHours}h movMod=${round1(unit.movementModernMinutes / 60)}h noAsignObra=${round1(unit.workUnallocatedModernMinutes / 60)}h|rec=${unit.recoveryHours.low}-${unit.recoveryHours.high}h|evento=${ev}`;
@@ -464,7 +480,7 @@ Cuando pida organizar el día, responde primero con una propuesta compacta y acc
 
   function compactContext(report, maxUnits) {
     const units = report.units;
-    const eventLines = report.events.map(event => `${event.day}|${event.name}|${event.type || '-'}|${event.daysAway}d|fuente=${event.source}|repertorio=${event.repertoireLinked ? event.workIds.join(',') : 'NO_ENLAZADO'}`);
+    const eventLines = report.events.map(event => `${event.day}|${event.name}|${event.type || '-'}|${event.daysAway == null ? 'sin plazo' : event.daysAway + 'd'}|progreso=${event.progress == null ? '-' : event.progress + '%'}|fuente=${event.source}|repertorio=${event.repertoireLinked ? event.workIds.join(',') : 'NO_ENLAZADO'}`);
     const todayLines = report.today.byUnit.map(item => `${item.label}=${item.minutes}m`).join('; ') || 'sin movimientos registrados';
     return [
       `SUPERINFORME_PROFESOR_V1 ${report.asOf}`,

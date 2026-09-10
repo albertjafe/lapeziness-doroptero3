@@ -49,6 +49,22 @@ describe('ProfessorCore', () => {
     expect(report.warnings.join(' ')).toMatch(/no tienen repertorio enlazado/i);
   });
 
+  it('keeps deadline-free projects without turning them into an event due today', () => {
+    const report=Professor.buildReport({obras:[work()],sessionPlants:[],eventos:[
+      {id:'book',nombre:'Leer un libro',tipo:'proyecto',fecha:'',fechaFlexibleTipo:'sin-fecha',projectProgress:35,obras:[]},
+      {id:'composition',nombre:'Componer una pieza',tipo:'proyecto',fecha:'',fechaFlexibleTipo:'sin-fecha',projectProgress:20,obras:['wald']},
+    ]},{asOf,googleCalendarState:{}});
+    const book=report.events.find(event=>event.id==='book');
+    const composition=report.events.find(event=>event.id==='composition');
+    expect(book).toMatchObject({datePrecision:'none',daysAway:null,deadlineFree:true,progress:35,repertoireLinked:false});
+    expect(composition).toMatchObject({datePrecision:'none',daysAway:null,progress:20,repertoireLinked:true});
+    expect(report.units.every(unit=>unit.nextEvent?.id==='composition')).toBe(true);
+    expect(report.units.every(unit=>unit.priority.reasons.some(reason=>/proyecto sin fecha/i.test(reason)))).toBe(true);
+    expect(report.units.every(unit=>unit.priority.reasons.every(reason=>!/en null d|en 0 d/i.test(reason)))).toBe(true);
+    expect(report.coverage.standaloneProjects).toBe(1);
+    expect(Professor.buildPrompt(report,{mode:'today'})).toMatch(/Leer un libro.*progreso=35%/s);
+  });
+
   it('excludes activities and includes every repertoire movement in the ChatGPT context', () => {
     const db={obras:[work(),{id:'scale',name:'Escalas',tipo:'actividad',movimientos:[]}],sessionPlants:[],eventos:[]};
     const report=Professor.buildReport(db,{asOf,googleCalendarState:{}});

@@ -19,6 +19,7 @@
     'prioriza riesgo*urgencia*coste restante evitando enfriar otra unidad crítica',
     'usa estudio de hoy; no reinicies el día',
     'evento sin repertorio enlazado no crea prioridad musical',
+    'proyecto personal sin repertorio es trabajo válido; organizar por estado/progreso sin inventar plazo ni urgencia musical',
     'si falta evidencia expresa incertidumbre; no inventes datos',
     'propón bloques concretos con duración y propósito',
   ].join(';');
@@ -120,7 +121,7 @@
     return [
       'PIANO_PROF_V4',
       'LEYENDA|Texto sin cifrar y sin pérdida. Índices desde 0. R=metadatos; W=campos comunes de obra; E=eventos; C=columnas; U=unidad (work referencia W; schema referencia C; data contiene sus valores en el mismo orden; refs son índices E). P=prioridad (unit índice U, fields copiados de esa unidad, data adicionales). Dentro de cualquier JSON, {$columns:[nombres],$rows:[[valores]]} es una tabla de registros con esas columnas; {$object:[[clave,valor]]} es un objeto literal escapado. null=desconocido, 0=cero; ausencia no equivale a null. TODAS las U y todos los registros originales están presentes.',
-      'LECTURA|Empieza por today, recentStudyDays, cobertura y eventos; cruza cada U con su obra, evidencia, ventanas 3/7/14/30/90 días y vínculos. recentStudyDays resume los días recientes, sourceContext conserva TODO el historial original (también el antiguo). No sumes las tablas originales otra vez a recent/HOY ni confundas mirrors con sesiones adicionales. Eventos sin repertorio y obras sin evidencia siguen presentes como contexto/información pendiente, nunca como prioridades inventadas.',
+      'LECTURA|Empieza por today, recentStudyDays, cobertura y eventos; cruza cada U con su obra, evidencia, ventanas 3/7/14/30/90 días y vínculos. recentStudyDays resume los días recientes, sourceContext conserva TODO el historial original (también el antiguo). No sumes las tablas originales otra vez a recent/HOY ni confundas mirrors con sesiones adicionales. Un proyecto personal sin repertorio es trabajo general válido y se organiza por estado/progreso; si no tiene fecha no inventes un plazo. Los demás eventos sin repertorio y obras sin evidencia siguen presentes como contexto/información pendiente, nunca como prioridades inventadas.',
       ...columns.map(c => 'C|' + JSON.stringify(c)),
       'R|' + json({ meta:t.meta, eventOrder:t.eventOrder, hasPriorities:t.hasPriorities }),
       ...t.works.map(w => 'W|' + json(w)),
@@ -243,7 +244,7 @@
     if(typeof root.Worker !== 'function')return Promise.resolve().then(fallback);
     try {
       if(!reportWorker){
-        reportWorker=new root.Worker('./professor-report-worker.js?v=349');
+        reportWorker=new root.Worker('./professor-report-worker.js?v=377');
         reportWorker.onmessage=({data:result})=>{
           const pending=pendingReports.get(result.id);if(!pending)return;
           pendingReports.delete(result.id);

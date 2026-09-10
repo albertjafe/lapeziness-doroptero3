@@ -4,9 +4,9 @@ self.window = self;
 importScripts('./readiness-core.js?v=342','./solidity-model.js?v=342',
   './readiness-pill-model.js?v=342','./readiness-recovery-context.js?v=342',
   './work-difficulty-model.js?v=342','./work-difficulty-stored-priority.js?v=342',
-  './professor-core.js?v=349','./professor-report-normalizer.js?v=342',
-  './professor-competition-deadline-bridge.js?v=342','./professor-event-gate.js?v=349',
-  './professor-duration-policy.js?v=349','./professor-handoff-resilience.js?v=349');
+  './professor-core.js?v=377','./professor-report-normalizer.js?v=342',
+  './professor-competition-deadline-bridge.js?v=377','./professor-event-gate.js?v=377',
+  './professor-duration-policy.js?v=349','./professor-handoff-resilience.js?v=377');
 WorkDifficultyModel.installReadiness(ReadinessCore);
 self.onmessage = ({data:request}) => {
   try {

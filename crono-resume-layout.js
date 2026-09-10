@@ -134,14 +134,14 @@ function loadPianoCompanion(id, src, cssId, cssHref) {
 (function loadPassageTracker() {
   'use strict';
   if (window.PassageTracker) return;
-  loadPianoCompanion('passageTrackerScript', './passage-tracker.js?v=374', 'passageTrackerStyles', './passage-tracker.css?v=374');
+  loadPianoCompanion('passageTrackerScript', './passage-tracker.js?v=374', 'passageTrackerStyles', './passage-tracker.css?v=377');
 }());
 
 /* Eventos: búsqueda de repertorio pensada para bibliotecas grandes. */
 (function loadEventRepertoirePicker() {
   'use strict';
   if (window.EventRepertoirePicker) return;
-  loadPianoCompanion('eventRepertoirePickerScript', './event-repertoire-picker.js?v=356', 'eventRepertoirePickerStyles', './event-repertoire-picker.css?v=342');
+  loadPianoCompanion('eventRepertoirePickerScript', './event-repertoire-picker.js?v=377', 'eventRepertoirePickerStyles', './event-repertoire-picker.css?v=342');
 }());
 
 /* Profesor: conserva Chat temporal y añade el handoff ligero que evita URLs

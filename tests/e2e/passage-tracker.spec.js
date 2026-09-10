@@ -179,6 +179,27 @@ test('direct solidity pills never start the global view swipe and expose the qui
   await expect(page.locator('body')).not.toHaveClass(/view-swipe-dragging/);
 });
 
+test('calendar reserves the live height of the direct solidity pill', async ({ page }) => {
+  await page.setViewportSize({ width:1024, height:900 });
+  await prepare(page);
+  await page.evaluate(() => setCronoCalendarObjectivesMode('calendar'));
+  await page.locator('#cronoTargetSolidity .crono-target-solidity-guide summary').click();
+  await page.waitForTimeout(220);
+  const geometry = await page.evaluate(() => {
+    const calendar = document.querySelector('#cronoCalendarPanelInner .crono-calendar-panel').getBoundingClientRect();
+    const pill = document.getElementById('cronoTargetSolidity').getBoundingClientRect();
+    const shell = document.getElementById('cronoCalendarObjectivesShell');
+    return {
+      calendarBottom:calendar.bottom,
+      pillTop:pill.top,
+      reserved:getComputedStyle(shell).getPropertyValue('--crono-solidity-reserved-height').trim(),
+      pillHeight:pill.height,
+    };
+  });
+  expect(parseFloat(geometry.reserved)).toBeGreaterThanOrEqual(geometry.pillHeight + 15);
+  expect(geometry.calendarBottom).toBeLessThanOrEqual(geometry.pillTop - 6);
+});
+
 test('General shows passages from every work and splits its minutes without changing the total', async ({ page }) => {
   await prepare(page);
   const state = await page.evaluate(() => {

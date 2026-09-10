@@ -54,10 +54,15 @@ test('live solidity help opens the same detailed 0–100 copy as Hecho', async (
   await expect(modal).toContainText('múltiples pases y días confirman una consistencia extraordinaria');
   await expect(modal).toContainText('Referencia');
 
-  const copies = await page.evaluate(() => ({
-    hecho: document.querySelector('#solidityGuideHechoV3 .solidity-guide-bands')?.innerText.trim(),
-    modal: document.querySelector('#cronoSolidityGuideModal .solidity-guide-bands')?.innerText.trim(),
-  }));
+  const copies = await page.evaluate(() => {
+    const normalizedCopy = selector => (document.querySelector(selector)?.textContent || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return {
+      hecho: normalizedCopy('#solidityGuideHechoV3 .solidity-guide-bands'),
+      modal: normalizedCopy('#cronoSolidityGuideModal .solidity-guide-bands'),
+    };
+  });
   expect(copies.modal).toBe(copies.hecho);
 
   await modal.getByRole('button', { name:'Cerrar guía' }).click();
