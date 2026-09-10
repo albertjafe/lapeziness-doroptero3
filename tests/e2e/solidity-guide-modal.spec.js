@@ -39,12 +39,14 @@ test('live solidity help opens the same detailed 0–100 copy as Hecho', async (
   await prepare(page);
 
   await expect(page.locator('#cronoTargetSolidityGuideButton')).toBeVisible();
-  await expect(page.locator('#cronoTargetSolidity .crono-target-solidity-guide')).toHaveCount(0);
+  await expect(page.locator('#cronoTargetSolidity .crono-target-solidity-guide')).toHaveCount(1);
+  await expect(page.locator('#cronoTargetSolidity .crono-target-solidity-guide')).not.toHaveAttribute('open', '');
   await expect(page.locator('#solidityGuideHechoV3 .solidity-guide-v3')).toHaveCount(1);
 
   await page.locator('#cronoTargetSolidityGuideButton').click();
   const modal = page.locator('#cronoSolidityGuideModal');
   await expect(modal).toBeVisible();
+  await expect(page.locator('#cronoTargetSolidity .crono-target-solidity-guide')).not.toHaveAttribute('open', '');
   await expect(modal).toContainText('Qué significa cada puntuación');
   await expect(modal).toContainText('Apenas empezada');
   await expect(modal).toContainText('Estás descubriendo notas, digitación o estructura');
