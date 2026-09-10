@@ -83,6 +83,7 @@
   loadStyle('eventPlanningUiV2Styles','./event-planning-ui-v2.css?v=342');
   loadStyle('planningEnhancementsV3Styles','./planning-enhancements-v3.css?v=373');
   loadStyle('planningEnhancementsV4Styles','./planning-enhancements-v4.css?v=342');
+  loadStyle('solidityGuideModalStyles','./solidity-guide-modal.css?v=375');
   load('dailyStudyMinutesFixScript','./daily-study-minutes.js?v=371');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=372');
   load('paseLiquidDirectTouchScript','./pase-liquid-direct-touch.js?v=342');
@@ -97,6 +98,7 @@
     load('competitionPlanningSeedScript','./competition-planning-seed.js?v=342',function(){
       load('eventPlanningUiV2Script','./event-planning-ui-v2.js?v=342',function(){
         load('planningEnhancementsV3Script','./planning-enhancements-v3.js?v=373',function(){
+          load('solidityGuideModalScript','./solidity-guide-modal.js?v=375');
           load('planningEnhancementsV4Script','./planning-enhancements-v4.js?v=373',function(){
             load('planningEnhancementsV4SpeechFixScript','./planning-enhancements-v4-speech-fix.js?v=342',loadProfessor);
           });
