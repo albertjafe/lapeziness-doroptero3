@@ -55,7 +55,7 @@
   }
 
   function currentScore() {
-    const input = document.getElementById('cronoTargetSolidityInput');
+    const input = document.getElementById('cronoTargetSoliditySlider');
     const data = Number(input?.dataset?.paseValue);
     if (Number.isFinite(data)) return Math.max(0, Math.min(100, Math.round(data)));
     const shown = Number(String(document.getElementById('cronoTargetSolidityValue')?.textContent || '').match(/\d+/)?.[0]);
