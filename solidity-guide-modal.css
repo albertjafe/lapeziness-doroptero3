@@ -1,0 +1,124 @@
+body.solidity-scale-modal-open { overflow: hidden; }
+
+#view-cronometro .crono-target-solidity-guide-button {
+  width: 100%;
+  margin: 0 0 7px;
+  padding: 7px 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--border2) 86%, transparent);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--bg3) 72%, transparent);
+  color: var(--text2);
+  font: 650 7.5px/1.2 var(--font-ui, sans-serif);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#view-cronometro .crono-target-solidity-guide-button b {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font: 750 7px/1 var(--font-mono, monospace);
+  letter-spacing: .02em;
+}
+#view-cronometro .crono-target-solidity-guide-button:active { transform: translateY(1px); }
+
+.solidity-scale-modal[hidden] { display: none !important; }
+.solidity-scale-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10040;
+  display: grid;
+  place-items: center;
+  padding: max(16px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom));
+}
+.solidity-scale-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, #000 48%, transparent);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+.solidity-scale-modal-card {
+  position: relative;
+  width: min(680px, 100%);
+  max-height: min(86dvh, 760px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border2);
+  border-radius: 18px;
+  background: var(--bg2);
+  box-shadow: 0 24px 72px rgba(0,0,0,.28);
+}
+.solidity-scale-modal-head {
+  flex: 0 0 auto;
+  padding: 15px 16px 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.solidity-scale-modal-head span {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--accent);
+  font: 700 8px/1.2 var(--font-mono, monospace);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.solidity-scale-modal-head h2 {
+  margin: 0;
+  color: var(--text);
+  font: 650 clamp(20px, 4vw, 28px)/1.05 'Cormorant Garamond', serif;
+}
+.solidity-scale-modal-close {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  background: var(--bg3);
+  color: var(--text2);
+  font: 300 24px/30px var(--font-ui, sans-serif);
+  cursor: pointer;
+}
+.solidity-scale-modal-body {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 13px 14px max(18px, env(safe-area-inset-bottom));
+}
+.solidity-scale-modal-body .solidity-guide-v3 {
+  margin: 0;
+  border: 0;
+  background: transparent;
+}
+.solidity-scale-modal-body .solidity-guide-v3 > summary {
+  pointer-events: none;
+  cursor: default;
+}
+.solidity-scale-modal-body .solidity-guide-row.is-current {
+  background: color-mix(in srgb, var(--accent) 11%, var(--bg3));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.solidity-scale-modal-body .solidity-guide-row.is-current > strong { color: var(--accent); }
+
+@media (max-width: 520px) {
+  .solidity-scale-modal {
+    place-items: end center;
+    padding: 0;
+  }
+  .solidity-scale-modal-card {
+    width: 100%;
+    max-height: 91dvh;
+    border-radius: 18px 18px 0 0;
+    border-bottom: 0;
+  }
+  .solidity-scale-modal-head { padding: 14px 15px 11px; }
+  .solidity-scale-modal-body { padding: 11px 12px max(18px, env(safe-area-inset-bottom)); }
+}
