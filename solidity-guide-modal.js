@@ -124,16 +124,25 @@
     const host = document.getElementById('cronoTargetSolidity');
     if (!host || document.getElementById(TRIGGER_ID)) return false;
     const legacy = host.querySelector('.crono-target-solidity-guide');
-    if (!legacy) return false;
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.id = TRIGGER_ID;
-    button.className = 'crono-target-solidity-guide-button';
-    button.setAttribute('data-no-view-swipe', '');
-    button.setAttribute('aria-haspopup', 'dialog');
-    button.innerHTML = '<span>Guía detallada de la escala</span><b aria-hidden="true">0–100 ↗</b>';
-    button.addEventListener('click', openGuide);
-    legacy.replaceWith(button);
+    const summary = legacy?.querySelector('summary');
+    if (!legacy || !summary) return false;
+
+    legacy.open = false;
+    legacy.classList.add('is-modal-trigger');
+    summary.id = TRIGGER_ID;
+    summary.classList.add('crono-target-solidity-guide-button');
+    summary.setAttribute('role', 'button');
+    summary.setAttribute('aria-haspopup', 'dialog');
+    summary.setAttribute('aria-expanded', 'false');
+    summary.innerHTML = '<span>Guía detallada de la escala</span><b aria-hidden="true">0–100 ↗</b>';
+    summary.addEventListener('click', event => {
+      event.preventDefault();
+      legacy.open = false;
+      openGuide();
+    });
+    legacy.addEventListener('toggle', () => {
+      if (legacy.open) legacy.open = false;
+    });
     return true;
   }
 
