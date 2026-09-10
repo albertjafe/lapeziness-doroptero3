@@ -20966,38 +20966,7 @@ html.platform-windows body[data-view="casa"] .house-canvas-host {
 }
 
 /* ── Plan semanal de estudio ─────────────────────────────────────────────── */
-#view-session .session-mode-switch {
-  width: min(248px, 100%);
-  min-height: 38px;
-  margin: 0 auto 14px;
-  padding: 3px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 3px;
-  border: 1px solid var(--border2);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--card) 80%, var(--bg));
-}
-
-#view-session .session-mode-switch button {
-  min-width: 0;
-  min-height: 30px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text3);
-  font: 700 10px/1 var(--font-ui);
-  letter-spacing: .06em;
-  cursor: pointer;
-}
-
-#view-session .session-mode-switch button.active {
-  background: var(--card);
-  color: var(--text);
-  box-shadow: 0 1px 5px rgba(31, 37, 48, .08);
-}
-
-#view-session.session-weekly-mode > :not(.session-mode-switch):not(.session-weekly-planner) {
+#view-session.session-weekly-mode > :not(.session-weekly-planner) {
   display: none !important;
 }
 
@@ -21311,7 +21280,6 @@ html.platform-windows body[data-view="casa"] .house-canvas-host {
 .weekly-slot-modal-buttons .weekly-slot-remove { color: #bd5353; }
 
 @media (max-width: 699px) {
-  #view-session .session-mode-switch { width: 210px; margin-bottom: 10px; }
   #view-session .session-weekly-planner {
     padding: 11px;
     border-left: 0;

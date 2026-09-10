@@ -408,11 +408,21 @@ html body.crono-running #view-cronometro #cronoRunDrawer[data-tab="pasajes"] .cr
   font: 800 13px/1 var(--font-mono, monospace);
   font-variant-numeric: tabular-nums;
 }
+#view-cronometro .crono-passage-inline-meta em {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text2);
+  font: 650 8px/1.15 var(--font-ui, sans-serif);
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 #view-cronometro .crono-passage-inline-meta small {
+  grid-column: 1 / -1;
   overflow: hidden;
   color: var(--text3);
   font: 600 7px/1 var(--font-ui, sans-serif);
-  text-align: right;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -420,6 +430,48 @@ html body.crono-running #view-cronometro #cronoRunDrawer[data-tab="pasajes"] .cr
 #view-cronometro .passage-inline-meter { height: 34px; }
 #view-cronometro .passage-inline-meter .pase-liquid-reservoir { inset: 5px 1px; }
 #view-cronometro .passage-inline-meter .pase-liquid-orb { width: 19px; height: 19px; left: clamp(3px, calc(var(--pase-fill) - 10px), calc(100% - 23px)); }
+
+/* Curva acumulada: cerrada por defecto para mantener el panel compacto. */
+#view-cronometro .passage-learning-curve {
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 16%, var(--border2));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg3) 64%, transparent);
+  overflow: hidden;
+}
+#view-cronometro .passage-learning-curve > summary {
+  min-height: 34px;
+  padding: 7px 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#view-cronometro .passage-learning-curve > summary::-webkit-details-marker { display: none; }
+#view-cronometro .passage-learning-curve > summary > span { min-width: 0; display: flex; align-items: baseline; gap: 7px; }
+#view-cronometro .passage-learning-curve > summary b { color: var(--text2); font: 700 9px/1 var(--font-ui, sans-serif); }
+#view-cronometro .passage-learning-curve > summary small { overflow: hidden; color: var(--text3); font: 550 7px/1 var(--font-ui, sans-serif); text-overflow: ellipsis; white-space: nowrap; }
+#view-cronometro .passage-learning-curve > summary i { color: var(--text3); font-style: normal; transition: transform .16s ease; }
+#view-cronometro .passage-learning-curve[open] > summary i { transform: rotate(180deg); }
+#view-cronometro .passage-learning-body { padding: 0 9px 9px; display: grid; gap: 7px; border-top: 1px solid color-mix(in srgb, var(--border2) 72%, transparent); }
+#view-cronometro .passage-learning-tabs { margin-top: 8px; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: thin; }
+#view-cronometro .passage-learning-tab { flex: 0 0 auto; max-width: 150px; padding: 5px 8px; overflow: hidden; border: 1px solid var(--border2); border-radius: 999px; background: var(--bg2); color: var(--text3); font: 650 7px/1 var(--font-ui, sans-serif); text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+#view-cronometro .passage-learning-tab.active { border-color: color-mix(in srgb, var(--accent) 42%, var(--border2)); background: color-mix(in srgb, var(--accent) 10%, var(--bg2)); color: var(--accent); }
+#view-cronometro .passage-learning-summary { margin-top: 7px; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+#view-cronometro .passage-learning-tabs + .passage-learning-summary { margin-top: 0; }
+#view-cronometro .passage-learning-summary strong { color: var(--text); font: 700 9px/1.2 var(--font-ui, sans-serif); }
+#view-cronometro .passage-learning-summary span { color: var(--text3); font: 550 7px/1.2 var(--font-ui, sans-serif); text-align: right; }
+#view-cronometro .passage-learning-chart { min-width: 0; overflow: hidden; border-radius: 8px; background: color-mix(in srgb, var(--bg2) 86%, transparent); }
+#view-cronometro .passage-learning-svg { display: block; width: 100%; height: auto; max-height: 176px; }
+#view-cronometro .passage-learning-grid line { stroke: color-mix(in srgb, var(--border2) 74%, transparent); stroke-width: 1; }
+#view-cronometro .passage-learning-grid text,
+#view-cronometro .passage-learning-axis text { fill: var(--text3); font: 7px var(--font-mono, monospace); }
+#view-cronometro .passage-learning-line polyline { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+#view-cronometro .passage-learning-line circle { fill: var(--bg2); stroke: var(--accent); stroke-width: 3; }
+#view-cronometro .passage-learning-empty { min-height: 78px; display: grid; place-items: center; padding: 12px; color: var(--text3); font: 600 8px/1.35 var(--font-ui, sans-serif); text-align: center; }
 
 /* Píldora de la obra/movimiento: siempre accesible y, en iPad, justo bajo el
    panel de calendario/objetivos y antes de las herramientas. */
@@ -461,6 +513,29 @@ html body.crono-running #view-cronometro #cronoRunDrawer[data-tab="pasajes"] .cr
   color: var(--pase-color, var(--accent));
   font: 780 11px/1 var(--font-mono, monospace);
 }
+#view-cronometro .crono-target-solidity-guide {
+  margin-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--border2) 72%, transparent);
+}
+#view-cronometro .crono-target-solidity-guide > summary {
+  min-height: 27px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text3);
+  cursor: pointer;
+  list-style: none;
+  font: 650 7px/1 var(--font-ui, sans-serif);
+}
+#view-cronometro .crono-target-solidity-guide > summary::-webkit-details-marker { display: none; }
+#view-cronometro .crono-target-solidity-guide > summary span { font-style: normal; transition: transform .16s ease; }
+#view-cronometro .crono-target-solidity-guide[open] > summary span { transform: rotate(180deg); }
+#view-cronometro #cronoTargetSolidityGuide { padding: 0 0 7px; }
+#view-cronometro .crono-solidity-guide-scale { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+#view-cronometro .crono-solidity-guide-scale span { min-width: 0; padding: 5px 2px; display: grid; justify-items: center; gap: 2px; border: 1px solid color-mix(in srgb, var(--border2) 82%, transparent); border-radius: 7px; background: color-mix(in srgb, var(--bg3) 70%, transparent); }
+#view-cronometro .crono-solidity-guide-scale b { color: var(--accent); font: 750 8px/1 var(--font-mono, monospace); }
+#view-cronometro .crono-solidity-guide-scale em { max-width: 100%; overflow: hidden; color: var(--text3); font: 550 6px/1 var(--font-ui, sans-serif); font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+#view-cronometro #cronoTargetSolidityGuide > small { display: block; margin-top: 5px; color: var(--text3); font: 550 6.5px/1.2 var(--font-ui, sans-serif); }
 #view-cronometro .crono-target-solidity-meter { height: 39px; margin: 3px 0 2px; }
 #view-cronometro .crono-target-solidity-meter .pase-liquid-reservoir { inset: 5px 1px; }
 #view-cronometro .crono-target-solidity-meter .pase-liquid-orb { width: 21px; height: 21px; left: clamp(3px, calc(var(--pase-fill) - 11px), calc(100% - 25px)); }
@@ -508,6 +583,8 @@ html body.crono-running #view-cronometro #cronoRunDrawer[data-tab="pasajes"] .cr
 }
 
 @media (max-width: 430px) {
+  #view-cronometro .crono-solidity-guide-scale { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #view-cronometro .crono-solidity-guide-scale em { overflow: visible; white-space: normal; text-align: center; }
   #modalHechoDatos .hecho-pass-check { grid-template-columns: 1fr; margin-inline: 14px; }
   #modalHechoDatos .hecho-pass-options { width: 100%; }
   #modalHechoDatos .hecho-pass-options button { flex: 1; }

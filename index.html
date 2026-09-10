@@ -25,12 +25,12 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=373">
+<link rel="stylesheet" href="styles.css?v=374">
 <link rel="stylesheet" href="study-session-ux.css?v=342">
 <link rel="stylesheet" href="crono-resume-layout.css?v=342">
 <link rel="stylesheet" href="piano-rooms.css?v=369">
 <link rel="stylesheet" href="reservation-dashboard.css?v=372">
-<link rel="stylesheet" href="session-home.css?v=372">
+<link rel="stylesheet" href="session-home.css?v=374">
 </head>
 <body>
 
@@ -132,12 +132,6 @@
   <path d="M40 420 Q44 400 48 382" stroke="var(--accent)" stroke-width="1" fill="none"/>
 </svg>
 <div class="view active" id="view-session">
-  <div class="session-mode-switch" role="tablist" aria-label="Vista de sesiones">
-    <button type="button" class="active" id="sessionModeToday" role="tab" aria-selected="true" onclick="setSessionSectionMode('today')">Hoy</button>
-    <button type="button" id="sessionModeWeek" role="tab" aria-selected="false" onclick="setSessionSectionMode('week')">Semana</button>
-    <button type="button" id="sessionModeHistory" role="tab" aria-selected="false" onclick="setSessionSectionMode('history')">Historial</button>
-  </div>
-
   <section class="session-weekly-planner" id="sessionWeeklyPlanner" aria-labelledby="weeklyPlannerTitle" hidden>
     <header class="weekly-planner-head">
       <div class="weekly-planner-heading">
@@ -636,6 +630,10 @@
         </div>
         <b id="cronoTargetSolidityValue">50% · Construyendo</b>
       </header>
+      <details class="crono-target-solidity-guide" data-no-view-swipe>
+        <summary>Guía rápida de la escala <span aria-hidden="true">⌄</span></summary>
+        <div id="cronoTargetSolidityGuide"></div>
+      </details>
       <div class="pase-liquid-meter crono-target-solidity-meter" id="cronoTargetSolidityMeter" style="--pase-fill:50%;--pase-glow:0.5;--pase-glow-size:15px;--pase-color:#c8a030">
         <div class="pase-liquid-reservoir" aria-hidden="true">
           <span class="pase-liquid-fill"></span><span class="pase-liquid-glint"></span><span class="pase-liquid-orb"></span>
@@ -1107,6 +1105,14 @@
         <i aria-hidden="true">⌄</i>
       </summary>
       <div class="ajustes-fold-body">
+      <div class="ajustes-card session-archive-links">
+        <div class="ajustes-card-head">Plan y archivo de estudio</div>
+        <div class="ajustes-hint">Vistas de consulta que ya no ocupan espacio en el resumen diario.</div>
+        <div class="ajustes-btn-row">
+          <button class="modal-btn secondary" type="button" onclick="openSessionArchive('week')">Plan semanal</button>
+          <button class="modal-btn secondary" type="button" onclick="openSessionArchive('history')">Estadísticas</button>
+        </div>
+      </div>
       <div class="ajustes-card">
       <div class="ajustes-card-head">IA / Codex · exportar contexto</div>
       <div class="ajustes-hint" style="margin-bottom:12px">Genera un paquete con sesiones, pases, notas, sueño, concentración, deporte, tiempo disponible, siestas, gatillos y eventos. Incluye datos privados: úsalo sólo para pegarlo o adjuntarlo donde quieras.</div>
@@ -2265,9 +2271,9 @@
 <script src="task-sync-bootstrap.js?v=342" id="taskSyncBootstrapScript"></script>
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=368"></script>
-<script src="app.js?v=373"></script>
+<script src="app.js?v=374"></script>
 <script src="study-session-ux.js?v=342"></script>
-<script src="crono-resume-layout.js?v=372"></script>
+<script src="crono-resume-layout.js?v=374"></script>
 <script src="piano-rooms.js?v=373"></script>
 <script src="reservation-dashboard.js?v=372"></script>
 <script src="google-calendar.js?v=342"></script>

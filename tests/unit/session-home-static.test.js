@@ -12,7 +12,9 @@ describe('focused session home', () => {
     expect(index).toContain('id="sessionResumenCard"');
     expect(index).toContain('id="sessionAulasDashboard"');
     expect(index).not.toContain('id="view-salas"');
-    expect(index).toContain('id="sessionModeHistory"');
+    expect(index).not.toContain('class="session-mode-switch"');
+    expect(index).toContain("onclick=\"openSessionArchive('week')\"");
+    expect(index).toContain("onclick=\"openSessionArchive('history')\"");
     expect(index).toContain('id="sessionStatsSection" aria-labelledby="sessionStatsTitle" hidden');
     expect(index).not.toContain('id="sessionInsightStack"');
     expect(index).not.toContain('id="sessionInfoBtn"');
@@ -40,7 +42,8 @@ describe('focused session home', () => {
     );
     expect(refresh).toContain("_sessionSectionMode === 'history'");
     expect(styles).toContain('#view-session.session-history-mode');
-    expect(app).toContain("setSessionSectionMode('history')");
+    expect(app).toContain('function openSessionArchive(mode)');
+    expect(app).toContain("opts.sessionMode = 'history'");
   });
 
   it('keeps reservations live on the session view without browser access to Asimut', () => {
@@ -60,10 +63,10 @@ describe('focused session home', () => {
     expect(index).toContain('onclick="openHoraComienzo(event)"');
   });
 
-  it('ships the complete v373 runtime offline', () => {
-    expect(index).toContain('session-home.css?v=372');
-    expect(index).toContain('app.js?v=373');
-    expect(worker).toContain("const CACHE = 'estudio-v373'");
-    expect(worker).toContain('"./session-home.css?v=372"');
+  it('ships the complete v374 runtime offline', () => {
+    expect(index).toContain('session-home.css?v=374');
+    expect(index).toContain('app.js?v=374');
+    expect(worker).toContain("const CACHE = 'estudio-v374'");
+    expect(worker).toContain('"./session-home.css?v=374"');
   });
 });

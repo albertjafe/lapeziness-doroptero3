@@ -21,6 +21,8 @@
   let ratingPassageId = null;
   let ratingMode = 'cold';
   let reconcileBusy = false;
+  let learningCurveOpen = false;
+  let learningCurveSelection = 'work';
   const pendingScores = new Map();
 
   function appDb() {
@@ -302,6 +304,193 @@
     return Number.isFinite(Number(value)) ? Number(value) : null;
   }
 
+  function workEntityForTarget(target) {
+    if (!target || target.general) return null;
+    return movementForTarget(target) || findWork(target.obraId);
+  }
+
+  function normalizedWorkScore(entry) {
+    const raw = entry && (entry.inputVal != null ? entry.inputVal : entry.val);
+    const value = Number(raw);
+    if (!Number.isFinite(value)) return null;
+    return Math.round(clamp(value > 10 ? value : value * 10, 1, 100));
+  }
+
+  function curveSessionKey(point) {
+    if (point.runId) return 'run:' + point.runId;
+    if (point.sessionId) return 'session:' + point.sessionId;
+    if (point.sessionStartedAt) return 'started:' + point.sessionStartedAt;
+    const date = new Date(point.at || 0);
+    return Number.isFinite(date.getTime()) ? 'day:' + date.toISOString().slice(0, 10) : 'unknown';
+  }
+
+  function cumulativeCurvePoints(points) {
+    const ordered = (points || []).filter(point => Number.isFinite(Number(point.score)))
+      .map((point, index) => ({
+        ...point,
+        score: Math.round(clamp(point.score, 1, 100)),
+        elapsedMs: Math.max(0, Number(point.elapsedMs) || 0),
+        atMs: parseTime(point.at),
+        order: index,
+      }))
+      .sort((a, b) => a.atMs - b.atMs || a.order - b.order);
+    const groups = [];
+    const byKey = new Map();
+    ordered.forEach(point => {
+      const key = curveSessionKey(point);
+      let group = byKey.get(key);
+      if (!group) {
+        group = { key, points: [], firstAt: point.atMs };
+        byKey.set(key, group);
+        groups.push(group);
+      }
+      group.points.push(point);
+    });
+    groups.sort((a, b) => a.firstAt - b.firstAt);
+    let offsetMs = 0;
+    const result = [];
+    groups.forEach(group => {
+      group.points.sort((a, b) => a.elapsedMs - b.elapsedMs || a.atMs - b.atMs || a.order - b.order);
+      group.points.forEach(point => result.push({ ...point, x: (offsetMs + point.elapsedMs) / 60000 }));
+      offsetMs += Math.max(0, ...group.points.map(point => point.elapsedMs));
+    });
+    const hasTimeSpread = result.length > 1 && result.some(point => point.x > result[0].x + 0.001);
+    if (!hasTimeSpread) result.forEach((point, index) => { point.x = index; });
+    return { points: result, axis: hasTimeSpread ? 'min activos acumulados' : 'registros', timed: hasTimeSpread };
+  }
+
+  function workCurvePoints(target) {
+    const entity = workEntityForTarget(target);
+    return (entity && entity.solHistory || []).map(entry => ({
+      score: normalizedWorkScore(entry),
+      at: entry && entry.date,
+      elapsedMs: entry && entry.activeElapsedMs,
+      runId: entry && entry.runId,
+    }));
+  }
+
+  function passageCurvePoints(passageId) {
+    const points = [];
+    passageObservations(passageId).forEach(observation => {
+      const shared = {
+        runId: observation.runId,
+        sessionId: observation.sessionId,
+        sessionStartedAt: observation.sessionStartedAt,
+      };
+      if (observation.score != null) points.push({
+        ...shared,
+        score: observation.score,
+        at: observation.recordedAt,
+        elapsedMs: observation.activeElapsedMs,
+      });
+      if (observation.coldScore != null) points.push({
+        ...shared,
+        score: observation.coldScore,
+        at: observation.coldCapturedAt || observation.recordedAt,
+        elapsedMs: 0,
+      });
+      if (observation.postScore != null) points.push({
+        ...shared,
+        score: observation.postScore,
+        at: observation.postCapturedAt || observation.recordedAt,
+        elapsedMs: observation.focusedMs,
+      });
+    });
+    return points;
+  }
+
+  function learningCurveChoices(target, passages) {
+    const choices = [];
+    if (!target.general) choices.push({ id: 'work', label: target.movId == null ? 'Obra' : 'Movimiento', points: workCurvePoints(target) });
+    passages.forEach(passage => choices.push({ id: 'passage:' + passage.id, label: passage.name, points: passageCurvePoints(passage.id) }));
+    return choices;
+  }
+
+  function curveNumber(value) {
+    const rounded = Math.round(Number(value) * 10) / 10;
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  }
+
+  function curveSvg(series) {
+    const points = series.points;
+    if (!points.length) return '<div class="passage-learning-empty">Registra dos valores para empezar a ver la evolución.</div>';
+    const width = 600, height = 176, left = 30, right = 12, top = 12, bottom = 27;
+    const xMin = points[0].x;
+    const xMax = points[points.length - 1].x;
+    const xSpan = Math.max(1, xMax - xMin);
+    const xOf = point => points.length === 1 ? (left + width - right) / 2 : left + ((point.x - xMin) / xSpan) * (width - left - right);
+    const yOf = point => top + (100 - point.score) / 100 * (height - top - bottom);
+    const grid = [25, 50, 75, 100].map(value => {
+      const y = top + (100 - value) / 100 * (height - top - bottom);
+      return '<line x1="' + left + '" x2="' + (width - right) + '" y1="' + y.toFixed(1) + '" y2="' + y.toFixed(1) + '"></line>' +
+        '<text x="' + (left - 6) + '" y="' + (y + 3).toFixed(1) + '">' + value + '</text>';
+    }).join('');
+    const polyline = points.length > 1
+      ? '<polyline points="' + points.map(point => xOf(point).toFixed(1) + ',' + yOf(point).toFixed(1)).join(' ') + '"></polyline>'
+      : '';
+    const dots = points.map(point => '<circle cx="' + xOf(point).toFixed(1) + '" cy="' + yOf(point).toFixed(1) + '" r="4"><title>' +
+      point.score + '% · ' + curveNumber(point.x) + ' ' + series.axis + '</title></circle>').join('');
+    const first = curveNumber(points[0].x);
+    const last = curveNumber(points[points.length - 1].x);
+    return '<svg class="passage-learning-svg" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="Curva de aprendizaje, de ' + points[0].score + ' a ' + points[points.length - 1].score + ' por ciento">' +
+      '<g class="passage-learning-grid">' + grid + '</g><g class="passage-learning-line">' + polyline + dots + '</g>' +
+      '<g class="passage-learning-axis"><text x="' + left + '" y="' + (height - 7) + '">' + first + '</text><text x="' + (width - right) + '" y="' + (height - 7) + '" text-anchor="end">' + last + '</text><text x="' + (width / 2) + '" y="' + (height - 7) + '" text-anchor="middle">' + series.axis + '</text></g>' +
+    '</svg>';
+  }
+
+  function makeLearningCurve(target, passages) {
+    const choices = learningCurveChoices(target, passages);
+    if (!choices.length) return null;
+    if (!choices.some(choice => choice.id === learningCurveSelection)) learningCurveSelection = choices[0].id;
+    const details = document.createElement('details');
+    details.className = 'passage-learning-curve';
+    details.open = learningCurveOpen;
+    details.dataset.noViewSwipe = '';
+    const summary = document.createElement('summary');
+    summary.innerHTML = '<span><b>Curva de aprendizaje</b><small>Evolución frente a práctica real</small></span><i aria-hidden="true">⌄</i>';
+    const body = document.createElement('div');
+    body.className = 'passage-learning-body';
+
+    const renderSelected = () => {
+      const selected = choices.find(choice => choice.id === learningCurveSelection) || choices[0];
+      const series = cumulativeCurvePoints(selected.points);
+      const first = series.points[0];
+      const latest = series.points[series.points.length - 1];
+      body.replaceChildren();
+      if (choices.length > 1) {
+        const tabs = document.createElement('div');
+        tabs.className = 'passage-learning-tabs';
+        choices.forEach(choice => {
+          const button = makeButton('passage-learning-tab' + (choice.id === selected.id ? ' active' : ''), choice.label, 'Mostrar curva de ' + choice.label);
+          button.addEventListener('click', () => {
+            learningCurveSelection = choice.id;
+            renderSelected();
+          });
+          tabs.appendChild(button);
+        });
+        body.appendChild(tabs);
+      }
+      const summaryRow = document.createElement('div');
+      summaryRow.className = 'passage-learning-summary';
+      if (!latest) summaryRow.innerHTML = '<strong>Sin registros todavía</strong><span>La curva aparecerá sin pasos extra.</span>';
+      else {
+        const delta = latest.score - first.score;
+        summaryRow.innerHTML = '<strong>' + latest.score + '% · ' + scoreDescriptor(latest.score) + '</strong><span>' +
+          (series.points.length < 2 ? 'Primera referencia' : (delta >= 0 ? '+' : '') + delta + ' puntos desde el primer registro') +
+          ' · ' + series.points.length + (series.points.length === 1 ? ' medida' : ' medidas') + '</span>';
+      }
+      body.appendChild(summaryRow);
+      const chart = document.createElement('div');
+      chart.className = 'passage-learning-chart';
+      chart.innerHTML = curveSvg(series);
+      body.appendChild(chart);
+    };
+    renderSelected();
+    details.addEventListener('toggle', () => { learningCurveOpen = details.open; });
+    details.append(summary, body);
+    return details;
+  }
+
   function ensureDraft() {
     const state = cronoState();
     if (!draft) {
@@ -458,6 +647,8 @@
       const control = input.closest('.crono-passage-inline-score');
       const readout = control && control.querySelector('[data-passage-score-value]');
       if (readout) readout.textContent = String(value);
+      const descriptor = control && control.querySelector('[data-passage-score-description]');
+      if (descriptor) descriptor.textContent = scoreDescriptor(value);
     }
     return value;
   }
@@ -516,6 +707,7 @@
       .find(candidate => candidate.dataset.passageScoreInput === key);
     if (visibleInput) setInlineScoreVisual(visibleInput, pending.value);
     updatePendingScoreLabel(key);
+    renderPanel();
     return observation;
   }
 
@@ -559,7 +751,7 @@
     const value = pending ? pending.value : (committed == null ? 50 : committed);
     const meta = document.createElement('div');
     meta.className = 'crono-passage-inline-meta';
-    meta.innerHTML = '<span>Solidez</span><strong data-passage-score-value>' + value + '</strong><small data-passage-score-pending="' + String(passage.id).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">' + (pending ? '5 s' : (committed == null ? 'mueve para guardar' : 'último valor')) + '</small>';
+    meta.innerHTML = '<span>Solidez</span><strong data-passage-score-value>' + value + '</strong><em data-passage-score-description>' + scoreDescriptor(value) + '</em><small data-passage-score-pending="' + String(passage.id).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">' + (pending ? '5 s' : (committed == null ? 'mueve para guardar' : 'último valor')) + '</small>';
     const meter = document.createElement('div');
     meter.className = 'pase-liquid-meter passage-inline-meter';
     meter.setAttribute('style', liquidStyle(value));
@@ -832,6 +1024,8 @@
     panel.replaceChildren();
 
     if (!passages.length) {
+      const curve = makeLearningCurve(target, passages);
+      if (curve) panel.appendChild(curve);
       if (target.general) {
         const empty = document.createElement('div');
         empty.className = 'crono-passage-empty-general';
@@ -854,6 +1048,9 @@
     context.textContent = target.general ? 'Todas las obras' : (movement ? (movement.name || movement.nombre || 'Movimiento') : 'Obra completa');
     head.append(title, context);
     panel.appendChild(head);
+
+    const curve = makeLearningCurve(target, passages);
+    if (curve) panel.appendChild(curve);
 
     const list = document.createElement('div');
     list.className = 'crono-passage-list';

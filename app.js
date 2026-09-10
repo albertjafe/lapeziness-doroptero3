@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-09-contextual-solidity-v373';
+const APP_VERSION = '2026-09-10-learning-curves-v374';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -615,9 +615,8 @@ const VIEW_CONTEXT = {
 
 function updateContextHeader(name) {
   const baseContext = VIEW_CONTEXT[name] || VIEW_CONTEXT.session;
-  const context = name === 'session' && document.getElementById('view-session')?.classList.contains('session-weekly-mode')
-    ? { eyebrow: baseContext.eyebrow, title: 'Semana' }
-    : baseContext;
+  const sessionTitle = _sessionSectionMode === 'week' ? 'Semana' : _sessionSectionMode === 'history' ? 'Historial' : baseContext.title;
+  const context = name === 'session' ? { eyebrow: baseContext.eyebrow, title: sessionTitle } : baseContext;
   const eyebrow = document.getElementById('headerEyebrow');
   const title = document.getElementById('headerTitle');
   const date = document.getElementById('headerDate');
@@ -658,15 +657,18 @@ function showView(name, options) {
     opts.reservationAnchor = true;
   }
   if (name === 'historial') {
-    showView('session');
-    setSessionSectionMode('history');
-    return;
+    name = 'session';
+    opts.sessionMode = 'history';
   }
   const previousView = document.body.getAttribute('data-view');
   if (previousView === 'casa' && name !== 'casa' && typeof window.mysteryHouseExit === 'function') {
     window.mysteryHouseExit();
   }
   document.body.setAttribute('data-view', name);
+  if (name === 'session') {
+    _sessionSectionMode = opts.sessionMode === 'week' || opts.sessionMode === 'history' ? opts.sessionMode : 'today';
+    syncSessionSectionModeDom();
+  }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active', 'view-swipe-arrived'));
   document.querySelectorAll('.nav-btn').forEach(b => {
     b.classList.remove('active');
@@ -1361,7 +1363,7 @@ function initViewSwipeNavigation() {
   if (!root) return;
 
   root.addEventListener('touchstart', event => {
-    if (event.target?.closest?.('input[type="range"], [data-no-view-swipe]')) {
+    if (event.target?.closest?.('.pase-liquid-meter, input[type="range"], [data-no-view-swipe]')) {
       viewSwipeReset(false);
       return;
     }
@@ -4585,6 +4587,13 @@ function paseGuideLayerHtml(profile) {
   ).join('') + '</div>';
 }
 
+function paseQuickGuideHtml(profile) {
+  const definition = paseProfileDefinition(profile);
+  return '<div class="crono-solidity-guide-scale">' + definition.guides.map(guide =>
+    '<span><b>' + guide[0] + '</b><em>' + guide[1] + '</em></span>'
+  ).join('') + '</div><small>' + definition.note + '</small>';
+}
+
 function paseMeterReadoutHtml(value, previousPct, profile) {
   const current = paseClampPct(value);
   return '<div class="pase-liquid-readout">' +
@@ -4791,6 +4800,7 @@ function commitCronoSolidityPending(source) {
     label.classList.remove('is-pending');
   }
   if (typeof showSavedCheck === 'function') showSavedCheck();
+  if (window.PassageTracker?.render) window.PassageTracker.render();
   return saved;
 }
 
@@ -4833,6 +4843,8 @@ function renderCronoTargetSolidity() {
   const previous = document.getElementById('cronoTargetSolidityPrevious');
   if (title) title.textContent = target.label;
   if (previous) previous.textContent = latest == null ? 'Primera valoración · referencia 50%' : 'Último valor · ' + latest + '%';
+  const guide = document.getElementById('cronoTargetSolidityGuide');
+  if (guide) guide.innerHTML = paseQuickGuideHtml(target.ratingProfile);
   input.dataset.ratingProfile = target.ratingProfile;
   cronoSetTargetSolidityVisual(input, value);
   cronoUpdateSolidityPendingLabel();
@@ -23185,34 +23197,28 @@ function weeklySlotKeyOpen(event, date, position) {
 
 function setSessionSectionMode(mode) {
   _sessionSectionMode = mode === 'week' || mode === 'history' ? mode : 'today';
+  syncSessionSectionModeDom();
+  renderSessionViewContent();
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+}
+
+function syncSessionSectionModeDom() {
   const view = document.getElementById('view-session');
   const planner = document.getElementById('sessionWeeklyPlanner');
   const stats = document.getElementById('sessionStatsSection');
-  const todayButton = document.getElementById('sessionModeToday');
-  const weekButton = document.getElementById('sessionModeWeek');
-  const historyButton = document.getElementById('sessionModeHistory');
   if (view) view.classList.toggle('session-weekly-mode', _sessionSectionMode === 'week');
   if (view) view.classList.toggle('session-history-mode', _sessionSectionMode === 'history');
   if (planner) planner.hidden = _sessionSectionMode !== 'week';
   if (stats) stats.hidden = _sessionSectionMode !== 'history';
-  if (todayButton) {
-    todayButton.classList.toggle('active', _sessionSectionMode === 'today');
-    todayButton.setAttribute('aria-selected', _sessionSectionMode === 'today' ? 'true' : 'false');
-  }
-  if (weekButton) {
-    weekButton.classList.toggle('active', _sessionSectionMode === 'week');
-    weekButton.setAttribute('aria-selected', _sessionSectionMode === 'week' ? 'true' : 'false');
-  }
-  if (historyButton) {
-    historyButton.classList.toggle('active', _sessionSectionMode === 'history');
-    historyButton.setAttribute('aria-selected', _sessionSectionMode === 'history' ? 'true' : 'false');
-  }
   const header = document.getElementById('headerTitle');
   if (header && document.body.getAttribute('data-view') === 'session') {
     header.textContent = _sessionSectionMode === 'week' ? 'Semana' : _sessionSectionMode === 'history' ? 'Historial' : 'Hoy';
   }
-  renderSessionViewContent();
-  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+}
+
+function openSessionArchive(mode) {
+  _ajustesPrevView = 'session';
+  showView('session', { sessionMode: mode });
 }
 
 function changeWeeklyPlannerWeek(delta) {

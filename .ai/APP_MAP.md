@@ -131,7 +131,7 @@ Migraciones Supabase importantes para este tema:
 
 ### Hoy / resumen principal
 
-- `#view-session` tiene tres superficies explícitas: **Hoy**, **Semana** e **Historial**.
+- `#view-session` abre siempre en **Hoy** y ya no muestra el selector `Hoy / Semana / Historial`. **Plan semanal** y **Estadísticas** siguen intactos como vistas de consulta desde `Ajustes → Datos y herramientas → Plan y archivo de estudio`; tocar de nuevo la navegación Hoy restablece la portada.
 - **Hoy** es la portada: muestra `Llevas · Proyección · Fin previsto`, las probabilidades de alcanzar 4 h y 5 h y, justo debajo, el dashboard completo de Aulas ya abierto. El registro rápido queda plegado y el diario permanece accesible. Sus estilos propios están en `session-home.css`.
 - La proyección usa el modelo existente de `app.js`; la hora de fin no es una meta inventada por la UI. Las correcciones de hora de comienzo y disponibilidad siguen activas en `Ajustes → Datos y herramientas → Proyección del día`.
 - **Historial** contiene estadísticas, sesiones registradas y la tarjeta de actividad digital. Las agregaciones estadísticas se calculan de forma perezosa al abrir esta pestaña.
@@ -316,6 +316,8 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 - Edge Function `reservation-monitor-ingest`: autentica el monitor con un token local hasheado en servidor, sanea la instantánea, entrega órdenes y recibe acuses. La clave `service_role` nunca llega a Python ni al navegador.
 - El archivo externo `study_dashboard_bridge.py`, junto al monitor de escritorio, publica con cola no bloqueante y entrega las órdenes al hilo principal. Las llamadas al dashboard reutilizan la lectura ya hecha para Telegram y no aumentan peticiones a Asimut.
 - Los controles web son declarativos y están limitados por constraint/whitelist: pausa, objetivo hoy/mañana, modos operativos y toggles de monitor. Cancelar o modificar reservas no forma parte de esta primera superficie.
+- La solidez directa de obra/movimiento y de cada pasaje se registra tras 5 s sin cambios. Toda `.pase-liquid-meter` queda excluida del gesto horizontal global de navegación para que el arrastre no mueva la pantalla. La obra dispone de una guía de escala plegable justo encima de la píldora y cada pasaje muestra el descriptor semántico junto al número durante el movimiento.
+- `passage-tracker.js` presenta una curva de aprendizaje plegable con selector de obra/movimiento y pasajes. Acumula el tiempo activo real por sesión (`runId`/`sessionId`) y conserva los historiales antiguos sin tiempo usando el orden de registros como eje alternativo; no fabrica duraciones.
 
 ---
 
@@ -323,9 +325,9 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- Caché actual `estudio-v373`: `app.js`, `styles.css`, `piano-rooms.js`, `planning-enhancements-v3.js/css`, `planning-enhancements-v4.js` y `ensemble-repertoire-catalog.js` usan v373. Otros módulos no modificados conservan su URL anterior. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
+- Caché actual `estudio-v374`: `app.js`, `styles.css`, `session-home.css`, `crono-resume-layout.js` y `passage-tracker.js/css` usan v374. Los módulos no modificados conservan su URL anterior. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v373 en Ajustes; v373 es el límite de caché PWA actual.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v374 en Ajustes; v374 es el límite de caché PWA actual.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.

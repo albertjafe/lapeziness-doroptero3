@@ -23,7 +23,7 @@ describe('PWA version boundary',()=>{
     const h=harness();await h.lifecycle('install');
     expect(h.calls).not.toContain('skip');
     expect(await (await h.fetch('/?view=cronometro','navigate')).text()).toContain('A:');
-    expect(await (await h.fetch('/app.js?v=373')).text()).toContain('A:');
+    expect(await (await h.fetch('/app.js?v=374')).text()).toContain('A:');
     expect(h.calls).not.toContain('network');
   });
   it('offline navigation and scripts come from the same precache',async()=>{
@@ -54,7 +54,7 @@ describe('PWA version boundary',()=>{
   it('activation preserves unrelated caches and the previous shell for old tabs',async()=>{
     const h=harness();['estudio-v340','estudio-v341','user-content'].forEach(k=>h.stores.set(k,new Map()));
     await h.lifecycle('install');await h.lifecycle('activate');
-    expect([...h.stores.keys()].sort()).toEqual(['estudio-v341','estudio-v373','user-content']);
+    expect([...h.stores.keys()].sort()).toEqual(['estudio-v341','estudio-v374','user-content']);
     expect(h.calls.some(x=>x.startsWith('navigate:'))).toBe(false);
   });
   it('never serves a new script under an uncached old version URL',async()=>{

@@ -2,13 +2,7 @@
 
 body[data-view="session"] .piano-rooms-open { display: none !important; }
 
-#view-session .session-mode-switch {
-  width: min(318px, 100%);
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-bottom: 16px;
-}
-
-#view-session.session-history-mode > :not(.session-mode-switch):not(.session-stats-section) {
+#view-session.session-history-mode > :not(.session-stats-section) {
   display: none !important;
 }
 
@@ -318,6 +312,8 @@ body[data-view="session"] .piano-rooms-open { display: none !important; }
 .ajustes-fold-body > .ajustes-card:last-child { margin-bottom: 0; }
 .ajustes-projection-tools .ajustes-btn-row { margin-top: 12px; }
 .ajustes-projection-tools .ajustes-btn-row > button { flex: 1; font-size: 10px; }
+.session-archive-links .ajustes-btn-row { margin-top: 12px; }
+.session-archive-links .ajustes-btn-row > button { flex: 1; }
 
 @media (max-width: 640px) {
   #view-session .session-focus-card {
@@ -331,7 +327,8 @@ body[data-view="session"] .piano-rooms-open { display: none !important; }
     padding: 22px 17px 16px;
   }
 
-  #view-session .session-focus-metric > strong { font-size: clamp(27px, 8vw, 38px); }
+  #view-session .session-focus-metric > strong { font-size: clamp(25px, 7.2vw, 34px); }
+  #view-session .session-focus-metric.is-projection > strong { font-size: clamp(17px, 4.7vw, 22px); }
   #view-session .session-focus-metric > span,
   #view-session .session-focus-finish > span { margin-bottom: 6px; font-size: 8px; }
   #view-session .session-focus-finish { padding: 20px 14px; }

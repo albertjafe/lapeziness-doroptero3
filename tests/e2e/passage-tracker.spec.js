@@ -118,6 +118,7 @@ test('waits five seconds after the last slider change and only saves the final v
   await page.waitForTimeout(900);
   await moveSlider(64);
   await expect(page.locator('#cronoPassageTracker [data-passage-score-value]')).toHaveText('64');
+  await expect(page.locator('#cronoPassageTracker [data-passage-score-description]')).toHaveText('Sale a ratos');
   await page.waitForTimeout(4200);
   await expect.poll(() => page.evaluate(() => PassageTracker.getTracker().observations.length)).toBe(0);
   await expect(page.locator('#cronoPassageTracker [data-passage-score-pending]')).toHaveClass(/is-pending/);
@@ -126,6 +127,56 @@ test('waits five seconds after the last slider change and only saves the final v
     () => page.evaluate(() => PassageTracker.getTracker().observations.map(item => item.score)),
     { timeout: 2200 },
   ).toEqual([64]);
+});
+
+test('shows cumulative learning curves for the movement and each passage', async ({ page }) => {
+  await prepare(page);
+  await addPassage(page, 'Octavas finales');
+  await page.evaluate(() => {
+    const movement = db.obras.find(item => item.id === 'obra_passage').movimientos.find(item => item.id === 'm1');
+    movement.solHistory = [
+      { id:'work-2', date:'2026-09-09T10:20:00Z', inputVal:68, val:68, activeElapsedMs:1200000, runId:'work-run' },
+      { id:'work-1', date:'2026-09-09T10:00:00Z', inputVal:48, val:48, activeElapsedMs:0, runId:'work-run' },
+    ];
+    const passage = db.passageTracker.passages[0];
+    db.passageTracker.observations = [
+      { id:'pass-1', passageId:passage.id, obraId:passage.obraId, movId:passage.movId, score:42, recordedAt:'2026-09-09T10:00:00Z', activeElapsedMs:0, runId:'pass-run-1' },
+      { id:'pass-2', passageId:passage.id, obraId:passage.obraId, movId:passage.movId, score:58, recordedAt:'2026-09-09T10:05:00Z', activeElapsedMs:300000, runId:'pass-run-1' },
+      { id:'pass-3', passageId:passage.id, obraId:passage.obraId, movId:passage.movId, score:72, recordedAt:'2026-09-10T09:10:00Z', activeElapsedMs:600000, runId:'pass-run-2' },
+    ];
+    PassageTracker.render();
+  });
+
+  const curve = page.locator('#cronoPassageTracker .passage-learning-curve');
+  await expect(curve).toBeVisible();
+  await curve.locator('summary').click();
+  await expect(curve.locator('.passage-learning-svg')).toBeVisible();
+  await expect(curve).toContainText('68%');
+  await expect(curve).toContainText('min activos acumulados');
+  await curve.getByRole('button', { name: 'Mostrar curva de Octavas finales' }).click();
+  await expect(curve).toContainText('72%');
+  await expect(curve).toContainText('+30 puntos');
+  if (process.env.CAPTURE_PASSAGE_TRACKER) {
+    await curve.screenshot({ path: 'test-results/passage-learning-curve.png' });
+  }
+});
+
+test('direct solidity pills never start the global view swipe and expose the quick guide', async ({ page }) => {
+  await prepare(page);
+  await addPassage(page);
+  await expect(page.locator('#cronoTargetSolidityMeter')).toBeVisible();
+  await page.locator('#cronoTargetSolidity .crono-target-solidity-guide summary').click();
+  await expect(page.locator('#cronoTargetSolidityGuide')).toContainText('Aprendida');
+
+  const meter = page.locator('#cronoPassageTracker .passage-inline-meter');
+  const box = await meter.boundingBox();
+  await meter.dispatchEvent('touchstart', {
+    touches: [{ identifier: 7, clientX: box.x + 10, clientY: box.y + 10 }],
+  });
+  await page.locator('body').dispatchEvent('touchmove', {
+    touches: [{ identifier: 7, clientX: box.x + 90, clientY: box.y + 10 }],
+  });
+  await expect(page.locator('body')).not.toHaveClass(/view-swipe-dragging/);
 });
 
 test('General shows passages from every work and splits its minutes without changing the total', async ({ page }) => {

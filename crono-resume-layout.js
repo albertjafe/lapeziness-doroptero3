@@ -134,7 +134,7 @@ function loadPianoCompanion(id, src, cssId, cssHref) {
 (function loadPassageTracker() {
   'use strict';
   if (window.PassageTracker) return;
-  loadPianoCompanion('passageTrackerScript', './passage-tracker.js?v=372', 'passageTrackerStyles', './passage-tracker.css?v=372');
+  loadPianoCompanion('passageTrackerScript', './passage-tracker.js?v=374', 'passageTrackerStyles', './passage-tracker.css?v=374');
 }());
 
 /* Eventos: búsqueda de repertorio pensada para bibliotecas grandes. */

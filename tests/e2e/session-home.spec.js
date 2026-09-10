@@ -97,18 +97,26 @@ test('shows a compact daily forecast, live classrooms and separate history', asy
   await expect(page.locator('.piano-rooms-open')).toBeHidden();
   await expect(page.locator('#activityDailyCard')).toBeHidden();
   await expect(page.locator('#sessionStatsSection')).toBeHidden();
+  await expect(page.locator('.session-mode-switch')).toHaveCount(0);
 
-  await page.locator('#sessionModeHistory').click();
+  await page.evaluate(() => openSettings());
+  let fold = page.locator('.ajustes-fold');
+  await fold.locator('summary').click();
+  await fold.getByRole('button', { name: 'Estadísticas' }).click();
   await expect(page.locator('#sessionStatsSection')).toBeVisible();
   await expect(page.locator('#activityDailyCard')).toBeVisible();
   await expect(page.locator('#sessionResumenCard')).toBeHidden();
-  await page.locator('#sessionModeToday').click();
+  await page.locator('.nav-btn[data-view="session"]').click();
+  await expect(page.locator('#sessionResumenCard')).toBeVisible();
 
   await page.evaluate(() => openSettings());
-  const fold = page.locator('.ajustes-fold');
-  await expect(fold).not.toHaveAttribute('open', '');
-  await fold.locator('summary').click();
+  fold = page.locator('.ajustes-fold');
+  if (!(await fold.evaluate(element => element.open))) await fold.locator('summary').click();
   await expect(fold.getByRole('button', { name: 'Disponibilidad' })).toBeVisible();
+  await fold.getByRole('button', { name: 'Plan semanal' }).click();
+  await expect(page.locator('#sessionWeeklyPlanner')).toBeVisible();
+  await expect(page.locator('#sessionResumenCard')).toBeHidden();
+  await page.locator('.nav-btn[data-view="session"]').click();
 
   if (process.env.CAPTURE_SESSION_HOME) {
     await page.evaluate(() => closeAjustes());

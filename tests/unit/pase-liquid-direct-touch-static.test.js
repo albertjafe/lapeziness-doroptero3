@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import { test, expect } from 'vitest';
 
 const source = fs.readFileSync(new URL('../../pase-liquid-direct-touch.js', import.meta.url), 'utf8');
+const app = fs.readFileSync(new URL('../../app.js', import.meta.url), 'utf8');
 
 test('liquid pill commits last stable drag value without pointerup snapback', () => {
   expect(source).toMatch(/let committed = active\.lastValue/);
@@ -11,4 +12,5 @@ test('liquid pill commits last stable drag value without pointerup snapback', ()
   expect(source).toMatch(/requestAnimationFrame/);
   expect(source).toMatch(/setTimeout\(lock, 160\)/);
   expect(source).toMatch(/touch-action: none/);
+  expect(app).toContain("closest?.('.pase-liquid-meter, input[type=\"range\"], [data-no-view-swipe]')");
 });
