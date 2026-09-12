@@ -31,6 +31,7 @@
 <link rel="stylesheet" href="piano-rooms.css?v=369">
 <link rel="stylesheet" href="reservation-dashboard.css?v=372">
 <link rel="stylesheet" href="session-home.css?v=374">
+<link rel="stylesheet" href="german-study.css?v=378">
 </head>
 <body>
 
@@ -179,6 +180,7 @@
     <div class="session-focus-status"><span id="sessionConcentradoText">Hoy · 0 min</span><small>Estimación aún no disponible</small></div>
   </section>
 
+  <button type="button" class="german-entry" onclick="showView('deutsch')" aria-label="Abrir Deutsch"><span><strong>Deutsch</strong><small>Tu alemán, día a día · estudio y hucha virtual</small></span><span aria-hidden="true">Ä →</span></button>
   <section class="reservation-dashboard session-aulas-dashboard" id="sessionAulasDashboard" aria-labelledby="reservationDashboardTitle">
     <div class="rd-topline">
       <div class="rd-title-group">
@@ -966,6 +968,7 @@
 </div>
 
 <!-- AJUSTES VIEW (pantalla completa) -->
+<div class="view" id="view-deutsch" aria-label="Deutsch"></div>
 <div class="view" id="view-ajustes">
   <div class="ajustes-header">
     <button class="ajustes-back" onclick="closeAjustes()" aria-label="Volver">
@@ -2271,10 +2274,15 @@
 <script src="task-sync-bootstrap.js?v=342" id="taskSyncBootstrapScript"></script>
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=368"></script>
-<script src="app.js?v=377"></script>
+<script src="app.js?v=378"></script>
+<script src="german-rewards.js?v=378"></script>
+<script src="german-srs.js?v=378"></script>
+<script src="german-import.js?v=378"></script>
+<script src="german-session.js?v=378"></script>
+<script src="german-study.js?v=378"></script>
 <script src="study-session-ux.js?v=342"></script>
 <script src="crono-resume-layout.js?v=377"></script>
-<script src="piano-rooms.js?v=377"></script>
+<script src="piano-rooms.js?v=378"></script>
 <script src="reservation-dashboard.js?v=372"></script>
 <script src="google-calendar.js?v=342"></script>
 <script src="timer-objectives.js?v=342"></script>

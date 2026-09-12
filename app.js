@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-12-projects-v377';
+const APP_VERSION = '2026-09-12-deutsch-v378';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -610,6 +610,7 @@ const VIEW_CONTEXT = {
   salas: { eyebrow: 'Reservas Asimut', title: 'Aulas' },
   casa: { eyebrow: 'Estratos', title: 'La Casa' },
   historial: { eyebrow: 'Resumen', title: 'Estadísticas' },
+  deutsch: { eyebrow: 'Alemán · Estudio y hucha', title: 'Deutsch' },
   ajustes: { eyebrow: 'Planificador de estudio', title: 'Ajustes' }
 };
 

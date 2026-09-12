@@ -100,6 +100,19 @@ function harness({ dirty = 1, synced = 1, controlled = true, syncCompletes = tru
 }
 
 describe('UpdateSafety v6', () => {
+  it('blocks promotion during Deutsch and during recovery before its addon loads', async () => {
+    const h = harness();
+    h.window.GermanStudy = { hasActiveSession: () => true };
+    expect(await h.window.UpdateSafety.safeUpdate()).toBe(false);
+    expect(h.messages).toHaveLength(0);
+    delete h.window.GermanStudy;
+    h.storage.set('german_device_v1', 'device');
+    const data = JSON.parse(h.storage.get('alberto_piano_v2'));
+    data.germanStudy = { sessions: [{ id: 'german', deviceId: 'device', status: 'paused' }] };
+    h.storage.set('alberto_piano_v2', JSON.stringify(data));
+    expect(await h.window.UpdateSafety.safeUpdate()).toBe(false);
+    expect(h.messages).toHaveLength(0);
+  });
   it('checking for an update never saves, syncs, or promotes a clean document', async () => {
     const h = harness();
     const result = await h.window.UpdateSafety.checkForUpdate();

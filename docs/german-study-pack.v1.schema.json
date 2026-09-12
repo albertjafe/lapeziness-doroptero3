@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "German Study Pack v1",
+  "type": "object",
+  "required": ["schema", "metadata", "cards", "exercises"],
+  "properties": {
+    "schema": { "const": "german-study-pack.v1" },
+    "metadata": {
+      "type": "object", "required": ["title"],
+      "properties": {
+        "title": { "$ref": "#/$defs/nonempty" },
+        "date": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "teacher": { "$ref": "#/$defs/text" },
+        "source": { "$ref": "#/$defs/text" },
+        "notes": { "$ref": "#/$defs/text" }
+      }
+    },
+    "cards": { "type": "array", "maxItems": 2000, "items": { "$ref": "#/$defs/card" } },
+    "exercises": { "type": "array", "maxItems": 2000, "items": { "$ref": "#/$defs/exercise" } }
+  },
+  "anyOf": [
+    { "properties": { "cards": { "minItems": 1 } } },
+    { "properties": { "exercises": { "minItems": 1 } } }
+  ],
+  "$defs": {
+    "text": { "type": "string", "maxLength": 10000 },
+    "nonempty": { "type": "string", "minLength": 1, "maxLength": 10000, "pattern": "\\S" },
+    "texts": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/nonempty" } },
+    "card": {
+      "type": "object", "required": ["type", "front", "back"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonempty" },
+        "type": { "enum": ["de_es", "es_de", "expression", "grammar", "question_answer", "cloze"] },
+        "front": { "$ref": "#/$defs/nonempty" },
+        "back": { "$ref": "#/$defs/nonempty" },
+        "hint": { "$ref": "#/$defs/text" },
+        "explanation": { "$ref": "#/$defs/text" },
+        "examples": { "$ref": "#/$defs/texts" },
+        "tags": { "$ref": "#/$defs/texts" }
+      }
+    },
+    "exercise": {
+      "type": "object", "required": ["type", "prompt"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonempty" },
+        "type": { "enum": ["fill_blank", "translation", "conjugation", "short_answer", "free_write"] },
+        "prompt": { "$ref": "#/$defs/nonempty" },
+        "answer": { "$ref": "#/$defs/text" },
+        "acceptedAnswers": { "$ref": "#/$defs/texts" },
+        "hint": { "$ref": "#/$defs/text" },
+        "explanation": { "$ref": "#/$defs/text" },
+        "tags": { "$ref": "#/$defs/texts" }
+      },
+      "anyOf": [
+        { "required": ["answer"], "properties": { "answer": { "$ref": "#/$defs/nonempty" } } },
+        { "required": ["acceptedAnswers"], "properties": { "acceptedAnswers": { "minItems": 1 } } }
+      ]
+    }
+  }
+}

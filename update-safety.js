@@ -50,6 +50,13 @@
   }
 
   function timerActive(){
+    if(root.GermanStudy?.hasActiveSession()) return true;
+    // Also protect recovery before the Deutsch addon initializes (including update.html).
+    try {
+      const device = root.localStorage?.getItem('german_device_v1');
+      const stored = JSON.parse(root.localStorage?.getItem(DB_KEY) || '{}');
+      if(device && stored.germanStudy?.sessions?.some(s => s.deviceId === device && !s.endedAt)) return true;
+    } catch (_) {}
     try { if(typeof crono !== 'undefined' && ['running','paused'].includes(crono.state)) return true; } catch (_) {}
     if(root.document?.getElementById('modalHechoDatos')?.classList?.contains('visible')) return true;
     if(uncommittedTimerSnapshot()) return true;
@@ -291,7 +298,9 @@
     if(timerActive()){
       toast(pendingTimer
         ? 'Hay una sesión de estudio aún sin consolidar. No se actualizará hasta que quede guardada.'
-        : 'Termina el cronómetro y guarda la píldora Hecho antes de actualizar.');
+        : root.GermanStudy?.hasActiveSession()
+          ? 'Termina la sesión de Deutsch antes de actualizar. Tu progreso está guardado.'
+          : 'Termina el cronómetro y guarda la píldora Hecho antes de actualizar.');
       return false;
     }
     updating = true;

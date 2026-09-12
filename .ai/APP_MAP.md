@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-09 · caché runtime v373
+**Estado:** CANÓNICO · actualizado 2026-09-12 · caché runtime v378
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -322,13 +322,24 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 ---
 
+## Deutsch · alemán y hucha virtual
+
+- Entrada compacta **Hoy → Deutsch**, entre resumen y Aulas, sin añadir pestañas inferiores. `#view-deutsch` usa `showView` y `app:viewchange`. Los módulos se cargan directamente después de `app.js` en `index.html`.
+- `german-study.js/css`: dashboard, objetivo activo/historial, importación/prompt para IA, cola mixta y cronómetro independiente. No escribe en colecciones pianísticas. Materiales y estudio funcionan offline.
+- `german-import.js`: JSON `german-study-pack.v1` canónico y CSV de tarjetas; validación completa antes de insertar, máximo 2 MB/2.000 elementos, IDs SHA-256 y duplicados de contenido normalizado. Esquema y contrato: `docs/DEUTSCH.md`, `docs/german-study-pack.v1.schema.json`. Sin API de IA.
+- `german-srs.js`: SRS determinista derivado de revisiones, cuatro valoraciones; ejercicios cerrados con alternativas literales y escritura libre autoevaluada. Cola: vencidas → hasta 10 nuevas → ejercicios pendientes → repaso si no quedan pendientes.
+- `german-session.js`: evidencia de tiempo por sesión/día local, cierre idempotente, recuperación pausada. Checkpoints cada 10 s, al cualificar y en acciones; pausa al ocultar/salir, tras 5 min sin interacción o gaps >5 s. Web Locks (lease local de fallback) evita dos pestañas contando la misma sesión.
+- `german-rewards.js`: política central v1. Mínimo **diario acumulado** 900 s; curva interpolada `(0,0),(900,1),(1800,1.25),(2700,1.55),(3600,2)`; escala `clamp((importe/150)^0.45,0.5,15)`; racha `1+min(.25,floor(días/4)*.05)`. Días con calendario local real. El límite es común a todas las sesiones/objetivos del día. Se asignan diferencias de acumulados redondeados a microeuros y se limita al importe del objetivo. Antes de 900 s todo queda pendiente.
+- Persistencia: `db.germanStudy` dentro de `user_data.data`, con `materials` (cards/exercises), `reviews`, `sessions`, `goals`, `ledger`. Usa el guardado/sync común y el merge conservador existente; **sin migración nueva**. Las sesiones son canónicas y el ledger se reconstruye después de merges, nunca se suman proyecciones offline. Fila `sessionId:day` con duración/base/escala/racha/importe. Objetivos conservan política; solo el primero sin archivar se presenta activo, incluso tras creaciones concurrentes. Al alcanzar el objetivo se celebra y se puede archivar sin reiniciar estudio.
+- Tests: `german-study` unit/E2E/visual; regresiones PostgreSQL de merge y guardas de actualización. `UpdateSafety` y `update.html` bloquean promoción con una sesión de Deutsch local sin terminar.
+
 ## 8. PWA y actualizaciones
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- Caché actual `estudio-v377`: `app.js`, `crono-resume-layout.js`, `piano-rooms.js`, la interfaz de proyectos, el núcleo del Profesor, el CSS de pasajes y la guía de solidez usan v377; los módulos no modificados conservan su URL anterior. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
+- Caché actual `estudio-v378`: `app.js`, `piano-rooms.js`, `update-safety.js` y los seis assets Deutsch usan v378; los módulos no modificados conservan su URL anterior. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v377 en Ajustes; v377 es el límite de caché PWA actual.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v378 en Ajustes; v378 es el límite de caché PWA actual.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
@@ -352,6 +363,7 @@ Documentación pura (`.md`, instrucciones de IA) no necesita bump de SW porque n
 | Quiero cambiar… | Mirar primero |
 |---|---|
 | navegación / shell | `index.html`, `app.js` (`showView`) |
+| Deutsch / alemán / hucha | `german-study.js/css`, `german-rewards.js`, `german-session.js`, `german-srs.js`, `german-import.js`; contrato en `docs/DEUTSCH.md` |
 | Cronómetro | `app.js` + `timer-core.js` + `crono-*` |
 | tareas | `app.js` (`cronoTask*`) + `planning-enhancements-v4.js` + `task-sync-*` |
 | sync/pérdida de datos | `document-sync-core.js`, `data-core.js`, `sync-core.js`, `*-resilience.js`, migraciones Supabase |

@@ -142,6 +142,9 @@
           const raw=localStorage.getItem(DB_KEY);
           const parsed=JSON.parse(raw||'null');
           if(!parsed || typeof parsed!=='object') throw new Error('No encuentro una copia local válida');
+          const germanDevice=localStorage.getItem('german_device_v1');
+          if(germanDevice && parsed.germanStudy?.sessions?.some(s=>s.deviceId===germanDevice && !s.endedAt))
+            throw new Error('Vuelve a la app y termina la sesión de Deutsch antes de actualizar.');
           await saveRescue(raw);
           if(localStorage.getItem(DB_KEY)!==raw) throw new Error('Los datos cambiaron durante la comprobación');
 

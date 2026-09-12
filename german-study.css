@@ -1,0 +1,47 @@
+.german-entry { display:flex; align-items:center; justify-content:space-between; gap:16px; width:100%; margin:14px 0; padding:16px 20px; border:1px solid var(--border2); border-radius:18px; background:var(--card); color:var(--text); text-align:left; cursor:pointer; }
+.german-entry strong { font-size:16px; }.german-entry small { display:block; margin-top:4px; color:var(--text3); }
+body:not([data-session-mode="today"]) .german-entry { margin-block:14px; }
+#view-deutsch { max-width:880px; margin:auto; padding-bottom:110px; --german-accent:var(--accent); }
+#view-deutsch button,#view-deutsch input,#view-deutsch textarea { font:inherit; }
+#view-deutsch button { border:1px solid var(--border2); border-radius:12px; padding:12px 18px; background:var(--bg2); color:var(--text); cursor:pointer; min-height:44px; }
+#view-deutsch button:hover { border-color:var(--accent); }#view-deutsch button:disabled { opacity:.45; cursor:default; }
+#view-deutsch :focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
+#view-deutsch h1 { font-size:clamp(24px,4vw,34px); margin:8px 0; letter-spacing:-.04em; }
+#view-deutsch h2 { font-size:22px; line-height:1.3; margin:10px 0 14px; }#view-deutsch p { line-height:1.6; }
+.german-header,.german-row { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.german-header { margin:24px 0; }.german-eyebrow { font-size:11px; letter-spacing:.14em; font-weight:700; color:var(--accent); }
+.german-nav { display:flex; gap:8px; }.german-nav [aria-current="page"] { border-color:var(--accent)!important; }
+.german-note,.german-muted,.german-meter small { color:var(--text3); font-size:12px; }.german-note { margin:14px 0 22px; }
+.german-card { border:1px solid var(--border2); border-radius:22px; padding:24px; margin:18px 0; background:var(--card); overflow-wrap:anywhere; }
+.german-goal { background:radial-gradient(ellipse at top right,color-mix(in srgb,var(--accent) 15%,transparent),transparent 70%),var(--card); }
+.german-balance { font-size:32px; font-variant-numeric:tabular-nums; letter-spacing:-.04em; }.german-balance small { font-size:16px; color:var(--text3); }
+.german-goal progress { width:100%; height:10px; margin-top:20px; accent-color:var(--accent); border:0; border-radius:8px; overflow:hidden; }
+.german-goal progress::-webkit-progress-bar { background:var(--bg2); }.german-goal progress::-webkit-progress-value { background:var(--accent); }
+.german-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.german-stats>div { padding:18px; border:1px solid var(--border2); border-radius:18px; background:var(--card); }
+.german-stats span,.german-stats small,.german-stats strong { display:block; }.german-stats span,.german-stats small { color:var(--text3); font-size:12px; line-height:1.5; }.german-stats strong { font-size:22px; margin:10px 0; }
+#view-deutsch .german-primary { background:var(--accent); color:var(--bg); border-color:var(--accent); font-weight:700; }
+.german-start { display:block; width:100%; margin:10px 0; }.german-letter { font-size:70px; font-family:Georgia,serif; color:var(--accent); opacity:.7; }
+.german-activity { display:grid; grid-template-columns:repeat(14,minmax(0,1fr)); gap:6px; margin:20px 0; }.german-activity>div { aspect-ratio:1; display:grid; place-items:center; border-radius:7px; background:var(--bg2); font-size:11px; color:var(--text3); }
+.german-activity .done { background:var(--accent); color:var(--bg); }.german-activity .partial { background:color-mix(in srgb,var(--accent) 25%,var(--bg2)); }
+.german-form { display:grid; gap:14px; }.german-form label,#view-deutsch .german-study-content label { display:grid; gap:8px; }
+#view-deutsch input,#view-deutsch textarea { box-sizing:border-box; width:100%; padding:12px; color:var(--text); background:var(--bg2); border:1px solid var(--border2); border-radius:10px; }
+#view-deutsch textarea { resize:vertical; margin:12px 0; }#view-deutsch summary { cursor:pointer; padding:12px 0; font-weight:600; }#view-deutsch details { margin-top:14px; }
+.german-file { display:block; border:1px dashed var(--accent); padding:18px; border-radius:12px; }.german-file input { margin-top:12px; }
+.german-meter { text-align:center; padding:32px 12px 18px; }.german-meter>.german-eyebrow,.german-meter>#germanMoneyLabel { display:block; }
+#view-deutsch[data-panel="study"] .german-header { margin:12px 0; }
+#view-deutsch[data-panel="study"] .german-header h1,#view-deutsch[data-panel="study"] .german-note { display:none; }
+#view-deutsch[data-panel="study"] .german-meter { padding-top:18px; }
+#germanMoneyLabel { color:var(--text3); font-size:12px; margin-top:24px; }
+.german-money { font-size:clamp(48px,10vw,86px); letter-spacing:-.055em; font-weight:600; font-variant-numeric:tabular-nums; line-height:1.35; color:var(--accent); }
+#germanTime { font-variant-numeric:tabular-nums; }.german-status { display:inline-block; border:1px solid var(--border2); padding:3px 8px; border-radius:8px; font-size:11px; margin-left:8px; }
+.german-actions,.german-grades { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin:18px 0; }.german-grades button { flex:1; }
+.german-study-content { min-height:240px; }.german-study-content h2 { white-space:pre-wrap; font-size:28px!important; margin:28px 0!important; }.german-type { display:inline-block; color:var(--text3); font-size:11px; margin-top:12px; }
+.german-answer { border-top:1px solid var(--border2); margin:24px 0; padding-top:16px; white-space:pre-wrap; }.german-answer h3 { font-size:24px; color:var(--accent); }.german-explanation { color:var(--text2); }
+.german-ledger { max-height:320px; overflow:auto; }.german-ledger small { display:block; color:var(--text3); }
+#germanError { white-space:pre-wrap; border-left:3px solid var(--accent); padding:14px; background:var(--bg2); margin:14px 0; }
+#germanError[hidden]+.german-retry { display:none; }
+.german-empty { text-align:center; padding:36px 20px; color:var(--text3); }
+.german-meter.qualified .german-money { animation:german-earned .9s ease-out; }@keyframes german-earned { 50% { transform:scale(1.035); text-shadow:0 0 22px color-mix(in srgb,var(--accent) 40%,transparent); } }
+@media(max-width:560px) { .german-card { padding:19px; }.german-stats { gap:7px; }.german-stats>div { padding:12px 9px; }.german-stats strong { font-size:18px; }.german-activity { gap:3px; }.german-activity>div { border-radius:4px; font-size:9px; }.german-header { align-items:flex-start; }.german-header button { padding:10px!important; }.german-grades { gap:6px; }.german-grades button { padding:12px 8px!important; } }
+@media(prefers-reduced-motion:reduce) { .german-meter.qualified .german-money { animation:none; } }

@@ -25,6 +25,19 @@ async function write(id,a,b){
   return (await pg.query('update user_data set data=$2 where id=$1 returning data',[id,JSON.stringify(b)])).rows[0].data;
 }
 describe('real PostgreSQL migration with existing protection triggers',()=>{
+  it('preserves Deutsch records through old-client writes and merges offline sessions with a single daily cap',async()=>{
+    const R = require('../../german-rewards.js');
+    const a={obras:[{id:'piano',name:'Sonata'}],germanStudy:{version:1,goals:[{id:'goal',amount:150}],materials:[{id:'pack',cards:[{id:'card',front:'Hallo',back:'Hola'}]}],
+      sessions:[{id:'a',goalId:'goal',startedAt:'2026-09-12T10:00:00Z',segments:[{id:'2026-09-12',day:'2026-09-12',seconds:1800}]}],reviews:[{id:'review',cardId:'card',grade:'good'}]}};
+    const b={germanStudy:{sessions:[{id:'b',goalId:'goal',startedAt:'2026-09-12T12:00:00Z',segments:[{id:'2026-09-12',day:'2026-09-12',seconds:3600}]}]}};
+    const merged=await write('deutsch-offline',a,b);
+    expect(merged.germanStudy.sessions).toHaveLength(2);
+    expect(merged.germanStudy.materials).toEqual(a.germanStudy.materials);
+    expect(merged.germanStudy.reviews).toEqual(a.germanStudy.reviews);
+    expect(R.ledger(merged.germanStudy.sessions,merged.germanStudy.goals).reduce((n,r)=>n+r.finalReward,0)).toBe(2);
+    const legacy=await write('deutsch-legacy',merged,{obras:[{id:'piano',name:'Sonata'}]});
+    expect(legacy.germanStudy).toEqual(merged.germanStudy);
+  });
   it.each(remoteDocumentCases)('$name',async({name,stored,incoming,expected})=>{
     const direct=(await pg.query('select public.document_merge($1::jsonb,$2::jsonb) as merged',[JSON.stringify(stored),JSON.stringify(incoming)])).rows[0].merged;
     expect(direct).toMatchObject(expected);

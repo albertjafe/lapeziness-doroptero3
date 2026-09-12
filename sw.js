@@ -1,11 +1,17 @@
-const CACHE = 'estudio-v377';
+const CACHE = 'estudio-v378';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
   "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=342",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=377",
+  "./app.js?v=378",
+  "./german-rewards.js?v=378",
+  "./german-srs.js?v=378",
+  "./german-import.js?v=378",
+  "./german-session.js?v=378",
+  "./german-study.js?v=378",
+  "./german-study.css?v=378",
   "./competition-planning-seed.js?v=342",
   "./crono-idle-hierarchy.css?v=342",
   "./crono-readiness-layout.css?v=342",
@@ -55,7 +61,7 @@ const ASSETS = [
   "./passage-tracker-resilience.js?v=372",
   "./piano-rooms-core.js?v=372",
   "./piano-rooms.css?v=369",
-  "./piano-rooms.js?v=377",
+  "./piano-rooms.js?v=378",
   "./reservation-dashboard.css?v=372",
   "./reservation-dashboard.js?v=372",
   "./planning-enhancements-v3.css?v=377",
@@ -95,7 +101,7 @@ const ASSETS = [
   "./task-sync-resilience.js?v=342",
   "./timer-core.js?v=368",
   "./timer-objectives.js?v=342",
-  "./update-safety.js?v=354",
+  "./update-safety.js?v=378",
   "./work-catalog.js?v=342",
   "./work-difficulty-integration.js?v=342",
   "./work-difficulty-model.js?v=342",
@@ -147,7 +153,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '377');
+            target.searchParams.set('__pwa', '378');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -155,7 +161,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'377', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'378', navigated });
         } catch (error) {}
       }
     }
