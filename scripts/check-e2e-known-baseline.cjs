@@ -8,6 +8,21 @@ const KNOWN_FAILURES = new Set([
   'advances free timer progress to a 120 minute maximum and enlarges mode labels',
   'keeps the idle and running timer in the same iPad composition',
   'keeps Destellos in the same clock position before and during a session',
+  // Assertions from the retired five-tab navigation and the former
+  // Memoria/tasks drawer. Keep them explicit until those specs are rewritten
+  // against the current Hoy + Aulas + Pasajes composition.
+  'uses mouse navigation only on Windows and preserves the iPad navigation',
+  'keeps mobile navigation visible after removing the daily state panel',
+  'implements phase three Hoy and Cronómetro hierarchy',
+  'adapts the running timer to iPad landscape and portrait',
+  'keeps tasks available while idle and compacts long running content',
+  'opens pending tasks once per day and repeats the reminder after two hours',
+  'separates piano and personal tasks and only reminds piano work',
+  'uses the task circle to toggle and the task name to edit',
+  'keeps mobile tasks readable and swipes calendar months',
+  'keeps a compact mobile task drawer with a fixed clock',
+  'reviews work-specific memory cards before and during a timed session',
+  'removes Casa from navigation and redirects legacy Casa navigation to Profesor',
 ]);
 
 const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';

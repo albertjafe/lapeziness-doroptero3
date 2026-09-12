@@ -42,8 +42,8 @@ test('renders live reservations and sends a safe monitor command', async ({ page
   await page.goto('/reservation-dashboard.css?v=369');
   await page.setContent(`<!doctype html><html lang="es" data-theme="marmol"><head>
     <link rel="stylesheet" href="http://127.0.0.1:4173/styles.css?v=342">
-    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=369">
-  </head><body data-view="salas"><div id="view-salas"><section class="reservation-dashboard">
+    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=372">
+  </head><body data-view="session"><div id="view-session" class="active"><section class="reservation-dashboard" id="sessionAulasDashboard">
     <div class="rd-topline"><div class="rd-title-group"><div class="view-local-label">Reservas Asimut</div><h1>Aulas</h1><p id="reservationDashboardStatus"></p></div><div class="rd-head-actions"><div id="reservationSourceSwitch" class="rd-source-switch"></div><button id="reservationRefresh" class="rd-refresh">↻</button></div></div>
     <div class="rd-pane-tabs"><button class="active" data-reservation-pane="reservations">Mis reservas</button><button data-reservation-pane="piano-rooms">Piano Rooms</button></div>
     <div id="reservationLivePanel"><div id="reservationDashboardEmpty"></div><div id="reservationDashboardContent"><section id="reservationHero" class="rd-hero"></section><section class="rd-control-card"><div id="reservationModeControls" class="rd-mode-controls"></div></section><div class="rd-grid"><div class="rd-column"><section class="rd-card"><div id="reservationBookingList" class="rd-booking-list"></div></section><section id="reservationTransition"><span data-transition-title></span><div id="reservationTransitionList"></div></section></div><aside class="rd-column"><div id="reservationQuotaCard"></div><div id="reservationMonitorCard"></div><section class="rd-card"><div id="reservationQuickControls" class="rd-quick-controls"></div></section><section class="rd-card"><div id="reservationSettingControls" class="rd-settings"></div></section></aside></div></div></div>
@@ -78,7 +78,7 @@ test('renders live reservations and sends a safe monitor command', async ({ page
     };
     window.getSB = () => client;
   }, sampleRow);
-  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=369' });
+  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=372' });
 
   await expect(page.locator('#reservationHero')).toHaveText(/Aula (113|308)/);
   await expect(page.locator('#reservationModeControls .active')).toContainText('Grabación');
