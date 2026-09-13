@@ -1,16 +1,18 @@
-const CACHE = 'estudio-v378';
+const CACHE = 'estudio-v379';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
   "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=342",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=378",
+  "./app.js?v=379",
   "./german-rewards.js?v=378",
   "./german-srs.js?v=378",
   "./german-import.js?v=378",
   "./german-session.js?v=378",
-  "./german-study.js?v=378",
+  "./german-study.js?v=379",
+  "./german-trophies.js?v=379",
+  "./german-trophies.css?v=379",
   "./german-study.css?v=378",
   "./competition-planning-seed.js?v=342",
   "./crono-idle-hierarchy.css?v=342",
@@ -153,7 +155,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '378');
+            target.searchParams.set('__pwa', '379');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -161,7 +163,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'378', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'379', navigated });
         } catch (error) {}
       }
     }

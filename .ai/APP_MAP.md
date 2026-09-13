@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-12 · caché runtime v378
+**Estado:** CANÓNICO · actualizado 2026-09-13 · caché runtime v379
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -326,6 +326,7 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - Entrada compacta **Hoy → Deutsch**, entre resumen y Aulas, sin añadir pestañas inferiores. `#view-deutsch` usa `showView` y `app:viewchange`. Los módulos se cargan directamente después de `app.js` en `index.html`.
 - `german-study.js/css`: dashboard, objetivo activo/historial, importación/prompt para IA, cola mixta y cronómetro independiente. No escribe en colecciones pianísticas. Materiales y estudio funcionan offline.
+- **Deutsch → Trofeos**: vitrina de todos los objetivos, conseguidos y pendientes, con filtros, progreso y recorrido. `german-trophies.js/css` deriva la colección de objetivos/sesiones mediante la política existente y dibuja tres variantes SVG metálicas con perspectiva CSS. Creación usa `createdAt`; inicio, el primer `segments.day` con tiempo positivo; consecución, el día del ledger que completa la meta. Archivar conserva el trofeo y no equivale a completar. No guarda copias de premios ni altera las recompensas. Disponible offline y con movimiento reducido.
 - `german-import.js`: JSON `german-study-pack.v1` canónico y CSV de tarjetas; validación completa antes de insertar, máximo 2 MB/2.000 elementos, IDs SHA-256 y duplicados de contenido normalizado. Esquema y contrato: `docs/DEUTSCH.md`, `docs/german-study-pack.v1.schema.json`. Sin API de IA.
 - `german-srs.js`: SRS determinista derivado de revisiones, cuatro valoraciones; ejercicios cerrados con alternativas literales y escritura libre autoevaluada. Cola: vencidas → hasta 10 nuevas → ejercicios pendientes → repaso si no quedan pendientes.
 - `german-session.js`: evidencia de tiempo por sesión/día local, cierre idempotente, recuperación pausada. Checkpoints cada 10 s, al cualificar y en acciones; pausa al ocultar/salir, tras 5 min sin interacción o gaps >5 s. Web Locks (lease local de fallback) evita dos pestañas contando la misma sesión.
@@ -337,9 +338,9 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- Caché actual `estudio-v378`: `app.js`, `piano-rooms.js`, `update-safety.js` y los seis assets Deutsch usan v378; los módulos no modificados conservan su URL anterior. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
+- Caché actual `estudio-v379`: `app.js`, `german-study.js` y `german-trophies.js/css` usan v379; los módulos no modificados conservan su URL anterior. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v378 en Ajustes; v378 es el límite de caché PWA actual.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v379 en Ajustes; v379 es el límite de caché PWA actual.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
@@ -363,7 +364,7 @@ Documentación pura (`.md`, instrucciones de IA) no necesita bump de SW porque n
 | Quiero cambiar… | Mirar primero |
 |---|---|
 | navegación / shell | `index.html`, `app.js` (`showView`) |
-| Deutsch / alemán / hucha | `german-study.js/css`, `german-rewards.js`, `german-session.js`, `german-srs.js`, `german-import.js`; contrato en `docs/DEUTSCH.md` |
+| Deutsch / alemán / hucha / trofeos | `german-study.js/css`, `german-trophies.js/css`, `german-rewards.js`, `german-session.js`, `german-srs.js`, `german-import.js`; contrato en `docs/DEUTSCH.md` |
 | Cronómetro | `app.js` + `timer-core.js` + `crono-*` |
 | tareas | `app.js` (`cronoTask*`) + `planning-enhancements-v4.js` + `task-sync-*` |
 | sync/pérdida de datos | `document-sync-core.js`, `data-core.js`, `sync-core.js`, `*-resilience.js`, migraciones Supabase |
