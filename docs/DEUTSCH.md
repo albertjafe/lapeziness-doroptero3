@@ -1,16 +1,18 @@
-# Deutsch · primera versión
+# Deutsch · tarjetas y estudio libre
 
-Entrada: **Hoy → Deutsch**, tarjeta compacta entre el resumen diario y Aulas. La barra inferior y los datos pianísticos conservan sus funciones. Deutsch tiene Resumen, Materiales y una sesión de estudio propia. Los objetivos económicos y la hucha permanecen dentro de Deutsch; los hábitos diarios y sus trofeos pertenecen al cronómetro.
+Entrada: **Hoy → Deutsch**, tarjeta compacta entre el resumen diario y Aulas. La portada de Deutsch está centrada en clases importadas y dos formas de estudiar: tarjetas con repaso espaciado y estudio libre. Los objetivos económicos y la hucha permanecen dentro de Deutsch; los hábitos diarios y sus trofeos pertenecen al cronómetro.
 
 ## Uso
 
-1. Crea un objetivo con nombre e importe. La hucha es virtual: no se mueve dinero.
-2. En **Materiales → Crear material con IA**, copia el prompt y entrégalo a una IA junto con el PDF de tu profesora. No se llama a ninguna API desde Deutsch.
-3. Importa el JSON obtenido. **Descargar JSON de ejemplo** proporciona un paquete válido que también puedes importar para probar el flujo.
-4. Pulsa **Empezar estudio**. La cola prioriza tarjetas vencidas, hasta 10 nuevas y ejercicios pendientes; si no hay pendientes, ofrece repaso adicional. **Elegir modo** permite Tarjetas, Ejercicios o Material concreto.
-5. Revela las tarjetas y valora Again / Hard / Good / Easy. En ejercicios cerrados se comparan respuestas literales normalizadas, sin evaluación semántica; el resultado se guarda al comprobar, aunque termines antes de pulsar Siguiente. `free_write` muestra un modelo y permite Correcto / Parcial / Incorrecto.
+1. Importa un JSON generado a partir del material de una clase o un CSV. Cada archivo se presenta como una clase o tema independiente. El prompt integrado pide tarjetas de vocabulario, expresiones, estructuras, preguntas y gramática; no se llama a ninguna API desde Deutsch.
+2. Pulsa **Estudiar tarjetas** para combinar todas las clases o **Estudiar esta clase** para limitar la cola. Se muestran vencidas, hasta 10 nuevas y, cuando no queda ninguna pendiente, una tanda de repaso.
+3. Da la vuelta a la tarjeta y elige **Otra vez**, **Difícil**, **Bien** o **Fácil**. La interfaz muestra el próximo intervalo. Espacio revela; las teclas 1–4 califican y P pausa o continúa.
+4. Pulsa **Estudio libre** cuando trabajes con una ficha, una escucha, conversación o material externo. No crea tarjetas ni exige una cola, pero registra el tiempo y alimenta el mismo taxímetro.
+5. Crea un objetivo con nombre e importe para que la hucha virtual asigne recompensa. Sin objetivo se conserva el tiempo, pero no se abona dinero retroactivamente.
 
-El cronómetro cuenta únicamente intervalos observados en primer plano dentro de la sesión de Deutsch. Pausa al salir, ocultar la página, tras cinco minutos sin interacción o ante un salto del reloj de más de cinco segundos. Cada interacción renueva la ventana de actividad. Recargar recupera el último checkpoint **en pausa**, incluida la tarjeta/ejercicio y su borrador. Se guarda cada diez segundos, al cualificar el día y en cada acción relevante. Un cierre abrupto del proceso puede perder hasta diez segundos; no añade las horas transcurridas con la app cerrada. Web Locks impide estudiar o finalizar desde dos pestañas simultáneas; navegadores antiguos usan un lease local renovable.
+Los ejercicios de paquetes anteriores siguen persistidos y una sesión antigua puede terminarse sin perder su cursor o borrador. La portada y las sesiones nuevas no los muestran ni los mezclan con las tarjetas.
+
+En tarjetas, el cronómetro cuenta intervalos observados dentro de Deutsch y pausa al salir, ocultar la página, tras cinco minutos sin interacción o ante un salto del reloj de más de cinco segundos. En estudio libre, una vez iniciado explícitamente, sigue contando al trabajar en otra pestaña y no aplica la pausa por inactividad; sí se pausa al cambiar de sección dentro de la app, al cerrar la página, al pulsar Pausar o al terminar. Recargar recupera el último checkpoint **en pausa** y nunca añade el tiempo durante el que la app estuvo cerrada. Se guarda cada diez segundos, al cualificar el día y en cada acción relevante. Web Locks impide ejecutar dos sesiones simultáneas; navegadores antiguos usan un lease local renovable.
 
 ## Recompensas
 
@@ -50,9 +52,7 @@ Esquema formal: [`german-study-pack.v1.schema.json`](german-study-pack.v1.schema
     { "type": "de_es", "front": "der Bahnhof", "back": "la estación de tren", "tags": ["viajes"] },
     { "type": "cloze", "front": "Ich ___ am Bahnhof. (warten)", "back": "warte" }
   ],
-  "exercises": [
-    { "type": "conjugation", "prompt": "Conjuga warten con du.", "answer": "du wartest", "acceptedAnswers": ["wartest"] }
-  ]
+  "exercises": []
 }
 ```
 
@@ -85,7 +85,7 @@ La programación SRS se deriva de las revisiones ordenadas por instante e ID: co
 
 ## PWA y verificación
 
-Runtime v380: scripts y CSS de Deutsch cargados desde `index.html` y precacheados; `update-safety.js` bloquea promociones mientras haya sesión local abierta, incluso antes de cargar el addon. `update.html` también protege esa recuperación. Mantiene el lifecycle seguro y las versiones anteriores de assets no modificados.
+Runtime v382: scripts y CSS de Deutsch cargados desde `index.html` y precacheados; `update-safety.js` bloquea promociones mientras haya sesión local abierta, incluso antes de cargar el addon. `update.html` también protege esa recuperación. Mantiene el lifecycle seguro y las versiones anteriores de assets no modificados.
 
 Pruebas: `tests/unit/german-study.test.js`, nuevas regresiones en `document-postgres`, `update-safety-v2` y `service-worker-audit`; `tests/e2e/german-study.spec.js` cubre UI completa, importar/duplicados/XSS, umbral, recarga/borrador, locks, objetivos, móvil y PWA offline. Ejecutar `npm run check`, `npm run test:unit`, `npm run test:e2e` y `npm run test:visual`. El repositorio conserva una lista explícita de fallos E2E anteriores en `scripts/check-e2e-known-baseline.cjs`; no se deben confundir con regresiones de Deutsch.
 

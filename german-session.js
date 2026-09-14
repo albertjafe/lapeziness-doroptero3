@@ -26,10 +26,10 @@
       from=end;
     }
   }
-  function tick(session,{now,lastTick,lastInteraction,visible=true}) {
+  function tick(session,{now,lastTick,lastInteraction,visible=true,allowBackground=false}) {
     if (session.status!=='running' || session.endedAt) return false;
     const gap=now-lastTick;
-    if (!visible || gap<0 || gap>MAX_TICK_GAP_MS || now-lastInteraction>IDLE_MS) { session.status='paused'; return false; }
+    if (gap<0 || (!allowBackground && (!visible || gap>MAX_TICK_GAP_MS || now-lastInteraction>IDLE_MS))) { session.status='paused'; return false; }
     addInterval(session,lastTick,now); return true;
   }
   function finish(state,id,now=Date.now()) {

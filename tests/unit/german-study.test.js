@@ -65,12 +65,17 @@ describe('Deutsch timer evidence',()=>{
     const s=T.create({id:'s',deviceId:'d'});s.status='running';T.tick(s,{now:1250,lastTick:0,lastInteraction:0});expect(s.segments[0].seconds).toBe(1.25);
     s.endedAt=new Date().toISOString();T.addInterval(s,1250,2000);expect(s.segments[0].seconds).toBe(1.25);
   });
+  it('keeps an explicitly started free-study session running in the background',()=>{
+    const s=T.create({id:'free',deviceId:'d'});s.status='running';
+    expect(T.tick(s,{now:60000,lastTick:0,lastInteraction:0,visible:false,allowBackground:true})).toBe(true);
+    expect(s.segments[0].seconds).toBe(60);expect(s.status).toBe('running');
+  });
 });
 
 describe('Deutsch material import',()=>{
   it('validates and imports canonical JSON atomically with deterministic identifiers',async()=>{
     const pack=await I.parse(JSON.stringify(I.EXAMPLE));const st={materials:[]};expect(I.insert(st,pack)).toBe(true);expect(I.insert(st,await I.parse(JSON.stringify(I.EXAMPLE,null,4)))).toBe(false);
-    expect(st.materials).toHaveLength(1);expect(pack.cards[0].id).not.toBe(pack.exercises[0].id);
+    expect(st.materials).toHaveLength(1);expect(pack.cards[0].id).toContain(':c:0');expect(pack.exercises).toEqual([]);
   });
   it('canonicalizes root key order and optional empty fields for duplicate detection',async()=>{
     const a=await I.parse(JSON.stringify(I.EXAMPLE)), b=await I.parse(JSON.stringify({exercises:I.EXAMPLE.exercises,cards:I.EXAMPLE.cards,metadata:I.EXAMPLE.metadata,schema:I.SCHEMA}));expect(a.id).toBe(b.id);

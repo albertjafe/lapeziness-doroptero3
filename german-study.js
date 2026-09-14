@@ -8,6 +8,7 @@
   const euro=(n,digits=2)=>Number(n).toLocaleString('es-ES',{minimumFractionDigits:digits,maximumFractionDigits:digits})+' €';
   const time=n=>{n=Math.floor(n || 0);return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');};
   const minutes=n=>Math.floor((n || 0)/60)+' min';
+  const interval=n=>n<1?(Math.max(1,Math.round(n*1440))+' min'):n<2?'1 día':Math.round(n)+' días';
   const typeLabels={de_es:'Alemán → español',es_de:'Español → alemán',expression:'Expresión',grammar:'Estructura gramatical',question_answer:'Pregunta y respuesta',cloze:'Completa el hueco',fill_blank:'Completa el hueco',translation:'Traducción',conjugation:'Conjugación',short_answer:'Respuesta breve',free_write:'Escritura libre'};
   let deviceId, activeId=null, panel='dashboard', lastTick=Date.now(), lastInteraction=Date.now(), lastSave=0;
   let releaseLock=null, ownsLock=false, busy=false, qualifiedBefore=false, error='';
@@ -54,7 +55,7 @@
       if (lease?.token!==lockToken) {s.status='paused';ownsLock=false;render();return;}
       localStorage.setItem('german_lease_v1',JSON.stringify({token:lockToken,until:now+15000}));
     }
-    const running=T.tick(s,{now,lastTick,lastInteraction,visible:visible()});lastTick=now;
+    const running=T.tick(s,{now,lastTick,lastInteraction,visible:visible(),allowBackground:s.mode==='free'});lastTick=now;
     const qualified=(R.summarizeDays(state().sessions)[R.dayKey()] || 0)>=R.CONFIG.minimumSeconds;
     if (!running || now-lastSave>=10000 || qualified!==qualifiedBefore) persist();
     if (qualified && !qualifiedBefore) {
@@ -71,44 +72,53 @@
     return `<section class="german-card german-goal"><span class="german-eyebrow">${progress.complete?'OBJETIVO CONSEGUIDO ✨':'TU OBJETIVO'}</span><h2>${esc(goal.name)}</h2><div class="german-balance">${euro(progress.amount)} <small>/ ${euro(goal.amount)}</small></div><progress aria-label="Progreso del objetivo" max="100" value="${percent}"></progress><p>${percent.toFixed(1).replace('.',',')} % · Ahorrado estudiando</p>${progress.complete?`<p>Conseguido el ${esc(progress.completedOn)} · ${minutes(progress.seconds)} de alemán invertidos.</p><button data-action="archive" ${current()?'disabled':''}>Archivar y crear otro objetivo</button>${current()?'<p>Termina la sesión antes de archivar.</p>':''}`:''}</section>`;
   }
   function goalForm() {return `<form id="germanGoalForm" class="german-form"><label>Nombre del objetivo<input name="name" required maxlength="80" placeholder="Kindle" autocomplete="off"></label><label>Importe (€)<input name="amount" type="number" min="0.01" max="100000000" step="0.01" required value="150"></label><button class="german-primary" type="submit">Crear objetivo</button></form>`;}
+  function deckStats(material) {
+    const states=material.cards.map(c=>S.cardState(c.id,state().reviews)),now=Date.now();
+    return {newCount:states.filter(s=>!s.reviews).length,dueCount:states.filter(s=>s.nextReview && Date.parse(s.nextReview)<=now).length};
+  }
+  function importer() {
+    return `<section class="german-card german-import"><div><span class="german-eyebrow">AÑADIR CONTENIDO</span><h2>Importar una clase</h2><p>Admite vocabulario, expresiones, estructuras, preguntas y tarjetas con huecos.</p></div><label class="german-file"><span>Elegir archivo .json o .csv</span><input id="germanImportFile" type="file" accept=".json,.csv,application/json,text/csv"></label><details><summary>Formato y prompt para la IA</summary><p>Hasta 2 MB y 2.000 elementos. El CSV usa front,back y puede añadir type, hint, explanation y tags.</p><div class="german-import-actions"><button data-action="example">Descargar ejemplo</button><button data-action="copy-prompt">Copiar prompt para IA</button></div><textarea id="germanPrompt" aria-label="Prompt para IA" readonly rows="8">${esc(I.AI_PROMPT)}</textarea></details></section>`;
+  }
+  function decks() {
+    const materials=state().materials;
+    return `<section class="german-decks"><div class="german-section-heading"><div><span class="german-eyebrow">POR CLASE O TEMA</span><h2>Tus tarjetas</h2></div><span>${materials.reduce((n,m)=>n+m.cards.length,0)} en total</span></div><div class="german-deck-grid">${materials.map((m,index)=>{const stats=deckStats(m),label=m.metadata.title || 'Clase '+(index+1);return `<article class="german-deck"><div class="german-deck-number" aria-hidden="true">${String(index+1).padStart(2,'0')}</div><div class="german-deck-copy"><span class="german-eyebrow">${esc(m.metadata.date || 'CLASE '+(index+1))}</span><h3>${esc(label)}</h3><p>${m.cards.length} tarjetas · ${stats.dueCount} pendientes · ${stats.newCount} nuevas</p>${m.metadata.notes?`<small>${esc(m.metadata.notes)}</small>`:''}</div><button class="german-deck-study" data-action="material" data-id="${esc(m.id)}" ${m.cards.length?'':'disabled'}>Estudiar esta clase</button></article>`;}).join('') || '<div class="german-empty"><strong>Tu primera clase aparecerá aquí.</strong><p>Importa el archivo creado a partir de tus materiales y podrás empezar a repasarlo.</p></div>'}</div></section>`;
+  }
   function dashboard() {
     const st=state(),today=R.dayKey(), totals=R.summarizeDays(st.sessions), streak=R.streakStats(st.sessions,today), ledger=entries(), goal=activeGoal();
     const earned=ledger.filter(e=>e.date===today).reduce((n,e)=>n+e.finalReward,0);
     const weekStart=R.shiftDay(today,-((new Date().getDay()+6)%7));
     const week=Object.entries(totals).filter(([d])=>d>=weekStart && d<=today).reduce((n,[,s])=>n+s,0);
-    const cards=st.materials.flatMap(m=>m.cards), exercises=st.materials.flatMap(m=>m.exercises);
+    const cards=st.materials.flatMap(m=>m.cards);
     const states=cards.map(c=>S.cardState(c.id,st.reviews));
     const fresh=states.filter(s=>!s.reviews).length, due=states.filter(s=>s.nextReview && Date.parse(s.nextReview)<=Date.now()).length;
     const daySeconds=totals[today] || 0;
-    const pendingBase=daySeconds<MIN?ledger.filter(e=>e.date===today && e.goalId===goal?.id).reduce((n,e)=>n+e.baseReward,0):0;
-    const cap=goal ? Math.max(0,(R.baseReward(CAP)-R.baseReward(daySeconds)+pendingBase)*R.goalScale(goal.amount)*R.streakMultiplier(streak.prospective)) : 0;
     const pending=totals[today]>0 && totals[today]<MIN;
-    return `${goalCard(goal,ledger)}<section class="german-stats" aria-label="Estadísticas de alemán"><div><span>Hoy</span><strong>${minutes(totals[today])}</strong><small>${euro(earned)} consolidados${pending?' · mínimo pendiente':''}</small></div><div><span>Racha</span><strong>🔥 ${streak.current} días</strong><small>${streak.nextBonusIn?streak.nextBonusIn+' días para +5 % de bonus':'Bonus máximo: +25 %'}</small></div><div><span>Esta semana</span><strong>${minutes(week)}</strong><small>Mejor racha: ${streak.best} días</small></div></section>
-      <section class="german-card"><div class="german-row"><div><h2>Un poco de alemán, cada día.</h2><p>${due} tarjetas vencidas · ${fresh} nuevas · ${exercises.length} ejercicios</p></div><span class="german-letter" aria-hidden="true">Ä</span></div><button class="german-primary german-start" data-action="start">${current()?'Volver a la sesión':'Empezar estudio'}</button><button data-action="modes">Elegir modo</button><p class="german-muted">${goal?'Hasta ≈ '+euro(Math.min(cap,Math.max(0,goal.amount-R.goalProgress(goal,ledger,st.sessions).amount)))+' adicionales hoy.':'Puedes estudiar sin objetivo; el tiempo y las revisiones se conservan.'} ${MIN_LABEL} netos para cualificar el día.</p></section>
-      <section class="german-card"><h2>Tu constancia</h2><div class="german-activity" aria-label="Actividad de los últimos 14 días">${Array.from({length:14},(_,i)=>{const day=R.shiftDay(today,i-13),seconds=totals[day] || 0;return `<div class="${seconds>=MIN?'done':seconds?'partial':''}" title="${day}: ${minutes(seconds)}" aria-label="${day}: ${minutes(seconds)}"><span>${day.slice(8)}</span></div>`;}).join('')}</div><p class="german-muted">${st.reviews.filter(r=>r.cardId).length} tarjetas revisadas · Color completo: día cualificado.</p></section>
-      <details class="german-card"><summary>Historial de objetivos y movimientos</summary>${st.goals.filter(g=>g.archivedAt).map(g=>{const p=R.goalProgress(g,ledger,st.sessions);return `<p><strong>${esc(g.name)}</strong> · ${euro(p.amount)} / ${euro(g.amount)} · ${esc(p.completedOn || 'En progreso')} · ${minutes(p.seconds)}</p>`;}).join('') || '<p>Aquí aparecerán tus objetivos archivados.</p>'}<div class="german-ledger">${ledger.slice(-30).reverse().map(e=>`<p>${esc(e.date)} · ${minutes(e.duration)} · ${euro(e.finalReward,3)} ${e.qualified?'':'(pendiente)'}<small>Base ${euro(e.baseReward,3)} × escala ${e.goalScale.toFixed(3)} × racha ${e.streakMultiplier.toFixed(2)}</small></p>`).join('')}</div><button data-action="export-ledger">Descargar historial completo</button></details>`;
+    const session=current();
+    return `<section class="german-launch"><div><span class="german-eyebrow">REPASO ESPACIADO</span><h1>Una app sencilla para recordar tu alemán.</h1><p>${due} tarjetas para repasar · ${fresh} nuevas. Elige todas o entra en una clase concreta.</p></div><div class="german-launch-actions"><button class="german-primary" data-action="${session?'resume':'start'}">${session?'Continuar sesión':'Estudiar tarjetas'}</button><button data-action="free" ${session?'disabled':''}>Estudio libre</button></div><p class="german-muted">En estudio libre puedes hacer fichas, escuchar alemán o trabajar fuera de la app. El mismo taxímetro seguirá contando.</p></section>
+      <section class="german-dashboard-meter" aria-label="Resumen del taxímetro"><div><span>Hoy</span><strong>${time(totals[today])}</strong></div><div><span>Hucha de hoy</span><strong>${euro(earned,3)}${pending?' pendiente':''}</strong></div><div><span>Racha</span><strong>${streak.current} días</strong></div></section>
+      ${decks()}${importer()}${goalCard(goal,ledger)}
+      <details class="german-card german-history"><summary>Actividad e historial</summary><div class="german-activity" aria-label="Actividad de los últimos 14 días">${Array.from({length:14},(_,i)=>{const day=R.shiftDay(today,i-13),seconds=totals[day] || 0;return `<div class="${seconds>=MIN?'done':seconds?'partial':''}" title="${day}: ${minutes(seconds)}" aria-label="${day}: ${minutes(seconds)}"><span>${day.slice(8)}</span></div>`;}).join('')}</div><p class="german-muted">${st.reviews.filter(r=>r.cardId).length} tarjetas revisadas · ${minutes(week)} esta semana · mejor racha: ${streak.best} días.</p>${st.goals.filter(g=>g.archivedAt).map(g=>{const p=R.goalProgress(g,ledger,st.sessions);return `<p><strong>${esc(g.name)}</strong> · ${euro(p.amount)} / ${euro(g.amount)} · ${esc(p.completedOn || 'En progreso')}</p>`;}).join('')}<div class="german-ledger">${ledger.slice(-30).reverse().map(e=>`<p>${esc(e.date)} · ${minutes(e.duration)} · ${euro(e.finalReward,3)} ${e.qualified?'':'(pendiente)'}</p>`).join('')}</div><button data-action="export-ledger">Descargar historial completo</button></details>`;
   }
-  function materials() {
-    return `<section class="german-card"><h2>Materiales de tus clases</h2><p>PDF → IA → JSON → Deutsch. Importa un paquete de estudio o un CSV de vocabulario.</p><label class="german-file">Importar .json o .csv<input id="germanImportFile" type="file" accept=".json,.csv,application/json,text/csv"></label><p class="german-muted">Hasta 2 MB y 2.000 elementos. CSV: front,back; opcionales type,hint,explanation,tags. Separa tags con |.</p><button data-action="example">Descargar JSON de ejemplo</button><details><summary>Crear material con IA</summary><p>Adjunta tu PDF a la IA que prefieras junto con este prompt.</p><textarea id="germanPrompt" aria-label="Prompt para IA" readonly rows="9">${esc(I.AI_PROMPT)}</textarea><button data-action="copy-prompt">Copiar prompt para IA</button></details></section>
-      ${state().materials.map(m=>`<article class="german-card"><span class="german-eyebrow">${esc(m.metadata.date || 'MATERIAL IMPORTADO')}</span><h2>${esc(m.metadata.title)}</h2><p>${esc(m.metadata.teacher)} ${m.metadata.source?'· '+esc(m.metadata.source):''}</p><p>${m.cards.length} tarjetas · ${m.exercises.length} ejercicios</p>${m.metadata.notes?`<p>${esc(m.metadata.notes)}</p>`:''}<button data-action="material" data-id="${esc(m.id)}">Estudiar este material</button><details><summary>Ver contenido</summary>${m.cards.map(c=>`<p><strong>${esc(c.front)}</strong> → ${esc(c.back)}</p>`).join('')}${m.exercises.map(e=>`<p>${esc(e.prompt)}</p>`).join('')}</details></article>`).join('') || '<p class="german-empty">Todavía no hay materiales. Descarga el ejemplo para conocer el formato o importa tu primera clase.</p>'}`;
-  }
-  function modes() {return `<section class="german-card"><h2>¿Qué quieres practicar?</h2><div class="german-actions"><button data-action="mode" data-id="cards">Tarjetas</button><button data-action="mode" data-id="exercises">Ejercicios</button><button data-action="materials">Material concreto</button></div><p>La sesión mixta prioriza tarjetas vencidas, hasta 10 nuevas y ejercicios pendientes. Después puedes repetir para seguir repasando.</p></section>`;}
   function itemMarkup(s) {
     const item=s.queue[s.index], m=item && state().materials.find(m=>m.id===item.materialId);
     const content=item && m?.[item.kind==='card'?'cards':'exercises'].find(c=>c.id===item.contentId);
-    if (!content) return `<div class="german-card german-study-content"><h2>¡Repaso terminado!</h2><p>Puedes seguir con otra tanda o terminar la sesión.</p><button data-action="more">Seguir repasando</button></div>`;
+    if (!content) return `<div class="german-card german-study-content german-study-complete"><span aria-hidden="true">✓</span><h2>Repaso terminado</h2><p>Ya has visto las tarjetas de esta tanda. Puedes repetir o dejar que el algoritmo programe el siguiente repaso.</p><button data-action="more">Repasar otra tanda</button></div>`;
     const disabled=s.status!=='running' || !ownsLock?'disabled':'';
     const explanation=content.explanation?`<p class="german-explanation">${esc(content.explanation)}</p>`:'';
     const hint=content.hint?`<details><summary>Pista</summary><p>${esc(content.hint)}</p></details>`:'';
-    const heading=`<div class="german-row"><span class="german-eyebrow">${esc(m.metadata.title)}</span><span>${s.index+1} / ${s.queue.length}</span></div>`;
-    if (item.kind==='card') return `<article class="german-card german-study-content">${heading}<span class="german-type">${esc(typeLabels[content.type] || content.type)}</span><h2>${esc(content.front)}</h2>${hint}${s.revealed?`<div class="german-answer"><h3>${esc(content.back)}</h3>${explanation}${(content.examples || []).map(e=>`<p>${esc(e)}</p>`).join('')}</div><div class="german-grades">${S.GRADES.map(g=>`<button data-action="grade" data-id="${g}" ${disabled}>${g[0].toUpperCase()+g.slice(1)}</button>`).join('')}</div>`:`<button class="german-primary" data-action="reveal" ${disabled}>Mostrar respuesta</button>`}</article>`;
+    const heading=`<div class="german-card-meta"><span class="german-eyebrow">${esc(m.metadata.title)}</span><span>${s.index+1} / ${s.queue.length}</span></div>`;
+    if (item.kind==='card') {
+      const previous=S.cardState(content.id,state().reviews),labels={again:'Otra vez',hard:'Difícil',good:'Bien',easy:'Fácil'};
+      return `<article class="german-flashcard german-study-content ${s.revealed?'is-revealed':''}" ${s.revealed?'':'data-action="reveal" role="button" tabindex="0"'}>${heading}<div class="german-card-face"><span class="german-type">${esc(typeLabels[content.type] || content.type)}</span><h2>${esc(content.front)}</h2>${hint}${s.revealed?`<div class="german-answer"><h3>${esc(content.back)}</h3>${explanation}${(content.examples || []).map(e=>`<p>${esc(e)}</p>`).join('')}</div>`:'<p class="german-flip-hint">Pulsa la tarjeta o la barra espaciadora para darle la vuelta</p>'}</div>${s.revealed?`<div class="german-grades" aria-label="Califica tu recuerdo">${S.GRADES.map((g,i)=>{const next=S.schedule(previous,g);return `<button data-action="grade" data-id="${g}" ${disabled}><small>${i+1}</small><strong>${labels[g]}</strong><span>${interval(next.interval)}</span></button>`;}).join('')}</div>`:`<button class="german-primary german-reveal" data-action="reveal" ${disabled}>Mostrar respuesta</button>`}</article>`;
+    }
     return `<article class="german-card german-study-content">${heading}<span class="german-type">${esc(typeLabels[content.type] || content.type)}</span><h2>${esc(content.prompt)}</h2>${hint}<label for="germanAnswer">Tu respuesta</label><textarea id="germanAnswer" rows="4" ${s.checked?'readonly':''}>${esc(s.draftAnswer || '')}</textarea>${s.checked?`<div class="german-answer"><h3>${content.type==='free_write'?'Solución modelo':s.correct?'Correcto ✓':'Revisa tu respuesta'}</h3><p>${esc(content.answer || content.acceptedAnswers?.join(' / '))}</p>${explanation}</div>${content.type==='free_write'?`<div class="german-grades">${[['correct','Correcto'],['partial','Parcial'],['incorrect','Incorrecto']].map(([v,l])=>`<button data-action="self-grade" data-id="${v}" ${disabled}>${l}</button>`).join('')}</div>`:`<button data-action="next-exercise" ${disabled}>Siguiente</button>`}`:`<button class="german-primary" data-action="check" ${disabled}>${content.type==='free_write'?'Ver solución modelo':'Comprobar respuesta'}</button>`}</article>`;
   }
   function study() {
     const s=current();if (!s) {panel='dashboard';return dashboard();}
     const running=s.status==='running' && ownsLock;
-    const goal=state().goals.find(g=>g.id===s.goalId), progress=goal && R.goalProgress(goal,entries(),state().sessions);
-    return `<section class="german-meter" id="germanMeter"><span class="german-eyebrow">${esc(goal?.name || 'ESTUDIO LIBRE')}${progress?' · '+euro(progress.amount)+' / '+euro(goal.amount):''}</span><span id="germanMoneyLabel">Recompensa de hoy</span><div id="germanMoney" class="german-money">0,000 €</div><div id="germanBonus"></div><p><span id="germanTime">00:00</span> estudiados hoy <span class="german-status">${running?'En marcha':'En pausa'}</span></p><p id="germanMinimum"></p><p id="germanMilestone" role="status"></p><div class="german-actions"><button data-action="${running?'pause':'resume'}">${running?'Pausar':'Continuar'}</button><button data-action="finish">Terminar sesión</button></div><small>Tiempo neto de esta sesión: <span id="germanSessionTime"></span>. Pausa automática al salir o tras 5 min sin interactuar.</small></section>${itemMarkup(s)}`;
+    const goal=state().goals.find(g=>g.id===s.goalId);
+    const free=s.mode==='free';
+    return `<section class="german-meter" id="germanMeter"><div class="german-meter-top"><div><span class="german-eyebrow">${free?'ESTUDIO LIBRE':'TARJETAS'} · ${esc(goal?.name || 'SIN OBJETIVO')}</span><span id="germanMoneyLabel">Recompensa de hoy</span></div><div><span id="germanTime">00:00</span><span class="german-status">${running?'En marcha':'En pausa'}</span></div></div><div class="german-meter-value"><div id="germanMoney" class="german-money">0,000 €</div><span>taxímetro</span></div><div id="germanBonus"></div><p id="germanMinimum"></p><p id="germanMilestone" role="status"></p><div class="german-session-controls"><button data-action="${running?'pause':'resume'}">${running?'Pausar':'Continuar'}</button><button data-action="finish" aria-label="Terminar sesión">Terminar</button></div><small>Esta sesión: <span id="germanSessionTime"></span>. ${free?'Continúa en segundo plano; recuerda pausarla o terminarla.':'Se pausa al salir o tras 5 min sin interactuar.'}</small></section>${free?`<section class="german-free-study"><div class="german-free-icon" aria-hidden="true">Ä</div><span class="german-eyebrow">EL TIEMPO TAMBIÉN CUENTA FUERA DE LAS TARJETAS</span><h2>Estudio libre</h2><p>Haz una ficha, escucha alemán activamente, practica conversación o trabaja con cualquier otro material.</p><strong>${running?'El taxímetro está contando':'La sesión está en pausa'}</strong></section>`:itemMarkup(s)}`;
   }
   function updateMeter() {
     if (panel!=='study' || !current()) return;
@@ -119,20 +129,20 @@
     const other=ledger.filter(e=>e.goalId===s.goalId && e.date!==today).reduce((n,e)=>n+e.finalReward,0);
     const pending=goal?Math.min(Math.max(0,goal.amount-other),rows.reduce((n,e)=>n+e.baseReward*e.goalScale*bonus,0)):0;
     const set=(id,text)=>{const el=document.getElementById(id);if(el && el.textContent!==text)el.textContent=text;};
-    set('germanMoney',euro(qualified?consolidated:pending,3));
-    set('germanMoneyLabel',qualified?'Consolidado hoy para este objetivo':'Pendiente hoy · se consolida a los '+MIN_LABEL);
+    set('germanMoney',euro(goal?(qualified?consolidated:pending):0,3));
+    set('germanMoneyLabel',goal?(qualified?'Consolidado hoy para este objetivo':'Pendiente hoy · se consolida a los '+MIN_LABEL):'Crea un objetivo para activar la hucha');
     set('germanTime',time(total));set('germanSessionTime',time(s.segments.reduce((n,e)=>n+e.seconds,0)));
     set('germanBonus','+'+Math.round((bonus-1)*100)+' % por racha de '+streak.prospective+' días'+(qualified?'':' al cualificar hoy'));
     set('germanMinimum',qualified?(total>=CAP?MIN_LABEL+' mínimos ✓ · Límite diario alcanzado; puedes seguir estudiando.':MIN_LABEL+' mínimos ✓'):'Faltan '+time(Math.ceil(MIN-total))+' para consolidar el día');
   }
   function render() {
     const el=document.getElementById('germanContent');if(!el)return;
-    el.innerHTML=panel==='materials'?materials():panel==='modes'?modes():panel==='study'?study():dashboard();
+    el.innerHTML=panel==='study'?study():dashboard();
     document.getElementById('view-deutsch').dataset.panel=panel;
     document.querySelectorAll('[data-german-panel]').forEach(b=>b.setAttribute('aria-current',b.dataset.germanPanel===panel?'page':'false'));
     message(error);updateMeter();
   }
-  async function start(mode='mixed',materialId='') {
+  async function start(mode='cards',materialId='') {
     if (!(await lock())) throw new Error('Hay una sesión de Deutsch abierta en otra pestaña. Termínala allí o cierra esa pestaña.');
     let s=current();
     if (!s) {
@@ -140,10 +150,10 @@
       if(s)activeId=s.id;
     }
     if (!s) {
-      const queue=S.queue(state(),{mode,materialId});
-      if (!queue.length) {unlock();panel='materials';render();throw new Error('Importa material para este modo antes de empezar.');}
+      const queue=mode==='free'?[]:S.queue(state(),{mode:'cards',materialId});
+      if (mode!=='free' && !queue.length) {unlock();panel='dashboard';render();throw new Error('Importa una clase con tarjetas antes de empezar.');}
       const goal=activeGoal();
-      s=T.create({id:uid(),deviceId,goalId:goal?.id || null,queue});s.mode=mode;s.materialId=materialId;
+      s=T.create({id:uid(),deviceId,goalId:goal?.id || null,queue});s.mode=mode;s.materialId=materialId;s.activity=mode==='free'?'free-study':'cards';
       state().sessions.push(s);activeId=s.id;
     }
     s.status='running';lastTick=lastInteraction=Date.now();qualifiedBefore=(R.summarizeDays(state().sessions)[R.dayKey()] || 0)>=MIN;
@@ -162,10 +172,11 @@
   }
   async function action(action,id) {
     const s=current();lastInteraction=Date.now();message('');
-    if (['dashboard','materials','modes'].includes(action)) {pause();panel=action;render();window.scrollTo({top:0,behavior:'instant'});return;}
-    if (action==='start') return start();
-    if (action==='mode') return start(id);
-    if (action==='material') return start('mixed',id);
+    if (['dashboard','materials','modes'].includes(action)) {pause();panel='dashboard';render();window.scrollTo({top:0,behavior:'instant'});return;}
+    if (action==='start') return start('cards');
+    if (action==='free') return start('free');
+    if (action==='mode') return start(id==='free'?'free':'cards');
+    if (action==='material') return start('cards',id);
     if (action==='resume') return start();
     if (action==='pause') {pause();render();return;}
     if (action==='finish') {
@@ -182,7 +193,7 @@
     if (action==='retry') {persist();message('Guardado correctamente.');return;}
     if (!s || s.status!=='running' || !ownsLock) throw new Error('Pulsa Continuar antes de responder.');
     if (action==='more') {
-      const items=S.queue(state(),{mode:s.mode,materialId:s.materialId});
+      const items=S.queue(state(),{mode:s.mode==='mixed'?'mixed':'cards',materialId:s.materialId});
       const offset=s.queue.length;s.queue.push(...items.map((item,i)=>({...item,contentId:item.id,id:s.id+':item:'+(offset+i)})));
       s.index=offset;s.revealed=false;s.checked=false;s.draftAnswer='';persist();render();return;
     }
@@ -208,7 +219,7 @@
     activeId=pending[0]?.id || null;
     // Recovery never restarts elapsed time; only the checkpoint is counted.
     // Do not mutate a persisted run until this tab owns the lock; another tab may own it.
-    view.innerHTML=`<header class="german-header"><div><span class="german-eyebrow">DEUTSCH</span><h1>Tu alemán, día a día.</h1></div><button data-action="home" aria-label="Volver a Hoy">← Hoy</button></header><nav class="german-nav" aria-label="Deutsch"><button data-action="dashboard" data-german-panel="dashboard">Resumen</button><button data-action="materials" data-german-panel="materials">Materiales</button></nav><p class="german-note">Hucha virtual · no mueve dinero real</p><div id="germanError" role="status" hidden></div><button class="german-retry" data-action="retry">Reintentar guardado</button><div id="germanContent"></div>`;
+    view.innerHTML=`<header class="german-header"><div><span class="german-eyebrow">DEUTSCH</span><h1>Alemán</h1></div><button data-action="home" aria-label="Volver a Hoy">← Hoy</button></header><p class="german-note">Tarjetas, repaso espaciado y estudio libre · hucha virtual</p><div id="germanError" role="status" hidden></div><button class="german-retry" data-action="retry">Reintentar guardado</button><div id="germanContent"></div>`;
     view.addEventListener('click',e=> {
       const button=e.target.closest('[data-action]');if(!button)return;
       if(button.dataset.action==='home'){showView('session');return;}
@@ -232,12 +243,18 @@
       });
     });
     view.addEventListener('input',e=> {lastInteraction=Date.now();if(e.target.id==='germanAnswer' && current()){current().draftAnswer=e.target.value;}});
+    view.addEventListener('keydown',e=> {
+      const s=current();if(!s || panel!=='study' || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+      if((e.key===' ' || e.key==='Enter') && !s.revealed && s.mode!=='free'){e.preventDefault();guarded(()=>action('reveal'));return;}
+      if(s.revealed && /^[1-4]$/.test(e.key)){e.preventDefault();guarded(()=>action('grade',S.GRADES[Number(e.key)-1]));return;}
+      if(e.key.toLowerCase()==='p'){e.preventDefault();guarded(()=>action(s.status==='running'?'pause':'resume'));}
+    });
     ['pointerdown','keydown'].forEach(type=>view.addEventListener(type,()=>{lastInteraction=Date.now();},{passive:true}));
     window.addEventListener('app:viewchange',e=> {
       if(e.detail.name==='deutsch') {if(current())panel='study';render();}
       else {try {pause();}catch(err){message(err.message);}}
     });
-    document.addEventListener('visibilitychange',()=> {if(document.hidden)try {pause();}catch(e){message(e.message);}});
+    document.addEventListener('visibilitychange',()=> {if(document.hidden && current()?.mode!=='free')try {pause();}catch(e){message(e.message);}});
     window.addEventListener('pagehide',()=>{try{pause();}catch{}unlock();});
     window.addEventListener('storage',e=> {if(e.key==='alberto_piano_v2' && document.body.dataset.view==='deutsch' && !ownsLock)render();});
     setInterval(()=> {try {advance();if(visible())updateMeter();}catch(e){message(e.message);}},1000);

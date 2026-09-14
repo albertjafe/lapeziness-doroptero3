@@ -8,36 +8,31 @@ async function prepare(page) {
   await page.getByRole('button',{name:'Abrir Deutsch',exact:true}).click();
 }
 async function importPack(page,data=pack) {
-  await page.getByRole('button',{name:'Materiales',exact:true}).click();
   await page.locator('#germanImportFile').setInputFiles({name:'clase.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});
   await expect(page.locator('#germanError')).toContainText('Material importado');
 }
 async function createGoal(page) {
-  await page.getByRole('button',{name:'Resumen',exact:true}).click();
   await page.getByLabel('Nombre del objetivo',{exact:true}).fill('Kindle');
   await page.getByLabel('Importe (€)',{exact:true}).fill('150');
   await page.getByRole('button',{name:'Crear objetivo',exact:true}).click();
 }
 
-test('Deutsch end to end: goal, import, card, exercise, money, pause/reload and idempotent finish',async({page})=>{
+test('Deutsch end to end: goal, class deck, Anki card, money, pause/reload and idempotent finish',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await prepare(page);await importPack(page);await createGoal(page);
-  await page.getByRole('button',{name:'Empezar estudio',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Tus tarjetas',exact:true})).toBeVisible();
+  await expect(page.locator('.german-deck')).toContainText('Clase de prueba');
+  await expect(page.locator('.german-deck')).not.toContainText('ejercicios');
+  await page.getByRole('button',{name:'Estudiar esta clase',exact:true}).click();
+  expect(await page.evaluate(()=>db.germanStudy.sessions[0].queue.every(item=>item.kind==='card'))).toBe(true);
   await expect(page.getByRole('heading',{name:'der Bahnhof',exact:true})).toBeVisible();
   await expect(page.locator('#germanMoneyLabel')).toContainText('Pendiente');
   await expect.poll(()=>page.locator('#germanMoney').innerText()).not.toBe('0,000 €');
   await page.getByRole('button',{name:'Mostrar respuesta',exact:true}).click();
   await expect(page.getByRole('heading',{name:'la estación',exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Good',exact:true}).click();
-  await page.getByLabel('Tu respuesta',{exact:true}).fill('wartest');
-  await page.getByRole('button',{name:'Comprobar respuesta',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Correcto ✓',exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Siguiente',exact:true}).click();
-  await page.getByLabel('Tu respuesta',{exact:true}).fill('Ich fahre nach Berlin.');
-  await page.getByRole('button',{name:'Ver solución modelo',exact:true}).click();
-  await page.getByRole('button',{name:'Parcial',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'¡Repaso terminado!',exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Seguir repasando',exact:true}).click();
+  await expect(page.getByRole('button',{name:/Bien/})).toContainText('1 día');
+  await page.getByRole('button',{name:/Bien/}).click();
+  await expect(page.getByRole('heading',{name:'Repaso terminado',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Pausar',exact:true}).click();
   const seconds=await page.evaluate(()=>db.germanStudy.sessions[0].segments.reduce((n,x)=>n+x.seconds,0));
   expect(await page.evaluate(()=>UpdateSafety.safeUpdate())).toBe(false);
@@ -48,7 +43,7 @@ test('Deutsch end to end: goal, import, card, exercise, money, pause/reload and 
   await page.getByRole('button',{name:'Continuar',exact:true}).click();
   await page.getByRole('button',{name:'Terminar sesión',exact:true}).click();
   const result=await page.evaluate(()=>({study:db.germanStudy,piano:db.sessionPlants,obras:db.obras}));
-  expect(result.study.sessions).toHaveLength(1);expect(result.study.sessions[0].endedAt).toBeTruthy();expect(result.study.reviews).toHaveLength(3);
+  expect(result.study.sessions).toHaveLength(1);expect(result.study.sessions[0].endedAt).toBeTruthy();expect(result.study.reviews).toHaveLength(1);
   expect(result.study.ledger.reduce((n,x)=>n+x.finalReward,0)).toBe(0);expect(result.piano).toEqual([]);expect(result.obras[0].id).toBe('piano');
   await page.evaluate(()=>{const s=db.germanStudy;GermanSession.finish(s,s.sessions[0].id);saveData();});
   expect(await page.evaluate(()=>db.germanStudy.sessions.length)).toBe(1);expect(errors).toEqual([]);
@@ -67,7 +62,7 @@ test('imports are atomic, duplicates detected and imported HTML is inert',async(
 test('qualifies at 15:00, keeps the cap and pauses when leaving Deutsch',async({page})=>{
   await prepare(page);await importPack(page);await createGoal(page);
   await page.clock.install();
-  await page.getByRole('button',{name:'Empezar estudio',exact:true}).click();
+  await page.getByRole('button',{name:'Estudiar tarjetas',exact:true}).click();
   await page.evaluate(()=>{const s=db.germanStudy.sessions[0],day=GermanRewards.dayKey();s.segments=[{id:day,day,seconds:899}];saveData();});
   await page.clock.runFor(1000);
   await expect(page.locator('#germanMinimum')).toContainText('15 min mínimos ✓');
@@ -83,7 +78,7 @@ test('qualifies at 15:00, keeps the cap and pauses when leaving Deutsch',async({
 
 test('a second tab cannot run or finalize the first tab session',async({page,context})=>{
   await prepare(page);await importPack(page);await createGoal(page);
-  await page.getByRole('button',{name:'Empezar estudio',exact:true}).click();
+  await page.getByRole('button',{name:'Estudiar tarjetas',exact:true}).click();
   const other=await context.newPage();await prepare(other);
   await other.getByRole('button',{name:'Continuar',exact:true}).click();
   await expect(other.locator('#germanError')).toContainText('otra pestaña');
@@ -93,18 +88,17 @@ test('a second tab cannot run or finalize the first tab session',async({page,con
 
 test('small-screen Deutsch keeps controls inside the viewport',async({page})=>{
   await page.setViewportSize({width:390,height:844});await prepare(page);await importPack(page);await createGoal(page);
-  await page.getByRole('button',{name:'Empezar estudio',exact:true}).click();
+  await page.getByRole('button',{name:'Estudiar tarjetas',exact:true}).click();
   expect(await page.locator('#view-deutsch').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
   await expect(page.getByRole('button',{name:'Pausar',exact:true})).toBeVisible();
 });
 
 test('finished goal can be archived and a new goal preserves reviews and history',async({page})=>{
   await prepare(page);await importPack(page);
-  await page.getByRole('button',{name:'Resumen',exact:true}).click();
   await page.getByLabel('Nombre del objetivo',{exact:true}).fill('Libro');await page.getByLabel('Importe (€)',{exact:true}).fill('0.50');
   await page.getByRole('button',{name:'Crear objetivo',exact:true}).click();
-  await page.getByRole('button',{name:'Empezar estudio',exact:true}).click();
-  await page.getByRole('button',{name:'Mostrar respuesta',exact:true}).click();await page.getByRole('button',{name:'Good',exact:true}).click();
+  await page.getByRole('button',{name:'Estudiar tarjetas',exact:true}).click();
+  await page.getByRole('button',{name:'Mostrar respuesta',exact:true}).click();await page.getByRole('button',{name:/Bien/}).click();
   await page.evaluate(()=>{const s=db.germanStudy.sessions[0],day=GermanRewards.dayKey();s.segments=[{id:day,day,seconds:900}];saveData();});
   await page.getByRole('button',{name:'Terminar sesión',exact:true}).click();
   await expect(page.locator('.german-goal')).toContainText('OBJETIVO CONSEGUIDO');
@@ -112,14 +106,19 @@ test('finished goal can be archived and a new goal preserves reviews and history
   expect(await page.evaluate(()=>({goals:db.germanStudy.goals.length,reviews:db.germanStudy.reviews.length,sessions:db.germanStudy.sessions.length}))).toEqual({goals:2,reviews:1,sessions:1});
 });
 
-test('reload of running exercise preserves draft and excludes all closed time',async({page})=>{
-  await prepare(page);await importPack(page);await createGoal(page);
-  await page.getByRole('button',{name:'Elegir modo',exact:true}).click();await page.getByRole('button',{name:'Ejercicios',exact:true}).click();
-  await page.getByLabel('Tu respuesta',{exact:true}).fill('Mi borrador');
+test('free study uses the same taximeter and reloads paused without counting closed time',async({page})=>{
+  await prepare(page);await createGoal(page);
+  await page.clock.install();
+  await page.getByRole('button',{name:'Estudio libre',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Estudio libre',exact:true})).toBeVisible();
+  await page.clock.runFor(301000);
+  await expect.poll(()=>page.locator('#germanMoney').innerText()).not.toBe('0,000 €');
+  expect(await page.evaluate(()=>db.germanStudy.sessions[0].status)).toBe('running');
+  expect(await page.evaluate(()=>db.germanStudy.sessions[0].segments.reduce((n,x)=>n+x.seconds,0))).toBeGreaterThan(0);
   await page.reload();await page.waitForFunction(()=>window.GermanStudy);
   await page.getByRole('button',{name:'Abrir Deutsch',exact:true}).click();
   await expect(page.getByRole('button',{name:'Continuar',exact:true})).toBeVisible();
-  await expect(page.getByLabel('Tu respuesta',{exact:true})).toHaveValue('Mi borrador');
+  expect(await page.evaluate(()=>db.germanStudy.sessions[0].mode)).toBe('free');
   const before=await page.evaluate(()=>db.germanStudy.sessions[0].segments.reduce((n,x)=>n+x.seconds,0));
   await page.waitForTimeout(1500);
   expect(await page.evaluate(()=>db.germanStudy.sessions[0].segments.reduce((n,x)=>n+x.seconds,0))).toBe(before);
@@ -131,16 +130,14 @@ test.describe('Deutsch installed PWA',()=>{
     test.setTimeout(60000);await prepare(page);await importPack(page);await createGoal(page);
     await page.evaluate(async()=>{await navigator.serviceWorker.ready;});await page.waitForFunction(()=>!!navigator.serviceWorker.controller);
     await context.setOffline(true);
-    await page.getByRole('button',{name:'Empezar estudio',exact:true}).click();
-    await page.getByRole('button',{name:'Mostrar respuesta',exact:true}).click();await page.getByRole('button',{name:'Good',exact:true}).click();
+    await page.getByRole('button',{name:'Estudiar tarjetas',exact:true}).click();
+    await page.getByRole('button',{name:'Mostrar respuesta',exact:true}).click();await page.getByRole('button',{name:/Bien/}).click();
     await page.getByRole('button',{name:'Pausar',exact:true}).click();
     await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.GermanStudy);
     await page.getByRole('button',{name:'Abrir Deutsch',exact:true}).click();
-    await expect(page.getByLabel('Tu respuesta',{exact:true})).toBeVisible();
-    await page.getByRole('button',{name:'Continuar',exact:true}).click();await page.getByLabel('Tu respuesta',{exact:true}).fill('wartest');
-    await page.getByRole('button',{name:'Comprobar respuesta',exact:true}).click();
-    await expect(page.getByRole('heading',{name:'Correcto ✓',exact:true})).toBeVisible();
+    await expect(page.getByRole('heading',{name:'Repaso terminado',exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'Continuar',exact:true}).click();
     await page.getByRole('button',{name:'Terminar sesión',exact:true}).click();
-    expect(await page.evaluate(()=>db.germanStudy.reviews.length)).toBe(2);
+    expect(await page.evaluate(()=>db.germanStudy.reviews.length)).toBe(1);
   });
 });

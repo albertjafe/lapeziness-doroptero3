@@ -10,6 +10,7 @@ test('Deutsch dashboard and study remain readable on desktop and mobile',async({
     localStorage.setItem('alberto_piano_v2',JSON.stringify({obras:[{id:'piano',name:'Bach',movimientos:[]}],eventos:[],sesiones:[],registro:[],sessionPlants:[],forestPlants:[]}));
   });
   await page.goto('/');await page.waitForFunction(()=>window.GermanStudy);
+  await expect(page.locator('#splashScreen')).toHaveClass(/gone/);
   await page.evaluate(async()=>{
     const st=GermanSession.ensure(db),pack=await GermanImport.parse(JSON.stringify(GermanImport.EXAMPLE));
     GermanImport.insert(st,pack);
@@ -20,13 +21,15 @@ test('Deutsch dashboard and study remain readable on desktop and mobile',async({
   });
   for(const [name,width,height] of [['desktop',1280,1000],['mobile',390,844]]) {
     await page.setViewportSize({width,height});
+    await page.evaluate(()=>scrollTo(0,0));
     await expect(page.locator('.german-goal')).toContainText('Kindle');
     expect(await page.locator('#view-deutsch').evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
     await page.screenshot({path:testInfo.outputPath('deutsch-dashboard-'+name+'.png'),fullPage:true});
   }
-  await page.getByRole('button',{name:'Empezar estudio',exact:true}).click();
+  await page.getByRole('button',{name:'Estudiar tarjetas',exact:true}).click();
   for(const [name,width,height] of [['mobile',390,844],['desktop',1280,1000]]) {
     await page.setViewportSize({width,height});
+    await page.evaluate(()=>scrollTo(0,0));
     await expect(page.locator('#germanMoney')).toBeVisible();
     await page.screenshot({path:testInfo.outputPath('deutsch-study-'+name+'.png'),fullPage:true});
   }

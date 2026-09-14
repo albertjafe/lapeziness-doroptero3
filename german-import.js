@@ -118,15 +118,14 @@
     cards:[{type:'de_es',front:'der Bahnhof',back:'la estación de tren',examples:['Ich warte am Bahnhof.'],tags:['viajes']},
       {type:'es_de',front:'la estación de tren',back:'der Bahnhof'},
       {type:'cloze',front:'Ich ___ am Bahnhof. (warten)',back:'warte',explanation:'Ich + raíz verbal + -e.'}],
-    exercises:[{type:'conjugation',prompt:'Conjuga warten con du en presente.',answer:'du wartest',acceptedAnswers:['wartest']},
-      {type:'free_write',prompt:'Escribe dos frases sobre un viaje.',answer:'Ich fahre nach Berlin. Ich warte am Bahnhof.',explanation:'Comprueba el orden del verbo y las preposiciones.'}]};
+    exercises:[]};
   const AI_PROMPT=`Analiza este material de mi clase de alemán y devuelve exclusivamente un german-study-pack.v1.json válido, sin Markdown ni texto adicional.
-Conserva el vocabulario original y los artículos/plurales. Genera ambas direcciones cuando tenga sentido, cloze con ___, traducciones, ejercicios adicionales útiles y conjugación si aparecen verbos relevantes. Incluye explicaciones y ejemplos. No inventes datos dudosos: omite lo incierto y explícalo en metadata.notes. Mantén A2/B1 salvo indicación del material.
+Conserva el vocabulario original y los artículos/plurales. Convierte en tarjetas el vocabulario, las expresiones, las estructuras, las preguntas y la gramática. Genera ambas direcciones cuando tenga sentido y usa cloze con ___ para practicar conjugaciones o estructuras. Incluye explicaciones y ejemplos. No inventes datos dudosos: omite lo incierto y explícalo en metadata.notes. Mantén A2/B1 salvo indicación del material.
 Objeto raíz: {"schema":"german-study-pack.v1","metadata":{"title":"Título","date":"YYYY-MM-DD","teacher":"","source":"","notes":""},"cards":[],"exercises":[]}.
 metadata.title es obligatorio; los demás campos son textos opcionales. Omite date si desconoces la fecha.
 Cada tarjeta: type (${CARD_TYPES.join(', ')}), front y back no vacíos; hint y explanation opcionales; examples y tags son listas de textos. Cloze usa ___ en front y la respuesta completa en back.
-Cada ejercicio: type (${EXERCISE_TYPES.join(', ')}), prompt no vacío, answer como texto y/o acceptedAnswers como lista de textos. En free_write incluye answer con la solución modelo. hint, explanation y tags son opcionales. Da todas las alternativas válidas para corrección literal; no hay evaluación semántica automática.
-No uses HTML. Máximo 2.000 elementos y 2 MB. Incluye siempre ambas listas, aunque alguna esté vacía. No cambies estos nombres de campos o tipos.
+Deja exercises como una lista vacía; se conserva únicamente por compatibilidad con paquetes antiguos.
+No uses HTML. Máximo 2.000 elementos y 2 MB. Incluye siempre cards y exercises. No cambies estos nombres de campos o tipos.
 Ejemplo válido:
 ${JSON.stringify(EXAMPLE,null,2)}`;
   return {SCHEMA,CARD_TYPES,EXERCISE_TYPES,MAX_BYTES,validate,csvRows,fromCSV,parse,insert,EXAMPLE,AI_PROMPT};
