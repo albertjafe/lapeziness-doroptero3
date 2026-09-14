@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-14-deutsch-anki-v382';
+const APP_VERSION = '2026-09-14-piano-hucha-habitos-v383';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -19949,13 +19949,15 @@ function renderHabitChallenge() {
 }
 
 function openHabitChallengeModal(challengeId) {
-  const current = habitActiveChallenge(challengeId);
+  const current = challengeId ? (habitAllChallenges().find(habit => habit.id === challengeId) || null) : habitActiveChallenge();
   const metrics = current ? habitMetrics(current) : null;
-  const existing = !!(current && !metrics.complete);
+  const complete = !!(current && metrics.complete);
+  const existing = !!(current && !complete);
   _habitEditingExisting = existing;
   _habitEditingId = existing ? current.id : null;
-  _habitModalMode = existing ? current.mode : 'do';
+  _habitModalMode = current ? current.mode : 'do';
   const title = document.getElementById('habitModalTitle');
+  const intro = document.getElementById('habitModalIntro');
   const input = document.getElementById('habitTitleInput');
   const duration = document.getElementById('habitDurationInput');
   const startDate = document.getElementById('habitStartDateInput');
@@ -19967,25 +19969,30 @@ function openHabitChallengeModal(challengeId) {
   const details = document.getElementById('habitDetailsDisclosure');
   const deleteBtn = document.getElementById('habitDeleteBtn');
   const todayBtn = document.getElementById('habitTodayBtn');
+  const saveBtn = document.getElementById('habitSaveBtn');
+  const cancelBtn = document.getElementById('habitCancelBtn');
   const kicker = document.querySelector('#modalHabitChallenge .habit-modal-kicker');
-  if (title) title.textContent = existing ? 'Editar el reto' : 'Crear un objetivo';
-  if (kicker) kicker.textContent = 'Objetivo diario';
-  if (input) input.value = existing ? (current.title || '') : '';
-  if (duration) duration.value = existing ? current.durationDays : 21;
+  if (title) title.textContent = complete ? 'Objetivo terminado' : (existing ? 'Tu objetivo' : 'Crear un objetivo');
+  if (intro) intro.textContent = complete ? 'Consulta las reglas y el motivo que acompañaron este recorrido.' : (existing ? 'Consulta tus reglas o ajústalas cuando necesites concretarlas mejor.' : 'Define una regla clara que puedas recordar cada día.');
+  if (kicker) kicker.textContent = complete ? 'Historia del objetivo' : 'Objetivo diario';
+  if (input) input.value = current ? (current.title || '') : '';
+  if (duration) duration.value = current ? current.durationDays : 21;
   if (startDate) {
-    startDate.value = existing ? current.startDate : habitDayKey();
-    startDate.disabled = existing;
+    startDate.value = current ? current.startDate : habitDayKey();
+    startDate.disabled = !!current;
   }
-  if (startDateNote) startDateNote.textContent = existing ? 'La fecha se conserva para no cambiar el historial.' : 'El primer día del objetivo.';
-  if (description) description.value = existing ? (current.description || '') : '';
-  if (motivation) motivation.value = existing ? (current.motivation || '') : '';
-  if (criteria) criteria.value = existing ? (current.successCriteria || '') : '';
-  if (reward) reward.value = existing ? (current.reward || '') : '';
+  if (startDateNote) startDateNote.textContent = current ? 'La fecha se conserva para no cambiar el historial.' : 'El primer día del objetivo.';
+  if (description) description.value = current ? (current.description || '') : '';
+  if (motivation) motivation.value = current ? (current.motivation || '') : '';
+  if (criteria) criteria.value = current ? (current.successCriteria || '') : '';
+  if (reward) reward.value = current ? (current.reward || '') : '';
   if (details) {
-    const hasDetails = Boolean(existing && (current.description || current.motivation || current.successCriteria || current.reward));
-    details.open = hasDetails || !(window.matchMedia?.('(orientation: landscape) and (max-height: 600px)').matches);
+    const hasDetails = Boolean(current && (current.description || current.motivation || current.successCriteria || current.reward));
+    details.open = complete || hasDetails || !(window.matchMedia?.('(orientation: landscape) and (max-height: 600px)').matches);
   }
   if (deleteBtn) deleteBtn.hidden = !existing;
+  if (saveBtn) saveBtn.hidden = complete;
+  if (cancelBtn) cancelBtn.textContent = complete ? 'Cerrar' : 'Cancelar';
   if (todayBtn) {
     todayBtn.hidden = !existing;
     if (existing) {
@@ -19997,12 +20004,11 @@ function openHabitChallengeModal(challengeId) {
         : (marked ? 'Desmarcar cumplimiento de hoy' : 'Marcar cumplido hoy');
     }
   }
-  document.querySelectorAll('#habitModeToggle button').forEach(button => {
-    button.disabled = existing;
-  });
+  [input,duration,description,motivation,criteria,reward].forEach(control => {if(control)control.disabled=complete;});
+  document.querySelectorAll('#habitModeToggle button').forEach(button => {button.disabled = existing || complete;});
   updateHabitModalPreview();
   openModal('modalHabitChallenge');
-  if (window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) {
+  if (!complete && window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) {
     setTimeout(() => input?.focus(), 140);
   }
 }
@@ -20195,6 +20201,7 @@ const crono = {
   targetMinutes: null,   // minutos objetivo de la sesión en curso (timer mode); null en stopwatch
   targetDurationMs: null,// objetivo persistido en ms; null en cronómetro libre
   runId: null,           // identificador estable de la ejecución actual
+  rewardGoalId: null,    // objetivo económico activo al iniciar la sesión
   isRest: false,         // true si la sesión actual es un DESCANSO (no cuenta como estudio)
   obraId: null,
   movId: null,
@@ -20424,6 +20431,7 @@ function cronoSaveState() {
       targetMinutes: crono.targetMinutes,
       targetDurationMs: crono.targetDurationMs,
       runId: crono.runId,
+      rewardGoalId: crono.rewardGoalId,
       isRest: crono.isRest,
       obraId: crono.obraId,
       movId: crono.movId,
@@ -20480,6 +20488,7 @@ function cronoLoadState() {
       ? s.targetDurationMs
       : (crono.targetMinutes != null ? crono.targetMinutes * 60000 : null);
     crono.runId = s.runId || (typeof TimerCore !== 'undefined' ? TimerCore.createRunId() : ('run_' + Date.now()));
+    crono.rewardGoalId = typeof s.rewardGoalId === 'string' ? s.rewardGoalId : null;
     crono.isRest = !!s.isRest;
     crono.obraId = s.obraId;
     crono.movId = s.movId || null;
@@ -24650,6 +24659,54 @@ function cronoUpdateRunWorkTotal() {
   }
 }
 
+function cronoUpdatePianoReward() {
+  const meter = document.getElementById('cronoPianoMoney');
+  const value = document.getElementById('cronoPianoMoneyValue');
+  const next = document.getElementById('cronoPianoMoneyNext');
+  if (!meter) return;
+  const active = crono.state !== 'idle' && !crono.isRest;
+  meter.hidden = !active;
+  if (!active) return;
+  meter.classList.toggle('is-paused', crono.state === 'paused');
+  if (typeof PianoRewards === 'undefined' || typeof GermanRewards === 'undefined') {
+    if (value) value.textContent = '0,000000 €';
+    if (next) next.textContent = 'Hucha no disponible';
+    return;
+  }
+  try {
+    const german = db.germanStudy || {};
+    const goals = Array.isArray(german.goals) ? german.goals : [];
+    const goal = goals.find(item => item.id === crono.rewardGoalId);
+    const germanRows = GermanRewards.ledger(Array.isArray(german.sessions) ? german.sessions : [], goals);
+    const live = PianoRewards.live(
+      PianoRewards.ensure(db),
+      goals,
+      crono.rewardGoalId,
+      cronoEffectiveElapsedMs() / 1000,
+      PianoRewards.dayKey(),
+      germanRows
+    );
+    const formatted = new Intl.NumberFormat('es-ES', {
+      minimumFractionDigits: 6,
+      maximumFractionDigits: 6
+    }).format(live.today) + ' €';
+    if (value) value.textContent = formatted;
+    if (next) {
+      if (!goal) next.textContent = 'Crea un objetivo económico en Alemán';
+      else if (live.goalRemaining <= 0.0000005) next.textContent = 'Objetivo completado';
+      else if (cronoEffectiveElapsedMs() < CRONO_MIN_MIN * 60000) next.textContent = 'Se guarda al completar ' + CRONO_MIN_MIN + ' min';
+      else if (live.nextSeconds != null) next.textContent = 'Siguiente tramo en ' + cronoFmt((live.nextSeconds - live.seconds) * 1000);
+      else next.textContent = 'Máximo diario de piano alcanzado';
+    }
+    meter.title = goal
+      ? 'Aportación de piano de hoy a “' + goal.name + '”. Máximo diario: ' + new Intl.NumberFormat('es-ES', {minimumFractionDigits:2,maximumFractionDigits:2}).format(live.cap) + ' €.'
+      : 'Crea un objetivo económico desde la sección Alemán para activar la hucha compartida.';
+  } catch (error) {
+    if (value) value.textContent = '0,000000 €';
+    if (next) next.textContent = 'Hucha no disponible';
+  }
+}
+
 // ── Render ──────────────────────────────────────────────────────────────────
 
 function cronoRender() {
@@ -24661,6 +24718,7 @@ function cronoRender() {
   document.body.classList.toggle('crono-running', crono.state !== 'idle');
   refreshQuickDestelloButtons();
   renderHabitChallenge();
+  cronoUpdatePianoReward();
 
   if (crono.state === 'idle') {
     idle.style.display = '';
@@ -25766,6 +25824,7 @@ function cronoStartTick() {
     }
     // Probabilidad en vivo de 4h/5h (recalcula solo al cambiar de minuto).
     if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI();
+    cronoUpdatePianoReward();
     cronoUpdateRunTodayTotal();
     cronoUpdateRunWorkTotal();
     if (document.getElementById('view-session')?.classList.contains('active') && typeof renderSessionResumen === 'function') {
@@ -25890,6 +25949,7 @@ function cronoStart() {
     crono.targetDurationMs = crono.targetMinutes == null ? null : crono.targetMinutes * 60000;
   }
   crono.runId = typeof TimerCore !== 'undefined' ? TimerCore.createRunId() : ('run_' + Date.now() + '_' + Math.random().toString(36).slice(2));
+  crono.rewardGoalId = typeof PianoRewards !== 'undefined' ? (PianoRewards.activeGoal(db)?.id || null) : null;
 
   cronoSaveState();
   cronoRegisterBackgroundNotifications(pushEnable);
@@ -25944,6 +26004,7 @@ function cronoStartRest() {
     crono.targetDurationMs = crono.targetMinutes == null ? null : crono.targetMinutes * 60000;
   }
   crono.runId = typeof TimerCore !== 'undefined' ? TimerCore.createRunId() : ('run_' + Date.now() + '_' + Math.random().toString(36).slice(2));
+  crono.rewardGoalId = null;
 
   cronoSaveState();
   Promise.resolve(pushEnable).then(enabled => {
@@ -26266,6 +26327,17 @@ function cronoFinish(expectedRunId) {
     return;
   }
 
+  if (crono.rewardGoalId && typeof PianoRewards !== 'undefined') {
+    const recorded = PianoRewards.record(PianoRewards.ensure(db), {
+      id: runId,
+      goalId: crono.rewardGoalId,
+      startedAt: startedAtIso,
+      endedAt: endedAtIso,
+      seconds: ms / 1000
+    });
+    if (recorded) saveData();
+  }
+
   // ── FUSIÓN: buscar tarjeta existente para la misma obra/movimiento ───────
   // Si ya hay una tarjeta de esta misma obra y movimiento en el plan, sumamos
   // los minutos a la existente en lugar de crear una nueva tarjeta.
@@ -26406,6 +26478,7 @@ function cronoReset(pushStatus) {
   crono.targetMinutes = null;
   crono.targetDurationMs = null;
   crono.runId = null;
+  crono.rewardGoalId = null;
   _cronoPendingFinishRunId = null;
   _cronoFinalizingRunId = null;
   _cronoRunDrawerTab = 'tareas';

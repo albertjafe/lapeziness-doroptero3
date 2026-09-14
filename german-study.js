@@ -1,7 +1,7 @@
-/* Deutsch owns only db.germanStudy; all writes use the app's existing save/sync path. */
+/* Deutsch owns db.germanStudy and rebuilds the shared ledger from piano reward evidence. */
 (function(root) {
   'use strict';
-  const R=root.GermanRewards, S=root.GermanSRS, I=root.GermanImport, T=root.GermanSession;
+  const R=root.GermanRewards, P=root.PianoRewards, S=root.GermanSRS, I=root.GermanImport, T=root.GermanSession;
   const MIN=R.CONFIG.minimumSeconds, CAP=R.CONFIG.curve.at(-1)[0], MIN_LABEL=(MIN/60)+' min';
   const state=()=>T.ensure(db), uid=()=>crypto.randomUUID();
   const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -15,7 +15,10 @@
   const lockToken=uid();
   try {deviceId=localStorage.getItem('german_device_v1');if (!deviceId) {deviceId=uid();localStorage.setItem('german_device_v1',deviceId);}} catch {deviceId=uid();}
   const current=()=>state().sessions.find(s=>s.id===activeId && !s.endedAt);
-  const entries=()=>R.ledger(state().sessions,state().goals);
+  const entries=()=>{
+    const german=R.ledger(state().sessions,state().goals);
+    return P?P.combinedLedger(german,P.ledger(P.ensure(db).sessions,state().goals),state().goals):german;
+  };
   function activeGoal() {
     // Concurrent offline creations are queued deterministically, never both active.
     return state().goals.filter(g=>!g.archivedAt).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id))[0];
@@ -69,7 +72,7 @@
   function goalCard(goal,ledger) {
     if (!goal) return `<section class="german-card german-goal"><span class="german-eyebrow">TU PRÓXIMO OBJETIVO</span><h2>Un motivo para volver mañana.</h2><p>Convierte tu alemán en una hucha virtual. Tú eliges la recompensa.</p>${goalForm()}</section>`;
     const progress=R.goalProgress(goal,ledger,state().sessions), percent=Math.min(100,progress.amount/goal.amount*100);
-    return `<section class="german-card german-goal"><span class="german-eyebrow">${progress.complete?'OBJETIVO CONSEGUIDO ✨':'TU OBJETIVO'}</span><h2>${esc(goal.name)}</h2><div class="german-balance">${euro(progress.amount)} <small>/ ${euro(goal.amount)}</small></div><progress aria-label="Progreso del objetivo" max="100" value="${percent}"></progress><p>${percent.toFixed(1).replace('.',',')} % · Ahorrado estudiando</p>${progress.complete?`<p>Conseguido el ${esc(progress.completedOn)} · ${minutes(progress.seconds)} de alemán invertidos.</p><button data-action="archive" ${current()?'disabled':''}>Archivar y crear otro objetivo</button>${current()?'<p>Termina la sesión antes de archivar.</p>':''}`:''}</section>`;
+    return `<section class="german-card german-goal"><span class="german-eyebrow">${progress.complete?'OBJETIVO CONSEGUIDO ✨':'TU OBJETIVO COMPARTIDO'}</span><h2>${esc(goal.name)}</h2><div class="german-balance">${euro(progress.amount)} <small>/ ${euro(goal.amount)}</small></div><progress aria-label="Progreso del objetivo" max="100" value="${percent}"></progress><p>${percent.toFixed(1).replace('.',',')} % · Alemán y piano suman en la misma hucha</p>${progress.complete?`<p>Conseguido el ${esc(progress.completedOn)} · ${minutes(progress.seconds)} de estudio invertidos.</p><button data-action="archive" ${current()?'disabled':''}>Archivar y crear otro objetivo</button>${current()?'<p>Termina la sesión antes de archivar.</p>':''}`:''}</section>`;
   }
   function goalForm() {return `<form id="germanGoalForm" class="german-form"><label>Nombre del objetivo<input name="name" required maxlength="80" placeholder="Kindle" autocomplete="off"></label><label>Importe (€)<input name="amount" type="number" min="0.01" max="100000000" step="0.01" required value="150"></label><button class="german-primary" type="submit">Crear objetivo</button></form>`;}
   function deckStats(material) {
@@ -97,7 +100,7 @@
     return `<section class="german-launch"><div><span class="german-eyebrow">REPASO ESPACIADO</span><h1>Una app sencilla para recordar tu alemán.</h1><p>${due} tarjetas para repasar · ${fresh} nuevas. Elige todas o entra en una clase concreta.</p></div><div class="german-launch-actions"><button class="german-primary" data-action="${session?'resume':'start'}">${session?'Continuar sesión':'Estudiar tarjetas'}</button><button data-action="free" ${session?'disabled':''}>Estudio libre</button></div><p class="german-muted">En estudio libre puedes hacer fichas, escuchar alemán o trabajar fuera de la app. El mismo taxímetro seguirá contando.</p></section>
       <section class="german-dashboard-meter" aria-label="Resumen del taxímetro"><div><span>Hoy</span><strong>${time(totals[today])}</strong></div><div><span>Hucha de hoy</span><strong>${euro(earned,3)}${pending?' pendiente':''}</strong></div><div><span>Racha</span><strong>${streak.current} días</strong></div></section>
       ${decks()}${importer()}${goalCard(goal,ledger)}
-      <details class="german-card german-history"><summary>Actividad e historial</summary><div class="german-activity" aria-label="Actividad de los últimos 14 días">${Array.from({length:14},(_,i)=>{const day=R.shiftDay(today,i-13),seconds=totals[day] || 0;return `<div class="${seconds>=MIN?'done':seconds?'partial':''}" title="${day}: ${minutes(seconds)}" aria-label="${day}: ${minutes(seconds)}"><span>${day.slice(8)}</span></div>`;}).join('')}</div><p class="german-muted">${st.reviews.filter(r=>r.cardId).length} tarjetas revisadas · ${minutes(week)} esta semana · mejor racha: ${streak.best} días.</p>${st.goals.filter(g=>g.archivedAt).map(g=>{const p=R.goalProgress(g,ledger,st.sessions);return `<p><strong>${esc(g.name)}</strong> · ${euro(p.amount)} / ${euro(g.amount)} · ${esc(p.completedOn || 'En progreso')}</p>`;}).join('')}<div class="german-ledger">${ledger.slice(-30).reverse().map(e=>`<p>${esc(e.date)} · ${minutes(e.duration)} · ${euro(e.finalReward,3)} ${e.qualified?'':'(pendiente)'}</p>`).join('')}</div><button data-action="export-ledger">Descargar historial completo</button></details>`;
+      <details class="german-card german-history"><summary>Actividad e historial</summary><div class="german-activity" aria-label="Actividad de los últimos 14 días">${Array.from({length:14},(_,i)=>{const day=R.shiftDay(today,i-13),seconds=totals[day] || 0;return `<div class="${seconds>=MIN?'done':seconds?'partial':''}" title="${day}: ${minutes(seconds)}" aria-label="${day}: ${minutes(seconds)}"><span>${day.slice(8)}</span></div>`;}).join('')}</div><p class="german-muted">${st.reviews.filter(r=>r.cardId).length} tarjetas revisadas · ${minutes(week)} esta semana · mejor racha: ${streak.best} días.</p>${st.goals.filter(g=>g.archivedAt).map(g=>{const p=R.goalProgress(g,ledger,st.sessions);return `<p><strong>${esc(g.name)}</strong> · ${euro(p.amount)} / ${euro(g.amount)} · ${esc(p.completedOn || 'En progreso')}</p>`;}).join('')}<div class="german-ledger">${ledger.slice(-30).reverse().map(e=>`<p>${esc(e.date)} · ${e.source==='piano'?'Piano':'Alemán'} · ${minutes(e.duration)} · ${euro(e.finalReward,3)} ${e.qualified?'':'(pendiente)'}</p>`).join('')}</div><button data-action="export-ledger">Descargar historial completo</button></details>`;
   }
   function itemMarkup(s) {
     const item=s.queue[s.index], m=item && state().materials.find(m=>m.id===item.materialId);
@@ -127,10 +130,11 @@
     const qualified=total>=MIN, bonus=R.streakMultiplier(streak.prospective);
     const consolidated=rows.reduce((n,e)=>n+e.finalReward,0);
     const other=ledger.filter(e=>e.goalId===s.goalId && e.date!==today).reduce((n,e)=>n+e.finalReward,0);
-    const pending=goal?Math.min(Math.max(0,goal.amount-other),rows.reduce((n,e)=>n+e.baseReward*e.goalScale*bonus,0)):0;
+    const germanPending=rows.filter(e=>e.source==='german'&&!e.qualified).reduce((n,e)=>n+(e.potentialMicroEuros || 0)/1e6,0);
+    const pending=goal?Math.min(Math.max(0,goal.amount-other),consolidated+germanPending):0;
     const set=(id,text)=>{const el=document.getElementById(id);if(el && el.textContent!==text)el.textContent=text;};
     set('germanMoney',euro(goal?(qualified?consolidated:pending):0,3));
-    set('germanMoneyLabel',goal?(qualified?'Consolidado hoy para este objetivo':'Pendiente hoy · se consolida a los '+MIN_LABEL):'Crea un objetivo para activar la hucha');
+    set('germanMoneyLabel',goal?(qualified?'Consolidado hoy para este objetivo':(consolidated?'Piano consolidado + alemán pendiente hasta '+MIN_LABEL:'Pendiente hoy · se consolida a los '+MIN_LABEL)):'Crea un objetivo para activar la hucha');
     set('germanTime',time(total));set('germanSessionTime',time(s.segments.reduce((n,e)=>n+e.seconds,0)));
     set('germanBonus','+'+Math.round((bonus-1)*100)+' % por racha de '+streak.prospective+' días'+(qualified?'':' al cualificar hoy'));
     set('germanMinimum',qualified?(total>=CAP?MIN_LABEL+' mínimos ✓ · Límite diario alcanzado; puedes seguir estudiando.':MIN_LABEL+' mínimos ✓'):'Faltan '+time(Math.ceil(MIN-total))+' para consolidar el día');

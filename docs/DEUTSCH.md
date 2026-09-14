@@ -32,7 +32,9 @@ Política central e inmutable `GermanRewards.CONFIG`, versión 1. Cada objetivo 
 
 `multiplier = 1 + min(0.25, floor(racha / 4) × 0.05)`
 
-Con un único objetivo, la recompensa del día es `base(segundosDiarios) × scale × multiplier`. Menos de 900 segundos deja el importe pendiente y no mantiene la racha. A los 900 segundos se consolida todo el día. **El mínimo es diario**: dos sesiones de ocho minutos cualifican conjuntamente. La racha del propio día cualificado determina su bonus; una interrupción la reinicia.
+Con un único objetivo, la recompensa de alemán del día es `base(segundosDiarios) × scale × multiplier`. Menos de 900 segundos deja el importe pendiente y no mantiene la racha. A los 900 segundos se consolida todo el día. **El mínimo es diario**: dos sesiones de ocho minutos cualifican conjuntamente. La racha del propio día cualificado determina su bonus; una interrupción la reinicia.
+
+El cronómetro de piano aporta al mismo objetivo con una curva separada y más conservadora. Solo se guarda al terminar una sesión válida de al menos 10 minutos; descansos y sesiones fallidas no generan saldo. La base diaria, interpolada entre puntos, es 0 € al empezar, 0,08 € a 1 h, 0,20 € a 2 h, 0,40 € a 3 h, 0,75 € a 4 h, 1,00 € a 4,5 h, 1,35 € a 5 h, 1,85 € a 5,5 h y 2,60 € a 6 h. Se aplica la misma escala sublineal del importe, sin bonus de racha, y 6 h es el máximo diario. El valor marginal crece en los tramos finales y dividir el estudio en varias sesiones no reinicia la curva.
 
 Para repartir entre sesiones u objetivos se usa la diferencia `base(tDespués) − base(tAntes)` del tiempo **total diario**, con la escala del objetivo de cada sesión. Así terminar/reiniciar o cambiar de objetivo no reinicia el límite. El redondeo se hace por diferencia de acumulados en microeuros enteros, nunca añadiendo céntimos por frame. La hucha se limita al importe del objetivo: no se traslada sobrante a otro objetivo. Tiempo sin objetivo queda registrado, pero no se paga retroactivamente al crear uno.
 
@@ -69,13 +71,14 @@ CSV admite UTF-8/BOM, coma o punto y coma, comillas escapadas y saltos de línea
 | Módulo | Responsabilidad |
 |---|---|
 | `german-rewards.js` | Política, días locales, rachas, ledger y progreso de objetivos; puro, CommonJS/browser |
+| `piano-rewards.js` | Curva progresiva de piano, evidencia de sesiones y ledger combinado con el objetivo compartido |
 | `german-session.js` | Estado propio y evidencia temporal por día; cierre idempotente |
 | `german-srs.js` | SRS determinista, comparación literal y selección de cola |
 | `german-import.js` | Validación atómica, CSV, normalización/hash, ejemplo y prompt |
 | `german-study.js` | Navegación interna, UI, locks, checkpoints y guardado común |
 | `german-study.css` | Estilos acotados a Deutsch, responsive y reducción de movimiento |
 
-`db.germanStudy` vive dentro del documento existente `user_data.data`, con copia local `alberto_piano_v2`. No hay escritor adicional ni tablas nuevas. **No requiere migración de Supabase**: el merge recursivo actual conserva este campo y sus registros con ID. La prueba PostgreSQL ejecuta las migraciones de protección existentes en PGlite y verifica nuevas sesiones concurrentes y escrituras de clientes antiguos.
+`db.germanStudy` y `db.pianoRewards` viven dentro del documento existente `user_data.data`, con copia local `alberto_piano_v2`. No hay escritor adicional ni tablas nuevas. **No requiere migración de Supabase**: el merge recursivo actual conserva estos campos y sus registros con ID. La prueba PostgreSQL ejecuta las migraciones de protección existentes en PGlite y verifica nuevas sesiones concurrentes y escrituras de clientes antiguos.
 
 Colecciones: `materials` (tarjetas/ejercicios anidados e inmutables), `reviews` (observaciones con ID, tarjeta/ejercicio, sesión, respuesta/resultado y fecha), `sessions` (ID, dispositivo, objetivo, inicio/fin, estado, segmentos diarios, cola y cursor/borrador), `goals` (nombre, importe, política, creación/archivo), `ledger` (proyección persistida reconstruible).
 
@@ -85,7 +88,7 @@ La programación SRS se deriva de las revisiones ordenadas por instante e ID: co
 
 ## PWA y verificación
 
-Runtime v382: scripts y CSS de Deutsch cargados desde `index.html` y precacheados; `update-safety.js` bloquea promociones mientras haya sesión local abierta, incluso antes de cargar el addon. `update.html` también protege esa recuperación. Mantiene el lifecycle seguro y las versiones anteriores de assets no modificados.
+Runtime v383: scripts y CSS de Deutsch y el taxímetro de piano cargados desde `index.html` y precacheados; `update-safety.js` bloquea promociones mientras haya sesión local abierta, incluso antes de cargar el addon. `update.html` también protege esa recuperación. Mantiene el lifecycle seguro y las versiones anteriores de assets no modificados.
 
 Pruebas: `tests/unit/german-study.test.js`, nuevas regresiones en `document-postgres`, `update-safety-v2` y `service-worker-audit`; `tests/e2e/german-study.spec.js` cubre UI completa, importar/duplicados/XSS, umbral, recarga/borrador, locks, objetivos, móvil y PWA offline. Ejecutar `npm run check`, `npm run test:unit`, `npm run test:e2e` y `npm run test:visual`. El repositorio conserva una lista explícita de fallos E2E anteriores en `scripts/check-e2e-known-baseline.cjs`; no se deben confundir con regresiones de Deutsch.
 

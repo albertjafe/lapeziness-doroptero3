@@ -106,6 +106,8 @@
       }
       .crono-habit-tracker-icon svg { width: 20px; height: 20px; }
       .crono-habit-tracker-copy { display: grid; gap: 3px; min-width: 0; }
+      button.crono-habit-tracker-open { width: 100%; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; appearance: none; }
+      button.crono-habit-tracker-open:hover strong { color: var(--accent); }
       .crono-habit-tracker-copy small {
         overflow: hidden;
         color: #9b7218;
@@ -576,7 +578,7 @@
           '<p><strong>Creado:</strong> ' + formatFullDayKey(item.createdOn) + ' · <strong>Duración:</strong> ' + item.duration + ' días</p>' +
           detailLine('Motivación', habit.motivation) + detailLine('Criterio', habit.successCriteria) + detailLine('Celebración', habit.reward) +
         '</details>' +
-        (!item.complete ? '<button type="button" class="habit-trophy-edit" data-habit-trophy-edit="' + safeText(habit.id) + '">Editar este objetivo</button>' : '') +
+        '<button type="button" class="habit-trophy-edit" data-habit-trophy-edit="' + safeText(habit.id) + '">' + (item.complete ? 'Ver reglas del objetivo' : 'Editar este objetivo') + '</button>' +
         '</div></article>';
     }).join('');
     const emptyAction = items.length
@@ -664,7 +666,7 @@
       return '<section class="crono-habit-tracker is-minimal' + (metrics.complete ? ' is-complete' : '') + '">' +
         '<header class="crono-habit-tracker-head">' +
           '<span class="crono-habit-tracker-icon">' + trophy + '</span>' +
-          '<div class="crono-habit-tracker-copy"><small>' + modeLabel + ' · Hoy ' + safeText(todayLabel) + '</small><strong>' + safeText(habit.title || 'Objetivo') + '</strong></div>' +
+          '<button type="button" class="crono-habit-tracker-copy crono-habit-tracker-open" onclick="openHabitChallengeModal(\'' + jsId(habit.id) + '\')" aria-label="Ver detalles y reglas de ' + safeText(habit.title || 'Objetivo') + '"><small>' + modeLabel + ' · Hoy ' + safeText(todayLabel) + '</small><strong>' + safeText(habit.title || 'Objetivo') + '</strong></button>' +
           '<div class="crono-habit-tracker-tools">' + action +
             '<button type="button" class="crono-habit-tracker-edit-icon" onclick="openHabitChallengeModal(\'' + jsId(habit.id) + '\')" aria-label="Editar objetivo" title="Editar objetivo">' + pencil + '</button>' +
           '</div>' +

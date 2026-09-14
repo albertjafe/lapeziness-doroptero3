@@ -88,12 +88,13 @@
 #view-cronometro .habit-trophy-empty { display: grid; min-height: 130px; place-items: center; gap: 8px; margin: 0 9px 9px; padding: 18px; border: 1px dashed var(--border2); border-radius: 11px; color: var(--text3); font-size: 9px; text-align: center; }
 #view-cronometro .habit-trophy-empty button { min-height: 34px; padding: 7px 12px; border: 1px solid color-mix(in srgb,var(--accent) 42%,var(--border2)); border-radius: 8px; background: color-mix(in srgb,var(--accent) 8%,var(--bg)); color: var(--accent); }
 
-#modalHabitChallenge .habit-modal { width: min(620px,calc(100vw - 24px)); max-width: 620px !important; }
+#modalHabitChallenge .habit-modal { width: min(760px,calc(100vw - 24px)); max-width: 760px !important; padding: 28px 32px 24px; border: 1px solid color-mix(in srgb,var(--accent) 18%,var(--border2)); border-radius: 24px; box-shadow: 0 32px 90px rgba(9,18,32,.28); }
+#modalHabitChallenge .habit-modal-intro { max-width: 540px; margin: 7px auto 18px; color: var(--text3); font-size: 11px; line-height: 1.5; text-align: center; }
 #modalHabitChallenge .habit-start-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; }
-#modalHabitChallenge .habit-modal-details { margin-top: 14px; border: 1px solid var(--border2); border-radius: 10px; background: color-mix(in srgb,var(--bg2) 72%,transparent); }
-#modalHabitChallenge .habit-modal-details > summary { padding: 11px 12px; color: var(--text2); cursor: pointer; font-size: 10px; font-weight: 700; }
+#modalHabitChallenge .habit-modal-details { margin-top: 18px; border: 1px solid var(--border2); border-radius: 16px; background: color-mix(in srgb,var(--bg2) 72%,transparent); overflow: hidden; }
+#modalHabitChallenge .habit-modal-details > summary { padding: 14px 16px; color: var(--text2); cursor: pointer; font-size: 11px; font-weight: 750; }
 #modalHabitChallenge .habit-modal-details[open] > summary { border-bottom: 1px solid var(--border2); }
-#modalHabitChallenge .habit-modal-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; padding: 0 12px 12px; }
+#modalHabitChallenge .habit-modal-details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 2px 16px 16px; }
 #modalHabitChallenge .habit-modal-details-grid .habit-modal-field { margin-top: 11px; }
 #modalHabitChallenge .habit-modal-details-grid .is-wide { grid-column: 1/-1; }
 #modalHabitChallenge textarea.modal-input { min-height: 72px; resize: vertical; line-height: 1.4; }
@@ -101,6 +102,8 @@
 #modalHabitChallenge .habit-field-note { color: var(--text3); font-size: 8px; line-height: 1.35; }
 
 @media (max-width: 520px) {
+  #modalHabitChallenge .habit-modal { padding: 22px 18px 18px; border-radius: 20px; }
+  #modalHabitChallenge .habit-modal-intro { margin-bottom: 10px; }
   #modalHabitChallenge .habit-start-row,
   #modalHabitChallenge .habit-modal-details-grid { grid-template-columns: 1fr; }
   #modalHabitChallenge .habit-modal-details-grid .is-wide { grid-column: auto; }

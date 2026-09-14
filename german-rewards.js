@@ -61,9 +61,9 @@
       const remaining = goal ? Math.max(0,Math.round(goal.amount*1e6)-(balances[goal.id] || 0)) : 0;
       const microEuros = qualified.has(seg.day) ? Math.min(remaining,potential) : 0;
       if (goal) balances[goal.id] = (balances[goal.id] || 0)+microEuros;
-      result.push({ id: s.id+':'+seg.day, date: seg.day, sessionId: s.id, goalId: s.goalId,
+      result.push({ id: s.id+':'+seg.day, date: seg.day, sessionId: s.id, goalId: s.goalId, source:'german', startedAt:s.startedAt,
         duration: seg.seconds, baseReward: base, goalScale: scale, streakMultiplier: multiplier,
-        policyVersion: policy.version, qualified: qualified.has(seg.day), microEuros, finalReward: microEuros/1e6 });
+        policyVersion: policy.version, qualified: qualified.has(seg.day), potentialMicroEuros:potential, microEuros, finalReward: microEuros/1e6 });
     }
     return result;
   }
@@ -72,7 +72,7 @@
     const microEuros = rows.reduce((sum,e) => sum+e.microEuros,0);
     return { amount: microEuros/1e6, complete: microEuros >= Math.round(goal.amount*1e6),
       completedOn: microEuros >= Math.round(goal.amount*1e6) ? rows.filter(e=>e.microEuros>0).at(-1)?.date : null,
-      seconds: sessions.filter(s=>s.goalId===goal.id).reduce((sum,s)=>sum+(s.segments || []).reduce((n,x)=>n+x.seconds,0),0) };
+      seconds: rows.reduce((sum,row)=>sum+Math.max(0,Number(row.duration)||0),0) };
   }
   return { CONFIG, dayKey, shiftDay, baseReward, goalScale, streakMultiplier, streakAt, summarizeDays, streakStats, ledger, goalProgress };
 });
