@@ -497,7 +497,7 @@ test('keeps one daily challenge visible in idle and running timer layouts', asyn
       await page.evaluate(() => openHabitChallengeModal());
       await page.locator('#habitDurationInput').fill('30');
       await page.locator('#modalHabitChallenge .modal-btn.primary').click();
-      expect(await page.evaluate(() => ({ id: db.habitChallenge.id, days: db.habitChallenge.durationDays }))).toEqual({ id: originalId, days: 30 });
+      await expect.poll(() => page.evaluate(() => ({ id: db.habitChallenge.id, days: db.habitChallenge.durationDays }))).toEqual({ id: originalId, days: 30 });
 
       await page.evaluate(() => {
         db.habitChallenge = {
@@ -575,14 +575,14 @@ test('uses a dedicated daily challenge composition on mobile', async ({ browser 
         const box = document.querySelector('#modalHabitChallenge .habit-modal');
         const actions = box.querySelector('.habit-modal-actions').getBoundingClientRect();
         return {
-          columns: getComputedStyle(box).gridTemplateColumns.split(' ').length,
-          fitsWithoutScroll: box.scrollHeight <= box.clientHeight + 1,
+          canScrollDetails: box.scrollHeight >= box.clientHeight,
+          detailsOpen: document.getElementById('habitDetailsDisclosure').open,
           actionsVisible: actions.top >= 0 && actions.bottom <= innerHeight,
           focusedId: document.activeElement?.id || '',
         };
       });
-      expect(modal.columns).toBe(2);
-      expect(modal.fitsWithoutScroll).toBe(true);
+      expect(modal.canScrollDetails).toBe(true);
+      expect(modal.detailsOpen).toBe(false);
       expect(modal.actionsVisible).toBe(true);
       expect(modal.focusedId).not.toBe('habitTitleInput');
     }

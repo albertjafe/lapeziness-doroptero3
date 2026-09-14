@@ -1,18 +1,6 @@
 # Deutsch · primera versión
 
-Entrada: **Hoy → Deutsch**, tarjeta compacta entre el resumen diario y Aulas. La barra inferior y los datos pianísticos conservan sus funciones. Deutsch tiene Resumen, Materiales, Trofeos y una sesión de estudio propia.
-
-## Vitrina de trofeos (v379)
-
-**Hoy → Deutsch → Trofeos** muestra todos los objetivos ya creados, incluidos los archivados. También se accede desde «Mi vitrina de trofeos» en Resumen. Hay filtros Todos / Conseguidos / Pendientes; las metas sin completar distinguen En curso, Por empezar, En espera y Archivado. El último objetivo conseguido ocupa la cabecera. Los trofeos tienen tres variantes metálicas SVG con perspectiva CSS; los pendientes se muestran en tonos plateados. No hay dependencias gráficas nuevas ni peticiones externas.
-
-Cada tarjeta muestra nombre, importe, progreso consolidado y fechas. «Empezaste» es el primer día local de una sesión con tiempo positivo atribuida a esa meta, no la fecha de abrir un cronómetro vacío. «Conseguiste» se deriva del ledger canónico y no cambia por archivar después ni por seguir estudiando. «Ver recorrido» añade creación (`createdAt`), primer estudio, consecución, archivo cuando exista y tiempo/días de actividad. La ausencia de estudio o consecución se presenta como pendiente; no se inventan fechas.
-
-`GermanTrophies.collection(state)` es una proyección de lectura mediante `GermanRewards.ledger/goalProgress`. No crea otra colección persistida de premios y no confía en un ledger guardado obsoleto. Las sesiones y objetivos anteriores aparecen automáticamente. La suma de tiempo de la vitrina incluye solo sesiones asociadas a los objetivos mostrados. Abrir la vitrina durante una sesión pausa el estudio como las otras secciones, sin terminarlo.
-
-Los assets `german-trophies.js/css` están cargados antes de la UI y precacheados en v379. La vitrina funciona offline, escapa los nombres del usuario, ofrece controles de teclado, progreso accesible y respeta la preferencia de movimiento reducido. Pruebas específicas en `tests/unit/german-trophies.test.js`, `tests/e2e/german-trophies.spec.js` y `tests/visual/german-study.spec.js`.
-
-Verificación local v379: runtime 109 assets, unit 438/438, Deutsch y trofeos E2E 12/12, actualización PWA real 2/2 y visual 5/5. Se revisaron capturas de escritorio y móvil; la prueba visual espera al cierre de la pantalla de arranque. Los datos usados son fixtures aislados.
+Entrada: **Hoy → Deutsch**, tarjeta compacta entre el resumen diario y Aulas. La barra inferior y los datos pianísticos conservan sus funciones. Deutsch tiene Resumen, Materiales y una sesión de estudio propia. Los objetivos económicos y la hucha permanecen dentro de Deutsch; los hábitos diarios y sus trofeos pertenecen al cronómetro.
 
 ## Uso
 
@@ -97,7 +85,7 @@ La programación SRS se deriva de las revisiones ordenadas por instante e ID: co
 
 ## PWA y verificación
 
-Runtime v379: scripts y CSS de Deutsch cargados desde `index.html` y precacheados, incluidos los nuevos assets de trofeos; `update-safety.js` bloquea promociones mientras haya sesión local abierta, incluso antes de cargar el addon. `update.html` también protege esa recuperación. Mantiene el lifecycle seguro y las versiones anteriores de assets no modificados.
+Runtime v380: scripts y CSS de Deutsch cargados desde `index.html` y precacheados; `update-safety.js` bloquea promociones mientras haya sesión local abierta, incluso antes de cargar el addon. `update.html` también protege esa recuperación. Mantiene el lifecycle seguro y las versiones anteriores de assets no modificados.
 
 Pruebas: `tests/unit/german-study.test.js`, nuevas regresiones en `document-postgres`, `update-safety-v2` y `service-worker-audit`; `tests/e2e/german-study.spec.js` cubre UI completa, importar/duplicados/XSS, umbral, recarga/borrador, locks, objetivos, móvil y PWA offline. Ejecutar `npm run check`, `npm run test:unit`, `npm run test:e2e` y `npm run test:visual`. El repositorio conserva una lista explícita de fallos E2E anteriores en `scripts/check-e2e-known-baseline.cjs`; no se deben confundir con regresiones de Deutsch.
 

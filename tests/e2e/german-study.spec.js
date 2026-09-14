@@ -110,10 +110,6 @@ test('finished goal can be archived and a new goal preserves reviews and history
   await expect(page.locator('.german-goal')).toContainText('OBJETIVO CONSEGUIDO');
   await page.getByRole('button',{name:'Archivar y crear otro objetivo',exact:true}).click();await createGoal(page);
   expect(await page.evaluate(()=>({goals:db.germanStudy.goals.length,reviews:db.germanStudy.reviews.length,sessions:db.germanStudy.sessions.length}))).toEqual({goals:2,reviews:1,sessions:1});
-  await page.getByRole('button',{name:'Trofeos',exact:true}).click();
-  await expect(page.locator('.german-trophy-card')).toHaveCount(2);
-  await expect(page.locator('.german-trophy-card.is-earned')).toHaveCount(1);
-  await expect(page.locator('.german-trophy-card.is-earned')).toContainText('Conseguiste');
 });
 
 test('reload of running exercise preserves draft and excludes all closed time',async({page})=>{

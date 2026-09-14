@@ -32,7 +32,7 @@
 <link rel="stylesheet" href="reservation-dashboard.css?v=372">
 <link rel="stylesheet" href="session-home.css?v=374">
 <link rel="stylesheet" href="german-study.css?v=378">
-<link rel="stylesheet" href="german-trophies.css?v=379">
+<link rel="stylesheet" href="habit-trophies.css?v=380">
 </head>
 <body>
 
@@ -1719,7 +1719,7 @@
 <!-- MODAL: registro rápido de solidez desde el cronómetro -->
 <!-- MODAL: un unico reto diario, siempre visible en el cronometro -->
 <div class="modal-overlay" id="modalHabitChallenge">
-  <div class="modal habit-modal" style="max-width:440px">
+  <div class="modal habit-modal">
     <div class="habit-modal-kicker">Reto diario</div>
     <div class="modal-title" id="habitModalTitle">Crear un reto</div>
 
@@ -1741,20 +1741,49 @@
       </div>
     </div>
 
-    <label class="habit-modal-field habit-duration-field" for="habitDurationInput">
-      <span>Duración</span>
-      <div class="habit-duration-row">
-        <input type="number" id="habitDurationInput" class="modal-input" min="1" max="365" step="1" value="21"
-               oninput="updateHabitModalPreview()">
-        <em>días</em>
-      </div>
-    </label>
+    <div class="habit-start-row">
+      <label class="habit-modal-field habit-duration-field" for="habitDurationInput">
+        <span>Duración</span>
+        <div class="habit-duration-row">
+          <input type="number" id="habitDurationInput" class="modal-input" min="1" max="365" step="1" value="21"
+                 oninput="updateHabitModalPreview()">
+          <em>días</em>
+        </div>
+      </label>
+      <label class="habit-modal-field" for="habitStartDateInput">
+        <span>Fecha de inicio</span>
+        <input type="date" id="habitStartDateInput" class="modal-input" oninput="updateHabitModalPreview()">
+        <small class="habit-field-note" id="habitStartDateNote">El primer día del objetivo.</small>
+      </label>
+    </div>
     <div class="habit-duration-presets" aria-label="Duraciones rapidas">
       <button type="button" onclick="setHabitDuration(7)">7</button>
       <button type="button" onclick="setHabitDuration(14)">14</button>
       <button type="button" onclick="setHabitDuration(21)">21</button>
       <button type="button" onclick="setHabitDuration(30)">30</button>
     </div>
+
+    <details class="habit-modal-details" id="habitDetailsDisclosure" open>
+      <summary>Descripción y detalles</summary>
+      <div class="habit-modal-details-grid">
+        <label class="habit-modal-field is-wide" for="habitDescriptionInput">
+          <span>Descripción</span>
+          <textarea id="habitDescriptionInput" class="modal-input" maxlength="500" placeholder="Explica en qué consiste y en qué situaciones se aplica"></textarea>
+        </label>
+        <label class="habit-modal-field" for="habitMotivationInput">
+          <span>Por qué quiero hacerlo</span>
+          <textarea id="habitMotivationInput" class="modal-input" maxlength="300" placeholder="La razón que quieres recordar"></textarea>
+        </label>
+        <label class="habit-modal-field" for="habitCriteriaInput">
+          <span>Qué cuenta como cumplirlo</span>
+          <textarea id="habitCriteriaInput" class="modal-input" maxlength="220" placeholder="Ej. dejar el móvil fuera de la habitación"></textarea>
+        </label>
+        <label class="habit-modal-field is-wide" for="habitRewardInput">
+          <span>Cómo quiero celebrarlo <small>(opcional)</small></span>
+          <input type="text" id="habitRewardInput" class="modal-input" maxlength="160" placeholder="Ej. una cena especial, una excursión…">
+        </label>
+      </div>
+    </details>
 
     <div class="habit-modal-preview" id="habitModalPreview"></div>
     <button type="button" class="habit-today-btn" id="habitTodayBtn" onclick="toggleHabitTodayFromModal(event)" hidden></button>
@@ -2275,19 +2304,19 @@
 <script src="task-sync-bootstrap.js?v=342" id="taskSyncBootstrapScript"></script>
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=368"></script>
-<script src="app.js?v=379"></script>
+<script src="app.js?v=380"></script>
 <script src="german-rewards.js?v=378"></script>
 <script src="german-srs.js?v=378"></script>
 <script src="german-import.js?v=378"></script>
 <script src="german-session.js?v=378"></script>
-<script src="german-trophies.js?v=379"></script>
-<script src="german-study.js?v=379"></script>
+<script src="german-study.js?v=380"></script>
 <script src="study-session-ux.js?v=342"></script>
 <script src="crono-resume-layout.js?v=377"></script>
 <script src="piano-rooms.js?v=378"></script>
 <script src="reservation-dashboard.js?v=372"></script>
 <script src="google-calendar.js?v=342"></script>
-<script src="timer-objectives.js?v=342"></script>
+<script src="habit-trophies.js?v=380"></script>
+<script src="timer-objectives.js?v=380"></script>
 <script src="metronome.js?v=368"></script>
 
 

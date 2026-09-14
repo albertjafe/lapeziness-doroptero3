@@ -1,22 +1,16 @@
 /* Deutsch owns only db.germanStudy; all writes use the app's existing save/sync path. */
 (function(root) {
   'use strict';
-  const R=root.GermanRewards, S=root.GermanSRS, I=root.GermanImport, T=root.GermanSession, G=root.GermanTrophies;
+  const R=root.GermanRewards, S=root.GermanSRS, I=root.GermanImport, T=root.GermanSession;
   const MIN=R.CONFIG.minimumSeconds, CAP=R.CONFIG.curve.at(-1)[0], MIN_LABEL=(MIN/60)+' min';
   const state=()=>T.ensure(db), uid=()=>crypto.randomUUID();
   const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const euro=(n,digits=2)=>Number(n).toLocaleString('es-ES',{minimumFractionDigits:digits,maximumFractionDigits:digits})+' €';
   const time=n=>{n=Math.floor(n || 0);return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');};
   const minutes=n=>Math.floor((n || 0)/60)+' min';
-  const studyTime=n=>{const m=Math.floor((n || 0)/60);return m>=60?Math.floor(m/60)+' h '+(m%60)+' min':m+' min';};
-  function goalDate(value,fallback='—') {
-    if(!value)return fallback;
-    const date=/^\d{4}-\d{2}-\d{2}$/.test(value)?new Date(value+'T12:00:00'):new Date(value);
-    return Number.isFinite(date.getTime())?date.toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}):fallback;
-  }
   const typeLabels={de_es:'Alemán → español',es_de:'Español → alemán',expression:'Expresión',grammar:'Estructura gramatical',question_answer:'Pregunta y respuesta',cloze:'Completa el hueco',fill_blank:'Completa el hueco',translation:'Traducción',conjugation:'Conjugación',short_answer:'Respuesta breve',free_write:'Escritura libre'};
   let deviceId, activeId=null, panel='dashboard', lastTick=Date.now(), lastInteraction=Date.now(), lastSave=0;
-  let releaseLock=null, ownsLock=false, busy=false, qualifiedBefore=false, error='', trophyFilter='all';
+  let releaseLock=null, ownsLock=false, busy=false, qualifiedBefore=false, error='';
   const lockToken=uid();
   try {deviceId=localStorage.getItem('german_device_v1');if (!deviceId) {deviceId=uid();localStorage.setItem('german_device_v1',deviceId);}} catch {deviceId=uid();}
   const current=()=>state().sessions.find(s=>s.id===activeId && !s.endedAt);
@@ -89,27 +83,10 @@
     const pendingBase=daySeconds<MIN?ledger.filter(e=>e.date===today && e.goalId===goal?.id).reduce((n,e)=>n+e.baseReward,0):0;
     const cap=goal ? Math.max(0,(R.baseReward(CAP)-R.baseReward(daySeconds)+pendingBase)*R.goalScale(goal.amount)*R.streakMultiplier(streak.prospective)) : 0;
     const pending=totals[today]>0 && totals[today]<MIN;
-    return `${goalCard(goal,ledger)}<button class="german-trophy-entry" data-action="trophies"><span aria-hidden="true">✦</span><span><strong>Mi vitrina de trofeos</strong><small>Tus metas, tus logros y el camino recorrido</small></span><span aria-hidden="true">→</span></button><section class="german-stats" aria-label="Estadísticas de alemán"><div><span>Hoy</span><strong>${minutes(totals[today])}</strong><small>${euro(earned)} consolidados${pending?' · mínimo pendiente':''}</small></div><div><span>Racha</span><strong>🔥 ${streak.current} días</strong><small>${streak.nextBonusIn?streak.nextBonusIn+' días para +5 % de bonus':'Bonus máximo: +25 %'}</small></div><div><span>Esta semana</span><strong>${minutes(week)}</strong><small>Mejor racha: ${streak.best} días</small></div></section>
+    return `${goalCard(goal,ledger)}<section class="german-stats" aria-label="Estadísticas de alemán"><div><span>Hoy</span><strong>${minutes(totals[today])}</strong><small>${euro(earned)} consolidados${pending?' · mínimo pendiente':''}</small></div><div><span>Racha</span><strong>🔥 ${streak.current} días</strong><small>${streak.nextBonusIn?streak.nextBonusIn+' días para +5 % de bonus':'Bonus máximo: +25 %'}</small></div><div><span>Esta semana</span><strong>${minutes(week)}</strong><small>Mejor racha: ${streak.best} días</small></div></section>
       <section class="german-card"><div class="german-row"><div><h2>Un poco de alemán, cada día.</h2><p>${due} tarjetas vencidas · ${fresh} nuevas · ${exercises.length} ejercicios</p></div><span class="german-letter" aria-hidden="true">Ä</span></div><button class="german-primary german-start" data-action="start">${current()?'Volver a la sesión':'Empezar estudio'}</button><button data-action="modes">Elegir modo</button><p class="german-muted">${goal?'Hasta ≈ '+euro(Math.min(cap,Math.max(0,goal.amount-R.goalProgress(goal,ledger,st.sessions).amount)))+' adicionales hoy.':'Puedes estudiar sin objetivo; el tiempo y las revisiones se conservan.'} ${MIN_LABEL} netos para cualificar el día.</p></section>
       <section class="german-card"><h2>Tu constancia</h2><div class="german-activity" aria-label="Actividad de los últimos 14 días">${Array.from({length:14},(_,i)=>{const day=R.shiftDay(today,i-13),seconds=totals[day] || 0;return `<div class="${seconds>=MIN?'done':seconds?'partial':''}" title="${day}: ${minutes(seconds)}" aria-label="${day}: ${minutes(seconds)}"><span>${day.slice(8)}</span></div>`;}).join('')}</div><p class="german-muted">${st.reviews.filter(r=>r.cardId).length} tarjetas revisadas · Color completo: día cualificado.</p></section>
       <details class="german-card"><summary>Historial de objetivos y movimientos</summary>${st.goals.filter(g=>g.archivedAt).map(g=>{const p=R.goalProgress(g,ledger,st.sessions);return `<p><strong>${esc(g.name)}</strong> · ${euro(p.amount)} / ${euro(g.amount)} · ${esc(p.completedOn || 'En progreso')} · ${minutes(p.seconds)}</p>`;}).join('') || '<p>Aquí aparecerán tus objetivos archivados.</p>'}<div class="german-ledger">${ledger.slice(-30).reverse().map(e=>`<p>${esc(e.date)} · ${minutes(e.duration)} · ${euro(e.finalReward,3)} ${e.qualified?'':'(pendiente)'}<small>Base ${euro(e.baseReward,3)} × escala ${e.goalScale.toFixed(3)} × racha ${e.streakMultiplier.toFixed(2)}</small></p>`).join('')}</div><button data-action="export-ledger">Descargar historial completo</button></details>`;
-  }
-  function trophies() {
-    const items=G.collection(state()), earned=items.filter(x=>x.complete), pending=items.filter(x=>!x.complete);
-    const featured=earned[0] || items.find(x=>['active','new'].includes(x.status)) || items[0];
-    const visible=trophyFilter==='earned'?earned:trophyFilter==='pending'?pending:items;
-    const labels={complete:'Conseguido',active:'En curso',new:'Por empezar',queued:'En espera',archived:'Archivado'};
-    return `<section class="german-trophy-hero" aria-labelledby="germanTrophiesTitle"><div class="german-trophy-intro"><span class="german-eyebrow">TU COLECCIÓN PERSONAL</span><h2 id="germanTrophiesTitle">Mi vitrina de trofeos</h2><p>Cada meta tiene su historia.<br>Aquí guardas la tuya.</p>${featured?`<div class="german-trophy-featured"><small>${featured.complete?'ÚLTIMO TROFEO CONSEGUIDO':'TU PRÓXIMO TROFEO'}</small><strong>${esc(featured.goal.name)}</strong><span>${featured.complete?goalDate(featured.completedOn):'Un poco de alemán te acerca a él.'}</span></div>`:'<p class="german-trophy-invitation">El primer lugar de esta vitrina es para ti.</p>'}</div>${G.artwork(featured?.goal.id || 'first-trophy',Boolean(featured?.complete),'hero')}</section>
-      <section class="german-trophy-totals" aria-label="Resumen de objetivos"><div><strong>${earned.length}<small> / ${items.length}</small></strong><span>Objetivos conseguidos</span></div><div><strong>${studyTime(items.reduce((n,x)=>n+x.seconds,0))}</strong><span>Tiempo dedicado a tus metas</span></div><div><strong>${euro(earned.reduce((n,x)=>n+x.goal.amount,0))}</strong><span>Valor de metas conseguidas</span></div></section>
-      ${items.length?`<div class="german-trophy-toolbar"><h3>Tus objetivos</h3><div class="german-trophy-filters" role="group" aria-label="Filtrar objetivos">${[['all','Todos',items.length],['earned','Conseguidos',earned.length],['pending','Pendientes',pending.length]].map(([id,label,n])=>`<button data-action="trophy-filter" data-id="${id}" aria-pressed="${id===trophyFilter}">${label} <span>${n}</span></button>`).join('')}</div></div><p class="german-trophy-count" role="status">${visible.length} ${visible.length===1?'objetivo':'objetivos'} en esta vista</p>
-      <div class="german-trophy-grid">${visible.map((item,i)=> {
-        const {goal}=item, percent=item.percent.toFixed(1).replace('.',',');
-        return `<article class="german-trophy-card ${item.complete?'is-earned':'is-pending'}" aria-label="${esc(goal.name)} · ${labels[item.status]}"><div class="german-trophy-display"><span class="german-trophy-badge">${item.complete?'✦ ':''}${labels[item.status]}</span>${G.artwork(goal.id,item.complete,'card-'+i)}</div><div class="german-trophy-caption"><h3>${esc(goal.name)}</h3><p class="german-trophy-target">${euro(goal.amount)} <span>· tu recompensa</span></p><div class="german-trophy-progress"><span>${euro(item.amount)} alcanzados</span><strong>${percent} %</strong></div><progress max="100" value="${item.percent}" aria-label="${esc('Progreso de '+goal.name)}"></progress>
-          <dl class="german-trophy-dates"><div><dt>Empezaste</dt><dd>${goalDate(item.startedOn,'Aún sin estudiar')}</dd></div><div><dt>${item.complete?'Conseguiste':'Finalización'}</dt><dd>${goalDate(item.completedOn,item.status==='archived'?'Sin completar':'Por alcanzar')}</dd></div></dl>
-          <details class="german-trophy-history"><summary>Ver recorrido</summary><ol><li><strong>Creaste tu objetivo</strong><span>${goalDate(goal.createdAt,'Fecha no disponible')}</span></li><li class="${item.startedOn?'':'is-future'}"><strong>Primer día de estudio</strong><span>${goalDate(item.startedOn,'Tu historia está por empezar')}</span></li><li class="${item.complete?'':'is-future'}"><strong>${item.complete?'Objetivo conseguido':'Trofeo por conseguir'}</strong><span>${goalDate(item.completedOn,'Cada sesión cuenta')}</span></li>${goal.archivedAt?`<li><strong>Guardado en tu historial</strong><span>${goalDate(goal.archivedAt)}</span></li>`:''}</ol><p>${studyTime(item.seconds)} de estudio · ${item.studyDays} ${item.studyDays===1?'día con actividad':'días con actividad'}</p></details></div></article>`;
-      }).join('')}</div>${visible.length?'':`<div class="german-trophy-empty"><h3>${trophyFilter==='earned'?'Tu primer trofeo está por llegar':'Todo conseguido por ahora'}</h3><p>${trophyFilter==='earned'?'Tus metas aparecerán aquí cuando las alcances.':'Puedes crear tu próxima meta desde el resumen.'}</p><button data-action="trophy-filter" data-id="all">Ver todos los objetivos</button></div>`}`:
-      `<section class="german-trophy-empty"><h3>Una meta. Un trofeo. Tu esfuerzo.</h3><p>Elige algo que te haga ilusión. Verás aquí su progreso y, cuando lo consigas, su trofeo con las fechas de tu recorrido.</p><button class="german-primary" data-action="dashboard">Crear mi primer objetivo</button></section>`}
-      ${items.length?'<div class="german-trophy-footer"><p>Los trofeos conseguidos permanecen aquí al archivar un objetivo.</p><button data-action="dashboard">Volver a mi objetivo</button></div>':''}`;
   }
   function materials() {
     return `<section class="german-card"><h2>Materiales de tus clases</h2><p>PDF → IA → JSON → Deutsch. Importa un paquete de estudio o un CSV de vocabulario.</p><label class="german-file">Importar .json o .csv<input id="germanImportFile" type="file" accept=".json,.csv,application/json,text/csv"></label><p class="german-muted">Hasta 2 MB y 2.000 elementos. CSV: front,back; opcionales type,hint,explanation,tags. Separa tags con |.</p><button data-action="example">Descargar JSON de ejemplo</button><details><summary>Crear material con IA</summary><p>Adjunta tu PDF a la IA que prefieras junto con este prompt.</p><textarea id="germanPrompt" aria-label="Prompt para IA" readonly rows="9">${esc(I.AI_PROMPT)}</textarea><button data-action="copy-prompt">Copiar prompt para IA</button></details></section>
@@ -150,7 +127,7 @@
   }
   function render() {
     const el=document.getElementById('germanContent');if(!el)return;
-    el.innerHTML=panel==='trophies'?trophies():panel==='materials'?materials():panel==='modes'?modes():panel==='study'?study():dashboard();
+    el.innerHTML=panel==='materials'?materials():panel==='modes'?modes():panel==='study'?study():dashboard();
     document.getElementById('view-deutsch').dataset.panel=panel;
     document.querySelectorAll('[data-german-panel]').forEach(b=>b.setAttribute('aria-current',b.dataset.germanPanel===panel?'page':'false'));
     message(error);updateMeter();
@@ -185,10 +162,7 @@
   }
   async function action(action,id) {
     const s=current();lastInteraction=Date.now();message('');
-    if (['dashboard','materials','modes','trophies'].includes(action)) {pause();panel=action;render();window.scrollTo({top:0,behavior:'instant'});return;}
-    if (action==='trophy-filter' && ['all','earned','pending'].includes(id)) {
-      trophyFilter=id;render();document.querySelector(`.german-trophy-filters [data-id="${id}"]`)?.focus({preventScroll:true});return;
-    }
+    if (['dashboard','materials','modes'].includes(action)) {pause();panel=action;render();window.scrollTo({top:0,behavior:'instant'});return;}
     if (action==='start') return start();
     if (action==='mode') return start(id);
     if (action==='material') return start('mixed',id);
@@ -234,7 +208,7 @@
     activeId=pending[0]?.id || null;
     // Recovery never restarts elapsed time; only the checkpoint is counted.
     // Do not mutate a persisted run until this tab owns the lock; another tab may own it.
-    view.innerHTML=`<header class="german-header"><div><span class="german-eyebrow">DEUTSCH</span><h1>Tu alemán, día a día.</h1></div><button data-action="home" aria-label="Volver a Hoy">← Hoy</button></header><nav class="german-nav" aria-label="Deutsch"><button data-action="dashboard" data-german-panel="dashboard">Resumen</button><button data-action="materials" data-german-panel="materials">Materiales</button><button data-action="trophies" data-german-panel="trophies">Trofeos</button></nav><p class="german-note">Hucha virtual · no mueve dinero real</p><div id="germanError" role="status" hidden></div><button class="german-retry" data-action="retry">Reintentar guardado</button><div id="germanContent"></div>`;
+    view.innerHTML=`<header class="german-header"><div><span class="german-eyebrow">DEUTSCH</span><h1>Tu alemán, día a día.</h1></div><button data-action="home" aria-label="Volver a Hoy">← Hoy</button></header><nav class="german-nav" aria-label="Deutsch"><button data-action="dashboard" data-german-panel="dashboard">Resumen</button><button data-action="materials" data-german-panel="materials">Materiales</button></nav><p class="german-note">Hucha virtual · no mueve dinero real</p><div id="germanError" role="status" hidden></div><button class="german-retry" data-action="retry">Reintentar guardado</button><div id="germanContent"></div>`;
     view.addEventListener('click',e=> {
       const button=e.target.closest('[data-action]');if(!button)return;
       if(button.dataset.action==='home'){showView('session');return;}

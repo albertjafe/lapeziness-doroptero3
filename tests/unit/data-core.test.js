@@ -115,6 +115,20 @@ describe('DataCore', () => {
     expect(merged.habitChallenge.id).toBe('habit-bathroom');
   });
 
+  it('preserves the detailed habit fields from the newest edit', () => {
+    const base = { id: 'habit-details', title: 'Meditar', mode: 'do', startDate: '2026-09-14', durationDays: 21, logs: {}, updatedAt: '2026-09-14T10:00:00Z' };
+    const merged = DataCore.mergeStudyHistory(
+      { habitChallenges: [base] },
+      { habitChallenges: [{ ...base, description: 'Diez minutos al despertar', motivation: 'Empezar con calma', successCriteria: 'Completar diez minutos', reward: 'Un desayuno especial', updatedAt: '2026-09-14T11:00:00Z' }] }
+    );
+    expect(merged.habitChallenges[0]).toMatchObject({
+      description: 'Diez minutos al despertar',
+      motivation: 'Empezar con calma',
+      successCriteria: 'Completar diez minutos',
+      reward: 'Un desayuno especial',
+    });
+  });
+
   it('merges weekly planner edits per slot without losing another device changes', () => {
     const merged = DataCore.mergeStudyHistory(
       {

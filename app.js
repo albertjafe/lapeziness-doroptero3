@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-13-deutsch-trofeos-v379';
+const APP_VERSION = '2026-09-14-habit-trophies-v380';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -19927,6 +19927,13 @@ function openHabitChallengeModal(challengeId) {
   const title = document.getElementById('habitModalTitle');
   const input = document.getElementById('habitTitleInput');
   const duration = document.getElementById('habitDurationInput');
+  const startDate = document.getElementById('habitStartDateInput');
+  const startDateNote = document.getElementById('habitStartDateNote');
+  const description = document.getElementById('habitDescriptionInput');
+  const motivation = document.getElementById('habitMotivationInput');
+  const criteria = document.getElementById('habitCriteriaInput');
+  const reward = document.getElementById('habitRewardInput');
+  const details = document.getElementById('habitDetailsDisclosure');
   const deleteBtn = document.getElementById('habitDeleteBtn');
   const todayBtn = document.getElementById('habitTodayBtn');
   const kicker = document.querySelector('#modalHabitChallenge .habit-modal-kicker');
@@ -19934,6 +19941,19 @@ function openHabitChallengeModal(challengeId) {
   if (kicker) kicker.textContent = 'Objetivo diario';
   if (input) input.value = existing ? (current.title || '') : '';
   if (duration) duration.value = existing ? current.durationDays : 21;
+  if (startDate) {
+    startDate.value = existing ? current.startDate : habitDayKey();
+    startDate.disabled = existing;
+  }
+  if (startDateNote) startDateNote.textContent = existing ? 'La fecha se conserva para no cambiar el historial.' : 'El primer día del objetivo.';
+  if (description) description.value = existing ? (current.description || '') : '';
+  if (motivation) motivation.value = existing ? (current.motivation || '') : '';
+  if (criteria) criteria.value = existing ? (current.successCriteria || '') : '';
+  if (reward) reward.value = existing ? (current.reward || '') : '';
+  if (details) {
+    const hasDetails = Boolean(existing && (current.description || current.motivation || current.successCriteria || current.reward));
+    details.open = hasDetails || !(window.matchMedia?.('(orientation: landscape) and (max-height: 600px)').matches);
+  }
   if (deleteBtn) deleteBtn.hidden = !existing;
   if (todayBtn) {
     todayBtn.hidden = !existing;
@@ -19971,6 +19991,13 @@ function setHabitDuration(days) {
 function updateHabitModalPreview() {
   const durationInput = document.getElementById('habitDurationInput');
   const days = Math.max(1, Math.min(365, Math.round(Number(durationInput?.value) || 21)));
+  const startInput = document.getElementById('habitStartDateInput');
+  const startKey = /^\d{4}-\d{2}-\d{2}$/.test(startInput?.value || '') ? startInput.value : habitDayKey();
+  const endKey = habitKeyAt(startKey, days - 1);
+  const endParts = String(endKey || '').split('-').map(Number);
+  const endLabel = endParts.length === 3 && endParts.every(Number.isFinite)
+    ? new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(endParts[0], endParts[1] - 1, endParts[2], 12)).replace('.', '')
+    : '';
   document.querySelectorAll('#habitModeToggle button').forEach(button => {
     const active = button.dataset.mode === _habitModalMode;
     button.classList.toggle('active', active);
@@ -19982,18 +20009,29 @@ function updateHabitModalPreview() {
   const preview = document.getElementById('habitModalPreview');
   if (!preview) return;
   preview.innerHTML = _habitModalMode === 'avoid'
-    ? '<strong>Evitar durante ' + days + ' días</strong><span>La casilla solo se toca si recaes. Un fallo reinicia la racha, pero no borra los días logrados.</span>'
-    : '<strong>Hacer durante ' + days + ' días</strong><span>Marca la casilla cada día que lo cumplas. Un día fallado no borra tu progreso anterior.</span>';
+    ? '<strong>Evitar durante ' + days + ' días · hasta ' + endLabel + '</strong><span>La casilla solo se toca si recaes. Un fallo reinicia la racha, pero no borra los días logrados.</span>'
+    : '<strong>Hacer durante ' + days + ' días · hasta ' + endLabel + '</strong><span>Marca la casilla cada día que lo cumplas. Un día fallado no borra tu progreso anterior.</span>';
 }
 
 function saveHabitChallenge() {
   const titleInput = document.getElementById('habitTitleInput');
   const durationInput = document.getElementById('habitDurationInput');
+  const startDateInput = document.getElementById('habitStartDateInput');
   const title = String(titleInput?.value || '').trim().slice(0, 100);
   const durationDays = Math.max(1, Math.min(365, Math.round(Number(durationInput?.value) || 21)));
+  const startDate = String(startDateInput?.value || '').trim();
+  const description = String(document.getElementById('habitDescriptionInput')?.value || '').trim().slice(0, 500);
+  const motivation = String(document.getElementById('habitMotivationInput')?.value || '').trim().slice(0, 300);
+  const successCriteria = String(document.getElementById('habitCriteriaInput')?.value || '').trim().slice(0, 220);
+  const reward = String(document.getElementById('habitRewardInput')?.value || '').trim().slice(0, 160);
   if (!title) {
     showToast('Escribe el objetivo del reto');
     titleInput?.focus();
+    return;
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !Number.isFinite(habitDayNumber(startDate)) || habitKeyAt(startDate, 0) !== startDate) {
+    showToast('Elige una fecha de inicio válida');
+    startDateInput?.focus();
     return;
   }
   const now = new Date().toISOString();
@@ -20001,6 +20039,10 @@ function saveHabitChallenge() {
   if (_habitEditingExisting && current) {
     current.title = title;
     current.durationDays = durationDays;
+    current.description = description;
+    current.motivation = motivation;
+    current.successCriteria = successCriteria;
+    current.reward = reward;
     current.updatedAt = now;
     const stored = habitStoredChallenges();
     const index = stored.findIndex(habit => habit && habit.id === current.id);
@@ -20017,7 +20059,11 @@ function saveHabitChallenge() {
       title,
       mode: _habitModalMode === 'avoid' ? 'avoid' : 'do',
       durationDays,
-      startDate: habitDayKey(),
+      startDate,
+      description,
+      motivation,
+      successCriteria,
+      reward,
       logs: {},
       createdAt: now,
       updatedAt: now,
@@ -20031,7 +20077,7 @@ function saveHabitChallenge() {
   renderHabitCalendar();
   renderMesCalendario();
   closeModal('modalHabitChallenge');
-  showToast(_habitEditingExisting ? 'Objetivo actualizado' : 'Objetivo iniciado');
+  showToast(_habitEditingExisting ? 'Objetivo actualizado' : (habitDayNumber(startDate) > habitDayNumber(habitDayKey()) ? 'Objetivo programado' : 'Objetivo iniciado'));
 }
 
 function registerHabitRelapse(event, challengeId) {
