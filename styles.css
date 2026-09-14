@@ -21938,3 +21938,31 @@ body.crono-paused .crono-readiness-inline { visibility: hidden; }
   .pase-liquid-meter.rating-scale-v2 .pase-liquid-guide { min-width:28px; }
   .pase-liquid-meter.rating-scale-v2 .pase-liquid-guide b { font-size:6.3px; }
 }
+
+/* Pases v381 · tarjetas amplias para valorar cada interpretación. */
+.crono-pase-rapido-modal { width:min(860px,calc(100vw - 24px)); height:min(92dvh,860px); max-height:min(92dvh,860px); }
+.crono-pase-items { gap:14px; }
+.crono-pase-item { border-radius:16px; padding:17px 18px 15px; }
+.crono-pase-item-top { grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:16px; }
+.crono-pase-item-name { overflow:visible; text-overflow:clip; white-space:normal; font-size:19px; line-height:1.2; }
+.crono-pase-item-name small { font-size:9px; }
+.crono-pase-item-tools { display:flex; align-items:center; gap:10px; }
+.crono-pase-duration { display:grid; grid-template-columns:auto auto; align-items:center; gap:2px 6px; color:var(--text3); font:700 8px 'JetBrains Mono',monospace; letter-spacing:.04em; text-transform:uppercase; }
+.crono-pase-duration > span { grid-column:1 / -1; }
+.crono-pase-duration em { font-size:9px; font-style:normal; font-weight:500; text-transform:none; }
+.crono-pase-count { margin-top:13px; font-size:9px; }
+.crono-pase-count input { min-height:36px; padding:7px 4px; }
+.crono-pase-min { width:62px; min-height:38px; padding:8px 5px; }
+.crono-pase-remove { width:34px; height:34px; }
+.crono-pase-item .pase-liquid-guide b,
+.pase-quality-modal [data-rating-profile="pase"] .pase-liquid-guide b { font-size:8.5px; }
+.crono-pase-item .pase-liquid-guide em,
+.pase-quality-modal [data-rating-profile="pase"] .pase-liquid-guide em { font-size:7px; }
+.crono-pase-item .pase-liquid-scale-note,
+.pase-quality-modal [data-rating-profile="pase"] .pase-liquid-scale-note { font-size:9px; }
+@media (max-width:480px) {
+  .crono-pase-item { padding:14px 13px 13px; }
+  .crono-pase-item-top { grid-template-columns:minmax(0,1fr) auto; gap:10px; }
+  .crono-pase-item-name { font-size:17px; }
+  .crono-pase-min { width:54px; }
+}

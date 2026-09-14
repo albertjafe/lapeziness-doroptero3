@@ -100,13 +100,81 @@
     return winnerScore>=72?{...winner,score:Math.round(winnerScore)}:null;
   }
   function isGenericMovementName(name){const n=normalize(name);return !n||/^movimiento\s*\d+$/.test(n)||/^movement\s*\d+$/.test(n)||/^(i|ii|iii|iv|v|vi|vii|viii)\.?$/.test(n);}
-  function makeMovement(template,index){return {id:`mv${Date.now()}_${index}_${Math.random().toString(36).slice(2,7)}`,name:template.name,duracion:template.duration,duracionEstimada:true,duracionFuente:'catalogo-curado',dificultad:5,apr:1,esc:1,sol:1,solHistory:[],paseHistory:[],zoneHistory:[],compasHistory:[],compasActual:null,compasesTotal:null,lastPase:null};}
+  function stableHash(value){let hash=2166136261;for(const char of String(value||'')){hash^=char.charCodeAt(0);hash=Math.imul(hash,16777619);}return(hash>>>0).toString(36);}
+  function templateName(template){return typeof template==='string'?template:template?.name||'';}
+  function templateDuration(template){return typeof template==='string'?null:template?.duration??null;}
+  function movementId(work,template,index){
+    const identity=normalize([work?.id,work?.composer,work?.name||work?.title,templateName(template),index].filter(Boolean).join(' '));
+    return `mvcat_${stableHash(identity)}_${index+1}`;
+  }
+  function makeMovement(work,template,index){return {id:movementId(work,template,index),name:templateName(template),duracion:templateDuration(template),duracionEstimada:true,duracionFuente:'catalogo-curado',dificultad:5,apr:1,esc:1,sol:1,solHistory:[],paseHistory:[],zoneHistory:[],compasHistory:[],compasActual:null,compasesTotal:null,lastPase:null};}
+  function valueKey(value){
+    if(value&&typeof value==='object'&&value.id!=null)return'id:'+String(value.id);
+    try{return'json:'+JSON.stringify(value);}catch(error){return String(value);}
+  }
+  function mergeArrayValues(copies,key){
+    const seen=new Set(),merged=[];
+    copies.forEach(copy=>(Array.isArray(copy?.[key])?copy[key]:[]).forEach(value=>{const id=valueKey(value);if(seen.has(id))return;seen.add(id);merged.push(value);}));
+    return merged;
+  }
+  function movementEvidenceScore(movement){
+    const arrays=['solHistory','paseHistory','zoneHistory','compasHistory','pasajes','sesiones'];
+    const arrayScore=arrays.reduce((sum,key)=>sum+(Array.isArray(movement?.[key])?movement[key].length:0),0)*10;
+    const scalarScore=['lastPase','updatedAt','notes','nota','compasActual','compasesTotal'].reduce((sum,key)=>sum+(movement?.[key]!=null&&movement[key]!==''?1:0),0);
+    return arrayScore+scalarScore+(['sol','apr','esc'].reduce((sum,key)=>sum+(Number(movement?.[key])>1?2:0),0));
+  }
+  function movementEvidenceTime(movement){
+    const dates=[movement?.updatedAt,movement?.lastPase];
+    ['solHistory','paseHistory','zoneHistory','compasHistory','sesiones'].forEach(key=>(movement?.[key]||[]).forEach(entry=>dates.push(entry?.date||entry?.at||entry?.updatedAt)));
+    return Math.max(0,...dates.map(value=>new Date(value||0).getTime()).filter(Number.isFinite));
+  }
+  function mergeMovementCopies(copies,template){
+    const ranked=copies.map((movement,index)=>({movement,index,time:movementEvidenceTime(movement),score:movementEvidenceScore(movement)}))
+      .sort((a,b)=>b.time-a.time||b.score-a.score||a.index-b.index);
+    const canonicalId=String(copies[0]?.id||'');
+    const merged={...(ranked[0]?.movement||copies[0]||{}),id:canonicalId||copies[0]?.id,name:templateName(template)};
+    const arrayKeys=new Set();
+    copies.forEach(copy=>Object.keys(copy||{}).forEach(key=>{if(Array.isArray(copy[key]))arrayKeys.add(key);}));
+    arrayKeys.forEach(key=>{merged[key]=mergeArrayValues(copies,key);});
+    if(merged.duracion==null&&templateDuration(template)!=null){merged.duracion=templateDuration(template);merged.duracionEstimada=true;merged.duracionFuente='catalogo-curado';}
+    return merged;
+  }
+  function collapseRepeatedCatalogMovements(work,movements,templates){
+    const size=templates.length;
+    if(!size||movements.length<=size||movements.length%size!==0)return{movements,changed:false,idMap:{}};
+    const exact=movements.every((movement,index)=>normalize(movement?.name)===normalize(templateName(templates[index%size])));
+    if(!exact)return{movements,changed:false,idMap:{}};
+    const idMap={};
+    const compact=templates.map((template,index)=>{
+      const copies=[];
+      for(let at=index;at<movements.length;at+=size)copies.push(movements[at]);
+      const merged=mergeMovementCopies(copies,template);
+      copies.slice(1).forEach(copy=>{if(copy?.id&&copy.id!==merged.id)idMap[String(copy.id)]=String(merged.id);});
+      return merged;
+    });
+    return{movements:compact,changed:true,idMap};
+  }
+  function remapMovementReferences(value,idMap,seen){
+    if(!value||typeof value!=='object'||!idMap||!Object.keys(idMap).length)return false;
+    const visited=seen||new Set();if(visited.has(value))return false;visited.add(value);let changed=false;
+    if(Array.isArray(value)){
+      value.forEach((item,index)=>{if(typeof item==='string'&&idMap[item]){value[index]=idMap[item];changed=true;}else if(remapMovementReferences(item,idMap,visited))changed=true;});
+      return changed;
+    }
+    Object.keys(value).forEach(key=>{
+      const item=value[key];
+      if(typeof item==='string'&&idMap[item]){value[key]=idMap[item];changed=true;}
+      else if(remapMovementReferences(item,idMap,visited))changed=true;
+    });
+    return changed;
+  }
   function completeWorkStructure(work,structure){
     if(!work)return{work,changed:false,structure:null};const matched=structure||matchWorkStructure(work);if(!matched)return{work,changed:false,structure:null};
-    const clone={...work,movimientos:Array.isArray(work.movimientos)?work.movimientos.map(m=>({...m})):[]};let changed=false;
-    if(!clone.movimientos.length){clone.movimientos=matched.movements.map(makeMovement);changed=true;}
+    const clone={...work,movimientos:Array.isArray(work.movimientos)?work.movimientos.map(m=>({...m})):[]};let changed=false,idMap={};
+    const collapsed=collapseRepeatedCatalogMovements(work,clone.movimientos,matched.movements);if(collapsed.changed){clone.movimientos=collapsed.movements;idMap=collapsed.idMap;changed=true;}
+    if(!clone.movimientos.length){clone.movimientos=matched.movements.map((template,index)=>makeMovement(work,template,index));changed=true;}
     else if(clone.movimientos.length===matched.movements.length){clone.movimientos=clone.movimientos.map((movement,index)=>{const template=matched.movements[index],next={...movement};if(isGenericMovementName(next.name)&&template.name){next.name=template.name;changed=true;}if(next.duracion==null&&template.duration!=null){next.duracion=template.duration;next.duracionEstimada=true;next.duracionFuente='catalogo-curado';changed=true;}return next;});}
-    return{work:clone,changed,structure:matched};
+    return{work:clone,changed,structure:matched,idMap};
   }
-  return{WORKS,normalize,isGenericMovementName,matchWorkStructure,completeWorkStructure};
+  return{WORKS,normalize,isGenericMovementName,matchWorkStructure,completeWorkStructure,remapMovementReferences};
 });

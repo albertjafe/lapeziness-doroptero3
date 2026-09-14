@@ -1,11 +1,11 @@
-const CACHE = 'estudio-v380';
+const CACHE = 'estudio-v381';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
   "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=342",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=380",
+  "./app.js?v=381",
   "./german-rewards.js?v=378",
   "./german-srs.js?v=378",
   "./german-import.js?v=378",
@@ -25,7 +25,7 @@ const ASSETS = [
   "./daily-study-minutes.js?v=371",
   "./data-core.js?v=342",
   "./document-sync-core.js?v=344",
-  "./ensemble-repertoire-catalog.js?v=373",
+  "./ensemble-repertoire-catalog.js?v=381",
   "./event-data-protection.js?v=342",
   "./event-movement-selector.js?v=377",
   "./event-planning-ui-v2.css?v=342",
@@ -63,7 +63,7 @@ const ASSETS = [
   "./passage-tracker-resilience.js?v=372",
   "./piano-rooms-core.js?v=372",
   "./piano-rooms.css?v=369",
-  "./piano-rooms.js?v=378",
+  "./piano-rooms.js?v=381",
   "./reservation-dashboard.css?v=372",
   "./reservation-dashboard.js?v=372",
   "./planning-enhancements-v3.css?v=377",
@@ -97,7 +97,7 @@ const ASSETS = [
   "./solidity-model.js?v=342",
   "./study-session-ux.css?v=342",
   "./study-session-ux.js?v=342",
-  "./styles.css?v=374",
+  "./styles.css?v=381",
   "./sync-core.js?v=342",
   "./task-sync-bootstrap.js?v=342",
   "./task-sync-resilience.js?v=342",
@@ -109,7 +109,7 @@ const ASSETS = [
   "./work-difficulty-model.js?v=342",
   "./work-difficulty-stored-priority.js?v=342",
   "./work-difficulty.css?v=342",
-  "./work-structure-catalog.js?v=362"
+  "./work-structure-catalog.js?v=381"
 ];
 
 /* Una versión nueva se instala en espera. Nunca se promociona sola mientras
@@ -155,7 +155,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '380');
+            target.searchParams.set('__pwa', '381');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -163,7 +163,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'380', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'381', navigated });
         } catch (error) {}
       }
     }

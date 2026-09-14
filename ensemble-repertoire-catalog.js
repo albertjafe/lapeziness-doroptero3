@@ -57,9 +57,10 @@ function matchEntry(workOrComposer,maybeTitle){
   });
   return bestScore>=76?{...best,score:Math.round(bestScore)}:null;
 }
-function movementTemplate(name,index){
+function stableMovementHash(value){let hash=2166136261;for(const char of String(value||'')){hash^=char.charCodeAt(0);hash=Math.imul(hash,16777619);}return(hash>>>0).toString(36);}
+function movementTemplate(name,index,work){
   return {
-    id:'mv'+Date.now()+'_'+index+'_'+Math.random().toString(36).slice(2,7),
+    id:'mvcat_'+stableMovementHash(norm([work&&work.id,work&&work.composer,work&&work.name,name,index].join(' ')))+'_'+(index+1),
     name,
     duracion:null,
     duracionEstimada:true,
@@ -72,19 +73,23 @@ function genericMovement(name){
   const n=norm(name);
   return !n||/^movimiento\s*\d+$/.test(n)||/^movement\s*\d+$/.test(n)||/^(i|ii|iii|iv|v|vi|vii|viii)\.?$/.test(n);
 }
-function applyEntry(work,entry){
-  if(!work||!entry||!Array.isArray(entry.movements)||!entry.movements.length)return false;
-  let changed=false;
+function applyEntryDetailed(work,entry){
+  if(!work||!entry||!Array.isArray(entry.movements)||!entry.movements.length)return{changed:false,idMap:{}};
+  let changed=false,idMap={};
   if(entry.category==='camara'||entry.category==='acompanamiento'){
     if(!work.repertoireCategory){work.repertoireCategory=entry.category;changed=true;}
     if(!work.instrumentation&&!work.instrumentacion&&entry.instrumentation){work.instrumentation=entry.instrumentation;changed=true;}
   }
-  const current=Array.isArray(work.movimientos)?work.movimientos:[];
-  if(!current.length){
-    work.movimientos=entry.movements.map(movementTemplate);
-    return true;
+  const core=root.WorkStructureCatalog;
+  if(core&&typeof core.completeWorkStructure==='function'){
+    const result=core.completeWorkStructure(work,{...entry,movements:entry.movements.map(name=>({name,duration:null}))});
+    if(result?.changed){work.movimientos=result.work.movimientos;changed=true;}
+    idMap=result?.idMap||{};
+    return{changed,idMap};
   }
-  if(current.length!==entry.movements.length)return changed;
+  const current=Array.isArray(work.movimientos)?work.movimientos:[];
+  if(!current.length){work.movimientos=entry.movements.map((name,index)=>movementTemplate(name,index,work));return{changed:true,idMap};}
+  if(current.length!==entry.movements.length)return{changed,idMap};
   work.movimientos=current.map((movement,index)=>{
     if(!movement)return movement;
     if(genericMovement(movement.name)){
@@ -93,7 +98,7 @@ function applyEntry(work,entry){
     }
     return movement;
   });
-  return changed;
+  return{changed,idMap};
 }
 function soloExtraStructure(work){
   const composer=norm(work&& (work.composer||work.compositor));
@@ -120,19 +125,23 @@ function soloExtraStructure(work){
   }
   return null;
 }
-function completeWork(work){
-  if(!work||work.tipo==='actividad')return false;
+function completeWorkDetailed(work){
+  if(!work||work.tipo==='actividad')return{changed:false,idMap:{}};
   const core=root.WorkStructureCatalog;
+  let changed=false,idMap={};
   if(core&&typeof core.completeWorkStructure==='function'){
     const result=core.completeWorkStructure(work);
     if(result&&result.changed){
       work.movimientos=result.work.movimientos;
-      return true;
+      changed=true;
     }
+    Object.assign(idMap,result?.idMap||{});
   }
   const own=matchEntry(work)||soloExtraStructure(work);
-  return own?applyEntry(work,own):false;
+  if(own){const result=applyEntryDetailed(work,own);changed=result.changed||changed;Object.assign(idMap,result.idMap||{});}
+  return{changed,idMap};
 }
+function completeWork(work){return completeWorkDetailed(work).changed;}
 function appDb(){
   try{if(typeof db!=='undefined'&&db)return db;}catch(error){}
   try{if(typeof DB!=='undefined'&&DB)return DB;}catch(error){}
@@ -149,10 +158,13 @@ function persist(){
 function enrichDatabase(save=true){
   const database=appDb();
   if(!database||!Array.isArray(database.obras))return [];
-  const changed=[];
+  const changed=[],idMap={};
   database.obras.forEach(work=>{
-    if(completeWork(work))changed.push(String(work.id||work.name||'obra'));
+    const result=completeWorkDetailed(work);
+    if(result.changed)changed.push(String(work.id||work.name||'obra'));
+    Object.assign(idMap,result.idMap||{});
   });
+  if(root.WorkStructureCatalog?.remapMovementReferences?.(database,idMap)&&!changed.length)changed.push('referencias-movimientos');
   if(changed.length&&save)persist();
   return changed;
 }

@@ -65,4 +65,46 @@ describe('WorkStructureCatalog', () => {
     expect(result.work.movimientos.every(m => m.duracionEstimada === true)).toBe(true);
     expect(result.work.movimientos[0].paseHistory).toEqual([]);
   });
+
+  it('uses stable movement ids when two devices create the same catalog structure', () => {
+    const work = { id: 'prokofiev-7', composer: 'Prokofiev', name: 'Sonata para piano n.º 7, Op. 83', movimientos: [] };
+    const first = Catalog.completeWorkStructure(work).work.movimientos.map(movement => movement.id);
+    const second = Catalog.completeWorkStructure(structuredClone(work)).work.movimientos.map(movement => movement.id);
+    expect(second).toEqual(first);
+    expect(first.every(id => id.startsWith('mvcat_'))).toBe(true);
+  });
+
+  it('compacts exact catalog copies, merges their history and remaps references', () => {
+    const names = ['I. Allegro inquieto', 'II. Andante caloroso', 'III. Precipitato'];
+    const movements = [0, 1, 2, 3].flatMap(copy => names.map((name, index) => ({
+      id: `copy-${copy}-${index}`,
+      name,
+      sol: copy === 2 && index === 0 ? 82 : 1,
+      solHistory: copy === 2 && index === 0 ? [{ id: 'rating', date: '2026-09-10', val: 82 }] : [],
+      paseHistory: copy === 3 && index === 2 ? [{ id: 'pass', date: '2026-09-11', solidezPct: 76 }] : [],
+    })));
+    const result = Catalog.completeWorkStructure({
+      id: 'prokofiev-7', composer: 'Prokofiev', name: 'Sonata para piano n.º 7, Op. 83', movimientos: movements,
+    });
+    expect(result.changed).toBe(true);
+    expect(result.work.movimientos).toHaveLength(3);
+    expect(result.work.movimientos[0]).toMatchObject({ id: 'copy-0-0', sol: 82 });
+    expect(result.work.movimientos[0].solHistory).toEqual([{ id: 'rating', date: '2026-09-10', val: 82 }]);
+    expect(result.work.movimientos[2].paseHistory).toEqual([{ id: 'pass', date: '2026-09-11', solidezPct: 76 }]);
+    const db = { sessionPlants: [{ movId: 'copy-2-0' }], evento: { movimientosObjetivo: ['copy-3-2'] } };
+    expect(Catalog.remapMovementReferences(db, result.idMap)).toBe(true);
+    expect(db).toEqual({ sessionPlants: [{ movId: 'copy-0-0' }], evento: { movimientosObjetivo: ['copy-0-2'] } });
+  });
+
+  it('leaves a personalised non-repeating structure untouched', () => {
+    const movements = [
+      { id: 'a', name: 'I. Exposición' },
+      { id: 'b', name: 'II. Desarrollo' },
+      { id: 'c', name: 'III. Coda personal' },
+      { id: 'd', name: 'Bis' },
+    ];
+    const result = Catalog.completeWorkStructure({ id: 'prokofiev-7', composer: 'Prokofiev', name: 'Sonata n.º 7, Op. 83', movimientos: movements });
+    expect(result.changed).toBe(false);
+    expect(result.work.movimientos).toEqual(movements);
+  });
 });

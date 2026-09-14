@@ -1667,6 +1667,11 @@ test('selects several recent works before rating and saving their passes', async
   const cards = page.locator('#cronoPaseItems .crono-pase-item');
   await expect(cards).toHaveCount(2);
   await expect(cards.locator('.pase-liquid-input')).toHaveCount(2);
+  await expect(cards.locator('.pase-liquid-meter.compact')).toHaveCount(0);
+  await expect(cards.nth(0).locator('.pase-liquid-meter')).toHaveAttribute('data-rating-profile', 'pase');
+  expect((await cards.nth(0).locator('.pase-liquid-meter').boundingBox())?.height).toBeGreaterThanOrEqual(130);
+  expect((await cards.nth(0).boundingBox())?.height).toBeGreaterThan(230);
+  await expect(cards.nth(0)).not.toContainText('Memorizada');
   await cards.nth(0).locator('.pase-liquid-input').fill('35');
   await cards.nth(1).locator('.pase-liquid-input').fill('82');
   await page.locator('#cronoPaseComment').fill('Afinar el ataque y sostener mejor el final');

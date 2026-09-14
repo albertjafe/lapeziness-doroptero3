@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-14-habit-trophies-v380';
+const APP_VERSION = '2026-09-14-pases-repertorio-v381';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -4472,16 +4472,29 @@ const PASE_RATING_PROFILES = {
     stages: [[97,'Lista para audición'],[90,'Ensayada'],[80,'Flexible'],[72,'Estable'],[60,'Atenta'],[45,'Continua'],[30,'Montada'],[15,'Orientada'],[0,'Iniciada']],
     note: 'Continuidad, escucha y capacidad de seguir al solista',
   },
+  repertorio: {
+    guides: [[15,'Dormida'],[30,'Recuperando'],[50,'Disponible'],[65,'Repertorio'],[80,'Sólida'],[90,'Escena'],[97,'Excepcional']],
+    stages: [[97,'Excepcional'],[90,'De escena'],[80,'Sólida'],[72,'Fiable'],[60,'En repertorio'],[45,'Disponible'],[30,'En recuperación'],[15,'Dormida'],[0,'Fuera de forma']],
+    note: 'Estado actual de una obra que ya forma parte de tu repertorio',
+  },
+  pase: {
+    guides: [[15,'Se para'],[35,'Con cortes'],[60,'Continuo'],[80,'Sólido'],[95,'De escena']],
+    stages: [[97,'Excepcional'],[90,'Pase de escena'],[80,'Pase sólido'],[72,'Fiable'],[60,'Continuo'],[45,'Completo con tensión'],[30,'Con cortes'],[15,'Se interrumpe'],[0,'No arranca']],
+    note: 'Resultado de este pase: continuidad, control y respuesta bajo presión',
+  },
 };
 
 function paseNormalizeProfile(value) {
   const normalized = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  if (/^pase$|pass|performance/.test(normalized)) return 'pase';
+  if (/repertorio|repertoire|recuper/.test(normalized)) return 'repertorio';
   if (/acompan|reduccion|reduction/.test(normalized)) return 'acompanamiento';
   if (/camara|chamber|ensemble/.test(normalized)) return 'camara';
   return 'solo';
 }
 
-function paseWorkRatingProfile(obra) {
+function paseWorkRatingProfile(obra, surface) {
+  if (surface === 'pase') return 'pase';
   if (!obra) return 'solo';
   const explicit = [obra.repertoireCategory, obra.categoria, obra.category, obra.tipoObra, obra.instrumentation, obra.instrumentacion, obra.tipo]
     .filter(Boolean).join(' ');
@@ -4492,7 +4505,7 @@ function paseWorkRatingProfile(obra) {
     if (match?.category === 'acompanamiento') return 'acompanamiento';
     if (match?.category === 'camara') return 'camara';
   } catch (error) {}
-  return 'solo';
+  return paseWorkStudyContext(obra.id).isRepertoire ? 'repertorio' : 'solo';
 }
 
 function paseWorkStudyContext(obraId) {
@@ -4518,7 +4531,25 @@ function paseWorkStudyContext(obraId) {
   const meaningful = totalMinutes >= 60 || evidence.length >= 2;
   const meaningfullyRecent = recentMinutes >= 60 || recent.length >= 2;
   const state = !meaningful ? 'nueva' : (!meaningfullyRecent ? 'larga-pausa' : 'trabajada');
-  return { state, cutoffYears, totalMinutes, recentMinutes, sessions: evidence.length, recentSessions: recent.length, lastAt };
+  const obra = findObra(obraId);
+  const entities = obra ? [obra].concat(Array.isArray(obra.movimientos) ? obra.movimientos : []) : [];
+  const hasPass = entities.some(entity => Boolean(entity?.lastPase) || (entity?.paseHistory || []).length > 0);
+  const learned = entities.some(entity => {
+    const stage = String(entity?.learningStage || entity?.estado || '').toLowerCase();
+    if (/consolid|mantenimiento|aprendid|memoriz/.test(stage)) return true;
+    if (Number(entity?.apr) >= 10) return true;
+    const total = Number(entity?.compasesTotal), current = Number(entity?.compasActual);
+    return total > 0 && current >= total;
+  });
+  const performedAtEvent = (db.eventos || []).some(event => {
+    if (!(event?.obras || []).map(String).includes(String(obraId || ''))) return false;
+    const date = new Date(event.fechaFin || event.fecha || 0).getTime();
+    return Number.isFinite(date) && date > 0 && date <= Date.now();
+  });
+  const historical = Boolean(obra?.historicalSourceId) || String(obra?.origen || '').toLowerCase() === 'recuperacion';
+  const manyHours = totalMinutes >= 600 || evidence.length >= 8;
+  const isRepertoire = Boolean(obra && (historical || learned || hasPass || performedAtEvent || manyHours));
+  return { state, cutoffYears, totalMinutes, recentMinutes, sessions: evidence.length, recentSessions: recent.length, lastAt, isRepertoire, historical, learned, hasPass, performedAtEvent, manyHours };
 }
 
 function paseProfileDefinition(profile) {
@@ -15335,6 +15366,7 @@ function buildPaseScoreBtns() {
   row.innerHTML = paseLiquidMeterHtml({
     id: 'paseQMeter', inputId: 'paseQPercent', value: paseQualitySelectedPct,
     previous: paseQualityPreviousPct,
+    ratingProfile: 'pase',
     oninput: 'selectPasePct(this.value,this)', onchange: 'paseLiquidCommitHaptic()',
   });
 }
@@ -15686,7 +15718,7 @@ function cronoPaseAdvanceToDetails() {
   document.getElementById('cronoPaseSelectStage').hidden = true;
   document.getElementById('cronoPaseDetailStage').hidden = false;
   document.getElementById('cronoPaseModalTitle').textContent = '¿Cómo ha salido cada pase?';
-  document.getElementById('cronoPaseModalSub').textContent = 'Valora cada obra antes de guardar.';
+  document.getElementById('cronoPaseModalSub').textContent = 'Cada tarjeta es un pase. Ajusta resultado, duración y fallos con espacio.';
   cronoPaseRender();
 }
 
@@ -15783,16 +15815,15 @@ function cronoPaseRender() {
     const meter = paseLiquidMeterHtml({
       value: it.solidezPct,
       previous: it.previousPct,
-      compact: true,
+      ratingProfile: 'pase',
       oninput: 'cronoPaseSetPct(\'' + it.key + '\',this.value,this)',
       onchange: 'paseLiquidCommitHaptic()',
     });
     return '<div class="crono-pase-item">' +
       '<div class="crono-pase-item-top">' +
         '<div class="crono-pase-item-name">' + escapeHtmlSafe(it.name) + '<small>Pase ' + (it.passNumber || groupIndex + 1) + ' de ' + (group.items.length || 1) + '</small></div>' +
-        '<input class="crono-pase-min" type="number" min="1" max="180" step="1" value="' + it.minutes + '" onchange="cronoPaseSetMinutes(\'' + it.key + '\',this.value)" oninput="cronoPaseSetMinutes(\'' + it.key + '\',this.value)" aria-label="Minutos">' +
-        '<span class="crono-pase-min-label">min</span>' +
-        '<button type="button" class="crono-pase-remove" onclick="cronoPaseRemove(\'' + it.key + '\')" aria-label="Quitar">×</button>' +
+        '<div class="crono-pase-item-tools"><label class="crono-pase-duration"><span>Duración</span><input class="crono-pase-min" type="number" min="1" max="180" step="1" value="' + it.minutes + '" onchange="cronoPaseSetMinutes(\'' + it.key + '\',this.value)" oninput="cronoPaseSetMinutes(\'' + it.key + '\',this.value)" aria-label="Minutos"><em>min</em></label>' +
+        '<button type="button" class="crono-pase-remove" onclick="cronoPaseRemove(\'' + it.key + '\')" aria-label="Quitar pase">×</button></div>' +
       '</div>' +
       (groupIndex === 0
         ? '<label class="crono-pase-count"><span>N de pases de esta obra</span><input type="number" min="1" max="20" step="1" value="' + (group.items.length || 1) + '" onchange="cronoPaseSetCount(\'' + group.targetKey + '\',this.value)" oninput="cronoPaseSetCount(\'' + group.targetKey + '\',this.value)" aria-label="Numero de pases"></label>'

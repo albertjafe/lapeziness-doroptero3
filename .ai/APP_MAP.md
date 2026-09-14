@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-14 · caché runtime v380
+**Estado:** CANÓNICO · actualizado 2026-09-14 · caché runtime v381
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -338,9 +338,9 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- Caché actual `estudio-v380`: `app.js`, `german-study.js`, `timer-objectives.js` y `habit-trophies.js/css` usan v380; los módulos no modificados conservan su URL anterior. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
+- Caché actual `estudio-v381`: `app.js`, `styles.css`, `piano-rooms.js`, `work-structure-catalog.js` y `ensemble-repertoire-catalog.js` usan v381; los módulos no modificados conservan su URL anterior. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v380 en Ajustes; v380 es el límite de caché PWA actual.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v381 en Ajustes; v381 es el límite de caché PWA actual.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
