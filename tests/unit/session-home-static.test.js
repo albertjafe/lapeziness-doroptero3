@@ -105,7 +105,9 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain("'·'+micro");
     expect(cronoPremium).toContain('cronoPianoMultiplierMeter');
     expect(cronoPremium).toContain('cronoMultiplierLevelUp');
-    expect(cronoPremium).toContain('combined=normal*excellent');
+    expect(cronoPremium).toContain('function rewardTierState');
+    expect(cronoPremium).toContain('(seconds-startSeconds)/span*100');
+    expect(cronoPremium).toContain('slope/firstSlope');
     expect(cronoPremium).toContain('.crono-piano-money > footer');
   });
 
@@ -116,11 +118,11 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain('__earnedCentFloor');
   });
 
-  it('ships the complete v394 runtime offline', () => {
+  it('ships the complete v395 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('app.js?v=384');
     expect(index).toContain('piano-rewards.js?v=384');
-    expect(worker).toContain("const CACHE = 'estudio-v394'");
+    expect(worker).toContain("const CACHE = 'estudio-v395'");
     expect(worker).toContain('"./piano-rewards.js?v=384"');
     expect(worker).toContain('"./crono-running-premium.js?v=342"');
     expect(worker).toContain('"./session-home.css?v=374"');
