@@ -7,6 +7,7 @@ const index = fs.readFileSync('index.html', 'utf8');
 const styles = fs.readFileSync('session-home.css', 'utf8');
 const resumeLayout = fs.readFileSync('crono-resume-layout.css', 'utf8');
 const desktopWorkspace = fs.readFileSync('desktop-workspace.css', 'utf8');
+const desktopCalendar = fs.readFileSync('desktop-calendar-v389.css', 'utf8');
 const trophiesStyles = fs.readFileSync('habit-trophies.css', 'utf8');
 const worker = fs.readFileSync('sw.js', 'utf8');
 
@@ -77,17 +78,23 @@ describe('focused session home', () => {
     expect(desktopWorkspace).toContain('body[data-view="calendario"]');
     expect(desktopWorkspace).toContain('.mes-dot::after');
     expect(desktopWorkspace).not.toContain('html:not(.platform-windows)');
+    expect(desktopCalendar).toContain('grid-template-rows: none');
+    expect(desktopCalendar).toContain('grid-auto-rows: clamp(88px');
+    expect(desktopCalendar).toContain('.mes-cell-num');
+    expect(desktopCalendar).not.toContain('html:not(.platform-windows)');
     expect(trophiesStyles).toContain("@import url('./desktop-workspace.css?v=388')");
+    expect(trophiesStyles).toContain("@import url('./desktop-calendar-v389.css?v=389')");
   });
 
-  it('ships the complete v388 runtime offline', () => {
+  it('ships the complete v389 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('app.js?v=384');
     expect(index).toContain('piano-rewards.js?v=384');
-    expect(worker).toContain("const CACHE = 'estudio-v388'");
+    expect(worker).toContain("const CACHE = 'estudio-v389'");
     expect(worker).toContain('"./piano-rewards.js?v=384"');
     expect(worker).toContain('"./session-home.css?v=374"');
     expect(worker).toContain('"./crono-resume-layout.css?v=342"');
     expect(worker).toContain('"./desktop-workspace.css?v=388"');
+    expect(worker).toContain('"./desktop-calendar-v389.css?v=389"');
   });
 });
