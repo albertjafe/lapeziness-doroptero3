@@ -159,6 +159,74 @@
     el.setAttribute('aria-label',readable);
   }
 
+  /* El saldo visible nunca redondea hacia arriba. La economía sigue trabajando
+     en microeuros; aquí sólo convertimos a céntimos COMPLETAMENTE ganados. */
+  function floorToEarnedCents(value){
+    const micros=Math.max(0,Math.round((Number(value)||0)*1e6));
+    const wholeCents=Math.floor(micros/10000);
+    return wholeCents/100;
+  }
+
+  function formatEarnedCents(value){
+    return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(floorToEarnedCents(value));
+  }
+
+  function formatTargetCents(value){
+    return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Math.max(0,Number(value)||0));
+  }
+
+  function refreshGoalBalanceDisplay(){
+    try{
+      if(typeof PianoRewards==='undefined' || typeof GermanRewards==='undefined' || typeof db==='undefined') return;
+      const german=db.germanStudy||{};
+      const goals=Array.isArray(german.goals)?german.goals:[];
+      const germanRows=GermanRewards.ledger(Array.isArray(german.sessions)?german.sessions:[],goals);
+      const rewardState=PianoRewards.ensure(db);
+      const date=PianoRewards.dayKey();
+
+      const idleGoal=PianoRewards.activeGoal(db);
+      const idleBalance=document.getElementById('cronoPianoIdleGoalBalance');
+      if(idleGoal && idleBalance){
+        const idleLive=PianoRewards.live(rewardState,goals,idleGoal.id,0,date,germanRows);
+        const earned=Math.max(0,idleGoal.amount-idleLive.goalRemaining);
+        idleBalance.textContent=formatEarnedCents(earned)+' € de '+formatTargetCents(idleGoal.amount)+' €';
+      }
+
+      const activeBalance=document.getElementById('cronoPianoGoalBalance');
+      if(activeBalance && typeof crono!=='undefined' && crono.rewardGoalId){
+        const goal=goals.find(item=>item && item.id===crono.rewardGoalId && !item.deletedAt);
+        if(goal){
+          const elapsed=typeof cronoEffectiveElapsedMs==='function'?Math.max(0,cronoEffectiveElapsedMs()/1000):0;
+          const live=PianoRewards.live(
+            rewardState,
+            goals,
+            crono.rewardGoalId,
+            elapsed,
+            date,
+            germanRows,
+            crono.rewardPolicyVersion || PianoRewards.CONFIG.version
+          );
+          const earned=Math.max(0,goal.amount-live.goalRemaining);
+          activeBalance.textContent=formatEarnedCents(earned)+' € / '+formatTargetCents(goal.amount)+' €';
+        }
+      }
+    }catch(error){}
+  }
+
+  function installRewardUpdateWrapper(){
+    try{
+      if(typeof cronoUpdatePianoReward!=='function' || cronoUpdatePianoReward.__earnedCentFloor) return;
+      const original=cronoUpdatePianoReward;
+      const wrapped=function(){
+        const result=original.apply(this,arguments);
+        refreshGoalBalanceDisplay();
+        return result;
+      };
+      wrapped.__earnedCentFloor=true;
+      cronoUpdatePianoReward=wrapped;
+    }catch(error){}
+  }
+
   function ensureMultiplierMeter(){
     const meter=document.getElementById('cronoPianoMoney');
     if(!meter) return null;
@@ -229,6 +297,7 @@
     taximeterQueued=false;
     installTaximeterStyles();
     formatMoneyDisplay();
+    refreshGoalBalanceDisplay();
     refreshMultiplier();
   }
 
@@ -243,6 +312,7 @@
     const value=document.getElementById('cronoPianoMoneyValue');
     if(!meter || !value){ setTimeout(bootTaximeter,140); return; }
     installTaximeterStyles();
+    installRewardUpdateWrapper();
     ensureMultiplierMeter();
     scheduleTaximeter();
     new MutationObserver(scheduleTaximeter).observe(value,{childList:true,subtree:true,characterData:true});
