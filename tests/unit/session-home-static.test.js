@@ -6,6 +6,8 @@ const dashboard = fs.readFileSync('reservation-dashboard.js', 'utf8');
 const index = fs.readFileSync('index.html', 'utf8');
 const styles = fs.readFileSync('session-home.css', 'utf8');
 const resumeLayout = fs.readFileSync('crono-resume-layout.css', 'utf8');
+const desktopWorkspace = fs.readFileSync('desktop-workspace.css', 'utf8');
+const trophiesStyles = fs.readFileSync('habit-trophies.css', 'utf8');
 const worker = fs.readFileSync('sw.js', 'utf8');
 
 describe('focused session home', () => {
@@ -70,16 +72,22 @@ describe('focused session home', () => {
     expect(resumeLayout).toContain('html.platform-windows body.crono-focus #view-cronometro');
     expect(resumeLayout).toContain('html.platform-windows body[data-view="obras"] #view-obras');
     expect(resumeLayout).toContain('#reservationDashboardContent:not([hidden])');
-    expect(resumeLayout).toContain('@media (min-width: 1200px)');
+    expect(desktopWorkspace).toContain('html.platform-windows');
+    expect(desktopWorkspace).toContain('--desktop-rail-width: 124px');
+    expect(desktopWorkspace).toContain('body[data-view="calendario"]');
+    expect(desktopWorkspace).toContain('.mes-dot::after');
+    expect(desktopWorkspace).not.toContain('html:not(.platform-windows)');
+    expect(trophiesStyles).toContain("@import url('./desktop-workspace.css?v=388')");
   });
 
-  it('ships the complete v387 runtime offline', () => {
+  it('ships the complete v388 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('app.js?v=384');
     expect(index).toContain('piano-rewards.js?v=384');
-    expect(worker).toContain("const CACHE = 'estudio-v387'");
+    expect(worker).toContain("const CACHE = 'estudio-v388'");
     expect(worker).toContain('"./piano-rewards.js?v=384"');
     expect(worker).toContain('"./session-home.css?v=374"');
     expect(worker).toContain('"./crono-resume-layout.css?v=342"');
+    expect(worker).toContain('"./desktop-workspace.css?v=388"');
   });
 });
