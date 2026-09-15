@@ -93,7 +93,7 @@ Esquema formal: [`german-study-pack.v1.schema.json`](german-study-pack.v1.schema
   "metadata": { "title": "Clase de septiembre", "teacher": "Regine" },
   "cards": [
     { "type": "de_es", "front": "der Bahnhof", "back": "la estación de tren", "tags": ["viajes"] },
-    { "type": "cloze", "front": "Ich ___ am Bahnhof. (warten)", "back": "warte", "tags": ["verbos"] }
+    { "type": "cloze", "front": "Ich ___ am Bahnhof. (warten)", "back": "warte" }
   ],
   "exercises": []
 }
@@ -131,6 +131,8 @@ La programación SRS se deriva de las revisiones ordenadas por instante e ID: co
 
 Runtime v385: scripts y CSS de Deutsch y el taxímetro de piano cargados desde `index.html` y precacheados; `update-safety.js` bloquea promociones mientras haya sesión local abierta, incluso antes de cargar el addon. `update.html` también protege esa recuperación. Mantiene el lifecycle seguro y las versiones anteriores de assets no modificados.
 
-Pruebas: `tests/unit/german-study.test.js`, `tests/unit/piano-rewards.test.js`, regresiones en `document-postgres`, `update-safety-v2` y `service-worker-audit`; `tests/e2e/german-study.spec.js` y `tests/e2e/piano-rewards.spec.js` cubren la UI y el taxímetro. Ejecutar `npm run check`, `npm run test:unit`, `npm run test:e2e` y `npm run test:visual`. El repositorio conserva una lista explícita de fallos E2E anteriores en `scripts/check-e2e-known-baseline.cjs`; no se deben confundir con regresiones nuevas.
+Pruebas: `tests/unit/german-study.test.js`, `tests/unit/piano-rewards.test.js`, nuevas regresiones en `document-postgres`, `update-safety-v2` y `service-worker-audit`; `tests/e2e/german-study.spec.js` cubre UI completa, importar/duplicados/XSS, umbral, recarga/borrador, locks, objetivos, móvil y PWA offline. Ejecutar `npm run check`, `npm run test:unit`, `npm run test:e2e` y `npm run test:visual`. El repositorio conserva una lista explícita de fallos E2E anteriores en `scripts/check-e2e-known-baseline.cjs`; no se deben confundir con regresiones de Deutsch.
 
-La validación histórica del runtime v384 permanece documentada en el historial del repositorio. Para v385, las pruebas nuevas fijan específicamente la curva v3, la compatibilidad v1/v2, la racha de 4 h, la congelación por descanso, el reinicio por día incompleto y el salto retroactivo del día al cruzar las 4 h.
+Validación local del 2026-09-12: runtime **107 assets**; unit **431/431**; Deutsch E2E **8/8**; visual **4/4**. Batería E2E general: **129/144**, con 14 fallos incluidos en el baseline existente y un fallo de temporización en `professor-file-transfer` que pasó al repetir su spec aisladamente (**1/1**). No se han eliminado pruebas ni ampliado el baseline para ocultarlos. Tras el último ajuste del guardado de respuestas se repitieron las 80 unit de Deutsch/PostgreSQL/UpdateSafety y los 8 E2E de Deutsch, todos aprobados. La sincronización real de producción no se modificó ni se escribieron datos reales para estas pruebas.
+
+Para v385, las pruebas nuevas fijan específicamente la curva v3, la compatibilidad v1/v2, la racha de 4 h, la congelación por descanso, el reinicio por día incompleto y el salto retroactivo del día al cruzar las 4 h.
