@@ -1112,7 +1112,7 @@ test('shows a derived readiness estimate without counting down during a timer ru
     cronoRender();
   });
   const running = page.locator('#cronoRunReadiness');
-  await expect(running).toBeVisible();
+  await expect(running).toBeHidden();
   expect((await running.textContent()).trim()).toContain(idleText);
   await page.evaluate(() => { cronoPause(); cronoResume(); });
   expect((await running.textContent()).trim()).toContain(idleText);

@@ -1,6 +1,6 @@
 import {test,expect} from '@playwright/test';
 
-test('piano taximeter remains legible inside the running clock',async({page},testInfo)=>{
+test('piano taximeter remains legible below Destellos',async({page},testInfo)=>{
   await page.setViewportSize({width:1024,height:1194});
   await page.route('https://cdn.jsdelivr.net/**',route=>route.fulfill({status:200,contentType:'application/javascript',body:'/* isolated */'}));
   await page.addInitScript(()=>{
@@ -17,11 +17,13 @@ test('piano taximeter remains legible inside the running clock',async({page},tes
   await page.evaluate(()=>{
     showView('cronometro');
     crono.state='running';crono.mode='stopwatch';crono.runId='visual-run';crono.isRest=false;
-    crono.obraId='rach';crono.displayName='Concierto n.º 3';crono.subName='Rachmaninov';crono.rewardGoalId='ebook';
+    crono.obraId='rach';crono.displayName='Concierto n.º 3';crono.subName='Rachmaninov';crono.rewardGoalId='ebook';crono.rewardPolicyVersion=2;
     crono.startTs=Date.now()-(5*60+15)*60000;
     cronoRender();
   });
   await expect(page.locator('#cronoPianoMoney')).toBeVisible();
+  await expect(page.locator('#cronoRunWorkTotalWrap')).toBeHidden();
+  await expect(page.locator('#cronoRunReadiness')).toBeHidden();
   await expect(page.locator('#cronoPianoMoneyValue')).not.toHaveText('0,000000 €');
   await page.screenshot({path:testInfo.outputPath('piano-taximeter.png'),fullPage:true});
 });

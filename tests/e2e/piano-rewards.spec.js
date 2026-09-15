@@ -9,8 +9,8 @@ const fixture={
   }
 };
 
-async function prepare(page){
-  await page.setViewportSize({width:1024,height:1194});
+async function prepare(page,viewport={width:1024,height:1194}){
+  await page.setViewportSize(viewport);
   await page.route('https://cdn.jsdelivr.net/**',route=>route.fulfill({status:200,contentType:'application/javascript',body:'/* isolated */'}));
   await page.addInitScript(data=>{
     localStorage.setItem('alberto_piano_v2',JSON.stringify(data));
@@ -25,22 +25,44 @@ async function prepare(page){
   });
 }
 
+test('the taximeter card stays complete on a phone and a landscape tablet',async({page})=>{
+  await prepare(page,{width:390,height:844});
+  await page.evaluate(()=>cronoStart());
+  for (const viewport of [{width:390,height:844},{width:1024,height:768},{width:1180,height:820}]) {
+    await page.setViewportSize(viewport);
+    const geometry=await page.locator('#cronoPianoMoney').evaluate(el=>{
+      const meter=el.getBoundingClientRect(),stage=document.getElementById('cronoStageRun').getBoundingClientRect();
+      return {left:meter.left,right:meter.right,bottom:meter.bottom,stageLeft:stage.left,stageRight:stage.right,stageBottom:stage.bottom,scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth};
+    });
+    expect(geometry.left).toBeGreaterThanOrEqual(geometry.stageLeft-1);
+    expect(geometry.right).toBeLessThanOrEqual(geometry.stageRight+1);
+    expect(geometry.bottom).toBeLessThanOrEqual(geometry.stageBottom+1);
+    expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.viewport+1);
+  }
+  await expect(page.locator('#cronoPianoMoneyTier')).toContainText('Tramo');
+});
+
 test('the piano stopwatch shows a progressive live taximeter and saves it once',async({page})=>{
   await prepare(page);
+  await expect(page.locator('#cronoPianoGoalIdle')).toContainText('E-book');
+  await page.locator('#cronoPianoGoalIdle').click();
+  await expect(page.locator('#germanSharedGoal')).toContainText('E-book');
+  await page.evaluate(()=>showView('cronometro'));
   await page.clock.install();
   await page.evaluate(()=>cronoStart());
   await expect(page.locator('#cronoPianoMoney')).toBeVisible();
-  await expect(page.locator('#cronoPianoMoneyNext')).toContainText('Se guarda al completar 10 min');
+  await expect(page.locator('#cronoPianoMoneyNext')).toContainText('Se guarda a los 10 min');
   const before=await page.locator('#cronoPianoMoneyValue').innerText();
   await page.clock.runFor(2000);
   await expect.poll(()=>page.locator('#cronoPianoMoneyValue').innerText()).not.toBe(before);
 
   const geometry=await page.locator('#cronoPianoMoney').evaluate(el=>{
-    const meter=el.getBoundingClientRect(),ring=document.getElementById('cronoDisplayWrap').getBoundingClientRect();
-    return {left:meter.left,right:meter.right,ringLeft:ring.left,ringRight:ring.right,scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth};
+    const meter=el.getBoundingClientRect(),stage=document.getElementById('cronoStageRun').getBoundingClientRect(),destello=document.getElementById('cronoRunDestello').getBoundingClientRect();
+    return {left:meter.left,right:meter.right,top:meter.top,stageLeft:stage.left,stageRight:stage.right,destelloBottom:destello.bottom,scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth};
   });
-  expect(geometry.left).toBeGreaterThanOrEqual(geometry.ringLeft);
-  expect(geometry.right).toBeLessThanOrEqual(geometry.ringRight);
+  expect(geometry.left).toBeGreaterThanOrEqual(geometry.stageLeft);
+  expect(geometry.right).toBeLessThanOrEqual(geometry.stageRight);
+  expect(geometry.top).toBeGreaterThanOrEqual(geometry.destelloBottom-1);
   expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.viewport+1);
 
   await page.evaluate(()=>{

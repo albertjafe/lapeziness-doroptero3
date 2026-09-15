@@ -10,7 +10,7 @@
   const minutes=n=>Math.floor((n || 0)/60)+' min';
   const interval=n=>n<1?(Math.max(1,Math.round(n*1440))+' min'):n<2?'1 día':Math.round(n)+' días';
   const typeLabels={de_es:'Alemán → español',es_de:'Español → alemán',expression:'Expresión',grammar:'Estructura gramatical',question_answer:'Pregunta y respuesta',cloze:'Completa el hueco',fill_blank:'Completa el hueco',translation:'Traducción',conjugation:'Conjugación',short_answer:'Respuesta breve',free_write:'Escritura libre'};
-  let deviceId, activeId=null, panel='dashboard', lastTick=Date.now(), lastInteraction=Date.now(), lastSave=0;
+  let deviceId, activeId=null, panel='dashboard', editingGoalId=null, deletingGoalId=null, lastTick=Date.now(), lastInteraction=Date.now(), lastSave=0;
   let releaseLock=null, ownsLock=false, busy=false, qualifiedBefore=false, error='';
   const lockToken=uid();
   try {deviceId=localStorage.getItem('german_device_v1');if (!deviceId) {deviceId=uid();localStorage.setItem('german_device_v1',deviceId);}} catch {deviceId=uid();}
@@ -21,12 +21,18 @@
   };
   function activeGoal() {
     // Concurrent offline creations are queued deterministically, never both active.
-    return state().goals.filter(g=>!g.archivedAt).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id))[0];
+    return state().goals.filter(g=>!g.archivedAt&&!g.deletedAt).sort((a,b)=>a.createdAt.localeCompare(b.createdAt)||a.id.localeCompare(b.id))[0];
+  }
+  function sharedGoalSessionActive(goalId) {
+    const germanActive=state().sessions.some(s=>s.goalId===goalId&&!s.endedAt);
+    const pianoActive=root.crono && root.crono.state!=='idle' && !root.crono.isRest && root.crono.rewardGoalId===goalId;
+    return Boolean(germanActive || pianoActive);
   }
   function message(text) { error=text;const el=document.getElementById('germanError');if(el) {el.textContent=text;el.hidden=!text;} }
   function persist() {
     state().ledger=entries();
     if (saveData()===false) {const s=current();if(s) s.status='paused';if(panel==='study')render();throw new Error('No se ha podido guardar. La sesión está pausada; libera espacio y pulsa Reintentar guardado.');}
+    if(typeof root.cronoUpdatePianoReward==='function')root.cronoUpdatePianoReward();
     lastSave=Date.now();
   }
   async function lock() {
@@ -70,11 +76,16 @@
   }
   function pause() {const s=current();if(s && ownsLock) {advance();s.status='paused';persist();} }
   function goalCard(goal,ledger) {
-    if (!goal) return `<section class="german-card german-goal"><span class="german-eyebrow">TU PRÓXIMO OBJETIVO</span><h2>Un motivo para volver mañana.</h2><p>Convierte tu alemán en una hucha virtual. Tú eliges la recompensa.</p>${goalForm()}</section>`;
+    if (!goal) return `<section class="german-card german-goal" id="germanSharedGoal"><span class="german-eyebrow">TU PRÓXIMO OBJETIVO</span><h2>Un motivo para volver mañana.</h2><p>Convierte tu alemán y tu piano en una hucha virtual. Tú eliges la recompensa.</p>${goalForm()}</section>`;
+    if (editingGoalId===goal.id) return `<section class="german-card german-goal is-editing" id="germanSharedGoal"><span class="german-eyebrow">EDITAR OBJETIVO COMPARTIDO</span><h2>Ajusta el nombre o el precio.</h2><p>El nuevo importe se aplica al saldo calculado desde tus sesiones conservadas.</p>${goalForm(goal)}</section>`;
+    if (deletingGoalId===goal.id) {
+      const blocked=sharedGoalSessionActive(goal.id);
+      return `<section class="german-card german-goal is-deleting" id="germanSharedGoal"><span class="german-eyebrow">ELIMINAR OBJETIVO</span><h2>¿Eliminar ${esc(goal.name)}?</h2><p>El objetivo y su saldo dejarán de aparecer. Las sesiones de alemán y piano se conservan en el historial interno.</p>${blocked?'<p class="german-goal-warning">Termina primero la sesión que está aportando a este objetivo.</p>':''}<div class="german-goal-confirm"><button data-action="cancel-delete-goal">Cancelar</button><button class="german-danger" data-action="confirm-delete-goal" data-id="${esc(goal.id)}" ${blocked?'disabled':''}>Eliminar definitivamente</button></div></section>`;
+    }
     const progress=R.goalProgress(goal,ledger,state().sessions), percent=Math.min(100,progress.amount/goal.amount*100);
-    return `<section class="german-card german-goal"><span class="german-eyebrow">${progress.complete?'OBJETIVO CONSEGUIDO ✨':'TU OBJETIVO COMPARTIDO'}</span><h2>${esc(goal.name)}</h2><div class="german-balance">${euro(progress.amount)} <small>/ ${euro(goal.amount)}</small></div><progress aria-label="Progreso del objetivo" max="100" value="${percent}"></progress><p>${percent.toFixed(1).replace('.',',')} % · Alemán y piano suman en la misma hucha</p>${progress.complete?`<p>Conseguido el ${esc(progress.completedOn)} · ${minutes(progress.seconds)} de estudio invertidos.</p><button data-action="archive" ${current()?'disabled':''}>Archivar y crear otro objetivo</button>${current()?'<p>Termina la sesión antes de archivar.</p>':''}`:''}</section>`;
+    return `<section class="german-card german-goal" id="germanSharedGoal"><span class="german-eyebrow">${progress.complete?'OBJETIVO CONSEGUIDO ✨':'TU OBJETIVO COMPARTIDO'}</span><h2>${esc(goal.name)}</h2><div class="german-balance">${euro(progress.amount)} <small>/ ${euro(goal.amount)}</small></div><progress aria-label="Progreso del objetivo" max="100" value="${percent}"></progress><p>${percent.toFixed(1).replace('.',',')} % · Alemán y piano suman en la misma hucha</p><div class="german-goal-actions"><button data-action="edit-goal" data-id="${esc(goal.id)}">Editar objetivo</button><button class="german-danger-link" data-action="delete-goal" data-id="${esc(goal.id)}">Eliminar objetivo</button>${progress.complete?`<button data-action="archive" ${sharedGoalSessionActive(goal.id)?'disabled':''}>Archivar y crear otro objetivo</button>`:''}</div>${progress.complete?`<p>Conseguido el ${esc(progress.completedOn)} · ${minutes(progress.seconds)} de estudio invertidos.</p>${sharedGoalSessionActive(goal.id)?'<p>Termina la sesión antes de archivar.</p>':''}`:''}</section>`;
   }
-  function goalForm() {return `<form id="germanGoalForm" class="german-form"><label>Nombre del objetivo<input name="name" required maxlength="80" placeholder="Kindle" autocomplete="off"></label><label>Importe (€)<input name="amount" type="number" min="0.01" max="100000000" step="0.01" required value="150"></label><button class="german-primary" type="submit">Crear objetivo</button></form>`;}
+  function goalForm(goal=null) {return `<form id="germanGoalForm" class="german-form"${goal?` data-goal-id="${esc(goal.id)}"`:''}><label>Nombre del objetivo<input name="name" required maxlength="80" placeholder="Kindle" autocomplete="off" value="${esc(goal?.name || '')}"></label><label>Importe (€)<input name="amount" type="number" min="0.01" max="100000000" step="0.01" required value="${esc(goal?.amount ?? 150)}"></label><div class="german-goal-form-actions">${goal?'<button type="button" data-action="cancel-goal-edit">Cancelar</button>':''}<button class="german-primary" type="submit">${goal?'Guardar cambios':'Crear objetivo'}</button></div></form>`;}
   function deckStats(material) {
     const states=material.cards.map(c=>S.cardState(c.id,state().reviews)),now=Date.now();
     return {newCount:states.filter(s=>!s.reviews).length,dueCount:states.filter(s=>s.nextReview && Date.parse(s.nextReview)<=now).length};
@@ -88,7 +99,8 @@
   }
   function dashboard() {
     const st=state(),today=R.dayKey(), totals=R.summarizeDays(st.sessions), streak=R.streakStats(st.sessions,today), ledger=entries(), goal=activeGoal();
-    const earned=ledger.filter(e=>e.date===today).reduce((n,e)=>n+e.finalReward,0);
+    const visibleGoalIds=new Set(st.goals.filter(g=>!g.deletedAt).map(g=>g.id));
+    const earned=ledger.filter(e=>e.date===today&&visibleGoalIds.has(e.goalId)).reduce((n,e)=>n+e.finalReward,0);
     const weekStart=R.shiftDay(today,-((new Date().getDay()+6)%7));
     const week=Object.entries(totals).filter(([d])=>d>=weekStart && d<=today).reduce((n,[,s])=>n+s,0);
     const cards=st.materials.flatMap(m=>m.cards);
@@ -100,7 +112,7 @@
     return `<section class="german-launch"><div><span class="german-eyebrow">REPASO ESPACIADO</span><h1>Una app sencilla para recordar tu alemán.</h1><p>${due} tarjetas para repasar · ${fresh} nuevas. Elige todas o entra en una clase concreta.</p></div><div class="german-launch-actions"><button class="german-primary" data-action="${session?'resume':'start'}">${session?'Continuar sesión':'Estudiar tarjetas'}</button><button data-action="free" ${session?'disabled':''}>Estudio libre</button></div><p class="german-muted">En estudio libre puedes hacer fichas, escuchar alemán o trabajar fuera de la app. El mismo taxímetro seguirá contando.</p></section>
       <section class="german-dashboard-meter" aria-label="Resumen del taxímetro"><div><span>Hoy</span><strong>${time(totals[today])}</strong></div><div><span>Hucha de hoy</span><strong>${euro(earned,3)}${pending?' pendiente':''}</strong></div><div><span>Racha</span><strong>${streak.current} días</strong></div></section>
       ${decks()}${importer()}${goalCard(goal,ledger)}
-      <details class="german-card german-history"><summary>Actividad e historial</summary><div class="german-activity" aria-label="Actividad de los últimos 14 días">${Array.from({length:14},(_,i)=>{const day=R.shiftDay(today,i-13),seconds=totals[day] || 0;return `<div class="${seconds>=MIN?'done':seconds?'partial':''}" title="${day}: ${minutes(seconds)}" aria-label="${day}: ${minutes(seconds)}"><span>${day.slice(8)}</span></div>`;}).join('')}</div><p class="german-muted">${st.reviews.filter(r=>r.cardId).length} tarjetas revisadas · ${minutes(week)} esta semana · mejor racha: ${streak.best} días.</p>${st.goals.filter(g=>g.archivedAt).map(g=>{const p=R.goalProgress(g,ledger,st.sessions);return `<p><strong>${esc(g.name)}</strong> · ${euro(p.amount)} / ${euro(g.amount)} · ${esc(p.completedOn || 'En progreso')}</p>`;}).join('')}<div class="german-ledger">${ledger.slice(-30).reverse().map(e=>`<p>${esc(e.date)} · ${e.source==='piano'?'Piano':'Alemán'} · ${minutes(e.duration)} · ${euro(e.finalReward,3)} ${e.qualified?'':'(pendiente)'}</p>`).join('')}</div><button data-action="export-ledger">Descargar historial completo</button></details>`;
+      <details class="german-card german-history"><summary>Actividad e historial</summary><div class="german-activity" aria-label="Actividad de los últimos 14 días">${Array.from({length:14},(_,i)=>{const day=R.shiftDay(today,i-13),seconds=totals[day] || 0;return `<div class="${seconds>=MIN?'done':seconds?'partial':''}" title="${day}: ${minutes(seconds)}" aria-label="${day}: ${minutes(seconds)}"><span>${day.slice(8)}</span></div>`;}).join('')}</div><p class="german-muted">${st.reviews.filter(r=>r.cardId).length} tarjetas revisadas · ${minutes(week)} esta semana · mejor racha: ${streak.best} días.</p>${st.goals.filter(g=>g.archivedAt&&!g.deletedAt).map(g=>{const p=R.goalProgress(g,ledger,st.sessions);return `<p><strong>${esc(g.name)}</strong> · ${euro(p.amount)} / ${euro(g.amount)} · ${esc(p.completedOn || 'En progreso')}</p>`;}).join('')}<div class="german-ledger">${ledger.filter(e=>visibleGoalIds.has(e.goalId)).slice(-30).reverse().map(e=>`<p>${esc(e.date)} · ${e.source==='piano'?'Piano':'Alemán'} · ${minutes(e.duration)} · ${euro(e.finalReward,3)} ${e.qualified?'':'(pendiente)'}</p>`).join('')}</div><button data-action="export-ledger">Descargar historial completo</button></details>`;
   }
   function itemMarkup(s) {
     const item=s.queue[s.index], m=item && state().materials.find(m=>m.id===item.materialId);
@@ -187,8 +199,19 @@
       if (!(await lock())) throw new Error('Termina la sesión desde la otra pestaña.');
       if (s) {advance();T.finish(state(),s.id);persist();activeId=null;}unlock();panel='dashboard';render();return;
     }
+    if (action==='edit-goal') {editingGoalId=id;deletingGoalId=null;render();return;}
+    if (action==='cancel-goal-edit') {editingGoalId=null;render();return;}
+    if (action==='delete-goal') {deletingGoalId=id;editingGoalId=null;render();return;}
+    if (action==='cancel-delete-goal') {deletingGoalId=null;render();return;}
+    if (action==='confirm-delete-goal') {
+      const goal=state().goals.find(item=>item.id===id&&!item.deletedAt);
+      if (!goal)return;
+      if(sharedGoalSessionActive(goal.id))throw new Error('Termina primero la sesión que está aportando a este objetivo.');
+      const now=new Date().toISOString();goal.deletedAt=now;goal.archivedAt=goal.archivedAt||now;goal.updatedAt=now;
+      editingGoalId=deletingGoalId=null;persist();render();return;
+    }
     if (action==='archive') {
-      const goal=activeGoal();if(current())throw new Error('Termina la sesión antes de archivar.');
+      const goal=activeGoal();if(goal&&sharedGoalSessionActive(goal.id))throw new Error('Termina la sesión antes de archivar.');
       if (goal && R.goalProgress(goal,entries(),state().sessions).complete) {goal.archivedAt=new Date().toISOString();persist();render();}return;
     }
     if (action==='example') return download('german-study-pack.v1.json',I.EXAMPLE);
@@ -232,10 +255,18 @@
     view.addEventListener('submit',e=> {
       if(e.target.id!=='germanGoalForm')return;e.preventDefault();
       guarded(()=> {
-        if(activeGoal())throw new Error('Ya hay un objetivo activo.');
         const data=new FormData(e.target),amount=Number(data.get('amount')),name=String(data.get('name')).trim();
         if(!name || !Number.isFinite(amount) || amount<.01 || amount>1e8)throw new Error('Introduce un nombre y un importe válido.');
-        state().goals.push({id:uid(),name,amount:Math.round(amount*100)/100,createdAt:new Date().toISOString(),rewardPolicy:JSON.parse(JSON.stringify(R.CONFIG))});persist();render();
+        const goalId=e.target.dataset.goalId,rounded=Math.round(amount*100)/100,now=new Date().toISOString();
+        if(goalId) {
+          const goal=state().goals.find(item=>item.id===goalId&&!item.deletedAt);
+          if(!goal)throw new Error('Ese objetivo ya no está disponible.');
+          goal.name=name;goal.amount=rounded;goal.updatedAt=now;editingGoalId=null;
+        } else {
+          if(activeGoal())throw new Error('Ya hay un objetivo activo.');
+          state().goals.push({id:uid(),name,amount:rounded,createdAt:now,rewardPolicy:JSON.parse(JSON.stringify(R.CONFIG))});
+        }
+        persist();render();
       });
     });
     view.addEventListener('change',e=> {
@@ -264,6 +295,10 @@
     setInterval(()=> {try {advance();if(visible())updateMeter();}catch(e){message(e.message);}},1000);
     render();
   }
-  root.GermanStudy={hasActiveSession:()=>Boolean(current()),open:()=>showView('deutsch')};
+  function openGoalManager() {
+    showView('deutsch');panel='dashboard';editingGoalId=deletingGoalId=null;render();
+    setTimeout(()=>document.getElementById('germanSharedGoal')?.scrollIntoView({behavior:'smooth',block:'center'}),0);
+  }
+  root.GermanStudy={hasActiveSession:()=>Boolean(current()),open:()=>showView('deutsch'),openGoalManager};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(window);

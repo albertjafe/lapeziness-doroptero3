@@ -106,6 +106,30 @@ test('finished goal can be archived and a new goal preserves reviews and history
   expect(await page.evaluate(()=>({goals:db.germanStudy.goals.length,reviews:db.germanStudy.reviews.length,sessions:db.germanStudy.sessions.length}))).toEqual({goals:2,reviews:1,sessions:1});
 });
 
+test('shared economic goal can be edited and deleted without deleting session evidence',async({page})=>{
+  await prepare(page);await createGoal(page);
+  await page.getByRole('button',{name:'Editar objetivo',exact:true}).click();
+  await page.getByLabel('Nombre del objetivo',{exact:true}).fill('E-reader');
+  await page.getByLabel('Importe (€)',{exact:true}).fill('249.99');
+  await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();
+  await expect(page.locator('#germanSharedGoal')).toContainText('E-reader');
+  expect(await page.evaluate(()=>db.germanStudy.goals[0])).toMatchObject({name:'E-reader',amount:249.99});
+
+  await page.evaluate(()=>{
+    const goalId=db.germanStudy.goals[0].id,now=new Date().toISOString();
+    db.pianoRewards={version:1,sessions:[{id:'kept-piano-session',goalId,startedAt:now,endedAt:now,date:PianoRewards.dayKey(),seconds:1800,policyVersion:2}]};
+    saveData();GermanStudy.openGoalManager();
+  });
+  await page.getByRole('button',{name:'Eliminar objetivo',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'¿Eliminar E-reader?',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Eliminar definitivamente',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Crear objetivo',exact:true})).toBeVisible();
+  const result=await page.evaluate(()=>({goal:db.germanStudy.goals[0],sessions:db.pianoRewards.sessions}));
+  expect(result.goal.deletedAt).toBeTruthy();
+  expect(result.sessions).toHaveLength(1);
+  expect(result.sessions[0].id).toBe('kept-piano-session');
+});
+
 test('free study uses the same taximeter and reloads paused without counting closed time',async({page})=>{
   await prepare(page);await createGoal(page);
   await page.clock.install();

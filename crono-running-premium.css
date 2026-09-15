@@ -1,8 +1,8 @@
 /* Cronómetro en marcha · cabecera legible y sin texto flotando sobre el aro. */
 [data-theme^="marmol"] body.crono-running #view-cronometro #cronoStageRun .crono-run-head {
   align-items:flex-start !important;
-  min-height:76px !important;
-  margin:0 0 10px !important;
+  min-height:44px !important;
+  margin:0 0 5px !important;
   gap:12px !important;
   overflow:visible !important;
 }
@@ -39,10 +39,10 @@
   letter-spacing:-.01em;
 }
 
-/* Las horas dejan de ser una línea microscópica. Cada magnitud es una píldora. */
+/* El tiempo de obra y la predicción salen de la cabecera durante la sesión. */
 [data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunWorkTotalWrap {
   order:2;
-  display:flex !important;
+  display:none !important;
   align-items:center;
   flex-wrap:wrap;
   gap:5px !important;
@@ -83,7 +83,7 @@
   position:static !important;
   inset:auto !important;
   transform:none !important;
-  display:inline-flex;
+  display:none !important;
   align-items:center;
   flex-wrap:wrap;
   gap:4px 6px;
@@ -127,8 +127,8 @@
 
 @media (min-width:900px) and (orientation:landscape) {
   [data-theme^="marmol"] body.crono-running #view-cronometro #cronoStageRun .crono-run-head {
-    min-height:82px !important;
-    margin-bottom:11px !important;
+    min-height:44px !important;
+    margin-bottom:5px !important;
   }
   [data-theme^="marmol"] body.crono-running #view-cronometro #cronoRunName { font-size:16px !important; }
   [data-theme^="marmol"] body.crono-running #view-cronometro #cronoObraPill { max-width:calc(100% - 126px) !important; }
@@ -136,7 +136,7 @@
 
 @media (max-width:699px) {
   [data-theme^="marmol"] body.crono-running #view-cronometro #cronoStageRun .crono-run-head {
-    min-height:72px !important;
+    min-height:44px !important;
     gap:7px !important;
   }
   [data-theme^="marmol"] body.crono-running #view-cronometro #cronoObraPill { max-width:calc(100% - 88px) !important; }

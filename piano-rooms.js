@@ -74,7 +74,7 @@
 
   loadStyle('cronoReadinessLayoutStyles','./crono-readiness-layout.css?v=342');
   loadStyle('cronoIdleHierarchyStyles','./crono-idle-hierarchy.css?v=342');
-  loadStyle('cronoRunningPremiumStyles','./crono-running-premium.css?v=342');
+  loadStyle('cronoRunningPremiumStyles','./crono-running-premium.css?v=384');
   loadStyle('obrasRedesignStyles','./obras-redesign.css?v=342');
   loadStyle('obrasRedesignPolishStyles','./obras-redesign-polish.css?v=342');
   loadStyle('obrasUnifiedLibraryStyles','./obras-unified-library.css?v=342');

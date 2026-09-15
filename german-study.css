@@ -46,3 +46,17 @@
 @media(max-width:680px) { .german-launch-actions,.german-import { grid-template-columns:1fr; }.german-import details { grid-column:auto; }.german-deck { grid-template-columns:48px 1fr; }.german-deck-number { width:44px; }.german-deck-study { grid-column:1/-1; width:100%; }.german-session-controls { position:static; justify-content:center; margin-top:8px; }.german-meter>small { display:block; text-align:center; }.german-dashboard-meter>div { padding:13px 9px; }.german-dashboard-meter strong { font-size:15px; } }
 @media(max-width:430px) { .german-launch { padding:24px 19px; }.german-launch h1 { font-size:35px!important; }.german-dashboard-meter { gap:3px; }.german-deck { padding:15px; gap:12px; }.german-meter { padding:12px; }.german-meter-value { justify-content:flex-start; }.german-money { font-size:39px; }.german-grades { gap:5px; }.german-grades button { padding:9px 2px!important; }.german-card-face h2 { font-size:31px!important; } }
 @media(prefers-reduced-motion:reduce) { .german-meter.qualified .german-money { animation:none; } }
+
+/* Gestor del objetivo económico compartido. */
+.german-goal-actions,.german-goal-form-actions,.german-goal-confirm { display:flex; flex-wrap:wrap; gap:9px; align-items:center; margin-top:18px; }
+.german-goal-form-actions { justify-content:flex-end; margin-top:3px; }
+.german-goal-actions .german-danger-link { border-color:transparent!important; background:transparent!important; color:#b64c4c!important; }
+#view-deutsch .german-danger { border-color:#b64c4c; background:#b64c4c; color:#fff; font-weight:750; }
+.german-goal.is-editing { border-color:color-mix(in srgb,var(--accent) 46%,var(--border2)); }
+.german-goal.is-deleting { border-color:color-mix(in srgb,#b64c4c 45%,var(--border2)); background:radial-gradient(ellipse at top right,color-mix(in srgb,#b64c4c 11%,transparent),transparent 70%),var(--card); }
+.german-goal-warning { padding:11px 13px; border-radius:11px; background:color-mix(in srgb,#b64c4c 10%,var(--bg2)); color:#b64c4c; font-size:13px; }
+@media(max-width:520px) {
+  .german-goal-actions,.german-goal-confirm { display:grid; grid-template-columns:1fr; }
+  .german-goal-actions button,.german-goal-confirm button { width:100%; }
+  .german-goal-form-actions { display:grid; grid-template-columns:1fr 1fr; }
+}
