@@ -68,15 +68,16 @@ describe('focused session home', () => {
     expect(index).toContain("document.documentElement.classList.add('platform-windows')");
     expect(resumeLayout).toContain('html.platform-windows body[data-view="session"] #view-session');
     expect(resumeLayout).toContain('html.platform-windows body.crono-focus #view-cronometro');
+    expect(resumeLayout).toContain('html.platform-windows body[data-view="obras"] #view-obras');
+    expect(resumeLayout).toContain('#reservationDashboardContent:not([hidden])');
     expect(resumeLayout).toContain('@media (min-width: 1200px)');
-    expect(resumeLayout).not.toContain('html:not(.platform-windows)');
   });
 
-  it('ships the complete v386 runtime offline', () => {
+  it('ships the complete v387 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('app.js?v=384');
     expect(index).toContain('piano-rewards.js?v=384');
-    expect(worker).toContain("const CACHE = 'estudio-v386'");
+    expect(worker).toContain("const CACHE = 'estudio-v387'");
     expect(worker).toContain('"./piano-rewards.js?v=384"');
     expect(worker).toContain('"./session-home.css?v=374"');
     expect(worker).toContain('"./crono-resume-layout.css?v=342"');
