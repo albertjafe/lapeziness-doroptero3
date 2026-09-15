@@ -5,6 +5,7 @@ const app = fs.readFileSync('app.js', 'utf8');
 const dashboard = fs.readFileSync('reservation-dashboard.js', 'utf8');
 const index = fs.readFileSync('index.html', 'utf8');
 const styles = fs.readFileSync('session-home.css', 'utf8');
+const resumeLayout = fs.readFileSync('crono-resume-layout.css', 'utf8');
 const worker = fs.readFileSync('sw.js', 'utf8');
 
 describe('focused session home', () => {
@@ -63,12 +64,21 @@ describe('focused session home', () => {
     expect(index).toContain('onclick="openHoraComienzo(event)"');
   });
 
-  it('ships the complete v385 runtime offline', () => {
+  it('keeps the wide desktop pass platform-scoped so iPad and mobile stay untouched', () => {
+    expect(index).toContain("document.documentElement.classList.add('platform-windows')");
+    expect(resumeLayout).toContain('html.platform-windows body[data-view="session"] #view-session');
+    expect(resumeLayout).toContain('html.platform-windows body.crono-focus #view-cronometro');
+    expect(resumeLayout).toContain('@media (min-width: 1200px)');
+    expect(resumeLayout).not.toContain('html:not(.platform-windows)');
+  });
+
+  it('ships the complete v386 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('app.js?v=384');
     expect(index).toContain('piano-rewards.js?v=384');
-    expect(worker).toContain("const CACHE = 'estudio-v385'");
+    expect(worker).toContain("const CACHE = 'estudio-v386'");
     expect(worker).toContain('"./piano-rewards.js?v=384"');
     expect(worker).toContain('"./session-home.css?v=374"');
+    expect(worker).toContain('"./crono-resume-layout.css?v=342"');
   });
 });
