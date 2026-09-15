@@ -283,3 +283,281 @@
     height: min(350px, 40dvh) !important;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   WINDOWS DESKTOP WIDE v2 — 2026-09-15
+   Segunda pasada: la pantalla deja de ser una tablet ampliada y se convierte
+   en un workspace de escritorio. Sigue aislado por .platform-windows.
+   ────────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1200px) {
+  /* HOY: cabecera de trabajo arriba; Aulas a todo el ancho debajo. */
+  html.platform-windows body[data-view="session"] #view-session {
+    grid-template-columns: minmax(700px, 1.65fr) minmax(330px, .72fr) !important;
+    grid-template-rows: auto auto auto auto !important;
+    column-gap: clamp(18px, 1.7vw, 28px) !important;
+    row-gap: 12px !important;
+    width: min(1620px, calc(100vw - var(--desktop-rail-width, 96px) - 34px)) !important;
+    max-width: none !important;
+    padding: 20px clamp(16px, 1.5vw, 26px) 34px !important;
+  }
+
+  html.platform-windows body[data-view="session"] #sessionResumenCard {
+    grid-column: 1 !important;
+    grid-row: 1 / span 3 !important;
+    min-height: 252px !important;
+    align-self: stretch;
+  }
+
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-metric > strong {
+    font-size: clamp(38px, 3.2vw, 54px) !important;
+  }
+
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-metric.is-projection > strong {
+    font-size: clamp(32px, 2.75vw, 48px) !important;
+  }
+
+  html.platform-windows body[data-view="session"] .german-entry {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    min-height: 68px !important;
+    padding-inline: 17px !important;
+  }
+
+  html.platform-windows body[data-view="session"] .session-quick-disclosure {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+    min-height: 58px;
+    margin: 0 !important;
+    padding: 0 13px;
+    border: 1px solid var(--border2) !important;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--card) 88%, var(--bg));
+  }
+
+  html.platform-windows body[data-view="session"] .session-quick-disclosure > summary {
+    min-height: 56px !important;
+    padding-inline: 2px !important;
+  }
+
+  html.platform-windows body[data-view="session"] #sessionJournalCard {
+    grid-column: 2 !important;
+    grid-row: 3 !important;
+    min-height: 58px;
+    margin: 0 !important;
+    border: 1px solid var(--border2);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--card) 88%, var(--bg));
+  }
+
+  html.platform-windows body[data-view="session"] #sessionJournalCard.is-collapsed {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 9px 12px;
+  }
+
+  html.platform-windows body[data-view="session"] #sessionJournalCard.is-collapsed .session-journal-toggle {
+    margin: 0 !important;
+  }
+
+  html.platform-windows body[data-view="session"] #sessionAulasDashboard {
+    grid-column: 1 / -1 !important;
+    grid-row: 4 !important;
+    width: 100%;
+    margin: 4px 0 0 !important;
+    padding: 22px 0 0 !important;
+    border-top: 1px solid var(--border2) !important;
+    border-left: 0 !important;
+  }
+
+  html.platform-windows body[data-view="session"] #sessionPlan {
+    grid-column: 1 / -1 !important;
+    grid-row: 5 !important;
+  }
+
+  html.platform-windows body[data-view="session"] #sessionAulasDashboard .rd-topline {
+    margin-bottom: 11px !important;
+  }
+
+  html.platform-windows body[data-view="session"] #sessionAulasDashboard .rd-pane-tabs {
+    margin-bottom: 13px !important;
+  }
+
+  html.platform-windows body[data-view="session"] #reservationDashboardContent:not([hidden]) {
+    display: grid !important;
+    grid-template-columns: minmax(350px, .72fr) minmax(0, 1.65fr);
+    grid-template-rows: auto auto;
+    gap: 12px 18px;
+    align-items: start;
+  }
+
+  html.platform-windows body[data-view="session"] #reservationDashboardContent > .rd-hero {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 150px !important;
+    margin: 0 !important;
+  }
+
+  html.platform-windows body[data-view="session"] #reservationDashboardContent > .rd-control-card {
+    grid-column: 1;
+    grid-row: 2;
+    margin: 0 !important;
+  }
+
+  html.platform-windows body[data-view="session"] #reservationDashboardContent > .rd-grid {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 12px !important;
+    align-self: stretch;
+  }
+
+  html.platform-windows body[data-view="session"] #reservationDashboardContent > .rd-grid > .rd-column {
+    display: contents !important;
+  }
+
+  html.platform-windows body[data-view="session"] #reservationDashboardContent > .rd-grid > .rd-column:first-child > .rd-card {
+    grid-column: span 2 !important;
+  }
+
+  html.platform-windows body[data-view="session"] #sessionAulasDashboard .rd-card {
+    min-width: 0;
+  }
+
+  /* OBRAS: activar en Windows el maestro-detalle que ya existía para pantallas
+     anchas, pero aprovechando de verdad un monitor de escritorio. */
+  html.platform-windows body[data-view="obras"] #view-obras,
+  html.platform-windows body[data-view="obras"] #view-obras.view {
+    width: min(1620px, calc(100vw - var(--desktop-rail-width, 96px) - 34px)) !important;
+    max-width: none !important;
+    padding: 20px clamp(16px, 1.5vw, 26px) 34px !important;
+  }
+
+  html.platform-windows body[data-view="obras"] #view-obras .obras-workbench {
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box;
+  }
+
+  html.platform-windows body[data-view="obras"] #view-obras .obras-rd-head {
+    width: 100%;
+    margin-bottom: 18px;
+  }
+
+  html.platform-windows body[data-view="obras"] #view-obras .obras-rd-layout {
+    display: grid !important;
+    grid-template-columns: minmax(500px, .78fr) minmax(690px, 1.22fr) !important;
+    gap: clamp(22px, 2vw, 32px) !important;
+    align-items: start;
+  }
+
+  html.platform-windows body[data-view="obras"] #view-obras .obras-rd-master {
+    min-width: 0;
+  }
+
+  html.platform-windows body[data-view="obras"] #view-obras .obras-rd-detail {
+    display: block !important;
+    position: sticky !important;
+    top: 92px !important;
+    max-height: calc(100dvh - 116px) !important;
+    overflow: auto !important;
+    scrollbar-width: thin;
+  }
+
+  html.platform-windows body[data-view="obras"] #view-obras .obras-rd-row {
+    min-height: 64px !important;
+    padding: 7px 8px 6px 9px !important;
+  }
+
+  html.platform-windows body[data-view="obras"] #view-obras .obras-rd-title {
+    font-size: 18px !important;
+  }
+
+  html.platform-windows body[data-view="obras"] #view-obras .obras-rd-detail-empty {
+    min-height: 460px !important;
+    background: color-mix(in srgb, var(--bg2) 74%, transparent);
+  }
+}
+
+@media (min-width: 1200px) and (min-height: 700px) {
+  /* CRONÓMETRO: quitar el segundo cuello de botella interior. */
+  html.platform-windows body.crono-focus #view-cronometro {
+    width: min(1580px, calc(100vw - var(--desktop-rail-width, 96px) - 28px)) !important;
+    padding-inline: 14px !important;
+  }
+
+  html.platform-windows body.crono-focus #view-cronometro .crono-wrap {
+    width: 100% !important;
+    max-width: none !important;
+    padding-top: max(50px, calc(env(safe-area-inset-top, 0px) + 46px)) !important;
+  }
+
+  html.platform-windows body.crono-focus:not(.crono-running) #cronoStageIdle,
+  html.platform-windows body.crono-focus:not(.crono-running) #view-cronometro .crono-idle-wrap {
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box;
+  }
+
+  html.platform-windows body.crono-focus:not(.crono-running) #view-cronometro .crono-idle-console {
+    width: 100% !important;
+    grid-template-columns: minmax(680px, 1.25fr) minmax(470px, .75fr) !important;
+    gap: clamp(20px, 1.6vw, 26px) !important;
+  }
+
+  html.platform-windows body.crono-focus:not(.crono-running) #view-cronometro .crono-idle-main,
+  html.platform-windows body.crono-focus:not(.crono-running) #view-cronometro .crono-idle-panel {
+    min-height: 600px !important;
+    height: min(650px, calc(100dvh - 120px)) !important;
+  }
+
+  html.platform-windows body.crono-focus:not(.crono-running) #view-cronometro .crono-idle-main .crono-centerpiece,
+  html.platform-windows body.crono-focus:not(.crono-running).crono-timer-mode #view-cronometro .crono-idle-main .crono-centerpiece {
+    width: min(400px, 43dvh) !important;
+    height: min(400px, 43dvh) !important;
+  }
+
+  html.platform-windows body.crono-focus:not(.crono-running) #view-cronometro .crono-idle-drawer-panel[data-panel="tareas"] .crono-task-list {
+    max-height: 410px !important;
+  }
+
+  html.platform-windows body.crono-focus #view-cronometro .crono-bottom-row {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 14px 0 0 !important;
+    gap: 18px !important;
+  }
+
+  html.platform-windows body.crono-focus #view-cronometro .crono-bottom-row .crono-week-card,
+  html.platform-windows body.crono-focus #view-cronometro .crono-week-card {
+    width: 100% !important;
+    max-width: none !important;
+    flex: 2 1 0 !important;
+    margin: 0 !important;
+    min-height: 128px;
+    box-sizing: border-box;
+  }
+
+  html.platform-windows body.crono-focus #view-cronometro .crono-destellos-card {
+    flex: 1 1 0 !important;
+  }
+
+  html.platform-windows body.crono-focus.crono-running #view-cronometro .crono-wrap {
+    grid-template-columns: minmax(680px, 1.25fr) minmax(470px, .75fr) !important;
+  }
+
+  html.platform-windows body.crono-focus.crono-running #cronoStageRun,
+  html.platform-windows body.crono-focus.crono-running #cronoRunDrawer {
+    min-height: 600px !important;
+    height: min(650px, calc(100dvh - 120px)) !important;
+  }
+
+  html.platform-windows body.crono-focus.crono-running #view-cronometro .crono-display-wrap {
+    height: min(390px, 43dvh) !important;
+  }
+
+  html.platform-windows body.crono-focus.crono-running #view-cronometro .crono-run-progress-svg {
+    width: min(390px, 43dvh) !important;
+    height: min(390px, 43dvh) !important;
+  }
+}
