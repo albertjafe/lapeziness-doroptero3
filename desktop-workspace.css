@@ -1,0 +1,407 @@
+/* Desktop workspace v388
+   Capa deliberadamente exclusiva de Windows. El iPad y el móvil conservan
+   exactamente sus layouts y breakpoints existentes. */
+
+@media (min-width: 1200px) {
+  html.platform-windows {
+    --desktop-rail-width: 124px;
+    --desktop-page-gutter: clamp(18px, 1.45vw, 30px);
+    --desktop-panel-gap: clamp(18px, 1.5vw, 28px);
+  }
+
+  /* Navegación: en un monitor debe leerse como barra lateral, no como una
+     bottom-nav estirada. */
+  html.platform-windows .nav.nav-bottom {
+    width: var(--desktop-rail-width) !important;
+    padding: 22px 10px !important;
+    box-sizing: border-box;
+  }
+
+  html.platform-windows .nav.nav-bottom .nav-btn {
+    min-height: 84px !important;
+    padding: 12px 8px !important;
+    gap: 8px !important;
+    border-radius: 12px !important;
+    font-size: 11px !important;
+    line-height: 1.15 !important;
+  }
+
+  html.platform-windows .nav.nav-bottom .nav-btn svg {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  html.platform-windows .nav.nav-bottom .nav-btn span {
+    font-size: 11px !important;
+    font-weight: 600;
+  }
+
+  html.platform-windows .nav.nav-bottom .nav-btn.active::after {
+    width: 4px !important;
+    height: 34px !important;
+    right: -10px !important;
+  }
+
+  /* El ancho ya no se limita artificialmente a ~1300 px. Conservamos sólo un
+     gutter cómodo junto al rail y al borde derecho. */
+  html.platform-windows body:not(.crono-focus) .view {
+    width: 100% !important;
+    max-width: none !important;
+    margin-inline: 0 !important;
+    padding-left: var(--desktop-page-gutter) !important;
+    padding-right: var(--desktop-page-gutter) !important;
+    box-sizing: border-box;
+  }
+
+  html.platform-windows body:not(.crono-focus) #view-session,
+  html.platform-windows body:not(.crono-focus) #view-obras,
+  html.platform-windows body:not(.crono-focus) #view-calendario {
+    max-width: none !important;
+  }
+
+  html.platform-windows body:not(.crono-focus) .header {
+    padding-left: var(--desktop-page-gutter) !important;
+    padding-right: var(--desktop-page-gutter) !important;
+  }
+
+  /* HOY: deja de ser una isla centrada. El resumen tiene espacio de escritorio
+     real y Aulas aprovecha todo el ancho inferior. */
+  html.platform-windows body[data-view="session"] #view-session {
+    max-width: none !important;
+    grid-template-columns: minmax(720px, 2.15fr) minmax(360px, .85fr) !important;
+    column-gap: var(--desktop-panel-gap) !important;
+    row-gap: 16px !important;
+    padding-top: 22px !important;
+  }
+
+  html.platform-windows body[data-view="session"] #sessionResumenCard {
+    min-height: 226px !important;
+  }
+
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-metric > strong {
+    font-size: clamp(38px, 3.1vw, 54px) !important;
+  }
+
+  html.platform-windows body[data-view="session"] #sessionAulasDashboard {
+    width: 100% !important;
+  }
+
+  html.platform-windows body[data-view="session"] #sessionAulasDashboard #reservationDashboardContent:not([hidden]) {
+    grid-template-columns: minmax(340px, .92fr) minmax(0, 2.08fr) !important;
+  }
+
+  /* OBRAS: master-detail más generoso. La columna de detalle recibe la mayor
+     parte del monitor y la lista sigue siendo suficientemente ancha. */
+  html.platform-windows body[data-view="obras"] #view-obras {
+    padding-top: 20px !important;
+  }
+
+  html.platform-windows body[data-view="obras"] #view-obras .obras-rd-layout {
+    grid-template-columns: minmax(500px, .78fr) minmax(720px, 1.22fr) !important;
+    gap: clamp(22px, 1.8vw, 32px) !important;
+  }
+
+  html.platform-windows body[data-view="obras"] #view-obras .obras-rd-detail {
+    display: block !important;
+    position: sticky !important;
+    top: 88px !important;
+    max-height: calc(100dvh - 108px) !important;
+    overflow: auto !important;
+    scrollbar-width: thin;
+  }
+
+  html.platform-windows body[data-view="obras"] #view-obras .obras-rd-title {
+    font-size: 19px !important;
+  }
+
+  html.platform-windows body[data-view="obras"] #view-obras .obras-rd-row {
+    min-height: 72px !important;
+    padding-inline: 10px !important;
+  }
+
+  html.platform-windows body[data-view="obras"] #view-obras .obras-rd-detail-head h2 {
+    font-size: clamp(30px, 2.15vw, 38px) !important;
+  }
+
+  html.platform-windows body[data-view="obras"] #view-obras .obras-rd-detail-card {
+    border-radius: 16px !important;
+  }
+
+  /* CALENDARIO: vista mensual tipo aplicación de calendario de escritorio. */
+  html.platform-windows body[data-view="calendario"] #view-calendario {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: calc(100dvh - 72px);
+    padding: 14px var(--desktop-page-gutter) 24px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] #view-calendario .calendar-view-tabs {
+    margin: 0 0 12px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] #view-calendario .calendar-action-row {
+    min-height: 54px;
+    margin-bottom: 10px !important;
+    padding-bottom: 10px;
+  }
+
+  html.platform-windows body[data-view="calendario"] #calPanelMes {
+    width: 100%;
+    min-height: calc(100dvh - 190px);
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-nav {
+    min-height: 58px;
+    margin: 0 0 8px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-nav-center {
+    gap: 5px;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-nav-label {
+    font-size: clamp(28px, 2.1vw, 36px) !important;
+    font-weight: 500 !important;
+    letter-spacing: -.025em;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-nav-btn {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 10px !important;
+    font-size: 24px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .calendar-layer-toggles button {
+    min-height: 30px;
+    padding-inline: 10px;
+    font-size: 9px;
+  }
+
+  html.platform-windows body[data-view="calendario"] .calendar-habit-summary:empty {
+    display: none;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-grid-header {
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    margin: 0 !important;
+    border: 1px solid var(--border2);
+    border-bottom: 0;
+    border-radius: 10px 10px 0 0;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--bg2) 92%, var(--bg3));
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-grid-header span {
+    padding: 9px 11px !important;
+    border-right: 1px solid color-mix(in srgb, var(--border2) 72%, transparent);
+    color: var(--text2) !important;
+    font-size: 10px !important;
+    font-weight: 700;
+    text-align: left !important;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-grid-header span:last-child {
+    border-right: 0;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-grid {
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(6, minmax(104px, 1fr));
+    gap: 0 !important;
+    width: 100%;
+    min-height: calc(100dvh - 300px);
+    border-top: 1px solid var(--border2);
+    border-left: 1px solid var(--border2);
+    border-radius: 0 0 10px 10px;
+    overflow: hidden;
+    background: var(--border2);
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-cell {
+    min-width: 0;
+    min-height: 104px !important;
+    padding: 8px 9px 7px !important;
+    align-items: stretch !important;
+    gap: 5px;
+    border: 0 !important;
+    border-right: 1px solid var(--border2) !important;
+    border-bottom: 1px solid var(--border2) !important;
+    border-radius: 0 !important;
+    background: var(--bg2) !important;
+    overflow: hidden;
+    transition: background-color 120ms ease, box-shadow 120ms ease;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-cell:hover {
+    background: color-mix(in srgb, var(--accent) 4%, var(--bg2)) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-cell.otro-mes {
+    background: color-mix(in srgb, var(--bg) 60%, var(--bg2)) !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-cell-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: flex-start;
+    width: 26px;
+    height: 26px;
+    margin: -2px 0 0 -2px;
+    border-radius: 50%;
+    color: var(--text2);
+    font-size: 11px !important;
+    font-weight: 650;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-cell.hoy .mes-cell-num,
+  html.platform-windows body[data-view="calendario"] .mes-cell.is-today .mes-cell-num {
+    background: var(--accent);
+    color: var(--bg) !important;
+    font-weight: 800 !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-cell.otro-mes .mes-cell-num {
+    color: color-mix(in srgb, var(--text3) 55%, transparent);
+  }
+
+  /* Los pequeños puntos móviles se convierten en entradas de calendario con
+     su nombre. El texto ya existe como atributo title en el renderer. */
+  html.platform-windows body[data-view="calendario"] .mes-dots {
+    display: flex !important;
+    flex: 1 1 auto;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    gap: 3px !important;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-dot {
+    display: flex !important;
+    align-items: center;
+    width: 100% !important;
+    min-width: 0;
+    height: 21px !important;
+    min-height: 21px;
+    padding: 0 6px !important;
+    border-radius: 4px !important;
+    box-sizing: border-box;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 650;
+    line-height: 1;
+    text-align: left;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.04);
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-dot::after {
+    content: attr(title);
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-dot.clase {
+    color: #4e3200;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-dot.google {
+    background: var(--google-calendar-color, #4285f4) !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-leyenda {
+    min-height: 34px;
+    margin-top: 8px !important;
+    padding: 6px 4px 0;
+    gap: 14px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-leyenda .mes-dot {
+    display: inline-block !important;
+    width: 8px !important;
+    height: 8px !important;
+    min-height: 8px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-leyenda .mes-dot::after {
+    display: none;
+  }
+}
+
+/* En monitores anchos damos todavía más aire útil, no más margen. */
+@media (min-width: 1500px) {
+  html.platform-windows {
+    --desktop-page-gutter: clamp(20px, 1.25vw, 28px);
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-grid {
+    grid-template-rows: repeat(6, minmax(112px, 1fr));
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-cell {
+    min-height: 112px !important;
+  }
+
+  html.platform-windows body[data-view="obras"] #view-obras .obras-rd-layout {
+    grid-template-columns: minmax(540px, .76fr) minmax(800px, 1.24fr) !important;
+  }
+}
+
+/* Cronómetro: ancho de workstation. Se mantiene en su modo focus, pero deja
+   de heredar el límite visual de las versiones anteriores. */
+@media (min-width: 1200px) and (min-height: 700px) {
+  html.platform-windows body.crono-focus #view-cronometro {
+    width: calc(100vw - var(--desktop-rail-width) - (var(--desktop-page-gutter) * 2)) !important;
+    max-width: none !important;
+    margin-left: var(--desktop-page-gutter) !important;
+    margin-right: var(--desktop-page-gutter) !important;
+    padding-inline: 0 !important;
+    box-sizing: border-box;
+  }
+
+  html.platform-windows body.crono-focus #view-cronometro .crono-wrap,
+  html.platform-windows body.crono-focus.crono-running #view-cronometro .crono-wrap {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  html.platform-windows body.crono-focus:not(.crono-running) #view-cronometro .crono-idle-console,
+  html.platform-windows body.crono-focus.crono-running #view-cronometro .crono-wrap {
+    grid-template-columns: minmax(680px, 1.22fr) minmax(520px, .78fr) !important;
+    gap: var(--desktop-panel-gap) !important;
+  }
+
+  html.platform-windows body.crono-focus:not(.crono-running) #view-cronometro .crono-idle-main .crono-centerpiece,
+  html.platform-windows body.crono-focus:not(.crono-running).crono-timer-mode #view-cronometro .crono-idle-main .crono-centerpiece {
+    width: min(410px, 45dvh) !important;
+    height: min(410px, 45dvh) !important;
+  }
+
+  html.platform-windows body.crono-focus:not(.crono-running) #view-cronometro .crono-idle-drawer-panel[data-panel="tareas"] .crono-task-list {
+    max-height: 390px !important;
+  }
+
+  html.platform-windows body.crono-focus:not(.crono-running) #view-cronometro .crono-bottom-row {
+    width: 100% !important;
+    margin-top: 18px !important;
+  }
+
+  html.platform-windows body.crono-focus:not(.crono-running) #view-cronometro .crono-bottom-row .crono-week-card {
+    min-height: 190px;
+  }
+}
