@@ -366,7 +366,7 @@
    de heredar el límite visual de las versiones anteriores. */
 @media (min-width: 1200px) and (min-height: 700px) {
   html.platform-windows body.crono-focus #view-cronometro {
-    width: calc(100vw - var(--desktop-rail-width) - (var(--desktop-page-gutter) * 2)) !important;
+    width: calc(100vw - var(--desktop-rail-width) - var(--desktop-page-gutter) - var(--desktop-page-gutter)) !important;
     max-width: none !important;
     margin-left: var(--desktop-page-gutter) !important;
     margin-right: var(--desktop-page-gutter) !important;
