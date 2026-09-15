@@ -1,0 +1,201 @@
+/* Calendar density pass v389
+   Solo Windows de escritorio. Corrige el aspecto disperso de la vista mensual
+   sin tocar iPad ni móvil. */
+
+@media (min-width: 1200px) {
+  html.platform-windows body[data-view="calendario"] #view-calendario {
+    padding-top: 8px !important;
+    padding-bottom: 18px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] #view-calendario .calendar-view-tabs {
+    margin-bottom: 5px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] #view-calendario .calendar-action-row {
+    min-height: 40px !important;
+    margin-bottom: 2px !important;
+    padding-bottom: 4px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] #view-calendario .calendar-action-row .view-local-label {
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    letter-spacing: -.015em;
+  }
+
+  html.platform-windows body[data-view="calendario"] #view-calendario .calendar-action-buttons button {
+    min-height: 34px !important;
+    padding: 7px 12px !important;
+    font-size: 10.5px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] #calPanelMes {
+    min-height: 0 !important;
+  }
+
+  /* Antes las flechas quedaban en extremos opuestos de la pantalla. Al
+     agruparlas junto al mes la cabecera se lee como una sola unidad. */
+  html.platform-windows body[data-view="calendario"] .mes-nav {
+    display: grid !important;
+    grid-template-columns: 38px max-content 38px !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 10px !important;
+    min-height: 46px !important;
+    margin: 0 0 6px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-nav-center {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px !important;
+    min-width: 0;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-nav-label {
+    font-size: clamp(25px, 1.75vw, 31px) !important;
+    line-height: 1 !important;
+    font-weight: 600 !important;
+    letter-spacing: -.035em !important;
+    white-space: nowrap;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-nav-btn {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    border-radius: 9px !important;
+    font-size: 22px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .calendar-layer-toggles {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    margin: 0 !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .calendar-layer-toggles button {
+    min-height: 27px !important;
+    padding: 4px 8px !important;
+    font-size: 9.5px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .calendar-habit-summary:empty,
+  html.platform-windows body[data-view="calendario"] .mes-leyenda:empty {
+    display: none !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-grid-header {
+    min-height: 32px !important;
+    border-color: color-mix(in srgb, var(--border2) 82%, var(--text3)) !important;
+    background: color-mix(in srgb, var(--bg2) 96%, var(--bg3)) !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-grid-header span {
+    display: flex !important;
+    align-items: center !important;
+    min-height: 32px !important;
+    padding: 6px 9px !important;
+    font-size: 12px !important;
+    font-weight: 750 !important;
+    letter-spacing: .065em !important;
+  }
+
+  /* No reservamos seis filas artificiales: septiembre de 2026 necesita cinco.
+     Esto elimina la fila vacía y, junto con height:100%, las bandas grises que
+     aparecían entre semanas en la captura. */
+  html.platform-windows body[data-view="calendario"] .mes-grid {
+    grid-template-rows: none !important;
+    grid-auto-rows: clamp(88px, 10.2dvh, 98px) !important;
+    min-height: 0 !important;
+    height: auto !important;
+    align-items: stretch !important;
+    background: transparent !important;
+    border: 1px solid color-mix(in srgb, var(--border2) 82%, var(--text3)) !important;
+    border-top: 0 !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-cell {
+    display: flex !important;
+    flex-direction: column !important;
+    align-self: stretch !important;
+    justify-self: stretch !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 6px 7px !important;
+    gap: 4px !important;
+    box-sizing: border-box !important;
+    border-right: 1px solid color-mix(in srgb, var(--border2) 82%, var(--text3)) !important;
+    border-bottom: 1px solid color-mix(in srgb, var(--border2) 82%, var(--text3)) !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-cell:nth-child(7n) {
+    border-right: 0 !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-cell-num {
+    width: 27px !important;
+    height: 25px !important;
+    margin: -1px 0 0 -1px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-cell.hoy .mes-cell-num,
+  html.platform-windows body[data-view="calendario"] .mes-cell.is-today .mes-cell-num {
+    width: 25px !important;
+    height: 25px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-dots {
+    gap: 3px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-dot {
+    height: 23px !important;
+    min-height: 23px !important;
+    padding: 0 7px !important;
+    border-radius: 4px !important;
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    line-height: 1.15 !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-leyenda {
+    min-height: 26px !important;
+    margin-top: 4px !important;
+    padding-top: 4px !important;
+    gap: 12px !important;
+    font-size: 10.5px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-leyenda .mes-dot {
+    width: 9px !important;
+    height: 9px !important;
+    min-height: 9px !important;
+  }
+}
+
+@media (min-width: 1500px) {
+  html.platform-windows body[data-view="calendario"] .mes-grid {
+    grid-auto-rows: clamp(90px, 10.4dvh, 102px) !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-grid-header span {
+    font-size: 12.5px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-cell-num {
+    font-size: 13.5px !important;
+  }
+
+  html.platform-windows body[data-view="calendario"] .mes-dot {
+    font-size: 11px !important;
+  }
+}
