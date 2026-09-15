@@ -507,6 +507,29 @@ function showSyncIndicator(msg) {
   const el = document.getElementById('syncIndicator');
   if (!el) return;
   el.textContent = msg;
+  const desktopTitle = document.getElementById('desktopSyncTitle');
+  const desktopDetail = document.getElementById('desktopSyncDetail');
+  const desktopFooter = desktopTitle?.closest('.desktop-nav-footer');
+  if (desktopTitle && desktopDetail && desktopFooter) {
+    const status = String(msg || '').toLowerCase();
+    if (status.includes('sincronizado') && !status.includes('sincronizando')) {
+      desktopFooter.dataset.sync = 'synced';
+      desktopTitle.textContent = 'Todo sincronizado';
+      desktopDetail.textContent = 'La nube está actualizada';
+    } else if (status.includes('sincronizando') || status.includes('cargando')) {
+      desktopFooter.dataset.sync = 'syncing';
+      desktopTitle.textContent = 'Sincronizando';
+      desktopDetail.textContent = 'Guardando los últimos cambios';
+    } else if (status.includes('guardado en este dispositivo')) {
+      desktopFooter.dataset.sync = 'local';
+      desktopTitle.textContent = 'Guardado local';
+      desktopDetail.textContent = 'Conservado en este dispositivo';
+    } else {
+      desktopFooter.dataset.sync = 'pending';
+      desktopTitle.textContent = 'Pendiente de sincronizar';
+      desktopDetail.textContent = 'Guardado en este dispositivo';
+    }
+  }
   el.classList.add('visible');
   clearTimeout(el._t);
   el._t = setTimeout(() => el.classList.remove('visible'), 2500);
@@ -21800,6 +21823,10 @@ function cronoSessionButtonCleanup() {
 
 function cronoSessionButtonPressStart(event, button) {
   if (!event || !button || (event.button != null && event.button !== 0)) return;
+  // Windows has an explicit Finish button in the desktop action bar, so the
+  // pause control does not need a hidden long-press action there.
+  if (document.documentElement.classList.contains('platform-windows') && window.innerWidth >= 900 &&
+      window.matchMedia('(hover: hover) and (pointer: fine)').matches && button.classList.contains('crono-session-rail-main')) return;
   cronoSessionButtonCleanup();
   const press = { button, pointerId: event.pointerId, x: event.clientX, y: event.clientY, timer: null, hapticTimers: [] };
   _cronoSessionButtonPress = press;
@@ -21849,17 +21876,24 @@ function cronoSessionRingKeydown(event) {
 
 function cronoSessionButtonHtml(paused, extraClass) {
   const label = paused ? 'Reanudar' : 'Pausar';
-  return '<button type="button" class="crono-session-main-btn ' + (paused ? 'is-paused ' : '') + (extraClass || '') + '" ' +
+  const desktopSessionControls = String(extraClass || '').includes('crono-session-rail-main') &&
+    document.documentElement.classList.contains('platform-windows') && window.innerWidth >= 900 &&
+    window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const mainButton = '<button type="button" class="crono-session-main-btn ' + (paused ? 'is-paused ' : '') + (extraClass || '') + '" ' +
     'onclick="cronoSessionButtonClick(event)" onpointerdown="cronoSessionButtonPressStart(event,this)" ' +
     'onpointermove="cronoSessionButtonPressMove(event)" onpointerup="cronoSessionButtonPressEnd(event)" ' +
     'onpointercancel="cronoSessionButtonCleanup()" oncontextmenu="event.preventDefault()" ' +
-    'aria-label="' + label + '. Mantén pulsado para terminar y guardar">' +
+    'aria-label="' + (desktopSessionControls ? label : label + '. Mantén pulsado para terminar y guardar') + '">' +
       '<svg class="crono-session-hold-ring" viewBox="0 0 64 64" aria-hidden="true">' +
         '<circle class="crono-session-hold-track" cx="32" cy="32" r="27"></circle>' +
         '<circle class="crono-session-hold-progress" cx="32" cy="32" r="27"></circle>' +
       '</svg>' +
       '<span class="crono-session-main-icon" aria-hidden="true">' + (paused ? CRONO_ICONS.play : CRONO_ICONS.stop) + '</span>' +
     '</button>';
+  const desktopFinish = desktopSessionControls
+    ? '<button type="button" class="crono-session-finish-btn" onclick="cronoStop()">Finalizar</button>'
+    : '';
+  return mainButton + desktopFinish;
 }
 
 // ── TARJETAS DE MEMORIA ─────────────────────────────────────────────────────

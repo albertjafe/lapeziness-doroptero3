@@ -1,13 +1,13 @@
-const CACHE = 'estudio-v395';
+const CACHE = 'estudio-v396';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
   "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=342",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=384",
+  "./app.js?v=396",
   "./german-rewards.js?v=383",
-  "./piano-rewards.js?v=384",
+  "./piano-rewards.js?v=396",
   "./german-srs.js?v=378",
   "./german-import.js?v=382",
   "./german-session.js?v=382",
@@ -68,7 +68,7 @@ const ASSETS = [
   "./passage-tracker-resilience.js?v=372",
   "./piano-rooms-core.js?v=372",
   "./piano-rooms.css?v=369",
-  "./piano-rooms.js?v=384",
+  "./piano-rooms.js?v=396",
   "./reservation-dashboard.css?v=372",
   "./reservation-dashboard.js?v=372",
   "./planning-enhancements-v3.css?v=377",
@@ -80,7 +80,7 @@ const ASSETS = [
   "./professor-context-enrichment.js?v=342",
   "./professor-core.js?v=377",
   "./professor-practice-dedup.js?v=363",
-  "./professor-dashboard.js?v=377",
+  "./professor-dashboard.js?v=396",
   "./professor-duration-policy.js?v=349",
   "./professor-event-gate-ui.js?v=342",
   "./professor-event-gate.js?v=377",
@@ -94,6 +94,7 @@ const ASSETS = [
   "./readiness-recovery-context.js?v=342",
   "./session-minutes-correction.js?v=342",
   "./session-home.css?v=374",
+  "./desktop-redesign.css?v=396",
   "./solo-repertoire-structure.js?v=361",
   "./solidity-guide-modal.css?v=377",
   "./solidity-guide-modal.js?v=377",
@@ -160,7 +161,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '395');
+            target.searchParams.set('__pwa', '396');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -168,7 +169,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'395', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'396', navigated });
         } catch (error) {}
       }
     }

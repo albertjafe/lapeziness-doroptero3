@@ -87,7 +87,7 @@
   }
 
   function repurposeCasaNav() {
-    const button = document.querySelector('.nav-btn[data-view="casa"]');
+    const button = document.querySelector('.nav-btn[data-view="profesor"], .nav-btn[data-view="casa"]');
     if (!button || button.dataset.professorReady === '1') return;
     button.dataset.professorReady = '1';
     button.dataset.view = 'profesor';

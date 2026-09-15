@@ -32,6 +32,7 @@ const run = spawnSync(command, [
   cwd: process.cwd(),
   encoding: 'utf8',
   maxBuffer: 80 * 1024 * 1024,
+  shell: process.platform === 'win32',
 });
 
 if (run.error) {

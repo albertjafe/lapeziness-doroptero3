@@ -1,0 +1,1111 @@
+/* Windows desktop v385
+   A compact desktop shell for Today and Stopwatch. Platform scoped so the
+   touch layouts on iPhone and iPad keep their existing geometry. */
+
+.crono-session-finish-btn { display: none; }
+.desktop-only { display: none !important; }
+
+@media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+  html.platform-windows {
+    --desktop-rail-width: 216px;
+    --desktop-header-height: 96px;
+    --desktop-canvas: #f2f5f9;
+    --desktop-card-radius: 15px;
+    --desktop-panel-shadow: 0 1px 2px rgba(22, 34, 51, .045), 0 8px 26px rgba(51, 65, 85, .05);
+  }
+
+  html.platform-windows body {
+    min-width: 900px;
+    background: var(--desktop-canvas);
+    font-family: "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 15px;
+  }
+
+  html.platform-windows body:not(.crono-focus) .topbar,
+  html.platform-windows body.crono-focus .topbar {
+    display: block !important;
+    left: var(--desktop-rail-width) !important;
+    background: color-mix(in srgb, var(--bg) 96%, transparent);
+    border-bottom: 1px solid var(--border2);
+    backdrop-filter: blur(18px) saturate(1.06);
+    -webkit-backdrop-filter: blur(18px) saturate(1.06);
+  }
+
+  html.platform-windows body:not(.crono-focus) .header,
+  html.platform-windows body.crono-focus .header {
+    min-height: var(--desktop-header-height) !important;
+    padding: 17px clamp(26px, 2.7vw, 42px) 16px !important;
+    border-bottom: 0;
+  }
+
+  html.platform-windows .cozy-piano-deco { display: none; }
+  html.platform-windows .header-context { align-items: center; }
+  html.platform-windows .header-copy { min-width: 0; }
+  html.platform-windows .header-eyebrow {
+    margin-bottom: 5px;
+    color: var(--accent);
+    font: 750 12px/1.1 "Segoe UI Variable", "Segoe UI", sans-serif;
+    letter-spacing: .075em;
+    text-transform: uppercase;
+  }
+  html.platform-windows .header-title {
+    color: var(--text);
+    font: 730 30px/1.06 "Segoe UI Variable", "Segoe UI", sans-serif !important;
+    letter-spacing: -.035em;
+  }
+  html.platform-windows[data-theme="marmol"] .header-title { color: #172033; }
+  html.platform-windows .header-date {
+    margin-top: 5px;
+    color: var(--text3);
+    font: 500 13.5px/1.25 "Segoe UI Variable", "Segoe UI", sans-serif;
+  }
+  html.platform-windows .header-actions { gap: 9px; }
+  html.platform-windows .piano-rooms-open,
+  html.platform-windows .settings-icon {
+    min-height: 39px;
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    background: var(--bg2);
+    color: var(--text2);
+    font-size: 13px;
+  }
+  html.platform-windows .settings-icon { width: 39px; height: 39px; }
+  html.platform-windows .desktop-study-cta {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 41px;
+    padding: 0 17px;
+    border: 0;
+    border-radius: 10px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, white), var(--accent));
+    box-shadow: 0 7px 18px color-mix(in srgb, var(--accent) 23%, transparent);
+    color: white;
+    font-size: 14px;
+    font-weight: 720;
+    cursor: pointer;
+  }
+  html.platform-windows .desktop-study-cta svg { width: 17px; height: 17px; }
+  html.platform-windows body[data-view="cronometro"] .desktop-study-cta { display: none !important; }
+
+  html.platform-windows body:not(.crono-focus) .app-content,
+  html.platform-windows body.crono-focus .app-content {
+    width: calc(100% - var(--desktop-rail-width)) !important;
+    min-height: 100dvh;
+    margin-left: var(--desktop-rail-width) !important;
+    padding-top: var(--desktop-header-height) !important;
+    padding-bottom: 28px !important;
+    background:
+      radial-gradient(circle at 96% 0%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 28%),
+      var(--desktop-canvas);
+  }
+
+  html.platform-windows body:not(.crono-focus) .view,
+  html.platform-windows body.crono-focus .view {
+    width: 100%;
+    max-width: 1560px;
+    margin-inline: auto;
+    padding: 23px clamp(26px, 2.8vw, 44px) 28px !important;
+  }
+
+  html.platform-windows .botanical-deco { display: none !important; }
+
+  /* Full desktop rail */
+  html.platform-windows .nav.nav-bottom,
+  html.platform-windows body.crono-focus .nav.nav-bottom {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 180;
+    display: flex !important;
+    flex-direction: column;
+    align-items: stretch;
+    width: var(--desktop-rail-width);
+    height: 100dvh;
+    min-height: 0;
+    padding: 20px 14px 15px !important;
+    overflow: hidden;
+    border: 0;
+    border-right: 1px solid var(--border2);
+    background: color-mix(in srgb, var(--bg2) 97%, transparent);
+    box-shadow: 7px 0 26px rgba(32, 44, 62, .035);
+    backdrop-filter: blur(18px) saturate(1.06);
+    -webkit-backdrop-filter: blur(18px) saturate(1.06);
+  }
+
+  html.platform-windows .desktop-only { display: flex !important; }
+  html.platform-windows .desktop-nav-brand {
+    align-items: center;
+    gap: 11px;
+    min-height: 48px;
+    padding: 0 8px 20px;
+  }
+  html.platform-windows .desktop-nav-mark {
+    display: grid;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border-radius: 11px;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 58%, white), var(--accent));
+    box-shadow: 0 7px 17px color-mix(in srgb, var(--accent) 24%, transparent);
+    color: white;
+    font-size: 19px;
+    font-weight: 760;
+  }
+  html.platform-windows .desktop-nav-brand > span:last-child { display: grid; gap: 3px; min-width: 0; }
+  html.platform-windows .desktop-nav-brand strong {
+    color: var(--text);
+    font: 730 16.5px/1 "Segoe UI Variable", "Segoe UI", sans-serif;
+    letter-spacing: -.02em;
+  }
+  html.platform-windows .desktop-nav-brand small {
+    color: var(--text3);
+    font: 760 10.5px/1 "Segoe UI Variable", "Segoe UI", sans-serif;
+    letter-spacing: .11em;
+  }
+  html.platform-windows .desktop-nav-group {
+    min-height: auto;
+    padding: 0 11px 8px;
+    color: var(--text3);
+    font: 750 11px/1 "Segoe UI Variable", "Segoe UI", sans-serif;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  html.platform-windows .desktop-nav-learning { margin-top: 18px; }
+  html.platform-windows .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn),
+  html.platform-windows body.crono-focus .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn) {
+    display: flex !important;
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px !important;
+    margin: 0 0 3px;
+    padding: 0 12px !important;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--text2);
+    font: 640 14.5px/1 "Segoe UI Variable", "Segoe UI", sans-serif;
+    letter-spacing: 0;
+    text-transform: none;
+    cursor: pointer;
+  }
+  html.platform-windows .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn):hover { background: var(--bg3); color: var(--text); }
+  html.platform-windows .nav.nav-bottom .nav-btn.active,
+  html.platform-windows body[data-view="deutsch"] .nav.nav-bottom .desktop-nav-btn[data-view="deutsch"] {
+    background: color-mix(in srgb, var(--accent) 11%, var(--bg2));
+    color: var(--accent);
+  }
+  html.platform-windows .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn) svg {
+    flex: 0 0 19px;
+    width: 19px;
+    height: 19px;
+    opacity: .95;
+    stroke-width: 1.8;
+  }
+  html.platform-windows .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn) span {
+    position: static;
+    display: block;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: hidden;
+    font: inherit;
+    font-size: 14px !important;
+    line-height: 1.15 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  html.platform-windows .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn).active::after { display: none; }
+  html.platform-windows .desktop-nav-footer {
+    align-items: center;
+    gap: 10px;
+    min-height: 63px;
+    margin-top: auto;
+    padding: 11px 12px;
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--bg3) 78%, transparent);
+  }
+  html.platform-windows .desktop-sync-dot {
+    flex: 0 0 8px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 11%, transparent);
+  }
+  html.platform-windows .desktop-nav-footer[data-sync="checking"] .desktop-sync-dot,
+  html.platform-windows .desktop-nav-footer[data-sync="syncing"] .desktop-sync-dot { background: var(--accent); }
+  html.platform-windows .desktop-nav-footer[data-sync="pending"] .desktop-sync-dot { background: #c58b22; }
+  html.platform-windows .desktop-nav-footer[data-sync="local"] .desktop-sync-dot { background: var(--text3); }
+  html.platform-windows .desktop-nav-footer > span:last-child { display: grid; gap: 4px; min-width: 0; }
+  html.platform-windows .desktop-nav-footer strong { color: var(--text2); font-size: 12px; line-height: 1.1; }
+  html.platform-windows .desktop-nav-footer small { color: var(--text3); font-size: 10px; line-height: 1.2; }
+
+  /* Today */
+  html.platform-windows body[data-view="session"] #view-session:not(.session-weekly-mode):not(.session-history-mode) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.55fr) minmax(330px, .72fr);
+    grid-template-areas:
+      "summary summary"
+      "plan-title side"
+      "plan side"
+      "quick side"
+      "journal side"
+      "rooms rooms";
+    align-items: start;
+    gap: 15px 17px;
+  }
+
+  html.platform-windows body[data-view="session"] #view-session > .session-focus-card { grid-area: summary; }
+  html.platform-windows body[data-view="session"] #view-session > .desktop-today-side { grid-area: side; }
+  html.platform-windows body[data-view="session"] #view-session > .desktop-plan-heading { grid-area: plan-title; }
+  html.platform-windows body[data-view="session"] #view-session > #sessionPlan { grid-area: plan; }
+  html.platform-windows body[data-view="session"] #view-session > .session-quick-disclosure { grid-area: quick; }
+  html.platform-windows body[data-view="session"] #view-session > .session-journal-card { grid-area: journal; }
+  html.platform-windows body[data-view="session"] #view-session > .session-aulas-dashboard { grid-area: rooms; }
+  html.platform-windows body[data-view="session"] #view-session > .german-entry { display: none !important; }
+
+  html.platform-windows #view-session .session-focus-card {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-areas: none;
+    gap: 12px;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  html.platform-windows #view-session:is(.session-weekly-mode, .session-history-mode) .session-focus-card {
+    display: none !important;
+  }
+  html.platform-windows #view-session .session-focus-card::before { display: none; }
+  html.platform-windows #view-session .session-focus-metrics,
+  html.platform-windows #view-session .session-focus-probabilities { display: contents; }
+  html.platform-windows #view-session .session-focus-divider { display: none; }
+  html.platform-windows #view-session .session-focus-metric,
+  html.platform-windows #view-session .session-focus-finish,
+  html.platform-windows #view-session .session-focus-probability {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    min-height: 101px;
+    margin: 0;
+    padding: 15px 17px;
+    border: 1px solid var(--border2);
+    border-radius: var(--desktop-card-radius);
+    background: color-mix(in srgb, var(--bg2) 96%, transparent);
+    box-shadow: var(--desktop-panel-shadow);
+  }
+  html.platform-windows #view-session .session-focus-finish {
+    grid-area: auto;
+    border-left: 1px solid var(--border2);
+    background: color-mix(in srgb, var(--bg2) 96%, transparent);
+  }
+  html.platform-windows #view-session .session-focus-metric > span,
+  html.platform-windows #view-session .session-focus-finish > span,
+  html.platform-windows #view-session .session-focus-probability > span {
+    margin: 0 0 7px;
+    color: var(--text3);
+    font: 650 12px/1.1 "Segoe UI Variable", "Segoe UI", sans-serif;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  html.platform-windows #view-session .session-focus-metric > strong,
+  html.platform-windows #view-session .session-focus-finish > strong {
+    overflow: hidden;
+    color: var(--text);
+    font: 730 clamp(21px, 2vw, 27px)/1.02 "Segoe UI Variable", "Segoe UI", sans-serif;
+    letter-spacing: -.04em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  html.platform-windows #view-session .session-focus-metric.is-projection > strong { color: var(--accent); }
+  html.platform-windows #view-session .session-focus-finish > small,
+  html.platform-windows #view-session .session-focus-probability > small {
+    margin-top: 7px;
+    color: var(--text3);
+    font: 500 10.5px/1.25 "Segoe UI Variable", "Segoe UI", sans-serif;
+  }
+  html.platform-windows #view-session .session-focus-probability {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-content: center;
+    gap: 6px 11px;
+  }
+  html.platform-windows #view-session .session-focus-probability > span { margin: 0; }
+  html.platform-windows #view-session .session-focus-probability > strong {
+    color: var(--accent);
+    font: 760 20px/1 "Segoe UI Variable", "Segoe UI", sans-serif;
+  }
+  html.platform-windows #view-session .session-focus-probability > i { height: 6px; }
+  html.platform-windows #view-session .session-focus-probability > small { margin-top: 0; }
+  html.platform-windows #view-session .session-focus-status {
+    grid-area: auto / 1 / auto / -1;
+    min-height: 34px;
+    margin-top: -4px;
+    padding: 0 3px;
+    border: 0;
+    color: var(--text3);
+    font: 650 11.5px/1 "Segoe UI Variable", "Segoe UI", sans-serif;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  html.platform-windows .desktop-plan-heading {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 68px;
+    padding: 15px 18px 13px;
+    border: 1px solid var(--border2);
+    border-bottom: 0;
+    border-radius: var(--desktop-card-radius) var(--desktop-card-radius) 0 0;
+    background: var(--bg2);
+    box-shadow: var(--desktop-panel-shadow);
+  }
+  html.platform-windows .desktop-plan-heading > div { display: grid; gap: 4px; }
+  html.platform-windows .desktop-plan-heading strong { color: var(--text); font-size: 16px; }
+  html.platform-windows .desktop-plan-heading span { color: var(--text3); font-size: 12px; }
+  html.platform-windows .desktop-plan-heading button {
+    min-height: 34px;
+    padding: 0 11px;
+    border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border2));
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--accent) 6%, var(--bg2));
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 690;
+    cursor: pointer;
+  }
+  html.platform-windows #view-session .session-plan {
+    min-height: 302px;
+    margin-top: -15px;
+    padding: 8px 18px 15px;
+    border: 1px solid var(--border2);
+    border-top: 1px solid var(--border2);
+    border-radius: 0 0 var(--desktop-card-radius) var(--desktop-card-radius);
+    background: var(--bg2);
+    box-shadow: var(--desktop-panel-shadow);
+  }
+  html.platform-windows #view-session .session-plan:empty {
+    display: grid;
+    min-height: 176px;
+    place-items: center;
+  }
+  html.platform-windows #view-session .session-plan:empty::before {
+    content: "Tu plan aparecerá aquí cuando añadas el primer bloque";
+    color: var(--text3);
+    font-size: 13px;
+  }
+  html.platform-windows #view-session .plan-item {
+    min-height: 69px;
+    margin: 0;
+    padding: 12px 3px;
+    border: 0 !important;
+    border-bottom: 1px solid var(--border2) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  html.platform-windows #view-session .plan-item-num { min-width: 28px; padding-top: 3px; font-size: 13px; font-weight: 700; }
+  html.platform-windows #view-session .plan-item-name { margin-bottom: 4px; font-size: 16px !important; line-height: 1.2; font-weight: 700; }
+  html.platform-windows #view-session .plan-item-detail { color: var(--text3); font-size: 12px !important; line-height: 1.45; }
+  html.platform-windows #view-session .plan-item-time { font-size: 12px !important; font-weight: 700; }
+  html.platform-windows #view-session .tick-btn { min-height: 31px; padding: 5px 10px; border-radius: 8px; font-size: 11px; }
+
+  html.platform-windows .desktop-today-side {
+    display: grid !important;
+    align-content: start;
+    gap: 15px;
+  }
+  html.platform-windows .desktop-next-card,
+  html.platform-windows .desktop-access-card {
+    padding: 19px;
+    border: 1px solid var(--border2);
+    border-radius: var(--desktop-card-radius);
+    background: var(--bg2);
+    box-shadow: var(--desktop-panel-shadow);
+  }
+  html.platform-windows .desktop-next-card {
+    background:
+      radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 55%),
+      var(--bg2);
+  }
+  html.platform-windows .desktop-card-kicker { color: var(--accent); font-size: 11px; font-weight: 760; letter-spacing: .07em; text-transform: uppercase; }
+  html.platform-windows .desktop-next-card h2 { margin: 8px 0 0; color: var(--text); font-size: 20px; line-height: 1.15; letter-spacing: -.025em; }
+  html.platform-windows .desktop-next-card p { margin: 9px 0 16px; color: var(--text2); font-size: 13px; line-height: 1.5; }
+  html.platform-windows .desktop-next-card button {
+    width: 100%;
+    min-height: 41px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--accent);
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  html.platform-windows .desktop-access-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+  html.platform-windows .desktop-access-head strong { color: var(--text); font-size: 15px; }
+  html.platform-windows .desktop-access-head span { color: var(--text3); font-size: 11px; }
+  html.platform-windows .desktop-access-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  html.platform-windows .desktop-access-grid button {
+    display: grid;
+    grid-template-columns: 29px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    gap: 2px 9px;
+    min-width: 0;
+    min-height: 65px;
+    padding: 10px;
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--bg3) 72%, transparent);
+    color: var(--text2);
+    text-align: left;
+    cursor: pointer;
+  }
+  html.platform-windows .desktop-access-grid button > span { grid-row: 1 / 3; display: grid; width: 29px; height: 29px; place-items: center; border-radius: 8px; background: color-mix(in srgb, var(--accent) 9%, var(--bg2)); color: var(--accent); font-size: 14px; font-weight: 750; }
+  html.platform-windows .desktop-access-grid button strong { align-self: end; overflow: hidden; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+  html.platform-windows .desktop-access-grid button small { align-self: start; overflow: hidden; color: var(--text3); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+
+  html.platform-windows #view-session .session-quick-disclosure {
+    margin: 0;
+    padding: 0 15px;
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    background: var(--bg2);
+  }
+  html.platform-windows #view-session .session-quick-disclosure > summary { min-height: 46px; font-size: 12px; }
+  html.platform-windows #view-session .session-quick-disclosure > summary small { font-size: 11px; }
+  html.platform-windows #view-session .session-journal-card { width: 100%; max-width: none; margin: 0; }
+  html.platform-windows #view-session .session-journal-toggle { min-width: 88px; font-size: 13px; }
+  html.platform-windows #view-session .session-journal-toggle::after { font-size: 11px; }
+  html.platform-windows #view-session .session-aulas-dashboard {
+    max-width: none;
+    margin: 5px 0 0;
+    padding: 21px 22px;
+    border: 1px solid var(--border2);
+    border-radius: var(--desktop-card-radius);
+    background: var(--bg2);
+    box-shadow: var(--desktop-panel-shadow);
+  }
+
+  /* Stopwatch page */
+  html.platform-windows body[data-view="cronometro"] #view-cronometro,
+  html.platform-windows body.crono-focus #view-cronometro {
+    --crono-interface-ring-size: 248px !important;
+    --crono-timer-track: 1.3fr;
+    --crono-tools-track: .82fr;
+    --crono-timer-min-width: 520px;
+    display: flex !important;
+    min-height: calc(100dvh - var(--desktop-header-height));
+    padding-top: 16px !important;
+    overflow: visible;
+  }
+  html.platform-windows body[data-view="cronometro"] .header-date { font-size: 13px; }
+  html.platform-windows #view-cronometro .crono-close-btn { display: none !important; }
+  html.platform-windows #view-cronometro .crono-screen-title {
+    top: 17px;
+    right: clamp(26px, 2.8vw, 44px);
+    left: auto;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: auto;
+    transform: none;
+  }
+  html.platform-windows #view-cronometro .crono-screen-title > span:first-child { display: none; }
+  html.platform-windows #view-cronometro .crono-screen-title button {
+    min-height: 36px;
+    border-radius: 9px;
+    font-size: 12px;
+  }
+  html.platform-windows #view-cronometro .crono-concentrado {
+    top: 24px;
+    left: clamp(26px, 2.8vw, 44px);
+    right: auto;
+    transform: none;
+    color: var(--text2);
+    font: 650 13px/1.2 "Segoe UI Variable", "Segoe UI", sans-serif;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  html.platform-windows #view-cronometro .crono-prob { top: 24px; left: 50%; font-size: 11px; }
+  html.platform-windows #view-cronometro .crono-wrap,
+  html.platform-windows body.crono-running #view-cronometro .crono-wrap {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0;
+    padding: 58px 0 24px !important;
+    align-content: start;
+    justify-content: flex-start;
+  }
+  html.platform-windows #view-cronometro .crono-idle-wrap {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  html.platform-windows #view-cronometro .crono-idle-console,
+  html.platform-windows body.crono-running #view-cronometro .crono-wrap {
+    grid-template-columns: minmax(520px, 1.3fr) minmax(350px, .82fr) !important;
+    gap: 16px !important;
+    align-items: stretch;
+  }
+  html.platform-windows #view-cronometro .crono-idle-main,
+  html.platform-windows #view-cronometro #cronoIdleDrawer,
+  html.platform-windows body.crono-running #view-cronometro #cronoStageRun,
+  html.platform-windows body.crono-running #view-cronometro #cronoRunDrawer {
+    width: 100% !important;
+    height: clamp(570px, calc(100dvh - 220px), 700px) !important;
+    min-height: 570px !important;
+    max-height: 700px !important;
+    box-sizing: border-box;
+    border: 1px solid var(--border2) !important;
+    border-radius: var(--desktop-card-radius) !important;
+    background: color-mix(in srgb, var(--bg2) 97%, transparent) !important;
+    box-shadow: var(--desktop-panel-shadow) !important;
+  }
+  html.platform-windows #view-cronometro .crono-idle-main,
+  html.platform-windows body.crono-running #view-cronometro #cronoStageRun {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 18px 20px 17px !important;
+    overflow: hidden;
+  }
+  html.platform-windows #view-cronometro #cronoIdleDrawer,
+  html.platform-windows body.crono-running #view-cronometro #cronoRunDrawer {
+    position: static;
+    display: flex;
+    transform: none;
+    flex-direction: column;
+    margin: 0;
+    padding: 18px !important;
+    overflow: hidden;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  html.platform-windows body:not(.crono-running) #view-cronometro #cronoRunDrawer { display: none !important; }
+  html.platform-windows #view-cronometro .crono-run-drawer-handle { display: none !important; }
+
+  html.platform-windows #view-cronometro .crono-run-head {
+    flex: 0 0 auto;
+    min-height: 58px !important;
+    margin: 0 0 6px !important;
+    padding: 0 0 13px;
+    align-items: center !important;
+    border-bottom: 1px solid var(--border2);
+    overflow: visible;
+  }
+  html.platform-windows #view-cronometro .crono-idle-work-picker { max-width: min(620px, calc(100% - 110px)); }
+  html.platform-windows #view-cronometro .crono-select-custom,
+  html.platform-windows #view-cronometro #cronoObraPill {
+    min-height: 42px;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 7%, var(--bg3));
+  }
+  html.platform-windows #view-cronometro .crono-select-custom-label,
+  html.platform-windows #view-cronometro #cronoRunName {
+    color: var(--text);
+    font: 700 15px/1.2 "Segoe UI Variable", "Segoe UI", sans-serif !important;
+    letter-spacing: -.01em;
+  }
+  html.platform-windows #view-cronometro .crono-habit-slot { max-width: 116px; }
+  html.platform-windows #view-cronometro .crono-run-status { min-height: 32px; padding: 7px 10px; border-radius: 9px; font-size: 11px; }
+
+  html.platform-windows #view-cronometro .crono-idle-main > .crono-readiness-chip {
+    top: 72px;
+    min-height: 34px;
+    font-size: 12px;
+  }
+  html.platform-windows #view-cronometro #cronoIdleReadiness { display: none !important; }
+  html.platform-windows #view-cronometro .crono-idle-display-wrap,
+  html.platform-windows body.crono-timer-mode #view-cronometro .crono-idle-display-wrap {
+    flex: 0 0 var(--crono-interface-ring-size) !important;
+    width: var(--crono-interface-ring-size) !important;
+    height: var(--crono-interface-ring-size) !important;
+    min-height: var(--crono-interface-ring-size) !important;
+    margin: auto auto 3px !important;
+  }
+  html.platform-windows #view-cronometro .crono-idle-display-wrap .crono-run-progress-svg,
+  html.platform-windows body.crono-timer-mode #view-cronometro .crono-idle-display-wrap .crono-run-progress-svg {
+    width: var(--crono-interface-ring-size) !important;
+    height: var(--crono-interface-ring-size) !important;
+  }
+  html.platform-windows #view-cronometro .crono-idle-display-wrap .crono-display {
+    font-size: 45px !important;
+    font-weight: 650;
+    letter-spacing: -.05em;
+  }
+  html.platform-windows #view-cronometro .crono-idle-display-wrap.has-hours .crono-display { font-size: 41px !important; }
+
+  html.platform-windows #view-cronometro .crono-idle-main .crono-idle-message,
+  html.platform-windows body.crono-running #view-cronometro .crono-run-destello {
+    display: block !important;
+    flex: 0 0 auto;
+    width: 100% !important;
+    min-height: 52px !important;
+    max-height: 66px !important;
+    margin: 7px auto 8px !important;
+    padding: 10px 13px !important;
+    border: 1px solid color-mix(in srgb, var(--accent) 17%, var(--border2));
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--accent) 4%, var(--bg3));
+    color: var(--text2);
+    font: 560 13px/1.38 "Segoe UI Variable", "Segoe UI", sans-serif !important;
+    text-align: left;
+    -webkit-line-clamp: 2 !important;
+  }
+  html.platform-windows #view-cronometro .crono-idle-main .crono-idle-message::before,
+  html.platform-windows body.crono-running #view-cronometro .crono-run-destello::before {
+    content: "✦  DESTELLO";
+    display: block;
+    margin-bottom: 4px;
+    color: var(--accent);
+    font-size: 10px;
+    font-weight: 780;
+    letter-spacing: .07em;
+  }
+  html.platform-windows #view-cronometro .crono-piano-goal-idle {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 58px;
+    margin: 0 0 9px;
+    padding: 10px 13px;
+    border-radius: 11px;
+  }
+  html.platform-windows #view-cronometro .crono-piano-goal-idle > span { font-size: 10px; }
+  html.platform-windows #view-cronometro .crono-piano-goal-idle > strong { font-size: 13.5px; }
+  html.platform-windows #view-cronometro .crono-piano-goal-idle > small { font-size: 11px; }
+  html.platform-windows #view-cronometro .crono-idle-controls {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(155px, .62fr) !important;
+    grid-template-areas: "mode start" "projection projection" !important;
+    align-items: stretch;
+    gap: 7px 10px;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  html.platform-windows #view-cronometro .crono-idle-controls .crono-mode-toggle {
+    grid-area: mode;
+    width: 100%;
+    min-height: 43px;
+    margin: 0;
+    padding: 3px;
+    border-radius: 10px;
+  }
+  html.platform-windows #view-cronometro .crono-idle-controls .crono-mode-opt { min-height: 37px; padding: 6px; border-radius: 8px; font-size: 13px; }
+  html.platform-windows #view-cronometro .crono-idle-controls .crono-plant-btn {
+    grid-area: start;
+    width: 100%;
+    min-height: 43px;
+    margin: 0;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+  }
+  html.platform-windows #view-cronometro .crono-idle-controls .crono-timer-projection { grid-area: projection; }
+
+  html.platform-windows #view-cronometro .crono-idle-panel-head,
+  html.platform-windows body.crono-running #view-cronometro .crono-run-drawer-head {
+    display: flex !important;
+    flex: 0 0 auto;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 51px;
+    margin: 0;
+  }
+  html.platform-windows #view-cronometro .crono-idle-panel-head > span,
+  html.platform-windows body.crono-running #view-cronometro .crono-run-drawer-head > span {
+    color: var(--text);
+    font: 720 16px/1.2 "Segoe UI Variable", "Segoe UI", sans-serif;
+    letter-spacing: -.01em;
+    text-transform: none;
+  }
+  html.platform-windows #view-cronometro .crono-professor-link { font-size: 12px; }
+  html.platform-windows #view-cronometro .crono-run-drawer-tabs {
+    flex: 0 0 auto;
+    gap: 4px !important;
+    min-height: 40px;
+    margin: 0 0 13px !important;
+    padding: 3px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--bg3) 82%, transparent);
+  }
+  html.platform-windows #view-cronometro .crono-run-drawer-tab,
+  html.platform-windows #view-cronometro .crono-idle-drawer-tab {
+    min-height: 34px !important;
+    height: 34px !important;
+    padding: 0 7px !important;
+    border-radius: 8px !important;
+    background: transparent !important;
+    color: var(--text2) !important;
+    font-size: 12px !important;
+    font-weight: 650;
+  }
+  html.platform-windows #view-cronometro .crono-run-drawer-tab.active,
+  html.platform-windows #view-cronometro .crono-idle-drawer-tab.active {
+    background: var(--bg2) !important;
+    box-shadow: 0 1px 4px rgba(33, 45, 64, .11);
+    color: var(--accent) !important;
+  }
+  html.platform-windows #view-cronometro .crono-run-drawer-panels,
+  html.platform-windows #view-cronometro .crono-idle-drawer-panels {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+  html.platform-windows #view-cronometro .crono-run-drawer-panel,
+  html.platform-windows #view-cronometro .crono-idle-drawer-panel {
+    height: 100%;
+    max-height: none !important;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  html.platform-windows #view-cronometro .crono-task-columns { grid-template-columns: minmax(0, 1fr); }
+  html.platform-windows #view-cronometro .crono-task-lane,
+  html.platform-windows #view-cronometro .crono-task-lane + .crono-task-lane {
+    padding: 0 0 10px;
+    border: 0;
+    border-bottom: 1px solid var(--border2);
+  }
+  html.platform-windows #view-cronometro .crono-task-lane + .crono-task-lane { padding-top: 11px; }
+  html.platform-windows #view-cronometro .crono-task-lane-head strong { font-size: 13.5px; }
+  html.platform-windows #view-cronometro .crono-task-lane-sub { font-size: 10.5px; }
+  html.platform-windows #view-cronometro .crono-task-lane .crono-task-row { min-height: 51px; border-radius: 10px; }
+  html.platform-windows #view-cronometro .crono-task-lane .crono-task-text { font-size: 13px; line-height: 1.3; }
+  html.platform-windows #view-cronometro .crono-task-composer .crono-task-input { height: 39px; font-size: 12.5px; }
+  html.platform-windows #view-cronometro .crono-task-kind-btn,
+  html.platform-windows #view-cronometro .crono-task-tomorrow-btn { min-height: 31px; font-size: 10px; }
+
+  /* Running session keeps the same two-column geometry. */
+  html.platform-windows body.crono-running #view-cronometro #cronoStageIdle { display: none !important; }
+  html.platform-windows body.crono-running #view-cronometro #cronoStageRun { display: flex !important; }
+  html.platform-windows body.crono-running #view-cronometro #cronoRunDrawer { display: flex !important; }
+  html.platform-windows body.crono-running #view-cronometro .crono-wrap { grid-template-rows: auto !important; }
+  html.platform-windows body.crono-running #view-cronometro .crono-display-wrap {
+    position: relative;
+    flex: 0 0 330px !important;
+    width: 100% !important;
+    height: 330px !important;
+    min-height: 330px !important;
+    max-height: 330px !important;
+    margin: auto 0 0 !important;
+  }
+  html.platform-windows body.crono-running #view-cronometro .crono-run-progress-svg {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: var(--crono-interface-ring-size) !important;
+    height: var(--crono-interface-ring-size) !important;
+    transform: translateX(-50%);
+  }
+  html.platform-windows body.crono-running #view-cronometro .crono-display-inner {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: var(--crono-interface-ring-size);
+    height: var(--crono-interface-ring-size);
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 18px;
+    transform: translateX(-50%);
+  }
+  html.platform-windows body.crono-running #view-cronometro .crono-display { font-size: 45px !important; font-weight: 650; letter-spacing: -.05em; }
+  html.platform-windows body.crono-running #view-cronometro .crono-display-wrap.has-hours .crono-display { font-size: 40px !important; }
+  html.platform-windows body.crono-running #view-cronometro .crono-run-action-rail {
+    position: absolute !important;
+    inset: auto 0 0 !important;
+    display: flex;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    height: 70px;
+    transform: none !important;
+  }
+  html.platform-windows body.crono-running #view-cronometro .crono-controls { display: flex; flex-direction: row !important; align-items: center; justify-content: center; gap: 9px; width: auto; margin: 0; }
+  html.platform-windows body.crono-running #view-cronometro .crono-quick-destello-btn { position: static; width: 42px; height: 42px; border-radius: 10px; }
+  html.platform-windows body.crono-running #view-cronometro .crono-session-main-btn.crono-session-rail-main {
+    display: flex;
+    flex: 0 0 132px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 132px;
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    aspect-ratio: auto !important;
+    border-radius: 10px !important;
+  }
+  html.platform-windows body.crono-running #view-cronometro .crono-session-main-btn.crono-session-rail-main::after {
+    position: relative;
+    z-index: 2;
+    content: "Pausar";
+    font-size: 13px;
+    font-weight: 720;
+  }
+  html.platform-windows body.crono-running #view-cronometro .crono-session-main-btn.crono-session-rail-main.is-paused::after { content: "Reanudar"; }
+  html.platform-windows body.crono-running #view-cronometro .crono-session-main-btn.crono-session-rail-main .crono-session-hold-ring { display: none; }
+  html.platform-windows body.crono-running #view-cronometro .crono-session-main-btn.crono-session-rail-main .crono-session-main-icon svg { display: none; }
+  html.platform-windows body.crono-running #view-cronometro .crono-session-main-btn.crono-session-rail-main .crono-session-main-icon::before { content: "Ⅱ"; font-size: 14px; font-weight: 800; }
+  html.platform-windows body.crono-running #view-cronometro .crono-session-main-btn.crono-session-rail-main.is-paused .crono-session-main-icon::before { content: "▶"; font-size: 13px; }
+  html.platform-windows body.crono-running #view-cronometro .crono-session-finish-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 88px;
+    height: 44px;
+    padding: 0 13px;
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    background: var(--bg2);
+    color: var(--text2);
+    font-size: 12.5px;
+    font-weight: 690;
+    cursor: pointer;
+  }
+  html.platform-windows body.crono-running #view-cronometro .crono-ctrl-btn { min-height: 42px; border-radius: 10px; font-size: 13px; }
+  html.platform-windows body.crono-running #view-cronometro .crono-piano-money {
+    flex: 0 0 auto;
+    width: 100%;
+    gap: 6px;
+    margin: 0;
+    padding: 10px 13px;
+    border-radius: 11px;
+    box-shadow: none;
+  }
+  html.platform-windows body.crono-running #view-cronometro #cronoPianoMoneyValue { font-size: 24px; }
+  html.platform-windows body.crono-running #view-cronometro .crono-piano-money header span,
+  html.platform-windows body.crono-running #view-cronometro .crono-piano-money-main span { font-size: 9px; }
+  html.platform-windows body.crono-running #view-cronometro .crono-piano-money footer strong,
+  html.platform-windows body.crono-running #view-cronometro .crono-piano-money footer span { font-size: 10px; }
+  html.platform-windows body.crono-running #view-cronometro .crono-run-destello { margin: 8px 0 !important; }
+  html.platform-windows body.crono-running #view-cronometro .crono-bottom-row,
+  html.platform-windows body.crono-running #view-cronometro .crono-calendar-panel,
+  html.platform-windows body.crono-running #view-cronometro .crono-target-solidity { display: none !important; }
+  html.platform-windows body.crono-running #view-cronometro #cronoRunDrawer .crono-controls {
+    width: 100%;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--border2);
+  }
+
+  html.platform-windows #view-cronometro .crono-garden,
+  html.platform-windows #view-cronometro .crono-bottom-row,
+  html.platform-windows #view-cronometro .crono-calendar-panel,
+  html.platform-windows #view-cronometro .crono-target-solidity {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 900px) and (max-width: 1199px) and (hover: hover) and (pointer: fine) {
+  html.platform-windows {
+    --desktop-rail-width: 184px;
+    --desktop-header-height: 91px;
+  }
+  html.platform-windows .desktop-nav-brand { padding-inline: 4px; }
+  html.platform-windows .desktop-nav-brand strong { font-size: 14.5px; }
+  html.platform-windows .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn) { font-size: 13.5px; }
+  html.platform-windows body:not(.crono-focus) .view,
+  html.platform-windows body.crono-focus .view { padding-inline: 22px !important; }
+  html.platform-windows body[data-view="session"] #view-session:not(.session-weekly-mode):not(.session-history-mode) {
+    grid-template-columns: minmax(0, 1.35fr) minmax(282px, .76fr);
+  }
+  html.platform-windows #view-session .session-focus-card { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  html.platform-windows #view-cronometro .crono-idle-console,
+  html.platform-windows body.crono-running #view-cronometro .crono-wrap {
+    grid-template-columns: minmax(430px, 1.18fr) minmax(300px, .82fr) !important;
+  }
+  html.platform-windows body[data-view="cronometro"] #view-cronometro,
+  html.platform-windows body.crono-focus #view-cronometro {
+    --crono-interface-ring-size: 232px !important;
+    --crono-timer-min-width: 430px;
+  }
+}
+
+/* v396 is loaded after the earlier wide-workspace layers. Those layers still
+   own Calendar and Works; these higher-specificity resets make Today and the
+   Stopwatch use the compact composition approved for this release. */
+@media (min-width: 1200px) and (hover: hover) and (pointer: fine) {
+  html.platform-windows .nav.nav-bottom,
+  html.platform-windows body.crono-focus .nav.nav-bottom {
+    inset: 0 auto 0 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: var(--desktop-rail-width) !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 0 !important;
+    padding: 20px 14px 15px !important;
+  }
+
+  html.platform-windows .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn),
+  html.platform-windows body.crono-focus .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn) {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    width: 100% !important;
+    min-height: 44px !important;
+    margin: 0 0 3px !important;
+    padding: 0 12px !important;
+    border-radius: 10px !important;
+    font-size: 14.5px !important;
+    line-height: 1 !important;
+  }
+  html.platform-windows .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn) svg {
+    width: 19px !important;
+    height: 19px !important;
+  }
+  html.platform-windows .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn) span {
+    font-size: 14px !important;
+    line-height: 1.15 !important;
+  }
+  html.platform-windows .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn).active::after { display: none !important; }
+
+  html.platform-windows body[data-view="session"] #view-session:not(.session-weekly-mode):not(.session-history-mode) {
+    grid-template-columns: minmax(0, 1.55fr) minmax(330px, .72fr) !important;
+    grid-template-areas:
+      "summary summary"
+      "plan-title side"
+      "plan side"
+      "quick side"
+      "journal side"
+      "rooms rooms" !important;
+    grid-auto-rows: max-content !important;
+    gap: 15px 17px !important;
+    padding-top: 23px !important;
+    padding-bottom: 28px !important;
+  }
+  html.platform-windows body[data-view="session"] #view-session > #sessionResumenCard {
+    grid-area: summary !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  html.platform-windows body[data-view="session"] #view-session > .desktop-plan-heading { grid-area: plan-title !important; }
+  html.platform-windows body[data-view="session"] #view-session > .desktop-today-side { grid-area: side !important; }
+  html.platform-windows body[data-view="session"] #view-session > #sessionPlan { grid-area: plan !important; }
+  html.platform-windows body[data-view="session"] #view-session > .session-quick-disclosure { grid-area: quick !important; }
+  html.platform-windows body[data-view="session"] #view-session > #sessionJournalCard { grid-area: journal !important; }
+  html.platform-windows body[data-view="session"] #view-session > #sessionAulasDashboard {
+    grid-area: rooms !important;
+    width: 100% !important;
+    margin: 5px 0 0 !important;
+    padding: 21px 22px !important;
+    border: 1px solid var(--border2) !important;
+    border-radius: var(--desktop-card-radius) !important;
+  }
+  html.platform-windows body[data-view="session"] #view-session > .german-entry { display: none !important; }
+
+  html.platform-windows body[data-view="session"] #sessionResumenCard {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    grid-template-areas: none !important;
+    gap: 12px !important;
+  }
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-metrics,
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-probabilities {
+    display: contents !important;
+    padding: 0 !important;
+  }
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-divider { display: none !important; }
+  html.platform-windows body[data-view="session"] #sessionResumenCard :is(.session-focus-metric, .session-focus-finish, .session-focus-probability) {
+    min-height: 101px !important;
+    margin: 0 !important;
+    padding: 15px 17px !important;
+    border: 1px solid var(--border2) !important;
+    border-radius: var(--desktop-card-radius) !important;
+    background: color-mix(in srgb, var(--bg2) 96%, transparent) !important;
+    box-shadow: var(--desktop-panel-shadow) !important;
+  }
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-metric > span,
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-finish > span {
+    margin: 0 0 7px !important;
+    font-size: 12px !important;
+    font-weight: 650 !important;
+    line-height: 1.1 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+  }
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-metric > strong,
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-metric.is-projection > strong,
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-finish > strong {
+    font-size: clamp(21px, 2vw, 27px) !important;
+    font-weight: 730 !important;
+    line-height: 1.02 !important;
+    letter-spacing: -.04em !important;
+  }
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-probability {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-content: center !important;
+    gap: 6px 11px !important;
+  }
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-probability span,
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-probability small { font-size: 11px !important; }
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-probability strong { font-size: 20px !important; }
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-status {
+    grid-area: auto / 1 / auto / -1 !important;
+    min-height: 34px !important;
+    margin-top: -4px !important;
+    padding: 0 3px !important;
+  }
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-status span,
+  html.platform-windows body[data-view="session"] #sessionResumenCard .session-focus-status small { font-size: 11.5px !important; }
+
+  html.platform-windows body.crono-focus #view-cronometro #cronoIdleDisplayWrap .crono-display,
+  html.platform-windows body.crono-focus.crono-running #view-cronometro #cronoStageRun .crono-display {
+    font-size: 45px !important;
+    font-weight: 650 !important;
+    letter-spacing: -.05em !important;
+  }
+  html.platform-windows body.crono-focus #view-cronometro #cronoIdleDisplayWrap.has-hours .crono-display,
+  html.platform-windows body.crono-focus.crono-running #view-cronometro #cronoStageRun .crono-display-wrap.has-hours .crono-display {
+    font-size: 40px !important;
+  }
+  html.platform-windows body.crono-focus.crono-running #view-cronometro #cronoStageRun .crono-run-progress-svg,
+  html.platform-windows body.crono-focus.crono-running #view-cronometro #cronoStageRun .crono-display-inner {
+    width: var(--crono-interface-ring-size) !important;
+    height: var(--crono-interface-ring-size) !important;
+  }
+}

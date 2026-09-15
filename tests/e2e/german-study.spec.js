@@ -1,11 +1,16 @@
 import {test,expect} from '@playwright/test';
 const fixture={obras:[{id:'piano',name:'Bach',movimientos:[]}],eventos:[],sesiones:[],registro:[],sessionPlants:[],forestPlants:[]};
 const pack={schema:'german-study-pack.v1',metadata:{title:'Clase de prueba'},cards:[{type:'de_es',front:'der Bahnhof',back:'la estación',explanation:'Sustantivo masculino.'}],exercises:[{type:'conjugation',prompt:'Conjuga warten con du.',answer:'du wartest',acceptedAnswers:['wartest']},{type:'free_write',prompt:'Describe tu viaje.',answer:'Ich fahre nach Berlin.'}]};
+async function openDeutsch(page) {
+  const desktopEntry=page.getByRole('button',{name:'Alemán',exact:true});
+  if(await desktopEntry.isVisible()) await desktopEntry.click();
+  else await page.getByRole('button',{name:'Abrir Deutsch',exact:true}).click();
+}
 async function prepare(page) {
   await page.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({status:200,contentType:'application/javascript',body:'/* offline test */'}));
   await page.addInitScript(data=>{if(!localStorage.getItem('german_test_seed')){localStorage.setItem('alberto_piano_v2',JSON.stringify(data));localStorage.setItem('german_test_seed','1');}},fixture);
   await page.goto('/');await page.waitForFunction(()=>window.GermanStudy && window.UpdateSafety);
-  await page.getByRole('button',{name:'Abrir Deutsch',exact:true}).click();
+  await openDeutsch(page);
 }
 async function importPack(page,data=pack) {
   await page.locator('#germanImportFile').setInputFiles({name:'clase.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});
@@ -37,7 +42,7 @@ test('Deutsch end to end: goal, class deck, Anki card, money, pause/reload and i
   const seconds=await page.evaluate(()=>db.germanStudy.sessions[0].segments.reduce((n,x)=>n+x.seconds,0));
   expect(await page.evaluate(()=>UpdateSafety.safeUpdate())).toBe(false);
   await page.reload();await page.waitForFunction(()=>window.GermanStudy);
-  await page.getByRole('button',{name:'Abrir Deutsch',exact:true}).click();
+  await openDeutsch(page);
   await expect(page.getByRole('button',{name:'Continuar',exact:true})).toBeVisible();
   expect(await page.evaluate(()=>db.germanStudy.sessions[0].segments.reduce((n,x)=>n+x.seconds,0))).toBe(seconds);
   await page.getByRole('button',{name:'Continuar',exact:true}).click();
@@ -140,7 +145,7 @@ test('free study uses the same taximeter and reloads paused without counting clo
   expect(await page.evaluate(()=>db.germanStudy.sessions[0].status)).toBe('running');
   expect(await page.evaluate(()=>db.germanStudy.sessions[0].segments.reduce((n,x)=>n+x.seconds,0))).toBeGreaterThan(0);
   await page.reload();await page.waitForFunction(()=>window.GermanStudy);
-  await page.getByRole('button',{name:'Abrir Deutsch',exact:true}).click();
+  await openDeutsch(page);
   await expect(page.getByRole('button',{name:'Continuar',exact:true})).toBeVisible();
   expect(await page.evaluate(()=>db.germanStudy.sessions[0].mode)).toBe('free');
   const before=await page.evaluate(()=>db.germanStudy.sessions[0].segments.reduce((n,x)=>n+x.seconds,0));
@@ -158,7 +163,7 @@ test.describe('Deutsch installed PWA',()=>{
     await page.getByRole('button',{name:'Mostrar respuesta',exact:true}).click();await page.getByRole('button',{name:/Bien/}).click();
     await page.getByRole('button',{name:'Pausar',exact:true}).click();
     await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.GermanStudy);
-    await page.getByRole('button',{name:'Abrir Deutsch',exact:true}).click();
+    await openDeutsch(page);
     await expect(page.getByRole('heading',{name:'Repaso terminado',exact:true})).toBeVisible();
     await page.getByRole('button',{name:'Continuar',exact:true}).click();
     await page.getByRole('button',{name:'Terminar sesión',exact:true}).click();

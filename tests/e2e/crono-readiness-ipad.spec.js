@@ -16,6 +16,11 @@ const fixture = {
 
 test('iPad landscape idle timer shows movement + work readiness without overlapping controls', async ({ page }) => {
   await page.setViewportSize({ width: 1194, height: 834 });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'platform', { configurable: true, get: () => 'MacIntel' });
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, get: () => 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1' });
+    Object.defineProperty(navigator, 'userAgentData', { configurable: true, get: () => ({ platform: 'iPadOS' }) });
+  });
   await page.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* offline test */' }));
   await page.addInitScript(data => localStorage.setItem('alberto_piano_v2', JSON.stringify(data)), fixture);
   await page.goto('/', { waitUntil: 'domcontentloaded' });

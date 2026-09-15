@@ -10,6 +10,7 @@ const desktopWorkspace = fs.readFileSync('desktop-workspace.css', 'utf8');
 const desktopCalendar = fs.readFileSync('desktop-calendar-v389.css', 'utf8');
 const desktopWindows = fs.readFileSync('desktop-windows-v390.css', 'utf8');
 const desktopWindowsGeometry = fs.readFileSync('desktop-windows-v391.css', 'utf8');
+const desktopRedesign = fs.readFileSync('desktop-redesign.css', 'utf8');
 const cronoPremium = fs.readFileSync('crono-running-premium.js', 'utf8');
 const trophiesStyles = fs.readFileSync('habit-trophies.css', 'utf8');
 const worker = fs.readFileSync('sw.js', 'utf8');
@@ -98,6 +99,9 @@ describe('focused session home', () => {
     expect(trophiesStyles).toContain("@import url('./desktop-calendar-v389.css?v=389')");
     expect(trophiesStyles).toContain("@import url('./desktop-windows-v390.css?v=390')");
     expect(trophiesStyles).toContain("@import url('./desktop-windows-v391.css?v=391')");
+    expect(desktopRedesign).toContain('html.platform-windows');
+    expect(desktopRedesign).toContain('(pointer: fine)');
+    expect(desktopRedesign).not.toContain('html:not(.platform-windows)');
   });
 
   it('simplifies the piano taximeter into split precision and one multiplier bar', () => {
@@ -118,12 +122,14 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain('__earnedCentFloor');
   });
 
-  it('ships the complete v395 runtime offline', () => {
+  it('ships the complete v396 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
-    expect(index).toContain('app.js?v=384');
-    expect(index).toContain('piano-rewards.js?v=384');
-    expect(worker).toContain("const CACHE = 'estudio-v395'");
-    expect(worker).toContain('"./piano-rewards.js?v=384"');
+    expect(index).toContain('desktop-redesign.css?v=396');
+    expect(index).toContain('app.js?v=396');
+    expect(index).toContain('piano-rewards.js?v=396');
+    expect(worker).toContain("const CACHE = 'estudio-v396'");
+    expect(worker).toContain('"./desktop-redesign.css?v=396"');
+    expect(worker).toContain('"./piano-rewards.js?v=396"');
     expect(worker).toContain('"./crono-running-premium.js?v=342"');
     expect(worker).toContain('"./session-home.css?v=374"');
     expect(worker).toContain('"./crono-resume-layout.css?v=342"');

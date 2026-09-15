@@ -50,7 +50,7 @@
             load('professorCompetitionDeadlineBridgeScript','./professor-competition-deadline-bridge.js?v=377',function(){
               load('professorEventGateScript','./professor-event-gate.js?v=377',function(){
                 load('professorDurationPolicyScript','./professor-duration-policy.js?v=349',function(){
-                  load('professorDashboardScript','./professor-dashboard.js?v=377',function(){
+                  load('professorDashboardScript','./professor-dashboard.js?v=396',function(){
                     load('professorEventGateUiScript','./professor-event-gate-ui.js?v=342');
                     load('professorHandoffResilienceScript','./professor-handoff-resilience.js?v=377',function(){
                       load('professorTemporaryChatScript','./professor-temporary-chat.js?v=342');
