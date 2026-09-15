@@ -99,11 +99,11 @@ describe('focused session home', () => {
     expect(trophiesStyles).toContain("@import url('./desktop-windows-v391.css?v=391')");
   });
 
-  it('ships the complete v391 runtime offline', () => {
+  it('ships the complete v392 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('app.js?v=384');
     expect(index).toContain('piano-rewards.js?v=384');
-    expect(worker).toContain("const CACHE = 'estudio-v391'");
+    expect(worker).toContain("const CACHE = 'estudio-v392'");
     expect(worker).toContain('"./piano-rewards.js?v=384"');
     expect(worker).toContain('"./session-home.css?v=374"');
     expect(worker).toContain('"./crono-resume-layout.css?v=342"');
