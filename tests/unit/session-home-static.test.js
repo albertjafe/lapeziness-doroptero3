@@ -8,6 +8,7 @@ const styles = fs.readFileSync('session-home.css', 'utf8');
 const resumeLayout = fs.readFileSync('crono-resume-layout.css', 'utf8');
 const desktopWorkspace = fs.readFileSync('desktop-workspace.css', 'utf8');
 const desktopCalendar = fs.readFileSync('desktop-calendar-v389.css', 'utf8');
+const desktopWindows = fs.readFileSync('desktop-windows-v390.css', 'utf8');
 const trophiesStyles = fs.readFileSync('habit-trophies.css', 'utf8');
 const worker = fs.readFileSync('sw.js', 'utf8');
 
@@ -82,19 +83,27 @@ describe('focused session home', () => {
     expect(desktopCalendar).toContain('grid-auto-rows: clamp(88px');
     expect(desktopCalendar).toContain('.mes-cell-num');
     expect(desktopCalendar).not.toContain('html:not(.platform-windows)');
+    expect(desktopWindows).toContain('"Segoe UI Variable Text"');
+    expect(desktopWindows).toContain('--desktop-rail-width: 132px');
+    expect(desktopWindows).toContain('grid-template-columns: repeat(12');
+    expect(desktopWindows).toContain('body.crono-focus');
+    expect(desktopWindows).toContain('font-size: 14.5px');
+    expect(desktopWindows).not.toContain('html:not(.platform-windows)');
     expect(trophiesStyles).toContain("@import url('./desktop-workspace.css?v=388')");
     expect(trophiesStyles).toContain("@import url('./desktop-calendar-v389.css?v=389')");
+    expect(trophiesStyles).toContain("@import url('./desktop-windows-v390.css?v=390')");
   });
 
-  it('ships the complete v389 runtime offline', () => {
+  it('ships the complete v390 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('app.js?v=384');
     expect(index).toContain('piano-rewards.js?v=384');
-    expect(worker).toContain("const CACHE = 'estudio-v389'");
+    expect(worker).toContain("const CACHE = 'estudio-v390'");
     expect(worker).toContain('"./piano-rewards.js?v=384"');
     expect(worker).toContain('"./session-home.css?v=374"');
     expect(worker).toContain('"./crono-resume-layout.css?v=342"');
     expect(worker).toContain('"./desktop-workspace.css?v=388"');
     expect(worker).toContain('"./desktop-calendar-v389.css?v=389"');
+    expect(worker).toContain('"./desktop-windows-v390.css?v=390"');
   });
 });
