@@ -109,11 +109,18 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain('.crono-piano-money > footer');
   });
 
-  it('ships the complete v393 runtime offline', () => {
+  it('shows only fully earned cents in the shared goal balance', () => {
+    expect(cronoPremium).toContain('function floorToEarnedCents');
+    expect(cronoPremium).toContain('Math.floor(micros/10000)');
+    expect(cronoPremium).toContain('formatEarnedCents(earned)');
+    expect(cronoPremium).toContain('__earnedCentFloor');
+  });
+
+  it('ships the complete v394 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('app.js?v=384');
     expect(index).toContain('piano-rewards.js?v=384');
-    expect(worker).toContain("const CACHE = 'estudio-v393'");
+    expect(worker).toContain("const CACHE = 'estudio-v394'");
     expect(worker).toContain('"./piano-rewards.js?v=384"');
     expect(worker).toContain('"./crono-running-premium.js?v=342"');
     expect(worker).toContain('"./session-home.css?v=374"');
