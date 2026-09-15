@@ -10,6 +10,7 @@ const desktopWorkspace = fs.readFileSync('desktop-workspace.css', 'utf8');
 const desktopCalendar = fs.readFileSync('desktop-calendar-v389.css', 'utf8');
 const desktopWindows = fs.readFileSync('desktop-windows-v390.css', 'utf8');
 const desktopWindowsGeometry = fs.readFileSync('desktop-windows-v391.css', 'utf8');
+const cronoPremium = fs.readFileSync('crono-running-premium.js', 'utf8');
 const trophiesStyles = fs.readFileSync('habit-trophies.css', 'utf8');
 const worker = fs.readFileSync('sw.js', 'utf8');
 
@@ -99,12 +100,22 @@ describe('focused session home', () => {
     expect(trophiesStyles).toContain("@import url('./desktop-windows-v391.css?v=391')");
   });
 
-  it('ships the complete v392 runtime offline', () => {
+  it('simplifies the piano taximeter into split precision and one multiplier bar', () => {
+    expect(cronoPremium).toContain(".crono-money-micro");
+    expect(cronoPremium).toContain("'·'+micro");
+    expect(cronoPremium).toContain('cronoPianoMultiplierMeter');
+    expect(cronoPremium).toContain('cronoMultiplierLevelUp');
+    expect(cronoPremium).toContain('combined=normal*excellent');
+    expect(cronoPremium).toContain('.crono-piano-money > footer');
+  });
+
+  it('ships the complete v393 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('app.js?v=384');
     expect(index).toContain('piano-rewards.js?v=384');
-    expect(worker).toContain("const CACHE = 'estudio-v392'");
+    expect(worker).toContain("const CACHE = 'estudio-v393'");
     expect(worker).toContain('"./piano-rewards.js?v=384"');
+    expect(worker).toContain('"./crono-running-premium.js?v=342"');
     expect(worker).toContain('"./session-home.css?v=374"');
     expect(worker).toContain('"./crono-resume-layout.css?v=342"');
     expect(worker).toContain('"./desktop-workspace.css?v=388"');
