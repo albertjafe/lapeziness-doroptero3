@@ -4,12 +4,14 @@
   if(typeof module==='object' && module.exports)module.exports=api;else root.PianoRewards=api;
 })(typeof window!=='undefined'?window:globalThis,function(GermanRewards){
   'use strict';
+  const FULL_DAY_SECONDS=4*3600;
   const policy=(version,curve)=>Object.freeze({version,referenceAmount:150,minimumSeconds:600,curve:Object.freeze(curve.map(Object.freeze))});
   const POLICIES=Object.freeze({
     1:policy(1,[[0,0],[3600,.08],[7200,.20],[10800,.40],[14400,.75],[16200,1],[18000,1.35],[19800,1.85],[21600,2.60]]),
-    2:policy(2,[[0,0],[1800,.035],[3600,.08],[5400,.13],[7200,.20],[9000,.29],[10800,.40],[12600,.55],[14400,.75],[16200,1],[18000,1.35],[19800,1.85],[21600,2.60],[23400,3.75],[25200,5.50]])
+    2:policy(2,[[0,0],[1800,.035],[3600,.08],[5400,.13],[7200,.20],[9000,.29],[10800,.40],[12600,.55],[14400,.75],[16200,1],[18000,1.35],[19800,1.85],[21600,2.60],[23400,3.75],[25200,5.50]]),
+    3:policy(3,[[0,0],[1800,.05],[3600,.11],[5400,.18],[7200,.27],[9000,.38],[10800,.53],[12600,.75],[14400,1.05],[16200,1.43],[18000,1.93],[19800,2.58],[21600,3.38],[23400,4.38],[25200,5.50]])
   });
-  const CONFIG=POLICIES[2];
+  const CONFIG=POLICIES[3];
   const dayKey=(date=new Date())=>[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
   function ensure(db){
     db.pianoRewards||={version:1,sessions:[]};
@@ -28,6 +30,43 @@
     }
     return points.at(-1)[1];
   }
+  function streakMultiplier(days){
+    const n=Math.max(0,Math.floor(Number(days)||0));
+    if(n>=14)return 1.25;
+    if(n>=10)return 1.20;
+    if(n>=7)return 1.15;
+    if(n>=5)return 1.10;
+    if(n>=3)return 1.05;
+    return 1;
+  }
+  function summarizeDays(sessions){
+    const totals={};
+    for(const session of sessions||[]){
+      if(!session||!session.id||session.deleted)continue;
+      const seconds=Math.max(0,Number(session.seconds)||0);if(!seconds)continue;
+      const date=session.date||dayKey(new Date(session.endedAt||session.startedAt));
+      totals[date]=(totals[date]||0)+seconds;
+    }
+    return totals;
+  }
+  function streakByDay(sessions){
+    const totals=summarizeDays(sessions),result={};let streak=0;
+    for(const date of Object.keys(totals).sort()){
+      const seconds=totals[date];
+      if(seconds>=FULL_DAY_SECONDS){
+        streak+=1;result[date]={days:streak,multiplier:streakMultiplier(streak),fullDay:true,seconds};
+      }else{
+        streak=0;result[date]={days:0,multiplier:1,fullDay:false,seconds};
+      }
+    }
+    return result;
+  }
+  function streakStats(sessions,date=dayKey()){
+    const totals=summarizeDays(sessions),map=streakByDay(sessions),studiedDays=Object.keys(totals).filter(day=>day<=date).sort();
+    const last=studiedDays.at(-1),info=last?map[last]:null,today=map[date];
+    return {current:info?.days||0,multiplier:streakMultiplier(info?.days||0),today:today?.days||0,
+      todayMultiplier:today?.multiplier||1,todaySeconds:totals[date]||0,fullDay:!!today?.fullDay};
+  }
   function record(state,{id,goalId=null,startedAt,endedAt,seconds,policyVersion=CONFIG.version}){
     if(!id||state.sessions.some(session=>session.id===id))return false;
     const duration=Math.max(0,Number(seconds)||0);
@@ -40,15 +79,18 @@
     const byGoal=new Map((goals||[]).map(goal=>[goal.id,goal])),used={},result=[];
     const ordered=(sessions||[]).filter(session=>session&&session.id&&!session.deleted).slice()
       .sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.startedAt).localeCompare(String(b.startedAt))||String(a.id).localeCompare(String(b.id)));
+    const streaks=streakByDay(ordered);
     for(const session of ordered){
       const date=session.date||dayKey(new Date(session.endedAt||session.startedAt)),before=used[date]||0;
       const seconds=Math.max(0,Number(session.seconds)||0),after=before+seconds;used[date]=after;
       const goal=byGoal.get(session.goalId),scale=goal&&GermanRewards?GermanRewards.goalScale(goal.amount):0;
       const rewardPolicy=POLICIES[Number(session.policyVersion)]||POLICIES[1];
+      const streakInfo=streaks[date]||{days:0,multiplier:1,fullDay:false};
+      const multiplier=rewardPolicy.version>=3&&streakInfo.fullDay?streakInfo.multiplier:1;
       const base=baseReward(after,rewardPolicy)-baseReward(before,rewardPolicy);
-      const potential=Math.max(0,Math.round(baseReward(after,rewardPolicy)*scale*1e6)-Math.round(baseReward(before,rewardPolicy)*scale*1e6));
+      const potential=Math.max(0,Math.round(baseReward(after,rewardPolicy)*scale*multiplier*1e6)-Math.round(baseReward(before,rewardPolicy)*scale*multiplier*1e6));
       result.push({id:'piano:'+session.id,date,sessionId:session.id,goalId:session.goalId,source:'piano',
-        startedAt:session.startedAt,duration:seconds,baseReward:base,goalScale:scale,streakMultiplier:1,
+        startedAt:session.startedAt,duration:seconds,baseReward:base,goalScale:scale,streakDays:streakInfo.days,streakMultiplier:multiplier,fullDay:streakInfo.fullDay,
         policyVersion:rewardPolicy.version,qualified:true,potentialMicroEuros:potential,microEuros:potential,finalReward:potential/1e6});
     }
     return result;
@@ -67,22 +109,31 @@
     });
   }
   function live(state,goals,goalId,currentSeconds,date=dayKey(),germanRows=[],currentPolicyVersion=CONFIG.version){
-    const pianoRows=ledger(state.sessions,goals),rows=combinedLedger(germanRows,pianoRows,goals);
-    const todayRows=rows.filter(row=>row.date===date&&row.source==='piano');
-    const savedSeconds=(state.sessions||[]).filter(session=>session.date===date).reduce((sum,session)=>sum+Math.max(0,Number(session.seconds)||0),0);
+    const savedSessions=state.sessions||[],basePianoRows=ledger(savedSessions,goals),baseRows=combinedLedger(germanRows,basePianoRows,goals);
+    const savedSeconds=savedSessions.filter(session=>session.date===date&&!session.deleted).reduce((sum,session)=>sum+Math.max(0,Number(session.seconds)||0),0);
     const goal=(goals||[]).find(item=>item.id===goalId),scale=goal&&GermanRewards?GermanRewards.goalScale(goal.amount):0;
     const elapsed=Math.max(0,Number(currentSeconds)||0),rewardPolicy=POLICIES[Number(currentPolicyVersion)]||CONFIG;
-    const rawIncrement=Math.max(0,Math.round(baseReward(savedSeconds+elapsed,rewardPolicy)*scale*1e6)-Math.round(baseReward(savedSeconds,rewardPolicy)*scale*1e6))/1e6;
-    const goalEarned=goal?rows.filter(row=>row.goalId===goalId).reduce((sum,row)=>sum+row.finalReward,0):0;
-    const increment=goal?Math.min(Math.max(0,goal.amount-goalEarned),rawIncrement):0;
-    const today=todayRows.reduce((sum,row)=>sum+row.finalReward,0)+increment;
-    const cap=baseReward(rewardPolicy.curve.at(-1)[0],rewardPolicy)*scale;
+    const liveSession=elapsed>0?{id:'__live__',goalId,startedAt:date+'T23:59:59.999Z',endedAt:date+'T23:59:59.999Z',date,seconds:elapsed,policyVersion:rewardPolicy.version}:null;
+    const hypotheticalSessions=liveSession?[...savedSessions,liveSession]:savedSessions;
+    const hypotheticalPianoRows=ledger(hypotheticalSessions,goals),hypotheticalRows=combinedLedger(germanRows,hypotheticalPianoRows,goals);
+    const earned=(rows)=>goal?rows.filter(row=>row.goalId===goalId).reduce((sum,row)=>sum+row.finalReward,0):0;
+    const baseGoalEarned=earned(baseRows),hypotheticalGoalEarned=earned(hypotheticalRows);
+    const increment=Math.max(0,hypotheticalGoalEarned-baseGoalEarned);
+    const today=hypotheticalRows.filter(row=>row.date===date&&row.source==='piano').reduce((sum,row)=>sum+row.finalReward,0);
     const totalSeconds=savedSeconds+elapsed,next=rewardPolicy.curve.find(([seconds])=>seconds>totalSeconds);
     const nextIndex=next?rewardPolicy.curve.indexOf(next):-1,previous=nextIndex>0?rewardPolicy.curve[nextIndex-1]:rewardPolicy.curve.at(-1);
-    const hourlyRate=next?((next[1]-previous[1])/(next[0]-previous[0]))*3600*scale:0;
+    const streakInfo=streakByDay(hypotheticalSessions)[date]||{days:0,multiplier:1,fullDay:false};
+    const liveMultiplier=rewardPolicy.version>=3&&streakInfo.fullDay?streakInfo.multiplier:1;
+    const hourlyRate=next?((next[1]-previous[1])/(next[0]-previous[0]))*3600*scale*liveMultiplier:0;
+    const capSeconds=rewardPolicy.curve.at(-1)[0],capFill=Math.max(0,capSeconds-savedSeconds);
+    const capSession={id:'__cap__',goalId,startedAt:date+'T23:59:59.999Z',endedAt:date+'T23:59:59.999Z',date,seconds:capFill,policyVersion:rewardPolicy.version};
+    const capInfo=streakByDay([...savedSessions,capSession])[date]||{days:0,multiplier:1,fullDay:false};
+    const capMultiplier=rewardPolicy.version>=3&&capInfo.fullDay?capInfo.multiplier:1;
+    const cap=baseReward(capSeconds,rewardPolicy)*scale*capMultiplier;
     return {today,increment,cap,seconds:totalSeconds,nextSeconds:next?next[0]:null,nextBase:next?next[1]:rewardPolicy.curve.at(-1)[1],
       tierStartSeconds:next?previous[0]:rewardPolicy.curve.at(-1)[0],hourlyRate,policyVersion:rewardPolicy.version,
-      goalRemaining:goal?Math.max(0,goal.amount-goalEarned-increment):0};
+      streakDays:streakInfo.days,streakMultiplier:liveMultiplier,fullDay:streakInfo.fullDay,
+      goalRemaining:goal?Math.max(0,goal.amount-hypotheticalGoalEarned):0};
   }
-  return {CONFIG,POLICIES,dayKey,ensure,activeGoal,baseReward,record,ledger,combinedLedger,live};
+  return {CONFIG,POLICIES,FULL_DAY_SECONDS,dayKey,ensure,activeGoal,baseReward,streakMultiplier,summarizeDays,streakByDay,streakStats,record,ledger,combinedLedger,live};
 });

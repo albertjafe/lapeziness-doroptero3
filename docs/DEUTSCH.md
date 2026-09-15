@@ -34,11 +34,50 @@ Política central e inmutable `GermanRewards.CONFIG`, versión 1. Cada objetivo 
 
 Con un único objetivo, la recompensa de alemán del día es `base(segundosDiarios) × scale × multiplier`. Menos de 900 segundos deja el importe pendiente y no mantiene la racha. A los 900 segundos se consolida todo el día. **El mínimo es diario**: dos sesiones de ocho minutos cualifican conjuntamente. La racha del propio día cualificado determina su bonus; una interrupción la reinicia.
 
-El cronómetro de piano aporta al mismo objetivo con una curva separada y más conservadora. Solo se guarda al terminar una sesión válida de al menos 10 minutos; descansos y sesiones fallidas no generan saldo. La política v2 interpola linealmente dentro de cada tramo y aumenta su valor marginal cada media hora: 0,035 € a 0,5 h; 0,08 € a 1 h; 0,13 € a 1,5 h; 0,20 € a 2 h; 0,29 € a 2,5 h; 0,40 € a 3 h; 0,55 € a 3,5 h; 0,75 € a 4 h; 1,00 € a 4,5 h; 1,35 € a 5 h; 1,85 € a 5,5 h; 2,60 € a 6 h; 3,75 € a 6,5 h y 5,50 € a 7 h. Se aplica la misma escala sublineal del importe, sin bonus de racha, y 7 h es el máximo diario. Dividir el estudio en varias sesiones no reinicia la curva. Las sesiones guardan su versión de política: las creadas antes de v384 mantienen la curva anterior de 6 h.
+El cronómetro de piano aporta al mismo objetivo con una curva separada y más conservadora. Solo se guarda al terminar una sesión válida de al menos 10 minutos; descansos y sesiones fallidas no generan saldo. La **política v3** interpola linealmente dentro de cada tramo y adelanta parte de la recompensa hacia la jornada normal de 4–5 h sin cambiar el techo de 7 h:
+
+| Piano acumulado en el día | Base v3 |
+|---:|---:|
+| 0 h | 0,00 € |
+| 0,5 h | 0,05 € |
+| 1 h | 0,11 € |
+| 1,5 h | 0,18 € |
+| 2 h | 0,27 € |
+| 2,5 h | 0,38 € |
+| 3 h | 0,53 € |
+| 3,5 h | 0,75 € |
+| **4 h** | **1,05 €** |
+| 4,5 h | 1,43 € |
+| 5 h | 1,93 € |
+| 5,5 h | 2,58 € |
+| 6 h | 3,38 € |
+| 6,5 h | 4,38 € |
+| **7 h o más** | **5,50 €** |
+
+Los incrementos marginales de cada media hora siguen creciendo, de modo que una jornada larga continúa teniendo un premio extraordinario, pero llegar a 4 h ya mueve la hucha de forma visible. Se aplica la misma escala sublineal del importe del objetivo y dividir el estudio en varias sesiones no reinicia la curva diaria.
+
+### Racha pianística de día completo
+
+**4 h netas o más = día completo.** Los días completos consecutivos de estudio generan un multiplicador propio de piano:
+
+| Racha de días completos | Multiplicador |
+|---:|---:|
+| 1–2 | ×1,00 |
+| 3–4 | ×1,05 |
+| 5–6 | ×1,10 |
+| 7–9 | ×1,15 |
+| 10–13 | ×1,20 |
+| 14+ | **×1,25** |
+
+Al alcanzar las 4 h, el multiplicador correspondiente se aplica a **toda la recompensa pianística de ese día**, no solo al tiempo posterior a las 4 h. Por eso el ledger se reconstruye desde las sesiones canónicas y una jornada puede subir de valor al cruzar el umbral durante una sesión en curso.
+
+Un **día sin estudio pianístico registrado** se considera descanso: no incrementa la racha, pero tampoco la rompe. El siguiente día completo continúa desde donde se quedó. En cambio, un día en el que sí hay estudio pianístico registrado pero el total queda por debajo de 4 h rompe la racha; el siguiente día completo vuelve a 1. Esto evita que el sistema castigue el descanso deliberado y, al mismo tiempo, reserva el bonus para la constancia en jornadas completas.
+
+Las sesiones guardan la versión de política con la que nacieron. Las anteriores a v384 mantienen la política v1 de 6 h; las de v384 mantienen la curva v2 de 7 h y **no reciben retroactivamente la nueva bonificación de racha**. Las sesiones nuevas de v385 usan v3. La evidencia histórica de días completos sí puede servir para determinar cuántos días completos llevas encadenados al llegar a v3, sin reescribir el dinero que ya ganaste con políticas anteriores.
 
 El objetivo económico compartido se gestiona desde Deutsch o desde los accesos de la hucha en el cronómetro. Se puede editar su nombre y precio. Al eliminarlo desaparecen el objetivo y su saldo de la interfaz, mientras las sesiones canónicas se conservan internamente para no dañar el historial ni la sincronización.
 
-Para repartir entre sesiones u objetivos se usa la diferencia `base(tDespués) − base(tAntes)` del tiempo **total diario**, con la escala del objetivo de cada sesión. Así terminar/reiniciar o cambiar de objetivo no reinicia el límite. El redondeo se hace por diferencia de acumulados en microeuros enteros, nunca añadiendo céntimos por frame. La hucha se limita al importe del objetivo: no se traslada sobrante a otro objetivo. Tiempo sin objetivo queda registrado, pero no se paga retroactivamente al crear uno.
+Para repartir entre sesiones u objetivos se usa la diferencia `base(tDespués) − base(tAntes)` del tiempo **total diario**, con la escala del objetivo de cada sesión y, para piano v3 en un día completo, el multiplicador de racha de ese día. Así terminar/reiniciar o cambiar de objetivo no reinicia el límite. El redondeo se hace por diferencia de acumulados en microeuros enteros, nunca añadiendo céntimos por frame. La hucha se limita al importe del objetivo: no se traslada sobrante a otro objetivo. Tiempo sin objetivo queda registrado, pero no se paga retroactivamente al crear uno.
 
 Las fechas son días locales `YYYY-MM-DD`; los intervalos se dividen en medianoches calculadas con constructores de calendario. Los días ya registrados no se reinterpretan al viajar a otra zona horaria. SRS utiliza instantes absolutos para vencimientos, una semántica distinta de la racha.
 
@@ -54,7 +93,7 @@ Esquema formal: [`german-study-pack.v1.schema.json`](german-study-pack.v1.schema
   "metadata": { "title": "Clase de septiembre", "teacher": "Regine" },
   "cards": [
     { "type": "de_es", "front": "der Bahnhof", "back": "la estación de tren", "tags": ["viajes"] },
-    { "type": "cloze", "front": "Ich ___ am Bahnhof. (warten)", "back": "warte" }
+    { "type": "cloze", "front": "Ich ___ am Bahnhof. (warten)", "back": "warte", "tags": ["verbos"] }
   ],
   "exercises": []
 }
@@ -73,7 +112,7 @@ CSV admite UTF-8/BOM, coma o punto y coma, comillas escapadas y saltos de línea
 | Módulo | Responsabilidad |
 |---|---|
 | `german-rewards.js` | Política, días locales, rachas, ledger y progreso de objetivos; puro, CommonJS/browser |
-| `piano-rewards.js` | Curva progresiva de piano, evidencia de sesiones y ledger combinado con el objetivo compartido |
+| `piano-rewards.js` | Curva progresiva de piano, racha de días completos, evidencia de sesiones y ledger combinado con el objetivo compartido |
 | `german-session.js` | Estado propio y evidencia temporal por día; cierre idempotente |
 | `german-srs.js` | SRS determinista, comparación literal y selección de cola |
 | `german-import.js` | Validación atómica, CSV, normalización/hash, ejemplo y prompt |
@@ -84,14 +123,14 @@ CSV admite UTF-8/BOM, coma o punto y coma, comillas escapadas y saltos de línea
 
 Colecciones: `materials` (tarjetas/ejercicios anidados e inmutables), `reviews` (observaciones con ID, tarjeta/ejercicio, sesión, respuesta/resultado y fecha), `sessions` (ID, dispositivo, objetivo, inicio/fin, estado, segmentos diarios, cola y cursor/borrador), `goals` (nombre, importe, política, creación/archivo), `ledger` (proyección persistida reconstruible).
 
-Cada fila del ledger identifica `sessionId:day` y conserva `date`, `sessionId`, `goalId`, `duration`, `baseReward`, `goalScale`, `streakMultiplier`, `policyVersion`, `qualified`, `microEuros`, `finalReward`. **Las sesiones son la evidencia canónica**; la UI y los guardados reconstruyen el ledger después de cualquier merge para no sumar proyecciones antiguas calculadas offline. El saldo nunca se guarda como única fuente de verdad. Los registros se ordenan por día, inicio e ID, independientemente del orden del merge. Una sesión con `endedAt` no vuelve a aceptar tiempo.
+Cada fila del ledger identifica `sessionId:day` y conserva `date`, `sessionId`, `goalId`, `duration`, `baseReward`, `goalScale`, `streakDays`, `streakMultiplier`, `fullDay`, `policyVersion`, `qualified`, `microEuros`, `finalReward`. **Las sesiones son la evidencia canónica**; la UI y los guardados reconstruyen el ledger después de cualquier merge para no sumar proyecciones antiguas calculadas offline. El saldo nunca se guarda como única fuente de verdad. Los registros se ordenan por día, inicio e ID, independientemente del orden del merge. Una sesión con `endedAt` no vuelve a aceptar tiempo.
 
 La programación SRS se deriva de las revisiones ordenadas por instante e ID: contador de revisiones, última/próxima revisión, intervalo, ease y resultado. Again: 1 minuto y ease −0,2 (mínimo 1,3); Hard: mínimo 1 día o intervalo ×1,2 y ease −0,15; Good: 1 día inicial, luego intervalo ×ease redondeado; Easy: 4 días iniciales, luego intervalo ×ease ×1,3 y ease +0,15.
 
 ## PWA y verificación
 
-Runtime v384: scripts y CSS de Deutsch y el taxímetro de piano cargados desde `index.html` y precacheados; `update-safety.js` bloquea promociones mientras haya sesión local abierta, incluso antes de cargar el addon. `update.html` también protege esa recuperación. Mantiene el lifecycle seguro y las versiones anteriores de assets no modificados.
+Runtime v385: scripts y CSS de Deutsch y el taxímetro de piano cargados desde `index.html` y precacheados; `update-safety.js` bloquea promociones mientras haya sesión local abierta, incluso antes de cargar el addon. `update.html` también protege esa recuperación. Mantiene el lifecycle seguro y las versiones anteriores de assets no modificados.
 
-Pruebas: `tests/unit/german-study.test.js`, nuevas regresiones en `document-postgres`, `update-safety-v2` y `service-worker-audit`; `tests/e2e/german-study.spec.js` cubre UI completa, importar/duplicados/XSS, umbral, recarga/borrador, locks, objetivos, móvil y PWA offline. Ejecutar `npm run check`, `npm run test:unit`, `npm run test:e2e` y `npm run test:visual`. El repositorio conserva una lista explícita de fallos E2E anteriores en `scripts/check-e2e-known-baseline.cjs`; no se deben confundir con regresiones de Deutsch.
+Pruebas: `tests/unit/german-study.test.js`, `tests/unit/piano-rewards.test.js`, regresiones en `document-postgres`, `update-safety-v2` y `service-worker-audit`; `tests/e2e/german-study.spec.js` y `tests/e2e/piano-rewards.spec.js` cubren la UI y el taxímetro. Ejecutar `npm run check`, `npm run test:unit`, `npm run test:e2e` y `npm run test:visual`. El repositorio conserva una lista explícita de fallos E2E anteriores en `scripts/check-e2e-known-baseline.cjs`; no se deben confundir con regresiones nuevas.
 
-Validación local del 2026-09-12: runtime **107 assets**; unit **431/431**; Deutsch E2E **8/8**; visual **4/4**. Batería E2E general: **129/144**, con 14 fallos incluidos en el baseline existente y un fallo de temporización en `professor-file-transfer` que pasó al repetir su spec aisladamente (**1/1**). No se han eliminado pruebas ni ampliado el baseline para ocultarlos. Tras el último ajuste del guardado de respuestas se repitieron las 80 unit de Deutsch/PostgreSQL/UpdateSafety y los 8 E2E de Deutsch, todos aprobados. La sincronización real de producción no se modificó ni se escribieron datos reales para estas pruebas.
+La validación histórica del runtime v384 permanece documentada en el historial del repositorio. Para v385, las pruebas nuevas fijan específicamente la curva v3, la compatibilidad v1/v2, la racha de 4 h, la congelación por descanso, el reinicio por día incompleto y el salto retroactivo del día al cruzar las 4 h.
