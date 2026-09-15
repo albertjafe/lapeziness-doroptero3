@@ -1,0 +1,49 @@
+/* Windows desktop shell geometry fix v391.
+   El CSS base ya reserva el rail con margin-left; v390 no debe reservarlo una
+   segunda vez con padding. Esta capa deja una sola coordenada de escritorio. */
+
+@media (min-width: 1200px) {
+  html.platform-windows body:not(.crono-focus) .app-content {
+    width: calc(100vw - var(--desktop-rail-width)) !important;
+    max-width: none !important;
+    margin-left: var(--desktop-rail-width) !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  html.platform-windows body:not(.crono-focus) .view {
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  html.platform-windows body[data-view="session"] #view-session,
+  html.platform-windows body[data-view="calendario"] #view-calendario,
+  html.platform-windows body[data-view="obras"] #view-obras {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
+@media (min-width: 1200px) and (min-height: 700px) {
+  html.platform-windows body.crono-focus .app-content {
+    width: calc(100vw - var(--desktop-rail-width)) !important;
+    max-width: none !important;
+    margin-left: var(--desktop-rail-width) !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  html.platform-windows body.crono-focus #view-cronometro {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+}
