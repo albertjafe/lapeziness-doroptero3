@@ -90,10 +90,10 @@
           var(--green) 64%,
           color-mix(in srgb, var(--accent) 70%, var(--green)));
         box-shadow: 0 0 13px color-mix(in srgb, var(--green) 56%, transparent);
-        transition: width 520ms cubic-bezier(.2,.8,.2,1), filter 220ms ease;
+        transition: width 520ms linear, filter 220ms ease;
       }
       #view-cronometro .crono-piano-multiplier-value {
-        min-width: 49px;
+        min-width: 56px;
         color: var(--green);
         font: 800 13px/1 'JetBrains Mono', monospace;
         letter-spacing: -.04em;
@@ -107,7 +107,7 @@
           0 0 20px color-mix(in srgb, var(--green) 30%, transparent);
       }
       #view-cronometro .crono-piano-multiplier-meter.is-level-up .crono-piano-multiplier-track i {
-        filter: brightness(1.38) saturate(1.2);
+        filter: brightness(1.42) saturate(1.22);
       }
       #view-cronometro .crono-piano-multiplier-meter.is-level-up .crono-piano-multiplier-value {
         animation: cronoMultiplierLevelUp 980ms cubic-bezier(.18,.9,.22,1);
@@ -117,14 +117,14 @@
       }
       @keyframes cronoMultiplierLevelUp {
         0% { transform: scale(1); color: var(--green); text-shadow: 0 0 12px color-mix(in srgb, var(--green) 24%, transparent); }
-        18% { transform: scale(1.42) translateY(-1px); color: #fff; text-shadow: 0 0 5px #fff, 0 0 18px var(--green), 0 0 34px color-mix(in srgb, var(--accent) 80%, var(--green)); }
-        42% { transform: scale(1.25); color: color-mix(in srgb, #fff 70%, var(--green)); text-shadow: 0 0 6px #fff, 0 0 22px var(--green); }
+        18% { transform: scale(1.46) translateY(-1px); color: #fff; text-shadow: 0 0 5px #fff, 0 0 18px var(--green), 0 0 34px color-mix(in srgb, var(--accent) 80%, var(--green)); }
+        42% { transform: scale(1.27); color: color-mix(in srgb, #fff 70%, var(--green)); text-shadow: 0 0 6px #fff, 0 0 22px var(--green); }
         72% { transform: scale(1.08); }
         100% { transform: scale(1); color: var(--green); text-shadow: 0 0 12px color-mix(in srgb, var(--green) 24%, transparent); }
       }
       @media (max-width: 520px) {
         #view-cronometro .crono-piano-multiplier-meter { gap: 8px; }
-        #view-cronometro .crono-piano-multiplier-value { min-width: 45px; font-size: 12px; }
+        #view-cronometro .crono-piano-multiplier-value { min-width: 50px; font-size: 12px; }
       }
       @media (prefers-reduced-motion: reduce) {
         #view-cronometro .crono-piano-multiplier-track i { transition: none; }
@@ -236,9 +236,9 @@
     row.className='crono-piano-multiplier-meter';
     row.id='cronoPianoMultiplierMeter';
     row.setAttribute('role','progressbar');
-    row.setAttribute('aria-label','Multiplicador de recompensa');
-    row.setAttribute('aria-valuemin','1');
-    row.setAttribute('aria-valuemax','1.875');
+    row.setAttribute('aria-label','Progreso hacia el siguiente multiplicador');
+    row.setAttribute('aria-valuemin','0');
+    row.setAttribute('aria-valuemax','100');
     row.innerHTML='<div class="crono-piano-multiplier-track" aria-hidden="true"><i id="cronoPianoMultiplierFill"></i></div><strong class="crono-piano-multiplier-value" id="cronoPianoMultiplierValue">×1,00</strong>';
     const goalBar=meter.querySelector('.crono-piano-goal-progress');
     if(goalBar && goalBar.parentNode===meter) goalBar.insertAdjacentElement('afterend',row);
@@ -251,46 +251,85 @@
       if(typeof PianoRewards==='undefined' || typeof db==='undefined') return null;
       const state=PianoRewards.ensure(db);
       const goals=(db && db.germanStudy && Array.isArray(db.germanStudy.goals))?db.germanStudy.goals:[];
-      const goal=PianoRewards.activeGoal(db);
+      const activeCronoGoal=(typeof crono!=='undefined'&&crono.rewardGoalId)?goals.find(item=>item&&item.id===crono.rewardGoalId):null;
+      const goal=activeCronoGoal||PianoRewards.activeGoal(db);
       const elapsed=typeof cronoEffectiveElapsedMs==='function'?Math.max(0,cronoEffectiveElapsedMs()/1000):0;
       const date=typeof PianoRewards.dayKey==='function'?PianoRewards.dayKey():undefined;
-      return PianoRewards.live(state,goals,goal?goal.id:null,elapsed,date,[],PianoRewards.CONFIG&&PianoRewards.CONFIG.version);
+      const policyVersion=(typeof crono!=='undefined'&&Number(crono.rewardPolicyVersion))||PianoRewards.CONFIG.version;
+      return PianoRewards.live(state,goals,goal?goal.id:null,elapsed,date,[],policyVersion);
     }catch(error){
       return null;
     }
   }
 
   function multiplierLabel(value){
-    return '×'+value.toFixed(2).replace('.',',');
+    const digits=value>=10?1:2;
+    return '×'+value.toFixed(digits).replace('.',',');
+  }
+
+  /* La barra ya no representa cuánto llevas de la escala total. Representa
+     TIEMPO dentro del tramo actual de la curva: se llena de 0→100 % y, al
+     cruzar el siguiente punto de media hora, reinicia y sube el multiplicador
+     efectivo de velocidad de recompensa. El multiplicador se deriva de la
+     pendiente real de la curva, así que no altera ni inventa dinero. */
+  function rewardTierState(live){
+    const policyVersion=(live&&Number(live.policyVersion))||((typeof crono!=='undefined'&&Number(crono.rewardPolicyVersion))||PianoRewards.CONFIG.version);
+    const policy=(PianoRewards.POLICIES&&PianoRewards.POLICIES[policyVersion])||PianoRewards.CONFIG;
+    const points=Array.isArray(policy&&policy.curve)?policy.curve:[];
+    if(points.length<2) return {progress:0,multiplier:1,atCap:false,startSeconds:0,endSeconds:0};
+
+    const seconds=Math.max(0,Number(live&&live.seconds)||0);
+    let endIndex=-1;
+    for(let i=1;i<points.length;i++){
+      if(seconds<Number(points[i][0])){ endIndex=i; break; }
+    }
+
+    const normal=Math.max(1,Number(live&&live.streakMultiplier)||1);
+    const excellent=Math.max(1,Number(live&&live.excellentMultiplier)||1);
+    const streakBoost=normal*excellent;
+    const firstDx=Math.max(1,Number(points[1][0])-Number(points[0][0]));
+    const firstSlope=(Number(points[1][1])-Number(points[0][1]))/firstDx;
+
+    if(endIndex<0){
+      const start=points[points.length-2],end=points[points.length-1];
+      const dx=Math.max(1,Number(end[0])-Number(start[0]));
+      const slope=(Number(end[1])-Number(start[1]))/dx;
+      const tierMultiplier=firstSlope>0?slope/firstSlope:1;
+      return {progress:100,multiplier:tierMultiplier*streakBoost,atCap:true,startSeconds:Number(start[0]),endSeconds:Number(end[0])};
+    }
+
+    const start=points[endIndex-1],end=points[endIndex];
+    const startSeconds=Number(start[0])||0,endSeconds=Number(end[0])||startSeconds;
+    const span=Math.max(1,endSeconds-startSeconds);
+    const progress=Math.max(0,Math.min(100,(seconds-startSeconds)/span*100));
+    const slope=(Number(end[1])-Number(start[1]))/span;
+    const tierMultiplier=firstSlope>0?slope/firstSlope:1;
+    return {progress,multiplier:tierMultiplier*streakBoost,atCap:false,startSeconds,endSeconds};
   }
 
   function refreshMultiplier(){
     const row=ensureMultiplierMeter();
     if(!row) return;
     const live=currentRewardLive();
-    const normal=Math.max(1,Number(live&&live.streakMultiplier)||1);
-    const excellent=Math.max(1,Number(live&&live.excellentMultiplier)||1);
-    const combined=normal*excellent;
-    const maxNormal=(typeof PianoRewards!=='undefined'&&typeof PianoRewards.streakMultiplier==='function')?PianoRewards.streakMultiplier(999):1.25;
-    const maxExcellent=(typeof PianoRewards!=='undefined'&&typeof PianoRewards.excellentMultiplier==='function')?PianoRewards.excellentMultiplier(999):1.50;
-    const max=Math.max(1.000001,maxNormal*maxExcellent);
-    const progress=Math.max(0,Math.min(100,(combined-1)/(max-1)*100));
+    const state=rewardTierState(live);
     const fill=document.getElementById('cronoPianoMultiplierFill');
     const value=document.getElementById('cronoPianoMultiplierValue');
-    if(fill) fill.style.width=progress.toFixed(2)+'%';
-    if(value) value.textContent=multiplierLabel(combined);
-    row.setAttribute('aria-valuenow',combined.toFixed(3));
-    row.setAttribute('aria-valuetext','Multiplicador '+combined.toFixed(3));
-    row.title='Multiplicador actual: '+combined.toFixed(3)+'×';
+    if(fill) fill.style.width=state.progress.toFixed(2)+'%';
+    if(value) value.textContent=multiplierLabel(state.multiplier);
+    row.setAttribute('aria-valuenow',state.progress.toFixed(1));
+    row.setAttribute('aria-valuetext',state.atCap
+      ? 'Nivel máximo, multiplicador '+state.multiplier.toFixed(2)
+      : 'Progreso '+Math.round(state.progress)+' por ciento, multiplicador '+state.multiplier.toFixed(2));
+    row.title=state.atCap?'Nivel máximo':'Progreso al siguiente nivel';
 
-    if(lastMultiplier!=null && combined>lastMultiplier+0.0005){
+    if(lastMultiplier!=null && state.multiplier>lastMultiplier+0.0005){
       row.classList.remove('is-level-up');
       void row.offsetWidth;
       row.classList.add('is-level-up');
       clearTimeout(levelTimer);
       levelTimer=setTimeout(()=>row.classList.remove('is-level-up'),1050);
     }
-    lastMultiplier=combined;
+    lastMultiplier=state.multiplier;
   }
 
   function refreshTaximeter(){
