@@ -4,7 +4,7 @@
   else root.TimerCore = api;
 })(typeof window !== 'undefined' ? window : globalThis, function () {
   const MAX_STOPWATCH_MS = 120 * 60_000;
-  const TIMER_WARNING_MINUTES = [10, 5, 1];
+  const TIMER_WARNING_MINUTES = [10, 5, 2, 1];
 
   function createRunId(random) {
     if (typeof random === 'function') return 'run_' + random().toString(36).slice(2) + '_' + Date.now().toString(36);
@@ -48,7 +48,7 @@
             .map(Number)
             .filter(value => TIMER_WARNING_MINUTES.includes(value))
         : [];
-      // Compatibility with sessions saved before the 10–5–1 schedule existed.
+      // Compatibility with sessions saved before the full countdown schedule.
       if (previous.fiveMinuteSent && !timerMinutesSent.includes(5)) timerMinutesSent.push(5);
 
       if (remainingMs > 0 && remainingMs <= TIMER_WARNING_MINUTES[0] * 60_000) {
@@ -82,11 +82,11 @@
     }
 
     const previousMilestone = Math.max(0, Number(previous.lastMilestoneMinutes) || 0);
-    if (elapsed >= MAX_STOPWATCH_MS) {
+    if (elapsed > MAX_STOPWATCH_MS) {
       return {
         fiveMinuteSent: !!previous.fiveMinuteSent,
         timerMinutesSent: Array.isArray(previous.timerMinutesSent) ? previous.timerMinutesSent.slice() : [],
-        lastMilestoneMinutes: Math.min(previousMilestone, 105),
+        lastMilestoneMinutes: Math.min(previousMilestone, 120),
         event: null,
       };
     }

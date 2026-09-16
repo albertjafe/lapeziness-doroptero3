@@ -26,7 +26,7 @@ describe('TimerCore', () => {
     expect(TimerCore.isTargetReached(run, 1_000 + 120 * 60_000)).toBe(true);
   });
 
-  it('requests timer warnings at 10, 5 and 1 minutes', () => {
+  it('requests timer warnings at 10, 5, 2 and 1 minutes', () => {
     const run = { targetDurationMs: 25 * 60_000, isRest: false };
     let checkpoint = TimerCore.notificationCheckpoint(run, 14 * 60_000, {});
     expect(checkpoint.event).toBeNull();
@@ -39,7 +39,7 @@ describe('TimerCore', () => {
     });
     expect(TimerCore.notificationCheckpoint(run, 15 * 60_000 + 1, checkpoint).event).toBeNull();
 
-    for (const warningMinutes of [5, 1]) {
+    for (const warningMinutes of [5, 2, 1]) {
       checkpoint = TimerCore.notificationCheckpoint(
         run,
         (25 - warningMinutes) * 60_000 + 1,
@@ -51,7 +51,7 @@ describe('TimerCore', () => {
         warningMinutes,
       });
     }
-    expect(checkpoint.timerMinutesSent).toEqual([10, 5, 1]);
+    expect(checkpoint.timerMinutesSent).toEqual([10, 5, 2, 1]);
   });
 
   it('does not emit an inaccurate warning after a late background wake', () => {
@@ -79,7 +79,9 @@ describe('TimerCore', () => {
     const lateWake = TimerCore.notificationCheckpoint(run, 46 * 60_000, first);
     expect(lateWake.event).toEqual({ kind: 'stopwatch-milestone', milestoneMinutes: 45 });
     expect(TimerCore.notificationCheckpoint(run, 46 * 60_000, lateWake).event).toBeNull();
-    expect(TimerCore.notificationCheckpoint(run, 120 * 60_000, lateWake).event).toBeNull();
+    const cap=TimerCore.notificationCheckpoint(run, 120 * 60_000, lateWake);
+    expect(cap.event).toEqual({kind:'stopwatch-milestone',milestoneMinutes:120});
+    expect(TimerCore.notificationCheckpoint(run, 120 * 60_000, cap).event).toBeNull();
     expect(TimerCore.notificationCheckpoint(run, 4 * 24 * 60 * 60_000, lateWake).event).toBeNull();
   });
 

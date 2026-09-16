@@ -148,23 +148,25 @@
   }
 
   function runSnapshot(run, now) {
-    if (!run || !run.runId || run.state !== 'running') return null;
+    if (!run || !run.runId || !['running','paused'].includes(run.state)) return null;
     const currentTime = Number(now) || Date.now();
     const elapsed = elapsedMs(run, currentTime);
+    const effectiveTime = run.state === 'paused' ? Number(run.pauseStartTs)+5*60000 : currentTime;
     const target = Number(run.targetDurationMs) > 0
       ? Number(run.targetDurationMs)
       : (Number(run.targetMinutes) > 0 ? Number(run.targetMinutes) * 60000 : null);
     const stopwatchEnd = target == null
-      ? new Date(currentTime + Math.max(0, MAX_STOPWATCH_MS - elapsed)).toISOString()
+      ? new Date(effectiveTime + Math.max(0, MAX_STOPWATCH_MS - elapsed)).toISOString()
       : null;
     return {
       run_id: run.runId,
       mode: target == null ? 'stopwatch' : 'timer',
       is_rest: !!run.isRest,
       work_name: run.displayName || (run.isRest ? 'Descanso' : 'Sesión de estudio'),
-      started_at: new Date(currentTime - elapsed).toISOString(),
-      ends_at: target == null ? stopwatchEnd : new Date(currentTime + Math.max(0, target - elapsed)).toISOString(),
-      status: 'active',
+      started_at: new Date(effectiveTime - elapsed).toISOString(),
+      ends_at: target == null ? stopwatchEnd : new Date(effectiveTime + Math.max(0, target - elapsed)).toISOString(),
+      pause_until: run.state === 'paused' ? new Date(effectiveTime).toISOString() : null,
+      status: run.state === 'paused' ? 'paused' : 'active',
       updated_at: new Date(currentTime).toISOString(),
     };
   }
@@ -195,6 +197,11 @@
         onConflict: 'user_id,run_id',
       });
       if (error) throw error;
+      // A pause/finish while the request was in flight must win remotely too.
+      if (root.crono?.runId === snapshot.run_id && root.crono.state === 'paused') await pauseRun(snapshot.run_id);
+      else if (terminalRunIds.has(snapshot.run_id) || root.crono?.runId !== snapshot.run_id || root.crono?.state === 'idle') {
+        await setRunStatus(snapshot.run_id,'completed');
+      }
       return true;
     } catch (error) {
       console.warn('Web Push timer sync failed', error);
@@ -221,8 +228,9 @@
     try {
       const user = await currentUser();
       if (!user) return false;
+      const pauseSnapshot = status === 'paused' && root.crono?.runId === runId ? runSnapshot(root.crono,Date.now()) : null;
       const { error } = await root.getSB().from('push_timer_runs')
-        .update({ status, updated_at: new Date().toISOString() })
+        .update({ ...(pauseSnapshot || {}), status, updated_at: new Date().toISOString() })
         .eq('user_id', user.id)
         .eq('run_id', runId);
       if (error) throw error;

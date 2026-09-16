@@ -2627,7 +2627,7 @@ test('deduplicates background timer and stopwatch notifications', async ({ page 
     };
     cronoCheckSessionNotifications(15 * 60_000 + 1, true);
     cronoCheckSessionNotifications(15 * 60_000 + 1, true);
-    for (const elapsedMinutes of [20, 24]) {
+    for (const elapsedMinutes of [20, 23, 24]) {
       cronoCheckSessionNotifications(elapsedMinutes * 60_000 + 1, true);
       cronoCheckSessionNotifications(elapsedMinutes * 60_000 + 1, true);
     }
@@ -2647,11 +2647,12 @@ test('deduplicates background timer and stopwatch notifications', async ({ page 
     { kind: 'stopwatch-milestone', milestoneMinutes: 45 },
     { kind: 'timer-countdown', remainingMs: 10 * 60_000 - 1, warningMinutes: 10 },
     { kind: 'timer-countdown', remainingMs: 5 * 60_000 - 1, warningMinutes: 5 },
+    { kind: 'timer-countdown', remainingMs: 2 * 60_000 - 1, warningMinutes: 2 },
     { kind: 'timer-countdown', remainingMs: 1 * 60_000 - 1, warningMinutes: 1 },
   ]);
   expect(result.beforeBackground).toEqual({ sent: 1, marked: [] });
   expect(result.fiveMinuteSent).toBe(true);
-  expect(result.timerMinutesSent).toEqual([10, 5, 1]);
+  expect(result.timerMinutesSent).toEqual([10, 5, 2, 1]);
   expect(result.lastMilestoneMinutes).toBe(0);
 });
 

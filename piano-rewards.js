@@ -1,8 +1,9 @@
-/* Progressive piano rewards. Finished runs are canonical; combinedLedger caps the shared goal. */
+/* Progressive piano rewards derived from canonical study minutes; combinedLedger caps the shared goal. */
 (function(root,factory) {
-  const api=factory(typeof module==='object' && module.exports?require('./german-rewards'):root.GermanRewards);
+  const api=factory(typeof module==='object' && module.exports?require('./german-rewards'):root.GermanRewards,
+    typeof module==='object' && module.exports?require('./daily-study-minutes'):root.DailyStudyMinutes);
   if(typeof module==='object' && module.exports)module.exports=api;else root.PianoRewards=api;
-})(typeof window!=='undefined'?window:globalThis,function(GermanRewards){
+})(typeof window!=='undefined'?window:globalThis,function(GermanRewards,DailyStudyMinutes){
   'use strict';
   const FULL_DAY_SECONDS=4*3600;
   const EXCELLENT_DAY_SECONDS=5*3600;
@@ -31,6 +32,39 @@
       if(s<=x)return py+(y-py)*(s-px)/(x-px);
     }
     return points.at(-1)[1];
+  }
+  // A projection, never another saved credit: edits/deletions recalculate money
+  // and the daily tier from the same deduplicated minutes shown in the app.
+  function studyState(db, today=dayKey()){
+    const saved=ensure(db), goals=db?.germanStudy?.goals||[];
+    if(!DailyStudyMinutes || !Array.isArray(db.sessionPlants) || !Array.isArray(db.sesiones))return saved;
+    const ordered=goals.filter(g=>g.id && g.createdAt).slice().sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt))||String(a.id).localeCompare(String(b.id)));
+    if(!ordered.length)return {sessions:[]};
+    const firstDay=dayKey(new Date(ordered[0].createdAt));
+    if(!firstDay || firstDay>today)return {sessions:[]};
+    const start=new Date(firstDay+'T00:00:00'),end=new Date(today+'T00:00:00');end.setDate(end.getDate()+1);
+    const totals=DailyStudyMinutes.minutesByDay(start,end,db),sessions=[];
+    const byDay=Object.create(null);
+    saved.sessions.filter(s=>s && s.id && !s.deleted && !s.deletedAt).forEach(s=>{
+      const date=dayKey(new Date(s.startedAt||s.endedAt))||s.date;
+      if(date<firstDay)sessions.push(s);
+      else (byDay[date]||=[]).push(s);
+    });
+    Object.keys(totals).sort().forEach(date=>{
+      let remaining=Math.max(0,totals[date]*60);
+      const recorded=(byDay[date]||[]).slice().sort((a,b)=>String(a.startedAt).localeCompare(String(b.startedAt))||String(a.id).localeCompare(String(b.id)));
+      // Retain historical goal/policy attribution, not historical durations.
+      recorded.forEach(s=>{
+        const seconds=Math.min(remaining,Math.max(0,Number(s.seconds)||0));
+        if(seconds>0){sessions.push({...s,date,seconds});remaining-=seconds;}
+      });
+      if(remaining<=0)return;
+      const goal=ordered.find(g=>dayKey(new Date(g.createdAt))<=date && (!g.archivedAt || dayKey(new Date(g.archivedAt))>date) && (!g.deletedAt || dayKey(new Date(g.deletedAt))>date));
+      if(!goal)return;
+      const when=new Date(date+'T23:59:59').toISOString();
+      sessions.push({id:'study-day:'+date,goalId:goal.id,date,startedAt:when,endedAt:when,seconds:remaining,policyVersion:CONFIG.version});
+    });
+    return {...saved,sessions};
   }
   function streakMultiplier(days){
     const n=Math.max(0,Math.floor(Number(days)||0));
@@ -183,5 +217,5 @@
       excellenceDays:excellenceInfo.days,excellenceMultiplier:excellentMultiplier,excellentDay:excellenceInfo.excellentDay,excellenceFrozen:excellenceInfo.frozen,
       rewardMultiplier:liveMultiplier,goalRemaining:goal?Math.max(0,goal.amount-hypotheticalGoalEarned):0};
   }
-  return {CONFIG,POLICIES,FULL_DAY_SECONDS,EXCELLENT_DAY_SECONDS,dayKey,ensure,activeGoal,baseReward,streakMultiplier,excellenceMultiplier,summarizeDays,streakByDay,excellenceByDay,streakStats,excellenceStats,record,ledger,combinedLedger,live};
+  return {CONFIG,POLICIES,FULL_DAY_SECONDS,EXCELLENT_DAY_SECONDS,dayKey,ensure,studyState,activeGoal,baseReward,streakMultiplier,excellenceMultiplier,summarizeDays,streakByDay,excellenceByDay,streakStats,excellenceStats,record,ledger,combinedLedger,live};
 });

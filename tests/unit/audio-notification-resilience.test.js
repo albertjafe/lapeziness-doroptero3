@@ -6,14 +6,14 @@ const require = createRequire(import.meta.url);
 const TimerCore = require('../../timer-core.js');
 
 describe('audio and background notification resilience', () => {
-  it('keeps the client and server timer schedules aligned at 10, 5 and 1 minutes', () => {
+  it('keeps the client and server timer schedules aligned at 10, 5, 2 and 1 minutes', () => {
     const migration = fs.readFileSync(
-      'supabase/migrations/20260907205158_timer_notifications_10_5_1.sql',
+      'supabase/migrations/20260916093251_timer_notifications_10_5_2_1.sql',
       'utf8'
     );
 
-    expect(TimerCore.TIMER_WARNING_MINUTES).toEqual([10, 5, 1]);
-    expect(migration).toContain('current_warning = any(array[10, 5, 1])');
+    expect(TimerCore.TIMER_WARNING_MINUTES).toEqual([10, 5, 2, 1]);
+    expect(migration).toContain('current_warning = any(array[10, 5, 2, 1])');
     expect(migration).toContain("interval '120 minutes'");
     expect(migration).toContain('current_milestone between 15 and 105');
   });

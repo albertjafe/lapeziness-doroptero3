@@ -84,16 +84,15 @@
   loadStyle('planningEnhancementsV3Styles','./planning-enhancements-v3.css?v=377');
   loadStyle('planningEnhancementsV4Styles','./planning-enhancements-v4.css?v=377');
   loadStyle('solidityGuideModalStyles','./solidity-guide-modal.css?v=377');
-  load('dailyStudyMinutesFixScript','./daily-study-minutes.js?v=371');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=372');
   load('paseLiquidDirectTouchScript','./pase-liquid-direct-touch.js?v=342');
-  load('cronoSaveResilienceScript','./crono-save-resilience.js?v=347',function(){
+  load('cronoSaveResilienceScript','./crono-save-resilience.js?v=397',function(){
     load('passageTrackerResilienceScript','./passage-tracker-resilience.js?v=372',function(){
       load('taskSyncResilienceScript','./task-sync-resilience.js?v=342');
     });
   });
   load('updateSafetyScript','./update-safety.js?v=378');
-  load('cronoRunningPremiumScript','./crono-running-premium.js?v=342');
+  load('cronoRunningPremiumScript','./crono-running-premium.js?v=397');
   load('eventPlanningScript','./event-planning.js?v=377',function(){
     load('competitionPlanningSeedScript','./competition-planning-seed.js?v=342',function(){
       load('eventPlanningUiV2Script','./event-planning-ui-v2.js?v=342',function(){

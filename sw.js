@@ -1,17 +1,17 @@
-const CACHE = 'estudio-v396';
+const CACHE = 'estudio-v397';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
   "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=342",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=396",
+  "./app.js?v=397",
   "./german-rewards.js?v=383",
-  "./piano-rewards.js?v=396",
+  "./piano-rewards.js?v=397",
   "./german-srs.js?v=378",
   "./german-import.js?v=382",
   "./german-session.js?v=382",
-  "./german-study.js?v=384",
+  "./german-study.js?v=397",
   "./german-study.css?v=384",
   "./habit-trophies.js?v=380",
   "./habit-trophies.css?v=383",
@@ -25,9 +25,10 @@ const ASSETS = [
   "./crono-resume-layout.css?v=342",
   "./crono-resume-layout.js?v=377",
   "./crono-running-premium.css?v=384",
-  "./crono-running-premium.js?v=342",
-  "./crono-save-resilience.js?v=347",
-  "./daily-study-minutes.js?v=371",
+  "./crono-running-premium.js?v=397",
+  "./crono-save-resilience.js?v=397",
+  "./crono-state-store.js?v=397",
+  "./daily-study-minutes.js?v=397",
   "./data-core.js?v=342",
   "./document-sync-core.js?v=344",
   "./ensemble-repertoire-catalog.js?v=381",
@@ -68,7 +69,7 @@ const ASSETS = [
   "./passage-tracker-resilience.js?v=372",
   "./piano-rooms-core.js?v=372",
   "./piano-rooms.css?v=369",
-  "./piano-rooms.js?v=396",
+  "./piano-rooms.js?v=397",
   "./reservation-dashboard.css?v=372",
   "./reservation-dashboard.js?v=372",
   "./planning-enhancements-v3.css?v=377",
@@ -88,7 +89,7 @@ const ASSETS = [
   "./professor-report-normalizer.js?v=342",
   "./professor-report-worker.js?v=377",
   "./professor-temporary-chat.js?v=342",
-  "./push-client.js?v=368",
+  "./push-client.js?v=397",
   "./readiness-core.js?v=342",
   "./readiness-pill-model.js?v=342",
   "./readiness-recovery-context.js?v=342",
@@ -107,7 +108,7 @@ const ASSETS = [
   "./sync-core.js?v=342",
   "./task-sync-bootstrap.js?v=342",
   "./task-sync-resilience.js?v=342",
-  "./timer-core.js?v=368",
+  "./timer-core.js?v=397",
   "./timer-objectives.js?v=383",
   "./update-safety.js?v=378",
   "./work-catalog.js?v=342",
@@ -161,7 +162,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '396');
+            target.searchParams.set('__pwa', '397');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -169,7 +170,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'396', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'397', navigated });
         } catch (error) {}
       }
     }

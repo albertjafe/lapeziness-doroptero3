@@ -181,7 +181,7 @@
       const german=db.germanStudy||{};
       const goals=Array.isArray(german.goals)?german.goals:[];
       const germanRows=GermanRewards.ledger(Array.isArray(german.sessions)?german.sessions:[],goals);
-      const rewardState=PianoRewards.ensure(db);
+      const rewardState=PianoRewards.studyState(db);
       const date=PianoRewards.dayKey();
 
       const idleGoal=PianoRewards.activeGoal(db);
@@ -249,7 +249,7 @@
   function currentRewardLive(){
     try{
       if(typeof PianoRewards==='undefined' || typeof db==='undefined') return null;
-      const state=PianoRewards.ensure(db);
+      const state=PianoRewards.studyState(db);
       const goals=(db && db.germanStudy && Array.isArray(db.germanStudy.goals))?db.germanStudy.goals:[];
       const activeCronoGoal=(typeof crono!=='undefined'&&crono.rewardGoalId)?goals.find(item=>item&&item.id===crono.rewardGoalId):null;
       const goal=activeCronoGoal||PianoRewards.activeGoal(db);
@@ -285,7 +285,7 @@
     }
 
     const normal=Math.max(1,Number(live&&live.streakMultiplier)||1);
-    const excellent=Math.max(1,Number(live&&live.excellentMultiplier)||1);
+    const excellent=Math.max(1,Number(live&&live.excellenceMultiplier)||1);
     const streakBoost=normal*excellent;
     const firstDx=Math.max(1,Number(points[1][0])-Number(points[0][0]));
     const firstSlope=(Number(points[1][1])-Number(points[0][1]))/firstDx;

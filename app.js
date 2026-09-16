@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-15-piano-taximetro-7h-v384';
+const APP_VERSION = '2026-09-16-study-accounting-recovery-v397';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -137,6 +137,8 @@ function refreshStudyViews() {
       if (typeof renderSesionesHistorial === 'function') renderSesionesHistorial();
     }
     if (typeof renderSessionQuickStudy === 'function') renderSessionQuickStudy();
+    if (typeof cronoUpdatePianoReward === 'function') cronoUpdatePianoReward();
+    if (document.getElementById('view-deutsch')?.classList.contains('active')) window.GermanStudy?.refreshMoney();
     if (typeof renderHabitChallenge === 'function') renderHabitChallenge();
     if (typeof renderHabitCalendar === 'function') renderHabitCalendar();
     if (typeof renderMesCalendario === 'function') renderMesCalendario();
@@ -4316,6 +4318,7 @@ function _itemEstudiado(it) {
 // Minutos realmente estudiados de un item (0 si no se estudió).
 function _itemMinReal(it) {
   if (!_itemEstudiado(it)) return 0;
+  if (it.manual) return it.minutosEstudiados ?? it.minutosReales ?? it.minutosPlan ?? it.min ?? 0;
   return it.minutosEstudiados || it.minutosReales || it.minutosPlan || it.min || 0;
 }
 
@@ -17537,7 +17540,9 @@ function saveSesionManual() {
   }
 
   // Actualiza o añade el item de la obra
-  const existIdx = sesion.items.findIndex(i => i.obraId === obraId);
+  const existIdx = sesion.items.findIndex(i => i.obraId === obraId && i.manual);
+  const previousItem = existIdx >= 0 ? sesion.items[existIdx] : null;
+  const previousPlant = manualStudyPlantForItem(previousItem, sesion);
   const newItem = {
     obraId,
     obraName: obra.name,
@@ -17549,6 +17554,13 @@ function saveSesionManual() {
   };
 
   if (existIdx >= 0) {
+    if (previousPlant) {
+      previousPlant.originalMins ??= previousPlant.mins;
+      previousPlant.mins = minutos;
+      previousPlant.updatedAt = previousPlant.correctedAt = new Date().toISOString();
+      newItem.studyPlantId = previousPlant.id;
+    }
+    if (previousItem.id) newItem.id = previousItem.id;
     sesion.items[existIdx] = newItem;
   } else {
     sesion.items.push(newItem);
@@ -18637,6 +18649,7 @@ function persistManualStudyHistory(resolved, minutos, fecha, options) {
     db.sesiones.sort((a, b) => new Date(b.date) - new Date(a.date));
   }
   const item = {
+    id: 'manual_' + TimerCore.createRunId(),
     obraId: resolved.obraId,
     movId: resolved.movId,
     obraName: resolved.name,
@@ -18668,7 +18681,8 @@ function persistManualStudyHistory(resolved, minutos, fecha, options) {
     started.setHours(12, Math.min(59, Math.max(0, sesion.items.length - 1)), 0, 0);
     ended = new Date(started.getTime() + minutos * 60000);
   }
-  recordSessionPlant(resolved.obraId, resolved.movId, started.toISOString(), ended.toISOString(), minutos, { source: 'manual' });
+  const plant = recordSessionPlant(resolved.obraId, resolved.movId, started.toISOString(), ended.toISOString(), minutos, { source: 'manual', id: item.id });
+  if (plant) item.studyPlantId = plant.id;
   if (db.sesiones.length > 365) db.sesiones = db.sesiones.slice(0, 365);
   saveData();
   return { sesion, item, started, ended };
@@ -18927,6 +18941,20 @@ function setEditExistingTick(itemIdx, tick) {
 }
 
 // Cambia los minutos reales de un item ya guardado
+function manualStudyPlantForItem(item, session) {
+  if (!item?.manual || !session) return null;
+  const plants = db.sessionPlants || [];
+  if (item.studyPlantId) return plants.find(p => p.id === item.studyPlantId) || null;
+  // Link old manual mirrors on their first edit; never alter a timed block.
+  const day = new Date(session.date).toDateString();
+  const plant = plants.find(p => p.source === 'manual' &&
+    p.obraId === item.obraId && (p.movId || null) === (item.movId || null) &&
+    new Date(p.startedAt || p.endedAt).toDateString() === day &&
+    Number(p.mins) === Number(_itemMinReal(item)));
+  if (plant) item.studyPlantId = plant.id;
+  return plant || null;
+}
+
 function setEditExistingMinutos(itemIdx, val) {
   if (_editSesionIdx < 0) return;
   const s = db.sesiones[_editSesionIdx];
@@ -18934,6 +18962,15 @@ function setEditExistingMinutos(itemIdx, val) {
   const item = s.items[itemIdx];
   const v = parseInt(val);
   const minutos = isNaN(v) ? null : v;
+  const manualPlant = manualStudyPlantForItem(item, s);
+  if (item.manual && minutos != null) {
+    item.minutosEstudiados = Math.max(0, minutos);
+    if (manualPlant && manualPlant.mins !== Math.max(0, minutos)) {
+      manualPlant.originalMins ??= manualPlant.mins;
+      manualPlant.mins = Math.max(0, minutos);
+      manualPlant.updatedAt = manualPlant.correctedAt = new Date().toISOString();
+    }
+  }
   item.minutosReales = minutos;
   // Editar minutos reales marca el item como estudiado.
   if (minutos != null && !item.manual) item.estudiado = true;
@@ -18950,14 +18987,22 @@ function deleteEditExistingItem(itemIdx) {
   const eraHoy = _editSesionEsHoy();
   const planId = item._planId;
   const liveEntity = eraHoy && planId ? currentPlan.find(e => (e._planId || e.id) === planId) : null;
+  const manualPlant = manualStudyPlantForItem(item, s);
   const snap = {
+    manualPlant, plantIdx: manualPlant ? db.sessionPlants.indexOf(manualPlant) : -1,
     sesion: s, item, itemIdx, eraHoy, planId,
     liveEntity, liveIdx: liveEntity ? currentPlan.indexOf(liveEntity) : -1,
     tick: sessionTicks[planId], minPlan: sessionMinPlan[planId],
     sol: sessionSolRatings[planId], prod: sessionProductivityRatings[planId],
     agg: sessionAggregate[planId], dest: sessionDestello[planId],
   };
+  if (item.manual && window.DocumentSyncCore) {
+    s._deletedChildren ??= {};
+    s._deletedChildren.items ??= {};
+    s._deletedChildren.items[DocumentSyncCore.identity(item)] = new Date().toISOString();
+  }
   s.items.splice(itemIdx, 1);
+  if (manualPlant) db.sessionPlants.splice(snap.plantIdx, 1);
   if (eraHoy) _editSyncLivePlan(item, { remove: true });
   renderEditExistingItems();
   saveData();
@@ -18966,6 +19011,19 @@ function deleteEditExistingItem(itemIdx) {
 }
 
 function _undoDeleteEditItem(snap) {
+  if (snap.item?.manual) {
+    // Deletion tombstones are permanent. Undo creates a new identity while
+    // retaining the original study block and its metadata.
+    const restoredId = 'manual_' + TimerCore.createRunId();
+    snap.item = {...snap.item, id: restoredId};
+    if (snap.manualPlant) {
+      snap.manualPlant = {...snap.manualPlant, id: restoredId, updatedAt: new Date().toISOString()};
+      snap.item.studyPlantId = restoredId;
+    }
+  }
+  if (snap.manualPlant && !db.sessionPlants.some(p => p.id === snap.manualPlant.id)) {
+    db.sessionPlants.splice(Math.min(snap.plantIdx, db.sessionPlants.length), 0, snap.manualPlant);
+  }
   if (snap.sesion && Array.isArray(snap.sesion.items)) {
     const at = Math.min(snap.itemIdx, snap.sesion.items.length);
     snap.sesion.items.splice(at, 0, snap.item);
@@ -20345,6 +20403,15 @@ function cronoRefreshWakeLock() {
 
 let _cronoWasBackgrounded = document.visibilityState !== 'visible';
 document.addEventListener('visibilitychange', cronoHandleLifecycleResume);
+window.addEventListener('pagehide', () => {
+  if (!_cronoHydrated) return;
+  cronoSaveState();
+  window.CronoStateStore?.flush();
+});
+window.addEventListener('online', () => {
+  if (crono.state === 'running') window.StudyPush?.syncRun({reason:'online'});
+  else if (crono.state === 'paused') window.StudyPush?.pauseRun(crono.runId);
+});
 window.addEventListener('focus', cronoRefreshWakeLock);
 window.addEventListener('pageshow', cronoHandleLifecycleResume);
 ['pointerdown', 'touchstart', 'click', 'keydown'].forEach(evt => {
@@ -20447,7 +20514,7 @@ const CRONO_ICONS = {
 
 function cronoSaveState() {
   try {
-    localStorage.setItem(CRONO_STORAGE_KEY, JSON.stringify({
+    const snapshot = {
       state: crono.state,
       mode: crono.mode,
       timerMinutes: crono.timerMinutes,
@@ -20474,19 +20541,30 @@ function cronoSaveState() {
       notes: Array.isArray(crono.notes) ? crono.notes.slice(-80) : [],
       observation: crono.observation || '',
       quickDestelloNote: (crono.quickDestelloNote || '').slice(0, CRONO_DESTELLO_MAX_CHARS),
-    }));
+    };
+    if (window.CronoStateStore) {
+      window.CronoStateStore.save(snapshot).then(saved => {
+        if (!saved && !_cronoStorageWarning) {
+          _cronoStorageWarning = true;
+          showToast('No se pudo proteger la sesión. Libera espacio en este dispositivo.');
+        } else if (saved) _cronoStorageWarning = false;
+      });
+    } else localStorage.setItem(CRONO_STORAGE_KEY, JSON.stringify(snapshot));
   } catch(e) {}
 }
 
-function cronoLoadState() {
+let _cronoStorageWarning = false;
+let _cronoHydrated = false;
+let _cronoHydrationPromise = null;
+function cronoLoadState(snapshot) {
   try {
-    const raw = localStorage.getItem(CRONO_STORAGE_KEY);
+    const raw = snapshot ? JSON.stringify(snapshot) : localStorage.getItem(CRONO_STORAGE_KEY);
     if (!raw) return false;
     const s = JSON.parse(raw);
     // A previous failed close may have left an active timer snapshot even
     // though its canonical block was saved. Never resume/count that run twice.
     if (s.runId && (db.sessionPlants || []).some(p => p && (p.runId === s.runId || p.id === 'run_' + s.runId))) {
-      try { localStorage.removeItem(CRONO_STORAGE_KEY); } catch (_) {}
+      cronoSaveState();
       return false;
     }
     const restoringActiveRun = (s.state === 'running' || s.state === 'paused') && !!s.obraId && !!s.startTs;
@@ -20528,7 +20606,7 @@ function cronoLoadState() {
     crono.notificationTimerMinutesSent = Array.isArray(s.notificationTimerMinutesSent)
       ? s.notificationTimerMinutesSent
           .map(Number)
-          .filter(value => Number.isInteger(value) && [10, 5, 1].includes(value))
+          .filter(value => Number.isInteger(value) && [10, 5, 2, 1].includes(value))
       : (crono.notificationFiveMinuteSent ? [5] : []);
     crono.notificationLastMilestoneMinutes = Math.max(0, Number(s.notificationLastMilestoneMinutes) || 0);
     return true;
@@ -20597,7 +20675,7 @@ function cronoRegisterBackgroundNotifications(pushEnable) {
       cronoNotificationToastOnce(
         synced ? 'crono_timer_push_ready' : 'crono_timer_push_failed',
         synced
-          ? 'Avisos programados · 10, 5 y 1 min'
+          ? 'Avisos programados · 10, 5, 2 y 1 min'
           : 'No se pudieron programar los avisos · revisa conexión y Ajustes'
       );
     }
@@ -20629,7 +20707,9 @@ function cronoShowSystemNotification(event) {
     tag = 'crono-timer-' + (crono.runId || crono.startTs) + '-' + remainingMinutes;
   } else if (event.kind === 'stopwatch-milestone') {
     title = 'Has logrado ' + cronoNotificationDurationText(event.milestoneMinutes);
-    body = sessionName + ' · El cronómetro sigue en marcha.';
+    body = event.milestoneMinutes >= 120
+      ? sessionName + ' · Has alcanzado el límite de 2 horas. Abre la app para revisar tu sesión.'
+      : sessionName + ' · El cronómetro sigue en marcha.';
     tag = 'crono-milestone-' + (crono.runId || crono.startTs) + '-' + event.milestoneMinutes;
   } else {
     return;
@@ -20685,6 +20765,7 @@ function cronoCheckSessionNotifications(elapsedMs, allowSystemNotification) {
 
 function cronoClearState() {
   try { localStorage.removeItem(CRONO_STORAGE_KEY); } catch(e) {}
+  if (window.CronoStateStore) window.CronoStateStore.save({state:'idle',runId:null});
 }
 
 function cronoFmt(ms) {
@@ -24607,13 +24688,21 @@ function cronoHandleLifecycleResume() {
   const isVisible = document.visibilityState === 'visible';
   const resumedFromBackground = isVisible && _cronoWasBackgrounded;
   if (!isVisible) _cronoWasBackgrounded = true;
+  if (_cronoHydrated && !isVisible) {
+    cronoSaveState();
+    if (crono.state === 'running') window.StudyPush?.syncRun({reason:'background'});
+  }
   cronoRefreshWakeLock();
+  if (isVisible && crono.state === 'paused' && cronoPauseRemainingMs() <= 0) {
+    cronoResume();
+  }
   if (crono.state !== 'running') {
+    if (isVisible && crono.state === 'paused') window.StudyPush?.pauseRun(crono.runId);
     if (isVisible) _cronoWasBackgrounded = false;
     return;
   }
   const elapsedMs = cronoEffectiveElapsedMs();
-  cronoCheckSessionNotifications(elapsedMs, !isVisible || resumedFromBackground);
+  cronoCheckSessionNotifications(elapsedMs, true);
   if (resumedFromBackground && typeof StudyPush !== 'undefined' && StudyPush.isActive()) {
     StudyPush.syncRun({ reason: 'foreground' });
   }
@@ -24725,7 +24814,7 @@ function cronoUpdatePianoReward() {
     const german = db.germanStudy || {};
     const goals = Array.isArray(german.goals) ? german.goals : [];
     const germanRows = GermanRewards.ledger(Array.isArray(german.sessions) ? german.sessions : [], goals);
-    const rewardState = PianoRewards.ensure(db);
+    const rewardState = PianoRewards.studyState(db);
     const activeSharedGoal = PianoRewards.activeGoal(db);
     const idleLive = PianoRewards.live(rewardState, goals, activeSharedGoal?.id || null, 0, PianoRewards.dayKey(), germanRows);
     if (idleGoalName) idleGoalName.textContent = activeSharedGoal?.name || 'Crear objetivo económico';
@@ -25880,7 +25969,7 @@ function cronoStartTick() {
   crono.tickInterval = setInterval(() => {
     const disp = document.getElementById('cronoDisplay');
     const elapsedMs = cronoEffectiveElapsedMs();
-    cronoCheckSessionNotifications(elapsedMs, document.visibilityState !== 'visible');
+    cronoCheckSessionNotifications(elapsedMs, true);
     cronoUpdateRunDestello(elapsedMs);
     // En modo timer: mostrar cuenta atrás y auto-finalizar al llegar a 0
     if (crono.targetDurationMs != null || crono.targetMinutes != null) {
@@ -25985,6 +26074,8 @@ function cronoResolveSelectValue(val) {
 // ── Acciones ────────────────────────────────────────────────────────────────
 
 function cronoStart() {
+  if (!_cronoHydrated) { cronoHydrate().then(() => { if (crono.state === 'idle') cronoStart(); }); return; }
+  if (crono.state !== 'idle') return;
   if (cronoMaybeBlockUrgentTasks('start')) return;
   const sel = document.getElementById('cronoObraSelect');
   if (!sel) return;
@@ -26049,6 +26140,7 @@ function cronoStart() {
 // de estudio. Queda registrado en db.sessionPlants[] con tipo:'descanso'
 // para llevar constancia. Útil para descansos activos entre sesiones largas.
 function cronoStartRest() {
+  if (!_cronoHydrated) { cronoHydrate().then(() => { if (crono.state === 'idle') cronoStartRest(); }); return; }
   if (crono.state !== 'idle') {
     showToast('Termina la sesión actual antes de descansar');
     return;
@@ -26156,7 +26248,7 @@ function cronoPause() {
 function cronoResume() {
   if (crono.state !== 'paused') return;
   cronoStopPauseCountdown();
-  const pauseDur = Date.now() - crono.pauseStartTs;
+  const pauseDur = Math.min(CRONO_PAUSE_LIMIT_MS, Math.max(0, Date.now() - crono.pauseStartTs));
   crono.pausedMs += pauseDur;
   crono.pauseStartTs = 0;
   crono.state = 'running';
@@ -27265,10 +27357,19 @@ function cronoOnLeaveView() {
 
 // Hidratar al cargar (si había sesión activa)
 function cronoHydrate() {
+  if (_cronoHydrationPromise) return _cronoHydrationPromise;
+  _cronoHydrationPromise = cronoRestoreDurableState();
+  return _cronoHydrationPromise;
+}
+
+async function cronoRestoreDurableState() {
+  const snapshot = window.CronoStateStore ? await window.CronoStateStore.load() : null;
+  if (window.CronoSaveResilience?.ready) await window.CronoSaveResilience.ready;
+  _cronoHydrated = true;
   if (typeof StudyPush !== 'undefined' && typeof StudyPush.reconcileStaleRuns === 'function') {
     StudyPush.reconcileStaleRuns();
   }
-  if (cronoLoadState()) {
+  if (cronoLoadState(snapshot)) {
     if (crono.state === 'paused' && cronoPauseRemainingMs() <= 0) {
       // La pausa expiró estando la app cerrada. En lugar de terminar (como
       // antes), reanudamos la sesión: respetamos los ms acumulados de pausa
@@ -27291,6 +27392,10 @@ function cronoHydrate() {
     if (crono.state === 'running' && !cronoTargetReached() && typeof StudyPush !== 'undefined') {
       StudyPush.syncRun({ reason: 'hydrate' });
     }
+    cronoSaveState();
+    showView('cronometro');
+    cronoRender();
+    showToast('Sesión recuperada · ' + cronoFmt(cronoEffectiveElapsedMs()) + ' estudiados');
   }
 }
 

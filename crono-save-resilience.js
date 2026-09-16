@@ -10,6 +10,8 @@
   let protectTimer=null;
   let lastTargetObraId=null;
   let pendingRescueWrites=Promise.resolve(true);
+  let resolveRecovery;
+  const ready=new Promise(resolve=>{resolveRecovery=resolve;});
 
   function clone(value){
     try { if(typeof structuredClone==='function') return structuredClone(value); } catch(e) {}
@@ -311,10 +313,10 @@
 
   async function recoverPending(){
     const local=globalDb();
-    if(!local) return;
+    if(!local){ resolveRecovery();return; }
     await flushRescueWrites();
     const rows=await rescueAll();
-    if(!rows.length) return;
+    if(!rows.length){ resolveRecovery();return; }
     const documentRow=rows.find(row=>row?.id===DOCUMENT_RESCUE_ID && !documentRescueExpired(row));
     const plantRows=rows.filter(row=>row?.id!==DOCUMENT_RESCUE_ID);
     let changed=false;
@@ -343,6 +345,7 @@
     });
     if(changed) local.sessionPlants.sort((a,b)=>String(a.startedAt||'').localeCompare(String(b.startedAt||'')));
     try { if(changed && typeof saveLocalNow==='function') saveLocalNow(); } catch (_) {}
+    resolveRecovery();
     const ok=await protectCloud((plantRows[plantRows.length-1]||documentRow)?.obraId);
     if(ok) await Promise.all(plantRows.map(row=>rescueDelete(row.id)));
     if(documentRow && documentRescueExpired(documentRow)) await rescueDelete(DOCUMENT_RESCUE_ID);
@@ -353,11 +356,12 @@
     const finishReady=installFinishPatch() || (typeof finishStudyBlock==='function' && !!finishStudyBlock.__resilientTimerSave);
     const hechoReady=installHechoPatch() || (typeof closeHechoDatos==='function' && !!closeHechoDatos.__resilientTimerSave);
     installSaveDataFallback();
-    if((finishReady && hechoReady) || attempt>80){ recoverPending(); return; }
+    if((finishReady && hechoReady) || attempt>80){ recoverPending().catch(()=>resolveRecovery()); return; }
     setTimeout(()=>boot(attempt+1),100);
   }
 
   window.CronoSaveResilience={
+    ready,
     isQuotaError,
     mergePlantsPreferLocal,
     protectCloud,

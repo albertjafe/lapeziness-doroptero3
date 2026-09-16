@@ -17,7 +17,7 @@
   const current=()=>state().sessions.find(s=>s.id===activeId && !s.endedAt);
   const entries=()=>{
     const german=R.ledger(state().sessions,state().goals);
-    return P?P.combinedLedger(german,P.ledger(P.ensure(db).sessions,state().goals),state().goals):german;
+    return P?P.combinedLedger(german,P.ledger(P.studyState(db).sessions,state().goals),state().goals):german;
   };
   function activeGoal() {
     // Concurrent offline creations are queued deterministically, never both active.
@@ -299,6 +299,6 @@
     showView('deutsch');panel='dashboard';editingGoalId=deletingGoalId=null;render();
     setTimeout(()=>document.getElementById('germanSharedGoal')?.scrollIntoView({behavior:'smooth',block:'center'}),0);
   }
-  root.GermanStudy={hasActiveSession:()=>Boolean(current()),open:()=>showView('deutsch'),openGoalManager};
+  root.GermanStudy={hasActiveSession:()=>Boolean(current()),open:()=>showView('deutsch'),openGoalManager,refreshMoney:()=>{if(panel==='dashboard'&&!editingGoalId&&!deletingGoalId)render();}};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })(window);

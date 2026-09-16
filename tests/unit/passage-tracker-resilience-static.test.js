@@ -6,7 +6,7 @@ const loader = fs.readFileSync('piano-rooms.js', 'utf8');
 
 describe('passage tracker close resilience', () => {
   it('loads after timer save resilience and is shipped with the current runtime', () => {
-    const savePos = loader.indexOf("crono-save-resilience.js?v=347");
+    const savePos = loader.indexOf("crono-save-resilience.js?v=397");
     const passagePos = loader.indexOf("passage-tracker-resilience.js?v=372");
     expect(savePos).toBeGreaterThan(-1);
     expect(passagePos).toBeGreaterThan(savePos);

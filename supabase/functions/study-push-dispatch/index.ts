@@ -71,7 +71,9 @@ function notificationFor(event: PushEvent) {
   const minutes = Math.max(15, Number(event.milestone_minutes) || 15);
   return {
     title: `Has logrado ${minutes} minutos`,
-    body: `${name} · El cronómetro sigue en marcha.`,
+    body: minutes >= 120
+      ? `${name} · Has alcanzado el límite de 2 horas. Abre la app para revisar tu sesión.`
+      : `${name} · El cronómetro sigue en marcha.`,
     tag: `crono-milestone-${event.run_id}-${minutes}`,
     data: { url: appUrl, view: 'cronometro', runId: event.run_id },
   };

@@ -25,7 +25,7 @@
 
   function appDb(){
     try { if (typeof db !== 'undefined' && db) return db; } catch (error) {}
-    return window.db || null;
+    return typeof window !== 'undefined' ? window.db || null : null;
   }
 
   function dayKey(value){
@@ -45,9 +45,9 @@
       if (typeof _itemMinReal === 'function') return Math.max(0, Number(_itemMinReal(item)) || 0);
     } catch (error) {}
     if (!item) return 0;
-    const studied = item.estudiado === true || item.tick === 'hecho' || item.tick === 'parcial' || item._isExtra === true;
+    const studied = item.manual || item.estudiado === true || (item.estudiado !== false && (item.tick === 'hecho' || item.tick === 'parcial' || item._isExtra === true));
     if (!studied) return 0;
-    return Math.max(0, Number(item.minutosReales ?? item.minutosPlan ?? 0) || 0);
+    return Math.max(0, Number(item.minutosEstudiados ?? item.minutosReales ?? item.minutosPlan ?? item.min ?? 0) || 0);
   }
 
   function plantMinutes(plant){
@@ -174,8 +174,7 @@
     return out;
   }
 
-  function minutesByDay(start, end){
-    const database = appDb();
+  function minutesByDay(start, end, database = appDb()){
     if (!database) return {};
     const startMs = start instanceof Date ? start.getTime() : new Date(start).getTime();
     const endMs = end instanceof Date ? end.getTime() : new Date(end).getTime();
@@ -260,22 +259,16 @@
     try { getMinutosConcentradoHoy = today; } catch (error) {}
     window._statsMinsPorDia = byDay;
     window.getMinutosConcentradoHoy = today;
-    window.DailyStudyMinutes = {
-      version: FIX_VERSION,
-      minutesByDay,
-      todayMinutes,
-      duplicatePlantKey,
-      sessionItemKey,
-      sessionPlanBackedByTimed,
-      isPassageAllocationParent,
-    };
-
     try { if (typeof refreshStudyViews === 'function') refreshStudyViews(); } catch (error) {}
     try { if (typeof cronoUpdateRunTodayTotal === 'function') cronoUpdateRunTodayTotal(); } catch (error) {}
     try { if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true); } catch (error) {}
     return true;
   }
 
+  const api = { version: FIX_VERSION, minutesByDay, todayMinutes, duplicatePlantKey, sessionItemKey, sessionPlanBackedByTimed, isPassageAllocationParent };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (typeof window === 'undefined') return;
+  window.DailyStudyMinutes = api;
   let attempts = 0;
   (function boot(){
     if (install()) return;
