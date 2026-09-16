@@ -1,0 +1,70 @@
+import {describe,it,expect} from 'vitest';
+import {createRequire} from 'node:module';
+
+const require=createRequire(import.meta.url);
+const P=require('../../piano-rewards.js');
+const goal={id:'g',name:'Objetivo',amount:150,createdAt:'2026-09-01T10:00:00Z'};
+const session=(id,seconds,type='study',startedAt='2026-09-16T10:00:00Z')=>({
+  id,goalId:'g',startedAt,endedAt:startedAt,date:startedAt.slice(0,10),seconds,
+  activityType:type,activityFactor:P.ACTIVITY_TYPES[type].factor,policyVersion:4
+});
+
+describe('piano activity types',()=>{
+  it('defines study, piano class and chamber as 1, 1/2 and 1/3',()=>{
+    expect(P.ACTIVITY_TYPES.study.factor).toBe(1);
+    expect(P.ACTIVITY_TYPES.piano_class.factor).toBe(.5);
+    expect(P.ACTIVITY_TYPES.chamber.factor).toBeCloseTo(1/3,12);
+  });
+
+  it('counts six real hours of piano class as three equivalent hours exactly once',()=>{
+    const row=P.ledger([session('class-6h',6*3600,'piano_class')],[goal])[0];
+    expect(row.rawDuration).toBe(6*3600);
+    expect(row.duration).toBe(3*3600);
+    expect(row.activityType).toBe('piano_class');
+    expect(row.activityFactor).toBe(.5);
+    expect(row.fullDay).toBe(false);
+    expect(row.finalReward).toBeCloseTo(P.baseReward(3*3600),6);
+  });
+
+  it('counts three real hours of chamber as one equivalent hour',()=>{
+    const row=P.ledger([session('chamber-3h',3*3600,'chamber')],[goal])[0];
+    expect(row.rawDuration).toBe(3*3600);
+    expect(row.duration).toBeCloseTo(3600,8);
+    expect(row.finalReward).toBeCloseTo(P.baseReward(3600),6);
+  });
+
+  it('combines one solo hour and six class hours into a four-hour full day',()=>{
+    const rows=P.ledger([
+      session('solo',3600,'study','2026-09-16T09:00:00Z'),
+      session('class',6*3600,'piano_class','2026-09-16T11:00:00Z')
+    ],[goal]);
+    expect(P.summarizeDays(rows.map(row=>({
+      id:row.sessionId,date:row.date,seconds:row.rawDuration,activityType:row.activityType,activityFactor:row.activityFactor
+    })))['2026-09-16']).toBe(4*3600);
+    expect(rows.every(row=>row.fullDay)).toBe(true);
+    expect(rows.every(row=>!row.excellentDay)).toBe(true);
+    expect(rows.reduce((sum,row)=>sum+row.finalReward,0)).toBeCloseTo(P.baseReward(4*3600),6);
+  });
+
+  it('makes the live taximeter advance at the selected activity factor',()=>{
+    const state={sessions:[]};
+    const study=P.live(state,[goal],'g',3600,'2026-09-16',[],4,'study');
+    const pianoClass=P.live(state,[goal],'g',3600,'2026-09-16',[],4,'piano_class');
+    const chamber=P.live(state,[goal],'g',3600,'2026-09-16',[],4,'chamber');
+    expect(study.seconds).toBe(3600);
+    expect(pianoClass.seconds).toBe(1800);
+    expect(chamber.seconds).toBeCloseTo(1200,8);
+    expect(pianoClass.today).toBeCloseTo(P.baseReward(1800),6);
+    expect(chamber.today).toBeCloseTo(P.baseReward(1200),6);
+  });
+
+  it('persists the activity type and factor on the reward session',()=>{
+    const state={sessions:[]};
+    expect(P.record(state,{
+      id:'class-run',goalId:'g',startedAt:'2026-09-16T10:00:00Z',endedAt:'2026-09-16T12:00:00Z',seconds:7200,
+      activityType:'piano_class'
+    })).toBe(true);
+    expect(state.sessions[0]).toMatchObject({activityType:'piano_class',activityFactor:.5,seconds:7200});
+    expect(P.equivalentSeconds(state.sessions[0])).toBe(3600);
+  });
+});
