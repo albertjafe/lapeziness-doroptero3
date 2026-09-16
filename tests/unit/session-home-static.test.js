@@ -105,7 +105,7 @@ describe('focused session home', () => {
   });
 
   it('simplifies the piano taximeter into split precision and one multiplier bar', () => {
-    expect(cronoPremium).toContain(".crono-money-micro");
+    expect(cronoPremium).toContain('.crono-money-micro');
     expect(cronoPremium).toContain("'·'+micro");
     expect(cronoPremium).toContain('cronoPianoMultiplierMeter');
     expect(cronoPremium).toContain('cronoMultiplierLevelUp');
@@ -115,6 +115,16 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain('.crono-piano-money > footer');
   });
 
+  it('offers study, piano class and chamber as explicit weighted session types', () => {
+    expect(cronoPremium).toContain("study:{label:'Estudio',factor:1");
+    expect(cronoPremium).toContain("piano_class:{label:'Clase piano',factor:.5");
+    expect(cronoPremium).toContain("chamber:{label:'Cámara',factor:1/3");
+    expect(cronoPremium).toContain('cronoActivitySelector');
+    expect(cronoPremium).toContain('Tipo de sesión');
+    expect(cronoPremium).toContain('__PIANO_ACTIVITY_TYPE__');
+    expect(cronoPremium).toContain('__activityTypeAware');
+  });
+
   it('shows only fully earned cents in the shared goal balance', () => {
     expect(cronoPremium).toContain('function floorToEarnedCents');
     expect(cronoPremium).toContain('Math.floor(micros/10000)');
@@ -122,12 +132,12 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain('__earnedCentFloor');
   });
 
-  it('ships the complete v397 runtime offline', () => {
+  it('ships the complete v398 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('desktop-redesign.css?v=396');
     expect(index).toContain('app.js?v=397');
     expect(index).toContain('piano-rewards.js?v=397');
-    expect(worker).toContain("const CACHE = 'estudio-v397'");
+    expect(worker).toContain("const CACHE = 'estudio-v398'");
     expect(worker).toContain('"./desktop-redesign.css?v=396"');
     expect(worker).toContain('"./piano-rewards.js?v=397"');
     expect(worker).toContain('"./crono-state-store.js?v=397"');
