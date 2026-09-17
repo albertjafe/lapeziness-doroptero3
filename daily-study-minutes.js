@@ -1,4 +1,4 @@
-/* Tiempo diario real sin doble conteo.
+/* Tiempo diario de estudio sin doble conteo.
 
    sessionPlants/forestPlants son la evidencia temporal canónica. db.sesiones
    contiene resúmenes y registros manuales, pero muchos resúmenes vuelven a
@@ -12,16 +12,20 @@
       mismo objetivo (crono_/pase_ o solapamiento temporal), NO sumarlo;
    4) conservar y añadir los registros manuales/legados que no estén respaldados
       por plantas; si no existe ninguna planta para ese objetivo, sesiones actúa
-      como fallback completo.
+      como fallback completo;
    5) un bloque General repartido entre pasajes sigue siendo evidencia canónica
-      aunque su residual General sea 0; sus hijos ya contienen esos minutos.
+      aunque su residual General sea 0; sus hijos ya contienen esos minutos;
+   6) las estadísticas de "estudio" usan tiempo equivalente: estudio ×1,
+      clase de piano ×0,5 y cámara ×1/3. El bloque conserva rawMins para poder
+      mostrar también la duración física real sin falsear el cronómetro.
 */
 (function dailyStudyMinutesFix(){
   'use strict';
 
-  const FIX_VERSION = 6;
+  const FIX_VERSION = 7;
   const OVERLAP_TOLERANCE_MS = 30000;
   const PASSAGE_GENERAL_SOURCE = 'passage-general-v1';
+  const ACTIVITY_FACTORS = Object.freeze({ study:1, piano_class:.5, chamber:1/3 });
 
   function appDb(){
     try { if (typeof db !== 'undefined' && db) return db; } catch (error) {}
@@ -32,6 +36,17 @@
     const d = value instanceof Date ? value : new Date(value);
     if (Number.isNaN(d.getTime())) return '';
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function normalizeActivityType(value){
+    const key = String(value || 'study');
+    return Object.prototype.hasOwnProperty.call(ACTIVITY_FACTORS,key) ? key : 'study';
+  }
+
+  function activityFactor(item){
+    const explicit = Number(item && item.activityFactor);
+    if (Number.isFinite(explicit) && explicit > 0 && explicit <= 1) return explicit;
+    return ACTIVITY_FACTORS[normalizeActivityType(item && item.activityType)];
   }
 
   function targetKey(item){
@@ -176,6 +191,19 @@
     return out;
   }
 
+  function weightedBlock(evidence, date, rawMins){
+    const type = normalizeActivityType(evidence && evidence.activityType);
+    const factor = activityFactor(evidence);
+    return {
+      ...(evidence || {}),
+      date,
+      rawMins: Math.max(0, Number(rawMins) || 0),
+      mins: Math.max(0, Number(rawMins) || 0) * factor,
+      activityType:type,
+      activityFactor:factor,
+    };
+  }
+
   function minutesByDay(start, end, database = appDb(), detailed = false){
     if (!database) return detailed ? [] : {};
     const startMs = start instanceof Date ? start.getTime() : new Date(start).getTime();
@@ -228,16 +256,18 @@
     Object.keys(days).forEach(key => {
       const bucket = days[key];
       const dayBlocks = [];
-      const extras = sessionExtraByTarget(bucket, detailed ? entry => dayBlocks.push({...entry.evidence, date:key, mins:entry.mins}) : null);
-      const targets = new Set(Object.keys(bucket.timed).concat(Object.keys(extras)));
-      let total = 0;
-      targets.forEach(target => {
-        const timed = bucket.timed[target] ? bucket.timed[target].mins : 0;
-        if (detailed) (bucket.timed[target]?.entries || []).forEach(entry => {
-          if (entry.mins > 0) dayBlocks.push({...entry.evidence, date:key, mins:entry.mins});
+      const extraEntries = [];
+      sessionExtraByTarget(bucket, entry => extraEntries.push(entry));
+
+      Object.keys(bucket.timed || {}).forEach(target => {
+        (bucket.timed[target]?.entries || []).forEach(entry => {
+          if (!(entry.mins > 0)) return;
+          dayBlocks.push(weightedBlock(entry.evidence,key,entry.mins));
         });
-        total += timed + (extras[target] || 0);
       });
+      extraEntries.forEach(entry => dayBlocks.push(weightedBlock(entry.evidence,key,entry.mins)));
+
+      const total = dayBlocks.reduce((sum,block)=>sum+Math.max(0,Number(block.mins)||0),0);
       out[key] = Math.max(0, Math.round(total));
       // Keep the block projection equal to the established rounded daily total.
       if (detailed && dayBlocks.length) {
@@ -263,13 +293,13 @@
   }
 
   function install(){
-    if (window.getMinutosConcentradoHoy && window.getMinutosConcentradoHoy.__realTimedDedupV6) return true;
+    if (window.getMinutosConcentradoHoy && window.getMinutosConcentradoHoy.__equivalentStudyV7) return true;
     if (!appDb()) return false;
 
     const byDay = function correctedStatsMinutesByDay(start, end){ return minutesByDay(start, end); };
-    byDay.__realTimedDedupV6 = true;
+    byDay.__equivalentStudyV7 = true;
     const today = function correctedTodayStudyMinutes(){ return todayMinutes(); };
-    today.__realTimedDedupV6 = true;
+    today.__equivalentStudyV7 = true;
 
     try { _statsMinsPorDia = byDay; } catch (error) {}
     try { getMinutosConcentradoHoy = today; } catch (error) {}
@@ -282,7 +312,7 @@
   }
 
   const studyBlocks = (start, end, database = appDb()) => minutesByDay(start, end, database, true);
-  const api = { version: FIX_VERSION, minutesByDay, studyBlocks, todayMinutes, duplicatePlantKey, sessionItemKey, sessionPlanBackedByTimed, isPassageAllocationParent };
+  const api = { version: FIX_VERSION, ACTIVITY_FACTORS, normalizeActivityType, activityFactor, minutesByDay, studyBlocks, todayMinutes, duplicatePlantKey, sessionItemKey, sessionPlanBackedByTimed, isPassageAllocationParent };
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (typeof window === 'undefined') return;
   window.DailyStudyMinutes = api;
