@@ -26,6 +26,16 @@
   });
   const CONFIG=POLICIES[5];
   const dayKey=(date=new Date())=>[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
+  function appDb(){
+    try{if(typeof db!=='undefined'&&db)return db;}catch(error){}
+    try{if(typeof globalThis!=='undefined'&&globalThis.db)return globalThis.db;}catch(error){}
+    return null;
+  }
+  function appCrono(){
+    try{if(typeof crono!=='undefined'&&crono)return crono;}catch(error){}
+    try{if(typeof globalThis!=='undefined'&&globalThis.crono)return globalThis.crono;}catch(error){}
+    return null;
+  }
   function normalizeActivityType(value){
     const key=String(value||'study');
     return ACTIVITY_TYPES[key]?key:'study';
@@ -55,17 +65,31 @@
     return (db?.germanStudy?.goals||[]).filter(goal=>goal&&goal.id&&!goal.archivedAt&&!goal.deletedAt)
       .sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt))||String(a.id).localeCompare(String(b.id)));
   }
+  function goalScale(goalOrAmount){
+    const amount=typeof goalOrAmount==='object'?Number(goalOrAmount?.amount):Number(goalOrAmount);
+    return Number.isFinite(amount)&&amount>0&&GermanRewards?GermanRewards.goalScale(amount):0;
+  }
+  function goalCostPoints(goal){
+    const scale=goalScale(goal);return scale>0?Math.max(0,Number(goal?.amount)||0)/scale:Infinity;
+  }
   function ensureEffortWallet(db){
-    if(!db)return {version:1,createdAt:new Date(0).toISOString(),seedGoalIds:[],displayGoalId:null,redemptions:[]};
+    if(!db)return {version:1,createdAt:new Date(0).toISOString(),seedGoalIds:[],seedCostPoints:{},displayGoalId:null,redemptions:[]};
     db.germanStudy||={version:1,materials:[],reviews:[],sessions:[],goals:[],ledger:[]};
     const st=db.germanStudy;
     if(!Array.isArray(st.goals))st.goals=[];
     const active=availableGoals(db);
     if(!st.effortWallet || Number(st.effortWallet.version)!==1){
-      st.effortWallet={version:1,createdAt:new Date().toISOString(),seedGoalIds:active.map(g=>g.id),displayGoalId:active[0]?.id||null,redemptions:[]};
+      const seedGoalIds=active.map(g=>g.id),seedCostPoints={};
+      active.forEach(goal=>{seedCostPoints[goal.id]=goalCostPoints(goal);});
+      st.effortWallet={version:1,createdAt:new Date().toISOString(),seedGoalIds,seedCostPoints,displayGoalId:active[0]?.id||null,redemptions:[]};
     }
     const wallet=st.effortWallet;
     if(!Array.isArray(wallet.seedGoalIds))wallet.seedGoalIds=[];
+    if(!wallet.seedCostPoints||typeof wallet.seedCostPoints!=='object')wallet.seedCostPoints={};
+    wallet.seedGoalIds.forEach(id=>{
+      if(Number.isFinite(Number(wallet.seedCostPoints[id])))return;
+      const goal=st.goals.find(g=>g.id===id);if(goal)wallet.seedCostPoints[id]=goalCostPoints(goal);
+    });
     if(!Array.isArray(wallet.redemptions))wallet.redemptions=[];
     if(!wallet.createdAt)wallet.createdAt=new Date().toISOString();
     if(!active.some(g=>g.id===wallet.displayGoalId))wallet.displayGoalId=active[0]?.id||null;
@@ -83,13 +107,6 @@
       if(s<=x)return py+(y-py)*(s-px)/(x-px);
     }
     return points.at(-1)[1];
-  }
-  function goalScale(goalOrAmount){
-    const amount=typeof goalOrAmount==='object'?Number(goalOrAmount?.amount):Number(goalOrAmount);
-    return Number.isFinite(amount)&&amount>0&&GermanRewards?GermanRewards.goalScale(amount):0;
-  }
-  function goalCostPoints(goal){
-    const scale=goalScale(goal);return scale>0?Math.max(0,Number(goal?.amount)||0)/scale:Infinity;
   }
   // A projection, never another saved credit: edits/deletions recalculate money
   // and the daily tier from the same deduplicated minutes shown in the app.
@@ -256,15 +273,28 @@
     if(scale>0&&Number.isFinite(Number(row.potentialMicroEuros)))return Math.max(0,Number(row.potentialMicroEuros))/1e6/scale;
     return 0;
   }
-  function rowBelongsToWallet(row,wallet){
+  function rowIsShared(row){
     if(!row)return false;
-    const seeds=new Set(wallet?.seedGoalIds||[]);
-    if(row.source==='piano')return Number(row.policyVersion)>=SHARED_EFFORT_POLICY_VERSION || seeds.has(row.goalId);
-    if(row.source==='german')return Number(row.sharedEffortVersion)>=1 || seeds.has(row.goalId);
+    if(row.source==='piano')return Number(row.policyVersion)>=SHARED_EFFORT_POLICY_VERSION;
+    if(row.source==='german')return Number(row.sharedEffortVersion)>=1;
     return false;
   }
+  function rowBelongsToWallet(row,wallet){
+    if(rowIsShared(row))return true;
+    return !!row&&new Set(wallet?.seedGoalIds||[]).has(row.goalId);
+  }
   function walletPointsFromRows(rows,wallet){
-    const earned=(rows||[]).reduce((sum,row)=>sum+(rowBelongsToWallet(row,wallet)?rowEffortPoints(row):0),0);
+    const seeds=new Set(wallet?.seedGoalIds||[]),legacyByGoal={};let earned=0;
+    (rows||[]).forEach(row=>{
+      if(!row||row.qualified===false)return;
+      const value=rowEffortPoints(row);if(!(value>0))return;
+      if(rowIsShared(row)){earned+=value;return;}
+      if(seeds.has(row.goalId))legacyByGoal[row.goalId]=(legacyByGoal[row.goalId]||0)+value;
+    });
+    Object.entries(legacyByGoal).forEach(([goalId,value])=>{
+      const cap=Number(wallet?.seedCostPoints?.[goalId]);
+      earned+=Number.isFinite(cap)&&cap>=0?Math.min(value,cap):value;
+    });
     const spent=(wallet?.redemptions||[]).reduce((sum,item)=>sum+Math.max(0,Number(item?.points)||0),0);
     return Math.max(0,earned-spent);
   }
@@ -274,7 +304,7 @@
     const target=Math.max(0,Number(goal?.amount)||0);
     return {points,scale,costPoints,amount,remaining:Math.max(0,target-amount),percent:target>0?Math.min(100,amount/target*100):0,complete:target>0&&amount>=target-0.0000005};
   }
-  function walletRows(db, pianoState=null){
+  function walletRows(db,pianoState=null){
     const goals=db?.germanStudy?.goals||[];
     const germanRows=GermanRewards?GermanRewards.ledger(db?.germanStudy?.sessions||[],goals):[];
     const state=pianoState||studyState(db);
@@ -295,7 +325,7 @@
     const progress=goalProgressFromWallet(goal,snap.rows,snap.wallet);
     if(!progress.complete)return {ok:false,reason:'insufficient',progress};
     const id='redeem_'+goalId+'_'+now.getTime();
-    if(!snap.wallet.redemptions.some(item=>item.id===id))snap.wallet.redemptions.push({id,goalId,goalName:goal.name,amount:goal.amount,points:progress.costPoints,createdAt:now.toISOString()});
+    snap.wallet.redemptions.push({id,goalId,goalName:goal.name,amount:goal.amount,points:progress.costPoints,createdAt:now.toISOString()});
     goal.archivedAt=now.toISOString();goal.updatedAt=goal.archivedAt;
     const next=availableGoals(db)[0]||null;snap.wallet.displayGoalId=next?.id||null;
     return {ok:true,goal,spentPoints:progress.costPoints,remainingPoints:Math.max(0,progress.points-progress.costPoints)};
@@ -303,7 +333,7 @@
   function live(state,goals,goalId,currentSeconds,date=dayKey(),germanRows=[],currentPolicyVersion=CONFIG.version,currentActivityType=null){
     const savedSessions=state.sessions||[],basePianoRows=ledger(savedSessions,goals),baseRows=combinedLedger(germanRows,basePianoRows,goals);
     const savedSeconds=savedSessions.filter(session=>session.date===date&&!session.deleted).reduce((sum,session)=>sum+equivalentSeconds(session),0);
-    const wallet=state.effortWallet||{version:1,seedGoalIds:[goalId].filter(Boolean),displayGoalId:goalId,redemptions:[]};
+    const wallet=state.effortWallet||{version:1,seedGoalIds:[goalId].filter(Boolean),seedCostPoints:{},displayGoalId:goalId,redemptions:[]};
     const selectedGoalId=wallet.displayGoalId&&goals.some(item=>item.id===wallet.displayGoalId&&!item.archivedAt&&!item.deletedAt)?wallet.displayGoalId:goalId;
     const goal=(goals||[]).find(item=>item.id===selectedGoalId),scale=goalScale(goal);
     const elapsed=Math.max(0,Number(currentSeconds)||0),rewardPolicy=POLICIES[Number(currentPolicyVersion)]||CONFIG;
@@ -352,10 +382,13 @@
     const doc=root.document;
     const money=n=>Number(n||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
     const points=n=>Number(n||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
-    const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+    const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    function currentDb(){return appDb();}
+    function callSave(){try{if(typeof saveData==='function')saveData();else root.saveData?.();}catch(error){}}
+    function callCronoSave(){try{if(typeof cronoSaveState==='function')cronoSaveState();else root.cronoSaveState?.();}catch(error){}}
+    function callCronoUpdate(){try{if(typeof cronoUpdatePianoReward==='function')cronoUpdatePianoReward();else root.cronoUpdatePianoReward?.();}catch(error){}}
     function saveAndRefresh(){
-      try{if(typeof root.saveData==='function')root.saveData();}catch(error){}
-      try{if(typeof root.cronoUpdatePianoReward==='function')root.cronoUpdatePianoReward();}catch(error){}
+      callSave();callCronoUpdate();
       try{root.GermanStudy?.refreshMoney?.();}catch(error){}
       schedule();
     }
@@ -394,11 +427,13 @@
     }
     function render(){
       queued=false;installStyles();
-      const host=doc.getElementById('germanSharedGoal');
-      if(!host||typeof root.db==='undefined'||!root.db)return;
-      const wallet=ensureEffortWallet(root.db),snap=walletSnapshot(root.db);
-      const goals=availableGoals(root.db),selected=activeGoal(root.db);
-      host.dataset.effortWallet='1';
+      const host=doc.getElementById('germanSharedGoal'),database=currentDb();
+      if(!host||!database)return;
+      const wallet=ensureEffortWallet(database),snap=walletSnapshot(database);
+      const goals=availableGoals(database),selected=activeGoal(database);
+      const signature=JSON.stringify([wallet.displayGoalId,adding,editingId,Number(snap.points).toFixed(6),goals.map(g=>[g.id,g.name,g.amount,g.updatedAt||'',g.archivedAt||'',g.deletedAt||'']),wallet.redemptions.length]);
+      if(host.dataset.effortWallet==='1'&&host.dataset.effortSignature===signature)return;
+      host.dataset.effortWallet='1';host.dataset.effortSignature=signature;
       const cards=goals.map(goal=>{
         const p=goalProgressFromWallet(goal,snap.rows,wallet),isSelected=selected?.id===goal.id;
         return `<article class="effort-goal-item ${isSelected?'is-selected':''}"><div class="effort-goal-top"><h3>${esc(goal.name)}</h3>${isSelected?'<span class="effort-goal-selected">En cronómetro</span>':''}</div><div class="effort-goal-money">${money(p.amount)} <small>/ ${money(goal.amount)}</small></div><progress max="100" value="${p.percent}" aria-label="Progreso de ${esc(goal.name)}"></progress><div class="effort-goal-meta"><span>${p.percent.toFixed(1).replace('.',',')} %</span><span>1 punto = ${money(p.scale)}</span></div><div class="effort-goal-actions">${isSelected?'':`<button data-effort-action="select" data-id="${esc(goal.id)}">Ver en cronómetro</button>`}<button data-effort-action="edit" data-id="${esc(goal.id)}">Editar</button><button data-effort-action="delete" data-id="${esc(goal.id)}">Eliminar</button>${p.complete?`<button class="german-primary" data-effort-action="redeem" data-id="${esc(goal.id)}">Canjear · comprado</button>`:''}</div></article>`;
@@ -406,39 +441,40 @@
       const editGoal=editingId?goals.find(g=>g.id===editingId):null;
       host.innerHTML=`<div class="effort-wallet-head"><div><span class="german-eyebrow">OBJETIVOS SIMULTÁNEOS</span><h2>Una cartera, varios precios.</h2><p>El estudio genera un esfuerzo común. En el cronómetro sigues viendo euros del objetivo elegido; aquí ves cuánto representa el mismo esfuerzo en cada compra.</p></div><div class="effort-wallet-points"><span>Motor interno</span><strong>${points(snap.points)} pts</strong></div></div>${goals.length?`<div class="effort-goal-grid">${cards}</div>`:'<p>Añade tu primer objetivo. El dinero se mostrará siempre como equivalencia de tu esfuerzo común.</p>'}${editGoal?formMarkup(editGoal):(adding||!goals.length?formMarkup(null):'<button class="effort-wallet-add" data-effort-action="add">+ Añadir otro objetivo</button>')}<p class="effort-wallet-note">Los puntos no sustituyen al dinero: solo evitan duplicar el mismo estudio. Canjear un objetivo gasta su coste interno y reduce proporcionalmente la equivalencia de los demás.</p>`;
     }
-    function schedule(){if(queued)return;queued=true;(root.requestAnimationFrame||setTimeout)(render);}
+    function schedule(){if(queued)return;queued=true;if(root.requestAnimationFrame)root.requestAnimationFrame(render);else setTimeout(render,0);}
     function activeLegacySessionFor(goalId){
-      const c=root.crono;
+      const c=appCrono();
       if(c&&c.state!=='idle'&&!c.isRest&&c.rewardGoalId===goalId&&Number(c.rewardPolicyVersion)<SHARED_EFFORT_POLICY_VERSION)return true;
-      const sessions=root.db?.germanStudy?.sessions||[];
+      const database=currentDb(),sessions=database?.germanStudy?.sessions||[];
       return sessions.some(s=>s.goalId===goalId&&!s.endedAt&&Number(s.sharedEffortVersion)<1);
     }
     doc.addEventListener('click',event=>{
       const button=event.target.closest?.('[data-effort-action]');if(!button)return;
       event.preventDefault();
-      const action=button.dataset.effortAction,id=button.dataset.id;
+      const action=button.dataset.effortAction,id=button.dataset.id,database=currentDb();if(!database)return;
       if(action==='add'){adding=true;editingId=null;render();return;}
       if(action==='cancel-form'){adding=false;editingId=null;render();return;}
       if(action==='edit'){editingId=id;adding=false;render();return;}
       if(action==='select'){
-        const goal=availableGoals(root.db).find(g=>g.id===id);if(!goal)return;
-        const wallet=ensureEffortWallet(root.db);wallet.displayGoalId=id;
-        try{if(root.crono&&root.crono.state!=='idle'&&Number(root.crono.rewardPolicyVersion)>=SHARED_EFFORT_POLICY_VERSION){root.crono.rewardGoalId=id;root.cronoSaveState?.();}}catch(error){}
+        const goal=availableGoals(database).find(g=>g.id===id);if(!goal)return;
+        const wallet=ensureEffortWallet(database);wallet.displayGoalId=id;
+        const c=appCrono();
+        if(c&&c.state!=='idle'&&Number(c.rewardPolicyVersion)>=SHARED_EFFORT_POLICY_VERSION){c.rewardGoalId=id;callCronoSave();}
         saveAndRefresh();return;
       }
       if(action==='delete'){
-        const goal=(root.db?.germanStudy?.goals||[]).find(g=>g.id===id&&!g.deletedAt);if(!goal)return;
+        const goal=(database.germanStudy?.goals||[]).find(g=>g.id===id&&!g.deletedAt);if(!goal)return;
         if(activeLegacySessionFor(id)){root.alert?.('Termina primero la sesión antigua que está vinculada a este objetivo.');return;}
         if(!root.confirm?.(`¿Eliminar ${goal.name}? El esfuerzo común no se pierde.`))return;
         const now=new Date().toISOString();goal.deletedAt=now;goal.updatedAt=now;
-        const wallet=ensureEffortWallet(root.db);if(wallet.displayGoalId===id)wallet.displayGoalId=availableGoals(root.db).find(g=>g.id!==id)?.id||null;
+        const wallet=ensureEffortWallet(database);if(wallet.displayGoalId===id)wallet.displayGoalId=availableGoals(database).find(g=>g.id!==id)?.id||null;
         editingId=null;saveAndRefresh();return;
       }
       if(action==='redeem'){
-        if(root.crono&&root.crono.state!=='idle'){root.alert?.('Termina o pausa y guarda la sesión antes de canjear un objetivo.');return;}
-        const goal=(root.db?.germanStudy?.goals||[]).find(g=>g.id===id);if(!goal)return;
+        const c=appCrono();if(c&&c.state!=='idle'){root.alert?.('Termina la sesión antes de canjear un objetivo.');return;}
+        const goal=(database.germanStudy?.goals||[]).find(g=>g.id===id);if(!goal)return;
         if(!root.confirm?.(`¿Marcar ${goal.name} como comprado? Esto gastará el esfuerzo equivalente a ${money(goal.amount)}.`))return;
-        const result=redeemGoal(root.db,id);
+        const result=redeemGoal(database,id);
         if(!result.ok){root.alert?.('Aún no hay esfuerzo suficiente para completar este objetivo.');return;}
         editingId=null;saveAndRefresh();return;
       }
@@ -446,9 +482,10 @@
     doc.addEventListener('submit',event=>{
       const form=event.target;if(form?.id!=='effortGoalForm')return;
       event.preventDefault();
+      const database=currentDb();if(!database)return;
       const data=new FormData(form),name=String(data.get('name')||'').trim(),amount=Math.round(Number(data.get('amount'))*100)/100;
       if(!name||!Number.isFinite(amount)||amount<.01||amount>1e8){root.alert?.('Introduce un nombre y un precio válidos.');return;}
-      const st=root.db.germanStudy,wallet=ensureEffortWallet(root.db),now=new Date().toISOString(),id=form.dataset.id;
+      const st=database.germanStudy,wallet=ensureEffortWallet(database),now=new Date().toISOString(),id=form.dataset.id;
       if(id){const goal=st.goals.find(g=>g.id===id&&!g.deletedAt);if(goal){goal.name=name;goal.amount=amount;goal.updatedAt=now;}}
       else{const goal={id:(root.crypto?.randomUUID?.()||('goal_'+Date.now())),name,amount,createdAt:now,rewardPolicy:JSON.parse(JSON.stringify(GermanRewards.CONFIG))};st.goals.push(goal);if(!wallet.displayGoalId)wallet.displayGoalId=goal.id;}
       adding=false;editingId=null;saveAndRefresh();
