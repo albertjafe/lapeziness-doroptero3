@@ -1,0 +1,28 @@
+/* Shared paging controls; the visual refresh is confined to iPad. */
+.sesdet-hint { margin: 7px 0 0; color: var(--text3); font-size: 12px; line-height: 1.5; }
+.sesdet-more { display: block; margin: 22px auto 6px; padding: 12px 18px; border: 1px solid var(--border2); border-radius: 12px; background: var(--bg3); color: var(--text); cursor: pointer; }
+.sesdet-end { margin: 24px 0 6px; text-align: center; color: var(--text3); font-size: 12px; }
+html.platform-ipad #view-cronometro .crono-screen-title { display: flex; align-items: center; gap: 10px; position: fixed; top: max(calc(env(safe-area-inset-top, 14px) + 12px), 38px); left: 28px; z-index: 50; font-size: 20px; color: var(--text); }
+html.platform-ipad #view-cronometro .crono-hours-btn { min-height: 44px; padding: 10px 14px; font-size: 14px; color: var(--text); background: var(--bg2); opacity: 1; }
+html.platform-ipad body[data-view="session"] .ipad-today-next .ipad-today-sessions { color: var(--text); background: var(--bg2); border: 1px solid var(--border2); }
+html.platform-ipad #modalSesionesDetalle .sesdet-modal { width: min(760px, 100%); max-width: 760px; height: min(86dvh, 1000px); max-height: calc(100dvh - 40px); overflow: hidden; border-radius: 22px; }
+html.platform-ipad #modalSesionesDetalle .sesdet-header { padding: 22px 24px 18px; gap: 16px; }
+html.platform-ipad #modalSesionesDetalle .modal-title { font-size: 28px; }
+html.platform-ipad #modalSesionesDetalle .sesdet-hint { font-size: 14px; }
+html.platform-ipad #modalSesionesDetalle .sesdet-body { padding: 10px 24px 24px; }
+html.platform-ipad #modalSesionesDetalle .sesdet-day { margin-top: 24px; }
+html.platform-ipad #modalSesionesDetalle .sesdet-day-head { position: sticky; top: 0; z-index: 1; padding: 10px 0; background: var(--bg2); }
+html.platform-ipad #modalSesionesDetalle .sesdet-day-label { font-size: 24px; }
+html.platform-ipad #modalSesionesDetalle .sesdet-day-total { font-size: 14px; }
+html.platform-ipad #modalSesionesDetalle .sesdet-row { min-height: 64px; gap: 14px; padding: 12px 0; }
+html.platform-ipad #modalSesionesDetalle .sesdet-name { font-size: 16px; white-space: normal; line-height: 1.4; }
+html.platform-ipad #modalSesionesDetalle .sesdet-time { font-size: 14px; }
+html.platform-ipad #modalSesionesDetalle .sesdet-min { font-size: 13px; }
+html.platform-ipad #modalSesionesDetalle :is(.sesdet-close, .sesdet-edit-btn, .sesdet-cancel) { width: 44px; height: 44px; font-size: 18px; }
+html.platform-ipad #modalSesionesDetalle .sesdet-edit { margin-left: 0; padding: 16px; gap: 14px; }
+html.platform-ipad #modalSesionesDetalle :is(.sesdet-edit-work, .sesdet-edit input, .sesdet-save) { min-height: 44px; font-size: 16px; }
+html.platform-ipad #modalSesionesDetalle .sesdet-edit-line { flex-wrap: wrap; gap: 12px; }
+html.platform-ipad #modalSesionesDetalle .sesdet-edit-line label { font-size: 13px; gap: 8px; }
+html.platform-ipad #modalSesionesDetalle .sesdet-edit-line input { width: 110px; }
+html.platform-ipad #modalSesionesDetalle .sesdet-empty { padding: 32px 16px; font-size: 15px; }
+html.platform-ipad #modalSesionesDetalle :is(.sesdet-more, .sesdet-end) { font-size: 14px; }

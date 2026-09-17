@@ -39,6 +39,7 @@
 <link rel="stylesheet" href="desktop-redesign.css?v=396">
 <link rel="stylesheet" href="crono-start-layout.css?v=401">
 <link rel="stylesheet" href="ipad-today.css?v=400">
+<link rel="stylesheet" href="session-log.css?v=402">
 </head>
 <body>
 
@@ -213,6 +214,7 @@
     <span class="ipad-today-play" aria-hidden="true">▶</span>
     <div><span class="ipad-today-kicker">Siguiente paso</span><h2>Continúa tu jornada</h2><p>Tu estudio, a tu ritmo.</p></div>
     <button type="button" onclick="showView('cronometro')">Abrir cronómetro</button>
+    <button type="button" class="ipad-today-sessions" onclick="openSesionesDetalle(this)">◷ Sesiones de hoy</button>
   </section>
   <aside class="ipad-today-access ipad-today-only" aria-label="Accesos de hoy en iPad">
     <span class="ipad-today-kicker">Accesos</span><h2>Todo a mano</h2>
@@ -378,7 +380,7 @@
       <div class="session-history-heading" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border2)">
         <div class="history-section-label">Sesiones registradas</div>
         <div style="display:flex;gap:8px;align-items:center">
-          <button class="hist-list-toggle" onclick="openSesionesDetalle()" title="Ver cada sesión con su hora">↗ Por horas</button>
+          <button class="hist-list-toggle" onclick="openSesionesDetalle(this)" title="Ver cada sesión con su hora">↗ Por horas</button>
           <button class="hist-list-toggle" id="histListToggle" onclick="toggleHistList()">Mostrar</button>
         </div>
       </div>
@@ -437,7 +439,7 @@
         <polyline points="20 4 20 11 13 11"/>
       </svg>
     </button>
-    <button type="button" class="crono-hours-btn" onclick="openSesionesDetalle()" aria-label="Ver sesiones por horas" title="Ver sesiones por horas">
+    <button type="button" class="crono-hours-btn" onclick="openSesionesDetalle(this)" aria-label="Ver sesiones por horas" title="Ver sesiones por horas">
       <span aria-hidden="true">◷</span><span>Horas</span>
     </button>
   </div>
@@ -964,9 +966,9 @@
 
 <!-- MODAL: sesiones individuales con hora de inicio/fin, por día -->
 <div class="modal-overlay" id="modalSesionesDetalle">
-  <div class="modal sesdet-modal">
+  <div class="modal sesdet-modal" role="dialog" aria-modal="true" aria-labelledby="sesionesDetalleTitle">
     <div class="sesdet-header">
-      <div class="modal-title" style="margin:0">Sesiones por horas</div>
+      <div><div class="modal-title" id="sesionesDetalleTitle" style="margin:0">Registro de sesiones</div><p class="sesdet-hint">Edita tu estudio. Baja para ver días anteriores.</p></div>
       <button class="sesdet-close" onclick="closeModal('modalSesionesDetalle')" aria-label="Cerrar">✕</button>
     </div>
     <div class="sesdet-body" id="sesionesDetalleBody"></div>
@@ -2393,7 +2395,7 @@
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=397"></script>
 <script src="crono-state-store.js?v=397"></script>
-<script src="app.js?v=401"></script>
+<script src="app.js?v=402"></script>
 <script src="daily-study-minutes.js?v=399" id="dailyStudyMinutesFixScript"></script>
 <script src="german-rewards.js?v=383"></script>
 <script src="piano-rewards.js?v=399"></script>
@@ -2401,7 +2403,7 @@
 <script src="german-import.js?v=382"></script>
 <script src="german-session.js?v=382"></script>
 <script src="german-study.js?v=399"></script>
-<script src="study-session-ux.js?v=342"></script>
+<script src="study-session-ux.js?v=402"></script>
 <script src="crono-resume-layout.js?v=377"></script>
 <script src="piano-rooms.js?v=399"></script>
 <script src="reservation-dashboard.js?v=400"></script>

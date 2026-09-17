@@ -279,7 +279,7 @@
   if (window.ActivitySelfTracker || document.getElementById('activitySelfTrackerScript')) return;
   const script = document.createElement('script');
   script.id = 'activitySelfTrackerScript';
-  script.src = './activity-self-tracker.js?v=342';
+  script.src = './activity-self-tracker.js?v=402';
   script.async = true;
   document.head.appendChild(script);
 }());

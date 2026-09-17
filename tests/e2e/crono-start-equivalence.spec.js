@@ -66,6 +66,9 @@ for(const viewport of [{width:1194,height:834},{width:834,height:1194},{width:13
 test(`iPad clock stays centered and entirely inside its card after rotation ${viewport.width}×${viewport.height}`,async({page},testInfo)=>{
   await page.setViewportSize({width:1194,height:834});await prepare(page);
   async function checkClock(running=false){
+    // Allow layout/viewport transitions to settle before measuring container
+    // units; keep every final centering and containment assertion unchanged.
+    await expect(async()=>{
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     const g=await page.evaluate(running=>{
       const card=document.querySelector(running?'#cronoStageRun':'.crono-idle-main');
@@ -84,6 +87,7 @@ test(`iPad clock stays centered and entirely inside its card after rotation ${vi
       expect(part.bottom).toBeLessThanOrEqual(g.card.bottom+1);
     }
     expect(g.text.width).toBeLessThanOrEqual(g.ring.width);
+    }).toPass({timeout:3000});
   }
     await page.setViewportSize(viewport);await page.waitForTimeout(850);
     for(const mode of ['stopwatch','timer']){

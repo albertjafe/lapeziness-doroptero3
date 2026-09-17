@@ -89,11 +89,11 @@
       const list = source === 'forestPlants'
         ? (data && Array.isArray(data.forestPlants) ? data.forestPlants : [])
         : (data && Array.isArray(data.sessionPlants) ? data.sessionPlants : []);
-      const plant = list[index];
+      const plant = typeof window._timedStudyPlant === 'function' ? window._timedStudyPlant(source, index) : list[index];
       const form = document.getElementById('sesdet-edit-' + source + '-' + index);
       const minutesInput = form && form.querySelector('[data-field="minutes"]');
-      const requested = Number(minutesInput && minutesInput.value);
-      if (plant && form) {
+      const requested = parseInt(minutesInput && minutesInput.value || '', 10);
+      if (plant && form && source !== 'sesiones' && Number.isFinite(requested) && requested >= 1) {
         const previous = Number(plant.mins ?? plant.min ?? plant.minutes);
         const finalMinutes = Number.isFinite(requested) && requested > 0
           ? Math.max(1, Math.min(480, Math.round(requested)))

@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-17-ipad-clock-centering-v401';
+const APP_VERSION = '2026-09-17-session-hours-v402';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -851,6 +851,10 @@ function closeModal(id) {
   // Desbloquear scroll del body sólo si no quedan otros modales abiertos
   const anyOpen = document.querySelector('.modal-overlay.visible');
   if (!anyOpen) document.body.classList.remove('modal-open');
+  if (id === 'modalSesionesDetalle') {
+    overlay.onkeydown = null;
+    if (!anyOpen) overlay._sesionesOpener?.focus({ preventScroll: true });
+  }
 }
 
 function updateHeader() {
@@ -14453,6 +14457,45 @@ function renderSesionesHistorial() {
 // hora de inicio y minutos. Los cambios se escriben en plantas y en el resumen
 // diario para que estadísticas, concentración y el plan de hoy coincidan.
 let _sesionesDetalleEditing = null;
+let _sesionesDetalleDays = [];
+let _sesionesDetalleLoaded = 1;
+const _sesionesDetalleRecords = new Map();
+
+function _sesionesDetalleDayEntries(key) {
+  const start = new Date(key + 'T00:00:00');
+  const end = new Date(start); end.setDate(end.getDate() + 1);
+  const candidates = [];
+  ['sessionPlants', 'forestPlants'].forEach(source => (db[source] || []).forEach((record, index) => {
+    if (record && !record.failed && record.tipo !== 'descanso' && _statsISO(new Date(record.startedAt || record.endedAt)) === key) candidates.push({ record, source, index });
+  }));
+  (db.sesiones || []).forEach((session, si) => {
+    if (!session || _statsISO(new Date(session.date)) !== key) return;
+    (session.items || []).forEach((record, ii) => candidates.push({ record, source: 'sesiones', index: si + '-' + ii }));
+  });
+  const blocks = window.DailyStudyMinutes?.studyBlocks(start, end, db) || candidates.map(p => p.record);
+  const used = new Set();
+  return blocks.filter(p => p.mins > 0 && p.obraId !== '_rest_').map(block => {
+    const candidate = candidates.find(p => !used.has(p.record) && p.source !== 'sesiones' && (
+      block.id ? p.record.id === block.id : block.runId ? p.record.runId === block.runId :
+      p.record.startedAt === block.startedAt && p.record.endedAt === block.endedAt &&
+      p.record.obraId === block.obraId && (p.record.movId || null) === (block.movId || null) && p.record.tag === block.tag)) ||
+      candidates.find(p => !used.has(p.record) && p.source === 'sesiones' && (block.id ? p.record.id === block.id : block._planId ? p.record._planId === block._planId :
+        p.record.obraId === block.obraId && (p.record.movId || null) === (block.movId || null) &&
+        p.record.startedAt === block.startedAt && p.record.startAt === block.startAt && !!p.record.manual === !!block.manual));
+    if (!candidate) return null;
+    used.add(candidate.record);
+    const start = new Date(block.startedAt || block.startAt);
+    const validStart = Number.isFinite(start.getTime()) ? start : null;
+    const end = new Date(block.endedAt || block.endAt || (validStart ? validStart.getTime() + block.mins * 60000 : NaN));
+    return { ...block, ...candidate, start: validStart, end: Number.isFinite(end.getTime()) ? end : null };
+  }).filter(Boolean).sort((a, b) => (b.start?.getTime() || 0) - (a.start?.getTime() || 0));
+}
+
+function loadMoreSesionesDetalle() {
+  if (!document.getElementById('modalSesionesDetalle')?.classList.contains('visible') || _sesionesDetalleEditing || _sesionesDetalleLoaded >= _sesionesDetalleDays.length) return;
+  _sesionesDetalleLoaded++;
+  renderSesionesDetalle();
+}
 
 function _timedStudyOptionValue(obraId, movId) {
   return movId ? 'mov::' + obraId + '::' + movId : 'obra::' + obraId;
@@ -14462,9 +14505,8 @@ function _timedStudyOptions(selectedObraId, selectedMovId, tag) {
   const options = [];
   (db.obras || []).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(obra => {
     const movements = (obra.movimientos || []).filter(m => m && m.name);
-    if (!movements.length) {
-      options.push({ value: _timedStudyOptionValue(obra.id, null), label: obra.name || obra.id });
-    } else {
+    options.push({ value: _timedStudyOptionValue(obra.id, null), label: obra.name || obra.id });
+    if (movements.length) {
       movements.forEach(mov => options.push({
         value: _timedStudyOptionValue(obra.id, mov.id),
         label: (obra.name || '') + ' · ' + mov.name,
@@ -14472,25 +14514,40 @@ function _timedStudyOptions(selectedObraId, selectedMovId, tag) {
     }
   });
   const current = selectedObraId ? _timedStudyOptionValue(selectedObraId, selectedMovId) : '';
-  if (!options.some(option => option.value === current) && tag) {
-    options.unshift({ value: 'tag::' + tag, label: tag });
+  if (!options.some(option => option.value === current)) {
+    options.unshift({ value: current, label: tag || 'Estudio' });
   }
   return options.map(option => '<option value="' + escapeHtmlSafe(option.value) + '"' + (option.value === current ? ' selected' : '') + '>' + escapeHtmlSafe(option.label) + '</option>').join('');
 }
 
 function _timedStudyPlant(source, index) {
-  const list = source === 'forestPlants' ? db.forestPlants : db.sessionPlants;
-  return Array.isArray(list) ? list[index] : null;
+  let record;
+  if (source === 'sesiones') {
+    const [si, ii] = String(index).split('-').map(Number);
+    record = db.sesiones?.[si]?.items?.[ii];
+  } else {
+    const list = source === 'forestPlants' ? db.forestPlants : db.sessionPlants;
+    record = Array.isArray(list) ? list[index] : null;
+  }
+  // A cloud refresh can replace/reorder arrays while an editor is open.
+  // Reject the stale row rather than editing another practice block.
+  return record && _sesionesDetalleRecords.get(source + ':' + index) === record ? record : null;
 }
 
 function _timedStudyPlantName(plant) {
   const obra = plant && plant.obraId ? findObra(plant.obraId) : null;
-  if (!obra) return plant?.tag || 'Estudio';
+  if (!obra) return plant?.tag || plant?.obraName || 'Estudio';
   const mov = plant.movId ? findMovimiento(plant.obraId, plant.movId) : null;
   return mov ? obra.name + ' · ' + mov.name : obra.name;
 }
 
 function toggleSesionesDetalleEdit(source, index) {
+  if (!_timedStudyPlant(source, index)) {
+    _sesionesDetalleEditing = null;
+    renderSesionesDetalle();
+    showToast('El registro ha cambiado. Abre de nuevo la sesión.');
+    return;
+  }
   const key = source + ':' + index;
   _sesionesDetalleEditing = _sesionesDetalleEditing === key ? null : key;
   renderSesionesDetalle();
@@ -14505,26 +14562,26 @@ function _syncTimedStudyBlockToSession(oldPlant, plant) {
     const aggregate = sesion && sesion._aggregate;
     if (!aggregate || typeof aggregate !== 'object') return;
     Object.entries(aggregate).forEach(([planId, agg]) => {
+      const item = (sesion.items || []).find(entry => entry._planId === planId) ||
+        (sesion.items || []).find(entry => entry.obraId === oldPlant.obraId && (entry.movId || null) === (oldPlant.movId || null));
+      if (!item || item.obraId !== oldPlant.obraId || (item.movId || null) !== (oldPlant.movId || null)) return;
       const subs = Array.isArray(agg?.subsessions) ? agg.subsessions : [];
-      const sub = subs.find(candidate => candidate && (
-        candidate.startedAt === oldStart ||
-        (candidate.startedAt === oldStart && candidate.endedAt === oldEnd)
-      ));
+      const sub = subs.find(candidate => candidate && candidate.startedAt === oldStart &&
+        (!candidate.endedAt || candidate.endedAt === oldEnd));
       if (!sub) return;
       matchedAggregate = true;
       sub.startedAt = plant.startedAt;
       sub.endedAt = plant.endedAt;
       sub.timestamp = plant.endedAt;
       sub.min = plant.mins;
-      const item = (sesion.items || []).find(entry => entry._planId === planId) ||
-        (sesion.items || []).find(entry => entry.obraId === oldPlant.obraId && (entry.movId || null) === (oldPlant.movId || null));
-      if (!item) return;
+      sub.updatedAt = plant.updatedAt;
       item.obraId = plant.obraId || item.obraId;
       item.movId = plant.movId || null;
       item.obraName = _timedStudyPlantName(plant);
       item.minutosReales = subs.reduce((sum, current) => sum + (Number(current.min) || 0), 0);
       item.estudiado = true;
       item.tick = item.tick || 'hecho';
+      item.updatedAt = sesion.updatedAt = plant.updatedAt;
     });
   });
 
@@ -14533,7 +14590,9 @@ function _syncTimedStudyBlockToSession(oldPlant, plant) {
     const oldDay = new Date(oldStart).toDateString();
     (db.sesiones || []).forEach(sesion => {
       if (!sesion || new Date(sesion.date).toDateString() !== oldDay) return;
-      const item = (sesion.items || []).find(entry =>
+      const items = sesion.items || [];
+      const item = items.find(entry => oldPlant.id && (entry.studyPlantId === oldPlant.id || entry.id === oldPlant.id)) || items.find(entry =>
+        !entry.studyPlantId &&
         entry.obraId === oldPlant.obraId &&
         (entry.movId || null) === (oldPlant.movId || null) &&
         Number(_itemMinReal(entry)) === Number(oldPlant.mins)
@@ -14546,6 +14605,7 @@ function _syncTimedStudyBlockToSession(oldPlant, plant) {
       item.minutosEstudiados = item.manual ? plant.mins : item.minutosEstudiados;
       item.estudiado = true;
       item.tick = item.tick || 'hecho';
+      item.updatedAt = sesion.updatedAt = plant.updatedAt;
     });
   }
 
@@ -14559,7 +14619,12 @@ function _syncTimedStudyBlockToSession(oldPlant, plant) {
 function saveTimedStudyEdit(source, index) {
   const plant = _timedStudyPlant(source, index);
   const form = document.getElementById('sesdet-edit-' + source + '-' + index);
-  if (!plant || !form) return;
+  if (!plant || !form) {
+    _sesionesDetalleEditing = null;
+    renderSesionesDetalle();
+    showToast('El registro ha cambiado. Abre de nuevo la sesión.');
+    return;
+  }
   const rawMinutes = parseInt(form.querySelector('[data-field="minutes"]')?.value || '', 10);
   if (!Number.isFinite(rawMinutes) || rawMinutes < 1) { showToast('Indica los minutos estudiados'); return; }
   const minutes = Math.min(480, rawMinutes);
@@ -14576,15 +14641,50 @@ function saveTimedStudyEdit(source, index) {
     delete plant.tag;
   }
   const time = form.querySelector('[data-field="time"]')?.value || '';
-  const start = new Date(plant.startedAt);
+  const start = new Date(plant.startedAt || plant.startAt);
   if (/^\d{2}:\d{2}$/.test(time)) {
     const [hours, mins] = time.split(':').map(Number);
+    if (!Number.isFinite(start.getTime())) {
+      const si = Number(String(index).split('-')[0]);
+      const day = source === 'sesiones' ? db.sesiones?.[si]?.date : plant.endedAt;
+      start.setTime(new Date(day).getTime());
+    }
     start.setHours(hours, mins, 0, 0);
     plant.startedAt = start.toISOString();
   }
-  plant.mins = minutes;
-  plant.endedAt = new Date(start.getTime() + minutes * 60000).toISOString();
-  _syncTimedStudyBlockToSession(oldPlant, plant);
+  if (Number.isFinite(start.getTime())) plant.endedAt = new Date(start.getTime() + minutes * 60000).toISOString();
+  if (source === 'sesiones') {
+    plant.minutosReales = minutes;
+    plant.obraName = _timedStudyPlantName(plant);
+    if (plant.manual || plant.minutosEstudiados != null) plant.minutosEstudiados = minutes;
+    plant.updatedAt = new Date().toISOString();
+    plant.historicalEdit = { at: plant.updatedAt, source: 'sessions-by-hours', requestedMinutes: minutes, from: { minutes: _itemMinReal(oldPlant) } };
+    const [si, ii] = String(index).split('-').map(Number);
+    const session = db.sesiones[si];
+    session.updatedAt = plant.updatedAt;
+    const oldKey = window.DailyStudyMinutes?.sessionItemKey(oldPlant, session, ii);
+    (db.sesiones || []).forEach(mirrorSession => {
+      if (_statsISO(new Date(mirrorSession.date)) !== _statsISO(new Date(session.date))) return;
+      (mirrorSession.items || []).forEach((mirror, mi) => {
+        if (mirror === plant || !oldKey || window.DailyStudyMinutes.sessionItemKey(mirror, mirrorSession, mi) !== oldKey) return;
+        ['obraId', 'movId', 'obraName', 'tag', 'startedAt', 'endedAt', 'minutosReales', 'minutosEstudiados', 'updatedAt', 'historicalEdit'].forEach(field => {
+          if (field in plant) mirror[field] = plant[field]; else delete mirror[field];
+        });
+        mirrorSession.updatedAt = plant.updatedAt;
+      });
+    });
+    if (typeof restoreSessionFromDbToday === 'function') restoreSessionFromDbToday({ force: true });
+  } else {
+    plant.mins = minutes;
+    const oldKey = window.DailyStudyMinutes?.duplicatePlantKey(oldPlant);
+    ['sessionPlants', 'forestPlants'].forEach(source => (db[source] || []).forEach(mirror => {
+      if (mirror === plant || !oldKey || window.DailyStudyMinutes.duplicatePlantKey(mirror) !== oldKey) return;
+      ['obraId', 'movId', 'tag', 'startedAt', 'endedAt', 'mins', 'updatedAt', 'originalMins', 'correctedAt', 'historicalEdit', 'minuteCorrection', 'minuteCorrections'].forEach(field => {
+        if (field in plant) mirror[field] = plant[field]; else delete mirror[field];
+      });
+    }));
+    _syncTimedStudyBlockToSession(oldPlant, plant);
+  }
   _sesionesDetalleEditing = null;
   saveData();
   renderSesionesDetalle();
@@ -14594,78 +14694,99 @@ function saveTimedStudyEdit(source, index) {
 function renderSesionesDetalle() {
   const cont = document.getElementById('sesionesDetalleBody');
   if (!cont) return;
-  const plants = [];
-  const add = (p, source, index) => {
-    if (!p || p.failed || !p.startedAt) return;
-    if (p.tipo === 'descanso' || p.obraId === '_rest_') return;
-    const start = new Date(p.startedAt);
-    if (isNaN(start.getTime())) return;
-    const mins = Math.max(0, Math.round(p.mins || 0));
-    if (!mins) return;
-    const end = p.endedAt ? new Date(p.endedAt) : new Date(start.getTime() + mins * 60000);
-    plants.push({ start, end, mins, obraId: p.obraId || null, movId: p.movId || null, tag: p.tag || null, source, index });
-  };
-  (db.sessionPlants || []).forEach((p, index) => add(p, 'sessionPlants', index));
-  (db.forestPlants || []).forEach((p, index) => add(p, 'forestPlants', index));
-  plants.sort((a, b) => b.start - a.start);
-
-  if (!plants.length) {
-    cont.innerHTML = '<div class="sesdet-empty">Aún no hay sesiones con hora registrada.<br>Estudia con el cronómetro y aparecerán aquí.</div>';
-    return;
-  }
-
+  const scrollTop = cont.scrollTop;
+  _sesionesDetalleRecords.clear();
   const fmtH = d => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
-  const groups = [];
-  let curKey = null, cur = null;
-  plants.forEach(p => {
-    const key = _statsISO(p.start);
-    if (key !== curKey) { curKey = key; cur = { date: p.start, items: [], total: 0 }; groups.push(cur); }
-    cur.items.push(p);
-    cur.total += p.mins;
+  const groups = _sesionesDetalleDays.slice(0, _sesionesDetalleLoaded).map(key => {
+    const items = _sesionesDetalleDayEntries(key);
+    return { key, date: new Date(key + 'T12:00:00'), items, total: items.reduce((sum, p) => sum + p.mins, 0) };
   });
-
   const hoyKey = _statsISO(new Date());
   cont.innerHTML = groups.map(g => {
     let label = g.date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
     if (_statsISO(g.date) === hoyKey) label = 'Hoy · ' + label;
     const rows = g.items.map(p => {
+      _sesionesDetalleRecords.set(p.source + ':' + p.index, p.record);
       const obra = p.obraId ? findObra(p.obraId) : null;
       const color = (obra && obraColorHex(obra)) || 'var(--text3)';
       const name = _timedStudyPlantName(p);
       const isEditing = _sesionesDetalleEditing === p.source + ':' + p.index;
       const editId = 'sesdet-edit-' + p.source + '-' + p.index;
-      const startTime = fmtH(p.start);
+      const startTime = p.start ? fmtH(p.start) : '';
       const edit = isEditing
         ? '<div class="sesdet-edit" id="' + editId + '">' +
             '<select class="sesdet-edit-work" data-field="obra" aria-label="Obra estudiada">' + _timedStudyOptions(p.obraId, p.movId, p.tag) + '</select>' +
             '<div class="sesdet-edit-line"><label>Inicio <input type="time" data-field="time" value="' + startTime + '"></label>' +
               '<label>Min <input type="number" data-field="minutes" min="1" max="480" step="1" value="' + p.mins + '"></label>' +
-              '<button type="button" class="sesdet-save" onclick="saveTimedStudyEdit(\'' + p.source + '\',' + p.index + ')">Guardar</button>' +
-              '<button type="button" class="sesdet-cancel" onclick="toggleSesionesDetalleEdit(\'' + p.source + '\',' + p.index + ')" aria-label="Cancelar edición">×</button>' +
+              '<button type="button" class="sesdet-save" data-source="' + p.source + '" data-index="' + p.index + '" onclick="saveTimedStudyEdit(this.dataset.source,this.dataset.index)">Guardar</button>' +
+              '<button type="button" class="sesdet-cancel" data-source="' + p.source + '" data-index="' + p.index + '" onclick="toggleSesionesDetalleEdit(this.dataset.source,this.dataset.index)" aria-label="Cancelar edición">×</button>' +
             '</div>' +
           '</div>'
         : '';
       return '<div class="sesdet-row' + (isEditing ? ' is-editing' : '') + '">' +
         '<span class="sesdet-dot" style="background:' + color + '"></span>' +
-        '<span class="sesdet-time">' + fmtH(p.start) + '–' + fmtH(p.end) + '</span>' +
+        '<span class="sesdet-time">' + (p.start && p.end ? fmtH(p.start) + '–' + fmtH(p.end) : 'Sin hora') + '</span>' +
         '<span class="sesdet-name" title="' + escapeHtmlSafe(name) + '">' + escapeHtmlSafe(name) + '</span>' +
-        '<span class="sesdet-min">' + p.mins + ' min</span>' +
-        '<button type="button" class="sesdet-edit-btn" onclick="toggleSesionesDetalleEdit(\'' + p.source + '\',' + p.index + ')" aria-label="Editar sesión" title="Editar sesión">✎</button>' +
+        '<span class="sesdet-min">' + Math.round(p.mins * 100) / 100 + ' min</span>' +
+        '<button type="button" class="sesdet-edit-btn" data-source="' + p.source + '" data-index="' + p.index + '" onclick="toggleSesionesDetalleEdit(this.dataset.source,this.dataset.index)" aria-label="Editar sesión" title="Editar sesión">✎</button>' +
         edit +
       '</div>';
     }).join('');
-    return '<div class="sesdet-day">' +
+    return '<section class="sesdet-day" data-day="' + g.key + '">' +
       '<div class="sesdet-day-head">' +
         '<span class="sesdet-day-label">' + label + '</span>' +
         '<span class="sesdet-day-total">' + fmtMinutos(g.total) + '</span>' +
-      '</div>' + rows + '</div>';
-  }).join('');
+      '</div>' + (rows || '<div class="sesdet-empty">Hoy aún no hay sesiones registradas.</div>') + '</section>';
+  }).join('') + (_sesionesDetalleLoaded < _sesionesDetalleDays.length ?
+    '<button type="button" class="sesdet-more" onclick="loadMoreSesionesDetalle()">Ver un día anterior ↓</button>' :
+    '<p class="sesdet-end">No hay más sesiones anteriores.</p>');
+  cont.scrollTop = scrollTop;
+  cont.onscroll = () => {
+    if (cont.scrollTop > 0 && cont.scrollHeight - cont.clientHeight - cont.scrollTop < 80) loadMoreSesionesDetalle();
+  };
+  // Short days have no native scroll range. A deliberate upward swipe still
+  // reveals one older day; the button also supports keyboard and mouse users.
+  cont.ontouchstart = event => { cont._daySwipe = { y: event.touches[0]?.clientY, loaded: _sesionesDetalleLoaded }; };
+  cont.ontouchend = event => {
+    const gesture = cont._daySwipe;
+    if (gesture && gesture.loaded === _sesionesDetalleLoaded && gesture.y - event.changedTouches[0]?.clientY > 25 && cont.scrollHeight - cont.clientHeight - cont.scrollTop < 80) loadMoreSesionesDetalle();
+  };
+  cont.onwheel = event => {
+    if (event.deltaY > 0 && cont.scrollHeight <= cont.clientHeight + 1) loadMoreSesionesDetalle();
+  };
 }
 
-function openSesionesDetalle() {
+function openSesionesDetalle(opener) {
+  const overlay = document.getElementById('modalSesionesDetalle');
+  if (!overlay.classList.contains('visible')) overlay._sesionesOpener = opener && typeof opener.focus === 'function' ? opener : document.activeElement;
   _sesionesDetalleEditing = null;
+  const today = _statsISO(new Date());
+  const days = new Set([today]);
+  const addDay = value => {
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return;
+    const key = _statsISO(date);
+    if (key <= today) days.add(key);
+  };
+  ['sessionPlants', 'forestPlants'].forEach(source => (db[source] || []).forEach(p => {
+    if (p && !p.failed && p.tipo !== 'descanso' && p.obraId !== '_rest_' && Number(p.mins) > 0) addDay(p.startedAt || p.endedAt);
+  }));
+  (db.sesiones || []).forEach(s => { if ((s.items || []).some(item => _itemMinReal(item) > 0)) addDay(s.date); });
+  _sesionesDetalleDays = [...days].sort().reverse();
+  _sesionesDetalleLoaded = 1;
   renderSesionesDetalle();
   openModal('modalSesionesDetalle');
+  document.getElementById('sesionesDetalleBody').scrollTop = 0;
+  overlay.querySelector('.sesdet-close').focus({ preventScroll: true });
+  overlay.onkeydown = event => {
+    if (event.key === 'Escape') { event.preventDefault(); closeModal('modalSesionesDetalle'); }
+    if (event.key === 'Tab') {
+      const buttons = [...overlay.querySelectorAll('button, input, select')].filter(el => !el.disabled && el.getClientRects().length);
+      const first = buttons[0], last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }
+  };
 }
 
 // Lightweight HTML escape used in renderSesionesHistorial — avoid corrupting names with quotes/HTML
