@@ -10,7 +10,7 @@
     return db.germanStudy;
   }
   function create({id,deviceId,goalId=null,queue=[],now=Date.now()}) {
-    return {id,deviceId,goalId,startedAt:new Date(now).toISOString(),status:'paused',segments:[],
+    return {id,deviceId,goalId,sharedEffortVersion:1,startedAt:new Date(now).toISOString(),status:'paused',segments:[],
       queue:queue.map((item,i)=>({...item,contentId:item.id,id:id+':item:'+i})),index:0};
   }
   // Called only for observed foreground intervals. Calendar constructors handle DST/midnight.
