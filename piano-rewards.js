@@ -68,26 +68,24 @@
     const firstDay=dayKey(new Date(ordered[0].createdAt));
     if(!firstDay || firstDay>today)return {sessions:[]};
     const start=new Date(firstDay+'T00:00:00'),end=new Date(today+'T00:00:00');end.setDate(end.getDate()+1);
-    const totals=DailyStudyMinutes.minutesByDay(start,end,db),sessions=[];
-    const byDay=Object.create(null);
-    saved.sessions.filter(s=>s && s.id && !s.deleted && !s.deletedAt).forEach(s=>{
-      const date=dayKey(new Date(s.startedAt||s.endedAt))||s.date;
-      if(date<firstDay)sessions.push(s);
-      else (byDay[date]||=[]).push(s);
-    });
-    Object.keys(totals).sort().forEach(date=>{
-      let remaining=Math.max(0,totals[date]*60);
-      const recorded=(byDay[date]||[]).slice().sort((a,b)=>String(a.startedAt).localeCompare(String(b.startedAt))||String(a.id).localeCompare(String(b.id)));
-      // Retain historical goal/policy/activity attribution, not historical raw durations.
-      recorded.forEach(s=>{
-        const seconds=Math.min(remaining,Math.max(0,Number(s.seconds)||0));
-        if(seconds>0){sessions.push({...s,date,seconds});remaining-=seconds;}
-      });
-      if(remaining<=0)return;
-      const goal=ordered.find(g=>dayKey(new Date(g.createdAt))<=date && (!g.archivedAt || dayKey(new Date(g.archivedAt))>date) && (!g.deletedAt || dayKey(new Date(g.deletedAt))>date));
+    const sessions=[];
+    const blocks=DailyStudyMinutes.studyBlocks(start,end,db);
+    const recorded=saved.sessions.filter(s=>s && s.id && !s.deleted && !s.deletedAt);
+    blocks.forEach((block,index)=>{
+      const date=block.date;
+      // Identity or timestamps join a surviving canonical block to its policy.
+      // Never assign deleted class/chamber time to unrelated manual study.
+      const previous=recorded.find(s=>block.runId===s.id || String(block.runId || '').startsWith(s.id+'::passage::') || block.id==='run_'+s.id ||
+        (block.startedAt && Date.parse(block.startedAt)===Date.parse(s.startedAt)));
+      const attributedGoal=previous?.goalId || block.rewardGoalId;
+      const goal=attributedGoal ? goals.find(g=>g.id===attributedGoal) : ordered.find(g=>dayKey(new Date(g.createdAt))<=date &&
+        (!g.archivedAt || dayKey(new Date(g.archivedAt))>date) && (!g.deletedAt || dayKey(new Date(g.deletedAt))>date));
       if(!goal)return;
       const when=new Date(date+'T23:59:59').toISOString();
-      sessions.push({id:'study-day:'+date,goalId:goal.id,date,startedAt:when,endedAt:when,seconds:remaining,activityType:'study',activityFactor:1,policyVersion:CONFIG.version});
+      const type=normalizeActivityType(block.activityType || previous?.activityType);
+      sessions.push({...previous,id:'study-block:'+(block.id || block.runId || date+':'+index),goalId:goal.id,date,
+        startedAt:block.startedAt || when,endedAt:block.endedAt || when,seconds:Math.max(0,block.mins*60),
+        activityType:type,activityFactor:activityFactor(block.activityType ? block : previous || type),policyVersion:previous?.policyVersion || block.rewardPolicyVersion || CONFIG.version});
     });
     return {...saved,sessions};
   }

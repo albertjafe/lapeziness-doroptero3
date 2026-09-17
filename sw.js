@@ -1,18 +1,18 @@
-const CACHE = 'estudio-v398';
+const CACHE = 'estudio-v399';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
   "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=342",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=397",
+  "./app.js?v=399",
   "./german-rewards.js?v=383",
-  "./piano-rewards.js?v=397",
+  "./piano-rewards.js?v=399",
   "./german-srs.js?v=378",
   "./german-import.js?v=382",
   "./german-session.js?v=382",
-  "./german-study.js?v=397",
-  "./german-study.css?v=384",
+  "./german-study.js?v=399",
+  "./german-study.css?v=399",
   "./habit-trophies.js?v=380",
   "./habit-trophies.css?v=383",
   "./desktop-workspace.css?v=388",
@@ -20,15 +20,16 @@ const ASSETS = [
   "./desktop-windows-v390.css?v=390",
   "./desktop-windows-v391.css?v=391",
   "./competition-planning-seed.js?v=342",
+  "./crono-start-layout.css?v=399",
   "./crono-idle-hierarchy.css?v=342",
   "./crono-readiness-layout.css?v=342",
   "./crono-resume-layout.css?v=342",
   "./crono-resume-layout.js?v=377",
   "./crono-running-premium.css?v=384",
-  "./crono-running-premium.js?v=397",
+  "./crono-running-premium.js?v=399",
   "./crono-save-resilience.js?v=397",
   "./crono-state-store.js?v=397",
-  "./daily-study-minutes.js?v=397",
+  "./daily-study-minutes.js?v=399",
   "./data-core.js?v=342",
   "./document-sync-core.js?v=344",
   "./ensemble-repertoire-catalog.js?v=381",
@@ -69,7 +70,7 @@ const ASSETS = [
   "./passage-tracker-resilience.js?v=372",
   "./piano-rooms-core.js?v=372",
   "./piano-rooms.css?v=369",
-  "./piano-rooms.js?v=397",
+  "./piano-rooms.js?v=399",
   "./reservation-dashboard.css?v=372",
   "./reservation-dashboard.js?v=372",
   "./planning-enhancements-v3.css?v=377",
@@ -162,7 +163,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '398');
+            target.searchParams.set('__pwa', '399');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -170,7 +171,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'398', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'399', navigated });
         } catch (error) {}
       }
     }

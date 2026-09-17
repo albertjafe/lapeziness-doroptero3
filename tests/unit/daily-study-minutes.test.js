@@ -31,6 +31,18 @@ function dayRange() {
 }
 
 describe('daily study minutes', () => {
+  it('projects typed deduplicated blocks with the same rounded total without mutating data', () => {
+    const db={sessionPlants:[
+      {id:'a',runId:'a',obraId:'a',mins:2.1,startedAt:'2026-09-05T10:00:00Z',activityType:'piano_class'},
+      {id:'b',runId:'b',obraId:'b',mins:.1,startedAt:'2026-09-05T11:00:00Z',activityType:'chamber'}],sesiones:[],forestPlants:[]};
+    db.forestPlants=[{...db.sessionPlants[0]}];
+    const before=JSON.stringify(db),api=loadFix(db),{start,end}=dayRange();
+    const blocks=api.studyBlocks(start,end,db);
+    expect(blocks.reduce((sum,b)=>sum+b.mins,0)).toBe(2);
+    expect(blocks.map(b=>b.activityType)).toEqual(['piano_class','chamber']);
+    expect(api.minutesByDay(start,end,db)['2026-09-05']).toBe(2);
+    expect(JSON.stringify(db)).toBe(before);
+  });
   it('deduplicates repeated timer plants and ignores their crono session mirrors', () => {
     const plants = [
       { obraId: 'general', mins: 26, startedAt: '2026-09-05T08:42:32.164Z', endedAt: '2026-09-05T09:11:40.344Z' },

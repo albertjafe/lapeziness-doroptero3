@@ -67,4 +67,27 @@ describe('piano activity types',()=>{
     expect(state.sessions[0]).toMatchObject({activityType:'piano_class',activityFactor:.5,seconds:7200});
     expect(P.equivalentSeconds(state.sessions[0])).toBe(3600);
   });
+
+  it('retains each surviving block type through manual corrections and deletion',()=>{
+    const date='2026-09-16',when=date+'T10:00:00Z';
+    const db={germanStudy:{goals:[goal]},sesiones:[],forestPlants:[],pianoRewards:{sessions:[]},sessionPlants:[
+      {id:'run_class',runId:'class',obraId:'a',mins:120,startedAt:when,endedAt:date+'T12:00:00Z',activityType:'piano_class'},
+      {id:'manual',obraId:'b',mins:60,startedAt:date+'T13:00:00Z',source:'manual'}]};
+    P.record(db.pianoRewards,{id:'class',goalId:'g',startedAt:when,seconds:7200,activityType:'piano_class'});
+    let projected=P.studyState(db,date);
+    expect(P.summarizeDays(projected.sessions)[date]).toBe(7200);
+    db.sessionPlants[0].mins=240;
+    expect(P.summarizeDays(P.studyState(db,date).sessions)[date]).toBe(10800);
+    db.sessionPlants.shift();
+    projected=P.studyState(db,date);
+    expect(projected.sessions).toHaveLength(1);
+    expect(projected.sessions[0]).toMatchObject({activityType:'study',seconds:3600});
+  });
+
+  it('weights short rescued canonical blocks even without a separate reward record',()=>{
+    const date='2026-09-16';
+    const block={id:'short',obraId:'a',mins:5,startedAt:date+'T10:00:00Z',activityType:'chamber',rewardGoalId:'g'};
+    const db={germanStudy:{goals:[goal]},sessionPlants:[block],forestPlants:[{...block}],sesiones:[],pianoRewards:{sessions:[]}};
+    expect(P.summarizeDays(P.studyState(db,date).sessions)[date]).toBe(100);
+  });
 });

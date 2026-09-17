@@ -15,9 +15,9 @@
   const lockToken=uid();
   try {deviceId=localStorage.getItem('german_device_v1');if (!deviceId) {deviceId=uid();localStorage.setItem('german_device_v1',deviceId);}} catch {deviceId=uid();}
   const current=()=>state().sessions.find(s=>s.id===activeId && !s.endedAt);
-  const entries=()=>{
-    const german=R.ledger(state().sessions,state().goals);
-    return P?P.combinedLedger(german,P.ledger(P.studyState(db).sessions,state().goals),state().goals):german;
+  const entries=(goals=state().goals)=>{
+    const german=R.ledger(state().sessions,goals);
+    return P?P.combinedLedger(german,P.ledger(P.studyState(db).sessions,goals),goals):german;
   };
   function activeGoal() {
     // Concurrent offline creations are queued deterministically, never both active.
@@ -77,15 +77,24 @@
   function pause() {const s=current();if(s && ownsLock) {advance();s.status='paused';persist();} }
   function goalCard(goal,ledger) {
     if (!goal) return `<section class="german-card german-goal" id="germanSharedGoal"><span class="german-eyebrow">TU PRÓXIMO OBJETIVO</span><h2>Un motivo para volver mañana.</h2><p>Convierte tu alemán y tu piano en una hucha virtual. Tú eliges la recompensa.</p>${goalForm()}</section>`;
-    if (editingGoalId===goal.id) return `<section class="german-card german-goal is-editing" id="germanSharedGoal"><span class="german-eyebrow">EDITAR OBJETIVO COMPARTIDO</span><h2>Ajusta el nombre o el precio.</h2><p>El nuevo importe se aplica al saldo calculado desde tus sesiones conservadas.</p>${goalForm(goal)}</section>`;
+    if (editingGoalId===goal.id) return `<section class="german-card german-goal is-editing" id="germanSharedGoal"><span class="german-eyebrow">EDITAR OBJETIVO COMPARTIDO</span><h2>Ajusta el nombre o el precio.</h2><p>Recalculamos las mismas horas con el nuevo precio. Al bajar el precio, los euros acumulados también bajan, pero cubren una mayor parte de la compra.</p>${goalForm(goal)}</section>`;
     if (deletingGoalId===goal.id) {
       const blocked=sharedGoalSessionActive(goal.id);
       return `<section class="german-card german-goal is-deleting" id="germanSharedGoal"><span class="german-eyebrow">ELIMINAR OBJETIVO</span><h2>¿Eliminar ${esc(goal.name)}?</h2><p>El objetivo y su saldo dejarán de aparecer. Las sesiones de alemán y piano se conservan en el historial interno.</p>${blocked?'<p class="german-goal-warning">Termina primero la sesión que está aportando a este objetivo.</p>':''}<div class="german-goal-confirm"><button data-action="cancel-delete-goal">Cancelar</button><button class="german-danger" data-action="confirm-delete-goal" data-id="${esc(goal.id)}" ${blocked?'disabled':''}>Eliminar definitivamente</button></div></section>`;
     }
     const progress=R.goalProgress(goal,ledger,state().sessions), percent=Math.min(100,progress.amount/goal.amount*100);
-    return `<section class="german-card german-goal" id="germanSharedGoal"><span class="german-eyebrow">${progress.complete?'OBJETIVO CONSEGUIDO ✨':'TU OBJETIVO COMPARTIDO'}</span><h2>${esc(goal.name)}</h2><div class="german-balance">${euro(progress.amount)} <small>/ ${euro(goal.amount)}</small></div><progress aria-label="Progreso del objetivo" max="100" value="${percent}"></progress><p>${percent.toFixed(1).replace('.',',')} % · Alemán y piano suman en la misma hucha</p><div class="german-goal-actions"><button data-action="edit-goal" data-id="${esc(goal.id)}">Editar objetivo</button><button class="german-danger-link" data-action="delete-goal" data-id="${esc(goal.id)}">Eliminar objetivo</button>${progress.complete?`<button data-action="archive" ${sharedGoalSessionActive(goal.id)?'disabled':''}>Archivar y crear otro objetivo</button>`:''}</div>${progress.complete?`<p>Conseguido el ${esc(progress.completedOn)} · ${minutes(progress.seconds)} de estudio invertidos.</p>${sharedGoalSessionActive(goal.id)?'<p>Termina la sesión antes de archivar.</p>':''}`:''}</section>`;
+    return `<section class="german-card german-goal" id="germanSharedGoal"><span class="german-eyebrow">${progress.complete?'OBJETIVO CONSEGUIDO ✨':'TU OBJETIVO COMPARTIDO'}</span><h2>${esc(goal.name)}</h2><div class="german-balance">${euro(progress.amount)} <small>/ ${euro(goal.amount)}</small></div><progress aria-label="Progreso del objetivo" max="100" value="${percent}"></progress><p>${percent.toFixed(1).replace('.',',')} % · Alemán y piano aportan a este objetivo</p><p class="german-goal-reserved">Saldo reservado exclusivamente para ${esc(goal.name)}. No se reparte entre compras ni se traslada a otro objetivo.</p><div class="german-goal-actions"><button data-action="edit-goal" data-id="${esc(goal.id)}">Editar objetivo</button><button class="german-danger-link" data-action="delete-goal" data-id="${esc(goal.id)}">Eliminar objetivo</button>${progress.complete?`<button data-action="archive" ${sharedGoalSessionActive(goal.id)?'disabled':''}>Archivar y crear otro objetivo</button>`:''}</div>${progress.complete?`<p>Conseguido el ${esc(progress.completedOn)} · ${minutes(progress.seconds)} de estudio invertidos.</p>${sharedGoalSessionActive(goal.id)?'<p>Termina la sesión antes de archivar.</p>':''}`:''}</section>`;
   }
-  function goalForm(goal=null) {return `<form id="germanGoalForm" class="german-form"${goal?` data-goal-id="${esc(goal.id)}"`:''}><label>Nombre del objetivo<input name="name" required maxlength="80" placeholder="Kindle" autocomplete="off" value="${esc(goal?.name || '')}"></label><label>Importe (€)<input name="amount" type="number" min="0.01" max="100000000" step="0.01" required value="${esc(goal?.amount ?? 150)}"></label><div class="german-goal-form-actions">${goal?'<button type="button" data-action="cancel-goal-edit">Cancelar</button>':''}<button class="german-primary" type="submit">${goal?'Guardar cambios':'Crear objetivo'}</button></div></form>`;}
+  function goalForm(goal=null) {return `<form id="germanGoalForm" class="german-form"${goal?` data-goal-id="${esc(goal.id)}"`:''}><label>Nombre del objetivo<input name="name" required maxlength="80" placeholder="Kindle" autocomplete="off" value="${esc(goal?.name || '')}"></label><label>Importe (€)<input name="amount" type="number" min="0.01" max="100000000" step="0.01" required value="${esc(goal?.amount ?? 150)}"></label>${goal?`<output id="germanGoalEquivalence" class="german-goal-equivalence" aria-live="polite">${goalEquivalence(goal,goal.amount,goal.name)}</output>`:''}<div class="german-goal-form-actions">${goal?'<button type="button" data-action="cancel-goal-edit">Cancelar</button>':''}<button class="german-primary" type="submit">${goal?'Guardar cambios':'Crear objetivo'}</button></div></form>`;}
+  function goalEquivalence(goal,amount,name) {
+    if(!Number.isFinite(amount) || amount<.01 || amount>1e8)return 'Introduce un precio válido para ver la equivalencia.';
+    const updated={...goal,amount:Math.round(amount*100)/100};
+    const goals=state().goals.map(g=>g.id===goal.id?updated:g);
+    const before=R.goalProgress(goal,entries(),state().sessions);
+    const after=R.goalProgress(updated,entries(goals),state().sessions);
+    const percent=Math.min(100,after.amount/updated.amount*100);
+    return `<span>Mismas sesiones · nuevo precio</span><strong>${euro(before.amount)} → ${euro(after.amount)} de ${euro(updated.amount)}</strong><small>${percent.toFixed(1).replace('.',',')} %${after.complete?' · Objetivo conseguido':''} · Solo para ${esc(name || goal.name)}. El saldo se limita al precio; no hay sobrante transferible.</small>`;
+  }
   function deckStats(material) {
     const states=material.cards.map(c=>S.cardState(c.id,state().reviews)),now=Date.now();
     return {newCount:states.filter(s=>!s.reviews).length,dueCount:states.filter(s=>s.nextReview && Date.parse(s.nextReview)<=now).length};
@@ -277,7 +286,15 @@
         const added=I.insert(state(),pack);if(added)persist();render();message(added?'Material importado: '+pack.metadata.title:'Este paquete ya estaba importado.');
       });
     });
-    view.addEventListener('input',e=> {lastInteraction=Date.now();if(e.target.id==='germanAnswer' && current()){current().draftAnswer=e.target.value;}});
+    view.addEventListener('input',e=> {
+      lastInteraction=Date.now();
+      if(e.target.id==='germanAnswer' && current())current().draftAnswer=e.target.value;
+      const form=e.target.closest('#germanGoalForm');
+      if(form?.dataset.goalId){
+        const goal=state().goals.find(g=>g.id===form.dataset.goalId),preview=form.querySelector('#germanGoalEquivalence');
+        if(goal && preview)preview.innerHTML=goalEquivalence(goal,Number(form.elements.amount.value),form.elements.name.value.trim());
+      }
+    });
     view.addEventListener('keydown',e=> {
       const s=current();if(!s || panel!=='study' || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
       if((e.key===' ' || e.key==='Enter') && !s.revealed && s.mode!=='free'){e.preventDefault();guarded(()=>action('reveal'));return;}

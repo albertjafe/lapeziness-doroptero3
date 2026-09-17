@@ -27,6 +27,8 @@
   }
 
   function setRuntimeActivity(type){
+    const state=currentCrono();
+    if(state && state.state!=='idle')type=state.activityType || 'study';
     selectedActivityType=normalizeActivityType(type);
     try{globalThis.__PIANO_ACTIVITY_TYPE__=selectedActivityType;}catch(error){}
     document.querySelectorAll('#cronoActivitySelector .crono-activity-tab').forEach(button=>{
@@ -34,6 +36,9 @@
       button.classList.toggle('active',active);
       button.setAttribute('aria-pressed',active?'true':'false');
     });
+    const select=document.getElementById('cronoActivityType');
+    if(select && select.value!==selectedActivityType)select.value=selectedActivityType;
+    if(state && state.state==='idle' && typeof cronoUpdatePianoReward==='function')cronoUpdatePianoReward();
     scheduleTaximeter();
   }
 
@@ -42,6 +47,12 @@
       const parsed=JSON.parse(localStorage.getItem(ACTIVITY_STORAGE_KEY)||'null');
       return parsed&&typeof parsed==='object'?parsed:null;
     }catch(error){return null;}
+  }
+
+  function chooseActivity(type){
+    // A new idle selection wins over the previous run's delayed UI refresh.
+    if(currentCrono()?.state==='idle')lastCronoState='idle';
+    setRuntimeActivity(type);
   }
 
   function persistActiveActivity(){
@@ -63,14 +74,16 @@
     if(lastCronoState===null){
       if(nowState!=='idle'){
         const stored=readStoredActivity();
-        if(stored && (!stored.runId || !state.runId || stored.runId===state.runId))setRuntimeActivity(stored.type);
-        else setRuntimeActivity('study');
+        setRuntimeActivity(state.activityType || (stored?.runId===state.runId ? stored.type : 'study'));
         persistActiveActivity();
       }else setRuntimeActivity('study');
       lastCronoState=nowState;
       return;
     }
-    if(lastCronoState==='idle' && nowState!=='idle')persistActiveActivity();
+    if(lastCronoState==='idle' && nowState!=='idle'){
+      setRuntimeActivity(state.activityType);
+      persistActiveActivity();
+    }
     if(lastCronoState!=='idle' && nowState==='idle'){
       clearStoredActivity();
       setRuntimeActivity('study');
@@ -100,24 +113,26 @@
     if(!idle)return null;
     let selector=document.getElementById('cronoActivitySelector');
     if(selector)return selector;
-    const anchor=idle.querySelector('.crono-idle-mode, .crono-start-control-mode, .crono-mode-tabs, .crono-idle-controls');
+    const controls=idle.querySelector('.crono-idle-controls');
+    const ipad=document.documentElement.classList.contains('platform-ipad');
     selector=document.createElement('div');
     selector.id='cronoActivitySelector';
     selector.className='crono-start-control crono-activity-control';
-    selector.innerHTML=
-      '<div class="crono-start-control-label">Tipo de sesión</div>'+
-      '<div class="crono-activity-tabs" role="group" aria-label="Tipo de sesión de piano">'+
+    selector.innerHTML=ipad ?
+      '<label class="crono-start-control-label" for="cronoActivityType">Tipo de sesión</label>'+
+      '<select id="cronoActivityType" aria-label="Tipo de sesión de piano">'+
         Object.entries(ACTIVITY_TYPES).map(([type,item])=>
-          '<button type="button" class="crono-activity-tab'+(type==='study'?' active':'')+'" data-activity-type="'+type+'" aria-pressed="'+(type==='study'?'true':'false')+'" title="'+item.label+': cada hora cuenta como '+item.short+' horas equivalentes">'+
-            '<span>'+item.label+'</span><small>'+item.short+'</small></button>'
+          '<option value="'+type+'">'+item.label+' · '+item.short+'</option>'
         ).join('')+
-      '</div>';
-    selector.querySelectorAll('.crono-activity-tab').forEach(button=>{
-      button.addEventListener('click',()=>setRuntimeActivity(button.dataset.activityType));
-    });
-    if(anchor){
-      const control=anchor.closest('.crono-start-control')||anchor;
-      control.insertAdjacentElement('beforebegin',selector);
+      '</select>' :
+      '<div class="crono-start-control-label">Tipo de sesión</div><div class="crono-activity-tabs" role="group" aria-label="Tipo de sesión de piano">'+
+      Object.entries(ACTIVITY_TYPES).map(([type,item])=>'<button type="button" class="crono-activity-tab" data-activity-type="'+type+'" aria-pressed="false" title="'+item.label+': cada hora cuenta como '+item.short+' horas equivalentes"><span>'+item.label+'</span><small>'+item.short+'</small></button>').join('')+'</div>';
+    selector.querySelector('select')?.addEventListener('change',event=>chooseActivity(event.target.value));
+    selector.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>chooseActivity(button.dataset.activityType)));
+    if(controls && ipad){
+      controls.prepend(selector);
+    }else if(controls){
+      controls.insertAdjacentElement('beforebegin',selector);
     }else{
       const consoleBox=idle.querySelector('.crono-idle-console, .crono-idle-main')||idle;
       consoleBox.appendChild(selector);
@@ -505,7 +520,7 @@
         if(late){schedule();new MutationObserver(schedule).observe(late,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['hidden']});}
       },150);
     }
-    try{globalThis.PianoActivityTypes={types:ACTIVITY_TYPES,current:()=>selectedActivityType,set:setRuntimeActivity};}catch(error){}
+    try{globalThis.PianoActivityTypes={types:ACTIVITY_TYPES,current:()=>selectedActivityType,set:chooseActivity};}catch(error){}
     bootTaximeter();
   }
 

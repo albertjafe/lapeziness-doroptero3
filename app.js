@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-16-study-accounting-recovery-v397';
+const APP_VERSION = '2026-09-17-goal-equivalence-session-types-v399';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -3655,6 +3655,9 @@ function recordSessionPlant(obraId, movId, startedAt, endedAt, mins, opts) {
   };
   if (options.runId) entry.runId = options.runId;
   if (options.tipo) entry.tipo = options.tipo;
+  if (options.activityType) entry.activityType = options.activityType;
+  if (options.rewardGoalId) entry.rewardGoalId = options.rewardGoalId;
+  if (options.rewardPolicyVersion) entry.rewardPolicyVersion = options.rewardPolicyVersion;
   if (options.pase) {
     entry.pase = true;
     if (options.paseId) entry.paseId = options.paseId;
@@ -20284,6 +20287,7 @@ const crono = {
   runId: null,           // identificador estable de la ejecución actual
   rewardGoalId: null,    // objetivo económico activo al iniciar la sesión
   rewardPolicyVersion: null,
+  activityType: 'study', // tipo inmutable del bloque, protegido junto al cronómetro
   isRest: false,         // true si la sesión actual es un DESCANSO (no cuenta como estudio)
   obraId: null,
   movId: null,
@@ -20524,6 +20528,7 @@ function cronoSaveState() {
       runId: crono.runId,
       rewardGoalId: crono.rewardGoalId,
       rewardPolicyVersion: crono.rewardPolicyVersion,
+      activityType: crono.activityType,
       isRest: crono.isRest,
       obraId: crono.obraId,
       movId: crono.movId,
@@ -20593,6 +20598,12 @@ function cronoLoadState(snapshot) {
     crono.runId = s.runId || (typeof TimerCore !== 'undefined' ? TimerCore.createRunId() : ('run_' + Date.now()));
     crono.rewardGoalId = typeof s.rewardGoalId === 'string' ? s.rewardGoalId : null;
     crono.rewardPolicyVersion = Number(s.rewardPolicyVersion) || (crono.rewardGoalId ? 1 : null);
+    // Migrate active v398 runs whose activity lived in a separate local key.
+    let legacyActivity = null;
+    try { legacyActivity = JSON.parse(localStorage.getItem('piano_activity_type_v1') || 'null'); } catch(e) {}
+    const activity = s.activityType || (legacyActivity?.runId === crono.runId ? legacyActivity.type : 'study');
+    crono.activityType = ['study','piano_class','chamber'].includes(activity) ? activity : 'study';
+    window.__PIANO_ACTIVITY_TYPE__ = crono.activityType;
     crono.isRest = !!s.isRest;
     crono.obraId = s.obraId;
     crono.movId = s.movId || null;
@@ -24832,7 +24843,8 @@ function cronoUpdatePianoReward() {
       cronoEffectiveElapsedMs() / 1000,
       PianoRewards.dayKey(),
       germanRows,
-      crono.rewardPolicyVersion || PianoRewards.CONFIG.version
+      crono.rewardPolicyVersion || PianoRewards.CONFIG.version,
+      crono.activityType
     );
     const money = (amount, digits=2) => new Intl.NumberFormat('es-ES', {
       minimumFractionDigits: digits,
@@ -24866,7 +24878,7 @@ function cronoUpdatePianoReward() {
       if (!goal) next.textContent = 'Crea el objetivo para empezar a llenar la hucha';
       else if (live.goalRemaining <= 0.0000005) next.textContent = 'Objetivo completado';
       else if (live.nextSeconds == null) next.textContent = 'Máximo diario alcanzado · premio grande consolidado';
-      else next.textContent = (cronoEffectiveElapsedMs() < CRONO_MIN_MIN * 60000 ? 'Se guarda a los ' + CRONO_MIN_MIN + ' min · ' : '') + 'siguiente impulso en ' + cronoFmt((live.nextSeconds - live.seconds) * 1000);
+      else next.textContent = (cronoEffectiveElapsedMs() < CRONO_MIN_MIN * 60000 ? 'Se guarda a los ' + CRONO_MIN_MIN + ' min · ' : '') + 'siguiente impulso en ' + cronoFmt((live.nextSeconds - live.seconds) / live.currentActivityFactor * 1000);
     }
     meter.title = goal
       ? 'Aportación de piano de hoy a “' + goal.name + '”. Máximo diario a las 7 horas: ' + money(live.cap) + '.'
@@ -26124,6 +26136,7 @@ function cronoStart() {
   crono.runId = typeof TimerCore !== 'undefined' ? TimerCore.createRunId() : ('run_' + Date.now() + '_' + Math.random().toString(36).slice(2));
   crono.rewardGoalId = typeof PianoRewards !== 'undefined' ? (PianoRewards.activeGoal(db)?.id || null) : null;
   crono.rewardPolicyVersion = typeof PianoRewards !== 'undefined' ? PianoRewards.CONFIG.version : null;
+  crono.activityType = typeof PianoRewards !== 'undefined' ? PianoRewards.normalizeActivityType(window.__PIANO_ACTIVITY_TYPE__) : 'study';
 
   cronoSaveState();
   cronoRegisterBackgroundNotifications(pushEnable);
@@ -26494,7 +26507,7 @@ function cronoFinish(expectedRunId) {
     endedAt: endedAtIso,
     mins: minutos,
     runId,
-    opts: { notes: cronoSessionNotes }
+    opts: { notes: cronoSessionNotes, activityType: crono.activityType, rewardGoalId: crono.rewardGoalId, rewardPolicyVersion: crono.rewardPolicyVersion }
   });
   if (!blockResult.persisted) {
     cronoReset('completed');
@@ -26510,7 +26523,8 @@ function cronoFinish(expectedRunId) {
       startedAt: startedAtIso,
       endedAt: endedAtIso,
       seconds: ms / 1000,
-      policyVersion: crono.rewardPolicyVersion
+      policyVersion: crono.rewardPolicyVersion,
+      activityType: crono.activityType
     });
     if (recorded) saveData();
   }
@@ -26657,6 +26671,9 @@ function cronoReset(pushStatus) {
   crono.runId = null;
   crono.rewardGoalId = null;
   crono.rewardPolicyVersion = null;
+  crono.activityType = 'study';
+  window.__PIANO_ACTIVITY_TYPE__ = 'study';
+  window.PianoActivityTypes?.set?.('study');
   _cronoPendingFinishRunId = null;
   _cronoFinalizingRunId = null;
   _cronoRunDrawerTab = 'tareas';

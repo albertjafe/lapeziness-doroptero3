@@ -60,3 +60,8 @@
   .german-goal-actions button,.german-goal-confirm button { width:100%; }
   .german-goal-form-actions { display:grid; grid-template-columns:1fr 1fr; }
 }
+/* Price edits preview a recomputation, never a cash transfer. */
+.german-goal-equivalence { display: grid; gap: 8px; padding: 16px; border: 1px solid var(--border2); border-radius: 14px; background: var(--bg3); }
+.german-goal-equivalence span { color: var(--text2); font-size: 12px; }
+.german-goal-equivalence strong { color: var(--green, #248653); font-size: 18px; }
+.german-goal-equivalence small, .german-goal-reserved { color: var(--text2); line-height: 1.5; }

@@ -1,0 +1,99 @@
+/* One preparation area; the start action always has its own reserved row. */
+html.platform-ipad #view-cronometro #cronoStageIdle .crono-idle-main.crono-idle-main {
+  display: grid !important;
+  grid-template-rows: auto auto minmax(100px, 1fr) auto auto auto !important;
+  align-content: stretch !important;
+  align-items: center !important;
+  gap: 5px !important;
+  overflow: auto !important;
+  container-type: inline-size;
+  container-name: crono-preparation;
+}
+html.platform-ipad #view-cronometro #cronoStageIdle .crono-idle-head { margin: 0 !important; }
+html.platform-ipad #view-cronometro #cronoStageIdle .crono-readiness-chip { margin: 0 auto !important; }
+html.platform-ipad #view-cronometro #cronoStageIdle .crono-idle-display-wrap {
+  grid-row: 3;
+  width: 100% !important;
+  max-width: none !important;
+  height: 100% !important;
+  min-height: 100px !important;
+  max-height: none !important;
+  margin: 0 !important;
+}
+html.platform-ipad #view-cronometro #cronoStageIdle .crono-idle-display-wrap .crono-run-progress-svg {
+  width: auto !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 240px !important;
+  aspect-ratio: 1;
+}
+html.platform-ipad #view-cronometro #cronoStageIdle .crono-idle-display-wrap .crono-display {
+  font-size: clamp(32px, 10cqw, 52px) !important;
+}
+html.platform-ipad #view-cronometro #cronoStageIdle .crono-idle-display-wrap.has-hours .crono-display {
+  font-size: clamp(24px, 6cqw, 36px) !important;
+}
+html.platform-ipad #view-cronometro #cronoStageIdle .crono-idle-message {
+  grid-row: 4;
+  margin: 0 auto !important;
+}
+html.platform-ipad #view-cronometro #cronoStageIdle .crono-piano-goal-idle {
+  grid-row: 5;
+  margin: 0 auto !important;
+  max-width: 100%;
+}
+html.platform-ipad #view-cronometro #cronoStageIdle .crono-idle-controls {
+  grid-row: 6;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  grid-template-areas: "activity mode" "projection projection" "start start" !important;
+  gap: 6px 10px !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  align-items: end !important;
+}
+html.platform-ipad #view-cronometro #cronoActivitySelector { grid-area: activity; gap: 3px; }
+html.platform-ipad #view-cronometro #cronoActivitySelector label {
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 650;
+}
+html.platform-ipad #view-cronometro #cronoActivityType {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 7px 9px;
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  background: var(--bg2);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+html.platform-ipad #view-cronometro #cronoModeToggle {
+  grid-area: mode !important;
+  width: 100% !important;
+  margin: 0 !important;
+  min-height: 44px !important;
+}
+html.platform-ipad #view-cronometro #cronoModeToggle .crono-mode-opt {
+  min-height: 44px !important;
+  font-size: 13px !important;
+}
+html.platform-ipad #view-cronometro #cronoTimerProjection { grid-area: projection !important; margin: 0 !important; }
+html.platform-ipad #view-cronometro #cronoStartBtn {
+  grid-area: start !important;
+  width: 100% !important;
+  min-height: 48px !important;
+  margin: 0 !important;
+  padding: 10px 18px !important;
+  font-size: 16px !important;
+}
+@container crono-preparation (max-width: 400px) {
+  html.platform-ipad #view-cronometro #cronoStageIdle .crono-idle-controls {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-areas: "activity" "mode" "projection" "start" !important;
+  }
+}

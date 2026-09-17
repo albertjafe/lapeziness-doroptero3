@@ -116,10 +116,11 @@
     const startMs = parseMs(item && (item.startedAt || item.startAt));
     const endMs = parseMs(item && (item.endedAt || item.endAt));
     if (!previous) {
-      return { target, mins, planId: planId || '', manual: !!(item && item.manual), startMs, endMs };
+      return { target, mins, planId: planId || '', manual: !!(item && item.manual), startMs, endMs, evidence: item };
     }
     return {
       target: previous.target || target,
+      evidence: previous.evidence,
       mins: Math.max(previous.mins || 0, mins || 0),
       planId: previous.planId || planId || '',
       manual: previous.manual || !!(item && item.manual),
@@ -145,7 +146,7 @@
     });
   }
 
-  function sessionExtraByTarget(bucket){
+  function sessionExtraByTarget(bucket, collect){
     const out = Object.create(null);
     const unmatchedTimedByTarget = Object.create(null);
     Object.keys(bucket.timed || {}).forEach(target => {
@@ -170,12 +171,13 @@
         }
       }
       out[entry.target] = (out[entry.target] || 0) + entry.mins;
+      if (collect) collect(entry);
     });
     return out;
   }
 
-  function minutesByDay(start, end, database = appDb()){
-    if (!database) return {};
+  function minutesByDay(start, end, database = appDb(), detailed = false){
+    if (!database) return detailed ? [] : {};
     const startMs = start instanceof Date ? start.getTime() : new Date(start).getTime();
     const endMs = end instanceof Date ? end.getTime() : new Date(end).getTime();
     const days = Object.create(null);
@@ -200,7 +202,7 @@
       const pEnd = parseMs(plant.endedAt);
       timedTarget.mins += mins;
       timedTarget.canonicalTimer = true;
-      timedTarget.entries.push({ startMs: pStart, endMs: pEnd, mins, source: String(plant.source || '') });
+      timedTarget.entries.push({ startMs: pStart, endMs: pEnd, mins, source: String(plant.source || ''), evidence: plant });
     };
 
     (database.sessionPlants || []).forEach(addPlant);
@@ -222,19 +224,33 @@
       });
     });
 
-    const out = {};
+    const out = {}, blocks = [];
     Object.keys(days).forEach(key => {
       const bucket = days[key];
-      const extras = sessionExtraByTarget(bucket);
+      const dayBlocks = [];
+      const extras = sessionExtraByTarget(bucket, detailed ? entry => dayBlocks.push({...entry.evidence, date:key, mins:entry.mins}) : null);
       const targets = new Set(Object.keys(bucket.timed).concat(Object.keys(extras)));
       let total = 0;
       targets.forEach(target => {
         const timed = bucket.timed[target] ? bucket.timed[target].mins : 0;
+        if (detailed) (bucket.timed[target]?.entries || []).forEach(entry => {
+          if (entry.mins > 0) dayBlocks.push({...entry.evidence, date:key, mins:entry.mins});
+        });
         total += timed + (extras[target] || 0);
       });
       out[key] = Math.max(0, Math.round(total));
+      // Keep the block projection equal to the established rounded daily total.
+      if (detailed && dayBlocks.length) {
+        let correction = out[key] - total;
+        for (let i = dayBlocks.length - 1; i >= 0 && Math.abs(correction) > 1e-9; i--) {
+          const change = Math.max(-dayBlocks[i].mins, correction);
+          dayBlocks[i].mins += change;
+          correction -= change;
+        }
+        blocks.push(...dayBlocks);
+      }
     });
-    return out;
+    return detailed ? blocks : out;
   }
 
   function todayMinutes(){
@@ -265,7 +281,8 @@
     return true;
   }
 
-  const api = { version: FIX_VERSION, minutesByDay, todayMinutes, duplicatePlantKey, sessionItemKey, sessionPlanBackedByTimed, isPassageAllocationParent };
+  const studyBlocks = (start, end, database = appDb()) => minutesByDay(start, end, database, true);
+  const api = { version: FIX_VERSION, minutesByDay, studyBlocks, todayMinutes, duplicatePlantKey, sessionItemKey, sessionPlanBackedByTimed, isPassageAllocationParent };
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (typeof window === 'undefined') return;
   window.DailyStudyMinutes = api;
