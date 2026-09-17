@@ -1,25 +1,30 @@
-/* Progressive piano rewards derived from canonical study minutes; combinedLedger caps the shared goal. */
+/* Progressive piano rewards derived from canonical study minutes.
+   v5 separates effort from its euro projection so several goals can coexist. */
 (function(root,factory) {
   const api=factory(typeof module==='object' && module.exports?require('./german-rewards'):root.GermanRewards,
     typeof module==='object' && module.exports?require('./daily-study-minutes'):root.DailyStudyMinutes);
-  if(typeof module==='object' && module.exports)module.exports=api;else root.PianoRewards=api;
+  if(typeof module==='object' && module.exports)module.exports=api;
+  else {root.PianoRewards=api;api.installBrowser?.(root);}
 })(typeof window!=='undefined'?window:globalThis,function(GermanRewards,DailyStudyMinutes){
   'use strict';
   const FULL_DAY_SECONDS=4*3600;
   const EXCELLENT_DAY_SECONDS=5*3600;
+  const SHARED_EFFORT_POLICY_VERSION=5;
   const ACTIVITY_TYPES=Object.freeze({
     study:Object.freeze({id:'study',label:'Estudio',factor:1}),
     piano_class:Object.freeze({id:'piano_class',label:'Clase piano',factor:.5}),
     chamber:Object.freeze({id:'chamber',label:'Cámara',factor:1/3})
   });
   const policy=(version,curve)=>Object.freeze({version,referenceAmount:150,minimumSeconds:600,curve:Object.freeze(curve.map(Object.freeze))});
+  const CURVE_V4=[[0,0],[1800,.05],[3600,.11],[5400,.18],[7200,.27],[9000,.38],[10800,.53],[12600,.75],[14400,1.05],[16200,1.43],[18000,1.93],[19800,2.58],[21600,3.38],[23400,4.38],[25200,5.50]];
   const POLICIES=Object.freeze({
     1:policy(1,[[0,0],[3600,.08],[7200,.20],[10800,.40],[14400,.75],[16200,1],[18000,1.35],[19800,1.85],[21600,2.60]]),
     2:policy(2,[[0,0],[1800,.035],[3600,.08],[5400,.13],[7200,.20],[9000,.29],[10800,.40],[12600,.55],[14400,.75],[16200,1],[18000,1.35],[19800,1.85],[21600,2.60],[23400,3.75],[25200,5.50]]),
-    3:policy(3,[[0,0],[1800,.05],[3600,.11],[5400,.18],[7200,.27],[9000,.38],[10800,.53],[12600,.75],[14400,1.05],[16200,1.43],[18000,1.93],[19800,2.58],[21600,3.38],[23400,4.38],[25200,5.50]]),
-    4:policy(4,[[0,0],[1800,.05],[3600,.11],[5400,.18],[7200,.27],[9000,.38],[10800,.53],[12600,.75],[14400,1.05],[16200,1.43],[18000,1.93],[19800,2.58],[21600,3.38],[23400,4.38],[25200,5.50]])
+    3:policy(3,CURVE_V4),
+    4:policy(4,CURVE_V4),
+    5:policy(5,CURVE_V4)
   });
-  const CONFIG=POLICIES[4];
+  const CONFIG=POLICIES[5];
   const dayKey=(date=new Date())=>[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
   function normalizeActivityType(value){
     const key=String(value||'study');
@@ -46,9 +51,30 @@
     if(!Array.isArray(db.pianoRewards.sessions))db.pianoRewards.sessions=[];
     return db.pianoRewards;
   }
+  function availableGoals(db){
+    return (db?.germanStudy?.goals||[]).filter(goal=>goal&&goal.id&&!goal.archivedAt&&!goal.deletedAt)
+      .sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt))||String(a.id).localeCompare(String(b.id)));
+  }
+  function ensureEffortWallet(db){
+    if(!db)return {version:1,createdAt:new Date(0).toISOString(),seedGoalIds:[],displayGoalId:null,redemptions:[]};
+    db.germanStudy||={version:1,materials:[],reviews:[],sessions:[],goals:[],ledger:[]};
+    const st=db.germanStudy;
+    if(!Array.isArray(st.goals))st.goals=[];
+    const active=availableGoals(db);
+    if(!st.effortWallet || Number(st.effortWallet.version)!==1){
+      st.effortWallet={version:1,createdAt:new Date().toISOString(),seedGoalIds:active.map(g=>g.id),displayGoalId:active[0]?.id||null,redemptions:[]};
+    }
+    const wallet=st.effortWallet;
+    if(!Array.isArray(wallet.seedGoalIds))wallet.seedGoalIds=[];
+    if(!Array.isArray(wallet.redemptions))wallet.redemptions=[];
+    if(!wallet.createdAt)wallet.createdAt=new Date().toISOString();
+    if(!active.some(g=>g.id===wallet.displayGoalId))wallet.displayGoalId=active[0]?.id||null;
+    return wallet;
+  }
   function activeGoal(db){
-    return (db?.germanStudy?.goals||[]).filter(goal=>!goal.archivedAt&&!goal.deletedAt)
-      .sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt))||String(a.id).localeCompare(String(b.id)))[0]||null;
+    const active=availableGoals(db);if(!active.length)return null;
+    const wallet=ensureEffortWallet(db);
+    return active.find(goal=>goal.id===wallet.displayGoalId)||active[0]||null;
   }
   function baseReward(seconds,rewardPolicy=CONFIG){
     const s=Math.max(0,Number(seconds)||0),points=rewardPolicy.curve;
@@ -58,19 +84,27 @@
     }
     return points.at(-1)[1];
   }
+  function goalScale(goalOrAmount){
+    const amount=typeof goalOrAmount==='object'?Number(goalOrAmount?.amount):Number(goalOrAmount);
+    return Number.isFinite(amount)&&amount>0&&GermanRewards?GermanRewards.goalScale(amount):0;
+  }
+  function goalCostPoints(goal){
+    const scale=goalScale(goal);return scale>0?Math.max(0,Number(goal?.amount)||0)/scale:Infinity;
+  }
   // A projection, never another saved credit: edits/deletions recalculate money
   // and the daily tier from the same deduplicated minutes shown in the app.
   function studyState(db, today=dayKey()){
-    const saved=ensure(db), goals=db?.germanStudy?.goals||[];
-    if(!DailyStudyMinutes || !Array.isArray(db.sessionPlants) || !Array.isArray(db.sesiones))return saved;
+    const saved=ensure(db), goals=db?.germanStudy?.goals||[],wallet=ensureEffortWallet(db);
+    if(!DailyStudyMinutes || !Array.isArray(db.sessionPlants) || !Array.isArray(db.sesiones))return {...saved,effortWallet:wallet};
     const ordered=goals.filter(g=>g.id && g.createdAt).slice().sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt))||String(a.id).localeCompare(String(b.id)));
-    if(!ordered.length)return {sessions:[]};
+    if(!ordered.length)return {...saved,sessions:[],effortWallet:wallet};
     const firstDay=dayKey(new Date(ordered[0].createdAt));
-    if(!firstDay || firstDay>today)return {sessions:[]};
+    if(!firstDay || firstDay>today)return {...saved,sessions:[],effortWallet:wallet};
     const start=new Date(firstDay+'T00:00:00'),end=new Date(today+'T00:00:00');end.setDate(end.getDate()+1);
     const sessions=[];
     const blocks=DailyStudyMinutes.studyBlocks(start,end,db);
     const recorded=saved.sessions.filter(s=>s && s.id && !s.deleted && !s.deletedAt);
+    const walletStart=Date.parse(wallet.createdAt)||Date.now();
     blocks.forEach((block,index)=>{
       const date=block.date;
       // Identity or timestamps join a surviving canonical block to its policy.
@@ -83,11 +117,14 @@
       if(!goal)return;
       const when=new Date(date+'T23:59:59').toISOString();
       const type=normalizeActivityType(block.activityType || previous?.activityType);
+      const rawMins=Number.isFinite(Number(block.rawMins))?Math.max(0,Number(block.rawMins)):Math.max(0,Number(block.mins)||0);
+      const blockMs=Date.parse(block.startedAt||block.endedAt||when);
+      const fallbackPolicy=Number.isFinite(blockMs)&&blockMs>=walletStart?CONFIG.version:4;
       sessions.push({...previous,id:'study-block:'+(block.id || block.runId || date+':'+index),goalId:goal.id,date,
-        startedAt:block.startedAt || when,endedAt:block.endedAt || when,seconds:Math.max(0,block.mins*60),
-        activityType:type,activityFactor:activityFactor(block.activityType ? block : previous || type),policyVersion:previous?.policyVersion || block.rewardPolicyVersion || CONFIG.version});
+        startedAt:block.startedAt || when,endedAt:block.endedAt || when,seconds:rawMins*60,
+        activityType:type,activityFactor:activityFactor(block.activityType ? block : previous || type),policyVersion:previous?.policyVersion || block.rewardPolicyVersion || fallbackPolicy});
     });
-    return {...saved,sessions};
+    return {...saved,sessions,effortWallet:wallet};
   }
   function streakMultiplier(days){
     const n=Math.max(0,Math.floor(Number(days)||0));
@@ -142,8 +179,7 @@
       }else if(seconds>=FULL_DAY_SECONDS){
         result[date]={days:streak,multiplier:excellenceMultiplier(streak),excellentDay:false,frozen:true,seconds};
       }else{
-        streak=0;
-        result[date]={days:0,multiplier:1,excellentDay:false,frozen:false,seconds};
+        streak=0;result[date]={days:0,multiplier:1,excellentDay:false,frozen:false,seconds};
       }
     }
     return result;
@@ -180,7 +216,7 @@
       const date=session.date||dayKey(new Date(session.endedAt||session.startedAt)),before=used[date]||0;
       const rawSeconds=Math.max(0,Number(session.seconds)||0),seconds=equivalentSeconds(session),after=before+seconds;used[date]=after;
       const type=normalizeActivityType(session.activityType),factor=activityFactor(session);
-      const goal=byGoal.get(session.goalId),scale=goal&&GermanRewards?GermanRewards.goalScale(goal.amount):0;
+      const goal=byGoal.get(session.goalId),scale=goalScale(goal);
       const rewardPolicy=POLICIES[Number(session.policyVersion)]||POLICIES[1];
       const streakInfo=streaks[date]||{days:0,multiplier:1,fullDay:false};
       const excellenceInfo=excellence[date]||{days:0,multiplier:1,excellentDay:false,frozen:false};
@@ -189,11 +225,13 @@
       const multiplier=fullDayMultiplier*excellentMultiplier;
       const base=baseReward(after,rewardPolicy)-baseReward(before,rewardPolicy);
       const potential=Math.max(0,Math.round(baseReward(after,rewardPolicy)*scale*multiplier*1e6)-Math.round(baseReward(before,rewardPolicy)*scale*multiplier*1e6));
+      const effortMicroPoints=Math.max(0,Math.round(baseReward(after,rewardPolicy)*multiplier*1e6)-Math.round(baseReward(before,rewardPolicy)*multiplier*1e6));
       result.push({id:'piano:'+session.id,date,sessionId:session.id,goalId:session.goalId,source:'piano',
         startedAt:session.startedAt,duration:seconds,rawDuration:rawSeconds,activityType:type,activityFactor:factor,baseReward:base,goalScale:scale,
         streakDays:streakInfo.days,streakMultiplier:fullDayMultiplier,fullDay:streakInfo.fullDay,
         excellenceDays:excellenceInfo.days,excellenceMultiplier:excellentMultiplier,excellentDay:excellenceInfo.excellentDay,excellenceFrozen:excellenceInfo.frozen,
-        rewardMultiplier:multiplier,policyVersion:rewardPolicy.version,qualified:true,potentialMicroEuros:potential,microEuros:potential,finalReward:potential/1e6});
+        rewardMultiplier:multiplier,policyVersion:rewardPolicy.version,qualified:true,effortMicroPoints,effortPoints:effortMicroPoints/1e6,
+        potentialMicroEuros:potential,microEuros:potential,finalReward:potential/1e6});
     }
     return result;
   }
@@ -210,20 +248,74 @@
       return {...row,microEuros,finalReward:microEuros/1e6};
     });
   }
+  function rowEffortPoints(row){
+    if(!row||row.qualified===false)return 0;
+    if(Number.isFinite(Number(row.effortPoints)))return Math.max(0,Number(row.effortPoints));
+    if(Number.isFinite(Number(row.effortMicroPoints)))return Math.max(0,Number(row.effortMicroPoints))/1e6;
+    const scale=Math.max(0,Number(row.goalScale)||0);
+    if(scale>0&&Number.isFinite(Number(row.potentialMicroEuros)))return Math.max(0,Number(row.potentialMicroEuros))/1e6/scale;
+    return 0;
+  }
+  function rowBelongsToWallet(row,wallet){
+    if(!row)return false;
+    const seeds=new Set(wallet?.seedGoalIds||[]);
+    if(row.source==='piano')return Number(row.policyVersion)>=SHARED_EFFORT_POLICY_VERSION || seeds.has(row.goalId);
+    if(row.source==='german')return Number(row.sharedEffortVersion)>=1 || seeds.has(row.goalId);
+    return false;
+  }
+  function walletPointsFromRows(rows,wallet){
+    const earned=(rows||[]).reduce((sum,row)=>sum+(rowBelongsToWallet(row,wallet)?rowEffortPoints(row):0),0);
+    const spent=(wallet?.redemptions||[]).reduce((sum,item)=>sum+Math.max(0,Number(item?.points)||0),0);
+    return Math.max(0,earned-spent);
+  }
+  function goalProgressFromWallet(goal,rows,wallet){
+    const points=walletPointsFromRows(rows,wallet),scale=goalScale(goal),costPoints=goalCostPoints(goal);
+    const amount=Math.min(Math.max(0,Number(goal?.amount)||0),points*scale);
+    const target=Math.max(0,Number(goal?.amount)||0);
+    return {points,scale,costPoints,amount,remaining:Math.max(0,target-amount),percent:target>0?Math.min(100,amount/target*100):0,complete:target>0&&amount>=target-0.0000005};
+  }
+  function walletRows(db, pianoState=null){
+    const goals=db?.germanStudy?.goals||[];
+    const germanRows=GermanRewards?GermanRewards.ledger(db?.germanStudy?.sessions||[],goals):[];
+    const state=pianoState||studyState(db);
+    const pianoRows=ledger(state.sessions||[],goals);
+    return {goals,germanRows,pianoRows,rows:[...germanRows,...pianoRows],state};
+  }
+  function walletSnapshot(db){
+    const wallet=ensureEffortWallet(db),bundle=walletRows(db);
+    return {...bundle,wallet,points:walletPointsFromRows(bundle.rows,wallet)};
+  }
+  function goalProgressForDb(db,goalId){
+    const snap=walletSnapshot(db),goal=snap.goals.find(g=>g.id===goalId);
+    return goal?goalProgressFromWallet(goal,snap.rows,snap.wallet):null;
+  }
+  function redeemGoal(db,goalId,now=new Date()){
+    const snap=walletSnapshot(db),goal=snap.goals.find(g=>g.id===goalId&&!g.archivedAt&&!g.deletedAt);
+    if(!goal)return {ok:false,reason:'missing'};
+    const progress=goalProgressFromWallet(goal,snap.rows,snap.wallet);
+    if(!progress.complete)return {ok:false,reason:'insufficient',progress};
+    const id='redeem_'+goalId+'_'+now.getTime();
+    if(!snap.wallet.redemptions.some(item=>item.id===id))snap.wallet.redemptions.push({id,goalId,goalName:goal.name,amount:goal.amount,points:progress.costPoints,createdAt:now.toISOString()});
+    goal.archivedAt=now.toISOString();goal.updatedAt=goal.archivedAt;
+    const next=availableGoals(db)[0]||null;snap.wallet.displayGoalId=next?.id||null;
+    return {ok:true,goal,spentPoints:progress.costPoints,remainingPoints:Math.max(0,progress.points-progress.costPoints)};
+  }
   function live(state,goals,goalId,currentSeconds,date=dayKey(),germanRows=[],currentPolicyVersion=CONFIG.version,currentActivityType=null){
     const savedSessions=state.sessions||[],basePianoRows=ledger(savedSessions,goals),baseRows=combinedLedger(germanRows,basePianoRows,goals);
     const savedSeconds=savedSessions.filter(session=>session.date===date&&!session.deleted).reduce((sum,session)=>sum+equivalentSeconds(session),0);
-    const goal=(goals||[]).find(item=>item.id===goalId),scale=goal&&GermanRewards?GermanRewards.goalScale(goal.amount):0;
+    const wallet=state.effortWallet||{version:1,seedGoalIds:[goalId].filter(Boolean),displayGoalId:goalId,redemptions:[]};
+    const selectedGoalId=wallet.displayGoalId&&goals.some(item=>item.id===wallet.displayGoalId&&!item.archivedAt&&!item.deletedAt)?wallet.displayGoalId:goalId;
+    const goal=(goals||[]).find(item=>item.id===selectedGoalId),scale=goalScale(goal);
     const elapsed=Math.max(0,Number(currentSeconds)||0),rewardPolicy=POLICIES[Number(currentPolicyVersion)]||CONFIG;
     const type=normalizeActivityType(currentActivityType||runtimeActivityType()),factor=ACTIVITY_TYPES[type].factor;
-    const liveSession=elapsed>0?{id:'__live__',goalId,startedAt:date+'T23:59:59.999Z',endedAt:date+'T23:59:59.999Z',date,seconds:elapsed,
+    const liveSession=elapsed>0?{id:'__live__',goalId:selectedGoalId,startedAt:date+'T23:59:59.999Z',endedAt:date+'T23:59:59.999Z',date,seconds:elapsed,
       activityType:type,activityFactor:factor,policyVersion:rewardPolicy.version}:null;
     const hypotheticalSessions=liveSession?[...savedSessions,liveSession]:savedSessions;
     const hypotheticalPianoRows=ledger(hypotheticalSessions,goals),hypotheticalRows=combinedLedger(germanRows,hypotheticalPianoRows,goals);
-    const earned=(rows)=>goal?rows.filter(row=>row.goalId===goalId).reduce((sum,row)=>sum+row.finalReward,0):0;
-    const baseGoalEarned=earned(baseRows),hypotheticalGoalEarned=earned(hypotheticalRows);
-    const increment=Math.max(0,hypotheticalGoalEarned-baseGoalEarned);
-    const today=hypotheticalRows.filter(row=>row.date===date&&row.source==='piano').reduce((sum,row)=>sum+row.finalReward,0);
+    const basePoints=walletPointsFromRows(baseRows,wallet),hypotheticalPoints=walletPointsFromRows(hypotheticalRows,wallet);
+    const increment=Math.max(0,(hypotheticalPoints-basePoints)*scale);
+    const todayEffort=hypotheticalPianoRows.filter(row=>row.date===date&&rowBelongsToWallet(row,wallet)).reduce((sum,row)=>sum+rowEffortPoints(row),0);
+    const today=todayEffort*scale;
     const equivalentElapsed=elapsed*factor,totalSeconds=savedSeconds+equivalentElapsed,next=rewardPolicy.curve.find(([seconds])=>seconds>totalSeconds);
     const nextIndex=next?rewardPolicy.curve.indexOf(next):-1,previous=nextIndex>0?rewardPolicy.curve[nextIndex-1]:rewardPolicy.curve.at(-1);
     const streakInfo=streakByDay(hypotheticalSessions)[date]||{days:0,multiplier:1,fullDay:false};
@@ -233,7 +325,7 @@
     const liveMultiplier=fullDayMultiplier*excellentMultiplier;
     const hourlyRate=next?((next[1]-previous[1])/(next[0]-previous[0]))*3600*scale*liveMultiplier*factor:0;
     const capSeconds=rewardPolicy.curve.at(-1)[0],capFill=Math.max(0,capSeconds-savedSeconds);
-    const capSession={id:'__cap__',goalId,startedAt:date+'T23:59:59.999Z',endedAt:date+'T23:59:59.999Z',date,seconds:capFill,
+    const capSession={id:'__cap__',goalId:selectedGoalId,startedAt:date+'T23:59:59.999Z',endedAt:date+'T23:59:59.999Z',date,seconds:capFill,
       activityType:'study',activityFactor:1,policyVersion:rewardPolicy.version};
     const capSessions=[...savedSessions,capSession];
     const capInfo=streakByDay(capSessions)[date]||{days:0,multiplier:1,fullDay:false};
@@ -241,11 +333,129 @@
     const capFullMultiplier=rewardPolicy.version>=3&&capInfo.fullDay?capInfo.multiplier:1;
     const capExcellentMultiplier=rewardPolicy.version>=4&&capExcellence.excellentDay?capExcellence.multiplier:1;
     const cap=baseReward(capSeconds,rewardPolicy)*scale*capFullMultiplier*capExcellentMultiplier;
+    const progress=goal?goalProgressFromWallet(goal,hypotheticalRows,wallet):null;
     return {today,increment,cap,seconds:totalSeconds,rawCurrentSeconds:elapsed,equivalentCurrentSeconds:equivalentElapsed,currentActivityType:type,currentActivityFactor:factor,
       nextSeconds:next?next[0]:null,nextBase:next?next[1]:rewardPolicy.curve.at(-1)[1],tierStartSeconds:next?previous[0]:rewardPolicy.curve.at(-1)[0],hourlyRate,policyVersion:rewardPolicy.version,
       streakDays:streakInfo.days,streakMultiplier:fullDayMultiplier,fullDay:streakInfo.fullDay,
       excellenceDays:excellenceInfo.days,excellenceMultiplier:excellentMultiplier,excellentDay:excellenceInfo.excellentDay,excellenceFrozen:excellenceInfo.frozen,
-      rewardMultiplier:liveMultiplier,goalRemaining:goal?Math.max(0,goal.amount-hypotheticalGoalEarned):0};
+      rewardMultiplier:liveMultiplier,goalRemaining:progress?progress.remaining:0,goalEquivalent:progress?progress.amount:0,walletPoints:hypotheticalPoints,
+      goalScale:scale,goalCostPoints:goal?goalCostPoints(goal):0,displayGoalId:selectedGoalId};
   }
-  return {CONFIG,POLICIES,ACTIVITY_TYPES,FULL_DAY_SECONDS,EXCELLENT_DAY_SECONDS,dayKey,normalizeActivityType,activityFactor,equivalentSeconds,ensure,studyState,activeGoal,baseReward,streakMultiplier,excellenceMultiplier,summarizeDays,streakByDay,excellenceByDay,streakStats,excellenceStats,record,ledger,combinedLedger,live};
+
+  /* Browser-only goal manager. The existing Deutsch card remains the mounting
+     point, but v5 replaces its single-goal UI with simultaneous projections of
+     one common effort wallet. Points stay secondary; euros remain the main UI. */
+  function installBrowser(root){
+    if(!root||!root.document||root.__pianoEffortWalletUiInstalled)return;
+    root.__pianoEffortWalletUiInstalled=true;
+    let adding=false,editingId=null,queued=false;
+    const doc=root.document;
+    const money=n=>Number(n||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+    const points=n=>Number(n||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+    function saveAndRefresh(){
+      try{if(typeof root.saveData==='function')root.saveData();}catch(error){}
+      try{if(typeof root.cronoUpdatePianoReward==='function')root.cronoUpdatePianoReward();}catch(error){}
+      try{root.GermanStudy?.refreshMoney?.();}catch(error){}
+      schedule();
+    }
+    function installStyles(){
+      if(doc.getElementById('effortWalletGoalStyles'))return;
+      const style=doc.createElement('style');style.id='effortWalletGoalStyles';style.textContent=`
+        #germanSharedGoal[data-effort-wallet="1"]{display:block}
+        #germanSharedGoal .effort-wallet-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+        #germanSharedGoal .effort-wallet-head h2{margin:.16rem 0 .25rem}
+        #germanSharedGoal .effort-wallet-head p{margin:0;max-width:58ch;color:var(--text2)}
+        #germanSharedGoal .effort-wallet-points{flex:0 0 auto;text-align:right;padding:8px 10px;border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb,var(--bg2) 84%,transparent)}
+        #germanSharedGoal .effort-wallet-points span{display:block;font-size:9px;letter-spacing:.09em;color:var(--text3);text-transform:uppercase}
+        #germanSharedGoal .effort-wallet-points strong{font:700 13px/1.5 'JetBrains Mono',monospace;color:var(--text2)}
+        #germanSharedGoal .effort-goal-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:10px;margin:12px 0}
+        #germanSharedGoal .effort-goal-item{border:1px solid var(--border);border-radius:14px;padding:13px;background:var(--bg2);min-width:0}
+        #germanSharedGoal .effort-goal-item.is-selected{border-color:color-mix(in srgb,var(--accent) 55%,var(--border));box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 16%,transparent)}
+        #germanSharedGoal .effort-goal-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+        #germanSharedGoal .effort-goal-top h3{margin:0;font-size:16px;overflow-wrap:anywhere}
+        #germanSharedGoal .effort-goal-selected{font:700 9px/1 'JetBrains Mono',monospace;letter-spacing:.06em;color:var(--accent);text-transform:uppercase}
+        #germanSharedGoal .effort-goal-money{font:700 20px/1.25 'JetBrains Mono',monospace;margin:10px 0 7px}
+        #germanSharedGoal .effort-goal-money small{font-size:11px;color:var(--text3);font-weight:500}
+        #germanSharedGoal .effort-goal-item progress{width:100%;height:6px}
+        #germanSharedGoal .effort-goal-meta{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:7px;font-size:10px;color:var(--text3)}
+        #germanSharedGoal .effort-goal-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+        #germanSharedGoal .effort-goal-actions button,#germanSharedGoal .effort-wallet-add{min-height:34px}
+        #germanSharedGoal .effort-wallet-form{display:grid;grid-template-columns:minmax(0,1fr) minmax(110px,.45fr);gap:10px;margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--bg2)}
+        #germanSharedGoal .effort-wallet-form label{display:grid;gap:5px;font-size:10px;color:var(--text3)}
+        #germanSharedGoal .effort-wallet-form input{width:100%;box-sizing:border-box}
+        #germanSharedGoal .effort-wallet-form-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px}
+        #germanSharedGoal .effort-wallet-note{font-size:10px;color:var(--text3);margin:10px 0 0}
+        @media(max-width:560px){#germanSharedGoal .effort-wallet-head{display:block}#germanSharedGoal .effort-wallet-points{margin-top:10px;text-align:left;width:max-content}#germanSharedGoal .effort-wallet-form{grid-template-columns:1fr}}
+      `;doc.head.appendChild(style);
+    }
+    function formMarkup(goal){
+      return `<form class="effort-wallet-form" id="effortGoalForm" ${goal?`data-id="${esc(goal.id)}"`:''}><label>Objetivo<input name="name" maxlength="80" required autocomplete="off" placeholder="Kindle" value="${esc(goal?.name||'')}"></label><label>Precio (€)<input name="amount" type="number" min="0.01" max="100000000" step="0.01" required value="${esc(goal?.amount??150)}"></label><div class="effort-wallet-form-actions"><button type="button" data-effort-action="cancel-form">Cancelar</button><button type="submit" class="german-primary">${goal?'Guardar':'Añadir objetivo'}</button></div></form>`;
+    }
+    function render(){
+      queued=false;installStyles();
+      const host=doc.getElementById('germanSharedGoal');
+      if(!host||typeof root.db==='undefined'||!root.db)return;
+      const wallet=ensureEffortWallet(root.db),snap=walletSnapshot(root.db);
+      const goals=availableGoals(root.db),selected=activeGoal(root.db);
+      host.dataset.effortWallet='1';
+      const cards=goals.map(goal=>{
+        const p=goalProgressFromWallet(goal,snap.rows,wallet),isSelected=selected?.id===goal.id;
+        return `<article class="effort-goal-item ${isSelected?'is-selected':''}"><div class="effort-goal-top"><h3>${esc(goal.name)}</h3>${isSelected?'<span class="effort-goal-selected">En cronómetro</span>':''}</div><div class="effort-goal-money">${money(p.amount)} <small>/ ${money(goal.amount)}</small></div><progress max="100" value="${p.percent}" aria-label="Progreso de ${esc(goal.name)}"></progress><div class="effort-goal-meta"><span>${p.percent.toFixed(1).replace('.',',')} %</span><span>1 punto = ${money(p.scale)}</span></div><div class="effort-goal-actions">${isSelected?'':`<button data-effort-action="select" data-id="${esc(goal.id)}">Ver en cronómetro</button>`}<button data-effort-action="edit" data-id="${esc(goal.id)}">Editar</button><button data-effort-action="delete" data-id="${esc(goal.id)}">Eliminar</button>${p.complete?`<button class="german-primary" data-effort-action="redeem" data-id="${esc(goal.id)}">Canjear · comprado</button>`:''}</div></article>`;
+      }).join('');
+      const editGoal=editingId?goals.find(g=>g.id===editingId):null;
+      host.innerHTML=`<div class="effort-wallet-head"><div><span class="german-eyebrow">OBJETIVOS SIMULTÁNEOS</span><h2>Una cartera, varios precios.</h2><p>El estudio genera un esfuerzo común. En el cronómetro sigues viendo euros del objetivo elegido; aquí ves cuánto representa el mismo esfuerzo en cada compra.</p></div><div class="effort-wallet-points"><span>Motor interno</span><strong>${points(snap.points)} pts</strong></div></div>${goals.length?`<div class="effort-goal-grid">${cards}</div>`:'<p>Añade tu primer objetivo. El dinero se mostrará siempre como equivalencia de tu esfuerzo común.</p>'}${editGoal?formMarkup(editGoal):(adding||!goals.length?formMarkup(null):'<button class="effort-wallet-add" data-effort-action="add">+ Añadir otro objetivo</button>')}<p class="effort-wallet-note">Los puntos no sustituyen al dinero: solo evitan duplicar el mismo estudio. Canjear un objetivo gasta su coste interno y reduce proporcionalmente la equivalencia de los demás.</p>`;
+    }
+    function schedule(){if(queued)return;queued=true;(root.requestAnimationFrame||setTimeout)(render);}
+    function activeLegacySessionFor(goalId){
+      const c=root.crono;
+      if(c&&c.state!=='idle'&&!c.isRest&&c.rewardGoalId===goalId&&Number(c.rewardPolicyVersion)<SHARED_EFFORT_POLICY_VERSION)return true;
+      const sessions=root.db?.germanStudy?.sessions||[];
+      return sessions.some(s=>s.goalId===goalId&&!s.endedAt&&Number(s.sharedEffortVersion)<1);
+    }
+    doc.addEventListener('click',event=>{
+      const button=event.target.closest?.('[data-effort-action]');if(!button)return;
+      event.preventDefault();
+      const action=button.dataset.effortAction,id=button.dataset.id;
+      if(action==='add'){adding=true;editingId=null;render();return;}
+      if(action==='cancel-form'){adding=false;editingId=null;render();return;}
+      if(action==='edit'){editingId=id;adding=false;render();return;}
+      if(action==='select'){
+        const goal=availableGoals(root.db).find(g=>g.id===id);if(!goal)return;
+        const wallet=ensureEffortWallet(root.db);wallet.displayGoalId=id;
+        try{if(root.crono&&root.crono.state!=='idle'&&Number(root.crono.rewardPolicyVersion)>=SHARED_EFFORT_POLICY_VERSION){root.crono.rewardGoalId=id;root.cronoSaveState?.();}}catch(error){}
+        saveAndRefresh();return;
+      }
+      if(action==='delete'){
+        const goal=(root.db?.germanStudy?.goals||[]).find(g=>g.id===id&&!g.deletedAt);if(!goal)return;
+        if(activeLegacySessionFor(id)){root.alert?.('Termina primero la sesión antigua que está vinculada a este objetivo.');return;}
+        if(!root.confirm?.(`¿Eliminar ${goal.name}? El esfuerzo común no se pierde.`))return;
+        const now=new Date().toISOString();goal.deletedAt=now;goal.updatedAt=now;
+        const wallet=ensureEffortWallet(root.db);if(wallet.displayGoalId===id)wallet.displayGoalId=availableGoals(root.db).find(g=>g.id!==id)?.id||null;
+        editingId=null;saveAndRefresh();return;
+      }
+      if(action==='redeem'){
+        if(root.crono&&root.crono.state!=='idle'){root.alert?.('Termina o pausa y guarda la sesión antes de canjear un objetivo.');return;}
+        const goal=(root.db?.germanStudy?.goals||[]).find(g=>g.id===id);if(!goal)return;
+        if(!root.confirm?.(`¿Marcar ${goal.name} como comprado? Esto gastará el esfuerzo equivalente a ${money(goal.amount)}.`))return;
+        const result=redeemGoal(root.db,id);
+        if(!result.ok){root.alert?.('Aún no hay esfuerzo suficiente para completar este objetivo.');return;}
+        editingId=null;saveAndRefresh();return;
+      }
+    },true);
+    doc.addEventListener('submit',event=>{
+      const form=event.target;if(form?.id!=='effortGoalForm')return;
+      event.preventDefault();
+      const data=new FormData(form),name=String(data.get('name')||'').trim(),amount=Math.round(Number(data.get('amount'))*100)/100;
+      if(!name||!Number.isFinite(amount)||amount<.01||amount>1e8){root.alert?.('Introduce un nombre y un precio válidos.');return;}
+      const st=root.db.germanStudy,wallet=ensureEffortWallet(root.db),now=new Date().toISOString(),id=form.dataset.id;
+      if(id){const goal=st.goals.find(g=>g.id===id&&!g.deletedAt);if(goal){goal.name=name;goal.amount=amount;goal.updatedAt=now;}}
+      else{const goal={id:(root.crypto?.randomUUID?.()||('goal_'+Date.now())),name,amount,createdAt:now,rewardPolicy:JSON.parse(JSON.stringify(GermanRewards.CONFIG))};st.goals.push(goal);if(!wallet.displayGoalId)wallet.displayGoalId=goal.id;}
+      adding=false;editingId=null;saveAndRefresh();
+    },true);
+    function boot(){installStyles();schedule();const view=doc.getElementById('view-deutsch');if(view)new MutationObserver(schedule).observe(view,{childList:true,subtree:true});}
+    if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+  }
+
+  return {CONFIG,POLICIES,ACTIVITY_TYPES,FULL_DAY_SECONDS,EXCELLENT_DAY_SECONDS,SHARED_EFFORT_POLICY_VERSION,dayKey,normalizeActivityType,activityFactor,equivalentSeconds,ensure,ensureEffortWallet,studyState,activeGoal,baseReward,goalScale,goalCostPoints,streakMultiplier,excellenceMultiplier,summarizeDays,streakByDay,excellenceByDay,streakStats,excellenceStats,record,ledger,combinedLedger,rowEffortPoints,rowBelongsToWallet,walletPointsFromRows,goalProgressFromWallet,walletSnapshot,goalProgressForDb,redeemGoal,live,installBrowser};
 });
