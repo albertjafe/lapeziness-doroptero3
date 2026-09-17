@@ -62,6 +62,46 @@ test('class type survives IndexedDB-only recovery and keeps its weight on finish
   expect(result.seconds).toBe(1800);
 });
 
+for(const viewport of [{width:1194,height:834},{width:834,height:1194},{width:1366,height:1024},{width:1024,height:1366}]){
+test(`iPad clock stays centered and entirely inside its card after rotation ${viewport.width}×${viewport.height}`,async({page},testInfo)=>{
+  await page.setViewportSize({width:1194,height:834});await prepare(page);
+  async function checkClock(running=false){
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    const g=await page.evaluate(running=>{
+      const card=document.querySelector(running?'#cronoStageRun':'.crono-idle-main');
+      const wrap=document.querySelector(running?'#cronoDisplayWrap':'#cronoIdleDisplayWrap');
+      const box=e=>{const r=e.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height};};
+      return {card:box(card),wrap:box(wrap),ring:box(wrap.querySelector('svg')),text:box(wrap.querySelector('.crono-display'))};
+    },running);
+    expect(Math.abs((g.ring.left+g.ring.right)/2-(g.card.left+g.card.right)/2)).toBeLessThanOrEqual(1);
+    expect(Math.abs(g.ring.width-g.ring.height)).toBeLessThanOrEqual(1);
+    for(const part of [g.ring,g.text]){
+      expect(part.left).toBeGreaterThanOrEqual(g.wrap.left-1);
+      expect(part.right).toBeLessThanOrEqual(g.wrap.right+1);
+      expect(part.top).toBeGreaterThanOrEqual(g.wrap.top-1);
+      expect(part.bottom).toBeLessThanOrEqual(g.wrap.bottom+1);
+      expect(part.top).toBeGreaterThanOrEqual(g.card.top-1);
+      expect(part.bottom).toBeLessThanOrEqual(g.card.bottom+1);
+    }
+    expect(g.text.width).toBeLessThanOrEqual(g.ring.width);
+  }
+    await page.setViewportSize(viewport);await page.waitForTimeout(850);
+    for(const mode of ['stopwatch','timer']){
+      await page.evaluate(mode=>{cronoSetMode(mode);if(mode==='timer')cronoSetTimerPreset(90);},mode);await checkClock();
+      if(process.env.CAPTURE_IPAD_CRONO)await page.screenshot({path:testInfo.outputPath(`clock-${viewport.width}-${mode}-idle.png`)});
+      await page.locator('#cronoStartBtn').click();await checkClock(true);
+      if(mode==='stopwatch'){
+        await page.evaluate(()=>{cronoStopTick();cronoSetMainDisplay(74*60*1000);});
+        await checkClock(true);
+      }
+      if(process.env.CAPTURE_IPAD_CRONO)await page.screenshot({path:testInfo.outputPath(`clock-${viewport.width}-${mode}-running.png`)});
+      await page.evaluate(()=>cronoPause());await checkClock(true);
+      if(process.env.CAPTURE_IPAD_CRONO)await page.screenshot({path:testInfo.outputPath(`clock-${viewport.width}-${mode}.png`)});
+      await page.evaluate(()=>{cronoStopTick();cronoReset();cronoRender();});
+    }
+});
+}
+
 test('editing the price previews equivalence and keeps purchase identity, time and types',async({page})=>{
   const data=structuredClone(fixture),when=new Date().toISOString();
   data.sessionPlants=[{id:'manual',obraId:'bach',source:'manual',mins:120,startedAt:when,endedAt:when}];

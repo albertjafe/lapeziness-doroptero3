@@ -1,9 +1,12 @@
 /* One preparation area; the start action always has its own reserved row. */
 html.platform-ipad #view-cronometro #cronoStageIdle .crono-idle-main.crono-idle-main {
   display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
   grid-template-rows: auto auto minmax(100px, 1fr) auto auto auto !important;
+  justify-content: stretch !important;
   align-content: stretch !important;
   align-items: center !important;
+  justify-items: center !important;
   gap: 5px !important;
   overflow: auto !important;
   container-type: inline-size;
@@ -96,4 +99,48 @@ html.platform-ipad #view-cronometro #cronoStartBtn {
     grid-template-columns: minmax(0, 1fr) !important;
     grid-template-areas: "activity" "mode" "projection" "start" !important;
   }
+}
+
+/* El aro se mide contra su propia celda, no contra toda la tarjeta.
+   Dimensiones cuadradas explícitas evitan el tamaño intrínseco del SVG en Safari. */
+html.platform-ipad #view-cronometro .crono-readiness-chip[hidden] { display: none !important; }
+html.platform-ipad #view-cronometro :is(#cronoIdleDisplayWrap, #cronoDisplayWrap).crono-display-wrap {
+  container-type: size;
+  margin-inline: auto !important;
+  min-width: 0 !important;
+}
+html.platform-ipad #view-cronometro :is(#cronoIdleDisplayWrap, #cronoDisplayWrap).crono-display-wrap .crono-run-progress-svg {
+  --crono-clock-fit: min(var(--crono-interface-ring-size, 225px), 100cqw, 100cqh);
+  width: var(--crono-clock-fit) !important;
+  height: var(--crono-clock-fit) !important;
+  max-width: none !important;
+  max-height: none !important;
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+html.platform-ipad #view-cronometro :is(#cronoIdleDisplayWrap, #cronoDisplayWrap).crono-display-wrap .crono-display-inner {
+  --crono-clock-fit: min(var(--crono-interface-ring-size, 225px), 100cqw, 100cqh);
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px;
+}
+html.platform-ipad #view-cronometro :is(#cronoIdleDisplayWrap, #cronoDisplayWrap).crono-display-wrap .crono-display {
+  font-size: clamp(20px, calc(var(--crono-clock-fit) * .21), 48px) !important;
+  line-height: 1 !important;
+}
+html.platform-ipad #view-cronometro :is(#cronoIdleDisplayWrap, #cronoDisplayWrap).crono-display-wrap.has-hours .crono-display {
+  font-size: clamp(18px, calc(var(--crono-clock-fit) * .14), 34px) !important;
 }
