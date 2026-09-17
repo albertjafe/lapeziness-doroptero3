@@ -58,11 +58,15 @@
       const multiplier = streakMultiplier(streakAt(qualified,seg.day),policy);
       // Difference of rounded cumulative amounts avoids per-checkpoint rounding drift.
       const potential = Math.round(baseReward(after,policy)*scale*multiplier*1e6)-Math.round(baseReward(before,policy)*scale*multiplier*1e6);
+      // Effort is the same reward before converting it to the price-dependent euro scale.
+      const effortMicroPoints = Math.max(0,Math.round(baseReward(after,policy)*multiplier*1e6)-Math.round(baseReward(before,policy)*multiplier*1e6));
       const remaining = goal ? Math.max(0,Math.round(goal.amount*1e6)-(balances[goal.id] || 0)) : 0;
       const microEuros = qualified.has(seg.day) ? Math.min(remaining,potential) : 0;
       if (goal) balances[goal.id] = (balances[goal.id] || 0)+microEuros;
       result.push({ id: s.id+':'+seg.day, date: seg.day, sessionId: s.id, goalId: s.goalId, source:'german', startedAt:s.startedAt,
         duration: seg.seconds, baseReward: base, goalScale: scale, streakMultiplier: multiplier,
+        sharedEffortVersion:Number(s.sharedEffortVersion)||0, effortMicroPoints:qualified.has(seg.day)?effortMicroPoints:0,
+        effortPoints:qualified.has(seg.day)?effortMicroPoints/1e6:0,
         policyVersion: policy.version, qualified: qualified.has(seg.day), potentialMicroEuros:potential, microEuros, finalReward: microEuros/1e6 });
     }
     return result;
