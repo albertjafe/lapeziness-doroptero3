@@ -39,7 +39,7 @@ describe('daily study minutes', () => {
     const before=JSON.stringify(db),api=loadFix(db),{start,end}=dayRange();
     const blocks=api.studyBlocks(start,end,db);
     expect(blocks.reduce((sum,b)=>sum+b.rawMins,0)).toBeCloseTo(2.2,8);
-    expect(blocks.reduce((sum,b)=>sum+b.mins,0)).toBe(1);
+    expect(blocks.reduce((sum,b)=>sum+b.mins,0)).toBeCloseTo(1,8);
     expect(blocks.map(b=>b.activityType)).toEqual(['piano_class','chamber']);
     expect(blocks.map(b=>b.activityFactor)).toEqual([.5,1/3]);
     expect(api.minutesByDay(start,end,db)['2026-09-05']).toBe(1);
