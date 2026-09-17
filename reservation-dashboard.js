@@ -23,6 +23,7 @@
   let commandChannel = null;
   let userId = null;
   let loading = false;
+  let connectionNotice = null;
   const pendingCommands = new Map();
 
   function el(id) { return document.getElementById(id); }
@@ -312,9 +313,13 @@
     if (!row) {
       shell.hidden = true;
       empty.hidden = false;
-      empty.innerHTML = `<div class="rd-empty-mark">↗</div><strong>Esperando al monitor</strong>
-        <p>La conexión está preparada. Cuando arranque el script aparecerán aquí las reservas y los controles.</p>`;
-      setStatus('Aún no hay ninguna lectura publicada', 'idle');
+      const notice = connectionNotice || {
+        title: 'Esperando al monitor',
+        body: 'Abre una sola instancia del monitor en Windows y completa su arranque en Telegram. Las reservas aparecerán después de la primera lectura de Asimut.',
+        status: 'Aún no hay ninguna lectura publicada', kind: 'idle',
+      };
+      empty.innerHTML = `<div class="rd-empty-mark">↗</div><strong>${escapeHtml(notice.title)}</strong><p>${escapeHtml(notice.body)}</p>`;
+      setStatus(notice.status, notice.kind);
       return;
     }
     const state = row.state || {};
@@ -326,7 +331,17 @@
       offline ? `Última señal ${relativeAge(row.heartbeat_at)}` : `En directo · actualizado ${relativeAge(row.heartbeat_at)}`,
       offline ? 'error' : freshness > FRESH_MS ? 'stale' : 'ok',
     );
+    if (connectionNotice) setStatus(connectionNotice.status, connectionNotice.kind);
     renderHero(state, row);
+    let help = el('reservationConnectionHelp');
+    if (!help) {
+      help = document.createElement('p');
+      help.id = 'reservationConnectionHelp';
+      help.className = 'rd-connection-help';
+      el('reservationHero')?.after(help);
+    }
+    help.hidden = !offline;
+    help.textContent = 'El monitor no está publicando una señal actual. Abre una sola instancia en Windows y completa su arranque en Telegram; después pulsa actualizar.';
     renderReservations(state.date, state.reservations, 'reservationBookingList');
     const quota = el('reservationQuotaCard');
     if (quota) quota.innerHTML = quotaCard(state.quota || {});
@@ -394,7 +409,7 @@
         event: '*', schema: 'public', table: 'reservation_monitor_state', filter: `user_id=eq.${userId}`,
       }, payload => {
         const row = payload.new;
-        if (!row?.source) return;
+        if (!userId || row?.user_id !== userId || !row?.source) return;
         rows = rows.filter(item => item.source !== row.source).concat(row);
         render();
       })
@@ -416,24 +431,25 @@
       if (!session?.user?.id) {
         userId = null;
         rows = [];
+        connectionNotice = { title: 'Falta iniciar sesión', body: 'Usa la misma cuenta de nube que tus datos de estudio para ver las reservas.', status: 'Inicia sesión para ver tus reservas', kind: 'error' };
         render();
-        setStatus('Inicia sesión para ver tus reservas', 'error');
-        const empty = el('reservationDashboardEmpty');
-        if (empty) empty.innerHTML = '<div class="rd-empty-mark">⌁</div><strong>Falta iniciar sesión</strong><p>El dashboard usa la misma cuenta de nube que tus datos de estudio.</p>';
         return;
       }
       const changedUser = userId !== session.user.id;
+      if (changedUser) rows = [];
       userId = session.user.id;
       const { data, error } = await sb.from('reservation_monitor_state')
         .select('user_id,source,schema_version,instance_id,observed_at,heartbeat_at,state,updated_at')
         .eq('user_id', userId)
         .order('source', { ascending: true });
       if (error) throw error;
+      connectionNotice = null;
       rows = Array.isArray(data) ? data : [];
       render();
       if (changedUser || !channel) await subscribe(sb);
     } catch (error) {
-      setStatus(`Dashboard no disponible: ${error.message || error}`, 'error');
+      connectionNotice = { title: 'No se pudo conectar', body: 'Comprueba la conexión del iPad y pulsa actualizar. Las últimas reservas recibidas se conservan.', status: `Dashboard no disponible: ${error.message || error}`, kind: 'error' };
+      render();
     } finally {
       loading = false;
     }
@@ -456,6 +472,11 @@
     window.addEventListener('app:viewchange', event => {
       if (event.detail?.name === 'session') start();
     });
+    const refreshOnReturn = () => {
+      if (document.visibilityState === 'visible' && document.body.dataset.view === 'session') refresh(false);
+    };
+    document.addEventListener('visibilitychange', refreshOnReturn);
+    window.addEventListener('online', refreshOnReturn);
     try {
       getSB().auth.onAuthStateChange(() => window.setTimeout(() => refresh(false), 0));
     } catch (error) {}

@@ -38,6 +38,7 @@
 <link rel="stylesheet" href="habit-trophies.css?v=383">
 <link rel="stylesheet" href="desktop-redesign.css?v=396">
 <link rel="stylesheet" href="crono-start-layout.css?v=399">
+<link rel="stylesheet" href="ipad-today.css?v=400">
 </head>
 <body>
 
@@ -208,6 +209,20 @@
     </section>
   </aside>
 
+  <section class="ipad-today-next ipad-today-only" aria-label="Continuar el estudio">
+    <span class="ipad-today-play" aria-hidden="true">▶</span>
+    <div><span class="ipad-today-kicker">Siguiente paso</span><h2>Continúa tu jornada</h2><p>Tu estudio, a tu ritmo.</p></div>
+    <button type="button" onclick="showView('cronometro')">Abrir cronómetro</button>
+  </section>
+  <aside class="ipad-today-access ipad-today-only" aria-label="Accesos de hoy en iPad">
+    <span class="ipad-today-kicker">Accesos</span><h2>Todo a mano</h2>
+    <div class="ipad-today-access-grid">
+      <button type="button" onclick="openSessionArchive('week')"><span aria-hidden="true">▦</span><strong>Semana</strong><small>Plan completo</small></button>
+      <button type="button" onclick="openSessionArchive('history')"><span aria-hidden="true">↗</span><strong>Historial</strong><small>Sesiones y datos</small></button>
+      <button type="button" onclick="showView('deutsch')"><span aria-hidden="true">Ä</span><strong>Deutsch</strong><small>Tarjetas y hucha</small></button>
+      <button type="button" data-ipad-today-register><span aria-hidden="true">＋</span><strong>Registro</strong><small>Añadir minutos</small></button>
+    </div>
+  </aside>
   <button type="button" class="german-entry" onclick="showView('deutsch')" aria-label="Abrir Deutsch"><span><strong>Deutsch</strong><small>Tu alemán, día a día · estudio y hucha virtual</small></span><span aria-hidden="true">Ä →</span></button>
   <section class="reservation-dashboard session-aulas-dashboard" id="sessionAulasDashboard" aria-labelledby="reservationDashboardTitle">
     <div class="rd-topline">
@@ -2378,7 +2393,7 @@
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=397"></script>
 <script src="crono-state-store.js?v=397"></script>
-<script src="app.js?v=399"></script>
+<script src="app.js?v=400"></script>
 <script src="daily-study-minutes.js?v=399" id="dailyStudyMinutesFixScript"></script>
 <script src="german-rewards.js?v=383"></script>
 <script src="piano-rewards.js?v=399"></script>
@@ -2389,7 +2404,8 @@
 <script src="study-session-ux.js?v=342"></script>
 <script src="crono-resume-layout.js?v=377"></script>
 <script src="piano-rooms.js?v=399"></script>
-<script src="reservation-dashboard.js?v=372"></script>
+<script src="reservation-dashboard.js?v=400"></script>
+<script src="ipad-today.js?v=400"></script>
 <script src="google-calendar.js?v=342"></script>
 <script src="habit-trophies.js?v=380"></script>
 <script src="timer-objectives.js?v=383"></script>

@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-16 · caché runtime v397
+**Estado:** CANÓNICO · actualizado 2026-09-17 · caché runtime v400
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -132,11 +132,13 @@ Migraciones Supabase importantes para este tema:
 ### Hoy / resumen principal
 
 - `#view-session` abre siempre en **Hoy** y ya no muestra el selector `Hoy / Semana / Historial`. **Plan semanal** y **Estadísticas** siguen intactos como vistas de consulta desde `Ajustes → Datos y herramientas → Plan y archivo de estudio`; tocar de nuevo la navegación Hoy restablece la portada.
-- **Hoy** es la portada: muestra `Llevas · Proyección · Fin previsto`, las probabilidades de alcanzar 4 h y 5 h y, justo debajo, el dashboard completo de Aulas ya abierto. El registro rápido queda plegado y el diario permanece accesible. Sus estilos propios están en `session-home.css`.
+- **Hoy** es la portada: muestra `Llevas · Proyección · Fin previsto`, las probabilidades de alcanzar 4 h y 5 h y, justo debajo, el dashboard completo de Aulas ya abierto. El registro rápido queda plegado y el diario permanece accesible. Sus estilos comunes están en `session-home.css`. En iPad, `ipad-today.css/js` compone el resumen, acceso al cronómetro, Aulas y accesos a Semana/Historial/Deutsch/Registro. Conserva el plan diario y los controles del monitor en desplegables, moviendo sus contenedores existentes sin duplicar IDs ni persistencia; no modifica el cronómetro. La portada no incorpora focos pendientes.
 - La proyección usa el modelo existente de `app.js`; la hora de fin no es una meta inventada por la UI. Las correcciones de hora de comienzo y disponibilidad siguen activas en `Ajustes → Datos y herramientas → Proyección del día`.
 - **Historial** contiene estadísticas, sesiones registradas y la tarjeta de actividad digital. Las agregaciones estadísticas se calculan de forma perezosa al abrir esta pestaña.
 - La antigua gráfica de estado diario ya no tiene DOM ni llamadas de render. Los datos de estado/sueño/concentración se conservan porque siguen alimentando Profesor, exportaciones y sincronización.
 - Auditoría y candidatos de código dormido: `docs/AUDITORIA_SESIONES_AJUSTES_2026-09-09.md`.
+
+- El dashboard de reservas consulta de nuevo al volver al primer plano o recuperar red. Conserva la última lectura ante errores y distingue falta de sesión, error de conexión y monitor sin señal reciente. El monitor externo publica después de completar su arranque seguro en Telegram y realizar la primera lectura de Asimut; abrir el lanzador por sí solo no garantiza esa lectura.
 
 ### Cronómetro / sesión
 
@@ -341,9 +343,9 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- Caché actual `estudio-v399`: app, taxímetro, ledger de Deutsch, loader y proyección de minutos actualizados usan v399; los módulos no modificados conservan su URL anterior. `daily-study-minutes.js` se carga después de app y antes de los premios. El nuevo `crono-state-store.js` se precachea. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
+- Caché actual `estudio-v400`: app, Hoy para iPad y el dashboard de reservas usan v400; taxímetro, ledger de Deutsch, loader y proyección de minutos conservan v399; los módulos no modificados conservan su URL anterior. `daily-study-minutes.js` se carga después de app y antes de los premios. El nuevo `crono-state-store.js` se precachea. La instalación solicita el precache con `cache:'reload'` para no mezclar shells antiguos. El registro conserva la URL del SW existente y llama a update(); instalaciones nuevas usan `./sw.js` sin query.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v399 en Ajustes; v399 es el límite de caché PWA actual.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v400 en Ajustes; v400 es el límite de caché PWA actual.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
