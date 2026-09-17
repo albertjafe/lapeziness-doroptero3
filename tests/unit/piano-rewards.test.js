@@ -13,10 +13,10 @@ describe('piano progressive taximeter',()=>{
     expect(P.baseReward(seconds)).toBeCloseTo(amount,8);
   });
 
-  it('keeps the stronger v3 curve in v4 and a hard seven-hour cap',()=>{
+  it('keeps the stronger curve in v5 and a hard seven-hour cap',()=>{
     const increments=P.CONFIG.curve.slice(1).map(([,amount],index)=>amount-P.CONFIG.curve[index][1]);
     increments.slice(1).forEach((increment,index)=>expect(increment).toBeGreaterThan(increments[index]));
-    expect(P.CONFIG.version).toBe(4);
+    expect(P.CONFIG.version).toBe(5);
     expect(P.baseReward(4*3600)).toBe(1.05);
     expect(P.baseReward(8*3600)).toBe(P.baseReward(7*3600));
     expect(3*P.baseReward(7*3600)).toBeLessThan(150);
@@ -103,7 +103,7 @@ describe('piano progressive taximeter',()=>{
     expect(day3.reduce((sum,row)=>sum+row.finalReward,0)).toBeCloseTo(1.93*1.05*1.12,6);
   });
 
-  it('keeps v1-v3 sessions on their historical economics and gives excellence only to v4',()=>{
+  it('keeps v1-v3 sessions on their historical economics and gives excellence only from v4 onward',()=>{
     const legacy=piano('legacy',25200,'2026-09-12T10:00:00Z','g',1);delete legacy.policyVersion;
     expect(P.ledger([legacy],[goal()])[0].finalReward).toBe(2.60);
     const oldV2=piano('v2',14400,'2026-09-13T10:00:00Z','g',2);
@@ -114,14 +114,14 @@ describe('piano progressive taximeter',()=>{
     expect(rows.find(item=>item.sessionId==='v3').excellenceMultiplier).toBe(1);
   });
 
-  it('records a finished stopwatch run only once under policy v4',()=>{
+  it('records a finished stopwatch run only once under policy v5',()=>{
     const state={sessions:[]};
     expect(P.record(state,{id:'short',goalId:'g',startedAt:'2026-09-12T09:00:00Z',endedAt:'2026-09-12T09:09:59Z',seconds:599})).toBe(false);
     const input={id:'run-1',goalId:'g',startedAt:'2026-09-12T10:00:00Z',endedAt:'2026-09-12T10:30:00Z',seconds:1800};
     expect(P.record(state,input)).toBe(true);
     expect(P.record(state,input)).toBe(false);
     expect(state.sessions).toHaveLength(1);
-    expect(state.sessions[0]).toMatchObject({id:'run-1',goalId:'g',date:'2026-09-12',seconds:1800,policyVersion:4});
+    expect(state.sessions[0]).toMatchObject({id:'run-1',goalId:'g',date:'2026-09-12',seconds:1800,policyVersion:5});
   });
 
   it('keeps independently finished piano runs after an offline document merge',()=>{
@@ -130,7 +130,7 @@ describe('piano progressive taximeter',()=>{
     expect(D.mergeRemote(left,right).pianoRewards.sessions.map(item=>item.id).sort()).toEqual(['left','right']);
   });
 
-  it('combines German and piano chronologically and never exceeds the shared target',()=>{
+  it('combines German and piano chronologically and never exceeds the legacy target',()=>{
     const g=goal('g',1);
     const german=[{id:'de',date:'2026-09-12',startedAt:'2026-09-12T09:00:00Z',goalId:'g',source:'german',duration:900,qualified:true,potentialMicroEuros:700000,microEuros:700000,finalReward:.7}];
     const pianoRows=P.ledger([piano('pi',21600,'2026-09-12T10:00:00Z')],[g]);
@@ -139,13 +139,14 @@ describe('piano progressive taximeter',()=>{
     expect(rows[1].finalReward).toBe(.3);
   });
 
-  it('shows a second-by-second live increment and respects money already earned in German',()=>{
-    const state={sessions:[piano('saved',3600)]},goals=[goal()];
-    const german=[{id:'de',date:'2026-09-11',startedAt:'2026-09-11T09:00:00Z',goalId:'g',source:'german',duration:900,qualified:true,potentialMicroEuros:149850000,microEuros:149850000,finalReward:149.85}];
-    const one=P.live(state,goals,'g',1,'2026-09-12',german);
-    const two=P.live(state,goals,'g',2,'2026-09-12',german);
+  it('shows a second-by-second live increment with the shared wallet',()=>{
+    const state={sessions:[piano('saved',3600)]};
+    state.effortWallet={version:1,seedGoalIds:['g'],seedCostPoints:{g:150},displayGoalId:'g',redemptions:[]};
+    const goals=[goal()];
+    const one=P.live(state,goals,'g',1,'2026-09-12',[]);
+    const two=P.live(state,goals,'g',2,'2026-09-12',[]);
     expect(two.today).toBeGreaterThan(one.today);
-    expect(two.increment).toBeLessThanOrEqual(.07);
+    expect(two.increment).toBeGreaterThan(one.increment);
     expect(two.goalRemaining).toBeGreaterThanOrEqual(0);
   });
 
@@ -154,23 +155,58 @@ describe('piano progressive taximeter',()=>{
       piano('d1',14400,'2026-09-10T10:00:00Z'),
       piano('d2',14400,'2026-09-11T10:00:00Z'),
       piano('today',12600,'2026-09-12T09:00:00Z')
-    ]},goals=[goal()];
+    ],effortWallet:{version:1,seedGoalIds:['g'],seedCostPoints:{g:150},displayGoalId:'g',redemptions:[]}},goals=[goal()];
     const live=P.live(state,goals,'g',1800,'2026-09-12');
     expect(live).toMatchObject({fullDay:true,streakDays:3,streakMultiplier:1.05,excellentDay:false,excellenceMultiplier:1});
     expect(live.today).toBeCloseTo(1.1025,6);
     expect(live.increment).toBeCloseTo(.3525,6);
   });
 
-  it('upgrades the whole live v4 day when a preserved excellence streak crosses five hours',()=>{
+  it('upgrades the whole live v5 day when a preserved excellence streak crosses five hours',()=>{
     const state={sessions:[
       piano('d1',18000,'2026-09-10T10:00:00Z'),
       piano('d2',18000,'2026-09-11T10:00:00Z'),
       piano('today',16200,'2026-09-12T09:00:00Z')
-    ]},goals=[goal()];
-    const live=P.live(state,goals,'g',1800,'2026-09-12');
+    ],effortWallet:{version:1,seedGoalIds:['g'],seedCostPoints:{g:150},displayGoalId:'g',redemptions:[]}},goals=[goal()];
+    const live=P.live(state,goals,'g',1800,'2026-09-12',[],5);
     expect(live).toMatchObject({fullDay:true,streakDays:3,streakMultiplier:1.05,excellentDay:true,excellenceDays:3,excellenceMultiplier:1.12});
     expect(live.rewardMultiplier).toBeCloseTo(1.176,8);
     expect(live.today).toBeCloseTo(1.93*1.05*1.12,6);
-    expect(live.increment).toBeCloseTo((1.93*1.05*1.12)-(1.43*1.05),6);
+  });
+
+  it('uses one canonical equivalent-study clock for study, piano class and chamber',()=>{
+    const sessions=[
+      {...piano('solo',3*3600),activityType:'study',activityFactor:1},
+      {...piano('class',2*3600),activityType:'piano_class',activityFactor:.5}
+    ];
+    expect(P.summarizeDays(sessions)['2026-09-12']).toBe(4*3600);
+    expect(P.streakByDay(sessions)['2026-09-12'].fullDay).toBe(true);
+    const chamber={...piano('chamber',3*3600,'2026-09-13T10:00:00Z'),activityType:'chamber',activityFactor:1/3};
+    expect(P.equivalentSeconds(chamber)).toBeCloseTo(3600,8);
+  });
+
+  it('projects the same shared effort into different euro balances for simultaneous goals',()=>{
+    const cheap=goal('cheap',150),expensive=goal('expensive',600);
+    const rows=P.ledger([{...piano('shared',4*3600,'2026-09-12T10:00:00Z','cheap',5),activityType:'study'}],[cheap,expensive]);
+    const wallet={version:1,seedGoalIds:[],seedCostPoints:{},displayGoalId:'cheap',redemptions:[]};
+    const cheapProgress=P.goalProgressFromWallet(cheap,rows,wallet);
+    const expensiveProgress=P.goalProgressFromWallet(expensive,rows,wallet);
+    expect(cheapProgress.points).toBeCloseTo(expensiveProgress.points,8);
+    expect(expensiveProgress.amount).toBeGreaterThan(cheapProgress.amount);
+    expect(expensiveProgress.scale).toBeGreaterThan(cheapProgress.scale);
+  });
+
+  it('redeeming one goal spends shared effort instead of duplicating it across purchases',()=>{
+    const cheap=goal('cheap',1),other=goal('other',150);
+    const db={
+      germanStudy:{goals:[cheap,other],sessions:[],effortWallet:{version:1,createdAt:'2026-09-12T00:00:00Z',seedGoalIds:[],seedCostPoints:{},displayGoalId:'cheap',redemptions:[]}},
+      pianoRewards:{version:1,sessions:[{...piano('earned',7*3600,'2026-09-12T10:00:00Z','cheap',5),activityType:'study'}]}
+    };
+    const before=P.goalProgressForDb(db,'other');
+    const result=P.redeemGoal(db,'cheap',new Date('2026-09-13T12:00:00Z'));
+    const after=P.goalProgressForDb(db,'other');
+    expect(result.ok).toBe(true);
+    expect(after.points).toBeLessThan(before.points);
+    expect(after.amount).toBeLessThan(before.amount);
   });
 });
