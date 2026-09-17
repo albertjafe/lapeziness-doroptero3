@@ -31,18 +31,21 @@ function dayRange() {
 }
 
 describe('daily study minutes', () => {
-  it('projects typed deduplicated blocks with the same rounded total without mutating data', () => {
+  it('projects typed blocks as equivalent study while preserving raw duration', () => {
     const db={sessionPlants:[
       {id:'a',runId:'a',obraId:'a',mins:2.1,startedAt:'2026-09-05T10:00:00Z',activityType:'piano_class'},
       {id:'b',runId:'b',obraId:'b',mins:.1,startedAt:'2026-09-05T11:00:00Z',activityType:'chamber'}],sesiones:[],forestPlants:[]};
     db.forestPlants=[{...db.sessionPlants[0]}];
     const before=JSON.stringify(db),api=loadFix(db),{start,end}=dayRange();
     const blocks=api.studyBlocks(start,end,db);
-    expect(blocks.reduce((sum,b)=>sum+b.mins,0)).toBe(2);
+    expect(blocks.reduce((sum,b)=>sum+b.rawMins,0)).toBeCloseTo(2.2,8);
+    expect(blocks.reduce((sum,b)=>sum+b.mins,0)).toBe(1);
     expect(blocks.map(b=>b.activityType)).toEqual(['piano_class','chamber']);
-    expect(api.minutesByDay(start,end,db)['2026-09-05']).toBe(2);
+    expect(blocks.map(b=>b.activityFactor)).toEqual([.5,1/3]);
+    expect(api.minutesByDay(start,end,db)['2026-09-05']).toBe(1);
     expect(JSON.stringify(db)).toBe(before);
   });
+
   it('deduplicates repeated timer plants and ignores their crono session mirrors', () => {
     const plants = [
       { obraId: 'general', mins: 26, startedAt: '2026-09-05T08:42:32.164Z', endedAt: '2026-09-05T09:11:40.344Z' },
@@ -71,7 +74,7 @@ describe('daily study minutes', () => {
     expect(api.minutesByDay(start, end)['2026-09-05']).toBe(184);
   });
 
-  it('reproduces Sep 5 exactly: accumulated crono snapshots do not inflate 216 real minutes', () => {
+  it('reproduces Sep 5 exactly: accumulated crono snapshots do not inflate 216 study minutes', () => {
     const db = {
       sessionPlants: [
         { obraId: 'general', mins: 26, startedAt: '2026-09-05T08:42:32.164Z', endedAt: '2026-09-05T09:11:40.344Z', runId: 'r1' },
@@ -99,7 +102,7 @@ describe('daily study minutes', () => {
     };
     const api = loadFix(db);
     const { start, end } = dayRange();
-    expect(api.version).toBe(6);
+    expect(api.version).toBe(7);
     expect(api.minutesByDay(start, end)['2026-09-05']).toBe(216);
   });
 
