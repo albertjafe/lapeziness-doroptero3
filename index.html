@@ -36,6 +36,7 @@
 <link rel="stylesheet" href="session-home.css?v=374">
 <link rel="stylesheet" href="german-study.css?v=399">
 <link rel="stylesheet" href="habit-trophies.css?v=383">
+<link rel="stylesheet" href="effort-incentives.css?v=406">
 <link rel="stylesheet" href="desktop-redesign.css?v=396">
 <link rel="stylesheet" href="crono-start-layout.css?v=401">
 <link rel="stylesheet" href="ipad-today.css?v=400">
@@ -795,7 +796,7 @@
   <div class="cal-tabs calendar-view-tabs" role="tablist" aria-label="Vista de calendario">
     <button type="button" class="cal-tab active" id="calTabEventos" role="tab" aria-selected="true" aria-controls="calPanelEventos" onclick="switchCalTab('eventos',this)">Eventos</button>
     <button type="button" class="cal-tab" id="calTabMes" role="tab" aria-selected="false" aria-controls="calPanelMes" onclick="switchCalTab('mes',this)">Calendario</button>
-    <button type="button" class="cal-tab" id="calTabObjetivos" role="tab" aria-selected="false" aria-controls="calPanelObjetivos" onclick="switchCalTab('objetivos',this)" hidden>Objetivos</button>
+    <button type="button" class="cal-tab" id="calTabObjetivos" role="tab" aria-selected="false" aria-controls="calPanelObjetivos" onclick="switchCalTab('objetivos',this)" hidden>Hábitos</button>
   </div>
   <div class="view-action-row calendar-action-row" id="calendarActionRow">
     <div class="view-local-label">Próximos eventos</div>
@@ -819,7 +820,7 @@
         <div class="mes-nav-label" id="mesNavLabel"></div>
         <div class="calendar-layer-toggles">
           <button type="button" class="calendar-layer-toggle" id="calendarHabitToggle" role="switch" aria-checked="false" onclick="toggleCalendarHabitLayer(event)">
-            <span class="calendar-layer-toggle-dot" aria-hidden="true"></span> Objetivos
+            <span class="calendar-layer-toggle-dot" aria-hidden="true"></span> Hábitos
           </button>
           <button type="button" class="calendar-layer-toggle calendar-google-toggle" id="calendarGoogleToggle" role="switch" aria-checked="true" onclick="toggleGoogleCalendarLayer(event)" hidden>
             <span class="calendar-layer-toggle-dot" aria-hidden="true"></span> Google
@@ -1792,7 +1793,7 @@
     <p class="habit-modal-intro" id="habitModalIntro">Define una regla clara que puedas recordar cada día.</p>
 
     <label class="habit-modal-field habit-title-field" for="habitTitleInput">
-      <span>Objetivo</span>
+      <span>Hábito</span>
       <input type="text" id="habitTitleInput" class="modal-input" maxlength="100"
              placeholder="Ej. No coger el móvil en el baño">
     </label>
@@ -1821,7 +1822,7 @@
       <label class="habit-modal-field" for="habitStartDateInput">
         <span>Fecha de inicio</span>
         <input type="date" id="habitStartDateInput" class="modal-input" oninput="updateHabitModalPreview()">
-        <small class="habit-field-note" id="habitStartDateNote">El primer día del objetivo.</small>
+        <small class="habit-field-note" id="habitStartDateNote">El primer día del hábito.</small>
       </label>
     </div>
     <div class="habit-duration-presets" aria-label="Duraciones rapidas">
@@ -1844,7 +1845,7 @@
         </label>
         <label class="habit-modal-field" for="habitCriteriaInput">
           <span>Qué cuenta como cumplirlo</span>
-          <textarea id="habitCriteriaInput" class="modal-input" maxlength="220" placeholder="Ej. dejar el móvil fuera de la habitación"></textarea>
+          <textarea id="habitCriteriaInput" class="modal-input" maxlength="220" placeholder="Ej. dejar el móvil fuera de la habitación" oninput="updateHabitModalPreview()"></textarea>
         </label>
         <label class="habit-modal-field is-wide" for="habitRewardInput">
           <span>Cómo quiero celebrarlo <small>(opcional)</small></span>
@@ -1854,12 +1855,13 @@
     </details>
 
     <div class="habit-modal-preview" id="habitModalPreview"></div>
+    <p class="habit-field-note" id="habitEffortRewardNote"></p>
     <button type="button" class="habit-today-btn" id="habitTodayBtn" onclick="toggleHabitTodayFromModal(event)" hidden></button>
     <button type="button" class="habit-delete-btn" id="habitDeleteBtn" onclick="deleteHabitChallenge()">Eliminar reto</button>
 
     <div class="modal-buttons habit-modal-actions">
       <button class="modal-btn secondary" id="habitCancelBtn" onclick="closeModal('modalHabitChallenge')">Cancelar</button>
-      <button class="modal-btn primary" id="habitSaveBtn" onclick="saveHabitChallenge()">Guardar objetivo</button>
+      <button class="modal-btn primary" id="habitSaveBtn" onclick="saveHabitChallenge()">Guardar hábito</button>
     </div>
   </div>
 </div>
@@ -2395,10 +2397,11 @@
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=397"></script>
 <script src="crono-state-store.js?v=397"></script>
-<script src="app.js?v=405"></script>
+<script src="app.js?v=406"></script>
 <script src="daily-study-minutes.js?v=404" id="dailyStudyMinutesFixScript"></script>
 <script src="german-rewards.js?v=404"></script>
-<script src="piano-rewards.js?v=404"></script>
+<script src="habit-trophies.js?v=406"></script>
+<script src="piano-rewards.js?v=406"></script>
 <script src="german-srs.js?v=378"></script>
 <script src="german-import.js?v=382"></script>
 <script src="german-session.js?v=404"></script>
@@ -2409,8 +2412,8 @@
 <script src="reservation-dashboard.js?v=400"></script>
 <script src="ipad-today.js?v=400"></script>
 <script src="google-calendar.js?v=342"></script>
-<script src="habit-trophies.js?v=380"></script>
-<script src="timer-objectives.js?v=383"></script>
+<script src="timer-objectives.js?v=406"></script>
+<script src="effort-incentives-ui.js?v=406"></script>
 <script src="metronome.js?v=368"></script>
 
 

@@ -1,0 +1,20 @@
+.study-incentives-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.study-incentives-head h2{margin:4px 0 12px}
+.study-incentives-head>.modal-btn{flex:0 0 auto;width:auto;min-width:0;padding:10px 16px}
+.study-incentives-head span,.study-incentive-card>span,.study-incentive-achievement span,.study-incentive-habit>span{font:600 10px/1.5 var(--font-mono,monospace);letter-spacing:.07em;color:var(--text3)}
+.study-incentives-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.study-incentive-card,.study-incentive-achievement,.study-incentive-habit,.study-incentive-bonus-history{border:1px solid var(--border2);border-radius:14px;padding:16px;background:var(--bg2);margin-top:14px;min-width:0}
+.study-incentive-card>strong{display:block;font:600 30px/1.4 var(--font-mono,monospace);color:var(--accent)}
+.study-incentive-card small,.study-incentives-rule,.study-incentives-intro,.study-incentive-bonus-history p{color:var(--text2)}
+.study-incentives-modal progress{display:block;width:100%;height:7px;margin:12px 0;accent-color:var(--green)}
+.study-incentives-table{margin-top:20px}.study-incentives-table summary{cursor:pointer;color:var(--accent)}
+.study-incentives-table table{width:100%;text-align:left;border-collapse:collapse;margin-top:10px}.study-incentives-table td,.study-incentives-table th{border-bottom:1px solid var(--border2);padding:10px 6px}
+.study-incentive-achievement{display:flex;align-items:center;gap:16px}.study-incentive-achievement .habit-trophy-art{width:92px;flex:0 0 92px}.study-incentive-achievement>div:last-child{flex:1;min-width:0}.study-incentive-achievement h3{margin:5px 0}.study-incentive-reward{color:var(--green)}
+.study-incentive-bonus-history ul{padding:0;list-style:none}.study-incentive-bonus-history li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border2)}.study-incentive-bonus-history small{display:block;color:var(--text3)}
+.habit-trophy-effort-reward{color:var(--green);font-weight:600}.study-incentives-open{border:1px solid var(--border2);border-radius:10px;background:var(--bg);color:var(--accent);padding:9px 12px;cursor:pointer}
+@media (min-width:744px) and (max-width:1366px) and (hover:none) and (pointer:coarse){
+ .modal.study-incentives-modal{width:min(760px,calc(100vw - 48px));max-width:760px;max-height:calc(100dvh - 64px);padding:26px;overflow-y:auto;font-size:16px;line-height:1.5}
+ .study-incentives-head{position:sticky;top:-26px;padding:12px 0;background:var(--bg);z-index:1}
+ .study-incentives-head h2{font-size:29px}.study-incentive-card>span,.study-incentive-card small{font-size:13px}.study-incentives-open{min-height:44px;font-size:14px}
+ #habitEffortRewardNote{font-size:13px;line-height:1.5}
+}

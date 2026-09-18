@@ -31,8 +31,8 @@ test('shows the two completed habit goals in the stopwatch trophy case', async (
   await expect(page.getByRole('article', { name: /No móvil en la cama/ })).toContainText('12 sept 2026');
   await expect(page.getByRole('article', { name: /No coger el móvil en el baño/ })).toContainText('20 de 21 días logrados');
 
-  await page.getByRole('article', { name: /No coger el móvil en el baño/ }).getByRole('button', { name: 'Ver reglas del objetivo', exact: true }).click();
-  await expect(page.locator('#habitModalTitle')).toHaveText('Objetivo terminado');
+  await page.getByRole('article', { name: /No coger el móvil en el baño/ }).getByRole('button', { name: 'Ver reglas del hábito', exact: true }).click();
+  await expect(page.locator('#habitModalTitle')).toHaveText('Hábito terminado');
   await expect(page.locator('#habitDescriptionInput')).toHaveValue('Dejar el móvil fuera del baño.');
   await expect(page.locator('#habitDescriptionInput')).toBeDisabled();
   await expect(page.locator('#habitSaveBtn')).toBeHidden();
@@ -71,8 +71,8 @@ test('creates a detailed objective and keeps every optional field in the synced 
   await expect(page.locator('.habit-trophy-card.is-earned')).toHaveCount(2);
   await expect(page.getByRole('article', { name: /Meditar cada mañana/ })).toContainText('En curso');
 
-  await page.getByRole('tab', { name: 'Objetivo', exact: true }).click();
+  await page.getByRole('tab', { name: 'Hábitos', exact: true }).click();
   await page.getByRole('button', { name: 'Ver detalles y reglas de Meditar cada mañana', exact: true }).click();
-  await expect(page.locator('#habitModalTitle')).toHaveText('Tu objetivo');
+  await expect(page.locator('#habitModalTitle')).toHaveText('Tu hábito');
   await expect(page.locator('#habitCriteriaInput')).toHaveValue('Completar diez minutos con temporizador.');
 });

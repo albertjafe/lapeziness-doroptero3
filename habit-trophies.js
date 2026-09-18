@@ -7,6 +7,7 @@
   'use strict';
 
   const DAY_MS = 86400000;
+  const REWARD_POLICY = Object.freeze({version:1,points:3,minimumDays:21});
 
   function dayNumber(key) {
     const parts = String(key || '').split('-').map(Number);
@@ -99,5 +100,29 @@
     return `<div class="habit-trophy-art ${complete ? 'is-earned' : 'is-pending'}" aria-hidden="true"><svg viewBox="0 0 240 250" focusable="false"><defs><linearGradient id="${key}-metal" x1="0" y1="0" x2="1" y2=".3"><stop stop-color="${dark}"/><stop offset=".22" stop-color="${light}"/><stop offset=".46" stop-color="${mid}"/><stop offset=".72" stop-color="${dark}"/><stop offset="1" stop-color="${shade}"/></linearGradient><linearGradient id="${key}-rim" x2="0" y2="1"><stop stop-color="${shade}"/><stop offset="1" stop-color="${mid}"/></linearGradient><linearGradient id="${key}-base" x2="0" y2="1"><stop stop-color="#506078"/><stop offset="1" stop-color="#172338"/></linearGradient></defs><ellipse cx="120" cy="229" rx="78" ry="12" fill="#081426" opacity=".22"/><g class="habit-trophy-object">${body}<path d="M76 191h88v26l-44 10-44-10z" fill="url(#${key}-base)"/><path d="m76 191 44-10 44 10-44 10z" fill="#66758b"/><path d="M90 187h60v7l-30 7-30-7z" fill="url(#${key}-metal)"/>${complete ? `<path d="m182 41 2 7 7 2-7 2-2 7-2-7-7-2 7-2zM54 139l1 5 5 1-5 1-1 5-1-5-5-1 5-1z" fill="${light}"/>` : ''}</g></svg></div>`;
   }
 
-  return { collection, itemFor, artwork, dayKey, keyAt };
+  function createRewardPolicy(habit, now=new Date()) {
+    const duration=Number(habit?.durationDays),start=habit?.startDate;
+    if(!habit || !dayKey(now) || !['do','avoid'].includes(habit.mode) || !habit.successCriteria?.trim() ||
+      !Number.isInteger(duration) || duration<REWARD_POLICY.minimumDays || duration>365 ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(start||'') || keyAt(start,0)!==start || start<dayKey(now))return null;
+    return {...REWARD_POLICY,agreedAt:new Date(now).toISOString(),startDate:start,durationDays:duration,
+      mode:habit.mode,successCriteria:habit.successCriteria.trim()};
+  }
+
+  function rewardStatus(habit, now=new Date()) {
+    const rule=habit?.effortReward,item=itemFor(habit,now);
+    if(!rule || !item || !['do','avoid'].includes(rule.mode) || rule.version!==REWARD_POLICY.version || rule.points!==REWARD_POLICY.points ||
+      rule.minimumDays!==REWARD_POLICY.minimumDays || !rule.successCriteria?.trim() ||
+      !Number.isFinite(Date.parse(rule.agreedAt)) || dayKey(rule.agreedAt)>rule.startDate ||
+      rule.startDate!==habit.startDate || rule.durationDays!==habit.durationDays || rule.mode!==habit.mode ||
+      rule.successCriteria!==habit.successCriteria || rule.durationDays<21 || rule.durationDays>365 ||
+      !Number.isInteger(rule.durationDays) || keyAt(rule.startDate,0)!==rule.startDate)return {status:'none',points:0,item};
+    // A manually closed trophy is not proof that the agreed calendar elapsed.
+    const elapsed=dayNumber(dayKey(now))-dayNumber(rule.startDate);
+    const earned=elapsed>=rule.durationDays && item.success===rule.durationDays && item.failure===0;
+    return {status:earned?'earned':item.failure>0?'failed':'active',points:earned?rule.points:0,
+      potentialPoints:rule.points,item,earnedOn:keyAt(rule.startDate,rule.durationDays)};
+  }
+
+  return { REWARD_POLICY, createRewardPolicy, rewardStatus, collection, itemFor, artwork, dayKey, keyAt };
 });

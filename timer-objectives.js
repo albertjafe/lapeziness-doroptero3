@@ -562,37 +562,42 @@
     const modeLabel = habit => habit.mode === 'avoid' ? 'Evitar' : 'Hacer';
     const statusLabel = item => item.complete ? 'Conseguido' : (item.status === 'planned' ? 'Programado' : 'En curso');
     const detailLine = (label, value) => value ? '<p><strong>' + label + ':</strong> ' + safeText(value) + '</p>' : '';
+    const creditedIds=new Set((items.some(item=>item.habit.effortReward)?window.PianoRewards?.walletSnapshot(db).bonusRows||[]:[]).map(row=>row.id));
     const cards = visible.map((item, index) => {
       const habit = item.habit;
+      const effort=api.rewardStatus(habit);
+      const credited=effort.status==='earned' && creditedIds.has('bonus:habit:'+habit.id);
+      const effortLabel=credited?'3 puntos de esfuerzo abonados':effort.status==='active'?'Premio fijado · 3 puntos al cumplir el ciclo':effort.status==='failed'||effort.status==='earned'?'Este ciclo conserva el progreso y el trofeo, sin premio de esfuerzo':'';
       const description = habit.description || (habit.mode === 'avoid' ? 'Mantener este hábito fuera de tu día.' : 'Convertir esta acción en parte de tu rutina.');
       const finishLabel = item.complete ? 'Terminaste' : 'Final previsto';
       const finishDate = item.completedOn || api.keyAt(item.startedOn, item.duration - 1);
-      return '<article class="habit-trophy-card ' + (item.complete ? 'is-earned' : 'is-pending') + '" aria-label="' + safeText((habit.title || 'Objetivo') + ' · ' + statusLabel(item)) + '">' +
+      return '<article class="habit-trophy-card ' + (item.complete ? 'is-earned' : 'is-pending') + '" aria-label="' + safeText((habit.title || 'Hábito') + ' · ' + statusLabel(item)) + '">' +
         api.artwork(habit.id, item.complete, 'card-' + index) +
-        '<div class="habit-trophy-card-copy"><div class="habit-trophy-card-head"><div><span>' + modeLabel(habit) + '</span><h3>' + safeText(habit.title || 'Objetivo') + '</h3></div><span>' + statusLabel(item) + '</span></div>' +
+        '<div class="habit-trophy-card-copy"><div class="habit-trophy-card-head"><div><span>' + modeLabel(habit) + '</span><h3>' + safeText(habit.title || 'Hábito') + '</h3></div><span>' + statusLabel(item) + '</span></div>' +
         '<p class="habit-trophy-description">' + safeText(description) + '</p>' +
         '<dl class="habit-trophy-dates"><div><dt>Empezaste</dt><dd>' + formatFullDayKey(item.startedOn) + '</dd></div><div><dt>' + finishLabel + '</dt><dd>' + formatFullDayKey(finishDate) + '</dd></div></dl>' +
         '<div class="habit-trophy-score"><span>' + item.success + ' de ' + item.duration + ' días logrados</span><strong>' + item.compliance + ' %</strong></div>' +
-        '<progress max="100" value="' + (item.complete ? item.compliance : item.progress) + '" aria-label="Progreso de ' + safeText(habit.title || 'objetivo') + '"></progress>' +
+        (effortLabel?'<p class="habit-trophy-effort-reward">'+safeText(effortLabel)+'</p>':'')+
+        '<progress max="100" value="' + (item.complete ? item.compliance : item.progress) + '" aria-label="Progreso de ' + safeText(habit.title || 'hábito') + '"></progress>' +
         '<details class="habit-trophy-details"><summary>Ver historia y detalles</summary>' +
           '<p><strong>Creado:</strong> ' + formatFullDayKey(item.createdOn) + ' · <strong>Duración:</strong> ' + item.duration + ' días</p>' +
           detailLine('Motivación', habit.motivation) + detailLine('Criterio', habit.successCriteria) + detailLine('Celebración', habit.reward) +
         '</details>' +
-        '<button type="button" class="habit-trophy-edit" data-habit-trophy-edit="' + safeText(habit.id) + '">' + (item.complete ? 'Ver reglas del objetivo' : 'Editar este objetivo') + '</button>' +
+        '<button type="button" class="habit-trophy-edit" data-habit-trophy-edit="' + safeText(habit.id) + '">' + (item.complete ? 'Ver reglas del hábito' : 'Editar este hábito') + '</button>' +
         '</div></article>';
     }).join('');
     const emptyAction = items.length
       ? '<button type="button" data-habit-trophy-filter="all">Ver todos</button>'
-      : '<button type="button" data-habit-trophy-create>Crear mi primer objetivo</button>';
+      : '<button type="button" data-habit-trophy-create>Crear mi primer hábito</button>';
     panel.innerHTML = '<section class="habit-trophy-room" aria-labelledby="habitTrophyRoomTitle">' +
-      '<header class="habit-trophy-hero"><div class="habit-trophy-hero-copy"><span class="habit-trophy-eyebrow">Tus hábitos · tu recorrido</span><h2 id="habitTrophyRoomTitle">Vitrina de objetivos</h2><p>Los hábitos terminados se quedan aquí como parte de tu historia.</p>' +
-        (featured ? '<div class="habit-trophy-featured"><small>' + (featured.complete ? 'ÚLTIMO TROFEO CONSEGUIDO' : 'OBJETIVO EN CURSO') + '</small><strong>' + safeText(featured.habit.title || 'Objetivo') + '</strong><span>' + (featured.complete ? formatFullDayKey(featured.completedOn) : featured.progress + ' % del recorrido') + '</span></div>' : '') +
-      '</div>' + api.artwork(featured?.habit.id || 'first-habit', Boolean(featured?.complete), 'hero') + '</header>' +
+      '<header class="habit-trophy-hero"><div class="habit-trophy-hero-copy"><span class="habit-trophy-eyebrow">Tus hábitos · tu recorrido</span><h2 id="habitTrophyRoomTitle">Vitrina de hábitos</h2><p>Los hábitos terminados se quedan aquí como parte de tu historia.</p>' +
+        (featured ? '<div class="habit-trophy-featured"><small>' + (featured.complete ? 'ÚLTIMO TROFEO CONSEGUIDO' : 'HÁBITO EN CURSO') + '</small><strong>' + safeText(featured.habit.title || 'Hábito') + '</strong><span>' + (featured.complete ? formatFullDayKey(featured.completedOn) : featured.progress + ' % del recorrido') + '</span></div>' : '') +
+      '<button type="button" class="study-incentives-open" data-open-study-incentives>Rachas y logros de estudio</button></div>' + api.artwork(featured?.habit.id || 'first-habit', Boolean(featured?.complete), 'hero') + '</header>' +
       '<div class="habit-trophy-summary" aria-label="Resumen de la vitrina"><div><strong>' + earned.length + '/' + items.length + '</strong><span>Trofeos</span></div><div><strong>' + achievedDays + '</strong><span>Días logrados</span></div><div><strong>' + active.length + '</strong><span>En curso</span></div></div>' +
       '<div class="habit-trophy-filters" role="group" aria-label="Filtrar la vitrina">' +
         [['all', 'Todos', items.length], ['earned', 'Conseguidos', earned.length], ['active', 'En curso', active.length]].map(([id, label, count]) => '<button type="button" data-habit-trophy-filter="' + id + '" aria-pressed="' + (trophyFilter === id) + '">' + label + ' · ' + count + '</button>').join('') +
       '</div>' +
-      (cards ? '<div class="habit-trophy-list">' + cards + '</div>' : '<div class="habit-trophy-empty"><span>' + (items.length ? 'No hay objetivos en este filtro.' : 'Tu primer trofeo aparecerá cuando termines un objetivo diario.') + '</span>' + emptyAction + '</div>') +
+      (cards ? '<div class="habit-trophy-list">' + cards + '</div>' : '<div class="habit-trophy-empty"><span>' + (items.length ? 'No hay hábitos en este filtro.' : 'Tu primer trofeo aparecerá cuando termines un hábito diario.') + '</span>' + emptyAction + '</div>') +
     '</section>';
   }
 
@@ -641,7 +646,7 @@
     const pencil = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>';
     if (!habits.length || typeof window.habitMetrics !== 'function' || typeof window.habitKeyAt !== 'function') {
       panel.innerHTML = '<section class="crono-habit-tracker-empty is-minimal"><div>' +
-        '<button type="button" class="crono-habit-tracker-create-icon" onclick="openHabitChallengeModal()" aria-label="Crear objetivo" title="Crear objetivo">' + plus + '</button>' +
+        '<button type="button" class="crono-habit-tracker-create-icon" onclick="openHabitChallengeModal()" aria-label="Crear hábito" title="Crear hábito">' + plus + '</button>' +
       '</div></section>';
       return;
     }
@@ -655,27 +660,27 @@
       const todayLabel = formatDayKey(metrics.todayKey);
       let action = '';
       if (metrics.complete) {
-        action = '<button type="button" class="crono-habit-tracker-action-icon is-success" onclick="openHabitChallengeModal(\'' + jsId(habit.id) + '\')" aria-label="Objetivo completado" title="Objetivo completado">&#10003;</button>';
+        action = '<button type="button" class="crono-habit-tracker-action-icon is-success" onclick="openHabitChallengeModal(\'' + jsId(habit.id) + '\')" aria-label="Hábito completado" title="Hábito completado">&#10003;</button>';
       } else if (habit.mode === 'avoid') {
         action = '<button type="button" class="crono-habit-tracker-action-icon' + (marked ? ' is-failure' : '') + '" onclick="registerHabitRelapse(event,\'' + jsId(habit.id) + '\')" aria-label="' +
           (marked ? 'Quitar recaída de hoy' : 'Registrar recaída hoy') + '" title="' + (marked ? 'Quitar recaída' : 'Registrar recaída') + '">!</button>';
       } else {
         action = '<button type="button" class="crono-habit-tracker-action-icon' + (marked ? ' is-success' : '') + '" onclick="toggleHabitToday(event,\'' + jsId(habit.id) + '\')" aria-label="' +
-          (marked ? 'Desmarcar objetivo de hoy' : 'Marcar objetivo cumplido hoy') + '" title="' + (marked ? 'Desmarcar hoy' : 'Cumplir hoy') + '">&#10003;</button>';
+          (marked ? 'Desmarcar hábito de hoy' : 'Marcar hábito cumplido hoy') + '" title="' + (marked ? 'Desmarcar hoy' : 'Cumplir hoy') + '">&#10003;</button>';
       }
       return '<section class="crono-habit-tracker is-minimal' + (metrics.complete ? ' is-complete' : '') + '">' +
         '<header class="crono-habit-tracker-head">' +
           '<span class="crono-habit-tracker-icon">' + trophy + '</span>' +
-          '<button type="button" class="crono-habit-tracker-copy crono-habit-tracker-open" onclick="openHabitChallengeModal(\'' + jsId(habit.id) + '\')" aria-label="Ver detalles y reglas de ' + safeText(habit.title || 'Objetivo') + '"><small>' + modeLabel + ' · Hoy ' + safeText(todayLabel) + '</small><strong>' + safeText(habit.title || 'Objetivo') + '</strong></button>' +
+          '<button type="button" class="crono-habit-tracker-copy crono-habit-tracker-open" onclick="openHabitChallengeModal(\'' + jsId(habit.id) + '\')" aria-label="Ver detalles y reglas de ' + safeText(habit.title || 'Hábito') + '"><small>' + modeLabel + ' · Hoy ' + safeText(todayLabel) + '</small><strong>' + safeText(habit.title || 'Hábito') + '</strong></button>' +
           '<div class="crono-habit-tracker-tools">' + action +
-            '<button type="button" class="crono-habit-tracker-edit-icon" onclick="openHabitChallengeModal(\'' + jsId(habit.id) + '\')" aria-label="Editar objetivo" title="Editar objetivo">' + pencil + '</button>' +
+            '<button type="button" class="crono-habit-tracker-edit-icon" onclick="openHabitChallengeModal(\'' + jsId(habit.id) + '\')" aria-label="Editar hábito" title="Editar hábito">' + pencil + '</button>' +
           '</div>' +
           '<span class="crono-habit-tracker-progress" aria-hidden="true"><i style="width:' + metrics.progress + '%"></i></span>' +
         '</header>' +
         '<div class="crono-habit-tracker-meta" aria-label="Hoy ' + safeText(todayLabel) + ', día ' + metrics.day + ' de ' + metrics.duration + '">' +
           '<span>Hoy · ' + safeText(todayLabel) + '</span><strong>Día ' + metrics.day + ' de ' + metrics.duration + '</strong><span>' + metrics.streak + ' seguidos</span>' +
         '</div>' +
-        '<div class="crono-habit-tracker-days" role="list" aria-label="Días del objetivo ' + safeText(habit.title || '') + '">' + trackerDaysHtml(habit, metrics) + '</div>' +
+        '<div class="crono-habit-tracker-days" role="list" aria-label="Días del hábito ' + safeText(habit.title || '') + '">' + trackerDaysHtml(habit, metrics) + '</div>' +
       '</section>';
     }).join('');
     panel.innerHTML = '<div class="crono-habit-tracker-stack">' + cards + '</div>';
@@ -746,10 +751,10 @@
     const tabs = document.createElement('div');
     tabs.className = 'crono-calendar-objectives-tabs';
     tabs.setAttribute('role', 'tablist');
-    tabs.setAttribute('aria-label', 'Calendario, objetivo o vitrina');
+    tabs.setAttribute('aria-label', 'Calendario, hábitos o vitrina');
     tabs.innerHTML = `
       <button type="button" class="crono-calendar-objectives-tab" data-timer-panel="calendar" role="tab" aria-selected="false">Calendario</button>
-      <button type="button" class="crono-calendar-objectives-tab active" data-timer-panel="objectives" role="tab" aria-selected="true">Objetivo</button>
+      <button type="button" class="crono-calendar-objectives-tab active" data-timer-panel="objectives" role="tab" aria-selected="true">Hábitos</button>
       <button type="button" class="crono-calendar-objectives-tab" data-timer-panel="trophies" role="tab" aria-selected="false">Vitrina</button>
       <button type="button" class="crono-panel-size-toggle" id="cronoPanelSizeToggle" aria-pressed="false" aria-label="Hacer más pequeños el reloj y el tracker" title="Tamaño compacto">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v4H3M13 3v4h4M7 17v-4H3M13 17v-4h4"/><path d="m3 7 4-4M17 7l-4-4M3 13l4 4M17 13l-4 4"/></svg>

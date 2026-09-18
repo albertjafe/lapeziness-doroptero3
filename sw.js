@@ -1,19 +1,21 @@
-const CACHE = 'estudio-v405';
+const CACHE = 'estudio-v406';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
   "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=402",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=405",
+  "./app.js?v=406",
   "./german-rewards.js?v=404",
-  "./piano-rewards.js?v=404",
+  "./piano-rewards.js?v=406",
   "./german-srs.js?v=378",
   "./german-import.js?v=382",
   "./german-session.js?v=404",
   "./german-study.js?v=399",
   "./german-study.css?v=399",
-  "./habit-trophies.js?v=380",
+  "./habit-trophies.js?v=406",
+  "./effort-incentives-ui.js?v=406",
+  "./effort-incentives.css?v=406",
   "./habit-trophies.css?v=383",
   "./desktop-workspace.css?v=388",
   "./desktop-calendar-v389.css?v=389",
@@ -113,7 +115,7 @@ const ASSETS = [
   "./task-sync-bootstrap.js?v=342",
   "./task-sync-resilience.js?v=342",
   "./timer-core.js?v=397",
-  "./timer-objectives.js?v=383",
+  "./timer-objectives.js?v=406",
   "./update-safety.js?v=378",
   "./work-catalog.js?v=342",
   "./work-difficulty-integration.js?v=342",
@@ -166,7 +168,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '405');
+            target.searchParams.set('__pwa', '406');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -174,7 +176,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'405', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'406', navigated });
         } catch (error) {}
       }
     }

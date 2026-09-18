@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-18-cloud-sync-recovery-v405';
+const APP_VERSION = '2026-09-18-effort-incentives-v406';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -144,6 +144,7 @@ function refreshStudyViews() {
     if (document.getElementById('view-deutsch')?.classList.contains('active')) window.GermanStudy?.refreshMoney();
     if (typeof renderHabitChallenge === 'function') renderHabitChallenge();
     if (typeof renderHabitCalendar === 'function') renderHabitCalendar();
+    window.StudyIncentives?.refresh?.();
     if (typeof renderMesCalendario === 'function') renderMesCalendario();
     if (typeof renderWeeklyPlanner === 'function' && _sessionSectionMode === 'week') renderWeeklyPlanner();
     if (typeof renderMemoryPanels === 'function') renderMemoryPanels();
@@ -11453,9 +11454,9 @@ function habitRewardCoinsHtml(completed) {
   const claimed = completed.filter(habit => habit.rewardClaimedAt);
   const visible = Math.min(8, claimed.length);
   const coins = claimed.slice(0, visible).map((habit, index) => {
-    const title = escapeHtmlSafe(habit.title || 'Objetivo');
+    const title = escapeHtmlSafe(habit.title || 'Hábito');
     const date = habitCompletionDate(habit);
-    return '<span class="habit-reward-coin" aria-label="Moneda de objetivo: ' + title + ', terminado el ' + date + '" title="' + title + ' · terminado el ' + date + '">' + habitTrophySvg() + '</span>';
+    return '<span class="habit-reward-coin" aria-label="Insignia de hábito: ' + title + ', terminado el ' + date + '" title="' + title + ' · terminado el ' + date + '">' + habitTrophySvg() + '</span>';
   }).join('');
   const extra = claimed.length > visible ? '<span class="habit-reward-coin-more">+' + (claimed.length - visible) + '</span>' : '';
   return coins + extra || '<span class="habit-reward-coins-empty">Aún ninguna</span>';
@@ -11467,19 +11468,19 @@ function habitCompletedRewardsHtml(completed) {
   const cards = completed.slice().sort((a, b) => String(b.completedAt || b.startDate).localeCompare(String(a.completedAt || a.startDate))).map(habit => {
     const metrics = habitMetrics(habit);
     const claimed = !!habit.rewardClaimedAt;
-    const title = escapeHtmlSafe(habit.title || 'Objetivo');
+    const title = escapeHtmlSafe(habit.title || 'Hábito');
     const claim = claimed
       ? '<span class="habit-reward-claimed" aria-label="Recompensa recogida">Recogida</span>'
-      : '<button type="button" class="habit-reward-claim" onclick="claimHabitReward(\'' + hechoJs(habit.id) + '\')">Reclamar recompensa <b>+1</b></button>';
+      : '<button type="button" class="habit-reward-claim" onclick="claimHabitReward(\'' + hechoJs(habit.id) + '\')">Recoger insignia <b>+1</b></button>';
     return '<article class="habit-completed-card' + (claimed ? ' is-claimed' : ' is-ready') + '">' +
       '<span class="habit-completed-card-icon" aria-hidden="true">' + habitTrophySvg() + '</span>' +
       '<div class="habit-completed-card-copy"><span>Completado · ' + habitCompletionDate(habit) + '</span><strong>' + title + '</strong><small>' + metrics.success + '/' + metrics.duration + ' días cumplidos</small></div>' +
       claim +
     '</article>';
   }).join('');
-  return '<section class="habit-completed-rewards" aria-label="Objetivos completados">' +
-    '<header class="habit-completed-rewards-head"><div><span class="habit-completed-kicker">Colección</span><strong>Objetivos completados</strong></div><div class="habit-reward-balance"><span>' + balance + '</span><small>monedas</small></div></header>' +
-    '<div class="habit-reward-coin-shelf" aria-label="Monedas recogidas">' + habitRewardCoinsHtml(completed) + '</div>' +
+  return '<section class="habit-completed-rewards" aria-label="Hábitos completados">' +
+    '<header class="habit-completed-rewards-head"><div><span class="habit-completed-kicker">Colección</span><strong>Hábitos completados</strong></div><div class="habit-reward-balance"><span>' + balance + '</span><small>insignias</small></div></header>' +
+    '<div class="habit-reward-coin-shelf" aria-label="Insignias recogidas">' + habitRewardCoinsHtml(completed) + '</div>' +
     '<div class="habit-completed-list">' + cards + '</div>' +
   '</section>';
 }
@@ -11504,7 +11505,7 @@ function claimHabitReward(challengeId) {
   renderHabitChallenge();
   renderHabitCalendar();
   renderMesCalendario();
-  showToast('Recompensa recogida · moneda de objetivo +1');
+  showToast('Recompensa recogida · insignia de hábito +1');
   try { Haptics.success(); } catch (e) {}
 }
 
@@ -11519,8 +11520,8 @@ function renderHabitCalendar() {
   if (!habit) {
     root.innerHTML = '<section class="habit-calendar-empty">' +
       '<span class="habit-calendar-empty-icon">' + trophy + '</span>' +
-      '<div><h2>' + (completed.length ? 'Todos los objetivos están cerrados' : 'Sin objetivo activo') + '</h2><p>' + (completed.length ? 'Tus objetivos terminados quedan guardados abajo.' : 'Crea un reto para ver aquí los días cumplidos y fallados.') + '</p></div>' +
-      '<button type="button" onclick="openHabitChallengeModal()">Crear objetivo</button>' +
+      '<div><h2>' + (completed.length ? 'Todos los hábitos están cerrados' : 'Sin hábito activo') + '</h2><p>' + (completed.length ? 'Tus hábitos terminados quedan guardados abajo.' : 'Crea un reto para ver aquí los días cumplidos y fallados.') + '</p></div>' +
+      '<button type="button" onclick="openHabitChallengeModal()">Crear hábito</button>' +
     '</section>' + completedMarkup;
     return;
   }
@@ -11558,11 +11559,11 @@ function renderHabitCalendar() {
       : (todayState === 'success' ? 'Cumplido hoy' : 'Marcar hoy como cumplido');
   const actionClass = todayState === 'success' ? ' is-success' : (todayState === 'failure' ? ' is-failure' : '');
   const actionDisabled = metrics.complete ? ' disabled' : '';
-  const editLabel = metrics.complete ? 'Nuevo objetivo' : 'Editar';
+  const editLabel = metrics.complete ? 'Nuevo hábito' : 'Editar';
 
   const objectiveSwitch = habits.length > 1
-    ? '<div class="habit-calendar-objective-switch" data-no-view-swipe data-horizontal-scroll role="tablist" aria-label="Seleccionar objetivo">' +
-      habits.map(item => '<button type="button" role="tab" class="' + (item.id === habit.id ? 'active' : '') + '" aria-selected="' + (item.id === habit.id ? 'true' : 'false') + '" onclick="selectHabitCalendarChallenge(\'' + hechoJs(item.id) + '\')" title="' + escapeHtmlSafe(item.title || 'Objetivo') + '">' + escapeHtmlSafe(item.title || 'Objetivo') + '</button>').join('') +
+    ? '<div class="habit-calendar-objective-switch" data-no-view-swipe data-horizontal-scroll role="tablist" aria-label="Seleccionar hábito">' +
+      habits.map(item => '<button type="button" role="tab" class="' + (item.id === habit.id ? 'active' : '') + '" aria-selected="' + (item.id === habit.id ? 'true' : 'false') + '" onclick="selectHabitCalendarChallenge(\'' + hechoJs(item.id) + '\')" title="' + escapeHtmlSafe(item.title || 'Hábito') + '">' + escapeHtmlSafe(item.title || 'Hábito') + '</button>').join('') +
       '</div>'
     : '';
   root.innerHTML = objectiveSwitch + '<section class="habit-calendar-dashboard">' +
@@ -11592,7 +11593,7 @@ function renderHabitCalendar() {
           '<button type="button" onclick="changeHabitCalendarMonth(1)" aria-label="Mes siguiente">&#8250;</button>' +
         '</div>' +
         '<div class="habit-calendar-weekdays" aria-hidden="true"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div>' +
-        '<div class="habit-calendar-grid" role="list" aria-label="Historial diario del objetivo">' + cells + '</div>' +
+        '<div class="habit-calendar-grid" role="list" aria-label="Historial diario del hábito">' + cells + '</div>' +
         '<div class="habit-calendar-legend"><span class="success">Cumplido</span><span class="failure">Fallado</span><span class="current">Hoy</span><span class="future">Futuro</span></div>' +
       '</div>' +
     '</div>' +
@@ -11684,7 +11685,7 @@ function renderCalendarHabitLayer() {
   const habit = habitCalendarSelectedChallenge();
   if (!habit) {
     summary.innerHTML = '<div class="calendar-habit-compact is-empty">' +
-      '<button type="button" class="calendar-habit-icon-action" onclick="openHabitChallengeModal()" aria-label="Crear objetivo" title="Crear objetivo">+</button>' +
+      '<button type="button" class="calendar-habit-icon-action" onclick="openHabitChallengeModal()" aria-label="Crear hábito" title="Crear hábito">+</button>' +
     '</div>';
     return;
   }
@@ -11697,7 +11698,7 @@ function renderCalendarHabitLayer() {
   let actionIcon = '';
   if (metrics.complete) {
     actionClass = ' is-complete';
-    actionLabel = 'Objetivo completado. Crear uno nuevo';
+    actionLabel = 'Hábito completado. Crear uno nuevo';
     actionHandler = 'openHabitChallengeModal(\'' + hechoJs(habit.id) + '\')';
     actionIcon = '&#10003;';
   } else if (habit.mode === 'avoid') {
@@ -11707,14 +11708,14 @@ function renderCalendarHabitLayer() {
     actionIcon = '!';
   } else {
     actionClass = ' is-check' + (marked ? ' is-success' : '');
-    actionLabel = marked ? 'Desmarcar cumplimiento de hoy' : 'Marcar objetivo cumplido hoy';
+    actionLabel = marked ? 'Desmarcar cumplimiento de hoy' : 'Marcar hábito cumplido hoy';
     actionHandler = 'toggleHabitToday(event,\'' + hechoJs(habit.id) + '\')';
     actionIcon = '&#10003;';
   }
   const editIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>';
-  summary.innerHTML = '<div class="calendar-habit-compact" aria-label="Objetivo: ' + escapeHtmlSafe(habit.title || 'Objetivo') + '">' +
+  summary.innerHTML = '<div class="calendar-habit-compact" aria-label="Hábito: ' + escapeHtmlSafe(habit.title || 'Hábito') + '">' +
     '<button type="button" class="calendar-habit-icon-action' + actionClass + '" onclick="' + actionHandler + '" aria-label="' + actionLabel + '" title="' + actionLabel + '"><span aria-hidden="true">' + actionIcon + '</span></button>' +
-    '<button type="button" class="calendar-habit-icon-edit" onclick="openHabitChallengeModal(\'' + hechoJs(habit.id) + '\')" aria-label="Editar objetivo" title="Editar objetivo">' + editIcon + '</button>' +
+    '<button type="button" class="calendar-habit-icon-edit" onclick="openHabitChallengeModal(\'' + hechoJs(habit.id) + '\')" aria-label="Editar hábito" title="Editar hábito">' + editIcon + '</button>' +
   '</div>';
 }
 
@@ -11726,7 +11727,7 @@ function calendarHabitMonthCell(habit, key, date, month, todayKey) {
   const otherMonth = date.getMonth() !== month;
   const isToday = key === todayKey;
   const mark = target ? '&#9873;' : (state === 'success' ? '&#10003;' : (state === 'failure' ? '&#215;' : (state === 'current' || state === 'future' ? '&#8226;' : '')));
-  const targetLabel = victory ? ' · meta alcanzada' : (target ? ' · día objetivo' : '');
+  const targetLabel = victory ? ' · meta alcanzada' : (target ? ' · día del hábito' : '');
   const label = date.getDate() + ' de ' + CALENDAR_MONTHS[date.getMonth()] + ': ' + habitCalendarStateLabel(state) + (isToday ? ' · hoy' : '') + targetLabel;
   return '<div class="mes-cell habit-calendar-month-cell is-' + state + (otherMonth ? ' otro-mes' : '') + (isToday ? ' hoy is-today' : '') + (target ? ' is-target' : '') + (victory ? ' is-victory' : '') + '" data-date="' + key + '" aria-label="' + label + '">' +
     '<span class="mes-cell-num">' + date.getDate() + '</span><span class="habit-month-mark" aria-hidden="true">' + mark + '</span>' +
@@ -11768,7 +11769,7 @@ function renderMesCalendario() {
   let html = '';
 
   if (objectiveMode && !habit) {
-    grid.innerHTML = '<div class="mes-objective-empty"><span class="calendar-habit-summary-icon" aria-hidden="true">&#127942;</span><strong>Crea un objetivo para llenar este calendario</strong><button type="button" onclick="openHabitChallengeModal()">Crear objetivo</button></div>';
+    grid.innerHTML = '<div class="mes-objective-empty"><span class="calendar-habit-summary-icon" aria-hidden="true">&#127942;</span><strong>Crea un hábito para llenar este calendario</strong><button type="button" onclick="openHabitChallengeModal()">Crear hábito</button></div>';
     document.getElementById('mesLeyenda').innerHTML = '';
     return;
   }
@@ -20221,22 +20222,24 @@ function openHabitChallengeModal(challengeId) {
   const motivation = document.getElementById('habitMotivationInput');
   const criteria = document.getElementById('habitCriteriaInput');
   const reward = document.getElementById('habitRewardInput');
+  const effortNote = document.getElementById('habitEffortRewardNote');
+  if(effortNote)effortNote.dataset.habitId=current?.id||'';
   const details = document.getElementById('habitDetailsDisclosure');
   const deleteBtn = document.getElementById('habitDeleteBtn');
   const todayBtn = document.getElementById('habitTodayBtn');
   const saveBtn = document.getElementById('habitSaveBtn');
   const cancelBtn = document.getElementById('habitCancelBtn');
   const kicker = document.querySelector('#modalHabitChallenge .habit-modal-kicker');
-  if (title) title.textContent = complete ? 'Objetivo terminado' : (existing ? 'Tu objetivo' : 'Crear un objetivo');
+  if (title) title.textContent = complete ? 'Hábito terminado' : (existing ? 'Tu hábito' : 'Crear un hábito');
   if (intro) intro.textContent = complete ? 'Consulta las reglas y el motivo que acompañaron este recorrido.' : (existing ? 'Consulta tus reglas o ajústalas cuando necesites concretarlas mejor.' : 'Define una regla clara que puedas recordar cada día.');
-  if (kicker) kicker.textContent = complete ? 'Historia del objetivo' : 'Objetivo diario';
+  if (kicker) kicker.textContent = complete ? 'Historia del hábito' : 'Hábito diario';
   if (input) input.value = current ? (current.title || '') : '';
   if (duration) duration.value = current ? current.durationDays : 21;
   if (startDate) {
     startDate.value = current ? current.startDate : habitDayKey();
     startDate.disabled = !!current;
   }
-  if (startDateNote) startDateNote.textContent = current ? 'La fecha se conserva para no cambiar el historial.' : 'El primer día del objetivo.';
+  if (startDateNote) startDateNote.textContent = current ? 'La fecha se conserva para no cambiar el historial.' : 'El primer día del hábito.';
   if (description) description.value = current ? (current.description || '') : '';
   if (motivation) motivation.value = current ? (current.motivation || '') : '';
   if (criteria) criteria.value = current ? (current.successCriteria || '') : '';
@@ -20260,6 +20263,8 @@ function openHabitChallengeModal(challengeId) {
     }
   }
   [input,duration,description,motivation,criteria,reward].forEach(control => {if(control)control.disabled=complete;});
+  if(current?.effortReward){if(duration)duration.disabled=true;if(criteria)criteria.disabled=true;}
+  document.querySelectorAll('.habit-duration-presets button').forEach(button=>{button.disabled=complete||!!current?.effortReward;});
   document.querySelectorAll('#habitModeToggle button').forEach(button => {button.disabled = existing || complete;});
   updateHabitModalPreview();
   openModal('modalHabitChallenge');
@@ -20299,6 +20304,20 @@ function updateHabitModalPreview() {
     button.classList.toggle('active', Number(button.textContent) === days);
   });
   const preview = document.getElementById('habitModalPreview');
+  const effortNote = document.getElementById('habitEffortRewardNote');
+  const current = effortNote?.dataset.habitId ? habitAllChallenges().find(h=>h.id===effortNote.dataset.habitId) : null;
+  if(effortNote && window.HabitTrophies){
+    const candidate={startDate:startKey,durationDays:days,mode:_habitModalMode,
+      successCriteria:String(document.getElementById('habitCriteriaInput')?.value||'').trim()};
+    const policy=window.HabitTrophies.createRewardPolicy(candidate);
+    effortNote.textContent=current?.effortReward
+      ? 'Premio fijado: 3 puntos al completar todos los días. La duración, el tipo y el criterio se conservan para este ciclo.'
+      : current||document.getElementById('habitSaveBtn')?.hidden
+        ? 'Este hábito conserva su trofeo. El premio de esfuerzo se acuerda al empezar un ciclo nuevo.'
+        : policy
+          ? 'Premio: 3 puntos al completar todos los días, una sola vez. En evitar, solo registras las caídas; en hacer, marcas cada día.'
+          : 'Premio de 3 puntos: elige al menos 21 días, una fecha desde hoy y escribe qué cuenta como cumplirlo antes de empezar. Sin estas condiciones, el hábito concede solo su trofeo.';
+  }
   if (!preview) return;
   preview.innerHTML = _habitModalMode === 'avoid'
     ? '<strong>Evitar durante ' + days + ' días · hasta ' + endLabel + '</strong><span>La casilla solo se toca si recaes. Un fallo reinicia la racha, pero no borra los días logrados.</span>'
@@ -20317,7 +20336,7 @@ function saveHabitChallenge() {
   const successCriteria = String(document.getElementById('habitCriteriaInput')?.value || '').trim().slice(0, 220);
   const reward = String(document.getElementById('habitRewardInput')?.value || '').trim().slice(0, 160);
   if (!title) {
-    showToast('Escribe el objetivo del reto');
+    showToast('Escribe el hábito del reto');
     titleInput?.focus();
     return;
   }
@@ -20330,10 +20349,10 @@ function saveHabitChallenge() {
   const current = _habitEditingExisting ? habitActiveChallenge(_habitEditingId) : null;
   if (_habitEditingExisting && current) {
     current.title = title;
-    current.durationDays = durationDays;
+    if(!current.effortReward)current.durationDays = durationDays;
     current.description = description;
     current.motivation = motivation;
-    current.successCriteria = successCriteria;
+    if(!current.effortReward)current.successCriteria = successCriteria;
     current.reward = reward;
     current.updatedAt = now;
     const stored = habitStoredChallenges();
@@ -20342,7 +20361,7 @@ function saveHabitChallenge() {
     habitPersistChallenges(stored);
   } else {
     if (habitActiveChallenges().length) {
-      showToast('Termina el objetivo actual antes de crear otro');
+      showToast('Termina el hábito actual antes de crear otro');
       return;
     }
     _habitCalendarOffset = 0;
@@ -20360,6 +20379,8 @@ function saveHabitChallenge() {
       createdAt: now,
       updatedAt: now,
     };
+    const effortReward=window.HabitTrophies?.createRewardPolicy(challenge,new Date(now));
+    if(effortReward)challenge.effortReward=effortReward;
     const stored = habitStoredChallenges();
     stored.push(challenge);
     habitPersistChallenges(stored);
@@ -20369,7 +20390,7 @@ function saveHabitChallenge() {
   renderHabitCalendar();
   renderMesCalendario();
   closeModal('modalHabitChallenge');
-  showToast(_habitEditingExisting ? 'Objetivo actualizado' : (habitDayNumber(startDate) > habitDayNumber(habitDayKey()) ? 'Objetivo programado' : 'Objetivo iniciado'));
+  showToast(_habitEditingExisting ? 'Hábito actualizado' : (habitDayNumber(startDate) > habitDayNumber(habitDayKey()) ? 'Hábito programado' : 'Hábito iniciado'));
 }
 
 function registerHabitRelapse(event, challengeId) {
