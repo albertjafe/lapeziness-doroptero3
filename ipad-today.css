@@ -1,10 +1,10 @@
 /* Exclusivo de Hoy en iPad; el cronómetro conserva su composición actual. */
 .ipad-today-only { display: none; }
 
-html.platform-ipad body[data-view="session"] {
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) {
   --ipad-today-shadow: 0 8px 28px -18px rgba(25, 38, 53, .26);
 }
-html.platform-ipad body[data-view="session"] #view-session.active:not(.session-weekly-mode):not(.session-history-mode) {
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #view-session:is(.active, .view-swipe-neighbor):not(.session-weekly-mode):not(.session-history-mode) {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "summary" "next" "rooms" "access" "quick" "journal" "plan";
@@ -13,151 +13,154 @@ html.platform-ipad body[data-view="session"] #view-session.active:not(.session-w
   padding: 20px 24px !important;
   align-items: start;
 }
-html.platform-ipad body[data-view="session"] #view-session > * { min-width: 0; }
-html.platform-ipad body[data-view="session"] .ipad-today-only { display: block; }
-html.platform-ipad body[data-view="session"] #sessionResumenCard { grid-area: summary; }
-html.platform-ipad body[data-view="session"] .ipad-today-next { grid-area: next; }
-html.platform-ipad body[data-view="session"] .ipad-today-access { grid-area: access; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard { grid-area: rooms; }
-html.platform-ipad body[data-view="session"] .session-quick-disclosure { grid-area: quick; }
-html.platform-ipad body[data-view="session"] #sessionJournalCard { grid-area: journal; }
-html.platform-ipad body[data-view="session"] .ipad-today-plan { grid-area: plan; }
-html.platform-ipad body[data-view="session"] #view-session:is(.session-weekly-mode, .session-history-mode) > :is(.ipad-today-only, .ipad-today-plan) { display: none !important; }
-html.platform-ipad body[data-view="session"] #view-session > .german-entry { display: none; }
-html.platform-ipad body[data-view="session"] :is(.ipad-today-next, .ipad-today-access, #sessionAulasDashboard) {
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #view-session > * { min-width: 0; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-only { display: block; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard { grid-area: summary; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-next { grid-area: next; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-access { grid-area: access; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard { grid-area: rooms; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .session-quick-disclosure { grid-area: quick; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionJournalCard { grid-area: journal; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-plan { grid-area: plan; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #view-session:is(.session-weekly-mode, .session-history-mode) > :is(.ipad-today-only, .ipad-today-plan) { display: none !important; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #view-session > .german-entry { display: none; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) :is(.ipad-today-next, .ipad-today-access, #sessionAulasDashboard) {
   border: 1px solid var(--border2);
   border-radius: 22px;
   background: var(--bg2);
   box-shadow: var(--ipad-today-shadow);
 }
-html.platform-ipad body[data-view="session"] .ipad-today-kicker {
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-kicker {
   display: block; color: var(--text3); font: 700 10px/1.4 var(--font-ui, sans-serif); letter-spacing: .12em; text-transform: uppercase;
 }
-html.platform-ipad body[data-view="session"] .ipad-today-next {
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-next {
   display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
   padding: 18px; background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 9%, var(--bg2)), var(--bg2));
 }
-html.platform-ipad body[data-view="session"] .ipad-today-play {
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-play {
   display: grid; place-items: center; width: 46px; height: 46px; flex-shrink: 0; border-radius: 15px; color: var(--bg); background: var(--accent); font: 18px/1 sans-serif;
 }
-html.platform-ipad body[data-view="session"] .ipad-today-next > div { flex: 1; min-width: 170px; }
-html.platform-ipad body[data-view="session"] :is(.ipad-today-next, .ipad-today-access) h2 { margin: 4px 0; font: 750 19px/1.25 var(--font-ui, sans-serif); color: var(--text); letter-spacing: -.025em; }
-html.platform-ipad body[data-view="session"] .ipad-today-next p { margin: 5px 0 0; font: 12px/1.4 var(--font-ui, sans-serif); color: var(--text2); }
-html.platform-ipad body[data-view="session"] .ipad-today-next button { min-height: 46px; padding: 12px 18px; border: 0; border-radius: 13px; background: var(--accent); color: var(--bg); font: 700 13px/1.4 var(--font-ui, sans-serif); cursor: pointer; }
-html.platform-ipad body[data-view="session"] .ipad-today-access { padding: 18px; }
-html.platform-ipad body[data-view="session"] .ipad-today-access-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 13px; }
-html.platform-ipad body[data-view="session"] .ipad-today-access-grid button { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; min-height: 96px; padding: 13px; border: 1px solid var(--border2); border-radius: 15px; text-align: left; background: var(--bg); color: var(--text); cursor: pointer; }
-html.platform-ipad body[data-view="session"] .ipad-today-access-grid button > span { color: var(--accent); font: 18px/1.2 var(--font-ui, sans-serif); }
-html.platform-ipad body[data-view="session"] .ipad-today-access-grid strong { font: 700 13px/1.3 var(--font-ui, sans-serif); }
-html.platform-ipad body[data-view="session"] .ipad-today-access-grid small { font: 11px/1.35 var(--font-ui, sans-serif); color: var(--text3); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-next > div { flex: 1; min-width: 170px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) :is(.ipad-today-next, .ipad-today-access) h2 { margin: 4px 0; font: 750 19px/1.25 var(--font-ui, sans-serif); color: var(--text); letter-spacing: -.025em; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-next p { margin: 5px 0 0; font: 12px/1.4 var(--font-ui, sans-serif); color: var(--text2); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-next button { min-height: 46px; padding: 12px 18px; border: 0; border-radius: 13px; background: var(--accent); color: var(--bg); font: 700 13px/1.4 var(--font-ui, sans-serif); cursor: pointer; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-access { padding: 18px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-access-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 13px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-access-grid button { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; min-height: 96px; padding: 13px; border: 1px solid var(--border2); border-radius: 15px; text-align: left; background: var(--bg); color: var(--text); cursor: pointer; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-access-grid button > span { color: var(--accent); font: 18px/1.2 var(--font-ui, sans-serif); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-access-grid strong { font: 700 13px/1.3 var(--font-ui, sans-serif); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-access-grid small { font: 11px/1.35 var(--font-ui, sans-serif); color: var(--text3); }
 
-html.platform-ipad body[data-view="session"] #sessionResumenCard {
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-areas: "metrics metrics finish" "probabilities probabilities probabilities" "status status status";
   margin: 0; min-height: 0; border-radius: 22px; background: var(--bg2); box-shadow: var(--ipad-today-shadow);
 }
-html.platform-ipad body[data-view="session"] #sessionResumenCard::before { display: none; }
-html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-metrics { padding: 22px 24px 18px; gap: 24px; }
-html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-metric > strong { font-size: clamp(30px, 4vw, 40px); }
-html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-finish { padding: 22px 24px 18px; background: transparent; }
-html.platform-ipad body[data-view="session"] #sessionResumenCard :is(.session-focus-metric, .session-focus-finish) > span { font-size: 10px; line-height: 1.4; }
-html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-finish > small { font-size: 11px; }
-html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-probabilities { padding: 0 24px 16px; gap: 12px; }
-html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-probability { padding: 11px 14px; border-radius: 13px; }
-html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-probability > span { font-size: 11px; }
-html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-probability > small { font-size: 10px; }
-html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-status { padding: 10px 24px; gap: 12px; flex-wrap: wrap; }
-html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-status :is(span, small) { font-size: 11px; line-height: 1.4; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard::before { display: none; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-metrics { padding: 22px 24px 18px; gap: 24px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-metric > strong { font-size: clamp(30px, 4vw, 40px); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-finish { padding: 22px 24px 18px; background: transparent; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard :is(.session-focus-metric, .session-focus-finish) > span { font-size: 10px; line-height: 1.4; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-finish > small { font-size: 11px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-probabilities { padding: 0 24px 16px; gap: 12px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-probability { padding: 11px 14px; border-radius: 13px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-probability > span { font-size: 11px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-probability > small { font-size: 10px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-status { padding: 10px 24px; gap: 12px; flex-wrap: wrap; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-status :is(span, small) { font-size: 11px; line-height: 1.4; }
 
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard { margin: 0; padding: 18px; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-title-group h1 { font: 750 22px/1.3 var(--font-ui, sans-serif); margin: 4px 0; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .view-local-label { font: 700 10px/1.4 var(--font-ui, sans-serif); color: var(--text3); letter-spacing: .12em; text-transform: uppercase; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-title-group p { font: 11px/1.5 var(--font-ui, sans-serif); }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-topline { margin-bottom: 14px; gap: 10px; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-refresh { min-width: 44px; height: 44px; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-pane-tabs { display: flex; width: 100%; margin-bottom: 14px; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-pane-tabs button { flex: 1; min-height: 44px; min-width: 0; font: 650 13px/1.35 var(--font-ui, sans-serif); }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-hero { min-height: 100px; padding: 18px; margin-bottom: 12px; background: color-mix(in srgb, var(--green, #448567) 10%, var(--bg2)); border-color: color-mix(in srgb, var(--green, #448567) 24%, var(--border2)); align-items: center; gap: 14px; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-hero::after { display: none; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-hero-copy strong { font: 750 24px/1.2 var(--font-ui, sans-serif); }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-hero-copy > span:last-child { font: 12px/1.4 var(--font-ui, sans-serif); }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-hero-time { flex-shrink: 0; font-size: 10px; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-grid { grid-template-columns: minmax(0, 1fr) minmax(170px, .48fr); gap: 12px; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-grid > .rd-column { display: grid; gap: 12px; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-grid > .rd-column > .rd-card { grid-column: auto; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-card-head { padding: 13px 14px; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-card-head :is(span, small) { font: 650 11px/1.35 var(--font-ui, sans-serif); letter-spacing: 0; text-transform: none; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-booking-list { padding: 0 14px 8px; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-booking { min-height: 76px; gap: 8px; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-booking-main strong { font: 700 15px/1.3 var(--font-ui, sans-serif); }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-booking-main span { font: 11px/1.4 var(--font-ui, sans-serif); white-space: normal; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-booking-time b { font-size: 12px; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-booking-time span { font-size: 11px; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-booking-flags span { font: 10px/1.3 var(--font-ui, sans-serif); }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-quota-row { grid-template-columns: 1fr; gap: 8px; padding: 14px 14px 0; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-quota-row b { font: 700 23px/1.2 var(--font-ui, sans-serif); }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard :is(.rd-quota-row span, .rd-card-note, .rd-monitor-meta dt, .rd-chip-row span) { font: 11px/1.4 var(--font-ui, sans-serif); }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-empty { padding: 26px 18px; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-empty p { font: 13px/1.6 var(--font-ui, sans-serif); max-width: 52ch; margin-inline: auto; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-connection-help { margin: 0 0 14px; color: var(--text2); font: 13px/1.55 var(--font-ui, sans-serif); }
-html.platform-ipad body[data-view="session"] :is(.ipad-today-monitor, .ipad-today-plan, .session-quick-disclosure) { margin: 0; width: 100%; border: 1px solid var(--border2); border-radius: 15px; background: var(--bg2); }
-html.platform-ipad body[data-view="session"] .ipad-today-monitor { margin-top: 14px; box-shadow: none; }
-html.platform-ipad body[data-view="session"] :is(.ipad-today-monitor, .ipad-today-plan, .session-quick-disclosure) > summary { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 12px 16px; color: var(--text2); cursor: pointer; list-style: none; font: 650 13px/1.4 var(--font-ui, sans-serif); }
-html.platform-ipad body[data-view="session"] :is(.ipad-today-monitor, .ipad-today-plan) > summary::after { content: "＋"; margin-left: auto; color: var(--accent); }
-html.platform-ipad body[data-view="session"] :is(.ipad-today-monitor, .ipad-today-plan)[open] > summary::after { content: "−"; }
-html.platform-ipad body[data-view="session"] :is(.ipad-today-monitor, .ipad-today-plan) > summary::-webkit-details-marker { display: none; }
-html.platform-ipad body[data-view="session"] .ipad-today-monitor-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 12px 12px; }
-html.platform-ipad body[data-view="session"] .ipad-today-monitor-body > .rd-control-card { grid-column: 1 / -1; margin: 0; }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard :is(.rd-mode-controls button, .rd-action, .rd-toggle) { min-height: 48px; font: 12px/1.4 var(--font-ui, sans-serif); }
-html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-monitor-meta dd { font-size: 12px; overflow-wrap: anywhere; }
-html.platform-ipad body[data-view="session"] .ipad-today-plan-body { padding: 0 16px 16px; }
-html.platform-ipad body[data-view="session"] #sessionJournalCard { margin: 0; max-width: none; }
-html.platform-ipad body[data-view="session"] .session-journal-toggle { min-height: 44px; }
-html.platform-ipad body[data-view="session"] .session-journal-toggle::after { font-size: 12px; }
-html.platform-ipad body[data-view="session"] .session-quick-disclosure > summary small { font: 11px/1.4 var(--font-ui, sans-serif); }
-html.platform-ipad body[data-view="session"] .session-quick-disclosure .session-quick-study { margin: 0 12px 12px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard { margin: 0; padding: 18px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-title-group h1 { font: 750 22px/1.3 var(--font-ui, sans-serif); margin: 4px 0; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .view-local-label { font: 700 10px/1.4 var(--font-ui, sans-serif); color: var(--text3); letter-spacing: .12em; text-transform: uppercase; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-title-group p { font: 11px/1.5 var(--font-ui, sans-serif); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-topline { margin-bottom: 14px; gap: 10px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-refresh { min-width: 44px; height: 44px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-pane-tabs { display: flex; width: 100%; margin-bottom: 14px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-pane-tabs button { flex: 1; min-height: 44px; min-width: 0; font: 650 13px/1.35 var(--font-ui, sans-serif); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-hero { min-height: 100px; padding: 18px; margin-bottom: 12px; background: color-mix(in srgb, var(--green, #448567) 10%, var(--bg2)); border-color: color-mix(in srgb, var(--green, #448567) 24%, var(--border2)); align-items: center; gap: 14px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-hero::after { display: none; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-hero-copy strong { font: 750 24px/1.2 var(--font-ui, sans-serif); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-hero-copy > span:last-child { font: 12px/1.4 var(--font-ui, sans-serif); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-hero-time { flex-shrink: 0; font-size: 10px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-grid { grid-template-columns: minmax(0, 1fr) minmax(170px, .48fr); gap: 12px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-grid > .rd-column { display: grid; gap: 12px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-grid > .rd-column > .rd-card { grid-column: auto; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-card-head { padding: 13px 14px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-card-head :is(span, small) { font: 650 11px/1.35 var(--font-ui, sans-serif); letter-spacing: 0; text-transform: none; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-booking-list { padding: 0 14px 8px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-booking { min-height: 76px; gap: 8px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-booking-main strong { font: 700 15px/1.3 var(--font-ui, sans-serif); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-booking-main span { font: 11px/1.4 var(--font-ui, sans-serif); white-space: normal; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-booking-time b { font-size: 12px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-booking-time span { font-size: 11px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-booking-flags span { font: 10px/1.3 var(--font-ui, sans-serif); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-quota-row { grid-template-columns: 1fr; gap: 8px; padding: 14px 14px 0; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-quota-row b { font: 700 23px/1.2 var(--font-ui, sans-serif); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard :is(.rd-quota-row span, .rd-card-note, .rd-monitor-meta dt, .rd-chip-row span) { font: 11px/1.4 var(--font-ui, sans-serif); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-empty { padding: 26px 18px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-empty p { font: 13px/1.6 var(--font-ui, sans-serif); max-width: 52ch; margin-inline: auto; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-connection-help { margin: 0 0 14px; color: var(--text2); font: 13px/1.55 var(--font-ui, sans-serif); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) :is(.ipad-today-monitor, .ipad-today-plan, .session-quick-disclosure) { margin: 0; width: 100%; border: 1px solid var(--border2); border-radius: 15px; background: var(--bg2); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-monitor { margin-top: 14px; box-shadow: none; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) :is(.ipad-today-monitor, .ipad-today-plan, .session-quick-disclosure) > summary { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 12px 16px; color: var(--text2); cursor: pointer; list-style: none; font: 650 13px/1.4 var(--font-ui, sans-serif); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) :is(.ipad-today-monitor, .ipad-today-plan) > summary::after { content: "＋"; margin-left: auto; color: var(--accent); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) :is(.ipad-today-monitor, .ipad-today-plan)[open] > summary::after { content: "−"; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) :is(.ipad-today-monitor, .ipad-today-plan) > summary::-webkit-details-marker { display: none; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-monitor-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0 12px 12px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-monitor-body > .rd-control-card { grid-column: 1 / -1; margin: 0; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard :is(.rd-mode-controls button, .rd-action, .rd-toggle) { min-height: 48px; font: 12px/1.4 var(--font-ui, sans-serif); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-monitor-meta dd { font-size: 12px; overflow-wrap: anywhere; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-plan-body { padding: 0 16px 16px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionJournalCard { margin: 0; max-width: none; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .session-journal-toggle { min-height: 44px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .session-journal-toggle::after { font-size: 12px; }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .session-quick-disclosure > summary small { font: 11px/1.4 var(--font-ui, sans-serif); }
+html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .session-quick-disclosure .session-quick-study { margin: 0 12px 12px; }
 
 @media (min-width: 1000px) {
-  html.platform-ipad body[data-view="session"] #view-session.active:not(.session-weekly-mode):not(.session-history-mode) {
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #view-session:is(.active, .view-swipe-neighbor):not(.session-weekly-mode):not(.session-history-mode) {
     grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
     grid-template-areas: "summary summary" "next access" "rooms access" "quick journal" "plan plan";
   }
-  html.platform-ipad body[data-view="session"] #sessionResumenCard { grid-area: summary; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(300px, 1.5fr); grid-template-areas: "metrics metrics finish probabilities" "status status status status"; }
-  html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-metrics { padding: 10px 24px; }
-  html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-finish { padding: 10px 24px; }
-  html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-metric > strong { font-size: 32px; }
-  html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-finish > strong { font-size: 28px; }
-  html.platform-ipad body[data-view="session"] #sessionResumenCard :is(.session-focus-metric, .session-focus-finish) > span { margin-bottom: 4px; }
-  html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-finish > small { margin-top: 2px; font-size: 10px; }
-  html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-probabilities { padding: 12px; align-items: center; border-left: 1px solid var(--border2); }
-  html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-probability { padding: 8px 12px; gap: 4px 8px; }
-  html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-probability > strong { font-size: 18px; }
-  html.platform-ipad body[data-view="session"] #sessionResumenCard .session-focus-status { padding-block: 4px; }
-  html.platform-ipad body[data-view="session"] .ipad-today-next { padding: 12px 18px; }
-  html.platform-ipad body[data-view="session"] .ipad-today-next p { margin-top: 2px; }
-  html.platform-ipad body[data-view="session"] #sessionAulasDashboard { padding: 16px 18px; }
-  html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-topline { margin-bottom: 10px; }
-  html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-title-group h1 { margin: 2px 0; font-size: 20px; }
-  html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-pane-tabs { margin-bottom: 10px; }
-  html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-hero { padding: 10px 18px; min-height: 78px; margin-bottom: 10px; }
-  html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-hero-copy strong { margin: 4px 0 2px; font-size: 20px; }
-  html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-booking { min-height: 64px; }
-  html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-card-head { padding-block: 11px; }
-  html.platform-ipad body[data-view="session"] .ipad-today-monitor { margin-top: 10px; }
-  html.platform-ipad body[data-view="session"] .ipad-today-monitor > summary { min-height: 44px; padding-block: 10px; }
-  html.platform-ipad body[data-view="session"] .ipad-today-next { grid-area: next; }
-  html.platform-ipad body[data-view="session"] .ipad-today-access { grid-area: access; }
-  html.platform-ipad body[data-view="session"] .ipad-today-access-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  html.platform-ipad body[data-view="session"] #sessionAulasDashboard { grid-area: rooms; }
-  html.platform-ipad body[data-view="session"] .session-quick-disclosure { grid-area: quick; }
-  html.platform-ipad body[data-view="session"] #sessionJournalCard { grid-area: journal; }
-  html.platform-ipad body[data-view="session"] .ipad-today-plan { grid-area: plan; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard { grid-area: summary; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(300px, 1.5fr); grid-template-areas: "metrics metrics finish probabilities" "status status status status"; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-metrics { padding: 10px 24px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-finish { padding: 10px 24px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-metric > strong { font-size: 32px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-finish > strong { font-size: 28px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard :is(.session-focus-metric, .session-focus-finish) > span { margin-bottom: 4px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-finish > small { margin-top: 2px; font-size: 10px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-probabilities { padding: 12px; align-items: center; border-left: 1px solid var(--border2); }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-probability { padding: 8px 12px; gap: 4px 8px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-probability > strong { font-size: 18px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionResumenCard .session-focus-status { padding-block: 4px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-next { padding: 12px 18px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-next p { margin-top: 2px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard { padding: 16px 18px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-topline { margin-bottom: 10px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-title-group h1 { margin: 2px 0; font-size: 20px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-pane-tabs { margin-bottom: 10px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-hero { padding: 10px 18px; min-height: 78px; margin-bottom: 10px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-hero-copy strong { margin: 4px 0 2px; font-size: 20px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-booking { min-height: 64px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-card-head { padding-block: 11px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-monitor { margin-top: 10px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-monitor > summary { min-height: 44px; padding-block: 10px; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-next { grid-area: next; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-access { grid-area: access; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-access-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard { grid-area: rooms; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .session-quick-disclosure { grid-area: quick; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionJournalCard { grid-area: journal; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-plan { grid-area: plan; }
 }
 @media (max-width: 650px) {
-  html.platform-ipad body[data-view="session"] #view-session.active:not(.session-weekly-mode):not(.session-history-mode) { padding: 16px !important; }
-  html.platform-ipad body[data-view="session"] .ipad-today-access-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-grid { grid-template-columns: 1fr; }
-  html.platform-ipad body[data-view="session"] .ipad-today-monitor-body { grid-template-columns: 1fr; }
-  html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-mode-controls { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  html.platform-ipad body[data-view="session"] #sessionAulasDashboard .rd-hero { flex-wrap: wrap; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #view-session:is(.active, .view-swipe-neighbor):not(.session-weekly-mode):not(.session-history-mode) { padding: 16px !important; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-access-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-grid { grid-template-columns: 1fr; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) .ipad-today-monitor-body { grid-template-columns: 1fr; }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-mode-controls { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  html.platform-ipad body:is([data-view="session"], [data-swipe-preview="session"]) #sessionAulasDashboard .rd-hero { flex-wrap: wrap; }
 }
+
+/* La vista viva del gesto ya utiliza el mismo grid que la página activa. */
+html.platform-ipad body[data-swipe-preview="session"] #view-session.view-swipe-neighbor:not(.session-weekly-mode):not(.session-history-mode) { display: grid !important; }

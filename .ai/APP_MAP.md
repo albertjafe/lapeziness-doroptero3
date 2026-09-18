@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-18 · caché runtime v406
+**Estado:** CANÓNICO · actualizado 2026-09-18 · caché runtime v407
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -42,6 +42,8 @@ Orden aproximado relevante:
 `mystery-house.js` y `planning-enhancements-v3-fix.js` ya no se cargan ni se precachean.
 
 Para saber la carga exacta de una versión, mirar **`index.html` + `piano-rooms.js` + `sw.js`**.
+
+Navegación táctil horizontal: `app.js` (`viewSwipe*`, `initViewSwipeNavigation`) mueve el DOM vivo de las vistas, más clones de cabecera/nav. `data-swipe-preview` aplica a Hoy el mismo contexto de iPad que al terminar; la vista vecina se mide con su propia geometría y se reutiliza con `swipePrepared`. El resumen se refresca sin reconstruir las herramientas del cronómetro durante el gesto. Cancelar restaura el modo previo (Semana/Historial), las clases de concentración y elimina las capas. La animación de iPad responde a velocidad/recorrido y conserva el último fotograma del dedo. Estilos: bloque `view-swipe` de `styles.css` + `ipad-today.css`.
 
 ---
 
@@ -347,9 +349,9 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- Caché actual `estudio-v406`: app, `piano-rewards.js`, `habit-trophies.js`, `timer-objectives.js` y la UI/CSS de incentivos usan v406. Persistencia y su loader conservan v405; minutos/premios y sesión Deutsch v404; UX/registro de sesiones v402; preparación iPad v401; Hoy/dashboard v400; vista Deutsch, loader y refinamiento del taxímetro v399. `habit-trophies.js` se carga antes de `piano-rewards.js` para compartir el criterio de cumplimiento. Módulos no modificados conservan su URL anterior. La instalación solicita precache con `cache:'reload'` y el registro conserva la URL del SW existente.
+- Caché actual `estudio-v407`: `app.js`, `styles.css` e `ipad-today.css` usan v407; `piano-rewards.js`, `habit-trophies.js`, `timer-objectives.js` y la UI/CSS de incentivos usan v406. Persistencia y su loader conservan v405; minutos/premios y sesión Deutsch v404; UX/registro de sesiones v402; preparación iPad v401; Hoy/dashboard v400; vista Deutsch, loader y refinamiento del taxímetro v399. `habit-trophies.js` se carga antes de `piano-rewards.js` para compartir el criterio de cumplimiento. Módulos no modificados conservan su URL anterior. La instalación solicita precache con `cache:'reload'` y el registro conserva la URL del SW existente.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v406 en Ajustes; v406 es el límite de caché PWA actual.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v407 en Ajustes; v407 es el límite de caché PWA actual.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.

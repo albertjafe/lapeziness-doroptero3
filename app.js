@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-18-effort-incentives-v406';
+const APP_VERSION = '2026-09-18-live-ipad-swipe-v407';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -689,7 +689,7 @@ function updateContextHeader(name) {
   document.title = `${context.title} · Planificador de estudio`;
 }
 
-function renderSessionViewContent() {
+function renderSessionViewContent(options) {
   if (_sessionSectionMode === 'week') {
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
     return;
@@ -699,7 +699,10 @@ function renderSessionViewContent() {
     return;
   }
   renderRacha();
-  if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+  // Una previsualización de Hoy no reconstruye las herramientas del cronómetro
+  // que todavía está siguiendo el dedo en la otra mitad de la pantalla.
+  if (options?.preview) renderSessionResumen();
+  else if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
   if (typeof renderSessionJournal === 'function') renderSessionJournal();
   if (typeof renderSessionQuickStudy === 'function') renderSessionQuickStudy();
 }
@@ -1143,7 +1146,7 @@ function viewSwipeCleanup(swipe) {
   [swipe.view, swipe.neighbor].forEach(view => {
     if (!view) return;
     view.classList.remove('view-swipe-live', 'view-swipe-neighbor', 'view-swipe-settling');
-    ['transform', 'opacity', 'position', 'top', 'left', 'width', 'height', 'max-width', 'margin', 'z-index', 'pointer-events', '--view-swipe-settle-duration'].forEach(prop => view.style.removeProperty(prop));
+    ['transform', 'opacity', 'position', 'top', 'left', 'width', 'height', 'max-width', 'margin', 'box-sizing', 'z-index', 'pointer-events', '--view-swipe-settle-duration'].forEach(prop => view.style.removeProperty(prop));
   });
   [swipe.header, swipe.neighborHeader, swipe.nav, swipe.neighborNav].forEach(layer => layer?.remove());
   if (swipe.previewCronoState && !swipe.keepCronoPreview) {
@@ -1152,11 +1155,21 @@ function viewSwipeCleanup(swipe) {
     Object.entries(state.bodyClasses).forEach(([name, active]) => document.body.classList.toggle(name, active));
   }
   document.body.classList.remove('view-swipe-dragging', 'view-swipe-settling');
+  document.body.removeAttribute('data-swipe-preview');
+  if (swipe.previewSessionMode && !swipe.keepSessionPreview) {
+    _sessionSectionMode = swipe.previewSessionMode;
+    syncSessionSectionModeDom();
+    renderSessionViewContent({ preview: true });
+  }
 }
 
 function viewSwipeFreezeActive(swipe, rect) {
   if (swipe.viewFrozen || !swipe.view) return;
   swipe.viewFrozen = true;
+  if (document.documentElement.classList.contains('platform-ipad') && swipe.view.id === 'view-cronometro') {
+    // También al cancelar, la sesión permanece en su posición sin otra entrada.
+    swipe.view.classList.add('view-swipe-arrived');
+  }
   swipe.view.style.position = 'fixed';
   swipe.view.style.top = rect.top + 'px';
   swipe.view.style.left = rect.left + 'px';
@@ -1269,10 +1282,11 @@ function viewSwipePrepareNeighbor(swipe, direction) {
   if (swipe.neighbor) {
     const old = swipe.neighbor;
     old.classList.remove('view-swipe-neighbor', 'view-swipe-settling');
-    ['transform', 'position', 'top', 'left', 'width', 'height', 'max-width', 'margin', 'z-index', 'pointer-events', '--view-swipe-settle-duration'].forEach(prop => old.style.removeProperty(prop));
+    ['transform', 'position', 'top', 'left', 'width', 'height', 'max-width', 'margin', 'box-sizing', 'z-index', 'pointer-events', '--view-swipe-settle-duration'].forEach(prop => old.style.removeProperty(prop));
   }
   const nextIndex = swipe.index + direction;
   if (nextIndex < 0 || nextIndex >= SWIPE_VIEW_ORDER.length) {
+    document.body.removeAttribute('data-swipe-preview');
     swipe.neighbor = null;
     swipe.neighborDirection = direction;
     swipe.neighborHeader?.remove();
@@ -1289,6 +1303,12 @@ function viewSwipePrepareNeighbor(swipe, direction) {
   const rect = swipe.view.getBoundingClientRect();
   viewSwipeFreezeActive(swipe, rect);
   swipe.width = Math.max(1, window.innerWidth);
+  document.body.setAttribute('data-swipe-preview', nextName);
+  if (nextName === 'session') {
+    swipe.previewSessionMode ??= _sessionSectionMode;
+    _sessionSectionMode = 'today';
+    syncSessionSectionModeDom();
+  }
   viewSwipePrepareChrome(swipe, nextName, direction);
   // Medimos la cabecera vecina real ya clonada. Así una cabecera de dos líneas
   // (Sesiones) y otra de una (Obras) reservan exactamente su altura definitiva.
@@ -1298,11 +1318,16 @@ function viewSwipePrepareNeighbor(swipe, direction) {
   swipe.neighbor = neighbor;
   swipe.neighborDirection = direction;
   neighbor.classList.add('view-swipe-neighbor');
+  viewSwipePrepareCronoPreview(swipe, nextName === 'cronometro');
+  // Medimos el DOM vivo con su geometría normal antes de fijarlo al lienzo.
+  // El cronómetro puede incluir padding y superar el alto del viewport.
+  const naturalRect = neighbor.getBoundingClientRect();
   neighbor.style.position = 'fixed';
   neighbor.style.top = targetTop + 'px';
-  neighbor.style.left = rect.left + 'px';
-  neighbor.style.width = rect.width + 'px';
-  neighbor.style.height = Math.max(rect.height, window.innerHeight - targetTop) + 'px';
+  neighbor.style.left = naturalRect.left + 'px';
+  neighbor.style.width = naturalRect.width + 'px';
+  neighbor.style.height = nextName === 'cronometro' ? naturalRect.height + 'px' : 'auto';
+  neighbor.style.boxSizing = 'border-box';
   neighbor.style.maxWidth = 'none';
   neighbor.style.margin = '0';
   neighbor.style.zIndex = '301';
@@ -1310,8 +1335,7 @@ function viewSwipePrepareNeighbor(swipe, direction) {
   neighbor.style.transform = 'translate3d(' + (direction * swipe.width) + 'px,0,0)';
   // Renderizamos una sola vez, ya con la vista visible fuera del lienzo. Al
   // completar el gesto showView reutilizara este mismo DOM sin reconstruirlo.
-  viewSwipePrepareCronoPreview(swipe, nextName === 'cronometro');
-  if (nextName === 'session') renderSessionViewContent();
+  if (nextName === 'session') renderSessionViewContent({ preview: true });
   if (nextName === 'obras') renderObras();
   return true;
 }
@@ -1342,6 +1366,11 @@ function viewSwipeSettleDuration(swipe, commit) {
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return 1;
   const progress = Math.min(1, Math.abs(swipe.dx || 0) / Math.max(1, swipe.width));
   const speed = Math.min(1.8, Math.abs(swipe.velocity || 0));
+  if (document.documentElement.classList.contains('platform-ipad')) {
+    const distance = (commit ? 1 - progress : progress) * swipe.width;
+    // La duración responde al recorrido pendiente y a la velocidad de salida.
+    return Math.round(Math.max(180, Math.min(360, distance / Math.max(.8, speed) * .65 + 110)));
+  }
   const duration = commit
     ? 405 - (speed * 72) + ((1 - progress) * 30)
     : 285 + (progress * 90);
@@ -1349,11 +1378,15 @@ function viewSwipeSettleDuration(swipe, commit) {
 }
 
 function viewSwipeSettle(swipe, commit, nextView) {
-  _viewSwipe = null;
   if (swipe.raf) {
     cancelAnimationFrame(swipe.raf);
     swipe.raf = null;
   }
+  // Pinta el último movimiento antes de iniciar la inercia: no se pierde el
+  // fotograma que aún esperaba requestAnimationFrame al levantar el dedo.
+  viewSwipeRenderFrame(swipe);
+  swipe.view.getBoundingClientRect();
+  _viewSwipe = null;
   document.body.classList.remove('view-swipe-dragging');
   document.body.classList.add('view-swipe-settling');
   swipe.view.classList.add('view-swipe-settling');
@@ -1386,6 +1419,7 @@ function viewSwipeSettle(swipe, commit, nextView) {
       // preparado antes del gesto, de modo que no hay un segundo render visible.
       document.body.classList.add('view-swipe-commit');
       if (nextView === 'cronometro') swipe.keepCronoPreview = true;
+      if (nextView === 'session') swipe.keepSessionPreview = true;
       showView(nextView, { swipePrepared: true });
       if (nextView !== 'cronometro' && typeof adjustTopPadding === 'function') adjustTopPadding();
     }
@@ -1486,6 +1520,7 @@ function initViewSwipeNavigation() {
       }
       document.body.classList.add('view-swipe-dragging');
       swipe.view?.classList.add('view-swipe-live');
+      if (swipe.view) viewSwipeFreezeActive(swipe, swipe.view.getBoundingClientRect());
     }
     if (swipe.intent !== 'horizontal') return;
     event.preventDefault();
