@@ -36,8 +36,9 @@ export function cloudAppHarness(local,remote,options={}){
   }};
   function boot(){
       ctx={db:JSON.parse(storage.get('db')),DB_KEY:'db',SYNC_META_KEY:'meta',DocumentSyncCore,SyncCore,DataCore,
-        Date,JSON,console,_syncInFlight:false,_syncPromise:null,_syncTimer:null,
-        localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},getSB:()=>client,
+        Date,JSON,console,_syncInFlight:false,_syncPromise:null,_syncTimer:null,_cloudSyncConnected:null,
+        LocalSaveResilience:options.resilience,
+        localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>{if(options.quota&&k==='db')throw Error('QuotaExceededError');storage.set(k,v);}},getSB:()=>client,
         setTimeout:()=>++queued,clearTimeout(){},showSyncIndicator(){},refreshStudyViews(){}};
       vm.createContext(ctx);vm.runInContext(localFunctions+'\n'+cloudFunctions,ctx);
     return ctx;

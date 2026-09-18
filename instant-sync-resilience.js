@@ -93,11 +93,16 @@
     const original = current;
     const wrapped = createSingleFlight(original, {
       before: () => state('Sincronizando…'),
-      success: () => {
+      success: value => {
+        if (root._cloudSyncConnected === false) {
+          resetRetry();
+          state('Guardado local · conecta tu cuenta');
+          return;
+        }
         let dirty = false;
         try { dirty = root.SyncCore.isDirty(JSON.parse(root.localStorage.getItem('alberto_sync_v1') || '{}')); } catch (_) { dirty = true; }
-        if (dirty) { state('⚠ pendiente de sincronizar'); scheduleRetry(); }
-        else { resetRetry(); state('✓ Supabase'); }
+        if (dirty || value === false) { if (value !== false) state('⚠ pendiente de sincronizar'); scheduleRetry(); }
+        else { resetRetry(); state(root._cloudSyncConnected === true ? '✓ Supabase' : 'Guardado local · conexión sin verificar'); }
       },
       error: () => {
         state('⚠ pendiente de sincronizar');

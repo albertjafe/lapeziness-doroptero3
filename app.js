@@ -1,10 +1,13 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-18-effort-wallet-recovery-v404';
+const APP_VERSION = '2026-09-18-cloud-sync-recovery-v405';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
+var _authSyncSubscription = null;
+var _authSyncTimer = null;
+var _cloudSyncConnected = null;
 var _saveTimeout = null;
 const SYNC_META_KEY = 'alberto_sync_v1';
 let _syncTimer = null;
@@ -395,11 +398,30 @@ function _mergeStudyHistory(base, other) {
   return _applyPulseDeletedIds(merged);
 }
 
+async function _persistCloudDocument(snapshot) {
+  if (typeof LocalSaveResilience !== 'undefined' && typeof LocalSaveResilience.persistSnapshot === 'function') {
+    if (await LocalSaveResilience.persistSnapshot(snapshot) === false) throw new Error('Local snapshot not durable');
+  } else {
+    localStorage.setItem(DB_KEY, JSON.stringify(snapshot));
+  }
+}
+
+function _cloudSyncErrorText(error) {
+  if (error?.status === 401 || error?.name === 'AuthSessionMissingError') {
+    _cloudSyncConnected = false;
+    return 'Guardado local · vuelve a conectar tu cuenta';
+  }
+  if (error?.code === '57014') return 'La subida agotó el tiempo · pendiente';
+  return '⚠ error de sincronización · pendiente';
+}
+
 async function syncToCloud(snapshotDb, revision) {
   try {
     const sb = getSB();
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) { showSyncIndicator('Guardado en este dispositivo'); return false; }
+    const { data: { user }, error: authError } = await sb.auth.getUser();
+    if (authError) throw authError;
+    _cloudSyncConnected = !!user;
+    if (!user) { showSyncIndicator('Guardado local · conecta tu cuenta'); return false; }
     const snapshot = JSON.parse(JSON.stringify(snapshotDb || db));
     for (let attempt = 0; attempt < 4; attempt++) {
       const read = await sb.from('user_data').select('data,updated_at').eq('id',user.id).maybeSingle();
@@ -419,14 +441,18 @@ async function syncToCloud(snapshotDb, revision) {
       DocumentSyncCore.assign(db, DocumentSyncCore.mergeRemote(write.data.data, db));
       const accepted = Math.max(Number(db._localRevision)||0, meta.localRevision);
       db._localRevision = accepted + (pending ? 1 : 0);
-      localStorage.setItem(DB_KEY, JSON.stringify(db));
       _rememberLocalDocument();
-      _writeSyncMeta({ localRevision:db._localRevision, dirtyRevision:db._localRevision, lastSyncedRevision:accepted });
-      showSyncIndicator(pending ? 'Sincronizando…' : '✓ sincronizado');
+      await _persistCloudDocument(db);
+      // IndexedDB is asynchronous: edits saved during this write remain dirty.
+      const durableMeta = _readSyncMeta();
+      const localRevision = Math.max(Number(db._localRevision)||0, durableMeta.localRevision);
+      const stillPending = pending || durableMeta.dirtyRevision > accepted;
+      _writeSyncMeta({ localRevision, dirtyRevision:localRevision, lastSyncedRevision:accepted });
+      showSyncIndicator(stillPending ? 'Sincronizando…' : '✓ sincronizado');
       return true;
     }
     throw new Error('Concurrent changes: retry required');
-  } catch(e) { showSyncIndicator('⚠ Sin conexión · pendiente'); return false; }
+  } catch(e) { showSyncIndicator(_cloudSyncErrorText(e)); return false; }
 }
 
 function enqueueCloudSync(options) {
@@ -454,10 +480,11 @@ async function syncPendingCloudChanges() {
           if (raw) snapshot = _mergeStudyHistory(snapshot, JSON.parse(raw));
         } catch(e) {}
         const ok = await syncToCloud(snapshot, revision);
-        if (!ok) break;
+        if (!ok) return false;
         const after = _readSyncMeta();
         if (!SyncCore.isDirty(after)) break;
       }
+      return true;
     } finally {
       _syncInFlight = false;
       _syncPromise = null;
@@ -469,8 +496,10 @@ async function syncPendingCloudChanges() {
 async function loadFromCloud() {
   try {
     const sb = getSB();
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return false;
+    const { data: { user }, error: authError } = await sb.auth.getUser();
+    if (authError) throw authError;
+    _cloudSyncConnected = !!user;
+    if (!user) { showSyncIndicator('Guardado local · conecta tu cuenta'); return false; }
 
     showSyncIndicator('↓ cargando…');
     const { data, error } = await sb.from('user_data')
@@ -492,15 +521,18 @@ async function loadFromCloud() {
     const revision = Math.max(meta.localRevision, meta.dirtyRevision, meta.lastSyncedRevision, Number(merged._localRevision)||0) + (needsUpload ? 1 : 0);
     DocumentSyncCore.assign(db,merged);
     db._localRevision = revision;
-    localStorage.setItem(DB_KEY, JSON.stringify(db));
     _rememberLocalDocument();
-    _writeSyncMeta({ localRevision:revision, dirtyRevision:revision, lastSyncedRevision:needsUpload ? meta.lastSyncedRevision : revision });
-    if (needsUpload) enqueueCloudSync({ immediate:true });
+    await _persistCloudDocument(db);
+    const durableMeta = _readSyncMeta();
+    const localRevision = Math.max(revision, durableMeta.localRevision, Number(db._localRevision)||0);
+    const pending = needsUpload || durableMeta.dirtyRevision > revision;
+    _writeSyncMeta({ localRevision, dirtyRevision:localRevision, lastSyncedRevision:pending ? meta.lastSyncedRevision : revision });
+    if (pending) enqueueCloudSync({ immediate:true });
     else showSyncIndicator('✓ sincronizado');
     return !!remote;
 
   } catch(e) {
-    showSyncIndicator('offline');
+    showSyncIndicator(_cloudSyncErrorText(e));
     return false;
   }
 }
@@ -19690,6 +19722,26 @@ async function onAuthSuccess() {
   }
 }
 
+function _installAuthSync(sb) {
+  if (_authSyncSubscription) return;
+  const listener = sb.auth.onAuthStateChange((event, session) => {
+    // Supabase holds its auth lock here. All client calls must run later.
+    if (event === 'SIGNED_OUT') {
+      if (_authSyncTimer) clearTimeout(_authSyncTimer);
+      _authSyncTimer = null;
+      _cloudSyncConnected = false;
+      showSyncIndicator('Guardado local · conecta tu cuenta');
+    } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+      if (_authSyncTimer) clearTimeout(_authSyncTimer);
+      _authSyncTimer = setTimeout(() => {
+        _authSyncTimer = null;
+        Promise.resolve(onAuthSuccess()).catch(error => showSyncIndicator(_cloudSyncErrorText(error)));
+      }, 0);
+    }
+  });
+  _authSyncSubscription = listener?.data?.subscription || true;
+}
+
 async function initApp() {
   // Hide splash after a guaranteed minimum display time.
   setTimeout(function() {
@@ -19779,25 +19831,23 @@ async function initApp() {
   try {
     if (typeof supabase === 'undefined') throw new Error('Supabase not loaded');
     const sb = getSB();
+    _installAuthSync(sb);
 
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
+      if (_authSyncTimer) clearTimeout(_authSyncTimer);
+      _authSyncTimer = null;
       await onAuthSuccess();
       return;
     }
+    _cloudSyncConnected = false;
+    showSyncIndicator('Guardado local · conecta tu cuenta');
 
     // Si la instalación está vacía y no hay credenciales válidas, ofrecer
     // recuperación cloud
     if (_instalacionVacia) {
       setTimeout(() => openModal('modalCloudSync'), 400);
     }
-
-    // En cualquier caso, escuchar futuros cambios de auth
-    sb.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        await onAuthSuccess();
-      }
-    });
 
   } catch(e) {
     console.warn('Auth/sync no disponible, modo local:', e.message);

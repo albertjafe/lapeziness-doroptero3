@@ -4,12 +4,13 @@ import {createRequire} from 'node:module';
 import {describe,it,expect} from 'vitest';
 const require=createRequire(import.meta.url),Doc=require('../../document-sync-core.js');
 const source=readFileSync('app.js','utf8');
-const syncSource=source.slice(source.indexOf('async function syncToCloud('),source.indexOf('\nfunction enqueueCloudSync('));
+const syncSource=source.slice(source.indexOf('async function _persistCloudDocument('),source.indexOf('\nfunction enqueueCloudSync('));
 function harness(local,remote,options={}){
   let row=structuredClone(remote),writes=0,reads=0,meta={localRevision:2,dirtyRevision:2,lastSyncedRevision:1};
   const store=new Map([['db',JSON.stringify(local)]]);
   const ctx={db:structuredClone(local),DocumentSyncCore:Doc,DB_KEY:'db',console,Date,JSON,
-    localStorage:{setItem:(k,v)=>store.set(k,v)},_mergeStudyHistory:(a,b)=>Doc.merge(b,a),
+    _cloudSyncConnected:null, LocalSaveResilience:options.resilience,
+    localStorage:{setItem:(k,v)=>{if(options.quota&&k==='db')throw Error('QuotaExceededError');store.set(k,v);}},_mergeStudyHistory:(a,b)=>Doc.merge(b,a),
     _readSyncMeta:()=>meta,_writeSyncMeta:v=>{meta=v;},_rememberLocalDocument(){},showSyncIndicator(){}};
   const client={auth:{getUser:async()=>({data:{user:{id:'u'}}})},from:()=>{
     let operation='read',value=null,expected=null;
@@ -70,5 +71,32 @@ describe('actual app upload protocol against asynchronous Supabase responses',()
   it('retrying an acknowledged timer upload does not duplicate the record',async()=>{
     const d={...old,sessionPlants:[{id:'timer',mins:25}]};const h=harness(d,{data:d,updated_at:'v1'});
     await h.run();await h.run();expect(h.state().row.data.sessionPlants).toHaveLength(1);
+  });
+  it('acknowledges an upload after its full snapshot is durable despite localStorage quota',async()=>{
+    let durable;
+    const h=harness(old,{data:old,updated_at:'v1'},{quota:true,resilience:{persistSnapshot:async snapshot=>{durable=structuredClone(snapshot);return true;}}});
+    expect(await h.run()).toBe(true);
+    expect(durable.obras).toEqual(old.obras);
+    expect(h.state().meta.dirtyRevision).toBe(h.state().meta.lastSyncedRevision);
+  });
+  it('a new session during asynchronous persistence remains pending for another upload',async()=>{
+    let enter,release;
+    const started=new Promise(resolve=>{enter=resolve;});
+    const gate=new Promise(resolve=>{release=resolve;});
+    const h=harness(old,{data:old,updated_at:'v1'},{resilience:{persistSnapshot:async()=>{enter();await gate;return true;}}});
+    const pending=h.run();await started;
+    h.ctx.db.sessionPlants.push({id:'during-indexeddb',mins:15});
+    h.ctx.db._localRevision++;
+    h.ctx._writeSyncMeta({localRevision:h.ctx.db._localRevision,dirtyRevision:h.ctx.db._localRevision,lastSyncedRevision:1});
+    release();expect(await pending).toBe(true);
+    expect(h.state().meta.dirtyRevision).toBeGreaterThan(h.state().meta.lastSyncedRevision);
+    expect(h.ctx.db.sessionPlants[0].id).toBe('during-indexeddb');
+    await h.ctx.syncToCloud(structuredClone(h.ctx.db),h.state().meta.dirtyRevision);
+    expect(h.state().row.data.sessionPlants).toHaveLength(1);
+  });
+  it('does not acknowledge a write whose local durable fallback failed',async()=>{
+    const h=harness(old,{data:old,updated_at:'v1'},{resilience:{persistSnapshot:async()=>false}});
+    expect(await h.run()).toBe(false);
+    expect(h.state().meta.dirtyRevision).toBeGreaterThan(h.state().meta.lastSyncedRevision);
   });
 });

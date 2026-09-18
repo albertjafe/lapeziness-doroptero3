@@ -92,6 +92,16 @@
     return pending;
   }
 
+  function persistSnapshot(snapshot){
+    const frozen=clone(snapshot);
+    try {
+      localStorage.setItem(DB_KEY,JSON.stringify(frozen));
+      return Promise.resolve(true);
+    } catch(error) {
+      return rescueCurrentSnapshot(frozen);
+    }
+  }
+
   function install(){
     if(typeof saveLocalNow!=='function' || saveLocalNow.__metadataTolerantV2) return false;
     const patched=function(){
@@ -111,6 +121,8 @@
         pendingMeta=nextMeta||pendingMeta;
         console.warn('[sync] localStorage lleno/no disponible; usando IndexedDB',error);
         rescueCurrentSnapshot(clone(live));
+        if(typeof _rememberLocalDocument === 'function') _rememberLocalDocument();
+        try { _writeSyncMeta(nextMeta); pendingMeta=null; } catch(metaError) {}
         try { setTimeout(retryMeta,250); } catch(e) {}
         return Object.assign({},nextMeta||{}, {recovered:true,indexedDbFallback:true,localStorageFailed:true});
       }
@@ -203,6 +215,7 @@
   }
 
   window.LocalSaveResilience={
+    persistSnapshot,
     retryMeta,
     flush:()=>rescuePromise || Promise.resolve(true),
     recoverSnapshot,
