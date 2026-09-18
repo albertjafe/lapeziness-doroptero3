@@ -89,6 +89,7 @@ Migraciones Supabase importantes para este tema:
 - `202609030003_task_sync_revision_guard.sql`
 - `202609040004_reduce_user_data_sync_contention.sql`
 - `20260904123621_conservative_document_sync.sql`: merge JSON recursivo, timestamp/revisión monotónicos y aplicación final de tombstones tras las guardas históricas. Aplicada en producción el 2026-09-04 con autorización explícita, backup previo y comprobación de cero cambios en `user_data`. Registro: `docs/DEPLOY_V344_2026-09-04.md`.
+- `20260918202404_optimize_document_record_merge.sql`: conserva la semántica de `document_merge`, pero agrupa registros por identidad y agrega el resultado una vez, evitando reconstruir un índice JSON creciente por cada registro. Aplicada en Supabase el 2026-09-18 sin modificar `user_data`; el caso real de 3,18 MB pasó de 7,83 s a 1,73 s (fusión), y fusión más protección de bloques/bajas midió 4,19 s frente al timeout de cuenta de 8 s. Los casos PostgreSQL prueban relojes, campos desconocidos, duplicados, bajas, CAS e historial grande. El frontend sigue en v410; una copia pendiente del iPad todavía debe subir para que otro dispositivo reciba esas sesiones.
 
 **Revisiones:** una revisión vieja no debe sobrescribir una más nueva. Si se cambia sincronización, revisar cliente **y** guardas SQL.
 

@@ -14,6 +14,9 @@ beforeAll(async()=>{
     create table public.user_data_backups(backup_id bigserial primary key,user_id text,data jsonb,source_updated_at timestamptz,backed_up_at timestamptz);`);
   await pg.exec(readFileSync(new URL('../fixtures/legacy-task-merge.sql',import.meta.url),'utf8'));
   for(const name of ['202609010002_protect_study_structure_sync.sql','202609010003_harden_study_movement_recency_merge.sql','202609020002_preserve_planning_events.sql','202609030003_task_sync_revision_guard.sql','202609040004_reduce_user_data_sync_contention.sql','20260904123621_conservative_document_sync.sql']) await pg.exec(sql(name));
+  const original=sql('20260904123621_conservative_document_sync.sql');
+  await pg.exec(original.slice(original.indexOf('create or replace function public.document_merge('),original.indexOf('create or replace function public.preserve_document_fields_before_update(')).replaceAll('public.document_merge(', 'public.document_merge_before_optimization('));
+  await pg.exec(sql('20260918202404_optimize_document_record_merge.sql'));
   // The helper's original migration predates this checkout; its deployed
   // definition is captured as a fixture, without data or production mutations.
   await pg.exec(`create trigger trg_00_preserve_crono_tasks before update of data on user_data for each row execute function preserve_crono_tasks_on_user_data_update();
@@ -25,6 +28,22 @@ async function write(id,a,b){
   return (await pg.query('update user_data set data=$2 where id=$1 returning data',[id,JSON.stringify(b)])).rows[0].data;
 }
 describe('real PostgreSQL migration with existing protection triggers',()=>{
+  it('folds duplicate identities exactly like the previous server function',async()=>{
+    const left=[{id:'a',name:'Primero',extra:'conservar'},{id:'b',name:'Segundo'},{id:'a',name:'Duplicado sin reloj'}];
+    const right=[{id:'b',name:'Renombrado',_fieldClock:{name:'2026-09-18T20:00:00Z'}},{id:'c',name:'Nuevo'},{id:'a',hours:6}];
+    const {merged:result,previous}=(await pg.query('select public.document_merge($1::jsonb,$2::jsonb) as merged, public.document_merge_before_optimization($1::jsonb,$2::jsonb) as previous',[JSON.stringify(left),JSON.stringify(right)])).rows[0];
+    expect(result).toEqual(previous);expect(result.map(r=>r.id)).toEqual(['a','b','c']);
+    expect(result[0]).toMatchObject({name:'Primero',extra:'conservar',hours:6});expect(result[1].name).toBe('Renombrado');
+  });
+  it('uploads a large restored history under the API timeout with the real triggers',async()=>{
+    const a={_localRevision:100,forestPlants:Array.from({length:7426},(_,i)=>({id:'forest-'+i,mins:30,startedAt:'2026-08-01T08:00:00Z',unknownHistory:'conservar '.repeat(40)})),
+      sessionPlants:Array.from({length:833},(_,i)=>({id:'run-'+i,mins:30,startedAt:'2026-09-01T08:00:00Z'})),obras:[]};
+    const b=structuredClone(a);b.sessionPlants.push({id:'new-six-hours',mins:360,startedAt:'2026-09-18T08:00:00Z'});
+    const began=performance.now(),result=await write('restored-history',a,b);
+    expect(performance.now()-began).toBeLessThan(8000);
+    const ordered=rows=>[...rows].sort((x,y)=>x.id.localeCompare(y.id));
+    expect(ordered(result.sessionPlants)).toEqual(ordered(b.sessionPlants));expect(result.forestPlants).toEqual(a.forestPlants);
+  },15000);
   it('preserves Deutsch records through old-client writes and merges offline sessions with a single daily cap',async()=>{
     const R = require('../../german-rewards.js');
     const a={obras:[{id:'piano',name:'Sonata'}],germanStudy:{version:1,goals:[{id:'goal',amount:150}],materials:[{id:'pack',cards:[{id:'card',front:'Hallo',back:'Hola'}]}],
