@@ -126,7 +126,7 @@ function loadPianoCompanion(id, src, cssId, cssHref) {
 (function loadPersistenceResilience() {
   'use strict';
   loadPianoCompanion('localSaveResilienceScript', './local-save-resilience.js?v=405');
-  if (!window.InstantSyncResilience) loadPianoCompanion('instantSyncResilienceScript', './instant-sync-resilience.js?v=405');
+  if (!window.InstantSyncResilience) loadPianoCompanion('instantSyncResilienceScript', './instant-sync-resilience.js?v=410');
 }());
 
 /* Pasajes difíciles: módulo compañero cargado después de app.js para poder

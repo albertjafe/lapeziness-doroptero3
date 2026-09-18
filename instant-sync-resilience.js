@@ -10,6 +10,8 @@
   let retryTimer = null;
   let installed = false;
   let installTimer = null;
+  let refreshPending = false;
+  let refreshRetryTimer = null;
 
   function state(message) {
     try {
@@ -69,9 +71,24 @@
     retryTimer = null;
   }
 
-  function requestImmediateSync() {
+  function requestImmediateSync(options) {
     if (!root) return;
     try {
+      if (options?.now && typeof root.syncPendingCloudChanges === 'function') {
+        Promise.resolve(root.syncPendingCloudChanges()).catch(() => {});
+        return;
+      }
+      if ((options?.refresh || refreshPending) && typeof root.requestCloudRefresh === 'function') {
+        refreshPending = true;
+        Promise.resolve(root.requestCloudRefresh()).then(ok => {
+          refreshPending = !ok;
+          if (ok && refreshRetryTimer) { clearTimeout(refreshRetryTimer); refreshRetryTimer = null; }
+          if (!ok && root._cloudSyncConnected !== false && !refreshRetryTimer) {
+            refreshRetryTimer = setTimeout(() => { refreshRetryTimer = null; requestImmediateSync({ refresh:true }); }, 10000);
+          }
+        }).catch(() => { state('⚠ pendiente de sincronizar'); scheduleRetry(); });
+        return;
+      }
       if (typeof root.enqueueCloudSync === 'function') {
         root.enqueueCloudSync({ immediate: true, source: 'instant-sync-resilience' });
         return;
@@ -155,13 +172,33 @@
   }
 
   if (root && typeof root.addEventListener === 'function') {
-    root.addEventListener('online', requestImmediateSync, { passive: true });
-    root.addEventListener('pageshow', requestImmediateSync, { passive: true });
+    const refresh = () => requestImmediateSync({ refresh:true });
+    root.addEventListener('online', refresh, { passive: true });
+    root.addEventListener('pageshow', refresh, { passive: true });
+    root.addEventListener('focus', refresh, { passive: true });
+    root.addEventListener('pagehide', () => requestImmediateSync({ now:true }), { passive:true });
   }
   if (root && root.document && typeof root.document.addEventListener === 'function') {
     root.document.addEventListener('visibilitychange', () => {
-      if (root.document.visibilityState === 'visible') requestImmediateSync();
+      if (root.document.visibilityState === 'visible') requestImmediateSync({ refresh:true });
+      else requestImmediateSync({ now:true });
     }, { passive: true });
+    setInterval(() => {
+      if (root.document.visibilityState === 'visible' && root._cloudSyncConnected === true)
+        requestImmediateSync({ refresh:true });
+    }, 30000);
+    const indicator = root.document.getElementById('syncIndicator');
+    if (indicator) {
+      indicator.style.pointerEvents = 'auto';
+      const check = () => {
+        if (root._cloudSyncConnected === false) root.openModal?.('modalCloudSync');
+        else requestImmediateSync({ refresh:true });
+      };
+      indicator.addEventListener('click', check);
+      indicator.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); check(); }
+      });
+    }
   }
 
   if (root && root.document) {

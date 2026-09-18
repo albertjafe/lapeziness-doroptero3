@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-18-balanced-effort-v408';
+const APP_VERSION = '2026-09-18-bidirectional-sync-v410';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -16,6 +16,21 @@ let _syncPromise = null;
 const SUPABASE_URL = 'https://fexfeekifzgszluemihs.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_Elra9S5SZVWELp6MvKSyoA_iBW5KqD2';
 
+async function cloudFetch(input, options = {}) {
+  const controller = new AbortController();
+  const signal = options.signal || (typeof Request !== 'undefined' && input instanceof Request ? input.signal : null);
+  const cancel = () => controller.abort(signal?.reason);
+  if (signal?.aborted) cancel();
+  else signal?.addEventListener('abort', cancel, { once:true });
+  const timer = setTimeout(() => controller.abort(), 20000);
+  try {
+    return await fetch(input, { ...options, cache:'no-store', signal:controller.signal });
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', cancel);
+  }
+}
+
 function getSB() {
   if (_sbClient) return _sbClient;
   // Check supabase global is available
@@ -23,6 +38,7 @@ function getSB() {
     throw new Error('La librería de Supabase no cargó. Comprueba tu conexión a internet.');
   }
   _sbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    global: { fetch:cloudFetch },
     auth: {
       persistSession: true,
       storageKey: 'piano_auth_v1',
@@ -416,17 +432,34 @@ function _cloudSyncErrorText(error) {
   return '⚠ error de sincronización · pendiente';
 }
 
+var _cloudOperationTail = Promise.resolve();
+var _cloudRefreshPromise = null;
+var _cloudRefreshAgain = false;
+var _lastCloudSnapshot = null;
+var _cloudAuthEpoch = 0;
+function _runCloudOperation(operation) {
+  const next = _cloudOperationTail.catch(() => {}).then(operation);
+  _cloudOperationTail = next.catch(() => {});
+  return next;
+}
 async function syncToCloud(snapshotDb, revision) {
+  const epoch = _cloudAuthEpoch;
+  return _runCloudOperation(() => epoch === _cloudAuthEpoch ? _syncToCloudNow(snapshotDb, revision) : false);
+}
+async function _syncToCloudNow(snapshotDb, revision) {
+  const authEpoch = _cloudAuthEpoch;
   try {
     const sb = getSB();
     const { data: { user }, error: authError } = await sb.auth.getUser();
     if (authError) throw authError;
+    if (authEpoch !== _cloudAuthEpoch) return false;
     _cloudSyncConnected = !!user;
     if (!user) { showSyncIndicator('Guardado local · conecta tu cuenta'); return false; }
     const snapshot = JSON.parse(JSON.stringify(snapshotDb || db));
     for (let attempt = 0; attempt < 4; attempt++) {
       const read = await sb.from('user_data').select('data,updated_at').eq('id',user.id).maybeSingle();
       if (read.error) throw read.error; // A failed read is NOT an empty account.
+      if (authEpoch !== _cloudAuthEpoch) return false;
       const remote = read.data;
       const merged = DocumentSyncCore.mergeRemote(remote?.data || {}, snapshot);
       merged._localRevision = Math.max(Number(merged._localRevision)||0, Number(remote?.data?._localRevision)||0) + 1;
@@ -437,6 +470,7 @@ async function syncToCloud(snapshotDb, revision) {
         : await sb.from('user_data').insert(row).select('data,updated_at').maybeSingle();
       if (write.error) { if (write.error.code === '23505') continue; throw write.error; }
       if (!write.data) continue; // CAS conflict: reread and merge, never overwrite.
+      if (authEpoch !== _cloudAuthEpoch) return false;
       const meta = _readSyncMeta();
       const pending = meta.dirtyRevision > revision;
       DocumentSyncCore.assign(db, DocumentSyncCore.mergeRemote(write.data.data, db));
@@ -446,9 +480,12 @@ async function syncToCloud(snapshotDb, revision) {
       await _persistCloudDocument(db);
       // IndexedDB is asynchronous: edits saved during this write remain dirty.
       const durableMeta = _readSyncMeta();
+      if (authEpoch !== _cloudAuthEpoch) return false;
       const localRevision = Math.max(Number(db._localRevision)||0, durableMeta.localRevision);
       const stillPending = pending || durableMeta.dirtyRevision > accepted;
       _writeSyncMeta({ localRevision, dirtyRevision:localRevision, lastSyncedRevision:accepted });
+      _lastCloudSnapshot = { userId:user.id, updatedAt:write.data.updated_at };
+      if (typeof refreshStudyViews === 'function') refreshStudyViews();
       showSyncIndicator(stillPending ? 'Sincronizando…' : '✓ sincronizado');
       return true;
     }
@@ -494,19 +531,32 @@ async function syncPendingCloudChanges() {
   return _syncPromise;
 }
 
-async function loadFromCloud() {
+async function loadFromCloud(options = {}) {
+  const epoch = _cloudAuthEpoch;
+  return _runCloudOperation(() => epoch === _cloudAuthEpoch ? _loadFromCloudNow(options) : false);
+}
+async function _loadFromCloudNow(options = {}) {
+  const authEpoch = _cloudAuthEpoch;
   try {
     const sb = getSB();
     const { data: { user }, error: authError } = await sb.auth.getUser();
     if (authError) throw authError;
+    if (authEpoch !== _cloudAuthEpoch) return false;
     _cloudSyncConnected = !!user;
     if (!user) { showSyncIndicator('Guardado local · conecta tu cuenta'); return false; }
 
-    showSyncIndicator('↓ cargando…');
+    if (options.probe && _lastCloudSnapshot?.userId === user.id && _lastCloudSnapshot.updatedAt) {
+      const probe = await sb.from('user_data').select('updated_at').eq('id', user.id).maybeSingle();
+      if (probe.error) throw probe.error;
+      if (authEpoch !== _cloudAuthEpoch) return false;
+      if (probe.data?.updated_at === _lastCloudSnapshot.updatedAt) return true;
+    }
+    showSyncIndicator('↓ actualizando desde la nube…');
     const { data, error } = await sb.from('user_data')
       .select('data,updated_at').eq('id', user.id).maybeSingle();
 
     if (error) throw error; // An unavailable row is not an empty account.
+    if (authEpoch !== _cloudAuthEpoch) return false;
     if (!db || typeof db !== 'object' || Array.isArray(db)) return false;
     let local = db;
     try {
@@ -525,9 +575,12 @@ async function loadFromCloud() {
     _rememberLocalDocument();
     await _persistCloudDocument(db);
     const durableMeta = _readSyncMeta();
+    if (authEpoch !== _cloudAuthEpoch) return false;
     const localRevision = Math.max(revision, durableMeta.localRevision, Number(db._localRevision)||0);
     const pending = needsUpload || durableMeta.dirtyRevision > revision;
     _writeSyncMeta({ localRevision, dirtyRevision:localRevision, lastSyncedRevision:pending ? meta.lastSyncedRevision : revision });
+    _lastCloudSnapshot = { userId:user.id, updatedAt:data?.updated_at || null };
+    refreshStudyViews();
     if (pending) enqueueCloudSync({ immediate:true });
     else showSyncIndicator('✓ sincronizado');
     return !!remote;
@@ -536,6 +589,27 @@ async function loadFromCloud() {
     showSyncIndicator(_cloudSyncErrorText(e));
     return false;
   }
+}
+
+function requestCloudRefresh() {
+  if (_cloudRefreshPromise) { _cloudRefreshAgain = true; return _cloudRefreshPromise; }
+  _cloudRefreshPromise = (async () => {
+    let ok = false;
+    do {
+      _cloudRefreshAgain = false;
+      const downloaded = await loadFromCloud({ probe:true });
+      const pending = typeof SyncCore !== 'undefined' && SyncCore.isDirty(_readSyncMeta());
+      const uploaded = await syncPendingCloudChanges();
+      ok = uploaded && (downloaded || (pending && _cloudSyncConnected === true));
+      if (!ok) {
+        showSyncIndicator(_cloudSyncConnected === false ? 'Guardado local · conecta tu cuenta' : '⚠ actualización pendiente · datos guardados localmente');
+        return false;
+      }
+    } while (_cloudRefreshAgain);
+    showSyncIndicator('✓ sincronizado');
+    return true;
+  })().finally(() => { _cloudRefreshPromise = null; });
+  return _cloudRefreshPromise;
 }
 
 function showSyncIndicator(msg) {
@@ -547,11 +621,11 @@ function showSyncIndicator(msg) {
   const desktopFooter = desktopTitle?.closest('.desktop-nav-footer');
   if (desktopTitle && desktopDetail && desktopFooter) {
     const status = String(msg || '').toLowerCase();
-    if (status.includes('sincronizado') && !status.includes('sincronizando')) {
+    if ((status.includes('sincronizado') && !status.includes('sincronizando')) || status === '✓ supabase') {
       desktopFooter.dataset.sync = 'synced';
       desktopTitle.textContent = 'Todo sincronizado';
       desktopDetail.textContent = 'La nube está actualizada';
-    } else if (status.includes('sincronizando') || status.includes('cargando')) {
+    } else if (status.includes('sincronizando') || status.includes('cargando') || status.includes('actualizando')) {
       desktopFooter.dataset.sync = 'syncing';
       desktopTitle.textContent = 'Sincronizando';
       desktopDetail.textContent = 'Guardando los últimos cambios';
@@ -567,7 +641,10 @@ function showSyncIndicator(msg) {
   }
   el.classList.add('visible');
   clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('visible'), 2500);
+  const confirmed = /^(✓ sincronizado|✓ Supabase)$/.test(String(msg));
+  el.dataset.sync = confirmed ? 'synced' : 'pending';
+  el.title = confirmed ? 'Datos confirmados en la nube. Pulsa para comprobar otros dispositivos.' : 'Pulsa para comprobar la sincronización o conectar tu cuenta.';
+  if (confirmed) el._t = setTimeout(() => el.classList.remove('visible'), 8000);
 }
 
 function getDefaultData() {
@@ -19619,7 +19696,8 @@ async function updateSyncStatusInfo() {
     const { data: { user } } = await sb.auth.getUser();
     if (user) {
       el.innerHTML = '✓ Conectado como <span style="color:var(--accent)">' + user.email + '</span><br>'
-        + '<span style="font-size:9px">' + (pending ? 'Hay cambios locales pendientes de sincronizar.' : 'Tus datos se guardan también en la nube.') + '</span>';
+        + '<span style="font-size:9px">' + (pending ? 'Hay cambios locales pendientes de sincronizar.' :
+          (_lastCloudSnapshot?.userId === user.id ? 'Última sincronización confirmada. Puedes comprobar otros dispositivos.' : 'Conexión activa; sincronización aún sin confirmar.')) + '</span>';
     } else {
       el.innerHTML = '<span style="color:var(--orange)">⚠ Sin sesión activa</span><br>'
         + '<span style="font-size:9px">La app está funcionando solo en este dispositivo. Pulsa "Re-sincronizar" para conectar con tu cuenta.</span>';
@@ -19643,7 +19721,8 @@ async function updateAjustesAccountRow() {
     if (user && user.email) {
       av.textContent = user.email.charAt(0).toUpperCase();
       nm.textContent = user.email;
-      sb2.textContent = 'Sincronizado en la nube';
+      sb2.textContent = SyncCore.isDirty(_readSyncMeta()) ? 'Cambios pendientes de subir' :
+        (_lastCloudSnapshot?.userId === user.id ? 'Última sincronización confirmada' : 'Comprobando sincronización');
       sb2.style.color = '';
     } else {
       av.textContent = '·';
@@ -19667,7 +19746,6 @@ function ajustesAccountTap() {
 // Fuerza una re-sincronización con la nube. Útil si los datos locales se han
 // desincronizado o si se sospecha que la nube tiene una versión más reciente.
 async function forceCloudResync() {
-  if (!confirm('Re-sincronizar con la nube descargará los datos remotos y reemplazará lo que haya en este dispositivo si la nube es más reciente.\n\n¿Continuar?')) return;
   try {
     const sb = getSB();
     const { data: { session } } = await sb.auth.getSession();
@@ -19678,7 +19756,7 @@ async function forceCloudResync() {
       return;
     }
     showSyncIndicator('↺ sincronizando…');
-    const reloaded = await loadFromCloud();
+    const reloaded = await requestCloudRefresh();
     if (reloaded) {
       renderObras();
       renderCalendario();
@@ -19694,7 +19772,7 @@ async function forceCloudResync() {
       }
       showToast('Datos actualizados desde la nube ✓');
     } else {
-      showToast('No había datos nuevos en la nube');
+      showToast('Sincronización pendiente; tus datos locales se conservan');
     }
   } catch(e) {
     showToast('Error sincronizando: ' + (e.message || 'sin red'));
@@ -19763,6 +19841,8 @@ function _installAuthSync(sb) {
   const listener = sb.auth.onAuthStateChange((event, session) => {
     // Supabase holds its auth lock here. All client calls must run later.
     if (event === 'SIGNED_OUT') {
+      _cloudAuthEpoch = (typeof _cloudAuthEpoch === 'number' ? _cloudAuthEpoch : 0) + 1;
+      _lastCloudSnapshot = null;
       if (_authSyncTimer) clearTimeout(_authSyncTimer);
       _authSyncTimer = null;
       _cloudSyncConnected = false;

@@ -7,6 +7,19 @@ const require = createRequire(import.meta.url);
 const SyncResilience = require('../../instant-sync-resilience.js');
 
 describe('InstantSyncResilience', () => {
+  it('refreshes on foreground and reconnect events, polls while visible and uploads on hiding',async()=>{
+    const events={},documentEvents={},intervals=[];let downloads=0,uploads=0;
+    const ctx={_cloudSyncConnected:true,requestCloudRefresh:async()=>{downloads++;return true;},syncPendingCloudChanges:async()=>{uploads++;return true;},
+      addEventListener:(name,fn)=>{events[name]=fn;},document:{readyState:'complete',visibilityState:'visible',getElementById:()=>null,addEventListener:(name,fn)=>{documentEvents[name]=fn;}},
+      localStorage:{getItem:()=>'{"dirtyRevision":0,"lastSyncedRevision":0}'},SyncCore:{isDirty:()=>false},setInterval:(fn,ms)=>{intervals.push({fn,ms});return 1;},clearInterval(){},setTimeout:()=>1,clearTimeout(){}};
+    vm.createContext(ctx);vm.runInContext(readFileSync('instant-sync-resilience.js','utf8'),ctx);
+    for(const name of ['focus','pageshow','online']){events[name]();await Promise.resolve();}
+    expect(downloads).toBe(3);
+    ctx.document.visibilityState='hidden';documentEvents.visibilitychange();await Promise.resolve();
+    expect(uploads).toBe(1);intervals.find(i=>i.ms===30000).fn();expect(downloads).toBe(3);
+    ctx.document.visibilityState='visible';documentEvents.visibilitychange();await Promise.resolve();
+    intervals.find(i=>i.ms===30000).fn();await Promise.resolve();expect(downloads).toBe(5);
+  });
   it('coalesces concurrent requests without overlapping writes', async () => {
     let running = 0;
     let maxRunning = 0;

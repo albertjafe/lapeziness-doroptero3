@@ -14,22 +14,22 @@ export function cloudAppHarness(local,remote,options={}){
   if(options.meta!==null)storage.set('meta',JSON.stringify(options.meta||{localRevision:100,dirtyRevision:100,lastSyncedRevision:100}));
   let row=remote==null?null:{id:userId,data:structuredClone(remote),updated_at:'v1'},writes=0,reads=0,queued=0,ctx;
   const client={auth:{getUser:async()=>({data:{user:{id:userId}}})},from:()=>{
-    let operation='read',value,expected;
+    let operation='read',value,expected,selection;
     const execute=async(single)=>{
       if(operation==='read'){
         reads++;await options.beforeRead?.(ctx,reads);
         if(options.failRead)return {error:{code:'NETWORK',message:'offline'}};
-        if(options.query){const result=await options.query({operation,value,expected,ctx});row=result.data;return result;}
+        if(options.query){const result=await options.query({operation,value,expected,selection,ctx});row=result.data;return result;}
         if(!row&&single)return {error:{code:'PGRST116',message:'zero rows'}};
         return {data:structuredClone(row)};
       }
       writes++;
-      if(options.query){const result=await options.query({operation,value,expected,ctx});if(result.data)row=result.data;return result;}
+      if(options.query){const result=await options.query({operation,value,expected,selection,ctx});if(result.data)row=result.data;return result;}
       if(operation==='update'&&expected!==row?.updated_at)return {data:null};
       row={...structuredClone(value),updated_at:'v'+(writes+1)};
       return {data:structuredClone(row)};
     };
-    const q={select:()=>q,eq:(k,v)=>{if(k==='updated_at')expected=v;return q;},
+    const q={select:v=>{selection=v;return q;},eq:(k,v)=>{if(k==='updated_at')expected=v;return q;},
       update:v=>{operation='update';value=v;return q;},insert:v=>{operation='insert';value=v;return q;},
       single:()=>execute(true),maybeSingle:()=>execute(false)};
     return q;
