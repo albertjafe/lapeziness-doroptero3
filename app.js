@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-18-auth-recovery-v412';
+const APP_VERSION = '2026-09-18-sync-storage-deadlines-v413';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -417,7 +417,7 @@ function _mergeStudyHistory(base, other) {
 
 async function _persistCloudDocument(snapshot) {
   if (typeof LocalSaveResilience !== 'undefined' && typeof LocalSaveResilience.persistSnapshot === 'function') {
-    if (await LocalSaveResilience.persistSnapshot(snapshot) === false) throw Object.assign(new Error('Local snapshot not durable'), { code:'LOCAL_PERSIST_FAILED' });
+    if (await LocalSaveResilience.persistSnapshot(snapshot) === false) throw Object.assign(new Error('Local snapshot not durable'), { code:LocalSaveResilience.lastErrorCode?.() || 'LOCAL_PERSIST_FAILED' });
   } else {
     localStorage.setItem(DB_KEY, JSON.stringify(snapshot));
   }
@@ -645,13 +645,21 @@ function requestCloudRefresh() {
     let ok = false;
     do {
       _cloudRefreshAgain = false;
-      const downloaded = await loadFromCloud({ probe:true });
-      if (!downloaded && _cloudStage?.code === 'AUTH_TIMEOUT') {
-        showSyncIndicator('⚠ la cuenta no responde · estudio guardado localmente');return false;
-      }
       const pending = typeof SyncCore !== 'undefined' && SyncCore.isDirty(_readSyncMeta());
-      const uploaded = await syncPendingCloudChanges();
-      ok = uploaded && (downloaded || (pending && _cloudSyncConnected === true));
+      if (pending) {
+        // The sole CAS writer already reads/merges the current cloud row and
+        // persists its accepted response. Do not block that upload behind a
+        // redundant full download and local snapshot.
+        ok = await syncPendingCloudChanges();
+      } else {
+        const downloaded = await loadFromCloud({ probe:true });
+        if (!downloaded && _cloudStage?.code === 'AUTH_TIMEOUT') {
+          showSyncIndicator('⚠ la cuenta no responde · estudio guardado localmente');return false;
+        }
+        // A download may discover local-only records or an absent cloud row.
+        const uploaded = await syncPendingCloudChanges();
+        ok = downloaded && uploaded;
+      }
       if (!ok) {
         showSyncIndicator(_cloudSyncConnected === false ? 'Guardado local · conecta tu cuenta' : '⚠ actualización pendiente · datos guardados localmente');
         return false;

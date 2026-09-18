@@ -2,7 +2,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {it,expect} from 'vitest';
 it('an aborted IndexedDB transaction settles the save instead of freezing synchronization',async()=>{
-  const ctx={db:{sessionPlants:[{id:'saved-study',mins:366}]},DB_KEY:'db',saveLocalNow(){},setTimeout:()=>1,console:{error(){},warn(){}},
+  const ctx={db:{sessionPlants:[{id:'saved-study',mins:366}]},DB_KEY:'db',saveLocalNow(){},setTimeout:()=>1,clearTimeout(){},console:{error(){},warn(){}},
     localStorage:{setItem(){throw Error('QuotaExceededError');}},indexedDB:{open(){
       const request={};queueMicrotask(()=>{request.result={close(){},transaction(){
         const tx={objectStore:()=>({put(){}}),error:new Error('IndexedDB aborted')};queueMicrotask(()=>tx.onabort?.());return tx;

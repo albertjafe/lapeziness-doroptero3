@@ -22,6 +22,15 @@ function study(ctx,id,mins){ctx.db.sessionPlants.push({id,mins,startedAt:'2026-0
 const minutes=ctx=>ctx.db.sessionPlants.reduce((total,p)=>total+p.mins,0);
 
 describe('real app synchronization between independent devices',()=>{
+  it('uploads a pending history with one durable confirmation instead of a preceding download snapshot',async()=>{
+    let saves=0,durable;
+    const h=cloudAppHarness(initial,initial,{resilience:{persistSnapshot:async snapshot=>{saves++;durable=structuredClone(snapshot);return true;}}});
+    const ctx=h.boot();study(ctx,'pending-ipad',366);
+    expect(await ctx.requestCloudRefresh()).toBe(true);
+    expect(saves).toBe(1);expect(h.state().writes).toBe(1);
+    expect(durable.sessionPlants).toHaveLength(1);expect(minutes(ctx)).toBe(366);
+    expect(ctx.SyncCore.isDirty(ctx._readSyncMeta())).toBe(false);
+  });
   it('does not mark a partial server acknowledgement as synchronized',async()=>{
     let row={data:structuredClone(initial),updated_at:'v1'};
     const h=cloudAppHarness(initial,initial,{query:async({operation,value})=>{

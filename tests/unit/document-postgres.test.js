@@ -17,6 +17,8 @@ beforeAll(async()=>{
   const original=sql('20260904123621_conservative_document_sync.sql');
   await pg.exec(original.slice(original.indexOf('create or replace function public.document_merge('),original.indexOf('create or replace function public.preserve_document_fields_before_update(')).replaceAll('public.document_merge(', 'public.document_merge_before_optimization('));
   await pg.exec(sql('20260918202404_optimize_document_record_merge.sql'));
+  await pg.exec(original.slice(original.indexOf('create or replace function public.document_prune('),original.indexOf('create or replace function public.enforce_document_tombstones_after_guards(')).replaceAll('public.document_prune(', 'public.document_prune_before_optimization('));
+  await pg.exec(sql('20260918205809_optimize_document_tombstone_pruning.sql'));
   // The helper's original migration predates this checkout; its deployed
   // definition is captured as a fixture, without data or production mutations.
   await pg.exec(`create trigger trg_00_preserve_crono_tasks before update of data on user_data for each row execute function preserve_crono_tasks_on_user_data_update();
@@ -28,6 +30,20 @@ async function write(id,a,b){
   return (await pg.query('update user_data set data=$2 where id=$1 returning data',[id,JSON.stringify(b)])).rows[0].data;
 }
 describe('real PostgreSQL migration with existing protection triggers',()=>{
+  it('preserves the previous pruning result for nested, anonymous and scalar records',async()=>{
+    const examples=[null,{},[],17,'text',{unknown:{nested:[{keep:1}]}},
+      {items:[{id:'removed'},{id:'kept',unknown:{nested:[{id:'inner'}],_deletedChildren:{nested:{inner:'stamp'}}}}],_deletedChildren:{items:{removed:'stamp'}}},
+      [[{items:[{id:'a'},{id:'b'}],_deletedChildren:{items:{a:'stamp'}}}]],
+      {_deletedChildren:null,items:[null,2,'text',{keep:true}]},
+      {items:[],_deletedChildren:{items:{a:'stamp'}},unknown:{_deletedChildren:{items:{}},items:[{anonymous:1},null,2]}},
+      {first:{items:[{id:'a'},{id:'b'}],_deletedChildren:{items:{b:'stamp'}}},last:{keep:true}}];
+    for(const value of examples){
+      const row=(await pg.query('select public.document_prune($1::jsonb) as current,public.document_prune_before_optimization($1::jsonb) as previous',[JSON.stringify(value)])).rows[0];
+      expect(row.current).toEqual(row.previous);
+    }
+    const sqlNull=(await pg.query('select public.document_prune(null) as current,public.document_prune_before_optimization(null) as previous')).rows[0];
+    expect(sqlNull.current).toEqual(sqlNull.previous);
+  });
   it('folds duplicate identities exactly like the previous server function',async()=>{
     const left=[{id:'a',name:'Primero',extra:'conservar'},{id:'b',name:'Segundo'},{id:'a',name:'Duplicado sin reloj'}];
     const right=[{id:'b',name:'Renombrado',_fieldClock:{name:'2026-09-18T20:00:00Z'}},{id:'c',name:'Nuevo'},{id:'a',hours:6}];

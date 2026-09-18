@@ -8,6 +8,9 @@
   const RESCUE_KEY='latest';
   let pendingMeta=null;
   let rescuePromise=null;
+  let lastPersistFailure=null;
+  const IDB_DEADLINE=10000;
+  function storageError(code,message){ return Object.assign(new Error(message),{code}); }
 
   function clone(value){
     try { if(typeof structuredClone==='function') return structuredClone(value); } catch(e) {}
@@ -25,13 +28,22 @@
   function openRescueDb(){
     return new Promise((resolve,reject)=>{
       if(typeof indexedDB==='undefined'){ reject(new Error('IndexedDB unavailable')); return; }
-      const request=indexedDB.open(RESCUE_DB,1);
+      let settled=false,request;
+      const finish=(error,database)=>{
+        if(settled){ if(database) database.close(); return; }
+        settled=true;clearTimeout(timer);
+        if(error) reject(error); else resolve(database);
+      };
+      const timer=setTimeout(()=>finish(storageError('IDB_OPEN_TIMEOUT','IndexedDB open did not respond')),IDB_DEADLINE);
+      try { request=indexedDB.open(RESCUE_DB,1); } catch(error){ finish(error);return; }
       request.onupgradeneeded=()=>{
+        if(settled){ try { request.transaction?.abort(); } catch(e) {} return; }
         const database=request.result;
         if(!database.objectStoreNames.contains(RESCUE_STORE)) database.createObjectStore(RESCUE_STORE,{keyPath:'id'});
       };
-      request.onsuccess=()=>resolve(request.result);
-      request.onerror=()=>reject(request.error||new Error('IndexedDB open failed'));
+      request.onsuccess=()=>finish(null,request.result);
+      request.onerror=()=>finish(request.error||new Error('IndexedDB open failed'));
+      request.onblocked=()=>finish(storageError('IDB_OPEN_BLOCKED','IndexedDB open blocked'));
     });
   }
 
@@ -40,6 +52,18 @@
     try {
       await new Promise((resolve,reject)=>{
         const tx=database.transaction(RESCUE_STORE,'readwrite');
+        let settled=false;
+        const finish=error=>{ if(settled) return;settled=true;clearTimeout(timer);if(error) reject(error);else resolve(); };
+        const timer=setTimeout(()=>{
+          // Cancel the real transaction so a stale save cannot commit after
+          // its deadline and after a later snapshot starts.
+          try { tx.abort(); } catch(e) {}
+          finish(storageError('IDB_WRITE_TIMEOUT','IndexedDB write did not respond'));
+        },IDB_DEADLINE);
+        tx.oncomplete=()=>finish();
+        tx.onerror=()=>finish(tx.error||new Error('IndexedDB write failed'));
+        tx.onabort=()=>finish(storageError('IDB_WRITE_ABORTED','IndexedDB write aborted'));
+        try {
         tx.objectStore(RESCUE_STORE).put({
           id:RESCUE_KEY,
           data:clone(snapshot),
@@ -47,26 +71,30 @@
           revision:Number(snapshot&&snapshot._localRevision)||0,
           capturedAt:new Date().toISOString()
         });
-        tx.oncomplete=()=>resolve();
-        tx.onerror=()=>reject(tx.error||new Error('IndexedDB write failed'));
-        tx.onabort=()=>reject(tx.error||new Error('IndexedDB write aborted'));
+        } catch(error){ try { tx.abort(); } catch(e) {} finish(error); }
       });
     } finally { database.close(); }
     return true;
   }
 
   async function getRescueSnapshot(){
+    let database;
     try {
-      const database=await openRescueDb();
+      database=await openRescueDb();
       const row=await new Promise((resolve,reject)=>{
         const tx=database.transaction(RESCUE_STORE,'readonly');
+        let settled=false;
+        const finish=(error,row)=>{ if(settled) return;settled=true;clearTimeout(timer);if(error) reject(error);else resolve(row); };
+        const timer=setTimeout(()=>{try { tx.abort(); } catch(e) {} finish(storageError('IDB_READ_TIMEOUT','IndexedDB read did not respond'));},IDB_DEADLINE);
         const request=tx.objectStore(RESCUE_STORE).get(RESCUE_KEY);
-        request.onsuccess=()=>resolve(request.result||null);
-        request.onerror=()=>reject(request.error||new Error('IndexedDB read failed'));
+        request.onsuccess=()=>finish(null,request.result||null);
+        request.onerror=()=>finish(request.error||new Error('IndexedDB read failed'));
+        tx.onabort=()=>finish(storageError('IDB_READ_ABORTED','IndexedDB read aborted'));
+        tx.onerror=()=>finish(tx.error||new Error('IndexedDB read failed'));
       });
-      database.close();
       return row;
     } catch(e) { return null; }
+    finally { if(database) database.close(); }
   }
 
   function enqueueImmediate(){
@@ -80,10 +108,12 @@
     show('Guardando copia segura…');
     const previous=rescuePromise;
     const pending=Promise.resolve(previous).then(()=>putRescueSnapshot(snapshot)).then(()=>{
+      lastPersistFailure=null;
       show('✓ guardado en este dispositivo · sincronizando');
       enqueueImmediate();
       return true;
     }).catch(error=>{
+      lastPersistFailure=typeof error?.code==='string' ? error.code : error?.name || 'IDB_SAVE_FAILED';
       console.error('[sync] también falló IndexedDB',error);
       show('⚠ copia local degradada · sincronización pendiente');
       enqueueImmediate();
@@ -217,6 +247,7 @@
 
   window.LocalSaveResilience={
     persistSnapshot,
+    lastErrorCode:()=>lastPersistFailure,
     retryMeta,
     flush:()=>rescuePromise || Promise.resolve(true),
     recoverSnapshot,
