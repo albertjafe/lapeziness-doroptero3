@@ -1,16 +1,16 @@
-const CACHE = 'estudio-v403';
+const CACHE = 'estudio-v404';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./activity-core.js?v=342",
   "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=402",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=402",
-  "./german-rewards.js?v=383",
-  "./piano-rewards.js?v=399",
+  "./app.js?v=404",
+  "./german-rewards.js?v=404",
+  "./piano-rewards.js?v=404",
   "./german-srs.js?v=378",
   "./german-import.js?v=382",
-  "./german-session.js?v=382",
+  "./german-session.js?v=404",
   "./german-study.js?v=399",
   "./german-study.css?v=399",
   "./habit-trophies.js?v=380",
@@ -29,7 +29,7 @@ const ASSETS = [
   "./crono-running-premium.js?v=399",
   "./crono-save-resilience.js?v=397",
   "./crono-state-store.js?v=397",
-  "./daily-study-minutes.js?v=399",
+  "./daily-study-minutes.js?v=404",
   "./data-core.js?v=342",
   "./document-sync-core.js?v=344",
   "./ensemble-repertoire-catalog.js?v=381",
@@ -166,7 +166,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '403');
+            target.searchParams.set('__pwa', '404');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -174,7 +174,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'403', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'404', navigated });
         } catch (error) {}
       }
     }

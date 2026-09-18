@@ -10,6 +10,55 @@ function database(minutes=120){
 }
 const live=db=>P.live(P.studyState(db,day),db.germanStudy.goals,'g',0,day);
 describe('piano rewards follow canonical study time',()=>{
+  it('recovers pre-existing goals that arrived after an empty wallet was initialized',()=>{
+    const db=database(),history=structuredClone({sessionPlants:db.sessionPlants,sesiones:db.sesiones,pianoRewards:db.pianoRewards});
+    const original=db.germanStudy.goals;db.germanStudy.goals=[];
+    db.germanStudy.effortWallet={version:1,createdAt:'2026-09-18T06:00:00Z',seedGoalIds:[],seedCostPoints:{},redemptions:[]};
+    expect(P.ensureEffortWallet(db).seedGoalIds).toEqual([]);
+    db.germanStudy.goals=original;
+    expect(P.walletSnapshot(db).points).toBe(.27);
+    expect(P.ensureEffortWallet(db).seedGoalIds).toEqual(['g']);
+    expect(P.walletSnapshot(db).points).toBe(.27);
+    expect({sessionPlants:db.sessionPlants,sesiones:db.sesiones,pianoRewards:db.pianoRewards}).toEqual(history);
+    const reloaded=JSON.parse(JSON.stringify(db));
+    expect(P.walletSnapshot(reloaded).points).toBe(.27);
+    reloaded.sessionPlants[0].mins=60;reloaded.sesiones[0].items[0].minutosReales=60;
+    reloaded.sesiones[0].items[0].minutosEstudiados=60;
+    expect(P.walletSnapshot(reloaded).points).toBe(.11);
+  });
+
+  it('never seeds goals created after the wallet or goals already closed at migration',()=>{
+    const db=database();
+    db.germanStudy.effortWallet={version:1,createdAt:'2026-09-10T06:00:00Z',seedGoalIds:[],seedCostPoints:{},redemptions:[]};
+    expect(P.ensureEffortWallet(db).seedGoalIds).toEqual([]);
+    db.germanStudy.effortWallet.createdAt='2026-09-18T06:00:00Z';
+    db.germanStudy.goals[0].archivedAt='2026-09-17T12:00:00Z';
+    expect(P.ensureEffortWallet(db).seedGoalIds).toEqual([]);
+    delete db.germanStudy.goals[0].archivedAt;
+    db.germanStudy.goals[0].deletedAt='2026-09-17T12:00:00Z';
+    expect(P.ensureEffortWallet(db).seedGoalIds).toEqual([]);
+    db.germanStudy.goals[0].deletedAt='2026-09-19T12:00:00Z';
+    expect(P.ensureEffortWallet(db).seedGoalIds).toEqual(['g']);
+  });
+
+  it('preserves opening caps and subtracts purchases once after recovering a seed',()=>{
+    const db=database();
+    db.germanStudy.effortWallet={version:1,createdAt:'2026-09-18T06:00:00Z',seedGoalIds:[],seedCostPoints:{g:.2},redemptions:[{id:'purchase',points:.1}]};
+    expect(P.walletSnapshot(db).points).toBe(.1);
+    db.germanStudy.goals[0].amount=300;
+    expect(P.walletSnapshot(db).points).toBe(.1);
+    expect(db.germanStudy.effortWallet.seedCostPoints.g).toBe(.2);
+    expect(db.germanStudy.effortWallet.redemptions).toHaveLength(1);
+  });
+
+  it('retains the chamber type from legacy reward evidence when the plant lacks it',()=>{
+    const db=database(180);db.sesiones=[];db.sessionPlants[0].runId='r';
+    P.record(db.pianoRewards,{id:'r',goalId:'g',startedAt:day+'T10:00:00Z',seconds:10800,policyVersion:4,activityType:'chamber'});
+    const state=P.studyState(db,day);
+    expect(state.sessions[0]).toMatchObject({seconds:10800,activityType:'chamber',activityFactor:1/3,policyVersion:4});
+    expect(P.walletSnapshot(db).points).toBe(.11);
+  });
+
   it('counts two manual hours once and starts the next second in the two-hour tier',()=>{
     const db=database(),before=structuredClone(db),state=P.studyState(db,day);
     expect(live(db)).toMatchObject({seconds:7200,tierStartSeconds:7200,nextSeconds:9000,today:.27});

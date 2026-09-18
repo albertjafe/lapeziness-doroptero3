@@ -25,6 +25,7 @@
     5:policy(5,CURVE_V4)
   });
   const CONFIG=POLICIES[5];
+  const recoveredWallets=new WeakSet();
   const dayKey=(date=new Date())=>[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
   function appDb(){
     try{if(typeof db!=='undefined'&&db)return db;}catch(error){}
@@ -86,6 +87,17 @@
     const wallet=st.effortWallet;
     if(!Array.isArray(wallet.seedGoalIds))wallet.seedGoalIds=[];
     if(!wallet.seedCostPoints||typeof wallet.seedCostPoints!=='object')wallet.seedCostPoints={};
+    // A wallet can be initialized before the document's goals finish loading.
+    // Recover only goals that were open when this wallet was created; goals
+    // added later must never turn older practice into another opening credit.
+    const walletStart=Date.parse(wallet.createdAt);
+    if(Number.isFinite(walletStart))st.goals.forEach(goal=>{
+      if(!goal)return;
+      const created=Date.parse(goal.createdAt);
+      if(!goal.id||!Number.isFinite(created)||created>walletStart)return;
+      if((goal.archivedAt&&Date.parse(goal.archivedAt)<=walletStart)||(goal.deletedAt&&Date.parse(goal.deletedAt)<=walletStart))return;
+      if(!wallet.seedGoalIds.includes(goal.id)){wallet.seedGoalIds.push(goal.id);recoveredWallets.add(db);}
+    });
     wallet.seedGoalIds.forEach(id=>{
       if(Number.isFinite(Number(wallet.seedCostPoints[id])))return;
       const goal=st.goals.find(g=>g.id===id);if(goal)wallet.seedCostPoints[id]=goalCostPoints(goal);
@@ -384,7 +396,7 @@
     const points=n=>Number(n||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
     const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     function currentDb(){return appDb();}
-    function callSave(){try{if(typeof saveData==='function')saveData();else root.saveData?.();}catch(error){}}
+    function callSave(){try{if(typeof saveData==='function')return saveData()!==false;if(typeof root.saveData==='function')return root.saveData()!==false;}catch(error){}return false;}
     function callCronoSave(){try{if(typeof cronoSaveState==='function')cronoSaveState();else root.cronoSaveState?.();}catch(error){}}
     function callCronoUpdate(){try{if(typeof cronoUpdatePianoReward==='function')cronoUpdatePianoReward();else root.cronoUpdatePianoReward?.();}catch(error){}}
     function saveAndRefresh(){
@@ -430,6 +442,7 @@
       const host=doc.getElementById('germanSharedGoal'),database=currentDb();
       if(!host||!database)return;
       const wallet=ensureEffortWallet(database),snap=walletSnapshot(database);
+      if(recoveredWallets.has(database)&&callSave())recoveredWallets.delete(database);
       const goals=availableGoals(database),selected=activeGoal(database);
       const signature=JSON.stringify([wallet.displayGoalId,adding,editingId,Number(snap.points).toFixed(6),goals.map(g=>[g.id,g.name,g.amount,g.updatedAt||'',g.archivedAt||'',g.deletedAt||'']),wallet.redemptions.length]);
       if(host.dataset.effortWallet==='1'&&host.dataset.effortSignature===signature)return;

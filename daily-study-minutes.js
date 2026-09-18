@@ -22,7 +22,7 @@
 (function dailyStudyMinutesFix(){
   'use strict';
 
-  const FIX_VERSION = 7;
+  const FIX_VERSION = 8;
   const OVERLAP_TOLERANCE_MS = 30000;
   const PASSAGE_GENERAL_SOURCE = 'passage-general-v1';
   const ACTIVITY_FACTORS = Object.freeze({ study:1, piano_class:.5, chamber:1/3 });
@@ -191,9 +191,9 @@
     return out;
   }
 
-  function weightedBlock(evidence, date, rawMins){
-    const type = normalizeActivityType(evidence && evidence.activityType);
-    const factor = activityFactor(evidence);
+  function weightedBlock(evidence, date, rawMins, activity = evidence){
+    const type = normalizeActivityType(activity && activity.activityType);
+    const factor = activityFactor(activity);
     return {
       ...(evidence || {}),
       date,
@@ -210,6 +210,15 @@
     const endMs = end instanceof Date ? end.getTime() : new Date(end).getTime();
     const days = Object.create(null);
     const seenPlants = new Set();
+    const recorded = (database.pianoRewards?.sessions || []).filter(item=>item && item.id && !item.deleted && !item.deletedAt);
+    const activityEvidence = evidence => {
+      // Older timer plants lack activity fields. The finished run retains the
+      // original type; inherit it only with a verifiable identity/timestamp.
+      // An explicit type on the canonical block always wins after an edit.
+      if(evidence?.activityType != null || evidence?.activityFactor != null)return evidence;
+      return recorded.find(item=>evidence?.runId===item.id || String(evidence?.runId || '').startsWith(item.id+'::passage::') || evidence?.id==='run_'+item.id ||
+        (evidence?.startedAt && Date.parse(evidence.startedAt)===Date.parse(item.startedAt))) || evidence;
+    };
 
     const addPlant = plant => {
       if (!plant || plant.failed || plant.tipo === 'descanso') return;
@@ -262,10 +271,10 @@
       Object.keys(bucket.timed || {}).forEach(target => {
         (bucket.timed[target]?.entries || []).forEach(entry => {
           if (!(entry.mins > 0)) return;
-          dayBlocks.push(weightedBlock(entry.evidence,key,entry.mins));
+          dayBlocks.push(weightedBlock(entry.evidence,key,entry.mins,activityEvidence(entry.evidence)));
         });
       });
-      extraEntries.forEach(entry => dayBlocks.push(weightedBlock(entry.evidence,key,entry.mins)));
+      extraEntries.forEach(entry => dayBlocks.push(weightedBlock(entry.evidence,key,entry.mins,activityEvidence(entry.evidence))));
 
       const total = dayBlocks.reduce((sum,block)=>sum+Math.max(0,Number(block.mins)||0),0);
       out[key] = Math.max(0, Math.round(total));

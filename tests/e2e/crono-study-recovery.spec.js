@@ -23,6 +23,29 @@ async function start(page,mode='stopwatch'){
   const status=await page.evaluate(()=>({state:crono.state,selected:document.getElementById('cronoObraSelect').value,works:db.obras.map(o=>o.id),hydrated:_cronoHydrated,urgent:cronoUrgentTaskCandidates().length}));
   expect(status.state,JSON.stringify(status)).toBe('running');
 }
+test('recovers an empty wallet seed once, persists it, and keeps historical activity weights',async({page})=>{
+  const data=structuredClone(fixture);
+  const when=new Date();when.setDate(when.getDate()-2);when.setHours(10,0,0,0);
+  const startedAt=when.toISOString();
+  data.sessionPlants=[{id:'run_old',runId:'old',obraId:'bach',source:'app',mins:360,startedAt}];
+  data.pianoRewards={version:1,sessions:[{id:'old',goalId:'g',startedAt,seconds:360*60,policyVersion:4,activityType:'piano_class',activityFactor:.5}]};
+  data.germanStudy.goals[0].createdAt=new Date(when.getTime()-86400000).toISOString();
+  data.germanStudy.effortWallet={version:1,createdAt:new Date().toISOString(),seedGoalIds:[],seedCostPoints:{},displayGoalId:'g',redemptions:[]};
+  await prepare(page,data);
+  await page.evaluate(()=>showView('deutsch'));
+  await expect(page.locator('#germanSharedGoal .effort-goal-money')).toContainText('0,53 €');
+  const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('alberto_piano_v2')));
+  await expect.poll(async()=> (await saved()).germanStudy.effortWallet.seedGoalIds).toEqual(['g']);
+  expect((await saved()).sessionPlants).toEqual(data.sessionPlants);
+  await page.reload({waitUntil:'load'});
+  await page.waitForFunction(()=>window.PianoRewards);
+  expect(await page.evaluate(()=>PianoRewards.walletSnapshot(db).points)).toBe(.53);
+  await page.evaluate(()=>{
+    db.sessionPlants[0].mins=120;saveData();GermanStudy.refreshMoney();
+  });
+  await expect.poll(()=>page.evaluate(()=>PianoRewards.walletSnapshot(db).points)).toBe(.11);
+  expect((await saved()).germanStudy.effortWallet.seedGoalIds).toEqual(['g']);
+});
 test('manual study, edits and deletion recalculate money and the live tier',async({page})=>{
   await prepare(page);
   await page.evaluate(()=>{

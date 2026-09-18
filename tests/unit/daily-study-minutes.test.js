@@ -31,6 +31,32 @@ function dayRange() {
 }
 
 describe('daily study minutes', () => {
+  it('inherits missing historical activity from the matching run without modifying plants', () => {
+    const startedAt='2026-09-05T10:00:00.000Z';
+    const plant={id:'run_r',runId:'r',obraId:'bach',mins:90,source:'app',startedAt};
+    const db={sessionPlants:[plant,{obraId:'manual',mins:30,source:'manual',startedAt:'2026-09-05T11:00:00.000Z'}],forestPlants:[],sesiones:[],
+      pianoRewards:{sessions:[{id:'r',startedAt,activityType:'chamber',activityFactor:1/3}]}};
+    const api=loadFix(db),{start,end}=dayRange();
+    expect(api.minutesByDay(start,end)['2026-09-05']).toBe(60);
+    expect(api.studyBlocks(start,end)[0]).toMatchObject({rawMins:90,mins:30,activityType:'chamber',activityFactor:1/3});
+    expect(plant.activityType).toBeUndefined();
+    plant.activityType='study';
+    expect(api.minutesByDay(start,end)['2026-09-05']).toBe(120);
+  });
+
+  it('matches historical class timestamps and excludes deleted or unrelated reward evidence', () => {
+    const startedAt='2026-09-05T10:00:00.000Z';
+    const db={sessionPlants:[{obraId:'bach',mins:60,startedAt}],forestPlants:[],sesiones:[],
+      pianoRewards:{sessions:[{id:'class',startedAt,activityType:'piano_class',activityFactor:.5}]}};
+    const api=loadFix(db),{start,end}=dayRange();
+    expect(api.minutesByDay(start,end)['2026-09-05']).toBe(30);
+    db.pianoRewards.sessions[0].deletedAt='2026-09-06T10:00:00.000Z';
+    expect(api.minutesByDay(start,end)['2026-09-05']).toBe(60);
+    delete db.pianoRewards.sessions[0].deletedAt;
+    db.pianoRewards.sessions[0].startedAt='2026-09-04T10:00:00.000Z';
+    expect(api.minutesByDay(start,end)['2026-09-05']).toBe(60);
+  });
+
   it('projects typed blocks as equivalent study while preserving raw duration', () => {
     const db={sessionPlants:[
       {id:'a',runId:'a',obraId:'a',mins:2.1,startedAt:'2026-09-05T10:00:00Z',activityType:'piano_class'},
@@ -102,7 +128,7 @@ describe('daily study minutes', () => {
     };
     const api = loadFix(db);
     const { start, end } = dayRange();
-    expect(api.version).toBe(7);
+    expect(api.version).toBe(8);
     expect(api.minutesByDay(start, end)['2026-09-05']).toBe(216);
   });
 
