@@ -22,6 +22,17 @@ function study(ctx,id,mins){ctx.db.sessionPlants.push({id,mins,startedAt:'2026-0
 const minutes=ctx=>ctx.db.sessionPlants.reduce((total,p)=>total+p.mins,0);
 
 describe('real app synchronization between independent devices',()=>{
+  it('does not mark a partial server acknowledgement as synchronized',async()=>{
+    let row={data:structuredClone(initial),updated_at:'v1'};
+    const h=cloudAppHarness(initial,initial,{query:async({operation,value})=>{
+      if(operation==='read')return {data:structuredClone(row)};
+      row={...structuredClone(value),updated_at:'v2'};row.data.sessionPlants=[];
+      return {data:structuredClone(row)};
+    }}),ctx=h.boot();study(ctx,'unconfirmed-study',360);
+    expect(await ctx.syncPendingCloudChanges()).toBe(false);
+    expect(ctx._cloudStage.code).toBe('CLOUD_CONFIRMATION_MISSING');expect(minutes(ctx)).toBe(360);
+    expect(ctx.SyncCore.isDirty(ctx._readSyncMeta())).toBe(true);expect(h.state().writes).toBe(1);
+  });
   it('six hours on iPad become eight on phone and return to iPad with goal edits',async()=>{
     const cloud=sharedCloud(),ipad=cloud.device(),phone=cloud.device(),a=ipad.boot(),b=phone.boot();
     await a.requestCloudRefresh();study(a,'ipad-six-hours',360);await a.syncPendingCloudChanges();

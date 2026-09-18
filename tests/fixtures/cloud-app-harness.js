@@ -39,7 +39,7 @@ export function cloudAppHarness(local,remote,options={}){
         Date,JSON,console,_syncInFlight:false,_syncPromise:null,_syncTimer:null,_cloudSyncConnected:null,
         LocalSaveResilience:options.resilience,
         localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>{if(options.quota&&k==='db')throw Error('QuotaExceededError');storage.set(k,v);}},getSB:()=>client,
-        setTimeout:()=>++queued,clearTimeout(){},showSyncIndicator(){},refreshStudyViews(){}};
+        setTimeout:(fn,delay)=>delay>=10000?-1:++queued,clearTimeout(){},showSyncIndicator(){},refreshStudyViews(){}};
       vm.createContext(ctx);vm.runInContext(localFunctions+'\n'+cloudFunctions,ctx);
     return ctx;
   }

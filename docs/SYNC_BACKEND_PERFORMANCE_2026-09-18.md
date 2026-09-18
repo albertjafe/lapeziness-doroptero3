@@ -14,4 +14,6 @@ Verification:
 - PostgreSQL regression tests cover existing independent edits, CAS, unknown fields and deletions, plus duplicate identities against the previous server function and a synthetic multi-megabyte restored history with all legacy triggers.
 - Security advisor findings were unchanged; the new helper introduces no executable public API or privilege escalation.
 
-Runtime remains v410. End-to-end resolution still requires the actual pending iPad copy to upload and a subsequent phone download to show the same total. Do not fabricate missing study or restore an older export over either device to claim resolution.
+Runtime v411 bounds account checks and SDK requests, displays the current synchronization stage and last failure code in Settings, rejects aborted IndexedDB writes, and keeps an upload pending if the returned document does not confirm its complete content. Regression tests cover stalled authentication, an aborted request, an aborted local snapshot and incomplete server confirmation. A WebKit browser test retains 6 h 6 min while authentication stalls and uploads them once authentication responds; this uses a fake remote transport, not the owner's iPad.
+
+End-to-end resolution still requires the actual pending iPad copy to upload and a subsequent phone download to show the same total. Do not fabricate missing study or restore an older export over either device to claim resolution.

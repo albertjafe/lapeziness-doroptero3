@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-18 · caché runtime v410
+**Estado:** CANÓNICO · actualizado 2026-09-18 · caché runtime v411
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -75,6 +75,8 @@ Capas actuales:
 
 `app.js`: `_prepareLocalDocument` reconcilia memoria/disco antes de guardar; `_mergeStudyHistory` combina el merge de dominio con `DocumentSyncCore`. **Un único escritor de `user_data`: `syncToCloud`** lee la fila y hace update condicional por `updated_at` (CAS), con relectura y merge si hay conflicto. Los addons de tareas/cronómetro llaman al guardado común; no hacen upserts completos independientes. La descarga, cada intento CAS y la aceptación de su respuesta usan `mergeRemote(servidor, cliente)`, igual que `document_merge(OLD, NEW)` en SQL. Los cambios locales explícitos durante la petición siguen pendientes.
 
+Desde v411, `_cloudAuthUser()` limita la validación de cuenta a 20 segundos; una respuesta tardía no puede lanzar subidas. `_cloudQuery()` cancela por AbortSignal las peticiones bloqueadas, también si el SDK espera antes de llegar a fetch. Ajustes muestra `syncDiagnosticInfo` con la fase real y el código de fallo (sin tokens ni datos personales); `alberto_cloud_stage_v1` conserva el último diagnóstico local. Una respuesta de subida que aún omite contenido conserva dirty y falla con `CLOUD_CONFIRMATION_MISSING`. IndexedDB rechaza transacciones abortadas para no dejar `flush()`/confirmaciones colgadas.
+
 `loadFromCloud` y `syncToCloud` comparten una cola de operaciones de red/persistencia; los trabajos y respuestas de una sesión cerrada se descartan por época de auth. `cloudFetch` impide caché HTTP y aborta peticiones bloqueadas tras 20 segundos, respetando cancelaciones del cliente. Una descarga aceptada refresca horas, hábitos y taxímetro visibles.
 
 `loadFromCloud` usa `maybeSingle`: un error no equivale a una cuenta vacía. Fusiona nube, memoria y disco; si no falta contenido en remoto reconoce la sincronización sin incrementar revisión ni encolar upload. La ausencia de fila fuerza dirty/primer upload de la base local aunque los metadatos se hayan perdido o indiquen clean.
@@ -89,7 +91,7 @@ Migraciones Supabase importantes para este tema:
 - `202609030003_task_sync_revision_guard.sql`
 - `202609040004_reduce_user_data_sync_contention.sql`
 - `20260904123621_conservative_document_sync.sql`: merge JSON recursivo, timestamp/revisión monotónicos y aplicación final de tombstones tras las guardas históricas. Aplicada en producción el 2026-09-04 con autorización explícita, backup previo y comprobación de cero cambios en `user_data`. Registro: `docs/DEPLOY_V344_2026-09-04.md`.
-- `20260918202404_optimize_document_record_merge.sql`: conserva la semántica de `document_merge`, pero agrupa registros por identidad y agrega el resultado una vez, evitando reconstruir un índice JSON creciente por cada registro. Aplicada en Supabase el 2026-09-18 sin modificar `user_data`; el caso real de 3,18 MB pasó de 7,83 s a 1,73 s (fusión), y fusión más protección de bloques/bajas midió 4,19 s frente al timeout de cuenta de 8 s. Los casos PostgreSQL prueban relojes, campos desconocidos, duplicados, bajas, CAS e historial grande. El frontend sigue en v410; una copia pendiente del iPad todavía debe subir para que otro dispositivo reciba esas sesiones.
+- `20260918202404_optimize_document_record_merge.sql`: conserva la semántica de `document_merge`, pero agrupa registros por identidad y agrega el resultado una vez, evitando reconstruir un índice JSON creciente por cada registro. Aplicada en Supabase el 2026-09-18 sin modificar `user_data`; el caso real de 3,18 MB pasó de 7,83 s a 1,73 s (fusión), y fusión más protección de bloques/bajas midió 4,19 s frente al timeout de cuenta de 8 s. Los casos PostgreSQL prueban relojes, campos desconocidos, duplicados, bajas, CAS e historial grande. El frontend incorpora diagnósticos en v411; una copia pendiente del iPad todavía debe subir para que otro dispositivo reciba esas sesiones.
 
 **Revisiones:** una revisión vieja no debe sobrescribir una más nueva. Si se cambia sincronización, revisar cliente **y** guardas SQL.
 
@@ -353,9 +355,9 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- Caché actual `estudio-v410`: `app.js`, `crono-resume-layout.js` y `instant-sync-resilience.js` usan v410; premios/UI de incentivos conservan v409; cronómetro premium y loader de aulas v408; estilos e iPad Hoy v407; hábitos v406; rescate local v405. Los módulos no modificados conservan sus URL. La instalación solicita precache con `cache:'reload'` y el registro conserva la URL del SW existente.
+- Caché actual `estudio-v411`: `app.js`, `crono-resume-layout.js` y `local-save-resilience.js` usan v411; sincronización inmediata conserva v410; premios/UI de incentivos conservan v409; cronómetro premium y loader de aulas v408; estilos e iPad Hoy v407; hábitos v406. Los módulos no modificados conservan sus URL. La instalación solicita precache con `cache:'reload'` y el registro conserva la URL del SW existente.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v410 en Ajustes; v410 es el límite de caché PWA actual.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica v411 en Ajustes; v411 es el límite de caché PWA actual.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.

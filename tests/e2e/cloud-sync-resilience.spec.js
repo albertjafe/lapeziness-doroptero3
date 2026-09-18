@@ -1,5 +1,30 @@
 import {test,expect} from '@playwright/test';
 
+test('a stalled account reports its phase and recovers the six-hour pending history',async({page})=>{
+  await page.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({status:200,contentType:'text/javascript',body:'/* isolated account */'}));
+  await page.addInitScript(()=>{
+    const base={obras:[],forestPlants:[],sesiones:[],eventos:[],registro:[],sessionPlants:[{id:'morning',runId:'morning',mins:77,startedAt:'2026-09-18T08:00:00Z',endedAt:'2026-09-18T09:17:00Z'}]};
+    localStorage.setItem('alberto_piano_v2',JSON.stringify({...base,sessionPlants:[...base.sessionPlants,{id:'later',runId:'later',mins:289,startedAt:'2026-09-18T09:30:00Z',endedAt:'2026-09-18T14:19:00Z'}]}));
+    const f=window.__stalledAccount={locked:true,waiters:[],writes:0,row:{id:'u',data:base,updated_at:'v1'}};
+    const sb={auth:{getSession:async()=>({data:{session:{user:{id:'u'}}}}),getUser:()=>f.locked?new Promise(resolve=>f.waiters.push(resolve)):Promise.resolve({data:{user:{id:'u'}}}),onAuthStateChange:()=>({data:{subscription:{}}})},
+      from:table=>{let op='read',value,expected;
+        const run=async()=>{if(table!=='user_data')return {data:[]};if(op==='read')return {data:structuredClone(f.row)};
+          if(expected&&expected!==f.row.updated_at)return {data:null};f.row={...structuredClone(value),updated_at:'v'+(++f.writes+1)};return {data:structuredClone(f.row)};};
+        const q={select:()=>q,eq:(k,v)=>{if(k==='updated_at')expected=v;return q;},order:()=>q,limit:()=>q,in:()=>q,lte:()=>q,
+          update:v=>{op='update';value=v;return q;},insert:v=>{op='insert';value=v;return q;},maybeSingle:run,then:(a,b)=>run().then(a,b)};return q;},rpc:async()=>({data:[]})};
+    window.supabase={createClient:()=>sb};
+  });
+  await page.clock.install({time:new Date('2026-09-18T17:00:00Z')});await page.goto('/');
+  await page.waitForFunction(()=>_cloudStage?.phase==='Comprobando la cuenta');await page.clock.fastForward(21000);
+  await expect(page.locator('#syncDiagnosticInfo')).toContainText('AUTH_TIMEOUT');
+  expect(await page.evaluate(()=>DailyStudyMinutes.todayMinutes())).toBe(366);
+  expect(await page.evaluate(()=>__stalledAccount.writes)).toBe(0);
+  await page.evaluate(()=>{__stalledAccount.locked=false;for(const resolve of __stalledAccount.waiters)resolve({data:{user:{id:'u'}}});});
+  await page.evaluate(()=>requestCloudRefresh());
+  await expect.poll(()=>page.evaluate(()=>__stalledAccount.row.data.sessionPlants.reduce((sum,p)=>sum+p.mins,0))).toBe(366);
+  await expect.poll(()=>page.evaluate(()=>SyncCore.isDirty(_readSyncMeta()))).toBe(false);
+});
+
 // Only the remote transport is mocked. Real app auth handlers, merges,
 // IndexedDB, local persistence and the single cloud writer run in the browser.
 for(const alreadySignedIn of [false,true]) test(`account connects and uploads study with localStorage full (initial session=${alreadySignedIn})`,async({page})=>{

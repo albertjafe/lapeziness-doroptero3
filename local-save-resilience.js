@@ -49,6 +49,7 @@
         });
         tx.oncomplete=()=>resolve();
         tx.onerror=()=>reject(tx.error||new Error('IndexedDB write failed'));
+        tx.onabort=()=>reject(tx.error||new Error('IndexedDB write aborted'));
       });
     } finally { database.close(); }
     return true;

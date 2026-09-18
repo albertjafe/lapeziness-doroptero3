@@ -20,3 +20,11 @@ it('honors caller cancellation without abandoning the actual fetch',async()=>{
   const request=h.run('https://piano.test',{signal:controller.signal});const rejected=expect(request).rejects.toThrow('cancelled');
   controller.abort();await rejected;expect(signal.aborted).toBe(true);expect(h.cleared()).toBe(1);
 });
+it('cancels a stalled SDK query and rejects its late result',async()=>{
+  let expire,signal,release;
+  const ctx={AbortController,Promise,Error,setTimeout:fn=>{expire=fn;return 1;},clearTimeout(){}};
+  vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('async function _cloudQuery('),source.indexOf('function _runCloudOperation(')),ctx);
+  const query={abortSignal:s=>{signal=s;return query;},maybeSingle:()=>new Promise(resolve=>release=resolve)};
+  const call=ctx._cloudQuery(query),failed=expect(call).rejects.toMatchObject({code:'CLOUD_REQUEST_TIMEOUT'});
+  expire();await failed;expect(signal.aborted).toBe(true);release({data:{updated_at:'late'}});await Promise.resolve();
+});

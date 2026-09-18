@@ -9,10 +9,10 @@ function harness(local,remote,options={}){
   let row=structuredClone(remote),writes=0,reads=0,meta={localRevision:2,dirtyRevision:2,lastSyncedRevision:1};
   const store=new Map([['db',JSON.stringify(local)]]);
   const ctx={db:structuredClone(local),DocumentSyncCore:Doc,DB_KEY:'db',console,Date,JSON,
-    _cloudSyncConnected:null, LocalSaveResilience:options.resilience,
+    _cloudSyncConnected:null, LocalSaveResilience:options.resilience,setTimeout:options.setTimeout||setTimeout,clearTimeout:options.clearTimeout||clearTimeout,
     localStorage:{setItem:(k,v)=>{if(options.quota&&k==='db')throw Error('QuotaExceededError');store.set(k,v);}},_mergeStudyHistory:(a,b)=>Doc.merge(b,a),
     _readSyncMeta:()=>meta,_writeSyncMeta:v=>{meta=v;},_rememberLocalDocument(){},showSyncIndicator(){}};
-  const client={auth:{getUser:async()=>({data:{user:{id:'u'}}})},from:()=>{
+  const client={auth:{getUser:options.getUser|| (async()=>({data:{user:{id:'u'}}}))},from:()=>{
     let operation='read',value=null,expected=null;
     const q={select:()=>q,eq:(k,v)=>{if(k==='updated_at')expected=v;return q;},update:v=>{operation='write';value=v;return q;},insert:v=>{operation='insert';value=v;return q;},maybeSingle:async()=>{
       if(operation==='read'){reads++;if(options.failRead)return {error:{message:'offline'}};return {data:structuredClone(row)};}
@@ -28,6 +28,16 @@ function harness(local,remote,options={}){
 const old={obras:[{id:'w',name:'Sonata',dificultad:4,movimientos:[{id:'m',sol:40}]}],sessionPlants:[]};
 const edit=(fn,time)=>{const d=structuredClone(old);fn(d);return Doc.track(d,old,time);};
 describe('actual app upload protocol against asynchronous Supabase responses',()=>{
+  it('a stalled account read fails safely and its late result cannot upload study',async()=>{
+    let expire,release;
+    const auth=new Promise(resolve=>release=resolve);
+    const h=harness(old,{data:old,updated_at:'v1'},{getUser:()=>auth,setTimeout:fn=>{expire=fn;return 1;},clearTimeout(){}});
+    const upload=h.run();await Promise.resolve();await Promise.resolve();expire();
+    expect(await upload).toBe(false);expect(h.ctx._cloudStage.code).toBe('AUTH_TIMEOUT');
+    release({data:{user:{id:'u'}}});await Promise.resolve();await Promise.resolve();
+    expect(h.state()).toMatchObject({reads:0,writes:0,meta:{lastSyncedRevision:1,dirtyRevision:2}});
+    expect(JSON.parse(h.store.get('db'))).toEqual(old);
+  });
   it('keeps an explicit field edit made while a stale upload awaits acknowledgement',async()=>{
     const server={_localRevision:100,obras:[{id:'w',dificultad:9}],cronoTasks:[]};
     const local={_localRevision:170,obras:[{id:'w',dificultad:5}],cronoTasks:[{id:'new',text:'Nueva tarea'}]};

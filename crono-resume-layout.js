@@ -125,7 +125,7 @@ function loadPianoCompanion(id, src, cssId, cssHref) {
    sincronización inmediata. El mismo ID identifica siempre esta capa. */
 (function loadPersistenceResilience() {
   'use strict';
-  loadPianoCompanion('localSaveResilienceScript', './local-save-resilience.js?v=405');
+  loadPianoCompanion('localSaveResilienceScript', './local-save-resilience.js?v=411');
   if (!window.InstantSyncResilience) loadPianoCompanion('instantSyncResilienceScript', './instant-sync-resilience.js?v=410');
 }());
 

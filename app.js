@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-18-bidirectional-sync-v410';
+const APP_VERSION = '2026-09-18-cloud-diagnostics-v411';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -417,13 +417,15 @@ function _mergeStudyHistory(base, other) {
 
 async function _persistCloudDocument(snapshot) {
   if (typeof LocalSaveResilience !== 'undefined' && typeof LocalSaveResilience.persistSnapshot === 'function') {
-    if (await LocalSaveResilience.persistSnapshot(snapshot) === false) throw new Error('Local snapshot not durable');
+    if (await LocalSaveResilience.persistSnapshot(snapshot) === false) throw Object.assign(new Error('Local snapshot not durable'), { code:'LOCAL_PERSIST_FAILED' });
   } else {
     localStorage.setItem(DB_KEY, JSON.stringify(snapshot));
   }
 }
 
 function _cloudSyncErrorText(error) {
+  _setCloudStage(_cloudStage?.phase || 'Sincronización', error);
+  if (error?.code === 'AUTH_TIMEOUT') return '⚠ la cuenta no responde · estudio guardado localmente';
   if (error?.status === 401 || error?.name === 'AuthSessionMissingError') {
     _cloudSyncConnected = false;
     return 'Guardado local · vuelve a conectar tu cuenta';
@@ -437,6 +439,42 @@ var _cloudRefreshPromise = null;
 var _cloudRefreshAgain = false;
 var _lastCloudSnapshot = null;
 var _cloudAuthEpoch = 0;
+var _cloudStage = null;
+var _cloudFailure = null;
+function _setCloudStage(phase, error = null) {
+  _cloudStage = { phase, at:new Date().toISOString(), code:error?.code || error?.name || null };
+  if (error) _cloudFailure = { ..._cloudStage };
+  else if (phase === 'Sincronización completada' || phase === 'Historial confirmado en la nube') _cloudFailure = null;
+  _cloudStage.lastFailure = _cloudFailure;
+  try { localStorage.setItem('alberto_cloud_stage_v1', JSON.stringify(_cloudStage)); } catch (_) {}
+  if (typeof document === 'undefined') return;
+  const el = document.getElementById('syncDiagnosticInfo');
+  if (el) el.textContent = phase + '…' + (_cloudFailure ? ' Último fallo: ' + _cloudFailure.phase + ' [' + (_cloudFailure.code || 'sin respuesta') + '].' : '');
+}
+async function _cloudAuthUser(sb) {
+  _setCloudStage('Comprobando la cuenta');
+  let timer;
+  try {
+    // This races a read only. A late auth result cannot resume this operation
+    // or issue a write after its deadline; pending study remains untouched.
+    return await Promise.race([sb.auth.getUser(), new Promise((resolve,reject) => {
+      timer = setTimeout(() => reject(Object.assign(new Error('La cuenta no respondió a tiempo'), { code:'AUTH_TIMEOUT' })), 20000);
+    })]);
+  } finally { clearTimeout(timer); }
+}
+async function _cloudQuery(query) {
+  if (typeof query.abortSignal !== 'function') return query.maybeSingle();
+  const controller = new AbortController();
+  let timer;
+  try {
+    return await Promise.race([query.abortSignal(controller.signal).maybeSingle(), new Promise((resolve,reject) => {
+      timer = setTimeout(() => {
+        controller.abort();
+        reject(Object.assign(new Error('La petición de nube no respondió a tiempo'), { code:'CLOUD_REQUEST_TIMEOUT' }));
+      }, 20000);
+    })]);
+  } finally { clearTimeout(timer); }
+}
 function _runCloudOperation(operation) {
   const next = _cloudOperationTail.catch(() => {}).then(operation);
   _cloudOperationTail = next.catch(() => {});
@@ -450,14 +488,15 @@ async function _syncToCloudNow(snapshotDb, revision) {
   const authEpoch = _cloudAuthEpoch;
   try {
     const sb = getSB();
-    const { data: { user }, error: authError } = await sb.auth.getUser();
+    const { data: { user }, error: authError } = await _cloudAuthUser(sb);
     if (authError) throw authError;
     if (authEpoch !== _cloudAuthEpoch) return false;
     _cloudSyncConnected = !!user;
     if (!user) { showSyncIndicator('Guardado local · conecta tu cuenta'); return false; }
     const snapshot = JSON.parse(JSON.stringify(snapshotDb || db));
     for (let attempt = 0; attempt < 4; attempt++) {
-      const read = await sb.from('user_data').select('data,updated_at').eq('id',user.id).maybeSingle();
+      _setCloudStage('Leyendo la nube antes de subir');
+      const read = await _cloudQuery(sb.from('user_data').select('data,updated_at').eq('id',user.id));
       if (read.error) throw read.error; // A failed read is NOT an empty account.
       if (authEpoch !== _cloudAuthEpoch) return false;
       const remote = read.data;
@@ -465,26 +504,31 @@ async function _syncToCloudNow(snapshotDb, revision) {
       merged._localRevision = Math.max(Number(merged._localRevision)||0, Number(remote?.data?._localRevision)||0) + 1;
       merged._savedAt = new Date().toISOString();
       const row = { id:user.id, data:merged, updated_at:merged._savedAt };
+      _setCloudStage('Subiendo y fusionando el historial');
       const write = remote
-        ? await sb.from('user_data').update(row).eq('id',user.id).eq('updated_at',remote.updated_at).select('data,updated_at').maybeSingle()
-        : await sb.from('user_data').insert(row).select('data,updated_at').maybeSingle();
+        ? await _cloudQuery(sb.from('user_data').update(row).eq('id',user.id).eq('updated_at',remote.updated_at).select('data,updated_at'))
+        : await _cloudQuery(sb.from('user_data').insert(row).select('data,updated_at'));
       if (write.error) { if (write.error.code === '23505') continue; throw write.error; }
       if (!write.data) continue; // CAS conflict: reread and merge, never overwrite.
       if (authEpoch !== _cloudAuthEpoch) return false;
+      const unconfirmed = !DocumentSyncCore.sameContent(DocumentSyncCore.mergeRemote(write.data.data, merged), write.data.data);
       const meta = _readSyncMeta();
       const pending = meta.dirtyRevision > revision;
       DocumentSyncCore.assign(db, DocumentSyncCore.mergeRemote(write.data.data, db));
       const accepted = Math.max(Number(db._localRevision)||0, meta.localRevision);
       db._localRevision = accepted + (pending ? 1 : 0);
       _rememberLocalDocument();
+      _setCloudStage('Guardando la confirmación en este dispositivo');
       await _persistCloudDocument(db);
       // IndexedDB is asynchronous: edits saved during this write remain dirty.
       const durableMeta = _readSyncMeta();
       if (authEpoch !== _cloudAuthEpoch) return false;
       const localRevision = Math.max(Number(db._localRevision)||0, durableMeta.localRevision);
-      const stillPending = pending || durableMeta.dirtyRevision > accepted;
-      _writeSyncMeta({ localRevision, dirtyRevision:localRevision, lastSyncedRevision:accepted });
+      const stillPending = unconfirmed || pending || durableMeta.dirtyRevision > accepted;
+      _writeSyncMeta({ localRevision, dirtyRevision:localRevision, lastSyncedRevision:unconfirmed ? meta.lastSyncedRevision : accepted });
       _lastCloudSnapshot = { userId:user.id, updatedAt:write.data.updated_at };
+      _setCloudStage(stillPending ? 'Quedan cambios por subir' : 'Historial confirmado en la nube');
+      if (unconfirmed) throw Object.assign(new Error('La respuesta de la nube no confirmó todo el historial'), { code:'CLOUD_CONFIRMATION_MISSING' });
       if (typeof refreshStudyViews === 'function') refreshStudyViews();
       showSyncIndicator(stillPending ? 'Sincronizando…' : '✓ sincronizado');
       return true;
@@ -539,21 +583,23 @@ async function _loadFromCloudNow(options = {}) {
   const authEpoch = _cloudAuthEpoch;
   try {
     const sb = getSB();
-    const { data: { user }, error: authError } = await sb.auth.getUser();
+    const { data: { user }, error: authError } = await _cloudAuthUser(sb);
     if (authError) throw authError;
     if (authEpoch !== _cloudAuthEpoch) return false;
     _cloudSyncConnected = !!user;
     if (!user) { showSyncIndicator('Guardado local · conecta tu cuenta'); return false; }
 
     if (options.probe && _lastCloudSnapshot?.userId === user.id && _lastCloudSnapshot.updatedAt) {
-      const probe = await sb.from('user_data').select('updated_at').eq('id', user.id).maybeSingle();
+      _setCloudStage('Comprobando cambios de otros dispositivos');
+      const probe = await _cloudQuery(sb.from('user_data').select('updated_at').eq('id', user.id));
       if (probe.error) throw probe.error;
       if (authEpoch !== _cloudAuthEpoch) return false;
       if (probe.data?.updated_at === _lastCloudSnapshot.updatedAt) return true;
     }
     showSyncIndicator('↓ actualizando desde la nube…');
-    const { data, error } = await sb.from('user_data')
-      .select('data,updated_at').eq('id', user.id).maybeSingle();
+    _setCloudStage('Descargando el historial');
+    const { data, error } = await _cloudQuery(sb.from('user_data')
+      .select('data,updated_at').eq('id', user.id));
 
     if (error) throw error; // An unavailable row is not an empty account.
     if (authEpoch !== _cloudAuthEpoch) return false;
@@ -573,6 +619,7 @@ async function _loadFromCloudNow(options = {}) {
     DocumentSyncCore.assign(db,merged);
     db._localRevision = revision;
     _rememberLocalDocument();
+    _setCloudStage('Guardando la descarga en este dispositivo');
     await _persistCloudDocument(db);
     const durableMeta = _readSyncMeta();
     if (authEpoch !== _cloudAuthEpoch) return false;
@@ -580,6 +627,7 @@ async function _loadFromCloudNow(options = {}) {
     const pending = needsUpload || durableMeta.dirtyRevision > revision;
     _writeSyncMeta({ localRevision, dirtyRevision:localRevision, lastSyncedRevision:pending ? meta.lastSyncedRevision : revision });
     _lastCloudSnapshot = { userId:user.id, updatedAt:data?.updated_at || null };
+    _setCloudStage(pending ? 'Quedan cambios por subir' : 'Historial descargado y guardado');
     refreshStudyViews();
     if (pending) enqueueCloudSync({ immediate:true });
     else showSyncIndicator('✓ sincronizado');
@@ -598,6 +646,9 @@ function requestCloudRefresh() {
     do {
       _cloudRefreshAgain = false;
       const downloaded = await loadFromCloud({ probe:true });
+      if (!downloaded && _cloudStage?.code === 'AUTH_TIMEOUT') {
+        showSyncIndicator('⚠ la cuenta no responde · estudio guardado localmente');return false;
+      }
       const pending = typeof SyncCore !== 'undefined' && SyncCore.isDirty(_readSyncMeta());
       const uploaded = await syncPendingCloudChanges();
       ok = uploaded && (downloaded || (pending && _cloudSyncConnected === true));
@@ -606,6 +657,7 @@ function requestCloudRefresh() {
         return false;
       }
     } while (_cloudRefreshAgain);
+    _setCloudStage('Sincronización completada');
     showSyncIndicator('✓ sincronizado');
     return true;
   })().finally(() => { _cloudRefreshPromise = null; });
@@ -19747,16 +19799,11 @@ function ajustesAccountTap() {
 // desincronizado o si se sospecha que la nube tiene una versión más reciente.
 async function forceCloudResync() {
   try {
-    const sb = getSB();
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) {
-      // No hay sesión — pedir credenciales
-      closeModal('modalSettings');
-      openModal('modalCloudSync');
-      return;
-    }
     showSyncIndicator('↺ sincronizando…');
     const reloaded = await requestCloudRefresh();
+    if (!reloaded && _cloudSyncConnected === false) {
+      closeModal('modalSettings');openModal('modalCloudSync');return;
+    }
     if (reloaded) {
       renderObras();
       renderCalendario();
