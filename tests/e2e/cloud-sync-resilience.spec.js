@@ -1,5 +1,7 @@
 import {test,expect} from '@playwright/test';
 
+test.beforeEach(async({page})=>{ await page.route('**/supabase-sdk-v2-116-0.js',route=>route.fulfill({status:200,contentType:'text/javascript',body:'/* SDK transport isolated by this suite */'})); });
+
 test('a stalled account reports its phase and recovers the six-hour pending history',async({page})=>{
   await page.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({status:200,contentType:'text/javascript',body:'/* isolated account */'}));
   await page.addInitScript(()=>{

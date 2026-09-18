@@ -7,6 +7,7 @@ test('independent iPad and phone exchange study, goal edits and offline addition
   const contexts=[];
   async function device(phone){
     const context=await browser.newContext({baseURL:'http://127.0.0.1:4173',viewport:phone?{width:390,height:844}:{width:1194,height:834},timezoneId:'Europe/Berlin',serviceWorkers:'block'});contexts.push(context);
+    await context.route('**/supabase-sdk-v2-116-0.js',route=>route.fulfill({status:200,contentType:'text/javascript',body:'/* SDK transport isolated by this suite */'}));
     await context.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({status:200,contentType:'text/javascript',body:'/* isolated transport */'}));
     await context.route('https://cloud-sync.test/**',async route=>{
       if(phone&&offlinePhone)return route.abort('internetdisconnected');

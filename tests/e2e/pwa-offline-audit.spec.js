@@ -16,6 +16,7 @@ test('installed PWA reopens offline with the complete document and Profesor',asy
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>window.ProfessorHandoffResilience);
   const after=await page.evaluate(()=>({data:JSON.parse(localStorage.getItem('alberto_piano_v2')),report:ProfessorCore.buildReport(db,{googleCalendarState:{}})}));
+  expect(await page.evaluate(()=>typeof supabase.createClient)).toBe('function');
   expect(after.data.obras.find(x=>x.id==='offline-new')).toEqual(before.obras.find(x=>x.id==='offline-new'));
   const {updatedAt,_fieldClock,...originalEvent}=before.eventos.find(x=>x.id==='offline-project');
   expect(after.data.eventos.find(x=>x.id==='offline-project')).toMatchObject(originalEvent);

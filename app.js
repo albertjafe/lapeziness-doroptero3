@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-18-cloud-diagnostics-v411';
+const APP_VERSION = '2026-09-18-auth-recovery-v412';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -451,8 +451,8 @@ function _setCloudStage(phase, error = null) {
   const el = document.getElementById('syncDiagnosticInfo');
   if (el) el.textContent = phase + '…' + (_cloudFailure ? ' Último fallo: ' + _cloudFailure.phase + ' [' + (_cloudFailure.code || 'sin respuesta') + '].' : '');
 }
-async function _cloudAuthUser(sb) {
-  _setCloudStage('Comprobando la cuenta');
+async function _cloudAuthUser(sb, options = {}) {
+  if (options.diagnostics !== false) _setCloudStage('Comprobando la cuenta');
   let timer;
   try {
     // This races a read only. A late auth result cannot resume this operation
@@ -19745,7 +19745,8 @@ async function updateSyncStatusInfo() {
   const pending = typeof SyncCore !== 'undefined' && SyncCore.isDirty(_readSyncMeta());
   try {
     const sb = getSB();
-    const { data: { user } } = await sb.auth.getUser();
+    const { data: { user }, error } = await _cloudAuthUser(sb, { diagnostics:false });
+    if (error && error.name !== 'AuthSessionMissingError') throw error;
     if (user) {
       el.innerHTML = '✓ Conectado como <span style="color:var(--accent)">' + user.email + '</span><br>'
         + '<span style="font-size:9px">' + (pending ? 'Hay cambios locales pendientes de sincronizar.' :
@@ -19755,7 +19756,8 @@ async function updateSyncStatusInfo() {
         + '<span style="font-size:9px">La app está funcionando solo en este dispositivo. Pulsa "Re-sincronizar" para conectar con tu cuenta.</span>';
     }
   } catch(e) {
-    el.innerHTML = '<span style="color:var(--text3)">Sincronización no disponible (sin red o sin cuenta).</span>';
+    el.innerHTML = '<span style="color:var(--orange)">⚠ No se ha podido verificar la cuenta</span><br>'
+      + '<span style="font-size:9px">Tus sesiones siguen guardadas en este dispositivo. Reintenta la sincronización cuando vuelva la conexión.</span>';
   }
 }
 
@@ -19769,7 +19771,8 @@ async function updateAjustesAccountRow() {
   if (!av || !nm || !sb2) return;
   try {
     const sb = getSB();
-    const { data: { user } } = await sb.auth.getUser();
+    const { data: { user }, error } = await _cloudAuthUser(sb, { diagnostics:false });
+    if (error && error.name !== 'AuthSessionMissingError') throw error;
     if (user && user.email) {
       av.textContent = user.email.charAt(0).toUpperCase();
       nm.textContent = user.email;
@@ -19785,7 +19788,7 @@ async function updateAjustesAccountRow() {
   } catch(e) {
     av.textContent = '·';
     nm.textContent = 'Cuenta';
-    sb2.textContent = 'Sincronización no disponible';
+    sb2.textContent = 'Cuenta sin verificar · estudio guardado localmente';
     sb2.style.color = '';
   }
 }
