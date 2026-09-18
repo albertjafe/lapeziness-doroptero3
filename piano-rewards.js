@@ -307,14 +307,17 @@
   }
   function monthlyAchievements(sessions,today=dayKey()){
     const totals=summarizeDays(sessions),months={};
-    Object.keys(totals).filter(date=>date>=BALANCED_POLICY_START_DAY&&date<=today).sort().forEach(date=>{
+    // El progreso visual pertenece al mes natural completo. La fecha de
+    // transición solo limita qué días pueden generar los nuevos premios.
+    Object.keys(totals).filter(date=>date<=today).sort().forEach(date=>{
       (months[date.slice(0,7)]||=[]).push(date);
     });
     months[today.slice(0,7)]||=[];
     return Object.keys(months).sort().map(month=>{
       const levels=MONTHLY_LEVELS.map(level=>{
         const days=months[month].filter(date=>totals[date]>=level.seconds);
-        return {...level,days:days.length,earned:days.length>=20,earnedOn:days[19]||null};
+        const eligible=days.filter(date=>date>=BALANCED_POLICY_START_DAY);
+        return {...level,days:days.length,eligibleDays:eligible.length,earned:eligible.length>=20,earnedOn:eligible[19]||null};
       });
       return {month,requiredDays:20,levels,points:levels.filter(level=>level.earned).at(-1)?.points||0};
     });
