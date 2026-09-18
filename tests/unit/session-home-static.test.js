@@ -132,25 +132,25 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain('__earnedCentFloor');
   });
 
-  it('ships the complete v407 runtime offline', () => {
+  it('ships the complete v408 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('desktop-redesign.css?v=396');
-    expect(index).toContain('app.js?v=407');
+    expect(index).toContain('app.js?v=408');
     expect(index).toContain('crono-resume-layout.js?v=405');
-    expect(index).toContain('piano-rewards.js?v=406');
+    expect(index).toContain('piano-rewards.js?v=408');
     expect(index).toContain('daily-study-minutes.js?v=404');
     expect(index).toContain('german-rewards.js?v=404');
     expect(index).toContain('german-session.js?v=404');
-    expect(worker).toContain("const CACHE = 'estudio-v407'");
+    expect(worker).toContain("const CACHE = 'estudio-v408'");
     expect(worker).toContain('"./local-save-resilience.js?v=405"');
     expect(worker).toContain('"./instant-sync-resilience.js?v=405"');
     expect(worker).toContain('"./desktop-redesign.css?v=396"');
-    expect(worker).toContain('"./piano-rewards.js?v=406"');
+    expect(worker).toContain('"./piano-rewards.js?v=408"');
     expect(worker).toContain('"./daily-study-minutes.js?v=404"');
     expect(worker).toContain('"./german-rewards.js?v=404"');
     expect(worker).toContain('"./german-session.js?v=404"');
     expect(worker).toContain('"./crono-state-store.js?v=397"');
-    expect(worker).toContain('"./crono-running-premium.js?v=399"');
+    expect(worker).toContain('"./crono-running-premium.js?v=408"');
     expect(worker).toContain('"./session-home.css?v=374"');
     expect(worker).toContain('"./crono-resume-layout.css?v=342"');
     expect(worker).toContain('"./desktop-workspace.css?v=388"');

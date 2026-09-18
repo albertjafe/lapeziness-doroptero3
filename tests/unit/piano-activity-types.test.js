@@ -23,14 +23,14 @@ describe('piano activity types',()=>{
     expect(row.activityType).toBe('piano_class');
     expect(row.activityFactor).toBe(.5);
     expect(row.fullDay).toBe(false);
-    expect(row.finalReward).toBeCloseTo(P.baseReward(3*3600),6);
+    expect(row.finalReward).toBeCloseTo(P.baseReward(3*3600,P.POLICIES[4]),6);
   });
 
   it('counts three real hours of chamber as one equivalent hour',()=>{
     const row=P.ledger([session('chamber-3h',3*3600,'chamber')],[goal])[0];
     expect(row.rawDuration).toBe(3*3600);
     expect(row.duration).toBeCloseTo(3600,8);
-    expect(row.finalReward).toBeCloseTo(P.baseReward(3600),6);
+    expect(row.finalReward).toBeCloseTo(P.baseReward(3600,P.POLICIES[4]),6);
   });
 
   it('combines one solo hour and six class hours into a four-hour full day',()=>{
@@ -43,7 +43,7 @@ describe('piano activity types',()=>{
     })))['2026-09-16']).toBe(4*3600);
     expect(rows.every(row=>row.fullDay)).toBe(true);
     expect(rows.every(row=>!row.excellentDay)).toBe(true);
-    expect(rows.reduce((sum,row)=>sum+row.finalReward,0)).toBeCloseTo(P.baseReward(4*3600),6);
+    expect(rows.reduce((sum,row)=>sum+row.finalReward,0)).toBeCloseTo(P.baseReward(4*3600,P.POLICIES[4]),6);
   });
 
   it('makes the live taximeter advance at the selected activity factor',()=>{
@@ -54,8 +54,8 @@ describe('piano activity types',()=>{
     expect(study.seconds).toBe(3600);
     expect(pianoClass.seconds).toBe(1800);
     expect(chamber.seconds).toBeCloseTo(1200,8);
-    expect(pianoClass.today).toBeCloseTo(P.baseReward(1800),6);
-    expect(chamber.today).toBeCloseTo(P.baseReward(1200),6);
+    expect(pianoClass.today).toBeCloseTo(P.baseReward(1800,P.POLICIES[4]),6);
+    expect(chamber.today).toBeCloseTo(P.baseReward(1200,P.POLICIES[4]),6);
   });
 
   it('persists the activity type and factor on the reward session',()=>{

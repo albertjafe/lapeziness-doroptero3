@@ -23,7 +23,8 @@ describe('bounded study and habit rewards in the shared wallet',()=>{
     expect(P.studyAchievement(sessions(20),'2026-09-19').earned).toBe(false);
   });
   it('projects only one five-point prize even after several exceptional months and repeated merges',()=>{
-    const data=database(),s=[...sessions(20),...sessions(20,'2026-10')];
+    const data=database(),s=[...sessions(20,'2026-08'),...sessions(20,'2026-07')];
+    data.germanStudy.goals[0].createdAt='2026-06-01T10:00:00Z';data.germanStudy.effortWallet.createdAt='2026-06-01T12:00:00Z';
     const rows=P.bonusRows(data,s,'2026-10-30');expect(rows).toHaveLength(1);
     expect(P.walletPointsFromRows([...rows,...rows],data.germanStudy.effortWallet)).toBe(5);
     const merged=Doc.mergeRemote(data,data);expect(P.bonusRows(merged,s,'2026-10-30')).toEqual(rows);
@@ -52,7 +53,9 @@ describe('bounded study and habit rewards in the shared wallet',()=>{
     const rows=P.bonusRows(data,[],'2026-09-30');expect(rows).toHaveLength(1);expect(P.rowEffortPoints(rows[0])).toBe(3);
   });
   it('adds a bonus to every price equivalence and spends it once in the common bank',()=>{
-    const data=database(),wallet=data.germanStudy.effortWallet,rows=P.bonusRows(data,sessions(20),'2026-09-30');
+    const data=database(),wallet=data.germanStudy.effortWallet;
+    data.germanStudy.goals[0].createdAt='2026-08-01T10:00:00Z';wallet.createdAt='2026-08-01T12:00:00Z';
+    const rows=P.bonusRows(data,sessions(20,'2026-08'),'2026-09-30');
     const small={id:'small',amount:50},large={id:'large',amount:50000};
     expect(P.goalProgressFromWallet(small,rows,wallet).amount).toBeCloseTo(5*P.goalScale(small),6);
     expect(P.goalProgressFromWallet(large,rows,wallet).amount).toBeCloseTo(5*P.goalScale(large),6);

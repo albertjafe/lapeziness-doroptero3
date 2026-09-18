@@ -63,7 +63,7 @@ describe('piano rewards follow canonical study time',()=>{
     const db=database(),before=structuredClone(db),state=P.studyState(db,day);
     expect(live(db)).toMatchObject({seconds:7200,tierStartSeconds:7200,nextSeconds:9000,today:.27});
     const next=P.live(state,db.germanStudy.goals,'g',1,day);
-    expect(next.today).toBeCloseTo(P.baseReward(7201),6);
+    expect(next.today).toBeCloseTo(P.baseReward(7201,P.POLICIES[5]),6);
     expect(next.hourlyRate).toBeCloseTo(.22,6);
     expect(db.germanStudy.effortWallet).toMatchObject({version:1,displayGoalId:'g',seedGoalIds:['g'],redemptions:[]});
     const comparable=structuredClone(db);delete comparable.germanStudy.effortWallet;

@@ -9,15 +9,15 @@ const goal=(id='g',amount=150)=>({id,name:'Kindle',amount,createdAt:'2026-09-01T
 const piano=(id,seconds,startedAt='2026-09-12T10:00:00Z',goalId='g',policyVersion=4)=>({id,goalId,startedAt,endedAt:startedAt,date:startedAt.slice(0,10),seconds,policyVersion});
 
 describe('piano progressive taximeter',()=>{
-  it.each([[0,0],[1800,.05],[3600,.11],[5400,.18],[7200,.27],[9000,.38],[10800,.53],[12600,.75],[14400,1.05],[16200,1.43],[18000,1.93],[19800,2.58],[21600,3.38],[23400,4.38],[25200,5.50],[30000,5.50]])('%s seconds -> %s euros at the reference goal',(seconds,amount)=>{
+  it.each([[0,0],[1800,.115],[3600,.25],[5400,.415],[7200,.60],[9000,.79],[10800,1],[12600,1.24],[14400,1.50],[16200,1.79],[18000,2.10],[19800,2.44],[21600,2.80],[23400,3.19],[25200,3.60],[30000,3.60]])('%s seconds -> %s euros at the reference goal',(seconds,amount)=>{
     expect(P.baseReward(seconds)).toBeCloseTo(amount,8);
   });
 
-  it('keeps the stronger curve in v5 and a hard seven-hour cap',()=>{
+  it('increases every half-hour rate in v6 and keeps a hard seven-hour cap',()=>{
     const increments=P.CONFIG.curve.slice(1).map(([,amount],index)=>amount-P.CONFIG.curve[index][1]);
     increments.slice(1).forEach((increment,index)=>expect(increment).toBeGreaterThan(increments[index]));
-    expect(P.CONFIG.version).toBe(5);
-    expect(P.baseReward(4*3600)).toBe(1.05);
+    expect(P.CONFIG.version).toBe(6);
+    expect(P.baseReward(4*3600)).toBe(1.50);
     expect(P.baseReward(8*3600)).toBe(P.baseReward(7*3600));
     expect(3*P.baseReward(7*3600)).toBeLessThan(150);
   });

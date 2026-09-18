@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-18-live-ipad-swipe-v407';
+const APP_VERSION = '2026-09-18-balanced-effort-v408';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -25070,7 +25070,7 @@ function cronoUpdatePianoReward() {
       cronoEffectiveElapsedMs() / 1000,
       PianoRewards.dayKey(),
       germanRows,
-      crono.rewardPolicyVersion || PianoRewards.CONFIG.version,
+      crono.rewardPolicyVersion || PianoRewards.policyForDate().version,
       crono.activityType
     );
     const money = (amount, digits=2) => new Intl.NumberFormat('es-ES', {
@@ -26362,7 +26362,7 @@ function cronoStart() {
   }
   crono.runId = typeof TimerCore !== 'undefined' ? TimerCore.createRunId() : ('run_' + Date.now() + '_' + Math.random().toString(36).slice(2));
   crono.rewardGoalId = typeof PianoRewards !== 'undefined' ? (PianoRewards.activeGoal(db)?.id || null) : null;
-  crono.rewardPolicyVersion = typeof PianoRewards !== 'undefined' ? PianoRewards.CONFIG.version : null;
+  crono.rewardPolicyVersion = typeof PianoRewards !== 'undefined' ? PianoRewards.policyForDate().version : null;
   crono.activityType = typeof PianoRewards !== 'undefined' ? PianoRewards.normalizeActivityType(window.__PIANO_ACTIVITY_TYPE__) : 'study';
 
   cronoSaveState();

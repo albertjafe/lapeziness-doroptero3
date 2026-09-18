@@ -4,6 +4,7 @@ const fixture={obras:[{id:'bach',name:'Pieza de prueba',composer:'Compositor de 
   germanStudy:{version:1,materials:[],reviews:[],sessions:[],ledger:[],goals:[
     {id:'g',name:'E-book',amount:150,createdAt:'2026-09-01T10:00:00Z'}]}};
 async function prepare(page,data=fixture){
+  await page.clock.install({time:new Date('2026-09-18T12:00:00+02:00')});
   await page.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({status:200,contentType:'application/javascript',body:'/* offline fixture */'}));
   await page.addInitScript(data=>{
     if(!localStorage.getItem('alberto_piano_v2'))localStorage.setItem('alberto_piano_v2',JSON.stringify(data));
@@ -25,7 +26,7 @@ async function start(page,mode='stopwatch'){
 }
 test('recovers an empty wallet seed once, persists it, and keeps historical activity weights',async({page})=>{
   const data=structuredClone(fixture);
-  const when=new Date();when.setDate(when.getDate()-2);when.setHours(10,0,0,0);
+  const when=new Date('2026-09-18T12:00:00+02:00');when.setDate(when.getDate()-2);when.setHours(10,0,0,0);
   const startedAt=when.toISOString();
   data.sessionPlants=[{id:'run_old',runId:'old',obraId:'bach',source:'app',mins:360,startedAt}];
   data.pianoRewards={version:1,sessions:[{id:'old',goalId:'g',startedAt,seconds:360*60,policyVersion:4,activityType:'piano_class',activityFactor:.5}]};
@@ -79,8 +80,10 @@ test('recovers thirty minutes after page destruction even if localStorage lost t
     await CronoStateStore.flush();
     return crono.runId;
   });
+  const reopenTime=await page.evaluate(()=>Date.now());
   await page.close();
   const reopened=await context.newPage();
+  await reopened.clock.install({time:new Date(reopenTime+1000)});
   await reopened.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({status:200,contentType:'application/javascript',body:'/* offline fixture */'}));
   await reopened.addInitScript(()=>localStorage.removeItem('pianoCrono_v2'));
   await reopened.goto('/',{waitUntil:'load'});
@@ -123,7 +126,7 @@ test('an expired pause excludes only five minutes after reopening',async({page})
   expect(elapsed).toBeLessThan(36*60000);
 });
 test('old manual entries without IDs still correct, delete and restore their canonical block',async({page})=>{
-  const data=structuredClone(fixture),when=new Date().toISOString();
+  const data=structuredClone(fixture),when=new Date('2026-09-18T10:00:00Z').toISOString();
   data.sessionPlants=[{id:'legacy-plant',obraId:'bach',mins:30,source:'manual',startedAt:when,endedAt:when}];
   data.sesiones=[{date:when,items:[{obraId:'bach',manual:true,tick:'hecho',minutosEstudiados:30,minutosReales:30}]}];
   await prepare(page,data);

@@ -11,6 +11,10 @@
   const FULL_DAY_SECONDS=4*3600;
   const EXCELLENT_DAY_SECONDS=5*3600;
   const SHARED_EFFORT_POLICY_VERSION=5;
+  // Fixed day boundary: old imports and offline merges select the same policy
+  // without repricing an existing day or writing another balance/migration clock.
+  const BALANCED_POLICY_START_DAY='2026-09-19';
+  const MONTHLY_LEVELS=Object.freeze([4,5,6].map((hours,index)=>Object.freeze({hours,seconds:hours*3600,points:[10,25,30][index]})));
   const ACTIVITY_TYPES=Object.freeze({
     study:Object.freeze({id:'study',label:'Estudio',factor:1}),
     piano_class:Object.freeze({id:'piano_class',label:'Clase piano',factor:.5}),
@@ -23,9 +27,12 @@
     2:policy(2,[[0,0],[1800,.035],[3600,.08],[5400,.13],[7200,.20],[9000,.29],[10800,.40],[12600,.55],[14400,.75],[16200,1],[18000,1.35],[19800,1.85],[21600,2.60],[23400,3.75],[25200,5.50]]),
     3:policy(3,CURVE_V4),
     4:policy(4,CURVE_V4),
-    5:policy(5,CURVE_V4)
+    5:policy(5,CURVE_V4),
+    6:policy(6,[[0,0],[1800,.115],[3600,.25],[5400,.415],[7200,.60],[9000,.79],[10800,1],[12600,1.24],[14400,1.50],[16200,1.79],[18000,2.10],[19800,2.44],[21600,2.80],[23400,3.19],[25200,3.60]])
   });
-  const CONFIG=POLICIES[5];
+  const CONFIG=POLICIES[6];
+  const policyForDate=(date=dayKey())=>date>=BALANCED_POLICY_START_DAY?POLICIES[6]:POLICIES[5];
+  const combinedMultiplier=(four,five,version=CONFIG.version)=>Number(version)>=6?Math.min(1.50,four*five):four*five;
   const recoveredWallets=new WeakSet();
   const dayKey=(date=new Date())=>[date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-');
   function appDb(){
@@ -125,7 +132,7 @@
   // and the daily tier from the same deduplicated minutes shown in the app.
   function studyState(db, today=dayKey()){
     const saved=ensure(db), goals=db?.germanStudy?.goals||[],wallet=ensureEffortWallet(db);
-    const project=sessions=>({...saved,sessions,effortWallet:wallet,bonusRows:bonusRows(db,sessions,today)});
+    const project=sessions=>({...saved,sessions,effortWallet:wallet,effortStartDay:effortStartDay(db),bonusRows:bonusRows(db,sessions,today)});
     if(!DailyStudyMinutes || !Array.isArray(db.sessionPlants) || !Array.isArray(db.sesiones))return project(saved.sessions);
     const ordered=goals.filter(g=>g.id && g.createdAt).slice().sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt))||String(a.id).localeCompare(String(b.id)));
     if(!ordered.length)return project([]);
@@ -150,7 +157,7 @@
       const type=normalizeActivityType(block.activityType || previous?.activityType);
       const rawMins=Number.isFinite(Number(block.rawMins))?Math.max(0,Number(block.rawMins)):Math.max(0,Number(block.mins)||0);
       const blockMs=Date.parse(block.startedAt||block.endedAt||when);
-      const fallbackPolicy=Number.isFinite(blockMs)&&blockMs>=walletStart?CONFIG.version:4;
+      const fallbackPolicy=date>=BALANCED_POLICY_START_DAY?6:(Number.isFinite(blockMs)&&blockMs>=walletStart?5:4);
       sessions.push({...previous,id:'study-block:'+(block.id || block.runId || date+':'+index),goalId:goal.id,date,
         startedAt:block.startedAt || when,endedAt:block.endedAt || when,seconds:rawMins*60,
         activityType:type,activityFactor:activityFactor(block.activityType ? block : previous || type),policyVersion:previous?.policyVersion || block.rewardPolicyVersion || fallbackPolicy});
@@ -231,7 +238,7 @@
       todayMultiplier:today?.multiplier||1,todaySeconds:totals[date]||0,excellentDay:!!today?.excellentDay,
       pending,frozen:!!today?.frozen||(!totals[date]&&(info?.days||0)>0)};
   }
-  function record(state,{id,goalId=null,startedAt,endedAt,seconds,policyVersion=CONFIG.version,activityType=null,activityFactor:explicitFactor=null}){
+  function record(state,{id,goalId=null,startedAt,endedAt,seconds,policyVersion=null,activityType=null,activityFactor:explicitFactor=null}){
     if(!id||state.sessions.some(session=>session.id===id))return false;
     const duration=Math.max(0,Number(seconds)||0);
     if(duration<CONFIG.minimumSeconds)return false;
@@ -239,7 +246,7 @@
     const factor=Number.isFinite(Number(explicitFactor))&&Number(explicitFactor)>0&&Number(explicitFactor)<=1?Number(explicitFactor):ACTIVITY_TYPES[type].factor;
     const end=new Date(endedAt||Date.now());
     state.sessions.push({id,goalId,startedAt:new Date(startedAt||end).toISOString(),endedAt:end.toISOString(),date:dayKey(end),seconds:duration,
-      activityType:type,activityFactor:factor,policyVersion:Number(policyVersion)||CONFIG.version});
+      activityType:type,activityFactor:factor,policyVersion:Number(policyVersion)||policyForDate(dayKey(new Date(startedAt||end))).version});
     return true;
   }
   function ledger(sessions,goals){
@@ -257,7 +264,7 @@
       const excellenceInfo=excellence[date]||{days:0,multiplier:1,excellentDay:false,frozen:false};
       const fullDayMultiplier=rewardPolicy.version>=3&&streakInfo.fullDay?streakInfo.multiplier:1;
       const excellentMultiplier=rewardPolicy.version>=4&&excellenceInfo.excellentDay?excellenceInfo.multiplier:1;
-      const multiplier=fullDayMultiplier*excellentMultiplier;
+      const multiplier=combinedMultiplier(fullDayMultiplier,excellentMultiplier,rewardPolicy.version);
       const base=baseReward(after,rewardPolicy)-baseReward(before,rewardPolicy);
       const potential=Math.max(0,Math.round(baseReward(after,rewardPolicy)*scale*multiplier*1e6)-Math.round(baseReward(before,rewardPolicy)*scale*multiplier*1e6));
       const effortMicroPoints=Math.max(0,Math.round(baseReward(after,rewardPolicy)*multiplier*1e6)-Math.round(baseReward(before,rewardPolicy)*multiplier*1e6));
@@ -298,12 +305,35 @@
     const seedDates=(db.germanStudy?.goals||[]).filter(g=>seeds.has(g.id)&&g.createdAt).map(g=>dayKey(new Date(g.createdAt)));
     return seedDates.sort()[0]||dayKey(new Date(wallet.createdAt));
   }
+  function monthlyAchievements(sessions,today=dayKey()){
+    const totals=summarizeDays(sessions),months={};
+    Object.keys(totals).filter(date=>date>=BALANCED_POLICY_START_DAY&&date<=today).sort().forEach(date=>{
+      (months[date.slice(0,7)]||=[]).push(date);
+    });
+    months[today.slice(0,7)]||=[];
+    return Object.keys(months).sort().map(month=>{
+      const levels=MONTHLY_LEVELS.map(level=>{
+        const days=months[month].filter(date=>totals[date]>=level.seconds);
+        return {...level,days:days.length,earned:days.length>=20,earnedOn:days[19]||null};
+      });
+      return {month,requiredDays:20,levels,points:levels.filter(level=>level.earned).at(-1)?.points||0};
+    });
+  }
+  function monthlyBonusRows(sessions,today=dayKey()){
+    return monthlyAchievements(sessions,today).flatMap(achievement=>achievement.levels.filter(level=>level.earned).map((level,index)=>({
+      id:'bonus:study-month:'+achievement.month+':'+level.hours,date:level.earnedOn,source:'bonus',sharedEffortVersion:1,qualified:true,
+      effortMicroPoints:(level.points-(index?achievement.levels[index-1].points:0))*1e6,
+      title:'Mes de '+level.hours+' horas · '+achievement.month
+    })));
+  }
   function bonusRows(db,sessions,today=dayKey()){
     const since=effortStartDay(db);
-    const achievement=studyAchievement((sessions||[]).filter(s=>s.date>=since),today),rows=[];
+    const eligible=(sessions||[]).filter(s=>s.date>=since);
+    const achievement=studyAchievement(eligible.filter(s=>s.date<BALANCED_POLICY_START_DAY),today),rows=[];
     const row=(id,date,points,title)=>({id:'bonus:'+id,date,source:'bonus',sharedEffortVersion:1,
       effortMicroPoints:Math.round(points*1e6),qualified:true,title});
     if(achievement.earned)rows.push(row(achievement.id,achievement.earnedOn,achievement.points,achievement.title));
+    rows.push(...monthlyBonusRows(eligible,today));
     const habits=new Map((db.habitChallenges||[]).filter(h=>h?.id).map(h=>[h.id,h]));
     if(db.habitChallenge?.id&&!habits.has(db.habitChallenge.id))habits.set(db.habitChallenge.id,db.habitChallenge);
     let previousEnd='';
@@ -384,7 +414,7 @@
     const next=availableGoals(db)[0]||null;snap.wallet.displayGoalId=next?.id||null;
     return {ok:true,goal,spentPoints:progress.costPoints,remainingPoints:Math.max(0,progress.points-progress.costPoints)};
   }
-  function live(state,goals,goalId,currentSeconds,date=dayKey(),germanRows=[],currentPolicyVersion=CONFIG.version,currentActivityType=null){
+  function live(state,goals,goalId,currentSeconds,date=dayKey(),germanRows=[],currentPolicyVersion=policyForDate(date).version,currentActivityType=null){
     const savedSessions=state.sessions||[],basePianoRows=ledger(savedSessions,goals),bonuses=state.bonusRows||[],baseRows=[...combinedLedger(germanRows,basePianoRows,goals),...bonuses];
     const savedSeconds=savedSessions.filter(session=>session.date===date&&!session.deleted).reduce((sum,session)=>sum+equivalentSeconds(session),0);
     const wallet=state.effortWallet||{version:1,seedGoalIds:[goalId].filter(Boolean),seedCostPoints:{},displayGoalId:goalId,redemptions:[]};
@@ -395,7 +425,9 @@
     const liveSession=elapsed>0?{id:'__live__',goalId:selectedGoalId,startedAt:date+'T23:59:59.999Z',endedAt:date+'T23:59:59.999Z',date,seconds:elapsed,
       activityType:type,activityFactor:factor,policyVersion:rewardPolicy.version}:null;
     const hypotheticalSessions=liveSession?[...savedSessions,liveSession]:savedSessions;
-    const hypotheticalPianoRows=ledger(hypotheticalSessions,goals),hypotheticalRows=[...combinedLedger(germanRows,hypotheticalPianoRows,goals),...bonuses];
+    const hypotheticalBonuses=liveSession?[...bonuses.filter(row=>!row.id.startsWith('bonus:study-month:')),
+      ...monthlyBonusRows(hypotheticalSessions.filter(session=>!state.effortStartDay||session.date>=state.effortStartDay),date)]:bonuses;
+    const hypotheticalPianoRows=ledger(hypotheticalSessions,goals),hypotheticalRows=[...combinedLedger(germanRows,hypotheticalPianoRows,goals),...hypotheticalBonuses];
     const basePoints=walletPointsFromRows(baseRows,wallet),hypotheticalPoints=walletPointsFromRows(hypotheticalRows,wallet);
     const increment=Math.max(0,(hypotheticalPoints-basePoints)*scale);
     const todayEffort=hypotheticalPianoRows.filter(row=>row.date===date&&rowBelongsToWallet(row,wallet)).reduce((sum,row)=>sum+rowEffortPoints(row),0);
@@ -406,7 +438,7 @@
     const excellenceInfo=excellenceByDay(hypotheticalSessions)[date]||{days:0,multiplier:1,excellentDay:false,frozen:false};
     const fullDayMultiplier=rewardPolicy.version>=3&&streakInfo.fullDay?streakInfo.multiplier:1;
     const excellentMultiplier=rewardPolicy.version>=4&&excellenceInfo.excellentDay?excellenceInfo.multiplier:1;
-    const liveMultiplier=fullDayMultiplier*excellentMultiplier;
+    const liveMultiplier=combinedMultiplier(fullDayMultiplier,excellentMultiplier,rewardPolicy.version);
     const hourlyRate=next?((next[1]-previous[1])/(next[0]-previous[0]))*3600*scale*liveMultiplier*factor:0;
     const capSeconds=rewardPolicy.curve.at(-1)[0],capFill=Math.max(0,capSeconds-savedSeconds);
     const capSession={id:'__cap__',goalId:selectedGoalId,startedAt:date+'T23:59:59.999Z',endedAt:date+'T23:59:59.999Z',date,seconds:capFill,
@@ -416,7 +448,7 @@
     const capExcellence=excellenceByDay(capSessions)[date]||{days:0,multiplier:1,excellentDay:false,frozen:false};
     const capFullMultiplier=rewardPolicy.version>=3&&capInfo.fullDay?capInfo.multiplier:1;
     const capExcellentMultiplier=rewardPolicy.version>=4&&capExcellence.excellentDay?capExcellence.multiplier:1;
-    const cap=baseReward(capSeconds,rewardPolicy)*scale*capFullMultiplier*capExcellentMultiplier;
+    const cap=baseReward(capSeconds,rewardPolicy)*scale*combinedMultiplier(capFullMultiplier,capExcellentMultiplier,rewardPolicy.version);
     const progress=goal?goalProgressFromWallet(goal,hypotheticalRows,wallet):null;
     return {today,increment,cap,seconds:totalSeconds,rawCurrentSeconds:elapsed,equivalentCurrentSeconds:equivalentElapsed,currentActivityType:type,currentActivityFactor:factor,
       nextSeconds:next?next[0]:null,nextBase:next?next[1]:rewardPolicy.curve.at(-1)[1],tierStartSeconds:next?previous[0]:rewardPolicy.curve.at(-1)[0],hourlyRate,policyVersion:rewardPolicy.version,
@@ -549,5 +581,5 @@
     if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
   }
 
-  return {CONFIG,POLICIES,ACTIVITY_TYPES,FULL_DAY_SECONDS,EXCELLENT_DAY_SECONDS,SHARED_EFFORT_POLICY_VERSION,dayKey,normalizeActivityType,activityFactor,equivalentSeconds,ensure,ensureEffortWallet,studyState,activeGoal,baseReward,goalScale,goalCostPoints,streakMultiplier,excellenceMultiplier,summarizeDays,streakByDay,excellenceByDay,streakStats,excellenceStats,studyAchievement,effortStartDay,bonusRows,record,ledger,combinedLedger,rowEffortPoints,rowBelongsToWallet,walletPointsFromRows,goalProgressFromWallet,walletSnapshot,goalProgressForDb,redeemGoal,live,installBrowser};
+  return {BALANCED_POLICY_START_DAY,MONTHLY_LEVELS,policyForDate,combinedMultiplier,monthlyAchievements,monthlyBonusRows,CONFIG,POLICIES,ACTIVITY_TYPES,FULL_DAY_SECONDS,EXCELLENT_DAY_SECONDS,SHARED_EFFORT_POLICY_VERSION,dayKey,normalizeActivityType,activityFactor,equivalentSeconds,ensure,ensureEffortWallet,studyState,activeGoal,baseReward,goalScale,goalCostPoints,streakMultiplier,excellenceMultiplier,summarizeDays,streakByDay,excellenceByDay,streakStats,excellenceStats,studyAchievement,effortStartDay,bonusRows,record,ledger,combinedLedger,rowEffortPoints,rowBelongsToWallet,walletPointsFromRows,goalProgressFromWallet,walletSnapshot,goalProgressForDb,redeemGoal,live,installBrowser};
 });

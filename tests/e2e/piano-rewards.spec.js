@@ -11,6 +11,7 @@ const fixture={
 
 async function prepare(page,viewport={width:1024,height:1194}){
   await page.setViewportSize(viewport);
+  await page.clock.install({time:new Date('2026-09-18T12:00:00+02:00')});
   await page.addInitScript(()=>{
     Object.defineProperty(navigator,'platform',{configurable:true,get:()=> 'MacIntel'});
     Object.defineProperty(navigator,'userAgent',{configurable:true,get:()=> 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'});

@@ -357,7 +357,7 @@
       const idleGoal=PianoRewards.activeGoal(db);
       const idleBalance=document.getElementById('cronoPianoIdleGoalBalance');
       if(idleGoal && idleBalance){
-        const idleLive=PianoRewards.live(rewardState,goals,idleGoal.id,0,date,germanRows,PianoRewards.CONFIG.version,'study');
+        const idleLive=PianoRewards.live(rewardState,goals,idleGoal.id,0,date,germanRows,PianoRewards.policyForDate().version,'study');
         const earned=Math.max(0,idleGoal.amount-idleLive.goalRemaining);
         idleBalance.textContent=formatEarnedCents(earned)+' € de '+formatTargetCents(idleGoal.amount)+' €';
       }
@@ -366,7 +366,7 @@
         const goal=goals.find(item=>item && item.id===crono.rewardGoalId && !item.deletedAt);
         if(goal){
           const elapsed=typeof cronoEffectiveElapsedMs==='function'?Math.max(0,cronoEffectiveElapsedMs()/1000):0;
-          const live=PianoRewards.live(rewardState,goals,crono.rewardGoalId,elapsed,date,germanRows,crono.rewardPolicyVersion||PianoRewards.CONFIG.version,selectedActivityType);
+          const live=PianoRewards.live(rewardState,goals,crono.rewardGoalId,elapsed,date,germanRows,crono.rewardPolicyVersion||PianoRewards.policyForDate().version,selectedActivityType);
           const earned=Math.max(0,goal.amount-live.goalRemaining);
           activeBalance.textContent=formatEarnedCents(earned)+' € / '+formatTargetCents(goal.amount)+' €';
         }
@@ -416,7 +416,7 @@
       const goal=activeCronoGoal||PianoRewards.activeGoal(db);
       const elapsed=typeof cronoEffectiveElapsedMs==='function'?Math.max(0,cronoEffectiveElapsedMs()/1000):0;
       const date=typeof PianoRewards.dayKey==='function'?PianoRewards.dayKey():undefined;
-      const policyVersion=(typeof crono!=='undefined'&&Number(crono.rewardPolicyVersion))||PianoRewards.CONFIG.version;
+      const policyVersion=(typeof crono!=='undefined'&&Number(crono.rewardPolicyVersion))||PianoRewards.policyForDate().version;
       return PianoRewards.live(state,goals,goal?goal.id:null,elapsed,date,[],policyVersion,selectedActivityType);
     }catch(error){return null;}
   }
@@ -427,7 +427,7 @@
   }
 
   function rewardTierState(live){
-    const policyVersion=(live&&Number(live.policyVersion))||((typeof crono!=='undefined'&&Number(crono.rewardPolicyVersion))||PianoRewards.CONFIG.version);
+    const policyVersion=(live&&Number(live.policyVersion))||((typeof crono!=='undefined'&&Number(crono.rewardPolicyVersion))||PianoRewards.policyForDate().version);
     const policy=(PianoRewards.POLICIES&&PianoRewards.POLICIES[policyVersion])||PianoRewards.CONFIG;
     const points=Array.isArray(policy&&policy.curve)?policy.curve:[];
     if(points.length<2)return {progress:0,multiplier:1,atCap:false,startSeconds:0,endSeconds:0};
@@ -437,7 +437,7 @@
     const normal=Math.max(1,Number(live&&live.streakMultiplier)||1);
     const excellent=Math.max(1,Number(live&&live.excellenceMultiplier)||1);
     const activity=Math.max(0.01,Number(live&&live.currentActivityFactor)||ACTIVITY_TYPES[selectedActivityType].factor);
-    const streakBoost=normal*excellent;
+    const streakBoost=PianoRewards.combinedMultiplier(normal,excellent,policyVersion);
     const firstDx=Math.max(1,Number(points[1][0])-Number(points[0][0]));
     const firstSlope=(Number(points[1][1])-Number(points[0][1]))/firstDx;
     if(endIndex<0){
