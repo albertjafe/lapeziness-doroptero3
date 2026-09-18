@@ -58,6 +58,25 @@ describe('future-only balanced effort policy',()=>{
     expect(rows).toHaveLength(1);expect(rows[0].id).toBe('bonus:excellence-month');expect(points(rows)).toBe(5);
     expect(points(P.bonusRows(data,sessions(5,'2026-09'),'2026-09-30'))).toBe(0);
   });
+  it('keeps September days before the transition visible in natural-month progress without paying them retroactively',()=>{
+    const beforeTransition=[
+      {id:'sep15',date:'2026-09-15',goalId:'g',seconds:5*3600,policyVersion:5,activityType:'study'},
+      {id:'sep16',date:'2026-09-16',goalId:'g',seconds:5*3600,policyVersion:5,activityType:'study'},
+      {id:'sep18',date:'2026-09-18',goalId:'g',seconds:5*3600,policyVersion:5,activityType:'study'}
+    ];
+    const progress=P.monthlyAchievements(beforeTransition,'2026-09-18').find(item=>item.month==='2026-09');
+    const five=progress.levels.find(level=>level.hours===5);
+    expect(five).toMatchObject({days:3,eligibleDays:0,earned:false});
+    expect(progress.points).toBe(0);
+    expect(points(P.monthlyBonusRows(beforeTransition,'2026-09-30'))).toBe(0);
+
+    const postTransition=Array.from({length:20},(_,i)=>({
+      id:'post-'+i,date:'2026-09-'+String(19+i).padStart(2,'0'),goalId:'g',seconds:5*3600,policyVersion:6,activityType:'study'
+    })).filter(item=>item.date<='2026-09-30');
+    const combined=P.monthlyAchievements([...beforeTransition,...postTransition],'2026-09-30').find(item=>item.month==='2026-09');
+    expect(combined.levels.find(level=>level.hours===5).days).toBe(15);
+    expect(combined.levels.find(level=>level.hours===5).eligibleDays).toBe(12);
+  });
   it.each([[4,10],[5,25],[6,30]])('pays only %s-hour monthly level total: %s points',(hours,expected)=>{
     const data=database(),rows=P.bonusRows(data,sessions(hours),'2026-10-31');
     expect(points(rows)).toBe(expected);
