@@ -28,7 +28,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="supabase-sdk-v2-116-0.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=407">
+<link rel="stylesheet" href="styles.css?v=415">
 <link rel="stylesheet" href="study-session-ux.css?v=342">
 <link rel="stylesheet" href="crono-resume-layout.css?v=342">
 <link rel="stylesheet" href="piano-rooms.css?v=369">
@@ -635,6 +635,19 @@
           <div><span>OBJETIVO TOTAL</span><strong id="cronoPianoGoalBalance">0,00 € / 0,00 €</strong></div>
         </div>
         <div class="crono-piano-goal-progress" aria-hidden="true"><i id="cronoPianoGoalProgress"></i></div>
+        <div class="crono-piano-bonus" aria-label="Bonus de racha">
+          <div class="crono-piano-bonus-head"><span>BONUS EN JUEGO</span><strong id="cronoPianoBonusCurrent">×1,00 actual</strong></div>
+          <div class="crono-piano-bonus-grid">
+            <div class="crono-piano-bonus-item" id="cronoPianoBonusFour">
+              <div><span>🔥 4 H</span><strong id="cronoPianoBonusFourValue">×1,00</strong></div>
+              <small id="cronoPianoBonusFourMeta">Racha de constancia</small>
+            </div>
+            <div class="crono-piano-bonus-item" id="cronoPianoBonusFive">
+              <div><span>★ 5 H</span><strong id="cronoPianoBonusFiveValue">×1,00 total</strong></div>
+              <small id="cronoPianoBonusFiveMeta">Racha de excelencia</small>
+            </div>
+          </div>
+        </div>
         <footer><strong id="cronoPianoMoneyTier">Primer tramo</strong><span id="cronoPianoMoneyNext"></span></footer>
       </section>
 
@@ -2398,7 +2411,7 @@
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=397"></script>
 <script src="crono-state-store.js?v=397"></script>
-<script src="app.js?v=414"></script>
+<script src="app.js?v=415"></script>
 <script src="daily-study-minutes.js?v=404" id="dailyStudyMinutesFixScript"></script>
 <script src="german-rewards.js?v=404"></script>
 <script src="habit-trophies.js?v=406"></script>
