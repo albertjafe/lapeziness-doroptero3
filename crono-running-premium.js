@@ -303,7 +303,7 @@
     if(!el)return;
     const value=parseMoney(el.textContent);
     if(value==null)return;
-    const formatted=new Intl.NumberFormat('es-ES',{minimumFractionDigits:3,maximumFractionDigits:3}).format(Math.max(0,value))+' €';
+    const formatted=new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Math.max(0,value))+' €';
     if(el.textContent!==formatted)el.textContent=formatted;
     el.setAttribute('aria-label',formatted.replace(' €',' euros'));
   }
