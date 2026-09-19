@@ -1,0 +1,73 @@
+/* Secondary real-vs-net practice statistics. */
+.study-time-breakdown{
+  margin:0 0 22px;
+  padding:18px;
+  border:1px solid var(--border2);
+  border-radius:16px;
+  background:color-mix(in srgb,var(--card) 92%,var(--accent) 8%);
+}
+.study-time-breakdown-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+  margin-bottom:14px;
+}
+.study-time-breakdown-head h3{
+  margin:4px 0 0;
+  color:var(--text);
+  font-size:20px;
+}
+.study-time-breakdown-head p{
+  max-width:58ch;
+  margin:0;
+  color:var(--text3);
+  font-size:10px;
+  line-height:1.5;
+}
+.study-time-breakdown-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:9px;
+}
+.study-time-breakdown-row{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+  min-width:0;
+  padding:12px;
+  border:1px solid var(--border2);
+  border-radius:12px;
+  background:var(--bg2);
+}
+.study-time-breakdown-row>strong{
+  color:var(--text2);
+  font-size:11px;
+}
+.study-time-breakdown-row>span{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:8px;
+}
+.study-time-breakdown-row small{
+  color:var(--text3);
+  font:650 8px/1 var(--font-mono,"JetBrains Mono",monospace);
+  letter-spacing:.07em;
+  text-transform:uppercase;
+}
+.study-time-breakdown-row b{
+  color:var(--text);
+  font:750 12px/1 var(--font-mono,"JetBrains Mono",monospace);
+  font-variant-numeric:tabular-nums;
+}
+.study-time-breakdown-row span:first-of-type b{color:var(--accent);}
+@media(max-width:640px){
+  .study-time-breakdown{padding:14px;}
+  .study-time-breakdown-head{display:block;}
+  .study-time-breakdown-head p{margin-top:8px;}
+  .study-time-breakdown-grid{grid-template-columns:1fr;}
+  .study-time-breakdown-row{grid-template-columns:minmax(70px,.7fr) repeat(3,minmax(0,1fr));align-items:center;}
+  .study-time-breakdown-row>strong{grid-column:1;grid-row:1;}
+  .study-time-breakdown-row>span{display:grid;gap:3px;justify-content:start;}
+}
