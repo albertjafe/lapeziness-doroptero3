@@ -366,6 +366,35 @@
     return result;
   }
 
+  function secretOpportunities(sessions,today=dayKey(),now=new Date()){
+    const nowMs=now instanceof Date?now.getTime():Number(now);
+    const eligible=(sessions||[]).filter(s=>s&&!s.deleted&&!s.deletedAt&&s.date===today&&s.date>=SECRET_BONUS_START_DAY);
+    const total=summarizeDays(eligible)[today]||0;
+    if(total>=FULL_DAY_SECONDS)return [];
+    const intervals=eligible.map(timedInterval).filter(Boolean);
+    if(!intervals.length)return [];
+    const remainingSeconds=Math.max(0,FULL_DAY_SECONDS-total),result=[];
+    const firstStart=Math.min(...intervals.map(item=>item.start)),ten=cutoffMs(today,10);
+    if(Number.isFinite(ten)&&firstStart<ten){
+      result.push({...SECRET_BONUSES.early,date:today,remainingSeconds,secretOpportunity:true});
+    }
+    const sixteen=cutoffMs(today,16),eighteen=cutoffMs(today,18);
+    if(Number.isFinite(nowMs)&&Number.isFinite(eighteen)&&nowMs>=eighteen){
+      const at18=equivalentBefore(eligible,today,18);
+      if(at18.known&&at18.seconds<2*3600){
+        result.push({...SECRET_BONUSES.epic,date:today,remainingSeconds,secretOpportunity:true});
+        return result;
+      }
+    }
+    if(Number.isFinite(nowMs)&&Number.isFinite(sixteen)&&nowMs>=sixteen){
+      const at16=equivalentBefore(eligible,today,16);
+      if(at16.known&&at16.seconds<3600){
+        result.push({...SECRET_BONUSES.comeback,date:today,remainingSeconds,secretOpportunity:true});
+      }
+    }
+    return result;
+  }
+
   function monthlyAchievements(sessions,today=dayKey()){
     const totals=summarizeDays(sessions),months={};
     // El progreso visual pertenece al mes natural completo. La fecha de
@@ -649,5 +678,5 @@
     if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
   }
 
-  return {BALANCED_POLICY_START_DAY,SECRET_BONUS_START_DAY,SECRET_BONUSES,MONTHLY_LEVELS,policyForDate,combinedMultiplier,monthlyAchievements,monthlyBonusRows,secretAchievements,CONFIG,POLICIES,ACTIVITY_TYPES,FULL_DAY_SECONDS,EXCELLENT_DAY_SECONDS,SHARED_EFFORT_POLICY_VERSION,dayKey,normalizeActivityType,activityFactor,equivalentSeconds,ensure,ensureEffortWallet,studyState,activeGoal,baseReward,goalScale,goalCostPoints,streakMultiplier,excellenceMultiplier,summarizeDays,streakByDay,excellenceByDay,streakStats,excellenceStats,studyAchievement,effortStartDay,bonusRows,record,ledger,combinedLedger,rowEffortPoints,rowBelongsToWallet,walletPointsFromRows,goalProgressFromWallet,walletSnapshot,goalProgressForDb,redeemGoal,live,installBrowser};
+  return {BALANCED_POLICY_START_DAY,SECRET_BONUS_START_DAY,SECRET_BONUSES,MONTHLY_LEVELS,policyForDate,combinedMultiplier,monthlyAchievements,monthlyBonusRows,secretAchievements,secretOpportunities,CONFIG,POLICIES,ACTIVITY_TYPES,FULL_DAY_SECONDS,EXCELLENT_DAY_SECONDS,SHARED_EFFORT_POLICY_VERSION,dayKey,normalizeActivityType,activityFactor,equivalentSeconds,ensure,ensureEffortWallet,studyState,activeGoal,baseReward,goalScale,goalCostPoints,streakMultiplier,excellenceMultiplier,summarizeDays,streakByDay,excellenceByDay,streakStats,excellenceStats,studyAchievement,effortStartDay,bonusRows,record,ledger,combinedLedger,rowEffortPoints,rowBelongsToWallet,walletPointsFromRows,goalProgressFromWallet,walletSnapshot,goalProgressForDb,redeemGoal,live,installBrowser};
 });
