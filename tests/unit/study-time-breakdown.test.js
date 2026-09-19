@@ -1,5 +1,8 @@
-const {describe,it,expect}=require('vitest');
-const T=require('../../study-time-breakdown');
+import {describe,it,expect} from 'vitest';
+import {createRequire} from 'node:module';
+
+const require=createRequire(import.meta.url);
+const T=require('../../study-time-breakdown.js');
 
 describe('study time breakdown',()=>{
   it('keeps net and real minutes separate and reports their ratio',()=>{
