@@ -72,6 +72,16 @@ describe('daily study minutes', () => {
     expect(JSON.stringify(db)).toBe(before);
   });
 
+  it('counts mental study at half while preserving its real minutes', () => {
+    const db={sessionPlants:[
+      {id:'mental',runId:'mental',obraId:'a',mins:60,startedAt:'2026-09-05T10:00:00Z',activityType:'mental'}
+    ],sesiones:[],forestPlants:[]};
+    const api=loadFix(db),{start,end}=dayRange(),blocks=api.studyBlocks(start,end,db);
+    expect(api.ACTIVITY_FACTORS.mental).toBe(.5);
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]).toMatchObject({rawMins:60,mins:30,activityType:'mental',activityFactor:.5});
+  });
+
   it('deduplicates repeated timer plants and ignores their crono session mirrors', () => {
     const plants = [
       { obraId: 'general', mins: 26, startedAt: '2026-09-05T08:42:32.164Z', endedAt: '2026-09-05T09:11:40.344Z' },
