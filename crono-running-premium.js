@@ -223,23 +223,6 @@
         gap: 0;
         white-space: nowrap;
       }
-      #view-cronometro #cronoPianoMoneyValue .crono-money-major { color: inherit; font: inherit; letter-spacing: inherit; }
-      #view-cronometro #cronoPianoMoneyValue .crono-money-micro {
-        margin-left: .08em;
-        color: color-mix(in srgb, currentColor 66%, var(--text3));
-        font-size: .56em;
-        font-weight: 680;
-        letter-spacing: .015em;
-        opacity: .82;
-      }
-      #view-cronometro #cronoPianoMoneyValue .crono-money-currency {
-        margin-left: .20em;
-        color: color-mix(in srgb, currentColor 60%, var(--text3));
-        font-size: .50em;
-        font-weight: 700;
-        letter-spacing: 0;
-        opacity: .75;
-      }
       #view-cronometro .crono-piano-multiplier-meter {
         display: grid;
         grid-template-columns: minmax(0,1fr) auto;
@@ -317,19 +300,12 @@
 
   function formatMoneyDisplay(){
     const el=document.getElementById('cronoPianoMoneyValue');
-    if(!el || el.querySelector('.crono-money-major')) return;
+    if(!el)return;
     const value=parseMoney(el.textContent);
-    if(value==null) return;
-    const fixed=Math.max(0,value).toFixed(6);
-    const parts=fixed.split('.');
-    const decimals=(parts[1]||'').padEnd(6,'0');
-    const major=parts[0]+','+decimals.slice(0,2);
-    const micro=decimals.slice(2,6);
-    const readable=major+' '+micro+' euros';
-    el.innerHTML='<span class="crono-money-major"></span><span class="crono-money-micro"></span><span class="crono-money-currency">€</span>';
-    el.querySelector('.crono-money-major').textContent=major;
-    el.querySelector('.crono-money-micro').textContent='·'+micro;
-    el.setAttribute('aria-label',readable);
+    if(value==null)return;
+    const formatted=new Intl.NumberFormat('es-ES',{minimumFractionDigits:3,maximumFractionDigits:3}).format(Math.max(0,value))+' €';
+    if(el.textContent!==formatted)el.textContent=formatted;
+    el.setAttribute('aria-label',formatted.replace(' €',' euros'));
   }
 
   function floorToEarnedCents(value){
