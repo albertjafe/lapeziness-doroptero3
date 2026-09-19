@@ -142,23 +142,31 @@
     const running=s.status==='running' && ownsLock;
     const goal=state().goals.find(g=>g.id===s.goalId);
     const free=s.mode==='free';
-    return `<section class="german-meter" id="germanMeter"><div class="german-meter-top"><div><span class="german-eyebrow">${free?'ESTUDIO LIBRE':'TARJETAS'} · ${esc(goal?.name || 'SIN OBJETIVO')}</span><span id="germanMoneyLabel">Recompensa de hoy</span></div><div><span id="germanTime">00:00</span><span class="german-status">${running?'En marcha':'En pausa'}</span></div></div><div class="german-meter-value"><div id="germanMoney" class="german-money">0,000 €</div><span>taxímetro</span></div><div id="germanBonus"></div><p id="germanMinimum"></p><p id="germanMilestone" role="status"></p><div class="german-session-controls"><button data-action="${running?'pause':'resume'}">${running?'Pausar':'Continuar'}</button><button data-action="finish" aria-label="Terminar sesión">Terminar</button></div><small>Esta sesión: <span id="germanSessionTime"></span>. ${free?'Continúa en segundo plano; recuerda pausarla o terminarla.':'Se pausa al salir o tras 5 min sin interactuar.'}</small></section>${free?`<section class="german-free-study"><div class="german-free-icon" aria-hidden="true">Ä</div><span class="german-eyebrow">EL TIEMPO TAMBIÉN CUENTA FUERA DE LAS TARJETAS</span><h2>Estudio libre</h2><p>Haz una ficha, escucha alemán activamente, practica conversación o trabaja con cualquier otro material.</p><strong>${running?'El taxímetro está contando':'La sesión está en pausa'}</strong></section>`:itemMarkup(s)}`;
+    return `<section class="german-meter german-taximeter ${running?'':'is-paused'}" id="germanMeter" aria-label="Taxímetro de alemán y objetivo compartido"><header><div><span>HUCHA COMPARTIDA</span><strong id="germanGoalName">${esc(goal?.name || 'Sin objetivo')}</strong></div><button type="button" data-action="goal-manager">Gestionar</button></header><div class="german-taximeter-main"><div><span>ALEMÁN HOY</span><strong id="germanMoney" class="german-money" aria-live="off">0,000 €</strong><small id="germanMoneyLabel">Pendiente · se consolida a los ${MIN_LABEL}</small></div><div><span>OBJETIVO TOTAL</span><strong id="germanGoalBalance">0,00 € / 0,00 €</strong></div></div><div class="german-taximeter-progress" aria-hidden="true"><i id="germanGoalProgress"></i></div><footer><strong id="germanMinimum"></strong><span id="germanBonus"></span></footer><p id="germanMilestone" role="status"></p><div class="german-taximeter-session"><div><span>Hoy</span><strong id="germanTime">00:00</strong></div><div><span>Esta sesión</span><strong id="germanSessionTime">00:00</strong></div><span class="german-status">${running?'En marcha':'En pausa'}</span></div><div class="german-session-controls"><button data-action="${running?'pause':'resume'}">${running?'Pausar':'Continuar'}</button><button data-action="finish" aria-label="Terminar sesión">Terminar</button></div><small class="german-taximeter-note">${free?'Continúa en segundo plano; recuerda pausarla o terminarla.':'Se pausa al salir o tras 5 min sin interactuar.'}</small></section>${free?`<section class="german-free-study"><div class="german-free-icon" aria-hidden="true">Ä</div><span class="german-eyebrow">EL TIEMPO TAMBIÉN CUENTA FUERA DE LAS TARJETAS</span><h2>Estudio libre</h2><p>Haz una ficha, escucha alemán activamente, practica conversación o trabaja con cualquier otro material.</p><strong>${running?'El taxímetro está contando':'La sesión está en pausa'}</strong></section>`:itemMarkup(s)}`;
   }
   function updateMeter() {
     if (panel!=='study' || !current()) return;
     const st=state(), s=current(), today=R.dayKey(), total=R.summarizeDays(st.sessions)[today] || 0, streak=R.streakStats(st.sessions,today);
     const ledger=entries(), rows=ledger.filter(e=>e.date===today && e.goalId===s.goalId), goal=st.goals.find(g=>g.id===s.goalId);
     const qualified=total>=MIN, bonus=R.streakMultiplier(streak.prospective);
-    const consolidated=rows.reduce((n,e)=>n+e.finalReward,0);
-    const other=ledger.filter(e=>e.goalId===s.goalId && e.date!==today).reduce((n,e)=>n+e.finalReward,0);
-    const germanPending=rows.filter(e=>e.source==='german'&&!e.qualified).reduce((n,e)=>n+(e.potentialMicroEuros || 0)/1e6,0);
-    const pending=goal?Math.min(Math.max(0,goal.amount-other),consolidated+germanPending):0;
+    const germanRows=rows.filter(e=>e.source==='german');
+    const germanConsolidated=germanRows.reduce((n,e)=>n+e.finalReward,0);
+    const germanPendingRaw=germanRows.filter(e=>!e.qualified).reduce((n,e)=>n+(e.potentialMicroEuros || 0)/1e6,0);
+    const earnedWithoutPendingGerman=ledger.filter(e=>e.goalId===s.goalId && !(e.date===today && e.source==='german')).reduce((n,e)=>n+e.finalReward,0);
+    const germanToday=goal?(qualified?germanConsolidated:Math.min(Math.max(0,goal.amount-earnedWithoutPendingGerman),germanPendingRaw)):0;
+    const consolidatedGoalTotal=ledger.filter(e=>e.goalId===s.goalId).reduce((n,e)=>n+e.finalReward,0);
+    const goalTotal=goal?Math.min(goal.amount,consolidatedGoalTotal+(qualified?0:germanToday)):0;
+    const percent=goal?.amount?Math.min(100,Math.max(0,goalTotal/goal.amount*100)):0;
     const set=(id,text)=>{const el=document.getElementById(id);if(el && el.textContent!==text)el.textContent=text;};
-    set('germanMoney',euro(goal?(qualified?consolidated:pending):0,3));
-    set('germanMoneyLabel',goal?(qualified?'Consolidado hoy para este objetivo':(consolidated?'Piano consolidado + alemán pendiente hasta '+MIN_LABEL:'Pendiente hoy · se consolida a los '+MIN_LABEL)):'Crea un objetivo para activar la hucha');
+    set('germanMoney',euro(germanToday,3));
+    set('germanMoneyLabel',goal?(qualified?'Consolidado':'Pendiente · se consolida a los '+MIN_LABEL):'Crea un objetivo para activar la hucha');
+    set('germanGoalName',goal?.name || 'Sin objetivo');
+    set('germanGoalBalance',goal?euro(goalTotal,2)+' / '+euro(goal.amount,2):'Alemán + piano');
+    const progress=document.getElementById('germanGoalProgress');if(progress)progress.style.width=percent+'%';
     set('germanTime',time(total));set('germanSessionTime',time(s.segments.reduce((n,e)=>n+e.seconds,0)));
     set('germanBonus','+'+Math.round((bonus-1)*100)+' % por racha de '+streak.prospective+' días'+(qualified?'':' al cualificar hoy'));
-    set('germanMinimum',qualified?(total>=CAP?MIN_LABEL+' mínimos ✓ · Límite diario alcanzado; puedes seguir estudiando.':MIN_LABEL+' mínimos ✓'):'Faltan '+time(Math.ceil(MIN-total))+' para consolidar el día');
+    set('germanMinimum',qualified?(total>=CAP?'Límite diario alcanzado · puedes seguir estudiando':MIN_LABEL+' mínimos ✓'):'Faltan '+time(Math.ceil(MIN-total))+' para consolidar');
+    const meter=document.getElementById('germanMeter');if(meter)meter.classList.toggle('is-paused',s.status!=='running'||!ownsLock);
   }
   function render() {
     const el=document.getElementById('germanContent');if(!el)return;
@@ -198,6 +206,7 @@
   async function action(action,id) {
     const s=current();lastInteraction=Date.now();message('');
     if (['dashboard','materials','modes'].includes(action)) {pause();panel='dashboard';render();window.scrollTo({top:0,behavior:'instant'});return;}
+    if (action==='goal-manager') {pause();panel='dashboard';render();setTimeout(()=>document.getElementById('germanSharedGoal')?.scrollIntoView({behavior:'smooth',block:'center'}),0);return;}
     if (action==='start') return start('cards');
     if (action==='free') return start('free');
     if (action==='mode') return start(id==='free'?'free':'cards');
