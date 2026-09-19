@@ -14,6 +14,12 @@
   // Fixed day boundary: old imports and offline merges select the same policy
   // without repricing an existing day or writing another balance/migration clock.
   const BALANCED_POLICY_START_DAY='2026-09-19';
+  const SECRET_BONUS_START_DAY='2026-09-19';
+  const SECRET_BONUSES=Object.freeze({
+    early:Object.freeze({id:'early-bird',title:'Madrugador',points:.40,icon:'🌅',description:'Empezaste antes de las 10:00 y completaste cuatro horas equivalentes.'}),
+    comeback:Object.freeze({id:'comeback',title:'Remontada',points:.60,icon:'🐦‍🔥',description:'A las 16:00 llevabas menos de una hora equivalente y aun así completaste cuatro.'}),
+    epic:Object.freeze({id:'epic-comeback',title:'Remontada épica',points:.80,icon:'🐦‍🔥',description:'A las 18:00 llevabas menos de dos horas equivalentes y aun así completaste cuatro.'})
+  });
   const MONTHLY_LEVELS=Object.freeze([4,5,6].map((hours,index)=>Object.freeze({hours,seconds:hours*3600,points:[10,25,30][index]})));
   const ACTIVITY_TYPES=Object.freeze({
     study:Object.freeze({id:'study',label:'Estudio',factor:1}),
@@ -305,6 +311,61 @@
     const seedDates=(db.germanStudy?.goals||[]).filter(g=>seeds.has(g.id)&&g.createdAt).map(g=>dayKey(new Date(g.createdAt)));
     return seedDates.sort()[0]||dayKey(new Date(wallet.createdAt));
   }
+  function cutoffMs(date,hour){
+    const parts=String(date||'').split('-').map(Number);
+    if(parts.length!==3||parts.some(n=>!Number.isFinite(n)))return NaN;
+    return new Date(parts[0],parts[1]-1,parts[2],hour,0,0,0).getTime();
+  }
+  function timedInterval(session){
+    const rawSeconds=Math.max(0,Number(session?.seconds)||0),start=Date.parse(session?.startedAt||'');
+    if(!(rawSeconds>=CONFIG.minimumSeconds)||!Number.isFinite(start))return null;
+    const inferredEnd=start+rawSeconds*1000,explicitEnd=Date.parse(session?.endedAt||'');
+    let end=inferredEnd;
+    if(Number.isFinite(explicitEnd)&&explicitEnd>start){
+      const wall=explicitEnd-start,raw=rawSeconds*1000;
+      // Canonical timer blocks normally have a real end. Imported/fallback rows
+      // can point to 23:59; in that case infer the active interval from seconds.
+      if(wall<=raw*1.35+2*60*1000)end=explicitEnd;
+    }
+    return {start,end,seconds:equivalentSeconds(session)};
+  }
+  function equivalentBefore(sessions,date,hour){
+    const cutoff=cutoffMs(date,hour);if(!Number.isFinite(cutoff))return {seconds:0,known:false};
+    let seconds=0,known=false;
+    (sessions||[]).filter(s=>s&&!s.deleted&&!s.deletedAt&&s.date===date).forEach(session=>{
+      const interval=timedInterval(session);if(!interval)return;known=true;
+      if(cutoff<=interval.start)return;
+      if(cutoff>=interval.end){seconds+=interval.seconds;return;}
+      const span=Math.max(1,interval.end-interval.start);
+      seconds+=interval.seconds*Math.max(0,Math.min(1,(cutoff-interval.start)/span));
+    });
+    return {seconds,known};
+  }
+  function secretAchievements(sessions,today=dayKey()){
+    const eligible=(sessions||[]).filter(s=>s&&!s.deleted&&!s.deletedAt&&s.date>=SECRET_BONUS_START_DAY&&s.date<=today);
+    const totals=summarizeDays(eligible),result=[];
+    Object.keys(totals).sort().forEach(date=>{
+      if(totals[date]<FULL_DAY_SECONDS)return;
+      const daySessions=eligible.filter(s=>s.date===date),intervals=daySessions.map(timedInterval).filter(Boolean);
+      if(!intervals.length)return;
+      const firstStart=Math.min(...intervals.map(item=>item.start)),ten=cutoffMs(date,10);
+      if(Number.isFinite(ten)&&firstStart<ten){
+        const item=SECRET_BONUSES.early;
+        result.push({...item,date,secretAchievement:true});
+      }
+      const at18=equivalentBefore(daySessions,date,18),at16=equivalentBefore(daySessions,date,16);
+      // Epic replaces ordinary comeback on the same day: never double-pay both.
+      if(at18.known&&at18.seconds<2*3600){
+        const item=SECRET_BONUSES.epic;
+        result.push({...item,date,secretAchievement:true});
+      }else if(at16.known&&at16.seconds<3600){
+        const item=SECRET_BONUSES.comeback;
+        result.push({...item,date,secretAchievement:true});
+      }
+    });
+    return result;
+  }
+
   function monthlyAchievements(sessions,today=dayKey()){
     const totals=summarizeDays(sessions),months={};
     // El progreso visual pertenece al mes natural completo. La fecha de
@@ -333,10 +394,14 @@
     const since=effortStartDay(db);
     const eligible=(sessions||[]).filter(s=>s.date>=since);
     const achievement=studyAchievement(eligible.filter(s=>s.date<BALANCED_POLICY_START_DAY),today),rows=[];
-    const row=(id,date,points,title)=>({id:'bonus:'+id,date,source:'bonus',sharedEffortVersion:1,
-      effortMicroPoints:Math.round(points*1e6),qualified:true,title});
+    const row=(id,date,points,title,extra={})=>({id:'bonus:'+id,date,source:'bonus',sharedEffortVersion:1,
+      effortMicroPoints:Math.round(points*1e6),qualified:true,title,...extra});
     if(achievement.earned)rows.push(row(achievement.id,achievement.earnedOn,achievement.points,achievement.title));
     rows.push(...monthlyBonusRows(eligible,today));
+    secretAchievements(eligible,today).forEach(item=>rows.push(row(
+      'secret:'+item.id+':'+item.date,item.date,item.points,item.icon+' '+item.title,
+      {secretAchievement:true,secretId:item.id,icon:item.icon,description:item.description}
+    )));
     const habits=new Map((db.habitChallenges||[]).filter(h=>h?.id).map(h=>[h.id,h]));
     if(db.habitChallenge?.id&&!habits.has(db.habitChallenge.id))habits.set(db.habitChallenge.id,db.habitChallenge);
     let previousEnd='';
@@ -584,5 +649,5 @@
     if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
   }
 
-  return {BALANCED_POLICY_START_DAY,MONTHLY_LEVELS,policyForDate,combinedMultiplier,monthlyAchievements,monthlyBonusRows,CONFIG,POLICIES,ACTIVITY_TYPES,FULL_DAY_SECONDS,EXCELLENT_DAY_SECONDS,SHARED_EFFORT_POLICY_VERSION,dayKey,normalizeActivityType,activityFactor,equivalentSeconds,ensure,ensureEffortWallet,studyState,activeGoal,baseReward,goalScale,goalCostPoints,streakMultiplier,excellenceMultiplier,summarizeDays,streakByDay,excellenceByDay,streakStats,excellenceStats,studyAchievement,effortStartDay,bonusRows,record,ledger,combinedLedger,rowEffortPoints,rowBelongsToWallet,walletPointsFromRows,goalProgressFromWallet,walletSnapshot,goalProgressForDb,redeemGoal,live,installBrowser};
+  return {BALANCED_POLICY_START_DAY,SECRET_BONUS_START_DAY,SECRET_BONUSES,MONTHLY_LEVELS,policyForDate,combinedMultiplier,monthlyAchievements,monthlyBonusRows,secretAchievements,CONFIG,POLICIES,ACTIVITY_TYPES,FULL_DAY_SECONDS,EXCELLENT_DAY_SECONDS,SHARED_EFFORT_POLICY_VERSION,dayKey,normalizeActivityType,activityFactor,equivalentSeconds,ensure,ensureEffortWallet,studyState,activeGoal,baseReward,goalScale,goalCostPoints,streakMultiplier,excellenceMultiplier,summarizeDays,streakByDay,excellenceByDay,streakStats,excellenceStats,studyAchievement,effortStartDay,bonusRows,record,ledger,combinedLedger,rowEffortPoints,rowBelongsToWallet,walletPointsFromRows,goalProgressFromWallet,walletSnapshot,goalProgressForDb,redeemGoal,live,installBrowser};
 });
