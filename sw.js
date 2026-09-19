@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v423';
+const CACHE = 'estudio-v424';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -33,6 +33,7 @@ const ASSETS = [
   "./crono-save-resilience.js?v=397",
   "./crono-state-store.js?v=397",
   "./daily-study-minutes.js?v=423",
+  "./study-time-breakdown.js?v=424",
   "./data-core.js?v=342",
   "./document-sync-core.js?v=416",
   "./ensemble-repertoire-catalog.js?v=381",
@@ -101,6 +102,7 @@ const ASSETS = [
   "./session-home.css?v=374",
   "./ipad-today.css?v=407",
   "./session-log.css?v=402",
+  "./study-time-breakdown.css?v=424",
   "./ipad-today.js?v=400",
   "./desktop-redesign.css?v=396",
   "./solo-repertoire-structure.js?v=361",
