@@ -22,7 +22,7 @@ describe('piano activity types',()=>{
     expect(row.rawDuration).toBe(6*3600);
     expect(row.duration).toBe(3*3600);
     expect(row.activityType).toBe('piano_class');
-    expect(row.activityFactor).toBe(1);
+    expect(row.activityFactor).toBe(.5);
     expect(row.fullDay).toBe(false);
     expect(row.finalReward).toBeCloseTo(P.baseReward(3*3600,P.POLICIES[4]),6);
   });
@@ -31,7 +31,7 @@ describe('piano activity types',()=>{
     const row=P.ledger([session('chamber-3h',3*3600,'chamber')],[goal])[0];
     expect(row.rawDuration).toBe(3*3600);
     expect(row.duration).toBeCloseTo(3600,8);
-    expect(row.finalReward).toBeCloseTo(P.baseReward(2*3600,P.POLICIES[4]),6);
+    expect(row.finalReward).toBeCloseTo(P.baseReward(3600,P.POLICIES[4]),6);
   });
 
   it('combines one solo hour and six class hours into a four-hour full day',()=>{
