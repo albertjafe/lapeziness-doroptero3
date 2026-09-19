@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-19-secret-opportunity-v421';
+const APP_VERSION = '2026-09-19-mental-study-v422';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -20967,7 +20967,7 @@ function cronoLoadState(snapshot) {
     let legacyActivity = null;
     try { legacyActivity = JSON.parse(localStorage.getItem('piano_activity_type_v1') || 'null'); } catch(e) {}
     const activity = s.activityType || (legacyActivity?.runId === crono.runId ? legacyActivity.type : 'study');
-    crono.activityType = ['study','piano_class','chamber'].includes(activity) ? activity : 'study';
+    crono.activityType = ['study','mental','piano_class','chamber'].includes(activity) ? activity : 'study';
     window.__PIANO_ACTIVITY_TYPE__ = crono.activityType;
     crono.isRest = !!s.isRest;
     crono.obraId = s.obraId;
