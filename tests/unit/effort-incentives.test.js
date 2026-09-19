@@ -9,6 +9,10 @@ const database=(habits=[])=>({obras:[],sessionPlants:[],forestPlants:[],sesiones
   germanStudy:{goals:[{id:'g',name:'Kindle',amount:220,createdAt:'2026-09-01T10:00:00Z'}],sessions:[],
     effortWallet:{version:1,createdAt:'2026-09-01T12:00:00Z',seedGoalIds:['g'],seedCostPoints:{},redemptions:[]}},pianoRewards:{sessions:[]}});
 const sessions=(n,month='2026-09',seconds=18000)=>Array.from({length:n},(_,i)=>({id:month+'-'+i,date:month+'-'+String(i+1).padStart(2,'0'),seconds,activityType:'study'}));
+const timed=(id,date,start,seconds,activityType='study',activityFactor=1)=>{
+  const startedAt=date+'T'+start+':00',endedAt=new Date(new Date(startedAt).getTime()+seconds*1000).toISOString();
+  return {id,date,startedAt,endedAt,seconds,activityType,activityFactor};
+};
 
 describe('bounded study and habit rewards in the shared wallet',()=>{
   it('uses equivalent hours and distinct calendar days for the exceptional month',()=>{
@@ -30,6 +34,29 @@ describe('bounded study and habit rewards in the shared wallet',()=>{
     const merged=Doc.mergeRemote(data,data);expect(P.bonusRows(merged,s,'2026-10-30')).toEqual(rows);
     s[19].seconds=60;s.splice(20);expect(P.bonusRows(data,s,'2026-10-30')).toHaveLength(0);
   });
+  it('awards Madrugador only after an early-start day reaches four equivalent hours',()=>{
+    const early=[timed('early','2026-09-19','08:30',4*3600)];
+    expect(P.secretAchievements(early,'2026-09-19').map(item=>item.id)).toEqual(['early-bird']);
+    early[0].seconds=3*3600;early[0].endedAt=new Date(new Date(early[0].startedAt).getTime()+3*3600*1000).toISOString();
+    expect(P.secretAchievements(early,'2026-09-19')).toEqual([]);
+  });
+  it('awards ordinary comeback at 16:00 but lets the epic comeback replace it when the day is later',()=>{
+    const ordinary=[timed('ordinary','2026-09-19','15:30',4*3600)];
+    expect(P.secretAchievements(ordinary,'2026-09-19').map(item=>item.id)).toEqual(['comeback']);
+    const epic=[timed('epic','2026-09-19','17:00',4*3600)];
+    expect(P.secretAchievements(epic,'2026-09-19').map(item=>item.id)).toEqual(['epic-comeback']);
+  });
+  it('scales secret rewards with the active purchase goal instead of paying fixed cents',()=>{
+    const data=database(),goal=data.germanStudy.goals[0],wallet=data.germanStudy.effortWallet;
+    const rows=P.bonusRows(data,[timed('epic','2026-09-19','17:00',4*3600)],'2026-09-19');
+    const secret=rows.filter(row=>row.secretAchievement);
+    expect(secret).toHaveLength(1);expect(P.rowEffortPoints(secret[0])).toBe(.8);
+    expect(P.goalProgressFromWallet(goal,secret,wallet).amount).toBeCloseTo(.8*P.goalScale(goal),6);
+  });
+  it('does not back-award secret gaming bonuses before their activation day',()=>{
+    expect(P.secretAchievements([timed('old','2026-09-18','08:00',4*3600)],'2026-09-19')).toEqual([]);
+  });
+
   it('avoid earns without daily check-ins only after the entire calendar cycle closes',()=>{
     const h=newHabit();expect(H.rewardStatus(h,'2026-09-21T23:59:00').points).toBe(0);
     expect(H.rewardStatus(h,'2026-09-22T00:01:00')).toMatchObject({status:'earned',points:3});
