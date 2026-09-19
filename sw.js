@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v421';
+const CACHE = 'estudio-v422';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -6,16 +6,16 @@ const ASSETS = [
   "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=402",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=421",
+  "./app.js?v=422",
   "./german-rewards.js?v=404",
-  "./piano-rewards.js?v=421",
+  "./piano-rewards.js?v=422",
   "./german-srs.js?v=378",
   "./german-import.js?v=382",
   "./german-session.js?v=404",
   "./german-study.js?v=417",
   "./german-study.css?v=414",
   "./habit-trophies.js?v=406",
-  "./effort-incentives-ui.js?v=420",
+  "./effort-incentives-ui.js?v=422",
   "./effort-incentives.css?v=420",
   "./habit-trophies.css?v=383",
   "./desktop-workspace.css?v=388",
@@ -29,10 +29,10 @@ const ASSETS = [
   "./crono-resume-layout.css?v=342",
   "./crono-resume-layout.js?v=413",
   "./crono-running-premium.css?v=384",
-  "./crono-running-premium.js?v=419",
+  "./crono-running-premium.js?v=422",
   "./crono-save-resilience.js?v=397",
   "./crono-state-store.js?v=397",
-  "./daily-study-minutes.js?v=404",
+  "./daily-study-minutes.js?v=422",
   "./data-core.js?v=342",
   "./document-sync-core.js?v=416",
   "./ensemble-repertoire-catalog.js?v=381",
@@ -169,7 +169,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '421');
+            target.searchParams.set('__pwa', '422');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -177,7 +177,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'421', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'422', navigated });
         } catch (error) {}
       }
     }
