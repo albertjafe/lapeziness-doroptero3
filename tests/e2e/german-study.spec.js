@@ -32,7 +32,7 @@ test('Deutsch end to end: goal, class deck, Anki card, money, pause/reload and i
   expect(await page.evaluate(()=>db.germanStudy.sessions[0].queue.every(item=>item.kind==='card'))).toBe(true);
   await expect(page.getByRole('heading',{name:'der Bahnhof',exact:true})).toBeVisible();
   await expect(page.locator('#germanMoneyLabel')).toContainText('Pendiente');
-  await expect.poll(()=>page.locator('#germanMoney').innerText()).not.toBe('0,000 €');
+  await expect.poll(()=>page.locator('#germanMoney').innerText()).not.toBe('0,00 €');
   await page.getByRole('button',{name:'Mostrar respuesta',exact:true}).click();
   await expect(page.getByRole('heading',{name:'la estación',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:/Bien/})).toContainText('1 día');
@@ -141,7 +141,7 @@ test('free study uses the same taximeter and reloads paused without counting clo
   await page.getByRole('button',{name:'Estudio libre',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Estudio libre',exact:true})).toBeVisible();
   await page.clock.runFor(301000);
-  await expect.poll(()=>page.locator('#germanMoney').innerText()).not.toBe('0,000 €');
+  await expect.poll(()=>page.locator('#germanMoney').innerText()).not.toBe('0,00 €');
   expect(await page.evaluate(()=>db.germanStudy.sessions[0].status)).toBe('running');
   expect(await page.evaluate(()=>db.germanStudy.sessions[0].segments.reduce((n,x)=>n+x.seconds,0))).toBeGreaterThan(0);
   await page.reload();await page.waitForFunction(()=>window.GermanStudy);
