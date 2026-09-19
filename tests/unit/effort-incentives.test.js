@@ -46,6 +46,25 @@ describe('bounded study and habit rewards in the shared wallet',()=>{
     const epic=[timed('epic','2026-09-19','17:00',4*3600)];
     expect(P.secretAchievements(epic,'2026-09-19').map(item=>item.id)).toEqual(['epic-comeback']);
   });
+  it('shows only currently attainable secret opportunities and how much remains',()=>{
+    const early=[timed('early-live','2026-09-19','08:30',3600)];
+    const earlyOps=P.secretOpportunities(early,'2026-09-19',new Date('2026-09-19T11:00:00'));
+    expect(earlyOps).toHaveLength(1);
+    expect(earlyOps[0]).toMatchObject({id:'early-bird',points:.4,remainingSeconds:3*3600});
+
+    const comeback=[timed('late-live','2026-09-19','16:30',1800)];
+    const comebackOps=P.secretOpportunities(comeback,'2026-09-19',new Date('2026-09-19T17:30:00'));
+    expect(comebackOps.map(item=>item.id)).toEqual(['comeback']);
+
+    const epic=[timed('epic-live','2026-09-19','17:10',1800)];
+    const epicOps=P.secretOpportunities(epic,'2026-09-19',new Date('2026-09-19T18:30:00'));
+    expect(epicOps.map(item=>item.id)).toEqual(['epic-comeback']);
+  });
+  it('hides an opportunity as soon as the four-hour target is already completed',()=>{
+    const done=[timed('done','2026-09-19','08:30',4*3600)];
+    expect(P.secretOpportunities(done,'2026-09-19',new Date('2026-09-19T13:00:00'))).toEqual([]);
+  });
+
   it('scales secret rewards with the active purchase goal instead of paying fixed cents',()=>{
     const data=database(),goal=data.germanStudy.goals[0],wallet=data.germanStudy.effortWallet;
     const rows=P.bonusRows(data,[timed('epic','2026-09-19','17:00',4*3600)],'2026-09-19');
