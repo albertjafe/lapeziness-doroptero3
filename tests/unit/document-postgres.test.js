@@ -19,6 +19,7 @@ beforeAll(async()=>{
   await pg.exec(sql('20260918202404_optimize_document_record_merge.sql'));
   await pg.exec(original.slice(original.indexOf('create or replace function public.document_prune('),original.indexOf('create or replace function public.enforce_document_tombstones_after_guards(')).replaceAll('public.document_prune(', 'public.document_prune_before_optimization('));
   await pg.exec(sql('20260918205809_optimize_document_tombstone_pruning.sql'));
+  await pg.exec(sql('20260919142631_preserve_sync_acknowledgement_fields.sql'));
   // The helper's original migration predates this checkout; its deployed
   // definition is captured as a fixture, without data or production mutations.
   await pg.exec(`create trigger trg_00_preserve_crono_tasks before update of data on user_data for each row execute function preserve_crono_tasks_on_user_data_update();
@@ -30,6 +31,63 @@ async function write(id,a,b){
   return (await pg.query('update user_data set data=$2 where id=$1 returning data',[id,JSON.stringify(b)])).rows[0].data;
 }
 describe('real PostgreSQL migration with existing protection triggers',()=>{
+  it('acknowledges notes and field clocks through all legacy guards on equal record timestamps',async()=>{
+    const oldStamp='2026-09-04T10:00:00Z',stamp='2026-09-18T10:00:00Z';
+    const history={date:oldStamp,val:40,context:'study',_fieldClock:{val:oldStamp}};
+    const stored={sessionPlants:[{id:'block',mins:77,startedAt:oldStamp,updatedAt:oldStamp}],
+      obras:[{id:'w',solHistory:[history],movimientos:[{id:'m',updatedAt:oldStamp,solHistory:[history]}]}],
+      weeklyPlans:[{weekStart:'2026-09-07',slots:[{position:0,date:'2026-09-07',unknown:{longer:1,a:2}}]}]};
+    const incoming=structuredClone(stored);
+    incoming.sessionPlants[0].notes=[{id:'note',text:'Keep this observation'}];
+    incoming.sessionPlants[0]._fieldClock={notes:stamp};
+    incoming.obras[0].solHistory[0]._fieldClock.val=stamp;
+    incoming.obras[0].movimientos[0].solHistory[0]._fieldClock.val=stamp;
+    incoming.obras[0].movimientos[0]._fieldClock={futureField:stamp};
+    incoming.obras[0].movimientos[0].futureField={keep:true};
+    incoming.sessionPlants.push({id:'today',mins:86,startedAt:'2026-09-19T08:00:00Z'});
+    const outgoing=Doc.mergeRemote(stored,incoming),saved=await write('complete-ack',stored,outgoing);
+    expect(saved.sessionPlants.find(p=>p.id==='block').notes).toEqual(incoming.sessionPlants[0].notes);
+    expect(saved.obras[0].movimientos[0].solHistory[0]._fieldClock.val).toBe(stamp);
+    expect(Doc.sameContent(Doc.mergeRemote(saved,outgoing),saved)).toBe(true);
+    expect(saved.weeklyPlans).toHaveLength(1);
+    const repeat=await write('repeat-ack',saved,Doc.mergeRemote(saved,incoming));
+    expect(Doc.sameContent(saved,repeat)).toBe(true);
+  });
+  it('recognizes anonymous records after JSONB reorders nested keys and folds duplicate identities conservatively',async()=>{
+    const local={weeklyPlans:[{weekStart:'2026-09-07',slots:[{position:0,unknown:{longer:1,a:2}}]}]};
+    const returned=(await pg.query('select $1::jsonb as data',[JSON.stringify(local)])).rows[0].data;
+    expect(Doc.sameContent(Doc.mergeRemote(returned,local),returned)).toBe(true);
+    const duplicates=[{id:'same',first:1},{id:'same',second:2}],extra=[{id:'other',value:3}];
+    const sqlResult=(await pg.query('select document_merge($1::jsonb,$2::jsonb) as data',[JSON.stringify(duplicates),JSON.stringify(extra)])).rows[0].data;
+    expect(Doc.mergeRemote({items:duplicates},{items:extra}).items).toEqual(sqlResult);
+  });
+  it('finishes pending iPad and phone sync across midnight and remains clean on reopen',async()=>{
+    const id='midnight-devices',yesterday='2026-09-18T08:00:00Z',today='2026-09-19T08:00:00Z';
+    const base={obras:[],sessionPlants:[{id:'morning',mins:77,startedAt:yesterday}],
+      weeklyPlans:[{weekStart:'2026-09-14',slots:[{position:0,date:'2026-09-19'}]}]};
+    await pg.query('insert into user_data(id,data) values ($1,$2)',[id,JSON.stringify(base)]);
+    let writes=0;
+    const query=async({operation,value,expected})=>{
+      if(operation==='read')return {data:(await pg.query('select data,updated_at::text from user_data where id=$1',[id])).rows[0]};
+      writes++;
+      return {data:(await pg.query('update user_data set data=$2 where id=$1 and updated_at=$3::timestamptz returning data,updated_at::text',[id,JSON.stringify(value.data),expected])).rows[0]||null};
+    };
+    const ipad=cloudAppHarness(base,base,{meta:null,userId:id,query}),phone=cloudAppHarness(base,base,{meta:null,userId:id,query});
+    const ctx=ipad.boot();
+    ctx.db.sessionPlants[0].notes=[{id:'note',text:'Practice observation'}];
+    ctx.db.sessionPlants.push({id:'afternoon',mins:289,startedAt:'2026-09-18T13:00:00Z'},{id:'today',mins:86,startedAt:today});
+    ctx.saveLocalNow();
+    expect(await ctx.syncPendingCloudChanges()).toBe(true);
+    await phone.open();
+    expect(phone.state().local.sessionPlants.filter(p=>p.startedAt.startsWith('2026-09-19')).reduce((sum,p)=>sum+p.mins,0)).toBe(86);
+    const next=phone.boot();next.db.sessionPlants.push({id:'phone-study',mins:120,startedAt:'2026-09-19T11:00:00Z'});next.saveLocalNow();
+    expect(await next.syncPendingCloudChanges()).toBe(true);
+    await ipad.open();
+    expect(ipad.state().local.sessionPlants).toHaveLength(4);
+    expect(ipad.state().local.sessionPlants.reduce((sum,p)=>sum+p.mins,0)).toBe(572);
+    const completedWrites=writes;await phone.open();await ipad.open();expect(writes).toBe(completedWrites);
+    for(const h of [ipad,phone])expect(h.state().meta.dirtyRevision).toBe(h.state().meta.lastSyncedRevision);
+  });
   it('preserves the previous pruning result for nested, anonymous and scalar records',async()=>{
     const examples=[null,{},[],17,'text',{unknown:{nested:[{keep:1}]}},
       {items:[{id:'removed'},{id:'kept',unknown:{nested:[{id:'inner'}],_deletedChildren:{nested:{inner:'stamp'}}}}],_deletedChildren:{items:{removed:'stamp'}}},

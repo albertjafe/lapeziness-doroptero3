@@ -13,10 +13,14 @@
   const internal = new Set(['_fieldClock','_deletedChildren','_savedAt','_localRevision']);
   const additive = new Set(['sessionPlants','forestPlants','sesiones','items','registro','solHistory','paseHistory','zoneHistory','compasHistory','workHistory','historicalRepertoire','historicalEvents','cronoTaskTombstones','planningEventTombstones','competitionPlanTombstones']);
   const stampOf = x => String(x?.correctedAt || x?.manualSavedAt || x?.updatedAt || x?._savedAt || x?.createdAt || '');
+  // JSONB returns object keys in its own order. Anonymous records must retain
+  // their identity across that round trip (including nested objects).
+  const canonical = x => Array.isArray(x) ? x.map(canonical) : object(x) ?
+    Object.fromEntries(Object.keys(x).sort().map(k => [k,canonical(x[k])])) : x;
   const identity = x => object(x) && x.id != null ? 'id:' + String(x.id) :
     object(x) && x.runId != null ? 'run:' + String(x.runId) :
     object(x) && (x.at || x.date || x.startedAt) ? JSON.stringify([x.at || x.date || x.startedAt, x.obraId, x.movId, x.tipo || x.type || x.kind, x.context, x.momento]) :
-    object(x) && x.obraId != null ? JSON.stringify(['item',x.obraId,x.movId ?? x.movimientoId,x.uso ?? x.purpose,x.ronda ?? x.round]) : JSON.stringify(x);
+    object(x) && x.obraId != null ? JSON.stringify(['item',x.obraId,x.movId ?? x.movimientoId,x.uso ?? x.purpose,x.ronda ?? x.round]) : JSON.stringify(canonical(x));
   const maxMap = (a,b) => Object.fromEntries([...new Set([...Object.keys(a || {}), ...Object.keys(b || {})])]
     .map(k => [k, String(a?.[k] || '') > String(b?.[k] || '') ? a[k] : b[k]]));
 
@@ -26,7 +30,7 @@
     if (equal(left,right)) return clone(left);
     if (Array.isArray(left) && Array.isArray(right)) {
       const records = new Map();
-      left.forEach(x => records.set(identity(x), clone(x)));
+      left.forEach(x => { const key = identity(x); records.set(key, remote && records.has(key) ? merge(records.get(key),x,inheritedLeft,inheritedRight,revisionOrder,remote) : clone(x)); });
       right.forEach(x => { const key = identity(x); records.set(key, records.has(key) ? merge(records.get(key),x,inheritedLeft,inheritedRight,revisionOrder,remote) : clone(x)); });
       const preferred = remote || inheritedLeft > inheritedRight ? [...left,...right] : [...right,...left];
       return [...new Set(preferred.map(identity))].map(key => records.get(key));

@@ -104,9 +104,9 @@ describe('focused session home', () => {
     expect(desktopRedesign).not.toContain('html:not(.platform-windows)');
   });
 
-  it('simplifies the piano taximeter into split precision and one multiplier bar', () => {
-    expect(cronoPremium).toContain('.crono-money-micro');
-    expect(cronoPremium).toContain("'·'+micro");
+  it('simplifies the piano taximeter into three decimal places and one multiplier bar', () => {
+    expect(cronoPremium).toContain('minimumFractionDigits:3,maximumFractionDigits:3');
+    expect(cronoPremium).toContain('el.textContent=formatted');
     expect(cronoPremium).toContain('cronoPianoMultiplierMeter');
     expect(cronoPremium).toContain('cronoMultiplierLevelUp');
     expect(cronoPremium).toContain('function rewardTierState');
@@ -132,16 +132,16 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain('__earnedCentFloor');
   });
 
-  it('ships the complete v413 runtime offline', () => {
+  it('ships the complete v416 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('desktop-redesign.css?v=396');
-    expect(index).toContain('app.js?v=413');
+    expect(index).toContain('app.js?v=416');
     expect(index).toContain('crono-resume-layout.js?v=413');
     expect(index).toContain('piano-rewards.js?v=409');
     expect(index).toContain('daily-study-minutes.js?v=404');
     expect(index).toContain('german-rewards.js?v=404');
     expect(index).toContain('german-session.js?v=404');
-    expect(worker).toContain("const CACHE = 'estudio-v413'");
+    expect(worker).toContain("const CACHE = 'estudio-v416'");
     expect(worker).toContain('"./local-save-resilience.js?v=413"');
     expect(worker).toContain('"./instant-sync-resilience.js?v=410"');
     expect(worker).toContain('"./desktop-redesign.css?v=396"');

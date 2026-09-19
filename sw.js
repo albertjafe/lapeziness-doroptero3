@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v415';
+const CACHE = 'estudio-v416';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -6,7 +6,7 @@ const ASSETS = [
   "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=402",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=415",
+  "./app.js?v=416",
   "./german-rewards.js?v=404",
   "./piano-rewards.js?v=409",
   "./german-srs.js?v=378",
@@ -34,7 +34,7 @@ const ASSETS = [
   "./crono-state-store.js?v=397",
   "./daily-study-minutes.js?v=404",
   "./data-core.js?v=342",
-  "./document-sync-core.js?v=344",
+  "./document-sync-core.js?v=416",
   "./ensemble-repertoire-catalog.js?v=381",
   "./event-data-protection.js?v=342",
   "./event-movement-selector.js?v=377",
@@ -169,7 +169,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '415');
+            target.searchParams.set('__pwa', '416');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -177,7 +177,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'415', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'416', navigated });
         } catch (error) {}
       }
     }
