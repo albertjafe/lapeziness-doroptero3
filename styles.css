@@ -22187,3 +22187,6 @@ body.crono-paused .crono-readiness-inline { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) {
   #view-cronometro .crono-piano-goal-progress i { transition: none; }
 }
+
+/* Taxímetro compacto: cualquier multiplicador legado queda oculto. */
+#view-cronometro #cronoPianoMultiplierMeter { display:none !important; }
