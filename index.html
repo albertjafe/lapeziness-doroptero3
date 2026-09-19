@@ -628,8 +628,14 @@
       <section class="crono-piano-money" id="cronoPianoMoney" aria-label="Taxímetro de piano y objetivo compartido" hidden>
         <header>
           <div><span>HUCHA COMPARTIDA</span><strong id="cronoPianoGoalName">Sin objetivo</strong></div>
-          <button type="button" onclick="window.GermanStudy?.openGoalManager?.()" id="cronoPianoGoalManage">Gestionar</button>
+          <div class="crono-piano-money-actions">
+            <button type="button" id="cronoSecretOpportunity" class="crono-secret-opportunity" aria-expanded="false" aria-controls="cronoSecretOpportunityPopover" aria-label="Premio de estudio en juego" hidden>
+              <span id="cronoSecretOpportunityIcon">✦</span><small id="cronoSecretOpportunityCount" hidden></small>
+            </button>
+            <button type="button" onclick="window.GermanStudy?.openGoalManager?.()" id="cronoPianoGoalManage">Gestionar</button>
+          </div>
         </header>
+        <div class="crono-secret-opportunity-popover" id="cronoSecretOpportunityPopover" hidden></div>
         <div class="crono-piano-money-main">
           <div><span>PIANO HOY</span><strong id="cronoPianoMoneyValue" aria-live="off">0,00 €</strong></div>
           <div><span>OBJETIVO TOTAL</span><strong id="cronoPianoGoalBalance">0,00 € / 0,00 €</strong></div>
