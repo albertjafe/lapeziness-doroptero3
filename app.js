@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-19-complete-sync-ack-v416';
+const APP_VERSION = '2026-09-19-compact-taximeter-v417';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -25170,13 +25170,6 @@ function cronoUpdatePianoReward() {
   const goalName = document.getElementById('cronoPianoGoalName');
   const goalBalance = document.getElementById('cronoPianoGoalBalance');
   const goalProgress = document.getElementById('cronoPianoGoalProgress');
-  const bonusCurrent = document.getElementById('cronoPianoBonusCurrent');
-  const bonusFour = document.getElementById('cronoPianoBonusFour');
-  const bonusFourValue = document.getElementById('cronoPianoBonusFourValue');
-  const bonusFourMeta = document.getElementById('cronoPianoBonusFourMeta');
-  const bonusFive = document.getElementById('cronoPianoBonusFive');
-  const bonusFiveValue = document.getElementById('cronoPianoBonusFiveValue');
-  const bonusFiveMeta = document.getElementById('cronoPianoBonusFiveMeta');
   const manage = document.getElementById('cronoPianoGoalManage');
   const idleGoalName = document.getElementById('cronoPianoIdleGoalName');
   const idleGoalBalance = document.getElementById('cronoPianoIdleGoalBalance');
@@ -25188,7 +25181,7 @@ function cronoUpdatePianoReward() {
   }
   if (idleCard) idleCard.hidden = crono.state !== 'idle';
   if (typeof PianoRewards === 'undefined' || typeof GermanRewards === 'undefined') {
-    if (value) value.textContent = '0,000 €';
+    if (value) value.textContent = '0,00 €';
     if (next) next.textContent = 'Hucha no disponible';
     if (idleGoalName) idleGoalName.textContent = 'Hucha no disponible';
     return;
@@ -25227,20 +25220,9 @@ function cronoUpdatePianoReward() {
       const h = Math.floor(totalMinutes / 60), m = totalMinutes % 60;
       return h + (m ? ':' + String(m).padStart(2, '0') : '') + ' h';
     };
-    const multiplier = value => '×' + Math.max(1, Number(value) || 1).toFixed(2).replace('.', ',');
-    const streakLabel = days => String(Math.max(0, Number(days) || 0)) + (Number(days) === 1 ? ' día' : ' días');
-    const date = PianoRewards.dayKey();
-    const savedFour = PianoRewards.streakStats(rewardState.sessions, date);
-    const savedFive = PianoRewards.excellenceStats(rewardState.sessions, date);
-    const projectedFourDays = live.fullDay ? live.streakDays : Math.max(0, savedFour.current || 0) + 1;
-    const projectedFiveDays = live.excellentDay ? live.excellenceDays : Math.max(0, savedFive.current || 0) + 1;
-    const projectedFourMultiplier = live.fullDay ? live.streakMultiplier : PianoRewards.streakMultiplier(projectedFourDays);
-    const projectedFiveMultiplier = live.excellentDay ? live.excellenceMultiplier : PianoRewards.excellenceMultiplier(projectedFiveDays);
-    const projectedFiveTotal = PianoRewards.combinedMultiplier(projectedFourMultiplier, projectedFiveMultiplier, live.policyVersion);
-    const secondsTo = threshold => Math.max(0, threshold - live.seconds) / Math.max(.01, live.currentActivityFactor || 1);
     const formatted = new Intl.NumberFormat('es-ES', {
-      minimumFractionDigits: 3,
-      maximumFractionDigits: 3
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(live.today) + ' €';
     if (value) value.textContent = formatted;
     if (goalName) goalName.textContent = goal?.name || 'Sin objetivo económico';
@@ -25252,21 +25234,6 @@ function cronoUpdatePianoReward() {
       const percent = goal?.amount ? Math.min(100, Math.max(0, (goal.amount-live.goalRemaining)/goal.amount*100)) : 0;
       goalProgress.style.width = percent + '%';
     }
-    if (bonusCurrent) bonusCurrent.textContent = multiplier(live.rewardMultiplier) + ' actual';
-    if (bonusFourValue) bonusFourValue.textContent = multiplier(projectedFourMultiplier);
-    if (bonusFourMeta) {
-      bonusFourMeta.textContent = live.fullDay
-        ? 'Activo · racha ' + streakLabel(live.streakDays)
-        : 'Racha ' + streakLabel(projectedFourDays) + ' · en ' + cronoFmt(secondsTo(PianoRewards.FULL_DAY_SECONDS) * 1000);
-    }
-    if (bonusFour) bonusFour.classList.toggle('is-active', !!live.fullDay);
-    if (bonusFiveValue) bonusFiveValue.textContent = multiplier(projectedFiveTotal) + ' total';
-    if (bonusFiveMeta) {
-      bonusFiveMeta.textContent = live.excellentDay
-        ? 'Activo · excelencia ' + multiplier(live.excellenceMultiplier) + ' · racha ' + streakLabel(live.excellenceDays)
-        : 'Excelencia ' + multiplier(projectedFiveMultiplier) + ' · racha ' + streakLabel(projectedFiveDays) + ' · en ' + cronoFmt(secondsTo(PianoRewards.EXCELLENT_DAY_SECONDS) * 1000);
-    }
-    if (bonusFive) bonusFive.classList.toggle('is-active', !!live.excellentDay);
     if (tier) {
       tier.textContent = live.nextSeconds == null
         ? '7 h · Excelencia absoluta'
@@ -25282,7 +25249,7 @@ function cronoUpdatePianoReward() {
       ? 'Aportación de piano de hoy a “' + goal.name + '”. Máximo diario a las 7 horas: ' + money(live.cap) + '.'
       : 'Crea un objetivo económico desde la sección Alemán para activar la hucha compartida.';
   } catch (error) {
-    if (value) value.textContent = '0,000 €';
+    if (value) value.textContent = '0,00 €';
     if (next) next.textContent = 'Hucha no disponible';
     if (idleGoalName) idleGoalName.textContent = 'Hucha no disponible';
   }
