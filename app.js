@@ -25170,6 +25170,10 @@ function cronoUpdatePianoReward() {
   const goalName = document.getElementById('cronoPianoGoalName');
   const goalBalance = document.getElementById('cronoPianoGoalBalance');
   const goalProgress = document.getElementById('cronoPianoGoalProgress');
+  const secretButton = document.getElementById('cronoSecretOpportunity');
+  const secretIcon = document.getElementById('cronoSecretOpportunityIcon');
+  const secretCount = document.getElementById('cronoSecretOpportunityCount');
+  const secretPopover = document.getElementById('cronoSecretOpportunityPopover');
   const manage = document.getElementById('cronoPianoGoalManage');
   const idleGoalName = document.getElementById('cronoPianoIdleGoalName');
   const idleGoalBalance = document.getElementById('cronoPianoIdleGoalBalance');
@@ -25180,6 +25184,15 @@ function cronoUpdatePianoReward() {
     meter.classList.toggle('is-paused', crono.state === 'paused');
   }
   if (idleCard) idleCard.hidden = crono.state !== 'idle';
+  if (secretButton && !secretButton.dataset.bound) {
+    secretButton.dataset.bound = '1';
+    secretButton.addEventListener('click', () => {
+      if (!secretPopover) return;
+      const willOpen = secretPopover.hidden;
+      secretPopover.hidden = !willOpen;
+      secretButton.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    });
+  }
   if (typeof PianoRewards === 'undefined' || typeof GermanRewards === 'undefined') {
     if (value) value.textContent = '0,00 €';
     if (next) next.textContent = 'Hucha no disponible';
@@ -25220,6 +25233,12 @@ function cronoUpdatePianoReward() {
       const h = Math.floor(totalMinutes / 60), m = totalMinutes % 60;
       return h + (m ? ':' + String(m).padStart(2, '0') : '') + ' h';
     };
+    const remainingTime = seconds => {
+      const totalMinutes = Math.max(0, Math.ceil(Number(seconds || 0) / 60));
+      const h = Math.floor(totalMinutes / 60), m = totalMinutes % 60;
+      return h ? (h + ' h' + (m ? ' ' + m + ' min' : '')) : (m + ' min');
+    };
+    const safe = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
     const formatted = new Intl.NumberFormat('es-ES', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
@@ -25233,6 +25252,54 @@ function cronoUpdatePianoReward() {
     if (goalProgress) {
       const percent = goal?.amount ? Math.min(100, Math.max(0, (goal.amount-live.goalRemaining)/goal.amount*100)) : 0;
       goalProgress.style.width = percent + '%';
+    }
+    if (secretButton && typeof PianoRewards.secretOpportunities === 'function') {
+      const opportunitySessions = Array.isArray(rewardState.sessions) ? rewardState.sessions.slice() : [];
+      const elapsedSeconds = Math.max(0, cronoEffectiveElapsedMs() / 1000);
+      if (crono.startTs && elapsedSeconds > 0) {
+        const startedAt = new Date(crono.startTs).toISOString();
+        const alreadyIncluded = opportunitySessions.some(session =>
+          session && (session.id === crono.runId || session.id === 'study-block:' + crono.runId || session.startedAt === startedAt)
+        );
+        if (!alreadyIncluded) {
+          opportunitySessions.push({
+            id: '__live_opportunity__',
+            date: PianoRewards.dayKey(),
+            startedAt,
+            endedAt: new Date().toISOString(),
+            seconds: elapsedSeconds,
+            activityType: crono.activityType || 'study',
+            liveOpportunity: true,
+            policyVersion: crono.rewardPolicyVersion || PianoRewards.policyForDate().version
+          });
+        }
+      }
+      const opportunities = PianoRewards.secretOpportunities(opportunitySessions, PianoRewards.dayKey(), new Date());
+      if (opportunities.length) {
+        const strongest = opportunities.find(item => item.id === 'epic-comeback')
+          || opportunities.find(item => item.id === 'comeback')
+          || opportunities[0];
+        secretButton.hidden = false;
+        if (secretIcon) secretIcon.textContent = strongest.icon || '✦';
+        if (secretCount) {
+          secretCount.hidden = opportunities.length < 2;
+          secretCount.textContent = opportunities.length > 1 ? String(opportunities.length) : '';
+        }
+        secretButton.title = opportunities.map(item => item.title).join(' + ');
+        secretButton.setAttribute('aria-label', opportunities.length > 1
+          ? opportunities.length + ' premios de estudio en juego'
+          : 'Premio en juego: ' + strongest.title);
+        if (secretPopover) {
+          secretPopover.innerHTML = opportunities.map(item => {
+            const euros = Number(item.points || 0) * Number(live.goalScale || 0);
+            return '<div class="crono-secret-opportunity-row"><span>' + safe(item.icon || '✦') + '</span><div><strong>' + safe(item.title) + '</strong><small>Faltan ' + safe(remainingTime(item.remainingSeconds)) + ' equivalentes · +' + safe(money(euros)) + '</small></div></div>';
+          }).join('');
+        }
+      } else {
+        secretButton.hidden = true;
+        secretButton.setAttribute('aria-expanded', 'false');
+        if (secretPopover) secretPopover.hidden = true;
+      }
     }
     if (tier) {
       tier.textContent = live.nextSeconds == null
