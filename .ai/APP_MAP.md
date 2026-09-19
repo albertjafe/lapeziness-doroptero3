@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-19 · caché runtime v423
+**Estado:** CANÓNICO · actualizado 2026-09-19 · caché runtime v424
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -148,9 +148,9 @@ Migraciones Supabase importantes para este tema:
 ### Hoy / resumen principal
 
 - `#view-session` abre siempre en **Hoy** y ya no muestra el selector `Hoy / Semana / Historial`. **Plan semanal** y **Estadísticas** siguen intactos como vistas de consulta desde `Ajustes → Datos y herramientas → Plan y archivo de estudio`; tocar de nuevo la navegación Hoy restablece la portada.
-- **Hoy** es la portada: muestra `Llevas · Proyección · Fin previsto`, las probabilidades de alcanzar 4 h y 5 h y, justo debajo, el dashboard completo de Aulas ya abierto. El registro rápido queda plegado y el diario permanece accesible. Sus estilos comunes están en `session-home.css`. En iPad, `ipad-today.css/js` compone el resumen, acceso al cronómetro, Aulas y accesos a Semana/Historial/Deutsch/Registro. Conserva el plan diario y los controles del monitor en desplegables, moviendo sus contenedores existentes sin duplicar IDs ni persistencia; no modifica el cronómetro. La portada no incorpora focos pendientes.
+- **Hoy** es la portada: muestra `Tiempo neto · Proyección · Fin previsto`, las probabilidades de alcanzar 4 h y 5 h y, justo debajo, el dashboard completo de Aulas ya abierto. `Tiempo neto` es el total equivalente tras aplicar los multiplicadores de actividad y es la métrica principal para rachas, dinero y logros. El registro rápido queda plegado y el diario permanece accesible. Sus estilos comunes están en `session-home.css`. En iPad, `ipad-today.css/js` compone el resumen, acceso al cronómetro, Aulas y accesos a Semana/Historial/Deutsch/Registro. Conserva el plan diario y los controles del monitor en desplegables, moviendo sus contenedores existentes sin duplicar IDs ni persistencia; no modifica el cronómetro. La portada no incorpora focos pendientes.
 - La proyección usa el modelo existente de `app.js`; la hora de fin no es una meta inventada por la UI. Las correcciones de hora de comienzo y disponibilidad siguen activas en `Ajustes → Datos y herramientas → Proyección del día`.
-- **Historial** contiene estadísticas, sesiones registradas y la tarjeta de actividad digital. Las agregaciones estadísticas se calculan de forma perezosa al abrir esta pestaña.
+- **Historial** contiene estadísticas, sesiones registradas y la tarjeta de actividad digital. `study-time-breakdown.js/css` añade un resumen secundario Neto/Real/% neto para hoy, 7 días y 30 días: `Neto` suma minutos equivalentes; `Real` suma `rawMins` físicos de los mismos bloques canónicos, sin afectar rachas ni recompensas. Las agregaciones estadísticas se calculan de forma perezosa al abrir esta pestaña.
 - La antigua gráfica de estado diario ya no tiene DOM ni llamadas de render. Los datos de estado/sueño/concentración se conservan porque siguen alimentando Profesor, exportaciones y sincronización.
 - Auditoría y candidatos de código dormido: `docs/AUDITORIA_SESIONES_AJUSTES_2026-09-09.md`.
 
