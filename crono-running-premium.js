@@ -223,6 +223,7 @@
         gap: 0;
         white-space: nowrap;
       }
+      #view-cronometro #cronoPianoMultiplierMeter { display: none !important; }
       #view-cronometro .crono-piano-multiplier-meter {
         display: grid;
         grid-template-columns: minmax(0,1fr) auto;
@@ -298,24 +299,8 @@
     return Number.isFinite(value)?value:null;
   }
 
-  function formatMoneyDisplay(){
-    const el=document.getElementById('cronoPianoMoneyValue');
-    if(!el)return;
-    const value=parseMoney(el.textContent);
-    if(value==null)return;
-    const formatted=new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Math.max(0,value))+' €';
-    if(el.textContent!==formatted)el.textContent=formatted;
-    el.setAttribute('aria-label',formatted.replace(' €',' euros'));
-  }
-
-  function floorToEarnedCents(value){
-    const micros=Math.max(0,Math.round((Number(value)||0)*1e6));
-    const wholeCents=Math.floor(micros/10000);
-    return wholeCents/100;
-  }
-
   function formatEarnedCents(value){
-    return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(floorToEarnedCents(value));
+    return new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Math.max(0,Number(value)||0));
   }
 
   function formatTargetCents(value){
@@ -459,9 +444,7 @@
     installTaximeterStyles();
     ensureActivitySelector();
     syncActivityWithCrono();
-    formatMoneyDisplay();
     refreshGoalBalanceDisplay();
-    refreshMultiplier();
   }
 
   function scheduleTaximeter(){
@@ -474,14 +457,13 @@
     const meter=document.getElementById('cronoPianoMoney');
     const value=document.getElementById('cronoPianoMoneyValue');
     if(!meter || !value){setTimeout(bootTaximeter,140);return;}
+    document.getElementById('cronoPianoMultiplierMeter')?.remove();
     installTaximeterStyles();
     ensureActivitySelector();
     installStartWrapper();
     installRewardUpdateWrapper();
-    ensureMultiplierMeter();
     syncActivityWithCrono();
     scheduleTaximeter();
-    new MutationObserver(scheduleTaximeter).observe(value,{childList:true,subtree:true,characterData:true});
     setInterval(scheduleTaximeter,TAXI_POLL_MS);
   }
 
