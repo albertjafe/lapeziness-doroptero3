@@ -65,3 +65,169 @@
 .german-goal-equivalence span { color: var(--text2); font-size: 12px; }
 .german-goal-equivalence strong { color: var(--green, #248653); font-size: 18px; }
 .german-goal-equivalence small, .german-goal-reserved { color: var(--text2); line-height: 1.5; }
+
+
+/* Taxímetro compartido: misma jerarquía visual que Piano. */
+.german-taximeter {
+  position:sticky;
+  top:0;
+  z-index:4;
+  display:grid;
+  justify-items:stretch;
+  gap:9px;
+  width:min(540px,100%);
+  box-sizing:border-box;
+  margin:6px auto 14px;
+  padding:13px 16px 12px;
+  border:1px solid color-mix(in srgb,var(--green) 36%,var(--border2));
+  border-radius:18px;
+  background:
+    radial-gradient(circle at 10% 0%,color-mix(in srgb,var(--green) 12%,transparent),transparent 45%),
+    color-mix(in srgb,var(--green) 4%,var(--bg2));
+  box-shadow:0 10px 30px rgba(0,0,0,.07),inset 0 1px 0 rgba(255,255,255,.25);
+  backdrop-filter:blur(18px);
+  font-variant-numeric:tabular-nums;
+}
+.german-taximeter header,
+.german-taximeter footer {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.german-taximeter header > div { display:grid; gap:2px; min-width:0; }
+.german-taximeter header span,
+.german-taximeter-main span {
+  color:var(--text3);
+  font:750 8px/1.1 'JetBrains Mono',monospace;
+  letter-spacing:.12em;
+}
+.german-taximeter header strong {
+  overflow:hidden;
+  color:var(--text);
+  font-size:13px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+#view-deutsch .german-taximeter header button {
+  flex:0 0 auto;
+  min-height:30px;
+  padding:5px 10px;
+  border:1px solid color-mix(in srgb,var(--green) 32%,var(--border2));
+  border-radius:999px;
+  background:color-mix(in srgb,var(--green) 8%,transparent);
+  color:var(--green);
+  font-size:10px;
+  font-weight:750;
+}
+.german-taximeter-main {
+  display:grid;
+  grid-template-columns:minmax(0,1.25fr) minmax(0,.9fr);
+  gap:16px;
+  align-items:end;
+}
+.german-taximeter-main > div { display:grid; gap:3px; min-width:0; }
+#germanMoney {
+  color:var(--green);
+  font:680 clamp(24px,3.1vw,34px)/1 'JetBrains Mono',monospace;
+  letter-spacing:-.055em;
+  text-shadow:0 0 22px color-mix(in srgb,var(--green) 20%,transparent);
+}
+#germanMoneyLabel {
+  min-height:1.2em;
+  margin:0;
+  color:var(--text3);
+  font-size:9px;
+  line-height:1.2;
+}
+#germanGoalBalance {
+  overflow:hidden;
+  color:var(--text2);
+  font:700 12px/1.2 'JetBrains Mono',monospace;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.german-taximeter-progress {
+  height:4px;
+  overflow:hidden;
+  border-radius:99px;
+  background:color-mix(in srgb,var(--green) 12%,var(--bg3));
+}
+.german-taximeter-progress i {
+  display:block;
+  width:0;
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg,color-mix(in srgb,var(--green) 64%,white),var(--green));
+  box-shadow:0 0 12px color-mix(in srgb,var(--green) 55%,transparent);
+  transition:width 350ms ease;
+}
+.german-taximeter footer strong {
+  color:var(--green);
+  font:750 9px/1.25 'JetBrains Mono',monospace;
+}
+.german-taximeter footer span {
+  color:var(--text3);
+  font-size:9px;
+  line-height:1.25;
+  text-align:right;
+}
+.german-taximeter.is-paused #germanMoney { opacity:.58; }
+.german-taximeter-session {
+  display:grid;
+  grid-template-columns:auto auto 1fr;
+  align-items:center;
+  gap:12px;
+  padding-top:6px;
+  border-top:1px solid color-mix(in srgb,var(--border2) 72%,transparent);
+}
+.german-taximeter-session > div { display:grid; gap:1px; }
+.german-taximeter-session > div > span {
+  color:var(--text3);
+  font-size:8px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.german-taximeter-session > div > strong {
+  color:var(--text2);
+  font:700 11px/1.2 'JetBrains Mono',monospace;
+}
+.german-taximeter-session .german-status {
+  justify-self:end;
+  margin:0;
+}
+.german-taximeter .german-session-controls {
+  position:static;
+  display:flex;
+  justify-content:flex-end;
+  gap:6px;
+  margin:0;
+}
+.german-taximeter .german-session-controls button {
+  min-height:34px!important;
+  padding:6px 10px!important;
+  font-size:11px!important;
+}
+.german-taximeter-note {
+  display:block;
+  color:var(--text3);
+  font-size:9px;
+  line-height:1.35;
+}
+.german-taximeter > #germanMilestone {
+  margin:0;
+  color:var(--green);
+  font-size:10px;
+  text-align:center;
+}
+@media(max-width:520px) {
+  .german-taximeter { padding:12px 13px 11px; }
+  .german-taximeter-main { grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr); gap:10px; }
+  #germanMoney { font-size:clamp(23px,8.5vw,31px); }
+  #germanGoalBalance { font-size:10px; }
+  .german-taximeter-session { grid-template-columns:1fr 1fr auto; gap:8px; }
+  .german-taximeter .german-session-controls { display:grid; grid-template-columns:1fr 1fr; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .german-taximeter-progress i { transition:none; }
+}
