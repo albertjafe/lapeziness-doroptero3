@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v419';
+const CACHE = 'estudio-v420';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -6,17 +6,17 @@ const ASSETS = [
   "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=402",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=419",
+  "./app.js?v=420",
   "./german-rewards.js?v=404",
-  "./piano-rewards.js?v=409",
+  "./piano-rewards.js?v=420",
   "./german-srs.js?v=378",
   "./german-import.js?v=382",
   "./german-session.js?v=404",
   "./german-study.js?v=417",
   "./german-study.css?v=414",
   "./habit-trophies.js?v=406",
-  "./effort-incentives-ui.js?v=409",
-  "./effort-incentives.css?v=406",
+  "./effort-incentives-ui.js?v=420",
+  "./effort-incentives.css?v=420",
   "./habit-trophies.css?v=383",
   "./desktop-workspace.css?v=388",
   "./desktop-calendar-v389.css?v=389",
@@ -169,7 +169,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '419');
+            target.searchParams.set('__pwa', '420');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -177,7 +177,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'419', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'420', navigated });
         } catch (error) {}
       }
     }
