@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-18-sync-storage-deadlines-v413';
+const APP_VERSION = '2026-09-19-unified-taximeter-v414';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -25181,7 +25181,7 @@ function cronoUpdatePianoReward() {
   }
   if (idleCard) idleCard.hidden = crono.state !== 'idle';
   if (typeof PianoRewards === 'undefined' || typeof GermanRewards === 'undefined') {
-    if (value) value.textContent = '0,000000 €';
+    if (value) value.textContent = '0,000 €';
     if (next) next.textContent = 'Hucha no disponible';
     if (idleGoalName) idleGoalName.textContent = 'Hucha no disponible';
     return;
@@ -25221,8 +25221,8 @@ function cronoUpdatePianoReward() {
       return h + (m ? ':' + String(m).padStart(2, '0') : '') + ' h';
     };
     const formatted = new Intl.NumberFormat('es-ES', {
-      minimumFractionDigits: 6,
-      maximumFractionDigits: 6
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3
     }).format(live.today) + ' €';
     if (value) value.textContent = formatted;
     if (goalName) goalName.textContent = goal?.name || 'Sin objetivo económico';
@@ -25249,7 +25249,7 @@ function cronoUpdatePianoReward() {
       ? 'Aportación de piano de hoy a “' + goal.name + '”. Máximo diario a las 7 horas: ' + money(live.cap) + '.'
       : 'Crea un objetivo económico desde la sección Alemán para activar la hucha compartida.';
   } catch (error) {
-    if (value) value.textContent = '0,000000 €';
+    if (value) value.textContent = '0,000 €';
     if (next) next.textContent = 'Hucha no disponible';
     if (idleGoalName) idleGoalName.textContent = 'Hucha no disponible';
   }
