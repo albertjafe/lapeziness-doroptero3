@@ -323,9 +323,10 @@
     let end=inferredEnd;
     if(Number.isFinite(explicitEnd)&&explicitEnd>start){
       const wall=explicitEnd-start,raw=rawSeconds*1000;
-      // Canonical timer blocks normally have a real end. Imported/fallback rows
-      // can point to 23:59; in that case infer the active interval from seconds.
-      if(wall<=raw*1.35+2*60*1000)end=explicitEnd;
+      // A live opportunity row intentionally spans wall time so the cutoff
+      // estimate can account for pauses approximately. Canonical imported
+      // fallback rows may point to 23:59 and still use inferred active time.
+      if(session?.liveOpportunity||wall<=raw*1.35+2*60*1000)end=explicitEnd;
     }
     return {start,end,seconds:equivalentSeconds(session)};
   }
