@@ -12,7 +12,7 @@ const session=(id,seconds,type='study',startedAt='2026-09-16T10:00:00Z')=>({
 describe('piano activity types',()=>{
   it('defines study, mental study, piano class and chamber with their reward factors',()=>{
     expect(P.ACTIVITY_TYPES.study.factor).toBe(1);
-    expect(P.ACTIVITY_TYPES.mental.factor).toBe(.5);
+    expect(P.ACTIVITY_TYPES.mental.factor).toBe(1);
     expect(P.ACTIVITY_TYPES.piano_class.factor).toBe(.5);
     expect(P.ACTIVITY_TYPES.chamber.factor).toBeCloseTo(1/3,12);
   });
@@ -22,7 +22,7 @@ describe('piano activity types',()=>{
     expect(row.rawDuration).toBe(6*3600);
     expect(row.duration).toBe(3*3600);
     expect(row.activityType).toBe('piano_class');
-    expect(row.activityFactor).toBe(.5);
+    expect(row.activityFactor).toBe(1);
     expect(row.fullDay).toBe(false);
     expect(row.finalReward).toBeCloseTo(P.baseReward(3*3600,P.POLICIES[4]),6);
   });
@@ -31,7 +31,7 @@ describe('piano activity types',()=>{
     const row=P.ledger([session('chamber-3h',3*3600,'chamber')],[goal])[0];
     expect(row.rawDuration).toBe(3*3600);
     expect(row.duration).toBeCloseTo(3600,8);
-    expect(row.finalReward).toBeCloseTo(P.baseReward(3600,P.POLICIES[4]),6);
+    expect(row.finalReward).toBeCloseTo(P.baseReward(2*3600,P.POLICIES[4]),6);
   });
 
   it('combines one solo hour and six class hours into a four-hour full day',()=>{
@@ -54,21 +54,21 @@ describe('piano activity types',()=>{
     const pianoClass=P.live(state,[goal],'g',3600,'2026-09-16',[],4,'piano_class');
     const chamber=P.live(state,[goal],'g',3600,'2026-09-16',[],4,'chamber');
     expect(study.seconds).toBe(3600);
-    expect(mental.seconds).toBe(1800);
+    expect(mental.seconds).toBe(3600);
     expect(pianoClass.seconds).toBe(1800);
     expect(chamber.seconds).toBeCloseTo(1200,8);
-    expect(mental.today).toBeCloseTo(P.baseReward(1800,P.POLICIES[4]),6);
+    expect(mental.today).toBeCloseTo(P.baseReward(3600,P.POLICIES[4]),6);
     expect(pianoClass.today).toBeCloseTo(P.baseReward(1800,P.POLICIES[4]),6);
     expect(chamber.today).toBeCloseTo(P.baseReward(1200,P.POLICIES[4]),6);
   });
 
-  it('stores mental study as real time while counting half toward rewards and streaks',()=>{
+  it('stores mental study as real time and counts it fully toward rewards and streaks',()=>{
     const row=P.ledger([session('mental-2h',2*3600,'mental')],[goal])[0];
     expect(row.rawDuration).toBe(2*3600);
-    expect(row.duration).toBe(3600);
+    expect(row.duration).toBe(2*3600);
     expect(row.activityType).toBe('mental');
-    expect(row.activityFactor).toBe(.5);
-    expect(row.finalReward).toBeCloseTo(P.baseReward(3600,P.POLICIES[4]),6);
+    expect(row.activityFactor).toBe(1);
+    expect(row.finalReward).toBeCloseTo(P.baseReward(2*3600,P.POLICIES[4]),6);
   });
 
   it('persists the activity type and factor on the reward session',()=>{
