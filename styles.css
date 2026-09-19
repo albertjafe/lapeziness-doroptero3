@@ -22190,3 +22190,86 @@ body.crono-paused .crono-readiness-inline { visibility: hidden; }
 
 /* Taxímetro compacto: cualquier multiplicador legado queda oculto. */
 #view-cronometro #cronoPianoMultiplierMeter { display:none !important; }
+
+
+/* Discreet secret-reward opportunity indicator. */
+#view-cronometro .crono-piano-money-actions {
+  display:flex !important;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px !important;
+  min-width:0;
+}
+#view-cronometro .crono-secret-opportunity {
+  position:relative;
+  display:inline-grid;
+  place-items:center;
+  width:30px;
+  min-width:30px;
+  min-height:30px;
+  padding:0 !important;
+  border-radius:999px;
+  border-color:color-mix(in srgb,var(--accent) 36%,var(--border2)) !important;
+  background:color-mix(in srgb,var(--accent) 7%,transparent) !important;
+  color:var(--text) !important;
+  font-size:15px !important;
+  line-height:1;
+}
+#view-cronometro .crono-secret-opportunity[hidden] { display:none !important; }
+#view-cronometro .crono-secret-opportunity > small {
+  position:absolute;
+  top:-4px;
+  right:-4px;
+  display:grid;
+  place-items:center;
+  min-width:15px;
+  height:15px;
+  padding:0 3px;
+  border:1px solid var(--bg2);
+  border-radius:99px;
+  background:var(--accent);
+  color:#fff;
+  font:800 8px/1 'JetBrains Mono',monospace;
+}
+#view-cronometro .crono-secret-opportunity-popover {
+  display:grid;
+  gap:6px;
+  padding:8px 10px;
+  border:1px solid color-mix(in srgb,var(--accent) 20%,var(--border2));
+  border-radius:11px;
+  background:color-mix(in srgb,var(--accent) 4%,var(--bg3));
+}
+#view-cronometro .crono-secret-opportunity-popover[hidden] { display:none; }
+#view-cronometro .crono-secret-opportunity-row {
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  gap:8px;
+  align-items:center;
+}
+#view-cronometro .crono-secret-opportunity-row > span {
+  font-size:17px;
+  line-height:1;
+}
+#view-cronometro .crono-secret-opportunity-row > div {
+  display:grid;
+  gap:2px;
+  min-width:0;
+}
+#view-cronometro .crono-secret-opportunity-row strong {
+  color:var(--text);
+  font-size:10px;
+  line-height:1.15;
+}
+#view-cronometro .crono-secret-opportunity-row small {
+  overflow:hidden;
+  color:var(--text3);
+  font-size:8px;
+  line-height:1.25;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+@media (max-width:520px) {
+  #view-cronometro .crono-piano-money-actions { gap:5px !important; }
+  #view-cronometro .crono-secret-opportunity { width:28px; min-width:28px; min-height:28px; font-size:14px !important; }
+  #view-cronometro .crono-secret-opportunity-popover { padding:7px 8px; }
+}
