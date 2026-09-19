@@ -23,7 +23,7 @@
   const MONTHLY_LEVELS=Object.freeze([4,5,6].map((hours,index)=>Object.freeze({hours,seconds:hours*3600,points:[10,25,30][index]})));
   const ACTIVITY_TYPES=Object.freeze({
     study:Object.freeze({id:'study',label:'Estudio',factor:1}),
-    mental:Object.freeze({id:'mental',label:'Estudio mental',factor:.5}),
+    mental:Object.freeze({id:'mental',label:'Estudio mental',factor:1}),
     piano_class:Object.freeze({id:'piano_class',label:'Clase piano',factor:.5}),
     chamber:Object.freeze({id:'chamber',label:'Cámara',factor:1/3})
   });
