@@ -10,8 +10,9 @@ const session=(id,seconds,type='study',startedAt='2026-09-16T10:00:00Z')=>({
 });
 
 describe('piano activity types',()=>{
-  it('defines study, piano class and chamber as 1, 1/2 and 1/3',()=>{
+  it('defines study, mental study, piano class and chamber with their reward factors',()=>{
     expect(P.ACTIVITY_TYPES.study.factor).toBe(1);
+    expect(P.ACTIVITY_TYPES.mental.factor).toBe(.5);
     expect(P.ACTIVITY_TYPES.piano_class.factor).toBe(.5);
     expect(P.ACTIVITY_TYPES.chamber.factor).toBeCloseTo(1/3,12);
   });
@@ -49,13 +50,25 @@ describe('piano activity types',()=>{
   it('makes the live taximeter advance at the selected activity factor',()=>{
     const state={sessions:[]};
     const study=P.live(state,[goal],'g',3600,'2026-09-16',[],4,'study');
+    const mental=P.live(state,[goal],'g',3600,'2026-09-16',[],4,'mental');
     const pianoClass=P.live(state,[goal],'g',3600,'2026-09-16',[],4,'piano_class');
     const chamber=P.live(state,[goal],'g',3600,'2026-09-16',[],4,'chamber');
     expect(study.seconds).toBe(3600);
+    expect(mental.seconds).toBe(1800);
     expect(pianoClass.seconds).toBe(1800);
     expect(chamber.seconds).toBeCloseTo(1200,8);
+    expect(mental.today).toBeCloseTo(P.baseReward(1800,P.POLICIES[4]),6);
     expect(pianoClass.today).toBeCloseTo(P.baseReward(1800,P.POLICIES[4]),6);
     expect(chamber.today).toBeCloseTo(P.baseReward(1200,P.POLICIES[4]),6);
+  });
+
+  it('stores mental study as real time while counting half toward rewards and streaks',()=>{
+    const row=P.ledger([session('mental-2h',2*3600,'mental')],[goal])[0];
+    expect(row.rawDuration).toBe(2*3600);
+    expect(row.duration).toBe(3600);
+    expect(row.activityType).toBe('mental');
+    expect(row.activityFactor).toBe(.5);
+    expect(row.finalReward).toBeCloseTo(P.baseReward(3600,P.POLICIES[4]),6);
   });
 
   it('persists the activity type and factor on the reward session',()=>{
