@@ -16,16 +16,16 @@
    5) un bloque General repartido entre pasajes sigue siendo evidencia canónica
       aunque su residual General sea 0; sus hijos ya contienen esos minutos;
    6) las estadísticas de "estudio" usan tiempo equivalente: estudio ×1,
-      clase de piano ×0,5 y cámara ×1/3. El bloque conserva rawMins para poder
+      estudio mental ×0,5, clase de piano ×0,5 y cámara ×1/3. El bloque conserva rawMins para poder
       mostrar también la duración física real sin falsear el cronómetro.
 */
 (function dailyStudyMinutesFix(){
   'use strict';
 
-  const FIX_VERSION = 8;
+  const FIX_VERSION = 9;
   const OVERLAP_TOLERANCE_MS = 30000;
   const PASSAGE_GENERAL_SOURCE = 'passage-general-v1';
-  const ACTIVITY_FACTORS = Object.freeze({ study:1, piano_class:.5, chamber:1/3 });
+  const ACTIVITY_FACTORS = Object.freeze({ study:1, mental:.5, piano_class:.5, chamber:1/3 });
 
   function appDb(){
     try { if (typeof db !== 'undefined' && db) return db; } catch (error) {}
