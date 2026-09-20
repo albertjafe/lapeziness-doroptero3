@@ -138,7 +138,7 @@ describe('daily study minutes', () => {
     };
     const api = loadFix(db);
     const { start, end } = dayRange();
-    expect(api.version).toBe(8);
+    expect(api.version).toBe(9);
     expect(api.minutesByDay(start, end)['2026-09-05']).toBe(216);
   });
 
@@ -189,6 +189,32 @@ describe('daily study minutes', () => {
     const api = loadFix(db);
     const { start, end } = dayRange();
     expect(api.minutesByDay(start, end)['2026-09-05']).toBe(45);
+  });
+
+  it('counts a manual chamber rehearsal at one third while preserving 40 real minutes', () => {
+    const db = {
+      sessionPlants: [
+        { id:'normal', obraId:'bach', mins:191, source:'app', activityType:'study', activityFactor:1,
+          startedAt:'2026-09-05T08:00:00.000Z', endedAt:'2026-09-05T11:11:00.000Z' },
+        { id:'manual_chamber', obraId:'brahms', mins:40, source:'manual', activityType:'chamber', activityFactor:1/3,
+          startedAt:'2026-09-05T12:00:00.000Z', endedAt:'2026-09-05T12:40:00.000Z' },
+      ],
+      forestPlants: [],
+      sesiones: [{
+        date:'2026-09-05T12:00:00.000Z',
+        items:[{
+          id:'manual_chamber',studyPlantId:'manual_chamber',obraId:'brahms',manual:true,tick:'hecho',
+          minutosEstudiados:40,minutosReales:40,activityType:'chamber',activityFactor:1/3
+        }]
+      }]
+    };
+    const api=loadFix(db),{start,end}=dayRange(),blocks=api.studyBlocks(start,end,db);
+    expect(blocks.reduce((sum,item)=>sum+item.rawMins,0)).toBe(231);
+    expect(blocks.reduce((sum,item)=>sum+item.mins,0)).toBeCloseTo(204.3333333333,8);
+    expect(api.minutesByDay(start,end,db)['2026-09-05']).toBe(204);
+    expect(blocks.find(item=>item.id==='manual_chamber')).toMatchObject({
+      rawMins:40,activityType:'chamber',activityFactor:1/3
+    });
   });
 
   it('counts a quick manual registration once when its session item mirrors a manual plant', () => {
