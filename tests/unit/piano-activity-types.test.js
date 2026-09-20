@@ -62,6 +62,15 @@ describe('piano activity types',()=>{
     expect(chamber.today).toBeCloseTo(P.baseReward(1800,P.POLICIES[4]),6);
   });
 
+  it('reprices legacy chamber rows stored at one third to the new half factor',()=>{
+    const legacy={...session('legacy-chamber',3600,'chamber'),activityFactor:1/3};
+    expect(P.equivalentSeconds(legacy)).toBe(1800);
+    const row=P.ledger([legacy],[goal])[0];
+    expect(row.rawDuration).toBe(3600);
+    expect(row.duration).toBe(1800);
+    expect(row.activityFactor).toBe(.5);
+  });
+
   it('stores mental study as real time and counts it fully toward rewards and streaks',()=>{
     const row=P.ledger([session('mental-2h',2*3600,'mental')],[goal])[0];
     expect(row.rawDuration).toBe(2*3600);
