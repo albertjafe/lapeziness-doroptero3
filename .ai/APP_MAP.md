@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-09-20 · caché runtime v426
+**Estado:** CANÓNICO · actualizado 2026-09-20 · caché runtime v427
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -204,6 +204,7 @@ Migraciones Supabase importantes para este tema:
   - sin palabra → 0/blanco
   - la palabra de control se elimina del título.
 - `planning-enhancements-v4-speech-fix.js`: en iPhone/iPad restaura Web Speech para que “Añadir tarea” pueda arrancar dictado; no volver a desactivar el micrófono para evitar prompts de permisos.
+- Al terminar una sesión, el modal de tareas personales trata `priority=3` (Urgentísima) como una barrera deliberada: cerrar/TOCAR fuera no descarta el aviso; exige dos confirmaciones sucesivas y después una cuenta aritmética simple mientras suena un aviso repetido. Resolver la cuenta solo confirma lectura y silencia el sonido; la tarea permanece pendiente hasta marcarla como hecha, por lo que reaparece tras futuras sesiones. Completarla desde el propio modal cancela inmediatamente la alarma.
 - Sync seguro: `task-sync-bootstrap.js` + `task-sync-resilience.js`.
 - Existe copia local de rescate interna; la antigua UI manual de “Historial de tareas” fue retirada y **no debe reaparecer** salvo petición explícita.
 
@@ -362,9 +363,9 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 - `manifest.json`: manifiesto.
 - `sw.js`: caché, precache, push y política de actualización.
-- Caché actual `estudio-v426`: `app.js`, `german-rewards.js` y `german-study.js/css` usan v426 para el programa de implantación del alemán; los incentivos de estudio mental/hábitos permanecen en v425, `daily-study-minutes.js` en v423 y `study-time-breakdown.js/css` en v424. Se conserva la interfaz compacta del taxímetro y las oportunidades discretas de premios secretos. Los módulos no modificados conservan sus URL.
+- Caché actual `estudio-v427`: `app.js` y `styles.css` usan v427 para la barrera post-sesión de tareas Urgentísimas; `german-rewards.js` y `german-study.js/css` permanecen en v426, los incentivos de estudio mental/hábitos en v425, `daily-study-minutes.js` en v423 y `study-time-breakdown.js/css` en v424. Se conserva la interfaz compacta del taxímetro y las oportunidades discretas de premios secretos. Los módulos no modificados conservan sus URL.
 - Cambios de runtime desplegados deben seguir la convención del repo de incrementar cache del SW y añadir nuevos assets al precache cuando corresponda.
-- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica el runtime de implantación alemán v426 en Ajustes; v426 es el límite de caché PWA actual.
+- `update-safety.js` protege el estado local antes de activar nueva versión; la sincronización remota pendiente se conserva y no impide actualizar con copia durable verificada. «Buscar actualización» consulta exclusivamente `UpdateSafety.checkForUpdate()`; no sondea `app.js` con queries desconocidos ni activa automáticamente. `APP_VERSION` identifica la barrera de tareas Urgentísimas v427 en Ajustes; v427 es el límite de caché PWA actual.
 - Solo acepta `SAFE_SKIP_WAITING` con `safe: true` y mantiene vivo el evento hasta que `skipWaiting()` se resuelve. Sin cronómetro ni píldora Hecho activos y con copia durable del contenido actual; cualquier edición durante la comprobación cancela la promoción. La navegación forzada desde `activate` nunca se espera dentro de `event.waitUntil`: el fetch de esa navegación espera a que termine la activación. `controllerchange` recarga una vez; la primera toma de control no recarga. `update.html` es una vía de recuperación servida por red: crea una copia durable, activa el worker en espera y reabre la app sin borrar cachés, almacenamiento ni registro del SW.
 - Shell y assets versionados se sirven desde su caché para no mezclar A/B. Se retienen el caché actual y el anterior, respetando cachés ajenos. Un asset antiguo ausente devuelve 503 en lugar de código nuevo bajo una URL vieja.
 - `scripts/check-runtime.mjs` recorre loaders e importaciones del worker y contrasta los assets con precache, sintaxis y query versions. También detecta cargas DOM por helpers `id,src` e inyecciones literales con IDs distintos; permite un ID compartido y separa los imports del Worker. Playwright comprueba que la persistencia se ejecuta una sola vez.
