@@ -7,7 +7,9 @@
   'use strict';
 
   const DAY_MS = 86400000;
-  const REWARD_POLICY = Object.freeze({version:1,points:3,minimumDays:21});
+  const GRADED_REWARD_START_DAY='2026-09-20';
+  const LEGACY_REWARD_POLICY=Object.freeze({version:1,points:3,minimumDays:21});
+  const REWARD_POLICY = Object.freeze({version:2,points:3,minimumDays:21,failurePoints:Object.freeze([3,1.5,.75,0])});
 
   function dayNumber(key) {
     const parts = String(key || '').split('-').map(Number);
@@ -109,20 +111,38 @@
       mode:habit.mode,successCriteria:habit.successCriteria.trim()};
   }
 
+  function rewardPointsForFailures(failures,points=REWARD_POLICY.failurePoints){
+    const count=Math.max(0,Math.floor(Number(failures)||0));
+    const schedule=Array.isArray(points)&&points.length?points:REWARD_POLICY.failurePoints;
+    return Math.max(0,Number(schedule[Math.min(count,schedule.length-1)])||0);
+  }
+
   function rewardStatus(habit, now=new Date()) {
     const rule=habit?.effortReward,item=itemFor(habit,now);
-    if(!rule || !item || !['do','avoid'].includes(rule.mode) || rule.version!==REWARD_POLICY.version || rule.points!==REWARD_POLICY.points ||
-      rule.minimumDays!==REWARD_POLICY.minimumDays || !rule.successCriteria?.trim() ||
+    const legacy=rule?.version===LEGACY_REWARD_POLICY.version && rule?.points===LEGACY_REWARD_POLICY.points &&
+      rule?.minimumDays===LEGACY_REWARD_POLICY.minimumDays;
+    const graduated=rule?.version===REWARD_POLICY.version && rule?.points===REWARD_POLICY.points &&
+      rule?.minimumDays===REWARD_POLICY.minimumDays && Array.isArray(rule.failurePoints) &&
+      rule.failurePoints.length===REWARD_POLICY.failurePoints.length &&
+      rule.failurePoints.every((value,index)=>Number(value)===REWARD_POLICY.failurePoints[index]);
+    if(!rule || !item || !['do','avoid'].includes(rule.mode) || (!legacy&&!graduated) || !rule.successCriteria?.trim() ||
       !Number.isFinite(Date.parse(rule.agreedAt)) || dayKey(rule.agreedAt)>rule.startDate ||
       rule.startDate!==habit.startDate || rule.durationDays!==habit.durationDays || rule.mode!==habit.mode ||
       rule.successCriteria!==habit.successCriteria || rule.durationDays<21 || rule.durationDays>365 ||
       !Number.isInteger(rule.durationDays) || keyAt(rule.startDate,0)!==rule.startDate)return {status:'none',points:0,item};
-    // A manually closed trophy is not proof that the agreed calendar elapsed.
+
+    // The challenge calendar never restarts after a failure. From the transition
+    // onward, failures reduce the prize still in play instead of destroying the
+    // whole incentive after the first slip.
     const elapsed=dayNumber(dayKey(now))-dayNumber(rule.startDate);
-    const earned=elapsed>=rule.durationDays && item.success===rule.durationDays && item.failure===0;
-    return {status:earned?'earned':item.failure>0?'failed':'active',points:earned?rule.points:0,
-      potentialPoints:rule.points,item,earnedOn:keyAt(rule.startDate,rule.durationDays)};
+    const earnedOn=keyAt(rule.startDate,rule.durationDays);
+    const usesGraduatedReward=graduated || earnedOn>=GRADED_REWARD_START_DAY;
+    const potentialPoints=usesGraduatedReward?rewardPointsForFailures(item.failure):item.failure===0?rule.points:0;
+    const complete=elapsed>=rule.durationDays;
+    const earned=complete&&potentialPoints>0;
+    return {status:earned?'earned':potentialPoints<=0?'failed':'active',points:earned?potentialPoints:0,
+      potentialPoints,maxPoints:rule.points,graded:usesGraduatedReward,item,earnedOn};
   }
 
-  return { REWARD_POLICY, createRewardPolicy, rewardStatus, collection, itemFor, artwork, dayKey, keyAt };
+  return { REWARD_POLICY, LEGACY_REWARD_POLICY, GRADED_REWARD_START_DAY, createRewardPolicy, rewardPointsForFailures, rewardStatus, collection, itemFor, artwork, dayKey, keyAt };
 });
