@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-19-mental-study-v422';
+const APP_VERSION = '2026-09-20-smart-incentives-v425';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -20483,13 +20483,16 @@ function updateHabitModalPreview() {
     const candidate={startDate:startKey,durationDays:days,mode:_habitModalMode,
       successCriteria:String(document.getElementById('habitCriteriaInput')?.value||'').trim()};
     const policy=window.HabitTrophies.createRewardPolicy(candidate);
+    const currentEffort=current?.effortReward?window.HabitTrophies.rewardStatus(current):null;
     effortNote.textContent=current?.effortReward
-      ? 'Premio fijado: 3 puntos al completar todos los días. La duración, el tipo y el criterio se conservan para este ciclo.'
+      ? currentEffort?.graded
+        ? 'Premio fijado: 0 caídas = 3 puntos; 1 = 1,5; 2 = 0,75; 3 o más = 0. El reto no vuelve a empezar por una caída.'
+        : 'Premio fijado con la regla anterior: 3 puntos solo con todos los días cumplidos.'
       : current||document.getElementById('habitSaveBtn')?.hidden
         ? 'Este hábito conserva su trofeo. El premio de esfuerzo se acuerda al empezar un ciclo nuevo.'
         : policy
-          ? 'Premio: 3 puntos al completar todos los días, una sola vez. En evitar, solo registras las caídas; en hacer, marcas cada día.'
-          : 'Premio de 3 puntos: elige al menos 21 días, una fecha desde hoy y escribe qué cuenta como cumplirlo antes de empezar. Sin estas condiciones, el hábito concede solo su trofeo.';
+          ? 'Premio: 0 caídas = 3 puntos; 1 = 1,5; 2 = 0,75; 3 o más = 0. El ciclo sigue hasta su fecha final aunque haya una caída.'
+          : 'Premio graduado de hasta 3 puntos: elige al menos 21 días, una fecha desde hoy y escribe qué cuenta como cumplirlo antes de empezar. Sin estas condiciones, el hábito concede solo su trofeo.';
   }
   if (!preview) return;
   preview.innerHTML = _habitModalMode === 'avoid'
