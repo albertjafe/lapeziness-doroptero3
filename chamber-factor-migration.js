@@ -13,8 +13,12 @@
   function migrateEntry(entry){
     if(!entry||entry.activityType!=='chamber')return 0;
     if(Number(entry.activityFactor)===TARGET_FACTOR)return 0;
+    const stamp=new Date().toISOString();
     entry.activityFactor=TARGET_FACTOR;
-    entry.updatedAt=new Date().toISOString();
+    entry.updatedAt=stamp;
+    if(!entry._fieldClock||typeof entry._fieldClock!=='object')entry._fieldClock={};
+    entry._fieldClock.activityFactor=stamp;
+    entry._fieldClock.updatedAt=stamp;
     return 1;
   }
 
