@@ -11,6 +11,9 @@
   const FULL_DAY_SECONDS=4*3600;
   const EXCELLENT_DAY_SECONDS=5*3600;
   const SHARED_EFFORT_POLICY_VERSION=5;
+  const MENTAL_BONUS_START_DAY='2026-09-20';
+  const MENTAL_BONUS_RATE=.10;
+  const MENTAL_BONUS_CAP_SECONDS=45*60;
   // Fixed day boundary: old imports and offline merges select the same policy
   // without repricing an existing day or writing another balance/migration clock.
   const BALANCED_POLICY_START_DAY='2026-09-19';
@@ -277,6 +280,7 @@
       const effortMicroPoints=Math.max(0,Math.round(baseReward(after,rewardPolicy)*multiplier*1e6)-Math.round(baseReward(before,rewardPolicy)*multiplier*1e6));
       result.push({id:'piano:'+session.id,date,sessionId:session.id,goalId:session.goalId,source:'piano',
         startedAt:session.startedAt,duration:seconds,rawDuration:rawSeconds,activityType:type,activityFactor:factor,baseReward:base,goalScale:scale,
+        daySecondsBefore:before,daySecondsAfter:after,
         streakDays:streakInfo.days,streakMultiplier:fullDayMultiplier,fullDay:streakInfo.fullDay,
         excellenceDays:excellenceInfo.days,excellenceMultiplier:excellentMultiplier,excellentDay:excellenceInfo.excellentDay,excellenceFrozen:excellenceInfo.frozen,
         rewardMultiplier:multiplier,policyVersion:rewardPolicy.version,qualified:true,effortMicroPoints,effortPoints:effortMicroPoints/1e6,
@@ -414,6 +418,26 @@
       return {month,requiredDays:20,levels,points:levels.filter(level=>level.earned).at(-1)?.points||0};
     });
   }
+  function mentalBonusRows(pianoRows,today=dayKey()){
+    const usedByDay={},pointsByDay={};
+    (pianoRows||[]).filter(row=>row&&row.source==='piano'&&row.activityType==='mental'&&row.date>=MENTAL_BONUS_START_DAY&&row.date<=today)
+      .slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.startedAt||'').localeCompare(String(b.startedAt||''))||String(a.id).localeCompare(String(b.id)))
+      .forEach(row=>{
+        const duration=Math.max(0,Number(row.duration)||0),used=usedByDay[row.date]||0,remaining=Math.max(0,MENTAL_BONUS_CAP_SECONDS-used);
+        if(!(duration>0&&remaining>0))return;
+        const eligible=Math.min(duration,remaining),policy=POLICIES[Number(row.policyVersion)]||CONFIG;
+        const before=Math.max(0,Number(row.daySecondsBefore)||0),multiplier=Math.max(0,Number(row.rewardMultiplier)||1);
+        const earned=Math.max(0,baseReward(before+eligible,policy)-baseReward(before,policy))*multiplier*MENTAL_BONUS_RATE;
+        usedByDay[row.date]=used+eligible;
+        pointsByDay[row.date]=(pointsByDay[row.date]||0)+earned;
+      });
+    return Object.keys(pointsByDay).sort().map(date=>({
+      id:'bonus:mental:'+date,date,source:'bonus',sharedEffortVersion:1,qualified:true,mentalBonus:true,
+      mentalBonusRate:MENTAL_BONUS_RATE,eligibleSeconds:usedByDay[date],effortMicroPoints:Math.round(pointsByDay[date]*1e6),
+      title:'Estudio mental · +10 %'
+    })).filter(row=>row.effortMicroPoints>0);
+  }
+
   function monthlyBonusRows(sessions,today=dayKey()){
     return monthlyAchievements(sessions,today).flatMap(achievement=>achievement.levels.filter(level=>level.earned).map((level,index)=>({
       id:'bonus:study-month:'+achievement.month+':'+level.hours,date:level.earnedOn,source:'bonus',sharedEffortVersion:1,qualified:true,
@@ -433,6 +457,7 @@
       'secret:'+item.id+':'+item.date,item.date,item.points,item.icon+' '+item.title,
       {secretAchievement:true,secretId:item.id,icon:item.icon,description:item.description}
     )));
+    rows.push(...mentalBonusRows(ledger(eligible,db?.germanStudy?.goals||[]),today));
     const habits=new Map((db.habitChallenges||[]).filter(h=>h?.id).map(h=>[h.id,h]));
     if(db.habitChallenge?.id&&!habits.has(db.habitChallenge.id))habits.set(db.habitChallenge.id,db.habitChallenge);
     let previousEnd='';
@@ -514,7 +539,9 @@
     return {ok:true,goal,spentPoints:progress.costPoints,remainingPoints:Math.max(0,progress.points-progress.costPoints)};
   }
   function live(state,goals,goalId,currentSeconds,date=dayKey(),germanRows=[],currentPolicyVersion=policyForDate(date).version,currentActivityType=null){
-    const savedSessions=state.sessions||[],basePianoRows=ledger(savedSessions,goals),bonuses=state.bonusRows||[],baseRows=[...combinedLedger(germanRows,basePianoRows,goals),...bonuses];
+    const savedSessions=state.sessions||[],basePianoRows=ledger(savedSessions,goals);
+    const bonuses=(state.bonusRows||[]).filter(row=>!row?.mentalBonus),baseMentalBonuses=mentalBonusRows(basePianoRows,date);
+    const baseRows=[...combinedLedger(germanRows,basePianoRows,goals),...bonuses,...baseMentalBonuses];
     const savedSeconds=savedSessions.filter(session=>session.date===date&&!session.deleted).reduce((sum,session)=>sum+equivalentSeconds(session),0);
     const wallet=state.effortWallet||{version:1,seedGoalIds:[goalId].filter(Boolean),seedCostPoints:{},displayGoalId:goalId,redemptions:[]};
     const selectedGoalId=wallet.displayGoalId&&goals.some(item=>item.id===wallet.displayGoalId&&!item.archivedAt&&!item.deletedAt)?wallet.displayGoalId:goalId;
@@ -524,13 +551,16 @@
     const liveSession=elapsed>0?{id:'__live__',goalId:selectedGoalId,startedAt:date+'T23:59:59.999Z',endedAt:date+'T23:59:59.999Z',date,seconds:elapsed,
       activityType:type,activityFactor:factor,policyVersion:rewardPolicy.version}:null;
     const hypotheticalSessions=liveSession?[...savedSessions,liveSession]:savedSessions;
+    const hypotheticalPianoRows=ledger(hypotheticalSessions,goals);
     const hypotheticalBonuses=liveSession?[...bonuses.filter(row=>!row.id.startsWith('bonus:study-month:')),
-      ...monthlyBonusRows(hypotheticalSessions.filter(session=>!state.effortStartDay||session.date>=state.effortStartDay),date)]:bonuses;
-    const hypotheticalPianoRows=ledger(hypotheticalSessions,goals),hypotheticalRows=[...combinedLedger(germanRows,hypotheticalPianoRows,goals),...hypotheticalBonuses];
+      ...monthlyBonusRows(hypotheticalSessions.filter(session=>!state.effortStartDay||session.date>=state.effortStartDay),date),
+      ...mentalBonusRows(hypotheticalPianoRows,date)]:[...bonuses,...baseMentalBonuses];
+    const hypotheticalRows=[...combinedLedger(germanRows,hypotheticalPianoRows,goals),...hypotheticalBonuses];
     const basePoints=walletPointsFromRows(baseRows,wallet),hypotheticalPoints=walletPointsFromRows(hypotheticalRows,wallet);
     const increment=Math.max(0,(hypotheticalPoints-basePoints)*scale);
-    const todayEffort=hypotheticalPianoRows.filter(row=>row.date===date&&rowBelongsToWallet(row,wallet)).reduce((sum,row)=>sum+rowEffortPoints(row),0);
-    const today=todayEffort*scale;
+    const todayPianoEffort=hypotheticalPianoRows.filter(row=>row.date===date&&rowBelongsToWallet(row,wallet)).reduce((sum,row)=>sum+rowEffortPoints(row),0);
+    const todayMentalBonus=hypotheticalBonuses.filter(row=>row.date===date&&row.mentalBonus).reduce((sum,row)=>sum+rowEffortPoints(row),0);
+    const todayEffort=todayPianoEffort+todayMentalBonus,today=todayEffort*scale;
     const equivalentElapsed=elapsed*factor,totalSeconds=savedSeconds+equivalentElapsed,next=rewardPolicy.curve.find(([seconds])=>seconds>totalSeconds);
     const nextIndex=next?rewardPolicy.curve.indexOf(next):-1,previous=nextIndex>0?rewardPolicy.curve[nextIndex-1]:rewardPolicy.curve.at(-1);
     const streakInfo=streakByDay(hypotheticalSessions)[date]||{days:0,multiplier:1,fullDay:false};
@@ -538,7 +568,11 @@
     const fullDayMultiplier=rewardPolicy.version>=3&&streakInfo.fullDay?streakInfo.multiplier:1;
     const excellentMultiplier=rewardPolicy.version>=4&&excellenceInfo.excellentDay?excellenceInfo.multiplier:1;
     const liveMultiplier=combinedMultiplier(fullDayMultiplier,excellentMultiplier,rewardPolicy.version);
-    const hourlyRate=next?((next[1]-previous[1])/(next[0]-previous[0]))*3600*scale*liveMultiplier*factor:0;
+    const savedMentalSeconds=savedSessions.filter(session=>session.date===date&&!session.deleted&&normalizeActivityType(session.activityType)==='mental')
+      .reduce((sum,session)=>sum+Math.max(0,Number(session.seconds)||0),0);
+    const mentalBonusRemainingSeconds=Math.max(0,MENTAL_BONUS_CAP_SECONDS-savedMentalSeconds-(type==='mental'?elapsed:0));
+    const mentalRateBoost=type==='mental'&&date>=MENTAL_BONUS_START_DAY&&mentalBonusRemainingSeconds>0?1+MENTAL_BONUS_RATE:1;
+    const hourlyRate=next?((next[1]-previous[1])/(next[0]-previous[0]))*3600*scale*liveMultiplier*factor*mentalRateBoost:0;
     const capSeconds=rewardPolicy.curve.at(-1)[0],capFill=Math.max(0,capSeconds-savedSeconds);
     const capSession={id:'__cap__',goalId:selectedGoalId,startedAt:date+'T23:59:59.999Z',endedAt:date+'T23:59:59.999Z',date,seconds:capFill,
       activityType:'study',activityFactor:1,policyVersion:rewardPolicy.version};
@@ -553,7 +587,7 @@
       nextSeconds:next?next[0]:null,nextBase:next?next[1]:rewardPolicy.curve.at(-1)[1],tierStartSeconds:next?previous[0]:rewardPolicy.curve.at(-1)[0],hourlyRate,policyVersion:rewardPolicy.version,
       streakDays:streakInfo.days,streakMultiplier:fullDayMultiplier,fullDay:streakInfo.fullDay,
       excellenceDays:excellenceInfo.days,excellenceMultiplier:excellentMultiplier,excellentDay:excellenceInfo.excellentDay,excellenceFrozen:excellenceInfo.frozen,
-      rewardMultiplier:liveMultiplier,goalRemaining:progress?progress.remaining:0,goalEquivalent:progress?progress.amount:0,walletPoints:hypotheticalPoints,
+      rewardMultiplier:liveMultiplier,mentalBonusRate:MENTAL_BONUS_RATE,mentalBonusRemainingSeconds,goalRemaining:progress?progress.remaining:0,goalEquivalent:progress?progress.amount:0,walletPoints:hypotheticalPoints,
       goalScale:scale,goalCostPoints:goal?goalCostPoints(goal):0,displayGoalId:selectedGoalId};
   }
 
@@ -680,5 +714,5 @@
     if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
   }
 
-  return {BALANCED_POLICY_START_DAY,SECRET_BONUS_START_DAY,SECRET_BONUSES,MONTHLY_LEVELS,policyForDate,combinedMultiplier,monthlyAchievements,monthlyBonusRows,secretAchievements,secretOpportunities,CONFIG,POLICIES,ACTIVITY_TYPES,FULL_DAY_SECONDS,EXCELLENT_DAY_SECONDS,SHARED_EFFORT_POLICY_VERSION,dayKey,normalizeActivityType,activityFactor,equivalentSeconds,ensure,ensureEffortWallet,studyState,activeGoal,baseReward,goalScale,goalCostPoints,streakMultiplier,excellenceMultiplier,summarizeDays,streakByDay,excellenceByDay,streakStats,excellenceStats,studyAchievement,effortStartDay,bonusRows,record,ledger,combinedLedger,rowEffortPoints,rowBelongsToWallet,walletPointsFromRows,goalProgressFromWallet,walletSnapshot,goalProgressForDb,redeemGoal,live,installBrowser};
+  return {BALANCED_POLICY_START_DAY,SECRET_BONUS_START_DAY,SECRET_BONUSES,MONTHLY_LEVELS,MENTAL_BONUS_START_DAY,MENTAL_BONUS_RATE,MENTAL_BONUS_CAP_SECONDS,policyForDate,combinedMultiplier,monthlyAchievements,monthlyBonusRows,mentalBonusRows,secretAchievements,secretOpportunities,CONFIG,POLICIES,ACTIVITY_TYPES,FULL_DAY_SECONDS,EXCELLENT_DAY_SECONDS,SHARED_EFFORT_POLICY_VERSION,dayKey,normalizeActivityType,activityFactor,equivalentSeconds,ensure,ensureEffortWallet,studyState,activeGoal,baseReward,goalScale,goalCostPoints,streakMultiplier,excellenceMultiplier,summarizeDays,streakByDay,excellenceByDay,streakStats,excellenceStats,studyAchievement,effortStartDay,bonusRows,record,ledger,combinedLedger,rowEffortPoints,rowBelongsToWallet,walletPointsFromRows,goalProgressFromWallet,walletSnapshot,goalProgressForDb,redeemGoal,live,installBrowser};
 });
