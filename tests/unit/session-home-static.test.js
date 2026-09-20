@@ -14,6 +14,7 @@ const desktopRedesign = fs.readFileSync('desktop-redesign.css', 'utf8');
 const cronoPremium = fs.readFileSync('crono-running-premium.js', 'utf8');
 const trophiesStyles = fs.readFileSync('habit-trophies.css', 'utf8');
 const worker = fs.readFileSync('sw.js', 'utf8');
+const legacyStyles = fs.readFileSync('styles.css', 'utf8');
 
 describe('focused session home', () => {
   it('keeps only the essential daily readout in the foreground', () => {
@@ -133,10 +134,11 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain('__earnedCentFloor');
   });
 
-  it('ships the complete v426 runtime offline', () => {
+  it('ships the complete v427 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('desktop-redesign.css?v=396');
-    expect(index).toContain('app.js?v=426');
+    expect(index).toContain('styles.css?v=427');
+    expect(index).toContain('app.js?v=427');
     expect(index).toContain('crono-resume-layout.js?v=413');
     expect(index).toContain('piano-rewards.js?v=425');
     expect(index).toContain('daily-study-minutes.js?v=423');
@@ -144,10 +146,11 @@ describe('focused session home', () => {
     expect(index).toContain('german-study.js?v=426');
     expect(index).toContain('german-study.css?v=426');
     expect(index).toContain('german-session.js?v=404');
-    expect(worker).toContain("const CACHE = 'estudio-v426'");
+    expect(worker).toContain("const CACHE = 'estudio-v427'");
     expect(worker).toContain('"./local-save-resilience.js?v=413"');
     expect(worker).toContain('"./instant-sync-resilience.js?v=410"');
     expect(worker).toContain('"./desktop-redesign.css?v=396"');
+    expect(worker).toContain('"./styles.css?v=427"');
     expect(worker).toContain('"./piano-rewards.js?v=425"');
     expect(worker).toContain('"./daily-study-minutes.js?v=423"');
     expect(worker).toContain('"./german-rewards.js?v=426"');
@@ -163,4 +166,17 @@ describe('focused session home', () => {
     expect(worker).toContain('"./desktop-windows-v390.css?v=390"');
     expect(worker).toContain('"./desktop-windows-v391.css?v=391"');
   });
+
+  it('makes urgentísima post-session tasks deliberately hard to dismiss', () => {
+    expect(app).toContain('function cronoTaskBreakUrgentPending()');
+    expect(app).toContain('_cronoTaskBreakUrgentStage === 2');
+    expect(app).toContain('function cronoSubmitTaskBreakMath(event)');
+    expect(app).toContain('cronoTaskBreakStartAlarm()');
+    expect(app).toContain('Resuelve para silenciar el aviso');
+    expect(app).toContain('toca para marcar “Ya está hecha”');
+    expect(app).toContain("id === 'modalCronoTaskBreak'");
+    expect(legacyStyles).toContain('.crono-task-break-urgent-math');
+    expect(legacyStyles).toContain('.crono-task-break-modal.has-urgent-escalation');
+  });
+
 });
