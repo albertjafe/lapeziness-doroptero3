@@ -188,8 +188,8 @@ describe('focused session home', () => {
   it('lets spontaneous manual study use the same activity factors as the timer', () => {
     expect(manualStudyActivity).toContain("chamber:Object.freeze({label:'Cámara',factor:1/3");
     expect(manualStudyActivity).toContain("piano_class:Object.freeze({label:'Clase piano',factor:.5");
-    expect(manualStudyActivity).toContain("id='sessionQuickStudyActivity'");
-    expect(manualStudyActivity).toContain("id='studyRegisterActivity'");
+    expect(manualStudyActivity).toContain("makeSelect('sessionQuickStudyActivity'");
+    expect(manualStudyActivity).toContain("makeSelect('studyRegisterActivity'");
     expect(manualStudyActivity).toContain("plant.activityType=type");
     expect(manualStudyActivity).toContain("plant.activityFactor=activityFactor");
     expect(manualStudyActivity).toContain("saveLocalNow");
