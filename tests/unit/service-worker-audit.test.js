@@ -51,7 +51,7 @@ describe('PWA version boundary',()=>{
   });
   it('falls back to all scoped clients when iOS does not expose the message source id',async()=>{
     const h=harness();await h.message({type:'SAFE_SKIP_WAITING',safe:true},null);await h.lifecycle('activate');
-    expect(h.calls.filter(x=>x.startsWith('navigate:'))).toEqual(['navigate:https://piano.test/?__pwa=426']);
+    expect(h.calls.filter(x=>x.startsWith('navigate:'))).toEqual(['navigate:https://piano.test/?__pwa=427']);
   });
   it('activation preserves unrelated caches and the previous shell for old tabs',async()=>{
     const h=harness();['estudio-v340','estudio-v341','user-content'].forEach(k=>h.stores.set(k,new Map()));
