@@ -115,8 +115,9 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain('.crono-piano-money > footer');
   });
 
-  it('offers study, piano class and chamber as explicit weighted session types', () => {
+  it('offers study, mental study, piano class and chamber as explicit weighted session types', () => {
     expect(cronoPremium).toContain("study:{label:'Estudio',factor:1");
+    expect(cronoPremium).toContain("mental:{label:'Mental',factor:1,short:'×1',rewardBonus:'+10% €'}");
     expect(cronoPremium).toContain("piano_class:{label:'Clase piano',factor:.5");
     expect(cronoPremium).toContain("chamber:{label:'Cámara',factor:1/3");
     expect(cronoPremium).toContain('cronoActivitySelector');
@@ -132,25 +133,25 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain('__earnedCentFloor');
   });
 
-  it('ships the complete v416 runtime offline', () => {
+  it('ships the complete v425 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('desktop-redesign.css?v=396');
-    expect(index).toContain('app.js?v=416');
+    expect(index).toContain('app.js?v=425');
     expect(index).toContain('crono-resume-layout.js?v=413');
-    expect(index).toContain('piano-rewards.js?v=409');
-    expect(index).toContain('daily-study-minutes.js?v=404');
+    expect(index).toContain('piano-rewards.js?v=425');
+    expect(index).toContain('daily-study-minutes.js?v=423');
     expect(index).toContain('german-rewards.js?v=404');
     expect(index).toContain('german-session.js?v=404');
-    expect(worker).toContain("const CACHE = 'estudio-v416'");
+    expect(worker).toContain("const CACHE = 'estudio-v425'");
     expect(worker).toContain('"./local-save-resilience.js?v=413"');
     expect(worker).toContain('"./instant-sync-resilience.js?v=410"');
     expect(worker).toContain('"./desktop-redesign.css?v=396"');
-    expect(worker).toContain('"./piano-rewards.js?v=409"');
-    expect(worker).toContain('"./daily-study-minutes.js?v=404"');
+    expect(worker).toContain('"./piano-rewards.js?v=425"');
+    expect(worker).toContain('"./daily-study-minutes.js?v=423"');
     expect(worker).toContain('"./german-rewards.js?v=404"');
     expect(worker).toContain('"./german-session.js?v=404"');
     expect(worker).toContain('"./crono-state-store.js?v=397"');
-    expect(worker).toContain('"./crono-running-premium.js?v=408"');
+    expect(worker).toContain('"./crono-running-premium.js?v=425"');
     expect(worker).toContain('"./session-home.css?v=374"');
     expect(worker).toContain('"./crono-resume-layout.css?v=342"');
     expect(worker).toContain('"./desktop-workspace.css?v=388"');
