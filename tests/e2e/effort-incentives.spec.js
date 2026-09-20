@@ -14,9 +14,9 @@ for(const [width,height] of [[834,1194],[1194,834]])test(`iPad ${width}x${height
  await page.locator('#habitTitleInput').fill('Evitar el móvil al despertar');
  await page.locator('#habitModeToggle [data-mode="avoid"]').click();
  await page.locator('#habitCriteriaInput').fill('Dejar el móvil fuera hasta desayunar');
- await expect(page.locator('#habitEffortRewardNote')).toContainText('Premio: 3 puntos');
+ await expect(page.locator('#habitEffortRewardNote')).toContainText('0 caídas = 3 puntos');
  await page.getByRole('button',{name:'Guardar hábito',exact:true}).click();
- expect(await page.evaluate(()=>db.habitChallenges[0].effortReward)).toMatchObject({version:1,points:3,durationDays:21,mode:'avoid'});
+ expect(await page.evaluate(()=>db.habitChallenges[0].effortReward)).toMatchObject({version:2,points:3,durationDays:21,mode:'avoid',failurePoints:[3,1.5,.75,0]});
  await page.getByRole('button',{name:'Ver detalles y reglas de Evitar el móvil al despertar',exact:true}).click();
  await expect(page.locator('#habitDurationInput')).toBeDisabled();await expect(page.locator('#habitCriteriaInput')).toBeDisabled();
  await page.getByRole('button',{name:'Cancelar',exact:true}).click();
@@ -51,5 +51,5 @@ test('a completed avoid cycle contributes once, survives reload and appears in b
  await page.reload();await page.waitForFunction(()=>window.PianoRewards&&db.habitChallenges?.length);
  expect(await page.evaluate(()=>PianoRewards.walletSnapshot(db).points)).toBe(3);
  await page.evaluate(()=>{db.habitChallenges[0].logs[db.habitChallenges[0].startDate]={status:'failed'};saveData();});
- await expect.poll(()=>page.evaluate(()=>PianoRewards.walletSnapshot(db).points)).toBe(0);
+ await expect.poll(()=>page.evaluate(()=>PianoRewards.walletSnapshot(db).points)).toBe(1.5);
 });
