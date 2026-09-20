@@ -104,9 +104,9 @@ describe('focused session home', () => {
     expect(desktopRedesign).not.toContain('html:not(.platform-windows)');
   });
 
-  it('simplifies the piano taximeter into three decimal places and one multiplier bar', () => {
-    expect(cronoPremium).toContain('minimumFractionDigits:3,maximumFractionDigits:3');
-    expect(cronoPremium).toContain('el.textContent=formatted');
+  it('keeps the piano balance in euro cents and one multiplier bar', () => {
+    expect(cronoPremium).toContain('minimumFractionDigits:2,maximumFractionDigits:2');
+    expect(cronoPremium).toContain('function refreshGoalBalanceDisplay');
     expect(cronoPremium).toContain('cronoPianoMultiplierMeter');
     expect(cronoPremium).toContain('cronoMultiplierLevelUp');
     expect(cronoPremium).toContain('function rewardTierState');
@@ -126,9 +126,9 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain('__activityTypeAware');
   });
 
-  it('shows only fully earned cents in the shared goal balance', () => {
-    expect(cronoPremium).toContain('function floorToEarnedCents');
-    expect(cronoPremium).toContain('Math.floor(micros/10000)');
+  it('shows the shared goal balance consistently in cents', () => {
+    expect(cronoPremium).toContain('function formatEarnedCents');
+    expect(cronoPremium).toContain('minimumFractionDigits:2,maximumFractionDigits:2');
     expect(cronoPremium).toContain('formatEarnedCents(earned)');
     expect(cronoPremium).toContain('__earnedCentFloor');
   });
