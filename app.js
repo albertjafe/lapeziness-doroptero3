@@ -22144,6 +22144,7 @@ function cronoOpenTaskBreakPrompt() {
 function cronoCompleteTaskFromBreak(id, button) {
   const task = cronoTasks().find(item => item.id === id);
   if (!task || task.done || !button || button.classList.contains('is-completing')) return;
+  if (cronoTaskPriority(task) === 3) cronoTaskBreakStopAlarm();
   task.done = true;
   task.doneAt = new Date().toISOString();
   saveData();
