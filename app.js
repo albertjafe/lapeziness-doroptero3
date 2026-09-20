@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-20-german-habit-v426';
+const APP_VERSION = '2026-09-20-urgent-task-gate-v427';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -994,7 +994,12 @@ function openModal(id) {
   setTimeout(forceVisible, 60);
   // Close on tap outside the modal box
   overlay._outsideHandler = function(e) {
-    if (e.target === overlay) closeModal(id);
+    if (e.target !== overlay) return;
+    if (id === 'modalCronoTaskBreak' && typeof closeCronoTaskBreakPrompt === 'function') {
+      closeCronoTaskBreakPrompt();
+      return;
+    }
+    closeModal(id);
   };
   overlay.addEventListener('click', overlay._outsideHandler);
 }
@@ -21855,6 +21860,219 @@ function cronoTaskBreakPending() {
     });
 }
 
+let _cronoTaskBreakUrgentStage = 0;
+let _cronoTaskBreakUrgentChallenge = null;
+let _cronoTaskBreakAlarmTimer = null;
+let _cronoTaskBreakAudioContext = null;
+
+function cronoTaskBreakUrgentPending() {
+  return cronoTaskBreakPending().filter(task => cronoTaskPriority(task) === 3);
+}
+
+function cronoTaskBreakStopAlarm() {
+  if (_cronoTaskBreakAlarmTimer) {
+    clearInterval(_cronoTaskBreakAlarmTimer);
+    _cronoTaskBreakAlarmTimer = null;
+  }
+}
+
+function cronoTaskBreakPlayAlarmTone() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!_cronoTaskBreakAudioContext) _cronoTaskBreakAudioContext = new AudioCtx();
+    const ctx = _cronoTaskBreakAudioContext;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const start = ctx.currentTime + .01;
+    [0, .16].forEach((offset, index) => {
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = index ? 880 : 660;
+      gain.gain.setValueAtTime(.0001, start + offset);
+      gain.gain.exponentialRampToValueAtTime(.055, start + offset + .018);
+      gain.gain.exponentialRampToValueAtTime(.0001, start + offset + .13);
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.start(start + offset);
+      oscillator.stop(start + offset + .14);
+    });
+  } catch (e) {}
+}
+
+function cronoTaskBreakStartAlarm() {
+  cronoTaskBreakStopAlarm();
+  cronoTaskBreakPlayAlarmTone();
+  _cronoTaskBreakAlarmTimer = setInterval(() => {
+    if (!document.getElementById('modalCronoTaskBreak')?.classList.contains('visible') || document.hidden) return;
+    cronoTaskBreakPlayAlarmTone();
+  }, 900);
+  try { Haptics.heavy(); } catch (e) {}
+}
+
+function cronoTaskBreakResetUrgency() {
+  cronoTaskBreakStopAlarm();
+  _cronoTaskBreakUrgentStage = 0;
+  _cronoTaskBreakUrgentChallenge = null;
+}
+
+function cronoTaskBreakMathChallenge() {
+  const operation = Math.floor(Math.random() * 3);
+  if (operation === 0) {
+    const a = 12 + Math.floor(Math.random() * 28);
+    const b = 7 + Math.floor(Math.random() * 17);
+    return { question: a + ' + ' + b + ' = ?', answer: a + b };
+  }
+  if (operation === 1) {
+    const b = 6 + Math.floor(Math.random() * 19);
+    const answer = 8 + Math.floor(Math.random() * 22);
+    return { question: (b + answer) + ' − ' + b + ' = ?', answer };
+  }
+  const a = 4 + Math.floor(Math.random() * 6);
+  const b = 4 + Math.floor(Math.random() * 6);
+  return { question: a + ' × ' + b + ' = ?', answer: a * b };
+}
+
+function cronoTaskBreakBump() {
+  const modal = document.querySelector('#modalCronoTaskBreak .crono-task-break-modal');
+  if (!modal) return;
+  modal.classList.remove('is-urgent-bump');
+  void modal.offsetWidth;
+  modal.classList.add('is-urgent-bump');
+}
+
+function cronoRenderTaskBreakUrgency() {
+  const modal = document.getElementById('modalCronoTaskBreak');
+  if (!modal) return;
+  const urgent = cronoTaskBreakUrgentPending();
+  const box = modal.querySelector('.crono-task-break-modal');
+  const kicker = modal.querySelector('.crono-task-break-kicker');
+  const title = document.getElementById('cronoTaskBreakTitle');
+  const alert = document.getElementById('cronoTaskBreakUrgentAlert');
+  const alertTask = document.getElementById('cronoTaskBreakUrgentTask');
+  const alertCopy = document.getElementById('cronoTaskBreakUrgentCopy');
+  const math = document.getElementById('cronoTaskBreakUrgentMath');
+  const question = document.getElementById('cronoTaskBreakUrgentQuestion');
+  const input = document.getElementById('cronoTaskBreakUrgentAnswer');
+  const error = document.getElementById('cronoTaskBreakUrgentError');
+  const close = modal.querySelector('.crono-task-break-close');
+
+  if (!urgent.length) {
+    cronoTaskBreakResetUrgency();
+    box?.classList.remove('has-urgent-escalation','urgent-stage-1','urgent-stage-2','urgent-stage-3');
+    if (kicker) kicker.textContent = '¿Un descanso?';
+    if (title) title.textContent = 'Haz alguna de estas tareas';
+    if (alert) alert.hidden = true;
+    if (math) math.hidden = true;
+    if (close) { close.hidden = false; close.textContent = 'OK, cerrar'; }
+    return;
+  }
+
+  box?.classList.toggle('has-urgent-escalation', _cronoTaskBreakUrgentStage > 0);
+  [1,2,3].forEach(stage => box?.classList.toggle('urgent-stage-' + stage, _cronoTaskBreakUrgentStage === stage));
+  if (alertTask) alertTask.textContent = urgent[0].text + (urgent.length > 1 ? ' · +' + (urgent.length - 1) + ' urgentísima' + (urgent.length === 2 ? '' : 's') : '');
+  if (error) error.textContent = '';
+
+  if (_cronoTaskBreakUrgentStage === 0) {
+    if (kicker) kicker.textContent = urgent.length === 1 ? '1 tarea urgentísima' : urgent.length + ' tareas urgentísimas';
+    if (title) title.textContent = 'Haz alguna de estas tareas';
+    if (alert) alert.hidden = true;
+    if (math) math.hidden = true;
+    if (close) { close.hidden = false; close.textContent = 'OK, cerrar'; }
+    return;
+  }
+
+  if (alert) alert.hidden = false;
+  if (kicker) kicker.textContent = _cronoTaskBreakUrgentStage === 1 ? 'URGENTÍSIMA · PRIMER AVISO' :
+    _cronoTaskBreakUrgentStage === 2 ? 'URGENTÍSIMA · SEGUNDO AVISO' : 'URGENTÍSIMA · CONFIRMACIÓN FINAL';
+  if (title) title.textContent = _cronoTaskBreakUrgentStage === 1 ? 'Esta tarea sigue pendiente' :
+    _cronoTaskBreakUrgentStage === 2 ? 'Por favor, cumple esta tarea ahora' : 'Demuestra que has leído el aviso';
+  if (alertCopy) alertCopy.textContent = _cronoTaskBreakUrgentStage === 1
+    ? 'No la cierres por reflejo. Si todavía no está hecha, léela otra vez antes de continuar.'
+    : _cronoTaskBreakUrgentStage === 2
+      ? 'Sigue sin estar marcada como hecha. Léela conscientemente: volverá a aparecer después de cada sesión hasta que la completes.'
+      : 'Resuelve la cuenta para silenciar el aviso. Esto solo confirma que lo has leído: la tarea seguirá pendiente hasta que pulses “Ya está hecha”.';
+
+  if (_cronoTaskBreakUrgentStage < 3) {
+    if (math) math.hidden = true;
+    if (close) {
+      close.hidden = false;
+      close.textContent = _cronoTaskBreakUrgentStage === 1 ? 'OK, lo he leído' : 'Sí, lo he entendido';
+    }
+    return;
+  }
+
+  if (!_cronoTaskBreakUrgentChallenge) _cronoTaskBreakUrgentChallenge = cronoTaskBreakMathChallenge();
+  if (question) question.textContent = _cronoTaskBreakUrgentChallenge.question;
+  if (math) math.hidden = false;
+  if (close) close.hidden = true;
+  if (input && document.activeElement !== input) {
+    input.value = '';
+    setTimeout(() => input.focus({ preventScroll: true }), 40);
+  }
+}
+
+function closeCronoTaskBreakPrompt() {
+  const urgent = cronoTaskBreakUrgentPending();
+  if (!urgent.length) {
+    cronoTaskBreakResetUrgency();
+    closeModal('modalCronoTaskBreak');
+    return;
+  }
+  if (_cronoTaskBreakUrgentStage < 2) {
+    _cronoTaskBreakUrgentStage += 1;
+    cronoTaskBreakPlayAlarmTone();
+    try { Haptics.warn(); } catch (e) {}
+    cronoRenderTaskBreakUrgency();
+    cronoTaskBreakBump();
+    return;
+  }
+  if (_cronoTaskBreakUrgentStage === 2) {
+    _cronoTaskBreakUrgentStage = 3;
+    _cronoTaskBreakUrgentChallenge = cronoTaskBreakMathChallenge();
+    cronoRenderTaskBreakUrgency();
+    cronoTaskBreakStartAlarm();
+    cronoTaskBreakBump();
+    return;
+  }
+  cronoTaskBreakPlayAlarmTone();
+  try { Haptics.warn(); } catch (e) {}
+  document.getElementById('cronoTaskBreakUrgentAnswer')?.focus({ preventScroll: true });
+}
+
+function cronoSubmitTaskBreakMath(event) {
+  event?.preventDefault();
+  const input = document.getElementById('cronoTaskBreakUrgentAnswer');
+  const error = document.getElementById('cronoTaskBreakUrgentError');
+  if (!_cronoTaskBreakUrgentChallenge || !input) return false;
+  const answer = Number(String(input.value || '').trim());
+  if (Number.isFinite(answer) && answer === _cronoTaskBreakUrgentChallenge.answer) {
+    cronoTaskBreakStopAlarm();
+    try { Haptics.success(); } catch (e) {}
+    cronoTaskBreakResetUrgency();
+    closeModal('modalCronoTaskBreak');
+    showToast('Aviso leído · la tarea urgentísima sigue pendiente');
+    return false;
+  }
+  if (error) error.textContent = 'No es correcto. Inténtalo otra vez.';
+  input.classList.remove('is-wrong');
+  void input.offsetWidth;
+  input.classList.add('is-wrong');
+  input.select();
+  cronoTaskBreakPlayAlarmTone();
+  try { Haptics.warn(); } catch (e) {}
+  return false;
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    cronoTaskBreakStopAlarm();
+  } else if (_cronoTaskBreakUrgentStage === 3 && cronoTaskBreakUrgentPending().length &&
+    document.getElementById('modalCronoTaskBreak')?.classList.contains('visible')) {
+    cronoTaskBreakStartAlarm();
+  }
+});
+
 function cronoRenderTaskBreakPrompt() {
   const list = document.getElementById('cronoTaskBreakList');
   const count = document.getElementById('cronoTaskBreakCount');
@@ -21865,6 +22083,7 @@ function cronoRenderTaskBreakPrompt() {
     : 'Todo limpio';
   if (!pending.length) {
     list.innerHTML = '<div class="crono-task-break-clean" role="status"><span aria-hidden="true">✓</span><strong>Todo limpio</strong><small>No queda ninguna tarea pendiente.</small></div>';
+    cronoRenderTaskBreakUrgency();
     return;
   }
   const visible = pending.slice(0, 6);
@@ -21876,12 +22095,13 @@ function cronoRenderTaskBreakPrompt() {
       '<span class="crono-task-break-check" aria-hidden="true"></span>' +
       '<span class="crono-task-break-copy"><strong>' + escapeHtmlSafe(task.text) + '</strong>' +
         '<small>' + (kind === 'personal' ? 'Personal' : 'Piano') + (kind === 'piano' && task.tomorrow ? ' · Mañana' : '') +
-          (priority === 3 ? ' · <b>Urgentísima</b>' : '') + '</small>' +
+          (priority === 3 ? ' · <b>Urgentísima</b> · toca para marcar “Ya está hecha”' : '') + '</small>' +
       '</span>' +
     '</button>';
   }).join('') + (pending.length > visible.length
     ? '<div class="crono-task-break-more">+' + (pending.length - visible.length) + ' más</div>'
     : '');
+  cronoRenderTaskBreakUrgency();
 }
 
 function cronoOpenTaskBreakPrompt() {
@@ -21896,21 +22116,29 @@ function cronoOpenTaskBreakPrompt() {
         '<div class="crono-task-break-kicker">¿Un descanso?</div>' +
         '<div class="crono-task-break-title" id="cronoTaskBreakTitle">Haz alguna de estas tareas</div>' +
         '<div class="crono-task-break-meta" id="cronoTaskBreakCount"></div>' +
+        '<div class="crono-task-break-urgent-alert" id="cronoTaskBreakUrgentAlert" role="alert" aria-live="assertive" hidden>' +
+          '<strong id="cronoTaskBreakUrgentTask"></strong>' +
+          '<p id="cronoTaskBreakUrgentCopy"></p>' +
+        '</div>' +
         '<div class="crono-task-break-list" id="cronoTaskBreakList"></div>' +
+        '<form class="crono-task-break-urgent-math" id="cronoTaskBreakUrgentMath" onsubmit="return cronoSubmitTaskBreakMath(event)" hidden>' +
+          '<label for="cronoTaskBreakUrgentAnswer">Resuelve para silenciar el aviso</label>' +
+          '<strong id="cronoTaskBreakUrgentQuestion"></strong>' +
+          '<div><input id="cronoTaskBreakUrgentAnswer" type="number" inputmode="numeric" autocomplete="off" required aria-describedby="cronoTaskBreakUrgentError">' +
+          '<button type="submit" class="modal-btn primary">Comprobar</button></div>' +
+          '<small id="cronoTaskBreakUrgentError" role="status" aria-live="assertive"></small>' +
+        '</form>' +
         '<button type="button" class="modal-btn primary crono-task-break-close" onclick="closeCronoTaskBreakPrompt()">OK, cerrar</button>' +
       '</div>';
     document.body.appendChild(modal);
   }
+  cronoTaskBreakResetUrgency();
   cronoRenderTaskBreakPrompt();
   const now = Date.now();
   const day = cronoTaskReminderDayKey(new Date(now));
   try { localStorage.setItem(CRONO_TASK_REMINDER_KEY, JSON.stringify({ day, lastAt: now, reason: 'session-end' })); } catch(e) {}
   openModal('modalCronoTaskBreak');
   return true;
-}
-
-function closeCronoTaskBreakPrompt() {
-  closeModal('modalCronoTaskBreak');
 }
 
 function cronoCompleteTaskFromBreak(id, button) {
@@ -21924,7 +22152,10 @@ function cronoCompleteTaskFromBreak(id, button) {
   button.disabled = true;
   try { Haptics.success(); } catch(e) {}
   const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  setTimeout(cronoRenderTaskBreakPrompt, reducedMotion ? 100 : 620);
+  setTimeout(() => {
+    cronoRenderTaskBreakPrompt();
+    if (!cronoTaskBreakUrgentPending().length) cronoTaskBreakStopAlarm();
+  }, reducedMotion ? 100 : 620);
 }
 
 function cronoStartTaskReminderLoop() {
