@@ -7,7 +7,7 @@
   const ACTIVITY_STORAGE_KEY='piano_activity_type_v1';
   const ACTIVITY_TYPES={
     study:{label:'Estudio',factor:1,short:'×1'},
-    mental:{label:'Mental',factor:1,short:'×1'},
+    mental:{label:'Mental',factor:1,short:'×1',rewardBonus:'+10% €'},
     piano_class:{label:'Clase piano',factor:.5,short:'×0,5'},
     chamber:{label:'Cámara',factor:1/3,short:'×0,33'}
   };
@@ -123,11 +123,11 @@
       '<label class="crono-start-control-label" for="cronoActivityType">Tipo de sesión</label>'+
       '<select id="cronoActivityType" aria-label="Tipo de sesión de piano">'+
         Object.entries(ACTIVITY_TYPES).map(([type,item])=>
-          '<option value="'+type+'">'+item.label+' · '+item.short+'</option>'
+          '<option value="'+type+'">'+item.label+' · '+item.short+(item.rewardBonus?' · '+item.rewardBonus:'')+'</option>'
         ).join('')+
       '</select>' :
       '<div class="crono-start-control-label">Tipo de sesión</div><div class="crono-activity-tabs" role="group" aria-label="Tipo de sesión de piano">'+
-      Object.entries(ACTIVITY_TYPES).map(([type,item])=>'<button type="button" class="crono-activity-tab" data-activity-type="'+type+'" aria-pressed="false" title="'+item.label+': cada hora cuenta como '+item.short+' horas equivalentes"><span>'+item.label+'</span><small>'+item.short+'</small></button>').join('')+'</div>';
+      Object.entries(ACTIVITY_TYPES).map(([type,item])=>'<button type="button" class="crono-activity-tab" data-activity-type="'+type+'" aria-pressed="false" title="'+item.label+': '+item.short+' de tiempo neto'+(item.rewardBonus?' · '+item.rewardBonus+' durante los primeros 45 min del día':'')+'"><span>'+item.label+'</span><small>'+item.short+(item.rewardBonus?' · '+item.rewardBonus:'')+'</small></button>').join('')+'</div>';
     selector.querySelector('select')?.addEventListener('change',event=>chooseActivity(event.target.value));
     selector.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>chooseActivity(button.dataset.activityType)));
     if(controls && ipad){
