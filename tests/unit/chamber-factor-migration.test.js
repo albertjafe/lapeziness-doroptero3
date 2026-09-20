@@ -16,8 +16,10 @@ describe('chamber factor migration',()=>{
     };
     expect(M.migrateDatabase(db)).toBe(4);
     expect(db.sessionPlants[0]).toMatchObject({activityFactor:.5,mins:40});
+    expect(db.sessionPlants[0]._fieldClock.activityFactor).toBeTruthy();
     expect(db.forestPlants[0]).toMatchObject({activityFactor:.5,mins:60});
     expect(db.pianoRewards.sessions[0]).toMatchObject({activityFactor:.5,seconds:1200});
+    expect(db.pianoRewards.sessions[0]._fieldClock.activityFactor).toBeTruthy();
     expect(db.sesiones[0].items[0]).toMatchObject({activityFactor:.5,minutosReales:30});
     expect(db.sesiones[0].items[1]).toMatchObject({activityFactor:1,minutosReales:50});
   });
