@@ -150,7 +150,8 @@
     const lastGoalByDay = {};
     for (const entry of sessionEntries) if (entry.s.goalId) lastGoalByDay[entry.date] = entry.s.goalId;
 
-    const bonusEntries = consistencyBonuses(sessions).map(item => ({
+    const lastEvidenceDay = Object.keys(totals).sort().at(-1) || dayKey();
+    const bonusEntries = consistencyBonuses(sessions,lastEvidenceDay).map(item => ({
       kind:'consistency', date:item.date, startedAt:item.date+'T23:59:59.999Z',
       id:'german:consistency:'+item.date+':'+item.streakDays,
       goalId:lastGoalByDay[item.date] || null, ...item
