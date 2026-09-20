@@ -37,8 +37,8 @@ describe('daily study minutes', () => {
     const db={sessionPlants:[plant,{obraId:'manual',mins:30,source:'manual',startedAt:'2026-09-05T11:00:00.000Z'}],forestPlants:[],sesiones:[],
       pianoRewards:{sessions:[{id:'r',startedAt,activityType:'chamber',activityFactor:1/3}]}};
     const api=loadFix(db),{start,end}=dayRange();
-    expect(api.minutesByDay(start,end)['2026-09-05']).toBe(60);
-    expect(api.studyBlocks(start,end)[0]).toMatchObject({rawMins:90,mins:30,activityType:'chamber',activityFactor:1/3});
+    expect(api.minutesByDay(start,end)['2026-09-05']).toBe(75);
+    expect(api.studyBlocks(start,end)[0]).toMatchObject({rawMins:90,mins:45,activityType:'chamber',activityFactor:.5});
     expect(plant.activityType).toBeUndefined();
     plant.activityType='study';
     expect(api.minutesByDay(start,end)['2026-09-05']).toBe(120);
@@ -67,7 +67,7 @@ describe('daily study minutes', () => {
     expect(blocks.reduce((sum,b)=>sum+b.rawMins,0)).toBeCloseTo(2.2,8);
     expect(blocks.reduce((sum,b)=>sum+b.mins,0)).toBeCloseTo(1,8);
     expect(blocks.map(b=>b.activityType)).toEqual(['piano_class','chamber']);
-    expect(blocks.map(b=>b.activityFactor)).toEqual([.5,1/3]);
+    expect(blocks.map(b=>b.activityFactor)).toEqual([.5,.5]);
     expect(api.minutesByDay(start,end,db)['2026-09-05']).toBe(1);
     expect(JSON.stringify(db)).toBe(before);
   });
@@ -138,7 +138,7 @@ describe('daily study minutes', () => {
     };
     const api = loadFix(db);
     const { start, end } = dayRange();
-    expect(api.version).toBe(9);
+    expect(api.version).toBe(10);
     expect(api.minutesByDay(start, end)['2026-09-05']).toBe(216);
   });
 
@@ -191,12 +191,12 @@ describe('daily study minutes', () => {
     expect(api.minutesByDay(start, end)['2026-09-05']).toBe(45);
   });
 
-  it('counts a manual chamber rehearsal at one third while preserving 40 real minutes', () => {
+  it('counts a manual chamber rehearsal at one half while preserving 40 real minutes', () => {
     const db = {
       sessionPlants: [
         { id:'normal', obraId:'bach', mins:191, source:'app', activityType:'study', activityFactor:1,
           startedAt:'2026-09-05T08:00:00.000Z', endedAt:'2026-09-05T11:11:00.000Z' },
-        { id:'manual_chamber', obraId:'brahms', mins:40, source:'manual', activityType:'chamber', activityFactor:1/3,
+        { id:'manual_chamber', obraId:'brahms', mins:40, source:'manual', activityType:'chamber', activityFactor:.5,
           startedAt:'2026-09-05T12:00:00.000Z', endedAt:'2026-09-05T12:40:00.000Z' },
       ],
       forestPlants: [],
@@ -204,16 +204,16 @@ describe('daily study minutes', () => {
         date:'2026-09-05T12:00:00.000Z',
         items:[{
           id:'manual_chamber',studyPlantId:'manual_chamber',obraId:'brahms',manual:true,tick:'hecho',
-          minutosEstudiados:40,minutosReales:40,activityType:'chamber',activityFactor:1/3
+          minutosEstudiados:40,minutosReales:40,activityType:'chamber',activityFactor:.5
         }]
       }]
     };
     const api=loadFix(db),{start,end}=dayRange(),blocks=api.studyBlocks(start,end,db);
     expect(blocks.reduce((sum,item)=>sum+item.rawMins,0)).toBe(231);
-    expect(blocks.reduce((sum,item)=>sum+item.mins,0)).toBeCloseTo(204,8);
-    expect(api.minutesByDay(start,end,db)['2026-09-05']).toBe(204);
+    expect(blocks.reduce((sum,item)=>sum+item.mins,0)).toBeCloseTo(211,8);
+    expect(api.minutesByDay(start,end,db)['2026-09-05']).toBe(211);
     expect(blocks.find(item=>item.id==='manual_chamber')).toMatchObject({
-      rawMins:40,activityType:'chamber',activityFactor:1/3
+      rawMins:40,activityType:'chamber',activityFactor:.5
     });
   });
 
