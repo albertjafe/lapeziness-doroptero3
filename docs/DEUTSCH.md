@@ -16,23 +16,35 @@ En tarjetas, el cronómetro cuenta intervalos observados dentro de Deutsch y pau
 
 ## Recompensas
 
-Política central e inmutable `GermanRewards.CONFIG`, versión 1. Cada objetivo conserva una copia de esa política para futuras modificaciones.
+Desde el **20-09-2026** Deutsch usa dos políticas versionadas. El programa de implantación empieza ese día y no utiliza días anteriores para graduar el hábito, de modo que el saldo histórico no se recalcula.
 
-`base(t)` interpola linealmente los puntos `(segundos, euros)`:
+Mientras el hábito no esté implantado se conserva la curva generosa v1:
 
-| Tiempo diario | Base |
+| Tiempo diario | Implantación v1 |
 |---|---:|
-| 0 min | 0,00 € |
-| 15 min | 1,00 € |
-| 30 min | 1,25 € |
-| 45 min | 1,55 € |
-| 60 min o más | 2,00 € |
+| 0 min | 0,00 pts |
+| 15 min | 1,00 pts |
+| 30 min | 1,25 pts |
+| 45 min | 1,55 pts |
+| 60 min o más | 2,00 pts |
+
+La implantación se consigue al completar **15 días de al menos 15 minutos dentro de cualquier ventana móvil de 21 días**. El día que completa el 15/21 todavía usa v1; **la tarifa estable empieza al día siguiente**. Desde entonces se usa v2:
+
+| Tiempo diario | Estable v2 |
+|---|---:|
+| 0 min | 0,00 pts |
+| 15 min | 0,50 pts |
+| 30 min | 0,80 pts |
+| 45 min | 1,10 pts |
+| 60 min o más | 1,40 pts |
+
+Además, desde el inicio del programa, cada bloque de **7 días consecutivos cualificados** concede un bonus separado de **+1 punto** (días 7, 14, 21, etc. de una misma racha). Si se rompe la continuidad, empieza un bloque nuevo. Este bonus no añade minutos.
 
 `scale = clamp((importe / 150)^0.45, 0.5, 15)`
 
 `multiplier = 1 + min(0.25, floor(racha / 4) × 0.05)`
 
-Con un único objetivo, la recompensa de alemán del día es `base(segundosDiarios) × scale × multiplier`. Menos de 900 segundos deja el importe pendiente y no mantiene la racha. A los 900 segundos se consolida todo el día. **El mínimo es diario**: dos sesiones de ocho minutos cualifican conjuntamente. La racha del propio día cualificado determina su bonus; una interrupción la reinicia.
+Con un único objetivo, la recompensa diaria se deriva de la curva vigente para ese día, la escala del objetivo y el multiplicador de racha. Menos de 900 segundos deja el importe pendiente y no mantiene la racha. A los 900 segundos se consolida todo el día. **El mínimo es diario**: dos sesiones de ocho minutos cualifican conjuntamente. La racha del propio día cualificado determina su bonus; una interrupción la reinicia. Las sesiones anteriores al 20-09-2026 conservan la política histórica y nunca se reprician con v2.
 
 El cronómetro de piano aporta al mismo objetivo con una curva separada y más conservadora. Solo se guarda al terminar una sesión válida de al menos 10 minutos; descansos y sesiones fallidas no generan saldo. La **política v3** interpola linealmente dentro de cada tramo y adelanta parte de la recompensa hacia la jornada normal de 4–5 h sin cambiar el techo de 7 h:
 
@@ -111,7 +123,7 @@ CSV admite UTF-8/BOM, coma o punto y coma, comillas escapadas y saltos de línea
 
 | Módulo | Responsabilidad |
 |---|---|
-| `german-rewards.js` | Política, días locales, rachas, ledger y progreso de objetivos; puro, CommonJS/browser |
+| `german-rewards.js` | Políticas v1/v2, implantación 15/21, bonus de constancia, días locales, rachas, ledger y progreso de objetivos; puro, CommonJS/browser |
 | `piano-rewards.js` | Curva progresiva de piano, racha de días completos, evidencia de sesiones y ledger combinado con el objetivo compartido |
 | `german-session.js` | Estado propio y evidencia temporal por día; cierre idempotente |
 | `german-srs.js` | SRS determinista, comparación literal y selección de cola |
@@ -129,7 +141,7 @@ La programación SRS se deriva de las revisiones ordenadas por instante e ID: co
 
 ## PWA y verificación
 
-Runtime v385: scripts y CSS de Deutsch y el taxímetro de piano cargados desde `index.html` y precacheados; `update-safety.js` bloquea promociones mientras haya sesión local abierta, incluso antes de cargar el addon. `update.html` también protege esa recuperación. Mantiene el lifecycle seguro y las versiones anteriores de assets no modificados.
+Runtime v426: `german-rewards.js`, `german-study.js/css` y `app.js` cargados desde `index.html` y precacheados; `update-safety.js` bloquea promociones mientras haya sesión local abierta, incluso antes de cargar el addon. `update.html` también protege esa recuperación. Mantiene el lifecycle seguro y las versiones anteriores de assets no modificados.
 
 Pruebas: `tests/unit/german-study.test.js`, `tests/unit/piano-rewards.test.js`, nuevas regresiones en `document-postgres`, `update-safety-v2` y `service-worker-audit`; `tests/e2e/german-study.spec.js` cubre UI completa, importar/duplicados/XSS, umbral, recarga/borrador, locks, objetivos, móvil y PWA offline. Ejecutar `npm run check`, `npm run test:unit`, `npm run test:e2e` y `npm run test:visual`. El repositorio conserva una lista explícita de fallos E2E anteriores en `scripts/check-e2e-known-baseline.cjs`; no se deben confundir con regresiones de Deutsch.
 
