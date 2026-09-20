@@ -34,6 +34,11 @@
     root.__manualStudyActivityInstalled=true;
     const doc=root.document;
 
+    function appDb(){
+      try{if(typeof db!=='undefined'&&db)return db;}catch(error){}
+      return root.db||null;
+    }
+
     function storedType(){
       try{return normalize(root.localStorage.getItem(STORAGE_KEY)||'study');}catch(error){return 'study';}
     }
@@ -98,6 +103,28 @@
       syncSelectors(storedType());
     }
 
+    // Tag the canonical plant before the historical manual writer performs
+    // its first save, preventing a momentary ×1 projection for chamber/class.
+    function patchPlantWriter(){
+      if(typeof root.recordSessionPlant!=='function'||root.recordSessionPlant.__manualActivityAware)return;
+      const original=root.recordSessionPlant;
+      const wrapped=function(obraId,movId,startedAt,endedAt,mins,options){
+        const opts=options||{};
+        if(opts.source!=='manual')return original.apply(this,arguments);
+        const type=normalize(opts.activityType||selectedType());
+        const activityFactor=factor(type);
+        const entry=original.call(this,obraId,movId,startedAt,endedAt,mins,{...opts,activityType:type});
+        if(entry){
+          entry.activityType=type;
+          entry.activityFactor=activityFactor;
+        }
+        return entry;
+      };
+      wrapped.__manualActivityAware=true;
+      wrapped.__original=original;
+      root.recordSessionPlant=wrapped;
+    }
+
     // Tag both mirrors after the historical writer has created them. Then
     // persist through the durable local path and queue the existing cloud sync.
     function patchPersistence(){
@@ -114,7 +141,8 @@
           result.item.activityFactor=activityFactor;
         }
         const plantId=result.item?.studyPlantId;
-        const plants=Array.isArray(root.db?.sessionPlants)?root.db.sessionPlants:[];
+        const database=appDb();
+        const plants=Array.isArray(database?.sessionPlants)?database.sessionPlants:[];
         const plant=(plantId&&plants.find(item=>item?.id===plantId))||
           plants.find(item=>item?.source==='manual'&&item?.id===result.item?.id);
         if(plant){
@@ -178,6 +206,7 @@
 
     function boot(){
       ensureSelectors();
+      patchPlantWriter();
       patchPersistence();
       patchOpen();
       patchQuickRender();
