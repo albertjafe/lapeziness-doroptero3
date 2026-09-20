@@ -161,6 +161,19 @@
       root.persistManualStudyHistory=wrapped;
     }
 
+    function patchMode(){
+      if(typeof root.setStudyRegisterMode!=='function'||root.setStudyRegisterMode.__activityAware)return;
+      const original=root.setStudyRegisterMode;
+      const wrapped=function(mode){
+        const result=original.apply(this,arguments);
+        const wrap=doc.getElementById('studyRegisterActivityWrap');
+        if(wrap)wrap.style.display=(mode==='history'||mode==='today')?'':'none';
+        return result;
+      };
+      wrapped.__activityAware=true;
+      root.setStudyRegisterMode=wrapped;
+    }
+
     function patchOpen(){
       if(typeof root.openStudyRegister!=='function'||root.openStudyRegister.__activityAware)return;
       const original=root.openStudyRegister;
@@ -169,6 +182,9 @@
         const result=original.apply(this,arguments);
         const quick=doc.getElementById('sessionQuickStudyActivity')?.value;
         syncSelectors(quick||storedType());
+        const wrap=doc.getElementById('studyRegisterActivityWrap');
+        const mode=arguments[0];
+        if(wrap)wrap.style.display=(mode==='history'||mode==='today')?'':'none';
         return result;
       };
       wrapped.__activityAware=true;
@@ -208,6 +224,7 @@
       ensureSelectors();
       patchPlantWriter();
       patchPersistence();
+      patchMode();
       patchOpen();
       patchQuickRender();
       decorateFeedback();
