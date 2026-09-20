@@ -1,5 +1,8 @@
 /* Activity type selector for spontaneous/manual study. */
-#view-session .session-quick-study-activity{
+#view-session .session-quick-study form{
+  grid-template-columns:32px minmax(150px,1fr) 118px auto 44px 44px;
+}
+#view-session .session-quick-study select.session-quick-study-activity{
   width:118px;
   min-width:108px;
   height:44px;
@@ -13,13 +16,33 @@
 }
 .study-register-activity-wrap{margin-top:10px;}
 .study-register-activity-wrap .modal-input{margin-bottom:10px;}
+
 @media(max-width:699px){
-  #view-session .session-quick-study-activity{
+  #view-session .session-quick-study form{
+    grid-template-columns:32px minmax(0,1fr) 44px;
+    gap:5px;
+  }
+  #view-session .session-quick-study #sessionQuickStudyObra{
+    grid-column:2;
+    grid-row:1;
+  }
+  #view-session .session-quick-study select.session-quick-study-activity{
     grid-column:1 / 4;
     grid-row:2;
     width:100%;
+    min-width:0;
     height:38px;
   }
-  #view-session .session-quick-study-time{grid-row:3;}
-  #view-session .session-quick-study-save{grid-row:3;}
+  #view-session .session-quick-study-time{
+    grid-column:1 / 3;
+    grid-row:3;
+  }
+  #view-session .session-quick-study-save{
+    grid-column:3;
+    grid-row:3;
+  }
+  #view-session .session-quick-study-detail{
+    grid-column:3;
+    grid-row:1;
+  }
 }
