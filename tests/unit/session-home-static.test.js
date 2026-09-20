@@ -133,22 +133,26 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain('__earnedCentFloor');
   });
 
-  it('ships the complete v425 runtime offline', () => {
+  it('ships the complete v426 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('desktop-redesign.css?v=396');
-    expect(index).toContain('app.js?v=425');
+    expect(index).toContain('app.js?v=426');
     expect(index).toContain('crono-resume-layout.js?v=413');
     expect(index).toContain('piano-rewards.js?v=425');
     expect(index).toContain('daily-study-minutes.js?v=423');
-    expect(index).toContain('german-rewards.js?v=404');
+    expect(index).toContain('german-rewards.js?v=426');
+    expect(index).toContain('german-study.js?v=426');
+    expect(index).toContain('german-study.css?v=426');
     expect(index).toContain('german-session.js?v=404');
-    expect(worker).toContain("const CACHE = 'estudio-v425'");
+    expect(worker).toContain("const CACHE = 'estudio-v426'");
     expect(worker).toContain('"./local-save-resilience.js?v=413"');
     expect(worker).toContain('"./instant-sync-resilience.js?v=410"');
     expect(worker).toContain('"./desktop-redesign.css?v=396"');
     expect(worker).toContain('"./piano-rewards.js?v=425"');
     expect(worker).toContain('"./daily-study-minutes.js?v=423"');
-    expect(worker).toContain('"./german-rewards.js?v=404"');
+    expect(worker).toContain('"./german-rewards.js?v=426"');
+    expect(worker).toContain('"./german-study.js?v=426"');
+    expect(worker).toContain('"./german-study.css?v=426"');
     expect(worker).toContain('"./german-session.js?v=404"');
     expect(worker).toContain('"./crono-state-store.js?v=397"');
     expect(worker).toContain('"./crono-running-premium.js?v=425"');
