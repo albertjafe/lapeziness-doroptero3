@@ -567,7 +567,11 @@
       const habit = item.habit;
       const effort=api.rewardStatus(habit);
       const credited=effort.status==='earned' && creditedIds.has('bonus:habit:'+habit.id);
-      const effortLabel=credited?'3 puntos de esfuerzo abonados':effort.status==='active'?'Premio fijado · 3 puntos al cumplir el ciclo':effort.status==='failed'||effort.status==='earned'?'Este ciclo conserva el progreso y el trofeo, sin premio de esfuerzo':'';
+      const pointsLabel=value=>Number(value||0).toLocaleString('es-ES',{maximumFractionDigits:2})+' puntos';
+      const effortLabel=credited?pointsLabel(effort.points)+' de esfuerzo abonados':
+        effort.status==='active'?'Premio en juego · '+pointsLabel(effort.potentialPoints)+(effort.item?.failure?' · '+effort.item.failure+' caída'+(effort.item.failure===1?'':'s'):' · racha perfecta'):
+        effort.status==='failed'?'Premio económico agotado; el reto continúa hasta su fecha final':
+        effort.status==='earned'?'Ciclo completado · '+pointsLabel(effort.points):'';
       const description = habit.description || (habit.mode === 'avoid' ? 'Mantener este hábito fuera de tu día.' : 'Convertir esta acción en parte de tu rutina.');
       const finishLabel = item.complete ? 'Terminaste' : 'Final previsto';
       const finishDate = item.completedOn || api.keyAt(item.startedOn, item.duration - 1);
