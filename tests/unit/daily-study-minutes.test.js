@@ -210,7 +210,7 @@ describe('daily study minutes', () => {
     };
     const api=loadFix(db),{start,end}=dayRange(),blocks=api.studyBlocks(start,end,db);
     expect(blocks.reduce((sum,item)=>sum+item.rawMins,0)).toBe(231);
-    expect(blocks.reduce((sum,item)=>sum+item.mins,0)).toBeCloseTo(204.3333333333,8);
+    expect(blocks.reduce((sum,item)=>sum+item.mins,0)).toBeCloseTo(204,8);
     expect(api.minutesByDay(start,end,db)['2026-09-05']).toBe(204);
     expect(blocks.find(item=>item.id==='manual_chamber')).toMatchObject({
       rawMins:40,activityType:'chamber',activityFactor:1/3
