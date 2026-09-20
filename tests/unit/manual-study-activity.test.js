@@ -8,11 +8,11 @@ describe('manual study activity',()=>{
     expect(A.factor('study')).toBe(1);
     expect(A.factor('mental')).toBe(1);
     expect(A.factor('piano_class')).toBe(.5);
-    expect(A.factor('chamber')).toBeCloseTo(1/3,10);
+    expect(A.factor('chamber')).toBe(.5);
   });
 
-  it('keeps real chamber minutes intact while projecting one third net',()=>{
-    expect(A.equivalentMinutes(40,'chamber')).toBeCloseTo(13.3333333333,8);
+  it('keeps real chamber minutes intact while projecting one half net',()=>{
+    expect(A.equivalentMinutes(40,'chamber')).toBe(20);
   });
 
   it('falls back safely to normal study for unknown legacy values',()=>{
