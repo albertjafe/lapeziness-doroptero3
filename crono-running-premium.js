@@ -9,7 +9,7 @@
     study:{label:'Estudio',factor:1,short:'×1'},
     mental:{label:'Mental',factor:1,short:'×1',rewardBonus:'+10% €'},
     piano_class:{label:'Clase piano',factor:.5,short:'×0,5'},
-    chamber:{label:'Cámara',factor:1/3,short:'×0,33'}
+    chamber:{label:'Cámara',factor:.5,short:'×0,5'}
   };
   let queued=false;
   let taximeterQueued=false;
