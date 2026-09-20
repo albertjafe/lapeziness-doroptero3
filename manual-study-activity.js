@@ -13,7 +13,7 @@
     study:Object.freeze({label:'Estudio',factor:1,short:'×1'}),
     mental:Object.freeze({label:'Mental',factor:1,short:'×1'}),
     piano_class:Object.freeze({label:'Clase piano',factor:.5,short:'×0,5'}),
-    chamber:Object.freeze({label:'Cámara',factor:1/3,short:'×⅓'})
+    chamber:Object.freeze({label:'Cámara',factor:.5,short:'×0,5'})
   });
 
   function normalize(value){
