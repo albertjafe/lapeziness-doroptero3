@@ -65,11 +65,15 @@
       localStorage.setItem('german_lease_v1',JSON.stringify({token:lockToken,until:now+15000}));
     }
     const running=T.tick(s,{now,lastTick,lastInteraction,visible:visible(),allowBackground:s.mode==='free'});lastTick=now;
-    const qualified=(R.summarizeDays(state().sessions)[R.dayKey()] || 0)>=R.CONFIG.minimumSeconds;
+    const today=R.dayKey(),qualified=(R.summarizeDays(state().sessions)[today] || 0)>=R.CONFIG.minimumSeconds;
     if (!running || now-lastSave>=10000 || qualified!==qualifiedBefore) persist();
     if (qualified && !qualifiedBefore) {
       document.getElementById('germanMeter')?.classList.add('qualified');
-      const el=document.getElementById('germanMilestone');if(el)el.textContent='¡'+MIN_LABEL+'! Día conseguido y recompensa consolidada.';
+      const habit=R.implantationStatus(state().sessions,today),weekly=R.consistencyBonuses(state().sessions,today).find(item=>item.date===today);
+      let milestone='¡'+MIN_LABEL+'! Día conseguido y recompensa consolidada.';
+      if(weekly)milestone+=' Bonus de constancia +'+weekly.points+' punto.';
+      if(habit.establishedToday)milestone+=' Hábito implantado: la tarifa estable empieza mañana.';
+      const el=document.getElementById('germanMilestone');if(el)el.textContent=milestone;
     }
     qualifiedBefore=qualified;
     if (!running) render();
@@ -107,7 +111,7 @@
     return `<section class="german-decks"><div class="german-section-heading"><div><span class="german-eyebrow">POR CLASE O TEMA</span><h2>Tus tarjetas</h2></div><span>${materials.reduce((n,m)=>n+m.cards.length,0)} en total</span></div><div class="german-deck-grid">${materials.map((m,index)=>{const stats=deckStats(m),label=m.metadata.title || 'Clase '+(index+1);return `<article class="german-deck"><div class="german-deck-number" aria-hidden="true">${String(index+1).padStart(2,'0')}</div><div class="german-deck-copy"><span class="german-eyebrow">${esc(m.metadata.date || 'CLASE '+(index+1))}</span><h3>${esc(label)}</h3><p>${m.cards.length} tarjetas · ${stats.dueCount} pendientes · ${stats.newCount} nuevas</p>${m.metadata.notes?`<small>${esc(m.metadata.notes)}</small>`:''}</div><button class="german-deck-study" data-action="material" data-id="${esc(m.id)}" ${m.cards.length?'':'disabled'}>Estudiar esta clase</button></article>`;}).join('') || '<div class="german-empty"><strong>Tu primera clase aparecerá aquí.</strong><p>Importa el archivo creado a partir de tus materiales y podrás empezar a repasarlo.</p></div>'}</div></section>`;
   }
   function dashboard() {
-    const st=state(),today=R.dayKey(), totals=R.summarizeDays(st.sessions), streak=R.streakStats(st.sessions,today), ledger=entries(), goal=activeGoal();
+    const st=state(),today=R.dayKey(), totals=R.summarizeDays(st.sessions), streak=R.streakStats(st.sessions,today), ledger=entries(), goal=activeGoal(), habit=R.implantationStatus(st.sessions,today);
     const visibleGoalIds=new Set(st.goals.filter(g=>!g.deletedAt).map(g=>g.id));
     const earned=ledger.filter(e=>e.date===today&&visibleGoalIds.has(e.goalId)).reduce((n,e)=>n+e.finalReward,0);
     const weekStart=R.shiftDay(today,-((new Date().getDay()+6)%7));
@@ -118,8 +122,14 @@
     const daySeconds=totals[today] || 0;
     const pending=totals[today]>0 && totals[today]<MIN;
     const session=current();
+    const habitHeadline=habit.phase==='stable'?'Implantado':(habit.establishedToday?'15/15':Math.min(habit.windowCount,habit.requiredDays)+'/'+habit.requiredDays+' días');
+    const habitCopy=habit.phase==='stable'
+      ? 'Tarifa estable activa desde '+habit.stableFrom+'. Mantienes los bonus de racha y constancia.'
+      : habit.establishedToday
+        ? 'Hábito conseguido hoy. Mañana entra la tarifa estable.'
+        : 'Bonus de implantación activo: consigue '+habit.requiredDays+' días de al menos '+MIN_LABEL+' dentro de cualquier ventana de '+habit.windowDays+' días.';
     return `<section class="german-launch"><div><span class="german-eyebrow">REPASO ESPACIADO</span><h1>Una app sencilla para recordar tu alemán.</h1><p>${due} tarjetas para repasar · ${fresh} nuevas. Elige todas o entra en una clase concreta.</p></div><div class="german-launch-actions"><button class="german-primary" data-action="${session?'resume':'start'}">${session?'Continuar sesión':'Estudiar tarjetas'}</button><button data-action="free" ${session?'disabled':''}>Estudio libre</button></div><p class="german-muted">En estudio libre puedes hacer fichas, escuchar alemán o trabajar fuera de la app. El mismo taxímetro seguirá contando.</p></section>
-      <section class="german-dashboard-meter" aria-label="Resumen del taxímetro"><div><span>Hoy</span><strong>${time(totals[today])}</strong></div><div><span>Hucha de hoy</span><strong>${euro(earned,3)}${pending?' pendiente':''}</strong></div><div><span>Racha</span><strong>${streak.current} días</strong></div></section>
+      <section class="german-dashboard-meter" aria-label="Resumen del taxímetro"><div><span>Hoy</span><strong>${time(totals[today])}</strong></div><div><span>Hucha de hoy</span><strong>${euro(earned,3)}${pending?' pendiente':''}</strong></div><div><span>Racha</span><strong>${streak.current} días</strong></div><div><span>Implantación</span><strong>${habitHeadline}</strong></div></section><section class="german-habit-phase ${habit.phase==='stable'?'is-stable':''}" aria-label="Estado del hábito de alemán"><strong>${habit.phase==='stable'?'Tarifa estable':'Tarifa de implantación'}</strong><p>${habitCopy}</p><small>Implantación: 15/21 · tarifa actual 15/30/45/60 min = ${habit.phase==='stable'?'0,50 / 0,80 / 1,10 / 1,40':'1,00 / 1,25 / 1,55 / 2,00'} pts · +1 pt cada 7 días consecutivos cualificados.</small></section>
       ${decks()}${importer()}${goalCard(goal,ledger)}
       <details class="german-card german-history"><summary>Actividad e historial</summary><div class="german-activity" aria-label="Actividad de los últimos 14 días">${Array.from({length:14},(_,i)=>{const day=R.shiftDay(today,i-13),seconds=totals[day] || 0;return `<div class="${seconds>=MIN?'done':seconds?'partial':''}" title="${day}: ${minutes(seconds)}" aria-label="${day}: ${minutes(seconds)}"><span>${day.slice(8)}</span></div>`;}).join('')}</div><p class="german-muted">${st.reviews.filter(r=>r.cardId).length} tarjetas revisadas · ${minutes(week)} esta semana · mejor racha: ${streak.best} días.</p>${st.goals.filter(g=>g.archivedAt&&!g.deletedAt).map(g=>{const p=R.goalProgress(g,ledger,st.sessions);return `<p><strong>${esc(g.name)}</strong> · ${euro(p.amount)} / ${euro(g.amount)} · ${esc(p.completedOn || 'En progreso')}</p>`;}).join('')}<div class="german-ledger">${ledger.filter(e=>visibleGoalIds.has(e.goalId)).slice(-30).reverse().map(e=>`<p>${esc(e.date)} · ${e.source==='piano'?'Piano':'Alemán'} · ${minutes(e.duration)} · ${euro(e.finalReward,3)} ${e.qualified?'':'(pendiente)'}</p>`).join('')}</div><button data-action="export-ledger">Descargar historial completo</button></details>`;
   }
@@ -146,7 +156,7 @@
   }
   function updateMeter() {
     if (panel!=='study' || !current()) return;
-    const st=state(), s=current(), today=R.dayKey(), total=R.summarizeDays(st.sessions)[today] || 0, streak=R.streakStats(st.sessions,today);
+    const st=state(), s=current(), today=R.dayKey(), total=R.summarizeDays(st.sessions)[today] || 0, streak=R.streakStats(st.sessions,today), habit=R.implantationStatus(st.sessions,today);
     const ledger=entries(), rows=ledger.filter(e=>e.date===today && e.goalId===s.goalId), goal=st.goals.find(g=>g.id===s.goalId);
     const qualified=total>=MIN, bonus=R.streakMultiplier(streak.prospective);
     const germanRows=rows.filter(e=>e.source==='german');
@@ -164,7 +174,8 @@
     set('germanGoalBalance',goal?euro(goalTotal,2)+' / '+euro(goal.amount,2):'Alemán + piano');
     const progress=document.getElementById('germanGoalProgress');if(progress)progress.style.width=percent+'%';
     set('germanTime',time(total));set('germanSessionTime',time(s.segments.reduce((n,e)=>n+e.seconds,0)));
-    set('germanBonus','+'+Math.round((bonus-1)*100)+' % por racha de '+streak.prospective+' días'+(qualified?'':' al cualificar hoy'));
+    const phaseText=habit.phase==='stable'?'tarifa estable':'implantación '+Math.min(habit.windowCount,habit.requiredDays)+'/'+habit.requiredDays;
+    set('germanBonus','+'+Math.round((bonus-1)*100)+' % por racha de '+streak.prospective+' días'+(qualified?'':' al cualificar hoy')+' · '+phaseText);
     set('germanMinimum',qualified?(total>=CAP?'Límite diario alcanzado · puedes seguir estudiando':MIN_LABEL+' mínimos ✓'):'Faltan '+time(Math.ceil(MIN-total))+' para consolidar');
     const meter=document.getElementById('germanMeter');if(meter)meter.classList.toggle('is-paused',s.status!=='running'||!ownsLock);
   }
@@ -282,7 +293,7 @@
           goal.name=name;goal.amount=rounded;goal.updatedAt=now;editingGoalId=null;
         } else {
           if(activeGoal())throw new Error('Ya hay un objetivo activo.');
-          state().goals.push({id:uid(),name,amount:rounded,createdAt:now,rewardPolicy:JSON.parse(JSON.stringify(R.CONFIG))});
+          state().goals.push({id:uid(),name,amount:rounded,createdAt:now,rewardPolicy:JSON.parse(JSON.stringify(R.policyForDay(state().sessions,R.dayKey())))});
         }
         persist();render();
       });
