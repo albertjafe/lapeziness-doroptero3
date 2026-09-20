@@ -209,4 +209,37 @@ describe('piano progressive taximeter',()=>{
     expect(after.points).toBeLessThan(before.points);
     expect(after.amount).toBeLessThan(before.amount);
   });
+
+  it('gives mental study a 10 percent reward bonus on only the first 45 minutes per day',()=>{
+    const sessions=[
+      {...piano('mental-a',1800,'2026-09-20T09:00:00Z','g',6),activityType:'mental',activityFactor:1},
+      {...piano('mental-b',1800,'2026-09-20T10:00:00Z','g',6),activityType:'mental',activityFactor:1}
+    ];
+    const rows=P.ledger(sessions,[goal()]);
+    const bonuses=P.mentalBonusRows(rows,'2026-09-20');
+    expect(P.summarizeDays(sessions)['2026-09-20']).toBe(3600);
+    expect(bonuses).toHaveLength(1);
+    expect(bonuses[0]).toMatchObject({date:'2026-09-20',mentalBonus:true,eligibleSeconds:2700});
+    const expected=(P.baseReward(2700,P.POLICIES[6])-P.baseReward(0,P.POLICIES[6]))*.10;
+    expect(P.rowEffortPoints(bonuses[0])).toBeCloseTo(expected,6);
+  });
+
+  it('does not backdate the mental-study bonus before 20 September 2026',()=>{
+    const rows=P.ledger([
+      {...piano('mental-old',3600,'2026-09-19T10:00:00Z','g',6),activityType:'mental',activityFactor:1}
+    ],[goal()]);
+    expect(P.mentalBonusRows(rows,'2026-09-19')).toEqual([]);
+  });
+
+  it('shows the mental bonus in the live taximeter without adding net time',()=>{
+    const state={sessions:[],effortWallet:{version:1,seedGoalIds:['g'],seedCostPoints:{g:150},displayGoalId:'g',redemptions:[]}};
+    const live=P.live(state,[goal()],'g',3600,'2026-09-20',[],6,'mental');
+    const expectedBase=P.baseReward(3600,P.POLICIES[6]);
+    const expectedBonus=P.baseReward(2700,P.POLICIES[6])*.10;
+    expect(live.seconds).toBe(3600);
+    expect(live.equivalentCurrentSeconds).toBe(3600);
+    expect(live.today).toBeCloseTo(expectedBase+expectedBonus,6);
+    expect(live.walletPoints).toBeCloseTo(expectedBase+expectedBonus,6);
+  });
+
 });
