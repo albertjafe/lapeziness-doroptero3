@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v428';
+const CACHE = 'estudio-v429';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -6,7 +6,7 @@ const ASSETS = [
   "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=402",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=428",
+  "./app.js?v=429",
   "./german-rewards.js?v=426",
   "./piano-rewards.js?v=425",
   "./german-srs.js?v=378",
@@ -33,6 +33,7 @@ const ASSETS = [
   "./crono-save-resilience.js?v=397",
   "./crono-state-store.js?v=397",
   "./daily-study-minutes.js?v=423",
+  "./manual-study-activity.js?v=429",
   "./study-time-breakdown.js?v=424",
   "./data-core.js?v=342",
   "./document-sync-core.js?v=416",
@@ -103,6 +104,7 @@ const ASSETS = [
   "./ipad-today.css?v=407",
   "./session-log.css?v=402",
   "./study-time-breakdown.css?v=424",
+  "./manual-study-activity.css?v=429",
   "./ipad-today.js?v=400",
   "./desktop-redesign.css?v=396",
   "./solo-repertoire-structure.js?v=361",
@@ -171,7 +173,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '428');
+            target.searchParams.set('__pwa', '429');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -179,7 +181,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'428', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'429', navigated });
         } catch (error) {}
       }
     }
