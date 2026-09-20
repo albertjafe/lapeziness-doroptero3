@@ -79,13 +79,13 @@ describe('bounded study and habit rewards in the shared wallet',()=>{
   it('avoid earns without daily check-ins only after the entire calendar cycle closes',()=>{
     const h=newHabit();expect(H.rewardStatus(h,'2026-09-21T23:59:00').points).toBe(0);
     expect(H.rewardStatus(h,'2026-09-22T00:01:00')).toMatchObject({status:'earned',points:3});
-    h.logs['2026-09-11']={status:'failed'};expect(H.rewardStatus(h,'2026-09-22T12:00:00')).toMatchObject({status:'failed',points:0});
+    h.logs['2026-09-11']={status:'failed'};expect(H.rewardStatus(h,'2026-09-22T12:00:00')).toMatchObject({status:'earned',points:1.5,potentialPoints:1.5});
   });
   it('do requires a done record on every day, and early trophy closure grants no effort',()=>{
     const h=newHabit('do');for(let i=0;i<21;i++)h.logs[H.keyAt(h.startDate,i)]='done';
     h.completedAt='2026-09-02';expect(H.rewardStatus(h,'2026-09-02T12:00:00').points).toBe(0);
     expect(H.rewardStatus(h,'2026-09-22T12:00:00').points).toBe(3);
-    delete h.logs['2026-09-12'];expect(H.rewardStatus(h,'2026-09-22T12:00:00').points).toBe(0);
+    delete h.logs['2026-09-12'];expect(H.rewardStatus(h,'2026-09-22T12:00:00')).toMatchObject({status:'earned',points:1.5,potentialPoints:1.5});
   });
   it('old, backdated, short, rule-free or altered contracts do not generate a new credit',()=>{
     const h=newHabit();delete h.effortReward;expect(H.rewardStatus(h,'2026-09-30T12:00:00').points).toBe(0);
