@@ -25,6 +25,8 @@ async function createGoal(page) {
 test('Deutsch end to end: goal, class deck, Anki card, money, pause/reload and idempotent finish',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await prepare(page);await importPack(page);await createGoal(page);
+  await expect(page.locator('.german-habit-phase')).toContainText('Tarifa de implantación');
+  await expect(page.locator('.german-habit-phase')).toContainText('15/21');
   await expect(page.getByRole('heading',{name:'Tus tarjetas',exact:true})).toBeVisible();
   await expect(page.locator('.german-deck')).toContainText('Clase de prueba');
   await expect(page.locator('.german-deck')).not.toContainText('ejercicios');
