@@ -37,6 +37,53 @@ describe('Deutsch reward policy and ledger',()=>{
     expect(R.streakStats(sessions,'2026-09-14').current).toBe(0);
     expect(R.streakStats([...sessions,session('x',899,'2026-09-13')],'2026-09-14').current).toBe(0);
   });
+  it('starts the implantation programme fresh on 20 September 2026',()=>{
+    const oldDays=Array.from({length:15},(_,i)=>session('old-'+i,900,'2026-09-'+String(i+1).padStart(2,'0')));
+    expect(R.implantationStatus(oldDays,'2026-09-20')).toMatchObject({implanted:false,windowCount:0,remainingDays:15,phase:'implantation'});
+  });
+
+  it('switches to the stable curve only on the day after reaching 15 of 21 days',()=>{
+    const days=Array.from({length:15},(_,i)=>session('implant-'+i,900,R.shiftDay('2026-09-20',i)));
+    const achieved=R.implantationStatus(days,'2026-10-04');
+    expect(achieved).toMatchObject({implanted:true,implantedOn:'2026-10-04',stableFrom:'2026-10-05',establishedToday:true,phase:'implantation'});
+    expect(R.policyForDay(days,'2026-10-04').version).toBe(1);
+    expect(R.policyForDay(days,'2026-10-05').version).toBe(2);
+    expect(R.baseReward(900,R.STABLE_CONFIG)).toBe(.5);
+    expect(R.baseReward(1800,R.STABLE_CONFIG)).toBe(.8);
+    expect(R.baseReward(2700,R.STABLE_CONFIG)).toBe(1.1);
+    expect(R.baseReward(3600,R.STABLE_CONFIG)).toBe(1.4);
+  });
+
+  it('uses a rolling 21-day window rather than lifetime German days',()=>{
+    const spaced=[];
+    for(let i=0;i<14;i++)spaced.push(session('a-'+i,900,R.shiftDay('2026-09-20',i)));
+    spaced.push(session('late',900,'2026-10-20'));
+    expect(R.implantationStatus(spaced,'2026-10-20')).toMatchObject({implanted:false,windowCount:1,remainingDays:14});
+  });
+
+  it('pays one consistency point at each completed seven-day streak block',()=>{
+    const seven=Array.from({length:7},(_,i)=>session('week-'+i,900,R.shiftDay('2026-09-20',i)));
+    expect(R.consistencyBonuses(seven,'2026-09-26')).toEqual([{date:'2026-09-26',streakDays:7,points:1}]);
+    const rows=R.ledger(seven,[goal()]);
+    const bonus=rows.filter(row=>row.consistencyBonus);
+    expect(bonus).toHaveLength(1);
+    expect(bonus[0]).toMatchObject({date:'2026-09-26',effortPoints:1,qualified:true,consistencyStreakDays:7});
+  });
+
+  it('resets the weekly consistency block after a missed day',()=>{
+    const firstWeek=Array.from({length:7},(_,i)=>session('first-'+i,900,R.shiftDay('2026-09-20',i)));
+    const secondRun=Array.from({length:6},(_,i)=>session('second-'+i,900,R.shiftDay('2026-09-28',i)));
+    expect(R.consistencyBonuses([...firstWeek,...secondRun],'2026-10-03')).toHaveLength(1);
+  });
+
+  it('prices German with the stable policy after implantation without repricing earlier days',()=>{
+    const days=Array.from({length:15},(_,i)=>session('impl-'+i,900,R.shiftDay('2026-09-20',i)));
+    days.push(session('stable',900,'2026-10-05'));
+    const rows=R.ledger(days,[goal()]);
+    expect(rows.find(row=>row.sessionId==='impl-0')).toMatchObject({policyVersion:1,baseReward:1});
+    expect(rows.find(row=>row.sessionId==='stable')).toMatchObject({policyVersion:2,baseReward:.5});
+  });
+
   it('uses calendar days across leap years, month boundaries and DST',()=>{
     expect(R.shiftDay('2024-03-01',-1)).toBe('2024-02-29');expect(R.shiftDay('2026-01-01',-1)).toBe('2025-12-31');
     expect(R.shiftDay('2026-03-29',1)).toBe('2026-03-30');expect(R.shiftDay('2026-10-25',1)).toBe('2026-10-26');
