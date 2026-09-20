@@ -28,7 +28,7 @@
     study:Object.freeze({id:'study',label:'Estudio',factor:1}),
     mental:Object.freeze({id:'mental',label:'Estudio mental',factor:1}),
     piano_class:Object.freeze({id:'piano_class',label:'Clase piano',factor:.5}),
-    chamber:Object.freeze({id:'chamber',label:'Cámara',factor:1/3})
+    chamber:Object.freeze({id:'chamber',label:'Cámara',factor:.5})
   });
   const policy=(version,curve)=>Object.freeze({version,referenceAmount:150,minimumSeconds:600,curve:Object.freeze(curve.map(Object.freeze))});
   const CURVE_V4=[[0,0],[1800,.05],[3600,.11],[5400,.18],[7200,.27],[9000,.38],[10800,.53],[12600,.75],[14400,1.05],[16200,1.43],[18000,1.93],[19800,2.58],[21600,3.38],[23400,4.38],[25200,5.50]];
@@ -61,9 +61,13 @@
   }
   function activityFactor(value){
     if(value && typeof value==='object'){
+      const type=normalizeActivityType(value.activityType);
+      // Since v430 every chamber rehearsal/class is ×0.5, including
+      // historical rows that still carry an explicit legacy ×1/3.
+      if(type==='chamber')return ACTIVITY_TYPES.chamber.factor;
       const explicit=Number(value.activityFactor);
       if(Number.isFinite(explicit)&&explicit>0&&explicit<=1)return explicit;
-      return ACTIVITY_TYPES[normalizeActivityType(value.activityType)].factor;
+      return ACTIVITY_TYPES[type].factor;
     }
     if(typeof value==='number'&&Number.isFinite(value)&&value>0&&value<=1)return value;
     return ACTIVITY_TYPES[normalizeActivityType(value)].factor;
