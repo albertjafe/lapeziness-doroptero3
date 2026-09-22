@@ -79,4 +79,3 @@ begin
   return result;
 end
 $$;
-
