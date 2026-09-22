@@ -1,5 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {cloudAppHarness} from '../fixtures/cloud-app-harness.js';
+import {createRequire} from 'node:module';
+const Doc=createRequire(import.meta.url)('../../document-sync-core.js');
 
 const initial={_localRevision:100,obras:[{id:'w',name:'Sonata'}],sessionPlants:[],germanStudy:{version:1,materials:[],reviews:[],sessions:[],ledger:[],goals:[{id:'kindle',name:'Kindle',amount:200,createdAt:'2026-09-18T00:00:00Z'}]}};
 function sharedCloud(){
@@ -12,7 +14,7 @@ function sharedCloud(){
       return {data:structuredClone(row)};
     }
     if(operation==='update'&&expected!==row.updated_at){conflicts++;return {data:null};}
-    row={...structuredClone(value),updated_at:'v'+(++version)};writes++;
+    row={...structuredClone(value),data:Doc.mergeRemote(row.data,value.data),updated_at:'v'+(++version)};writes++;
     return {data:structuredClone(row)};
   };
   const device=()=>cloudAppHarness(initial,initial,{query});
@@ -22,6 +24,24 @@ function study(ctx,id,mins){ctx.db.sessionPlants.push({id,mins,startedAt:'2026-0
 const minutes=ctx=>ctx.db.sessionPlants.reduce((total,p)=>total+p.mins,0);
 
 describe('real app synchronization between independent devices',()=>{
+  it('a dirty stale phone downloads real hours without sending its zero-minute copy',async()=>{
+    const remote=structuredClone(initial);remote.sessionPlants=[{id:'ipad',mins:86}];
+    const h=cloudAppHarness(initial,remote,{meta:{localRevision:102,dirtyRevision:102,lastSyncedRevision:100}}),ctx=h.boot();
+    expect(await ctx.requestCloudRefresh()).toBe(true);
+    expect(minutes(ctx)).toBe(86);expect(h.state().writes).toBe(0);
+    expect(ctx.SyncCore.isDirty(ctx._readSyncMeta())).toBe(false);
+  });
+  it('confirms a committed upload whose response was lost without writing it again',async()=>{
+    let row={data:structuredClone(initial),updated_at:'v1'},writes=0;
+    const h=cloudAppHarness(initial,initial,{query:async({operation,value})=>{
+      if(operation==='read')return {data:structuredClone(row)};
+      row={data:Doc.mergeRemote(row.data,value.data),updated_at:'v2'};writes++;
+      return {error:{code:'CLOUD_REQUEST_TIMEOUT',message:'Response lost after commit'}};
+    }}),ctx=h.boot();study(ctx,'pending',86);
+    expect(await ctx.syncPendingCloudChanges()).toBe(false);expect(minutes(ctx)).toBe(86);
+    expect(await ctx.syncPendingCloudChanges()).toBe(true);expect(writes).toBe(1);
+    expect(ctx.SyncCore.isDirty(ctx._readSyncMeta())).toBe(false);
+  });
   it('uploads a pending history with one durable confirmation instead of a preceding download snapshot',async()=>{
     let saves=0,durable;
     const h=cloudAppHarness(initial,initial,{resilience:{persistSnapshot:async snapshot=>{saves++;durable=structuredClone(snapshot);return true;}}});

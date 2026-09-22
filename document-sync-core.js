@@ -117,6 +117,29 @@
     const ak = keys(a), bk = keys(b);
     return ak.length === bk.length && ak.every(k => Object.hasOwn(b,k) && sameContent(a[k],b[k],false));
   }
+  // The server's BEFORE UPDATE document_merge accepts a partial document.
+  // Omission is never deletion. Send complete changed array records so their
+  // identities survive; keep explicit field clocks/tombstones on each parent.
+  function uploadDelta(server, merged) {
+    function changed(a,b) {
+      if (sameContent(a,b,false)) return undefined;
+      if (Array.isArray(a) && Array.isArray(b) && a.every(object) && b.every(object)) {
+        const prior = new Map(a.map(x => [identity(x),x]));
+        return b.filter(x => !sameContent(prior.get(identity(x)),x,false)).map(clone);
+      }
+      if (!object(a) || !object(b)) return clone(b);
+      const patch = {};
+      for (const k of Object.keys(b)) {
+        const value = changed(a[k],b[k]);
+        if (value !== undefined) patch[k] = value;
+      }
+      if (Object.keys(patch).length) {
+        for (const k of ['_fieldClock','_deletedChildren']) if (Object.hasOwn(b,k)) patch[k] = clone(b[k]);
+      }
+      return patch;
+    }
+    return changed(server || {},merged || {}) || {};
+  }
   // Open editors keep references to these objects across synchronous saves.
   // Reconcile by ID without invalidating the object an editor will next mutate.
   function assign(target, source) {
@@ -139,6 +162,6 @@
     merge: (a,b) => applyTombstones(merge(a || {},b || {},'','',Math.sign((Number(a?._localRevision)||0)-(Number(b?._localRevision)||0)))),
     // Direction matters: an incoming existing scalar needs its own later clock.
     mergeRemote: (server,client) => applyTombstones(merge(server || {},client || {},'','',0,true)),
-    track, identity, assign, sameContent
+    track, identity, assign, sameContent, uploadDelta
   };
 });

@@ -3,11 +3,16 @@ import vm from 'node:vm';
 import {it,expect} from 'vitest';
 const source=readFileSync('app.js','utf8');
 function harness(fetch){
-  let expire,cleared=0;
-  const ctx={AbortController,Request,fetch,setTimeout:fn=>{expire=fn;return 1;},clearTimeout:()=>cleared++};
+  let expire,cleared=0,deadline;
+  const ctx={AbortController,Request,fetch,setTimeout:(fn,ms)=>{expire=fn;deadline=ms;return 1;},clearTimeout:()=>cleared++};
   vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('async function cloudFetch('),source.indexOf('function getSB(')),ctx);
-  return {run:ctx.cloudFetch,expire:()=>expire(),cleared:()=>cleared};
+  return {run:ctx.cloudFetch,expire:()=>expire(),cleared:()=>cleared,deadline:()=>deadline};
 }
+it('gives large history responses a bounded minute without lengthening auth requests',async()=>{
+  const h=harness(async()=>({ok:true}));
+  await h.run('https://piano.test/rest/v1/user_data');expect(h.deadline()).toBe(60000);
+  await h.run('https://piano.test/auth/v1/user');expect(h.deadline()).toBe(20000);
+});
 it('aborts a stalled cloud request and allows a later request to complete',async()=>{
   let calls=0;
   const h=harness((input,options)=>++calls===1?new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>reject(Error('aborted')))):Promise.resolve({ok:true,cache:options.cache}));

@@ -19,7 +19,7 @@ function harness(local,remote,options={}){
       writes++;if(options.beforeWrite)options.beforeWrite({ctx,getRow:()=>row,setRow:v=>{row=v;},getMeta:()=>meta,setMeta:v=>{meta=v;},writes});
       if(options.failWrite)return {error:{message:'temporarily unavailable'}};
       if(operation==='write'&&expected!==row.updated_at)return {data:null};
-      row=structuredClone(value);return {data:row};
+      row={...structuredClone(value),data:Doc.mergeRemote(row?.data||{},value.data)};return {data:row};
     }};return q;
   }};
   ctx.getSB=()=>client;vm.createContext(ctx);vm.runInContext(syncSource,ctx);
@@ -65,7 +65,8 @@ describe('actual app upload protocol against asynchronous Supabase responses',()
     expect(h.state().row.data.obras[0]).toMatchObject({dificultad:9,movimientos:[{sol:90}]});
   });
   it('a new local session arriving during upload remains dirty and survives acknowledgement',async()=>{
-    const h=harness(old,{data:old,updated_at:'v1'},{beforeWrite:({ctx,setMeta})=>{
+    const pending={...structuredClone(old),cronoTasks:[{id:'pending-task',text:'Pending edit'}]};
+    const h=harness(pending,{data:old,updated_at:'v1'},{beforeWrite:({ctx,setMeta})=>{
       ctx.db=Doc.track({...ctx.db,sessionPlants:[{id:'just-saved',mins:25}]},ctx.db,'2026-09-04T12:00:00Z');
       setMeta({localRevision:3,dirtyRevision:3,lastSyncedRevision:1});
     }});

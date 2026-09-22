@@ -92,7 +92,7 @@
     });
   });
   load('updateSafetyScript','./update-safety.js?v=378');
-  load('cronoRunningPremiumScript','./crono-running-premium.js?v=408');
+  load('cronoRunningPremiumScript','./crono-running-premium.js?v=430');
   load('eventPlanningScript','./event-planning.js?v=377',function(){
     load('competitionPlanningSeedScript','./competition-planning-seed.js?v=342',function(){
       load('eventPlanningUiV2Script','./event-planning-ui-v2.js?v=342',function(){

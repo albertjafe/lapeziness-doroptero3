@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-20-chamber-half-v430';
+const APP_VERSION = '2026-09-22-incremental-cloud-sync-v431';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -22,7 +22,9 @@ async function cloudFetch(input, options = {}) {
   const cancel = () => controller.abort(signal?.reason);
   if (signal?.aborted) cancel();
   else signal?.addEventListener('abort', cancel, { once:true });
-  const timer = setTimeout(() => controller.abort(), 20000);
+  // Auth stays short; the history response can be several MB on a mobile link.
+  const historyRequest = String(typeof input === 'string' ? input : input?.url || '').includes('/rest/v1/user_data');
+  const timer = setTimeout(() => controller.abort(), historyRequest ? 60000 : 20000);
   try {
     return await fetch(input, { ...options, cache:'no-store', signal:controller.signal });
   } finally {
@@ -471,7 +473,7 @@ async function _cloudQuery(query) {
       timer = setTimeout(() => {
         controller.abort();
         reject(Object.assign(new Error('La petición de nube no respondió a tiempo'), { code:'CLOUD_REQUEST_TIMEOUT' }));
-      }, 20000);
+      }, 60000);
     })]);
   } finally { clearTimeout(timer); }
 }
@@ -503,9 +505,10 @@ async function _syncToCloudNow(snapshotDb, revision) {
       const merged = DocumentSyncCore.mergeRemote(remote?.data || {}, snapshot);
       merged._localRevision = Math.max(Number(merged._localRevision)||0, Number(remote?.data?._localRevision)||0) + 1;
       merged._savedAt = new Date().toISOString();
-      const row = { id:user.id, data:merged, updated_at:merged._savedAt };
-      _setCloudStage('Subiendo y fusionando el historial');
-      const write = remote
+      const alreadyConfirmed = remote && DocumentSyncCore.sameContent(remote.data,merged);
+      const row = { id:user.id, data:remote ? DocumentSyncCore.uploadDelta(remote.data,merged) : merged, updated_at:merged._savedAt };
+      _setCloudStage(alreadyConfirmed ? 'Historial ya confirmado' : 'Subiendo los cambios del historial');
+      const write = alreadyConfirmed ? { data:remote } : remote
         ? await _cloudQuery(sb.from('user_data').update(row).eq('id',user.id).eq('updated_at',remote.updated_at).select('data,updated_at'))
         : await _cloudQuery(sb.from('user_data').insert(row).select('data,updated_at'));
       if (write.error) { if (write.error.code === '23505') continue; throw write.error; }
@@ -559,7 +562,9 @@ async function syncPendingCloudChanges() {
         let snapshot = JSON.parse(JSON.stringify(db));
         try {
           const raw = localStorage.getItem(DB_KEY);
-          if (raw) snapshot = _mergeStudyHistory(snapshot, JSON.parse(raw));
+          // Preserve actual document fields; domain normalizers synthesize
+          // empty defaults and would turn a download-only phone into an upload.
+          if (raw) snapshot = DocumentSyncCore.merge(JSON.parse(raw),snapshot);
         } catch(e) {}
         const ok = await syncToCloud(snapshot, revision);
         if (!ok) return false;

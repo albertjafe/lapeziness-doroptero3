@@ -212,6 +212,9 @@
         ? SyncCore.compareDbFreshness(row.data,live)
         : ((Number(row.data._localRevision)||0)-(Number(live._localRevision)||0));
       if(comparison<=0 && !window.DocumentSyncCore) return false;
+      // Capture genuine live edits before merging a durable rescue. Recovery
+      // itself is not an edit of every historical record in that rescue.
+      if(typeof _prepareLocalDocument === 'function') _prepareLocalDocument(true);
       let recovered=row.data;
       if(window.DataCore&&typeof window.DataCore.mergeStudyHistory==='function'){
         recovered=typeof _mergeStudyHistory === 'function' ? _mergeStudyHistory(live,row.data) : window.DataCore.mergeStudyHistory(live,row.data);
@@ -219,6 +222,7 @@
       if(JSON.stringify(live) === JSON.stringify(recovered)) return false;
       if(window.DocumentSyncCore) window.DocumentSyncCore.assign(live,recovered);
       else replaceObject(live,recovered);
+      if(typeof _rememberLocalDocument === 'function') _rememberLocalDocument();
       // Quota may have preserved an old running timer while its completed block
       // was rescued here. Reconcile only the exact run, never a different one.
       try {

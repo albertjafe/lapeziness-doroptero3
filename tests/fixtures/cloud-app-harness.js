@@ -26,7 +26,7 @@ export function cloudAppHarness(local,remote,options={}){
       writes++;
       if(options.query){const result=await options.query({operation,value,expected,selection,ctx});if(result.data)row=result.data;return result;}
       if(operation==='update'&&expected!==row?.updated_at)return {data:null};
-      row={...structuredClone(value),updated_at:'v'+(writes+1)};
+      row={...structuredClone(value),data:DocumentSyncCore.mergeRemote(row?.data||{},value.data),updated_at:'v'+(writes+1)};
       return {data:structuredClone(row)};
     };
     const q={select:v=>{selection=v;return q;},eq:(k,v)=>{if(k==='updated_at')expected=v;return q;},

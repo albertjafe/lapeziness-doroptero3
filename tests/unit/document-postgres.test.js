@@ -31,6 +31,22 @@ async function write(id,a,b){
   return (await pg.query('update user_data set data=$2 where id=$1 returning data',[id,JSON.stringify(b)])).rows[0].data;
 }
 describe('real PostgreSQL migration with existing protection triggers',()=>{
+  it('partial uploads retain the full history and preserve edits and tombstones like full uploads',async()=>{
+    const old={obras:[{id:'w',name:'Sonata',movimientos:[{id:'m',name:'I'}],unknown:{keep:true}}],
+      forestPlants:Array.from({length:7426},(_,i)=>({id:'forest-'+i,mins:30,unknown:'history '.repeat(45)})),
+      sessionPlants:[{id:'yesterday',mins:366,startedAt:'2026-09-18T08:00:00Z'}],
+      cronoTasks:[{id:'removed',text:'Old task'},{id:'keep',text:'Keep task'}]};
+    const next=structuredClone(old);next.obras[0].name='Edited';next.obras[0].movimientos=[];next.cronoTasks.shift();
+    next.sessionPlants.push({id:'today',mins:86,startedAt:'2026-09-19T08:00:00Z'});
+    const merged=Doc.mergeRemote(old,Doc.track(next,old,'2026-09-20T10:00:00Z'));
+    const delta=Doc.uploadDelta(old,merged);expect(JSON.stringify(delta).length).toBeLessThan(2500);
+    expect(delta.forestPlants).toBeUndefined();
+    const partial=await write('partial-history',old,delta),full=await write('full-history',old,merged);
+    expect(Doc.sameContent(partial,full)).toBe(true);
+    expect(partial.forestPlants).toHaveLength(7426);expect(partial.sessionPlants).toHaveLength(2);
+    expect(partial.cronoTasks.map(t=>t.id)).toEqual(['keep']);expect(partial.obras[0].movimientos).toEqual([]);
+    expect(Doc.sameContent(Doc.mergeRemote(partial,merged),partial)).toBe(true);
+  },15000);
   it('acknowledges notes and field clocks through all legacy guards on equal record timestamps',async()=>{
     const oldStamp='2026-09-04T10:00:00Z',stamp='2026-09-18T10:00:00Z';
     const history={date:oldStamp,val:40,context:'study',_fieldClock:{val:oldStamp}};
@@ -155,7 +171,8 @@ describe('real PostgreSQL migration with existing protection triggers',()=>{
         const other=Doc.track({...server,obras:[{...server.obras[0],dificultad:10}]},server,'2026-09-04T12:00:00.000Z');
         await pg.query('update user_data set data=$2 where id=$1',[id,JSON.stringify(other)]);
       }
-      expect(value.data.obras[0].dificultad).toBe(attempts===1?9:10);
+      // Unchanged remote works must not be resent with an unrelated task edit.
+      expect(value.data.obras).toBeUndefined();
       const result=await pg.query('update user_data set data=$2 where id=$1 and updated_at=$3::timestamptz returning data,updated_at::text as updated_at',
         [id,JSON.stringify(value.data),expected]);
       if(!result.rows.length)conflicts++;

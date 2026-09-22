@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import Doc from '../../document-sync-core.js';
 
 test('independent iPad and phone exchange study, goal edits and offline additions',async({browser})=>{
   test.setTimeout(90000);
@@ -15,7 +16,7 @@ test('independent iPad and phone exchange study, goal edits and offline addition
       let result;
       if(op==='read')result={data:selection==='updated_at'?{updated_at:row.updated_at}:structuredClone(row)};
       else if(op==='update'&&expected!==row.updated_at)result={data:null};
-      else {row={...structuredClone(value),updated_at:'v'+(++version)};result={data:structuredClone(row)};}
+      else {row={...structuredClone(value),data:Doc.mergeRemote(row.data,value.data),updated_at:'v'+(++version)};result={data:structuredClone(row)};}
       await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(result)});
     });
     await context.addInitScript(initial=>{

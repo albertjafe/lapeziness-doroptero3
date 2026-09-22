@@ -11,7 +11,7 @@ test('a stalled account reports its phase and recovers the six-hour pending hist
     const sb={auth:{getSession:async()=>({data:{session:{user:{id:'u'}}}}),getUser:()=>f.locked?new Promise(resolve=>f.waiters.push(resolve)):Promise.resolve({data:{user:{id:'u'}}}),onAuthStateChange:()=>({data:{subscription:{}}})},
       from:table=>{let op='read',value,expected;
         const run=async()=>{if(table!=='user_data')return {data:[]};if(op==='read')return {data:structuredClone(f.row)};
-          if(expected&&expected!==f.row.updated_at)return {data:null};f.row={...structuredClone(value),updated_at:'v'+(++f.writes+1)};return {data:structuredClone(f.row)};};
+          if(expected&&expected!==f.row.updated_at)return {data:null};f.row={...structuredClone(value),data:DocumentSyncCore.mergeRemote(f.row.data,value.data),updated_at:'v'+(++f.writes+1)};return {data:structuredClone(f.row)};};
         const q={select:()=>q,eq:(k,v)=>{if(k==='updated_at')expected=v;return q;},order:()=>q,limit:()=>q,in:()=>q,lte:()=>q,
           update:v=>{op='update';value=v;return q;},insert:v=>{op='insert';value=v;return q;},maybeSingle:run,then:(a,b)=>run().then(a,b)};return q;},rpc:async()=>({data:[]})};
     window.supabase={createClient:()=>sb};
@@ -52,7 +52,7 @@ for(const alreadySignedIn of [false,true]) test(`account connects and uploads st
           if(table!=='user_data')return {data:[],error:null};
           if(op==='read'){f.reads++;return {data:structuredClone(f.row)};}
           if(op==='update'&&expected!==f.row.updated_at)return {data:null};
-          f.writes++;f.row={...structuredClone(value),updated_at:'v'+(f.writes+1)};return {data:structuredClone(f.row)};
+          f.writes++;f.row={...structuredClone(value),data:DocumentSyncCore.mergeRemote(f.row.data,value.data),updated_at:'v'+(f.writes+1)};return {data:structuredClone(f.row)};
         };
         const q={select:()=>q,eq:(key,v)=>{if(key==='updated_at')expected=v;return q;},in:()=>q,lte:()=>q,order:()=>q,limit:()=>q,
           update:v=>{op='update';value=v;return q;},insert:v=>{op='insert';value=v;return q;},

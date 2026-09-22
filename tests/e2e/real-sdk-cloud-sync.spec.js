@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import Doc from '../../document-sync-core.js';
 
 // Only HTTP endpoints are simulated. The pinned SDK, refresh machinery,
 // auth events, PostgREST builders and app persistence all run unchanged.
@@ -32,7 +33,8 @@ test('real SDK renews expired sessions and exchanges pending iPad study with a p
         if(req.method()==='GET')return send(url.searchParams.get('select')==='updated_at'?[{updated_at:row.updated_at}]:[structuredClone(row)]);
         if(req.method()==='PATCH'){
           if(url.searchParams.get('updated_at')!=='eq.'+row.updated_at)return send(null);
-          row={...req.postDataJSON(),updated_at:new Date(now+(++writes)*1000).toISOString()};return send(structuredClone(row));
+          const incoming=req.postDataJSON();
+          row={...incoming,data:Doc.mergeRemote(row.data,incoming.data),updated_at:new Date(now+(++writes)*1000).toISOString()};return send(structuredClone(row));
         }
       }
       return send([]);

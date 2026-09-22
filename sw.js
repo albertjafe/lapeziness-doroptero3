@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v430';
+const CACHE = 'estudio-v431';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -6,7 +6,7 @@ const ASSETS = [
   "./activity-dashboard.js?v=370",
   "./activity-self-tracker.js?v=402",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=430",
+  "./app.js?v=431",
   "./german-rewards.js?v=426",
   "./piano-rewards.js?v=430",
   "./german-srs.js?v=378",
@@ -27,7 +27,7 @@ const ASSETS = [
   "./crono-idle-hierarchy.css?v=342",
   "./crono-readiness-layout.css?v=342",
   "./crono-resume-layout.css?v=342",
-  "./crono-resume-layout.js?v=413",
+  "./crono-resume-layout.js?v=431",
   "./crono-running-premium.css?v=384",
   "./crono-running-premium.js?v=430",
   "./crono-save-resilience.js?v=397",
@@ -37,7 +37,7 @@ const ASSETS = [
   "./chamber-factor-migration.js?v=430",
   "./study-time-breakdown.js?v=424",
   "./data-core.js?v=342",
-  "./document-sync-core.js?v=416",
+  "./document-sync-core.js?v=431",
   "./ensemble-repertoire-catalog.js?v=381",
   "./event-data-protection.js?v=342",
   "./event-movement-selector.js?v=377",
@@ -58,7 +58,7 @@ const ASSETS = [
   "./icon.svg",
   "./index.html",
   "./instant-sync-resilience.js?v=410",
-  "./local-save-resilience.js?v=413",
+  "./local-save-resilience.js?v=431",
   "./manifest.json",
   "./metronome.js?v=368",
   "./obra-premium-polish.js?v=342",
@@ -76,7 +76,7 @@ const ASSETS = [
   "./passage-tracker-resilience.js?v=372",
   "./piano-rooms-core.js?v=372",
   "./piano-rooms.css?v=369",
-  "./piano-rooms.js?v=408",
+  "./piano-rooms.js?v=431",
   "./reservation-dashboard.css?v=372",
   "./reservation-dashboard.js?v=400",
   "./planning-enhancements-v3.css?v=377",
@@ -174,7 +174,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '430');
+            target.searchParams.set('__pwa', '431');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -182,7 +182,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'430', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'431', navigated });
         } catch (error) {}
       }
     }
