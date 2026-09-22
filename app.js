@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-22-incremental-cloud-sync-v431';
+const APP_VERSION = '2026-09-22-batched-cloud-sync-v432';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -427,6 +427,8 @@ async function _persistCloudDocument(snapshot) {
 
 function _cloudSyncErrorText(error) {
   _setCloudStage(_cloudStage?.phase || 'Sincronización', error);
+  _cloudRetryCount = Math.min(_cloudRetryCount + 1,5);
+  _cloudRetryAt = Date.now() + Math.min(300000,(error?.code === '57014' ? 30000 : 5000) * 2 ** (_cloudRetryCount - 1));
   if (error?.code === 'AUTH_TIMEOUT') return '⚠ la cuenta no responde · estudio guardado localmente';
   if (error?.status === 401 || error?.name === 'AuthSessionMissingError') {
     _cloudSyncConnected = false;
@@ -443,6 +445,16 @@ var _lastCloudSnapshot = null;
 var _cloudAuthEpoch = 0;
 var _cloudStage = null;
 var _cloudFailure = null;
+var _cloudRetryAt = 0;
+var _cloudRetryCount = 0;
+function cloudRetryDelay() { return Math.max(0,_cloudRetryAt - Date.now()); }
+function _cloudRetryWaiting() {
+  const seconds = Math.ceil(cloudRetryDelay() / 1000);
+  if (!seconds) return false;
+  _setCloudStage('Reintento automático en ' + seconds + ' s; datos guardados en este dispositivo');
+  showSyncIndicator('Pendiente · reintento en ' + seconds + ' s');
+  return true;
+}
 function _setCloudStage(phase, error = null) {
   _cloudStage = { phase, at:new Date().toISOString(), code:error?.code || error?.name || null };
   if (error) _cloudFailure = { ..._cloudStage };
@@ -506,15 +518,18 @@ async function _syncToCloudNow(snapshotDb, revision) {
       merged._localRevision = Math.max(Number(merged._localRevision)||0, Number(remote?.data?._localRevision)||0) + 1;
       merged._savedAt = new Date().toISOString();
       const alreadyConfirmed = remote && DocumentSyncCore.sameContent(remote.data,merged);
-      const row = { id:user.id, data:remote ? DocumentSyncCore.uploadDelta(remote.data,merged) : merged, updated_at:merged._savedAt };
-      _setCloudStage(alreadyConfirmed ? 'Historial ya confirmado' : 'Subiendo los cambios del historial');
+      const batch = remote ? DocumentSyncCore.uploadBatch(remote.data,merged) : { data:merged, expected:merged, remaining:false };
+      if (batch.remaining && DocumentSyncCore.sameContent(remote.data,batch.expected))
+        throw Object.assign(new Error('El lote no contiene cambios confirmables'), { code:'CLOUD_BATCH_NO_PROGRESS' });
+      const row = { id:user.id, data:batch.data, updated_at:merged._savedAt };
+      _setCloudStage(alreadyConfirmed ? 'Historial ya confirmado' : batch.remaining ? 'Subiendo un lote del historial' : 'Subiendo los cambios del historial');
       const write = alreadyConfirmed ? { data:remote } : remote
         ? await _cloudQuery(sb.from('user_data').update(row).eq('id',user.id).eq('updated_at',remote.updated_at).select('data,updated_at'))
         : await _cloudQuery(sb.from('user_data').insert(row).select('data,updated_at'));
       if (write.error) { if (write.error.code === '23505') continue; throw write.error; }
       if (!write.data) continue; // CAS conflict: reread and merge, never overwrite.
       if (authEpoch !== _cloudAuthEpoch) return false;
-      const unconfirmed = !DocumentSyncCore.sameContent(DocumentSyncCore.mergeRemote(write.data.data, merged), write.data.data);
+      const unconfirmed = !DocumentSyncCore.sameContent(DocumentSyncCore.mergeRemote(write.data.data, batch.expected), write.data.data);
       const meta = _readSyncMeta();
       const pending = meta.dirtyRevision > revision;
       DocumentSyncCore.assign(db, DocumentSyncCore.mergeRemote(write.data.data, db));
@@ -527,11 +542,12 @@ async function _syncToCloudNow(snapshotDb, revision) {
       const durableMeta = _readSyncMeta();
       if (authEpoch !== _cloudAuthEpoch) return false;
       const localRevision = Math.max(Number(db._localRevision)||0, durableMeta.localRevision);
-      const stillPending = unconfirmed || pending || durableMeta.dirtyRevision > accepted;
-      _writeSyncMeta({ localRevision, dirtyRevision:localRevision, lastSyncedRevision:unconfirmed ? meta.lastSyncedRevision : accepted });
+      const stillPending = unconfirmed || batch.remaining || pending || durableMeta.dirtyRevision > accepted;
+      _writeSyncMeta({ localRevision, dirtyRevision:localRevision, lastSyncedRevision:unconfirmed || batch.remaining ? meta.lastSyncedRevision : accepted });
       _lastCloudSnapshot = { userId:user.id, updatedAt:write.data.updated_at };
-      _setCloudStage(stillPending ? 'Quedan cambios por subir' : 'Historial confirmado en la nube');
+      _setCloudStage(batch.remaining && !unconfirmed ? 'Lote confirmado; quedan cambios por subir' : stillPending ? 'Quedan cambios por subir' : 'Historial confirmado en la nube');
       if (unconfirmed) throw Object.assign(new Error('La respuesta de la nube no confirmó todo el historial'), { code:'CLOUD_CONFIRMATION_MISSING' });
+      _cloudRetryAt = 0; _cloudRetryCount = 0;
       if (typeof refreshStudyViews === 'function') refreshStudyViews();
       showSyncIndicator(stillPending ? 'Sincronizando…' : '✓ sincronizado');
       return true;
@@ -546,12 +562,13 @@ function enqueueCloudSync(options) {
   _syncTimer = setTimeout(() => {
     _syncTimer = null;
     syncPendingCloudChanges();
-  }, immediate ? 0 : 300);
+  }, Math.max(immediate ? 0 : 300,cloudRetryDelay()));
   return _syncPromise || Promise.resolve();
 }
 
 async function syncPendingCloudChanges() {
   if (_syncInFlight) return _syncPromise;
+  if (_cloudRetryWaiting()) return false;
   _syncInFlight = true;
   _syncPromise = (async () => {
     try {
@@ -646,6 +663,7 @@ async function _loadFromCloudNow(options = {}) {
 
 function requestCloudRefresh() {
   if (_cloudRefreshPromise) { _cloudRefreshAgain = true; return _cloudRefreshPromise; }
+  if (_cloudRetryWaiting()) return Promise.resolve(false);
   _cloudRefreshPromise = (async () => {
     let ok = false;
     do {
@@ -19820,6 +19838,7 @@ function ajustesAccountTap() {
 // desincronizado o si se sospecha que la nube tiene una versión más reciente.
 async function forceCloudResync() {
   try {
+    _cloudRetryAt = 0; // An explicit user retry may bypass automatic backoff.
     showSyncIndicator('↺ sincronizando…');
     const reloaded = await requestCloudRefresh();
     if (!reloaded && _cloudSyncConnected === false) {

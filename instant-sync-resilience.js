@@ -11,7 +11,6 @@
   let installed = false;
   let installTimer = null;
   let refreshPending = false;
-  let refreshRetryTimer = null;
 
   function state(message) {
     try {
@@ -39,6 +38,8 @@
           try {
             value = await run.apply(this, args);
             if (typeof h.success === 'function') h.success(value);
+            // A coalesced request must not bypass backoff after a failed upload.
+            if (value === false) break;
           } catch (error) {
             if (typeof h.error === 'function') h.error(error);
             throw error;
@@ -57,7 +58,7 @@
 
   function scheduleRetry() {
     if (!root || retryTimer || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
-    const delay = RETRY_DELAYS[Math.min(retryIndex, RETRY_DELAYS.length - 1)];
+    const delay = Math.max(RETRY_DELAYS[Math.min(retryIndex, RETRY_DELAYS.length - 1)],root.cloudRetryDelay?.() || 0);
     retryIndex = Math.min(retryIndex + 1, RETRY_DELAYS.length - 1);
     retryTimer = setTimeout(() => {
       retryTimer = null;
@@ -74,6 +75,7 @@
   function requestImmediateSync(options) {
     if (!root) return;
     try {
+      if (root.cloudRetryDelay?.() > 0) { refreshPending ||= !!options?.refresh; scheduleRetry(); return; }
       if (options?.now && typeof root.syncPendingCloudChanges === 'function') {
         Promise.resolve(root.syncPendingCloudChanges()).catch(() => {});
         return;
@@ -82,10 +84,8 @@
         refreshPending = true;
         Promise.resolve(root.requestCloudRefresh()).then(ok => {
           refreshPending = !ok;
-          if (ok && refreshRetryTimer) { clearTimeout(refreshRetryTimer); refreshRetryTimer = null; }
-          if (!ok && root._cloudSyncConnected !== false && !refreshRetryTimer) {
-            refreshRetryTimer = setTimeout(() => { refreshRetryTimer = null; requestImmediateSync({ refresh:true }); }, 10000);
-          }
+          if (ok) resetRetry();
+          else if (root._cloudSyncConnected !== false) scheduleRetry();
         }).catch(() => { state('⚠ pendiente de sincronizar'); scheduleRetry(); });
         return;
       }

@@ -140,6 +140,49 @@
     }
     return changed(server || {},merged || {}) || {};
   }
+  // Bound accumulated record edits, including clocks left by older clients.
+  // Records stay whole so anonymous/composite identities cannot change. A
+  // single oversized record is allowed: it must never become unsendable.
+  function uploadBatch(server, merged, options = {}) {
+    const delta = uploadDelta(server,merged);
+    const maxRecords = options.maxRecords || 128, maxChars = options.maxChars || 192000;
+    let records = 0, chars = 0, accepted = false;
+    const metadata = new Set(['_fieldClock','_deletedChildren']);
+    function atomic(value, record = false) {
+      const size = JSON.stringify(value).length;
+      if (accepted && (chars + size > maxChars || records >= maxRecords)) return undefined;
+      accepted = true; chars += size; if (record) records++;
+      return clone(value);
+    }
+    function take(value, root = false) {
+      if (Array.isArray(value) && value.length && value.every(object)) {
+        const rows = [];
+        for (const row of value) { const next = atomic(row,true); if (next === undefined) break; rows.push(next); }
+        return rows.length ? rows : undefined;
+      }
+      if (!object(value) || !Object.keys(value).length) return atomic(value);
+      const out = {};
+      const keys = Object.keys(value).filter(k => !metadata.has(k));
+      // Recent piano sessions should reach the other device before a large
+      // backlog of imported Forest records.
+      if (root) keys.sort((a,b) => Number(b === 'sessionPlants') - Number(a === 'sessionPlants'));
+      for (const k of keys) {
+        const child = root && (k === '_localRevision' || k === '_savedAt') ? clone(value[k]) : take(value[k]);
+        if (child !== undefined) out[k] = child;
+      }
+      for (const kind of metadata) {
+        if (!object(value[kind])) continue;
+        const entries = Object.entries(value[kind]).filter(([k]) => Object.hasOwn(out,k) || !Object.hasOwn(value,k));
+        if (entries.length) out[kind] = Object.fromEntries(entries.map(([k,v]) => [k,clone(v)]));
+      }
+      // Never send clocks for omitted scalar edits: that would make their
+      // later values lose against the prematurely advanced server clock.
+      return Object.keys(out).length ? out : undefined;
+    }
+    const data = take(delta,true) || {};
+    const expected = applyTombstones(merge(server || {},data,'','',0,true));
+    return { data, expected, remaining:!sameContent(expected,merged) };
+  }
   // Open editors keep references to these objects across synchronous saves.
   // Reconcile by ID without invalidating the object an editor will next mutate.
   function assign(target, source) {
@@ -162,6 +205,6 @@
     merge: (a,b) => applyTombstones(merge(a || {},b || {},'','',Math.sign((Number(a?._localRevision)||0)-(Number(b?._localRevision)||0)))),
     // Direction matters: an incoming existing scalar needs its own later clock.
     mergeRemote: (server,client) => applyTombstones(merge(server || {},client || {},'','',0,true)),
-    track, identity, assign, sameContent, uploadDelta
+    track, identity, assign, sameContent, uploadDelta, uploadBatch
   };
 });

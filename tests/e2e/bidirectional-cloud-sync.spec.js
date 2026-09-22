@@ -42,7 +42,7 @@ test('independent iPad and phone exchange study, goal edits and offline addition
     },{id,mins});
   }
   const minutes=page=>page.evaluate(()=>DailyStudyMinutes.todayMinutes());
-  const resume=async page=>{await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await expect.poll(()=>page.evaluate(()=>SyncCore.isDirty(_readSyncMeta()))).toBe(false);};
+  const resume=async page=>{const delay=await page.evaluate(()=>cloudRetryDelay());if(delay)await page.clock.fastForward(delay+1);await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await expect.poll(()=>page.evaluate(()=>SyncCore.isDirty(_readSyncMeta()))).toBe(false);};
   try{
     const ipad=await device(false);await study(ipad,'ipad-six',360);
     const phone=await device(true);expect(await minutes(phone)).toBe(360);
@@ -66,6 +66,7 @@ test('independent iPad and phone exchange study, goal edits and offline addition
     await expect(phone.locator('#syncIndicator')).toBeVisible();
     await study(ipad,'online-ipad',15);offlinePhone=false;
     await phone.evaluate(()=>window.dispatchEvent(new Event('online')));
+    await phone.clock.fastForward(await phone.evaluate(()=>cloudRetryDelay())+1);
     await expect.poll(()=>phone.evaluate(()=>SyncCore.isDirty(_readSyncMeta()))).toBe(false);
     await expect.poll(()=>minutes(phone)).toBe(525);await resume(ipad);await expect.poll(()=>minutes(ipad)).toBe(525);
     expect(row.data.sessionPlants).toHaveLength(4);

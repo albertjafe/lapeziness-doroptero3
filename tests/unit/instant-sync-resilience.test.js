@@ -46,6 +46,20 @@ describe('InstantSyncResilience', () => {
     expect(maxRunning).toBe(1);
     expect(calls).toBe(2);
   });
+  it('does not immediately rerun coalesced requests after a failed upload',async()=>{
+    let calls=0,release;const gate=new Promise(resolve=>{release=resolve;});
+    const sync=SyncResilience.createSingleFlight(async()=>{calls++;await gate;return false;});
+    const first=sync(),second=sync();release();await Promise.all([first,second]);
+    expect(calls).toBe(1);
+  });
+  it('foreground events and pending writes respect the shared retry deadline',()=>{
+    let calls=0;const delays=[];
+    const ctx={cloudRetryDelay:()=>30000,requestCloudRefresh:async()=>{calls++;return false;},
+      setTimeout:(fn,ms)=>{delays.push(ms);return 1;},clearTimeout(){}};
+    vm.createContext(ctx);vm.runInContext(readFileSync('instant-sync-resilience.js','utf8'),ctx);
+    for(let i=0;i<20;i++)ctx.InstantSyncResilience.requestImmediateSync({refresh:true});
+    expect(calls).toBe(0);expect(delays).toEqual([30000]);
+  });
   it.each([
     [false,false,'Guardado local · conecta tu cuenta'],
     [true,false,'Sincronizando…'],

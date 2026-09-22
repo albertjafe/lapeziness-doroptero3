@@ -22,7 +22,7 @@ test('a stalled account reports its phase and recovers the six-hour pending hist
   expect(await page.evaluate(()=>DailyStudyMinutes.todayMinutes())).toBe(366);
   expect(await page.evaluate(()=>__stalledAccount.writes)).toBe(0);
   await page.evaluate(()=>{__stalledAccount.locked=false;for(const resolve of __stalledAccount.waiters)resolve({data:{user:{id:'u'}}});});
-  await page.evaluate(()=>requestCloudRefresh());
+  await page.evaluate(()=>forceCloudResync());
   await expect.poll(()=>page.evaluate(()=>__stalledAccount.row.data.sessionPlants.reduce((sum,p)=>sum+p.mins,0))).toBe(366);
   await expect.poll(()=>page.evaluate(()=>SyncCore.isDirty(_readSyncMeta()))).toBe(false);
 });

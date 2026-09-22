@@ -20,6 +20,7 @@ beforeAll(async()=>{
   await pg.exec(original.slice(original.indexOf('create or replace function public.document_prune('),original.indexOf('create or replace function public.enforce_document_tombstones_after_guards(')).replaceAll('public.document_prune(', 'public.document_prune_before_optimization('));
   await pg.exec(sql('20260918205809_optimize_document_tombstone_pruning.sql'));
   await pg.exec(sql('20260919142631_preserve_sync_acknowledgement_fields.sql'));
+  await pg.exec(sql('20260922175710_optimize_sync_object_assembly.sql'));
   // The helper's original migration predates this checkout; its deployed
   // definition is captured as a fixture, without data or production mutations.
   await pg.exec(`create trigger trg_00_preserve_crono_tasks before update of data on user_data for each row execute function preserve_crono_tasks_on_user_data_update();
@@ -47,6 +48,27 @@ describe('real PostgreSQL migration with existing protection triggers',()=>{
     expect(partial.cronoTasks.map(t=>t.id)).toEqual(['keep']);expect(partial.obras[0].movimientos).toEqual([]);
     expect(Doc.sameContent(Doc.mergeRemote(partial,merged),partial)).toBe(true);
   },15000);
+  it('confirms bounded batches through the real trigger chain without losing postponed scalar edits',async()=>{
+    const old={name:'old',obras:[],sessionPlants:[],forestPlants:[]};
+    const next={...old,name:'new',sessionPlants:Array.from({length:300},(_,i)=>({id:'batch-'+i,mins:30}))};
+    const desired=Doc.mergeRemote(old,Doc.track(next,old,'2026-09-22T12:00:00Z'));
+    await pg.query('insert into user_data(id,data) values ($1,$2)',['batches',JSON.stringify(old)]);
+    let remote=old,count=0;
+    while(!Doc.sameContent(Doc.mergeRemote(remote,desired),remote)&&count++<10){
+      const batch=Doc.uploadBatch(remote,Doc.mergeRemote(remote,desired));
+      remote=(await pg.query('update user_data set data=$2 where id=$1 returning data',['batches',JSON.stringify(batch.data)])).rows[0].data;
+      expect(Doc.sameContent(Doc.mergeRemote(remote,batch.expected),remote)).toBe(true);
+    }
+    expect(count).toBe(3);expect(remote.name).toBe('new');expect(remote.sessionPlants).toHaveLength(300);
+  });
+  it('object assembly keeps the previous merge result for clocked and unclocked fields',async()=>{
+    for(let i=0;i<24;i++){
+      const old={_localRevision:10,unknown:{a:1,b:null},items:[{id:'keep',v:1},{id:'remove'}],scalar:['old'],_fieldClock:{scalar:'2026-09-20'}};
+      const next={_localRevision:3,unknown:{a:i,b:2,newField:i},items:[{id:'keep',v:i,_fieldClock:{v:'2026-09-22'}}],scalar:i%2?null:[],_fieldClock:{scalar:i%3?'2026-09-22':'2026-09-19'},_deletedChildren:{items:{remove:'2026-09-22'}}};
+      const row=(await pg.query('select document_merge($1,$2) as actual,document_merge_before_optimization($1,$2) as expected',[JSON.stringify(old),JSON.stringify(next)])).rows[0];
+      expect(row.actual).toEqual(row.expected);
+    }
+  });
   it('acknowledges notes and field clocks through all legacy guards on equal record timestamps',async()=>{
     const oldStamp='2026-09-04T10:00:00Z',stamp='2026-09-18T10:00:00Z';
     const history={date:oldStamp,val:40,context:'study',_fieldClock:{val:oldStamp}};

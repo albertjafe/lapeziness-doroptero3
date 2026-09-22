@@ -39,6 +39,7 @@ describe('real app synchronization between independent devices',()=>{
       return {error:{code:'CLOUD_REQUEST_TIMEOUT',message:'Response lost after commit'}};
     }}),ctx=h.boot();study(ctx,'pending',86);
     expect(await ctx.syncPendingCloudChanges()).toBe(false);expect(minutes(ctx)).toBe(86);
+    ctx._cloudRetryAt=0; // Retry after the backoff deadline (or explicit user retry).
     expect(await ctx.syncPendingCloudChanges()).toBe(true);expect(writes).toBe(1);
     expect(ctx.SyncCore.isDirty(ctx._readSyncMeta())).toBe(false);
   });
@@ -94,6 +95,7 @@ describe('real app synchronization between independent devices',()=>{
     await b.requestCloudRefresh();cloud.offline.add(b);study(b,'offline-phone',120);
     expect(await b.requestCloudRefresh()).toBe(false);expect(b.SyncCore.isDirty(b._readSyncMeta())).toBe(true);
     study(a,'online-ipad',360);await a.syncPendingCloudChanges();cloud.offline.delete(b);
+    b._cloudRetryAt=0; // Connection recovered after the retry deadline.
     expect(await b.requestCloudRefresh()).toBe(true);await a.requestCloudRefresh();
     expect(minutes(a)).toBe(480);expect(minutes(b)).toBe(480);expect(b.SyncCore.isDirty(b._readSyncMeta())).toBe(false);
   });
