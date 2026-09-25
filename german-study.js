@@ -79,15 +79,12 @@
     if (!running) render();
   }
   function pause() {const s=current();if(s && ownsLock) {advance();s.status='paused';persist();} }
-  function goalCard(goal,ledger) {
-    if (!goal) return `<section class="german-card german-goal" id="germanSharedGoal"><span class="german-eyebrow">TU PRÓXIMO OBJETIVO</span><h2>Un motivo para volver mañana.</h2><p>Convierte tu alemán y tu piano en una hucha virtual. Tú eliges la recompensa.</p>${goalForm()}</section>`;
-    if (editingGoalId===goal.id) return `<section class="german-card german-goal is-editing" id="germanSharedGoal"><span class="german-eyebrow">EDITAR OBJETIVO COMPARTIDO</span><h2>Ajusta el nombre o el precio.</h2><p>Recalculamos las mismas horas con el nuevo precio. Al bajar el precio, los euros acumulados también bajan, pero cubren una mayor parte de la compra.</p>${goalForm(goal)}</section>`;
-    if (deletingGoalId===goal.id) {
-      const blocked=sharedGoalSessionActive(goal.id);
-      return `<section class="german-card german-goal is-deleting" id="germanSharedGoal"><span class="german-eyebrow">ELIMINAR OBJETIVO</span><h2>¿Eliminar ${esc(goal.name)}?</h2><p>El objetivo y su saldo dejarán de aparecer. Las sesiones de alemán y piano se conservan en el historial interno.</p>${blocked?'<p class="german-goal-warning">Termina primero la sesión que está aportando a este objetivo.</p>':''}<div class="german-goal-confirm"><button data-action="cancel-delete-goal">Cancelar</button><button class="german-danger" data-action="confirm-delete-goal" data-id="${esc(goal.id)}" ${blocked?'disabled':''}>Eliminar definitivamente</button></div></section>`;
-    }
-    const progress=R.goalProgress(goal,ledger,state().sessions), percent=Math.min(100,progress.amount/goal.amount*100);
-    return `<section class="german-card german-goal" id="germanSharedGoal"><span class="german-eyebrow">${progress.complete?'OBJETIVO CONSEGUIDO ✨':'TU OBJETIVO COMPARTIDO'}</span><h2>${esc(goal.name)}</h2><div class="german-balance">${euro(progress.amount)} <small>/ ${euro(goal.amount)}</small></div><progress aria-label="Progreso del objetivo" max="100" value="${percent}"></progress><p>${percent.toFixed(1).replace('.',',')} % · Alemán y piano aportan a este objetivo</p><p class="german-goal-reserved">Saldo reservado exclusivamente para ${esc(goal.name)}. No se reparte entre compras ni se traslada a otro objetivo.</p><div class="german-goal-actions"><button data-action="edit-goal" data-id="${esc(goal.id)}">Editar objetivo</button><button class="german-danger-link" data-action="delete-goal" data-id="${esc(goal.id)}">Eliminar objetivo</button>${progress.complete?`<button data-action="archive" ${sharedGoalSessionActive(goal.id)?'disabled':''}>Archivar y crear otro objetivo</button>`:''}</div>${progress.complete?`<p>Conseguido el ${esc(progress.completedOn)} · ${minutes(progress.seconds)} de estudio invertidos.</p>${sharedGoalSessionActive(goal.id)?'<p>Termina la sesión antes de archivar.</p>':''}`:''}</section>`;
+  // The shared wallet, goals, streaks and achievements live in Premios.
+  function premiosLink() {
+    const P=window.PianoRewards,data=typeof db!=='undefined'?db:null;
+    let goal=null,progress=null;
+    try{goal=P&&data?P.activeGoal(data):null;progress=goal?P.goalProgressForDb(data,goal.id):null;}catch(error){goal=null;}
+    return `<section class="german-card german-premios-link"><span class="german-eyebrow">HUCHA COMPARTIDA</span><h2>${goal?esc(goal.name):'Sin objetivo de compra'}</h2><p>${goal&&progress?euro(progress.amount)+' / '+euro(goal.amount)+' · el alemán y el piano llenan la misma hucha.':'Crea un objetivo de compra en Premios: el alemán y el piano llenan la misma hucha.'}</p><button type="button" class="german-primary" onclick="openPremios()">Abrir Premios</button></section>`;
   }
   function goalForm(goal=null) {return `<form id="germanGoalForm" class="german-form"${goal?` data-goal-id="${esc(goal.id)}"`:''}><label>Nombre del objetivo<input name="name" required maxlength="80" placeholder="Kindle" autocomplete="off" value="${esc(goal?.name || '')}"></label><label>Importe (€)<input name="amount" type="number" min="0.01" max="100000000" step="0.01" required value="${esc(goal?.amount ?? 150)}"></label>${goal?`<output id="germanGoalEquivalence" class="german-goal-equivalence" aria-live="polite">${goalEquivalence(goal,goal.amount,goal.name)}</output>`:''}<div class="german-goal-form-actions">${goal?'<button type="button" data-action="cancel-goal-edit">Cancelar</button>':''}<button class="german-primary" type="submit">${goal?'Guardar cambios':'Crear objetivo'}</button></div></form>`;}
   function goalEquivalence(goal,amount,name) {
@@ -130,7 +127,7 @@
         : 'Bonus de implantación activo: consigue '+habit.requiredDays+' días de al menos '+MIN_LABEL+' dentro de cualquier ventana de '+habit.windowDays+' días.';
     return `<section class="german-launch"><div><span class="german-eyebrow">REPASO ESPACIADO</span><h1>Una app sencilla para recordar tu alemán.</h1><p>${due} tarjetas para repasar · ${fresh} nuevas. Elige todas o entra en una clase concreta.</p></div><div class="german-launch-actions"><button class="german-primary" data-action="${session?'resume':'start'}">${session?'Continuar sesión':'Estudiar tarjetas'}</button><button data-action="free" ${session?'disabled':''}>Estudio libre</button></div><p class="german-muted">En estudio libre puedes hacer fichas, escuchar alemán o trabajar fuera de la app. El mismo taxímetro seguirá contando.</p></section>
       <section class="german-dashboard-meter" aria-label="Resumen del taxímetro"><div><span>Hoy</span><strong>${time(totals[today])}</strong></div><div><span>Hucha de hoy</span><strong>${euro(earned,3)}${pending?' pendiente':''}</strong></div><div><span>Racha</span><strong>${streak.current} días</strong></div><div><span>Implantación</span><strong>${habitHeadline}</strong></div></section><section class="german-habit-phase ${habit.phase==='stable'?'is-stable':''}" aria-label="Estado del hábito de alemán"><strong>${habit.phase==='stable'?'Tarifa estable':'Tarifa de implantación'}</strong><p>${habitCopy}</p><small>Implantación: 15/21 · tarifa actual 15/30/45/60 min = ${habit.phase==='stable'?'0,50 / 0,80 / 1,10 / 1,40':'1,00 / 1,25 / 1,55 / 2,00'} pts · +1 pt cada 7 días consecutivos cualificados.</small></section>
-      ${decks()}${importer()}${goalCard(goal,ledger)}
+      ${decks()}${importer()}${premiosLink()}
       <details class="german-card german-history"><summary>Actividad e historial</summary><div class="german-activity" aria-label="Actividad de los últimos 14 días">${Array.from({length:14},(_,i)=>{const day=R.shiftDay(today,i-13),seconds=totals[day] || 0;return `<div class="${seconds>=MIN?'done':seconds?'partial':''}" title="${day}: ${minutes(seconds)}" aria-label="${day}: ${minutes(seconds)}"><span>${day.slice(8)}</span></div>`;}).join('')}</div><p class="german-muted">${st.reviews.filter(r=>r.cardId).length} tarjetas revisadas · ${minutes(week)} esta semana · mejor racha: ${streak.best} días.</p>${st.goals.filter(g=>g.archivedAt&&!g.deletedAt).map(g=>{const p=R.goalProgress(g,ledger,st.sessions);return `<p><strong>${esc(g.name)}</strong> · ${euro(p.amount)} / ${euro(g.amount)} · ${esc(p.completedOn || 'En progreso')}</p>`;}).join('')}<div class="german-ledger">${ledger.filter(e=>visibleGoalIds.has(e.goalId)).slice(-30).reverse().map(e=>`<p>${esc(e.date)} · ${e.source==='piano'?'Piano':'Alemán'} · ${minutes(e.duration)} · ${euro(e.finalReward,3)} ${e.qualified?'':'(pendiente)'}</p>`).join('')}</div><button data-action="export-ledger">Descargar historial completo</button></details>`;
   }
   function itemMarkup(s) {
@@ -217,7 +214,7 @@
   async function action(action,id) {
     const s=current();lastInteraction=Date.now();message('');
     if (['dashboard','materials','modes'].includes(action)) {pause();panel='dashboard';render();window.scrollTo({top:0,behavior:'instant'});return;}
-    if (action==='goal-manager') {pause();panel='dashboard';render();setTimeout(()=>document.getElementById('germanSharedGoal')?.scrollIntoView({behavior:'smooth',block:'center'}),0);return;}
+    if (action==='goal-manager') {pause();if(typeof openPremios==='function')openPremios();return;}
     if (action==='start') return start('cards');
     if (action==='free') return start('free');
     if (action==='mode') return start(id==='free'?'free':'cards');
@@ -333,8 +330,8 @@
     render();
   }
   function openGoalManager() {
-    showView('deutsch');panel='dashboard';editingGoalId=deletingGoalId=null;render();
-    setTimeout(()=>document.getElementById('germanSharedGoal')?.scrollIntoView({behavior:'smooth',block:'center'}),0);
+    editingGoalId=deletingGoalId=null;
+    if(typeof openPremios==='function')openPremios();
   }
   root.GermanStudy={hasActiveSession:()=>Boolean(current()),open:()=>showView('deutsch'),openGoalManager,refreshMoney:()=>{if(panel==='dashboard'&&!editingGoalId&&!deletingGoalId)render();}};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();

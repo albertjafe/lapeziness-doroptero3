@@ -3,10 +3,11 @@
 (function(root,factory) {
   const api=factory(typeof module==='object' && module.exports?require('./german-rewards'):root.GermanRewards,
     typeof module==='object' && module.exports?require('./daily-study-minutes'):root.DailyStudyMinutes,
-    typeof module==='object' && module.exports?require('./habit-trophies'):root.HabitTrophies);
+    typeof module==='object' && module.exports?require('./habit-trophies'):root.HabitTrophies,
+    typeof module==='object' && module.exports?require('./achievement-rewards'):root.AchievementRewards);
   if(typeof module==='object' && module.exports)module.exports=api;
   else {root.PianoRewards=api;api.installBrowser?.(root);}
-})(typeof window!=='undefined'?window:globalThis,function(GermanRewards,DailyStudyMinutes,HabitTrophies){
+})(typeof window!=='undefined'?window:globalThis,function(GermanRewards,DailyStudyMinutes,HabitTrophies,AchievementRewards){
   'use strict';
   const FULL_DAY_SECONDS=4*3600;
   const EXCELLENT_DAY_SECONDS=5*3600;
@@ -23,6 +24,12 @@
     comeback:Object.freeze({id:'comeback',title:'Remontada',points:.60,icon:'🐦‍🔥',description:'A las 16:00 llevabas menos de una hora equivalente y aun así completaste cuatro.'}),
     epic:Object.freeze({id:'epic-comeback',title:'Remontada épica',points:.80,icon:'🐦‍🔥',description:'A las 18:00 llevabas menos de dos horas equivalentes y aun así completaste cuatro.'})
   });
+  // From this day: one unified streak that partial days freeze instead of
+  // breaking, and secret bonuses that pay starting early more than coming back.
+  const STREAK_RULES_DAY='2026-09-26';
+  const STREAK_GRACE_DAYS=3;
+  const SECRET_POINTS_FROM_RULES_DAY=Object.freeze({'early-bird':.80,'comeback':.40,'epic-comeback':.60});
+  const secretFor=(item,date)=>date>=STREAK_RULES_DAY?{...item,points:SECRET_POINTS_FROM_RULES_DAY[item.id]??item.points}:item;
   const MONTHLY_LEVELS=Object.freeze([4,5,6].map((hours,index)=>Object.freeze({hours,seconds:hours*3600,points:[10,25,30][index]})));
   const ACTIVITY_TYPES=Object.freeze({
     study:Object.freeze({id:'study',label:'Estudio',factor:1}),
@@ -209,48 +216,68 @@
     }
     return totals;
   }
-  function streakByDay(sessions){
-    const totals=summarizeDays(sessions),result={};let streak=0;
-    for(const date of Object.keys(totals).sort()){
-      const seconds=totals[date];
-      if(seconds>=FULL_DAY_SECONDS){
-        streak+=1;result[date]={days:streak,multiplier:streakMultiplier(streak),fullDay:true,seconds};
-      }else{
-        streak=0;result[date]={days:0,multiplier:1,fullDay:false,seconds};
-      }
-    }
-    return result;
+  // Until STREAK_RULES_DAY a day under four hours reset the streak while a
+  // day without study froze it, so studying a little was worse than resting.
+  // From that day there is one streak of full days (>= 4 h): any other day
+  // freezes it and only STREAK_GRACE_DAYS consecutive days without a full day
+  // break it. Days before the boundary keep their original result.
+  function daysBetween(a,b){
+    const ms=d=>{const [y,m,day]=String(d).split('-').map(Number);return Date.UTC(y,m-1,day);};
+    return Math.round((ms(b)-ms(a))/86400000);
   }
-  function excellenceByDay(sessions){
-    const totals=summarizeDays(sessions),result={};let streak=0;
+  function streakTimeline(sessions){
+    const totals=summarizeDays(sessions),full={},excellent={};
+    let fullStreak=0,excellenceStreak=0,lastFull=null;
     for(const date of Object.keys(totals).sort()){
-      const seconds=totals[date];
-      if(seconds>=EXCELLENT_DAY_SECONDS){
-        streak+=1;
-        result[date]={days:streak,multiplier:excellenceMultiplier(streak),excellentDay:true,frozen:false,seconds};
-      }else if(seconds>=FULL_DAY_SECONDS){
-        result[date]={days:streak,multiplier:excellenceMultiplier(streak),excellentDay:false,frozen:true,seconds};
-      }else{
-        streak=0;result[date]={days:0,multiplier:1,excellentDay:false,frozen:false,seconds};
+      const seconds=totals[date],isFull=seconds>=FULL_DAY_SECONDS,isExcellent=seconds>=EXCELLENT_DAY_SECONDS;
+      if(date<STREAK_RULES_DAY){
+        if(isFull){fullStreak+=1;lastFull=date;full[date]={days:fullStreak,multiplier:streakMultiplier(fullStreak),fullDay:true,seconds};}
+        else{fullStreak=0;full[date]={days:0,multiplier:1,fullDay:false,seconds};}
+        if(isExcellent){excellenceStreak+=1;excellent[date]={days:excellenceStreak,multiplier:excellenceMultiplier(excellenceStreak),excellentDay:true,frozen:false,seconds};}
+        else if(isFull)excellent[date]={days:excellenceStreak,multiplier:excellenceMultiplier(excellenceStreak),excellentDay:false,frozen:true,seconds};
+        else{excellenceStreak=0;excellent[date]={days:0,multiplier:1,excellentDay:false,frozen:false,seconds};}
+        continue;
       }
+      if(isFull){
+        if(lastFull&&daysBetween(lastFull,date)-1>=STREAK_GRACE_DAYS)fullStreak=0;
+        fullStreak+=1;lastFull=date;
+        full[date]={days:fullStreak,multiplier:streakMultiplier(fullStreak),fullDay:true,seconds};
+        excellent[date]={days:fullStreak,multiplier:excellenceMultiplier(fullStreak),excellentDay:isExcellent,frozen:!isExcellent,seconds};
+      }else{
+        if(!lastFull||daysBetween(lastFull,date)>=STREAK_GRACE_DAYS)fullStreak=0;
+        full[date]={days:fullStreak,multiplier:1,fullDay:false,frozen:fullStreak>0,seconds};
+        excellent[date]={days:fullStreak,multiplier:1,excellentDay:false,frozen:fullStreak>0,seconds};
+      }
+      excellenceStreak=fullStreak;
     }
-    return result;
+    return {full,excellent,lastFull};
+  }
+  function streakByDay(sessions){return streakTimeline(sessions).full;}
+  function excellenceByDay(sessions){return streakTimeline(sessions).excellent;}
+  // Days without a full day since the last one, today excluded while it runs.
+  function streakGrace(lastFull,date){
+    if(!lastFull||date<STREAK_RULES_DAY)return {missed:0,left:STREAK_GRACE_DAYS,broken:false};
+    const missed=Math.max(0,daysBetween(lastFull,date)-1);
+    return {missed,left:Math.max(0,STREAK_GRACE_DAYS-missed),broken:missed>=STREAK_GRACE_DAYS};
   }
   function streakStats(sessions,date=dayKey()){
-    const totals=summarizeDays(sessions),map=streakByDay(sessions),studiedDays=Object.keys(totals).filter(day=>day<=date).sort();
+    const totals=summarizeDays(sessions),timeline=streakTimeline(sessions),map=timeline.full,studiedDays=Object.keys(totals).filter(day=>day<=date).sort();
     const today=map[date],pending=(totals[date]||0)>0&&(totals[date]||0)<FULL_DAY_SECONDS;
     const last=(pending?studiedDays.filter(day=>day<date):studiedDays).at(-1),info=last?map[last]:null;
-    return {current:info?.days||0,multiplier:streakMultiplier(info?.days||0),today:today?.days||0,
+    const lastFull=Object.keys(map).filter(day=>day<date&&map[day].fullDay).sort().at(-1)||null;
+    const grace=streakGrace(lastFull,date),current=grace.broken&&!today?.fullDay?0:(info?.days||0);
+    return {current,multiplier:streakMultiplier(current),today:today?.days||0,
       todayMultiplier:today?.multiplier||1,todaySeconds:totals[date]||0,fullDay:!!today?.fullDay,
-      pending,frozen:!totals[date]&&(info?.days||0)>0};
+      pending,frozen:!today?.fullDay&&current>0,graceDaysLeft:today?.fullDay?STREAK_GRACE_DAYS:grace.left,unified:date>=STREAK_RULES_DAY};
   }
   function excellenceStats(sessions,date=dayKey()){
     const totals=summarizeDays(sessions),map=excellenceByDay(sessions),studiedDays=Object.keys(totals).filter(day=>day<=date).sort();
     const today=map[date],pending=(totals[date]||0)>0&&(totals[date]||0)<FULL_DAY_SECONDS;
     const last=(pending?studiedDays.filter(day=>day<date):studiedDays).at(-1),info=last?map[last]:null;
-    return {current:info?.days||0,multiplier:excellenceMultiplier(info?.days||0),today:today?.days||0,
+    const four=streakStats(sessions,date),current=date>=STREAK_RULES_DAY?four.current:(info?.days||0);
+    return {current,multiplier:excellenceMultiplier(current),today:today?.days||0,
       todayMultiplier:today?.multiplier||1,todaySeconds:totals[date]||0,excellentDay:!!today?.excellentDay,
-      pending,frozen:!!today?.frozen||(!totals[date]&&(info?.days||0)>0)};
+      pending,frozen:!!today?.frozen||(!totals[date]&&current>0)};
   }
   function record(state,{id,goalId=null,startedAt,endedAt,seconds,policyVersion=null,activityType=null,activityFactor:explicitFactor=null}){
     if(!id||state.sessions.some(session=>session.id===id))return false;
@@ -360,16 +387,16 @@
       if(!intervals.length)return;
       const firstStart=Math.min(...intervals.map(item=>item.start)),ten=cutoffMs(date,10);
       if(Number.isFinite(ten)&&firstStart<ten){
-        const item=SECRET_BONUSES.early;
+        const item=secretFor(SECRET_BONUSES.early,date);
         result.push({...item,date,secretAchievement:true});
       }
       const at18=equivalentBefore(daySessions,date,18),at16=equivalentBefore(daySessions,date,16);
       // Epic replaces ordinary comeback on the same day: never double-pay both.
       if(at18.known&&at18.seconds<2*3600){
-        const item=SECRET_BONUSES.epic;
+        const item=secretFor(SECRET_BONUSES.epic,date);
         result.push({...item,date,secretAchievement:true});
       }else if(at16.known&&at16.seconds<3600){
-        const item=SECRET_BONUSES.comeback;
+        const item=secretFor(SECRET_BONUSES.comeback,date);
         result.push({...item,date,secretAchievement:true});
       }
     });
@@ -386,20 +413,20 @@
     const remainingSeconds=Math.max(0,FULL_DAY_SECONDS-total),result=[];
     const firstStart=Math.min(...intervals.map(item=>item.start)),ten=cutoffMs(today,10);
     if(Number.isFinite(ten)&&firstStart<ten){
-      result.push({...SECRET_BONUSES.early,date:today,remainingSeconds,secretOpportunity:true});
+      result.push({...secretFor(SECRET_BONUSES.early,today),date:today,remainingSeconds,secretOpportunity:true});
     }
     const sixteen=cutoffMs(today,16),eighteen=cutoffMs(today,18);
     if(Number.isFinite(nowMs)&&Number.isFinite(eighteen)&&nowMs>=eighteen){
       const at18=equivalentBefore(eligible,today,18);
       if(at18.known&&at18.seconds<2*3600){
-        result.push({...SECRET_BONUSES.epic,date:today,remainingSeconds,secretOpportunity:true});
+        result.push({...secretFor(SECRET_BONUSES.epic,today),date:today,remainingSeconds,secretOpportunity:true});
         return result;
       }
     }
     if(Number.isFinite(nowMs)&&Number.isFinite(sixteen)&&nowMs>=sixteen){
       const at16=equivalentBefore(eligible,today,16);
       if(at16.known&&at16.seconds<3600){
-        result.push({...SECRET_BONUSES.comeback,date:today,remainingSeconds,secretOpportunity:true});
+        result.push({...secretFor(SECRET_BONUSES.comeback,today),date:today,remainingSeconds,secretOpportunity:true});
       }
     }
     return result;
@@ -449,6 +476,20 @@
       title:'Mes de '+level.hours+' horas · '+achievement.month
     })));
   }
+  // Whole-history equivalent minutes per day, for lifetime achievements.
+  // Cached per saved document: the live timer asks for bonuses every second.
+  const lifetimeCache=new WeakMap();
+  function lifetimeMinutes(db,today=dayKey()){
+    if(!db||!DailyStudyMinutes)return {};
+    const signature=JSON.stringify([today,db._savedAt||'',db.sessionPlants?.length||0,db.forestPlants?.length||0,db.sesiones?.length||0,db.pianoRewards?.sessions?.length||0]);
+    const cached=lifetimeCache.get(db);
+    if(cached&&cached.signature===signature)return cached.value;
+    const end=new Date(today+'T00:00:00');end.setDate(end.getDate()+1);
+    let value={};
+    try{value=DailyStudyMinutes.minutesByDay(new Date(2000,0,1),end,db)||{};}catch(error){value={};}
+    lifetimeCache.set(db,{signature,value});
+    return value;
+  }
   function bonusRows(db,sessions,today=dayKey()){
     const since=effortStartDay(db);
     const eligible=(sessions||[]).filter(s=>s.date>=since);
@@ -462,6 +503,11 @@
       {secretAchievement:true,secretId:item.id,icon:item.icon,description:item.description}
     )));
     rows.push(...mentalBonusRows(ledger(eligible,db?.germanStudy?.goals||[]),today));
+    if(AchievementRewards){
+      rows.push(...AchievementRewards.progressRows(db,today));
+      rows.push(...AchievementRewards.chestRows(eligible,today));
+      rows.push(...AchievementRewards.achievementRows(db,lifetimeMinutes(db,today),today));
+    }
     const habits=new Map((db.habitChallenges||[]).filter(h=>h?.id).map(h=>[h.id,h]));
     if(db.habitChallenge?.id&&!habits.has(db.habitChallenge.id))habits.set(db.habitChallenge.id,db.habitChallenge);
     let previousEnd='';
@@ -714,9 +760,10 @@
       else{const goal={id:(root.crypto?.randomUUID?.()||('goal_'+Date.now())),name,amount,createdAt:now,rewardPolicy:JSON.parse(JSON.stringify(GermanRewards.CONFIG))};st.goals.push(goal);if(!wallet.displayGoalId)wallet.displayGoalId=goal.id;}
       adding=false;editingId=null;saveAndRefresh();
     },true);
-    function boot(){installStyles();schedule();const view=doc.getElementById('view-deutsch');if(view)new MutationObserver(schedule).observe(view,{childList:true,subtree:true});}
+    root.PianoRewardsWallet={render:()=>{const host=doc.getElementById('germanSharedGoal');if(host)delete host.dataset.effortSignature;render();}};
+    function boot(){installStyles();schedule();}
     if(doc.readyState==='loading')doc.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
   }
 
-  return {BALANCED_POLICY_START_DAY,SECRET_BONUS_START_DAY,SECRET_BONUSES,MONTHLY_LEVELS,MENTAL_BONUS_START_DAY,MENTAL_BONUS_RATE,MENTAL_BONUS_CAP_SECONDS,policyForDate,combinedMultiplier,monthlyAchievements,monthlyBonusRows,mentalBonusRows,secretAchievements,secretOpportunities,CONFIG,POLICIES,ACTIVITY_TYPES,FULL_DAY_SECONDS,EXCELLENT_DAY_SECONDS,SHARED_EFFORT_POLICY_VERSION,dayKey,normalizeActivityType,activityFactor,equivalentSeconds,ensure,ensureEffortWallet,studyState,activeGoal,baseReward,goalScale,goalCostPoints,streakMultiplier,excellenceMultiplier,summarizeDays,streakByDay,excellenceByDay,streakStats,excellenceStats,studyAchievement,effortStartDay,bonusRows,record,ledger,combinedLedger,rowEffortPoints,rowBelongsToWallet,walletPointsFromRows,goalProgressFromWallet,walletSnapshot,goalProgressForDb,redeemGoal,live,installBrowser};
+  return {STREAK_RULES_DAY,STREAK_GRACE_DAYS,lifetimeMinutes,BALANCED_POLICY_START_DAY,SECRET_BONUS_START_DAY,SECRET_BONUSES,MONTHLY_LEVELS,MENTAL_BONUS_START_DAY,MENTAL_BONUS_RATE,MENTAL_BONUS_CAP_SECONDS,policyForDate,combinedMultiplier,monthlyAchievements,monthlyBonusRows,mentalBonusRows,secretAchievements,secretOpportunities,CONFIG,POLICIES,ACTIVITY_TYPES,FULL_DAY_SECONDS,EXCELLENT_DAY_SECONDS,SHARED_EFFORT_POLICY_VERSION,dayKey,normalizeActivityType,activityFactor,equivalentSeconds,ensure,ensureEffortWallet,studyState,activeGoal,baseReward,goalScale,goalCostPoints,streakMultiplier,excellenceMultiplier,summarizeDays,streakByDay,excellenceByDay,streakStats,excellenceStats,studyAchievement,effortStartDay,bonusRows,record,ledger,combinedLedger,rowEffortPoints,rowBelongsToWallet,walletPointsFromRows,goalProgressFromWallet,walletSnapshot,goalProgressForDb,redeemGoal,live,installBrowser};
 });

@@ -7,6 +7,10 @@ const database=()=>({obras:[{id:'w',movimientos:[]}],sessionPlants:[],forestPlan
 const sessions=(hours=5,month='2026-10',n=20)=>Array.from({length:n},(_,i)=>({id:month+':'+i,date:month+'-'+String(i+1).padStart(2,'0'),
   goalId:'g',seconds:hours*3600,policyVersion:month<'2026-10'?5:6,activityType:'study'}));
 const points=rows=>rows.reduce((total,row)=>total+P.rowEffortPoints(row),0);
+// Surprise rewards (chests, secrets, achievements) are never previewed and
+// are tested on their own; these tests measure the monthly levels.
+const surprise=row=>/^bonus:(chest|secret|achievement|progress):/.test(row.id);
+const bonusRows=(...args)=>P.bonusRows(...args).filter(row=>!surprise(row));
 
 describe('future-only balanced effort policy',()=>{
   it('selects the policy by local calendar day, without changing previous policies',()=>{
@@ -54,9 +58,9 @@ describe('future-only balanced effort policy',()=>{
   });
   it('preserves old one-time awards and does not turn old study into a new monthly prize',()=>{
     const data=database(),old=sessions(5,'2026-08');
-    const rows=P.bonusRows(data,old,'2026-10-31');
+    const rows=bonusRows(data,old,'2026-10-31');
     expect(rows).toHaveLength(1);expect(rows[0].id).toBe('bonus:excellence-month');expect(points(rows)).toBe(5);
-    expect(points(P.bonusRows(data,sessions(5,'2026-09'),'2026-09-30'))).toBe(0);
+    expect(points(bonusRows(data,sessions(5,'2026-09'),'2026-09-30'))).toBe(0);
   });
   it('keeps September days before the transition visible in natural-month progress without paying them retroactively',()=>{
     const beforeTransition=[
@@ -78,19 +82,19 @@ describe('future-only balanced effort policy',()=>{
     expect(combined.levels.find(level=>level.hours===5).eligibleDays).toBe(12);
   });
   it.each([[4,10],[5,25],[6,30]])('pays only %s-hour monthly level total: %s points',(hours,expected)=>{
-    const data=database(),rows=P.bonusRows(data,sessions(hours),'2026-10-31');
+    const data=database(),rows=bonusRows(data,sessions(hours),'2026-10-31');
     expect(points(rows)).toBe(expected);
     expect(P.walletPointsFromRows([...rows,...rows],data.germanStudy.effortWallet)).toBe(expected);
   });
   it('upgrades 10 → 25 → 30 by paying differences and rolls back edited/deleted days',()=>{
     const data=database(),s=sessions(4);
-    expect(points(P.bonusRows(data,s,'2026-10-31'))).toBe(10);
-    s.forEach(item=>item.seconds=5*3600);const five=P.bonusRows(data,s,'2026-10-31');
+    expect(points(bonusRows(data,s,'2026-10-31'))).toBe(10);
+    s.forEach(item=>item.seconds=5*3600);const five=bonusRows(data,s,'2026-10-31');
     expect(five.map(P.rowEffortPoints)).toEqual([10,15]);
-    s.forEach(item=>item.seconds=6*3600);const six=P.bonusRows(data,s,'2026-10-31');
+    s.forEach(item=>item.seconds=6*3600);const six=bonusRows(data,s,'2026-10-31');
     expect(six.map(P.rowEffortPoints)).toEqual([10,15,5]);
-    s[19].seconds=4*3600;expect(points(P.bonusRows(data,s,'2026-10-31'))).toBe(10);
-    s[19].deleted=true;expect(points(P.bonusRows(data,s,'2026-10-31'))).toBe(0);
+    s[19].seconds=4*3600;expect(points(bonusRows(data,s,'2026-10-31'))).toBe(10);
+    s[19].deleted=true;expect(points(bonusRows(data,s,'2026-10-31'))).toBe(0);
   });
   it('does not combine months, count future days, raw class hours or duplicate same-day summaries',()=>{
     expect(points(P.monthlyBonusRows([...sessions(6,'2026-10',10),...sessions(6,'2026-11',10)],'2026-11-30'))).toBe(0);
@@ -101,8 +105,8 @@ describe('future-only balanced effort policy',()=>{
   });
   it('allows rest days, repeats monthly and preserves legacy awards alongside new ones',()=>{
     const data=database(),s=[...sessions(5,'2026-08'),...sessions(5),...sessions(6,'2026-11')];
-    const rows=P.bonusRows(data,s,'2026-11-30');expect(points(rows)).toBe(60);
-    expect(P.bonusRows(D.mergeRemote(data,data),s,'2026-11-30')).toEqual(rows);
+    const rows=bonusRows(data,s,'2026-11-30');expect(points(rows)).toBe(60);
+    expect(bonusRows(D.mergeRemote(data,data),s,'2026-11-30')).toEqual(rows);
     const gaps=sessions(4).map((s,i)=>({...s,date:'2026-10-'+String(i+1+(i>=10?2:0)).padStart(2,'0')}));
     expect(points(P.monthlyBonusRows(gaps,'2026-10-31'))).toBe(10);
   });
@@ -110,12 +114,12 @@ describe('future-only balanced effort policy',()=>{
     const data=database(),s=sessions(5,'2026-10',19),state={sessions:s,effortWallet:data.germanStudy.effortWallet,effortStartDay:'2026-08-01',bonusRows:[]};
     const live=P.live(state,[goal],'g',5*3600,'2026-10-20');
     const saved=[...s,{id:'twentieth',date:'2026-10-20',seconds:5*3600,goalId:'g',policyVersion:6}];
-    const rows=[...P.ledger(saved,[goal]),...P.bonusRows(data,saved,'2026-10-20')];
+    const rows=[...P.ledger(saved,[goal]),...bonusRows(data,saved,'2026-10-20')];
     expect(live.walletPoints).toBeCloseTo(P.walletPointsFromRows(rows,data.germanStudy.effortWallet),6);
     expect(live.walletPoints).toBeCloseTo(points(P.ledger(saved,[goal]))+25,6);
   });
   it('spends monthly points once across price equivalences without changing the points on repricing',()=>{
-    const data=database(),rows=P.bonusRows(data,sessions(6),'2026-10-31'),wallet=data.germanStudy.effortWallet;
+    const data=database(),rows=bonusRows(data,sessions(6),'2026-10-31'),wallet=data.germanStudy.effortWallet;
     const a={id:'a',amount:50},b={id:'b',amount:50000};
     expect(P.goalProgressFromWallet(a,rows,wallet).points).toBe(30);
     expect(P.goalProgressFromWallet(b,rows,wallet).amount).toBeCloseTo(30*P.goalScale(b),6);

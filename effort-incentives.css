@@ -28,3 +28,46 @@
 .study-secret-reward-amount{display:flex;align-items:baseline;gap:8px}.study-secret-reward-amount strong{font:800 22px/1 var(--font-mono,monospace);color:var(--green)}.study-secret-reward-amount small{color:var(--text3)}
 @media(max-width:520px){.study-secret-reward-toast{bottom:max(18px,calc(env(safe-area-inset-bottom) + 12px));padding:14px 15px}.study-secret-reward-title h3{font-size:18px}}
 @media(prefers-reduced-motion:reduce){.study-secret-reward-toast{transition:none}}
+/* Pantalla Premios */
+#view-premios .premios-body{max-width:760px;margin:0 auto}
+#view-premios .german-goal.premios-wallet{margin:0 0 6px}
+.premios-card{border:1px solid var(--border2,var(--border));border-radius:14px;padding:16px;background:var(--bg2);margin:0 0 14px;min-width:0}
+.premios-card h3{margin:4px 0 6px}
+.premios-card p{color:var(--text2);margin:6px 0}
+.premios-kicker{font:600 10px/1.5 var(--font-mono,monospace);letter-spacing:.08em;color:var(--text3)}
+.premios-subtitle{margin-top:18px!important;font-size:15px}
+.premios-streak-main{display:flex;align-items:center;gap:14px;margin-top:4px}
+.premios-streak-main>strong{font:700 44px/1 var(--font-mono,monospace);color:var(--accent);min-width:1.6ch;text-align:center}
+.premios-streak-main h3{margin:0}
+.premios-card progress{display:block;width:100%;height:7px;margin:12px 0;accent-color:var(--green,var(--accent))}
+.premios-boosts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:8px 0}
+.premios-boosts>div{border:1px solid var(--border2,var(--border));border-radius:12px;padding:10px 12px}
+.premios-boosts span{display:block;font-size:11px;color:var(--text3)}
+.premios-boosts b{font:700 18px/1.4 var(--font-mono,monospace);color:var(--accent)}
+.premios-rules{margin:10px 0 0;padding-left:18px;color:var(--text2);font-size:13px;line-height:1.5}
+.premios-rules li{margin:4px 0}
+.premios-earn-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:12px;margin:10px 0}
+.premios-earn-grid h4{margin:0 0 6px;font-size:13px}
+.premios-earn-grid table{width:100%;border-collapse:collapse;font-size:13px}
+.premios-earn-grid td{padding:5px 4px;border-bottom:1px solid var(--border2,var(--border))}
+.premios-earn-grid td:last-child{text-align:right;font-family:var(--font-mono,monospace)}
+.premios-earn-grid small{display:block;margin-top:6px;color:var(--text3)}
+.premios-list{list-style:none;padding:0;margin:8px 0 0}
+.premios-list li{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border2,var(--border))}
+.premios-list li>b{flex:0 0 30px;text-align:center;font-size:20px}
+.premios-list li>span{flex:1;min-width:0}
+.premios-list li small{display:block;color:var(--text3)}
+.premios-list li>em{font-style:normal;font-family:var(--font-mono,monospace);color:var(--green,var(--accent));white-space:nowrap}
+.premios-list li.is-hidden{opacity:.72}
+.premios-chest{display:flex;gap:12px;align-items:flex-start;margin-top:14px;padding:12px;border-radius:12px;background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.premios-chest>b{font-size:22px}
+.premios-chest p{margin:0}
+.premios-trophies{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:8px}
+.premios-trophy{border:1px dashed var(--border2,var(--border));border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.premios-trophy>b{font-size:24px}
+.premios-trophy small{color:var(--text3);font-size:11px;line-height:1.35}
+.premios-trophy em{font-style:normal;font-size:11px;color:var(--green,var(--accent))}
+.premios-trophy.is-earned{border-style:solid;border-color:color-mix(in srgb,var(--accent) 45%,var(--border))}
+.german-premios-link .german-primary{margin-top:8px}
+@media(max-width:560px){.premios-boosts{grid-template-columns:1fr}}
+#view-premios .study-incentives-open{display:none}

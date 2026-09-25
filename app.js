@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-22-batched-cloud-sync-v432';
+const APP_VERSION = '2026-09-25-premios-v435';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -829,7 +829,8 @@ const VIEW_CONTEXT = {
   casa: { eyebrow: 'Estratos', title: 'La Casa' },
   historial: { eyebrow: 'Resumen', title: 'Estadísticas' },
   deutsch: { eyebrow: 'Alemán · Estudio y hucha', title: 'Deutsch' },
-  ajustes: { eyebrow: 'Planificador de estudio', title: 'Ajustes' }
+  ajustes: { eyebrow: 'Planificador de estudio', title: 'Ajustes' },
+  premios: { eyebrow: 'Hucha, rachas y logros', title: 'Premios' }
 };
 
 function updateContextHeader(name) {
@@ -19761,6 +19762,22 @@ function openSettings() {
 // Vuelve a la pantalla desde la que se abrió Ajustes.
 function closeAjustes() {
   showView(_ajustesPrevView || 'session');
+}
+
+// Premios: hucha, objetivos de compra, rachas y logros en una sola pantalla
+// (antes repartidos entre Alemán y un modal). Se abre como Ajustes.
+let _premiosPrevView = 'session';
+function openPremios() {
+  const cur = document.body.getAttribute('data-view');
+  if (cur && cur !== 'premios') _premiosPrevView = cur;
+  showView('premios');
+  const sc = document.querySelector('.app-content');
+  if (sc) sc.scrollTop = 0;
+  if (window.StudyIncentives && typeof window.StudyIncentives.render === 'function') window.StudyIncentives.render();
+  if (window.PianoRewardsWallet && typeof window.PianoRewardsWallet.render === 'function') window.PianoRewardsWallet.render();
+}
+function closePremios() {
+  showView(_premiosPrevView === 'premios' ? 'session' : (_premiosPrevView || 'session'));
 }
 
 // Re-marca como activas las opciones de fuente y tamaño según lo guardado
