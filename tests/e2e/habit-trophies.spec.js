@@ -52,6 +52,9 @@ test('creates a detailed objective and keeps every optional field in the synced 
   await page.locator('#habitRewardInput').fill('Desayuno especial el último día.');
   await page.locator('#habitDurationInput').fill('7');
   await page.locator('#modalHabitChallenge .modal-btn.primary').click();
+  // The modal only closes after a successful save.
+  await expect(page.locator('#modalHabitChallenge')).not.toHaveClass(/visible/);
+  await expect.poll(() => page.evaluate(() => db.habitChallenges.some(item => item.title === 'Meditar cada mañana'))).toBe(true);
 
   const saved = await page.evaluate(() => {
     const habit = db.habitChallenges.find(item => item.title === 'Meditar cada mañana');
