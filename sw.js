@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v433';
+const CACHE = 'estudio-v434';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -15,6 +15,7 @@ const ASSETS = [
   "./german-study.js?v=426",
   "./german-study.css?v=426",
   "./habit-trophies.js?v=433",
+  "./study-ledger-sync.js?v=434",
   "./effort-incentives-ui.js?v=430",
   "./effort-incentives.css?v=420",
   "./habit-trophies.css?v=383",
@@ -174,7 +175,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '433');
+            target.searchParams.set('__pwa', '434');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -182,7 +183,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'433', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'434', navigated });
         } catch (error) {}
       }
     }
