@@ -22336,3 +22336,22 @@ body.crono-paused .crono-readiness-inline { visibility: hidden; }
   #view-cronometro .crono-secret-opportunity { width:28px; min-width:28px; min-height:28px; font-size:14px !important; }
   #view-cronometro .crono-secret-opportunity-popover { padding:7px 8px; }
 }
+
+/* Estado de sincronización como punto junto a los botones de la cabecera. */
+.header-actions #syncIndicator.sync-dot{position:relative;top:auto;left:auto;transform:none;opacity:1;flex:0 0 auto;
+  width:12px;height:12px;min-width:12px;padding:0;margin:0 2px;border-radius:50%;font-size:0;line-height:0;overflow:hidden;
+  border:2px solid var(--bg);box-shadow:0 0 0 1px var(--border);background:var(--orange,#c98a2b);cursor:pointer;pointer-events:auto;z-index:auto}
+.header-actions #syncIndicator.sync-dot[data-sync="synced"]{background:var(--green,#3f9a6b)}
+.header-actions #syncIndicator.sync-dot[data-sync="error"]{background:#d0473f}
+.header-actions #syncIndicator.sync-dot[data-sync="local"]{background:var(--text3,#9aa0a8)}
+.header-actions #syncIndicator.sync-dot:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+/* Barra inferior con texto: solo iconos obligaba a adivinar cada destino. */
+@media (max-width: 1199px), (hover: none) and (pointer: coarse) {
+  html:not(.platform-windows) .nav.nav-bottom .nav-btn { gap: 2px; }
+  html:not(.platform-windows) .nav.nav-bottom .nav-btn span {
+    position: static; width: auto; height: auto; margin: 0; clip: auto; overflow: hidden;
+    display: block; max-width: 100%; text-overflow: ellipsis;
+    font-size: 9.5px; line-height: 1.1; letter-spacing: 0; font-weight: 500;
+  }
+}

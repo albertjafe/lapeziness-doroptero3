@@ -1,12 +1,12 @@
-const CACHE = 'estudio-v435';
+const CACHE = 'estudio-v436';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
   "./activity-core.js?v=342",
-  "./activity-dashboard.js?v=370",
+  "./activity-dashboard.js?v=436",
   "./activity-self-tracker.js?v=402",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=435",
+  "./app.js?v=436",
   "./german-rewards.js?v=426",
   "./achievement-rewards.js?v=435",
   "./piano-rewards.js?v=435",
@@ -43,7 +43,7 @@ const ASSETS = [
   "./ensemble-repertoire-catalog.js?v=381",
   "./event-data-protection.js?v=342",
   "./event-movement-selector.js?v=377",
-  "./event-planning-ui-v2.css?v=342",
+  "./event-planning-ui-v2.css?v=436",
   "./event-planning-ui-v2.js?v=342",
   "./event-planning.css?v=342",
   "./event-planning.js?v=377",
@@ -78,7 +78,7 @@ const ASSETS = [
   "./passage-tracker-resilience.js?v=372",
   "./piano-rooms-core.js?v=372",
   "./piano-rooms.css?v=369",
-  "./piano-rooms.js?v=431",
+  "./piano-rooms.js?v=436",
   "./reservation-dashboard.css?v=372",
   "./reservation-dashboard.js?v=400",
   "./planning-enhancements-v3.css?v=377",
@@ -117,8 +117,8 @@ const ASSETS = [
   "./solidity-history-editor.js?v=342",
   "./solidity-model.js?v=342",
   "./study-session-ux.css?v=342",
-  "./study-session-ux.js?v=402",
-  "./styles.css?v=427",
+  "./study-session-ux.js?v=436",
+  "./styles.css?v=436",
   "./sync-core.js?v=342",
   "./task-sync-bootstrap.js?v=342",
   "./task-sync-resilience.js?v=342",
@@ -176,7 +176,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '435');
+            target.searchParams.set('__pwa', '436');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -184,7 +184,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'435', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'436', navigated });
         } catch (error) {}
       }
     }

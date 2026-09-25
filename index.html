@@ -28,7 +28,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="supabase-sdk-v2-116-0.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=427">
+<link rel="stylesheet" href="styles.css?v=436">
 <link rel="stylesheet" href="study-session-ux.css?v=342">
 <link rel="stylesheet" href="crono-resume-layout.css?v=342">
 <link rel="stylesheet" href="piano-rooms.css?v=369">
@@ -149,29 +149,6 @@
   <path d="M40 420 Q44 400 48 382" stroke="var(--accent)" stroke-width="1" fill="none"/>
 </svg>
 <div class="view active" id="view-session">
-  <section class="session-weekly-planner" id="sessionWeeklyPlanner" aria-labelledby="weeklyPlannerTitle" hidden>
-    <header class="weekly-planner-head">
-      <div class="weekly-planner-heading">
-        <span id="weeklyPlannerTitle">PLAN SEMANAL</span>
-        <strong id="weeklyPlannerRange"></strong>
-      </div>
-      <div class="weekly-planner-actions">
-        <button type="button" onclick="changeWeeklyPlannerWeek(-1)" aria-label="Semana anterior" title="Semana anterior">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12.5 4.5-5 5 5 5"/></svg>
-        </button>
-        <button type="button" class="weekly-planner-today" onclick="resetWeeklyPlannerWeek()" aria-label="Volver a esta semana" title="Esta semana">Hoy</button>
-        <button type="button" onclick="changeWeeklyPlannerWeek(1)" aria-label="Semana siguiente" title="Semana siguiente">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7.5 4.5 5 5-5 5"/></svg>
-        </button>
-        <button type="button" class="weekly-planner-regenerate" onclick="regenerateWeeklyPlan()" aria-label="Regenerar sugerencias" title="Regenerar sugerencias sin cambiar los bloques fijados">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15.8 7A6.2 6.2 0 1 0 16 12"/><path d="M15.8 3.5V7h-3.5"/></svg>
-          <span>Reordenar</span>
-        </button>
-      </div>
-    </header>
-    <div class="weekly-planner-grid" id="weeklyPlannerGrid"></div>
-    <p class="weekly-planner-footnote" id="weeklyPlannerFootnote">Las sugerencias combinan eventos, solidez, pases y tiempo sin tocar cada obra.</p>
-  </section>
 
   <section class="session-resumen-card session-focus-card" id="sessionResumenCard" aria-label="Resumen de estudio de hoy">
     <div class="session-focus-metrics">
@@ -206,7 +183,7 @@
     <section class="desktop-access-card">
       <div class="desktop-access-head"><strong>Accesos de hoy</strong><span>Todo a un clic</span></div>
       <div class="desktop-access-grid">
-        <button type="button" onclick="openSessionArchive('week')"><span aria-hidden="true">▦</span><strong>Semana</strong><small>Plan completo</small></button>
+        <button type="button" onclick="openPremios()"><span aria-hidden="true">★</span><strong>Premios</strong><small>Hucha y logros</small></button>
         <button type="button" onclick="openSessionArchive('history')"><span aria-hidden="true">↗</span><strong>Historial</strong><small>Datos y sesiones</small></button>
         <button type="button" onclick="showView('salas')"><span aria-hidden="true">⌂</span><strong>Aulas</strong><small>Reservas Asimut</small></button>
         <button type="button" onclick="showView('deutsch')"><span aria-hidden="true">Ä</span><strong>Alemán</strong><small>Tarjetas y hucha</small></button>
@@ -223,7 +200,7 @@
   <aside class="ipad-today-access ipad-today-only" aria-label="Accesos de hoy en iPad">
     <span class="ipad-today-kicker">Accesos</span><h2>Todo a mano</h2>
     <div class="ipad-today-access-grid">
-      <button type="button" onclick="openSessionArchive('week')"><span aria-hidden="true">▦</span><strong>Semana</strong><small>Plan completo</small></button>
+      <button type="button" onclick="openPremios()"><span aria-hidden="true">★</span><strong>Premios</strong><small>Hucha y logros</small></button>
       <button type="button" onclick="openSessionArchive('history')"><span aria-hidden="true">↗</span><strong>Historial</strong><small>Sesiones y datos</small></button>
       <button type="button" onclick="showView('deutsch')"><span aria-hidden="true">Ä</span><strong>Deutsch</strong><small>Tarjetas y hucha</small></button>
       <button type="button" data-ipad-today-register><span aria-hidden="true">＋</span><strong>Registro</strong><small>Añadir minutos</small></button>
@@ -380,7 +357,6 @@
       <div id="statsDashboard" style="margin-bottom:22px"></div>
       <div id="mantenimientoSection" style="margin-bottom:20px"></div>
       <div id="solidezSection" style="margin-bottom:20px"></div>
-      <div id="eficienciaSection" style="margin-bottom:20px"></div>
       <div class="session-history-heading" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border2)">
         <div class="history-section-label">Sesiones registradas</div>
         <div style="display:flex;gap:8px;align-items:center">
@@ -1201,10 +1177,9 @@
       </summary>
       <div class="ajustes-fold-body">
       <div class="ajustes-card session-archive-links">
-        <div class="ajustes-card-head">Plan y archivo de estudio</div>
+        <div class="ajustes-card-head">Archivo de estudio</div>
         <div class="ajustes-hint">Vistas de consulta que ya no ocupan espacio en el resumen diario.</div>
         <div class="ajustes-btn-row">
-          <button class="modal-btn secondary" type="button" onclick="openSessionArchive('week')">Plan semanal</button>
           <button class="modal-btn secondary" type="button" onclick="openSessionArchive('history')">Estadísticas</button>
         </div>
       </div>
@@ -2425,7 +2400,7 @@
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=397"></script>
 <script src="crono-state-store.js?v=397"></script>
-<script src="app.js?v=435"></script>
+<script src="app.js?v=436"></script>
 <script src="manual-study-activity.js?v=430"></script>
 <script src="chamber-factor-migration.js?v=430"></script>
 <script src="daily-study-minutes.js?v=430" id="dailyStudyMinutesFixScript"></script>
@@ -2439,9 +2414,9 @@
 <script src="german-import.js?v=382"></script>
 <script src="german-session.js?v=404"></script>
 <script src="german-study.js?v=435"></script>
-<script src="study-session-ux.js?v=402"></script>
+<script src="study-session-ux.js?v=436"></script>
 <script src="crono-resume-layout.js?v=432"></script>
-<script src="piano-rooms.js?v=431"></script>
+<script src="piano-rooms.js?v=436"></script>
 <script src="reservation-dashboard.js?v=400"></script>
 <script src="ipad-today.js?v=400"></script>
 <script src="google-calendar.js?v=342"></script>

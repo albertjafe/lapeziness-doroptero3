@@ -120,23 +120,23 @@ for(const viewport of [{width:834,height:1194},{width:1194,height:834}]){
     });
   }
 
-  test(`iPad ${viewport.width}: a cancelled return preserves Semana, a committed return previews Hoy immediately`,async({page})=>{
+  test(`iPad ${viewport.width}: a cancelled return preserves Historial, a committed return previews Hoy immediately`,async({page})=>{
     await boot(page,viewport);
-    await page.evaluate(()=>{showView('session',{sessionMode:'week'});showView('cronometro');});
+    await page.evaluate(()=>{showView('session',{sessionMode:'history'});showView('cronometro');});
     await touch(page,'touchstart',100);
     await touch(page,'touchmove',viewport.width/2);
-    await expect(page.locator('#view-session')).not.toHaveClass(/session-weekly-mode/);
+    await expect(page.locator('#view-session')).not.toHaveClass(/session-history-mode/);
     await expect(page.locator('.ipad-today-next')).toBeVisible();
     await touch(page,'touchcancel',viewport.width/2);
     await expect(page.locator('body')).not.toHaveClass(/view-swipe-settling/);
     await expect(page.locator('body')).toHaveAttribute('data-view','cronometro');
-    await expect(page.locator('#view-session')).toHaveClass(/session-weekly-mode/);
+    await expect(page.locator('#view-session')).toHaveClass(/session-history-mode/);
     await touch(page,'touchstart',100);
     await touch(page,'touchmove',viewport.width-30);
     await touch(page,'touchend',viewport.width-30);
     await expect(page.locator('body')).toHaveAttribute('data-view','session');
     await expect(page.locator('body')).not.toHaveClass(/view-swipe-settling/);
-    await expect(page.locator('#view-session')).not.toHaveClass(/session-weekly-mode/);
+    await expect(page.locator('#view-session')).not.toHaveClass(/session-history-mode/);
     await expect(page.locator('.ipad-today-next')).toBeVisible();
     await expect(page.locator('body')).not.toHaveAttribute('data-swipe-preview');
   });

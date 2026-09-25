@@ -115,8 +115,10 @@ test('shows a compact daily forecast, live classrooms and separate history', asy
   fold = page.locator('.ajustes-fold');
   if (!(await fold.evaluate(element => element.open))) await fold.locator('summary').click();
   await expect(fold.getByRole('button', { name: 'Disponibilidad' })).toBeVisible();
-  await fold.getByRole('button', { name: 'Plan semanal' }).click();
-  await expect(page.locator('#sessionWeeklyPlanner')).toBeVisible();
+  // Weekly planning is done by the Professor (AI); the app no longer offers it.
+  await expect(fold.getByRole('button', { name: 'Plan semanal' })).toHaveCount(0);
+  await fold.getByRole('button', { name: 'Estadísticas' }).click();
+  await expect(page.locator('#sessionStatsSection')).toBeVisible();
   await expect(page.locator('#sessionResumenCard')).toBeHidden();
   await page.locator('.nav-btn[data-view="session"]').click();
 

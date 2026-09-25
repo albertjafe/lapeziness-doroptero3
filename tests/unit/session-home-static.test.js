@@ -23,7 +23,7 @@ describe('focused session home', () => {
     expect(index).toContain('id="sessionAulasDashboard"');
     expect(index).not.toContain('id="view-salas"');
     expect(index).not.toContain('class="session-mode-switch"');
-    expect(index).toContain("onclick=\"openSessionArchive('week')\"");
+    expect(index).not.toContain("onclick=\"openSessionArchive('week')\"");
     expect(index).toContain("onclick=\"openSessionArchive('history')\"");
     expect(index).toContain('id="sessionStatsSection" aria-labelledby="sessionStatsTitle" hidden');
     expect(index).not.toContain('id="sessionInsightStack"');
@@ -135,11 +135,11 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain('__earnedCentFloor');
   });
 
-  it('ships the complete v435 runtime offline', () => {
+  it('ships the complete v436 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('desktop-redesign.css?v=396');
-    expect(index).toContain('styles.css?v=427');
-    expect(index).toContain('app.js?v=435');
+    expect(index).toContain('styles.css?v=436');
+    expect(index).toContain('app.js?v=436');
     expect(index).toContain('crono-resume-layout.js?v=432');
     expect(index).toContain('piano-rewards.js?v=435');
     expect(index).toContain('daily-study-minutes.js?v=430');
@@ -150,11 +150,11 @@ describe('focused session home', () => {
     expect(index).toContain('german-study.js?v=435');
     expect(index).toContain('german-study.css?v=426');
     expect(index).toContain('german-session.js?v=404');
-    expect(worker).toContain("const CACHE = 'estudio-v435'");
+    expect(worker).toContain("const CACHE = 'estudio-v436'");
     expect(worker).toContain('"./local-save-resilience.js?v=431"');
     expect(worker).toContain('"./instant-sync-resilience.js?v=432"');
     expect(worker).toContain('"./desktop-redesign.css?v=396"');
-    expect(worker).toContain('"./styles.css?v=427"');
+    expect(worker).toContain('"./styles.css?v=436"');
     expect(worker).toContain('"./piano-rewards.js?v=435"');
     expect(worker).toContain('"./daily-study-minutes.js?v=430"');
     expect(worker).toContain('"./manual-study-activity.js?v=430"');

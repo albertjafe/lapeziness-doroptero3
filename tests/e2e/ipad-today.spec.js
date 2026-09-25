@@ -79,8 +79,8 @@ for (const viewport of [{ width: 834, height: 1194, name: 'vertical' }, { width:
     await page.locator('[data-ipad-today-register]').click();
     await expect(page.locator('.session-quick-disclosure')).toHaveAttribute('open', '');
     await expect(page.locator('#sessionQuickStudyObra')).toBeFocused();
-    await page.locator('.ipad-today-access').getByRole('button', { name: /Semana/ }).click();
-    await expect(page.locator('#sessionWeeklyPlanner')).toBeVisible();
+    await page.locator('.ipad-today-access').getByRole('button', { name: /Premios/ }).click();
+    await expect(page.locator('#view-premios')).toBeVisible();
     await expect(page.locator('.ipad-today-access')).toBeHidden();
     await page.evaluate(() => showView('session'));
     await page.locator('.ipad-today-access').getByRole('button', { name: /Deutsch/ }).click();

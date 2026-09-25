@@ -182,59 +182,6 @@ test('shows today study time prominently and includes the running stopwatch', as
   await expect(summary).toContainText('en directo');
 });
 
-test('builds an editable weekly study plan without horizontal scrolling', async ({ page }) => {
-  const eventDate = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
-  const data = {
-    ...fixture,
-    obras: [
-      { id: 'urgent', name: 'Ligeti · Estudio', tipo: 'obra', movimientos: [], sol: 45, solHistory: [] },
-      { id: 'weak', name: 'Scarlatti · Sonata', tipo: 'obra', movimientos: [], sol: 25, solHistory: [] },
-      { id: 'stable', name: 'Bach · Preludio', tipo: 'obra', movimientos: [], sol: 90, solHistory: [] },
-    ],
-    eventos: [{ id: 'competition', nombre: 'Concurso', tipo: 'concurso', fecha: eventDate, obras: ['urgent'] }],
-    weeklyPlans: [],
-  };
-  await page.setViewportSize({ width: 1024, height: 768 });
-  await prepare(page, { data });
-  await page.evaluate(() => setSessionSectionMode('week'));
-
-  await expect(page.locator('#sessionWeeklyPlanner')).toBeVisible();
-  await expect(page.locator('.weekly-day-card')).toHaveCount(7);
-  await expect(page.locator('.weekly-slot')).toHaveCount(14);
-  await expect(page.locator('#weeklyPlannerGrid')).toContainText('Ligeti · Estudio');
-  expect(await page.evaluate(() => getComputedStyle(document.getElementById('weeklyPlannerGrid')).gridTemplateColumns.split(' ').length)).toBe(7);
-
-  await page.locator('.weekly-slot').first().click();
-  await page.locator('#weeklySlotObraSelect').selectOption('stable');
-  await page.locator('#weeklySlotLocked').check();
-  await page.locator('#modalWeeklySlot .modal-btn.primary').click();
-  const lockedBefore = await page.evaluate(() => {
-    const plan = db.weeklyPlans.find(item => item.weekStart === _weeklyDateKey(_weeklyVisibleStart()));
-    return plan.slots.find(item => item.date === _weeklyDateKey(_weeklyVisibleStart()) && item.position === 0);
-  });
-  expect(lockedBefore).toMatchObject({ obraId: 'stable', locked: true, reasonKind: 'manual' });
-
-  await page.evaluate(() => regenerateWeeklyPlan());
-  const lockedAfter = await page.evaluate(() => {
-    const plan = db.weeklyPlans.find(item => item.weekStart === _weeklyDateKey(_weeklyVisibleStart()));
-    return plan.slots.find(item => item.date === _weeklyDateKey(_weeklyVisibleStart()) && item.position === 0);
-  });
-  expect(lockedAfter).toMatchObject({ obraId: 'stable', locked: true });
-
-  await page.setViewportSize({ width: 390, height: 844 });
-  const mobileLayout = await page.evaluate(() => {
-    const grid = document.getElementById('weeklyPlannerGrid');
-    const day = document.querySelector('.weekly-day-card');
-    return {
-      gridColumns: getComputedStyle(grid).gridTemplateColumns.split(' ').length,
-      dayColumns: getComputedStyle(day).gridTemplateColumns.split(' ').length,
-      documentFits: document.documentElement.scrollWidth <= innerWidth + 1,
-      gridFits: grid.scrollWidth <= grid.clientWidth + 1,
-    };
-  });
-  expect(mobileLayout).toEqual({ gridColumns: 1, dayColumns: 3, documentFits: true, gridFits: true });
-});
-
 test('keeps events readable, adds competition rounds and compacts completed history', async ({ page }) => {
   await prepare(page);
   const start = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);

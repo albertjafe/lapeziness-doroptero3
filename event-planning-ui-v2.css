@@ -91,3 +91,6 @@
   .mobile-competition-deadline strong{font-size:9px}
   .competition-key-grid{grid-template-columns:1fr 1fr}
 }
+
+/* El próximo plazo solo tiene sentido en Hoy y en Calendario. */
+body:not([data-view="session"]):not([data-view="calendario"]) #mobileCompetitionDeadline{display:none!important}

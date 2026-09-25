@@ -80,7 +80,7 @@
   loadStyle('obrasUnifiedLibraryStyles','./obras-unified-library.css?v=342');
   loadStyle('workDifficultyStyles','./work-difficulty.css?v=342');
   loadStyle('eventPlanningStyles','./event-planning.css?v=342');
-  loadStyle('eventPlanningUiV2Styles','./event-planning-ui-v2.css?v=342');
+  loadStyle('eventPlanningUiV2Styles','./event-planning-ui-v2.css?v=436');
   loadStyle('planningEnhancementsV3Styles','./planning-enhancements-v3.css?v=377');
   loadStyle('planningEnhancementsV4Styles','./planning-enhancements-v4.css?v=377');
   loadStyle('solidityGuideModalStyles','./solidity-guide-modal.css?v=377');

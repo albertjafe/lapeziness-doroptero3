@@ -99,7 +99,12 @@
   function cardMarkup() {
     const summary = state.summary;
     if (state.loading) return '<div class="activity-daily-empty">Leyendo la actividad digital de hoy…</div>';
-    if (state.error) return `<div class="activity-daily-empty">No he podido leer la actividad: ${esc(state.error)}<br>Tu estudio y el resto de la app siguen funcionando con normalidad.</div>`;
+    if (state.error) {
+      // Network errors are expected offline or without an account; show the
+      // cause in plain words and keep the technical detail for diagnosis.
+      const offline = /failed to fetch|network|load failed|abort/i.test(state.error);
+      return `<div class="activity-daily-empty" title="${esc(state.error)}">${offline ? 'La actividad digital no está disponible sin conexión o sin cuenta conectada.' : 'No se ha podido leer la actividad digital de hoy.'} Tu estudio y el resto de la app funcionan con normalidad.</div>`;
+    }
     if (!summary || !summary.trackedSeconds) {
       return '<div class="activity-daily-empty"><strong>Tracker preparado.</strong> Todavía no hay actividad digital recibida hoy. En Windows, ActivityWatch + nuestro sincronizador enviarán solo programa, dominio reducido, categoría y duración; los títulos y URLs completas se quedan en tu ordenador.</div>';
     }

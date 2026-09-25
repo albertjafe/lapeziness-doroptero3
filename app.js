@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-25-premios-v435';
+const APP_VERSION = '2026-09-25-limpieza-movil-v436';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -695,6 +695,16 @@ function requestCloudRefresh() {
   return _cloudRefreshPromise;
 }
 
+// The sync status lives as a small dot next to the header buttons; as a
+// floating pill it covered the screen title on phones whenever work was pending.
+function _placeSyncIndicatorInHeader() {
+  const el = document.getElementById('syncIndicator');
+  const actions = document.querySelector('.header-actions');
+  const settings = document.getElementById('headerSettingsBtn');
+  if (!el || !actions || el.parentElement === actions) return;
+  actions.insertBefore(el, settings || null);
+  el.classList.add('sync-dot');
+}
 function showSyncIndicator(msg) {
   const el = document.getElementById('syncIndicator');
   if (!el) return;
@@ -725,8 +735,13 @@ function showSyncIndicator(msg) {
   el.classList.add('visible');
   clearTimeout(el._t);
   const confirmed = /^(✓ sincronizado|✓ Supabase)$/.test(String(msg));
-  el.dataset.sync = confirmed ? 'synced' : 'pending';
-  el.title = confirmed ? 'Datos confirmados en la nube. Pulsa para comprobar otros dispositivos.' : 'Pulsa para comprobar la sincronización o conectar tu cuenta.';
+  const lower = String(msg || '').toLowerCase();
+  el.dataset.sync = confirmed ? 'synced'
+    : /⚠|error|agotó|no responde/.test(lower) ? 'error'
+    : /conecta tu cuenta|vuelve a conectar/.test(lower) ? 'local' : 'pending';
+  el.title = (msg ? msg + '. ' : '') + (confirmed ? 'Pulsa para comprobar otros dispositivos.' : 'Pulsa para comprobar la sincronización o conectar tu cuenta.');
+  el.setAttribute('aria-label', 'Sincronización: ' + (msg || ''));
+  _placeSyncIndicatorInHeader();
   if (confirmed) el._t = setTimeout(() => el.classList.remove('visible'), 8000);
 }
 
@@ -889,7 +904,7 @@ function showView(name, options) {
   }
   document.body.setAttribute('data-view', name);
   if (name === 'session') {
-    _sessionSectionMode = opts.sessionMode === 'week' || opts.sessionMode === 'history' ? opts.sessionMode : 'today';
+    _sessionSectionMode = opts.sessionMode === 'history' ? opts.sessionMode : 'today';
     syncSessionSectionModeDom();
   }
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active', 'view-swipe-arrived'));
@@ -24078,8 +24093,10 @@ function weeklySlotKeyOpen(event, date, position) {
   openWeeklySlotEditor(date, position);
 }
 
+// La planificación semanal la hace el Profesor (IA): el antiguo modo 'week'
+// y sus accesos guardados abren Hoy. db.weeklyPlans se conserva intacto.
 function setSessionSectionMode(mode) {
-  _sessionSectionMode = mode === 'week' || mode === 'history' ? mode : 'today';
+  _sessionSectionMode = mode === 'history' ? mode : 'today';
   syncSessionSectionModeDom();
   renderSessionViewContent();
   window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -28142,6 +28159,7 @@ if ('serviceWorker' in navigator) {
 }
 
 window.addEventListener('load', function() {
+  _placeSyncIndicatorInHeader();
   setTimeout(cronoHydrate, 100);
   try {
     const requestedView = new URL(window.location.href).searchParams.get('view');
