@@ -42,7 +42,15 @@ test('opens every main view without page exceptions', async ({ page }) => {
     if (text && !text.includes('ERR_NETWORK_ACCESS_DENIED')) errors.push(text);
   };
   page.on('pageerror', error => recordError(error.message));
-  page.on('console', message => { if (message.type() === 'error') recordError(message.text()); });
+  // Resource failures are checked below for local assets only: external
+  // services (Supabase, fonts) are blocked so CI never depends on the network.
+  page.on('console', message => {
+    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource')) recordError(message.text());
+  });
+  page.on('response', response => {
+    if (response.url().startsWith('http://127.0.0.1') && response.status() >= 400) errors.push(response.status() + ' ' + response.url());
+  });
+  await page.route(url => !url.href.startsWith('http://127.0.0.1'), route => route.abort());
   await prepare(page);
 
   for (const view of ['session', 'cronometro', 'obras', 'calendario', 'historial']) {
