@@ -194,7 +194,7 @@ describe('quality wiring', () => {
     const styles = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
 
     expect(html).toContain('id="sessionResumenCard" aria-label="Resumen de estudio de hoy"');
-    expect(html).toContain('<span>Llevas</span>');
+    expect(html).toContain('<span>Tiempo neto</span>');
     expect(html).toContain('<span>Proyección</span>');
     expect(app).toContain("const done = (typeof _doneMinHoy === 'function')");
     expect(app).toContain('session-focus-status');

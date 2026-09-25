@@ -181,8 +181,8 @@ describe('piano progressive taximeter',()=>{
     ];
     expect(P.summarizeDays(sessions)['2026-09-12']).toBe(4*3600);
     expect(P.streakByDay(sessions)['2026-09-12'].fullDay).toBe(true);
-    const chamber={...piano('chamber',3*3600,'2026-09-13T10:00:00Z'),activityType:'chamber',activityFactor:1/3};
-    expect(P.equivalentSeconds(chamber)).toBeCloseTo(3600,8);
+    const chamber={...piano('chamber',3*3600,'2026-09-13T10:00:00Z'),activityType:'chamber',activityFactor:.5};
+    expect(P.equivalentSeconds(chamber)).toBeCloseTo(5400,8);
   });
 
   it('projects the same shared effort into different euro balances for simultaneous goals',()=>{

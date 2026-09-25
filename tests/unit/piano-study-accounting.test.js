@@ -55,8 +55,9 @@ describe('piano rewards follow canonical study time',()=>{
     const db=database(180);db.sesiones=[];db.sessionPlants[0].runId='r';
     P.record(db.pianoRewards,{id:'r',goalId:'g',startedAt:day+'T10:00:00Z',seconds:10800,policyVersion:4,activityType:'chamber'});
     const state=P.studyState(db,day);
-    expect(state.sessions[0]).toMatchObject({seconds:10800,activityType:'chamber',activityFactor:1/3,policyVersion:4});
-    expect(P.walletSnapshot(db).points).toBe(.11);
+    expect(state.sessions[0]).toMatchObject({seconds:10800,activityType:'chamber',activityFactor:.5,policyVersion:4});
+    // 180 chamber minutes x0.5 = 90 equivalent minutes.
+    expect(P.walletSnapshot(db).points).toBe(.18);
   });
 
   it('counts two manual hours once and starts the next second in the two-hour tier',()=>{

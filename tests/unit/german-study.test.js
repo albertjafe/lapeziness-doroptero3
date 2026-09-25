@@ -58,7 +58,8 @@ describe('Deutsch reward policy and ledger',()=>{
     const spaced=[];
     for(let i=0;i<14;i++)spaced.push(session('a-'+i,900,R.shiftDay('2026-09-20',i)));
     spaced.push(session('late',900,'2026-10-20'));
-    expect(R.implantationStatus(spaced,'2026-10-20')).toMatchObject({implanted:false,windowCount:1,remainingDays:14});
+    // The 21-day window ending 20 Oct starts on 30 Sep: 4 early days + the late one.
+    expect(R.implantationStatus(spaced,'2026-10-20')).toMatchObject({implanted:false,windowCount:5,remainingDays:10});
   });
 
   it('pays one consistency point at each completed seven-day streak block',()=>{
