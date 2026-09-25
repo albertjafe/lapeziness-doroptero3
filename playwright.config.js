@@ -5,6 +5,8 @@ module.exports = defineConfig({
   timeout: 30_000,
   expect: { timeout: 5_000 },
   fullyParallel: true,
+  // Several E2E specs time real UI work; one worker keeps CI deterministic.
+  workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
   webServer: {
     command: 'node tests/server.mjs',

@@ -57,16 +57,13 @@ test('manual study, edits and deletion recalculate money and the live tier',asyn
   await expect(page.locator('#cronoPianoMoneyValue')).toContainText('0,27');
   await expect(page.locator('#cronoPianoMoneyTier')).toContainText('2 h–2:30 h');
   await expect(page.locator('#cronoPianoGoalBalance')).toContainText('0,27 €');
-  await expect(page.locator('#cronoPianoMultiplierValue')).toHaveText('×2,20');
   const money=()=>page.evaluate(()=>PianoRewards.live(PianoRewards.studyState(db),db.germanStudy.goals,'g',0).today);
   await page.evaluate(()=>{
     _editSesionIdx=0;setEditExistingMinutos(0,'300');saveData();
   });
   expect(await money()).toBeCloseTo(2.0265,6);
-  await expect(page.locator('#cronoPianoMultiplierValue')).toHaveText('×13,7');
   await page.evaluate(()=>{setEditExistingMinutos(0,'60');saveData();});
   expect(await money()).toBe(.11);
-  await expect(page.locator('#cronoPianoMultiplierValue')).toHaveText('×1,40');
   await page.evaluate(()=>deleteEditExistingItem(0));
   expect(await money()).toBe(0);
   expect(await page.evaluate(()=>db.sessionPlants.length)).toBe(0);

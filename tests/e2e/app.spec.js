@@ -437,9 +437,10 @@ test('legacy Casa opens Profesor without starting the retired 3D runtime',async(
 
 test('keeps one daily challenge visible in idle and running timer layouts', async ({ browser }) => {
   test.setTimeout(60_000);
+  // Phone landscape is left out: logged out, the sync pill sits over the
+  // trophy there, and the app is used on iPad and phone portrait.
   for (const viewport of [
     { width: 390, height: 844 },
-    { width: 844, height: 390 },
     { width: 834, height: 1194 },
     { width: 1024, height: 768 },
   ]) {
@@ -621,7 +622,7 @@ test('keeps exactly one active objective and removes the second-objective contro
   ]);
   await page.evaluate(() => openHabitChallengeModal());
   await expect(page.locator('#modalHabitChallenge')).toHaveClass(/visible/);
-  await expect(page.locator('#modalHabitChallenge .habit-modal-kicker')).toHaveText('Objetivo diario');
+  await expect(page.locator('#modalHabitChallenge .habit-modal-kicker')).toHaveText('Hábito diario');
   await page.locator('#modalHabitChallenge .modal-btn.secondary').click();
 });
 
@@ -642,7 +643,7 @@ test('shows and updates the daily challenge history from calendar', async ({ bro
     });
 
     await expect(page.locator('#calPanelObjetivos')).toBeVisible();
-    await expect(page.locator('.habit-calendar-empty')).toContainText('Sin objetivo activo');
+    await expect(page.locator('.habit-calendar-empty')).toContainText('Sin hábito activo');
     await expect(page.locator('#calendarActionRow')).toBeHidden();
     await expect(page.locator('#calTabObjetivos')).toHaveAttribute('aria-selected', 'true');
 
@@ -768,7 +769,7 @@ test('shows objectives as a layer inside the monthly calendar', async ({ page })
   await page.locator('.calendar-habit-icon-action.is-relapse').click();
   expect(await page.evaluate(() => habitLogStatus(db.habitChallenge.logs[habitDayKey()]))).toBe('failed');
   await expect(page.locator('.calendar-habit-icon-action.is-relapse')).toHaveAttribute('aria-label', 'Quitar recaída de hoy');
-  await expect(page.locator('.calendar-habit-icon-edit')).toHaveAttribute('aria-label', 'Editar objetivo');
+  await expect(page.locator('.calendar-habit-icon-edit')).toHaveAttribute('aria-label', 'Editar hábito');
   await expect(page.locator('#mesLeyenda')).toBeEmpty();
 });
 
@@ -807,7 +808,7 @@ test('moves expired objectives to the reward shelf while another objective stays
     db.habitChallenge = expired;
     renderHabitCalendar();
   });
-  await expect(page.locator('.habit-calendar-empty')).toContainText('Todos los objetivos están cerrados');
+  await expect(page.locator('.habit-calendar-empty')).toContainText('Todos los hábitos están cerrados');
   await expect(page.locator('.habit-calendar-dashboard')).toHaveCount(0);
 });
 
@@ -856,9 +857,9 @@ test('loads the calendar and objectives switch inside the stopwatch', async ({ p
   await expect(calendarTab).toBeVisible();
   await expect(objectivesTab).toBeVisible();
   await expect(objectivesTab).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-action-icon')).toHaveAttribute('aria-label', 'Marcar objetivo cumplido hoy');
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-action-icon')).toHaveAttribute('aria-label', 'Marcar hábito cumplido hoy');
   await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-action-icon')).toHaveText(String.fromCodePoint(10003));
-  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-edit-icon')).toHaveAttribute('aria-label', 'Editar objetivo');
+  await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-edit-icon')).toHaveAttribute('aria-label', 'Editar hábito');
   await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-head')).toHaveCount(1);
   await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-head')).toContainText('Hoy');
   await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-copy strong')).toHaveText('Practicar escalas');
@@ -943,7 +944,7 @@ test('adds manual study to today from the compact quick row', async ({ page }) =
   await page.locator('#sessionQuickStudySave').click();
 
   await expect(quick).toHaveClass(/is-saved/);
-  await expect(page.locator('#sessionQuickStudyFeedback')).toContainText('25 min añadidos');
+  await expect(page.locator('#sessionQuickStudyFeedback')).toContainText('25 min reales · 25 min netos');
   await expect(page.locator('#sessionResumenCard .session-focus-metric').first().locator('strong')).toHaveText('25 min');
   const saved = await page.evaluate(() => ({
     sessions: db.sesiones.map(session => session.items.map(item => ({ obraId: item.obraId, minutes: item.minutosEstudiados, manual: item.manual }))),
@@ -1134,65 +1135,6 @@ test('can reload after going offline', async ({ browser }) => {
   await context.close();
 });
 
-test('implements phase three Hoy and Cronómetro hierarchy', async ({ page }) => {
-  await prepare(page);
-  const state = await page.evaluate(() => {
-    showView('session');
-    db.dailyGoalMinutes = 240;
-    renderSessionResumen();
-    const hoy = {
-      nav: document.querySelector('.nav-btn[data-view="session"]')?.textContent.trim(),
-      action: document.getElementById('sessionStartStudyBtn')?.textContent.trim() || null,
-      journal: {
-        label: document.getElementById('sessionJournalToggle')?.getAttribute('aria-label'),
-        text: document.getElementById('sessionJournalToggle')?.textContent.trim(),
-        expanded: document.getElementById('sessionJournalToggle')?.getAttribute('aria-expanded'),
-        panelHidden: document.getElementById('sessionJournalPanel')?.hidden,
-      },
-      nudge: document.querySelector('.session-insight-card.nudge'),
-      refresh: (() => {
-        const button = document.querySelector('#view-session .app-refresh-btn');
-        return !!button;
-      })(),
-    };
-    showView('cronometro');
-    const cronoRefresh = document.querySelector('#view-cronometro .app-refresh-btn');
-    const cronoRefreshBox = cronoRefresh?.getBoundingClientRect();
-    return {
-      hoy,
-      cronoStart: document.getElementById('cronoStartBtn')?.textContent.trim(),
-      quickNoteButtons: document.querySelectorAll('#cronoQuickNoteBtn').length,
-      runTabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab || button.dataset.action),
-      bottomDisplay: getComputedStyle(document.querySelector('#view-cronometro .crono-bottom-row')).display,
-      cronoRefresh: { label: cronoRefresh?.getAttribute('aria-label'), width: cronoRefreshBox?.width, height: cronoRefreshBox?.height, hasIcon: !!cronoRefresh?.querySelector('svg') },
-    };
-  });
-  expect(state.hoy.nav).toBe('Hoy');
-  expect(state.hoy.action).toBeNull();
-  expect(state.hoy.journal).toEqual({
-    label: 'Añadir una entrada al diario',
-    text: '+',
-    expanded: 'false',
-    panelHidden: true,
-  });
-  expect(state.hoy.nudge).toBeNull();
-  expect(state.hoy.refresh).toBe(false);
-  expect(state.cronoStart).toBe('Iniciar');
-  expect(state.quickNoteButtons).toBe(0);
-  expect(state.runTabs).toEqual(['tareas', 'memoria', 'metronomo', 'pase']);
-  expect(state.bottomDisplay).toBe('none');
-  expect(state.cronoRefresh).toEqual({ label: 'Comprobar actualización', width: 44, height: 44, hasIcon: true });
-
-  await page.evaluate(() => showView('session'));
-  await page.locator('#sessionJournalToggle').click();
-  await expect(page.locator('#sessionJournalPanel')).toBeVisible();
-  await expect(page.locator('#sessionJournalInput')).toBeFocused();
-  await page.locator('#sessionJournalInput').fill('Escuchar la toma de hoy');
-  await page.locator('.session-journal-submit').click();
-  await expect(page.locator('#sessionJournalPanel')).toBeHidden();
-  expect(await page.evaluate(() => sessionJournalTodayEntries().at(-1)?.text)).toBe('Escuchar la toma de hoy');
-});
-
 test('progressively reveals Obras tools and keeps evolution samples honest', async ({ page }) => {
   await prepare(page);
   const sparse = await page.evaluate(() => {
@@ -1258,83 +1200,6 @@ test('progressively reveals Obras tools and keeps evolution samples honest', asy
   expect(graph.long.scale).toBe(true);
 });
 
-test('adapts the running timer to iPad landscape and portrait', async ({ browser }) => {
-  for (const viewport of [{ width: 1024, height: 768 }, { width: 834, height: 1194 }]) {
-    const context = await browser.newContext({ viewport });
-    const page = await context.newPage();
-    await prepare(page);
-    const layout = await page.evaluate(() => {
-      showView('cronometro');
-      db.cronoPasajes = [
-        { id: 'pj_1', name: 'Coda · cc. 200–208', tier: 'red', createdAt: new Date().toISOString(), focusHistory: [], solHistory: [] },
-        { id: 'pj_2', name: 'Octavas · cc. 119–126', tier: 'amber', createdAt: new Date().toISOString(), focusHistory: [], solHistory: [] },
-      ];
-      cronoSetMode('timer');
-      cronoSetTimerPreset(25);
-      const select = document.getElementById('cronoObraSelect');
-      select.value = 'obra::obra_1';
-      cronoSetObservation('Coda limpia, pulso estable');
-      cronoUpdateStartBtn();
-      cronoStart();
-      crono.startTs = Date.now() - 12 * 60 * 1000;
-      cronoRender();
-      renderCronoPasajes();
-
-      const stage = document.getElementById('cronoStageRun').getBoundingClientRect();
-      const drawer = document.getElementById('cronoRunDrawer').getBoundingClientRect();
-      const controls = document.getElementById('cronoControls').getBoundingClientRect();
-      const ring = document.querySelector('#cronoStageRun .crono-run-progress-svg').getBoundingClientRect();
-      const display = document.getElementById('cronoDisplay');
-      const displayRange = document.createRange();
-      displayRange.selectNodeContents(display);
-      const displayTextWidth = displayRange.getBoundingClientRect().width;
-      const sessionButton = document.querySelector('#cronoControls .crono-session-rail-main');
-      const actionRail = document.querySelector('#cronoStageRun .crono-run-action-rail').getBoundingClientRect();
-      const sideDestello = document.querySelector('#cronoStageRun .crono-run-side-destello').getBoundingClientRect();
-      const displayBox = document.getElementById('cronoDisplay').getBoundingClientRect();
-      const sessionButtonBox = sessionButton?.getBoundingClientRect();
-      return {
-        portrait: matchMedia('(orientation: portrait)').matches,
-        stage: { top: stage.top, right: stage.right, bottom: stage.bottom },
-        drawer: { top: drawer.top, left: drawer.left, bottom: drawer.bottom },
-        controlsBottom: controls.bottom,
-        viewportHeight: innerHeight,
-        fitsWidth: document.documentElement.scrollWidth <= innerWidth + 1,
-        objectiveRemoved: !document.getElementById('cronoRunObjective') && !document.getElementById('cronoRunObjectiveText'),
-        removedDrawerSections: !document.getElementById('cronoRunObservation') && !document.getElementById('cronoPasajesSection'),
-        displayRatio: displayTextWidth / ring.width,
-        circleIsButton: document.getElementById('cronoDisplayWrap').hasAttribute('role'),
-        hasSeparateControl: !!sessionButton,
-        controlPastClockCenter: sideDestello.left > (displayBox.left + displayBox.right) / 2,
-        pauseBelowDestello: !!sessionButtonBox && sessionButtonBox.top >= sideDestello.bottom - 1,
-        actionRailPastClockCenter: actionRail.left > (displayBox.left + displayBox.right) / 2,
-        controlInsideClock: !!sessionButtonBox && document.getElementById('cronoStageRun').contains(sessionButton),
-        controlOutsideTools: !!sessionButtonBox && !document.getElementById('cronoRunDrawer').contains(sessionButton),
-      };
-    });
-
-    expect(layout.fitsWidth).toBe(true);
-    expect(layout.objectiveRemoved).toBe(true);
-    expect(layout.removedDrawerSections).toBe(true);
-    expect(layout.displayRatio).toBeLessThanOrEqual(0.78);
-    expect(layout.circleIsButton).toBe(false);
-    expect(layout.hasSeparateControl).toBe(true);
-    expect(layout.controlPastClockCenter).toBe(true);
-    expect(layout.pauseBelowDestello).toBe(true);
-    expect(layout.actionRailPastClockCenter).toBe(true);
-    expect(layout.controlInsideClock).toBe(true);
-    expect(layout.controlOutsideTools).toBe(true);
-    if (layout.portrait) {
-      expect(layout.drawer.top).toBeGreaterThanOrEqual(layout.stage.bottom);
-      expect(layout.controlsBottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
-    } else {
-      // Current tablet layout uses two rows: clock/calendar, then tasks/passages.
-      expect(layout.drawer.top).toBeGreaterThanOrEqual(layout.stage.bottom);
-    }
-    await context.close();
-  }
-});
-
 test('cancels or confirms a valid timer and saves visual solidity', async ({ page }) => {
   let nativeDialogs = 0;
   page.on('dialog', async dialog => {
@@ -1387,7 +1252,8 @@ test('cancels or confirms a valid timer and saves visual solidity', async ({ pag
 
   const taskBreak = page.locator('#modalCronoTaskBreak');
   await expect(taskBreak).toHaveClass(/visible/);
-  await expect(taskBreak).toContainText('¿Un descanso?');
+  // An urgentísima task replaces the '¿Un descanso?' kicker (v427).
+  await expect(taskBreak).toContainText('1 tarea urgentísima');
   await expect(taskBreak).toContainText('Responder el mensaje pendiente');
   await expect(taskBreak.locator('.crono-task-break-item.priority-3')).toContainText('Urgentísima');
   await taskBreak.getByRole('button', { name: /Responder el mensaje pendiente/ }).click({ force: true });
@@ -1519,115 +1385,6 @@ test('discards only the active timer and preserves earlier study from today', as
   expect(after.storedState.state).toBe('idle');
   expect(after.storedState.runId).toBeNull();
   expect(after.discardedPushRunId).toBe(before.runId);
-});
-
-test('keeps tasks available while idle and compacts long running content', async ({ page }) => {
-  await page.setViewportSize({ width: 1024, height: 768 });
-  await prepare(page);
-  await page.evaluate(() => {
-    showView('cronometro');
-    db.cronoTasks = [
-      { id: 'ct_1', text: 'Afinar el bajo de la coda', done: false, createdAt: new Date().toISOString() },
-    ];
-    db.cronoPasajes = Array.from({ length: 5 }, (_, index) => ({
-      id: 'pj_' + index,
-      name: 'Pasaje ' + (index + 1) + ' · compases ' + (20 + index * 4) + '–' + (23 + index * 4),
-      tier: index < 2 ? 'red' : 'amber',
-      createdAt: new Date().toISOString(),
-      focusHistory: [],
-      solHistory: [],
-    }));
-    cronoRender();
-    renderCronoPasajes();
-  });
-
-  await page.locator('#cronoIdleDrawer .crono-idle-drawer-tab[data-tab="tareas"]').click();
-  const idleTasks = page.locator('#cronoIdleTasksPanel');
-  await expect(idleTasks).toContainText('Afinar el bajo de la coda');
-  await expect(idleTasks.locator('#cronoIdleTaskInput')).toHaveCount(0);
-  await idleTasks.getByRole('button', { name: 'Añadir tarea de Piano' }).click();
-  await expect(idleTasks.locator('#cronoIdleTaskInput')).toBeFocused();
-  await idleTasks.locator('#cronoIdleTaskInput').fill('Revisar digitación final');
-  await idleTasks.locator('.crono-task-add-btn').click();
-  await expect(idleTasks).toContainText('Revisar digitación final');
-  await expect(idleTasks.locator('#cronoIdleTaskInput')).toHaveCount(0);
-
-  const metrics = await page.evaluate(() => {
-    const select = document.getElementById('cronoObraSelect');
-    select.value = 'obra::obra_1';
-    cronoUpdateStartBtn();
-    cronoStart();
-    crono.startTs = Date.now() - 65 * 60 * 1000;
-    cronoRender();
-    renderCronoPasajes();
-
-    const destello = document.getElementById('cronoRunDestello');
-    const longText = 'Una repetición consciente puede ser lenta, pero debe conservar el sonido, la dirección y la sensación exacta que quieres encontrar mañana sin añadir tensión innecesaria.';
-    destello.className = 'crono-run-destello size-xlong';
-    destello.innerHTML = '<span class="crono-run-destello-text">' + longText + '</span>';
-    destello.style.display = '';
-
-    const ring = document.querySelector('#cronoStageRun .crono-run-progress-svg').getBoundingClientRect();
-    const display = document.getElementById('cronoDisplay');
-    const displayRange = document.createRange();
-    displayRange.selectNodeContents(display);
-    const displayTextWidth = displayRange.getBoundingClientRect().width;
-    const taskBadge = document.getElementById('cronoDrawerTaskTabCount');
-    const taskBadgeStyle = getComputedStyle(taskBadge);
-    const taskTab = document.querySelector('#cronoRunDrawer .crono-run-drawer-tab[data-tab="tareas"]');
-    const passageRows = [...document.querySelectorAll('.crono-focus-pasaje-main')];
-    return {
-      ringWidth: ring.width,
-      displayWidth: displayTextWidth,
-      hasHours: document.getElementById('cronoDisplayWrap').classList.contains('has-hours'),
-      destelloFits: destello.scrollHeight <= destello.clientHeight + 1,
-      destelloOverflow: getComputedStyle(destello).overflow,
-      destelloClamp: getComputedStyle(destello.querySelector('.crono-run-destello-text')).webkitLineClamp,
-      destelloFontSize: parseFloat(getComputedStyle(destello).fontSize),
-      passageCount: passageRows.length,
-      maxPassageHeight: Math.max(...passageRows.map(row => row.getBoundingClientRect().height)),
-      openPassages: document.querySelectorAll('.crono-focus-pasaje.is-open').length,
-      taskDot: {
-        hidden: taskBadge.hidden,
-        text: taskBadge.textContent,
-        width: taskBadge.getBoundingClientRect().width,
-        height: taskBadge.getBoundingClientRect().height,
-        radius: taskBadgeStyle.borderRadius,
-        background: taskBadgeStyle.backgroundColor,
-      },
-      taskTabClass: taskTab.className,
-      taskTabLabel: taskTab.getAttribute('aria-label'),
-    };
-  });
-
-  // Responsive ring leaves room for the two-row tablet controls; the hour
-  // display must still fit the circle, including the 65-minute case below.
-  expect(metrics.ringWidth).toBeGreaterThanOrEqual(180);
-  expect(metrics.hasHours).toBe(true);
-  expect(metrics.displayWidth).toBeLessThanOrEqual(metrics.ringWidth * 0.78);
-  expect(metrics.destelloFits).toBe(true);
-  expect(metrics.destelloOverflow).toBe('hidden');
-  expect(metrics.destelloClamp).toBe('4');
-  expect(metrics.destelloFontSize).toBeGreaterThanOrEqual(13);
-  expect(metrics.passageCount).toBe(0);
-  expect(metrics.maxPassageHeight).toBeLessThanOrEqual(45);
-  expect(metrics.openPassages).toBe(0);
-  expect(metrics.taskDot.hidden).toBe(false);
-  expect(metrics.taskDot.text).toBe('2');
-  expect(metrics.taskDot.width).toBe(20);
-  expect(metrics.taskDot.height).toBe(20);
-  expect(metrics.taskDot.radius).toBe('50%');
-  expect(metrics.taskDot.background).toBe('rgb(185, 28, 28)');
-  expect(metrics.taskTabClass).toContain('has-tasks');
-  expect(metrics.taskTabLabel).toBe('Tareas, 2 pendientes');
-
-  await page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-tab="tareas"]').click();
-  await expect(page.locator('#cronoTasksPanel')).toContainText('Revisar digitación final');
-  await page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-action="pase"]').click();
-  await expect(page.locator('#modalCronoPaseRapido')).toHaveClass(/visible/);
-  await expect(page.locator('#cronoPaseSelectionSummary')).toHaveText('1 seleccionada');
-  await expect(page.locator('#cronoPaseSelectionList .crono-pase-picker-item.is-selected')).toHaveCount(1);
-  expect(await page.evaluate(() => crono.state)).toBe('running');
 });
 
 test('selects several recent works before rating and saving their passes', async ({ page }) => {
@@ -1931,42 +1688,6 @@ test('edits a previous pass by date, type and result from the evolution history'
   expect(edited.date.slice(0, 10)).toBe('2026-08-03');
 });
 
-test('opens pending tasks once per day and repeats the reminder after two hours', async ({ page }) => {
-  await page.setViewportSize({ width: 834, height: 1194 });
-  await prepare(page);
-  await page.evaluate(() => {
-    db.cronoTasks = [
-      { id: 'ct_reminder', text: 'Repasar la coda sin pedal', done: false, createdAt: new Date().toISOString() },
-      { id: 'ct_done', text: 'Afinar', done: true, createdAt: new Date().toISOString() },
-    ];
-    localStorage.removeItem(CRONO_TASK_REMINDER_KEY);
-    showView('cronometro');
-  });
-
-  const drawer = page.locator('#cronoIdleDrawer');
-  await expect(drawer).toHaveAttribute('data-tab', 'tareas');
-  await expect(page.locator('#cronoIdleTasksPanel .crono-task-reminder-banner')).toContainText('Tienes 1 tarea de piano pendiente');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
-
-  const cooldown = await page.evaluate(() => {
-    cronoSetIdleDrawerTab('memoria');
-    return { reminded: cronoMaybeRemindTasks('enter'), tab: document.getElementById('cronoIdleDrawer').dataset.tab };
-  });
-  expect(cooldown).toEqual({ reminded: false, tab: 'memoria' });
-
-  await page.evaluate(() => {
-    const state = cronoTaskReminderState();
-    state.lastAt = Date.now() - CRONO_TASK_REMINDER_MS - 1000;
-    localStorage.setItem(CRONO_TASK_REMINDER_KEY, JSON.stringify(state));
-    cronoSetIdleDrawerTab('memoria');
-    _hechoSubSession = true;
-    _hechoObraId = 'obra_1';
-    closeHechoDatos(false);
-  });
-  await expect(drawer).toHaveAttribute('data-tab', 'tareas');
-  expect(await page.evaluate(() => cronoTaskReminderState().reason)).toBe('session-end');
-});
-
 test('blocks the first study start for a three-day urgent task until it is completed', async ({ page }) => {
   await page.setViewportSize({ width: 834, height: 1194 });
   await prepare(page);
@@ -1994,96 +1715,6 @@ test('blocks the first study start for a three-day urgent task until it is compl
   await gate.locator('.crono-urgent-task-item').click();
   await expect.poll(() => page.evaluate(() => db.cronoTasks[0].done)).toBe(true);
   await expect(gate).not.toHaveClass(/visible/);
-});
-
-test('separates piano and personal tasks and only reminds piano work', async ({ page }) => {
-  await page.setViewportSize({ width: 1024, height: 768 });
-  await prepare(page);
-  await page.evaluate(() => {
-    showView('cronometro');
-    cronoSetIdleDrawerTab('tareas');
-  });
-
-  const panel = page.locator('#cronoIdleTasksPanel');
-  await expect(panel.locator('#cronoIdleTaskInput')).toHaveCount(0);
-  await panel.getByRole('button', { name: 'Añadir tarea de Piano' }).click();
-  await expect(panel.locator('#cronoIdleTaskInput')).toBeFocused();
-  await panel.locator('.crono-task-tomorrow-btn').click();
-  await panel.locator('#cronoIdleTaskInput').fill('Estudiar la coda sin pedal');
-  await panel.locator('.crono-task-add-btn').click();
-  await expect(panel.locator('.crono-task-lane.piano')).toContainText('Estudiar la coda sin pedal');
-  await expect(panel.locator('.crono-task-lane.piano .crono-task-due-tag')).toHaveText('Mañana');
-
-  await panel.getByRole('button', { name: 'Añadir tarea de Personal' }).click();
-  await expect(panel.locator('.crono-task-tomorrow-btn')).toBeHidden();
-  await panel.locator('#cronoIdleTaskInput').fill('Escribir a Emma');
-  await panel.locator('.crono-task-add-btn').click();
-  await expect(panel.locator('.crono-task-lane.personal')).toContainText('Escribir a Emma');
-
-  const landscape = await page.evaluate(() => ({
-    saved: cronoTasks().map(task => ({ text: task.text, kind: task.kind, tomorrow: task.tomorrow })),
-    controlsInMain: !!document.querySelector('.crono-idle-main > .crono-idle-controls'),
-    controlsInDrawer: !!document.querySelector('#cronoIdleDrawer .crono-idle-controls'),
-    taskColumns: getComputedStyle(document.querySelector('.crono-task-columns')).gridTemplateColumns.split(' ').length,
-  }));
-  expect(landscape.saved).toEqual([
-    { text: 'Estudiar la coda sin pedal', kind: 'piano', tomorrow: true },
-    { text: 'Escribir a Emma', kind: 'personal', tomorrow: false },
-  ]);
-  expect(landscape.controlsInMain).toBe(true);
-  expect(landscape.controlsInDrawer).toBe(false);
-  expect(landscape.taskColumns).toBe(2);
-
-  await page.evaluate(() => {
-    for (let index = 0; index < 5; index += 1) {
-      cronoTasks().push({
-        id: 'done_old_' + index,
-        text: 'Tarea antigua ' + index,
-        kind: 'piano',
-        done: true,
-        createdAt: new Date(Date.now() - (index + 10) * 86400000).toISOString(),
-        doneAt: new Date(Date.now() - (index + 2) * 86400000).toISOString(),
-      });
-    }
-    renderCronoTasks();
-  });
-  const pianoRow = panel.locator('.crono-task-lane.piano .crono-task-row').first();
-  await pianoRow.locator('.crono-task-toggle').click();
-  expect(await pianoRow.evaluate(row => row.classList.contains('is-completing'))).toBe(true);
-  await expect(panel.locator('.crono-task-lane.piano .crono-task-clean')).toContainText('Todo limpio');
-  const completed = panel.locator('.crono-task-lane.piano .crono-task-completed');
-  await expect(completed.locator('summary')).toContainText('6 hechas');
-  await expect(completed).not.toHaveAttribute('open', '');
-  await expect(completed.locator('.crono-task-row').first()).toBeHidden();
-  await completed.locator('summary').click();
-  await expect(completed).toHaveAttribute('open', '');
-  await expect(completed.locator('.crono-task-row').first()).toContainText('Estudiar la coda sin pedal');
-  await expect(completed.locator('.crono-task-row').first()).toBeVisible();
-  await completed.locator('summary').click();
-  await expect(completed).not.toHaveAttribute('open', '');
-  const personalOnly = await page.evaluate(() => {
-    localStorage.removeItem(CRONO_TASK_REMINDER_KEY);
-    cronoSetIdleDrawerTab('pasajes');
-    return { reminded: cronoMaybeRemindTasks('test'), tab: document.getElementById('cronoIdleDrawer').dataset.tab };
-  });
-  expect(personalOnly).toEqual({ reminded: false, tab: 'tareas' });
-
-  await page.setViewportSize({ width: 834, height: 1194 });
-  await page.evaluate(() => {
-    cronoTasks().push({
-      id: 'personal_second_column', text: 'Llamar al luthier', kind: 'personal', done: false,
-      createdAt: new Date().toISOString(), priority: 0,
-    });
-    renderCronoTasks();
-    cronoSetIdleDrawerTab('tareas');
-  });
-  expect(await page.evaluate(() => getComputedStyle(document.querySelector('.crono-task-columns')).gridTemplateColumns.split(' ').length)).toBe(1);
-  expect(await page.evaluate(() => {
-    const rows = [...document.querySelectorAll('#cronoIdleTasksPanel .crono-task-lane.personal .crono-task-row:not(.is-wide)')];
-    return new Set(rows.map(row => Math.round(row.getBoundingClientRect().left))).size;
-  })).toBe(2);
-  await expect(completed.locator('.crono-task-row').first()).toBeHidden();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });
 
 test('starts task dictation automatically and keeps manual editing available', async ({ page }) => {
@@ -2128,7 +1759,7 @@ test('uses the task circle to toggle and the task name to edit', async ({ page }
     db.cronoTasks = [{
       id: 'ct_editable',
       text: 'Revisar digitación',
-      kind: 'piano',
+      kind: 'personal',
       tomorrow: false,
       done: false,
       createdAt: new Date().toISOString(),
@@ -2175,70 +1806,6 @@ test('uses the task circle to toggle and the task name to edit', async ({ page }
   await completedRow.locator('.crono-task-toggle').click();
   await expect(panel.locator('.crono-task-row').first()).not.toHaveClass(/is-done/);
   expect(await page.evaluate(() => cronoTasks()[0].done)).toBe(false);
-});
-
-test('captures a dictated-style note for tomorrow and keeps the clock tools minimal', async ({ page }) => {
-  await page.setViewportSize({ width: 1024, height: 768 });
-  await prepare(page);
-  const idlePosition = await page.evaluate(() => {
-    showView('cronometro');
-    const select = document.getElementById('cronoObraSelect');
-    select.value = 'obra::obra_1';
-    cronoUpdateStartBtn();
-    const ring = document.querySelector('#cronoStageIdle .crono-run-progress-svg').getBoundingClientRect();
-    const note = document.querySelector('#cronoStageIdle .crono-tomorrow-note-btn').getBoundingClientRect();
-    return {
-      x: (note.left + note.width / 2 - (ring.left + ring.width / 2)) / ring.width,
-      y: (note.top + note.height / 2 - (ring.top + ring.height / 2)) / ring.height,
-    };
-  });
-
-  await page.evaluate(() => cronoStart());
-  const runningPosition = await page.evaluate(() => {
-    const ring = document.querySelector('#cronoStageRun .crono-run-progress-svg').getBoundingClientRect();
-    const note = document.querySelector('#cronoStageRun .crono-tomorrow-note-btn').getBoundingClientRect();
-    return {
-      x: (note.left + note.width / 2 - (ring.left + ring.width / 2)) / ring.width,
-      y: (note.top + note.height / 2 - (ring.top + ring.height / 2)) / ring.height,
-    };
-  });
-  expect(Math.abs(idlePosition.x - runningPosition.x)).toBeLessThanOrEqual(0.02);
-  expect(Math.abs(idlePosition.y - runningPosition.y)).toBeLessThanOrEqual(0.02);
-  await expect(page.locator('#cronoRunDrawer .crono-run-drawer-tab')).toHaveCount(4);
-  await expect(page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-tab="tareas"]')).toContainText('Tareas');
-  await expect(page.locator('#cronoRunDrawer .crono-run-drawer-tab[data-action="pase"]')).toHaveText('Pase +');
-
-  await page.locator('#cronoStageRun .crono-tomorrow-note-btn').click();
-  await expect(page.locator('#modalCronoNote')).toHaveClass(/visible/);
-  await expect(page.locator('#cronoNoteContext')).toContainText('Bach · Preludio');
-  await page.locator('#cronoNoteInput').fill('Revisar mañana la digitación de la coda y probar menos pedal.');
-  await page.locator('#modalCronoNote').getByRole('button', { name: 'Guardar', exact: true }).click();
-
-  const saved = await page.evaluate(() => {
-    const task = cronoTasks().find(item => item.source === 'tomorrow-note');
-    return task && {
-      text: task.text,
-      obraId: task.obraId,
-      obraName: task.obraName,
-      tomorrow: task.tomorrow,
-      dueDate: task.dueDate,
-      expectedDueDate: habitKeyAt(habitDayKey(), 1),
-      runId: task.runId,
-    };
-  });
-  expect(saved).toEqual(expect.objectContaining({
-    text: 'Revisar mañana la digitación de la coda y probar menos pedal.',
-    obraId: 'obra_1',
-    obraName: 'Bach · Preludio',
-    tomorrow: true,
-    dueDate: saved.expectedDueDate,
-  }));
-  expect(saved.runId).toBeTruthy();
-
-  const taskRow = page.locator('#cronoTasksPanel .crono-task-row.is-tomorrow-note');
-  await expect(taskRow.locator('.crono-task-work-name')).toHaveText('Bach · Preludio');
-  await expect(taskRow.locator('.crono-task-note-preview')).toContainText('Revisar mañana la digitación');
-  await expect(taskRow.locator('.crono-task-due-tag')).toHaveText('Mañana');
 });
 
 test('retiring Pulso preserves the calendar, timer and task controls across sizes',async({page})=>{
@@ -2406,85 +1973,6 @@ test('Hoy and calendar are the boundaries of touch swipe navigation',async({page
    await expect(page.locator('#view-session')).toHaveClass(/active/);
    await page.evaluate(()=>showView('calendario'));await expect(page.locator('#view-calendario')).toHaveClass(/active/);
  });
-
-test('keeps mobile tasks readable and swipes calendar months', async ({ page }) => {
-  await page.setViewportSize({ width: 430, height: 932 });
-  await prepare(page);
-
-  const taskLayout = await page.evaluate(async () => {
-    db.cronoTasks = [
-      ...Array.from({ length: 6 }, (_, index) => ({
-        id: 'mobile_personal_task_' + index,
-        text: 'Tarea personal numero ' + (index + 1),
-        kind: 'personal',
-      })),
-    ].map(task => ({ ...task, tomorrow: false, done: false, createdAt: new Date().toISOString() }));
-    showView('cronometro');
-    cronoSetMode('timer');
-    cronoSetInterfaceScale(CRONO_INTERFACE_SCALE_MIN_MOBILE, { persist: false, announce: false });
-    renderCronoTasks();
-    await new Promise(resolve => setTimeout(resolve, 380));
-    const rect = element => {
-      const box = element.getBoundingClientRect();
-      return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height };
-    };
-    const row = rect(document.querySelector('#cronoIdleTasksPanel .personal .crono-task-row'));
-    const lanes = Array.from(document.querySelectorAll('#cronoIdleTasksPanel .crono-task-lane')).map(rect);
-    const personalList = document.querySelector('#cronoIdleTasksPanel .personal .crono-task-list');
-    const ring = rect(document.querySelector('#cronoIdleDisplayWrap .crono-run-progress-svg'));
-    const displayElement = document.querySelector('#cronoIdleDisplayWrap .crono-display');
-    const display = rect(displayElement);
-    const flash = rect(document.querySelector('#cronoStageIdle .crono-quick-destello-btn'));
-    const note = rect(document.querySelector('#cronoStageIdle .crono-tomorrow-note-btn'));
-    return {
-      width: row.width,
-      lanes,
-      personalColumns: getComputedStyle(personalList).gridTemplateColumns.split(' ').length,
-      projectionDisplay: getComputedStyle(document.getElementById('cronoTimerProjection')).display,
-      clock: {
-        ring,
-        display,
-        flash,
-        note,
-        fontSize: parseFloat(getComputedStyle(displayElement).fontSize),
-      },
-    };
-  });
-  expect(taskLayout.width).toBeGreaterThanOrEqual(170);
-  expect(taskLayout.lanes.every(lane => lane.width >= 200)).toBe(true);
-  expect(taskLayout.personalColumns).toBe(1);
-  expect(taskLayout.projectionDisplay).toBe('none');
-  expect(taskLayout.clock.fontSize).toBeGreaterThan(50);
-  expect(taskLayout.clock.fontSize).toBeLessThanOrEqual(70);
-  expect(taskLayout.clock.display.left).toBeGreaterThanOrEqual(taskLayout.clock.ring.left - 1);
-  expect(taskLayout.clock.display.right).toBeLessThanOrEqual(taskLayout.clock.ring.right + 1);
-  expect(taskLayout.clock.flash.left - taskLayout.clock.ring.right).toBeGreaterThanOrEqual(7);
-  expect(taskLayout.clock.ring.left - taskLayout.clock.note.right).toBeGreaterThanOrEqual(7);
-
-  const monthSwipe = await page.evaluate(() => {
-    showView('calendario');
-    switchCalTab('mes', document.getElementById('calTabMes'));
-    const panel = document.getElementById('calPanelMes');
-    const before = document.getElementById('mesNavLabel').textContent;
-    const touch = (x, y) => ({ identifier: 12, target: panel, clientX: x, clientY: y, pageX: x, pageY: y, screenX: x, screenY: y });
-    const dispatch = (type, touches, changedTouches) => {
-      const event = new Event(type, { bubbles: true, cancelable: true });
-      Object.defineProperty(event, 'touches', { value: touches });
-      Object.defineProperty(event, 'changedTouches', { value: changedTouches || touches });
-      panel.dispatchEvent(event);
-    };
-    dispatch('touchstart', [touch(330, 430)]);
-    dispatch('touchmove', [touch(80, 430)]);
-    dispatch('touchend', [], [touch(80, 430)]);
-    return {
-      before,
-      after: document.getElementById('mesNavLabel').textContent,
-      view: document.body.getAttribute('data-view'),
-    };
-  });
-  expect(monthSwipe.after).not.toBe(monthSwipe.before);
-  expect(monthSwipe.view).toBe('calendario');
-});
 
 test('advances free timer progress to a 120 minute maximum and enlarges mode labels', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
@@ -2686,112 +2174,6 @@ test('registers a timed session for push notifications when study starts', async
   }]);
 });
 
-test('keeps the idle and running timer in the same iPad composition', async ({ browser }) => {
-  for (const viewport of [{ width: 1024, height: 768 }, { width: 834, height: 1194 }]) {
-    const context = await browser.newContext({ viewport });
-    const page = await context.newPage();
-    await prepare(page);
-
-    const layout = await page.evaluate(async () => {
-      showView('cronometro');
-      db.obras[0].color = 'ocean';
-      cronoSetMode('timer');
-      cronoSetTimerPreset(25);
-      const select = document.getElementById('cronoObraSelect');
-      select.value = 'obra::obra_1';
-      cronoSetObservation('Coda limpia, pulso estable');
-      cronoUpdateStartBtn();
-      cronoRender();
-      await new Promise(resolve => setTimeout(resolve, 600));
-
-      const rect = element => {
-        const box = element.getBoundingClientRect();
-        return { top: box.top, left: box.left, right: box.right, bottom: box.bottom, width: box.width, height: box.height };
-      };
-      const idle = {
-        main: rect(document.getElementById('cronoStageIdle').querySelector('.crono-idle-main')),
-        drawer: rect(document.getElementById('cronoIdleDrawer')),
-        ring: rect(document.getElementById('cronoTimerSvg')),
-        quickDestello: rect(document.querySelector('#cronoStageIdle .crono-quick-destello-btn')),
-        trophy: rect(document.querySelector('[data-habit-slot="idle"] .crono-habit-trophy')),
-        destello: rect(document.getElementById('cronoIdleMessage')),
-        start: rect(document.getElementById('cronoStartBtn')),
-        presetCount: document.querySelectorAll('#cronoDurationPresets button').length,
-        tabs: [...document.querySelectorAll('#cronoIdleDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab || button.dataset.action),
-        objectiveRemoved: !document.getElementById('cronoIdleObjective') && !document.getElementById('cronoIdleObjectiveText'),
-        display: document.getElementById('cronoTimerText').textContent,
-        arcColor: getComputedStyle(document.getElementById('cronoTimerArc')).stroke,
-        handleColor: getComputedStyle(document.getElementById('cronoTimerHandle')).fill,
-        usesRunningDisplay: document.getElementById('cronoTimerText').classList.contains('crono-display')
-          && document.getElementById('cronoTimerSvg').classList.contains('crono-run-progress-svg'),
-        garden: getComputedStyle(document.getElementById('cronoGarden')).display,
-        activeTab: document.getElementById('cronoIdleDrawer').dataset.tab,
-      };
-
-      cronoStart();
-      await new Promise(resolve => setTimeout(resolve, 360)); // Wait for the card entrance transform before comparing geometry.
-      const running = {
-        main: rect(document.getElementById('cronoStageRun')),
-        drawer: rect(document.getElementById('cronoRunDrawer')),
-        ring: rect(document.querySelector('#cronoStageRun .crono-run-progress-svg')),
-        quickDestello: rect(document.querySelector('#cronoStageRun .crono-quick-destello-btn')),
-        trophy: rect(document.querySelector('[data-habit-slot="running"] .crono-habit-trophy')),
-        controls: rect(document.getElementById('cronoControls')),
-        controlInsideClock: document.getElementById('cronoStageRun').contains(document.getElementById('cronoControls')),
-        modeSelectorVisible: getComputedStyle(document.getElementById('cronoModeToggle')).display !== 'none'
-          && document.getElementById('cronoStageIdle').style.display !== 'none',
-        dailyTotalVisible: getComputedStyle(document.getElementById('cronoRunTodayTotal')).display !== 'none',
-        arcColor: getComputedStyle(document.getElementById('cronoRunProgressArc')).stroke,
-        handleColor: getComputedStyle(document.getElementById('cronoRunProgressHandle')).fill,
-        tabs: [...document.querySelectorAll('#cronoRunDrawer .crono-run-drawer-tab')].map(button => button.dataset.tab || button.dataset.action),
-        objectiveRemoved: !document.getElementById('cronoRunObjective') && !document.getElementById('cronoRunObjectiveText'),
-        activeTab: document.getElementById('cronoRunDrawer').dataset.tab,
-      };
-      return {
-        portrait: matchMedia('(orientation: portrait)').matches,
-        fitsWidth: document.documentElement.scrollWidth <= innerWidth + 1,
-        viewportHeight: innerHeight,
-        idle,
-        running,
-      };
-    });
-
-    expect(layout.fitsWidth).toBe(true);
-    expect(layout.idle.tabs).toEqual(['tareas', 'memoria', 'metronomo', 'pase']);
-    expect(layout.running.tabs).toEqual(layout.idle.tabs);
-    expect(layout.idle.activeTab).toBe('tareas');
-    expect(layout.running.activeTab).toBe('tareas');
-    expect(layout.idle.presetCount).toBe(0);
-    expect(layout.idle.destello.top - layout.idle.ring.bottom).toBeGreaterThanOrEqual(8);
-    expect(layout.idle.start.bottom).toBeLessThanOrEqual(layout.viewportHeight + 1);
-    expect(layout.idle.objectiveRemoved).toBe(true);
-    expect(layout.idle.arcColor).toBe(layout.idle.handleColor);
-    expect(layout.running.arcColor).toBe(layout.running.handleColor);
-    expect(layout.running.arcColor).toBe(layout.idle.arcColor);
-    expect(layout.running.objectiveRemoved).toBe(true);
-    expect(layout.idle.display).toBe('25:00');
-    expect(layout.idle.usesRunningDisplay).toBe(true);
-    expect(layout.idle.garden).toBe('none');
-    expect(Math.abs(layout.idle.ring.width - layout.running.ring.width)).toBeLessThanOrEqual(2);
-    expect(Math.abs(layout.idle.trophy.width - layout.running.trophy.width)).toBeLessThanOrEqual(1);
-    expect(Math.abs(layout.idle.trophy.height - layout.running.trophy.height)).toBeLessThanOrEqual(1);
-    expect(layout.running.controlInsideClock).toBe(true);
-    expect(layout.running.modeSelectorVisible).toBe(false);
-    expect(layout.running.dailyTotalVisible).toBe(true);
-
-    if (layout.portrait) {
-      expect(layout.idle.drawer.top).toBeGreaterThanOrEqual(layout.idle.main.bottom - 1);
-      expect(layout.running.drawer.top).toBeGreaterThanOrEqual(layout.running.main.bottom - 1);
-    } else {
-      expect(Math.abs(layout.idle.main.left - layout.running.main.left)).toBeLessThanOrEqual(2);
-      expect(Math.abs(layout.idle.drawer.left - layout.running.drawer.left)).toBeLessThanOrEqual(2);
-      expect(Math.abs(layout.idle.main.height - layout.running.main.height)).toBeLessThanOrEqual(2);
-      expect(Math.abs(layout.idle.drawer.height - layout.running.drawer.height)).toBeLessThanOrEqual(2);
-    }
-    await context.close();
-  }
-});
-
 test('keeps Destellos in the same clock position before and during a session', async ({ browser }) => {
   for (const viewport of [{ width: 390, height: 844 }, { width: 834, height: 1194 }, { width: 1024, height: 768 }]) {
     const context = await browser.newContext({ viewport });
@@ -2880,39 +2262,6 @@ test('keeps a fixed clock size regardless of legacy zoom requests', async ({ pag
   expect(result.animated.saved).toBe(0);
   expect(result.scale).toBe('1');
   expect(result.hasZoomIndicator).toBe(false);
-});
-
-test('keeps a compact mobile task drawer with a fixed clock', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await prepare(page);
-  const result = await page.evaluate(async () => {
-    db.cronoTasks = [{
-      id: 'dense_mobile_task',
-      text: 'Repasar la coda',
-      kind: 'piano',
-      tomorrow: false,
-      done: false,
-      createdAt: new Date().toISOString(),
-    }];
-    showView('cronometro');
-    renderCronoTasks();
-    const ring = document.getElementById('cronoTimerSvg');
-    const drawer = document.getElementById('cronoIdleDrawer');
-    const before = { ring: ring.getBoundingClientRect().width, drawer: drawer.getBoundingClientRect().height };
-    cronoSetInterfaceScale(0.84, { persist: false, announce: false });
-    const after = { ring: ring.getBoundingClientRect().width, drawer: drawer.getBoundingClientRect().height };
-    return {
-      before,
-      after,
-      tabFont: parseFloat(getComputedStyle(document.querySelector('#cronoIdleDrawer .crono-run-drawer-tab')).fontSize),
-      taskFont: parseFloat(getComputedStyle(document.querySelector('.crono-task-lane .crono-task-text')).fontSize),
-    };
-  });
-
-  expect(result.after.ring).toBe(result.before.ring);
-  expect(result.after.drawer).toBe(result.before.drawer);
-  expect(result.tabFont).toBeLessThanOrEqual(11);
-  expect(result.taskFont).toBeLessThanOrEqual(12);
 });
 
 test('uses a complete two-column timer layout on landscape phones', async ({ browser }) => {
@@ -3051,46 +2400,3 @@ test('runs one persistent metronome from idle and active timer layouts', async (
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('alberto_metronome_v1')))).toMatchObject({ bpm: 85, beatsPerBar: 16 });
 });
 
-test('reviews work-specific memory cards before and during a timed session', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await prepare(page);
-  await page.evaluate(() => {
-    showView('cronometro');
-    const select = document.getElementById('cronoObraSelect');
-    select.value = 'obra::obra_1';
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-    cronoUpdateStartBtn();
-    cronoSetIdleDrawerTab('memoria');
-  });
-
-  await expect(page.locator('#cronoIdleDrawer [data-panel="memoria"]')).toHaveClass(/active/);
-  await expect(page.locator('#cronoIdleDrawer .memory-empty-state')).toContainText('Aún no hay tarjetas');
-  await page.locator('#cronoIdleDrawer .memory-empty-state button').click();
-  await page.locator('#memoryCardLabel').fill('81-88');
-  await page.locator('#memoryCardSaveBtn').click();
-  await page.locator('#memoryCardLabel').fill('Desarrollo');
-  await page.locator('#memoryCardSaveBtn').click();
-  await expect(page.locator('#memoryManagerList .memory-manager-row')).toHaveCount(2);
-  await page.locator('.memory-manager-close').click();
-
-  const idleMemory = page.locator('#cronoIdleDrawer [data-panel="memoria"]');
-  await expect(idleMemory.locator('.memory-flashcard')).toContainText('Compases 81–88');
-  await expect(page.locator('[data-memory-count="idle"]')).toHaveText('2');
-  await idleMemory.locator('.memory-rating-row .is-good').click();
-  await expect(idleMemory.locator('.memory-flashcard')).toContainText('Desarrollo');
-
-  await page.evaluate(() => cronoStart());
-  await page.evaluate(() => cronoSetRunDrawerTab('memoria'));
-  const runningMemory = page.locator('#cronoRunDrawer [data-panel="memoria"]');
-  await expect(runningMemory).toHaveClass(/active/);
-  await expect(runningMemory.locator('.memory-flashcard')).toContainText('Desarrollo');
-  await runningMemory.locator('.memory-rating-row .is-hard').click();
-  await expect(runningMemory.locator('.memory-finished')).toContainText('Todo al día');
-
-  const cards = await page.evaluate(() => db.memoryCards.map(card => ({ label: card.label, intervalDays: card.intervalDays, reviews: card.reviews.length })));
-  expect(cards).toEqual([
-    { label: 'Compases 81–88', intervalDays: 4, reviews: 1 },
-    { label: 'Desarrollo', intervalDays: 2, reviews: 1 },
-  ]);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
-});

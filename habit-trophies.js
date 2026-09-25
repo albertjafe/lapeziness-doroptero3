@@ -107,7 +107,8 @@
     if(!habit || !dayKey(now) || !['do','avoid'].includes(habit.mode) || !habit.successCriteria?.trim() ||
       !Number.isInteger(duration) || duration<REWARD_POLICY.minimumDays || duration>365 ||
       !/^\d{4}-\d{2}-\d{2}$/.test(start||'') || keyAt(start,0)!==start || start<dayKey(now))return null;
-    return {...REWARD_POLICY,agreedAt:new Date(now).toISOString(),startDate:start,durationDays:duration,
+    // Copy the frozen schedule: stored data must stay mutable or every later save throws.
+    return {...REWARD_POLICY,failurePoints:[...REWARD_POLICY.failurePoints],agreedAt:new Date(now).toISOString(),startDate:start,durationDays:duration,
       mode:habit.mode,successCriteria:habit.successCriteria.trim()};
   }
 

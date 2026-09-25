@@ -186,6 +186,8 @@
   // Open editors keep references to these objects across synchronous saves.
   // Reconcile by ID without invalidating the object an editor will next mutate.
   function assign(target, source) {
+    // A frozen object cannot be reconciled in place; replacing it keeps saves working.
+    if (target && typeof target === 'object' && Object.isFrozen(target)) return clone(source);
     if (Array.isArray(target) && Array.isArray(source)) {
       const prior = new Map(target.map(x => [identity(x),x]));
       const next = source.map(x => assign(prior.get(identity(x)),x));

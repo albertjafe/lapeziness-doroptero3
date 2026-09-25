@@ -16,10 +16,12 @@ async function importPack(page,data=pack) {
   await page.locator('#germanImportFile').setInputFiles({name:'clase.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});
   await expect(page.locator('#germanError')).toContainText('Material importado');
 }
-async function createGoal(page) {
-  await page.getByLabel('Nombre del objetivo',{exact:true}).fill('Kindle');
-  await page.getByLabel('Importe (€)',{exact:true}).fill('150');
-  await page.getByRole('button',{name:'Crear objetivo',exact:true}).click();
+// Goals live in the shared purchase-goal wallet (#germanSharedGoal).
+async function createGoal(page,name='Kindle',amount='150') {
+  const wallet=page.locator('#germanSharedGoal');
+  await wallet.getByLabel('Objetivo',{exact:true}).fill(name);
+  await wallet.getByLabel('Precio (€)',{exact:true}).fill(amount);
+  await wallet.getByRole('button',{name:'Añadir objetivo',exact:true}).click();
 }
 
 test('Deutsch end to end: goal, class deck, Anki card, money, pause/reload and idempotent finish',async({page})=>{
@@ -34,7 +36,8 @@ test('Deutsch end to end: goal, class deck, Anki card, money, pause/reload and i
   expect(await page.evaluate(()=>db.germanStudy.sessions[0].queue.every(item=>item.kind==='card'))).toBe(true);
   await expect(page.getByRole('heading',{name:'der Bahnhof',exact:true})).toBeVisible();
   await expect(page.locator('#germanMoneyLabel')).toContainText('Pendiente');
-  await expect.poll(()=>page.locator('#germanMoney').innerText()).not.toBe('0,00 €');
+  // Cents appear after a few seconds of real study time.
+  await expect.poll(()=>page.locator('#germanMoney').innerText(),{timeout:15000}).not.toBe('0,00 €');
   await page.getByRole('button',{name:'Mostrar respuesta',exact:true}).click();
   await expect(page.getByRole('heading',{name:'la estación',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:/Bien/})).toContainText('1 día');
@@ -100,41 +103,42 @@ test('small-screen Deutsch keeps controls inside the viewport',async({page})=>{
   await expect(page.getByRole('button',{name:'Pausar',exact:true})).toBeVisible();
 });
 
-test('finished goal can be archived and a new goal preserves reviews and history',async({page})=>{
-  await prepare(page);await importPack(page);
-  await page.getByLabel('Nombre del objetivo',{exact:true}).fill('Libro');await page.getByLabel('Importe (€)',{exact:true}).fill('0.50');
-  await page.getByRole('button',{name:'Crear objetivo',exact:true}).click();
+test('a completed goal can be redeemed and a new goal preserves reviews and history',async({page})=>{
+  page.on('dialog',dialog=>dialog.accept());
+  await prepare(page);await importPack(page);await createGoal(page,'Libro','0.50');
   await page.getByRole('button',{name:'Estudiar tarjetas',exact:true}).click();
   await page.getByRole('button',{name:'Mostrar respuesta',exact:true}).click();await page.getByRole('button',{name:/Bien/}).click();
   await page.evaluate(()=>{const s=db.germanStudy.sessions[0],day=GermanRewards.dayKey();s.segments=[{id:day,day,seconds:900}];saveData();});
   await page.getByRole('button',{name:'Terminar sesión',exact:true}).click();
-  await expect(page.locator('.german-goal')).toContainText('OBJETIVO CONSEGUIDO');
-  await page.getByRole('button',{name:'Archivar y crear otro objetivo',exact:true}).click();await createGoal(page);
+  const wallet=page.locator('#germanSharedGoal');
+  await wallet.getByRole('button',{name:'Canjear · comprado',exact:true}).click();
+  await expect.poll(()=>page.evaluate(()=>Boolean(db.germanStudy.goals[0].archivedAt))).toBe(true);
+  await wallet.getByRole('button',{name:/Añadir/}).first().click();
+  await createGoal(page);
   expect(await page.evaluate(()=>({goals:db.germanStudy.goals.length,reviews:db.germanStudy.reviews.length,sessions:db.germanStudy.sessions.length}))).toEqual({goals:2,reviews:1,sessions:1});
 });
 
 test('shared economic goal can be edited and deleted without deleting session evidence',async({page})=>{
+  page.on('dialog',dialog=>dialog.accept());
   await prepare(page);await createGoal(page);
-  await page.getByRole('button',{name:'Editar objetivo',exact:true}).click();
-  await page.getByLabel('Nombre del objetivo',{exact:true}).fill('E-reader');
-  await page.getByLabel('Importe (€)',{exact:true}).fill('249.99');
-  await page.getByRole('button',{name:'Guardar cambios',exact:true}).click();
-  await expect(page.locator('#germanSharedGoal')).toContainText('E-reader');
+  const wallet=page.locator('#germanSharedGoal');
+  await wallet.getByRole('button',{name:'Editar',exact:true}).click();
+  await wallet.getByLabel('Objetivo',{exact:true}).fill('E-reader');
+  await wallet.getByLabel('Precio (€)',{exact:true}).fill('249.99');
+  await wallet.getByRole('button',{name:'Guardar',exact:true}).click();
+  await expect(wallet).toContainText('E-reader');
   expect(await page.evaluate(()=>db.germanStudy.goals[0])).toMatchObject({name:'E-reader',amount:249.99});
 
   await page.evaluate(()=>{
     const goalId=db.germanStudy.goals[0].id,now=new Date().toISOString();
     db.pianoRewards={version:1,sessions:[{id:'kept-piano-session',goalId,startedAt:now,endedAt:now,date:PianoRewards.dayKey(),seconds:1800,policyVersion:2}]};
-    saveData();GermanStudy.openGoalManager();
+    saveData();
   });
-  await page.getByRole('button',{name:'Eliminar objetivo',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'¿Eliminar E-reader?',exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Eliminar definitivamente',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Crear objetivo',exact:true})).toBeVisible();
-  const result=await page.evaluate(()=>({goal:db.germanStudy.goals[0],sessions:db.pianoRewards.sessions}));
-  expect(result.goal.deletedAt).toBeTruthy();
-  expect(result.sessions).toHaveLength(1);
-  expect(result.sessions[0].id).toBe('kept-piano-session');
+  await wallet.getByRole('button',{name:'Eliminar',exact:true}).click();
+  await expect.poll(()=>page.evaluate(()=>Boolean(db.germanStudy.goals[0].deletedAt))).toBe(true);
+  const result=await page.evaluate(()=>db.pianoRewards.sessions);
+  expect(result).toHaveLength(1);
+  expect(result[0].id).toBe('kept-piano-session');
 });
 
 test('free study uses the same taximeter and reloads paused without counting closed time',async({page})=>{
@@ -143,7 +147,8 @@ test('free study uses the same taximeter and reloads paused without counting clo
   await page.getByRole('button',{name:'Estudio libre',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Estudio libre',exact:true})).toBeVisible();
   await page.clock.runFor(301000);
-  await expect.poll(()=>page.locator('#germanMoney').innerText()).not.toBe('0,00 €');
+  // Cents appear after a few seconds of real study time.
+  await expect.poll(()=>page.locator('#germanMoney').innerText(),{timeout:15000}).not.toBe('0,00 €');
   expect(await page.evaluate(()=>db.germanStudy.sessions[0].status)).toBe('running');
   expect(await page.evaluate(()=>db.germanStudy.sessions[0].segments.reduce((n,x)=>n+x.seconds,0))).toBeGreaterThan(0);
   await page.reload();await page.waitForFunction(()=>window.GermanStudy);

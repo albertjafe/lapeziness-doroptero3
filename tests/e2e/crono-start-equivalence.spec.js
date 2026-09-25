@@ -111,15 +111,20 @@ test('editing the price previews equivalence and keeps purchase identity, time a
   data.sessionPlants=[{id:'manual',obraId:'bach',source:'manual',mins:120,startedAt:when,endedAt:when}];
   await prepare(page,data);
   const before=await page.evaluate(()=>({goal:structuredClone(db.germanStudy.goals[0]),plants:structuredClone(db.sessionPlants),live:PianoRewards.live(PianoRewards.studyState(db),db.germanStudy.goals,'kindle',0)}));
-  await page.locator('#cronoPianoGoalIdle').click();await page.locator('[data-action="edit-goal"]').click();
-  await page.locator('#germanGoalForm [name="amount"]').fill('150');
-  await expect(page.locator('#germanGoalEquivalence')).toContainText('0,32 € → 0,27 € de 150,00 €');
+  await page.locator('#cronoPianoGoalIdle').click();
+  const wallet=page.locator('#germanSharedGoal');
+  await wallet.getByRole('button',{name:'Editar',exact:true}).click();
+  await wallet.locator('#effortGoalForm [name="amount"]').fill('150');
   expect(await page.evaluate(()=>db.germanStudy.goals[0].amount)).toBe(220);
-  await page.locator('#germanGoalForm [type="submit"]').click();
-  await expect(page.locator('#germanSharedGoal')).toContainText('exclusivamente para Kindle');
+  await wallet.locator('#effortGoalForm [type="submit"]').click();
+  await expect(wallet).toContainText('/ 150,00 €');
   const after=await page.evaluate(()=>({goal:db.germanStudy.goals[0],plants:db.sessionPlants,live:PianoRewards.live(PianoRewards.studyState(db),db.germanStudy.goals,'kindle',0)}));
   expect(after.goal).toMatchObject({id:before.goal.id,createdAt:before.goal.createdAt,amount:150});
-  expect(after.plants).toEqual(before.plants);expect(after.live.today).toBe(.27);
+  // Editing the price never changes the earned effort points, only their euro value.
+  expect(after.plants).toEqual(before.plants);
+  expect(after.live.walletPoints).toBe(before.live.walletPoints);
+  expect(after.live.today).toBeCloseTo(after.live.walletPoints*after.live.goalScale,6);
+  const shown=after.live.today.toFixed(2).replace('.',',')+' € de 150,00 €';
   await page.reload();await page.evaluate(()=>showView('cronometro'));
-  await expect(page.locator('#cronoPianoIdleGoalBalance')).toContainText('0,27 € de 150,00 €');
+  await expect(page.locator('#cronoPianoIdleGoalBalance')).toContainText(shown);
 });

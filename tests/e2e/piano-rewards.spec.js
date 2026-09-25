@@ -59,6 +59,8 @@ test('the piano stopwatch shows a progressive live taximeter and saves it once',
   await expect(page.locator('#cronoPianoMoney')).toBeVisible();
   await expect(page.locator('#cronoPianoMoneyNext')).toContainText('Se guarda a los 10 min');
   const before=await page.locator('#cronoPianoMoneyValue').innerText();
+  // The balanced policy (v6) pays in 30-minute impulses, not per second.
+  await page.clock.fastForward(30*60000+2000);
   await page.clock.runFor(2000);
   await expect.poll(()=>page.locator('#cronoPianoMoneyValue').innerText()).not.toBe(before);
 

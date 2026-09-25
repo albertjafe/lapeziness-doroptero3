@@ -88,10 +88,8 @@ The current GitHub Actions quality workflow runs:
 
 - `npm run check`
 - `npm run test:unit`
-- `node scripts/check-e2e-known-baseline.cjs`
+- `npm run test:e2e` (one worker on CI; there is no list of tolerated failures, any red test fails Quality)
 - `npm run test:visual`
-
-`npm run test:e2e` also exists for direct full Playwright E2E runs, but it is not the exact CI command at the time of this audit.
 
 For a narrow work packet, targeted unit/E2E specs are acceptable during implementation. Before declaring a risky persistence, timer, sync, or PWA change complete, run the broadest practical checks for that subsystem and inspect CI when changes are pushed.
 
