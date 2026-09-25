@@ -22,10 +22,14 @@ test('Deutsch dashboard and study remain readable on desktop and mobile',async({
   for(const [name,width,height] of [['desktop',1280,1000],['mobile',390,844]]) {
     await page.setViewportSize({width,height});
     await page.evaluate(()=>scrollTo(0,0));
-    await expect(page.locator('.german-goal')).toContainText('Kindle');
+    await expect(page.locator('#view-deutsch .german-premios-link')).toBeVisible();
     expect(await page.locator('#view-deutsch').evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
     await page.screenshot({path:testInfo.outputPath('deutsch-dashboard-'+name+'.png'),fullPage:true});
   }
+  // La hucha y los objetivos de compra viven en Premios desde v435.
+  await page.evaluate(()=>openPremios());
+  await expect(page.locator('#view-premios .german-goal')).toContainText('Kindle');
+  await page.evaluate(()=>showView('deutsch'));
   await page.getByRole('button',{name:'Estudiar tarjetas',exact:true}).click();
   for(const [name,width,height] of [['mobile',390,844],['desktop',1280,1000]]) {
     await page.setViewportSize({width,height});
