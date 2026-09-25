@@ -47,7 +47,7 @@ test('independent iPad and phone exchange study, goal edits and offline addition
     const ipad=await device(false);await study(ipad,'ipad-six',360);
     const phone=await device(true);expect(await minutes(phone)).toBe(360);
     await study(phone,'phone-two',120);await resume(ipad);await expect.poll(()=>minutes(ipad)).toBe(480);
-    await phone.evaluate(()=>showView('deutsch'));
+    await phone.evaluate(()=>openPremios());
     await expect(phone.locator('#germanSharedGoal h3')).toHaveText('Kindle');
     await ipad.evaluate(async()=>{db.germanStudy.goals[0].name='Kindle actualizado';saveData();await syncPendingCloudChanges();});
     await resume(phone);await expect.poll(()=>phone.evaluate(()=>db.germanStudy.goals[0].name)).toBe('Kindle actualizado');

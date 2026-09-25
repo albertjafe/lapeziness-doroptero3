@@ -16,12 +16,15 @@ async function importPack(page,data=pack) {
   await page.locator('#germanImportFile').setInputFiles({name:'clase.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});
   await expect(page.locator('#germanError')).toContainText('Material importado');
 }
-// Goals live in the shared purchase-goal wallet (#germanSharedGoal).
-async function createGoal(page,name='Kindle',amount='150') {
-  const wallet=page.locator('#germanSharedGoal');
+// Goals live in the shared purchase-goal wallet, on the Premios screen.
+async function openWallet(page){await page.evaluate(()=>openPremios());return page.locator('#germanSharedGoal');}
+async function createGoal(page,name='Kindle',amount='150',stay=false) {
+  const wallet=await openWallet(page);
   await wallet.getByLabel('Objetivo',{exact:true}).fill(name);
   await wallet.getByLabel('Precio (€)',{exact:true}).fill(amount);
   await wallet.getByRole('button',{name:'Añadir objetivo',exact:true}).click();
+  await expect(wallet).toContainText(name);
+  if(!stay)await page.evaluate(()=>showView('deutsch'));
 }
 
 test('Deutsch end to end: goal, class deck, Anki card, money, pause/reload and idempotent finish',async({page})=>{
@@ -110,17 +113,17 @@ test('a completed goal can be redeemed and a new goal preserves reviews and hist
   await page.getByRole('button',{name:'Mostrar respuesta',exact:true}).click();await page.getByRole('button',{name:/Bien/}).click();
   await page.evaluate(()=>{const s=db.germanStudy.sessions[0],day=GermanRewards.dayKey();s.segments=[{id:day,day,seconds:900}];saveData();});
   await page.getByRole('button',{name:'Terminar sesión',exact:true}).click();
-  const wallet=page.locator('#germanSharedGoal');
+  const wallet=await openWallet(page);
   await wallet.getByRole('button',{name:'Canjear · comprado',exact:true}).click();
   await expect.poll(()=>page.evaluate(()=>Boolean(db.germanStudy.goals[0].archivedAt))).toBe(true);
   await wallet.getByRole('button',{name:/Añadir/}).first().click();
-  await createGoal(page);
+  await createGoal(page,'Kindle','150',true);
   expect(await page.evaluate(()=>({goals:db.germanStudy.goals.length,reviews:db.germanStudy.reviews.length,sessions:db.germanStudy.sessions.length}))).toEqual({goals:2,reviews:1,sessions:1});
 });
 
 test('shared economic goal can be edited and deleted without deleting session evidence',async({page})=>{
   page.on('dialog',dialog=>dialog.accept());
-  await prepare(page);await createGoal(page);
+  await prepare(page);await createGoal(page,'Kindle','150',true);
   const wallet=page.locator('#germanSharedGoal');
   await wallet.getByRole('button',{name:'Editar',exact:true}).click();
   await wallet.getByLabel('Objetivo',{exact:true}).fill('E-reader');

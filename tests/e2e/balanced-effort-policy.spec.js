@@ -25,32 +25,33 @@ for(const [width,height] of [[834,1194],[1194,834]])test(`balanced effort ${widt
  await page.evaluate(()=>{crono.startTs=Date.now()-2*3600000;cronoSaveState();cronoUpdatePianoReward();});
  const live=await page.evaluate(()=>PianoRewards.live(PianoRewards.studyState(db),db.germanStudy.goals,'g',2*3600,PianoRewards.dayKey(),[],6));
  expect(live.rewardMultiplier).toBe(1.5);expect(live.walletPoints-before).toBeCloseTo(25+2.1*1.5-1,5);
+ const surprise=()=>page.evaluate(()=>PianoRewards.walletSnapshot(db).rows.filter(r=>/^bonus:(secret|chest|achievement|progress):/.test(String(r.id))).reduce((sum,r)=>sum+PianoRewards.rowEffortPoints(r),0));
+ const surpriseBefore=await surprise();
  await page.evaluate(()=>cronoFinish(crono.runId));
  await expect(page.locator('#modalHechoDatos')).toBeVisible();
  await page.locator('#modalHechoDatos').getByRole('button',{name:'Hecho',exact:true}).click();
  await expect(page.locator('#modalHechoDatos')).not.toBeVisible();
- // Secret bonuses (e.g. Madrugador) are a surprise: the live meter never predicts them.
- const secret=await page.evaluate(()=>PianoRewards.walletSnapshot(db).rows.filter(r=>String(r.id).startsWith('bonus:secret:')).reduce((sum,r)=>sum+PianoRewards.rowEffortPoints(r),0));
- const saved=live.walletPoints+secret;
+ // Surprise rewards (secrets, chests, achievements, progress) unlocked by saving
+ // this session are never predicted by the live meter.
+ const saved=live.walletPoints+(await surprise())-surpriseBefore;
  await expect.poll(()=>page.evaluate(()=>PianoRewards.walletSnapshot(db).points)).toBeCloseTo(saved,5);
- await page.evaluate(()=>StudyIncentives.open());
+ await page.evaluate(()=>openPremios());
  await expect(page.locator('#studyIncentivesContent')).toContainText('25 puntos abonados este mes');
- await expect(page.locator('.study-incentive-bonus-history')).toContainText('+15 pts');
- const bounds=await page.locator('.study-incentives-modal').boundingBox();
- expect(bounds.x).toBeGreaterThanOrEqual(0);expect(bounds.y).toBeGreaterThanOrEqual(0);expect(bounds.x+bounds.width).toBeLessThanOrEqual(width+1);expect(bounds.y+bounds.height).toBeLessThanOrEqual(height+1);
+ await expect(page.locator('.study-incentive-bonus-history')).toContainText('+15,00 €');
+ const bounds=await page.locator('#studyIncentivesContent').boundingBox();
+ expect(bounds.x).toBeGreaterThanOrEqual(0);expect(bounds.y).toBeGreaterThanOrEqual(0);expect(bounds.x+bounds.width).toBeLessThanOrEqual(width+1);
  await page.screenshot({path:`.ai/runtime/balanced-effort-${width}x${height}.png`});
- await page.getByRole('button',{name:'Cerrar',exact:true}).click();
- await page.evaluate(()=>{saveData();});await page.reload();await page.waitForFunction(()=>window.PianoRewards&&db.sessionPlants?.length===21);
+ await page.evaluate(()=>{closePremios();saveData();});await page.reload();await page.waitForFunction(()=>window.PianoRewards&&db.sessionPlants?.length===21);
  expect(await page.evaluate(()=>PianoRewards.walletSnapshot(db).points)).toBeCloseTo(saved,5);
  await page.evaluate(()=>{
    // Upgrade existing canonical evidence; opening/reloading must not add credits.
    for(const block of db.sessionPlants)block.mins*=6/5;
-   saveData();StudyIncentives.open();
+   saveData();openPremios();
  });
  await expect(page.locator('#studyIncentivesContent')).toContainText('30 puntos abonados este mes');
  expect(await page.evaluate(()=>PianoRewards.bonusRows(db,PianoRewards.studyState(db).sessions).filter(r=>r.id.startsWith('bonus:study-month:')).map(PianoRewards.rowEffortPoints))).toEqual([10,15,5]);
  const upgraded=await page.evaluate(()=>PianoRewards.walletSnapshot(db).points);
- await page.getByRole('button',{name:'Cerrar',exact:true}).click();await page.reload();await page.waitForFunction(()=>window.PianoRewards&&db.sessionPlants?.length===21);
+ await page.reload();await page.waitForFunction(()=>window.PianoRewards&&db.sessionPlants?.length===21);
  expect(await page.evaluate(()=>PianoRewards.walletSnapshot(db).points)).toBeCloseTo(upgraded,6);
 });
 test('a running pre-transition policy and previous money survive reload and the boundary',async({page})=>{

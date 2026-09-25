@@ -33,7 +33,7 @@ test('recovers an empty wallet seed once, persists it, and keeps historical acti
   data.germanStudy.goals[0].createdAt=new Date(when.getTime()-86400000).toISOString();
   data.germanStudy.effortWallet={version:1,createdAt:new Date().toISOString(),seedGoalIds:[],seedCostPoints:{},displayGoalId:'g',redemptions:[]};
   await prepare(page,data);
-  await page.evaluate(()=>showView('deutsch'));
+  await page.evaluate(()=>openPremios());
   await expect(page.locator('#germanSharedGoal .effort-goal-money')).toContainText('0,53 €');
   const saved=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('alberto_piano_v2')));
   await expect.poll(async()=> (await saved()).germanStudy.effortWallet.seedGoalIds).toEqual(['g']);
