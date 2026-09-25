@@ -9,9 +9,12 @@ for(const quota of ["none","draft","all"]) test(`planting 36 minutes ends the ti
   });
   await page.goto('/');
   await page.waitForFunction(()=>window.PassageTrackerResilience&&window.CronoSaveResilience&&window.DailyStudyMinutes);
+  // cronoStart defers until hydration; backdating before that would be lost.
+  await page.evaluate(()=>cronoHydrate());
   await page.evaluate(()=>{
     showView('cronometro');crono.mode='stopwatch';
     document.getElementById('cronoObraSelect').value='mov::waldstein::iii';cronoUpdateStartBtn();cronoStart();
+    if(crono.state!=='running')throw new Error('timer did not start synchronously');
     crono.startTs=Date.now()-36*60000;cronoSaveState();PassageTracker.toggleTimer("octaves");
   });
   if(quota!=="none")await page.evaluate(quota=>{

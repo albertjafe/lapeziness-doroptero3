@@ -36,6 +36,8 @@ async function prepare(page, { data = fixture(), lastTarget = '' } = {}) {
     else localStorage.removeItem('cronoLastStudyTarget_v1');
   }, { data, lastTarget });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
+  // cronoStart defers until hydration; wait so starts in tests are synchronous.
+  await page.waitForFunction(()=>typeof cronoHydrate==='function');await page.evaluate(()=>cronoHydrate());
   await page.waitForTimeout(1000);
 }
 

@@ -8,6 +8,8 @@ for(const size of [{width:1194,height:834},{width:834,height:1194},{width:390,he
   });
   await page.goto('/');
   await page.waitForFunction(()=>window.PassageTrackerResilience&&window.ProfessorHandoffResilience);
+  // cronoStart defers until hydration; backdating before that would be lost.
+  await page.evaluate(()=>cronoHydrate());
   await page.evaluate(()=>{showView('cronometro');document.getElementById('cronoObraSelect').value='mov::w::iii';cronoUpdateStartBtn();PassageTracker.render();});
   await expect(page.locator('#cronoTargetSolidity')).toBeVisible();
   const idle=page.locator('#cronoIdleDrawer');

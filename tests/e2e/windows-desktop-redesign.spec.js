@@ -19,6 +19,8 @@ async function prepare(page) {
   }, fixture);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof window.showView === 'function');
+  // Timer tests backdate startTs right after cronoStart, which defers until hydration.
+  await page.waitForFunction(()=>typeof cronoHydrate==='function');await page.evaluate(()=>cronoHydrate());
   await page.evaluate(() => {
     const splash = document.getElementById('splashScreen');
     if (splash) splash.style.display = 'none';

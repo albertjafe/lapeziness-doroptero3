@@ -9,6 +9,8 @@ async function boot(page){
   });
   await page.goto('/');
   await page.waitForFunction(()=>window.ProfessorHandoffResilience && window.PlanningEnhancementsV4 && window.TaskSyncResilience);
+  // cronoStart defers until hydration; backdating before that would be lost.
+  await page.evaluate(()=>cronoHydrate());
   // The empty fixture opens recovery after a 400 ms timer. Wait for it even
   // when modules load faster: otherwise it appears over the next test action.
   const recovery=page.locator('#modalCloudSync');

@@ -33,6 +33,8 @@ async function prepare(page, options = {}) {
   }, options.data || fixture);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1200);
+  // cronoStart defers until hydration; wait so backdated starts are not lost.
+  await page.waitForFunction(()=>typeof cronoHydrate==='function');await page.evaluate(()=>cronoHydrate());
 }
 
 test('opens every main view without page exceptions', async ({ page }) => {
