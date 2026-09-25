@@ -72,7 +72,13 @@ Cuando pida organizar el día, responde primero con una propuesta compacta y acc
     arr(entity.paseHistory).forEach(row => rows.push({ score: scoreOf(row), at: timestampOf(row), kind: 'pase', confidence: row.confidence ?? row.confianza ?? null }));
     const valid = rows.filter(row => row.score != null).sort((a, b) => (a.at ? a.at.getTime() : 0) - (b.at ? b.at.getTime() : 0));
     if (valid.length) return valid[valid.length - 1];
-    return { score: scoreOf(entity), at: null, kind: entity.sol != null ? 'estado' : null };
+    // Without a dated measurement, `sol` is a stored state. New works and
+    // movements are created with the default sol=1 (old 0-10 scale): reporting
+    // it as "1 %" made unmeasured work look critically weak, so it is unknown.
+    // Other 0-10 values are scaled like the app does (normalizeSolVal).
+    const raw = Number(entity.sol);
+    if (entity.sol == null || entity.sol === '' || !Number.isFinite(raw) || raw === 1) return { score: null, at: null, kind: null };
+    return { score: clamp(raw > 10 ? raw : raw * 10, 0, 100), at: null, kind: 'estado' };
   }
 
   function latestPass(entity) {

@@ -43,7 +43,7 @@
     document.head.appendChild(link);
   }
   function loadProfessor(){
-    load('professorCoreScript','./professor-core.js?v=377',function(){
+    load('professorCoreScript','./professor-core.js?v=437',function(){
       load('professorPracticeDedupScript','./professor-practice-dedup.js?v=363',function(){
         load('professorReportNormalizerScript','./professor-report-normalizer.js?v=342',function(){
           load('professorContextEnrichmentScript','./professor-context-enrichment.js?v=342',function(){
@@ -52,7 +52,7 @@
                 load('professorDurationPolicyScript','./professor-duration-policy.js?v=349',function(){
                   load('professorDashboardScript','./professor-dashboard.js?v=396',function(){
                     load('professorEventGateUiScript','./professor-event-gate-ui.js?v=342');
-                    load('professorHandoffResilienceScript','./professor-handoff-resilience.js?v=377',function(){
+                    load('professorHandoffResilienceScript','./professor-handoff-resilience.js?v=437',function(){
                       load('professorTemporaryChatScript','./professor-temporary-chat.js?v=342');
                     });
                   });

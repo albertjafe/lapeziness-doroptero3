@@ -24,6 +24,16 @@ describe('ProfessorCore', () => {
     expect(third.historicalWorkHours).toBe(80);
   });
 
+  it('reports a never-measured movement as unknown solidity, not as 1 %', () => {
+    // New movements are created with the default sol:1 (old 0-10 scale).
+    const db={obras:[work({movimientos:[{id:'m1',name:'I',sol:1,apr:1,esc:1},{id:'m2',name:'II',sol:7},{id:'m3',name:'III',sol:52}]})],sessionPlants:[],
+      eventos:[{id:'exam',nombre:'Examen',tipo:'examen',fecha:'2026-09-12',obras:['wald']}]};
+    const units=Professor.buildReport(db,{asOf,googleCalendarState:{}}).units;
+    expect(units.find(u=>u.movId==='m1').solidity).toBeNull();
+    expect(units.find(u=>u.movId==='m2').solidity).toBe(70);
+    expect(units.find(u=>u.movId==='m3').solidity).toBe(52);
+  });
+
   it('ranks the weak movement above the strong saturated movement for the same event', () => {
     const db={obras:[work()],sessionPlants:[
       {id:'a',obraId:'wald',movId:'m1',mins:420,startedAt:'2026-09-01T10:00:00Z'},

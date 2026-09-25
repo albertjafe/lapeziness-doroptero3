@@ -244,7 +244,7 @@
     if(typeof root.Worker !== 'function')return Promise.resolve().then(fallback);
     try {
       if(!reportWorker){
-        reportWorker=new root.Worker('./professor-report-worker.js?v=377');
+        reportWorker=new root.Worker('./professor-report-worker.js?v=437');
         reportWorker.onmessage=({data:result})=>{
           const pending=pendingReports.get(result.id);if(!pending)return;
           pendingReports.delete(result.id);
