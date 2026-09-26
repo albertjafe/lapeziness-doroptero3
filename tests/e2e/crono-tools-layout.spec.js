@@ -13,6 +13,8 @@ for(const size of [{width:1194,height:834},{width:834,height:1194},{width:390,he
   await page.evaluate(()=>{showView('cronometro');document.getElementById('cronoObraSelect').value='mov::w::iii';cronoUpdateStartBtn();PassageTracker.render();});
   await expect(page.locator('#cronoTargetSolidity')).toBeVisible();
   const idle=page.locator('#cronoIdleDrawer');
+  // Móvil v2: la mesa de trabajo es una hoja; se abre con su pestaña.
+  if(size.width<=700) await idle.getByRole('tab',{name:/Tareas/}).click();
   await expect(idle.getByRole('button',{name:'Profesor'})).toBeVisible();
   await expect(idle.locator('[data-tab="memoria"]')).toHaveCount(0);
   await expect(idle.locator('.crono-task-lane.piano')).toHaveCount(0);

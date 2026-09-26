@@ -23,7 +23,7 @@ describe('PWA version boundary',()=>{
     const h=harness();await h.lifecycle('install');
     expect(h.calls).not.toContain('skip');
     expect(await (await h.fetch('/?view=cronometro','navigate')).text()).toContain('A:');
-    expect(await (await h.fetch('/app.js?v=440')).text()).toContain('A:');
+    expect(await (await h.fetch('/app.js?v=444')).text()).toContain('A:');
     expect(await (await h.fetch('/solidity-guide-modal.js?v=377')).text()).toContain('A:');
     expect(h.calls).not.toContain('network');
   });

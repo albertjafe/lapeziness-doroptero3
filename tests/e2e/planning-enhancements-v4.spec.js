@@ -51,6 +51,8 @@ test('inline dictated task stores clean text and maximum priority', async ({ pag
   await page.setViewportSize({ width:430, height:932 });
   await prepare(page);
   await page.evaluate(() => showView('cronometro'));
+  // En el móvil v2 la mesa de trabajo es una hoja: se abre con su pestaña.
+  await page.locator('#cronoIdleDrawer [data-tab="tareas"]').click();
   const panel = page.locator('#cronoIdleTasksPanel');
   await panel.getByRole('button', { name:'Añadir tarea de Personal' }).click();
   const input = panel.locator('#cronoIdleTaskInput');
@@ -203,6 +205,8 @@ test('iPad auto-starts task dictation and writes the transcript again', async ({
   await prepare(page, { ios:true });
   await expect.poll(() => page.evaluate(() => Boolean(window.PlanningV4SpeechFix?.restored))).toBe(true);
   await page.evaluate(() => showView('cronometro'));
+  // En el móvil v2 la mesa de trabajo es una hoja: se abre con su pestaña.
+  await page.locator('#cronoIdleDrawer [data-tab="tareas"]').click();
   const panel = page.locator('#cronoIdleTasksPanel');
   await panel.getByRole('button', { name:'Añadir tarea de Personal' }).click();
   const input = panel.locator('#cronoIdleTaskInput');

@@ -22626,22 +22626,26 @@ function cronoSessionRingKeydown(event) {
 
 function cronoSessionButtonHtml(paused, extraClass) {
   const label = paused ? 'Reanudar' : 'Pausar';
-  const desktopSessionControls = String(extraClass || '').includes('crono-session-rail-main') &&
+  const rail = String(extraClass || '').includes('crono-session-rail-main');
+  const desktopSessionControls = rail &&
     document.documentElement.classList.contains('platform-windows') && window.innerWidth >= 900 &&
     window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  // Diseño móvil v2: «Terminar» visible, no solo con pulsación larga.
+  const mobileV2Controls = rail && document.documentElement.classList.contains('mobile-v2') &&
+    window.matchMedia('(max-width: 700px)').matches;
   const mainButton = '<button type="button" class="crono-session-main-btn ' + (paused ? 'is-paused ' : '') + (extraClass || '') + '" ' +
     'onclick="cronoSessionButtonClick(event)" onpointerdown="cronoSessionButtonPressStart(event,this)" ' +
     'onpointermove="cronoSessionButtonPressMove(event)" onpointerup="cronoSessionButtonPressEnd(event)" ' +
     'onpointercancel="cronoSessionButtonCleanup()" oncontextmenu="event.preventDefault()" ' +
-    'aria-label="' + (desktopSessionControls ? label : label + '. Mantén pulsado para terminar y guardar') + '">' +
+    'aria-label="' + (desktopSessionControls || mobileV2Controls ? label : label + '. Mantén pulsado para terminar y guardar') + '">' +
       '<svg class="crono-session-hold-ring" viewBox="0 0 64 64" aria-hidden="true">' +
         '<circle class="crono-session-hold-track" cx="32" cy="32" r="27"></circle>' +
         '<circle class="crono-session-hold-progress" cx="32" cy="32" r="27"></circle>' +
       '</svg>' +
       '<span class="crono-session-main-icon" aria-hidden="true">' + (paused ? CRONO_ICONS.play : CRONO_ICONS.stop) + '</span>' +
     '</button>';
-  const desktopFinish = desktopSessionControls
-    ? '<button type="button" class="crono-session-finish-btn" onclick="cronoStop()">Finalizar</button>'
+  const desktopFinish = desktopSessionControls || mobileV2Controls
+    ? '<button type="button" class="crono-session-finish-btn" onclick="cronoStop()">' + (mobileV2Controls ? 'Terminar' : 'Finalizar') + '</button>'
     : '';
   return mainButton + desktopFinish;
 }

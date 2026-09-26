@@ -2137,6 +2137,8 @@ test('keeps Destellos in the same clock position before and during a session', a
   for (const viewport of [{ width: 390, height: 844 }, { width: 834, height: 1194 }, { width: 1024, height: 768 }]) {
     const context = await browser.newContext({ viewport });
     const page = await context.newPage();
+    // Regla del diseño clásico; en el móvil v2 el ✦ va en la fila de Pausar/Terminar.
+    await page.addInitScript(() => localStorage.setItem('alberto_mobile_design', 'classic'));
     await prepare(page);
 
     const layout = await page.evaluate(() => {

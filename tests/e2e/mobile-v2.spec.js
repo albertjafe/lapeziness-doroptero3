@@ -19,6 +19,7 @@ async function boot(page) {
   await page.addInitScript(data => { if (!localStorage.getItem('alberto_piano_v2')) localStorage.setItem('alberto_piano_v2', JSON.stringify(data)); }, fixture());
   await page.goto('/');
   await page.waitForFunction(() => window.MobileV2 && typeof showView === 'function');
+  await expect(page.locator('#splashScreen')).toHaveClass(/gone/, { timeout: 15000 });
   await page.evaluate(() => { try { closeModal('modalCloudSync'); } catch (e) {} showView('session'); });
 }
 
@@ -89,4 +90,53 @@ test('Ajustes: «Clásico» recupera el diseño anterior y «Nuevo» lo devuelve
   await expect(page.locator('html')).not.toHaveClass(/mobile-v2/);
   await page.evaluate(() => { try { closeModal('modalCloudSync'); } catch (e) {} MobileV2.setDesign('v2'); showView('session'); });
   await expect(page.locator('#mv2Hoy .mv2-summary')).toBeVisible();
+});
+
+async function chooseWork(page) {
+  await page.evaluate(() => {
+    showView('cronometro');
+    const sel = document.getElementById('cronoObraSelect');
+    if (typeof cronoFillObraSelect === 'function') cronoFillObraSelect();
+    sel.value = [...sel.options].find(o => o.value).value;
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.waitForFunction(() => typeof cronoHydrate === 'function'); await page.evaluate(() => cronoHydrate());
+}
+const inViewport = locator => locator.evaluate(el => { const r = el.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight && r.height > 20; });
+
+test('Cronómetro v2: Iniciar a la vista sin scroll; en marcha, Pausar y Terminar grandes', async ({ page }) => {
+  await boot(page);
+  await chooseWork(page);
+  const start = page.locator('#cronoStartBtn');
+  await expect(start).toBeEnabled();
+  expect(await inViewport(start)).toBe(true);
+  // El Iniciar no queda tapado por la hoja de herramientas plegada.
+  const sheetTop = await page.locator('#cronoIdleDrawer').evaluate(el => el.getBoundingClientRect().top);
+  expect((await start.boundingBox()).y + (await start.boundingBox()).height).toBeLessThanOrEqual(sheetTop);
+  await expect(page.locator('#view-cronometro .crono-readiness-chip')).toBeHidden();
+  await start.click();
+  await expect.poll(() => page.evaluate(() => crono.state)).toBe('running');
+  const pause = page.getByRole('button', { name: 'Pausar', exact: true });
+  const finish = page.getByRole('button', { name: 'Terminar', exact: true });
+  await expect(pause).toBeVisible();
+  await expect(finish).toBeVisible();
+  expect(await inViewport(page.locator('#cronoDisplay'))).toBe(true);
+  expect(await inViewport(finish)).toBe(true);
+  await finish.click();
+  // Menos de un minuto: la app pregunta si descartar la sesión; si no, si guardarla.
+  await expect(page.locator('.modal-overlay.visible')).toHaveCount(1);
+  expect(await page.evaluate(() => crono.state)).toBe('running');
+});
+
+test('Cronómetro v2: la mesa de trabajo es una hoja que se abre al tocar una pestaña', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => { db.cronoTasks = [{ id: 't', text: 'Digitar compás 40', kind: 'piano', priority: 1, done: false, createdAt: new Date().toISOString() }]; saveData(); });
+  await chooseWork(page);
+  const drawer = page.locator('#cronoIdleDrawer');
+  await expect(drawer.locator('.crono-run-drawer-panels')).toBeHidden();
+  await drawer.getByRole('tab', { name: /Pasajes/ }).click();
+  await expect(drawer).toHaveClass(/mv2-sheet-open/);
+  await expect(drawer.locator('.crono-run-drawer-panels')).toBeVisible();
+  await page.locator('#mv2SheetScrim').click({ position: { x: 20, y: 40 } });
+  await expect(drawer).not.toHaveClass(/mv2-sheet-open/);
 });

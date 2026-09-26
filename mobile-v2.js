@@ -300,6 +300,81 @@
     applyDesign();
   }
 
+
+  /* ── Cronómetro: hoja de herramientas y vuelta arriba al empezar ─── */
+  function phoneV2() { return design() === 'v2' && root.matchMedia && root.matchMedia('(max-width: 700px)').matches; }
+  function scrim() {
+    let el = doc.getElementById('mv2SheetScrim');
+    if (!el) { el = doc.createElement('div'); el.id = 'mv2SheetScrim'; el.className = 'mv2-sheet-scrim'; el.addEventListener('click', closeTools); doc.body.appendChild(el); }
+    return el;
+  }
+  function setTools(drawer, open) {
+    if (!drawer) return;
+    drawer.classList.toggle('mv2-sheet-open', !!open);
+    scrim().classList.toggle('on', !!open && phoneV2());
+  }
+  function closeTools() { doc.querySelectorAll('#cronoIdleDrawer, #cronoRunDrawer').forEach(d => setTools(d, false)); }
+  function installCrono() {
+    ['cronoIdleDrawer', 'cronoRunDrawer'].forEach(id => {
+      const drawer = doc.getElementById(id);
+      if (!drawer || drawer.dataset.mv2) return;
+      drawer.dataset.mv2 = '1';
+      const toggle = doc.createElement('button');
+      toggle.type = 'button'; toggle.className = 'mv2-sheet-toggle'; toggle.setAttribute('aria-label', 'Herramientas');
+      toggle.addEventListener('click', () => setTools(drawer, !drawer.classList.contains('mv2-sheet-open')));
+      drawer.appendChild(toggle);
+      // Tocar una pestaña (no «Pase +», que es una acción) abre la hoja.
+      drawer.addEventListener('click', event => {
+        if (!phoneV2()) return;
+        const tab = event.target.closest && event.target.closest('.crono-run-drawer-tab');
+        if (tab && tab.dataset.tab) setTools(drawer, true);
+      });
+    });
+    // ¿Se ve la barra inferior? Entonces la hoja va encima, no debajo.
+    const measureNav = () => {
+      const nav = doc.querySelector('.nav.nav-bottom');
+      const r = nav && nav.getBoundingClientRect();
+      // Solo cuenta como barra inferior si es ancha y está abajo (no un raíl lateral).
+      const visible = !!(r && r.height > 0 && r.height < 160 && r.width > root.innerWidth * .6 && r.bottom >= root.innerHeight - 2 &&
+        getComputedStyle(nav).display !== 'none' && getComputedStyle(nav).visibility !== 'hidden');
+      const rail = !!(r && r.height > 160 && r.left <= 0 && r.width > 0 && r.width < root.innerWidth * .5 && getComputedStyle(nav).display !== 'none');
+      doc.body.classList.toggle('mv2-nav-rail', rail);
+      if (rail) doc.documentElement.style.setProperty('--mv2-rail-w', Math.ceil(r.right) + 'px');
+      doc.body.classList.toggle('mv2-nav-visible', visible);
+      if (visible) doc.documentElement.style.setProperty('--mv2-nav-h', Math.ceil(root.innerHeight - r.top) + 'px');
+    };
+    measureNav();
+    root.addEventListener('resize', measureNav);
+    new MutationObserver(measureNav).observe(doc.body, { attributes: true, attributeFilter: ['class', 'data-view'] });
+    // Cualquier selección de pestaña (tocar o por código: recordatorio de
+    // tareas, dictado…) abre la hoja; si no, el panel se abriría invisible.
+    [['cronoSetIdleDrawerTab', 'cronoIdleDrawer'], ['cronoSetRunDrawerTab', 'cronoRunDrawer']].forEach(([fn, id]) => {
+      if (typeof root[fn] !== 'function' || root[fn].__mv2) return;
+      const original = root[fn];
+      const wrapped = function (tab) {
+        const r = original.apply(this, arguments);
+        if (phoneV2()) setTools(doc.getElementById(id), true);
+        return r;
+      };
+      wrapped.__mv2 = true;
+      root[fn] = wrapped;
+    });
+    // Al empezar, el reloj arriba: la página podía quedar desplazada y el
+    // anillo acababa bajo la cabecera.
+    if (typeof root.cronoStart === 'function' && !root.cronoStart.__mv2) {
+      const original = root.cronoStart;
+      const wrapped = function () {
+        const r = original.apply(this, arguments);
+        if (phoneV2()) setTimeout(() => {
+          [doc.scrollingElement, doc.querySelector('.app-content'), doc.getElementById('view-cronometro')].forEach(el => { if (el) el.scrollTop = 0; });
+        }, 60);
+        return r;
+      };
+      wrapped.__mv2 = true;
+      root.cronoStart = wrapped;
+    }
+  }
+
   function install() {
     if (!doc || install.done) return;
     install.done = true;
@@ -311,7 +386,7 @@
       wrapped.__mv2 = true;
       root.renderSessionResumen = wrapped;
     };
-    const ready = () => { hook(); installSetting(); renderHoy(); };
+    const ready = () => { hook(); installSetting(); installCrono(); renderHoy(); };
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', ready, { once: true }); else ready();
     root.addEventListener('load', () => { ready(); setTimeout(renderHoy, 2500); }, { once: true });
     // Las prioridades del Profesor se cargan tarde: repintar cuando estén.
@@ -319,5 +394,5 @@
   }
   if (doc) install();
 
-  return { design, setDesign, planToday, parsePlan, parseMinutes, matchUnit, savePlan, clearPlan, renderHoy, studyNow, openAdd, addStudy, addNote, toggleRooms, openPaste, pasteFromClipboard, confirmPaste, closeSheet, sentence };
+  return { closeTools, design, setDesign, planToday, parsePlan, parseMinutes, matchUnit, savePlan, clearPlan, renderHoy, studyNow, openAdd, addStudy, addNote, toggleRooms, openPaste, pasteFromClipboard, confirmPaste, closeSheet, sentence };
 });
