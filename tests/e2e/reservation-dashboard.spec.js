@@ -135,3 +135,44 @@ test('distinguishes a stopped monitor and stale Asimut data from a live one', as
   await expect(page.locator('#reservationDashboardStatus')).toContainText('En directo');
   await expect(page.locator('#reservationConnectionHelp')).toBeHidden();
 });
+
+test('shows a failing monitor with its error and never mistakes missing data for a free agenda', async ({ page }) => {
+  const now = new Date().toISOString();
+  // Estado mínimo: el monitor cayó antes de su primera lectura (login roto).
+  const failing = structuredClone(sampleRow);
+  failing.observed_at = now;
+  failing.state = {
+    last_read_at: null, date: null, reservations: [], transition: null, scans: [], success_rate: '100%',
+    quota: { rf_mins: 0, sz_mins: 0, sz_applicable: false },
+    monitor: {
+      online: false, paused: false, operating_mode: { code: '1', name: 'Normal' },
+      error: { kind: 'ModuleNotFoundError', message: "No module named 'selenium.webdriver.chrome.webdriver'", attempt: 47, at: now, retry_in_s: 60 },
+    },
+  };
+  await mountDashboard(page, failing);
+  await expect(page.locator('#reservationDashboardStatus')).toContainText('El monitor está fallando · intento 47');
+  await expect(page.locator('#reservationDashboardStatus')).toContainText('ninguna en esta sesión');
+  await expect(page.locator('#reservationHero')).toContainText('No consigue leer Asimut');
+  await expect(page.locator('#reservationHero')).toContainText('Intento 47 · ModuleNotFoundError');
+  await expect(page.locator('#reservationHero')).toContainText('reintenta en 60 s');
+  await expect(page.locator('#reservationBookingList')).toContainText('Sin datos todavía');
+  await expect(page.locator('#reservationBookingList')).not.toContainText('Agenda despejada');
+  await expect(page.locator('#reservationQuotaCard')).toContainText('Sin lectura de Asimut');
+  await expect(page.locator('#reservationMonitorCard')).toContainText('fallando');
+  await expect(page.locator('#reservationModeControls button').first()).toBeDisabled();
+
+  // Caída tras lecturas buenas: conserva las reservas y la hora real de lectura.
+  await page.evaluate(async () => {
+    const readAt = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+    Object.assign(window.__row.state, {
+      last_read_at: readAt,
+      date: new Date().toISOString().slice(0, 10),
+      reservations: [{ event_id: 7, start: '10:00', end: '12:00', room: '30113', type: '', status: 'upcoming', locked: false, confirmed: false }],
+    });
+    window.__row.state.monitor.error.attempt = 2;
+    await window.ReservationDashboard.refresh(false);
+  });
+  await expect(page.locator('#reservationDashboardStatus')).toContainText('intento 2 · última lectura de Asimut: hace 20 min');
+  await expect(page.locator('#reservationBookingList')).toContainText('Aula 30.113');
+  await expect(page.locator('#reservationBookingList')).not.toContainText('30113');
+});

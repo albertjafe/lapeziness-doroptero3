@@ -46,4 +46,10 @@ describe('reservation monitor dashboard', () => {
     expect(migration).not.toContain("'cancel_reservation'");
     expect(migration).not.toContain("'patch_reservation'");
   });
+
+  it('passes the monitor failure and real read time through the ingest sanitiser', () => {
+    expect(edge).toContain('last_read_at: cleanInstant(raw.last_read_at)');
+    expect(edge).toContain('error: cleanMonitorError(monitorRaw.error)');
+    expect(dashboard).toContain("state.monitor.error ? 'failing' : 'stopped'");
+  });
 });

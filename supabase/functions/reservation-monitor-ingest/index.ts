@@ -44,6 +44,29 @@ function cleanTime(value: unknown): string | null {
   return text && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(text) ? text : null;
 }
 
+function cleanInstant(value: unknown): string | null {
+  const text = cleanText(value, 40);
+  if (!text) return null;
+  const time = Date.parse(text);
+  return Number.isNaN(time) ? null : new Date(time).toISOString();
+}
+
+// Caída del bucle del monitor (p. ej. el login en Asimut falla): la app lo
+// muestra en lugar de «sin señal». Sin datos personales: tipo y mensaje cortos.
+function cleanMonitorError(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const kind = cleanText(raw.kind, 60);
+  if (!kind) return null;
+  return {
+    kind,
+    message: cleanText(raw.message, 240),
+    attempt: cleanInteger(raw.attempt, 1, 1_000_000),
+    at: cleanInstant(raw.at),
+    retry_in_s: cleanInteger(raw.retry_in_s, 0, 86_400),
+  };
+}
+
 function cleanInteger(value: unknown, min: number, max: number): number | null {
   const number = Number(value);
   if (!Number.isInteger(number)) return null;
@@ -104,6 +127,7 @@ function cleanState(value: unknown) {
     : [];
 
   return {
+    last_read_at: cleanInstant(raw.last_read_at),
     date: cleanDate(raw.date),
     reservations,
     quota: cleanQuota(raw.quota),
@@ -116,6 +140,7 @@ function cleanState(value: unknown) {
     } : null,
     monitor: {
       online: cleanBoolean(monitorRaw.online),
+      error: cleanMonitorError(monitorRaw.error),
       paused: cleanBoolean(monitorRaw.paused),
       target_date: cleanDate(monitorRaw.target_date),
       operating_mode: {

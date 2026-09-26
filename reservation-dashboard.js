@@ -71,19 +71,45 @@
     const hours = Math.floor(minutes / 60);
     return `hace ${hours} h ${minutes % 60} min`;
   }
+  /* Cuándo se leyó Asimut de verdad. Las copias que el monitor publica al caer
+   * o cerrarse renuevan observed_at (el servidor sólo acepta instantáneas más
+   * nuevas) y conservan la lectura real en state.last_read_at. */
+  function lastReadAt(row) {
+    const state = row?.state || {};
+    if (state.last_read_at) return state.last_read_at;
+    // Sin fecha = estado mínimo tras una caída antes de la primera lectura.
+    // Con fecha pero sin last_read_at = monitor anterior al 26-09-2026.
+    return state.date ? row?.observed_at || null : null;
+  }
   function dataAgeMs(row) {
-    const date = parseDate(row && row.observed_at);
+    const date = parseDate(lastReadAt(row));
     return date ? Math.max(0, Date.now() - date.getTime()) : Infinity;
   }
-  /* Tres señales distintas:
+  function lastReadLabel(row) {
+    return lastReadAt(row) ? relativeAge(lastReadAt(row)) : 'ninguna en esta sesión';
+  }
+  /* Señales distintas:
    * - latido (heartbeat_at): el programa de Windows sigue abierto y con red;
    * - monitor.online: el bucle de reservas está en marcha (false tras caída o cierre);
-   * - observed_at: cuándo se leyó Asimut por última vez. */
+   * - monitor.error: el bucle cayó y el supervisor lo está reintentando;
+   * - last_read_at: cuándo se leyó Asimut por última vez. */
   function monitorHealth(row, state) {
     if (ageMs(row) > OFFLINE_MS) return 'offline';
-    if (state?.monitor?.online === false) return 'stopped';
+    if (state?.monitor?.online === false) return state.monitor.error ? 'failing' : 'stopped';
     if (dataAgeMs(row) > STALE_DATA_MS) return 'stale';
     return 'live';
+  }
+  function errorSummary(error) {
+    if (!error) return '';
+    const parts = [error.attempt ? `Intento ${error.attempt}` : null, [error.kind, error.message].filter(Boolean).join(': ')];
+    if (error.retry_in_s) parts.push(`reintenta en ${error.retry_in_s} s`);
+    return parts.filter(Boolean).join(' · ');
+  }
+  // Aachen se guarda como 30xxx (convención interna del monitor); se muestra 30.xxx.
+  function roomLabel(room) {
+    const text = String(room == null || room === '' ? '—' : room);
+    const aachen = /^30(\d{3})$/.exec(text);
+    return aachen ? `30.${aachen[1]}` : text;
   }
   function currentRow() {
     return rows.find(row => row.source === selectedSource) || rows[0] || null;
@@ -165,9 +191,9 @@
     const next = reservations.find(item => timelineStatus(state.date, item) === 'upcoming');
     const focus = current || next || reservations[reservations.length - 1];
     const health = monitorHealth(row, state);
-    const offline = health === 'offline' || health === 'stopped';
+    const offline = health === 'offline' || health === 'stopped' || health === 'failing';
     let eyebrow = current ? 'Ahora mismo' : next ? 'Siguiente reserva' : reservations.length ? 'Última reserva del día' : 'Agenda libre';
-    let title = focus ? `Aula ${escapeHtml(focus.room || '—')}` : 'Sin reservas';
+    let title = focus ? `Aula ${escapeHtml(roomLabel(focus.room))}` : 'Sin reservas';
     let subtitle = focus
       ? `${escapeHtml(focus.start || '—')}–${escapeHtml(focus.end || '—')} · ${durationLabel(reservationMinutes(focus))}`
       : `No hay reservas para ${escapeHtml(formatDate(state.date))}`;
@@ -175,10 +201,14 @@
       eyebrow = 'Monitor sin conexión reciente';
       title = 'Estado en espera';
       subtitle = `La última señal llegó ${escapeHtml(relativeAge(row.heartbeat_at))}`;
+    } else if (health === 'failing') {
+      eyebrow = 'El monitor está fallando';
+      title = 'No consigue leer Asimut';
+      subtitle = escapeHtml(errorSummary(state.monitor.error));
     } else if (health === 'stopped') {
       eyebrow = 'Monitor detenido';
       title = 'No está leyendo Asimut';
-      subtitle = `El programa sigue abierto; última lectura ${escapeHtml(relativeAge(row.observed_at))}`;
+      subtitle = `El programa sigue abierto; última lectura ${escapeHtml(lastReadLabel(row))}`;
     }
     hero.classList.toggle('is-offline', offline);
     hero.innerHTML = `
@@ -189,7 +219,7 @@
       </div>
       <div class="rd-hero-time">
         <span>${escapeHtml(formatDate(state.date))}</span>
-        <b>${escapeHtml(formatClock(row.observed_at))}</b>
+        <b>${escapeHtml(formatClock(lastReadAt(row)))}</b>
       </div>`;
   }
 
@@ -197,6 +227,11 @@
     const list = el(targetId);
     if (!list) return;
     const items = Array.isArray(reservations) ? reservations : [];
+    if (!day) {
+      // Estado mínimo publicado tras una caída antes de la primera lectura.
+      list.innerHTML = '<div class="rd-empty-line"><span>Sin datos todavía</span><small>El monitor aún no ha leído Asimut en esta sesión.</small></div>';
+      return;
+    }
     if (!items.length) {
       list.innerHTML = '<div class="rd-empty-line"><span>Agenda despejada</span><small>No hay reservas en esta fecha.</small></div>';
       return;
@@ -208,7 +243,7 @@
         <div class="rd-booking-time"><b>${escapeHtml(item.start || '—')}</b><span>${escapeHtml(item.end || '—')}</span></div>
         <div class="rd-booking-line" aria-hidden="true"><i></i></div>
         <div class="rd-booking-main">
-          <strong>Aula ${escapeHtml(item.room || '—')}</strong>
+          <strong>Aula ${escapeHtml(roomLabel(item.room))}</strong>
           <span>${durationLabel(reservationMinutes(item))}${item.type ? ` · ${escapeHtml(item.type)}` : ''}</span>
         </div>
         <div class="rd-booking-flags">
@@ -283,7 +318,7 @@
     const monitor = state.monitor || {};
     const health = monitorHealth(row, state);
     const online = health === 'live' || health === 'stale';
-    const liveLabel = { live: 'conectado', stale: 'lectura antigua', stopped: 'detenido', offline: 'sin señal' }[health];
+    const liveLabel = { live: 'conectado', stale: 'lectura antigua', stopped: 'detenido', failing: 'fallando', offline: 'sin señal' }[health];
     const scans = Array.isArray(state.scans) ? state.scans : [];
     const latestScan = scans.map(scan => parseDate(scan.observed_at)).filter(Boolean).sort((a, b) => b - a)[0];
     const chips = [
@@ -352,12 +387,15 @@
     const health = monitorHealth(row, state);
     if (health === 'offline') {
       setStatus(`Sin señal del ordenador desde ${formatClock(row.heartbeat_at)} (${relativeAge(row.heartbeat_at)})`, 'error');
+    } else if (health === 'failing') {
+      const attempt = state.monitor.error.attempt;
+      setStatus(`El monitor está fallando${attempt ? ` · intento ${attempt}` : ''} · última lectura de Asimut: ${lastReadLabel(row)}`, 'error');
     } else if (health === 'stopped') {
-      setStatus(`Monitor detenido · última lectura de Asimut ${relativeAge(row.observed_at)}`, 'error');
+      setStatus(`Monitor detenido · última lectura de Asimut ${lastReadLabel(row)}`, 'error');
     } else if (health === 'stale') {
-      setStatus(`Conectado · última lectura de Asimut ${relativeAge(row.observed_at)}`, 'stale');
+      setStatus(`Conectado · última lectura de Asimut ${lastReadLabel(row)}`, 'stale');
     } else {
-      setStatus(`En directo · leído ${relativeAge(row.observed_at)}`, ageMs(row) > FRESH_MS ? 'stale' : 'ok');
+      setStatus(`En directo · leído ${lastReadLabel(row)}`, ageMs(row) > FRESH_MS ? 'stale' : 'ok');
     }
     if (connectionNotice) setStatus(connectionNotice.status, connectionNotice.kind);
     renderHero(state, row);
@@ -371,13 +409,18 @@
     const helpText = {
       offline: 'El ordenador no está publicando. Abre una sola instancia del monitor en Windows y completa su arranque en Telegram; después pulsa actualizar.',
       stopped: 'El programa sigue abierto pero el monitor se ha parado o se está reiniciando. Mira la ventana del monitor o su log en Windows.',
+      failing: 'El programa está abierto en Windows pero el monitor cae al arrancar y se reintenta solo. Si el intento sigue subiendo, mira la ventana del monitor o su log; las reservas mostradas son las de la última lectura buena.',
       stale: 'El monitor está conectado pero lleva un rato sin leer Asimut (espera táctica, madrugada o un reintento). Las reservas mostradas pueden no estar al día.',
     }[health];
     help.hidden = !helpText;
     help.textContent = helpText || '';
     renderReservations(state.date, state.reservations, 'reservationBookingList');
     const quota = el('reservationQuotaCard');
-    if (quota) quota.innerHTML = quotaCard(state.quota || {});
+    if (quota) {
+      quota.innerHTML = state.date
+        ? quotaCard(state.quota || {})
+        : '<section class="rd-card rd-quota-card"><div class="rd-card-head"><span>Cuota disponible</span><small>Asimut</small></div><p class="rd-card-note">Sin lectura de Asimut todavía.</p></section>';
+    }
     renderMonitor(state, row);
     renderControls(state, row);
     renderTransition(state.transition);
