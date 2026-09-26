@@ -102,9 +102,8 @@ test('shows a compact daily forecast, live classrooms and separate history', asy
   await expect(page.locator('.session-mode-switch')).toHaveCount(0);
 
   await page.evaluate(() => openSettings());
-  let fold = page.locator('.ajustes-fold');
-  await fold.locator('summary').click();
-  await fold.getByRole('button', { name: 'Estadísticas' }).click();
+  let estudio = page.locator('#stEstudio');
+  await estudio.getByRole('button', { name: /^Estadísticas/ }).click();
   await expect(page.locator('#sessionStatsSection')).toBeVisible();
   await expect(page.locator('#activityDailyCard')).toBeVisible();
   await expect(page.locator('#sessionResumenCard')).toBeHidden();
@@ -112,12 +111,11 @@ test('shows a compact daily forecast, live classrooms and separate history', asy
   await expect(page.locator('#sessionResumenCard')).toBeVisible();
 
   await page.evaluate(() => openSettings());
-  fold = page.locator('.ajustes-fold');
-  if (!(await fold.evaluate(element => element.open))) await fold.locator('summary').click();
-  await expect(fold.getByRole('button', { name: 'Disponibilidad' })).toBeVisible();
+  estudio = page.locator('#stEstudio');
+  await expect(estudio.getByRole('button', { name: /^Disponibilidad/ })).toBeVisible();
   // Weekly planning is done by the Professor (AI); the app no longer offers it.
-  await expect(fold.getByRole('button', { name: 'Plan semanal' })).toHaveCount(0);
-  await fold.getByRole('button', { name: 'Estadísticas' }).click();
+  await expect(page.locator('#view-ajustes').getByRole('button', { name: /Plan semanal/ })).toHaveCount(0);
+  await estudio.getByRole('button', { name: /^Estadísticas/ }).click();
   await expect(page.locator('#sessionStatsSection')).toBeVisible();
   await expect(page.locator('#sessionResumenCard')).toBeHidden();
   await page.locator('.nav-btn[data-view="session"]').click();

@@ -291,16 +291,16 @@
 
   /* ── Ajustes: selector Nuevo / Clásico ─────────────────────────── */
   function installSetting() {
-    const card = doc.querySelector('#view-ajustes .ajustes-card');
-    if (!card || doc.getElementById('mv2DesignRow')) return;
+    const list = doc.getElementById('stAppearanceList') || doc.querySelector('#view-ajustes .ajustes-card');
+    if (!list || doc.getElementById('mv2DesignRow')) return;
     const row = doc.createElement('div');
-    row.id = 'mv2DesignRow'; row.className = 'mv2-design-row';
-    row.innerHTML = '<div><b>Diseño en el móvil</b><small>El clásico conserva la disposición anterior.</small></div>' +
-      '<div class="ajustes-seg" role="group" aria-label="Diseño en el móvil"><button type="button" data-mobile-design="v2" onclick="MobileV2.setDesign(\'v2\')">Nuevo</button><button type="button" data-mobile-design="classic" onclick="MobileV2.setDesign(\'classic\')">Clásico</button></div>';
-    card.appendChild(row);
+    row.id = 'mv2DesignRow'; row.className = 'mv2-design-row st-row st-row--stack';
+    row.innerHTML = '<span class="st-ico" style="--c:#5b82a6"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></span>' +
+      '<span class="st-label"><b>Diseño en el móvil</b><small>El clásico conserva la disposición anterior.</small></span>' +
+      '<div class="st-ctl st-seg ajustes-seg" role="group" aria-label="Diseño en el móvil"><button type="button" data-mobile-design="v2" onclick="MobileV2.setDesign(\'v2\')">Nuevo</button><button type="button" data-mobile-design="classic" onclick="MobileV2.setDesign(\'classic\')">Clásico</button></div>';
+    list.appendChild(row);
     applyDesign();
   }
-
 
   /* ── Cronómetro: hoja de herramientas y vuelta arriba al empezar ─── */
   function phoneV2() { return design() === 'v2' && root.matchMedia && root.matchMedia('(max-width: 700px)').matches; }

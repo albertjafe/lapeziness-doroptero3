@@ -1,0 +1,232 @@
+/* Ajustes (v456) — listas agrupadas tipo iOS, en todas las plataformas.
+   Se carga al final del <body>; cada selector empieza por html:not(#s)
+   #view-ajustes para ganar a los estilos antiguos de Ajustes (styles.css,
+   session-home.css, Mármol) sin pelear regla a regla. Solo variables de tema. */
+
+html:not(#s) #view-ajustes {
+  --st-radius: 14px;
+  --st-row-pad: 12px 14px;
+  --st-gap: 12px;
+  --st-sep: color-mix(in srgb, var(--border) 80%, transparent);
+  background: none !important;
+}
+/* Un solo título: el de la cabecera de la app. */
+html:not(#s) #view-ajustes > .ajustes-header { display: none !important; }
+
+html:not(#s) #view-ajustes .st-layout {
+  display: block !important;
+  max-width: 720px;
+  margin: 0 auto !important;
+  padding: 8px 0 40px !important;
+}
+html:not(#s) #view-ajustes .st-index { display: none; }
+html:not(#s) #view-ajustes .st-main { display: grid; gap: 22px; min-width: 0; }
+
+/* Secciones */
+html:not(#s) #view-ajustes .st-group { display: grid; gap: 8px; scroll-margin-top: 80px; }
+html:not(#s) #view-ajustes .st-title {
+  margin: 0 4px; font: 600 13px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", sans-serif;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--text3);
+}
+html:not(#s) #view-ajustes .st-list {
+  display: block; margin: 0; padding: 0;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--st-radius);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .04); overflow: hidden;
+}
+html:not(#s) #view-ajustes .st-list + .st-list { margin-top: 8px; }
+
+/* Filas */
+html:not(#s) #view-ajustes .st-row {
+  position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center;
+  column-gap: var(--st-gap); row-gap: 10px; width: 100%; box-sizing: border-box; min-height: 56px;
+  padding: var(--st-row-pad); margin: 0; text-align: left; font: inherit; color: var(--text);
+  background: none; border: 0; border-radius: 0; box-shadow: none;
+}
+html:not(#s) #view-ajustes .st-row + .st-row::before,
+html:not(#s) #view-ajustes .st-fold + .st-fold > summary::before {
+  content: ''; position: absolute; top: 0; left: 58px; right: 0; height: 1px; background: var(--st-sep);
+}
+html:not(#s) #view-ajustes .st-row--stack { grid-template-columns: 32px minmax(0, 1fr); }
+html:not(#s) #view-ajustes .st-row--stack > .st-ctl { grid-column: 2 / -1; justify-self: stretch; }
+html:not(#s) #view-ajustes .st-full { grid-column: 2 / -1; }
+html:not(#s) #view-ajustes .st-row--link { cursor: pointer; }
+html:not(#s) #view-ajustes .st-row--link:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+html:not(#s) #view-ajustes .st-row--link:active { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
+/* Iconos de color, como en Ajustes de iOS */
+html:not(#s) #view-ajustes .st-ico {
+  --c: var(--accent);
+  width: 30px; height: 30px; min-width: 30px; min-height: 30px; border-radius: 8px; padding: 0; margin: 0;
+  display: grid; place-items: center; align-self: start; background: var(--c); color: #fff; border: 0; box-shadow: none;
+  font: 700 15px/1 -apple-system, "Segoe UI", sans-serif;
+}
+html:not(#s) #view-ajustes .st-ico svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+html:not(#s) #view-ajustes .st-ico--g { background: #fff; color: #4285f4; border: 1px solid var(--border); }
+html:not(#s) #view-ajustes .st-ico-btn { cursor: pointer; }
+html:not(#s) #view-ajustes .st-ico-btn.active { background: var(--text3); }
+
+/* Texto de la fila */
+html:not(#s) #view-ajustes .st-label { display: grid; gap: 3px; min-width: 0; }
+html:not(#s) #view-ajustes .st-label > b { font-size: 15.5px; font-weight: 600; color: var(--text); line-height: 1.3; }
+html:not(#s) #view-ajustes .st-label > small,
+html:not(#s) #view-ajustes .st-note { display: block; margin: 0; font-size: 13px; line-height: 1.4; color: var(--text3); font-style: normal; }
+html:not(#s) #view-ajustes .st-status { display: flex !important; align-items: center; gap: 7px; }
+html:not(#s) #view-ajustes .st-status .push-status-dot { position: static; flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; margin: 0; }
+html:not(#s) #view-ajustes .st-diag:empty { display: none; }
+html:not(#s) #view-ajustes #syncStatusInfo { display: grid; gap: 2px; }
+html:not(#s) #view-ajustes .st-sync-state { font-size: 13.5px; font-weight: 600; color: var(--text2, var(--text)); }
+html:not(#s) #view-ajustes .st-sync-state.ok { color: var(--green, #34a853); }
+html:not(#s) #view-ajustes .st-sync-state.warn { color: var(--orange, #d9822b); }
+html:not(#s) #view-ajustes .st-sync-email { color: var(--text); font-weight: 500; overflow-wrap: anywhere; }
+html:not(#s) #view-ajustes .st-sync-detail,
+html:not(#s) #view-ajustes .st-diag { font-size: 12.5px; line-height: 1.4; color: var(--text3); }
+html:not(#s) #view-ajustes .st-chev { font-size: 22px; line-height: 1; color: var(--text3); }
+html:not(#s) #view-ajustes .st-ctl { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+html:not(#s) #view-ajustes .st-btns { flex-wrap: wrap; justify-content: flex-start; }
+
+/* Botones */
+html:not(#s) #view-ajustes .st-btn {
+  min-height: 36px !important; height: auto; padding: 7px 14px !important; margin: 0; border-radius: 10px !important;
+  font-family: inherit !important; font-size: 14px !important; font-weight: 600 !important; line-height: 1.2 !important; color: var(--accent) !important; background: color-mix(in srgb, var(--accent) 10%, var(--bg2)) !important;
+  border: 0 !important; box-shadow: none !important; cursor: pointer; white-space: nowrap; width: auto;
+}
+html:not(#s) #view-ajustes .st-btn:hover { background: color-mix(in srgb, var(--accent) 16%, var(--bg2)) !important; }
+html:not(#s) #view-ajustes .st-btn--primary { background: var(--accent) !important; color: var(--bg) !important; }
+html:not(#s) #view-ajustes .st-btn[hidden] { display: none !important; }
+html:not(#s) #view-ajustes .st-danger {
+  grid-column: 1 / -1; justify-self: center; min-height: 40px; padding: 6px 16px; border: 0; background: none;
+  font-family: inherit; font-size: 15px; font-weight: 600; line-height: 1; color: var(--red, #d0473f); cursor: pointer;
+}
+
+/* Segmentado (modo, tamaño, sonidos) */
+html:not(#s) #view-ajustes .st-seg {
+  display: grid !important; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px !important;
+  padding: 3px !important; margin: 0 !important; border-radius: 10px !important; border: 0 !important;
+  background: var(--bg3) !important; box-shadow: none !important; width: 100%;
+}
+html:not(#s) #view-ajustes .st-seg > button {
+  display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: center !important; gap: 6px;
+  min-height: 34px !important; height: auto !important; padding: 6px 8px !important; margin: 0 !important;
+  border: 0 !important; border-radius: 8px !important; background: transparent !important; box-shadow: none !important;
+  font-family: inherit !important; font-size: 13.5px !important; font-weight: 500 !important; line-height: 1.2 !important; color: var(--text2) !important; width: auto !important; min-width: 0 !important;
+  outline-offset: -2px; transform: none !important;
+}
+html:not(#s) #view-ajustes .st-seg > button.active,
+html:not(#s) #view-ajustes .st-seg > button[aria-checked="true"] {
+  background: var(--bg2) !important; color: var(--text) !important; font-weight: 650 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .12), 0 0 0 .5px rgba(0, 0, 0, .04) !important;
+}
+html:not(#s) #view-ajustes .st-seg > button::before,
+html:not(#s) #view-ajustes .st-seg > button::after { display: none !important; }
+html:not(#s) #view-ajustes .st-seg .theme-option-name { font: inherit !important; color: inherit !important; margin: 0 !important; padding: 0 !important; }
+html:not(#s) #view-ajustes .st-aa { font-weight: 600; color: inherit; line-height: 1; }
+html:not(#s) #view-ajustes .st-seg-ico { display: grid; place-items: center; width: 18px; height: 18px; }
+html:not(#s) #view-ajustes .st-seg-ico svg { width: 18px; height: 18px; }
+
+/* Volumen */
+html:not(#s) #view-ajustes .st-label--grow { grid-column: 2 / -1; }
+html:not(#s) #view-ajustes .st-slider-row { display: flex !important; align-items: center; gap: 12px; margin: 4px 0 0 !important; padding: 0 !important; background: none !important; border: 0 !important; }
+html:not(#s) #view-ajustes .st-slider-row input[type="range"] { flex: 1; min-width: 0; margin: 0; }
+html:not(#s) #view-ajustes .st-slider-row input[type="range"]::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--fc) 0%, var(--fc) var(--fp), var(--border) var(--fp), var(--border) 100%); }
+html:not(#s) #view-ajustes .st-slider-row input[type="range"]::-moz-range-track { background: linear-gradient(to right, var(--fc) 0%, var(--fc) var(--fp), var(--border) var(--fp), var(--border) 100%); }
+html:not(#s) #view-ajustes .st-slider-row .sound-volume-label { flex: 0 0 40px; text-align: right; font: 600 13px/1 ui-monospace, "JetBrains Mono", monospace; color: var(--text3); }
+
+/* Interruptor tipo iOS (el mínimo táctil global de 44 px lo deformaba) */
+html:not(#s) #view-ajustes .st-switch {
+  position: relative !important; width: 51px !important; height: 31px !important; min-height: 0 !important; min-width: 51px !important;
+  padding: 0 !important; margin: 0 !important; border: 0 !important; border-radius: 999px !important;
+  background: var(--bg3) !important; box-shadow: inset 0 0 0 1px var(--border) !important; cursor: pointer; transition: background .2s;
+}
+html:not(#s) #view-ajustes .st-switch .haptics-toggle-knob {
+  position: absolute !important; top: 2px !important; left: 2px !important; width: 27px !important; height: 27px !important;
+  border-radius: 50% !important; background: #fff !important; box-shadow: 0 2px 4px rgba(0, 0, 0, .2) !important;
+  transform: none; transition: transform .2s;
+}
+html:not(#s) #view-ajustes .st-switch.on { background: var(--green, #34c759) !important; box-shadow: none !important; }
+html:not(#s) #view-ajustes .st-switch.on .haptics-toggle-knob { transform: translateX(20px) !important; }
+
+/* Cuenta destacada */
+html:not(#s) #view-ajustes .st-account {
+  display: flex !important; align-items: center; gap: 14px; width: 100%; box-sizing: border-box; min-height: 76px;
+  padding: 14px 16px !important; margin: 0 !important; text-align: left; font: inherit; color: var(--text); cursor: pointer;
+  background: var(--bg2) !important; border: 1px solid var(--border) !important; border-radius: var(--st-radius) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .04) !important;
+}
+html:not(#s) #view-ajustes .st-account .ajustes-account-avatar {
+  flex: 0 0 52px; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 80%, #fff), var(--accent)); color: #fff;
+  font: 600 22px/1 -apple-system, "Segoe UI", sans-serif;
+}
+html:not(#s) #view-ajustes .st-account .ajustes-account-avatar.is-empty { font-size: 0; }
+html:not(#s) #view-ajustes .st-account .ajustes-account-avatar.is-empty::before {
+  content: ''; width: 26px; height: 26px; background: #fff;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21a8 8 0 0 1 16 0z'/%3E%3C/svg%3E") center/contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21a8 8 0 0 1 16 0z'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+html:not(#s) #view-ajustes .st-account .ajustes-account-info { display: grid; gap: 3px; flex: 1; min-width: 0; }
+html:not(#s) #view-ajustes .st-account .ajustes-account-name { font-size: 17px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html:not(#s) #view-ajustes .st-account .ajustes-account-sub { font-size: 13px; line-height: 1.35; }
+html:not(#s) #view-ajustes .st-account .ajustes-account-chevron { font-size: 24px; color: var(--text3); }
+html:not(#s) #view-ajustes .st-account + .st-list { margin-top: 8px; }
+
+/* Desplegables de Datos */
+html:not(#s) #view-ajustes .st-fold > summary { list-style: none; }
+html:not(#s) #view-ajustes .st-fold > summary::-webkit-details-marker { display: none; }
+html:not(#s) #view-ajustes .st-fold[open] > summary .st-chev { transform: rotate(90deg); }
+html:not(#s) #view-ajustes .st-fold .st-chev { transition: transform .2s; }
+html:not(#s) #view-ajustes .st-fold-body { display: grid; gap: 10px; padding: 4px 14px 16px 58px; }
+html:not(#s) #view-ajustes .st-sub { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text3); margin-top: 4px; }
+html:not(#s) #view-ajustes .st-chips { display: flex !important; flex-wrap: wrap; gap: 6px !important; margin: 0 !important; }
+html:not(#s) #view-ajustes .st-chips > button {
+  min-height: 34px !important; padding: 6px 13px !important; border-radius: 999px !important; margin: 0 !important;
+  border: 1px solid var(--border) !important; background: var(--bg) !important; color: var(--text2) !important;
+  font-family: inherit !important; font-size: 13.5px !important; font-weight: 500 !important; line-height: 1.1 !important; box-shadow: none !important; width: auto !important;
+}
+html:not(#s) #view-ajustes .st-chips > button.active { background: var(--accent) !important; border-color: var(--accent) !important; color: var(--bg) !important; }
+html:not(#s) #view-ajustes .ai-export-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 !important; }
+html:not(#s) #view-ajustes .ai-export-controls :is(select, input) { min-height: 38px; border-radius: 10px; font-size: 14px; flex: 1 1 180px; }
+html:not(#s) #view-ajustes .st-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+html:not(#s) #view-ajustes .st-feedback { font-size: 13px; color: var(--green); }
+html:not(#s) #view-ajustes #googleCalendarListHost:empty { display: none; }
+
+html:not(#s) #view-ajustes .ajustes-foot { text-align: center; font-size: 12px; color: var(--text3); margin: 8px 0 0; }
+
+/* El selector «Diseño en el móvil» se inserta como fila más de Apariencia. */
+html:not(#s) #view-ajustes .mv2-design-row { margin: 0 !important; padding: var(--st-row-pad) !important; border-top: 0 !important; position: relative; }
+html:not(#s) #view-ajustes .mv2-design-row::before { content: ''; position: absolute; top: 0; left: 58px; right: 0; height: 1px; background: var(--st-sep); }
+html:not(#s) #view-ajustes .mv2-design-row b { font-size: 15.5px !important; font-weight: 600; }
+html:not(#s) #view-ajustes .mv2-design-row small { font-size: 13px !important; }
+
+/* Solo tiene sentido en el teléfono. */
+@media (min-width: 701px) { html:not(#s) #view-ajustes .mv2-design-row { display: none !important; } }
+
+/* ── Teléfono ─────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  html:not(#s) #view-ajustes .st-layout { padding: 4px 0 32px !important; }
+  html:not(#s) #view-ajustes .st-main { gap: 20px; }
+  /* Filas con botón a la derecha: el botón baja si no cabe. */
+  html:not(#s) #view-ajustes .st-row:not(.st-row--stack):not(.st-row--link):has(.st-btn) { grid-template-columns: 32px minmax(0, 1fr); }
+  html:not(#s) #view-ajustes .st-row:not(.st-row--stack):not(.st-row--link):has(.st-btn) > .st-ctl { grid-column: 2 / -1; justify-content: flex-start; }
+}
+
+/* ── iPad y escritorio: índice lateral fijo + contenido ───────── */
+@media (min-width: 768px) {
+  html:not(#s) #view-ajustes .st-layout {
+    display: grid !important; grid-template-columns: 210px minmax(0, 1fr); gap: 28px;
+    max-width: 1040px; padding: 12px 0 48px !important; align-items: start;
+  }
+  html:not(#s) #view-ajustes .st-index {
+    display: grid; gap: 2px; position: sticky; top: 16px; padding: 6px;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--st-radius);
+  }
+  html:not(#s) #view-ajustes .st-index a {
+    display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 9px;
+    font-size: 14.5px; font-weight: 500; color: var(--text); text-decoration: none;
+  }
+  html:not(#s) #view-ajustes .st-index a:hover { background: var(--bg3); }
+  html:not(#s) #view-ajustes .st-index a.active { background: color-mix(in srgb, var(--accent) 13%, var(--bg2)); color: var(--accent); font-weight: 650; }
+  html:not(#s) #view-ajustes .st-index .st-ico { width: 26px; height: 26px; min-width: 26px; min-height: 26px; border-radius: 7px; align-self: center; }
+  html:not(#s) #view-ajustes .st-index .st-ico svg { width: 16px; height: 16px; }
+  html:not(#s) #view-ajustes .st-row--stack:has(.st-seg) { grid-template-columns: 32px minmax(0, 1fr) minmax(260px, 340px); }
+  html:not(#s) #view-ajustes .st-row--stack:has(.st-seg) > .st-ctl { grid-column: 3; }
+}

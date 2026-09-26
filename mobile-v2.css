@@ -76,16 +76,7 @@
   html.mobile-v2 .mv2-sheet-actions button.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
 }
 
-/* Ajustes: fila Nuevo / Clásico (solo tiene sentido en el móvil). */
-.mv2-design-row { display: none; }
-@media (max-width: 700px) {
-  .mv2-design-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
-  .mv2-design-row b { display: block; font-size: 14px; }
-  .mv2-design-row small { display: block; font-size: 12px; color: var(--text3); }
-  .mv2-design-row .ajustes-seg { display: flex; gap: 4px; flex: 0 0 auto; }
-  .mv2-design-row .ajustes-seg button { min-height: 36px; padding: 0 12px; border-radius: 9px; font: inherit; font-size: 13px; border: 1px solid var(--border); background: var(--bg); color: var(--text2); cursor: pointer; }
-  .mv2-design-row .ajustes-seg button.active { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
-}
+/* Ajustes: la fila Nuevo / Clásico la estiliza settings.css (fila más de Apariencia). */
 
 /* ── Cronómetro (fase 2) ──────────────────────────────────────────
    Especificidad reforzada (:not(#m)) para ganar a las capas del crono.

@@ -1058,232 +1058,218 @@
     <div class="ajustes-title">Ajustes</div>
   </div>
 
-  <div class="ajustes-body">
+  <!-- Ajustes (v456): listas agrupadas tipo iOS. Se conservan todos los ids y
+       manejadores; en iPad y escritorio, índice lateral fijo. -->
+  <div class="ajustes-body st-layout">
+    <nav class="st-index" aria-label="Secciones de ajustes">
+      <a href="#stCuenta" data-st-jump="stCuenta"><span class="st-ico" style="--c:#6e7b8f"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg></span>Cuenta</a>
+      <a href="#stApariencia" data-st-jump="stApariencia"><span class="st-ico" style="--c:#4f7fb8"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/></svg></span>Apariencia</a>
+      <a href="#stSonido" data-st-jump="stSonido"><span class="st-ico" style="--c:#d0556f"><svg viewBox="0 0 24 24"><path d="M4 9v6h3l5 4V5L7 9H4z"/><path d="M16 8.5a4 4 0 0 1 0 7"/></svg></span>Sonido</a>
+      <a href="#stAvisos" data-st-jump="stAvisos"><span class="st-ico" style="--c:#e0613e"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span>Avisos y calendario</a>
+      <a href="#stEstudio" data-st-jump="stEstudio"><span class="st-ico" style="--c:#3f9a6b"><svg viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7"/><path d="M12 13.5V9.5M10 2.5h4"/></svg></span>Estudio</a>
+      <a href="#stDatos" data-st-jump="stDatos"><span class="st-ico" style="--c:#8a7a5c"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="2.5"/><path d="M5 6v12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V6M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/></svg></span>Datos</a>
+    </nav>
 
-    <!-- Fila de cuenta destacada (solo Mármol) -->
-    <button class="ajustes-account" id="ajustesAccount" onclick="ajustesAccountTap()">
-      <span class="ajustes-account-avatar" id="ajustesAccountAvatar">·</span>
-      <span class="ajustes-account-info">
-        <span class="ajustes-account-name" id="ajustesAccountName">Cuenta</span>
-        <span class="ajustes-account-sub" id="ajustesAccountSub">Comprobando…</span>
-      </span>
-      <span class="ajustes-account-chevron" aria-hidden="true">›</span>
-    </button>
-
-    <!-- ── APARIENCIA ── -->
-    <div class="ajustes-group-label"><span class="ajustes-group-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".7"/><circle cx="17" cy="10.5" r=".7"/><circle cx="8.5" cy="7" r=".7"/><circle cx="6.5" cy="12" r=".7"/><path d="M12 2a10 10 0 1 0 0 20 2 2 0 0 0 2-2c0-.5-.2-.9-.5-1.3-.3-.3-.5-.8-.5-1.2a2 2 0 0 1 2-2h2.3A3.7 3.7 0 0 0 21 11.7C21 5.6 16.9 2 12 2z"/></svg></span>Apariencia</div>
-    <div class="ajustes-card theme-identity-card">
-      <div class="ajustes-card-head">Tema</div>
-      <div class="theme-identity-row" aria-label="Tema fijo: Mármol">
-        <span class="theme-glyph" style="background:#f2f2f7;color:#5b82a6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="5" width="15" height="5" rx="2"/><rect x="4.5" y="14" width="15" height="5" rx="2"/></svg></span>
-        <span class="theme-identity-copy">
-          <strong>Mármol</strong>
-          <small>Una sola identidad visual. El modo noche conserva la misma estructura en oscuro.</small>
-        </span>
-      </div>
-      <div class="ajustes-card-head theme-mode-label">Modo de color</div>
-      <div class="ajustes-seg theme-mode-control" role="radiogroup" aria-label="Modo de color">
-        <button class="theme-option theme-mode-option" data-theme-mode="light" role="radio" aria-checked="false" onclick="setThemeMode('light')">Claro</button>
-        <button class="theme-option theme-mode-option" data-theme-mode="auto" role="radio" aria-checked="false" onclick="setThemeMode('auto')">Automático</button>
-        <button class="theme-option theme-mode-option" data-theme-mode="dark" role="radio" aria-checked="false" onclick="setThemeMode('dark')">Oscuro</button>
-      </div>
-      <div class="theme-mode-note">Automático usa Mármol noche entre las 21:00 y las 7:00.</div>
-    </div>
-
-    <div class="ajustes-card type-system-card">
-      <div class="ajustes-card-head">Tipografía</div>
-      <p class="type-system-copy">La interfaz usa la fuente del sistema para leer, navegar y editar. Los nombres de obras conservan una serif discreta y los tiempos, porcentajes y metadatos usan monoespaciada.</p>
-      <div class="ajustes-card-head" style="margin-top:16px">Tamaño de texto</div>
-      <div class="ajustes-seg" role="radiogroup" aria-label="Tamaño de texto">
-        <button class="theme-option size-option" data-size="small" onclick="setFontSize('small',this)">
-          <div style="font-size:11px;color:var(--text2);padding:4px 0">A</div>
-          <div class="theme-option-name">Pequeño</div>
+    <div class="st-main">
+      <!-- Cuenta -->
+      <section class="st-group" id="stCuenta" aria-labelledby="stCuentaTitle">
+        <h2 class="st-title" id="stCuentaTitle">Cuenta</h2>
+        <button class="ajustes-account st-account" id="ajustesAccount" onclick="ajustesAccountTap()">
+          <span class="ajustes-account-avatar" id="ajustesAccountAvatar">·</span>
+          <span class="ajustes-account-info">
+            <span class="ajustes-account-name" id="ajustesAccountName">Cuenta</span>
+            <span class="ajustes-account-sub" id="ajustesAccountSub">Comprobando…</span>
+          </span>
+          <span class="ajustes-account-chevron" aria-hidden="true">›</span>
         </button>
-        <button class="theme-option size-option" data-size="normal" onclick="setFontSize('normal',this)">
-          <div style="font-size:14px;color:var(--text2);padding:4px 0">A</div>
-          <div class="theme-option-name">Normal</div>
-        </button>
-        <button class="theme-option size-option" data-size="large" onclick="setFontSize('large',this)">
-          <div style="font-size:18px;color:var(--text2);padding:4px 0">A</div>
-          <div class="theme-option-name">Grande</div>
-        </button>
-      </div>
-    </div>
-
-    <!-- ── SONIDO ── -->
-    <div class="ajustes-group-label"><span class="ajustes-group-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h3l5 4V5L7 9H4z"/><path d="M16 8.5a4 4 0 0 1 0 7"/></svg></span>Sonido</div>
-    <div class="ajustes-card">
-      <div class="ajustes-card-head">Paquete de sonidos</div>
-      <div class="ajustes-seg">
-        <button class="theme-option sound-option" data-sound="piano" onclick="setSoundPack('piano');refreshSoundOptionUI()">
-          <div class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"/><path d="M7 6v12M10 6v12M14 6v12M17 6v12"/><path d="M4 10h16"/></svg></div>
-          <div class="theme-option-name">Piano</div>
-        </button>
-        <button class="theme-option sound-option" data-sound="wood" onclick="setSoundPack('wood');refreshSoundOptionUI()">
-          <div class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7c3-3 11-3 14 0v10c-3 3-11 3-14 0V7z"/><path d="M8 8c2 1 6 1 8 0M8 16c2-1 6-1 8 0"/></svg></div>
-          <div class="theme-option-name">Madera</div>
-        </button>
-        <button class="theme-option sound-option" data-sound="paper" onclick="setSoundPack('paper');refreshSoundOptionUI()">
-          <div class="settings-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5"/><path d="M9.5 12h5M9.5 15h5M9.5 18h3"/></svg></div>
-          <div class="theme-option-name">Papel</div>
-        </button>
-      </div>
-      <div class="sound-master-row">
-        <button class="sound-mute-btn" id="soundMuteBtn" onclick="toggleSoundMute()" title="Silenciar sonidos">
-          <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 7v4h3l4 3V4L6 7H3z"/>
-            <path d="M13 7.2c.6.6.9 1.2.9 1.8s-.3 1.2-.9 1.8"/>
-          </svg>
-        </button>
-        <input type="range" id="soundVolumeSlider" class="estado-slider sound-volume-slider" min="0" max="100" step="5" value="75" oninput="setSoundVolume(this.value)">
-        <span class="sound-volume-label" id="soundVolumeLabel">75%</span>
-      </div>
-      <div class="ajustes-hint">Toca una opción para escucharla.</div>
-      <div class="haptics-row">
-        <div class="haptics-label">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 9v6M21 9v6"/></svg>
-          <span>Vibración</span>
+        <div class="st-list" id="stSyncCard">
+          <div class="st-row st-row--stack">
+            <span class="st-ico" style="--c:#4f7fb8"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M4 4v4h4M20 20v-4h-4"/></svg></span>
+            <span class="st-label"><b>Sincronización</b>
+              <small id="syncStatusInfo">Comprobando...</small>
+              <small id="syncDiagnosticInfo" class="st-diag" role="status" aria-live="polite"></small>
+            </span>
+            <div class="st-ctl st-btns">
+              <button class="st-btn" onclick="forceCloudResync()">↺ Re-sincronizar</button>
+              <button class="st-btn" onclick="switchAccount()">Cuenta diferente</button>
+            </div>
+          </div>
+          <div class="st-row">
+            <span class="st-ico" style="--c:#6e7b8f"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 20h14"/></svg></span>
+            <span class="st-label"><b>Actualizaciones</b><small id="appVersionInfo" class="ajustes-version-info">Versión local: comprobando...</small></span>
+            <div class="st-ctl"><button class="st-btn" id="appUpdateCheckBtn" onclick="checkForAppUpdate(true)">Buscar actualización</button></div>
+          </div>
+          <div class="st-row">
+            <button class="st-danger" onclick="doLogout()">Cerrar sesión</button>
+          </div>
         </div>
-        <button class="haptics-toggle" id="hapticsToggleBtn" role="switch" aria-checked="true" onclick="toggleHaptics()" title="Activar/desactivar vibración">
-          <span class="haptics-toggle-knob"></span>
-        </button>
-      </div>
-    </div>
+      </section>
 
-    <!-- ── NOTIFICACIONES ── -->
-    <div class="ajustes-group-label"><span class="ajustes-group-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.5 1.5M9 3h6M12 3v2.5"/></svg></span>Notificaciones</div>
-    <div class="ajustes-card push-settings-card">
-      <div class="push-settings-main">
-        <span class="push-status-dot" id="pushNotificationDot" data-tone="neutral" aria-hidden="true"></span>
-        <div class="push-settings-copy">
-          <div class="ajustes-card-head">Avisos con la app cerrada</div>
-          <div class="ajustes-hint" id="pushNotificationStatus">Comprobando este dispositivo...</div>
+      <!-- Apariencia -->
+      <section class="st-group" id="stApariencia" aria-labelledby="stAparienciaTitle">
+        <h2 class="st-title" id="stAparienciaTitle">Apariencia</h2>
+        <div class="st-list" id="stAppearanceList">
+          <div class="st-row st-row--stack theme-identity-card">
+            <span class="st-ico" style="--c:#4f7fb8"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/></svg></span>
+            <span class="st-label"><b>Modo de color</b><small class="theme-mode-note">Tema Mármol. «Automático» usa el modo noche entre las 21:00 y las 7:00.</small></span>
+            <div class="st-ctl st-seg theme-mode-control" role="radiogroup" aria-label="Modo de color">
+              <button class="theme-option theme-mode-option" data-theme-mode="light" role="radio" aria-checked="false" onclick="setThemeMode('light')">Claro</button>
+              <button class="theme-option theme-mode-option" data-theme-mode="auto" role="radio" aria-checked="false" onclick="setThemeMode('auto')">Automático</button>
+              <button class="theme-option theme-mode-option" data-theme-mode="dark" role="radio" aria-checked="false" onclick="setThemeMode('dark')">Oscuro</button>
+            </div>
+          </div>
+          <div class="st-row st-row--stack type-system-card">
+            <span class="st-ico" style="--c:#6e7b8f"><svg viewBox="0 0 24 24"><path d="M4 18 9 6l5 12M5.8 14h6.4"/><path d="M15 18l3-7 3 7M15.8 16h4.4"/></svg></span>
+            <span class="st-label"><b>Tamaño de texto</b><small>Afecta a toda la app.</small></span>
+            <div class="st-ctl st-seg" role="radiogroup" aria-label="Tamaño de texto">
+              <button class="theme-option size-option" data-size="small" onclick="setFontSize('small',this)"><span class="st-aa" style="font-size:12px">A</span><span class="theme-option-name">Pequeño</span></button>
+              <button class="theme-option size-option" data-size="normal" onclick="setFontSize('normal',this)"><span class="st-aa" style="font-size:15px">A</span><span class="theme-option-name">Normal</span></button>
+              <button class="theme-option size-option" data-size="large" onclick="setFontSize('large',this)"><span class="st-aa" style="font-size:18px">A</span><span class="theme-option-name">Grande</span></button>
+            </div>
+          </div>
         </div>
-        <button class="modal-btn secondary push-enable-btn" id="pushNotificationEnableBtn" type="button" onclick="enableReliableNotifications()">Activar avisos</button>
-      </div>
-      <div class="push-settings-schedule">Temporizador: 10, 5, 2 y 1 min · Cronómetro: cada 15 min</div>
-    </div>
+      </section>
 
-    <div class="ajustes-group-label"><span class="ajustes-group-icon google-calendar-g" aria-hidden="true">G</span>Google Calendar</div>
-    <div class="ajustes-card google-calendar-settings-card">
-      <div class="google-calendar-settings-main">
-        <span class="push-status-dot" id="googleCalendarStatusDot" data-tone="neutral" aria-hidden="true"></span>
-        <div class="google-calendar-settings-copy">
-          <div class="ajustes-card-head">Calendarios visibles</div>
-          <div class="ajustes-hint" id="googleCalendarStatus">No conectado · solo lectura</div>
+      <!-- Sonido -->
+      <section class="st-group" id="stSonido" aria-labelledby="stSonidoTitle">
+        <h2 class="st-title" id="stSonidoTitle">Sonido y vibración</h2>
+        <div class="st-list">
+          <div class="st-row st-row--stack">
+            <span class="st-ico" style="--c:#d0556f"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg></span>
+            <span class="st-label"><b>Paquete de sonidos</b><small class="ajustes-hint">Toca una opción para escucharla.</small></span>
+            <div class="st-ctl st-seg st-seg--icons">
+              <button class="theme-option sound-option" data-sound="piano" onclick="setSoundPack('piano');refreshSoundOptionUI()"><span class="st-seg-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"/><path d="M7 6v12M10 6v12M14 6v12M17 6v12"/><path d="M4 10h16"/></svg></span><span class="theme-option-name">Piano</span></button>
+              <button class="theme-option sound-option" data-sound="wood" onclick="setSoundPack('wood');refreshSoundOptionUI()"><span class="st-seg-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7c3-3 11-3 14 0v10c-3 3-11 3-14 0V7z"/><path d="M8 8c2 1 6 1 8 0M8 16c2-1 6-1 8 0"/></svg></span><span class="theme-option-name">Madera</span></button>
+              <button class="theme-option sound-option" data-sound="paper" onclick="setSoundPack('paper');refreshSoundOptionUI()"><span class="st-seg-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5"/><path d="M9.5 12h5M9.5 15h5M9.5 18h3"/></svg></span><span class="theme-option-name">Papel</span></button>
+            </div>
+          </div>
+          <div class="st-row">
+            <button class="sound-mute-btn st-ico st-ico-btn" id="soundMuteBtn" onclick="toggleSoundMute()" title="Silenciar sonidos" aria-label="Silenciar sonidos" style="--c:#d0556f">
+              <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v4h3l4 3V4L6 7H3z"/><path d="M13 7.2c.6.6.9 1.2.9 1.8s-.3 1.2-.9 1.8"/></svg>
+            </button>
+            <span class="st-label st-label--grow"><b>Volumen</b>
+              <span class="sound-master-row st-slider-row"><input type="range" id="soundVolumeSlider" class="estado-slider sound-volume-slider" min="0" max="100" step="5" value="75" oninput="setSoundVolume(this.value)" aria-label="Volumen"><span class="sound-volume-label" id="soundVolumeLabel">75%</span></span>
+            </span>
+          </div>
+          <div class="st-row">
+            <span class="st-ico" style="--c:#8a63c7"><svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 9v6M21 9v6"/></svg></span>
+            <span class="st-label"><b>Vibración</b><small>Al marcar, terminar y en avisos.</small></span>
+            <div class="st-ctl"><button class="haptics-toggle st-switch" id="hapticsToggleBtn" role="switch" aria-checked="true" aria-label="Vibración" onclick="toggleHaptics()" title="Activar/desactivar vibración"><span class="haptics-toggle-knob"></span></button></div>
+          </div>
         </div>
-        <button class="modal-btn primary google-calendar-connect" id="googleCalendarConnectBtn" type="button" onclick="googleCalendarConnect()">Conectar</button>
-        <button class="google-calendar-icon-btn" id="googleCalendarSyncBtn" type="button" onclick="googleCalendarSync({force:true})" aria-label="Actualizar Google Calendar" title="Actualizar" hidden>↻</button>
-      </div>
-      <div id="googleCalendarListHost"></div>
-      <div class="google-calendar-settings-foot">
-        <span>La app solo puede leer los calendarios elegidos.</span>
-        <button type="button" id="googleCalendarDisconnectBtn" onclick="googleCalendarDisconnect()" hidden>Desconectar</button>
-      </div>
-    </div>
+      </section>
 
-    <!-- ── DATOS Y HERRAMIENTAS DE USO OCASIONAL ── -->
-    <details class="ajustes-fold">
-      <summary>
-        <span><strong>Datos y herramientas</strong><small>Exportación, importación y planificación avanzada</small></span>
-        <i aria-hidden="true">⌄</i>
-      </summary>
-      <div class="ajustes-fold-body">
-      <div class="ajustes-card session-archive-links">
-        <div class="ajustes-card-head">Archivo de estudio</div>
-        <div class="ajustes-hint">Vistas de consulta que ya no ocupan espacio en el resumen diario.</div>
-        <div class="ajustes-btn-row">
-          <button class="modal-btn secondary" type="button" onclick="openSessionArchive('history')">Estadísticas</button>
+      <!-- Avisos y calendario -->
+      <section class="st-group" id="stAvisos" aria-labelledby="stAvisosTitle">
+        <h2 class="st-title" id="stAvisosTitle">Avisos y calendario</h2>
+        <div class="st-list">
+          <div class="st-row">
+            <span class="st-ico" style="--c:#e0613e"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span>
+            <span class="st-label"><b>Avisos con la app cerrada</b>
+              <small class="st-status"><span class="push-status-dot" id="pushNotificationDot" data-tone="neutral" aria-hidden="true"></span><span id="pushNotificationStatus">Comprobando este dispositivo...</span></small>
+              <small>Temporizador: 10, 5, 2 y 1 min · Cronómetro: cada 15 min</small>
+            </span>
+            <div class="st-ctl"><button class="st-btn" id="pushNotificationEnableBtn" type="button" onclick="enableReliableNotifications()">Activar avisos</button></div>
+          </div>
+          <div class="st-row st-row--stack">
+            <span class="st-ico st-ico--g" aria-hidden="true">G</span>
+            <span class="st-label"><b>Google Calendar</b>
+              <small class="st-status"><span class="push-status-dot" id="googleCalendarStatusDot" data-tone="neutral" aria-hidden="true"></span><span id="googleCalendarStatus">No conectado · solo lectura</span></small>
+            </span>
+            <div class="st-ctl st-btns">
+              <button class="st-btn st-btn--primary google-calendar-connect" id="googleCalendarConnectBtn" type="button" onclick="googleCalendarConnect()">Conectar</button>
+              <button class="st-btn google-calendar-icon-btn" id="googleCalendarSyncBtn" type="button" onclick="googleCalendarSync({force:true})" aria-label="Actualizar Google Calendar" title="Actualizar" hidden>↻ Actualizar</button>
+              <button class="st-btn" type="button" id="googleCalendarDisconnectBtn" onclick="googleCalendarDisconnect()" hidden>Desconectar</button>
+            </div>
+            <div id="googleCalendarListHost" class="st-full"></div>
+            <small class="st-full st-note">La app solo puede leer los calendarios que elijas.</small>
+          </div>
         </div>
-      </div>
-      <div class="ajustes-card">
-      <div class="ajustes-card-head">IA / Codex · exportar contexto</div>
-      <div class="ajustes-hint" style="margin-bottom:12px">Genera un paquete con sesiones, pases, notas, sueño, concentración, deporte, tiempo disponible, siestas, gatillos y eventos. Incluye datos privados: úsalo sólo para pegarlo o adjuntarlo donde quieras.</div>
-      <div class="ai-export-mode-row" id="aiExportModeRow">
-        <button type="button" class="ai-export-mode active" data-range="today" onclick="setAiExportRange('today')">Hoy</button>
-        <button type="button" class="ai-export-mode" data-range="yesterday" onclick="setAiExportRange('yesterday')">Ayer</button>
-        <button type="button" class="ai-export-mode" data-range="today_yesterday" onclick="setAiExportRange('today_yesterday')">Hoy + ayer</button>
-        <button type="button" class="ai-export-mode" data-range="3" onclick="setAiExportRange('3')">3 días</button>
-        <button type="button" class="ai-export-mode" data-range="selected" onclick="setAiExportRange('selected')">Elegir</button>
-      </div>
-      <div class="ai-export-context-row" id="aiExportContextRow">
-        <button type="button" class="ai-export-context active" data-context="context" onclick="setAiExportContext('context')">Con contexto</button>
-        <button type="button" class="ai-export-context" data-context="data" onclick="setAiExportContext('data')">Solo datos</button>
-      </div>
-      <div class="ai-export-controls">
-        <select class="modal-input ai-export-select" id="aiExportRange" onchange="updateAiExportControls()">
-          <option value="today" selected>Hoy hasta ahora</option>
-          <option value="day">Un día concreto</option>
-          <option value="selected">Días seleccionados</option>
-          <option value="3">Últimos 3 días</option>
-          <option value="7">Últimos 7 días</option>
-          <option value="14">Últimos 14 días</option>
-          <option value="21">Últimos 21 días</option>
-          <option value="30">Últimos 30 días</option>
-        </select>
-        <input class="modal-input ai-export-date" id="aiExportDate" type="date" style="display:none" onchange="updateAiExportControls()">
-        <button class="modal-btn secondary ai-export-add-day" id="aiExportAddDayBtn" type="button" onclick="addAiExportSelectedDate()" style="display:none">Añadir</button>
-      </div>
-      <div class="ai-export-selected-days" id="aiExportSelectedDays" style="display:none"></div>
-      <div class="ajustes-btn-row" style="margin-bottom:6px">
-        <button class="modal-btn secondary" onclick="copiarDatosIA()" style="flex:1;font-size:11px">Copiar texto IA</button>
-        <button class="modal-btn secondary" onclick="descargarResumenIA()" style="flex:1;font-size:11px">TXT</button>
-      </div>
-      <button class="modal-btn secondary" onclick="exportarDatosIA()" style="width:100%;font-size:11px">Descargar JSON completo para Codex</button>
-      <div id="aiExportFeedback" style="font-size:9px;color:var(--green);margin-top:6px;display:none"></div>
-    </div>
+      </section>
 
-    <div class="ajustes-card">
-      <div class="ajustes-card-head">Forest · importar historial</div>
-      <div class="ajustes-hint" style="margin-bottom:12px">Importa tu CSV de Forest para sumar horas previas a tus obras.</div>
-      <button class="modal-btn secondary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px" onclick="document.getElementById('forestCsvInput').click()">
-        <span style="font-size:14px">🌲</span> Cargar CSV de Forest
-      </button>
-      <button class="modal-btn secondary" id="forestReopenBtn" style="width:100%;display:none;margin-bottom:4px" onclick="openForestMapper()">
-        Retomar importación anterior →
-      </button>
-      <button class="modal-btn secondary" id="forestPendientesBtn" style="width:100%;display:none;margin-bottom:4px" onclick="openForestPendientes()">
-        🗂 <span id="forestPendientesBtnLabel">Etiquetas pendientes (0)</span>
-      </button>
-      <input type="file" id="forestCsvInput" accept=".csv" style="display:none" onchange="loadForestCSV(this)">
-      <div id="forestFeedback" style="font-size:9px;color:var(--green);margin-top:4px;display:none"></div>
-    </div>
-
-      <div class="ajustes-card ajustes-projection-tools">
-        <div>
-          <div class="ajustes-card-head">Proyección del día</div>
-          <div class="ajustes-hint">Corrige una hora de comienzo futura o marca periodos no disponibles. Estas opciones solo afinan la estimación de hoy.</div>
+      <!-- Estudio -->
+      <section class="st-group" id="stEstudio" aria-labelledby="stEstudioTitle">
+        <h2 class="st-title" id="stEstudioTitle">Estudio</h2>
+        <div class="st-list ajustes-projection-tools">
+          <button class="st-row st-row--link" type="button" onclick="openHoraComienzo(event)">
+            <span class="st-ico" style="--c:#3f9a6b"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span>
+            <span class="st-label"><b>Hora de comienzo</b><small>Si hoy vas a empezar más tarde, afina la proyección.</small></span><span class="st-chev" aria-hidden="true">›</span>
+          </button>
+          <button class="st-row st-row--link" type="button" onclick="openHorasBloqueadas(event)">
+            <span class="st-ico" style="--c:#3f9a6b"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4M9 14h6"/></svg></span>
+            <span class="st-label"><b>Disponibilidad</b><small>Marca las horas ocupadas de hoy.</small></span><span class="st-chev" aria-hidden="true">›</span>
+          </button>
+          <button class="st-row st-row--link session-archive-links" type="button" onclick="openSessionArchive('history')">
+            <span class="st-ico" style="--c:#4f7fb8"><svg viewBox="0 0 24 24"><path d="M4 20h16M7 16.5V11M12 16.5V6.5M17 16.5v-4"/></svg></span>
+            <span class="st-label"><b>Estadísticas</b><small>Tendencias, sesiones y solidez.</small></span><span class="st-chev" aria-hidden="true">›</span>
+          </button>
         </div>
-        <div class="ajustes-btn-row">
-          <button class="modal-btn secondary" type="button" onclick="openHoraComienzo(event)">Hora de comienzo</button>
-          <button class="modal-btn secondary" type="button" onclick="openHorasBloqueadas(event)">Disponibilidad</button>
-        </div>
-      </div>
-      </div>
-    </details>
+      </section>
 
-    <!-- ── CUENTA ── -->
-    <div class="ajustes-group-label"><span class="ajustes-group-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg></span>Cuenta</div>
-    <div class="ajustes-card">
-      <div class="ajustes-card-head">Sincronización</div>
-      <div id="syncStatusInfo" style="font-size:10px;color:var(--text3);margin-bottom:12px;line-height:1.5">Comprobando...</div>
-      <div id="syncDiagnosticInfo" role="status" aria-live="polite" style="font-size:11px;color:var(--text3);margin-bottom:12px;line-height:1.5"></div>
-      <div class="ajustes-btn-row">
-        <button class="modal-btn secondary" onclick="forceCloudResync()" style="flex:1;font-size:11px">↺ Re-sincronizar</button>
-        <button class="modal-btn secondary" onclick="switchAccount()" style="flex:1;font-size:11px">Cuenta diferente</button>
-      </div>
-      <button class="modal-btn secondary" onclick="doLogout()" style="width:100%;font-size:11px;margin-top:8px">Cerrar sesión</button>
+      <!-- Datos -->
+      <section class="st-group" id="stDatos" aria-labelledby="stDatosTitle">
+        <h2 class="st-title" id="stDatosTitle">Datos</h2>
+        <details class="ajustes-fold st-list st-fold">
+          <summary class="st-row st-row--link">
+            <span class="st-ico" style="--c:#8a7a5c"><svg viewBox="0 0 24 24"><path d="M12 4v10M8 10l4 4 4-4"/><path d="M5 17v2h14v-2"/></svg></span>
+            <span class="st-label"><b>Exportar para IA</b><small>Sesiones, pases, notas y estado. Incluye datos privados.</small></span><span class="st-chev" aria-hidden="true">›</span>
+          </summary>
+          <div class="st-fold-body">
+            <div class="st-sub">Periodo</div>
+            <div class="ai-export-mode-row st-chips" id="aiExportModeRow">
+              <button type="button" class="ai-export-mode active" data-range="today" onclick="setAiExportRange('today')">Hoy</button>
+              <button type="button" class="ai-export-mode" data-range="yesterday" onclick="setAiExportRange('yesterday')">Ayer</button>
+              <button type="button" class="ai-export-mode" data-range="today_yesterday" onclick="setAiExportRange('today_yesterday')">Hoy + ayer</button>
+              <button type="button" class="ai-export-mode" data-range="3" onclick="setAiExportRange('3')">3 días</button>
+              <button type="button" class="ai-export-mode" data-range="selected" onclick="setAiExportRange('selected')">Elegir días</button>
+            </div>
+            <div class="ai-export-controls">
+              <select class="modal-input ai-export-select" id="aiExportRange" onchange="updateAiExportControls()" aria-label="Más periodos">
+                <option value="today" selected>Hoy hasta ahora</option>
+                <option value="day">Un día concreto</option>
+                <option value="selected">Días seleccionados</option>
+                <option value="3">Últimos 3 días</option>
+                <option value="7">Últimos 7 días</option>
+                <option value="14">Últimos 14 días</option>
+                <option value="21">Últimos 21 días</option>
+                <option value="30">Últimos 30 días</option>
+              </select>
+              <input class="modal-input ai-export-date" id="aiExportDate" type="date" style="display:none" onchange="updateAiExportControls()">
+              <button class="st-btn ai-export-add-day" id="aiExportAddDayBtn" type="button" onclick="addAiExportSelectedDate()" style="display:none">Añadir</button>
+            </div>
+            <div class="ai-export-selected-days" id="aiExportSelectedDays" style="display:none"></div>
+            <div class="st-sub">Contenido</div>
+            <div class="ai-export-context-row st-chips" id="aiExportContextRow">
+              <button type="button" class="ai-export-context active" data-context="context" onclick="setAiExportContext('context')">Con contexto</button>
+              <button type="button" class="ai-export-context" data-context="data" onclick="setAiExportContext('data')">Solo datos</button>
+            </div>
+            <div class="st-actions">
+              <button class="st-btn st-btn--primary" onclick="copiarDatosIA()">Copiar texto</button>
+              <button class="st-btn" onclick="descargarResumenIA()">Descargar TXT</button>
+              <button class="st-btn" onclick="exportarDatosIA()">JSON completo</button>
+            </div>
+            <div id="aiExportFeedback" class="st-feedback" style="display:none"></div>
+          </div>
+        </details>
+        <details class="st-list st-fold">
+          <summary class="st-row st-row--link">
+            <span class="st-ico" style="--c:#3f9a6b"><svg viewBox="0 0 24 24"><path d="M12 3 6 12h4l-4 7h12l-4-7h4z"/><path d="M12 19v2"/></svg></span>
+            <span class="st-label"><b>Importar de Forest</b><small>Suma a tus obras las horas de un CSV de Forest.</small></span><span class="st-chev" aria-hidden="true">›</span>
+          </summary>
+          <div class="st-fold-body">
+            <div class="st-actions">
+              <button class="st-btn st-btn--primary" onclick="document.getElementById('forestCsvInput').click()">🌲 Cargar CSV de Forest</button>
+              <button class="st-btn" id="forestReopenBtn" style="display:none" onclick="openForestMapper()">Retomar importación anterior →</button>
+              <button class="st-btn" id="forestPendientesBtn" style="display:none" onclick="openForestPendientes()">🗂 <span id="forestPendientesBtnLabel">Etiquetas pendientes (0)</span></button>
+            </div>
+            <input type="file" id="forestCsvInput" accept=".csv" style="display:none" onchange="loadForestCSV(this)">
+            <div id="forestFeedback" class="st-feedback" style="display:none"></div>
+          </div>
+        </details>
+      </section>
+
+      <div class="ajustes-foot">Planificador de estudio · con calma</div>
     </div>
-
-    <div class="ajustes-card">
-      <div class="ajustes-card-head">Actualizaciones</div>
-      <div id="appVersionInfo" class="ajustes-version-info">Versión local: comprobando...</div>
-      <button class="modal-btn secondary" id="appUpdateCheckBtn" onclick="checkForAppUpdate(true)" style="width:100%;font-size:11px">
-        Buscar actualización
-      </button>
-    </div>
-
-    <div class="ajustes-foot">Planificador de estudio · con calma</div>
   </div>
 </div>
 
@@ -2421,7 +2407,7 @@
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=397"></script>
 <script src="crono-state-store.js?v=397"></script>
-<script src="app.js?v=444"></script>
+<script src="app.js?v=456"></script>
 <script src="manual-study-activity.js?v=430"></script>
 <script src="chamber-factor-migration.js?v=430"></script>
 <script src="daily-study-minutes.js?v=430" id="dailyStudyMinutesFixScript"></script>
@@ -2450,9 +2436,11 @@
 
 <!-- Última capa de escritorio Windows: al final para ganar a los estilos inyectados en <head>. -->
 <link rel="stylesheet" href="desktop-app.css?v=441">
-<script src="desktop-app.js?v=444"></script>
-<link rel="stylesheet" href="mobile-v2.css?v=452">
-<script src="mobile-v2.js?v=455"></script>
+<script src="desktop-app.js?v=456"></script>
+<link rel="stylesheet" href="mobile-v2.css?v=456">
+<link rel="stylesheet" href="settings.css?v=456">
+<script src="settings.js?v=456"></script>
+<script src="mobile-v2.js?v=456"></script>
 </body>
 <script>
   // Activation/reload belongs exclusively to UpdateSafety.

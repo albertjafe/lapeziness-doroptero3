@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-25-limpieza-movil-v436';
+const APP_VERSION = '2026-09-26-ajustes-v456';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -463,7 +463,10 @@ function _setCloudStage(phase, error = null) {
   try { localStorage.setItem('alberto_cloud_stage_v1', JSON.stringify(_cloudStage)); } catch (_) {}
   if (typeof document === 'undefined') return;
   const el = document.getElementById('syncDiagnosticInfo');
-  if (el) el.textContent = phase + '…' + (_cloudFailure ? ' Último fallo: ' + _cloudFailure.phase + ' [' + (_cloudFailure.code || 'sin respuesta') + '].' : '');
+  // Sin sesión no es un fallo: #syncStatusInfo ya lo explica, así que no se repite el código crudo.
+  if (el) el.textContent = _cloudFailure?.code === 'AuthSessionMissingError'
+    ? ''
+    : phase + '…' + (_cloudFailure ? ' Último fallo: ' + _cloudFailure.phase + ' [' + (_cloudFailure.code || 'sin respuesta') + '].' : '');
 }
 async function _cloudAuthUser(sb, options = {}) {
   if (options.diagnostics !== false) _setCloudStage('Comprobando la cuenta');
@@ -844,7 +847,7 @@ const VIEW_CONTEXT = {
   casa: { eyebrow: 'Estratos', title: 'La Casa' },
   historial: { eyebrow: 'Resumen', title: 'Estadísticas' },
   deutsch: { eyebrow: 'Tarjetas y estudio libre', title: 'Alemán' },
-  ajustes: { eyebrow: 'Planificador de estudio', title: 'Ajustes' },
+  ajustes: { eyebrow: 'Cuenta, aspecto y datos', title: 'Ajustes' },
   premios: { eyebrow: 'Hucha, rachas y logros', title: 'Premios' },
   habitos: { eyebrow: 'Normas, días y colección', title: 'Hábitos' }
 };
@@ -18193,7 +18196,11 @@ function refreshSoundVolumeUI() {
   const slider = document.getElementById('soundVolumeSlider');
   const label = document.getElementById('soundVolumeLabel');
   const btn = document.getElementById('soundMuteBtn');
-  if (slider) slider.value = String(_soundVolume);
+  if (slider) {
+    slider.value = String(_soundVolume);
+    // El relleno de la pista sigue al valor (antes quedaba fijo en el 70 % por defecto).
+    slider.style.setProperty('--fp', (_soundMuted ? 0 : _soundVolume) + '%');
+  }
   if (label) label.textContent = _soundMuted ? 'off' : _soundVolume + '%';
   if (btn) btn.classList.toggle('active', _soundMuted || _soundVolume <= 0);
 }
@@ -19818,16 +19825,16 @@ async function updateSyncStatusInfo() {
     const { data: { user }, error } = await _cloudAuthUser(sb, { diagnostics:false });
     if (error && error.name !== 'AuthSessionMissingError') throw error;
     if (user) {
-      el.innerHTML = '✓ Conectado como <span style="color:var(--accent)">' + user.email + '</span><br>'
-        + '<span style="font-size:9px">' + (pending ? 'Hay cambios locales pendientes de sincronizar.' :
+      el.innerHTML = '<span class="st-sync-state ok">✓ Conectado como <span class="st-sync-email">' + escapeHtmlSafe(user.email) + '</span></span>'
+        + '<span class="st-sync-detail">' + (pending ? 'Hay cambios locales pendientes de sincronizar.' :
           (_lastCloudSnapshot?.userId === user.id ? 'Última sincronización confirmada. Puedes comprobar otros dispositivos.' : 'Conexión activa; sincronización aún sin confirmar.')) + '</span>';
     } else {
-      el.innerHTML = '<span style="color:var(--orange)">⚠ Sin sesión activa</span><br>'
-        + '<span style="font-size:9px">La app está funcionando solo en este dispositivo. Pulsa "Re-sincronizar" para conectar con tu cuenta.</span>';
+      el.innerHTML = '<span class="st-sync-state warn">⚠ Sin sesión activa</span>'
+        + '<span class="st-sync-detail">La app está funcionando solo en este dispositivo. Pulsa "Re-sincronizar" para conectar con tu cuenta.</span>';
     }
   } catch(e) {
-    el.innerHTML = '<span style="color:var(--orange)">⚠ No se ha podido verificar la cuenta</span><br>'
-      + '<span style="font-size:9px">Tus sesiones siguen guardadas en este dispositivo. Reintenta la sincronización cuando vuelva la conexión.</span>';
+    el.innerHTML = '<span class="st-sync-state warn">⚠ No se ha podido verificar la cuenta</span>'
+      + '<span class="st-sync-detail">Tus sesiones siguen guardadas en este dispositivo. Reintenta la sincronización cuando vuelva la conexión.</span>';
   }
 }
 
@@ -19861,6 +19868,8 @@ async function updateAjustesAccountRow() {
     sb2.textContent = 'Cuenta sin verificar · estudio guardado localmente';
     sb2.style.color = '';
   }
+  // Sin correo, el avatar muestra una silueta en lugar de un punto.
+  av.classList?.toggle('is-empty', av.textContent === '·');
 }
 
 function ajustesAccountTap() {
