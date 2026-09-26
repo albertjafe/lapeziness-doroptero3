@@ -56,7 +56,7 @@ describe('PWA version boundary',()=>{
   it('activation preserves unrelated caches and the previous shell for old tabs',async()=>{
     const h=harness();['estudio-v340','estudio-v341','user-content'].forEach(k=>h.stores.set(k,new Map()));
     await h.lifecycle('install');await h.lifecycle('activate');
-    expect([...h.stores.keys()].sort()).toEqual(['estudio-v341','estudio-v457','user-content']);
+    expect([...h.stores.keys()].sort()).toEqual(['estudio-v341','estudio-v458','user-content']);
     expect(h.calls.some(x=>x.startsWith('navigate:'))).toBe(false);
   });
   it('never serves a new script under an uncached old version URL',async()=>{
