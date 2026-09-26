@@ -36,7 +36,7 @@ describe('Professor dashboard integration', () => {
   });
 
   it('loads the Professor stack from the current bootstrap after planning enhancements', () => {
-    expect(loader).toContain("load('professorCoreScript','./professor-core.js?v=437'");
+    expect(loader).toContain("load('professorCoreScript','./professor-core.js?v=438'");
     expect(loader).toContain("load('professorReportNormalizerScript','./professor-report-normalizer.js?v=342'");
     expect(loader).toContain("load('professorContextEnrichmentScript','./professor-context-enrichment.js?v=342'");
     expect(loader).toContain("load('professorCompetitionDeadlineBridgeScript','./professor-competition-deadline-bridge.js?v=377'");

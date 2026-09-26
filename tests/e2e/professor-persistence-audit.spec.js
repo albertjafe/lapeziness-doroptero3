@@ -141,10 +141,13 @@ test('worker and main report are equivalent; opening ChatGPT keeps every unit an
     window.open=()=>({opener:null,location:{replace:url=>window.__auditOpened.push(url)},close(){}});
     Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async t=>{window.__auditClipboard=t;}}});
     showView('profesor');
-    return {main:JSON.parse(JSON.stringify(main)),worker:JSON.parse(JSON.stringify(worker)),calls};
+    // habits/rewards/otherHistory are handoff extras layered on top of the core report.
+    const {habits,rewards,otherHistory,...workerCore}=worker;
+    return {main:JSON.parse(JSON.stringify(main)),worker:JSON.parse(JSON.stringify(workerCore)),calls,extras:{habits,rewards,otherHistory}};
   });
   expect(result.calls,'heavy report computation must run off the main thread').toBe(0);
   expect(result.worker).toEqual(result.main);
+  expect(result.extras.habits).toEqual([]);expect(result.extras.otherHistory).toHaveProperty('germanStudy');
   await page.locator('#professorUserNote').fill('No perder ningún movimiento');
   const openedAfter=Date.now();
   await page.locator('[data-prof-mode="remaining"]').click();
@@ -155,7 +158,7 @@ test('worker and main report are equivalent; opening ChatGPT keeps every unit an
   const sent=await page.evaluate(()=>({url:document.querySelector('#professorTransfer a[target]').href,text:window.__auditClipboard,
     report:ProfessorHandoffResilience.decodeContext(window.__auditClipboard)}));
   expect(sent.url.length).toBeLessThan(1000);expect(sent.report.units).toHaveLength(76);
-  expect(sent.text).toContain('No perder ningún movimiento');expect(sent.text).toContain('HORA_LOCAL_REAL');
+  expect(sent.text).toContain('No perder ningún movimiento');expect(sent.text).toContain('RESUMEN_FIABLE');expect(sent.text).toContain('PLAN_PARA_HOY');expect(sent.text).toContain('HORA_LOCAL_REAL');
   expect(Date.parse(sent.report.asOf)).toBeGreaterThanOrEqual(openedAfter-1000);
   expect(new Set(sent.report.units.map(u=>u.key)).size).toBe(76);
 });

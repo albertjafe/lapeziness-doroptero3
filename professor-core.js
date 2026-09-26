@@ -295,7 +295,8 @@ Cuando pida organizar el día, responde primero con una propuesta compacta y acc
     if (unit.solidity == null) reasons.push('solidez desconocida; falta evidencia');
     else if (score < 60) reasons.push(`solidez ${Math.round(score)}%`);
     else if (score < 75) reasons.push(`solidez todavía ${Math.round(score)}%`);
-    if (unit.daysSinceStudy >= 14) reasons.push(`${Math.floor(unit.daysSinceStudy)} d sin estudiar`);
+    if (!unit.lastStudyAt) reasons.push('sin práctica registrada');
+    else if (unit.daysSinceStudy >= 14) reasons.push(`${Math.floor(unit.daysSinceStudy)} d sin estudiar`);
     if (unit.recent.d7 >= 240) reasons.push(`${Math.round(unit.recent.d7 / 60 * 10) / 10} h esta semana`);
     if (unit.recoveryHours.high >= 4) reasons.push(`recuperación ≈${unit.recoveryHours.low}–${unit.recoveryHours.high} h`);
     if (!reasons.length) reasons.push('mantenimiento');

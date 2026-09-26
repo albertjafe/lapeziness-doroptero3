@@ -4,15 +4,16 @@ self.window = self;
 importScripts('./readiness-core.js?v=342','./solidity-model.js?v=342',
   './readiness-pill-model.js?v=342','./readiness-recovery-context.js?v=342',
   './work-difficulty-model.js?v=342','./work-difficulty-stored-priority.js?v=342',
-  './professor-core.js?v=437','./professor-report-normalizer.js?v=342',
+  './professor-core.js?v=438','./professor-report-normalizer.js?v=342',
   './professor-competition-deadline-bridge.js?v=377','./professor-event-gate.js?v=377',
-  './professor-duration-policy.js?v=349','./professor-handoff-resilience.js?v=437');
+  './professor-duration-policy.js?v=349','./professor-summary.js?v=438','./professor-handoff-resilience.js?v=438');
 WorkDifficultyModel.installReadiness(ReadinessCore);
 self.onmessage = ({data:request}) => {
   try {
     const {id,data,options,enrichment,handoff}=request;
     const report=ProfessorCore.buildReport(data,{asOf:new Date(options.now),googleCalendarState:options.googleCalendarState,activeSession:options.activeSession});
     Object.assign(report,enrichment);
+    report.otherHistory=ProfessorSummary.otherHistory(data);
     self.ProfessorTemporaryChat={withTemporaryChat:url=>options.temporaryChat ? url+(url.includes('?')?'&':'?')+'temporary-chat=true' : url};
     // Blob is immutable: avoid cloning the full report + huge prompt back to
     // the UI or materializing the file contents in a DOM control.

@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v437';
+const CACHE = 'estudio-v438';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -78,7 +78,7 @@ const ASSETS = [
   "./passage-tracker-resilience.js?v=372",
   "./piano-rooms-core.js?v=372",
   "./piano-rooms.css?v=369",
-  "./piano-rooms.js?v=437",
+  "./piano-rooms.js?v=438",
   "./reservation-dashboard.css?v=372",
   "./reservation-dashboard.js?v=400",
   "./planning-enhancements-v3.css?v=377",
@@ -88,15 +88,16 @@ const ASSETS = [
   "./planning-enhancements-v4.js?v=377",
   "./professor-competition-deadline-bridge.js?v=377",
   "./professor-context-enrichment.js?v=342",
-  "./professor-core.js?v=437",
+  "./professor-core.js?v=438",
   "./professor-practice-dedup.js?v=363",
   "./professor-dashboard.js?v=396",
   "./professor-duration-policy.js?v=349",
   "./professor-event-gate-ui.js?v=342",
   "./professor-event-gate.js?v=377",
-  "./professor-handoff-resilience.js?v=437",
+  "./professor-handoff-resilience.js?v=438",
+  "./professor-summary.js?v=438",
   "./professor-report-normalizer.js?v=342",
-  "./professor-report-worker.js?v=437",
+  "./professor-report-worker.js?v=438",
   "./professor-temporary-chat.js?v=342",
   "./push-client.js?v=397",
   "./readiness-core.js?v=342",
@@ -176,7 +177,7 @@ self.addEventListener('activate', e => {
         try {
           if (typeof client.navigate === 'function') {
             const target = new URL(client.url);
-            target.searchParams.set('__pwa', '437');
+            target.searchParams.set('__pwa', '438');
             // Do not await navigation inside activate.waitUntil: its fetch
             // waits for activation to finish, creating a circular wait.
             client.navigate(target.href).catch(() => {});
@@ -184,7 +185,7 @@ self.addEventListener('activate', e => {
           }
         } catch (error) {}
         try {
-          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'437', navigated });
+          if (typeof client.postMessage === 'function') client.postMessage({ type:'SAFE_UPDATE_ACTIVATED', version:'438', navigated });
         } catch (error) {}
       }
     }

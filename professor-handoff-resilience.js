@@ -121,7 +121,7 @@
     return [
       'PIANO_PROF_V4',
       'LEYENDA|Texto sin cifrar y sin pérdida. Índices desde 0. R=metadatos; W=campos comunes de obra; E=eventos; C=columnas; U=unidad (work referencia W; schema referencia C; data contiene sus valores en el mismo orden; refs son índices E). P=prioridad (unit índice U, fields copiados de esa unidad, data adicionales). Dentro de cualquier JSON, {$columns:[nombres],$rows:[[valores]]} es una tabla de registros con esas columnas; {$object:[[clave,valor]]} es un objeto literal escapado. null=desconocido, 0=cero; ausencia no equivale a null. TODAS las U y todos los registros originales están presentes.',
-      'LECTURA|Empieza por today, recentStudyDays, cobertura y eventos; cruza cada U con su obra, evidencia, ventanas 3/7/14/30/90 días y vínculos. recentStudyDays resume los días recientes, sourceContext conserva TODO el historial original (también el antiguo). No sumes las tablas originales otra vez a recent/HOY ni confundas mirrors con sesiones adicionales. Un proyecto personal sin repertorio es trabajo general válido y se organiza por estado/progreso; si no tiene fecha no inventes un plazo. Los demás eventos sin repertorio y obras sin evidencia siguen presentes como contexto/información pendiente, nunca como prioridades inventadas.',
+      'LECTURA|Este anexo es la fuente del RESUMEN_FIABLE de arriba, que manda: consúltalo solo para detalles concretos. Empieza por today, recentStudyDays, cobertura y eventos; cruza cada U con su obra, evidencia, ventanas 3/7/14/30/90 días y vínculos. recentStudyDays resume los días recientes, sourceContext conserva TODO el historial original (también el antiguo). No sumes las tablas originales otra vez a recent/HOY ni confundas mirrors con sesiones adicionales. Un proyecto personal sin repertorio es trabajo general válido y se organiza por estado/progreso; si no tiene fecha no inventes un plazo. Los demás eventos sin repertorio y obras sin evidencia siguen presentes como contexto/información pendiente, nunca como prioridades inventadas.',
       ...columns.map(c => 'C|' + JSON.stringify(c)),
       'R|' + json({ meta:t.meta, eventOrder:t.eventOrder, hasPriorities:t.hasPriorities }),
       ...t.works.map(w => 'W|' + json(w)),
@@ -171,8 +171,15 @@
     const budget = root.ProfessorDurationPolicy?.budgetContext(opts.dailyHours ?? database()?.professorSettings?.dailyHours, report, opts.mode);
     return [master, extra ? 'REGLAS_PERSONALES\n' + extra : '', temporal, budget,
       'TAREA|' + modeInstruction(opts.mode || 'today'), opts.note ? 'CONDICIÓN_USUARIO\n' + opts.note : '',
-      denseContext(report), 'Este único mensaje o archivo contiene las instrucciones y el contexto completo. Planifica ahora para la tarea indicada; no esperes un segundo mensaje. Comprueba FIN_PIANO_PROF_V4: si falta, solicita la parte ausente, no inventes contexto. Usa TODAS las unidades, sin convertir las no elegibles en prioridades. No modifiques datos. Distingue evidencia individual de ensayo conjunto real.'
+      summaryFor(report),
+      'ANEXO_HISTORIAL_COMPLETO (sin pérdida, codificado; solo para consultar detalles. habits/rewards/otherHistory recogen hábitos con su descripción, premios, objetivos cumplidos y el resto del documento)',
+      denseContext(report), 'Este único mensaje o archivo contiene las instrucciones y el contexto completo. Planifica ahora para la tarea indicada; no esperes un segundo mensaje. Decide con el RESUMEN_FIABLE; comprueba FIN_PIANO_PROF_V4 solo si necesitas el anexo y, si falta, dilo sin inventar contexto. Usa TODAS las unidades, sin convertir las no elegibles en prioridades. No modifiques datos. Distingue evidencia individual de ensayo conjunto real. Termina con un bloque PLAN_PARA_HOY: una línea por bloque con el formato «duración en min | obra o movimiento | propósito», para que pueda pegarlo en la app.'
     ].filter(Boolean).join('\n\n');
+  }
+
+  function summaryFor(report) {
+    try { return root.ProfessorSummary ? root.ProfessorSummary.buildSummary(report) : ''; }
+    catch (error) { return 'RESUMEN_FIABLE no disponible (' + String(error && error.message || error) + '); usa el anexo.'; }
   }
 
   function withTemporaryChat(url) {
@@ -233,18 +240,24 @@
     }
     if(!opts.googleCalendarState){try{opts.googleCalendarState=JSON.parse(root.localStorage.getItem('alberto_google_calendar_v1')||'{}');}catch(_){opts.googleCalendarState={};}}
     opts.temporaryChat=root.ProfessorTemporaryChat?.enabled() ?? true;
+    const summary=root.ProfessorSummary;
     const enrichment={
       dailyState:root.ProfessorContextEnrichment?.dailyState(data,new Date(opts.now)) || {available:false},
       digitalActivity:root.ProfessorContextEnrichment?.latestDigital() || {available:false},
+      // Hábitos y premios dependen de módulos de la interfaz que el worker no carga.
+      habits:summary?summary.habitsFor(data,new Date(opts.now)):[],
+      rewards:summary?summary.rewardsFor(data,new Date(opts.now)):{available:false},
     };
     const fallback=()=>{
       const report=root.ProfessorCore.buildReport(data,{asOf:new Date(opts.now),googleCalendarState:opts.googleCalendarState,activeSession:opts.activeSession});
+      Object.assign(report,enrichment);
+      if(summary)report.otherHistory=summary.otherHistory(data);
       return handoff ? {built:transferArtifact(report,opts,root.ProfessorCore)} : {report};
     };
     if(typeof root.Worker !== 'function')return Promise.resolve().then(fallback);
     try {
       if(!reportWorker){
-        reportWorker=new root.Worker('./professor-report-worker.js?v=437');
+        reportWorker=new root.Worker('./professor-report-worker.js?v=438');
         reportWorker.onmessage=({data:result})=>{
           const pending=pendingReports.get(result.id);if(!pending)return;
           pendingReports.delete(result.id);
