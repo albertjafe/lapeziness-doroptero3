@@ -23,6 +23,7 @@
     const v = Math.max(0, Math.round(Number(m) || 0)), h = Math.floor(v / 60), r = v % 60;
     return h ? (r ? `${h} h ${r}` : `${h} h`) : `${r} min`;
   };
+  const fmtDur = m => { const v = Math.max(0, Math.round(Number(m) || 0)), h = Math.floor(v / 60), r = v % 60; return h ? (r ? `${h} h ${r} min` : `${h} h`) : `${r} min`; };
   const clock = min => { const m = ((Math.round(min) % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
   const database = () => { try { return typeof db !== 'undefined' ? db : root.db; } catch (e) { return root.db; } };
 
@@ -38,7 +39,7 @@
   }
   function setDesign(value) {
     try { root.localStorage.setItem(DESIGN_KEY, value === 'classic' ? 'classic' : 'v2'); } catch (e) {}
-    applyDesign(); renderHoy();
+    applyDesign(); renderHoy(); try { renderCal(); } catch (e) {}
   }
 
   /* ── Plan del Profesor: PLAN_PARA_HOY ──────────────────────────────
@@ -375,6 +376,160 @@
     }
   }
 
+
+  /* ── Calendario (fase 3): mapa de horas + eventos + hoja del día ──── */
+  const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const MONTHS_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
+  const WEEKDAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  let calOffset = 0;
+  let renderingCalendar = false;
+  // Niveles del mapa: 0 · <1 h · <2,5 h · <4 h · 4 h+ · 5 h+
+  function level(min) { return !min ? 0 : min < 60 ? 1 : min < 150 ? 2 : min < 240 ? 3 : min < 300 ? 4 : 5; }
+  const parseDay = key => { const [y, m, d] = String(key).split('-').map(Number); return new Date(y, m - 1, d, 12); };
+  const dayDiff = key => Math.round((parseDay(key) - parseDay(dayKey())) / 86400000);
+
+  function eventsByDay(data) {
+    const map = {};
+    (data && data.eventos || []).forEach(e => {
+      if (!e || e.completado || !e.fecha || !/^\d{4}-\d{2}-\d{2}/.test(e.fecha)) return;
+      const k = String(e.fecha).slice(0, 10);
+      (map[k] = map[k] || []).push(e);
+    });
+    return map;
+  }
+  function workLabel(data, obraId, movId) {
+    const work = (data && data.obras || []).find(o => String(o.id) === String(obraId));
+    if (!work) return obraId ? 'Obra borrada' : 'Sin obra';
+    const mov = movId && (work.movimientos || []).find(m => String(m.id) === String(movId));
+    return mov ? work.name + ' · ' + mov.name : work.name;
+  }
+  // Tramos reales del día (mismas reglas que «Sesiones por horas»).
+  function segmentsOf(data, key) {
+    const seen = new Set(), out = [];
+    ['sessionPlants', 'forestPlants'].forEach(src => (data && data[src] || []).forEach(p => {
+      if (!p || p.failed || p.tipo === 'descanso' || p.obraId === '_rest_' || !(Number(p.mins) > 0)) return;
+      const start = new Date(p.startedAt || p.endedAt);
+      if (!Number.isFinite(start.getTime()) || dayKey(start) !== key) return;
+      const id = [p.obraId, p.startedAt, p.endedAt].join('|');
+      if (seen.has(id)) return; seen.add(id);
+      const end = p.endedAt ? new Date(p.endedAt) : new Date(start.getTime() + Number(p.mins) * 60000);
+      out.push({ start, end, mins: Math.round(Number(p.mins)), label: workLabel(data, p.obraId, p.movId), obraId: p.obraId });
+    }));
+    return out.sort((a, b) => a.start - b.start);
+  }
+  const hhmm = d => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+
+  function renderCal() {
+    if (!doc) return;
+    const view = doc.getElementById('view-calendario');
+    if (!view) return;
+    let host = doc.getElementById('mv2Cal');
+    if (!host) { host = doc.createElement('section'); host.id = 'mv2Cal'; host.className = 'mv2-cal'; view.insertBefore(host, view.firstChild); }
+    if (!phoneV2()) { host.innerHTML = ''; return; }
+    const data = database();
+    const now = new Date(), first = new Date(now.getFullYear(), now.getMonth() + calOffset, 1, 12);
+    const year = first.getFullYear(), month = first.getMonth();
+    const gridStart = new Date(year, month, 1 - ((first.getDay() + 6) % 7), 12);
+    const end = new Date(year, month + 1, 7);
+    let mins = {};
+    try { mins = typeof root._statsMinsPorDia === 'function' ? root._statsMinsPorDia(new Date(gridStart.getTime() - 43200000), end) : {}; } catch (e) { mins = {}; }
+    const events = eventsByDay(data), today = dayKey();
+    let cells = '';
+    const weeks = Math.ceil((((first.getDay() + 6) % 7) + new Date(year, month + 1, 0).getDate()) / 7);
+    for (let i = 0; i < weeks * 7; i++) {
+      const d = new Date(gridStart); d.setDate(gridStart.getDate() + i);
+      const k = dayKey(d), m = Math.round(mins[k] || 0), other = d.getMonth() !== month, ev = events[k];
+      cells += '<button type="button" class="mv2-day l' + level(m) + (other ? ' other' : '') + (k === today ? ' today' : '') + '" data-day="' + k + '" aria-label="' + d.getDate() + ' de ' + MONTHS[d.getMonth()] + ': ' + (m ? fmtMin(m) : 'sin estudio') + (ev ? ', ' + ev.length + ' evento' + (ev.length > 1 ? 's' : '') : '') + '">' +
+        '<span>' + d.getDate() + '</span>' + (ev ? '<i class="mv2-ev" aria-hidden="true"></i>' : '') + '</button>';
+    }
+    let monthTotal = 0; Object.keys(mins).forEach(k => { if (parseDay(k).getMonth() === month && parseDay(k).getFullYear() === year) monthTotal += mins[k]; });
+    const upcoming = Object.keys(events).filter(k => k >= today).sort().flatMap(k => events[k].map(e => ({ k, e }))).slice(0, 5);
+    const evRows = upcoming.length ? upcoming.map(({ k, e }) => {
+      const days = dayDiff(k), works = (e.obras || []).map(id => workLabel(data, id)).filter(Boolean);
+      return '<button type="button" class="mv2-evrow" onclick="openEditEvento(\'' + jsArg(e.id) + '\')"><span class="mv2-count"><b>' + (days === 0 ? 'hoy' : days) + '</b>' + (days === 0 ? '' : '<small>' + (days === 1 ? 'día' : 'días') + '</small>') + '</span>' +
+        '<span class="mv2-evcopy"><b>' + esc(e.nombre || 'Evento') + '</b><small>' + parseDay(k).getDate() + ' ' + MONTHS_SHORT[parseDay(k).getMonth()] + (works.length ? ' · ' + esc(works.slice(0, 3).join(', ')) + (works.length > 3 ? '…' : '') : '') + '</small></span></button>';
+    }).join('') : '<p class="mv2-muted">Sin eventos próximos.</p>';
+    host.innerHTML =
+      '<div class="mv2-card"><div class="mv2-cal-head"><button type="button" class="mv2-cal-nav" onclick="MobileV2.calMove(-1)" aria-label="Mes anterior">‹</button>' +
+        '<div><b>' + MONTHS[month].charAt(0).toUpperCase() + MONTHS[month].slice(1) + ' ' + year + '</b><small>' + (monthTotal ? fmtMin(monthTotal) + ' estudiadas' : 'Sin estudio registrado') + '</small></div>' +
+        '<button type="button" class="mv2-cal-nav" onclick="MobileV2.calMove(1)" aria-label="Mes siguiente">›</button></div>' +
+        '<div class="mv2-cal-grid" role="grid">' + ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(w => '<span class="mv2-wd">' + w + '</span>').join('') + cells + '</div>' +
+        '<div class="mv2-legend"><span>Horas</span><i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i><span>5 h+</span><span class="mv2-legend-ev"><i class="mv2-ev"></i>Evento</span></div></div>' +
+      '<div class="mv2-card"><div class="mv2-line"><span class="mv2-lbl">Próximos eventos</span><button type="button" class="mv2-link" onclick="openAddEvento()">＋ Añadir</button></div>' + evRows +
+        '<button type="button" class="mv2-link mv2-more" onclick="MobileV2.calClassic(true)">Lista completa, hábitos y Google ›</button></div>';
+  }
+
+  function openDay(key) {
+    const data = database();
+    const d = parseDay(key), segs = segmentsOf(data, key);
+    let total = 0;
+    try { total = Math.round((root._statsMinsPorDia(new Date(d.getTime() - 43200000), new Date(d.getTime() + 43200000))[key]) || 0); } catch (e) {}
+    const byWork = {};
+    segs.forEach(sg => { byWork[sg.label] = (byWork[sg.label] || 0) + sg.mins; });
+    const shades = ['var(--accent)', 'color-mix(in srgb, var(--accent) 70%, var(--bg2))', 'color-mix(in srgb, var(--accent) 45%, var(--bg2))', 'color-mix(in srgb, var(--accent) 25%, var(--bg2))'];
+    const stack = Object.entries(byWork).sort((a, b) => b[1] - a[1]).map(([, m], i) => '<i style="flex:' + m + ';background:' + shades[i % shades.length] + '"></i>').join('');
+    const ev = (eventsByDay(data)[key] || []).map(e => '<button type="button" class="mv2-seg is-event" onclick="MobileV2.closeSheet(\'mv2DaySheet\');openEditEvento(\'' + jsArg(e.id) + '\')"><span>★ ' + esc(e.nombre || 'Evento') + '</span><b>›</b></button>').join('');
+    let habits = '';
+    try {
+      const list = typeof root.habitAllChallenges === 'function' ? root.habitAllChallenges() : [];
+      habits = list.map(h => ({ h, st: root.habitCalendarDayState(h, key, dayKey()) })).filter(x => x.st === 'success' || x.st === 'failure' || x.st === 'current')
+        .map(x => (x.st === 'success' ? '✓ ' : x.st === 'failure' ? '✗ ' : '• ') + esc(x.h.title || 'Hábito')).join(' · ');
+    } catch (e) {}
+    let flashes = 0;
+    try { flashes = (typeof root.getAllDestellos === 'function' ? root.getAllDestellos() : []).filter(f => dayKey(new Date(f.date)) === key).length; } catch (e) {}
+    const extras = [habits, flashes ? '✨ ' + flashes + (flashes === 1 ? ' destello' : ' destellos') : ''].filter(Boolean).join(' · ');
+    const title = WEEKDAYS[d.getDay()].charAt(0).toUpperCase() + WEEKDAYS[d.getDay()].slice(1) + ' ' + d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()];
+    sheet('mv2DaySheet', title,
+      '<div class="mv2-day-total"><span class="mv2-muted">Estudiado</span><b>' + (total ? fmtDur(total) : '—') + '</b></div>' +
+      (stack ? '<div class="mv2-stack">' + stack + '</div>' : '') + ev +
+      (segs.length ? segs.map(sg => '<div class="mv2-seg"><span>' + hhmm(sg.start) + '–' + hhmm(sg.end) + ' · ' + esc(sg.label) + '</span><b>' + fmtMin(sg.mins) + '</b></div>').join('') : '<p class="mv2-muted">Sin tramos con hora este día.</p>') +
+      (extras ? '<p class="mv2-muted">' + extras + '</p>' : '') +
+      '<div class="mv2-sheet-actions"><button type="button" onclick="MobileV2.closeSheet(\'mv2DaySheet\');openAddEventoOnDate(\'' + key + '\')">＋ Evento</button>' +
+      '<button type="button" class="primary" onclick="MobileV2.closeSheet(\'mv2DaySheet\');MobileV2.editDay(\'' + key + '\')">Editar este día</button></div>');
+  }
+  function editDay(key) {
+    const data = database();
+    const ses = (data && data.sesiones || []).find(s => dayKey(new Date(s.date)) === key);
+    if (ses && typeof root.openEditarSesion === 'function') root.openEditarSesion(ses.date);
+    else if (typeof root.openSesionManual === 'function') root.openSesionManual();
+  }
+  function calMove(delta) { calOffset += delta; renderCal(); }
+  function calClassic(on) {
+    const view = doc.getElementById('view-calendario');
+    if (view) view.classList.toggle('mv2-cal-classic', !!on);
+    if (on) { const back = doc.getElementById('mv2CalBack'); if (!back && view) { const b = doc.createElement('button'); b.id = 'mv2CalBack'; b.type = 'button'; b.className = 'mv2-link mv2-cal-back'; b.textContent = '‹ Volver al mapa del mes'; b.onclick = () => calClassic(false); view.insertBefore(b, view.firstChild); } view.scrollIntoView && root.scrollTo && root.scrollTo(0, 0); }
+    else doc.getElementById('mv2CalBack')?.remove();
+  }
+  function installCal() {
+    const view = doc.getElementById('view-calendario');
+    if (!view || view.dataset.mv2) return;
+    view.dataset.mv2 = '1';
+    view.addEventListener('click', e => { const b = e.target.closest && e.target.closest('#mv2Cal .mv2-day'); if (b) openDay(b.dataset.day); });
+    if (typeof root.renderCalendario === 'function' && !root.renderCalendario.__mv2) {
+      const original = root.renderCalendario;
+      const wrapped = function () { renderingCalendar = true; try { return original.apply(this, arguments); } finally { renderingCalendar = false; } };
+      wrapped.__mv2 = true; root.renderCalendario = wrapped;
+    }
+    if (typeof root.renderMesCalendario === 'function' && !root.renderMesCalendario.__mv2) {
+      const original = root.renderMesCalendario;
+      const wrapped = function () { const r = original.apply(this, arguments); try { renderCal(); } catch (err) {} return r; };
+      wrapped.__mv2 = true; root.renderMesCalendario = wrapped;
+    }
+    // Si algo abre una pestaña concreta (hábitos, eventos…), se muestra la vista completa.
+    if (typeof root.switchCalTab === 'function' && !root.switchCalTab.__mv2) {
+      const original = root.switchCalTab;
+      // renderCalendario re-aplica la pestaña guardada en cada repintado: eso
+      // no es una petición del usuario ni de otra pantalla, así que se ignora.
+      const wrapped = function () {
+        const r = original.apply(this, arguments);
+        if (phoneV2() && !renderingCalendar) calClassic(true);
+        return r;
+      };
+      wrapped.__mv2 = true; root.switchCalTab = wrapped;
+    }
+    new MutationObserver(() => { if (doc.body.getAttribute('data-view') === 'calendario') renderCal(); }).observe(doc.body, { attributes: true, attributeFilter: ['data-view'] });
+  }
+
   function install() {
     if (!doc || install.done) return;
     install.done = true;
@@ -386,7 +541,7 @@
       wrapped.__mv2 = true;
       root.renderSessionResumen = wrapped;
     };
-    const ready = () => { hook(); installSetting(); installCrono(); renderHoy(); };
+    const ready = () => { hook(); installSetting(); installCrono(); installCal(); renderHoy(); renderCal(); };
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', ready, { once: true }); else ready();
     root.addEventListener('load', () => { ready(); setTimeout(renderHoy, 2500); }, { once: true });
     // Las prioridades del Profesor se cargan tarde: repintar cuando estén.
@@ -394,5 +549,5 @@
   }
   if (doc) install();
 
-  return { closeTools, design, setDesign, planToday, parsePlan, parseMinutes, matchUnit, savePlan, clearPlan, renderHoy, studyNow, openAdd, addStudy, addNote, toggleRooms, openPaste, pasteFromClipboard, confirmPaste, closeSheet, sentence };
+  return { renderCal, openDay, editDay, calMove, calClassic, segmentsOf, level, closeTools, design, setDesign, planToday, parsePlan, parseMinutes, matchUnit, savePlan, clearPlan, renderHoy, studyNow, openAdd, addStudy, addNote, toggleRooms, openPaste, pasteFromClipboard, confirmPaste, closeSheet, sentence };
 });

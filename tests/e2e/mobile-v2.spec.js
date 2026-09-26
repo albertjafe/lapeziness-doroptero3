@@ -140,3 +140,33 @@ test('Cronómetro v2: la mesa de trabajo es una hoja que se abre al tocar una pe
   await page.locator('#mv2SheetScrim').click({ position: { x: 20, y: 40 } });
   await expect(drawer).not.toHaveClass(/mv2-sheet-open/);
 });
+
+test('Calendario v2: mapa de horas del mes, próximos eventos y hoja del día con sus tramos', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(() => showView('calendario'));
+  const cal = page.locator('#mv2Cal');
+  await expect(cal).toBeVisible();
+  await expect(page.locator('#view-calendario .cal-tabs')).toBeHidden();
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  const key = yesterday.getFullYear() + '-' + String(yesterday.getMonth() + 1).padStart(2, '0') + '-' + String(yesterday.getDate()).padStart(2, '0');
+  // Si ayer fue el mes anterior, se navega hacia atrás.
+  if (!(await cal.locator(`.mv2-day[data-day="${key}"]`).count())) await cal.getByRole('button', { name: 'Mes anterior' }).click();
+  const cell = cal.locator(`.mv2-day[data-day="${key}"]`).first();
+  await expect(cell).toHaveClass(/l1/); // 50 min estudiados
+  const recital = cal.locator('.mv2-evrow', { hasText: 'Recital' });
+  await expect(recital).toHaveCount(1);
+  await expect(recital).toContainText('Partita nº 2');
+  await expect(recital).toContainText('10');
+  await cell.click();
+  const sheet = page.locator('#mv2DaySheet');
+  await expect(sheet).toHaveClass(/open/);
+  await expect(sheet).toContainText('50 min');
+  await expect(sheet).toContainText('Balada nº 1');
+  await expect(sheet.getByRole('button', { name: 'Editar este día' })).toBeVisible();
+  await sheet.getByRole('button', { name: 'Cerrar' }).click();
+  // La vista clásica (lista completa, hábitos, Google) sigue a un toque.
+  await cal.getByRole('button', { name: /Lista completa/ }).click();
+  await expect(page.locator('#view-calendario .cal-tabs')).toBeVisible();
+  await page.getByRole('button', { name: /Volver al mapa del mes/ }).click();
+  await expect(cal).toBeVisible();
+});
