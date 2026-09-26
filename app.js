@@ -843,7 +843,7 @@ const VIEW_CONTEXT = {
   salas: { eyebrow: 'Reservas Asimut', title: 'Aulas' },
   casa: { eyebrow: 'Estratos', title: 'La Casa' },
   historial: { eyebrow: 'Resumen', title: 'Estadísticas' },
-  deutsch: { eyebrow: 'Alemán · Estudio y hucha', title: 'Deutsch' },
+  deutsch: { eyebrow: 'Tarjetas y estudio libre', title: 'Alemán' },
   ajustes: { eyebrow: 'Planificador de estudio', title: 'Ajustes' },
   premios: { eyebrow: 'Hucha, rachas y logros', title: 'Premios' },
   habitos: { eyebrow: 'Normas, días y colección', title: 'Hábitos' }

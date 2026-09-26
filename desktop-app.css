@@ -1,0 +1,318 @@
+/* Windows · «app de escritorio» (v440)
+   Capa FINAL para html.platform-windows:not(#dk):not(#dk): se carga al final del <body> para
+   ganar a las capas de escritorio anteriores (desktop-redesign/-workspace/
+   -windows-v390/-v391) y a los <style> que los módulos inyectan en <head>.
+   Principios: nada de alturas fijas con overflow:hidden (recortaban el botón
+   Iniciar), cabecera compacta de una línea, un solo título por pantalla,
+   modales por encima de la barra lateral y controles de tamaño de escritorio.
+   No oculta ninguna función: solo duplicados (título interno, estado de
+   sincronización repetido).
+   Especificidad: cada selector empieza por html.platform-windows:not(#dk):not(#dk)
+   (dos «ids» imposibles que siempre casan) para ganar a las capas antiguas,
+   que combinan #view-cronometro con varias clases de estado del body. */
+
+@media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+  html.platform-windows:not(#dk):not(#dk) {
+    --desktop-rail-width: 212px;
+    --desktop-header-height: 60px;
+    --desktop-card-radius: 10px;
+    --desktop-canvas: color-mix(in srgb, var(--bg) 86%, var(--bg3));
+    --desktop-panel-shadow: 0 1px 2px rgba(15, 23, 42, .05);
+    --dk-gap: 14px;
+    --dk-pad: 24px;
+    --dk-control: 34px;
+  }
+
+  /* ── Cabecera: una línea, 60 px ─────────────────────────────── */
+  html.platform-windows:not(#dk):not(#dk) body .header,
+  html.platform-windows:not(#dk):not(#dk) body.crono-focus .header {
+    min-height: var(--desktop-header-height) !important;
+    height: var(--desktop-header-height);
+    padding: 0 var(--dk-pad) !important;
+    align-items: center !important;
+  }
+  html.platform-windows:not(#dk):not(#dk) .header-context { gap: 10px; min-width: 0; }
+  html.platform-windows:not(#dk):not(#dk) .header-copy { display: flex !important; align-items: baseline; gap: 10px; min-width: 0; }
+  html.platform-windows:not(#dk):not(#dk) .header-eyebrow { display: none !important; }
+  html.platform-windows:not(#dk):not(#dk) .header-title {
+    font: 650 19px/1.2 "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", sans-serif !important;
+    letter-spacing: -.01em;
+    white-space: nowrap;
+  }
+  html.platform-windows:not(#dk):not(#dk) .header-date { margin: 0 !important; font-size: 13px !important; white-space: nowrap; }
+  html.platform-windows:not(#dk):not(#dk) .header-actions { gap: 6px !important; align-items: center; }
+  html.platform-windows:not(#dk):not(#dk) body .header .header-actions > :is(button, a, .piano-rooms-open, .settings-icon),
+  html.platform-windows:not(#dk):not(#dk) .header-actions :is(button, .piano-rooms-open, .settings-icon) {
+    min-height: var(--dk-control) !important;
+    height: var(--dk-control) !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+  }
+  html.platform-windows:not(#dk):not(#dk) body .header .header-actions > :is(.settings-icon, #headerPremiosBtn) { width: var(--dk-control) !important; min-width: var(--dk-control) !important; padding: 0 !important; }
+  html.platform-windows:not(#dk):not(#dk) .desktop-study-cta { min-height: var(--dk-control) !important; height: var(--dk-control) !important; padding: 0 14px !important; box-shadow: none !important; font-size: 13px !important; }
+  /* El estado de sincronización ya vive en el pie de la barra lateral. */
+  html.platform-windows:not(#dk):not(#dk) .header-actions #syncIndicator { display: none !important; }
+  html.platform-windows:not(#dk):not(#dk) #mobileCompetitionDeadline { font-size: 12px !important; }
+
+  /* ── Barra lateral compacta ─────────────────────────────────── */
+  html.platform-windows:not(#dk):not(#dk) .nav.nav-bottom { padding: 14px 10px !important; gap: 1px !important; }
+  html.platform-windows:not(#dk):not(#dk) .nav.nav-bottom .desktop-nav-brand { min-height: 40px !important; margin: 0 4px 10px !important; }
+  html.platform-windows:not(#dk):not(#dk) .nav.nav-bottom .desktop-nav-mark { width: 30px !important; height: 30px !important; border-radius: 8px !important; font-size: 15px !important; }
+  html.platform-windows:not(#dk):not(#dk) .nav.nav-bottom .desktop-nav-group { margin: 12px 10px 4px !important; font-size: 11px !important; }
+  html.platform-windows:not(#dk):not(#dk) .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn) {
+    min-height: 36px !important;
+    height: 36px;
+    padding: 0 10px !important;
+    border-radius: 7px !important;
+    font-size: 13.5px !important;
+    gap: 10px !important;
+  }
+  html.platform-windows:not(#dk):not(#dk) .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn) svg { width: 17px !important; height: 17px !important; }
+  html.platform-windows:not(#dk):not(#dk) .nav.nav-bottom .desktop-nav-footer { padding: 8px 10px !important; min-height: 0 !important; border-radius: 8px !important; }
+  html.platform-windows:not(#dk):not(#dk) .nav.nav-bottom .desktop-nav-footer span:last-child { font-size: 12px !important; line-height: 1.3 !important; }
+
+  /* ── Lienzo y vistas ────────────────────────────────────────── */
+  html.platform-windows:not(#dk):not(#dk) body .app-content,
+  html.platform-windows:not(#dk):not(#dk) body.crono-focus .app-content { padding-bottom: 24px !important; }
+  html.platform-windows:not(#dk):not(#dk) body .view,
+  html.platform-windows:not(#dk):not(#dk) body.crono-focus .view { padding: 18px var(--dk-pad) 24px !important; max-width: 1480px; }
+
+  /* Un solo título: la cabecera ya dice dónde estás y la barra lateral
+     vuelve; el encabezado interno con flecha es de móvil. */
+  html.platform-windows:not(#dk):not(#dk) :is(#view-premios, #view-habitos, #view-ajustes) > .ajustes-header { display: none !important; }
+  html.platform-windows:not(#dk):not(#dk) :is(#view-premios, #view-habitos) .ajustes-body { padding-top: 0 !important; }
+
+  /* ── Modales: por encima de la barra lateral, tamaño de escritorio ── */
+  html.platform-windows:not(#dk):not(#dk) .modal-overlay { z-index: 1200 !important; }
+  html.platform-windows:not(#dk):not(#dk) .modal-overlay .modal {
+    width: min(640px, calc(100vw - 64px)) !important;
+    max-width: min(640px, calc(100vw - 64px)) !important;
+    max-height: calc(100dvh - 64px) !important;
+    border-radius: 12px !important;
+    padding: 22px 24px !important;
+    overflow-y: auto;
+  }
+  html.platform-windows:not(#dk):not(#dk) .modal-overlay .modal :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select):not(.no-dk) {
+    min-height: 36px !important;
+    height: auto;
+    padding: 7px 11px !important;
+    border-radius: 7px !important;
+    font-size: 14px !important;
+  }
+  html.platform-windows:not(#dk):not(#dk) .modal-overlay .modal textarea { font-size: 14px !important; border-radius: 7px !important; }
+  html.platform-windows:not(#dk):not(#dk) .modal-overlay .modal .modal-btn { min-height: 36px !important; border-radius: 8px !important; font-size: 14px !important; }
+  html.platform-windows:not(#dk):not(#dk) .modal-overlay .modal .modal-title { font-size: 17px !important; }
+
+  /* ── Cronómetro ─────────────────────────────────────────────── */
+  html.platform-windows:not(#dk):not(#dk) body[data-view="cronometro"] #view-cronometro,
+  html.platform-windows:not(#dk):not(#dk) body.crono-focus #view-cronometro {
+    --crono-interface-ring-size: clamp(170px, calc(100dvh - 560px), 240px) !important;
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    padding-top: 16px !important;
+  }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-wrap,
+  html.platform-windows:not(#dk):not(#dk) body.crono-running #view-cronometro .crono-wrap {
+    height: auto !important;
+    padding: 0 !important;
+    row-gap: var(--dk-gap) !important;
+  }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-idle-console,
+  html.platform-windows:not(#dk):not(#dk) body.crono-running #view-cronometro .crono-wrap {
+    /* El reloj no necesita más de ~780 px; el resto va a la mesa de trabajo. */
+    grid-template-columns: minmax(460px, 780px) minmax(340px, 1fr) !important;
+    gap: var(--dk-gap) !important;
+    align-items: start !important;
+  }
+  /* Tarjetas a su altura natural: nunca recortar controles. */
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-idle-main,
+  html.platform-windows:not(#dk):not(#dk) body.crono-running #view-cronometro #cronoStageRun {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 14px 18px 18px !important;
+    gap: 10px;
+  }
+  /* La mesa de trabajo acompaña a la vista y hace scroll por dentro. */
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro #cronoIdleDrawer,
+  html.platform-windows:not(#dk):not(#dk) body.crono-running #view-cronometro #cronoRunDrawer {
+    position: sticky !important;
+    top: 12px;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - var(--desktop-header-height) - 40px) !important;
+    overflow: hidden !important;
+    padding: 14px !important;
+  }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) .crono-run-drawer-panels { min-height: 0; overflow-y: auto; }
+  /* Orden de trabajo: obra → reloj → (modo + Iniciar) → tipo → hucha → destello. */
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-idle-main > .crono-run-head { order: 0; min-height: 46px !important; padding-bottom: 8px !important; margin: 0 !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-idle-main > .crono-display-wrap { order: 1; margin: 4px auto 0 !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-idle-main > .crono-idle-controls { order: 2; margin: 0 !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-idle-main > .crono-activity-control { order: 3; margin: 0 !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-idle-main > .crono-piano-goal-idle { order: 4; min-height: 0 !important; margin: 0 !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-idle-main > .crono-idle-message { order: 5; margin: 0 auto !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-idle-main > * { flex: 0 0 auto; }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-plant-btn { min-height: 42px !important; height: 42px; border-radius: 9px !important; font-size: 15px !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-mode-toggle { min-height: 42px !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-activity-control .crono-start-control-label { font-size: 12px !important; color: var(--text3) !important; text-align: left !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-activity-tabs { min-height: 38px !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-bottom-row { grid-column: 1 / -1; }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro :is(.crono-week-card, .crono-destellos-card) { min-height: 0 !important; height: auto !important; padding: 14px 18px !important; }
+
+  /* Barra de herramientas del cronómetro (Horas, recargar): en el flujo, no
+     flotando bajo la cabecera. */
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-screen-title {
+    position: static !important;
+    display: flex !important;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+    width: auto !important;
+    height: auto !important;
+    margin: -6px 0 8px !important;
+    transform: none !important;
+  }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-screen-title :is(button) {
+    position: static !important;
+    min-height: 30px !important; height: 30px !important; width: auto !important; min-width: 30px;
+    padding: 0 10px !important; border-radius: 7px !important; font-size: 12px !important;
+  }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-screen-title .crono-refresh-btn { padding: 0 !important; width: 30px !important; }
+  /* Mensaje/destello: dentro de la tarjeta, a lo ancho. */
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro :is(.crono-idle-message, .crono-run-destello) {
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    transform: none !important;
+    box-sizing: border-box;
+    min-height: 0 !important;
+    padding: 9px 12px !important;
+    border-radius: 8px !important;
+  }
+  /* En marcha: el contenedor del reloj mide anillo + fila de controles (antes
+     reservaba 330 px y dejaba un hueco). */
+  html.platform-windows:not(#dk):not(#dk) body.crono-running #view-cronometro #cronoDisplayWrap {
+    /* Es un hijo flex en columna: manda flex-basis, no height. */
+    flex: 0 0 calc(var(--crono-interface-ring-size) + 62px) !important;
+    height: calc(var(--crono-interface-ring-size) + 62px) !important;
+    min-height: 0 !important;
+    margin: 4px auto 0 !important;
+  }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) { margin-top: 0 !important; align-self: start; }
+  /* Pestañas de la mesa: la insignia de tareas no tapa el texto. */
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-run-drawer-tab { position: relative; }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-run-drawer-tab :is(.crono-task-notification-dot, .crono-tab-badge, [class*="badge"]) {
+    position: absolute !important; top: -6px !important; right: -4px !important; left: auto !important; bottom: auto !important;
+    transform: none !important; min-width: 18px; height: 18px; font-size: 10.5px !important; line-height: 18px;
+  }
+
+  /* ── Hoy ─────────────────────────────────────────────────────
+     La columna derecha abarca varias filas; el sobrante iba a la fila del
+     plan y dejaba un hueco bajo «Plan de hoy». Ahora va a una fila vacía. */
+  html.platform-windows:not(#dk):not(#dk) body[data-view="session"] #view-session:not(.session-weekly-mode):not(.session-history-mode) {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px) !important;
+    grid-template-rows: auto auto auto auto auto 1fr auto !important;
+    grid-template-areas:
+      "summary summary"
+      "plan-title side"
+      "plan side"
+      "quick side"
+      "journal side"
+      ". side"
+      "rooms rooms" !important;
+    gap: var(--dk-gap) !important;
+  }
+  html.platform-windows:not(#dk):not(#dk) #view-session .session-focus-card :is(.session-focus-metric, .session-focus-finish, .session-focus-probability) { min-height: 0 !important; padding: 12px 14px !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-session .session-aulas-dashboard :is(.reservation-empty, [class*="empty"]) { min-height: 0 !important; padding: 18px !important; }
+
+  /* ── Obras: lista + ficha, sin salirse de la ventana ─────────── */
+  html.platform-windows:not(#dk):not(#dk) body[data-view="obras"] #view-obras .obras-rd-layout {
+    display: grid !important;
+    grid-template-columns: minmax(300px, 400px) minmax(0, 1fr) !important;
+    gap: var(--dk-gap) !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+  html.platform-windows:not(#dk):not(#dk) body[data-view="obras"] #view-obras .obras-rd-master { width: auto !important; min-width: 0 !important; max-width: none !important; }
+  html.platform-windows:not(#dk):not(#dk) body[data-view="obras"] #view-obras .obras-rd-detail {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    position: sticky !important;
+    top: 12px;
+    max-height: calc(100dvh - var(--desktop-header-height) - 36px);
+    overflow-y: auto;
+  }
+  html.platform-windows:not(#dk):not(#dk) body[data-view="obras"] #view-obras .obras-workbench { max-width: none !important; width: 100% !important; }
+
+  /* ── Alemán: portada sobria, no cartel de marketing ─────────── */
+  html.platform-windows:not(#dk):not(#dk) #view-deutsch h1 { font-size: 24px !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-deutsch :is(.german-hero h2, .german-start h2, .german-card h2) { font-size: 20px !important; line-height: 1.25 !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-deutsch :is([class*="hero"]) :is(h2, h1) { font-size: clamp(22px, 2.2vw, 30px) !important; letter-spacing: -.02em !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-deutsch :is([class*="hero"], .german-card) { padding: 20px 22px !important; border-radius: var(--desktop-card-radius) !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-deutsch button { min-height: 38px !important; padding: 8px 16px !important; border-radius: 8px !important; }
+
+  /* ── Premios / Hábitos ──────────────────────────────────────── */
+  html.platform-windows:not(#dk):not(#dk) #view-premios .premios-wallet button { min-height: 34px !important; padding: 6px 13px !important; border-radius: 8px !important; }
+
+  /* ── Interruptores: el mínimo táctil de 44 px deformaba el pill ── */
+  html.platform-windows:not(#dk):not(#dk) :is(.haptics-toggle, #autoNightToggle) { min-height: 0 !important; height: 24px !important; width: 42px !important; }
+
+  /* ── Calendario: eventos más densos ─────────────────────────── */
+  html.platform-windows:not(#dk):not(#dk) #view-calendario .evento-card { padding: 14px 18px !important; border-radius: var(--desktop-card-radius) !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-calendario .evento-card :is(button) { min-height: 32px !important; padding: 5px 12px !important; border-radius: 7px !important; font-size: 13px !important; }
+
+  /* Solidez de la obra elegida: tarjeta a lo ancho justo bajo el reloj (antes
+     flotaba suelta y diminuta al final). */
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-wrap > #cronoStageIdle,
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-wrap > #cronoStageRun { order: 0; }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-wrap > #cronoTargetSolidity {
+    order: 1;
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 12px 16px !important;
+    border: 1px solid var(--border2) !important;
+    border-radius: var(--desktop-card-radius) !important;
+    background: var(--bg2) !important;
+    box-shadow: var(--desktop-panel-shadow) !important;
+    font-size: 13px;
+  }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro #cronoTargetSolidity :is(header, footer, small, .crono-target-solidity-guide-button) { font-size: 12px !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-cronometro .crono-wrap > .crono-bottom-row { order: 2; }
+
+  /* ── Aulas en Hoy: cabecera y vacío a escala de escritorio ── */
+  html.platform-windows:not(#dk):not(#dk) #sessionAulasDashboard #reservationDashboardTitle { font-size: 20px !important; line-height: 1.2 !important; margin: 2px 0 !important; }
+  html.platform-windows:not(#dk):not(#dk) #sessionAulasDashboard .rd-empty { min-height: 0 !important; padding: 18px !important; }
+  html.platform-windows:not(#dk):not(#dk) #sessionAulasDashboard .rd-empty strong { font-size: 17px !important; }
+  html.platform-windows:not(#dk):not(#dk) #sessionAulasDashboard :is(.rd-pane-tabs button, .rd-refresh) { min-height: 32px !important; height: 32px; }
+
+  /* ── Calendario: pestañas compactas, eventos en rejilla ─────── */
+  html.platform-windows:not(#dk):not(#dk) #view-calendario .cal-tabs { display: inline-flex !important; width: auto !important; gap: 2px !important; padding: 3px !important; border-radius: 9px !important; background: var(--bg3) !important; border: 0 !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-calendario .cal-tabs .cal-tab { flex: 0 0 auto !important; width: auto !important; min-height: 30px !important; height: 30px; padding: 0 18px !important; border-radius: 7px !important; border: 0 !important; font-size: 13px !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-calendario .cal-tabs .cal-tab.active { background: var(--bg2) !important; box-shadow: 0 1px 2px rgba(0,0,0,.08) !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-calendario .cal-tabs .cal-tab::after { display: none !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-calendario .calendar-action-buttons button { min-height: 32px !important; height: 32px; padding: 0 12px !important; border-radius: 7px !important; font-size: 12.5px !important; white-space: nowrap !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-calendario #eventosList { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--dk-gap) !important; align-items: start; }
+  html.platform-windows:not(#dk):not(#dk) #view-calendario #eventosList > .evento-card { margin: 0 !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-calendario #eventosList > :not(.evento-card) { grid-column: 1 / -1; }
+
+  /* ── Barra lateral: estado activo de las pantallas de escritorio ── */
+  html.platform-windows:not(#dk):not(#dk) :is(body[data-view="deutsch"] .desktop-nav-btn[data-view="deutsch"],
+          body[data-view="premios"] .desktop-nav-btn[data-view="premios"],
+          body[data-view="habitos"] .desktop-nav-btn[data-view="habitos"],
+          body[data-view="ajustes"] .desktop-nav-btn[data-view="ajustes"],
+          body:has(#view-session.session-history-mode.active) .desktop-nav-btn[data-nav="stats"]) {
+    background: color-mix(in srgb, var(--accent) 11%, var(--bg2)) !important;
+    color: var(--accent) !important;
+  }
+  /* En Estadísticas, «Hoy» deja de parecer la pantalla activa. */
+  html.platform-windows:not(#dk):not(#dk) body:has(#view-session.session-history-mode.active) .nav.nav-bottom .nav-btn[data-view="session"] { background: transparent !important; color: var(--text2) !important; }
+  /* Alemán: el título ya está en la cabecera y la vuelta en la barra lateral. */
+  html.platform-windows:not(#dk):not(#dk) #view-deutsch .german-header { display: none !important; }
+}
