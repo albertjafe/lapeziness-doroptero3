@@ -8,6 +8,10 @@
   const POLL_MS = 60 * 1000;
   const FRESH_MS = 90 * 1000;
   const OFFLINE_MS = 3 * 60 * 1000;
+  // El puente reenvía la última instantánea como latido cada 45 s aunque el
+  // bucle del monitor lleve rato sin leer Asimut (esperas tácticas, madrugada,
+  // login que falla). La edad de los datos sale de observed_at, no del latido.
+  const STALE_DATA_MS = 5 * 60 * 1000;
   const MODE_LABELS = {
     '1': 'Normal',
     '2': 'Grabación',
@@ -66,6 +70,20 @@
     if (minutes < 60) return `hace ${minutes} min`;
     const hours = Math.floor(minutes / 60);
     return `hace ${hours} h ${minutes % 60} min`;
+  }
+  function dataAgeMs(row) {
+    const date = parseDate(row && row.observed_at);
+    return date ? Math.max(0, Date.now() - date.getTime()) : Infinity;
+  }
+  /* Tres señales distintas:
+   * - latido (heartbeat_at): el programa de Windows sigue abierto y con red;
+   * - monitor.online: el bucle de reservas está en marcha (false tras caída o cierre);
+   * - observed_at: cuándo se leyó Asimut por última vez. */
+  function monitorHealth(row, state) {
+    if (ageMs(row) > OFFLINE_MS) return 'offline';
+    if (state?.monitor?.online === false) return 'stopped';
+    if (dataAgeMs(row) > STALE_DATA_MS) return 'stale';
+    return 'live';
   }
   function currentRow() {
     return rows.find(row => row.source === selectedSource) || rows[0] || null;
@@ -146,16 +164,21 @@
     const current = reservations.find(item => timelineStatus(state.date, item) === 'current');
     const next = reservations.find(item => timelineStatus(state.date, item) === 'upcoming');
     const focus = current || next || reservations[reservations.length - 1];
-    const offline = ageMs(row) > OFFLINE_MS || state.monitor?.online === false;
+    const health = monitorHealth(row, state);
+    const offline = health === 'offline' || health === 'stopped';
     let eyebrow = current ? 'Ahora mismo' : next ? 'Siguiente reserva' : reservations.length ? 'Última reserva del día' : 'Agenda libre';
     let title = focus ? `Aula ${escapeHtml(focus.room || '—')}` : 'Sin reservas';
     let subtitle = focus
       ? `${escapeHtml(focus.start || '—')}–${escapeHtml(focus.end || '—')} · ${durationLabel(reservationMinutes(focus))}`
       : `No hay reservas para ${escapeHtml(formatDate(state.date))}`;
-    if (offline) {
+    if (health === 'offline') {
       eyebrow = 'Monitor sin conexión reciente';
       title = 'Estado en espera';
       subtitle = `La última señal llegó ${escapeHtml(relativeAge(row.heartbeat_at))}`;
+    } else if (health === 'stopped') {
+      eyebrow = 'Monitor detenido';
+      title = 'No está leyendo Asimut';
+      subtitle = `El programa sigue abierto; última lectura ${escapeHtml(relativeAge(row.observed_at))}`;
     }
     hero.classList.toggle('is-offline', offline);
     hero.innerHTML = `
@@ -258,8 +281,9 @@
     const target = el('reservationMonitorCard');
     if (!target) return;
     const monitor = state.monitor || {};
-    const freshness = ageMs(row);
-    const online = freshness <= OFFLINE_MS && monitor.online !== false;
+    const health = monitorHealth(row, state);
+    const online = health === 'live' || health === 'stale';
+    const liveLabel = { live: 'conectado', stale: 'lectura antigua', stopped: 'detenido', offline: 'sin señal' }[health];
     const scans = Array.isArray(state.scans) ? state.scans : [];
     const latestScan = scans.map(scan => parseDate(scan.observed_at)).filter(Boolean).sort((a, b) => b - a)[0];
     const chips = [
@@ -271,7 +295,7 @@
     target.innerHTML = `<section class="rd-card rd-monitor-card">
       <div class="rd-card-head">
         <span>Monitor</span>
-        <small class="rd-live-dot ${online ? 'online' : ''}"><i></i>${online ? 'conectado' : 'sin señal'}</small>
+        <small class="rd-live-dot ${online ? 'online' : ''}"><i></i>${liveLabel}</small>
       </div>
       <div class="rd-monitor-mode">
         <span>Modo operativo</span>
@@ -325,12 +349,16 @@
     const state = row.state || {};
     shell.hidden = false;
     empty.hidden = true;
-    const freshness = ageMs(row);
-    const offline = freshness > OFFLINE_MS || state.monitor?.online === false;
-    setStatus(
-      offline ? `Última señal ${relativeAge(row.heartbeat_at)}` : `En directo · actualizado ${relativeAge(row.heartbeat_at)}`,
-      offline ? 'error' : freshness > FRESH_MS ? 'stale' : 'ok',
-    );
+    const health = monitorHealth(row, state);
+    if (health === 'offline') {
+      setStatus(`Sin señal del ordenador desde ${formatClock(row.heartbeat_at)} (${relativeAge(row.heartbeat_at)})`, 'error');
+    } else if (health === 'stopped') {
+      setStatus(`Monitor detenido · última lectura de Asimut ${relativeAge(row.observed_at)}`, 'error');
+    } else if (health === 'stale') {
+      setStatus(`Conectado · última lectura de Asimut ${relativeAge(row.observed_at)}`, 'stale');
+    } else {
+      setStatus(`En directo · leído ${relativeAge(row.observed_at)}`, ageMs(row) > FRESH_MS ? 'stale' : 'ok');
+    }
     if (connectionNotice) setStatus(connectionNotice.status, connectionNotice.kind);
     renderHero(state, row);
     let help = el('reservationConnectionHelp');
@@ -340,8 +368,13 @@
       help.className = 'rd-connection-help';
       el('reservationHero')?.after(help);
     }
-    help.hidden = !offline;
-    help.textContent = 'El monitor no está publicando una señal actual. Abre una sola instancia en Windows y completa su arranque en Telegram; después pulsa actualizar.';
+    const helpText = {
+      offline: 'El ordenador no está publicando. Abre una sola instancia del monitor en Windows y completa su arranque en Telegram; después pulsa actualizar.',
+      stopped: 'El programa sigue abierto pero el monitor se ha parado o se está reiniciando. Mira la ventana del monitor o su log en Windows.',
+      stale: 'El monitor está conectado pero lleva un rato sin leer Asimut (espera táctica, madrugada o un reintento). Las reservas mostradas pueden no estar al día.',
+    }[health];
+    help.hidden = !helpText;
+    help.textContent = helpText || '';
     renderReservations(state.date, state.reservations, 'reservationBookingList');
     const quota = el('reservationQuotaCard');
     if (quota) quota.innerHTML = quotaCard(state.quota || {});

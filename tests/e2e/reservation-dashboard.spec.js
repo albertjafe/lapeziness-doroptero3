@@ -36,9 +36,7 @@ const sampleRow = {
   },
 };
 
-test('renders live reservations and sends a safe monitor command', async ({ page }) => {
-  // Conserva un origen http real para que localStorage esté disponible sin
-  // cargar antes el enorme runtime de la app.
+async function mountDashboard(page, row) {
   await page.goto('/reservation-dashboard.css?v=369');
   await page.setContent(`<!doctype html><html lang="es" data-theme="marmol"><head>
     <link rel="stylesheet" href="http://127.0.0.1:4173/styles.css?v=342">
@@ -53,6 +51,8 @@ test('renders live reservations and sends a safe monitor command', async ({ page
   await page.evaluate((row) => {
     const writes = [];
     window.__dashboardWrites = writes;
+    // Fila mutable desde la prueba: cada refresh devuelve su estado actual.
+    window.__row = row;
     const client = {
       auth: {
         getSession: async () => ({ data: { session: { user: { id: row.user_id } } } }),
@@ -62,7 +62,7 @@ test('renders live reservations and sends a safe monitor command', async ({ page
         if (table === 'reservation_monitor_state') {
           const builder = {
             select() { return builder; }, eq() { return builder; },
-            order: async () => ({ data: [row], error: null }),
+            order: async () => ({ data: [window.__row], error: null }),
           };
           return builder;
         }
@@ -77,9 +77,12 @@ test('renders live reservations and sends a safe monitor command', async ({ page
       removeChannel: async () => {},
     };
     window.getSB = () => client;
-  }, sampleRow);
+  }, row);
   await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=372' });
+}
 
+test('renders live reservations and sends a safe monitor command', async ({ page }) => {
+  await mountDashboard(page, sampleRow);
   await expect(page.locator('#reservationHero')).toHaveText(/Aula (113|308)/);
   await expect(page.locator('#reservationModeControls .active')).toContainText('Grabación');
   await expect(page.locator('#reservationBookingList')).toContainText('Aula 308');
@@ -98,4 +101,37 @@ test('renders live reservations and sends a safe monitor command', async ({ page
   await page.getByRole('button', { name: 'Piano Rooms' }).click();
   await expect(page.locator('#reservationLegacyPanel')).not.toHaveAttribute('hidden', '');
   await expect(page.locator('#reservationLivePanel')).toHaveAttribute('hidden', '');
+});
+
+test('distinguishes a stopped monitor and stale Asimut data from a live one', async ({ page }) => {
+  const minutesAgo = minutes => new Date(Date.now() - minutes * 60 * 1000).toISOString();
+  // Programa abierto (latido reciente) pero el bucle cayó: monitor.online=false.
+  const stopped = structuredClone(sampleRow);
+  stopped.observed_at = minutesAgo(12);
+  stopped.state.monitor.online = false;
+  await mountDashboard(page, stopped);
+  await expect(page.locator('#reservationDashboardStatus')).toContainText('Monitor detenido');
+  await expect(page.locator('#reservationHero')).toContainText('No está leyendo Asimut');
+  await expect(page.locator('#reservationMonitorCard')).toContainText('detenido');
+  await expect(page.locator('#reservationModeControls button').first()).toBeDisabled();
+
+  // Latido reciente y bucle vivo, pero la última lectura de Asimut es antigua.
+  await page.evaluate(async (at) => {
+    const row = window.__row;
+    row.observed_at = at;
+    row.state.monitor.online = true;
+    await window.ReservationDashboard.refresh(false);
+  }, minutesAgo(9));
+  await expect(page.locator('#reservationDashboardStatus')).toContainText('última lectura de Asimut hace 9 min');
+  await expect(page.locator('#reservationDashboardStatus')).toHaveAttribute('data-kind', 'stale');
+  await expect(page.locator('#reservationConnectionHelp')).toBeVisible();
+  await expect(page.locator('#reservationModeControls button').first()).toBeEnabled();
+
+  // Lectura reciente: en directo y sin aviso.
+  await page.evaluate(async () => {
+    window.__row.observed_at = new Date().toISOString();
+    await window.ReservationDashboard.refresh(false);
+  });
+  await expect(page.locator('#reservationDashboardStatus')).toContainText('En directo');
+  await expect(page.locator('#reservationConnectionHelp')).toBeHidden();
 });
