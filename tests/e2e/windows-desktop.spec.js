@@ -80,7 +80,9 @@ test('los modales quedan por encima de la barra lateral y Esc los cierra con su 
   // El punto central del modal y una esquina de la barra lateral: el overlay manda.
   const topAtRail = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('.modal-overlay') !== null, { x: rail.x + 20, y: rail.y + 200 });
   expect(topAtRail).toBe(true);
-  expect(box.x).toBeGreaterThan(rail.x + rail.width - 1);
+  // Centrado en la ventana y nunca más ancho que ella (el de eventos es ancho a propósito).
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(1366);
   await page.keyboard.press('Escape');
   await expect(page.locator('.modal-overlay.visible')).toHaveCount(0);
 });

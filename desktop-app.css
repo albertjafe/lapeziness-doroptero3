@@ -84,13 +84,12 @@
 
   /* ── Modales: por encima de la barra lateral, tamaño de escritorio ── */
   html.platform-windows:not(#dk):not(#dk) .modal-overlay { z-index: 1200 !important; }
+  /* Cada modal conserva su ancho de diseño (evento 1040, gráficas 760…);
+     solo se garantiza que nunca sea más ancho ni más alto que la ventana. */
   html.platform-windows:not(#dk):not(#dk) .modal-overlay .modal {
-    width: min(640px, calc(100vw - 64px)) !important;
-    max-width: min(640px, calc(100vw - 64px)) !important;
-    max-height: calc(100dvh - 64px) !important;
+    max-width: calc(100vw - 64px) !important;
+    max-height: calc(100dvh - 48px) !important;
     border-radius: 12px !important;
-    padding: 22px 24px !important;
-    overflow-y: auto;
   }
   html.platform-windows:not(#dk):not(#dk) .modal-overlay .modal :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select):not(.no-dk) {
     min-height: 36px !important;
@@ -313,6 +312,7 @@
   }
   /* En Estadísticas, «Hoy» deja de parecer la pantalla activa. */
   html.platform-windows:not(#dk):not(#dk) body:has(#view-session.session-history-mode.active) .nav.nav-bottom .nav-btn[data-view="session"] { background: transparent !important; color: var(--text2) !important; }
-  /* Alemán: el título ya está en la cabecera y la vuelta en la barra lateral. */
-  html.platform-windows:not(#dk):not(#dk) #view-deutsch .german-header { display: none !important; }
+  /* Alemán: su cabecera (con «← Hoy») se queda, a escala de escritorio. */
+  html.platform-windows:not(#dk):not(#dk) #view-deutsch .german-header { margin: 4px 0 2px !important; }
+  html.platform-windows:not(#dk):not(#dk) #view-deutsch .german-header h1 { font-size: 22px !important; }
 }

@@ -52,7 +52,9 @@ test('uses the approved compact Windows shell at desktop widths', async ({ page 
   expect(layout.windows).toBe(true);
   expect(layout.rail.width).toBeGreaterThanOrEqual(210);
   expect(layout.rail.height).toBeGreaterThanOrEqual(899);
-  expect(layout.headerFont).toBeGreaterThanOrEqual(28);
+  // v440: cabecera compacta de una línea (título 19 px, barra de 60 px).
+  expect(layout.headerFont).toBeGreaterThanOrEqual(17);
+  expect(layout.headerFont).toBeLessThanOrEqual(22);
   expect(layout.summaryColumns).toBe(5);
   expect(layout.side.left).toBeGreaterThan(layout.plan.right);
   expect(layout.professorVisible).toBe(true);
