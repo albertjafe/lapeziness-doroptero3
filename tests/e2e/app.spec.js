@@ -891,7 +891,9 @@ test('adds manual study to today from the compact quick row', async ({ page }) =
   await prepare(page);
   await page.evaluate(() => showView('session'));
 
-  await page.locator('.session-quick-disclosure > summary').click();
+  // En el diseño móvil v2 el registro rápido está en «＋ Añadir → Estudio de hoy».
+  await page.getByRole('button', { name: /Añadir estudio, nota o tarea/ }).click();
+  await page.getByRole('button', { name: /Estudio de hoy/ }).click();
   const quick = page.locator('#sessionQuickStudy');
   await expect(quick).toBeVisible();
   await expect(page.locator('#modalStudyRegister')).not.toHaveClass(/visible/);
@@ -902,7 +904,7 @@ test('adds manual study to today from the compact quick row', async ({ page }) =
 
   await expect(quick).toHaveClass(/is-saved/);
   await expect(page.locator('#sessionQuickStudyFeedback')).toContainText('25 min reales · 25 min netos');
-  await expect(page.locator('#sessionResumenCard .session-focus-metric').first().locator('strong')).toHaveText('25 min');
+  await expect(page.locator('#mv2Hoy .mv2-ring')).toContainText('25 min');
   const saved = await page.evaluate(() => ({
     sessions: db.sesiones.map(session => session.items.map(item => ({ obraId: item.obraId, minutes: item.minutosEstudiados, manual: item.manual }))),
     plants: db.sessionPlants.map(plant => ({ obraId: plant.obraId, minutes: plant.mins, source: plant.source })),

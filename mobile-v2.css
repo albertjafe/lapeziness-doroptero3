@@ -1,0 +1,88 @@
+/* Diseño móvil v2 — solo html.mobile-v2 y pantallas ≤ 700 px. Con «Clásico»
+   (Ajustes) o en iPad/escritorio no cambia nada. Solo variables de tema. */
+#mv2Hoy, .mv2-sheet-overlay { display: none; }
+
+@media (max-width: 700px) {
+  /* ── Hoy ───────────────────────────────────────────────────── */
+  html.mobile-v2 #view-session:not(.session-history-mode) #mv2Hoy { display: grid; gap: 10px; margin: 0 0 12px; }
+  html.mobile-v2 #view-session:not(.session-history-mode) { padding-top: 12px !important; }
+  html.mobile-v2 #view-session:not(.session-history-mode) :is(#sessionResumenCard, .german-entry) { display: none !important; }
+  html.mobile-v2 #view-session:not(.session-history-mode) :is(.session-quick-disclosure, #sessionJournalCard, #sessionAulasDashboard):not(.mv2-open) { display: none !important; }
+
+  html.mobile-v2 .mv2-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 14px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .04); color: var(--text);
+  }
+  html.mobile-v2 .mv2-lbl { display: block; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text3); }
+  html.mobile-v2 .mv2-muted { color: var(--text3); font-size: 13px; margin: 6px 0 0; line-height: 1.45; }
+  html.mobile-v2 .mv2-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  html.mobile-v2 .mv2-pill { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--bg3); color: var(--text2); font-weight: 600; white-space: nowrap; }
+  html.mobile-v2 .mv2-link { font: inherit; font-size: 13px; font-weight: 600; color: var(--accent); background: none; border: 0; padding: 6px 0; min-height: 36px; cursor: pointer; }
+
+  html.mobile-v2 .mv2-summary { display: flex; align-items: center; gap: 14px; }
+  html.mobile-v2 .mv2-ring {
+    --p: 0; flex: 0 0 88px; width: 88px; height: 88px; border-radius: 50%;
+    background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--bg3) 0);
+    display: grid; place-items: center;
+  }
+  html.mobile-v2 .mv2-ring span { width: 72px; height: 72px; border-radius: 50%; background: var(--bg2); display: grid; place-content: center; text-align: center; font-weight: 700; font-size: 16px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  html.mobile-v2 .mv2-ring small { display: block; font-size: 11px; font-weight: 500; color: var(--text3); }
+  html.mobile-v2 .mv2-summary-copy { display: grid; gap: 4px; min-width: 0; }
+  html.mobile-v2 .mv2-summary-copy b { font-size: 16px; line-height: 1.35; }
+
+  html.mobile-v2 .mv2-parahoy { display: grid; gap: 2px; }
+  html.mobile-v2 .mv2-plan {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; font: inherit; color: inherit;
+    background: none; border: 0; border-top: 1px solid var(--border); padding: 10px 0; min-height: 56px; cursor: pointer;
+  }
+  html.mobile-v2 .mv2-parahoy .mv2-line + .mv2-plan { border-top: 0; }
+  html.mobile-v2 .mv2-play { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--bg); display: grid; place-items: center; font-size: 12px; }
+  html.mobile-v2 .mv2-plan-copy { display: grid; gap: 2px; min-width: 0; }
+  html.mobile-v2 .mv2-plan-copy b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  html.mobile-v2 .mv2-plan-copy small { font-size: 12.5px; color: var(--text3); }
+  html.mobile-v2 .mv2-plan-actions { display: flex; gap: 14px; padding-top: 6px; }
+  html.mobile-v2 .mv2-plan-actions button { font: inherit; font-size: 13px; color: var(--accent); background: none; border: 0; padding: 6px 0; min-height: 36px; cursor: pointer; }
+
+  html.mobile-v2 .mv2-rowcard { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; font: inherit; cursor: pointer; min-height: 60px; }
+  html.mobile-v2 .mv2-rowcard b { display: block; margin-top: 2px; font-size: 15px; font-weight: 600; }
+  html.mobile-v2 .mv2-rowcard.is-open .mv2-chev { transform: rotate(90deg); }
+  html.mobile-v2 .mv2-chev { font-size: 22px; color: var(--text3); transition: transform .2s; }
+  html.mobile-v2 .mv2-add {
+    width: 100%; min-height: 50px; border-radius: 14px; border: 0; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+    background: color-mix(in srgb, var(--accent) 12%, var(--bg2)); color: var(--accent);
+  }
+
+  /* ── Hojas inferiores ─────────────────────────────────────── */
+  html.mobile-v2 .mv2-sheet-overlay { position: fixed; inset: 0; z-index: 1500; background: rgba(0, 0, 0, .35); align-items: flex-end; }
+  html.mobile-v2 .mv2-sheet-overlay.open { display: flex; }
+  html.mobile-v2 .mv2-sheet {
+    width: 100%; max-height: 86dvh; overflow-y: auto; box-sizing: border-box; background: var(--bg2); color: var(--text);
+    border-radius: 20px 20px 0 0; padding: 8px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, .15);
+  }
+  html.mobile-v2 .mv2-grab { width: 38px; height: 5px; border-radius: 3px; background: var(--border2, var(--border)); margin: 0 auto 10px; }
+  html.mobile-v2 .mv2-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  html.mobile-v2 .mv2-sheet-head b { font-size: 17px; }
+  html.mobile-v2 .mv2-sheet-close { font: inherit; font-size: 15px; color: var(--accent); background: none; border: 0; min-height: 40px; cursor: pointer; }
+  html.mobile-v2 .mv2-sheet-list { display: grid; }
+  html.mobile-v2 .mv2-sheet-item { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; border-top: 1px solid var(--border); padding: 12px 2px; min-height: 58px; cursor: pointer; }
+  html.mobile-v2 .mv2-sheet-item:first-child { border-top: 0; }
+  html.mobile-v2 .mv2-sheet-item > span:first-child { flex: 0 0 36px; height: 36px; border-radius: 10px; background: var(--bg3); display: grid; place-items: center; font-size: 17px; color: var(--accent); }
+  html.mobile-v2 .mv2-sheet-item b { display: block; font-size: 15px; }
+  html.mobile-v2 .mv2-sheet-item small { display: block; font-size: 12.5px; color: var(--text3); }
+  html.mobile-v2 .mv2-sheet textarea { width: 100%; box-sizing: border-box; font: 14px/1.45 ui-monospace, "JetBrains Mono", monospace; border: 1px solid var(--border); border-radius: 12px; padding: 10px; background: var(--bg); color: var(--text); margin-top: 8px; }
+  html.mobile-v2 .mv2-sheet-actions { display: flex; gap: 10px; margin-top: 10px; }
+  html.mobile-v2 .mv2-sheet-actions button { flex: 1; min-height: 46px; border-radius: 12px; font: inherit; font-size: 14.5px; font-weight: 600; border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; }
+  html.mobile-v2 .mv2-sheet-actions button.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+}
+
+/* Ajustes: fila Nuevo / Clásico (solo tiene sentido en el móvil). */
+.mv2-design-row { display: none; }
+@media (max-width: 700px) {
+  .mv2-design-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .mv2-design-row b { display: block; font-size: 14px; }
+  .mv2-design-row small { display: block; font-size: 12px; color: var(--text3); }
+  .mv2-design-row .ajustes-seg { display: flex; gap: 4px; flex: 0 0 auto; }
+  .mv2-design-row .ajustes-seg button { min-height: 36px; padding: 0 12px; border-radius: 9px; font: inherit; font-size: 13px; border: 1px solid var(--border); background: var(--bg); color: var(--text2); cursor: pointer; }
+  .mv2-design-row .ajustes-seg button.active { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+}

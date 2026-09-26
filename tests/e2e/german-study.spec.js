@@ -4,7 +4,7 @@ const pack={schema:'german-study-pack.v1',metadata:{title:'Clase de prueba'},car
 async function openDeutsch(page) {
   const desktopEntry=page.getByRole('button',{name:'Alemán',exact:true});
   if(await desktopEntry.isVisible()) await desktopEntry.click();
-  else await page.getByRole('button',{name:'Abrir Deutsch',exact:true}).click();
+  else await page.locator('.german-entry:visible, #mv2Hoy .mv2-rowcard:has-text("Alemán")').first().click();
 }
 async function prepare(page) {
   await page.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({status:200,contentType:'application/javascript',body:'/* offline test */'}));
