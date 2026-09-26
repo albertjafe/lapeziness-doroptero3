@@ -37,6 +37,7 @@
 <link rel="stylesheet" href="german-study.css?v=426">
 <link rel="stylesheet" href="habit-trophies.css?v=383">
 <link rel="stylesheet" href="effort-incentives.css?v=435">
+<link rel="stylesheet" href="habits-page.css?v=439">
 <link rel="stylesheet" href="desktop-redesign.css?v=396">
 <link rel="stylesheet" href="crono-start-layout.css?v=401">
 <link rel="stylesheet" href="ipad-today.css?v=407">
@@ -1034,7 +1035,19 @@
     <div class="ajustes-group-label">Hucha</div>
     <section class="german-card german-goal premios-wallet" id="germanSharedGoal" aria-label="Hucha y objetivos de compra"></section>
     <div id="studyIncentivesContent" class="premios-content"></div>
+    <div class="ajustes-group-label">Hábitos</div>
+    <button type="button" class="premios-habits-link" onclick="openHabitos()"><span><strong>Tus hábitos</strong><small>Normas, días cumplidos, lo siguiente y la colección de trofeos</small></span><span aria-hidden="true">›</span></button>
   </div>
+</div>
+
+<div class="view" id="view-habitos">
+  <div class="ajustes-header">
+    <button class="ajustes-back" onclick="closeHabitos()" aria-label="Volver">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <div class="ajustes-title">Hábitos</div>
+  </div>
+  <div class="ajustes-body habits-body"><div id="habitsPageContent"></div></div>
 </div>
 
 <div class="view" id="view-ajustes">
@@ -2400,7 +2413,7 @@
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=397"></script>
 <script src="crono-state-store.js?v=397"></script>
-<script src="app.js?v=436"></script>
+<script src="app.js?v=439"></script>
 <script src="manual-study-activity.js?v=430"></script>
 <script src="chamber-factor-migration.js?v=430"></script>
 <script src="daily-study-minutes.js?v=430" id="dailyStudyMinutesFixScript"></script>
@@ -2420,7 +2433,8 @@
 <script src="reservation-dashboard.js?v=400"></script>
 <script src="ipad-today.js?v=400"></script>
 <script src="google-calendar.js?v=342"></script>
-<script src="timer-objectives.js?v=425"></script>
+<script src="timer-objectives.js?v=439"></script>
+<script src="habits-page.js?v=439"></script>
 <script src="effort-incentives-ui.js?v=435"></script>
 <script src="metronome.js?v=368"></script>
 <script src="study-ledger-sync.js?v=434"></script>

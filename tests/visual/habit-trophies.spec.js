@@ -13,9 +13,10 @@ test('habit trophy case and detailed objective modal remain readable', async ({ 
   await page.goto('/');
   await page.waitForFunction(() => window.HabitTrophies && window.setCronoCalendarObjectivesMode);
   await page.evaluate(() => showView('cronometro'));
-  await page.getByRole('tab', { name: 'Vitrina', exact: true }).click();
-  await expect(page.locator('.habit-trophy-card')).toHaveCount(2);
-  await page.screenshot({ path: testInfo.outputPath('habit-trophy-case.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Abrir la página de hábitos', exact: true }).click();
+  await expect(page.locator('#view-habitos .hp-card')).toHaveCount(2);
+  expect(await page.locator('#view-habitos').evaluate(el => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('habit-page.png'), fullPage: true });
 
   await page.evaluate(() => openHabitChallengeModal());
   await expect(page.locator('#habitDescriptionInput')).toBeVisible();

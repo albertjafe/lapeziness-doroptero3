@@ -845,7 +845,8 @@ const VIEW_CONTEXT = {
   historial: { eyebrow: 'Resumen', title: 'Estadísticas' },
   deutsch: { eyebrow: 'Alemán · Estudio y hucha', title: 'Deutsch' },
   ajustes: { eyebrow: 'Planificador de estudio', title: 'Ajustes' },
-  premios: { eyebrow: 'Hucha, rachas y logros', title: 'Premios' }
+  premios: { eyebrow: 'Hucha, rachas y logros', title: 'Premios' },
+  habitos: { eyebrow: 'Normas, días y colección', title: 'Hábitos' }
 };
 
 function updateContextHeader(name) {
@@ -11801,6 +11802,7 @@ function renderHabitCalendar() {
         '<div class="habit-calendar-guidance">' + (habit.mode === 'avoid'
           ? 'Un día cuenta como cumplido al terminar sin registrar incumplimiento.'
           : 'Los días anteriores sin marcar aparecen como fallados.') + '</div>' +
+        '<button type="button" class="habit-calendar-page-link" onclick="openHabitos(\'' + hechoJs(habit.id) + '\')">Normas, lo siguiente y colección ›</button>' +
       '</div>' +
       '<div class="habit-calendar-history">' +
         '<div class="habit-calendar-month-nav">' +

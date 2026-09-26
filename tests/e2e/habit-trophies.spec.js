@@ -23,15 +23,23 @@ async function prepare(page) {
 
 test('shows the two completed habit goals in the stopwatch trophy case', async ({ page }) => {
   await prepare(page);
-  await page.getByRole('tab', { name: 'Vitrina', exact: true }).click();
-  await expect(page.locator('.habit-trophy-card')).toHaveCount(2);
-  await expect(page.locator('.habit-trophy-card.is-earned')).toHaveCount(2);
-  await expect(page.locator('.habit-trophy-room')).toContainText('2/2');
-  await expect(page.getByRole('article', { name: /No móvil en la cama/ })).toContainText('23 ago 2026');
-  await expect(page.getByRole('article', { name: /No móvil en la cama/ })).toContainText('12 sept 2026');
-  await expect(page.getByRole('article', { name: /No coger el móvil en el baño/ })).toContainText('20 de 21 días logrados');
+  await page.getByRole('button', { name: 'Abrir la página de hábitos', exact: true }).click();
+  await expect(page.locator('#view-habitos')).toHaveClass(/active/);
+  await expect(page.locator('#view-habitos .hp-card')).toHaveCount(2);
+  await expect(page.locator('#view-habitos .hp-card.is-earned')).toHaveCount(2);
+  await expect(page.locator('.hp-collection-head')).toContainText('2 trofeos');
+  const bed = page.locator('.hp-card').filter({ hasText: 'No móvil en la cama' });
+  await expect(bed).toContainText('12 sept 2026');
+  const bath = page.locator('.hp-card').filter({ hasText: 'No coger el móvil en el baño' });
+  await expect(bath).toContainText('20 de 21 días');
+  // A card button and its insignia button are siblings, never nested.
+  await expect(page.locator('.hp-card-select button')).toHaveCount(0);
 
-  await page.getByRole('article', { name: /No coger el móvil en el baño/ }).getByRole('button', { name: 'Ver reglas del hábito', exact: true }).click();
+  await bath.locator('.hp-card-select').click();
+  await expect(page.locator('.hp-detail h2')).toHaveText('No coger el móvil en el baño');
+  await expect(page.locator('.hp-detail .hp-desc')).toHaveText('Dejar el móvil fuera del baño.');
+  await expect(page.locator('.hp-detail .hp-days li')).toHaveCount(21);
+  await page.getByRole('button', { name: 'Ver ficha completa', exact: true }).click();
   await expect(page.locator('#habitModalTitle')).toHaveText('Hábito terminado');
   await expect(page.locator('#habitDescriptionInput')).toHaveValue('Dejar el móvil fuera del baño.');
   await expect(page.locator('#habitDescriptionInput')).toBeDisabled();
@@ -69,13 +77,14 @@ test('creates a detailed objective and keeps every optional field in the synced 
   });
   expect(saved.startDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
-  await page.getByRole('tab', { name: 'Vitrina', exact: true }).click();
-  await expect(page.locator('.habit-trophy-card')).toHaveCount(3);
-  await expect(page.locator('.habit-trophy-card.is-earned')).toHaveCount(2);
-  await expect(page.getByRole('article', { name: /Meditar cada mañana/ })).toContainText('En curso');
-
   await page.getByRole('tab', { name: 'Hábitos', exact: true }).click();
   await page.getByRole('button', { name: 'Ver detalles y reglas de Meditar cada mañana', exact: true }).click();
+  await expect(page.locator('#view-habitos .hp-card')).toHaveCount(3);
+  await expect(page.locator('#view-habitos .hp-card.is-earned')).toHaveCount(2);
+  await expect(page.locator('.hp-detail h2')).toHaveText('Meditar cada mañana');
+  await expect(page.locator('.hp-detail .hp-rules')).toContainText('Completar diez minutos con temporizador.');
+  await expect(page.locator('.hp-detail .hp-rules')).toContainText('Empezar el día con calma.');
+  await page.getByRole('button', { name: 'Editar normas', exact: true }).click();
   await expect(page.locator('#habitModalTitle')).toHaveText('Tu hábito');
   await expect(page.locator('#habitCriteriaInput')).toHaveValue('Completar diez minutos con temporizador.');
 });

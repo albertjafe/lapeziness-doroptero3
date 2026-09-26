@@ -6,7 +6,6 @@
   const COMPACT_KEY = 'crono_dashboard_compact_v1';
   let timerMode = 'objectives';
   let compactLayout = false;
-  let trophyFilter = 'all';
   let originalRenderHabitCalendar = null;
 
   function addStyles() {
@@ -539,72 +538,6 @@
     return document.getElementById('cronoObjectivesPanel');
   }
 
-  function trophyPanel() {
-    return document.getElementById('cronoTrophiesPanel');
-  }
-
-  function formatFullDayKey(key) {
-    const date = parseDayKey(key);
-    if (!date) return '—';
-    return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }).format(date).replace('.', '');
-  }
-
-  function renderTrophyShowcase() {
-    const panel = trophyPanel();
-    const api = window.HabitTrophies;
-    if (!panel || !api || typeof window.habitAllChallenges !== 'function') return;
-    const items = api.collection(window.habitAllChallenges());
-    const earned = items.filter(item => item.complete);
-    const active = items.filter(item => !item.complete);
-    const visible = trophyFilter === 'earned' ? earned : trophyFilter === 'active' ? active : items;
-    const featured = earned[0] || active[0] || null;
-    const achievedDays = earned.reduce((total, item) => total + item.success, 0);
-    const modeLabel = habit => habit.mode === 'avoid' ? 'Evitar' : 'Hacer';
-    const statusLabel = item => item.complete ? 'Conseguido' : (item.status === 'planned' ? 'Programado' : 'En curso');
-    const detailLine = (label, value) => value ? '<p><strong>' + label + ':</strong> ' + safeText(value) + '</p>' : '';
-    const creditedIds=new Set((items.some(item=>item.habit.effortReward)?window.PianoRewards?.walletSnapshot(db).bonusRows||[]:[]).map(row=>row.id));
-    const cards = visible.map((item, index) => {
-      const habit = item.habit;
-      const effort=api.rewardStatus(habit);
-      const credited=effort.status==='earned' && creditedIds.has('bonus:habit:'+habit.id);
-      const pointsLabel=value=>Number(value||0).toLocaleString('es-ES',{maximumFractionDigits:2})+' puntos';
-      const effortLabel=credited?pointsLabel(effort.points)+' de esfuerzo abonados':
-        effort.status==='active'?'Premio en juego · '+pointsLabel(effort.potentialPoints)+(effort.item?.failure?' · '+effort.item.failure+' caída'+(effort.item.failure===1?'':'s'):' · racha perfecta'):
-        effort.status==='failed'?'Premio económico agotado; el reto continúa hasta su fecha final':
-        effort.status==='earned'?'Ciclo completado · '+pointsLabel(effort.points):'';
-      const description = habit.description || (habit.mode === 'avoid' ? 'Mantener este hábito fuera de tu día.' : 'Convertir esta acción en parte de tu rutina.');
-      const finishLabel = item.complete ? 'Terminaste' : 'Final previsto';
-      const finishDate = item.completedOn || api.keyAt(item.startedOn, item.duration - 1);
-      return '<article class="habit-trophy-card ' + (item.complete ? 'is-earned' : 'is-pending') + '" aria-label="' + safeText((habit.title || 'Hábito') + ' · ' + statusLabel(item)) + '">' +
-        api.artwork(habit.id, item.complete, 'card-' + index) +
-        '<div class="habit-trophy-card-copy"><div class="habit-trophy-card-head"><div><span>' + modeLabel(habit) + '</span><h3>' + safeText(habit.title || 'Hábito') + '</h3></div><span>' + statusLabel(item) + '</span></div>' +
-        '<p class="habit-trophy-description">' + safeText(description) + '</p>' +
-        '<dl class="habit-trophy-dates"><div><dt>Empezaste</dt><dd>' + formatFullDayKey(item.startedOn) + '</dd></div><div><dt>' + finishLabel + '</dt><dd>' + formatFullDayKey(finishDate) + '</dd></div></dl>' +
-        '<div class="habit-trophy-score"><span>' + item.success + ' de ' + item.duration + ' días logrados</span><strong>' + item.compliance + ' %</strong></div>' +
-        (effortLabel?'<p class="habit-trophy-effort-reward">'+safeText(effortLabel)+'</p>':'')+
-        '<progress max="100" value="' + (item.complete ? item.compliance : item.progress) + '" aria-label="Progreso de ' + safeText(habit.title || 'hábito') + '"></progress>' +
-        '<details class="habit-trophy-details"><summary>Ver historia y detalles</summary>' +
-          '<p><strong>Creado:</strong> ' + formatFullDayKey(item.createdOn) + ' · <strong>Duración:</strong> ' + item.duration + ' días</p>' +
-          detailLine('Motivación', habit.motivation) + detailLine('Criterio', habit.successCriteria) + detailLine('Celebración', habit.reward) +
-        '</details>' +
-        '<button type="button" class="habit-trophy-edit" data-habit-trophy-edit="' + safeText(habit.id) + '">' + (item.complete ? 'Ver reglas del hábito' : 'Editar este hábito') + '</button>' +
-        '</div></article>';
-    }).join('');
-    const emptyAction = items.length
-      ? '<button type="button" data-habit-trophy-filter="all">Ver todos</button>'
-      : '<button type="button" data-habit-trophy-create>Crear mi primer hábito</button>';
-    panel.innerHTML = '<section class="habit-trophy-room" aria-labelledby="habitTrophyRoomTitle">' +
-      '<header class="habit-trophy-hero"><div class="habit-trophy-hero-copy"><span class="habit-trophy-eyebrow">Tus hábitos · tu recorrido</span><h2 id="habitTrophyRoomTitle">Vitrina de hábitos</h2><p>Los hábitos terminados se quedan aquí como parte de tu historia.</p>' +
-        (featured ? '<div class="habit-trophy-featured"><small>' + (featured.complete ? 'ÚLTIMO TROFEO CONSEGUIDO' : 'HÁBITO EN CURSO') + '</small><strong>' + safeText(featured.habit.title || 'Hábito') + '</strong><span>' + (featured.complete ? formatFullDayKey(featured.completedOn) : featured.progress + ' % del recorrido') + '</span></div>' : '') +
-      '<button type="button" class="study-incentives-open" data-open-study-incentives>Rachas y logros de estudio</button></div>' + api.artwork(featured?.habit.id || 'first-habit', Boolean(featured?.complete), 'hero') + '</header>' +
-      '<div class="habit-trophy-summary" aria-label="Resumen de la vitrina"><div><strong>' + earned.length + '/' + items.length + '</strong><span>Trofeos</span></div><div><strong>' + achievedDays + '</strong><span>Días logrados</span></div><div><strong>' + active.length + '</strong><span>En curso</span></div></div>' +
-      '<div class="habit-trophy-filters" role="group" aria-label="Filtrar la vitrina">' +
-        [['all', 'Todos', items.length], ['earned', 'Conseguidos', earned.length], ['active', 'En curso', active.length]].map(([id, label, count]) => '<button type="button" data-habit-trophy-filter="' + id + '" aria-pressed="' + (trophyFilter === id) + '">' + label + ' · ' + count + '</button>').join('') +
-      '</div>' +
-      (cards ? '<div class="habit-trophy-list">' + cards + '</div>' : '<div class="habit-trophy-empty"><span>' + (items.length ? 'No hay hábitos en este filtro.' : 'Tu primer trofeo aparecerá cuando termines un hábito diario.') + '</span>' + emptyAction + '</div>') +
-    '</section>';
-  }
-
   function trackerState(habit, key, todayKey) {
     if (typeof window.habitCalendarDayState === 'function') return window.habitCalendarDayState(habit, key, todayKey);
     return 'future';
@@ -675,7 +608,7 @@
       return '<section class="crono-habit-tracker is-minimal' + (metrics.complete ? ' is-complete' : '') + '">' +
         '<header class="crono-habit-tracker-head">' +
           '<span class="crono-habit-tracker-icon">' + trophy + '</span>' +
-          '<button type="button" class="crono-habit-tracker-copy crono-habit-tracker-open" onclick="openHabitChallengeModal(\'' + jsId(habit.id) + '\')" aria-label="Ver detalles y reglas de ' + safeText(habit.title || 'Hábito') + '"><small>' + modeLabel + ' · Hoy ' + safeText(todayLabel) + '</small><strong>' + safeText(habit.title || 'Hábito') + '</strong></button>' +
+          '<button type="button" class="crono-habit-tracker-copy crono-habit-tracker-open" onclick="openHabitos(\'' + jsId(habit.id) + '\')" aria-label="Ver detalles y reglas de ' + safeText(habit.title || 'Hábito') + '"><small>' + modeLabel + ' · Hoy ' + safeText(todayLabel) + '</small><strong>' + safeText(habit.title || 'Hábito') + '</strong></button>' +
           '<div class="crono-habit-tracker-tools">' + action +
             '<button type="button" class="crono-habit-tracker-edit-icon" onclick="openHabitChallengeModal(\'' + jsId(habit.id) + '\')" aria-label="Editar hábito" title="Editar hábito">' + pencil + '</button>' +
           '</div>' +
@@ -696,7 +629,6 @@
     window.renderHabitCalendar = function() {
       const result = originalRenderHabitCalendar.apply(this, arguments);
       renderTracker();
-      renderTrophyShowcase();
       return result;
     };
   }
@@ -723,22 +655,20 @@
   }
 
   function setMode(mode) {
-    timerMode = ['calendar', 'objectives', 'trophies'].includes(mode) ? mode : 'objectives';
+    // 'trophies' (la antigua vitrina) ya es la página de Hábitos.
+    timerMode = mode === 'calendar' ? 'calendar' : 'objectives';
     const calendar = document.getElementById('cronoCalendarPanelInner');
     const objectives = trackerPanel();
-    const trophies = trophyPanel();
-    const tabs = document.querySelectorAll('.crono-calendar-objectives-tab');
-    if (!calendar || !objectives || !trophies) return;
+    const tabs = document.querySelectorAll('.crono-calendar-objectives-tab[data-timer-panel]');
+    if (!calendar || !objectives) return;
     calendar.hidden = timerMode !== 'calendar';
     objectives.hidden = timerMode !== 'objectives';
-    trophies.hidden = timerMode !== 'trophies';
     tabs.forEach(tab => {
       const active = tab.dataset.timerPanel === timerMode;
       tab.classList.toggle('active', active);
       tab.setAttribute('aria-selected', active ? 'true' : 'false');
     });
     if (timerMode === 'objectives') renderTracker();
-    if (timerMode === 'trophies') renderTrophyShowcase();
     try { localStorage.setItem(MODE_KEY, timerMode); } catch (error) {}
   }
 
@@ -755,11 +685,11 @@
     const tabs = document.createElement('div');
     tabs.className = 'crono-calendar-objectives-tabs';
     tabs.setAttribute('role', 'tablist');
-    tabs.setAttribute('aria-label', 'Calendario, hábitos o vitrina');
+    tabs.setAttribute('aria-label', 'Calendario o hábitos');
     tabs.innerHTML = `
       <button type="button" class="crono-calendar-objectives-tab" data-timer-panel="calendar" role="tab" aria-selected="false">Calendario</button>
       <button type="button" class="crono-calendar-objectives-tab active" data-timer-panel="objectives" role="tab" aria-selected="true">Hábitos</button>
-      <button type="button" class="crono-calendar-objectives-tab" data-timer-panel="trophies" role="tab" aria-selected="false">Vitrina</button>
+      <button type="button" class="crono-calendar-objectives-tab crono-open-habitos" data-open-habitos aria-label="Abrir la página de hábitos">Vitrina ›</button>
       <button type="button" class="crono-panel-size-toggle" id="cronoPanelSizeToggle" aria-pressed="false" aria-label="Hacer más pequeños el reloj y el tracker" title="Tamaño compacto">
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v4H3M13 3v4h4M7 17v-4H3M13 17v-4h4"/><path d="m3 7 4-4M17 7l-4-4M3 13l4 4M17 13l-4 4"/></svg>
       </button>
@@ -774,34 +704,17 @@
     objectivesPanel.id = 'cronoObjectivesPanel';
     objectivesPanel.className = 'crono-calendar-objectives-panel';
 
-    const trophiesPanel = document.createElement('div');
-    trophiesPanel.id = 'cronoTrophiesPanel';
-    trophiesPanel.className = 'crono-calendar-objectives-panel';
-    trophiesPanel.hidden = true;
-
     calendar.parentNode.insertBefore(shell, calendar);
     shell.appendChild(tabs);
     shell.appendChild(calendarPanel);
     shell.appendChild(objectivesPanel);
-    shell.appendChild(trophiesPanel);
     calendarPanel.appendChild(calendar);
 
     tabs.addEventListener('click', event => {
       const tab = event.target.closest('[data-timer-panel]');
       if (tab) setMode(tab.dataset.timerPanel);
+      if (event.target.closest('[data-open-habitos]')) window.openHabitos?.();
       if (event.target.closest('#cronoPanelSizeToggle')) toggleCompactLayout();
-    });
-    trophiesPanel.addEventListener('click', event => {
-      const filter = event.target.closest('[data-habit-trophy-filter]');
-      if (filter) {
-        trophyFilter = ['all', 'earned', 'active'].includes(filter.dataset.habitTrophyFilter) ? filter.dataset.habitTrophyFilter : 'all';
-        renderTrophyShowcase();
-        trophyPanel()?.querySelector('[data-habit-trophy-filter="' + trophyFilter + '"]')?.focus({ preventScroll: true });
-        return;
-      }
-      const edit = event.target.closest('[data-habit-trophy-edit]');
-      if (edit) window.openHabitChallengeModal?.(edit.dataset.habitTrophyEdit);
-      if (event.target.closest('[data-habit-trophy-create]')) window.openHabitChallengeModal?.();
     });
 
     try { compactLayout = localStorage.getItem(COMPACT_KEY) === '1'; } catch (error) {}
@@ -810,7 +723,6 @@
     try { savedMode = localStorage.getItem(MODE_KEY) || 'objectives'; } catch (error) {}
     setMode(savedMode);
     renderTracker();
-    renderTrophyShowcase();
     return true;
   }
 
@@ -824,7 +736,6 @@
   }
 
   window.renderCronoHabitTracker = renderTracker;
-  window.renderCronoHabitTrophies = renderTrophyShowcase;
   window.setCronoCalendarObjectivesMode = setMode;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();

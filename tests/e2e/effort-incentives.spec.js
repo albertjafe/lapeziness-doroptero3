@@ -18,11 +18,13 @@ for(const [width,height] of [[834,1194],[1194,834]])test(`iPad ${width}x${height
  await page.getByRole('button',{name:'Guardar hábito',exact:true}).click();
  expect(await page.evaluate(()=>db.habitChallenges[0].effortReward)).toMatchObject({version:2,points:3,durationDays:21,mode:'avoid',failurePoints:[3,1.5,.75,0]});
  await page.getByRole('button',{name:'Ver detalles y reglas de Evitar el móvil al despertar',exact:true}).click();
+ await expect(page.locator('#view-habitos')).toHaveClass(/active/);
+ await expect(page.locator('#view-habitos .hp-rules')).toContainText('0 caídas = 3 puntos');
+ await expect(page.locator('#view-habitos .hp-next')).toContainText('Premio en juego: 3 puntos');
+ await page.getByRole('button',{name:'Editar normas',exact:true}).click();
  await expect(page.locator('#habitDurationInput')).toBeDisabled();await expect(page.locator('#habitCriteriaInput')).toBeDisabled();
  await page.getByRole('button',{name:'Cancelar',exact:true}).click();
- await page.getByRole('tab',{name:'Vitrina',exact:true}).click();
- await expect(page.locator('#habitTrophyRoomTitle')).toHaveText('Vitrina de hábitos');
- await page.getByRole('button',{name:'Rachas y logros de estudio',exact:true}).click();
+ await page.evaluate(()=>openPremios());
  await expect(page.locator('#view-premios')).toHaveClass(/active/);
  await expect(page.locator('#studyIncentivesContent')).toContainText('Se congela');
  await expect(page.locator('#studyIncentivesContent')).toContainText('El ciclo no se reinicia al caer');
