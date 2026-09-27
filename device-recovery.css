@@ -1,0 +1,16 @@
+/* Ajustes → Datos → Recuperar datos de este dispositivo (27-09-2026) */
+.device-recovery-note { margin:0 0 10px; color:var(--text3); font-size:12px; line-height:1.45; }
+.device-recovery-list { display:grid; gap:8px; margin-top:10px; }
+.device-recovery-empty { margin:0; color:var(--text3); font-size:12px; }
+.device-recovery-copy { padding:10px 12px; border:1px solid var(--border2); border-radius:10px; background:var(--bg); }
+.device-recovery-copy.has-missing { border-color:color-mix(in srgb,#b5773a 55%,var(--border2)); }
+.device-recovery-head { display:flex; justify-content:space-between; gap:8px; align-items:baseline; margin-bottom:6px; }
+.device-recovery-head b { font-size:13px; color:var(--text); }
+.device-recovery-head small { color:var(--text3); font-size:11px; white-space:nowrap; }
+.device-recovery-copy dl { display:grid; grid-template-columns:1fr 1fr; gap:6px 12px; margin:0; }
+.device-recovery-copy dt { color:var(--text3); font-size:10px; }
+.device-recovery-copy dd { margin:1px 0 0; color:var(--text2); font-size:12px; overflow-wrap:anywhere; }
+.device-recovery-flag { display:block; margin-top:7px; padding:5px 8px; border-radius:7px; background:color-mix(in srgb,#b5773a 12%,transparent); color:#9a5f25; font-size:11px; }
+#deviceRecoveryFeedback[data-kind="warn"] { color:#9a5f25; }
+#deviceRecoveryFeedback[data-kind="error"] { color:#a6574e; }
+@media(max-width:560px){ .device-recovery-copy dl { grid-template-columns:1fr; } .device-recovery-head { flex-direction:column; gap:2px; } .device-recovery-head small { white-space:normal; } }

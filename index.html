@@ -1266,6 +1266,22 @@
             <div id="forestFeedback" class="st-feedback" style="display:none"></div>
           </div>
         </details>
+        <details class="st-list st-fold" id="deviceRecoveryFold">
+          <summary class="st-row st-row--link">
+            <span class="st-ico" style="--c:#b5773a"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.7"/><path d="M4 4v4h4"/><path d="M12 8v4l3 2"/></svg></span>
+            <span class="st-label"><b>Recuperar datos de este dispositivo</b><small>Revisa las copias locales. Solo lee: no cambia nada.</small></span><span class="st-chev" aria-hidden="true">›</span>
+          </summary>
+          <div class="st-fold-body device-recovery">
+            <p class="device-recovery-note">Busca en este dispositivo copias con sesiones u objetivos que no hayan llegado a la nube. Enviarlas solo sirve para revisarlas: no se restaura nada automáticamente. Nunca se envían contraseñas ni tokens.</p>
+            <div class="st-actions">
+              <button type="button" class="st-btn st-btn--primary" id="deviceRecoveryScan">Revisar este dispositivo</button>
+              <button type="button" class="st-btn" id="deviceRecoveryUpload" disabled>Enviar para revisión</button>
+              <button type="button" class="st-btn" id="deviceRecoveryDownload" disabled>Descargar copia</button>
+            </div>
+            <div id="deviceRecoveryFeedback" class="st-feedback" style="display:none" role="status" aria-live="polite"></div>
+            <div id="deviceRecoveryList" class="device-recovery-list"></div>
+          </div>
+        </details>
       </section>
 
       <div class="ajustes-foot">Planificador de estudio · con calma</div>
@@ -2425,6 +2441,7 @@
 <script src="crono-resume-layout.js?v=432"></script>
 <script src="piano-rooms.js?v=438"></script>
 <script src="reservation-dashboard.js?v=459"></script>
+<script src="device-recovery.js?v=460"></script>
 <script src="ipad-today.js?v=400"></script>
 <script src="google-calendar.js?v=342"></script>
 <script src="timer-objectives.js?v=439"></script>
@@ -2439,6 +2456,7 @@
 <script src="desktop-app.js?v=457"></script>
 <link rel="stylesheet" href="mobile-v2.css?v=457">
 <link rel="stylesheet" href="settings.css?v=457">
+<link rel="stylesheet" href="device-recovery.css?v=460">
 <script src="settings.js?v=457"></script>
 <script src="mobile-v2.js?v=457"></script>
 </body>
