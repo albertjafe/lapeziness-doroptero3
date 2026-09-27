@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 const sampleRow = {
@@ -36,17 +37,18 @@ const sampleRow = {
   },
 };
 
+// El montaje usa el marcado real de index.html: la pantalla Aulas y la
+// tarjeta resumen de Hoy, para que la prueba no se desfase del diseño.
+const indexHtml = fs.readFileSync('index.html', 'utf8');
+const aulasView = indexHtml.match(/<div class="view" id="view-aulas">[\s\S]*?\r?\n<\/div>\r?\n/)[0].replace('class="view"', 'class="view active"');
+const todayCard = indexHtml.match(/<button type="button" class="aulas-today-card"[\s\S]*?<\/button>/)[0];
+
 async function mountDashboard(page, row) {
-  await page.goto('/reservation-dashboard.css?v=369');
+  await page.goto('/reservation-dashboard.css?v=461');
   await page.setContent(`<!doctype html><html lang="es" data-theme="marmol"><head>
     <link rel="stylesheet" href="http://127.0.0.1:4173/styles.css?v=342">
-    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=372">
-  </head><body data-view="session"><div id="view-session" class="active"><section class="reservation-dashboard" id="sessionAulasDashboard">
-    <div class="rd-topline"><div class="rd-title-group"><div class="view-local-label">Reservas Asimut</div><h1>Aulas</h1><p id="reservationDashboardStatus"></p></div><div class="rd-head-actions"><div id="reservationSourceSwitch" class="rd-source-switch"></div><button id="reservationRefresh" class="rd-refresh">↻</button></div></div>
-    <div class="rd-pane-tabs"><button class="active" data-reservation-pane="reservations">Mis reservas</button><button data-reservation-pane="piano-rooms">Piano Rooms</button></div>
-    <div id="reservationLivePanel"><div id="reservationDashboardEmpty"></div><div id="reservationDashboardContent"><section id="reservationHero" class="rd-hero"></section><section class="rd-control-card"><div id="reservationModeControls" class="rd-mode-controls"></div></section><div class="rd-grid"><div class="rd-column"><section class="rd-card"><div id="reservationBookingList" class="rd-booking-list"></div></section><section id="reservationTransition"><span data-transition-title></span><div id="reservationTransitionList"></div></section></div><aside class="rd-column"><div id="reservationQuotaCard"></div><div id="reservationMonitorCard"></div><section class="rd-card"><div id="reservationQuickControls" class="rd-quick-controls"></div></section><section class="rd-card"><div id="reservationSettingControls" class="rd-settings"></div></section></aside></div></div></div>
-    <div id="reservationLegacyPanel" hidden><div id="pianoRoomsGrid"></div></div>
-  </section></div></body></html>`);
+    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=461">
+  </head><body data-view="aulas">${todayCard}${aulasView}</body></html>`);
 
   await page.evaluate((row) => {
     const writes = [];
@@ -78,7 +80,7 @@ async function mountDashboard(page, row) {
     };
     window.getSB = () => client;
   }, row);
-  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=372' });
+  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=461' });
 }
 
 test('renders live reservations and sends a safe monitor command', async ({ page }) => {
@@ -91,6 +93,7 @@ test('renders live reservations and sends a safe monitor command', async ({ page
     await page.screenshot({ path: 'test-results/reservation-dashboard-desktop.png', fullPage: true });
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: 'test-results/reservation-dashboard-mobile.png', fullPage: true });
+    await page.setViewportSize({ width: 1280, height: 720 });
   }
 
   await page.locator('[data-command="set_migration"]').click();
@@ -98,7 +101,7 @@ test('renders live reservations and sends a safe monitor command', async ({ page
     source: 'alberto', command: 'set_migration', payload: { enabled: true },
   });
 
-  await page.getByRole('button', { name: 'Piano Rooms' }).click();
+  await page.getByRole('tab', { name: 'Piano Rooms' }).click();
   await expect(page.locator('#reservationLegacyPanel')).not.toHaveAttribute('hidden', '');
   await expect(page.locator('#reservationLivePanel')).toHaveAttribute('hidden', '');
 });
@@ -177,7 +180,7 @@ test('shows a failing monitor with its error and never mistakes missing data for
   await expect(page.locator('#reservationBookingList')).not.toContainText('30113');
 });
 
-test('starts the monitor from the app with the same menu as Telegram', async ({ page }) => {
+const awaitingRow = () => {
   const now = new Date().toISOString();
   const awaiting = structuredClone(sampleRow);
   awaiting.observed_at = now;
@@ -194,34 +197,57 @@ test('starts the monitor from the app with the same menu as Telegram', async ({ 
       inicio_options: ['off', '1000', '1030', '1100'],
     },
   };
-  await mountDashboard(page, awaiting);
+  return awaiting;
+};
+
+test('starts with one tap repeating the last mode, and every option stays one tap away', async ({ page }) => {
+  await mountDashboard(page, awaitingRow());
+  // Lo último con lo que estuvo en marcha (lo recuerda este dispositivo).
+  await page.evaluate(async () => {
+    localStorage.setItem('reservationDashboardLastStart_alberto', JSON.stringify({ mode: '3' }));
+    await window.ReservationDashboard.refresh(false);
+  });
   const panel = page.locator('#reservationStartupPanel');
   await expect(page.locator('#reservationHero')).toContainText('Listo para arrancar');
   await expect(page.locator('#reservationDashboardStatus')).toContainText('esperando arranque');
-  await expect(page.locator('#reservationModeControls')).toBeHidden();
-  // Lo elegido en Telegram (10:00) ya viene marcado; los ajustes anteriores se ven en claro.
-  await expect(panel.locator('[data-startup-field="inicio"].active')).toHaveText('10:00');
-  await expect(panel).toContainText('13:00–14:00');
-  await expect(panel).toContainText('30.113');
-  await expect(panel).toContainText('G4');
-  const go = panel.locator('[data-startup-command="start_monitor"]');
-  await expect(go).toBeDisabled();
-  await expect(go).toContainText('Falta: modo, ajustes');
+  await expect(page.locator('.rd-controlbar')).toBeHidden();
+  // Hora elegida en Telegram (10:00) + modo recordado + recuperar ajustes (6 elementos).
+  await expect(panel.locator('.rd-start-summary')).toContainText('Solo G5 · 10:00 · Köln');
+  await expect(panel.locator('.rd-start-summary')).toContainText('Recupera los ajustes de la sesión anterior (6)');
+  await expect(panel.locator('#reservationStartupOptions')).toBeHidden();
   if (process.env.CAPTURE_RESERVATION_DASHBOARD) {
-    await page.setViewportSize({ width: 1280, height: 1000 });
-    await page.screenshot({ path: 'test-results/reservation-startup-desktop.png', fullPage: true });
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.screenshot({ path: 'test-results/reservation-startup-mobile.png', fullPage: true });
+    for (const [name, width, height] of [['desktop', 1280, 900], ['ipad', 834, 1112], ['mobile', 390, 844]]) {
+      await page.setViewportSize({ width, height });
+      await page.screenshot({ path: `test-results/aulas-startup-${name}.png`, fullPage: true });
+    }
     await page.setViewportSize({ width: 1280, height: 720 });
   }
+  await panel.locator('[data-startup-command="start_monitor"]').click();
+  expect(await page.evaluate(() => window.__dashboardWrites[0])).toMatchObject({
+    command: 'start_monitor', payload: { mode: '3', inicio: '1000', restore: 'yes', aachen: false },
+  });
+});
 
-  await panel.locator('[data-startup-field="mode"][data-value="2"]').click();
-  await expect(panel.locator('[data-startup-field="mode"][data-value="2"]')).toHaveClass(/active/);
-  await panel.locator('[data-startup-field="restore"][data-value="no"]').click();
-  await panel.locator('[data-startup-field="inicio"][data-value="off"]').click();
-  await expect(go).toBeEnabled();
-  await expect(go).toContainText('Iniciar · Grabación · Ahora');
-  await go.click();
+test('starts the monitor from the app with the same menu as Telegram', async ({ page }) => {
+  await mountDashboard(page, awaitingRow());
+  const panel = page.locator('#reservationStartupPanel');
+  // Sin nada recordado: Normal, la hora de Telegram y recuperar ajustes.
+  await expect(panel.locator('.rd-start-summary')).toContainText('Normal · 10:00 · Köln');
+  await panel.locator('[data-ui="toggle-startup-options"]').click();
+  const options = panel.locator('#reservationStartupOptions');
+  await expect(options).toBeVisible();
+  await expect(options.locator('[data-startup-field="inicio"].active')).toHaveText('10:00');
+  await expect(options).toContainText('13:00–14:00');
+  await expect(options).toContainText('30.113');
+  await expect(options).toContainText('G4');
+
+  await options.locator('[data-startup-field="mode"][data-value="2"]').click();
+  await expect(options.locator('[data-startup-field="mode"][data-value="2"]')).toHaveClass(/active/);
+  await options.locator('[data-startup-field="restore"][data-value="no"]').click();
+  await options.locator('[data-startup-field="inicio"][data-value="off"]').click();
+  await expect(panel.locator('.rd-start-summary')).toContainText('Grabación · Ahora · Köln');
+  await expect(panel.locator('.rd-start-summary')).toContainText('Empieza limpio');
+  await panel.locator('[data-startup-command="start_monitor"]').click();
   const writes = await page.evaluate(() => window.__dashboardWrites);
   expect(writes.slice(0, 3).map(w => [w.command, w.payload])).toEqual([
     ['startup_select', { mode: '2' }],
@@ -249,7 +275,7 @@ test('starts the monitor from the app with the same menu as Telegram', async ({ 
     await window.ReservationDashboard.refresh(false);
   }, sampleRow);
   await expect(panel).toBeHidden();
-  await expect(page.locator('#reservationModeControls')).toBeVisible();
+  await expect(page.locator('.rd-controlbar')).toBeVisible();
 });
 
 test('closes a running monitor only after confirming and shows its active settings', async ({ page }) => {
@@ -258,14 +284,15 @@ test('closes a running monitor only after confirming and shows its active settin
   running.state.monitor.blind_periods = [['12:00', '12:30']];
   running.state.monitor.blinded_rooms = [204];
   await mountDashboard(page, running);
-  const settings = page.locator('#reservationSettingControls');
+  const settings = page.locator('#reservationActiveSettings');
   await expect(settings).toContainText('12:00–12:30');
   await expect(settings).toContainText('G4');
   await expect(settings).toContainText('113, 308');
+  await expect(page.locator('#reservationSettingControls')).toContainText('Rellena huecos de última hora');
 
   await page.locator('[data-ui="ask-shutdown"]').click();
   expect(await page.evaluate(() => window.__dashboardWrites.length)).toBe(0);
-  await expect(page.locator('#reservationQuickControls')).toContainText('¿Cerrar el monitor?');
+  await expect(page.locator('#reservationDangerControls')).toContainText('¿Cerrar el monitor?');
   await page.locator('[data-command="shutdown"]').click();
   expect(await page.evaluate(() => window.__dashboardWrites[0])).toMatchObject({ command: 'shutdown', payload: {} });
 
@@ -279,4 +306,49 @@ test('closes a running monitor only after confirming and shows its active settin
   await expect(page.locator('#reservationHero')).toContainText('Cerrado sin errores');
   await expect(page.locator('#reservationMonitorCard')).toContainText('cerrado');
   await expect(page.locator('#reservationBookingList')).toContainText('Aula 113');
+  await expect(page.locator('#aulasTodayCard')).toContainText('Monitor cerrado');
+});
+
+test('on the phone the screen is compact: tabs, mode picker and a live Hoy card', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const running = structuredClone(sampleRow);
+  running.state.reservations[0] = { ...running.state.reservations[0], start: '00:00', end: '23:59' };
+  await mountDashboard(page, running);
+  await expect(page.locator('#aulasTodayCard')).toContainText('Aula 113 · hasta 23:59');
+  await expect(page.locator('#aulasTodayCard')).toHaveAttribute('data-kind', 'live');
+  await expect(page.locator('#reservationHero .rd-hero-progress')).toBeVisible();
+
+  // Agenda por defecto; Monitor y Ajustes en sus pestañas.
+  await expect(page.locator('#reservationBookingList')).toBeVisible();
+  await expect(page.locator('#reservationSettingControls')).toBeHidden();
+  await page.locator('[data-rd-tab="ajustes"]').click();
+  await expect(page.locator('#reservationSettingControls')).toBeVisible();
+  await expect(page.locator('#reservationBookingList')).toBeHidden();
+  await page.locator('[data-rd-tab="agenda"]').click();
+
+  // El modo se ve con su explicación y se cambia desde un selector.
+  const toggle = page.locator('#reservationModeToggle');
+  await expect(toggle).toContainText('Grabación');
+  await expect(page.locator('#reservationModeControls')).toBeHidden();
+  if (process.env.CAPTURE_RESERVATION_DASHBOARD) {
+    await page.screenshot({ path: 'test-results/aulas-running-mobile.png', fullPage: true });
+  }
+  await toggle.click();
+  await expect(page.locator('#reservationModeControls')).toBeVisible();
+  if (process.env.CAPTURE_RESERVATION_DASHBOARD) {
+    await page.screenshot({ path: 'test-results/aulas-mode-mobile.png', fullPage: true });
+  }
+  await page.locator('#reservationModeControls [data-mode="1"]').click();
+  expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({ command: 'set_operating_mode', payload: { mode: '1' } });
+  await expect(page.locator('#reservationModeControls')).toBeHidden();
+  if (process.env.CAPTURE_RESERVATION_DASHBOARD) {
+    await page.locator('[data-rd-tab="ajustes"]').click();
+    await page.screenshot({ path: 'test-results/aulas-settings-mobile.png', fullPage: true });
+    await page.locator('[data-rd-tab="monitor"]').click();
+    await page.screenshot({ path: 'test-results/aulas-monitor-mobile.png', fullPage: true });
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.screenshot({ path: 'test-results/aulas-running-desktop.png', fullPage: true });
+    await page.setViewportSize({ width: 834, height: 1112 });
+    await page.screenshot({ path: 'test-results/aulas-running-ipad.png', fullPage: true });
+  }
 });

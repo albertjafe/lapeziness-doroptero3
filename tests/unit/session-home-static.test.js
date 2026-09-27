@@ -20,7 +20,10 @@ const manualStudyActivity = fs.readFileSync('manual-study-activity.js', 'utf8');
 describe('focused session home', () => {
   it('keeps only the essential daily readout in the foreground', () => {
     expect(index).toContain('id="sessionResumenCard"');
-    expect(index).toContain('id="sessionAulasDashboard"');
+    // Aulas es una pantalla propia (v461); Hoy solo lleva su tarjeta resumen.
+    expect(index).toContain('id="aulasTodayCard"');
+    expect(index).toContain('id="view-aulas"');
+    expect(index).not.toContain('id="sessionAulasDashboard"');
     expect(index).not.toContain('id="view-salas"');
     expect(index).not.toContain('class="session-mode-switch"');
     expect(index).not.toContain("onclick=\"openSessionArchive('week')\"");
@@ -56,10 +59,10 @@ describe('focused session home', () => {
     expect(app).toContain("opts.sessionMode = 'history'");
   });
 
-  it('keeps reservations live on the session view without browser access to Asimut', () => {
+  it('keeps reservations live on the Aulas screen and the Hoy card without browser access to Asimut', () => {
     expect(index).toContain('id="reservationLivePanel"');
     expect(index).toContain('id="reservationModeControls"');
-    expect(dashboard).toContain("event.detail?.name === 'session'");
+    expect(dashboard).toContain("const WATCHED_VIEWS = ['aulas', 'session'];");
     expect(dashboard).not.toMatch(/asimut\.net/i);
     expect(dashboard).toContain("from('reservation_monitor_state')");
   });
@@ -135,11 +138,11 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain('__earnedCentFloor');
   });
 
-  it('ships the complete v460 runtime offline', () => {
+  it('ships the complete v461 runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('desktop-redesign.css?v=396');
     expect(index).toContain('styles.css?v=442');
-    expect(index).toContain('app.js?v=457');
+    expect(index).toContain('app.js?v=461');
     expect(index).toContain('crono-resume-layout.js?v=432');
     expect(index).toContain('piano-rewards.js?v=435');
     expect(index).toContain('daily-study-minutes.js?v=430');
@@ -150,7 +153,7 @@ describe('focused session home', () => {
     expect(index).toContain('german-study.js?v=435');
     expect(index).toContain('german-study.css?v=426');
     expect(index).toContain('german-session.js?v=404');
-    expect(worker).toContain("const CACHE = 'estudio-v460'");
+    expect(worker).toContain("const CACHE = 'estudio-v461'");
     expect(worker).toContain('"./local-save-resilience.js?v=431"');
     expect(worker).toContain('"./instant-sync-resilience.js?v=432"');
     expect(worker).toContain('"./desktop-redesign.css?v=396"');

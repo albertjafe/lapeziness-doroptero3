@@ -264,7 +264,8 @@ test('keeps mobile navigation visible after removing the daily state panel', asy
     const state = await page.evaluate(() => ({
       navFits: document.querySelector('.nav.nav-bottom').scrollWidth <= document.querySelector('.nav.nav-bottom').clientWidth,
       documentFits: document.documentElement.scrollWidth <= window.innerWidth + 1,
-      navButtons: [...document.querySelectorAll('.nav.nav-bottom .nav-btn')].map(btn => ({
+      // En el móvil Aulas ocupa el sitio de Profesor, que queda oculto (v461).
+      navButtons: [...document.querySelectorAll('.nav.nav-bottom .nav-btn')].filter(btn => getComputedStyle(btn).display !== 'none').map(btn => ({
         width: btn.getBoundingClientRect().width,
         height: btn.getBoundingClientRect().height,
         label: btn.getAttribute('aria-label'),
@@ -351,7 +352,7 @@ test('keeps phase two grids and touch targets usable at mobile and iPad widths',
         viewport: window.innerWidth,
         documentFits: document.documentElement.scrollWidth <= window.innerWidth + 1,
         bottomNavFits: document.querySelector('.nav.nav-bottom').scrollWidth <= document.querySelector('.nav.nav-bottom').clientWidth,
-        navHeights: [...document.querySelectorAll('.nav.nav-bottom .nav-btn')].map(button => button.getBoundingClientRect().height),
+        navHeights: [...document.querySelectorAll('.nav.nav-bottom .nav-btn')].filter(button => getComputedStyle(button).display !== 'none').map(button => button.getBoundingClientRect().height),
         gearSize,
         settingsColumns: getComputedStyle(body).gridTemplateColumns,
         statsDisplay: getComputedStyle(stats).display,

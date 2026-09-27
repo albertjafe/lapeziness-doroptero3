@@ -18,13 +18,7 @@
   }
 
   function init() {
-    const dashboard = document.getElementById('reservationDashboardContent');
-    const controls = [dashboard?.querySelector('.rd-control-card'),
-      document.getElementById('reservationMonitorCard'),
-      document.getElementById('reservationQuickControls')?.closest('.rd-card'),
-      document.getElementById('reservationSettingControls')?.closest('.rd-card')].filter(Boolean);
-    fold(dashboard, controls, 'Controles del monitor', 'ipad-today-monitor');
-
+    // Aulas es una pantalla propia desde v461: sus controles ya no se pliegan aquí.
     // El plan existente sigue accesible sin ocupar el centro de la portada.
     const plan = document.getElementById('sessionPlan');
     if (plan) fold(plan.parentElement, [plan], 'Plan diario', 'ipad-today-plan');

@@ -32,7 +32,7 @@
 <link rel="stylesheet" href="study-session-ux.css?v=342">
 <link rel="stylesheet" href="crono-resume-layout.css?v=342">
 <link rel="stylesheet" href="piano-rooms.css?v=369">
-<link rel="stylesheet" href="reservation-dashboard.css?v=459">
+<link rel="stylesheet" href="reservation-dashboard.css?v=461">
 <link rel="stylesheet" href="session-home.css?v=374">
 <link rel="stylesheet" href="german-study.css?v=426">
 <link rel="stylesheet" href="habit-trophies.css?v=383">
@@ -102,7 +102,7 @@
   </div>
   <div class="header-actions">
     <div style="font-size:10px;color:var(--text3)" id="packNameHeader"></div>
-    <button type="button" class="piano-rooms-open" onclick="showView('salas')" aria-label="Abrir reservas y aulas" title="Reservas y aulas">▦ <span>Aulas</span></button>
+    <button type="button" class="piano-rooms-open" onclick="showView('aulas')" aria-label="Abrir reservas y aulas" title="Reservas y aulas">▦ <span>Aulas</span></button>
     <button type="button" class="desktop-study-cta desktop-only" onclick="showView('cronometro')" aria-label="Empezar a estudiar">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 4.5 7.5 5.5L7 15.5z"/></svg>
       <span>Empezar a estudiar</span>
@@ -186,7 +186,7 @@
       <div class="desktop-access-grid">
         <button type="button" onclick="openPremios()"><span aria-hidden="true">★</span><strong>Premios</strong><small>Hucha y logros</small></button>
         <button type="button" onclick="openSessionArchive('history')"><span aria-hidden="true">↗</span><strong>Historial</strong><small>Datos y sesiones</small></button>
-        <button type="button" onclick="showView('salas')"><span aria-hidden="true">⌂</span><strong>Aulas</strong><small>Reservas Asimut</small></button>
+        <button type="button" onclick="showView('aulas')"><span aria-hidden="true">⌂</span><strong>Aulas</strong><small>Reservas Asimut</small></button>
         <button type="button" onclick="showView('deutsch')"><span aria-hidden="true">Ä</span><strong>Alemán</strong><small>Tarjetas y hucha</small></button>
       </div>
     </section>
@@ -208,90 +208,11 @@
     </div>
   </aside>
   <button type="button" class="german-entry" onclick="showView('deutsch')" aria-label="Abrir Deutsch"><span><strong>Deutsch</strong><small>Tu alemán, día a día · estudio y hucha virtual</small></span><span aria-hidden="true">Ä →</span></button>
-  <section class="reservation-dashboard session-aulas-dashboard" id="sessionAulasDashboard" aria-labelledby="reservationDashboardTitle">
-    <div class="rd-topline">
-      <div class="rd-title-group">
-        <div class="view-local-label">Reservas Asimut</div>
-        <h1 id="reservationDashboardTitle">Aulas</h1>
-        <p id="reservationDashboardStatus" role="status" aria-live="polite">Conectando con el monitor…</p>
-      </div>
-      <div class="rd-head-actions">
-        <div class="rd-source-switch" id="reservationSourceSwitch" aria-label="Perfil del monitor" hidden></div>
-        <button type="button" id="reservationRefresh" class="rd-refresh" title="Actualizar" aria-label="Actualizar reservas">↻</button>
-      </div>
-    </div>
-
-    <div class="rd-pane-tabs" role="tablist" aria-label="Secciones de aulas">
-      <button type="button" class="active" data-reservation-pane="reservations" role="tab" aria-selected="true">Mis reservas</button>
-      <button type="button" data-reservation-pane="piano-rooms" role="tab" aria-selected="false">Piano Rooms</button>
-    </div>
-
-    <div id="reservationLivePanel">
-      <div class="rd-empty" id="reservationDashboardEmpty" hidden></div>
-      <div id="reservationDashboardContent" hidden>
-        <section class="rd-hero" id="reservationHero" aria-live="polite"></section>
-
-        <section class="rd-control-card" aria-labelledby="reservationModeTitle">
-          <div class="rd-section-label"><span id="reservationModeTitle">Modo del monitor</span><small>cambio inmediato</small></div>
-          <div class="rd-mode-controls" id="reservationModeControls"></div>
-        </section>
-
-        <div class="rd-grid">
-          <div class="rd-column">
-            <section class="rd-card">
-              <div class="rd-card-head"><span>Agenda</span><small>orden cronológico</small></div>
-              <div class="rd-booking-list" id="reservationBookingList"></div>
-            </section>
-            <section class="rd-card rd-transition" id="reservationTransition" hidden>
-              <div class="rd-card-head"><span data-transition-title>También mañana</span><small>transición</small></div>
-              <div class="rd-booking-list" id="reservationTransitionList"></div>
-            </section>
-          </div>
-          <aside class="rd-column">
-            <div id="reservationQuotaCard"></div>
-            <div id="reservationMonitorCard"></div>
-            <section class="rd-card">
-              <div class="rd-card-head"><span>Acciones rápidas</span><small>desde la app</small></div>
-              <div class="rd-quick-controls" id="reservationQuickControls"></div>
-            </section>
-            <section class="rd-card">
-              <div class="rd-card-head"><span>Ajustes activos</span><small>monitor</small></div>
-              <div class="rd-settings" id="reservationSettingControls"></div>
-            </section>
-          </aside>
-        </div>
-      </div>
-    </div>
-
-    <div id="reservationLegacyPanel" hidden>
-      <section class="piano-rooms-page" aria-labelledby="pianoRoomsTitle">
-        <div class="piano-rooms-intro">
-          <div>
-            <div class="view-local-label">Disponibilidad local</div>
-            <h2 id="pianoRoomsTitle">Piano Rooms</h2>
-            <p id="pianoRoomsStatus" role="status" aria-live="polite">Monitor local en espera.</p>
-          </div>
-          <div class="piano-rooms-actions">
-            <label class="piano-rooms-date-label" for="pianoRoomsDate">Fecha</label>
-            <input id="pianoRoomsDate" type="date">
-            <button type="button" id="pianoRoomsRefresh" class="piano-rooms-refresh">Actualizar</button>
-          </div>
-        </div>
-        <div class="piano-rooms-legend" aria-label="Leyenda de estados">
-          <span class="pr-legend-item"><i class="pr-swatch pr-swatch-available"></i>Disponible</span>
-          <span class="pr-legend-item"><i class="pr-swatch pr-swatch-reserved"></i>Reservada durante la vigilancia</span>
-          <span class="pr-legend-item"><i class="pr-swatch pr-swatch-expired"></i>Pasó libre</span>
-          <span class="pr-legend-item"><i class="pr-swatch pr-swatch-mine"></i>Mi reserva</span>
-          <span class="pr-legend-item"><i class="pr-swatch pr-swatch-unknown"></i>Sin historial</span>
-        </div>
-        <div class="piano-rooms-grid-wrap" id="pianoRoomsGridWrap">
-          <div id="pianoRoomsGrid" class="piano-rooms-grid" role="grid" aria-label="Cuadrícula de disponibilidad de salas"></div>
-          <div id="pianoRoomsNowLine" class="piano-rooms-now-line" aria-hidden="true"><span>ahora</span></div>
-        </div>
-        <p class="piano-rooms-note">La línea indica la hora actual. El color naranja sólo aparece si una franja observada como disponible desaparece antes de comenzar.</p>
-      </section>
-    </div>
-  </section>
+  <button type="button" class="aulas-today-card" id="aulasTodayCard" onclick="showView('aulas')" aria-label="Abrir Aulas">
+    <span class="aulas-today-icon" aria-hidden="true">▦</span>
+    <span class="aulas-today-copy"><small>Aulas</small><b>Conectando con el monitor…</b><span></span></span>
+    <span class="aulas-today-dot" aria-hidden="true"></span><span class="aulas-today-chev" aria-hidden="true">›</span>
+  </button>
 
   <details class="session-quick-disclosure">
     <summary><span>Registro rápido</span><small>Añadir estudio sin abrir el cronómetro</small></summary>
@@ -1023,6 +944,101 @@
 </div>
 
 <!-- AJUSTES VIEW (pantalla completa) -->
+<div class="view" id="view-aulas">
+  <section class="reservation-dashboard aulas-screen" id="aulasDashboard" aria-labelledby="reservationDashboardTitle">
+    <header class="rd-topline">
+      <div class="rd-title-group">
+        <h1 id="reservationDashboardTitle">Aulas</h1>
+        <p id="reservationDashboardStatus" role="status" aria-live="polite">Conectando con el monitor…</p>
+      </div>
+      <div class="rd-head-actions">
+        <div class="rd-source-switch" id="reservationSourceSwitch" aria-label="Perfil del monitor" hidden></div>
+        <div class="rd-pane-tabs" role="tablist" aria-label="Secciones de aulas">
+          <button type="button" class="active" data-reservation-pane="reservations" role="tab" aria-selected="true">Monitor</button>
+          <button type="button" data-reservation-pane="piano-rooms" role="tab" aria-selected="false">Piano Rooms</button>
+        </div>
+        <button type="button" id="reservationRefresh" class="rd-refresh" title="Actualizar" aria-label="Actualizar reservas">↻</button>
+      </div>
+    </header>
+
+    <div id="reservationLivePanel">
+      <div class="rd-empty" id="reservationDashboardEmpty" hidden></div>
+      <div id="reservationDashboardContent" hidden>
+        <section class="rd-hero" id="reservationHero" aria-live="polite"></section>
+
+        <section class="rd-controlbar" aria-label="Control del monitor">
+          <div class="rd-quick-controls" id="reservationQuickControls"></div>
+          <div class="rd-mode-picker">
+            <button type="button" class="rd-mode-current" id="reservationModeToggle" aria-expanded="false" aria-controls="reservationModeControls"></button>
+            <div class="rd-mode-controls" id="reservationModeControls" role="radiogroup" aria-label="Modo del monitor"></div>
+          </div>
+        </section>
+
+        <div class="rd-tabs" role="tablist" aria-label="Secciones del monitor">
+          <button type="button" role="tab" data-rd-tab="agenda" aria-selected="true">Agenda</button>
+          <button type="button" role="tab" data-rd-tab="monitor" aria-selected="false">Monitor</button>
+          <button type="button" role="tab" data-rd-tab="ajustes" aria-selected="false">Ajustes</button>
+        </div>
+        <div class="rd-panes" id="reservationPanes" data-active-tab="agenda">
+          <section class="rd-pane" data-rd-pane="agenda" aria-label="Agenda">
+            <div id="reservationQuotaCard"></div>
+            <section class="rd-card">
+              <div class="rd-card-head"><span>Agenda</span></div>
+              <div class="rd-booking-list" id="reservationBookingList"></div>
+            </section>
+            <section class="rd-card rd-transition" id="reservationTransition" hidden>
+              <div class="rd-card-head"><span data-transition-title>También mañana</span></div>
+              <div class="rd-booking-list" id="reservationTransitionList"></div>
+            </section>
+          </section>
+          <section class="rd-pane" data-rd-pane="monitor" aria-label="Estado del monitor">
+            <div id="reservationMonitorCard"></div>
+          </section>
+          <section class="rd-pane" data-rd-pane="ajustes" aria-label="Ajustes del monitor">
+            <section class="rd-card">
+              <div class="rd-card-head"><span>Funciones</span><small>se aplican al momento</small></div>
+              <div class="rd-settings" id="reservationSettingControls"></div>
+            </section>
+            <section class="rd-card">
+              <div class="rd-card-head"><span>Blindajes</span><small>se cambian en Telegram</small></div>
+              <div id="reservationActiveSettings"></div>
+            </section>
+            <div id="reservationDangerControls"></div>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <div id="reservationLegacyPanel" hidden>
+      <section class="piano-rooms-page" aria-labelledby="pianoRoomsTitle">
+        <div class="piano-rooms-intro">
+          <div>
+            <div class="view-local-label">Disponibilidad local</div>
+            <h2 id="pianoRoomsTitle">Piano Rooms</h2>
+            <p id="pianoRoomsStatus" role="status" aria-live="polite">Monitor local en espera.</p>
+          </div>
+          <div class="piano-rooms-actions">
+            <label class="piano-rooms-date-label" for="pianoRoomsDate">Fecha</label>
+            <input id="pianoRoomsDate" type="date">
+            <button type="button" id="pianoRoomsRefresh" class="piano-rooms-refresh">Actualizar</button>
+          </div>
+        </div>
+        <div class="piano-rooms-legend" aria-label="Leyenda de estados">
+          <span class="pr-legend-item"><i class="pr-swatch pr-swatch-available"></i>Disponible</span>
+          <span class="pr-legend-item"><i class="pr-swatch pr-swatch-reserved"></i>Reservada durante la vigilancia</span>
+          <span class="pr-legend-item"><i class="pr-swatch pr-swatch-expired"></i>Pasó libre</span>
+          <span class="pr-legend-item"><i class="pr-swatch pr-swatch-mine"></i>Mi reserva</span>
+          <span class="pr-legend-item"><i class="pr-swatch pr-swatch-unknown"></i>Sin historial</span>
+        </div>
+        <div class="piano-rooms-grid-wrap" id="pianoRoomsGridWrap">
+          <div id="pianoRoomsGrid" class="piano-rooms-grid" role="grid" aria-label="Cuadrícula de disponibilidad de salas"></div>
+          <div id="pianoRoomsNowLine" class="piano-rooms-now-line" aria-hidden="true"><span>ahora</span></div>
+        </div>
+        <p class="piano-rooms-note">La línea indica la hora actual. El color naranja sólo aparece si una franja observada como disponible desaparece antes de comenzar.</p>
+      </section>
+    </div>
+  </section>
+</div>
 <div class="view" id="view-deutsch" aria-label="Deutsch"></div>
 <div class="view" id="view-premios">
   <div class="ajustes-header">
@@ -2365,6 +2381,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
     <span>Calendario</span>
   </button>
+  <button class="nav-btn nav-btn-aulas" aria-label="Aulas" data-view="aulas" data-short="Aulas" onclick="showView('aulas')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V6.5L12 3l8 3.5V20"/><path d="M9 20v-5.5h6V20"/><path d="M8 9.5h1.5M14.5 9.5H16"/></svg>
+    <span>Aulas</span>
+  </button>
   <button class="nav-btn" aria-label="Profesor" data-view="profesor" data-short="Profe" onclick="showView('profesor')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V6.8A2.8 2.8 0 0 1 6.8 4H12v15.5H6.8A2.8 2.8 0 0 0 4 22"/><path d="M20 19.5V6.8A2.8 2.8 0 0 0 17.2 4H12v15.5h5.2A2.8 2.8 0 0 1 20 22"/><path d="M8 8h1.5M14.5 8H16M8 11h1.5M14.5 11H16"/></svg>
     <span>Profesor</span>
@@ -2423,7 +2443,7 @@
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=397"></script>
 <script src="crono-state-store.js?v=397"></script>
-<script src="app.js?v=457"></script>
+<script src="app.js?v=461"></script>
 <script src="manual-study-activity.js?v=430"></script>
 <script src="chamber-factor-migration.js?v=430"></script>
 <script src="daily-study-minutes.js?v=430" id="dailyStudyMinutesFixScript"></script>
@@ -2440,9 +2460,9 @@
 <script src="study-session-ux.js?v=436"></script>
 <script src="crono-resume-layout.js?v=432"></script>
 <script src="piano-rooms.js?v=438"></script>
-<script src="reservation-dashboard.js?v=459"></script>
+<script src="reservation-dashboard.js?v=461"></script>
 <script src="device-recovery.js?v=460"></script>
-<script src="ipad-today.js?v=400"></script>
+<script src="ipad-today.js?v=461"></script>
 <script src="google-calendar.js?v=342"></script>
 <script src="timer-objectives.js?v=439"></script>
 <script src="habits-page.js?v=439"></script>
@@ -2453,12 +2473,12 @@
 
 <!-- Última capa de escritorio Windows: al final para ganar a los estilos inyectados en <head>. -->
 <link rel="stylesheet" href="desktop-app.css?v=441">
-<script src="desktop-app.js?v=457"></script>
-<link rel="stylesheet" href="mobile-v2.css?v=457">
+<script src="desktop-app.js?v=461"></script>
+<link rel="stylesheet" href="mobile-v2.css?v=461">
 <link rel="stylesheet" href="settings.css?v=457">
 <link rel="stylesheet" href="device-recovery.css?v=460">
 <script src="settings.js?v=457"></script>
-<script src="mobile-v2.js?v=457"></script>
+<script src="mobile-v2.js?v=461"></script>
 </body>
 <script>
   // Activation/reload belongs exclusively to UpdateSafety.

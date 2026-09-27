@@ -210,15 +210,17 @@
     const done = typeof root._doneMinHoy === 'function' ? root._doneMinHoy() : (typeof root.getMinutosConcentradoHoy === 'function' ? root.getMinutosConcentradoHoy() : 0);
     let t = null; try { t = typeof root._probTextHoy === 'function' ? root._probTextHoy() : null; } catch (e) {}
     const pct = Math.max(0, Math.min(100, Math.round(done / GOAL_MIN * 100)));
-    const aulas = (doc.getElementById('reservationDashboardStatus')?.textContent || '').trim() || 'Reservas y salas';
-    const rooms = doc.getElementById('sessionAulasDashboard');
-    const roomsOpen = rooms && rooms.classList.contains('mv2-open');
+    // Aulas es una pantalla propia (v461): aquí solo su resumen en vivo.
+    const roomsSummary = root.ReservationDashboard?.summary?.() || null;
+    const aulas = roomsSummary ? roomsSummary.title + (roomsSummary.detail ? ' · ' + roomsSummary.detail : '') : 'Reservas y monitor';
     host.innerHTML =
       '<div class="mv2-card mv2-summary"><div class="mv2-ring" style="--p:' + pct + '" role="img" aria-label="' + fmtMin(done) + ' de 4 horas"><span>' + fmtMin(done) + '<small>de 4 h</small></span></div>' +
         '<div class="mv2-summary-copy"><b>' + esc(sentence(done, t)) + '</b><span class="mv2-muted">' + esc(rewardLine(data)) + '</span></div></div>' +
       '<div class="mv2-card mv2-parahoy">' + paraHoyHtml(data) + '</div>' +
-      lineCard('Aulas', esc(aulas), 'MobileV2.toggleRooms()', roomsOpen ? 'is-open' : '') +
+      lineCard('Aulas', esc(aulas), "showView('aulas')", roomsSummary ? 'is-' + roomsSummary.kind : '') +
       lineCard('Alemán', 'Tarjetas, estudio libre y hucha', "showView('deutsch')") +
+      // En el móvil Aulas ocupa el sitio de Profesor en la barra inferior.
+      lineCard('Profesor', 'Informe, plan de hoy y unidades urgentes', "showView('profesor')") +
       '<button type="button" class="mv2-add" onclick="MobileV2.openAdd()">＋ Añadir estudio, nota o tarea</button>';
   }
 
@@ -258,13 +260,8 @@
     if (card && card.classList.contains('is-collapsed') && typeof root.toggleSessionJournal === 'function') root.toggleSessionJournal();
     setTimeout(() => doc.getElementById('sessionJournalInput')?.focus(), 250);
   }
-  function toggleRooms() {
-    const rooms = doc.getElementById('sessionAulasDashboard');
-    if (!rooms) return;
-    rooms.classList.toggle('mv2-open');
-    if (rooms.classList.contains('mv2-open')) reveal(rooms);
-    renderHoy();
-  }
+  // Compatibilidad con accesos antiguos: Aulas ya es una pantalla propia.
+  function toggleRooms() { if (typeof root.showView === 'function') root.showView('aulas'); }
   function openPaste() {
     sheet('mv2PasteSheet', 'Plan del Profesor',
       '<p class="mv2-muted">Pega la respuesta del Profesor (o solo su bloque PLAN_PARA_HOY). Cada línea: <b>minutos | obra o movimiento | propósito</b>.</p>' +
@@ -544,6 +541,7 @@
     const ready = () => { hook(); installSetting(); installCrono(); installCal(); renderHoy(); renderCal(); };
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', ready, { once: true }); else ready();
     root.addEventListener('load', () => { ready(); setTimeout(renderHoy, 2500); }, { once: true });
+    root.addEventListener('reservation-dashboard:summary', () => { if (doc.body.getAttribute('data-view') === 'session') renderHoy(); });
     // Las prioridades del Profesor se cargan tarde: repintar cuando estén.
     let tries = 0; const wait = setInterval(() => { if (root.ProfessorHandoffResilience || ++tries > 60) { clearInterval(wait); renderHoy(); } }, 500);
   }

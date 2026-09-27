@@ -37,6 +37,28 @@
     { code: '2', label: 'Grabación', hint: 'G4 blindado · prioridad 113/308 · sniper 113/204' },
     { code: '5', label: 'Calor', hint: 'G5 blindado · solo reserva G4' },
   ];
+  // Modos con el monitor en marcha (mismos códigos que Telegram).
+  const MODE_HINTS = {
+    '1': 'Vigila y reserva en los grupos 4 y 5',
+    '2': 'G4 blindado · prioridad 113/308 · sniper 113/204',
+    '3': 'Grupo 4 blindado: solo reserva en el 5',
+    '4': 'Monitor en pausa; PAOD y Telegram siguen disponibles',
+    '5': 'Grupo 5 blindado: solo reserva en el 4',
+  };
+  const TOGGLES = [
+    { command: 'set_migration', key: 'migration_enabled', label: 'Migración', hint: 'Mueve reservas propias a un bloque mejor' },
+    { command: 'set_mirror', key: 'mirror_enabled', label: 'Aulas espejo', hint: 'Prioriza tus aulas espejo y amplía reservas contiguas', optional: true },
+    { command: 'set_emergency', key: 'emergency_enabled', label: 'Emergencia', hint: 'Rellena huecos de última hora entre tus reservas' },
+    { command: 'set_madrugada', key: 'madrugada_enabled', label: 'Madrugada', hint: 'Permite reservar entre 23:30 y 07:30' },
+    { command: 'set_aachen', key: 'aachen_only', label: 'Solo Aachen', hint: 'Busca únicamente en el campus de Aachen' },
+  ];
+  const TAB_KEY = 'reservationDashboardTab';
+  const LAST_START_KEY = 'reservationDashboardLastStart_';
+  let activeTab = (() => { try { return localStorage.getItem(TAB_KEY) || 'agenda'; } catch (_) { return 'agenda'; } })();
+  let modePickerOpen = false;
+  let startupExpanded = false;
+  let lastSummaryKey = '';
+  let lastSummary = null;
   const DRAFT_MS = 20 * 1000;
   // Lo elegido en la app se ve al instante; el monitor lo confirma al publicar.
   let startupDraft = {};
@@ -220,7 +242,7 @@
     if (health === 'awaiting') {
       eyebrow = 'Monitor abierto en el ordenador';
       title = 'Listo para arrancar';
-      subtitle = 'Elige modo y hora aquí o en Telegram; vale el primero que pulse Iniciar';
+      subtitle = 'Pulsa Iniciar para usar lo de siempre, o cambia las opciones. También desde Telegram.';
     } else if (health === 'starting') {
       eyebrow = 'Arrancando';
       title = 'Entrando en Asimut…';
@@ -242,16 +264,36 @@
       title = 'No está leyendo Asimut';
       subtitle = `El programa sigue abierto; última lectura ${escapeHtml(lastReadLabel(row))}`;
     }
+    // Reserva en curso: barra de progreso y lo que queda; próxima: cuánto falta.
+    let progress = '';
+    if (!['awaiting', 'starting', 'closed', 'offline', 'failing', 'stopped'].includes(health)) {
+      if (current) {
+        const startAt = reservationMoment(state.date, current.start);
+        const endAt = reservationMoment(state.date, current.end);
+        const total = endAt && startAt ? endAt - startAt : 0;
+        const pct = total ? Math.max(0, Math.min(100, (Date.now() - startAt) / total * 100)) : 0;
+        const left = endAt ? Math.max(0, Math.round((endAt - Date.now()) / 60000)) : 0;
+        subtitle += ` · quedan ${durationLabel(left) || 'unos segundos'}`;
+        progress = `<i class="rd-hero-progress" aria-hidden="true"><em style="width:${pct.toFixed(1)}%"></em></i>`;
+      } else if (next) {
+        const startAt = reservationMoment(state.date, next.start);
+        const wait = startAt ? Math.round((startAt - Date.now()) / 60000) : 0;
+        if (wait > 0) subtitle += ` · empieza en ${durationLabel(wait)}`;
+      }
+    }
     hero.classList.toggle('is-offline', offline);
+    hero.dataset.health = health;
     hero.innerHTML = `
       <div class="rd-hero-copy">
         <span class="rd-kicker">${eyebrow}</span>
         <strong>${title}</strong>
         <span>${subtitle}</span>
+        ${progress}
       </div>
       ${state.date ? `<div class="rd-hero-time">
         <span>${escapeHtml(formatDate(state.date))}</span>
         <b>${escapeHtml(formatClock(lastReadAt(row)))}</b>
+        <small>última lectura</small>
       </div>` : ''}`;
   }
 
@@ -304,9 +346,9 @@
     </section>`;
   }
 
-  function toggleButton(command, enabled, label, disabled) {
-    return `<button type="button" class="rd-toggle ${enabled ? 'active' : ''}" data-command="${command}" data-enabled="${enabled ? 'false' : 'true'}" ${disabled ? 'disabled' : ''}>
-      <span>${escapeHtml(label)}</span><i aria-hidden="true"></i>
+  function toggleButton(item, enabled, disabled) {
+    return `<button type="button" class="rd-toggle ${enabled ? 'active' : ''}" data-command="${item.command}" data-enabled="${enabled ? 'false' : 'true'}" role="switch" aria-checked="${enabled ? 'true' : 'false'}" ${disabled ? 'disabled' : ''}>
+      <span class="rd-toggle-copy"><b>${escapeHtml(item.label)}</b><small>${escapeHtml(item.hint)}</small></span><i aria-hidden="true"></i>
     </button>`;
   }
 
@@ -318,42 +360,71 @@
     const monitor = state.monitor || {};
     const offline = ageMs(row) > OFFLINE_MS || monitor.online === false;
     const activeMode = String(monitor.operating_mode?.code || '1');
+    const today = localIsoDate(new Date());
+    const watchesTomorrow = Boolean(monitor.target_date && monitor.target_date > today);
+
+    const toggle = el('reservationModeToggle');
+    if (toggle) {
+      toggle.disabled = offline;
+      toggle.setAttribute('aria-expanded', modePickerOpen && !offline ? 'true' : 'false');
+      toggle.innerHTML = `<span class="rd-mode-copy"><small>Modo</small><b>${escapeHtml(MODE_LABELS[activeMode] || monitor.operating_mode?.name || 'Normal')}</b><span>${escapeHtml(MODE_HINTS[activeMode] || '')}</span></span><i aria-hidden="true">${modePickerOpen && !offline ? '▴' : '▾'}</i>`;
+    }
+    modeWrap.classList.toggle('is-open', modePickerOpen && !offline);
     modeWrap.innerHTML = Object.entries(MODE_LABELS).map(([code, label]) => `
-      <button type="button" class="${code === activeMode ? 'active' : ''}" data-command="set_operating_mode" data-mode="${code}" ${offline ? 'disabled' : ''}>
-        <span>${escapeHtml(label)}</span>${code === activeMode ? '<small>activo</small>' : ''}
+      <button type="button" class="rd-mode-option ${code === activeMode ? 'active' : ''}" role="radio" aria-checked="${code === activeMode ? 'true' : 'false'}" data-command="set_operating_mode" data-mode="${code}" ${offline ? 'disabled' : ''}>
+        <span><b>${escapeHtml(label)}</b><small>${escapeHtml(MODE_HINTS[code] || '')}</small></span>${code === activeMode ? '<em>activo</em>' : ''}
       </button>`).join('');
+
     actionWrap.innerHTML = `
-      <button type="button" class="rd-action ${monitor.paused ? 'is-resume' : 'is-pause'}" data-command="${monitor.paused ? 'resume' : 'pause'}" ${offline ? 'disabled' : ''}>
-        <span>${monitor.paused ? '▶' : 'Ⅱ'}</span><b>${monitor.paused ? 'Reanudar' : 'Pausar'}</b>
+      <button type="button" class="rd-action rd-action-main ${monitor.paused ? 'is-resume' : 'is-pause'}" data-command="${monitor.paused ? 'resume' : 'pause'}" ${offline ? 'disabled' : ''}>
+        <span aria-hidden="true">${monitor.paused ? '▶' : 'Ⅱ'}</span><b>${monitor.paused ? 'Reanudar' : 'Pausar'}</b>
+        <small>${monitor.paused ? 'El monitor está en pausa' : 'Vigilando Asimut'}</small>
       </button>
-      <button type="button" class="rd-action" data-command="target_today" ${offline ? 'disabled' : ''}>
-        <span>●</span><b>Hoy</b>
-      </button>
-      <button type="button" class="rd-action" data-command="target_tomorrow" ${offline ? 'disabled' : ''}>
-        <span>→</span><b>Mañana</b>
-      </button>
-      ${confirmAction === 'shutdown' && !offline ? `
+      <div class="rd-target" role="group" aria-label="Día que vigila">
+        <button type="button" class="rd-action ${watchesTomorrow ? '' : 'active'}" data-command="target_today" aria-pressed="${watchesTomorrow ? 'false' : 'true'}" ${offline ? 'disabled' : ''}><b>Hoy</b></button>
+        <button type="button" class="rd-action ${watchesTomorrow ? 'active' : ''}" data-command="target_tomorrow" aria-pressed="${watchesTomorrow ? 'true' : 'false'}" ${offline ? 'disabled' : ''}><b>Mañana</b></button>
+      </div>`;
+
+    settingsWrap.innerHTML = TOGGLES
+      .filter(item => !(item.optional && monitor[item.key] == null))
+      .map(item => toggleButton(item, monitor[item.key], offline)).join('');
+    const summary = el('reservationActiveSettings');
+    if (summary) summary.innerHTML = settingsSummary(monitor);
+    else settingsWrap.insertAdjacentHTML('beforeend', settingsSummary(monitor));
+
+    const danger = el('reservationDangerControls') || actionWrap;
+    const dangerHtml = confirmAction === 'shutdown' && !offline ? `
       <div class="rd-confirm" role="group" aria-label="Confirmar cierre">
         <span>¿Cerrar el monitor? Para volver a abrirlo hará falta el ordenador.</span>
         <button type="button" class="rd-action is-danger" data-command="shutdown"><b>Sí, cerrar</b></button>
         <button type="button" class="rd-action" data-ui="cancel-confirm"><b>No</b></button>
       </div>` : `
       <button type="button" class="rd-action is-shutdown" data-ui="ask-shutdown" ${offline ? 'disabled' : ''}>
-        <span>■</span><b>Cerrar monitor</b>
-      </button>`}`;
-    settingsWrap.innerHTML = [
-      toggleButton('set_migration', monitor.migration_enabled, 'Migración', offline),
-      monitor.mirror_enabled == null ? '' : toggleButton('set_mirror', monitor.mirror_enabled, 'Espejo', offline),
-      toggleButton('set_emergency', monitor.emergency_enabled, 'Emergencia', offline),
-      toggleButton('set_madrugada', monitor.madrugada_enabled, 'Madrugada', offline),
-      toggleButton('set_aachen', monitor.aachen_only, 'Solo Aachen', offline),
-      settingsSummary(monitor),
-    ].join('');
-    document.querySelectorAll('#reservationLivePanel [data-command]').forEach(button => {
+        <span aria-hidden="true">■</span><b>Cerrar monitor</b><small>Cierre limpio, igual que en Telegram</small>
+      </button>`;
+    if (danger === actionWrap) actionWrap.insertAdjacentHTML('beforeend', dangerHtml);
+    else danger.innerHTML = dangerHtml;
+
+    [modeWrap, actionWrap, settingsWrap, danger].forEach(wrap => wrap.querySelectorAll('[data-command]').forEach(button => {
       button.addEventListener('click', () => sendCommand(button));
+    }));
+    danger.querySelector('[data-ui="ask-shutdown"]')?.addEventListener('click', () => askConfirm('shutdown'));
+    danger.querySelector('[data-ui="cancel-confirm"]')?.addEventListener('click', () => askConfirm(null));
+  }
+
+  function applyTab() {
+    const panes = el('reservationPanes');
+    if (panes) panes.dataset.activeTab = activeTab;
+    document.querySelectorAll('[data-rd-tab]').forEach(button => {
+      const active = button.dataset.rdTab === activeTab;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', active ? 'true' : 'false');
     });
-    actionWrap.querySelector('[data-ui="ask-shutdown"]')?.addEventListener('click', () => askConfirm('shutdown'));
-    actionWrap.querySelector('[data-ui="cancel-confirm"]')?.addEventListener('click', () => askConfirm(null));
+  }
+  function setTab(name) {
+    activeTab = ['agenda', 'monitor', 'ajustes'].includes(name) ? name : 'agenda';
+    try { localStorage.setItem(TAB_KEY, activeTab); } catch (_) {}
+    applyTab();
   }
 
   function listLabel(values, format = String) {
@@ -386,15 +457,35 @@
     render();
   }
 
+  /* «Iniciar» con un toque repite lo último: el modo con el que estuvo en
+   * marcha la última vez (lo recuerda este dispositivo), hora «Ahora», el
+   * campus que tiene guardado el monitor y, si hay ajustes de la sesión
+   * anterior, recuperarlos. Lo elegido aquí o en Telegram manda sobre esto. */
+  function lastStart() {
+    try { return JSON.parse(localStorage.getItem(LAST_START_KEY + selectedSource) || '{}') || {}; } catch (_) { return {}; }
+  }
+  function rememberStart(values) {
+    const merged = { ...lastStart(), ...values };
+    try { localStorage.setItem(LAST_START_KEY + selectedSource, JSON.stringify(merged)); } catch (_) {}
+  }
   function startupSelection(state) {
     if (Date.now() - startupDraftAt > DRAFT_MS) startupDraft = {};
     const server = state.startup || {};
+    const last = lastStart();
+    const lastMode = MODE_LABELS[last.mode] ? last.mode : '1';
     return {
-      mode: 'mode' in startupDraft ? startupDraft.mode : server.mode || null,
-      inicio: 'inicio' in startupDraft ? startupDraft.inicio : server.inicio || null,
-      restore: 'restore' in startupDraft ? startupDraft.restore : (server.previous_available ? server.restore || null : 'no'),
+      mode: 'mode' in startupDraft ? startupDraft.mode : server.mode || lastMode,
+      inicio: 'inicio' in startupDraft ? startupDraft.inicio : server.inicio || 'off',
+      restore: 'restore' in startupDraft ? startupDraft.restore
+        : server.previous_available ? server.restore || 'yes' : 'no',
       aachen: 'aachen' in startupDraft ? startupDraft.aachen : !!state.monitor?.aachen_only,
     };
+  }
+  function previousCount(previous) {
+    if (!previous) return 0;
+    return (previous.blind_periods || []).length + (previous.blinded_rooms || []).length
+      + (previous.blinded_groups || []).length + (previous.priority_rooms || []).length
+      + (Number(previous.no_rebook_count) || 0);
   }
   function inicioLabel(value) {
     if (value === 'off') return 'Ahora';
@@ -427,28 +518,48 @@
     const pick = startupSelection(state);
     const previous = startup.previous_available ? startup.previous || {} : null;
     const options = Array.isArray(startup.inicio_options) && startup.inicio_options.length ? startup.inicio_options : ['off'];
-    const missing = [!pick.mode && 'modo', !pick.inicio && 'hora', !pick.restore && 'ajustes'].filter(Boolean);
+    const modeLabel = STARTUP_MODES.find(mode => mode.code === pick.mode)?.label || 'Normal';
+    const count = previousCount(previous);
+    const restoreLine = !previous ? 'Empieza limpio: no hay ajustes de la sesión anterior'
+      : pick.restore === 'yes' ? (count ? `Recupera los ajustes de la sesión anterior (${count})` : 'Recupera la sesión anterior (sin blindajes ni franjas)')
+        : 'Empieza limpio, sin los ajustes de la sesión anterior';
     panel.innerHTML = `
-      <div class="rd-section-label"><span>1 · Modo</span><small>${escapeHtml(STARTUP_MODES.find(mode => mode.code === pick.mode)?.label || 'sin elegir')}</small></div>
-      <div class="rd-start-modes">${STARTUP_MODES.map(mode => chip('mode', mode.code, mode.label, pick.mode === mode.code, mode.hint)).join('')}</div>
-      <div class="rd-section-label"><span>2 · Hora de inicio</span><small>${escapeHtml(inicioLabel(pick.inicio))}</small></div>
-      <div class="rd-start-times">${options.map(value => chip('inicio', value, inicioLabel(value), pick.inicio === value)).join('')}</div>
-      <div class="rd-section-label"><span>3 · Campus</span><small>${pick.aachen ? 'Aachen' : 'Köln'}</small></div>
-      <div class="rd-start-pair">${chip('aachen', 'false', 'Köln', !pick.aachen)}${chip('aachen', 'true', 'Solo Aachen', pick.aachen)}</div>
-      <div class="rd-section-label"><span>4 · Ajustes de la sesión anterior</span><small>${previous?.saved_at ? `guardados ${escapeHtml(relativeAge(previous.saved_at))}` : ''}</small></div>
-      ${previous ? `${settingsSummary(previous)}
-      <div class="rd-start-pair">${chip('restore', 'yes', 'Recuperarlos', pick.restore === 'yes')}${chip('restore', 'no', 'Empezar limpio', pick.restore === 'no')}</div>`
-        : '<p class="rd-card-note">No hay ajustes anteriores: empezará limpio.</p>'}
+      <div class="rd-start-quick">
+        <div class="rd-start-summary">
+          <small>Se iniciará con</small>
+          <b>${escapeHtml(modeLabel)} · ${escapeHtml(inicioLabel(pick.inicio))} · ${pick.aachen ? 'Solo Aachen' : 'Köln'}</b>
+          <span>${escapeHtml(restoreLine)}</span>
+        </div>
+        <button type="button" class="rd-action rd-start-go" data-startup-command="start_monitor">
+          <span aria-hidden="true">▶</span><b>Iniciar</b>
+        </button>
+        <button type="button" class="rd-start-more" data-ui="toggle-startup-options" aria-expanded="${startupExpanded ? 'true' : 'false'}" aria-controls="reservationStartupOptions">
+          ${startupExpanded ? 'Ocultar opciones ▴' : 'Cambiar opciones ▾'}
+        </button>
+      </div>
+      <div class="rd-start-options" id="reservationStartupOptions" ${startupExpanded ? '' : 'hidden'}>
+        <div class="rd-section-label"><span>Modo</span><small>${escapeHtml(modeLabel)}</small></div>
+        <div class="rd-start-modes">${STARTUP_MODES.map(mode => chip('mode', mode.code, mode.label, pick.mode === mode.code, mode.hint)).join('')}</div>
+        <div class="rd-section-label"><span>Hora de inicio</span><small>${escapeHtml(inicioLabel(pick.inicio))}</small></div>
+        <div class="rd-start-times">${options.map(value => chip('inicio', value, inicioLabel(value), pick.inicio === value)).join('')}</div>
+        <div class="rd-section-label"><span>Campus</span><small>${pick.aachen ? 'Aachen' : 'Köln'}</small></div>
+        <div class="rd-start-pair">${chip('aachen', 'false', 'Köln', !pick.aachen)}${chip('aachen', 'true', 'Solo Aachen', pick.aachen)}</div>
+        <div class="rd-section-label"><span>Ajustes de la sesión anterior</span><small>${previous?.saved_at ? `guardados ${escapeHtml(relativeAge(previous.saved_at))}` : ''}</small></div>
+        ${previous ? `${settingsSummary(previous)}
+        <div class="rd-start-pair">${chip('restore', 'yes', 'Recuperarlos', pick.restore === 'yes')}${chip('restore', 'no', 'Empezar limpio', pick.restore === 'no')}</div>`
+          : '<p class="rd-card-note">No hay ajustes anteriores: empezará limpio.</p>'}
+      </div>
       <div class="rd-start-footer">
         ${confirmAction === 'cancel_start' ? `
           <span>¿Cerrar el monitor sin iniciarlo?</span>
           <button type="button" class="rd-action is-danger" data-startup-command="cancel_start"><b>Sí, cerrar</b></button>
           <button type="button" class="rd-action" data-ui="cancel-confirm"><b>No</b></button>` : `
-          <button type="button" class="rd-action" data-ui="ask-cancel-start"><span>■</span><b>Cerrar sin iniciar</b></button>
-          <button type="button" class="rd-action rd-start-go" data-startup-command="start_monitor" ${missing.length ? 'disabled' : ''}>
-            <span>▶</span><b>${missing.length ? `Falta: ${escapeHtml(missing.join(', '))}` : `Iniciar · ${escapeHtml(STARTUP_MODES.find(mode => mode.code === pick.mode)?.label || '')} · ${escapeHtml(inicioLabel(pick.inicio))}`}</b>
-          </button>`}
+          <button type="button" class="rd-start-cancel" data-ui="ask-cancel-start">Cerrar el monitor sin iniciarlo</button>`}
       </div>`;
+    panel.querySelector('[data-ui="toggle-startup-options"]')?.addEventListener('click', () => {
+      startupExpanded = !startupExpanded;
+      render();
+    });
     panel.querySelectorAll('[data-startup-field]').forEach(button => {
       button.addEventListener('click', () => {
         const field = button.dataset.startupField;
@@ -461,6 +572,7 @@
     });
     panel.querySelector('[data-startup-command="start_monitor"]')?.addEventListener('click', event => {
       const current = startupSelection(state);
+      rememberStart({ mode: current.mode });
       postCommand('start_monitor', {
         mode: current.mode, inicio: current.inicio, restore: current.restore, aachen: current.aachen,
       }, event.currentTarget);
@@ -523,6 +635,51 @@
     renderReservations(transition.date, transition.reservations, 'reservationTransitionList');
   }
 
+  /* Resumen de una línea para Hoy (tarjeta #aulasTodayCard y la línea de Aulas
+   * del móvil). kind: live | warn | error | idle. */
+  function summaryFor(row) {
+    if (!row) {
+      return connectionNotice
+        ? { title: connectionNotice.title, detail: '', kind: 'error' }
+        : { title: 'Monitor sin conectar', detail: 'Ábrelo en el ordenador', kind: 'idle' };
+    }
+    const state = row.state || {};
+    const health = monitorHealth(row, state);
+    const reservations = Array.isArray(state.reservations) ? state.reservations : [];
+    const current = reservations.find(item => timelineStatus(state.date, item) === 'current');
+    const next = reservations.find(item => timelineStatus(state.date, item) === 'upcoming');
+    const byHealth = {
+      awaiting: { title: 'Listo para arrancar', detail: 'Toca para iniciarlo', kind: 'warn' },
+      starting: { title: 'Arrancando…', detail: 'Entrando en Asimut', kind: 'warn' },
+      closed: { title: 'Monitor cerrado', detail: '', kind: 'idle' },
+      offline: { title: 'Monitor sin señal', detail: relativeAge(row.heartbeat_at), kind: 'error' },
+      failing: { title: 'El monitor está fallando', detail: state.monitor?.error?.attempt ? `intento ${state.monitor.error.attempt}` : '', kind: 'error' },
+      stopped: { title: 'Monitor detenido', detail: '', kind: 'error' },
+    }[health];
+    if (byHealth) return byHealth;
+    const paused = state.monitor?.paused ? ' · en pausa' : '';
+    if (current) return { title: `Aula ${roomLabel(current.room)} · hasta ${current.end}`, detail: `en curso${paused}`, kind: health === 'stale' ? 'warn' : 'live' };
+    if (next) return { title: `Aula ${roomLabel(next.room)} · ${next.start}–${next.end}`, detail: `siguiente${paused}`, kind: health === 'stale' ? 'warn' : 'live' };
+    return { title: reservations.length ? 'Reservas de hoy terminadas' : 'Sin reservas hoy', detail: `vigilando${paused}`, kind: health === 'stale' ? 'warn' : 'live' };
+  }
+  function renderTodayCard(row) {
+    const summary = summaryFor(row);
+    lastSummary = summary;
+    const card = el('aulasTodayCard');
+    if (card) {
+      card.dataset.kind = summary.kind;
+      const title = card.querySelector('b');
+      const detail = card.querySelector('.aulas-today-copy > span');
+      if (title) title.textContent = summary.title;
+      if (detail) detail.textContent = summary.detail || '';
+    }
+    const key = JSON.stringify(summary);
+    if (key !== lastSummaryKey) {
+      lastSummaryKey = key;
+      window.dispatchEvent(new CustomEvent('reservation-dashboard:summary', { detail: summary }));
+    }
+  }
+
   function bindRefresh() {
     el('reservationRefresh')?.addEventListener('click', () => refresh(true));
   }
@@ -543,12 +700,17 @@
       };
       empty.innerHTML = `<div class="rd-empty-mark">↗</div><strong>${escapeHtml(notice.title)}</strong><p>${escapeHtml(notice.body)}</p>`;
       setStatus(notice.status, notice.kind);
+      renderTodayCard(null);
       return;
     }
     const state = row.state || {};
     shell.hidden = false;
     empty.hidden = true;
     const health = monitorHealth(row, state);
+    if ((health === 'live' || health === 'stale') && MODE_LABELS[state.monitor?.operating_mode?.code]
+      && lastStart().mode !== state.monitor.operating_mode.code) {
+      rememberStart({ mode: state.monitor.operating_mode.code });
+    }
     shell.classList.toggle('is-startup', health === 'awaiting' || health === 'starting');
     if (health === 'awaiting') {
       setStatus('Monitor abierto · esperando arranque (aquí o en Telegram)', 'stale');
@@ -597,6 +759,8 @@
     renderMonitor(state, row);
     renderControls(state, row);
     renderTransition(state.transition);
+    applyTab();
+    renderTodayCard(row);
   }
 
   function commandPayload(button) {
@@ -608,7 +772,11 @@
   function sendCommand(button) {
     if (!button?.dataset.command || button.disabled) return;
     if (button.dataset.command === 'shutdown') confirmAction = null;
+    const closesPicker = button.dataset.command === 'set_operating_mode';
+    if (closesPicker) modePickerOpen = false;
     postCommand(button.dataset.command, commandPayload(button), button);
+    // El selector se pliega al elegir; el modo nuevo llega con la siguiente lectura.
+    if (closesPicker) render();
   }
 
   // quiet: selección del menú de arranque, ya reflejada en pantalla al tocar.
@@ -721,8 +889,10 @@
     }
   }
 
+  // Aulas se consulta en su pantalla y también desde Hoy (tarjeta resumen).
+  const WATCHED_VIEWS = ['aulas', 'session'];
   function start() {
-    if (!el('sessionAulasDashboard')) return;
+    if (!el('aulasDashboard') && !el('aulasTodayCard')) return;
     clearInterval(pollTimer);
     clearInterval(clockTimer);
     refresh(false);
@@ -734,21 +904,30 @@
     document.querySelectorAll('[data-reservation-pane]').forEach(button => {
       button.addEventListener('click', () => setPane(button.dataset.reservationPane));
     });
+    document.querySelectorAll('[data-rd-tab]').forEach(button => {
+      button.addEventListener('click', () => setTab(button.dataset.rdTab));
+    });
+    el('reservationModeToggle')?.addEventListener('click', () => {
+      modePickerOpen = !modePickerOpen;
+      render();
+    });
+    applyTab();
     bindRefresh();
     window.addEventListener('app:viewchange', event => {
-      if (event.detail?.name === 'session') start();
+      if (WATCHED_VIEWS.includes(event.detail?.name)) start();
     });
     const refreshOnReturn = () => {
-      if (document.visibilityState === 'visible' && document.body.dataset.view === 'session') refresh(false);
+      if (document.visibilityState === 'visible' && WATCHED_VIEWS.includes(document.body.dataset.view)) refresh(false);
     };
     document.addEventListener('visibilitychange', refreshOnReturn);
     window.addEventListener('online', refreshOnReturn);
     try {
       getSB().auth.onAuthStateChange(() => window.setTimeout(() => refresh(false), 0));
     } catch (error) {}
-    if (document.body.dataset.view === 'session' || el('view-session')?.classList.contains('active')) start();
+    if (WATCHED_VIEWS.includes(document.body.dataset.view)
+      || el('view-session')?.classList.contains('active') || el('view-aulas')?.classList.contains('active')) start();
   }
 
-  window.ReservationDashboard = { refresh, setPane };
+  window.ReservationDashboard = { refresh, setPane, setTab, summary: () => lastSummary };
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init) : init();
 })();

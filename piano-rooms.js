@@ -85,7 +85,7 @@
   loadStyle('planningEnhancementsV3Styles','./planning-enhancements-v3.css?v=377');
   loadStyle('planningEnhancementsV4Styles','./planning-enhancements-v4.css?v=377');
   loadStyle('solidityGuideModalStyles','./solidity-guide-modal.css?v=377');
-  load('pianoRoomsCoreScript','./piano-rooms-core.js?v=372');
+  load('pianoRoomsCoreScript','./piano-rooms-core.js?v=461');
   load('paseLiquidDirectTouchScript','./pase-liquid-direct-touch.js?v=342');
   load('cronoSaveResilienceScript','./crono-save-resilience.js?v=397',function(){
     load('passageTrackerResilienceScript','./passage-tracker-resilience.js?v=372',function(){

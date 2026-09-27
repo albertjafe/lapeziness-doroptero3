@@ -54,7 +54,7 @@ for (const viewport of [{ width: 834, height: 1194, name: 'vertical' }, { width:
     await page.setViewportSize(viewport);
     await boot(page);
     await expect(page.locator('#sessionConcentradoText')).toContainText(/1\s*h\s*15\s*min/);
-    const boxes = await Promise.all(['#sessionResumenCard', '.ipad-today-next', '.ipad-today-access', '#sessionAulasDashboard'].map(selector => page.locator(selector).boundingBox()));
+    const boxes = await Promise.all(['#sessionResumenCard', '.ipad-today-next', '.ipad-today-access', '#aulasTodayCard'].map(selector => page.locator(selector).boundingBox()));
     for (let i = 0; i < boxes.length; i++) {
       expect(boxes[i].x).toBeGreaterThanOrEqual(0);
       expect(boxes[i].x + boxes[i].width).toBeLessThanOrEqual(viewport.width);
@@ -64,12 +64,17 @@ for (const viewport of [{ width: 834, height: 1194, name: 'vertical' }, { width:
       }
     }
     await expect(page.getByText('focos pendientes', { exact: false })).toHaveCount(0);
+    // Los controles del monitor viven en la pantalla Aulas (barra de navegación).
     await expect(page.locator('#reservationModeControls')).toBeHidden();
-    await page.locator('.ipad-today-monitor > summary').click();
+    await page.locator('.nav-btn[data-view="aulas"]').click();
+    await expect(page.locator('#view-aulas')).toBeVisible();
+    await expect(page.locator('#reservationModeToggle')).toContainText('Grabación');
     await expect(page.locator('#reservationModeControls .active')).toContainText('Grabación');
+    if (await page.locator('[data-rd-tab="ajustes"]').isVisible()) await page.locator('[data-rd-tab="ajustes"]').click();
     await page.locator('[data-command="set_migration"]').click();
     expect(await page.evaluate(() => window.__reservationWrites[0])).toMatchObject({ source: 'alberto', command: 'set_migration', payload: { enabled: true } });
-    await page.locator('.ipad-today-monitor > summary').click();
+    if (process.env.CAPTURE_IPAD_TODAY) await page.screenshot({ path: `test-results/ipad-aulas-${viewport.name}.png`, fullPage: true });
+    await page.evaluate(() => showView('session'));
     await page.evaluate(() => window.scrollTo(0, 0));
     if (process.env.CAPTURE_IPAD_TODAY) {
       await page.evaluate(() => ReservationDashboard.refresh(false));

@@ -120,7 +120,7 @@
     }
   }
   function start() {
-    if (!el('sessionAulasDashboard')) return;
+    if (!el('aulasDashboard')) return;
     if (el('reservationLegacyPanel')?.hidden) return;
     if (!el('pianoRoomsDate').value) el('pianoRoomsDate').value = localDate();
     clearInterval(pollTimer);

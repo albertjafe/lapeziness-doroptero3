@@ -844,6 +844,7 @@ const VIEW_CONTEXT = {
   obras: { eyebrow: 'Repertorio', title: 'Obras' },
   calendario: { eyebrow: 'Planificación', title: 'Calendario' },
   salas: { eyebrow: 'Reservas Asimut', title: 'Aulas' },
+  aulas: { eyebrow: 'Reservas Asimut', title: 'Aulas' },
   casa: { eyebrow: 'Estratos', title: 'La Casa' },
   historial: { eyebrow: 'Resumen', title: 'Estadísticas' },
   deutsch: { eyebrow: 'Tarjetas y estudio libre', title: 'Alemán' },
@@ -892,12 +893,8 @@ function renderSessionViewContent(options) {
 function showView(name, options) {
   const opts = { ...(options || {}) };
   if (name === 'pulse') name = 'session'; // Stored legacy navigation target.
-  if (name === 'salas') {
-    // Compatibilidad con accesos guardados de versiones anteriores: Aulas ya
-    // forma parte del resumen principal y no vive en una vista independiente.
-    name = 'session';
-    opts.reservationAnchor = true;
-  }
+  // Aulas vuelve a ser una pantalla propia (v461); «salas» es el nombre antiguo.
+  if (name === 'salas') name = 'aulas';
   if (name === 'historial') {
     name = 'session';
     opts.sessionMode = 'history';
@@ -932,9 +929,6 @@ function showView(name, options) {
     renderSessionViewContent();
     const sessionHeader = document.getElementById('headerTitle');
     if (sessionHeader) sessionHeader.textContent = _sessionSectionMode === 'week' ? 'Semana' : _sessionSectionMode === 'history' ? 'Historial' : 'Hoy';
-    if (opts.reservationAnchor) requestAnimationFrame(() => {
-      document.getElementById('sessionAulasDashboard')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-    });
   }
   if (name === 'cronometro') {
     cronoOnEnterView({ layoutPrepared: !!opts.swipePrepared });
@@ -28179,7 +28173,7 @@ window.addEventListener('load', function() {
   try {
     const requestedView = new URL(window.location.href).searchParams.get('view');
     if (requestedView === 'cronometro') setTimeout(cronoOpenFromSystemNotification, 140);
-    if (requestedView === 'salas') setTimeout(() => showView('salas'), 140);
+    if (requestedView === 'salas' || requestedView === 'aulas') setTimeout(() => showView('aulas'), 140);
   } catch(e) {}
   _swUpdateInit();
 });

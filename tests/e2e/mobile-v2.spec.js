@@ -72,9 +72,16 @@ test('Hoy v2: nada se pierde — registro rápido, diario y Aulas siguen a un to
   await page.getByRole('button', { name: /Añadir estudio, nota o tarea/ }).click();
   await page.getByRole('button', { name: /Nota en el diario/ }).click();
   await expect(page.locator('#sessionJournalInput')).toBeVisible();
-  await expect(page.locator('#sessionAulasDashboard')).toBeHidden();
+  // Aulas es una pantalla propia y ocupa el sitio de Profesor en la barra;
+  // Profesor sigue a un toque desde Hoy.
+  await expect(page.locator('#aulasTodayCard')).toBeHidden();
   await page.locator('#mv2Hoy .mv2-rowcard', { hasText: 'Aulas' }).click();
-  await expect(page.locator('#sessionAulasDashboard')).toBeVisible();
+  await expect(page.locator('#view-aulas')).toBeVisible();
+  await expect(page.locator('.nav-btn[data-view="aulas"]')).toBeVisible();
+  await expect(page.locator('.nav-btn[data-view="profesor"]')).toBeHidden();
+  await page.locator('.nav-btn[data-view="session"]').click();
+  await page.locator('#mv2Hoy .mv2-rowcard', { hasText: 'Profesor' }).click();
+  await expect(page.locator('#view-profesor')).toBeVisible();
 });
 
 test('Ajustes: «Clásico» recupera el diseño anterior y «Nuevo» lo devuelve', async ({ page }) => {

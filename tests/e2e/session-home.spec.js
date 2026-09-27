@@ -92,11 +92,17 @@ test('shows a compact daily forecast, live classrooms and separate history', asy
   await expect(page.locator('#sessionResumenCard')).toContainText('4 horas');
   await expect(page.locator('#sessionResumenCard')).toContainText('5 horas');
   await expect(page.locator('#sessionConcentradoText')).toContainText(/1\s*h\s*15\s*min/);
-  await expect(page.locator('#sessionAulasDashboard')).toBeVisible();
-  await expect(page.locator('#reservationDashboardEmpty')).toBeHidden();
+  // Aulas es una pantalla propia (v461): en Hoy queda una tarjeta resumen en vivo.
+  await expect(page.locator('#aulasTodayCard')).toBeVisible();
+  await expect(page.locator('#aulasTodayCard')).toContainText('Aula 113');
   await expect(page.locator('#reservationHero')).toContainText('Aula 113');
-  await expect(page.locator('#reservationModeControls')).toBeVisible();
   await expect(page.locator('.piano-rooms-open')).toBeHidden();
+  await page.locator('#aulasTodayCard').click();
+  await expect(page.locator('#view-aulas')).toBeVisible();
+  await expect(page.locator('#reservationDashboardEmpty')).toBeHidden();
+  await expect(page.locator('.rd-controlbar')).toBeVisible();
+  await expect(page.locator('#headerTitle')).toHaveText('Aulas');
+  await page.evaluate(() => showView('session'));
   await expect(page.locator('#activityDailyCard')).toBeHidden();
   await expect(page.locator('#sessionStatsSection')).toBeHidden();
   await expect(page.locator('.session-mode-switch')).toHaveCount(0);

@@ -115,3 +115,21 @@ test('Alt+número cambia de pantalla y Espacio inicia y pausa el cronómetro', a
   await expect.poll(() => page.evaluate(() => crono.state)).toBe('paused');
   await expect(page.locator('#cronoStartBtn')).toHaveAttribute('title', /Espacio/);
 });
+
+test('Aulas es una pantalla propia en la barra lateral, con su atajo Alt', async ({ page }) => {
+  await boot(page, 1366, 768);
+  const nav = page.locator('.nav-bottom .nav-btn[data-view="aulas"]');
+  await expect(nav).toBeVisible();
+  // En escritorio sigue también Profesor (en el móvil Aulas ocupa su sitio).
+  await expect(page.locator('.nav-bottom .nav-btn[data-view="profesor"]')).toBeVisible();
+  await expect(page.locator('#aulasTodayCard')).toBeVisible();
+  if (process.env.CAPTURE_WINDOWS_AULAS) await page.screenshot({ path: 'test-results/windows-hoy.png' });
+  const shortcut = await nav.getAttribute('title');
+  const index = Number((shortcut || '').match(/Alt\+(\d)/)?.[1]);
+  expect(index).toBeGreaterThan(0);
+  await page.keyboard.press(`Alt+${index}`);
+  await expect(page.locator('#view-aulas')).toBeVisible();
+  await expect(page.locator('#headerTitle')).toHaveText('Aulas');
+  await expect(page.locator('#aulasDashboard')).toBeVisible();
+  if (process.env.CAPTURE_WINDOWS_AULAS) await page.screenshot({ path: 'test-results/windows-aulas.png' });
+});

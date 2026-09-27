@@ -7,7 +7,7 @@
   html.mobile-v2 #view-session:not(.session-history-mode) #mv2Hoy { display: grid; gap: 10px; margin: 0 0 12px; }
   html.mobile-v2 #view-session:not(.session-history-mode) { padding-top: 12px !important; }
   html.mobile-v2 #view-session:not(.session-history-mode) :is(#sessionResumenCard, .german-entry) { display: none !important; }
-  html.mobile-v2 #view-session:not(.session-history-mode) :is(.session-quick-disclosure, #sessionJournalCard, #sessionAulasDashboard):not(.mv2-open) { display: none !important; }
+  html.mobile-v2 #view-session:not(.session-history-mode) :is(.session-quick-disclosure, #sessionJournalCard, #aulasTodayCard):not(.mv2-open) { display: none !important; }
 
   html.mobile-v2 .mv2-card {
     background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 14px;
