@@ -29,6 +29,21 @@
   let loading = false;
   let connectionNotice = null;
   const pendingCommands = new Map();
+  // Menú de arranque: mismo orden y opciones que la entrada segura de Telegram.
+  const STARTUP_MODES = [
+    { code: '4', label: 'Seguro / PAOD', hint: 'Inicia sesión y deja el monitor en pausa' },
+    { code: '1', label: 'Normal', hint: 'Monitor completo' },
+    { code: '3', label: 'Solo G5', hint: 'Grupo 4 blindado' },
+    { code: '2', label: 'Grabación', hint: 'G4 blindado · prioridad 113/308 · sniper 113/204' },
+    { code: '5', label: 'Calor', hint: 'G5 blindado · solo reserva G4' },
+  ];
+  const DRAFT_MS = 20 * 1000;
+  // Lo elegido en la app se ve al instante; el monitor lo confirma al publicar.
+  let startupDraft = {};
+  let startupDraftAt = 0;
+  // Acción destructiva pendiente de confirmar: 'shutdown' | 'cancel_start'.
+  let confirmAction = null;
+  let confirmTimer = null;
 
   function el(id) { return document.getElementById(id); }
   function escapeHtml(value) {
@@ -94,7 +109,12 @@
    * - monitor.error: el bucle cayó y el supervisor lo está reintentando;
    * - last_read_at: cuándo se leyó Asimut por última vez. */
   function monitorHealth(row, state) {
+    const phase = state?.monitor?.phase;
+    // Cierre limpio publicado: no es «sin señal» aunque el latido se apague.
+    if (phase === 'closed') return 'closed';
     if (ageMs(row) > OFFLINE_MS) return 'offline';
+    if (phase === 'awaiting_start') return 'awaiting';
+    if (phase === 'starting') return 'starting';
     if (state?.monitor?.online === false) return state.monitor.error ? 'failing' : 'stopped';
     if (dataAgeMs(row) > STALE_DATA_MS) return 'stale';
     return 'live';
@@ -191,13 +211,25 @@
     const next = reservations.find(item => timelineStatus(state.date, item) === 'upcoming');
     const focus = current || next || reservations[reservations.length - 1];
     const health = monitorHealth(row, state);
-    const offline = health === 'offline' || health === 'stopped' || health === 'failing';
+    const offline = ['offline', 'stopped', 'failing', 'closed'].includes(health);
     let eyebrow = current ? 'Ahora mismo' : next ? 'Siguiente reserva' : reservations.length ? 'Última reserva del día' : 'Agenda libre';
     let title = focus ? `Aula ${escapeHtml(roomLabel(focus.room))}` : 'Sin reservas';
     let subtitle = focus
       ? `${escapeHtml(focus.start || '—')}–${escapeHtml(focus.end || '—')} · ${durationLabel(reservationMinutes(focus))}`
       : `No hay reservas para ${escapeHtml(formatDate(state.date))}`;
-    if (health === 'offline') {
+    if (health === 'awaiting') {
+      eyebrow = 'Monitor abierto en el ordenador';
+      title = 'Listo para arrancar';
+      subtitle = 'Elige modo y hora aquí o en Telegram; vale el primero que pulse Iniciar';
+    } else if (health === 'starting') {
+      eyebrow = 'Arrancando';
+      title = 'Entrando en Asimut…';
+      subtitle = `Modo ${escapeHtml(state.monitor.operating_mode?.name || '—')} · las reservas aparecerán tras la primera lectura`;
+    } else if (health === 'closed') {
+      eyebrow = 'Monitor cerrado';
+      title = 'Cerrado sin errores';
+      subtitle = `Se cerró ${escapeHtml(relativeAge(row.observed_at))}; para volver a abrirlo hace falta el ordenador`;
+    } else if (health === 'offline') {
       eyebrow = 'Monitor sin conexión reciente';
       title = 'Estado en espera';
       subtitle = `La última señal llegó ${escapeHtml(relativeAge(row.heartbeat_at))}`;
@@ -217,10 +249,10 @@
         <strong>${title}</strong>
         <span>${subtitle}</span>
       </div>
-      <div class="rd-hero-time">
+      ${state.date ? `<div class="rd-hero-time">
         <span>${escapeHtml(formatDate(state.date))}</span>
         <b>${escapeHtml(formatClock(lastReadAt(row)))}</b>
-      </div>`;
+      </div>` : ''}`;
   }
 
   function renderReservations(day, reservations, targetId) {
@@ -299,17 +331,146 @@
       </button>
       <button type="button" class="rd-action" data-command="target_tomorrow" ${offline ? 'disabled' : ''}>
         <span>→</span><b>Mañana</b>
-      </button>`;
+      </button>
+      ${confirmAction === 'shutdown' && !offline ? `
+      <div class="rd-confirm" role="group" aria-label="Confirmar cierre">
+        <span>¿Cerrar el monitor? Para volver a abrirlo hará falta el ordenador.</span>
+        <button type="button" class="rd-action is-danger" data-command="shutdown"><b>Sí, cerrar</b></button>
+        <button type="button" class="rd-action" data-ui="cancel-confirm"><b>No</b></button>
+      </div>` : `
+      <button type="button" class="rd-action is-shutdown" data-ui="ask-shutdown" ${offline ? 'disabled' : ''}>
+        <span>■</span><b>Cerrar monitor</b>
+      </button>`}`;
     settingsWrap.innerHTML = [
       toggleButton('set_migration', monitor.migration_enabled, 'Migración', offline),
       monitor.mirror_enabled == null ? '' : toggleButton('set_mirror', monitor.mirror_enabled, 'Espejo', offline),
       toggleButton('set_emergency', monitor.emergency_enabled, 'Emergencia', offline),
       toggleButton('set_madrugada', monitor.madrugada_enabled, 'Madrugada', offline),
       toggleButton('set_aachen', monitor.aachen_only, 'Solo Aachen', offline),
+      settingsSummary(monitor),
     ].join('');
     document.querySelectorAll('#reservationLivePanel [data-command]').forEach(button => {
       button.addEventListener('click', () => sendCommand(button));
     });
+    actionWrap.querySelector('[data-ui="ask-shutdown"]')?.addEventListener('click', () => askConfirm('shutdown'));
+    actionWrap.querySelector('[data-ui="cancel-confirm"]')?.addEventListener('click', () => askConfirm(null));
+  }
+
+  function listLabel(values, format = String) {
+    const items = Array.isArray(values) ? values.filter(value => value != null && value !== '') : [];
+    return items.length ? items.map(format).join(', ') : 'ninguno';
+  }
+  function periodsLabel(periods) {
+    const items = (Array.isArray(periods) ? periods : [])
+      .filter(period => Array.isArray(period) && period[0] && period[1])
+      .map(period => `${period[0]}–${period[1]}`);
+    return items.length ? items.join(', ') : 'ninguna';
+  }
+  /* Ajustes que hoy sólo se cambian desde Telegram (/blind, blindajes,
+   * prioridades): aquí sólo se muestran. */
+  function settingsSummary(settings) {
+    return `<dl class="rd-settings-summary">
+      <div><dt>Franjas ciegas</dt><dd>${escapeHtml(periodsLabel(settings.blind_periods))}</dd></div>
+      <div><dt>Grupos blindados</dt><dd>${escapeHtml(listLabel(settings.blinded_groups, group => `G${group}`))}</dd></div>
+      <div><dt>Aulas blindadas</dt><dd>${escapeHtml(listLabel(settings.blinded_rooms, roomLabel))}</dd></div>
+      <div><dt>Aulas prioritarias</dt><dd>${escapeHtml(listLabel(settings.priority_rooms, roomLabel))}</dd></div>
+      ${settings.no_rebook_count != null ? `<div><dt>Huecos sin re-reservar</dt><dd>${escapeHtml(settings.no_rebook_count || 'ninguno')}</dd></div>` : ''}
+    </dl>`;
+  }
+
+  function askConfirm(action) {
+    confirmAction = action;
+    window.clearTimeout(confirmTimer);
+    // La confirmación caduca sola para que un toque suelto nunca cierre nada.
+    if (action) confirmTimer = window.setTimeout(() => { confirmAction = null; render(); }, 8000);
+    render();
+  }
+
+  function startupSelection(state) {
+    if (Date.now() - startupDraftAt > DRAFT_MS) startupDraft = {};
+    const server = state.startup || {};
+    return {
+      mode: 'mode' in startupDraft ? startupDraft.mode : server.mode || null,
+      inicio: 'inicio' in startupDraft ? startupDraft.inicio : server.inicio || null,
+      restore: 'restore' in startupDraft ? startupDraft.restore : (server.previous_available ? server.restore || null : 'no'),
+      aachen: 'aachen' in startupDraft ? startupDraft.aachen : !!state.monitor?.aachen_only,
+    };
+  }
+  function inicioLabel(value) {
+    if (value === 'off') return 'Ahora';
+    return /^\d{4}$/.test(String(value || '')) ? `${value.slice(0, 2)}:${value.slice(2)}` : 'sin elegir';
+  }
+  function chip(group, value, label, active, hint) {
+    return `<button type="button" class="rd-start-chip ${active ? 'active' : ''}" data-startup-field="${group}" data-value="${escapeHtml(value)}" aria-pressed="${active ? 'true' : 'false'}">
+      <span>${escapeHtml(label)}</span>${hint ? `<small>${escapeHtml(hint)}</small>` : ''}
+    </button>`;
+  }
+
+  /* Entrada segura desde la app. Cada toque se refleja aquí al momento y se
+   * envía al monitor (startup_select), que actualiza también el menú de
+   * Telegram; «Iniciar» manda la selección completa (start_monitor). */
+  function renderStartup(state, health) {
+    let panel = el('reservationStartupPanel');
+    if (!panel) {
+      panel = document.createElement('section');
+      panel.id = 'reservationStartupPanel';
+      panel.className = 'rd-startup';
+      (el('reservationConnectionHelp') || el('reservationHero'))?.after(panel);
+    }
+    panel.hidden = !(health === 'awaiting' || health === 'starting');
+    if (panel.hidden) return;
+    if (health === 'starting') {
+      panel.innerHTML = '<p class="rd-startup-wait">Iniciando sesión en Asimut… El panel completo aparecerá en cuanto llegue la primera lectura.</p>';
+      return;
+    }
+    const startup = state.startup || {};
+    const pick = startupSelection(state);
+    const previous = startup.previous_available ? startup.previous || {} : null;
+    const options = Array.isArray(startup.inicio_options) && startup.inicio_options.length ? startup.inicio_options : ['off'];
+    const missing = [!pick.mode && 'modo', !pick.inicio && 'hora', !pick.restore && 'ajustes'].filter(Boolean);
+    panel.innerHTML = `
+      <div class="rd-section-label"><span>1 · Modo</span><small>${escapeHtml(STARTUP_MODES.find(mode => mode.code === pick.mode)?.label || 'sin elegir')}</small></div>
+      <div class="rd-start-modes">${STARTUP_MODES.map(mode => chip('mode', mode.code, mode.label, pick.mode === mode.code, mode.hint)).join('')}</div>
+      <div class="rd-section-label"><span>2 · Hora de inicio</span><small>${escapeHtml(inicioLabel(pick.inicio))}</small></div>
+      <div class="rd-start-times">${options.map(value => chip('inicio', value, inicioLabel(value), pick.inicio === value)).join('')}</div>
+      <div class="rd-section-label"><span>3 · Campus</span><small>${pick.aachen ? 'Aachen' : 'Köln'}</small></div>
+      <div class="rd-start-pair">${chip('aachen', 'false', 'Köln', !pick.aachen)}${chip('aachen', 'true', 'Solo Aachen', pick.aachen)}</div>
+      <div class="rd-section-label"><span>4 · Ajustes de la sesión anterior</span><small>${previous?.saved_at ? `guardados ${escapeHtml(relativeAge(previous.saved_at))}` : ''}</small></div>
+      ${previous ? `${settingsSummary(previous)}
+      <div class="rd-start-pair">${chip('restore', 'yes', 'Recuperarlos', pick.restore === 'yes')}${chip('restore', 'no', 'Empezar limpio', pick.restore === 'no')}</div>`
+        : '<p class="rd-card-note">No hay ajustes anteriores: empezará limpio.</p>'}
+      <div class="rd-start-footer">
+        ${confirmAction === 'cancel_start' ? `
+          <span>¿Cerrar el monitor sin iniciarlo?</span>
+          <button type="button" class="rd-action is-danger" data-startup-command="cancel_start"><b>Sí, cerrar</b></button>
+          <button type="button" class="rd-action" data-ui="cancel-confirm"><b>No</b></button>` : `
+          <button type="button" class="rd-action" data-ui="ask-cancel-start"><span>■</span><b>Cerrar sin iniciar</b></button>
+          <button type="button" class="rd-action rd-start-go" data-startup-command="start_monitor" ${missing.length ? 'disabled' : ''}>
+            <span>▶</span><b>${missing.length ? `Falta: ${escapeHtml(missing.join(', '))}` : `Iniciar · ${escapeHtml(STARTUP_MODES.find(mode => mode.code === pick.mode)?.label || '')} · ${escapeHtml(inicioLabel(pick.inicio))}`}</b>
+          </button>`}
+      </div>`;
+    panel.querySelectorAll('[data-startup-field]').forEach(button => {
+      button.addEventListener('click', () => {
+        const field = button.dataset.startupField;
+        const value = field === 'aachen' ? button.dataset.value === 'true' : button.dataset.value;
+        startupDraft = { ...startupDraft, [field]: value };
+        startupDraftAt = Date.now();
+        render();
+        postCommand('startup_select', { [field]: value }, null, { quiet: true });
+      });
+    });
+    panel.querySelector('[data-startup-command="start_monitor"]')?.addEventListener('click', event => {
+      const current = startupSelection(state);
+      postCommand('start_monitor', {
+        mode: current.mode, inicio: current.inicio, restore: current.restore, aachen: current.aachen,
+      }, event.currentTarget);
+    });
+    panel.querySelector('[data-startup-command="cancel_start"]')?.addEventListener('click', event => {
+      confirmAction = null;
+      postCommand('cancel_start', {}, event.currentTarget);
+    });
+    panel.querySelector('[data-ui="ask-cancel-start"]')?.addEventListener('click', () => askConfirm('cancel_start'));
+    panel.querySelector('[data-ui="cancel-confirm"]')?.addEventListener('click', () => askConfirm(null));
   }
 
   function renderMonitor(state, row) {
@@ -318,7 +479,10 @@
     const monitor = state.monitor || {};
     const health = monitorHealth(row, state);
     const online = health === 'live' || health === 'stale';
-    const liveLabel = { live: 'conectado', stale: 'lectura antigua', stopped: 'detenido', failing: 'fallando', offline: 'sin señal' }[health];
+    const liveLabel = {
+      live: 'conectado', stale: 'lectura antigua', stopped: 'detenido', failing: 'fallando',
+      offline: 'sin señal', awaiting: 'esperando arranque', starting: 'arrancando', closed: 'cerrado',
+    }[health];
     const scans = Array.isArray(state.scans) ? state.scans : [];
     const latestScan = scans.map(scan => parseDate(scan.observed_at)).filter(Boolean).sort((a, b) => b - a)[0];
     const chips = [
@@ -385,7 +549,14 @@
     shell.hidden = false;
     empty.hidden = true;
     const health = monitorHealth(row, state);
-    if (health === 'offline') {
+    shell.classList.toggle('is-startup', health === 'awaiting' || health === 'starting');
+    if (health === 'awaiting') {
+      setStatus('Monitor abierto · esperando arranque (aquí o en Telegram)', 'stale');
+    } else if (health === 'starting') {
+      setStatus('Arrancando · entrando en Asimut…', 'stale');
+    } else if (health === 'closed') {
+      setStatus(`Monitor cerrado ${relativeAge(row.observed_at)} · última lectura de Asimut ${lastReadLabel(row)}`, 'stale');
+    } else if (health === 'offline') {
       setStatus(`Sin señal del ordenador desde ${formatClock(row.heartbeat_at)} (${relativeAge(row.heartbeat_at)})`, 'error');
     } else if (health === 'failing') {
       const attempt = state.monitor.error.attempt;
@@ -411,9 +582,11 @@
       stopped: 'El programa sigue abierto pero el monitor se ha parado o se está reiniciando. Mira la ventana del monitor o su log en Windows.',
       failing: 'El programa está abierto en Windows pero el monitor cae al arrancar y se reintenta solo. Si el intento sigue subiendo, mira la ventana del monitor o su log; las reservas mostradas son las de la última lectura buena.',
       stale: 'El monitor está conectado pero lleva un rato sin leer Asimut (espera táctica, madrugada o un reintento). Las reservas mostradas pueden no estar al día.',
+      closed: 'Se cerró de forma limpia. Las reservas mostradas son las de la última lectura; para volver a abrirlo usa el acceso directo en el ordenador.',
     }[health];
     help.hidden = !helpText;
     help.textContent = helpText || '';
+    renderStartup(state, health);
     renderReservations(state.date, state.reservations, 'reservationBookingList');
     const quota = el('reservationQuotaCard');
     if (quota) {
@@ -432,34 +605,48 @@
     return {};
   }
 
-  async function sendCommand(button) {
-    if (!userId || !button?.dataset.command || button.disabled) return;
-    const command = button.dataset.command;
-    button.disabled = true;
-    button.classList.add('is-sending');
+  function sendCommand(button) {
+    if (!button?.dataset.command || button.disabled) return;
+    if (button.dataset.command === 'shutdown') confirmAction = null;
+    postCommand(button.dataset.command, commandPayload(button), button);
+  }
+
+  // quiet: selección del menú de arranque, ya reflejada en pantalla al tocar.
+  async function postCommand(command, payload, button, { quiet = false } = {}) {
+    if (!userId || !command || button?.disabled) return;
+    if (button) {
+      button.disabled = true;
+      button.classList.add('is-sending');
+    }
     try {
       const sb = getSB();
       const { data, error } = await sb.from('reservation_monitor_commands').insert({
         user_id: userId,
         source: selectedSource,
         command,
-        payload: commandPayload(button),
+        payload: payload || {},
       }).select('id').single();
       if (error) throw error;
-      pendingCommands.set(data.id, button);
-      setStatus('Orden enviada al monitor…', 'loading');
+      pendingCommands.set(data.id, button || { quiet: true, command });
+      if (!quiet) setStatus('Orden enviada al monitor…', 'loading');
       window.setTimeout(() => {
         const pending = pendingCommands.get(data.id);
         if (pending) {
-          pending.disabled = false;
-          pending.classList.remove('is-sending');
+          if (pending.classList) {
+            pending.disabled = false;
+            pending.classList.remove('is-sending');
+          }
           pendingCommands.delete(data.id);
         }
       }, 15000);
     } catch (error) {
-      button.disabled = false;
-      button.classList.remove('is-sending');
+      if (button) {
+        button.disabled = false;
+        button.classList.remove('is-sending');
+      }
+      if (command === 'startup_select') startupDraft = {};
       setStatus(`No se pudo enviar la orden: ${error.message || error}`, 'error');
+      if (quiet) render();
     }
   }
 
@@ -468,11 +655,14 @@
     if (!command.id || command.source !== selectedSource) return;
     if (!['applied', 'rejected', 'error', 'expired'].includes(command.status)) return;
     const button = pendingCommands.get(command.id);
-    if (button) {
+    if (button?.classList) {
       button.disabled = false;
       button.classList.remove('is-sending');
-      pendingCommands.delete(command.id);
     }
+    pendingCommands.delete(command.id);
+    // Una selección rechazada no debe quedarse pintada como si valiera.
+    if (command.command === 'startup_select' && command.status !== 'applied') startupDraft = {};
+    if (command.command === 'startup_select' && command.status === 'applied') return;
     setStatus(command.result || (command.status === 'applied' ? 'Orden aplicada' : 'La orden no se aplicó'), command.status === 'applied' ? 'ok' : 'error');
     window.setTimeout(() => refresh(false), 500);
   }

@@ -52,4 +52,14 @@ describe('reservation monitor dashboard', () => {
     expect(edge).toContain('error: cleanMonitorError(monitorRaw.error)');
     expect(dashboard).toContain("state.monitor.error ? 'failing' : 'stopped'");
   });
+
+  it('allows the startup and shutdown commands in the SQL check, the ingest whitelist and the app', () => {
+    const startupMigration = fs.readFileSync('supabase/migrations/20260927100000_reservation_monitor_startup_commands.sql', 'utf8');
+    for (const command of ['startup_select', 'start_monitor', 'cancel_start', 'shutdown']) {
+      expect(startupMigration).toContain(`'${command}'`);
+      expect(edge).toContain(`"${command}"`);
+      expect(dashboard).toContain(command);
+    }
+    expect(edge).toContain('startup: cleanStartup(raw.startup)');
+  });
 });

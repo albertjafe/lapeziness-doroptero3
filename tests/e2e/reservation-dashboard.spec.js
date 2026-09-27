@@ -176,3 +176,107 @@ test('shows a failing monitor with its error and never mistakes missing data for
   await expect(page.locator('#reservationBookingList')).toContainText('Aula 30.113');
   await expect(page.locator('#reservationBookingList')).not.toContainText('30113');
 });
+
+test('starts the monitor from the app with the same menu as Telegram', async ({ page }) => {
+  const now = new Date().toISOString();
+  const awaiting = structuredClone(sampleRow);
+  awaiting.observed_at = now;
+  awaiting.state = {
+    last_read_at: null, date: null, reservations: [], transition: null, scans: [], success_rate: '100%',
+    quota: { rf_mins: 0, sz_mins: 0, sz_applicable: false },
+    monitor: { online: false, phase: 'awaiting_start', paused: true, operating_mode: { code: '1', name: 'sin elegir' }, aachen_only: false },
+    startup: {
+      mode: null, inicio: '1000', restore: null, previous_available: true,
+      previous: {
+        saved_at: now, blind_periods: [['13:00', '14:00']], blinded_rooms: [30113], blinded_groups: [4],
+        priority_rooms: [113], no_rebook_count: 2,
+      },
+      inicio_options: ['off', '1000', '1030', '1100'],
+    },
+  };
+  await mountDashboard(page, awaiting);
+  const panel = page.locator('#reservationStartupPanel');
+  await expect(page.locator('#reservationHero')).toContainText('Listo para arrancar');
+  await expect(page.locator('#reservationDashboardStatus')).toContainText('esperando arranque');
+  await expect(page.locator('#reservationModeControls')).toBeHidden();
+  // Lo elegido en Telegram (10:00) ya viene marcado; los ajustes anteriores se ven en claro.
+  await expect(panel.locator('[data-startup-field="inicio"].active')).toHaveText('10:00');
+  await expect(panel).toContainText('13:00–14:00');
+  await expect(panel).toContainText('30.113');
+  await expect(panel).toContainText('G4');
+  const go = panel.locator('[data-startup-command="start_monitor"]');
+  await expect(go).toBeDisabled();
+  await expect(go).toContainText('Falta: modo, ajustes');
+  if (process.env.CAPTURE_RESERVATION_DASHBOARD) {
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    await page.screenshot({ path: 'test-results/reservation-startup-desktop.png', fullPage: true });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: 'test-results/reservation-startup-mobile.png', fullPage: true });
+    await page.setViewportSize({ width: 1280, height: 720 });
+  }
+
+  await panel.locator('[data-startup-field="mode"][data-value="2"]').click();
+  await expect(panel.locator('[data-startup-field="mode"][data-value="2"]')).toHaveClass(/active/);
+  await panel.locator('[data-startup-field="restore"][data-value="no"]').click();
+  await panel.locator('[data-startup-field="inicio"][data-value="off"]').click();
+  await expect(go).toBeEnabled();
+  await expect(go).toContainText('Iniciar · Grabación · Ahora');
+  await go.click();
+  const writes = await page.evaluate(() => window.__dashboardWrites);
+  expect(writes.slice(0, 3).map(w => [w.command, w.payload])).toEqual([
+    ['startup_select', { mode: '2' }],
+    ['startup_select', { restore: 'no' }],
+    ['startup_select', { inicio: 'off' }],
+  ]);
+  expect(writes[3]).toMatchObject({ command: 'start_monitor', payload: { mode: '2', inicio: 'off', restore: 'no', aachen: false } });
+
+  // Cerrar sin iniciar pide confirmación.
+  await page.evaluate(() => { window.__dashboardWrites.length = 0; });
+  await page.evaluate(async () => { await window.ReservationDashboard.refresh(false); });
+  await panel.locator('[data-ui="ask-cancel-start"]').click();
+  expect(await page.evaluate(() => window.__dashboardWrites.length)).toBe(0);
+  await panel.locator('[data-startup-command="cancel_start"]').click();
+  expect(await page.evaluate(() => window.__dashboardWrites[0])).toMatchObject({ command: 'cancel_start', payload: {} });
+
+  // Arrancando y, al llegar la primera lectura, el panel normal.
+  await page.evaluate(async () => {
+    window.__row.state.monitor.phase = 'starting';
+    await window.ReservationDashboard.refresh(false);
+  });
+  await expect(page.locator('#reservationHero')).toContainText('Entrando en Asimut');
+  await page.evaluate(async (running) => {
+    window.__row = running;
+    await window.ReservationDashboard.refresh(false);
+  }, sampleRow);
+  await expect(panel).toBeHidden();
+  await expect(page.locator('#reservationModeControls')).toBeVisible();
+});
+
+test('closes a running monitor only after confirming and shows its active settings', async ({ page }) => {
+  const running = structuredClone(sampleRow);
+  running.state.monitor.phase = 'running';
+  running.state.monitor.blind_periods = [['12:00', '12:30']];
+  running.state.monitor.blinded_rooms = [204];
+  await mountDashboard(page, running);
+  const settings = page.locator('#reservationSettingControls');
+  await expect(settings).toContainText('12:00–12:30');
+  await expect(settings).toContainText('G4');
+  await expect(settings).toContainText('113, 308');
+
+  await page.locator('[data-ui="ask-shutdown"]').click();
+  expect(await page.evaluate(() => window.__dashboardWrites.length)).toBe(0);
+  await expect(page.locator('#reservationQuickControls')).toContainText('¿Cerrar el monitor?');
+  await page.locator('[data-command="shutdown"]').click();
+  expect(await page.evaluate(() => window.__dashboardWrites[0])).toMatchObject({ command: 'shutdown', payload: {} });
+
+  // Cierre publicado por el monitor: «cerrado», no «sin señal», aunque el latido sea viejo.
+  await page.evaluate(async () => {
+    window.__row.state.monitor.phase = 'closed';
+    window.__row.state.monitor.online = false;
+    window.__row.heartbeat_at = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    await window.ReservationDashboard.refresh(false);
+  });
+  await expect(page.locator('#reservationHero')).toContainText('Cerrado sin errores');
+  await expect(page.locator('#reservationMonitorCard')).toContainText('cerrado');
+  await expect(page.locator('#reservationBookingList')).toContainText('Aula 113');
+});

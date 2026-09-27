@@ -19,7 +19,12 @@ const allowedCommands = new Set([
   "set_madrugada",
   "set_aachen",
   "set_emergency",
+  "startup_select",
+  "start_monitor",
+  "cancel_start",
+  "shutdown",
 ]);
+const allowedPhases = new Set(["awaiting_start", "starting", "running", "closed"]);
 
 function json(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
@@ -64,6 +69,48 @@ function cleanMonitorError(value: unknown) {
     attempt: cleanInteger(raw.attempt, 1, 1_000_000),
     at: cleanInstant(raw.at),
     retry_in_s: cleanInteger(raw.retry_in_s, 0, 86_400),
+  };
+}
+
+function cleanChoice(value: unknown, allowed: string[]): string | null {
+  return typeof value === "string" && allowed.includes(value) ? value : null;
+}
+
+function cleanInicio(value: unknown): string | null {
+  const text = cleanText(value, 4);
+  return text && (text === "off" || /^(?:[01]\d|2[0-3])[0-5]\d$/.test(text)) ? text : null;
+}
+
+// Menú de arranque que el monitor publica mientras espera Iniciar.
+function cleanStartup(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const previousRaw = raw.previous && typeof raw.previous === "object"
+    ? raw.previous as Record<string, unknown>
+    : null;
+  const intList = (list: unknown, max: number) => Array.isArray(list)
+    ? list.slice(0, 120).map((item) => cleanInteger(item, 1, max)).filter(Boolean)
+    : [];
+  return {
+    mode: cleanChoice(raw.mode, ["1", "2", "3", "4", "5"]),
+    inicio: cleanInicio(raw.inicio),
+    restore: cleanChoice(raw.restore, ["yes", "no"]),
+    previous_available: cleanBoolean(raw.previous_available),
+    previous: previousRaw ? {
+      saved_at: cleanInstant(previousRaw.saved_at),
+      blind_periods: Array.isArray(previousRaw.blind_periods)
+        ? previousRaw.blind_periods.slice(0, 16).map((period) => Array.isArray(period)
+          ? [cleanTime(period[0]), cleanTime(period[1])]
+          : [null, null])
+        : [],
+      blinded_rooms: intList(previousRaw.blinded_rooms, 99_999),
+      blinded_groups: intList(previousRaw.blinded_groups, 999),
+      priority_rooms: intList(previousRaw.priority_rooms, 99_999),
+      no_rebook_count: cleanInteger(previousRaw.no_rebook_count, 0, 10_000) || 0,
+    } : null,
+    inicio_options: Array.isArray(raw.inicio_options)
+      ? raw.inicio_options.slice(0, 24).map(cleanInicio).filter(Boolean)
+      : [],
   };
 }
 
@@ -128,6 +175,7 @@ function cleanState(value: unknown) {
 
   return {
     last_read_at: cleanInstant(raw.last_read_at),
+    startup: cleanStartup(raw.startup),
     date: cleanDate(raw.date),
     reservations,
     quota: cleanQuota(raw.quota),
@@ -140,6 +188,9 @@ function cleanState(value: unknown) {
     } : null,
     monitor: {
       online: cleanBoolean(monitorRaw.online),
+      phase: typeof monitorRaw.phase === "string" && allowedPhases.has(monitorRaw.phase)
+        ? monitorRaw.phase
+        : null,
       error: cleanMonitorError(monitorRaw.error),
       paused: cleanBoolean(monitorRaw.paused),
       target_date: cleanDate(monitorRaw.target_date),
