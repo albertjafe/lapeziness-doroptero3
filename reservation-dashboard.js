@@ -54,7 +54,8 @@
   ];
   const TAB_KEY = 'reservationDashboardTab';
   const LAST_START_KEY = 'reservationDashboardLastStart_';
-  let activeTab = (() => { try { return localStorage.getItem(TAB_KEY) || 'agenda'; } catch (_) { return 'agenda'; } })();
+  const TABS = ['monitor', 'ajustes'];
+  let activeTab = (() => { try { const saved = localStorage.getItem(TAB_KEY); return TABS.includes(saved) ? saved : 'monitor'; } catch (_) { return 'monitor'; } })();
   let modePickerOpen = false;
   let startupExpanded = false;
   let lastSummaryKey = '';
@@ -313,12 +314,22 @@
     list.innerHTML = items.map(item => {
       const status = timelineStatus(day, item);
       const statusLabel = status === 'current' ? 'en curso' : status === 'past' ? 'terminada' : 'próxima';
+      let progress = '';
+      if (status === 'current') {
+        const startAt = reservationMoment(day, item.start);
+        const endAt = reservationMoment(day, item.end);
+        const total = endAt - startAt;
+        const pct = total > 0 ? Math.max(0, Math.min(100, (Date.now() - startAt) / total * 100)) : 0;
+        const left = Math.max(0, Math.round((endAt - Date.now()) / 60000));
+        progress = `<span class="rd-booking-left">quedan ${durationLabel(left) || 'unos segundos'}</span><i class="rd-booking-progress" aria-hidden="true"><em style="width:${pct.toFixed(1)}%"></em></i>`;
+      }
       return `<article class="rd-booking is-${status}">
         <div class="rd-booking-time"><b>${escapeHtml(item.start || '—')}</b><span>${escapeHtml(item.end || '—')}</span></div>
         <div class="rd-booking-line" aria-hidden="true"><i></i></div>
         <div class="rd-booking-main">
           <strong>Aula ${escapeHtml(roomLabel(item.room))}</strong>
           <span>${durationLabel(reservationMinutes(item))}${item.type ? ` · ${escapeHtml(item.type)}` : ''}</span>
+          ${progress}
         </div>
         <div class="rd-booking-flags">
           ${item.locked ? '<span title="Reserva bloqueada">Bloqueada</span>' : ''}
@@ -332,18 +343,57 @@
   function quotaCard(quota) {
     const rf = Math.max(0, Number(quota?.rf_mins) || 0);
     const sz = Math.max(0, Number(quota?.sz_mins) || 0);
-    const max = Math.max(120, rf, sz);
-    return `<section class="rd-card rd-quota-card">
-      <div class="rd-card-head"><span>Cuota disponible</span><small>Asimut</small></div>
-      <div class="rd-quota-row">
-        <div><b>${rf}</b><span>min RF</span></div>
-        <i><em style="width:${Math.min(100, rf / max * 100)}%"></em></i>
-      </div>
-      ${quota?.sz_applicable ? `<div class="rd-quota-row is-secondary">
-        <div><b>${sz}</b><span>min SZ</span></div>
-        <i><em style="width:${Math.min(100, sz / max * 100)}%"></em></i>
-      </div>` : '<p class="rd-card-note">SZ no se aplica en fin de semana.</p>'}
+    const bar = (value, max) => `<i aria-hidden="true"><em style="width:${Math.min(100, value / max * 100)}%"></em></i>`;
+    return `<section class="rd-card rd-quota-card" aria-label="Cuota disponible en Asimut">
+      <div class="rd-quota-item"><span>RF</span><b>${rf}</b><small>min</small>${bar(rf, Math.max(480, rf))}</div>
+      ${quota?.sz_applicable
+        ? `<div class="rd-quota-item is-secondary"><span>SZ</span><b>${sz}</b><small>min</small>${bar(sz, Math.max(180, sz))}</div>`
+        : '<div class="rd-quota-item is-muted"><span>SZ</span><small>no se aplica el fin de semana</small></div>'}
     </section>`;
+  }
+
+  /* Línea del día: tus reservas como bloques sobre la ventana del monitor
+   * (10:00–20:30, ampliada si alguna reserva se sale) y una marca de «ahora». */
+  function toMinutes(hhmm) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || ''));
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  }
+  function renderDayBar(state) {
+    const bar = el('reservationDayBar');
+    if (!bar) return;
+    const items = Array.isArray(state.reservations) ? state.reservations : [];
+    if (!state.date) { bar.hidden = true; return; }
+    bar.hidden = false;
+    let from = toMinutes(state.monitor?.monitor_window?.start) ?? 600;
+    let to = toMinutes(state.monitor?.monitor_window?.end) ?? 1230;
+    items.forEach(item => {
+      const a = toMinutes(item.start), b = toMinutes(item.end);
+      if (a != null) from = Math.min(from, Math.floor(a / 60) * 60);
+      if (b != null) to = Math.max(to, Math.ceil(b / 60) * 60);
+    });
+    const span = Math.max(60, to - from);
+    const pos = minutes => `${((minutes - from) / span * 100).toFixed(2)}%`;
+    const now = new Date();
+    const isToday = state.date === localIsoDate(now);
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const ticks = [];
+    for (let h = Math.ceil(from / 60) * 60; h <= to; h += 120) ticks.push(h);
+    bar.innerHTML = `
+      <div class="rd-daybar-track" role="img" aria-label="Tus reservas del día sobre la franja ${escapeHtml(Math.floor(from / 60))}:00–${escapeHtml(Math.floor(to / 60))}:${pad(to % 60)}">
+        ${items.map(item => {
+          const a = toMinutes(item.start), b = toMinutes(item.end);
+          if (a == null || b == null) return '';
+          return `<i class="is-${timelineStatus(state.date, item)}" style="left:${pos(a)};width:${((b - a) / span * 100).toFixed(2)}%" title="${escapeHtml(item.start)}–${escapeHtml(item.end)} · Aula ${escapeHtml(roomLabel(item.room))}"></i>`;
+        }).join('')}
+        ${isToday && nowMin >= from && nowMin <= to ? `<b class="rd-daybar-now" style="left:${pos(nowMin)}"></b>` : ''}
+      </div>
+      <div class="rd-daybar-ticks" aria-hidden="true">${ticks.map(h => `<span style="left:${pos(h)}">${Math.floor(h / 60)}</span>`).join('')}</div>`;
+  }
+
+  function agendaSummary(items) {
+    const list = Array.isArray(items) ? items : [];
+    const total = list.reduce((sum, item) => sum + reservationMinutes(item), 0);
+    return list.length ? `${list.length} ${list.length === 1 ? 'reserva' : 'reservas'} · ${durationLabel(total)}` : 'sin reservas';
   }
 
   function toggleButton(item, enabled, disabled) {
@@ -455,7 +505,7 @@
     });
   }
   function setTab(name) {
-    activeTab = ['agenda', 'monitor', 'ajustes'].includes(name) ? name : 'agenda';
+    activeTab = TABS.includes(name) ? name : 'monitor';
     try { localStorage.setItem(TAB_KEY, activeTab); } catch (_) {}
     applyTab();
   }
@@ -664,7 +714,10 @@
     }
     section.hidden = false;
     const title = section.querySelector('[data-transition-title]');
-    if (title) title.textContent = `También ${formatDate(transition.date)}`;
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+    if (title) title.textContent = `${transition.date === localIsoDate(tomorrow) ? 'Mañana' : 'También'} · ${formatDate(transition.date)}`;
+    const meta = section.querySelector('[data-transition-meta]');
+    if (meta) meta.textContent = agendaSummary(transition.reservations);
     renderReservations(transition.date, transition.reservations, 'reservationTransitionList');
   }
 
@@ -783,6 +836,12 @@
     help.textContent = helpText || '';
     renderStartup(state, health);
     renderReservations(state.date, state.reservations, 'reservationBookingList');
+    renderDayBar(state);
+    const agendaTitle = el('reservationAgendaTitle');
+    if (agendaTitle) agendaTitle.textContent = state.date
+      ? `${state.date === localIsoDate(new Date()) ? 'Hoy' : 'Día'} · ${formatDate(state.date)}` : 'Tus reservas';
+    const agendaMeta = el('reservationAgendaMeta');
+    if (agendaMeta) agendaMeta.textContent = state.date ? agendaSummary(state.reservations) : '';
     const quota = el('reservationQuotaCard');
     if (quota) {
       quota.innerHTML = state.date

@@ -309,43 +309,60 @@ test('closes a running monitor only after confirming and shows its active settin
   await expect(page.locator('#aulasTodayCard')).toContainText('Monitor cerrado');
 });
 
-test('on the phone the screen is compact: tabs, mode picker and a live Hoy card', async ({ page }) => {
+test('on the phone your reservations come first: day bar, today, tomorrow, then fixed controls', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const running = structuredClone(sampleRow);
   running.state.reservations[0] = { ...running.state.reservations[0], start: '00:00', end: '23:59' };
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowIso = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+  running.state.transition = { date: tomorrowIso, reservations: [{ event_id: 93, start: '11:00', end: '12:30', room: '30204', type: 'Einzelbuchung', status: 'upcoming', locked: false, confirmed: false }], quota: { rf_mins: 0, sz_mins: 0, sz_applicable: true } };
   await mountDashboard(page, running);
+  // Barra inferior del móvil v2 (la mide mobile-v2.js en la app real).
+  await page.evaluate(() => {
+    document.documentElement.classList.add('mobile-v2');
+    document.body.classList.add('mv2-nav-visible');
+    document.documentElement.style.setProperty('--mv2-nav-h', '64px');
+    const nav = document.createElement('nav');
+    nav.style.cssText = 'position:fixed;left:0;right:0;bottom:0;height:64px;background:#fff;border-top:1px solid #ddd';
+    document.body.appendChild(nav);
+  });
   await expect(page.locator('#aulasTodayCard')).toContainText('Aula 113 · hasta 23:59');
-  await expect(page.locator('#aulasTodayCard')).toHaveAttribute('data-kind', 'live');
-  await expect(page.locator('#reservationHero .rd-hero-progress')).toBeVisible();
 
-  // Agenda por defecto; Monitor y Ajustes en sus pestañas.
-  await expect(page.locator('#reservationBookingList')).toBeVisible();
+  // Lo primero de la pantalla: la línea del día y tus reservas.
+  await expect(page.locator('#reservationHero')).toBeHidden();
+  await expect(page.locator('#reservationDayBar .rd-daybar-track i')).toHaveCount(2);
+  await expect(page.locator('#reservationAgendaTitle')).toContainText('Hoy');
+  await expect(page.locator('#reservationAgendaMeta')).toContainText('2 reservas');
+  await expect(page.locator('#reservationBookingList .rd-booking.is-current .rd-booking-progress')).toBeVisible();
+  await expect(page.locator('#reservationTransition')).toContainText('Mañana');
+  await expect(page.locator('#reservationTransition')).toContainText('Aula 30.204');
+  const screenTop = (await page.locator('#aulasDashboard').boundingBox()).y;
+  const listTop = (await page.locator('#reservationBookingList').boundingBox()).y;
+  expect(listTop - screenTop).toBeLessThan(200);
+
+  // Controles fijos encima de la navegación.
+  const bar = await page.locator('.rd-controlbar').boundingBox();
+  expect(bar.y + bar.height).toBeLessThanOrEqual(844 - 64);
+  expect(bar.y + bar.height).toBeGreaterThan(844 - 64 - 30);
+  if (process.env.CAPTURE_RESERVATION_DASHBOARD) await page.screenshot({ path: 'test-results/aulas-running-mobile.png' });
+
+  // Monitor y Ajustes en pestañas; las reservas siguen a la vista.
   await expect(page.locator('#reservationSettingControls')).toBeHidden();
   await page.locator('[data-rd-tab="ajustes"]').click();
   await expect(page.locator('#reservationSettingControls')).toBeVisible();
-  await expect(page.locator('#reservationBookingList')).toBeHidden();
-  await page.locator('[data-rd-tab="agenda"]').click();
+  await expect(page.locator('#reservationBookingList')).toBeVisible();
 
-  // El modo se ve con su explicación y se cambia desde un selector.
+  // El modo se cambia desde la barra: la lista se abre hacia arriba.
   const toggle = page.locator('#reservationModeToggle');
   await expect(toggle).toContainText('Grabación');
   await expect(page.locator('#reservationModeControls')).toBeHidden();
-  if (process.env.CAPTURE_RESERVATION_DASHBOARD) {
-    await page.screenshot({ path: 'test-results/aulas-running-mobile.png', fullPage: true });
-  }
   await toggle.click();
   await expect(page.locator('#reservationModeControls')).toBeVisible();
-  if (process.env.CAPTURE_RESERVATION_DASHBOARD) {
-    await page.screenshot({ path: 'test-results/aulas-mode-mobile.png', fullPage: true });
-  }
+  if (process.env.CAPTURE_RESERVATION_DASHBOARD) await page.screenshot({ path: 'test-results/aulas-mode-mobile.png' });
   await page.locator('#reservationModeControls [data-mode="1"]').click();
   expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({ command: 'set_operating_mode', payload: { mode: '1' } });
   await expect(page.locator('#reservationModeControls')).toBeHidden();
   if (process.env.CAPTURE_RESERVATION_DASHBOARD) {
-    await page.locator('[data-rd-tab="ajustes"]').click();
-    await page.screenshot({ path: 'test-results/aulas-settings-mobile.png', fullPage: true });
-    await page.locator('[data-rd-tab="monitor"]').click();
-    await page.screenshot({ path: 'test-results/aulas-monitor-mobile.png', fullPage: true });
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.screenshot({ path: 'test-results/aulas-running-desktop.png', fullPage: true });
     await page.setViewportSize({ width: 834, height: 1112 });

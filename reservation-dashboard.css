@@ -19,7 +19,8 @@
 .aulas-screen .rd-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 14px; }
 /* El título ya lo pone la cabecera de la app; aquí queda para lectores de pantalla. */
 .aulas-screen .rd-title-group h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.aulas-screen .rd-title-group p { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--text2); font-size: 14px; font-weight: 500; }
+.aulas-screen .rd-title-group { min-width: 0; flex: 1; }
+.aulas-screen .rd-title-group p { display: flex; align-items: center; gap: 8px; margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--text2); font-size: 14px; font-weight: 500; }
 .aulas-screen .rd-title-group p::before { content: ''; flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--text3); }
 .aulas-screen .rd-title-group p[data-kind="ok"]::before { background: var(--rd-ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--rd-ok) 18%, transparent); }
 .aulas-screen .rd-title-group p[data-kind="stale"]::before, .aulas-screen .rd-title-group p[data-kind="loading"]::before { background: var(--rd-warn); }
@@ -31,6 +32,11 @@
 .aulas-screen :is(.rd-source-switch, .rd-pane-tabs) button.active { background: var(--bg2); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
 .aulas-screen .rd-refresh { width: 42px; height: 42px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg2); color: var(--text2); font-size: 19px; cursor: pointer; }
 .aulas-screen .rd-refresh:hover { color: var(--accent); border-color: var(--accent); }
+
+/* Solo se ofrece el panel al que se puede cambiar (Piano Rooms <-> Monitor). */
+.aulas-screen .rd-pane-tabs { padding: 0; background: none; }
+.aulas-screen .rd-pane-tabs button.active { display: none; }
+.aulas-screen .rd-pane-tabs button:not(.active) { min-height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: 11px; background: var(--bg2); color: var(--text2); font-size: 13.5px; }
 
 /* ── Tarjetas base ────────────────────────────────────────────── */
 .aulas-screen .rd-card { border: 1px solid var(--border); border-radius: var(--rd-radius); background: var(--bg2); box-shadow: 0 1px 2px rgba(0, 0, 0, .04); overflow: hidden; }
@@ -102,14 +108,12 @@
 .aulas-screen .rd-mode-option.active { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 
 /* ── Pestañas y paneles ───────────────────────────────────────── */
-.aulas-screen .rd-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin: 0 0 12px; padding: 4px; border-radius: 14px; background: var(--bg3); }
+.aulas-screen .rd-tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px; margin: 0 0 12px; padding: 4px; border-radius: 14px; background: var(--bg3); }
 .aulas-screen .rd-tabs button { min-height: 42px; border: 0; border-radius: 11px; background: transparent; color: var(--text2); font-size: 15px; font-weight: 600; cursor: pointer; }
 .aulas-screen .rd-tabs button.active { background: var(--bg2); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
 .aulas-screen .rd-pane { display: grid; gap: 12px; align-content: start; }
-.aulas-screen .rd-panes:not([data-active-tab="monitor"]) [data-rd-pane="monitor"],
 .aulas-screen .rd-panes:not([data-active-tab="ajustes"]) [data-rd-pane="ajustes"],
-.aulas-screen .rd-panes[data-active-tab="monitor"] [data-rd-pane="agenda"],
-.aulas-screen .rd-panes[data-active-tab="ajustes"] [data-rd-pane="agenda"] { display: none; }
+.aulas-screen .rd-panes[data-active-tab="ajustes"] [data-rd-pane="monitor"] { display: none; }
 
 /* ── Agenda ───────────────────────────────────────────────────── */
 .aulas-screen .rd-booking-list { padding: 2px 16px 8px; }
@@ -136,14 +140,31 @@
 .aulas-screen .rd-empty-line small { color: var(--text3); font-size: 14px; }
 
 /* ── Cuota ────────────────────────────────────────────────────── */
-.aulas-screen .rd-quota-card { padding-bottom: 12px; }
-.aulas-screen .rd-quota-row { display: grid; grid-template-columns: 112px 1fr; align-items: center; gap: 14px; padding: 8px 16px 2px; }
-.aulas-screen .rd-quota-row > div { display: flex; align-items: baseline; gap: 6px; }
-.aulas-screen .rd-quota-row b { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.aulas-screen .rd-quota-row span { color: var(--text3); font-size: 13px; }
-.aulas-screen .rd-quota-row > i { height: 8px; border-radius: 8px; background: var(--bg3); overflow: hidden; }
-.aulas-screen .rd-quota-row > i em { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
-.aulas-screen .rd-quota-row.is-secondary > i em { opacity: .45; }
+.aulas-screen .rd-quota-card { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 12px 16px; }
+.aulas-screen .rd-quota-item { display: grid; grid-template-columns: auto auto 1fr; align-items: baseline; column-gap: 6px; row-gap: 6px; min-width: 0; }
+.aulas-screen .rd-quota-item span { color: var(--text3); font-size: 12px; font-weight: 700; letter-spacing: .06em; }
+.aulas-screen .rd-quota-item b { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.aulas-screen .rd-quota-item small { color: var(--text3); font-size: 12.5px; }
+.aulas-screen .rd-quota-item > i { grid-column: 1 / -1; height: 6px; border-radius: 6px; background: var(--bg3); overflow: hidden; }
+.aulas-screen .rd-quota-item > i em { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.aulas-screen .rd-quota-item.is-secondary > i em { opacity: .5; }
+.aulas-screen .rd-quota-item.is-muted small { grid-column: 2 / -1; }
+
+/* ── Tus reservas (arriba del todo) ──────────────────────────── */
+.aulas-screen .rd-agenda { display: grid; gap: 10px; margin: 0 0 14px; }
+.aulas-screen .rd-agenda .rd-card-head > span { color: var(--text); font-size: 14px; letter-spacing: .02em; }
+.aulas-screen .rd-daybar { padding: 2px 4px 0; }
+.aulas-screen .rd-daybar-track { position: relative; height: 22px; border-radius: 8px; background: var(--bg3); overflow: hidden; }
+.aulas-screen .rd-daybar-track i { position: absolute; top: 3px; bottom: 3px; border-radius: 5px; background: color-mix(in srgb, var(--accent) 55%, var(--bg3)); }
+.aulas-screen .rd-daybar-track i.is-past { background: color-mix(in srgb, var(--text3) 35%, var(--bg3)); }
+.aulas-screen .rd-daybar-track i.is-current { background: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.aulas-screen .rd-daybar-now { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--rd-bad); border-radius: 2px; }
+.aulas-screen .rd-daybar-ticks { position: relative; height: 16px; margin-top: 3px; }
+.aulas-screen .rd-daybar-ticks span { position: absolute; transform: translateX(-50%); color: var(--text3); font-size: 11px; font-variant-numeric: tabular-nums; }
+.aulas-screen .rd-booking-left { color: var(--accent) !important; font-weight: 600; }
+.aulas-screen .rd-booking-progress { display: block; height: 5px; margin-top: 4px; border-radius: 5px; background: color-mix(in srgb, var(--accent) 16%, var(--bg3)); overflow: hidden; }
+.aulas-screen .rd-booking-progress em { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.aulas-screen .rd-booking.is-current { background: color-mix(in srgb, var(--accent) 7%, transparent); margin: 0 -16px; padding: 0 16px; }
 
 /* ── Monitor ──────────────────────────────────────────────────── */
 .aulas-screen .rd-monitor-card { padding-bottom: 16px; }
@@ -283,13 +304,48 @@ body[data-view="aulas"] .piano-rooms-open { display: none !important; }
   .aulas-screen .rd-controlbar { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: start; }
 }
 @media (min-width: 1000px) {
-  /* Escritorio: todo a la vista, sin pestañas. */
-  .aulas-screen .rd-tabs { display: none; }
-  .aulas-screen .rd-panes { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr); grid-template-areas: "agenda monitor" "agenda ajustes"; gap: 14px; align-items: start; }
+  /* Escritorio: reservas a la izquierda; controles, monitor y ajustes a la derecha. */
+  .aulas-screen #reservationDashboardContent:not(.is-startup) { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr); column-gap: 16px; align-items: start; }
+  .aulas-screen #reservationDashboardContent:not(.is-startup) > * { grid-column: 1; }
+  .aulas-screen #reservationDashboardContent:not(.is-startup) > :is(.rd-controlbar, .rd-panes) { grid-column: 2; }
+  .aulas-screen #reservationDashboardContent:not(.is-startup) > .rd-controlbar { grid-row: 1; grid-template-columns: 1fr; }
+  .aulas-screen #reservationDashboardContent:not(.is-startup) > .rd-controlbar .rd-quick-controls { grid-template-columns: minmax(0, 1fr) auto; }
+  .aulas-screen #reservationDashboardContent:not(.is-startup) > .rd-controlbar .rd-target .rd-action { padding: 0 14px; }
+  .aulas-screen #reservationDashboardContent:not(.is-startup) > .rd-panes { grid-row: 2 / span 8; display: grid; gap: 12px; }
+  .aulas-screen .rd-tabs { display: none !important; }
   .aulas-screen .rd-panes [data-rd-pane] { display: grid !important; }
-  .aulas-screen [data-rd-pane="agenda"] { grid-area: agenda; }
-  .aulas-screen [data-rd-pane="monitor"] { grid-area: monitor; }
-  .aulas-screen [data-rd-pane="ajustes"] { grid-area: ajustes; }
+}
+@media (max-width: 700px) {
+  /* Móvil: lo primero, tus reservas. La cabecera grande solo aparece para
+     avisos (arranque, sin señal, fallos...); en directo manda la lista. */
+  .aulas-screen .rd-hero:is([data-health="live"], [data-health="stale"]) { display: none; }
+  .aulas-screen .rd-booking { min-height: 58px; }
+  .aulas-screen .rd-booking-main strong { font-size: 17px; }
+  /* Controles fijos y compactos, justo encima de la barra de navegación. */
+  html.mobile-v2 body.mv2-nav-visible .aulas-screen #reservationDashboardContent:not(.is-startup) { padding-bottom: 96px; }
+  html.mobile-v2 body.mv2-nav-visible .aulas-screen #reservationDashboardContent:not(.is-startup) > .rd-controlbar {
+    position: fixed; z-index: 90; left: 8px; right: 8px; bottom: calc(var(--mv2-nav-h, 64px) + 8px);
+    display: grid; grid-template-columns: 1fr auto; gap: 6px; margin: 0; padding: 6px;
+    border: 1px solid var(--border); border-radius: 18px; background: color-mix(in srgb, var(--bg2) 94%, transparent);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .16); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  }
+  html.mobile-v2 body.mv2-nav-visible .aulas-screen .rd-controlbar .rd-quick-controls { grid-template-columns: auto 1fr; gap: 6px; }
+  html.mobile-v2 body.mv2-nav-visible .aulas-screen .rd-controlbar .rd-action-main { min-height: 46px; padding: 4px 12px 4px 6px; grid-template-rows: auto; }
+  html.mobile-v2 body.mv2-nav-visible .aulas-screen .rd-controlbar .rd-action-main > span { grid-row: 1; width: 34px; height: 34px; font-size: 13px; }
+  html.mobile-v2 body.mv2-nav-visible .aulas-screen .rd-controlbar .rd-action-main b { font-size: 15px; }
+  html.mobile-v2 body.mv2-nav-visible .aulas-screen .rd-controlbar .rd-action-main small { display: none; }
+  html.mobile-v2 body.mv2-nav-visible .aulas-screen .rd-controlbar .rd-target { padding: 3px; border-radius: 13px; }
+  html.mobile-v2 body.mv2-nav-visible .aulas-screen .rd-controlbar .rd-target .rd-action { min-height: 40px; padding: 0 8px; font-size: 14px; }
+  html.mobile-v2 body.mv2-nav-visible .aulas-screen .rd-controlbar .rd-mode-picker { position: static; border-radius: 14px; }
+  html.mobile-v2 body.mv2-nav-visible .aulas-screen .rd-controlbar .rd-mode-current { min-height: 46px; padding: 4px 12px; }
+  html.mobile-v2 body.mv2-nav-visible .aulas-screen .rd-controlbar .rd-mode-copy small,
+  html.mobile-v2 body.mv2-nav-visible .aulas-screen .rd-controlbar .rd-mode-copy span { display: none; }
+  html.mobile-v2 body.mv2-nav-visible .aulas-screen .rd-controlbar .rd-mode-copy b { font-size: 15px; }
+  /* Los modos se despliegan hacia arriba, encima de la barra. */
+  html.mobile-v2 body.mv2-nav-visible .aulas-screen .rd-controlbar .rd-mode-controls.is-open {
+    position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); max-height: 60vh; overflow-y: auto;
+    border: 1px solid var(--border); border-radius: 16px; background: var(--bg2); box-shadow: 0 14px 36px rgba(0, 0, 0, .2);
+  }
 }
 @media (max-width: 560px) {
   .aulas-screen { padding-left: 2px; padding-right: 2px; }
