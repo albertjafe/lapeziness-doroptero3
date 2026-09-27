@@ -181,6 +181,28 @@
 .aulas-screen .rd-confirm { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--rd-bad) 35%, var(--border)); border-radius: var(--rd-radius); background: color-mix(in srgb, var(--rd-bad) 6%, var(--bg2)); }
 .aulas-screen .rd-confirm > span { color: var(--text); font-size: 14px; }
 
+/* ── Laboratorio de cuotas ─────────────────────────────────────── */
+.aulas-screen .rd-lab-card { padding-bottom: 14px; }
+.aulas-screen #reservationQuotaLab { display: grid; gap: 10px; padding: 4px 16px 0; }
+.aulas-screen .rd-lab-intro, .aulas-screen .rd-lab-meta { margin: 0; color: var(--text2); font-size: 13.5px; line-height: 1.45; }
+.aulas-screen .rd-lab-meta { color: var(--text3); font-size: 12.5px; }
+.aulas-screen .rd-lab-status { margin: 0; font-size: 14px; font-weight: 600; }
+.aulas-screen .rd-lab-status.is-running { color: var(--rd-warn); }
+.aulas-screen .rd-lab-status.is-error { color: var(--rd-bad); }
+.aulas-screen .rd-lab-results { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.aulas-screen .rd-lab-results li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; padding: 10px 12px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); }
+.aulas-screen .rd-lab-results i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-style: normal; font-weight: 800; background: var(--bg3); color: var(--text3); }
+.aulas-screen .rd-lab-results li.is-yes i { background: color-mix(in srgb, var(--rd-ok) 16%, transparent); color: var(--rd-ok); }
+.aulas-screen .rd-lab-results li.is-no i { background: color-mix(in srgb, var(--rd-bad) 14%, transparent); color: var(--rd-bad); }
+.aulas-screen .rd-lab-results span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.aulas-screen .rd-lab-results b { font-size: 14.5px; font-weight: 650; }
+.aulas-screen .rd-lab-results small { color: var(--text2); font-size: 13px; line-height: 1.45; }
+.aulas-screen .rd-lab-tests summary { cursor: pointer; color: var(--accent); font-size: 14px; font-weight: 600; min-height: 36px; display: flex; align-items: center; }
+.aulas-screen .rd-lab-tests table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.aulas-screen .rd-lab-tests :is(th, td) { padding: 6px 4px; border-bottom: 1px solid var(--border); text-align: left; }
+.aulas-screen .rd-lab-tests th { color: var(--text3); font-weight: 600; }
+.aulas-screen .rd-lab-run { width: 100%; }
+
 /* ── Arranque desde la app ────────────────────────────────────── */
 #reservationDashboardContent.is-startup > :is(.rd-controlbar, .rd-tabs, .rd-panes) { display: none; }
 .aulas-screen .rd-startup { margin: 0 0 14px; padding: 18px; border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border)); border-radius: 20px; background: var(--bg2); box-shadow: 0 10px 28px rgba(0, 0, 0, .06); }

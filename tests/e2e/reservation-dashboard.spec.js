@@ -352,3 +352,31 @@ test('on the phone the screen is compact: tabs, mode picker and a live Hoy card'
     await page.screenshot({ path: 'test-results/aulas-running-ipad.png', fullPage: true });
   }
 });
+
+test('launches the quota lab from Ajustes and shows its conclusions', async ({ page }) => {
+  const running = structuredClone(sampleRow);
+  running.state.quota_lab = {
+    status: 'done', finished_at: new Date().toISOString(), progress: 'Guardado',
+    questions: [
+      { id: 'horizonte', title: 'El tramo gratis va del cuarto actual a +2 h', verdict: 'yes', text: 'Ahora es gratis hasta las 11:00.' },
+      { id: 'sz_lineal', title: 'SZ: al cruzar 10:00/15:00 solo pagas lo de dentro', verdict: 'unknown', text: 'Hace falta SZ libre.' },
+    ],
+    tests: [{ id: 'SZ_EXACTA', day: new Date().toISOString().slice(0, 10), ini: '10:00', fin: '11:00', min: 60, sz: false, rf: false, codes: [] }],
+  };
+  await mountDashboard(page, running);
+  const lab = page.locator('#reservationQuotaLab');
+  await expect(lab).toContainText('sin reservar nada');
+  await expect(lab.locator('li.is-yes')).toContainText('Ahora es gratis hasta las 11:00');
+  await expect(lab.locator('li.is-unknown')).toContainText('Hace falta SZ libre');
+  await expect(lab).toContainText('1 simulaciones');
+  await lab.locator('[data-command="run_quota_lab"]').click();
+  expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({ command: 'run_quota_lab', payload: {} });
+
+  // Mientras corre, el botón se desactiva y se ve el progreso.
+  await page.evaluate(async () => {
+    window.__row.state.quota_lab = { status: 'running', progress: 'Cuotas: …', questions: [], tests: [] };
+    await window.ReservationDashboard.refresh(false);
+  });
+  await expect(lab).toContainText('En marcha… Cuotas: …');
+  await expect(lab.locator('[data-command="run_quota_lab"]')).toBeDisabled();
+});

@@ -412,6 +412,39 @@
     danger.querySelector('[data-ui="cancel-confirm"]')?.addEventListener('click', () => askConfirm(null));
   }
 
+  /* Laboratorio de cuotas: el monitor hace simulaciones type=check en Asimut
+   * (nunca reserva) y publica aquí qué reglas ha confirmado. */
+  const LAB_ICON = { yes: '✓', no: '✗', unknown: '?' };
+  function renderQuotaLab(state, offline) {
+    const wrap = el('reservationQuotaLab');
+    if (!wrap) return;
+    const lab = state.quota_lab || { status: 'idle' };
+    const running = lab.status === 'running';
+    const when = lab.finished_at ? relativeAge(lab.finished_at) : '';
+    const questions = Array.isArray(lab.questions) ? lab.questions : [];
+    const tests = Array.isArray(lab.tests) ? lab.tests : [];
+    wrap.innerHTML = `
+      <p class="rd-lab-intro">Prueba en Asimut cómo se combinan la SZ, el RF y el tramo gratis de 2 h <b>sin reservar nada</b>: son simulaciones que Asimut evalúa y descarta. Tarda un minuto.</p>
+      ${running ? `<p class="rd-lab-status is-running">En marcha… ${escapeHtml(lab.progress || '')}</p>` : ''}
+      ${lab.status === 'error' ? `<p class="rd-lab-status is-error">No se pudo terminar: ${escapeHtml(lab.error || 'error')}</p>` : ''}
+      ${questions.length ? `<ul class="rd-lab-results">${questions.map(q => `
+        <li class="is-${escapeHtml(q.verdict || 'unknown')}">
+          <i aria-hidden="true">${LAB_ICON[q.verdict] || '?'}</i>
+          <span><b>${escapeHtml(q.title || q.id)}</b><small>${escapeHtml(q.text || '')}</small></span>
+        </li>`).join('')}</ul>
+      <p class="rd-lab-meta">Último laboratorio ${escapeHtml(when)} · ${tests.length} simulaciones</p>
+      <details class="rd-lab-tests"><summary>Ver las simulaciones</summary>
+        <table><thead><tr><th>Prueba</th><th>Día</th><th>Horario</th><th>SZ</th><th>RF</th></tr></thead><tbody>
+        ${tests.map(t => `<tr><td>${escapeHtml(t.id)}</td><td>${escapeHtml(formatDate(t.day))}</td><td>${escapeHtml(t.ini || '')}–${escapeHtml(t.fin || '')}</td>
+          <td>${t.sz ? 'se pasa' : 'cabe'}</td><td>${t.rf ? 'se pasa' : 'cabe'}</td></tr>`).join('')}
+        </tbody></table>
+      </details>` : ''}
+      <button type="button" class="rd-action rd-lab-run" data-command="run_quota_lab" ${offline || running ? 'disabled' : ''}>
+        <span aria-hidden="true">⚗</span><b>${running ? 'Laboratorio en marcha…' : questions.length ? 'Repetir laboratorio' : 'Lanzar laboratorio'}</b>
+      </button>`;
+    wrap.querySelector('[data-command="run_quota_lab"]')?.addEventListener('click', event => sendCommand(event.currentTarget));
+  }
+
   function applyTab() {
     const panes = el('reservationPanes');
     if (panes) panes.dataset.activeTab = activeTab;
@@ -758,6 +791,7 @@
     }
     renderMonitor(state, row);
     renderControls(state, row);
+    renderQuotaLab(state, ageMs(row) > OFFLINE_MS || state.monitor?.online === false);
     renderTransition(state.transition);
     applyTab();
     renderTodayCard(row);

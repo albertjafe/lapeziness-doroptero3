@@ -62,4 +62,12 @@ describe('reservation monitor dashboard', () => {
     }
     expect(edge).toContain('startup: cleanStartup(raw.startup)');
   });
+
+  it('allows the quota lab command in every layer and never books from it', () => {
+    const labMigration = fs.readFileSync('supabase/migrations/20260927180000_reservation_monitor_quota_lab.sql', 'utf8');
+    expect(labMigration).toContain("'run_quota_lab'");
+    expect(edge).toContain('"run_quota_lab"');
+    expect(edge).toContain('quota_lab: cleanQuotaLab(raw.quota_lab)');
+    expect(dashboard).toContain('data-command="run_quota_lab"');
+  });
 });

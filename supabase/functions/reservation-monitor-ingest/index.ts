@@ -23,6 +23,7 @@ const allowedCommands = new Set([
   "start_monitor",
   "cancel_start",
   "shutdown",
+  "run_quota_lab",
 ]);
 const allowedPhases = new Set(["awaiting_start", "starting", "running", "closed"]);
 
@@ -114,6 +115,43 @@ function cleanStartup(value: unknown) {
   };
 }
 
+// Laboratorio de cuotas (solo simulaciones type=check): conclusiones y pruebas.
+function cleanQuotaLab(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const questions = Array.isArray(raw.questions) ? raw.questions.slice(0, 12).map((item) => {
+    const q = item && typeof item === "object" ? item as Record<string, unknown> : {};
+    return {
+      id: cleanText(q.id, 40),
+      title: cleanText(q.title, 120),
+      verdict: cleanChoice(q.verdict, ["yes", "no", "unknown"]) || "unknown",
+      text: cleanText(q.text, 480),
+    };
+  }) : [];
+  const tests = Array.isArray(raw.tests) ? raw.tests.slice(0, 40).map((item) => {
+    const t = item && typeof item === "object" ? item as Record<string, unknown> : {};
+    return {
+      id: cleanText(t.id, 40),
+      day: cleanDate(t.day),
+      ini: cleanTime(t.ini),
+      fin: cleanTime(t.fin),
+      min: cleanInteger(t.min, 0, 1440),
+      sz: cleanBoolean(t.sz),
+      rf: cleanBoolean(t.rf),
+      codes: Array.isArray(t.codes) ? t.codes.slice(0, 8).map((c) => cleanText(c, 40)).filter(Boolean) : [],
+    };
+  }) : [];
+  return {
+    status: cleanChoice(raw.status, ["idle", "running", "done", "error"]) || "idle",
+    started_at: cleanInstant(raw.started_at),
+    finished_at: cleanInstant(raw.finished_at),
+    error: cleanText(raw.error, 300),
+    progress: cleanText(raw.progress, 200),
+    questions,
+    tests,
+  };
+}
+
 function cleanInteger(value: unknown, min: number, max: number): number | null {
   const number = Number(value);
   if (!Number.isInteger(number)) return null;
@@ -176,6 +214,7 @@ function cleanState(value: unknown) {
   return {
     last_read_at: cleanInstant(raw.last_read_at),
     startup: cleanStartup(raw.startup),
+    quota_lab: cleanQuotaLab(raw.quota_lab),
     date: cleanDate(raw.date),
     reservations,
     quota: cleanQuota(raw.quota),
