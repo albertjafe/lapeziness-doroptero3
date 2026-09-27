@@ -27,17 +27,25 @@ async function prepare(page, data = base) {
 }
 
 test('mobile header keeps the next competition deadline compact', async ({ page }) => {
+  // Fechas relativas a hoy: con fechas fijas la prueba caducó el 27-09-2026
+  // (el plazo ya había pasado y la app mostraba, bien, el siguiente concurso).
+  const day = offset => {
+    const date = new Date();
+    date.setDate(date.getDate() + offset);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+  const deadline = day(2), start = day(22), end = day(28);
   const data = structuredClone(base);
   data.eventos = [
     {
       id:'brescia-parent', nombre:'Brescia Classica International Piano Competition', tipo:'concurso',
-      fecha:'2026-10-19', fechaFin:'2026-10-25', estado:'standby', planSourceId:'dossier-2026-2027:brescia-classica-2026',
-      competition:{ source:'dossier', name:'Brescia Classica International Piano Competition', location:'Brescia, Italia', start:'2026-10-19', end:'2026-10-25', deadline:'2026-09-26', requiresVideo:false }
+      fecha:start, fechaFin:end, estado:'standby', planSourceId:'dossier-2026-2027:brescia-classica-2026',
+      competition:{ source:'dossier', name:'Brescia Classica International Piano Competition', location:'Brescia, Italia', start, end, deadline, requiresVideo:false }
     },
     {
       id:'brescia-deadline', nombre:'Inscripción · Brescia Classica International Piano Competition', tipo:'concurso',
-      fecha:'2026-09-26', estado:'standby', esHito:true, hitoTipo:'deadline', parentSourceId:'dossier-2026-2027:brescia-classica-2026',
-      competition:{ source:'dossier', name:'Brescia Classica International Piano Competition', location:'Brescia, Italia', start:'2026-10-19', end:'2026-10-25', deadline:'2026-09-26', requiresVideo:false }
+      fecha:deadline, estado:'standby', esHito:true, hitoTipo:'deadline', parentSourceId:'dossier-2026-2027:brescia-classica-2026',
+      competition:{ source:'dossier', name:'Brescia Classica International Piano Competition', location:'Brescia, Italia', start, end, deadline, requiresVideo:false }
     }
   ];
   await page.setViewportSize({ width:390, height:844 });
