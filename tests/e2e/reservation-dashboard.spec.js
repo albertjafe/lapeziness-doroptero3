@@ -46,7 +46,7 @@ const todayCard = indexHtml.match(/<button type="button" class="aulas-today-card
 async function mountDashboard(page, row) {
   await page.goto('/reservation-dashboard.css?v=461');
   await page.setContent(`<!doctype html><html lang="es" data-theme="marmol"><head>
-    <link rel="stylesheet" href="http://127.0.0.1:4173/styles.css?v=342">
+    <link rel="stylesheet" href="http://127.0.0.1:4173/styles.css?v=464">
     <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=461">
   </head><body data-view="aulas">${todayCard}${aulasView}</body></html>`);
 

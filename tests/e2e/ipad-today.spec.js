@@ -9,6 +9,8 @@ async function boot(page) {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'platform', { configurable: true, get: () => 'MacIntel' });
     Object.defineProperty(navigator, 'maxTouchPoints', { configurable: true, get: () => 5 });
+    // Diseño clásico del iPad (el diseño v2 en iPad se prueba en ipad-v2.spec.js).
+    localStorage.setItem('alberto_mobile_design', 'classic');
     const now = new Date();
     const date = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
     const fixture = {

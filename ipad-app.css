@@ -1,0 +1,37 @@
+/* iPad · CAPA FINAL (se carga al final del <body>, como desktop-app.css en
+   Windows). Todos los selectores empiezan por html.platform-ipad:not(#ip):not(#ip)
+   para ganar a las capas antiguas sin pelear regla a regla. Aquí va lo común a
+   cualquier diseño del iPad (cabecera, títulos, letra); lo del diseño v2 vive en
+   mobile-v2.css bajo html.mv2-tablet. */
+
+/* ── Cabecera ─────────────────────────────────────────────────── */
+/* Aulas ya está en la barra inferior. */
+html.platform-ipad:not(#ip):not(#ip) .header-actions .piano-rooms-open { display: none !important; }
+/* Próximo evento: el nombre se recorta, los días siempre a la vista. */
+html.platform-ipad:not(#ip):not(#ip) .header-actions #packNameHeader {
+  display: inline-flex !important; align-items: center; gap: 8px; min-width: 0; max-width: min(44vw, 420px) !important;
+  padding: 5px 5px 5px 12px; border: 1px solid var(--border2); border-radius: 999px; background: var(--bg2);
+  color: var(--text2) !important; font: 500 13px/1.2 var(--font-system) !important; white-space: nowrap;
+}
+html.platform-ipad:not(#ip):not(#ip) .header-actions #packNameHeader:is(:empty, [hidden]) { display: none !important; }
+html.platform-ipad:not(#ip):not(#ip) .header-event-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+html.platform-ipad:not(#ip):not(#ip) .header-event-days {
+  flex: 0 0 auto; padding: 3px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+  background: color-mix(in srgb, var(--accent) 13%, var(--bg2)); color: var(--accent);
+}
+
+/* ── Un solo título por pantalla (el de la cabecera) ─────────────── */
+html.platform-ipad:not(#ip):not(#ip) :is(#view-premios, #view-habitos) > .ajustes-header { display: none !important; }
+html.platform-ipad:not(#ip):not(#ip) :is(#view-premios, #view-habitos) .ajustes-body { padding-top: 4px !important; }
+html.platform-ipad:not(#ip):not(#ip) #view-deutsch .german-header { display: none !important; }
+html.platform-ipad:not(#ip):not(#ip) #view-deutsch .german-note { margin-top: 4px !important; }
+
+/* ── Etiquetas pequeñas con la letra del sistema ──────────────────
+   La monoespaciada se queda para cifras (reloj, totales, ejes). */
+html.platform-ipad:not(#ip):not(#ip) :is(.cal-tab, .stats-seg-btn, .stats-period-label, .stats-card-title, .session-focus-status, .session-focus-probability > span) {
+  font-family: var(--font-system) !important; letter-spacing: .01em !important;
+}
+
+/* Alemán: el lanzador sin titular de cartel (el título ya está arriba). */
+html.platform-ipad:not(#ip):not(#ip) #view-deutsch .german-launch { padding: 24px 28px !important; }
+html.platform-ipad:not(#ip):not(#ip) #view-deutsch .german-launch h1 { font-size: 28px !important; line-height: 1.15 !important; letter-spacing: -.01em !important; margin: 6px 0 8px !important; }

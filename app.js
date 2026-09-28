@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-26-ajustes-v457';
+const APP_VERSION = '2026-09-27-ipad-v464';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -135,6 +135,8 @@ function saveData() {
   }
   refreshStudyViews();
   enqueueCloudSync();
+  // Las pantallas vecinas del gesto lateral se repintan en un rato libre.
+  if (typeof viewSwipeScheduleWarm === 'function') viewSwipeScheduleWarm(1200);
   return true;
 }
 
@@ -862,6 +864,9 @@ function updateContextHeader(name) {
   const date = document.getElementById('headerDate');
   if (eyebrow) eyebrow.textContent = context.eyebrow;
   if (title) title.textContent = context.title;
+  // El próximo evento solo acompaña a Hoy y Calendario (antes se quedaba pegado).
+  const nextEvent = document.getElementById('packNameHeader');
+  if (nextEvent) nextEvent.hidden = !(name === 'session' || name === 'calendario');
   if (date) {
     const showsDate = name === 'calendario';
     date.hidden = !showsDate;
@@ -935,7 +940,9 @@ function showView(name, options) {
     if (typeof updateLiveProbabilityUI === 'function') updateLiveProbabilityUI(true);
   }
   if (name === 'obras' && !opts.swipePrepared) renderObras();
-  if (name === 'calendario') renderCalendario();
+  if (name === 'calendario' && !opts.swipePrepared) renderCalendario();
+  if (!opts.swipePrepared) viewSwipeMarkWarm(name);
+  viewSwipeScheduleWarm();
   if (typeof googleCalendarOnView === 'function') googleCalendarOnView(name);
   window.dispatchEvent(new CustomEvent('app:viewchange', { detail: { name } }));
 }
@@ -1091,9 +1098,14 @@ function updateHeader() {
   const headerSub = document.getElementById('packNameHeader');
   if (proxEvento && (currentView === 'session' || currentView === 'calendario')) {
     const dias2 = Math.ceil((new Date(proxEvento.fecha) - now) / 86400000);
-    headerSub.textContent = proxEvento.nombre + ' · ' + dias2 + 'd';
+    // Nombre y días por separado: si el nombre se recorta, los días siguen a la vista.
+    headerSub.replaceChildren(
+      Object.assign(document.createElement('span'), { className: 'header-event-name', textContent: proxEvento.nombre }),
+      Object.assign(document.createElement('b'), { className: 'header-event-days', textContent: dias2 + ' d' }));
+    headerSub.title = proxEvento.nombre + ' · ' + dias2 + ' d';
   } else {
     headerSub.textContent = '';
+    headerSub.removeAttribute('title');
   }
 }
 
@@ -1304,6 +1316,75 @@ const SWIPE_VIEW_ORDER = ['session', 'cronometro', 'obras', 'calendario'];
 let _viewSwipe = null;
 let _viewSwipeMultiTouch = false;
 
+// ── Vecinas listas de antemano ─────────────────────────────────────────────
+// El primer movimiento del dedo no debe pintar nada: si la vista vecina ya se
+// pintó con los mismos datos, se reutiliza tal cual (y al terminar el gesto
+// showView tampoco la repinta). La firma cambia con cada guardado o sync
+// (_localRevision), con el día y, en Hoy, con el minuto (lleva cifras en vivo).
+const _viewSwipeWarm = {};
+const _viewSwipeDbIds = new WeakMap();
+let _viewSwipeDbSeq = 0;
+let _viewSwipeWarmTimer = null;
+
+function viewSwipeContentSig(name) {
+  let id = 0;
+  try {
+    if (db && typeof db === 'object') {
+      id = _viewSwipeDbIds.get(db);
+      if (!id) { id = ++_viewSwipeDbSeq; _viewSwipeDbIds.set(db, id); }
+    }
+  } catch (e) {}
+  const now = new Date();
+  const len = key => (db && Array.isArray(db[key]) ? db[key].length : 0);
+  const lastPlant = db && Array.isArray(db.sessionPlants) ? db.sessionPlants[db.sessionPlants.length - 1] : null;
+  // Además de la revisión guardada, huellas baratas del contenido: un cambio aún
+  // sin guardar (p. ej. un bloque recién añadido) también obliga a repintar.
+  const parts = [id, Number(db && db._localRevision) || 0, db && db._savedAt || '',
+    len('sessionPlants'), len('forestPlants'), len('sesiones'), len('obras'), len('eventos'), lastPlant ? lastPlant.mins + '@' + lastPlant.endedAt : '',
+    now.getFullYear(), now.getMonth(), now.getDate()];
+  if (name === 'session') parts.push(now.getHours(), now.getMinutes(), typeof crono === 'object' && crono ? crono.state : '');
+  return parts.join('|');
+}
+
+function viewSwipeMarkWarm(name) {
+  if (name === 'session' && _sessionSectionMode !== 'today') return;
+  if (name === 'session' || name === 'obras' || name === 'calendario') _viewSwipeWarm[name] = viewSwipeContentSig(name);
+}
+
+// Pinta la vista si su contenido no está al día. Devuelve true si pintó.
+function viewSwipeWarmView(name) {
+  if (name !== 'session' && name !== 'obras' && name !== 'calendario') return false;
+  if (name === 'session' && _sessionSectionMode !== 'today') return false;
+  const sig = viewSwipeContentSig(name);
+  if (_viewSwipeWarm[name] === sig) return false;
+  if (name === 'session') renderSessionViewContent({ preview: true });
+  else if (name === 'obras') renderObras();
+  else renderCalendario();
+  _viewSwipeWarm[name] = sig;
+  return true;
+}
+
+// Tras cambiar de pantalla (o guardar), deja listas las vecinas en ratos libres,
+// una por turno para no bloquear. Solo en pantallas táctiles, donde hay gesto.
+function viewSwipeScheduleWarm(delay) {
+  if (!window.matchMedia?.('(hover: none) and (pointer: coarse)').matches &&
+      !document.documentElement.classList.contains('platform-ipad')) return;
+  clearTimeout(_viewSwipeWarmTimer);
+  _viewSwipeWarmTimer = setTimeout(function warmNext() {
+    _viewSwipeWarmTimer = null;
+    if (document.hidden || _viewSwipe || document.body.classList.contains('view-swipe-settling')) return viewSwipeScheduleWarm(900);
+    const index = SWIPE_VIEW_ORDER.indexOf(document.body.getAttribute('data-view') || 'session');
+    if (index < 0) return;
+    const pending = [SWIPE_VIEW_ORDER[index - 1], SWIPE_VIEW_ORDER[index + 1]]
+      .filter(Boolean).filter(name => name !== 'cronometro');
+    for (const name of pending) {
+      let painted = false;
+      try { painted = viewSwipeWarmView(name); } catch (e) {}
+      if (painted) { _viewSwipeWarmTimer = setTimeout(warmNext, 250); return; }
+    }
+  }, delay == null ? 700 : delay);
+}
+
 function viewSwipePageZoomed() {
   return !!(window.visualViewport && window.visualViewport.scale > 1.015);
 }
@@ -1419,6 +1500,9 @@ function viewSwipeBuildHeader(name, kind) {
   }
   const info = header.querySelector('[title="Mostrar u ocultar detalles"]');
   if (info) info.style.display = name === 'session' ? '' : 'none';
+  // Igual que updateContextHeader: el próximo evento solo en Hoy y Calendario.
+  const nextEvent = header.querySelector('.header-next-event');
+  if (nextEvent) nextEvent.hidden = !(name === 'session' || name === 'calendario');
   document.body.appendChild(header);
   return header;
 }
@@ -1512,10 +1596,10 @@ function viewSwipePrepareNeighbor(swipe, direction) {
   neighbor.style.zIndex = '301';
   neighbor.style.pointerEvents = 'none';
   neighbor.style.transform = 'translate3d(' + (direction * swipe.width) + 'px,0,0)';
-  // Renderizamos una sola vez, ya con la vista visible fuera del lienzo. Al
-  // completar el gesto showView reutilizara este mismo DOM sin reconstruirlo.
-  if (nextName === 'session') renderSessionViewContent({ preview: true });
-  if (nextName === 'obras') renderObras();
+  // Renderizamos como mucho una vez (nada si ya estaba al día). Al completar el
+  // gesto showView reutiliza este mismo DOM sin reconstruirlo: lo que se ve a
+  // mitad de gesto es exactamente la pantalla final.
+  viewSwipeWarmView(nextName);
   return true;
 }
 
@@ -12883,7 +12967,20 @@ let _statsRange = localStorage.getItem('stats_range') || 'semana';
 if (['semana', 'mes', 'año', 'todo'].indexOf(_statsRange) === -1) _statsRange = 'semana';
 let _statsOffset = 0; // 0 = periodo actual, -1 = anterior…
 
+// Se consulta muchas veces seguidas al pintar (probabilidades, rachas, gráficas):
+// dentro de una misma tarea se reutiliza la lista y se descarta al terminarla.
+let _statsAllPlantsMemo = null;
 function _statsAllPlants() {
+  const sp = db.sessionPlants || [], fp = db.forestPlants || [];
+  const key = sp.length + '|' + fp.length + '|' + (sp[sp.length - 1]?.mins ?? '') + '|' + (fp[fp.length - 1]?.mins ?? '');
+  if (_statsAllPlantsMemo && _statsAllPlantsMemo.db === db && _statsAllPlantsMemo.key === key) return _statsAllPlantsMemo.list.slice();
+  const list = _statsAllPlantsBuild();
+  _statsAllPlantsMemo = { db, key, list };
+  queueMicrotask(() => { _statsAllPlantsMemo = null; });
+  return list.slice();
+}
+
+function _statsAllPlantsBuild() {
   const out = [];
   const add = p => {
     if (!p || p.failed || p.tipo === 'descanso' || !p.startedAt) return;
@@ -22344,11 +22441,18 @@ function renderCronoTasks() {
         '</div>' +
       '</div>'
       : '';
-    el.innerHTML =
+    const html =
       composerHtml +
       '<div class="crono-task-columns">' +
         lane('personal', 'Personal', personal, target.source) +
       '</div>';
+    // Mismo contenido y nadie ha tocado el panel → no se reconstruye (cronoRender
+    // se llama a menudo; rehacer ~50 tareas costaba ~25 ms por llamada).
+    if (activeInput || el.__taskHtml !== html || el.__taskFirst !== el.firstElementChild || !el.firstElementChild) {
+      el.innerHTML = html;
+      el.__taskHtml = html;
+      el.__taskFirst = el.firstElementChild;
+    }
     cronoUpdateTaskComposer(target.source);
     const input = document.getElementById(target.inputId);
     if (input && activeInput) {
@@ -22633,9 +22737,8 @@ function cronoSessionButtonHtml(paused, extraClass) {
   const desktopSessionControls = rail &&
     document.documentElement.classList.contains('platform-windows') && window.innerWidth >= 900 &&
     window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-  // Diseño móvil v2: «Terminar» visible, no solo con pulsación larga.
-  const mobileV2Controls = rail && document.documentElement.classList.contains('mobile-v2') &&
-    window.matchMedia('(max-width: 700px)').matches;
+  // Diseño v2 (móvil e iPad): «Terminar» visible, no solo con pulsación larga.
+  const mobileV2Controls = rail && document.documentElement.classList.contains('mv2-on');
   const mainButton = '<button type="button" class="crono-session-main-btn ' + (paused ? 'is-paused ' : '') + (extraClass || '') + '" ' +
     'onclick="cronoSessionButtonClick(event)" onpointerdown="cronoSessionButtonPressStart(event,this)" ' +
     'onpointermove="cronoSessionButtonPressMove(event)" onpointerup="cronoSessionButtonPressEnd(event)" ' +

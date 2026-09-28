@@ -28,7 +28,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="supabase-sdk-v2-116-0.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=442">
+<link rel="stylesheet" href="styles.css?v=464">
 <link rel="stylesheet" href="study-session-ux.css?v=342">
 <link rel="stylesheet" href="crono-resume-layout.css?v=342">
 <link rel="stylesheet" href="piano-rooms.css?v=369">
@@ -101,7 +101,7 @@
     </div>
   </div>
   <div class="header-actions">
-    <div style="font-size:10px;color:var(--text3)" id="packNameHeader"></div>
+    <div class="header-next-event" style="font-size:10px;color:var(--text3)" id="packNameHeader"></div>
     <button type="button" class="piano-rooms-open" onclick="showView('aulas')" aria-label="Abrir reservas y aulas" title="Reservas y aulas">▦ <span>Aulas</span></button>
     <button type="button" class="desktop-study-cta desktop-only" onclick="showView('cronometro')" aria-label="Empezar a estudiar">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 4.5 7.5 5.5L7 15.5z"/></svg>
@@ -2448,23 +2448,23 @@
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=397"></script>
 <script src="crono-state-store.js?v=397"></script>
-<script src="app.js?v=461"></script>
+<script src="app.js?v=464"></script>
 <script src="manual-study-activity.js?v=430"></script>
 <script src="chamber-factor-migration.js?v=430"></script>
-<script src="daily-study-minutes.js?v=430" id="dailyStudyMinutesFixScript"></script>
+<script src="daily-study-minutes.js?v=464" id="dailyStudyMinutesFixScript"></script>
 <script src="study-time-breakdown.js?v=424"></script>
 <script src="german-rewards.js?v=426"></script>
 <script src="habit-trophies.js?v=433"></script>
 <script src="achievement-rewards.js?v=435"></script>
 <script src="piano-rewards.js?v=435"></script>
-<script src="crono-running-premium.js?v=430" id="cronoRunningPremiumScript"></script>
+<script src="crono-running-premium.js?v=464" id="cronoRunningPremiumScript"></script>
 <script src="german-srs.js?v=378"></script>
 <script src="german-import.js?v=382"></script>
 <script src="german-session.js?v=404"></script>
 <script src="german-study.js?v=435"></script>
 <script src="study-session-ux.js?v=436"></script>
 <script src="crono-resume-layout.js?v=432"></script>
-<script src="piano-rooms.js?v=438"></script>
+<script src="piano-rooms.js?v=464"></script>
 <script src="reservation-dashboard.js?v=463"></script>
 <script src="device-recovery.js?v=460"></script>
 <script src="ipad-today.js?v=461"></script>
@@ -2479,11 +2479,13 @@
 <!-- Última capa de escritorio Windows: al final para ganar a los estilos inyectados en <head>. -->
 <link rel="stylesheet" href="desktop-app.css?v=441">
 <script src="desktop-app.js?v=461"></script>
-<link rel="stylesheet" href="mobile-v2.css?v=461">
-<link rel="stylesheet" href="settings.css?v=457">
+<link rel="stylesheet" href="mobile-v2.css?v=464">
+<link rel="stylesheet" href="settings.css?v=464">
 <link rel="stylesheet" href="device-recovery.css?v=460">
+<!-- Última capa del iPad: al final para ganar a las capas antiguas (como desktop-app.css). -->
+<link rel="stylesheet" href="ipad-app.css?v=464">
 <script src="settings.js?v=457"></script>
-<script src="mobile-v2.js?v=461"></script>
+<script src="mobile-v2.js?v=464"></script>
 </body>
 <script>
   // Activation/reload belongs exclusively to UpdateSafety.

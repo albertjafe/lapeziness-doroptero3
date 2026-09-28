@@ -6,6 +6,8 @@ async function prepare(page,data=fixture,platform='iPad'){
   await page.route('https://cdn.jsdelivr.net/**',r=>r.fulfill({status:200,contentType:'application/javascript',body:'/* isolated */'}));
   await page.addInitScript(({data,platform})=>{
     Object.defineProperty(navigator,'platform',{configurable:true,get:()=>platform==='Windows'?'Win32':'MacIntel'});
+    // Diseño clásico del iPad (el diseño v2 en iPad se prueba en ipad-v2.spec.js).
+    localStorage.setItem('alberto_mobile_design','classic');
     Object.defineProperty(navigator,'userAgentData',{configurable:true,get:()=>({platform})});
     if(platform==='iPad')Object.defineProperty(navigator,'userAgent',{configurable:true,get:()=> 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'});
     if(!localStorage.getItem('alberto_piano_v2'))localStorage.setItem('alberto_piano_v2',JSON.stringify(data));

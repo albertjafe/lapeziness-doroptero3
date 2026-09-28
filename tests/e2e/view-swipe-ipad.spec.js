@@ -7,6 +7,8 @@ async function boot(page,viewport){
   await page.addInitScript(()=>{
     Object.defineProperty(navigator,'platform',{configurable:true,get:()=> 'MacIntel'});
     Object.defineProperty(navigator,'maxTouchPoints',{configurable:true,get:()=>5});
+    // Diseño clásico del iPad (el gesto con el diseño v2 se prueba en ipad-v2.spec.js).
+    localStorage.setItem('alberto_mobile_design','classic');
     localStorage.setItem('alberto_piano_v2',JSON.stringify({obras:[{id:'w',name:'Preludio',movimientos:[]}],eventos:[],sesiones:[],sessionPlants:[],forestPlants:[],registro:[]}));
   });
   await page.goto('/');

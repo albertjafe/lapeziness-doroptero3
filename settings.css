@@ -198,7 +198,7 @@ html:not(#s) #view-ajustes .mv2-design-row b { font-size: 15.5px !important; fon
 html:not(#s) #view-ajustes .mv2-design-row small { font-size: 13px !important; }
 
 /* Solo tiene sentido en el teléfono. */
-@media (min-width: 701px) { html:not(#s) #view-ajustes .mv2-design-row { display: none !important; } }
+@media (min-width: 701px) { html:not(#s):not(.platform-ipad) #view-ajustes .mv2-design-row { display: none !important; } }
 
 /* ── Teléfono ─────────────────────────────────────────────────── */
 @media (max-width: 700px) {

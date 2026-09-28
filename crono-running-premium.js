@@ -115,7 +115,10 @@
     let selector=document.getElementById('cronoActivitySelector');
     if(selector)return selector;
     const controls=idle.querySelector('.crono-idle-controls');
-    const ipad=document.documentElement.classList.contains('platform-ipad');
+    // iPad clásico: desplegable. Diseño v2 (móvil y iPad): una fila de chips.
+    let v2=false;
+    try{ v2=window.MobileV2 ? window.MobileV2.active() : localStorage.getItem('alberto_mobile_design')!=='classic'; }catch(error){}
+    const ipad=document.documentElement.classList.contains('platform-ipad') && !v2;
     selector=document.createElement('div');
     selector.id='cronoActivitySelector';
     selector.className='crono-start-control crono-activity-control';

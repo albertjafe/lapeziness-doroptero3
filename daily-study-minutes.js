@@ -296,7 +296,22 @@
     return detailed ? blocks : out;
   }
 
+  // Hoy se pregunta muchas veces en un mismo pintado (cabecera, crono,
+  // probabilidades…): se reutiliza el número dentro de la tarea en curso.
+  let todayMemo = null;
   function todayMinutes(){
+    const db = appDb();
+    const key = db ? [dayKey(new Date()), db.sessionPlants?.length || 0, db.forestPlants?.length || 0, db.sesiones?.length || 0,
+      db.pianoRewards?.sessions?.length || 0, db._savedAt || '', db._localRevision || 0].join('|') : '';
+    if (todayMemo && todayMemo.db === db && todayMemo.key === key) return todayMemo.value;
+    const value = computeTodayMinutes();
+    todayMemo = { db, key, value };
+    const clear = () => { todayMemo = null; };
+    if (typeof queueMicrotask === 'function') queueMicrotask(clear); else Promise.resolve().then(clear);
+    return value;
+  }
+
+  function computeTodayMinutes(){
     const now = new Date();
     const start = new Date(now);
     start.setHours(0, 0, 0, 0);

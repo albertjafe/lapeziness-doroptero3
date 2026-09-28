@@ -1,80 +1,83 @@
-/* Diseño móvil v2 — solo html.mobile-v2 y pantallas ≤ 700 px. Con «Clásico»
-   (Ajustes) o en iPad/escritorio no cambia nada. Solo variables de tema. */
+/* Diseño v2 — solo con html.mv2-on (mobile-v2.js: preferencia «Nuevo» y
+   teléfono ≤ 700 px o iPad). En el iPad se añade html.mv2-tablet con los
+   ajustes de tamaño del final del archivo. Con «Clásico» o en el escritorio
+   no cambia nada. Solo variables de tema. */
 #mv2Hoy, .mv2-sheet-overlay { display: none; }
+html.mv2-on .mv2-col { display: contents; }
 
-@media (max-width: 700px) {
-  /* ── Hoy ───────────────────────────────────────────────────── */
-  html.mobile-v2 #view-session:not(.session-history-mode) #mv2Hoy { display: grid; gap: 10px; margin: 0 0 12px; }
-  html.mobile-v2 #view-session:not(.session-history-mode) { padding-top: 12px !important; }
-  html.mobile-v2 #view-session:not(.session-history-mode) :is(#sessionResumenCard, .german-entry) { display: none !important; }
-  html.mobile-v2 #view-session:not(.session-history-mode) :is(.session-quick-disclosure, #sessionJournalCard, #aulasTodayCard):not(.mv2-open) { display: none !important; }
+/* ── Hoy ───────────────────────────────────────────────────── */
+html.mv2-on #view-session:not(.session-history-mode) #mv2Hoy { display: grid; gap: 10px; margin: 0 0 12px; }
+html.mv2-on #view-session:not(.session-history-mode) { padding-top: 12px !important; }
+html.mv2-on #view-session:not(.session-history-mode) :is(#sessionResumenCard, .german-entry) { display: none !important; }
+html.mv2-on #view-session:not(.session-history-mode) :is(.session-quick-disclosure, #sessionJournalCard, #aulasTodayCard):not(.mv2-open) { display: none !important; }
 
-  html.mobile-v2 .mv2-card {
-    background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 14px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, .04); color: var(--text);
-  }
-  html.mobile-v2 .mv2-lbl { display: block; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text3); }
-  html.mobile-v2 .mv2-muted { color: var(--text3); font-size: 13px; margin: 6px 0 0; line-height: 1.45; }
-  html.mobile-v2 .mv2-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-  html.mobile-v2 .mv2-pill { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--bg3); color: var(--text2); font-weight: 600; white-space: nowrap; }
-  html.mobile-v2 .mv2-link { font: inherit; font-size: 13px; font-weight: 600; color: var(--accent); background: none; border: 0; padding: 6px 0; min-height: 36px; cursor: pointer; }
-
-  html.mobile-v2 .mv2-summary { display: flex; align-items: center; gap: 14px; }
-  html.mobile-v2 .mv2-ring {
-    --p: 0; flex: 0 0 88px; width: 88px; height: 88px; border-radius: 50%;
-    background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--bg3) 0);
-    display: grid; place-items: center;
-  }
-  html.mobile-v2 .mv2-ring span { width: 72px; height: 72px; border-radius: 50%; background: var(--bg2); display: grid; place-content: center; text-align: center; font-weight: 700; font-size: 16px; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  html.mobile-v2 .mv2-ring small { display: block; font-size: 11px; font-weight: 500; color: var(--text3); }
-  html.mobile-v2 .mv2-summary-copy { display: grid; gap: 4px; min-width: 0; }
-  html.mobile-v2 .mv2-summary-copy b { font-size: 16px; line-height: 1.35; }
-
-  html.mobile-v2 .mv2-parahoy { display: grid; gap: 2px; }
-  html.mobile-v2 .mv2-plan {
-    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; font: inherit; color: inherit;
-    background: none; border: 0; border-top: 1px solid var(--border); padding: 10px 0; min-height: 56px; cursor: pointer;
-  }
-  html.mobile-v2 .mv2-parahoy .mv2-line + .mv2-plan { border-top: 0; }
-  html.mobile-v2 .mv2-play { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--bg); display: grid; place-items: center; font-size: 12px; }
-  html.mobile-v2 .mv2-plan-copy { display: grid; gap: 2px; min-width: 0; }
-  html.mobile-v2 .mv2-plan-copy b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  html.mobile-v2 .mv2-plan-copy small { font-size: 12.5px; color: var(--text3); }
-  html.mobile-v2 .mv2-plan-actions { display: flex; gap: 14px; padding-top: 6px; }
-  html.mobile-v2 .mv2-plan-actions button { font: inherit; font-size: 13px; color: var(--accent); background: none; border: 0; padding: 6px 0; min-height: 36px; cursor: pointer; }
-
-  html.mobile-v2 .mv2-rowcard { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; font: inherit; cursor: pointer; min-height: 60px; }
-  html.mobile-v2 .mv2-rowcard b { display: block; margin-top: 2px; font-size: 15px; font-weight: 600; }
-  html.mobile-v2 .mv2-rowcard.is-open .mv2-chev { transform: rotate(90deg); }
-  html.mobile-v2 .mv2-chev { font-size: 22px; color: var(--text3); transition: transform .2s; }
-  html.mobile-v2 .mv2-add {
-    width: 100%; min-height: 50px; border-radius: 14px; border: 0; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
-    background: color-mix(in srgb, var(--accent) 12%, var(--bg2)); color: var(--accent);
-  }
-
-  /* ── Hojas inferiores ─────────────────────────────────────── */
-  html.mobile-v2 .mv2-sheet-overlay { position: fixed; inset: 0; z-index: 1500; background: rgba(0, 0, 0, .35); align-items: flex-end; }
-  html.mobile-v2 .mv2-sheet-overlay.open { display: flex; }
-  html.mobile-v2 .mv2-sheet {
-    width: 100%; max-height: 86dvh; overflow-y: auto; box-sizing: border-box; background: var(--bg2); color: var(--text);
-    border-radius: 20px 20px 0 0; padding: 8px 16px calc(18px + env(safe-area-inset-bottom, 0px));
-    box-shadow: 0 -10px 30px rgba(0, 0, 0, .15);
-  }
-  html.mobile-v2 .mv2-grab { width: 38px; height: 5px; border-radius: 3px; background: var(--border2, var(--border)); margin: 0 auto 10px; }
-  html.mobile-v2 .mv2-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  html.mobile-v2 .mv2-sheet-head b { font-size: 17px; }
-  html.mobile-v2 .mv2-sheet-close { font: inherit; font-size: 15px; color: var(--accent); background: none; border: 0; min-height: 40px; cursor: pointer; }
-  html.mobile-v2 .mv2-sheet-list { display: grid; }
-  html.mobile-v2 .mv2-sheet-item { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; border-top: 1px solid var(--border); padding: 12px 2px; min-height: 58px; cursor: pointer; }
-  html.mobile-v2 .mv2-sheet-item:first-child { border-top: 0; }
-  html.mobile-v2 .mv2-sheet-item > span:first-child { flex: 0 0 36px; height: 36px; border-radius: 10px; background: var(--bg3); display: grid; place-items: center; font-size: 17px; color: var(--accent); }
-  html.mobile-v2 .mv2-sheet-item b { display: block; font-size: 15px; }
-  html.mobile-v2 .mv2-sheet-item small { display: block; font-size: 12.5px; color: var(--text3); }
-  html.mobile-v2 .mv2-sheet textarea { width: 100%; box-sizing: border-box; font: 14px/1.45 ui-monospace, "JetBrains Mono", monospace; border: 1px solid var(--border); border-radius: 12px; padding: 10px; background: var(--bg); color: var(--text); margin-top: 8px; }
-  html.mobile-v2 .mv2-sheet-actions { display: flex; gap: 10px; margin-top: 10px; }
-  html.mobile-v2 .mv2-sheet-actions button { flex: 1; min-height: 46px; border-radius: 12px; font: inherit; font-size: 14.5px; font-weight: 600; border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; }
-  html.mobile-v2 .mv2-sheet-actions button.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+html.mv2-on .mv2-card {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .04); color: var(--text);
 }
+html.mv2-on .mv2-lbl { display: block; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text3); }
+html.mv2-on .mv2-muted { color: var(--text3); font-size: 13px; margin: 6px 0 0; line-height: 1.45; }
+html.mv2-on .mv2-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+html.mv2-on .mv2-pill { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--bg3); color: var(--text2); font-weight: 600; white-space: nowrap; }
+html.mv2-on .mv2-link { font: inherit; font-size: 13px; font-weight: 600; color: var(--accent); background: none; border: 0; padding: 6px 0; min-height: 36px; cursor: pointer; }
+
+html.mv2-on .mv2-summary { display: flex; align-items: center; gap: 14px; }
+html.mv2-on .mv2-ring {
+  --p: 0; flex: 0 0 88px; width: 88px; height: 88px; border-radius: 50%;
+  background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--bg3) 0);
+  display: grid; place-items: center;
+}
+html.mv2-on .mv2-ring span { width: 72px; height: 72px; border-radius: 50%; background: var(--bg2); display: grid; place-content: center; text-align: center; font-weight: 700; font-size: 16px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+html.mv2-on .mv2-ring small { display: block; font-size: 11px; font-weight: 500; color: var(--text3); }
+html.mv2-on .mv2-summary-copy { display: grid; gap: 4px; min-width: 0; }
+html.mv2-on .mv2-summary-copy b { font-size: 16px; line-height: 1.35; }
+html.mv2-on .mv2-sessions { justify-self: start; padding: 4px 0; min-height: 34px; }
+
+html.mv2-on .mv2-parahoy { display: grid; gap: 2px; }
+html.mv2-on .mv2-plan {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; font: inherit; color: inherit;
+  background: none; border: 0; border-top: 1px solid var(--border); padding: 10px 0; min-height: 56px; cursor: pointer;
+}
+html.mv2-on .mv2-parahoy .mv2-line + .mv2-plan { border-top: 0; }
+html.mv2-on .mv2-play { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--bg); display: grid; place-items: center; font-size: 12px; }
+html.mv2-on .mv2-plan-copy { display: grid; gap: 2px; min-width: 0; }
+html.mv2-on .mv2-plan-copy b { font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.mv2-on .mv2-plan-copy small { font-size: 12.5px; color: var(--text3); }
+html.mv2-on .mv2-plan-actions { display: flex; gap: 14px; padding-top: 6px; }
+html.mv2-on .mv2-plan-actions button { font: inherit; font-size: 13px; color: var(--accent); background: none; border: 0; padding: 6px 0; min-height: 36px; cursor: pointer; }
+
+html.mv2-on .mv2-rowcard { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; font: inherit; cursor: pointer; min-height: 60px; }
+html.mv2-on .mv2-rowcard b { display: block; margin-top: 2px; font-size: 15px; font-weight: 600; }
+html.mv2-on .mv2-rowcard.is-open .mv2-chev { transform: rotate(90deg); }
+html.mv2-on .mv2-chev { font-size: 22px; color: var(--text3); transition: transform .2s; }
+html.mv2-on .mv2-add {
+  width: 100%; min-height: 50px; border-radius: 14px; border: 0; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg2)); color: var(--accent);
+}
+
+/* ── Hojas inferiores ─────────────────────────────────────── */
+html.mv2-on .mv2-sheet-overlay { position: fixed; inset: 0; z-index: 1500; background: rgba(0, 0, 0, .35); align-items: flex-end; }
+html.mv2-on .mv2-sheet-overlay.open { display: flex; }
+html.mv2-on .mv2-sheet {
+  width: 100%; max-height: 86dvh; overflow-y: auto; box-sizing: border-box; background: var(--bg2); color: var(--text);
+  border-radius: 20px 20px 0 0; padding: 8px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, .15);
+}
+html.mv2-on .mv2-grab { width: 38px; height: 5px; border-radius: 3px; background: var(--border2, var(--border)); margin: 0 auto 10px; }
+html.mv2-on .mv2-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+html.mv2-on .mv2-sheet-head b { font-size: 17px; }
+html.mv2-on .mv2-sheet-close { font: inherit; font-size: 15px; color: var(--accent); background: none; border: 0; min-height: 40px; cursor: pointer; }
+html.mv2-on .mv2-sheet-list { display: grid; }
+html.mv2-on .mv2-sheet-item { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; border-top: 1px solid var(--border); padding: 12px 2px; min-height: 58px; cursor: pointer; }
+html.mv2-on .mv2-sheet-item:first-child { border-top: 0; }
+html.mv2-on .mv2-sheet-item > span:first-child { flex: 0 0 36px; height: 36px; border-radius: 10px; background: var(--bg3); display: grid; place-items: center; font-size: 17px; color: var(--accent); }
+html.mv2-on .mv2-sheet-item b { display: block; font-size: 15px; }
+html.mv2-on .mv2-sheet-item small { display: block; font-size: 12.5px; color: var(--text3); }
+html.mv2-on .mv2-sheet textarea { width: 100%; box-sizing: border-box; font: 14px/1.45 ui-monospace, "JetBrains Mono", monospace; border: 1px solid var(--border); border-radius: 12px; padding: 10px; background: var(--bg); color: var(--text); margin-top: 8px; }
+html.mv2-on .mv2-sheet-actions { display: flex; gap: 10px; margin-top: 10px; }
+html.mv2-on .mv2-sheet-actions button { flex: 1; min-height: 46px; border-radius: 12px; font: inherit; font-size: 14.5px; font-weight: 600; border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; }
+html.mv2-on .mv2-sheet-actions button.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+
 
 /* Ajustes: la fila Nuevo / Clásico la estiliza settings.css (fila más de Apariencia). */
 
@@ -83,177 +86,288 @@
    Reposo: obra → tipo → anillo → modo + Iniciar sin scroll; hucha y
    destello debajo; la mesa de trabajo es una hoja inferior. En marcha:
    anillo, Pausar y Terminar grandes. */
-@media (max-width: 700px) {
-  html.mobile-v2:not(#m):not(#m) #view-cronometro {
-    --crono-interface-ring-size: min(56vw, 230px) !important;
-    padding-bottom: 96px !important;
-  }
-  /* Cabecera del crono en el flujo (antes flotaba y tapaba el reloj). */
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-screen-title {
-    position: static !important; transform: none !important;
-    display: flex !important; align-items: center; gap: 8px; width: auto !important;
-    margin: 6px 56px 8px 4px !important; height: 44px;
-  }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-wrap { padding-top: 0 !important; margin-top: 0 !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-screen-title > span:first-child { font-size: 22px !important; font-weight: 700; margin-right: auto; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-screen-title button { position: static !important; min-height: 36px !important; height: 36px; padding: 0 12px !important; border-radius: 10px !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-screen-title .crono-refresh-btn { width: 36px !important; padding: 0 !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-close-btn { top: 12px !important; }
-
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-idle-main,
-  html.mobile-v2:not(#m):not(#m) body.crono-running #view-cronometro #cronoStageRun {
-    display: flex !important; flex-direction: column !important; gap: 10px !important;
-    height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important;
-    padding: 12px 14px 16px !important;
-  }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-idle-main > * { flex: 0 0 auto; margin: 0 !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-idle-main > .crono-run-head { order: 0; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-idle-main > .crono-activity-control { order: 1; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-idle-main > .crono-display-wrap { order: 2; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-idle-main > .crono-idle-controls { order: 3; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-idle-main > .crono-piano-goal-idle { order: 4; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-idle-main > .crono-idle-message { order: 5; }
-  /* La previsión de horas vive en la ficha de la obra. */
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-idle-main > .crono-readiness-chip { display: none !important; }
-
-  /* Tipo de sesión: una fila de chips. */
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-activity-control .crono-start-control-label { display: none !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-activity-tabs {
-    display: flex !important; gap: 6px !important; overflow-x: auto; padding: 0 !important; background: none !important; border: 0 !important;
-    min-height: 0 !important; scrollbar-width: none;
-  }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-activity-tabs > * {
-    flex: 0 0 auto !important; min-height: 34px !important; height: 34px; padding: 0 12px !important; border-radius: 999px !important;
-    display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 5px; font-size: 13px !important;
-    background: var(--bg3) !important; border: 0 !important; box-shadow: none !important; width: auto !important;
-  }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-activity-tabs > :is(.active, [aria-pressed="true"], [aria-checked="true"]) { background: var(--accent) !important; color: var(--bg) !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-activity-tabs > * :is(small, span + span, em) { font-size: 11px !important; opacity: .8; }
-
-  /* Anillo y tiempo, a escala de teléfono. */
-  html.mobile-v2:not(#m):not(#m) #view-cronometro #cronoIdleDisplayWrap { width: var(--crono-interface-ring-size) !important; height: var(--crono-interface-ring-size) !important; flex-basis: var(--crono-interface-ring-size) !important; margin: 4px auto !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro :is(#cronoIdleDisplayWrap, #cronoDisplayWrap) .crono-display { font-size: clamp(38px, 12vw, 52px) !important; letter-spacing: 0 !important; }
-
-  /* Modo + Iniciar en una fila. */
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-idle-controls { display: grid !important; grid-template-columns: 1fr; gap: 8px !important; align-items: stretch; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-idle-controls .crono-mode-toggle { min-height: 40px !important; height: 40px; margin: 0 !important; width: 100% !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-idle-controls .crono-mode-opt { font-size: 13px !important; min-height: 0 !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-plant-btn { min-height: 52px !important; height: 52px; margin: 0 !important; border-radius: 12px !important; font-size: 17px !important; width: 100% !important; }
-
-  /* Hucha y destello, compactos. */
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .crono-piano-goal-idle { min-height: 0 !important; padding: 9px 12px !important; border-radius: 12px !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro :is(.crono-idle-message, #cronoRunDestello) {
-    position: static !important; transform: none !important; width: auto !important; max-width: none !important; min-height: 0 !important;
-    padding: 8px 12px !important; border-radius: 12px !important; font-size: 13px !important; text-align: left !important;
-  }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro #cronoRunDestello .crono-run-destello-text { font-size: 14px !important; }
-
-  /* En marcha: anillo arriba y Pausar/Terminar grandes debajo. */
-  html.mobile-v2:not(#m):not(#m) body.crono-running #view-cronometro {
-    --crono-interface-ring-size: min(64vw, 260px) !important;
-  }
-  /* El anillo conserva su montaje original (svg + tiempo superpuestos); solo
-     la fila de controles pasa a colgar debajo, dentro del margen reservado. */
-  html.mobile-v2:not(#m):not(#m) body.crono-running #view-cronometro #cronoDisplayWrap {
-    position: relative !important;
-    width: var(--crono-interface-ring-size) !important; height: var(--crono-interface-ring-size) !important;
-    flex: 0 0 var(--crono-interface-ring-size) !important; min-height: 0 !important;
-    margin: 6px auto 84px !important;
-  }
-  html.mobile-v2:not(#m):not(#m) body.crono-running #view-cronometro .crono-run-action-rail {
-    position: absolute !important; top: calc(100% + 16px) !important; bottom: auto !important;
-    left: calc((var(--crono-interface-ring-size) - min(88vw, 360px)) / 2) !important; right: auto !important;
-    width: min(88vw, 360px) !important; height: auto !important; transform: none !important;
-    display: flex !important; flex-direction: row !important; align-items: center; gap: 10px;
-  }
-  html.mobile-v2:not(#m):not(#m) body.crono-running #view-cronometro .crono-run-action-rail .crono-quick-destello-btn { flex: 0 0 52px !important; width: 52px !important; height: 52px !important; }
-  html.mobile-v2:not(#m):not(#m) body.crono-running #view-cronometro #cronoControls { flex: 1 !important; display: grid !important; grid-template-columns: 1fr 1fr; gap: 10px; width: auto !important; }
-  html.mobile-v2:not(#m):not(#m) body.crono-running #view-cronometro #cronoControls > button {
-    width: 100% !important; height: 52px !important; min-height: 52px !important; border-radius: 14px !important; margin: 0 !important;
-    display: flex !important; align-items: center; justify-content: center; gap: 8px; font: 600 16px/1 inherit !important; position: relative;
-  }
-  html.mobile-v2:not(#m):not(#m) body.crono-running #view-cronometro #cronoControls .crono-session-main-btn { background: color-mix(in srgb, var(--accent) 14%, var(--bg2)) !important; color: var(--accent) !important; border: 0 !important; box-shadow: none !important; }
-  html.mobile-v2:not(#m):not(#m) body.crono-running #view-cronometro #cronoControls .crono-session-main-btn::after { content: attr(aria-label); }
-  html.mobile-v2:not(#m):not(#m) body.crono-running #view-cronometro #cronoControls .crono-session-main-btn :is(svg, .crono-session-main-icon) { display: none !important; }
-  html.mobile-v2:not(#m):not(#m) body.crono-running #view-cronometro #cronoControls .crono-session-finish-btn { display: flex !important; background: var(--accent) !important; color: var(--bg) !important; border: 0 !important; }
-  html.mobile-v2:not(#m):not(#m) body.crono-running #view-cronometro #cronoPianoMoney { padding: 10px 12px !important; border-radius: 12px !important; }
-
-  /* Mesa de trabajo como hoja inferior: plegada muestra las pestañas;
-     al tocar una se abre con su contenido. */
-  html.mobile-v2:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) {
-    position: fixed !important; left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important; z-index: 120 !important; /* por debajo de los modales (200+) */
-    width: 100% !important; max-width: none !important; margin: 0 !important; transform: none !important;
-    height: auto !important; min-height: 0 !important; max-height: 72dvh !important; box-sizing: border-box;
-    display: flex !important; flex-direction: column; gap: 6px;
-    padding: 6px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
-    border-radius: 20px 20px 0 0 !important; border: 1px solid var(--border) !important; border-bottom: 0 !important;
-    background: var(--bg2) !important; box-shadow: 0 -8px 24px rgba(0, 0, 0, .12) !important;
-    transition: max-height .25s ease;
-  }
-  /* Con la barra de navegación visible, la hoja se apoya encima de ella. */
-  html.mobile-v2:not(#m):not(#m) body.mv2-nav-visible #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) { bottom: var(--mv2-nav-h, 64px) !important; padding-bottom: 10px !important; }
-  html.mobile-v2:not(#m):not(#m) body.mv2-nav-rail #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) { left: var(--mv2-rail-w, 0px) !important; width: auto !important; }
-  html.mobile-v2:not(#m):not(#m) body:not(.crono-running) #view-cronometro #cronoRunDrawer { display: none !important; }
-  html.mobile-v2:not(#m):not(#m) body.crono-running #view-cronometro #cronoIdleDrawer { display: none !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer)::before {
-    content: ''; display: block; width: 38px; height: 5px; border-radius: 3px; background: var(--border2, var(--border)); margin: 2px auto 2px; flex: 0 0 auto;
-  }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) :is(.crono-run-drawer-head, .crono-run-drawer-handle) { display: none !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer):not(.mv2-sheet-open) .crono-run-drawer-panels { display: none !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer).mv2-sheet-open { max-height: 72dvh !important; height: 72dvh !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer).mv2-sheet-open .crono-run-drawer-head { display: flex !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) .crono-run-drawer-panels { flex: 1 1 0; min-height: 0; overflow-y: auto; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) .crono-run-drawer-tabs { flex: 0 0 auto; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) .crono-run-drawer-tab { min-height: 40px !important; }
-  html.mobile-v2:not(#m):not(#m) #view-cronometro .mv2-sheet-toggle { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 120px; height: 18px !important; min-height: 0 !important; padding: 0 !important; border: 0; background: none; cursor: pointer; }
-  html.mobile-v2 .mv2-sheet-scrim { display: none; }
-  html.mobile-v2 .mv2-sheet-scrim.on { display: block; position: fixed; inset: 0; z-index: 119; background: rgba(0, 0, 0, .25); }
+html.mv2-on:not(#m):not(#m) #view-cronometro {
+  --crono-interface-ring-size: min(56vw, 230px) !important;
+  padding-bottom: 96px !important;
 }
+/* Cabecera del crono en el flujo (antes flotaba y tapaba el reloj). */
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-screen-title {
+  position: static !important; transform: none !important;
+  display: flex !important; align-items: center; gap: 8px; width: auto !important;
+  margin: 6px 56px 8px 4px !important; height: 44px;
+}
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-wrap { padding-top: 0 !important; margin-top: 0 !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-screen-title > span:first-child { font-size: 22px !important; font-weight: 700; margin-right: auto; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-screen-title button { position: static !important; min-height: 36px !important; height: 36px; padding: 0 12px !important; border-radius: 10px !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-screen-title .crono-refresh-btn { width: 36px !important; padding: 0 !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-close-btn { top: 12px !important; }
+
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-idle-main,
+html.mv2-on:not(#m):not(#m) body.crono-running #view-cronometro #cronoStageRun {
+  display: flex !important; flex-direction: column !important; gap: 10px !important;
+  height: auto !important; min-height: 0 !important; max-height: none !important; overflow: visible !important;
+  padding: 12px 14px 16px !important;
+}
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-idle-main > * { flex: 0 0 auto; margin: 0 !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-idle-main > .crono-run-head { order: 0; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-idle-main > .crono-activity-control { order: 1; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-idle-main > .crono-display-wrap { order: 2; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-idle-main > .crono-idle-controls { order: 3; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-idle-main > .crono-piano-goal-idle { order: 4; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-idle-main > .crono-idle-message { order: 5; }
+/* La previsión de horas vive en la ficha de la obra. */
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-idle-main > .crono-readiness-chip { display: none !important; }
+
+/* Tipo de sesión: una fila de chips. */
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-activity-control .crono-start-control-label { display: none !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-activity-tabs {
+  display: flex !important; gap: 6px !important; overflow-x: auto; padding: 0 !important; background: none !important; border: 0 !important;
+  min-height: 0 !important; scrollbar-width: none;
+}
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-activity-tabs > * {
+  flex: 0 0 auto !important; min-height: 34px !important; height: 34px; padding: 0 12px !important; border-radius: 999px !important;
+  display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 5px; font-size: 13px !important;
+  background: var(--bg3) !important; border: 0 !important; box-shadow: none !important; width: auto !important;
+}
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-activity-tabs > :is(.active, [aria-pressed="true"], [aria-checked="true"]) { background: var(--accent) !important; color: var(--bg) !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-activity-tabs > * :is(small, span + span, em) { font-size: 11px !important; opacity: .8; }
+
+/* Anillo y tiempo, a escala de teléfono. */
+html.mv2-on:not(#m):not(#m) #view-cronometro #cronoIdleDisplayWrap { width: var(--crono-interface-ring-size) !important; height: var(--crono-interface-ring-size) !important; flex-basis: var(--crono-interface-ring-size) !important; margin: 4px auto !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro :is(#cronoIdleDisplayWrap, #cronoDisplayWrap) .crono-display { font-size: clamp(38px, 12vw, 52px) !important; letter-spacing: 0 !important; }
+
+/* Modo + Iniciar en una fila. */
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-idle-controls { display: grid !important; grid-template-columns: 1fr; gap: 8px !important; align-items: stretch; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-idle-controls .crono-mode-toggle { min-height: 40px !important; height: 40px; margin: 0 !important; width: 100% !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-idle-controls .crono-mode-opt { font-size: 13px !important; min-height: 0 !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-plant-btn { min-height: 52px !important; height: 52px; margin: 0 !important; border-radius: 12px !important; font-size: 17px !important; width: 100% !important; }
+
+/* Hucha y destello, compactos. */
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-piano-goal-idle { min-height: 0 !important; padding: 9px 12px !important; border-radius: 12px !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro :is(.crono-idle-message, #cronoRunDestello) {
+  position: static !important; transform: none !important; width: auto !important; max-width: none !important; min-height: 0 !important;
+  padding: 8px 12px !important; border-radius: 12px !important; font-size: 13px !important; text-align: left !important;
+}
+html.mv2-on:not(#m):not(#m) #view-cronometro #cronoRunDestello .crono-run-destello-text { font-size: 14px !important; }
+
+/* En marcha: anillo arriba y Pausar/Terminar grandes debajo. */
+html.mv2-on:not(#m):not(#m) body.crono-running #view-cronometro {
+  --crono-interface-ring-size: min(64vw, 260px) !important;
+}
+/* El anillo conserva su montaje original (svg + tiempo superpuestos); solo
+   la fila de controles pasa a colgar debajo, dentro del margen reservado. */
+html.mv2-on:not(#m):not(#m) body.crono-running #view-cronometro #cronoDisplayWrap {
+  position: relative !important;
+  width: var(--crono-interface-ring-size) !important; height: var(--crono-interface-ring-size) !important;
+  flex: 0 0 var(--crono-interface-ring-size) !important; min-height: 0 !important;
+  margin: 6px auto 84px !important;
+}
+html.mv2-on:not(#m):not(#m) body.crono-running #view-cronometro .crono-run-action-rail {
+  position: absolute !important; top: calc(100% + 16px) !important; bottom: auto !important;
+  left: calc((var(--crono-interface-ring-size) - min(88vw, 360px)) / 2) !important; right: auto !important;
+  width: min(88vw, 360px) !important; height: auto !important; transform: none !important;
+  display: flex !important; flex-direction: row !important; align-items: center; gap: 10px;
+}
+html.mv2-on:not(#m):not(#m) body.crono-running #view-cronometro .crono-run-action-rail .crono-quick-destello-btn { flex: 0 0 52px !important; width: 52px !important; height: 52px !important; }
+html.mv2-on:not(#m):not(#m) body.crono-running #view-cronometro #cronoControls { flex: 1 !important; display: grid !important; grid-template-columns: 1fr 1fr; gap: 10px; width: auto !important; }
+html.mv2-on:not(#m):not(#m) body.crono-running #view-cronometro #cronoControls > button {
+  width: 100% !important; height: 52px !important; min-height: 52px !important; border-radius: 14px !important; margin: 0 !important;
+  display: flex !important; align-items: center; justify-content: center; gap: 8px; font: 600 16px/1 inherit !important; position: relative;
+}
+html.mv2-on:not(#m):not(#m) body.crono-running #view-cronometro #cronoControls .crono-session-main-btn { background: color-mix(in srgb, var(--accent) 14%, var(--bg2)) !important; color: var(--accent) !important; border: 0 !important; box-shadow: none !important; }
+html.mv2-on:not(#m):not(#m) body.crono-running #view-cronometro #cronoControls .crono-session-main-btn::after { content: attr(aria-label); }
+html.mv2-on:not(#m):not(#m) body.crono-running #view-cronometro #cronoControls .crono-session-main-btn :is(svg, .crono-session-main-icon) { display: none !important; }
+html.mv2-on:not(#m):not(#m) body.crono-running #view-cronometro #cronoControls .crono-session-finish-btn { display: flex !important; background: var(--accent) !important; color: var(--bg) !important; border: 0 !important; }
+html.mv2-on:not(#m):not(#m) body.crono-running #view-cronometro #cronoPianoMoney { padding: 10px 12px !important; border-radius: 12px !important; }
+
+/* Mesa de trabajo como hoja inferior: plegada muestra las pestañas;
+   al tocar una se abre con su contenido. */
+html.mv2-on:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) {
+  position: fixed !important; left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important; z-index: 120 !important; /* por debajo de los modales (200+) */
+  width: 100% !important; max-width: none !important; margin: 0 !important; transform: none !important;
+  height: auto !important; min-height: 0 !important; max-height: 72dvh !important; box-sizing: border-box;
+  display: flex !important; flex-direction: column; gap: 6px;
+  padding: 6px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  border-radius: 20px 20px 0 0 !important; border: 1px solid var(--border) !important; border-bottom: 0 !important;
+  background: var(--bg2) !important; box-shadow: 0 -8px 24px rgba(0, 0, 0, .12) !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important; /* fondo opaco: el desenfoque no se ve y cuesta */
+  transition: max-height .25s ease;
+}
+/* Con la barra de navegación visible, la hoja se apoya encima de ella. */
+html.mv2-on:not(#m):not(#m) body.mv2-nav-visible:not(.crono-focus) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) { bottom: var(--mv2-nav-h, 64px) !important; padding-bottom: 10px !important; }
+html.mv2-on:not(#m):not(#m) body.mv2-nav-rail #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) { left: var(--mv2-rail-w, 0px) !important; width: auto !important; }
+html.mv2-on:not(#m):not(#m) body:not(.crono-running) #view-cronometro #cronoRunDrawer { display: none !important; }
+html.mv2-on:not(#m):not(#m) body.crono-running #view-cronometro #cronoIdleDrawer { display: none !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer)::before {
+  content: ''; display: block; width: 38px; height: 5px; border-radius: 3px; background: var(--border2, var(--border)); margin: 2px auto 2px; flex: 0 0 auto;
+}
+html.mv2-on:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) :is(.crono-run-drawer-head, .crono-run-drawer-handle) { display: none !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer):not(.mv2-sheet-open) .crono-run-drawer-panels { display: none !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer).mv2-sheet-open { max-height: 72dvh !important; height: 72dvh !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer).mv2-sheet-open .crono-run-drawer-head { display: flex !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) .crono-run-drawer-panels { flex: 1 1 0; min-height: 0; overflow-y: auto; }
+html.mv2-on:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) .crono-run-drawer-tabs { flex: 0 0 auto; }
+html.mv2-on:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) .crono-run-drawer-tab { min-height: 40px !important; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .mv2-sheet-toggle { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 120px; height: 18px !important; min-height: 0 !important; padding: 0 !important; border: 0; background: none; cursor: pointer; }
+html.mv2-on .mv2-sheet-scrim { display: none; }
+html.mv2-on .mv2-sheet-scrim.on { display: block; position: fixed; inset: 0; z-index: 119; background: rgba(0, 0, 0, .25); }
+
 
 /* ── Calendario (fase 3) ─────────────────────────────────────────── */
 #mv2Cal { display: none; }
-@media (max-width: 700px) {
-  html.mobile-v2 #view-calendario:not(.mv2-cal-classic) #mv2Cal { display: grid; gap: 10px; margin-bottom: 12px; }
-  html.mobile-v2 #view-calendario:not(.mv2-cal-classic) > :not(#mv2Cal):not(.botanical-deco):not(script) { display: none !important; }
-  html.mobile-v2 #view-calendario.mv2-cal-classic #mv2Cal { display: none !important; }
-  html.mobile-v2 .mv2-cal-back { display: block; margin: 0 0 8px; }
-  html.mobile-v2 .mv2-cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; text-align: center; }
-  html.mobile-v2 .mv2-cal-head b { display: block; font-size: 18px; }
-  html.mobile-v2 .mv2-cal-head small { display: block; font-size: 12.5px; color: var(--text3); }
-  html.mobile-v2 .mv2-cal-nav { width: 40px; height: 40px; min-height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg); color: var(--accent); font-size: 20px; cursor: pointer; }
-  html.mobile-v2 .mv2-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-  html.mobile-v2 .mv2-wd { text-align: center; font-size: 11px; font-weight: 700; color: var(--text3); padding-bottom: 2px; }
-  html.mobile-v2 .mv2-day {
-    position: relative; aspect-ratio: 1; min-height: 0; padding: 0; border: 0; border-radius: 9px; font: inherit; font-size: 13px; font-variant-numeric: tabular-nums;
-    display: grid; place-items: center; cursor: pointer; color: var(--text);
-  }
-  html.mobile-v2 .mv2-day.other { opacity: .38; }
-  html.mobile-v2 :is(.mv2-day, .mv2-legend i).l0 { background: var(--bg3); color: var(--text3); }
-  html.mobile-v2 :is(.mv2-day, .mv2-legend i).l1 { background: color-mix(in srgb, var(--accent) 16%, var(--bg2)); }
-  html.mobile-v2 :is(.mv2-day, .mv2-legend i).l2 { background: color-mix(in srgb, var(--accent) 34%, var(--bg2)); }
-  html.mobile-v2 :is(.mv2-day, .mv2-legend i).l3 { background: color-mix(in srgb, var(--accent) 55%, var(--bg2)); color: #fff; }
-  html.mobile-v2 :is(.mv2-day, .mv2-legend i).l4 { background: color-mix(in srgb, var(--accent) 78%, #000 0%); color: #fff; }
-  html.mobile-v2 :is(.mv2-day, .mv2-legend i).l5 { background: color-mix(in srgb, var(--accent) 88%, #000); color: #fff; }
-  html.mobile-v2 .mv2-day.today { box-shadow: inset 0 0 0 2px var(--text); font-weight: 700; }
-  html.mobile-v2 .mv2-ev { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 50%; background: var(--orange); }
-  html.mobile-v2 .mv2-legend { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 10px; font-size: 11.5px; color: var(--text3); }
-  html.mobile-v2 .mv2-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
-  html.mobile-v2 .mv2-legend-ev { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; }
-  html.mobile-v2 .mv2-legend-ev .mv2-ev { position: static; transform: none; }
-  html.mobile-v2 .mv2-evrow { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; border-top: 1px solid var(--border); padding: 10px 0; min-height: 56px; cursor: pointer; }
-  html.mobile-v2 .mv2-line + .mv2-evrow { border-top: 0; }
-  html.mobile-v2 .mv2-count { flex: 0 0 46px; text-align: center; line-height: 1; color: var(--orange); }
-  html.mobile-v2 .mv2-count b { display: block; font-size: 19px; }
-  html.mobile-v2 .mv2-count small { font-size: 11px; color: var(--text3); }
-  html.mobile-v2 .mv2-evcopy { display: grid; gap: 2px; min-width: 0; }
-  html.mobile-v2 .mv2-evcopy b { font-size: 15px; }
-  html.mobile-v2 .mv2-evcopy small { font-size: 12.5px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  html.mobile-v2 .mv2-more { display: block; margin-top: 4px; }
-  /* Hoja del día */
-  html.mobile-v2 .mv2-day-total { display: flex; justify-content: space-between; align-items: baseline; margin: 4px 0 8px; }
-  html.mobile-v2 .mv2-day-total b { font-size: 20px; color: var(--accent); }
-  html.mobile-v2 .mv2-stack { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 6px; background: var(--bg3); }
-  html.mobile-v2 .mv2-seg { display: flex; justify-content: space-between; gap: 10px; width: 100%; font: inherit; color: inherit; background: none; border: 0; border-top: 1px solid var(--border); padding: 10px 0; font-size: 14px; text-align: left; }
-  html.mobile-v2 .mv2-seg b { white-space: nowrap; flex: 0 0 auto; }
-  html.mobile-v2 .mv2-seg.is-event { cursor: pointer; color: var(--orange); font-weight: 600; min-height: 44px; }
+html.mv2-on #view-calendario:not(.mv2-cal-classic) #mv2Cal { display: grid; gap: 10px; margin-bottom: 12px; }
+html.mv2-on #view-calendario:not(.mv2-cal-classic) > :not(#mv2Cal):not(.botanical-deco):not(script) { display: none !important; }
+html.mv2-on #view-calendario.mv2-cal-classic #mv2Cal { display: none !important; }
+html.mv2-on .mv2-cal-back { display: block; margin: 0 0 8px; }
+html.mv2-on .mv2-cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; text-align: center; }
+html.mv2-on .mv2-cal-head b { display: block; font-size: 18px; }
+html.mv2-on .mv2-cal-head small { display: block; font-size: 12.5px; color: var(--text3); }
+html.mv2-on .mv2-cal-nav { width: 40px; height: 40px; min-height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg); color: var(--accent); font-size: 20px; cursor: pointer; }
+html.mv2-on .mv2-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+html.mv2-on .mv2-wd { text-align: center; font-size: 11px; font-weight: 700; color: var(--text3); padding-bottom: 2px; }
+html.mv2-on .mv2-day {
+  position: relative; aspect-ratio: 1; min-height: 0; padding: 0; border: 0; border-radius: 9px; font: inherit; font-size: 13px; font-variant-numeric: tabular-nums;
+  display: grid; place-items: center; cursor: pointer; color: var(--text);
 }
+html.mv2-on .mv2-day.other { opacity: .38; }
+html.mv2-on :is(.mv2-day, .mv2-legend i).l0 { background: var(--bg3); color: var(--text3); }
+html.mv2-on :is(.mv2-day, .mv2-legend i).l1 { background: color-mix(in srgb, var(--accent) 16%, var(--bg2)); }
+html.mv2-on :is(.mv2-day, .mv2-legend i).l2 { background: color-mix(in srgb, var(--accent) 34%, var(--bg2)); }
+html.mv2-on :is(.mv2-day, .mv2-legend i).l3 { background: color-mix(in srgb, var(--accent) 55%, var(--bg2)); color: #fff; }
+html.mv2-on :is(.mv2-day, .mv2-legend i).l4 { background: color-mix(in srgb, var(--accent) 78%, #000 0%); color: #fff; }
+html.mv2-on :is(.mv2-day, .mv2-legend i).l5 { background: color-mix(in srgb, var(--accent) 88%, #000); color: #fff; }
+html.mv2-on .mv2-day.today { box-shadow: inset 0 0 0 2px var(--text); font-weight: 700; }
+html.mv2-on .mv2-ev { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 50%; background: var(--orange); }
+html.mv2-on .mv2-legend { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 10px; font-size: 11.5px; color: var(--text3); }
+html.mv2-on .mv2-legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+html.mv2-on .mv2-legend-ev { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; }
+html.mv2-on .mv2-legend-ev .mv2-ev { position: static; transform: none; }
+html.mv2-on .mv2-evrow { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; border-top: 1px solid var(--border); padding: 10px 0; min-height: 56px; cursor: pointer; }
+html.mv2-on .mv2-line + .mv2-evrow { border-top: 0; }
+html.mv2-on .mv2-count { flex: 0 0 46px; text-align: center; line-height: 1; color: var(--orange); }
+html.mv2-on .mv2-count b { display: block; font-size: 19px; }
+html.mv2-on .mv2-count small { font-size: 11px; color: var(--text3); }
+html.mv2-on .mv2-evcopy { display: grid; gap: 2px; min-width: 0; }
+html.mv2-on .mv2-evcopy b { font-size: 15px; }
+html.mv2-on .mv2-evcopy small { font-size: 12.5px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.mv2-on .mv2-more { display: block; margin-top: 4px; }
+/* Hoja del día */
+html.mv2-on .mv2-day-total { display: flex; justify-content: space-between; align-items: baseline; margin: 4px 0 8px; }
+html.mv2-on .mv2-day-total b { font-size: 20px; color: var(--accent); }
+html.mv2-on .mv2-stack { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 6px; background: var(--bg3); }
+html.mv2-on .mv2-seg { display: flex; justify-content: space-between; gap: 10px; width: 100%; font: inherit; color: inherit; background: none; border: 0; border-top: 1px solid var(--border); padding: 10px 0; font-size: 14px; text-align: left; }
+html.mv2-on .mv2-seg b { white-space: nowrap; flex: 0 0 auto; }
+html.mv2-on .mv2-seg.is-event { cursor: pointer; color: var(--orange); font-weight: 600; min-height: 44px; }
+
+
+/* ── iPad (html.mv2-tablet): las mismas piezas, a escala de tableta ──
+   Hoy a dos columnas en horizontal; cronómetro centrado con anillo grande
+   y la mesa de trabajo como hoja; el panel lateral de Calendario/Hábitos
+   del crono se retira (Hábitos y Calendario tienen su pantalla). */
+html.mv2-tablet body:is([data-view="session"], [data-swipe-preview="session"]) #view-session:is(.active, .view-swipe-neighbor):not(.session-weekly-mode):not(.session-history-mode) {
+  display: block !important; max-width: 1180px; margin-inline: auto; padding: 20px 24px 28px !important;
+}
+html.mv2-tablet #view-session:not(.session-history-mode) :is(.ipad-today-only, .ipad-today-plan, .desktop-today-side) { display: none !important; }
+html.mv2-tablet #view-session:not(.session-history-mode) #mv2Hoy { gap: 14px; margin: 0 0 16px; }
+html.mv2-tablet .mv2-col { display: grid; gap: 14px; align-content: start; min-width: 0; }
+html.mv2-tablet .mv2-col-side { grid-template-columns: 1fr 1fr; }
+html.mv2-tablet .mv2-col-side .mv2-add { grid-column: 1 / -1; }
+@media (min-width: 1000px) {
+  html.mv2-tablet #view-session:not(.session-history-mode) #mv2Hoy { grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); align-items: start; gap: 16px; }
+  html.mv2-tablet .mv2-col-side { grid-template-columns: 1fr; }
+}
+html.mv2-tablet .mv2-card { padding: 18px 20px; border-radius: 20px; }
+html.mv2-tablet .mv2-lbl { font-size: 12px; }
+html.mv2-tablet .mv2-muted { font-size: 14.5px; }
+html.mv2-tablet .mv2-link { font-size: 14.5px; min-height: 40px; }
+html.mv2-tablet .mv2-summary { gap: 22px; }
+html.mv2-tablet .mv2-ring { flex-basis: 124px; width: 124px; height: 124px; }
+html.mv2-tablet .mv2-ring span { width: 102px; height: 102px; font-size: 22px; }
+html.mv2-tablet .mv2-ring small { font-size: 12.5px; }
+html.mv2-tablet .mv2-summary-copy b { font-size: 20px; }
+html.mv2-tablet .mv2-plan { min-height: 66px; padding: 12px 0; gap: 14px; }
+html.mv2-tablet .mv2-play { flex-basis: 40px; width: 40px; height: 40px; font-size: 13px; }
+html.mv2-tablet .mv2-plan-copy b { font-size: 17px; }
+html.mv2-tablet .mv2-plan-copy small { font-size: 13.5px; }
+html.mv2-tablet .mv2-plan-actions button { font-size: 14.5px; min-height: 40px; }
+html.mv2-tablet .mv2-rowcard { min-height: 76px; }
+html.mv2-tablet .mv2-rowcard b { font-size: 16.5px; }
+html.mv2-tablet .mv2-add { min-height: 56px; border-radius: 16px; font-size: 16px; }
+/* Hojas: centradas y de ancho legible. */
+html.mv2-tablet .mv2-sheet-overlay { justify-content: center; }
+html.mv2-tablet .mv2-sheet { max-width: 620px; padding: 10px 22px calc(22px + env(safe-area-inset-bottom, 0px)); border-radius: 24px 24px 0 0; }
+html.mv2-tablet .mv2-sheet-head b { font-size: 19px; }
+html.mv2-tablet .mv2-sheet-item b { font-size: 16px; }
+html.mv2-tablet .mv2-sheet-item small { font-size: 13.5px; }
+
+/* Cronómetro */
+html.mv2-tablet:not(#m):not(#m) #view-cronometro {
+  --crono-interface-ring-size: min(38vh, 400px) !important;
+  --mv2-crono-w: 640px;
+  padding-bottom: 120px !important;
+}
+html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-wrap {
+  display: flex !important; flex-direction: column !important; align-items: stretch !important; gap: 14px !important;
+  width: 100% !important; max-width: var(--mv2-crono-w) !important; margin: 0 auto !important;
+}
+html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-wrap { height: auto !important; min-height: 0 !important; max-height: none !important; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro :is(.crono-wrap > *, .crono-idle-main, #cronoStageRun, #cronoTargetSolidity) { flex: 0 0 auto !important; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-screen-title { width: min(100% - 96px, var(--mv2-crono-w)) !important; margin: 10px auto 8px !important; box-sizing: border-box; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-idle-controls { grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: none !important; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-idle-controls > * { grid-column: 1 / -1 !important; grid-area: auto !important; width: 100% !important; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro :is(#cronoCalendarObjectivesShell, .crono-bottom-row) { display: none !important; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro :is(.crono-idle-main, #cronoStageRun, #cronoTargetSolidity) { width: 100% !important; max-width: none !important; grid-area: auto !important; box-sizing: border-box; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-idle-main,
+html.mv2-tablet:not(#m):not(#m) body.crono-running #view-cronometro #cronoStageRun { gap: 14px !important; padding: 18px 22px 22px !important; border-radius: 24px !important; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-activity-tabs { justify-content: center; }
+@media (orientation: landscape) {
+  html.mv2-tablet:not(#m):not(#m) #view-cronometro { --crono-interface-ring-size: min(34vh, 380px) !important; }
+}
+html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-activity-tabs > * { min-height: 40px !important; height: 40px; padding: 0 16px !important; font-size: 14.5px !important; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-activity-tabs > * :is(small, span + span, em) { font-size: 12px !important; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro :is(#cronoIdleDisplayWrap, #cronoDisplayWrap) .crono-display { font-size: calc(var(--crono-interface-ring-size) * .23) !important; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-idle-controls .crono-mode-toggle { min-height: 46px !important; height: 46px; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-idle-controls .crono-mode-opt { font-size: 15px !important; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-plant-btn { min-height: 58px !important; height: 58px; font-size: 19px !important; border-radius: 14px !important; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-piano-goal-idle { padding: 12px 16px !important; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro :is(.crono-idle-message, #cronoRunDestello) { font-size: 14.5px !important; padding: 10px 14px !important; }
+/* En marcha */
+html.mv2-tablet:not(#m):not(#m) body.crono-running #view-cronometro { --crono-interface-ring-size: min(44vh, 440px) !important; }
+html.mv2-tablet:not(#m):not(#m) body.crono-running #view-cronometro #cronoDisplayWrap { margin-bottom: 96px !important; }
+html.mv2-tablet:not(#m):not(#m) body.crono-running #view-cronometro .crono-run-action-rail {
+  left: calc((var(--crono-interface-ring-size) - min(88vw, 460px)) / 2) !important; width: min(88vw, 460px) !important;
+}
+html.mv2-tablet:not(#m):not(#m) body.crono-running #view-cronometro #cronoControls > button { height: 60px !important; min-height: 60px !important; font-size: 18px !important; }
+html.mv2-tablet:not(#m):not(#m) body.crono-running #view-cronometro .crono-run-action-rail .crono-quick-destello-btn { flex-basis: 60px !important; width: 60px !important; height: 60px !important; }
+/* Mesa de trabajo: hoja centrada, del ancho de la columna. */
+html.mv2-tablet:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) {
+  left: max(0px, calc((100vw - 760px) / 2)) !important; right: max(0px, calc((100vw - 760px) / 2)) !important; width: auto !important;
+  padding-inline: 18px !important;
+}
+html.mv2-tablet:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer).mv2-sheet-open { max-height: 70dvh !important; height: 70dvh !important; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer) .crono-run-drawer-tab { min-height: 46px !important; font-size: 15px !important; }
+
+/* Etiquetas pequeñas con la letra del sistema (la monoespaciada queda para cifras grandes). */
+html.mv2-on:not(#m):not(#m) #view-cronometro :is(.crono-activity-tabs small, .crono-run-drawer-tab, .crono-run-drawer-tab *, .crono-run-drawer-head, .crono-run-drawer-head *, .crono-piano-goal-idle, .crono-piano-goal-idle *) { font-family: var(--font-system) !important; letter-spacing: 0 !important; }
+@media (orientation: landscape) {
+  html.mv2-tablet:not(#m):not(#m) body.crono-running #view-cronometro { --crono-interface-ring-size: min(40vh, 400px) !important; }
+}
+
+/* Calendario en el iPad: mapa del mes con casillas bajas y, en horizontal,
+   los próximos eventos al lado. */
+html.mv2-tablet #view-calendario:not(.mv2-cal-classic) #mv2Cal { max-width: 1180px; margin: 0 auto 16px; gap: 14px; }
+@media (min-width: 1000px) {
+  html.mv2-tablet #view-calendario:not(.mv2-cal-classic) #mv2Cal { grid-template-columns: minmax(0, 1.25fr) minmax(320px, 1fr); align-items: start; gap: 16px; }
+}
+html.mv2-tablet .mv2-cal-head b { font-size: 20px; }
+html.mv2-tablet .mv2-cal-head small { font-size: 13.5px; }
+html.mv2-tablet .mv2-cal-nav { width: 44px; height: 44px; min-height: 44px; }
+html.mv2-tablet .mv2-cal-grid { gap: 5px; }
+html.mv2-tablet .mv2-wd { font-size: 12px; }
+html.mv2-tablet .mv2-day { aspect-ratio: auto; height: clamp(44px, 6.8vh, 70px); font-size: 15px; border-radius: 11px; }
+html.mv2-tablet .mv2-legend { font-size: 12.5px; }
+html.mv2-tablet .mv2-evrow { min-height: 62px; }
+html.mv2-tablet .mv2-evcopy b { font-size: 16px; }
+html.mv2-tablet .mv2-evcopy small { font-size: 13.5px; }
+html.mv2-tablet .mv2-count b { font-size: 21px; }
+html.mv2-tablet .mv2-seg { font-size: 15px; }

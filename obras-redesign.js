@@ -100,18 +100,42 @@
     return 'En construcción';
   }
 
-  function eventBoost(work) {
+  // Los eventos se serializan una sola vez por pintado (antes, una vez por obra
+  // y comparación al ordenar: ~0,3 s por pintado con 145 eventos). El índice se
+  // descarta al acabar la tarea en curso, así que nunca queda desfasado.
+  let eventIndex = null;
+  function upcomingEventIndex() {
+    if (eventIndex) return eventIndex;
     const d = data();
     const events = d && Array.isArray(d.eventos) ? d.eventos : [];
     const now = Date.now();
-    let best = null;
+    eventIndex = [];
     events.forEach(event => {
-      let serialized = '';
-      try { serialized = JSON.stringify(event); } catch (error) {}
-      if (!serialized.includes(String(work.id))) return;
       const raw = event.fechaInicio || event.fecha || event.startDate || event.date || event.inicio;
       const time = Date.parse(raw || '');
       if (!Number.isFinite(time) || time < now - 86400000) return;
+      let serialized = '';
+      try { serialized = JSON.stringify(event); } catch (error) {}
+      eventIndex.push({ serialized, time });
+    });
+    const clear = () => { eventIndex = null; };
+    if (typeof queueMicrotask === 'function') queueMicrotask(clear); else Promise.resolve().then(clear);
+    return eventIndex;
+  }
+
+  function eventBoost(work) {
+    const id = String(work.id);
+    const index = upcomingEventIndex();
+    index.boost = index.boost || new Map();
+    if (!index.boost.has(id)) index.boost.set(id, computeEventBoost(index, id));
+    return index.boost.get(id);
+  }
+
+  function computeEventBoost(index, id) {
+    const now = Date.now();
+    let best = null;
+    index.forEach(({ serialized, time }) => {
+      if (!serialized.includes(id)) return;
       if (best == null || time < best) best = time;
     });
     if (best == null) return 0;

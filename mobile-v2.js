@@ -1,4 +1,5 @@
-/* Diseño móvil v2 (por defecto en pantallas ≤ 700 px; «Clásico» en Ajustes).
+/* Diseño móvil v2 (por defecto en pantallas ≤ 700 px y en el iPad; «Clásico»
+   en Ajustes). En el iPad (`html.mv2-tablet`) las mismas piezas, a lo ancho.
    No quita funciones: reorganiza. Lo que sale de la primera pantalla sigue a
    un toque (hoja «＋ Añadir», línea de Aulas que despliega su panel…).
    Fase 1: Hoy (anillo + frase, Para hoy, Aulas/Alemán en una línea) y el
@@ -29,9 +30,16 @@
 
   /* ── Preferencia de diseño ─────────────────────────────────────── */
   function design() { try { return root.localStorage.getItem(DESIGN_KEY) === 'classic' ? 'classic' : 'v2'; } catch (e) { return 'v2'; } }
+  const phoneWidth = () => !!(root.matchMedia && root.matchMedia('(max-width: 700px)').matches);
+  const isIPad = () => !!(doc && doc.documentElement.classList.contains('platform-ipad'));
+  // Activo = preferencia «Nuevo» y (teléfono o iPad). Escritorio nunca.
+  function active() { return design() === 'v2' && (phoneWidth() || isIPad()); }
   function applyDesign() {
     if (!doc) return;
-    doc.documentElement.classList.toggle('mobile-v2', design() === 'v2');
+    const html = doc.documentElement;
+    html.classList.toggle('mobile-v2', design() === 'v2');
+    html.classList.toggle('mv2-on', active());
+    html.classList.toggle('mv2-tablet', active() && !phoneWidth());
     doc.querySelectorAll('[data-mobile-design]').forEach(b => {
       const on = b.dataset.mobileDesign === design();
       b.classList.toggle('active', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
@@ -204,8 +212,8 @@
       host.id = 'mv2Hoy'; host.className = 'mv2-hoy'; host.setAttribute('aria-label', 'Hoy');
       view.insertBefore(host, view.firstChild);
     }
-    // Solo en el móvil: en iPad y escritorio no se calcula nada.
-    if (design() !== 'v2' || !(root.matchMedia && root.matchMedia('(max-width: 700px)').matches)) { host.innerHTML = ''; return; }
+    // Solo en el móvil y el iPad: en el escritorio no se calcula nada.
+    if (!active()) { host.innerHTML = ''; host.__mv2Html = ''; return; }
     const data = database();
     const done = typeof root._doneMinHoy === 'function' ? root._doneMinHoy() : (typeof root.getMinutosConcentradoHoy === 'function' ? root.getMinutosConcentradoHoy() : 0);
     let t = null; try { t = typeof root._probTextHoy === 'function' ? root._probTextHoy() : null; } catch (e) {}
@@ -213,15 +221,21 @@
     // Aulas es una pantalla propia (v461): aquí solo su resumen en vivo.
     const roomsSummary = root.ReservationDashboard?.summary?.() || null;
     const aulas = roomsSummary ? roomsSummary.title + (roomsSummary.detail ? ' · ' + roomsSummary.detail : '') : 'Reservas y monitor';
-    host.innerHTML =
+    // Dos columnas en el iPad horizontal; en el teléfono `display: contents`.
+    const html = '<div class="mv2-col mv2-col-main">' +
       '<div class="mv2-card mv2-summary"><div class="mv2-ring" style="--p:' + pct + '" role="img" aria-label="' + fmtMin(done) + ' de 4 horas"><span>' + fmtMin(done) + '<small>de 4 h</small></span></div>' +
-        '<div class="mv2-summary-copy"><b>' + esc(sentence(done, t)) + '</b><span class="mv2-muted">' + esc(rewardLine(data)) + '</span></div></div>' +
-      '<div class="mv2-card mv2-parahoy">' + paraHoyHtml(data) + '</div>' +
+        '<div class="mv2-summary-copy"><b>' + esc(sentence(done, t)) + '</b><span class="mv2-muted">' + esc(rewardLine(data)) + '</span>' +
+        // El registro por horas de hoy (antes solo en la portada clásica del iPad).
+        '<button type="button" class="mv2-link mv2-sessions" onclick="openSesionesDetalle(this)">Sesiones de hoy ›</button></div></div>' +
+      '<div class="mv2-card mv2-parahoy">' + paraHoyHtml(data) + '</div></div><div class="mv2-col mv2-col-side">' +
       lineCard('Aulas', esc(aulas), "showView('aulas')", roomsSummary ? 'is-' + roomsSummary.kind : '') +
       lineCard('Alemán', 'Tarjetas, estudio libre y hucha', "showView('deutsch')") +
-      // En el móvil Aulas ocupa el sitio de Profesor en la barra inferior.
-      lineCard('Profesor', 'Informe, plan de hoy y unidades urgentes', "showView('profesor')") +
-      '<button type="button" class="mv2-add" onclick="MobileV2.openAdd()">＋ Añadir estudio, nota o tarea</button>';
+      // En el móvil Aulas ocupa el sitio de Profesor en la barra inferior (en el iPad caben los dos).
+      (phoneWidth() ? lineCard('Profesor', 'Informe, plan de hoy y unidades urgentes', "showView('profesor')")
+        : lineCard('Historial', 'Sesiones, estadísticas y tendencias', "openSessionArchive('history')")) +
+      '<button type="button" class="mv2-add" onclick="MobileV2.openAdd()">＋ Añadir estudio, nota o tarea</button></div>';
+    // Mismo contenido → no se toca el DOM (evita parpadeos, también a mitad del gesto lateral).
+    if (host.__mv2Html !== html) { host.innerHTML = html; host.__mv2Html = html; }
   }
 
   /* ── Hojas: «＋ Añadir» y «Pegar plan» ─────────────────────────── */
@@ -293,14 +307,14 @@
     const row = doc.createElement('div');
     row.id = 'mv2DesignRow'; row.className = 'mv2-design-row st-row st-row--stack';
     row.innerHTML = '<span class="st-ico" style="--c:#5b82a6"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg></span>' +
-      '<span class="st-label"><b>Diseño en el móvil</b><small>El clásico conserva la disposición anterior.</small></span>' +
-      '<div class="st-ctl st-seg ajustes-seg" role="group" aria-label="Diseño en el móvil"><button type="button" data-mobile-design="v2" onclick="MobileV2.setDesign(\'v2\')">Nuevo</button><button type="button" data-mobile-design="classic" onclick="MobileV2.setDesign(\'classic\')">Clásico</button></div>';
+      '<span class="st-label"><b>Diseño en móvil y iPad</b><small>El clásico conserva la disposición anterior.</small></span>' +
+      '<div class="st-ctl st-seg ajustes-seg" role="group" aria-label="Diseño en móvil y iPad"><button type="button" data-mobile-design="v2" onclick="MobileV2.setDesign(\'v2\')">Nuevo</button><button type="button" data-mobile-design="classic" onclick="MobileV2.setDesign(\'classic\')">Clásico</button></div>';
     list.appendChild(row);
     applyDesign();
   }
 
   /* ── Cronómetro: hoja de herramientas y vuelta arriba al empezar ─── */
-  function phoneV2() { return design() === 'v2' && root.matchMedia && root.matchMedia('(max-width: 700px)').matches; }
+  function phoneV2() { return active(); } // nombre histórico: también cubre el iPad
   function scrim() {
     let el = doc.getElementById('mv2SheetScrim');
     if (!el) { el = doc.createElement('div'); el.id = 'mv2SheetScrim'; el.className = 'mv2-sheet-scrim'; el.addEventListener('click', closeTools); doc.body.appendChild(el); }
@@ -343,7 +357,18 @@
     };
     measureNav();
     root.addEventListener('resize', measureNav);
-    new MutationObserver(measureNav).observe(doc.body, { attributes: true, attributeFilter: ['class', 'data-view'] });
+    // Medir fuerza un cálculo de maquetación: nunca durante el gesto lateral
+    // (cambia clases del body varias veces) y como mucho una vez por fotograma.
+    let navFrame = 0;
+    const scheduleNav = () => {
+      if (navFrame) return;
+      navFrame = root.requestAnimationFrame(() => {
+        navFrame = 0;
+        if (doc.body.classList.contains('view-swipe-dragging') || doc.body.classList.contains('view-swipe-settling')) return;
+        measureNav();
+      });
+    };
+    new MutationObserver(scheduleNav).observe(doc.body, { attributes: true, attributeFilter: ['class', 'data-view'] });
     // Cualquier selección de pestaña (tocar o por código: recordatorio de
     // tareas, dictado…) abre la hoja; si no, el panel se abriría invisible.
     [['cronoSetIdleDrawerTab', 'cronoIdleDrawer'], ['cronoSetRunDrawerTab', 'cronoRunDrawer']].forEach(([fn, id]) => {
@@ -422,7 +447,7 @@
     if (!view) return;
     let host = doc.getElementById('mv2Cal');
     if (!host) { host = doc.createElement('section'); host.id = 'mv2Cal'; host.className = 'mv2-cal'; view.insertBefore(host, view.firstChild); }
-    if (!phoneV2()) { host.innerHTML = ''; return; }
+    if (!phoneV2()) { host.innerHTML = ''; host.__mv2Html = ''; return; }
     const data = database();
     const now = new Date(), first = new Date(now.getFullYear(), now.getMonth() + calOffset, 1, 12);
     const year = first.getFullYear(), month = first.getMonth();
@@ -446,7 +471,7 @@
       return '<button type="button" class="mv2-evrow" onclick="openEditEvento(\'' + jsArg(e.id) + '\')"><span class="mv2-count"><b>' + (days === 0 ? 'hoy' : days) + '</b>' + (days === 0 ? '' : '<small>' + (days === 1 ? 'día' : 'días') + '</small>') + '</span>' +
         '<span class="mv2-evcopy"><b>' + esc(e.nombre || 'Evento') + '</b><small>' + parseDay(k).getDate() + ' ' + MONTHS_SHORT[parseDay(k).getMonth()] + (works.length ? ' · ' + esc(works.slice(0, 3).join(', ')) + (works.length > 3 ? '…' : '') : '') + '</small></span></button>';
     }).join('') : '<p class="mv2-muted">Sin eventos próximos.</p>';
-    host.innerHTML =
+    const html =
       '<div class="mv2-card"><div class="mv2-cal-head"><button type="button" class="mv2-cal-nav" onclick="MobileV2.calMove(-1)" aria-label="Mes anterior">‹</button>' +
         '<div><b>' + MONTHS[month].charAt(0).toUpperCase() + MONTHS[month].slice(1) + ' ' + year + '</b><small>' + (monthTotal ? fmtMin(monthTotal) + ' estudiadas' : 'Sin estudio registrado') + '</small></div>' +
         '<button type="button" class="mv2-cal-nav" onclick="MobileV2.calMove(1)" aria-label="Mes siguiente">›</button></div>' +
@@ -454,6 +479,9 @@
         '<div class="mv2-legend"><span>Horas</span><i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i><span>5 h+</span><span class="mv2-legend-ev"><i class="mv2-ev"></i>Evento</span></div></div>' +
       '<div class="mv2-card"><div class="mv2-line"><span class="mv2-lbl">Próximos eventos</span><button type="button" class="mv2-link" onclick="openAddEvento()">＋ Añadir</button></div>' + evRows +
         '<button type="button" class="mv2-link mv2-more" onclick="MobileV2.calClassic(true)">Lista completa, hábitos y Google ›</button></div>';
+    // Igual que antes → no se toca el DOM (al terminar el gesto lateral se
+    // pintaría otra vez lo mismo y costaría un fotograma).
+    if (host.__mv2Html !== html) { host.innerHTML = html; host.__mv2Html = html; }
   }
 
   function openDay(key) {
@@ -531,6 +559,10 @@
     if (!doc || install.done) return;
     install.done = true;
     applyDesign();
+    // Girar o partir la pantalla del iPad cruza los 700 px: recalcular.
+    try {
+      root.matchMedia('(max-width: 700px)').addEventListener('change', () => { applyDesign(); renderHoy(); try { renderCal(); } catch (e) {} });
+    } catch (e) {}
     const hook = () => {
       if (typeof root.renderSessionResumen !== 'function' || root.renderSessionResumen.__mv2) return;
       const original = root.renderSessionResumen;
@@ -547,5 +579,5 @@
   }
   if (doc) install();
 
-  return { renderCal, openDay, editDay, calMove, calClassic, segmentsOf, level, closeTools, design, setDesign, planToday, parsePlan, parseMinutes, matchUnit, savePlan, clearPlan, renderHoy, studyNow, openAdd, addStudy, addNote, toggleRooms, openPaste, pasteFromClipboard, confirmPaste, closeSheet, sentence };
+  return { active, renderCal, openDay, editDay, calMove, calClassic, segmentsOf, level, closeTools, design, setDesign, planToday, parsePlan, parseMinutes, matchUnit, savePlan, clearPlan, renderHoy, studyNow, openAdd, addStudy, addNote, toggleRooms, openPaste, pasteFromClipboard, confirmPaste, closeSheet, sentence };
 });

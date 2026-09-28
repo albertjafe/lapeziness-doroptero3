@@ -93,7 +93,7 @@
     });
   });
   load('updateSafetyScript','./update-safety.js?v=378');
-  load('cronoRunningPremiumScript','./crono-running-premium.js?v=430');
+  load('cronoRunningPremiumScript','./crono-running-premium.js?v=464');
   load('eventPlanningScript','./event-planning.js?v=377',function(){
     load('competitionPlanningSeedScript','./competition-planning-seed.js?v=342',function(){
       load('eventPlanningUiV2Script','./event-planning-ui-v2.js?v=342',function(){
@@ -121,7 +121,7 @@
         load('ensembleRepertoireCatalogScript','./ensemble-repertoire-catalog.js?v=381',function(){
           load('obraPremiumScript','./obra-premium.js?v=342',function(){
             load('obraPremiumPolishScript','./obra-premium-polish.js?v=342',function(){
-              load('obrasRedesignScript','./obras-redesign.js?v=342',function(){
+              load('obrasRedesignScript','./obras-redesign.js?v=464',function(){
                 load('obrasRedesignPolishScript','./obras-redesign-polish.js?v=342',function(){
                   load('obrasUnifiedLibraryScript','./obras-unified-library.js?v=342',function(){
                     load('workDifficultyIntegrationScript','./work-difficulty-integration.js?v=342');

@@ -15662,6 +15662,13 @@ body.view-swipe-settling > .nav-bottom:not(.view-swipe-nav) { visibility: hidden
   will-change: transform;
 }
 body.crono-focus .topbar.view-swipe-header { display: block !important; }
+/* Durante el gesto nada se desenfoca en vivo: con las capas moviéndose habría
+   que volver a difuminar lo de debajo en cada fotograma (tirones en iPad). La
+   cabecera ya es casi opaca (94 %), así que a la vista no cambia. */
+.topbar.view-swipe-header { background: var(--bg) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+body:is(.view-swipe-dragging, .view-swipe-settling) .view :is(.crono-run-drawer, .crono-close-btn, .crono-quick-destello-btn) {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
 .nav-bottom.view-swipe-nav {
   position: fixed;
   inset: auto 0 0 0;
