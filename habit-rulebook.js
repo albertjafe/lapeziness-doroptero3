@@ -216,6 +216,8 @@
       ? Math.round((Date.parse(todayKey) - Date.parse(habit.startDate)) / 86400000) + 1 : 0;
     const current = inForce(habit, todayKey) || pending(habit, todayKey);
     const cases = String(opts.cases || '').trim();
+    const lapses = (opts.lapses || []).filter(l => l && l.date);
+    const finished = validKey(endKey) && validKey(todayKey) && todayKey > endKey;
     const field = (label, value) => '- ' + label + ': ' + (String(value || '').trim() || '(sin escribir)');
     return [
       'Quiero cerrar sin ambigüedades el reglamento de uno de mis hábitos, para no tener que negociar conmigo mismo en el momento ni gastar energía en decidir qué cuenta. Redáctalo tú.',
@@ -227,12 +229,15 @@
       field('Descripción', habit.description),
       field('Por qué lo hago', habit.motivation),
       field('Qué cuenta como cumplirlo', habit.successCriteria),
+      ...(finished ? ['- Estado: reto terminado el ' + endKey + '. Ahora está en mantenimiento: la norma sigue rigiendo sin fecha final; cada caída se apunta y 2 caídas en 7 días o 3 en 30 reabren el reto.'] : []),
       '',
       current ? 'REGLAMENTO ACTUAL (mejóralo con los casos nuevos; no lo rehagas sin motivo)' : 'REGLAMENTO ACTUAL',
       current ? format(current, habit.mode) : 'Todavía no tiene.',
       '',
       'CASOS NUEVOS O DUDAS QUE QUIERO RESOLVER',
-      cases || 'Ninguno en concreto: anticipa tú los casos dudosos más habituales.',
+      ...(cases || !lapses.length ? [cases || 'Ninguno en concreto: anticipa tú los casos dudosos más habituales.'] : []),
+      ...(lapses.length ? ['Caídas que he apuntado (resuélvelas en EJEMPLOS y cierra la rendija que las permitió):',
+        ...lapses.map(l => '- ' + l.date + ': ' + (l.note || '(sin nota)'))] : []),
       '',
       'PRINCIPIOS QUE DEBE CUMPLIR',
       '1. Cada norma se comprueba con hechos observables, sin juzgar intenciones. «Si es importante» o «si hace falta» no valen si no dicen cómo se comprueba.',
@@ -322,7 +327,11 @@
   async function copyPrompt() {
     const habit = findHabit(editingId);
     if (!habit) return;
-    lastPrompt = buildPrompt(habit, { todayKey: todayKeyNow(), cases: el('hrbCases') ? el('hrbCases').value : '' });
+    const todayKey = todayKeyNow();
+    // En un hábito terminado, las caídas apuntadas viajan solas como casos que resolver.
+    const M = root.HabitMaintenance;
+    const upkeep = M && typeof root.habitAllChallenges === 'function' ? M.state(root.habitAllChallenges(), habit, todayKey) : null;
+    lastPrompt = buildPrompt(habit, { todayKey, cases: el('hrbCases') ? el('hrbCases').value : '', lapses: upkeep && upkeep.applies ? upkeep.lapses.slice(0, 15) : [] });
     const note = el('hrbCopyNote');
     const fallback = el('hrbPromptFallback');
     try {

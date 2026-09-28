@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-28-habit-rulebook-v465';
+const APP_VERSION = '2026-09-28-habit-maintenance-v466';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -288,12 +288,16 @@ function _mergeHabitChallenge(a, b) {
   const newer = aUpdated.localeCompare(bUpdated) >= 0 ? a : b;
   const older = newer === a ? b : a;
   const merged = Object.assign({}, older, newer);
-  const logs = Object.assign({}, older.logs || {});
-  Object.entries(newer.logs || {}).forEach(([day, log]) => {
-    const current = logs[day];
-    if (!current || String(log && log.at || '').localeCompare(String(current && current.at || '')) >= 0) logs[day] = log;
+  // Registros diarios del reto y caídas de mantenimiento: gana el más reciente de cada día.
+  ['logs', 'maintenanceLogs'].forEach(field => {
+    if (field !== 'logs' && !older[field] && !newer[field]) return;
+    const days = Object.assign({}, older[field] || {});
+    Object.entries(newer[field] || {}).forEach(([day, log]) => {
+      const current = days[day];
+      if (!current || String(log && log.at || '').localeCompare(String(current && current.at || '')) >= 0) days[day] = log;
+    });
+    merged[field] = days;
   });
-  merged.logs = logs;
   return merged;
 }
 function _mergeHabitChallenges(a, b) {
@@ -20382,9 +20386,15 @@ function habitAllChallenges() {
 }
 
 function habitActiveChallenges() {
-  // Solo hay un objetivo activo. Los objetivos terminados siguen viviendo
-  // en habitAllChallenges() para alimentar la colección de recompensas.
-  return habitAllChallenges().filter(habit => !habitIsCompleted(habit)).slice(0, 1);
+  // Un hábito nuevo en curso y, como mucho, un reto reabierto de uno ya
+  // terminado (recaída en mantenimiento); el principal siempre va primero.
+  // Los terminados siguen en habitAllChallenges() para la colección.
+  const active = habitAllChallenges().filter(habit => !habitIsCompleted(habit));
+  return [active.find(habit => !habit.reopenOf), active.find(habit => habit.reopenOf)].filter(Boolean);
+}
+
+function habitPrincipalChallenge() {
+  return habitActiveChallenges().find(habit => !habit.reopenOf) || null;
 }
 
 function habitCompletedChallenges() {
@@ -20400,15 +20410,17 @@ function habitPersistChallenges(challenges) {
   db.habitChallenges = Array.isArray(challenges) ? challenges : [];
   let all = db.habitChallenges.map(habitNormalize).filter(Boolean);
   const active = all.filter(habit => !habitIsCompleted(habit));
-  if (active.length > 1) {
-    const keepId = active[0].id;
+  const principal = active.find(habit => !habit.reopenOf);
+  const reopened = active.find(habit => habit.reopenOf);
+  const keep = new Set([principal, reopened].filter(Boolean).map(habit => habit.id));
+  if (active.length > keep.size) {
     db.habitChallenges = db.habitChallenges.filter(item => {
       const normalized = habitNormalize(item);
-      return !normalized || habitIsCompleted(normalized) || normalized.id === keepId;
+      return !normalized || habitIsCompleted(normalized) || keep.has(normalized.id);
     });
     all = db.habitChallenges.map(habitNormalize).filter(Boolean);
   }
-  db.habitChallenge = active[0] || all[0] || db.habitChallenges.find(habit => habit && habit.deleted) || null;
+  db.habitChallenge = principal || reopened || all[0] || db.habitChallenges.find(habit => habit && habit.deleted) || null;
 }
 
 function habitLogStatus(log) {
@@ -20541,7 +20553,7 @@ function renderHabitChallenge() {
 }
 
 function openHabitChallengeModal(challengeId) {
-  const current = challengeId ? (habitAllChallenges().find(habit => habit.id === challengeId) || null) : habitActiveChallenge();
+  const current = challengeId ? (habitAllChallenges().find(habit => habit.id === challengeId) || null) : habitPrincipalChallenge();
   const metrics = current ? habitMetrics(current) : null;
   const complete = !!(current && metrics.complete);
   const existing = !!(current && !complete);
@@ -20699,7 +20711,7 @@ function saveHabitChallenge() {
     if (index >= 0) stored[index] = current;
     habitPersistChallenges(stored);
   } else {
-    if (habitActiveChallenges().length) {
+    if (habitPrincipalChallenge()) {
       showToast('Termina el hábito actual antes de crear otro');
       return;
     }

@@ -142,3 +142,51 @@ test('prepares a rulebook with the AI and it rules from tomorrow, never today', 
   expect(saved.versions).toBe(1);
   expect(saved.from).toBe(saved.tomorrow);
 });
+
+test('a lapse after finishing keeps the trophy; the threshold reopens the challenge next to the current one', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 1194 });
+  await page.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* isolated */' }));
+  await page.addInitScript(value => {
+    const key = offset => { const d = new Date(); d.setDate(d.getDate() + offset); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+    const doc = { ...value, habitChallenges: [
+      { id: 'habit-bed', title: 'No móvil en la cama', mode: 'avoid', startDate: key(-40), durationDays: 21, logs: {}, createdAt: '2026-08-23T14:35:00Z', updatedAt: '2026-09-12T12:00:00Z' },
+      { id: 'habit-detox', title: 'Desintoxicación por la mañana', mode: 'avoid', startDate: key(-2), durationDays: 21, logs: {}, createdAt: '2026-09-26T07:00:00Z', updatedAt: '2026-09-26T07:00:00Z' },
+    ] };
+    Object.defineProperty(navigator, 'platform', { configurable: true, get: () => 'MacIntel' });
+    localStorage.setItem('alberto_piano_v2', JSON.stringify(doc));
+    localStorage.setItem('alberto_sync_v1', JSON.stringify({ localRevision: 0, dirtyRevision: 0, lastSyncedRevision: 0 }));
+  }, { ...data, habitChallenges: [] });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.HabitMaintenance && window.openHabitos);
+  await page.evaluate(() => openHabitos('habit-bed'));
+
+  const maint = page.locator('#view-habitos .hp-maint');
+  await expect(maint).toContainText('días sin caídas');
+  await maint.getByRole('button', { name: 'Registrar caída', exact: true }).click();
+  await expect(page.locator('#modalHabitLapse')).toHaveClass(/visible/);
+  await page.locator('#hlYesterday').click();
+  await page.locator('#hlNote').fill('Cogí el móvil de la mesilla');
+  await page.locator('#modalHabitLapse .modal-btn.primary').click();
+  await expect(page.locator('#modalHabitLapse')).not.toHaveClass(/visible/);
+  await expect(maint.locator('.hp-maint-state')).toContainText('Caída aislada');
+  await expect(maint.locator('.hp-maint-list')).toContainText('Cogí el móvil de la mesilla');
+  // Recién apuntada, se puede quitar si fue un error; el trofeo sigue.
+  await expect(maint.getByRole('button', { name: 'Quitar', exact: true })).toBeVisible();
+  await expect(page.locator('#view-habitos .hp-card.is-earned')).toHaveCount(1);
+
+  await maint.getByRole('button', { name: 'Registrar caída', exact: true }).click();
+  await page.locator('#hlToday').click();
+  await page.locator('#modalHabitLapse .modal-btn.primary').click();
+  await expect(maint.locator('.hp-maint-state')).toContainText('Esto ya es una recaída');
+  await maint.getByRole('button', { name: 'Reabrir el reto (21 días)', exact: true }).click();
+
+  await expect(page.locator('.hp-detail .hp-kicker')).toContainText('reabierto');
+  const actives = await page.evaluate(() => habitActiveChallenges().map(h => [h.title, !!h.reopenOf]));
+  expect(actives).toEqual([['Desintoxicación por la mañana', false], ['No móvil en la cama', true]]);
+  const reopened = await page.evaluate(() => db.habitChallenges.find(h => h.reopenOf === 'habit-bed'));
+  expect(reopened.startDate).toBe(await page.evaluate(() => habitKeyAt(habitDayKey(), 1)));
+  expect(reopened.effortReward).toBeUndefined();
+  // Sin id, el modal sigue abriendo el hábito principal, no el reabierto.
+  await page.evaluate(() => openHabitChallengeModal());
+  await expect(page.locator('#habitTitleInput')).toHaveValue('Desintoxicación por la mañana');
+});

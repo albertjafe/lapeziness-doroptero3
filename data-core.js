@@ -194,12 +194,16 @@
     const newer = aUpdated.localeCompare(bUpdated) >= 0 ? a : b;
     const older = newer === a ? b : a;
     const merged = Object.assign({}, older, newer);
-    const logs = Object.assign({}, older.logs || {});
-    Object.entries(newer.logs || {}).forEach(([day, log]) => {
-      const current = logs[day];
-      if (!current || String(log && log.at || '').localeCompare(String(current && current.at || '')) >= 0) logs[day] = log;
+    // Registros diarios del reto y caídas de mantenimiento: gana el más reciente de cada día.
+    ['logs', 'maintenanceLogs'].forEach(field => {
+      if (field !== 'logs' && !older[field] && !newer[field]) return;
+      const days = Object.assign({}, older[field] || {});
+      Object.entries(newer[field] || {}).forEach(([day, log]) => {
+        const current = days[day];
+        if (!current || String(log && log.at || '').localeCompare(String(current && current.at || '')) >= 0) days[day] = log;
+      });
+      merged[field] = days;
     });
-    merged.logs = logs;
     return merged;
   }
 

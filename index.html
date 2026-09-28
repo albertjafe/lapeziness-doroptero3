@@ -37,7 +37,7 @@
 <link rel="stylesheet" href="german-study.css?v=426">
 <link rel="stylesheet" href="habit-trophies.css?v=383">
 <link rel="stylesheet" href="effort-incentives.css?v=440">
-<link rel="stylesheet" href="habits-page.css?v=465">
+<link rel="stylesheet" href="habits-page.css?v=466">
 <link rel="stylesheet" href="desktop-redesign.css?v=396">
 <link rel="stylesheet" href="crono-start-layout.css?v=401">
 <link rel="stylesheet" href="ipad-today.css?v=407">
@@ -1901,6 +1901,31 @@
   </div>
 </div>
 
+<!-- MODAL: caída en un hábito terminado (mantenimiento) -->
+<div class="modal-overlay" id="modalHabitLapse">
+  <div class="modal hl-modal">
+    <div class="habit-modal-kicker" id="hlHabitName">Hábito</div>
+    <div class="modal-title">Registrar caída</div>
+    <p class="hrb-intro">Una caída no borra el reto ni el trofeo. Se apunta, y esa misma noche vuelves a la norma.</p>
+    <div class="habit-modal-field">
+      <span>Qué día</span>
+      <div class="hl-days">
+        <button type="button" class="hl-chip" id="hlToday" onclick="HabitMaintenance.setLapseDay(0)">Hoy</button>
+        <button type="button" class="hl-chip" id="hlYesterday" onclick="HabitMaintenance.setLapseDay(-1)">Ayer</button>
+        <input type="date" id="hlDate" class="modal-input" aria-label="Día de la caída" oninput="HabitMaintenance.syncChips()">
+      </div>
+    </div>
+    <label class="habit-modal-field" for="hlNote">
+      <span>Qué pasó <small>(opcional: servirá para mejorar el reglamento)</small></span>
+      <textarea id="hlNote" class="modal-input" maxlength="300" placeholder="Ej. me desperté a las 3, cogí el móvil de la mesilla para ver la hora"></textarea>
+    </label>
+    <div class="modal-buttons">
+      <button class="modal-btn secondary" onclick="closeModal('modalHabitLapse')">Cancelar</button>
+      <button class="modal-btn primary" onclick="HabitMaintenance.saveLapse()">Registrar caída</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: reglamento del hábito (lo redacta una IA; rige desde el día siguiente) -->
 <div class="modal-overlay" id="modalHabitRulebook">
   <div class="modal hrb-modal">
@@ -2471,7 +2496,7 @@
 </div>
 
 <script src="timer-core.js?v=397"></script>
-<script src="data-core.js?v=342"></script>
+<script src="data-core.js?v=466"></script>
 <script src="sync-core.js?v=342"></script>
 <script src="document-sync-core.js?v=433"></script>
 <script src="event-sync-core.js?v=342"></script>
@@ -2479,7 +2504,7 @@
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=397"></script>
 <script src="crono-state-store.js?v=397"></script>
-<script src="app.js?v=465"></script>
+<script src="app.js?v=466"></script>
 <script src="manual-study-activity.js?v=430"></script>
 <script src="chamber-factor-migration.js?v=430"></script>
 <script src="daily-study-minutes.js?v=464" id="dailyStudyMinutesFixScript"></script>
@@ -2501,8 +2526,9 @@
 <script src="ipad-today.js?v=461"></script>
 <script src="google-calendar.js?v=342"></script>
 <script src="timer-objectives.js?v=439"></script>
-<script src="habit-rulebook.js?v=465"></script>
-<script src="habits-page.js?v=465"></script>
+<script src="habit-rulebook.js?v=466"></script>
+<script src="habit-maintenance.js?v=466"></script>
+<script src="habits-page.js?v=466"></script>
 <script src="effort-incentives-ui.js?v=435"></script>
 <script src="metronome.js?v=368"></script>
 <script src="study-ledger-sync.js?v=434"></script>

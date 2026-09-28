@@ -136,18 +136,63 @@
     }
     if (current) body += rulebookHtml(current, habit.mode) + '<p class="hp-rb-since">Vigente desde el ' + esc(shortDate(current.effectiveFrom, true)) + '.</p>';
     else if (next) body += rulebookHtml(next, habit.mode);
-    else if (!metrics.complete && R) {
-      body += '<p class="hp-rb-empty">Sin reglamento. Prepáralo con la IA y sabrás exactamente qué es ' + w.fail.toLowerCase() + ', qué no y qué excepciones hay, sin decidirlo en el momento.</p>';
+    else if (R) {
+      body += '<p class="hp-rb-empty">' + (metrics.complete
+        ? 'Sin reglamento de mantenimiento. Prepáralo con la IA: tus caídas apuntadas entran solas como casos que resolver.'
+        : 'Sin reglamento. Prepáralo con la IA y sabrás exactamente qué es ' + w.fail.toLowerCase() + ', qué no y qué excepciones hay, sin decidirlo en el momento.') + '</p>';
     }
     const general = R ? '<details class="hp-rb-general"><summary>Normas para todos los hábitos</summary><ol>' +
       R.GENERAL_RULES.map(rule => '<li>' + esc(rule) + '</li>').join('') + '</ol></details>' : '';
     const id = jsArg(habit.id);
     const buttons = '<div class="hp-rb-actions">' +
-      (!metrics.complete && R ? '<button type="button" class="hp-edit is-primary" onclick="HabitRulebook.openEditor(\'' + id + '\')">' + (current || next ? 'Mejorar el reglamento con IA' : 'Preparar reglamento con IA') + '</button>' : '') +
+      (R ? '<button type="button" class="hp-edit is-primary" onclick="HabitRulebook.openEditor(\'' + id + '\')">' + (current || next ? 'Mejorar el reglamento con IA' : 'Preparar reglamento con IA') + '</button>' : '') +
       '<button type="button" class="hp-edit" onclick="openHabitChallengeModal(\'' + id + '\')">' + (metrics.complete ? 'Ver ficha completa' : 'Editar hábito') + '</button></div>';
     return '<section class="hp-block hp-normas"><h3>Normas</h3>' + body +
       '<dl class="hp-rules">' + rulesFor(habit, reward, current || next).map(([k, v]) => '<div><dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd></div>').join('') + '</dl>' +
       general + buttons + '</section>';
+  }
+
+  function maintenanceApi() {
+    return root.HabitMaintenance || null;
+  }
+
+  /* Tras terminar un reto: caídas, días limpios y el umbral que lo reabre. */
+  function maintenanceHtml(habit, all, todayKey) {
+    const M = maintenanceApi();
+    if (!M) return '';
+    const s = M.state(all, habit, todayKey);
+    if (!s.applies) return '';
+    const id = jsArg(s.familyId);
+    const head = s.level === 'relapse'
+      ? '<p class="hp-maint-state is-relapse"><b>Esto ya es una recaída.</b> ' + plural(s.week, 'caída', 'caídas') + ' en 7 días · ' + plural(s.month, 'caída', 'caídas') + ' en 30. Toca reabrir el reto.</p>'
+      : s.level === 'warn'
+        ? '<p class="hp-maint-state is-warn"><b>Caída aislada.</b> No borra el reto: vuelve a la norma. ' + plural(s.daysClean, 'día', 'días') + ' sin caídas desde la última.</p>'
+        : '<p class="hp-maint-state is-ok"><b>' + plural(s.daysClean, 'día', 'días') + ' sin caídas</b> desde que terminaste el reto.</p>';
+    const stats = '<div class="hp-maint-stats">' +
+      '<div><span>7 días</span><strong>' + s.week + '<small> / ' + M.WEEK_LIMIT + '</small></strong></div>' +
+      '<div><span>30 días</span><strong>' + s.month + '<small> / ' + M.MONTH_LIMIT + '</small></strong></div>' +
+      '<div><span>Sin caídas</span><strong>' + s.daysClean + '<small> d</small></strong></div></div>';
+    let actions;
+    if (s.reopen) {
+      const rm = root.habitMetrics ? root.habitMetrics(s.reopen) : null;
+      actions = '<button type="button" class="hp-maint-reopened" data-hp-select="' + esc(s.reopen.id) + '">Reto reabierto en curso' +
+        (rm && dayNum(s.reopen.startDate) <= dayNum(todayKey) ? ' · día ' + rm.day + ' de ' + rm.duration : ' · empieza el ' + shortDate(s.reopen.startDate)) + ' ›</button>';
+    } else {
+      actions = '<div class="hp-rb-actions">' +
+        (s.level === 'relapse' ? '<button type="button" class="hp-edit is-primary" onclick="HabitMaintenance.reopen(\'' + id + '\')">Reabrir el reto (' + M.REOPEN_DAYS + ' días)</button>' : '') +
+        '<button type="button" class="hp-edit' + (s.level === 'relapse' ? '' : ' is-lapse') + '" onclick="HabitMaintenance.openLapse(\'' + id + '\')">Registrar caída</button>' +
+        (s.level !== 'relapse' ? '<button type="button" class="hp-link" onclick="HabitMaintenance.reopen(\'' + id + '\')">Reabrir el reto por mi cuenta</button>' : '') +
+        '</div>';
+    }
+    const now = Date.now();
+    const list = s.lapses.length ? '<details class="hp-rb-cases hp-maint-list"' + (s.level !== 'ok' ? ' open' : '') + '><summary>Caídas apuntadas <span>' + s.lapses.length + '</span></summary><ul>' +
+      s.lapses.slice(0, 12).map(l => '<li class="is-relapse' + (l.date < s.windowStart ? ' is-old' : '') + '"><b>' + esc(shortDate(l.date)) + '</b><span>' + (l.note ? esc(l.note) : '<em>Sin nota</em>') +
+        (l.date < s.windowStart ? '<small>Antes del último reto: ya no cuenta.</small>' : '') + '</span>' +
+        (M.canUndo(l, now) ? '<button type="button" class="hp-maint-undo" onclick="HabitMaintenance.removeLapse(\'' + id + '\',\'' + esc(l.date) + '\')">Quitar</button>' : '') + '</li>').join('') +
+      '</ul></details>' : '';
+    return '<section class="hp-block hp-maint"><h3>Mantenimiento</h3>' + head + stats + actions + list +
+      '<p class="hp-maint-rule">Una caída no borra el reto ni el trofeo: se apunta y esa misma noche se vuelve a la norma. ' +
+      M.WEEK_LIMIT + ' caídas en 7 días o ' + M.MONTH_LIMIT + ' en 30 ya son una recaída y el reto se reabre (' + M.REOPEN_DAYS + ' días, sin premio en puntos, a la vez que tu hábito en curso).</p></section>';
   }
 
   function stateOf(habit, key, todayKey) {
@@ -183,12 +228,12 @@
       (done ? '✓ Cumplido hoy · toca para desmarcar' : 'Marcar hoy como cumplido') + '</button>';
   }
 
-  function detailHtml(habit, todayKey) {
+  function detailHtml(habit, todayKey, all) {
     const metrics = root.habitMetrics(habit);
     const T = root.HabitTrophies;
     const reward = T && habit.effortReward ? T.rewardStatus(habit) : null;
     const planned = dayNum(habit.startDate) > dayNum(todayKey);
-    const kicker = (habit.mode === 'avoid' ? 'Evitar' : 'Hacer') + ' · ' +
+    const kicker = (habit.mode === 'avoid' ? 'Evitar' : 'Hacer') + ' · ' + (habit.reopenOf ? 'reabierto · ' : '') +
       (metrics.complete ? 'terminado' : planned ? 'programado' : 'día ' + metrics.day + ' de ' + metrics.duration);
     // A mitad de reto, el % sobre la duración total parece un suspenso: se
     // muestra el acierto sobre los días ya decididos; al terminar, el total.
@@ -213,6 +258,7 @@
       '<div class="hp-stats">' + stats.map(([label, value, sub]) => '<div><span>' + label + '</span><strong>' + value + '</strong><small>' + sub + '</small></div>').join('') + '</div>' +
       '<section class="hp-block"><h3>Lo siguiente</h3><ul class="hp-next">' +
         nextSteps(habit, metrics, reward, todayKey).map(line => '<li class="is-' + line.kind + '">' + esc(line.text) + '</li>').join('') + '</ul></section>' +
+      (metrics.complete ? maintenanceHtml(habit, all || [habit], todayKey) : '') +
       '<section class="hp-block"><h3>Días</h3>' + daysGridHtml(habit, metrics, todayKey) + '</section>' +
       normasHtml(habit, reward, metrics, todayKey) +
     '</article>';
@@ -233,7 +279,7 @@
       return '<article class="hp-card' + (h.id === currentId ? ' is-selected' : '') + (item.complete ? ' is-earned' : '') + '">' +
         '<button type="button" class="hp-card-select" data-hp-select="' + esc(h.id) + '" aria-pressed="' + (h.id === currentId) + '">' +
         (T ? T.artwork(h.id, item.complete, 'mini-' + h.id) : '') +
-        '<span class="hp-card-copy"><span class="hp-card-kicker">' + (item.complete ? 'Terminado · ' + shortDate(item.completedOn, true) : item.status === 'planned' ? 'Programado · ' + shortDate(item.startedOn) : 'En curso') + '</span>' +
+        '<span class="hp-card-copy"><span class="hp-card-kicker">' + (item.complete ? 'Terminado · ' + shortDate(item.completedOn, true) : item.status === 'planned' ? 'Programado · ' + shortDate(item.startedOn) : 'En curso') + (h.reopenOf ? ' · reabierto' : '') + '</span>' +
         '<strong>' + esc(h.title || 'Hábito') + '</strong><span>' + item.success + ' de ' + item.duration + ' días · ' + item.compliance + ' %</span>' + points + '</span></button>' + claim +
       '</article>';
     }).join('');
@@ -244,7 +290,8 @@
   }
 
   const HOW = '<details class="hp-how"><summary>Cómo funcionan los hábitos</summary><ul>' +
-    '<li>Solo hay un hábito en curso a la vez: termina (o borra) el actual antes de crear otro.</li>' +
+    '<li>Solo hay un hábito nuevo en curso a la vez: termina (o borra) el actual antes de crear otro. Además puede haber un reto reabierto de uno terminado.</li>' +
+    '<li><b>Mantenimiento</b>: si caes después de terminar un reto, apúntalo en ese hábito. Una caída no borra nada; 2 en 7 días o 3 en 30 reabren el reto.</li>' +
     '<li><b>Hacer</b>: marcas cada día que lo cumples. <b>Evitar</b>: solo tocas si recaes.</li>' +
     '<li>Un fallo corta la racha, pero no reinicia el reto ni borra los días logrados.</li>' +
     '<li><b>Reglamento</b>: la IA lo redacta a partir de tu hábito y tus dudas (qué es recaída, qué no, excepciones y casos). Cada versión rige desde el día siguiente a guardarla.</li>' +
@@ -261,15 +308,17 @@
     // En curso primero; después los terminados más recientes.
     items.sort((a, b) => Number(a.complete) - Number(b.complete));
     const todayKey = typeof root.habitDayKey === 'function' ? root.habitDayKey() : new Date().toISOString().slice(0, 10);
-    const active = all.find(h => !root.habitMetrics(h).complete) || null;
+    const inProgress = all.filter(h => !root.habitMetrics(h).complete);
+    const principal = inProgress.find(h => !h.reopenOf) || null;
+    const active = principal || inProgress[0] || null;
     let habit = all.find(h => h.id === selectedId) || active || (items[0] && items[0].habit) || null;
     if (habit && habit.id !== selectedId) selectedId = habit.id;
     const back = habit && active && habit.id !== active.id
       ? '<button type="button" class="hp-back-current" data-hp-select="' + esc(active.id) + '">← Volver al hábito en curso</button>' : '';
-    const create = !active
-      ? '<section class="hp-empty"><div><strong>' + (all.length ? 'Ningún hábito en curso' : 'Aún no tienes hábitos') + '</strong><span>Una regla diaria clara, durante unas semanas. Los terminados quedan en tu colección.</span></div>' +
+    const create = !principal
+      ? '<section class="hp-empty"><div><strong>' + (active ? 'Ningún hábito nuevo en curso' : all.length ? 'Ningún hábito en curso' : 'Aún no tienes hábitos') + '</strong><span>Una regla diaria clara, durante unas semanas. Los terminados quedan en tu colección.</span></div>' +
         '<button type="button" onclick="openHabitChallengeModal()">Crear hábito</button></section>' : '';
-    host.innerHTML = create + back + (habit ? detailHtml(habit, todayKey) : '') + collectionHtml(items, habit && habit.id) + HOW;
+    host.innerHTML = create + back + (habit ? detailHtml(habit, todayKey, all) : '') + collectionHtml(items, habit && habit.id) + HOW;
   }
 
   function open(id) {
@@ -320,5 +369,5 @@
     install();
   }
 
-  return { nextSteps, rulesFor, rulebookHtml, normasHtml, render, open, close, STREAK_MILESTONES };
+  return { nextSteps, rulesFor, rulebookHtml, normasHtml, maintenanceHtml, render, open, close, STREAK_MILESTONES };
 });
