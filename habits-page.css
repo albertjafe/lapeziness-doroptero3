@@ -110,3 +110,59 @@
 .premios-habits-link small { font-size: 12px; color: var(--text3); }
 .premios-habits-link > span:last-child { font-size: 22px; color: var(--text3); }
 .habit-calendar-page-link { margin-top: 10px; font: inherit; font-size: 13px; font-weight: 600; color: var(--accent); background: none; border: 0; padding: 6px 0; cursor: pointer; min-height: 36px; }
+
+/* Normas · reglamento del hábito (habit-rulebook.js) */
+.hp-normas { gap: 12px; }
+.hp-rb { display: grid; gap: 12px; }
+.hp-rb-rule { margin: 0; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 9%, var(--bg2)); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); font-size: 15px; line-height: 1.5; color: var(--text); font-weight: 600; }
+.hp-rb-rule span { display: block; margin-bottom: 3px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+.hp-rb-group { display: grid; gap: 6px; }
+.hp-rb-group h4 { margin: 0; font-size: 12px; font-weight: 700; color: var(--text); }
+.hp-rb-note { margin: -2px 0 0; font-size: 12px; color: var(--text3); }
+.hp-rb-group ul, .hp-rb-cases ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.hp-rb-group li { position: relative; padding-left: 22px; font-size: 13.5px; line-height: 1.5; color: var(--text2); overflow-wrap: anywhere; }
+.hp-rb-group li::before { position: absolute; left: 2px; top: 0; font-weight: 700; content: '·'; color: var(--text3); }
+.hp-rb-group.is-relapse li::before { content: '✕'; color: var(--red); font-size: 12px; top: 1px; }
+.hp-rb-group.is-ok li::before { content: '✓'; color: var(--green); }
+.hp-rb-group.is-exceptions li::before { content: '◆'; color: var(--orange); font-size: 10px; top: 3px; }
+.hp-rb-cases, .hp-rb-general, .hp-rb-pending details { border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
+.hp-rb-cases summary, .hp-rb-general summary, .hp-rb-pending summary { cursor: pointer; padding: 11px 14px; font-size: 13px; font-weight: 700; color: var(--text); min-height: 44px; display: flex; align-items: center; gap: 8px; }
+.hp-rb-cases summary span { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; background: var(--bg3); color: var(--text3); }
+.hp-rb-cases ul { padding: 0 12px 12px; }
+.hp-rb-cases li { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13.5px; line-height: 1.45; color: var(--text); }
+.hp-rb-cases li b { justify-self: start; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; text-transform: uppercase; letter-spacing: .03em; }
+.hp-rb-cases li.is-relapse b { background: color-mix(in srgb, var(--red) 14%, var(--bg2)); color: var(--red); }
+.hp-rb-cases li.is-ok b { background: color-mix(in srgb, var(--green) 16%, var(--bg2)); color: var(--green); }
+.hp-rb-cases li span { display: grid; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.hp-rb-cases li small { font-size: 12.5px; color: var(--text3); }
+.hp-rb-general ol { margin: 0; padding: 0 14px 12px 32px; display: grid; gap: 6px; font-size: 13px; line-height: 1.5; color: var(--text2); }
+.hp-rb-pending { display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; border: 1px dashed color-mix(in srgb, var(--orange) 55%, var(--border)); background: color-mix(in srgb, var(--orange) 7%, var(--bg2)); }
+.hp-rb-pending p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text2); }
+.hp-rb-pending p b { color: var(--text); }
+.hp-rb-pending details .hp-rb { padding: 0 12px 12px; }
+.hp-rb-since, .hp-rb-empty { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--text3); }
+.hp-rb-empty { font-size: 13.5px; color: var(--text2); }
+.hp-rb-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.hp-edit.is-primary { border-color: var(--accent); background: var(--accent); color: var(--bg); }
+
+/* Modal del reglamento */
+.hrb-modal { display: grid; gap: 12px; max-width: 620px; width: 100%; }
+.hrb-intro { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--text2); }
+.hrb-step { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--bg); }
+.hrb-step h4 { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text); }
+.hrb-step h4 span { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--bg); font-size: 12px; }
+.hrb-step textarea { width: 100%; min-height: 72px; resize: vertical; font-size: 14px; }
+.hrb-step .hrb-paste { min-height: 130px; font-family: var(--mono-font, ui-monospace, monospace); font-size: 12.5px; }
+.hrb-fallback { min-height: 110px; font-size: 12px; }
+.hrb-copy { font: inherit; cursor: pointer; min-height: 44px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent); color: var(--bg); font-weight: 700; padding: 10px 16px; }
+.hrb-prev { display: grid; gap: 8px; padding: 10px 12px; border-radius: 12px; background: var(--bg2); border: 1px solid var(--border); }
+.hrb-prev p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--text2); }
+.hrb-prev.is-error { border-color: var(--red); }
+.hrb-prev.is-error p { color: var(--red); }
+.hrb-prev-rule { font-weight: 600; color: var(--text) !important; }
+.hrb-prev-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.hrb-prev-list { display: flex; justify-content: space-between; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--bg3); font-size: 12.5px; color: var(--text2); }
+.hrb-prev-list span { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.hrb-prev-list.is-relapse span { color: var(--red); }
+.hrb-prev-list.is-ok span { color: var(--green); }
+.hrb-prev-warn { color: var(--orange) !important; }

@@ -21,7 +21,7 @@ for(const [width,height] of [[834,1194],[1194,834]])test(`iPad ${width}x${height
  await expect(page.locator('#view-habitos')).toHaveClass(/active/);
  await expect(page.locator('#view-habitos .hp-rules')).toContainText('0 caídas = 3 puntos');
  await expect(page.locator('#view-habitos .hp-next')).toContainText('Premio en juego: 3 puntos');
- await page.getByRole('button',{name:'Editar normas',exact:true}).click();
+ await page.getByRole('button',{name:'Editar hábito',exact:true}).click();
  await expect(page.locator('#habitDurationInput')).toBeDisabled();await expect(page.locator('#habitCriteriaInput')).toBeDisabled();
  await page.getByRole('button',{name:'Cancelar',exact:true}).click();
  await page.evaluate(()=>openPremios());

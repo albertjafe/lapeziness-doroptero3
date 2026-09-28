@@ -70,9 +70,11 @@
     return lines;
   }
 
-  function rulesFor(habit, reward) {
+  // Con un reglamento vigente, su «regla» ya dice qué cuenta: el criterio
+  // corto solo se repite si está escrito.
+  function rulesFor(habit, reward, rulebook) {
     const rules = [];
-    rules.push(['Qué cuenta como cumplido', habit.successCriteria || 'Sin criterio escrito. Escríbelo en «Editar» para que no haya dudas cada noche.']);
+    if (habit.successCriteria || !rulebook) rules.push(['Qué cuenta como cumplido', habit.successCriteria || 'Sin criterio escrito. Escríbelo en «Editar» para que no haya dudas cada noche.']);
     rules.push(['Cómo se registra', habit.mode === 'avoid'
       ? 'Solo tocas si recaes. Un día sin recaída cuenta como cumplido cuando termina.'
       : 'Marca cada día que lo cumplas. Un día pasado sin marcar cuenta como fallado.']);
@@ -87,6 +89,65 @@
     if (habit.motivation) rules.push(['Por qué lo hago', habit.motivation]);
     if (habit.reward) rules.push(['Celebración', habit.reward]);
     return rules;
+  }
+
+  function rulebookApi() {
+    return root.HabitRulebook || null;
+  }
+
+  function listHtml(title, items, cls, note) {
+    if (!items || !items.length) return '';
+    return '<div class="hp-rb-group ' + (cls || '') + '"><h4>' + esc(title) + '</h4>' + (note ? '<p class="hp-rb-note">' + esc(note) + '</p>' : '') +
+      '<ul>' + items.map(item => '<li>' + esc(item) + '</li>').join('') + '</ul></div>';
+  }
+
+  /* Un reglamento completo, en el orden en que se consulta cuando hay duda:
+     la regla, qué la rompe, qué no, las excepciones y los casos resueltos. */
+  function rulebookHtml(rb, mode) {
+    const w = rulebookApi().words(mode);
+    const examples = rb.examples || [];
+    const cases = examples.length
+      ? '<details class="hp-rb-cases"><summary>Casos resueltos <span>' + examples.length + '</span></summary><ul>' +
+        examples.map(e => '<li class="' + (e.verdict === 'ok' ? 'is-ok' : 'is-relapse') + '"><b>' + (e.verdict === 'ok' ? 'No' : w.failShort) + '</b>' +
+          '<span>' + esc(e.case) + (e.why ? '<small>' + esc(e.why) + '</small>' : '') + '</span></li>').join('') +
+        '</ul></details>'
+      : '';
+    return '<div class="hp-rb">' +
+      '<p class="hp-rb-rule"><span>La regla</span>' + esc(rb.rule) + '</p>' +
+      listHtml(w.failLabel, rb.relapse, 'is-relapse') +
+      listHtml(w.okLabel, rb.allowed, 'is-ok') +
+      listHtml('Excepciones', rb.exceptions, 'is-exceptions', 'Lista cerrada: nada más cuenta como excepción.') +
+      cases +
+      listHtml('Qué significa cada palabra', rb.terms, 'is-terms') +
+      listHtml('Para ponértelo fácil', rb.setup, 'is-setup') +
+    '</div>';
+  }
+
+  function normasHtml(habit, reward, metrics, todayKey) {
+    const R = rulebookApi();
+    const current = R ? R.inForce(habit, todayKey) : null;
+    const next = R ? R.pending(habit, todayKey) : null;
+    const w = R ? R.words(habit.mode) : { fail: 'RECAÍDA' };
+    let body = '';
+    if (next) {
+      body += '<div class="hp-rb-pending"><p><b>Reglamento nuevo desde el ' + esc(shortDate(next.effectiveFrom)) + '.</b> ' +
+        (current ? 'Hasta entonces rige el actual.' : 'Hasta entonces, si dudas, cuenta como ' + w.fail.toLowerCase() + '.') + '</p>' +
+        (current ? '<details><summary>Ver el nuevo</summary>' + rulebookHtml(next, habit.mode) + '</details>' : '') + '</div>';
+    }
+    if (current) body += rulebookHtml(current, habit.mode) + '<p class="hp-rb-since">Vigente desde el ' + esc(shortDate(current.effectiveFrom, true)) + '.</p>';
+    else if (next) body += rulebookHtml(next, habit.mode);
+    else if (!metrics.complete && R) {
+      body += '<p class="hp-rb-empty">Sin reglamento. Prepáralo con la IA y sabrás exactamente qué es ' + w.fail.toLowerCase() + ', qué no y qué excepciones hay, sin decidirlo en el momento.</p>';
+    }
+    const general = R ? '<details class="hp-rb-general"><summary>Normas para todos los hábitos</summary><ol>' +
+      R.GENERAL_RULES.map(rule => '<li>' + esc(rule) + '</li>').join('') + '</ol></details>' : '';
+    const id = jsArg(habit.id);
+    const buttons = '<div class="hp-rb-actions">' +
+      (!metrics.complete && R ? '<button type="button" class="hp-edit is-primary" onclick="HabitRulebook.openEditor(\'' + id + '\')">' + (current || next ? 'Mejorar el reglamento con IA' : 'Preparar reglamento con IA') + '</button>' : '') +
+      '<button type="button" class="hp-edit" onclick="openHabitChallengeModal(\'' + id + '\')">' + (metrics.complete ? 'Ver ficha completa' : 'Editar hábito') + '</button></div>';
+    return '<section class="hp-block hp-normas"><h3>Normas</h3>' + body +
+      '<dl class="hp-rules">' + rulesFor(habit, reward, current || next).map(([k, v]) => '<div><dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd></div>').join('') + '</dl>' +
+      general + buttons + '</section>';
   }
 
   function stateOf(habit, key, todayKey) {
@@ -153,10 +214,7 @@
       '<section class="hp-block"><h3>Lo siguiente</h3><ul class="hp-next">' +
         nextSteps(habit, metrics, reward, todayKey).map(line => '<li class="is-' + line.kind + '">' + esc(line.text) + '</li>').join('') + '</ul></section>' +
       '<section class="hp-block"><h3>Días</h3>' + daysGridHtml(habit, metrics, todayKey) + '</section>' +
-      '<section class="hp-block"><h3>Normas</h3><dl class="hp-rules">' +
-        rulesFor(habit, reward).map(([k, v]) => '<div><dt>' + esc(k) + '</dt><dd>' + esc(v) + '</dd></div>').join('') + '</dl>' +
-        '<button type="button" class="hp-edit" onclick="openHabitChallengeModal(\'' + jsArg(habit.id) + '\')">' + (metrics.complete ? 'Ver ficha completa' : 'Editar normas') + '</button>' +
-      '</section>' +
+      normasHtml(habit, reward, metrics, todayKey) +
     '</article>';
   }
 
@@ -189,6 +247,7 @@
     '<li>Solo hay un hábito en curso a la vez: termina (o borra) el actual antes de crear otro.</li>' +
     '<li><b>Hacer</b>: marcas cada día que lo cumples. <b>Evitar</b>: solo tocas si recaes.</li>' +
     '<li>Un fallo corta la racha, pero no reinicia el reto ni borra los días logrados.</li>' +
+    '<li><b>Reglamento</b>: la IA lo redacta a partir de tu hábito y tus dudas (qué es recaída, qué no, excepciones y casos). Cada versión rige desde el día siguiente a guardarla.</li>' +
     '<li>Al terminar, el hábito queda en tu colección con su trofeo y una insignia para recoger.</li>' +
     '<li>Premio de esfuerzo (hucha común): se fija al crear un hábito de 21+ días, con fecha desde hoy y criterio escrito. 0 caídas = 3 puntos; 1 = 1,5; 2 = 0,75; 3 o más = 0.</li>' +
     '</ul></details>';
@@ -261,5 +320,5 @@
     install();
   }
 
-  return { nextSteps, rulesFor, render, open, close, STREAK_MILESTONES };
+  return { nextSteps, rulesFor, rulebookHtml, normasHtml, render, open, close, STREAK_MILESTONES };
 });

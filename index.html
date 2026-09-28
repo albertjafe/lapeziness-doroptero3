@@ -37,7 +37,7 @@
 <link rel="stylesheet" href="german-study.css?v=426">
 <link rel="stylesheet" href="habit-trophies.css?v=383">
 <link rel="stylesheet" href="effort-incentives.css?v=440">
-<link rel="stylesheet" href="habits-page.css?v=439">
+<link rel="stylesheet" href="habits-page.css?v=465">
 <link rel="stylesheet" href="desktop-redesign.css?v=396">
 <link rel="stylesheet" href="crono-start-layout.css?v=401">
 <link rel="stylesheet" href="ipad-today.css?v=407">
@@ -1901,6 +1901,37 @@
   </div>
 </div>
 
+<!-- MODAL: reglamento del hábito (lo redacta una IA; rige desde el día siguiente) -->
+<div class="modal-overlay" id="modalHabitRulebook">
+  <div class="modal hrb-modal">
+    <div class="habit-modal-kicker" id="hrbHabitName">Hábito</div>
+    <div class="modal-title">Reglamento del hábito</div>
+    <p class="hrb-intro" id="hrbIntro"></p>
+
+    <section class="hrb-step">
+      <h4><span>1</span>Pide el reglamento a la IA</h4>
+      <label class="habit-modal-field" for="hrbCases">
+        <span>Casos que te hacen dudar o contexto nuevo <small>(opcional)</small></span>
+        <textarea id="hrbCases" class="modal-input" maxlength="2000" placeholder="Ej. ¿Y si estoy en el tren y necesito el billete? ¿Y si no tengo piano esa mañana?"></textarea>
+      </label>
+      <button type="button" class="hrb-copy" id="hrbCopyBtn" onclick="HabitRulebook.copyPrompt()">Copiar petición para la IA</button>
+      <small class="habit-field-note" id="hrbCopyNote" role="status" aria-live="polite"></small>
+      <textarea id="hrbPromptFallback" class="modal-input hrb-fallback" readonly hidden aria-label="Petición para la IA"></textarea>
+    </section>
+
+    <section class="hrb-step">
+      <h4><span>2</span>Pega aquí su respuesta</h4>
+      <textarea id="hrbPaste" class="modal-input hrb-paste" aria-label="Respuesta de la IA" placeholder="REGLAMENTO&#10;REGLA: …&#10;ES RECAÍDA:&#10;- …&#10;…&#10;FIN" oninput="HabitRulebook.preview()"></textarea>
+      <div id="hrbPreview" aria-live="polite"></div>
+    </section>
+
+    <div class="modal-buttons">
+      <button class="modal-btn secondary" onclick="closeModal('modalHabitRulebook')">Cancelar</button>
+      <button class="modal-btn primary" id="hrbSaveBtn" onclick="HabitRulebook.save()" disabled>Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalQuickSolidez">
   <div class="modal quick-sol-modal">
     <div class="quick-sol-kicker">Registro rápido</div>
@@ -2448,7 +2479,7 @@
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=397"></script>
 <script src="crono-state-store.js?v=397"></script>
-<script src="app.js?v=464"></script>
+<script src="app.js?v=465"></script>
 <script src="manual-study-activity.js?v=430"></script>
 <script src="chamber-factor-migration.js?v=430"></script>
 <script src="daily-study-minutes.js?v=464" id="dailyStudyMinutesFixScript"></script>
@@ -2470,7 +2501,8 @@
 <script src="ipad-today.js?v=461"></script>
 <script src="google-calendar.js?v=342"></script>
 <script src="timer-objectives.js?v=439"></script>
-<script src="habits-page.js?v=439"></script>
+<script src="habit-rulebook.js?v=465"></script>
+<script src="habits-page.js?v=465"></script>
 <script src="effort-incentives-ui.js?v=435"></script>
 <script src="metronome.js?v=368"></script>
 <script src="study-ledger-sync.js?v=434"></script>

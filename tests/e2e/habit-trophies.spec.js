@@ -84,7 +84,61 @@ test('creates a detailed objective and keeps every optional field in the synced 
   await expect(page.locator('.hp-detail h2')).toHaveText('Meditar cada mañana');
   await expect(page.locator('.hp-detail .hp-rules')).toContainText('Completar diez minutos con temporizador.');
   await expect(page.locator('.hp-detail .hp-rules')).toContainText('Empezar el día con calma.');
-  await page.getByRole('button', { name: 'Editar normas', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar hábito', exact: true }).click();
   await expect(page.locator('#habitModalTitle')).toHaveText('Tu hábito');
   await expect(page.locator('#habitCriteriaInput')).toHaveValue('Completar diez minutos con temporizador.');
+});
+
+test('prepares a rulebook with the AI and it rules from tomorrow, never today', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 1194 });
+  await page.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* isolated */' }));
+  await page.addInitScript(value => {
+    const d = new Date();
+    const today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const doc = { ...value, habitChallenges: [{ id: 'habit-detox', title: 'Desintoxicación por la mañana', mode: 'avoid', startDate: today, durationDays: 21, logs: {}, createdAt: today + 'T07:00:00Z', updatedAt: today + 'T07:00:00Z' }] };
+    Object.defineProperty(navigator, 'platform', { configurable: true, get: () => 'MacIntel' });
+    localStorage.setItem('alberto_piano_v2', JSON.stringify(doc));
+    localStorage.setItem('alberto_sync_v1', JSON.stringify({ localRevision: 0, dirtyRevision: 0, lastSyncedRevision: 0 }));
+  }, { ...data, habitChallenges: [] });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.HabitRulebook && window.openHabitos);
+  await page.evaluate(() => openHabitos('habit-detox'));
+
+  const normas = page.locator('#view-habitos .hp-normas');
+  await expect(normas).toContainText('Sin reglamento. Prepáralo con la IA');
+  await normas.getByRole('button', { name: 'Preparar reglamento con IA', exact: true }).click();
+  await expect(page.locator('#modalHabitRulebook')).toHaveClass(/visible/);
+  await expect(page.locator('#hrbIntro')).toContainText('rige desde mañana');
+  await expect(page.locator('#hrbSaveBtn')).toBeDisabled();
+
+  await page.locator('#hrbCases').fill('¿Y si estoy en el tren?');
+  await page.getByRole('button', { name: 'Copiar petición para la IA', exact: true }).click();
+  await expect(page.locator('#hrbCopyNote')).not.toBeEmpty();
+
+  await page.locator('#hrbPaste').fill('Hola');
+  await expect(page.locator('#hrbPreview')).toContainText('No encuentro el reglamento');
+  await expect(page.locator('#hrbSaveBtn')).toBeDisabled();
+
+  await page.locator('#hrbPaste').fill([
+    'REGLAMENTO',
+    'REGLA: Sin pantallas hasta 60 min de estudio o las 13:00.',
+    'ES RECAÍDA:', '- Abrir WhatsApp para leer.',
+    'NO ES RECAÍDA:', '- Enseñar un billete en el tren.',
+    'EXCEPCIONES:', '- Urgencia real → atender una llamada.',
+    'EJEMPLOS:', '- En el tren enseño el billete | NO | Uso permitido.', '- Miro WhatsApp después | RECAÍDA | Otra cosa.',
+    'FIN',
+  ].join('\n'));
+  await expect(page.locator('#hrbPreview')).toContainText('1 caso es recaída y 1 no.');
+  await page.locator('#hrbSaveBtn').click();
+  await expect(page.locator('#modalHabitRulebook')).not.toHaveClass(/visible/);
+
+  await expect(normas.locator('.hp-rb-pending')).toContainText('Reglamento nuevo desde el');
+  await expect(normas.locator('.hp-rb-rule')).toContainText('Sin pantallas hasta 60 min de estudio o las 13:00.');
+  await expect(normas.locator('.hp-rb-cases summary')).toContainText('Casos resueltos 2');
+  const saved = await page.evaluate(() => {
+    const h = db.habitChallenges.find(item => item.id === 'habit-detox');
+    return { versions: h.rulebooks.length, from: h.rulebooks[0].effectiveFrom, today: habitDayKey(), tomorrow: habitKeyAt(habitDayKey(), 1) };
+  });
+  expect(saved.versions).toBe(1);
+  expect(saved.from).toBe(saved.tomorrow);
 });
