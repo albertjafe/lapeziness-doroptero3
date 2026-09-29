@@ -80,7 +80,7 @@ test('Hoy v2: nada se pierde — registro rápido, diario y Aulas siguen a un to
   await expect(page.locator('.nav-btn[data-view="aulas"]')).toBeVisible();
   await expect(page.locator('.nav-btn[data-view="profesor"]')).toBeHidden();
   await page.locator('.nav-btn[data-view="session"]').click();
-  await page.locator('#mv2Hoy .mv2-rowcard', { hasText: 'Profesor' }).click();
+  await page.locator('#mv2Hoy .mv2-tile', { hasText: 'Profesor' }).click();
   await expect(page.locator('#view-profesor')).toBeVisible();
 });
 

@@ -56,9 +56,10 @@ for (const viewport of [{ width: 834, height: 1194 }, { width: 1194, height: 834
     await settledHoy(page);
     await expect(page.locator('#sessionResumenCard')).toBeHidden();
     await expect(page.locator('.ipad-today-next')).toBeHidden();
-    // En el iPad caben Aulas y Profesor en la barra: la línea de Hoy es Historial.
-    await expect(page.locator('#mv2Hoy .mv2-rowcard', { hasText: 'Historial' })).toBeVisible();
-    await expect(page.locator('#mv2Hoy .mv2-rowcard', { hasText: 'Profesor' })).toHaveCount(0);
+    // En el iPad caben Aulas y Profesor en la barra: los accesos de Hoy son Alemán, Premios e Historial.
+    await expect(page.locator('#mv2Hoy .mv2-tile', { hasText: 'Historial' })).toBeVisible();
+    await expect(page.locator('#mv2Hoy .mv2-tile', { hasText: 'Profesor' })).toHaveCount(0);
+    await expect(page.locator('#mv2Hoy .mv2-habits')).toBeVisible();
     const main = await box(page, '#mv2Hoy .mv2-col-main');
     const side = await box(page, '#mv2Hoy .mv2-col-side');
     if (wide) expect(side.x).toBeGreaterThan(main.x + main.width - 1); // dos columnas
