@@ -21,6 +21,8 @@ test('hub de Hoy: día del reto, recaída con acciones sugeridas que salen en Ho
   }, fixture());
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.HabitHub && window.MobileV2 && document.querySelector('.mv2-habits'));
+  // El aviso de la nube se abre al terminar la pantalla de inicio: se cierra después.
+  await expect(page.locator('#splashScreen')).toHaveClass(/gone/, { timeout: 15000 });
   await page.evaluate(() => { try { closeModal('modalCloudSync'); } catch (e) {} showView('session'); });
 
   const card = page.locator('.mv2-habits');
