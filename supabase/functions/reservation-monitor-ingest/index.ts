@@ -119,7 +119,7 @@ function cleanStartup(value: unknown) {
 function cleanQuotaLab(value: unknown) {
   if (!value || typeof value !== "object") return null;
   const raw = value as Record<string, unknown>;
-  const questions = Array.isArray(raw.questions) ? raw.questions.slice(0, 12).map((item) => {
+  const questions = Array.isArray(raw.questions) ? raw.questions.slice(0, 24).map((item) => {
     const q = item && typeof item === "object" ? item as Record<string, unknown> : {};
     return {
       id: cleanText(q.id, 40),
@@ -128,7 +128,7 @@ function cleanQuotaLab(value: unknown) {
       text: cleanText(q.text, 480),
     };
   }) : [];
-  const tests = Array.isArray(raw.tests) ? raw.tests.slice(0, 40).map((item) => {
+  const tests = Array.isArray(raw.tests) ? raw.tests.slice(0, 80).map((item) => {
     const t = item && typeof item === "object" ? item as Record<string, unknown> : {};
     return {
       id: cleanText(t.id, 40),

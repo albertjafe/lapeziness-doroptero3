@@ -66,6 +66,8 @@
   let startupDraftAt = 0;
   // Acción destructiva pendiente de confirmar: 'shutdown' | 'cancel_start'.
   let confirmAction = null;
+  // «Reciclar cuota» toca una reserva real: pide un segundo toque explícito.
+  let labRecycleConfirm = false;
   let confirmTimer = null;
 
   function el(id) { return document.getElementById(id); }
@@ -474,7 +476,7 @@
     const questions = Array.isArray(lab.questions) ? lab.questions : [];
     const tests = Array.isArray(lab.tests) ? lab.tests : [];
     wrap.innerHTML = `
-      <p class="rd-lab-intro">Prueba en Asimut cómo se combinan la SZ, el RF y el tramo gratis de 2 h <b>sin reservar nada</b>: son simulaciones que Asimut evalúa y descarta. Tarda un minuto.</p>
+      <p class="rd-lab-intro">Prueba en Asimut cómo se combinan la SZ, el RF y el tramo gratis de 2 h <b>sin reservar nada</b>: son simulaciones que Asimut evalúa y descarta (también ampliar hacia atrás, reservas pegadas, otras aulas y la ventana de antelación). Tarda un par de minutos.</p>
       ${running ? `<p class="rd-lab-status is-running">En marcha… ${escapeHtml(lab.progress || '')}</p>` : ''}
       ${lab.status === 'error' ? `<p class="rd-lab-status is-error">No se pudo terminar: ${escapeHtml(lab.error || 'error')}</p>` : ''}
       ${questions.length ? `<ul class="rd-lab-results">${questions.map(q => `
@@ -491,8 +493,23 @@
       </details>` : ''}
       <button type="button" class="rd-action rd-lab-run" data-command="run_quota_lab" ${offline || running ? 'disabled' : ''}>
         <span aria-hidden="true">⚗</span><b>${running ? 'Laboratorio en marcha…' : questions.length ? 'Repetir laboratorio' : 'Lanzar laboratorio'}</b>
-      </button>`;
+      </button>
+      <div class="rd-lab-recycle">
+        ${labRecycleConfirm && !offline && !running ? `
+          <p class="rd-lab-warn"><b>Esto sí toca Asimut.</b> Además de las simulaciones, el monitor guardará <b>sin cambiar nada</b> una reserva tuya que caiga entera en las próximas 2 h y mirará si te devuelve cuota. Asimut registra la modificación.</p>
+          <div class="rd-lab-recycle-actions">
+            <button type="button" class="rd-action" data-ui="lab-recycle-cancel">Cancelar</button>
+            <button type="button" class="rd-action is-danger" data-ui="lab-recycle-go">Sí, probar reciclar</button>
+          </div>` : `
+          <button type="button" class="rd-link" data-ui="lab-recycle-ask" ${offline || running ? 'disabled' : ''}>Probar también «reciclar cuota»…</button>`}
+      </div>`;
     wrap.querySelector('[data-command="run_quota_lab"]')?.addEventListener('click', event => sendCommand(event.currentTarget));
+    wrap.querySelector('[data-ui="lab-recycle-ask"]')?.addEventListener('click', () => { labRecycleConfirm = true; renderQuotaLab(state, offline); });
+    wrap.querySelector('[data-ui="lab-recycle-cancel"]')?.addEventListener('click', () => { labRecycleConfirm = false; renderQuotaLab(state, offline); });
+    wrap.querySelector('[data-ui="lab-recycle-go"]')?.addEventListener('click', event => {
+      labRecycleConfirm = false;
+      postCommand('run_quota_lab', { reciclar: true }, event.currentTarget);
+    });
   }
 
   function applyTab() {

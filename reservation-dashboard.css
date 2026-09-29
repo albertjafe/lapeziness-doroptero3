@@ -223,6 +223,10 @@
 .aulas-screen .rd-lab-tests :is(th, td) { padding: 6px 4px; border-bottom: 1px solid var(--border); text-align: left; }
 .aulas-screen .rd-lab-tests th { color: var(--text3); font-weight: 600; }
 .aulas-screen .rd-lab-run { width: 100%; }
+.aulas-screen .rd-lab-recycle { margin-top: 8px; }
+.aulas-screen .rd-lab-recycle .rd-link { background: none; border: 0; padding: 6px 0; min-height: 36px; font: inherit; font-size: 14px; color: var(--accent); cursor: pointer; }
+.aulas-screen .rd-lab-warn { margin: 0 0 8px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--rd-bad, #b4564b) 10%, var(--bg2)); color: var(--text); font-size: 14px; line-height: 1.45; }
+.aulas-screen .rd-lab-recycle-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
 /* ── Arranque desde la app ────────────────────────────────────── */
 #reservationDashboardContent.is-startup > :is(.rd-controlbar, .rd-tabs, .rd-panes) { display: none; }

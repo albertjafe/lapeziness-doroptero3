@@ -44,10 +44,10 @@ const aulasView = indexHtml.match(/<div class="view" id="view-aulas">[\s\S]*?\r?
 const todayCard = indexHtml.match(/<button type="button" class="aulas-today-card"[\s\S]*?<\/button>/)[0];
 
 async function mountDashboard(page, row) {
-  await page.goto('/reservation-dashboard.css?v=461');
+  await page.goto('/reservation-dashboard.css?v=467');
   await page.setContent(`<!doctype html><html lang="es" data-theme="marmol"><head>
     <link rel="stylesheet" href="http://127.0.0.1:4173/styles.css?v=464">
-    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=461">
+    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=467">
   </head><body data-view="aulas">${todayCard}${aulasView}</body></html>`);
 
   await page.evaluate((row) => {
@@ -80,7 +80,7 @@ async function mountDashboard(page, row) {
     };
     window.getSB = () => client;
   }, row);
-  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=461' });
+  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=467' });
 }
 
 test('renders live reservations and sends a safe monitor command', async ({ page }) => {
@@ -396,4 +396,20 @@ test('launches the quota lab from Ajustes and shows its conclusions', async ({ p
   });
   await expect(lab).toContainText('En marcha… Cuotas: …');
   await expect(lab.locator('[data-command="run_quota_lab"]')).toBeDisabled();
+});
+
+test('«reciclar cuota» del laboratorio pide confirmación antes de tocar una reserva', async ({ page }) => {
+  const row = structuredClone(sampleRow);
+  row.state.quota_lab = { status: 'done', finished_at: new Date().toISOString(), questions: [], tests: [] };
+  await mountDashboard(page, row);
+  const lab = page.locator('#reservationQuotaLab');
+  await lab.getByRole('button', { name: /reciclar cuota/ }).click();
+  await expect(lab.locator('.rd-lab-warn')).toContainText('Esto sí toca Asimut');
+  await lab.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(lab.locator('.rd-lab-warn')).toHaveCount(0);
+  const writes = await page.evaluate(() => window.__dashboardWrites.length);
+  await lab.getByRole('button', { name: /reciclar cuota/ }).click();
+  await lab.getByRole('button', { name: 'Sí, probar reciclar' }).click();
+  expect(await page.evaluate(() => window.__dashboardWrites.length)).toBe(writes + 1);
+  expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({ command: 'run_quota_lab', payload: { reciclar: true } });
 });
