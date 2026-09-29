@@ -63,6 +63,23 @@ describe('SyncCore', () => {
     expect(SyncCore.mergeObrasFromFreshest(older, fresher).map(work => work.id)).toEqual(['canonical']);
   });
 
+  it('never drops a new work that has study, even against a copy with more revisions', () => {
+    // El iPad creó la obra y estudió con ella; el móvil (más revisiones) no la tiene.
+    const ipad = {
+      _localRevision: 40, _savedAt: '2026-09-29T11:45:00Z',
+      obras: [{ id: 'a', name: 'Bach' }, { id: 'o1790682725273', name: 'Obra nueva' }],
+      sessionPlants: [{ obraId: 'o1790682725273', mins: 35, startedAt: '2026-09-29T11:17:35Z' }],
+    };
+    const phone = { _localRevision: 900, _savedAt: '2026-09-29T12:00:00Z', obras: [{ id: 'a', name: 'Bach' }], sessionPlants: [] };
+    expect(SyncCore.mergeObrasFromFreshest(ipad, phone).map(work => work.id)).toEqual(['a', 'o1790682725273']);
+  });
+
+  it('keeps a work created after the fresher copy was saved', () => {
+    const local = { _localRevision: 5, obras: [{ id: 'a' }, { id: 'o1790682725273', name: 'Recién creada' }] };
+    const cloud = { _localRevision: 9, _savedAt: '2026-09-04T16:26:57.638Z', obras: [{ id: 'a' }] };
+    expect(SyncCore.mergeObrasFromFreshest(local, cloud).map(work => work.id)).toEqual(['a', 'o1790682725273']);
+  });
+
   it('uses saved time as a tie-breaker when revisions are equal', () => {
     const a = { _localRevision: 9, _savedAt: '2026-08-27T10:00:00Z', obras: [{ id: 'x', name: 'Viejo' }] };
     const b = { _localRevision: 9, _savedAt: '2026-08-27T10:05:00Z', obras: [{ id: 'x', name: 'Nuevo' }] };

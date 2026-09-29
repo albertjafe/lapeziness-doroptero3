@@ -66,7 +66,7 @@ test('las pantallas principales no desbordan en horizontal y la cabecera es de u
     expect(header.height, view).toBeLessThanOrEqual(64);
   }
   await page.evaluate(() => showView('obras'));
-  const detail = await page.locator('#obrasRdDetail').boundingBox();
+  const detail = await page.locator('#obrasDetail').boundingBox();
   expect(detail.x + detail.width).toBeLessThanOrEqual(1366);
 });
 

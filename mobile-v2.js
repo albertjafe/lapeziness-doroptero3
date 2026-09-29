@@ -202,6 +202,10 @@
     return '<button type="button" class="mv2-card mv2-rowcard ' + (extraClass || '') + '" onclick="' + action + '"><span><span class="mv2-lbl">' + label + '</span><b>' + value + '</b></span><span class="mv2-chev" aria-hidden="true">›</span></button>';
   }
 
+  function tile(label, sub, action) {
+    return '<button type="button" class="mv2-tile" onclick="' + action + '"><b>' + label + '</b><small>' + sub + '</small></button>';
+  }
+
   function renderHoy() {
     if (!doc) return;
     const view = doc.getElementById('view-session');
@@ -228,11 +232,16 @@
         // El registro por horas de hoy (antes solo en la portada clásica del iPad).
         '<button type="button" class="mv2-link mv2-sessions" onclick="openSesionesDetalle(this)">Sesiones de hoy ›</button></div></div>' +
       '<div class="mv2-card mv2-parahoy">' + paraHoyHtml(data) + '</div></div><div class="mv2-col mv2-col-side">' +
+      // Hub: hábitos (día del reto, hoy, acciones y mantenimiento) y accesos a todo lo demás.
+      (root.HabitHub ? root.HabitHub.renderHoyCard() : '') +
       lineCard('Aulas', esc(aulas), "showView('aulas')", roomsSummary ? 'is-' + roomsSummary.kind : '') +
-      lineCard('Alemán', 'Tarjetas, estudio libre y hucha', "showView('deutsch')") +
-      // En el móvil Aulas ocupa el sitio de Profesor en la barra inferior (en el iPad caben los dos).
-      (phoneWidth() ? lineCard('Profesor', 'Informe, plan de hoy y unidades urgentes', "showView('profesor')")
-        : lineCard('Historial', 'Sesiones, estadísticas y tendencias', "openSessionArchive('history')")) +
+      '<nav class="mv2-tiles" aria-label="Accesos">' +
+        tile('Alemán', 'Tarjetas', "showView('deutsch')") +
+        tile('Premios', 'Hucha y logros', 'openPremios()') +
+        tile('Historial', 'Estadísticas', "openSessionArchive('history')") +
+        // En el móvil Aulas ocupa el sitio de Profesor en la barra inferior; en el iPad está en la barra.
+        (phoneWidth() ? tile('Profesor', 'Plan de hoy', "showView('profesor')") : '') +
+      '</nav>' +
       '<button type="button" class="mv2-add" onclick="MobileV2.openAdd()">＋ Añadir estudio, nota o tarea</button></div>';
     // Mismo contenido → no se toca el DOM (evita parpadeos, también a mitad del gesto lateral).
     if (host.__mv2Html !== html) { host.innerHTML = html; host.__mv2Html = html; }
@@ -421,7 +430,14 @@
   }
   function workLabel(data, obraId, movId) {
     const work = (data && data.obras || []).find(o => String(o.id) === String(obraId));
-    if (!work) return obraId ? 'Obra borrada' : 'Sin obra';
+    if (!work) {
+      if (!obraId) return 'Sin obra';
+      // Obra que no llegó a la nube: su nombre suele seguir en las sesiones del día.
+      for (const ses of (data && data.sesiones || [])) for (const it of (ses && ses.items || [])) {
+        if (it && String(it.obraId) === String(obraId) && (it.name || it.obraName)) return (it.name || it.obraName) + ' (obra no encontrada)';
+      }
+      return 'Obra no encontrada';
+    }
     const mov = movId && (work.movimientos || []).find(m => String(m.id) === String(movId));
     return mov ? work.name + ' · ' + mov.name : work.name;
   }
@@ -456,13 +472,16 @@
     let mins = {};
     try { mins = typeof root._statsMinsPorDia === 'function' ? root._statsMinsPorDia(new Date(gridStart.getTime() - 43200000), end) : {}; } catch (e) { mins = {}; }
     const events = eventsByDay(data), today = dayKey();
+    let actions = {};
+    try { actions = root.HabitHub && typeof root.habitAllChallenges === 'function' ? root.HabitHub.byDay(root.habitAllChallenges()) : {}; } catch (e) { actions = {}; }
     let cells = '';
     const weeks = Math.ceil((((first.getDay() + 6) % 7) + new Date(year, month + 1, 0).getDate()) / 7);
     for (let i = 0; i < weeks * 7; i++) {
       const d = new Date(gridStart); d.setDate(gridStart.getDate() + i);
       const k = dayKey(d), m = Math.round(mins[k] || 0), other = d.getMonth() !== month, ev = events[k];
       cells += '<button type="button" class="mv2-day l' + level(m) + (other ? ' other' : '') + (k === today ? ' today' : '') + '" data-day="' + k + '" aria-label="' + d.getDate() + ' de ' + MONTHS[d.getMonth()] + ': ' + (m ? fmtMin(m) : 'sin estudio') + (ev ? ', ' + ev.length + ' evento' + (ev.length > 1 ? 's' : '') : '') + '">' +
-        '<span>' + d.getDate() + '</span>' + (ev ? '<i class="mv2-ev" aria-hidden="true"></i>' : '') + '</button>';
+        '<span>' + d.getDate() + '</span>' + (ev ? '<i class="mv2-ev" aria-hidden="true"></i>' : '') +
+        (actions[k] ? '<i class="mv2-act' + (actions[k].every(x => x.action.doneAt) ? ' is-done' : '') + '" aria-hidden="true"></i>' : '') + '</button>';
     }
     let monthTotal = 0; Object.keys(mins).forEach(k => { if (parseDay(k).getMonth() === month && parseDay(k).getFullYear() === year) monthTotal += mins[k]; });
     const upcoming = Object.keys(events).filter(k => k >= today).sort().flatMap(k => events[k].map(e => ({ k, e }))).slice(0, 5);
@@ -476,7 +495,7 @@
         '<div><b>' + MONTHS[month].charAt(0).toUpperCase() + MONTHS[month].slice(1) + ' ' + year + '</b><small>' + (monthTotal ? fmtMin(monthTotal) + ' estudiadas' : 'Sin estudio registrado') + '</small></div>' +
         '<button type="button" class="mv2-cal-nav" onclick="MobileV2.calMove(1)" aria-label="Mes siguiente">›</button></div>' +
         '<div class="mv2-cal-grid" role="grid">' + ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(w => '<span class="mv2-wd">' + w + '</span>').join('') + cells + '</div>' +
-        '<div class="mv2-legend"><span>Horas</span><i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i><span>5 h+</span><span class="mv2-legend-ev"><i class="mv2-ev"></i>Evento</span></div></div>' +
+        '<div class="mv2-legend"><span>Horas</span><i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i><span>5 h+</span><span class="mv2-legend-ev"><i class="mv2-ev"></i>Evento</span><span class="mv2-legend-ev"><i class="mv2-act"></i>Acción</span></div></div>' +
       '<div class="mv2-card"><div class="mv2-line"><span class="mv2-lbl">Próximos eventos</span><button type="button" class="mv2-link" onclick="openAddEvento()">＋ Añadir</button></div>' + evRows +
         '<button type="button" class="mv2-link mv2-more" onclick="MobileV2.calClassic(true)">Lista completa, hábitos y Google ›</button></div>';
     // Igual que antes → no se toca el DOM (al terminar el gesto lateral se
@@ -503,14 +522,22 @@
     let flashes = 0;
     try { flashes = (typeof root.getAllDestellos === 'function' ? root.getAllDestellos() : []).filter(f => dayKey(new Date(f.date)) === key).length; } catch (e) {}
     const extras = [habits, flashes ? '✨ ' + flashes + (flashes === 1 ? ' destello' : ' destellos') : ''].filter(Boolean).join(' · ');
+    let acts = '';
+    try {
+      const H = root.HabitHub;
+      const list = H && typeof root.habitAllChallenges === 'function' ? (H.byDay(root.habitAllChallenges())[key] || []) : [];
+      if (list.length) acts = '<div class="mv2-day-acts"><span class="mv2-lbl">Acciones de hábitos</span>' + list.map(({ habit, action }) => H.actionRowHtml(habit, action, false)).join('') + '</div>';
+    } catch (e) {}
     const title = WEEKDAYS[d.getDay()].charAt(0).toUpperCase() + WEEKDAYS[d.getDay()].slice(1) + ' ' + d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()];
     sheet('mv2DaySheet', title,
       '<div class="mv2-day-total"><span class="mv2-muted">Estudiado</span><b>' + (total ? fmtDur(total) : '—') + '</b></div>' +
       (stack ? '<div class="mv2-stack">' + stack + '</div>' : '') + ev +
       (segs.length ? segs.map(sg => '<div class="mv2-seg"><span>' + hhmm(sg.start) + '–' + hhmm(sg.end) + ' · ' + esc(sg.label) + '</span><b>' + fmtMin(sg.mins) + '</b></div>').join('') : '<p class="mv2-muted">Sin tramos con hora este día.</p>') +
-      (extras ? '<p class="mv2-muted">' + extras + '</p>' : '') +
+      acts + (extras ? '<p class="mv2-muted">' + extras + '</p>' : '') +
       '<div class="mv2-sheet-actions"><button type="button" onclick="MobileV2.closeSheet(\'mv2DaySheet\');openAddEventoOnDate(\'' + key + '\')">＋ Evento</button>' +
       '<button type="button" class="primary" onclick="MobileV2.closeSheet(\'mv2DaySheet\');MobileV2.editDay(\'' + key + '\')">Editar este día</button></div>');
+    const daySheet = doc.getElementById('mv2DaySheet');
+    if (daySheet) daySheet.dataset.day = key;
   }
   function editDay(key) {
     const data = database();

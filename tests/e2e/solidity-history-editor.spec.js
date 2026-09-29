@@ -42,7 +42,7 @@ test('shows all solidity pills vertically, flags an isolated spike and lets it b
   await page.setViewportSize({ width: 1024, height: 768 });
   await prepare(page);
   await page.evaluate(() => openPremiumWork('bach'));
-  await page.getByRole('button', { name: 'Revisar historial' }).evaluate(button => button.click());
+  await page.getByRole('button', { name: 'Historial', exact: true }).evaluate(button => button.click());
   await expect(page.locator('#solidityHistoryOverlay')).toHaveClass(/open/);
 
   const rows = page.locator('.solidity-history-row');

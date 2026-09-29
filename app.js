@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-29-obra-picker-v468';
+const APP_VERSION = '2026-09-29-hub-obras-v469';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -20767,6 +20767,8 @@ function registerHabitRelapse(event, challengeId) {
   renderMesCalendario();
   showToast(existing === 'failed' ? 'Recaída quitada' : 'Recaída registrada');
   try { Haptics.success(); } catch (e) {}
+  // Tras caer, la app propone qué hacer para que no se repita (habit-hub.js).
+  if (existing !== 'failed' && window.HabitHub) HabitHub.suggestAfter(habit.id, 'relapse', { day: metrics.todayKey });
 }
 
 function toggleHabitToday(event, challengeId) {
@@ -20782,7 +20784,10 @@ function toggleHabitToday(event, challengeId) {
       : '¿Has incumplido hoy este reto?\n\nSe guardará el día, pero no se borrará el progreso anterior.';
     if (!confirm(message)) return;
     if (existing === 'failed') habit.logs[metrics.todayKey] = { status: 'clear', at: new Date().toISOString() };
-    else habit.logs[metrics.todayKey] = { status: 'failed', at: new Date().toISOString() };
+    else {
+      habit.logs[metrics.todayKey] = { status: 'failed', at: new Date().toISOString() };
+      setTimeout(() => { if (window.HabitHub) HabitHub.suggestAfter(habit.id, 'relapse', { day: metrics.todayKey }); }, 0);
+    }
   } else if (existing === 'done') {
     habit.logs[metrics.todayKey] = { status: 'clear', at: new Date().toISOString() };
   } else {

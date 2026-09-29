@@ -1,0 +1,153 @@
+/* Obras v3 · lista y ficha de obra. Letra del sistema, una sola escala de
+   tamaños y nada de alturas fijas. Los controles antiguos del marcado
+   (#view-obras .obras-workbench) siguen en el DOM para el código heredado,
+   pero no se ven. */
+#view-obras .obras-workbench > :not(.ob3-head),
+#view-obras > .add-obra-btn { display: none !important; }
+#view-obras .obras-workbench { margin: 0 0 6px; padding: 0; border: 0; background: none; box-shadow: none; }
+
+#view-obras .ob3-head,
+#view-obras #obrasList,
+.ob3-card {
+  --ob3-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --ob3-line: color-mix(in srgb, var(--text) 10%, transparent);
+  --ob3-soft: color-mix(in srgb, var(--text) 5%, var(--bg2));
+  --ob3-good: var(--green, #3f9a63);
+  font-family: var(--ob3-font);
+  letter-spacing: 0;
+}
+
+/* --- Cabecera: buscador, filtros y orden --- */
+.ob3-head { display: grid; gap: 10px; margin: 0 0 14px; }
+.ob3-head-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ob3-head-row.is-filters { flex-wrap: wrap; row-gap: 8px; }
+.ob3-search { flex: 1 1 auto; min-width: 0; height: 42px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 12px; background: var(--ob3-soft); color: var(--text3); }
+.ob3-search span { font-size: 17px; line-height: 1; }
+.ob3-search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; color: var(--text); font: 15px/1.2 var(--ob3-font); }
+.ob3-search input::placeholder { color: var(--text3); }
+.ob3-add, .ob3-icon { flex: 0 0 auto; height: 42px; border-radius: 12px; border: 0; cursor: pointer; font: 600 15px/1 var(--ob3-font); }
+.ob3-add { padding: 0 14px; background: var(--accent); color: #fff; }
+.ob3-icon { width: 42px; background: var(--ob3-soft); color: var(--text); font-weight: 800; letter-spacing: .08em; }
+.ob3-menu-wrap { position: relative; flex: 0 0 auto; }
+.ob3-menu { position: absolute; top: 48px; right: 0; z-index: 60; min-width: 230px; padding: 6px; border-radius: 14px; background: var(--bg2); border: 1px solid var(--ob3-line); box-shadow: 0 16px 40px rgba(0,0,0,.16); }
+.ob3-menu button { display: block; width: 100%; text-align: left; padding: 11px 12px; border: 0; border-radius: 9px; background: none; color: var(--text); font: 15px/1.2 var(--ob3-font); cursor: pointer; }
+.ob3-menu button:hover { background: var(--ob3-soft); }
+.ob3-seg { display: inline-flex; padding: 3px; border-radius: 11px; background: var(--ob3-soft); }
+.ob3-seg button { height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: none; color: var(--text3); font: 500 14px/1 var(--ob3-font); cursor: pointer; }
+.ob3-seg button.is-active { background: var(--bg2); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.ob3-sort { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 4px 0 10px; border-radius: 11px; background: var(--ob3-soft); color: var(--text3); font-size: 13px; }
+.ob3-sort select { border: 0; outline: 0; background: transparent; color: var(--text); font: 500 14px/1 var(--ob3-font); max-width: 150px; }
+.ob3-count { margin-left: auto; color: var(--text3); font-size: 13px; white-space: nowrap; }
+
+/* --- Lista --- */
+.ob3-layout { display: block; }
+.ob3-section { margin: 0 0 18px; }
+.ob3-section > h3 { display: flex; align-items: baseline; gap: 8px; margin: 0 0 6px; padding: 0 4px; color: var(--text3); font: 600 13px/1.2 var(--ob3-font); text-transform: uppercase; letter-spacing: .05em; }
+.ob3-section > h3 span { font-weight: 500; }
+.ob3-rows { border-radius: 16px; background: var(--bg2); border: 1px solid var(--ob3-line); overflow: hidden; }
+.ob3-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 11px 14px; border: 0; border-top: 1px solid var(--ob3-line); background: none; color: var(--text); text-align: left; cursor: pointer; font-family: var(--ob3-font); -webkit-tap-highlight-color: transparent; }
+.ob3-row:first-child { border-top: 0; }
+.ob3-row:hover, .ob3-row:focus-visible { background: var(--ob3-soft); outline: none; }
+.ob3-row.is-selected { background: color-mix(in srgb, var(--accent) 11%, var(--bg2)); }
+.ob3-row-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ob3-row-title { font-size: 16px; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ob3-row-meta { font-size: 13px; line-height: 1.3; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ob3-row-event { font-size: 13px; line-height: 1.3; color: var(--accent); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ob3-row-side { flex: 0 0 64px; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.ob3-row-side strong { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ob3-row-side small { font-size: 12px; color: var(--text3); white-space: nowrap; }
+.ob3-row-side .ob3-bar { width: 56px; }
+.ob3-row.is-history .ob3-row-title { font-weight: 500; }
+.ob3-row.is-activity { cursor: default; }
+.ob3-tag { padding: 3px 8px; border-radius: 99px; background: var(--ob3-soft); }
+.ob3-bar { display: block; height: 4px; border-radius: 99px; background: var(--ob3-line); overflow: hidden; }
+.ob3-bar b { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.ob3-empty { margin: 24px 4px; color: var(--text3); font-size: 15px; }
+
+/* --- Ficha (común a la hoja y al panel) --- */
+.ob3-card { color: var(--text); }
+.ob3-sheet-head { display: flex; align-items: flex-start; gap: 12px; padding: 20px 20px 14px; }
+.ob3-sheet-titles { flex: 1; min-width: 0; }
+.ob3-eyebrow { display: block; font-size: 14px; color: var(--text3); font-weight: 500; }
+.ob3-title { margin: 2px 0 0; font: 700 22px/1.2 var(--ob3-font); color: var(--text); }
+.ob3-meta { margin: 6px 0 0; font-size: 14px; color: var(--text3); line-height: 1.35; }
+.ob3-close { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 50%; border: 0; background: var(--ob3-soft); color: var(--text2, var(--text)); font-size: 15px; cursor: pointer; }
+.ob3-sheet-body { padding: 0 20px 8px; }
+.ob3-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ob3-stats.is-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ob3-stat { min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 12px; border-radius: 14px; background: var(--ob3-soft); }
+.ob3-stat > span { font-size: 12px; color: var(--text3); font-weight: 500; }
+.ob3-stat > strong { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ob3-stat > small { font-size: 12px; color: var(--text3); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ob3-stat .ob3-bar { margin-top: 4px; }
+.ob3-pred { margin: 10px 2px 0; font-size: 14px; color: var(--text3); }
+.ob3-pred .obra-pred-hint { margin: 0; padding: 0; background: none; border: 0; font: 14px/1.35 var(--ob3-font); letter-spacing: 0; color: var(--text3); }
+.ob3-pred .obra-pred-hint strong { color: var(--text); }
+.ob3-pred .obra-pred-hint.hold strong { color: var(--ob3-good); }
+.ob3-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 4px; }
+.ob3-actions .ob3-btn { flex: 1 1 auto; white-space: nowrap; }
+.ob3-actions .is-primary { flex-grow: 1.4; }
+.ob3-btn { min-height: 44px; padding: 0 12px; border-radius: 12px; border: 0; background: var(--ob3-soft); color: var(--text); font: 600 15px/1.15 var(--ob3-font); cursor: pointer; }
+.ob3-btn.is-primary { background: var(--accent); color: #fff; }
+.ob3-btn.is-danger { background: none; color: var(--red, #c0392b); padding: 0 6px; }
+.ob3-block { margin-top: 18px; }
+.ob3-block > header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.ob3-block h3 { margin: 0; font: 600 13px/1.2 var(--ob3-font); color: var(--text3); text-transform: uppercase; letter-spacing: .05em; }
+.ob3-link { border: 0; background: none; padding: 6px 0; color: var(--accent); font: 500 14px/1.2 var(--ob3-font); cursor: pointer; }
+.ob3-movs { border-radius: 14px; border: 1px solid var(--ob3-line); overflow: hidden; }
+.ob3-mov { display: flex; align-items: center; gap: 10px; padding: 9px 8px 9px 12px; border-top: 1px solid var(--ob3-line); }
+.ob3-mov:first-child { border-top: 0; }
+.ob3-mov-n { flex: 0 0 18px; color: var(--text3); font-size: 13px; font-variant-numeric: tabular-nums; }
+.ob3-mov-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ob3-mov-name { font-size: 15px; line-height: 1.25; }
+.ob3-mov-main small { font-size: 12px; color: var(--text3); }
+.ob3-mov-sol { flex: 0 0 60px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding: 6px 4px; border: 0; background: none; color: var(--text); font: 600 15px/1 var(--ob3-font); font-variant-numeric: tabular-nums; cursor: pointer; }
+.ob3-mov-sol .ob3-bar { width: 48px; }
+.ob3-mov-play { flex: 0 0 36px; height: 36px; border-radius: 50%; border: 0; background: var(--ob3-soft); color: var(--accent); font-size: 13px; cursor: pointer; }
+.ob3-notes { margin: 0; padding: 12px; border-radius: 14px; background: var(--ob3-soft); font-size: 15px; line-height: 1.45; white-space: pre-wrap; }
+.ob3-message { margin: 14px 2px 0; font-size: 14px; color: var(--text3); }
+.ob3-sheet-foot { display: flex; align-items: center; gap: 8px; padding: 12px 20px 18px; }
+.ob3-sheet-foot > .ob3-btn:only-child { margin-left: auto; }
+.ob3-foot-gap { flex: 1; }
+
+/* Edición */
+.ob3-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ob3-form label, .ob3-notes-edit { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.ob3-form label.is-wide { grid-column: 1 / -1; }
+.ob3-form span, .ob3-notes-edit span { font-size: 13px; color: var(--text3); font-weight: 500; }
+.ob3-card input, .ob3-card textarea { width: 100%; box-sizing: border-box; min-height: 44px; padding: 10px 12px; border-radius: 11px; border: 1px solid var(--ob3-line); background: var(--bg); color: var(--text); font: 16px/1.3 var(--ob3-font); }
+.ob3-card textarea { resize: vertical; }
+.ob3-notes-edit { margin-top: 16px; }
+.ob3-edit-movs { display: grid; gap: 6px; }
+.ob3-edit-mov { display: grid; grid-template-columns: minmax(0, 1fr) 76px 40px; gap: 6px; align-items: center; }
+.ob3-edit-mov .ob3-icon { width: 40px; height: 40px; font-size: 18px; letter-spacing: 0; }
+.ob3-hint { margin: 0; font-size: 14px; color: var(--text3); }
+
+/* --- Hoja flotante: inferior en el teléfono, centrada en tableta --- */
+.ob3-overlay { position: fixed; inset: 0; z-index: 190; display: none; align-items: flex-end; justify-content: center; background: rgba(0,0,0,.36); }
+.ob3-overlay.open { display: flex; animation: ob3-fade .18s ease-out; }
+.ob3-sheet { width: 100%; max-width: 720px; max-height: min(92dvh, 100%); display: flex; flex-direction: column; border-radius: 20px 20px 0 0; background: var(--bg2); box-shadow: 0 -10px 40px rgba(0,0,0,.18); animation: ob3-rise .22s cubic-bezier(.2,.8,.2,1); }
+.ob3-sheet > .ob3-card { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: env(safe-area-inset-bottom, 0); }
+.ob3-sheet .ob3-sheet-foot { position: sticky; bottom: 0; background: var(--bg2); border-top: 1px solid var(--ob3-line); }
+body.ob3-lock { overflow: hidden; }
+@keyframes ob3-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ob3-rise { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
+@media (min-width: 701px) {
+  .ob3-overlay { align-items: center; padding: 24px; }
+  .ob3-sheet { border-radius: 22px; max-height: min(88dvh, 900px); box-shadow: 0 24px 70px rgba(0,0,0,.24); }
+  .ob3-title { font-size: 26px; }
+}
+html.platform-windows .ob3-overlay { z-index: 1150; }
+
+/* --- iPad horizontal y escritorio: lista + ficha fija --- */
+#view-obras.ob3-wide .ob3-layout { display: grid; grid-template-columns: minmax(320px, .9fr) minmax(420px, 1.1fr); gap: 18px; align-items: start; }
+#view-obras.ob3-wide .ob3-pane { position: sticky; top: 12px; max-height: calc(100dvh - 150px); overflow-y: auto; overscroll-behavior: contain; border-radius: 20px; background: var(--bg2); border: 1px solid var(--ob3-line); }
+#view-obras.ob3-wide .ob3-pane .ob3-sheet-foot { position: sticky; bottom: 0; background: var(--bg2); border-top: 1px solid var(--ob3-line); }
+
+/* Teléfono estrecho */
+@media (max-width: 420px) {
+  .ob3-actions .is-primary { flex-basis: 100%; }
+  .ob3-stat { padding: 10px; }
+  .ob3-stat > strong { font-size: 17px; }
+  .ob3-count { display: none; }
+}

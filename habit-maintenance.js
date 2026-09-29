@@ -184,8 +184,12 @@
     });
     if (!ok) return;
     if (typeof root.closeModal === 'function') root.closeModal('modalHabitLapse');
-    const after = state(allHabits(), habit, todayKey);
-    toast(after.level === 'relapse' ? 'Caída apuntada. Ya es una recaída: toca reabrir el reto' : 'Caída apuntada. Esta noche, vuelta a la norma');
+    // Con el hub, la app propone acciones (y reabrir si ya es recaída); si no, un aviso.
+    if (root.HabitHub && typeof root.HabitHub.suggestAfter === 'function') root.HabitHub.suggestAfter(lapseHabitId, 'lapse', { note, day: date });
+    else {
+      const after = state(allHabits(), habit, todayKey);
+      toast(after.level === 'relapse' ? 'Caída apuntada. Ya es una recaída: toca reabrir el reto' : 'Caída apuntada. Esta noche, vuelta a la norma');
+    }
     try { root.Haptics && root.Haptics.success(); } catch (error) {}
   }
 

@@ -1054,7 +1054,7 @@ test('shows a derived readiness estimate without counting down during a timer ru
   expect(await page.evaluate(() => Boolean(ReadinessCore.estimateReadiness.__recoveryContextModel))).toBe(false);
   releaseRecovery();
   await page.waitForFunction(() => ReadinessCore.estimateReadiness.__technicalDifficultyModel === true);
-  await page.waitForFunction(() => document.documentElement.dataset.difficultyManualCapture === '1');
+  await page.waitForFunction(() => document.documentElement.dataset.difficultyIntegration === '1');
   expect(await page.evaluate(() => cronoReadinessEstimate('obra::obra_1').diagnostics.recoveryContextModel)).toBe(true);
   const expectedIdle = await page.evaluate(() => cronoReadinessMainText(cronoReadinessEstimate('obra::obra_1'), false));
   await expect(idle.locator('#cronoIdleReadinessMain')).toHaveText(expectedIdle);
@@ -1095,22 +1095,19 @@ test('can reload after going offline', async ({ browser }) => {
   await context.close();
 });
 
-test('progressively reveals Obras tools and keeps evolution samples honest', async ({ page }) => {
+test('shows the clean Obras list and keeps evolution samples honest', async ({ page }) => {
   await prepare(page);
   const sparse = await page.evaluate(() => {
     showView('obras');
     const view = document.getElementById('view-obras');
     return {
-      sparse: view.classList.contains('obras-sparse'),
-      toolbar: getComputedStyle(view.querySelector('.obras-toolbar')).display,
-      primaryText: view.querySelector('.obra-primary-pase')?.textContent || '',
+      legacyToolbar: getComputedStyle(view.querySelector('.obras-toolbar')).display,
+      head: !!document.getElementById('ob3Head'),
+      rows: view.querySelectorAll('.ob3-row[data-work-id]').length,
       hasEstimate: /80%|mantenimiento recomendado|horas sugeridas/i.test(view.textContent),
     };
   });
-  expect(sparse.sparse).toBe(true);
-  expect(sparse.toolbar).toBe('none');
-  expect(sparse.primaryText).toContain('Registrar pase');
-  expect(sparse.hasEstimate).toBe(false);
+  expect(sparse).toEqual({ legacyToolbar: 'none', head: true, rows: 1, hasEstimate: false });
 
   const rich = await page.evaluate(() => {
     db.obras.push(
@@ -1118,19 +1115,12 @@ test('progressively reveals Obras tools and keeps evolution samples honest', asy
       { id: 'obra_3', name: 'Obra tres', composer: 'Compositor', tipo: 'obra', movimientos: [], sol: 50, solHistory: [], paseHistory: [] },
     );
     renderObras();
-    document.getElementById('obrasMoreToggle')?.click();
-    const view = document.getElementById('view-obras');
     return {
-      sparse: view.classList.contains('obras-sparse'),
-      moreOpen: view.classList.contains('obras-more-open'),
-      sortDisplay: getComputedStyle(view.querySelector('.obras-sort-row')).display,
-      moreText: document.getElementById('obrasMoreToggle')?.textContent.trim(),
+      rows: document.querySelectorAll('#view-obras .ob3-row[data-work-id]').length,
+      count: document.getElementById('ob3Count').textContent,
     };
   });
-  expect(rich.sparse).toBe(false);
-  expect(rich.moreOpen).toBe(true);
-  expect(rich.sortDisplay).toBe('flex');
-  expect(rich.moreText).toBe('Menos');
+  expect(rich).toEqual({ rows: 3, count: '3 obras' });
 
   const graph = await page.evaluate(() => {
     const now = Date.now();

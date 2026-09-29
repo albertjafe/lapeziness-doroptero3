@@ -152,12 +152,47 @@
     });
   }
 
+  // Obras con estudio registrado en cualquiera de las dos copias.
+  function studiedWorkIds(...docs) {
+    const ids = new Set();
+    docs.forEach(doc => {
+      ['sessionPlants', 'forestPlants'].forEach(key => (doc && Array.isArray(doc[key]) ? doc[key] : []).forEach(p => { if (p && p.obraId) ids.add(String(p.obraId)); }));
+      (doc && Array.isArray(doc.sesiones) ? doc.sesiones : []).forEach(s => (s && Array.isArray(s.items) ? s.items : []).forEach(i => { if (i && i.obraId) ids.add(String(i.obraId)); }));
+    });
+    return ids;
+  }
+
+  // Momento de creación de una obra: createdAt o el sello de su id («o» + Date.now()).
+  function workCreatedAt(work) {
+    const stored = Date.parse(work && work.createdAt);
+    if (Number.isFinite(stored)) return stored;
+    const match = /^o(\d{12,14})$/.exec(String(work && work.id || ''));
+    return match ? Number(match[1]) : NaN;
+  }
+
   function mergeObrasFromFreshest(base, other) {
     const comparison = compareDbFreshness(base, other);
     const fresher = comparison >= 0 ? base : other;
     const older = fresher === base ? other : base;
     if (!Array.isArray(fresher && fresher.obras)) return Array.isArray(older && older.obras) ? older.obras : [];
-    return mergeAuthoritativeChildren(older && older.obras, fresher.obras);
+    const merged = mergeAuthoritativeChildren(older && older.obras, fresher.obras);
+    // La copia «más fresca» manda sobre qué obras existen (una borrada no debe
+    // resucitar), salvo en dos casos que no pueden ser un borrado suyo: obras
+    // con estudio registrado (el servidor las protege igual) y obras creadas
+    // después de que se guardara esa copia. La revisión es un contador de cada
+    // dispositivo: sin esto, una obra nueva del iPad se perdía al fusionarse
+    // con la copia de un móvil con más revisiones (Debussy, septiembre 2026).
+    const present = new Set(merged.map(item => String(item && item.id || '')));
+    const studied = studiedWorkIds(base, other);
+    const fresherSaved = Date.parse(dbSavedAt(fresher));
+    (older && Array.isArray(older.obras) ? older.obras : []).forEach(work => {
+      const id = String(work && work.id || '');
+      if (!id || present.has(id)) return;
+      const created = workCreatedAt(work);
+      const newer = Number.isFinite(created) && (!Number.isFinite(fresherSaved) || created > fresherSaved);
+      if (studied.has(id) || newer) { merged.push(work); present.add(id); }
+    });
+    return merged;
   }
 
   function civilDayOrdinal(value) {

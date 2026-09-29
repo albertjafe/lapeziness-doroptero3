@@ -259,6 +259,7 @@
       '<section class="hp-block"><h3>Lo siguiente</h3><ul class="hp-next">' +
         nextSteps(habit, metrics, reward, todayKey).map(line => '<li class="is-' + line.kind + '">' + esc(line.text) + '</li>').join('') + '</ul></section>' +
       (metrics.complete ? maintenanceHtml(habit, all || [habit], todayKey) : '') +
+      (root.HabitHub ? root.HabitHub.pageHtml(habit) : '') +
       '<section class="hp-block"><h3>Días</h3>' + daysGridHtml(habit, metrics, todayKey) + '</section>' +
       normasHtml(habit, reward, metrics, todayKey) +
     '</article>';

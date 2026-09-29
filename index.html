@@ -38,6 +38,7 @@
 <link rel="stylesheet" href="habit-trophies.css?v=383">
 <link rel="stylesheet" href="effort-incentives.css?v=440">
 <link rel="stylesheet" href="habits-page.css?v=466">
+<link rel="stylesheet" href="habit-hub.css?v=469">
 <link rel="stylesheet" href="desktop-redesign.css?v=396">
 <link rel="stylesheet" href="crono-start-layout.css?v=401">
 <link rel="stylesheet" href="ipad-today.css?v=407">
@@ -1902,6 +1903,29 @@
   </div>
 </div>
 
+<!-- MODAL: acciones tras una caída (habit-hub.js) -->
+<div class="modal-overlay" id="modalHabitAction">
+  <div class="modal hla-modal">
+    <div class="habit-modal-kicker" id="hlaHabit">Hábito</div>
+    <div class="modal-title" id="hlaTitle">Recaída apuntada</div>
+    <p class="hrb-intro" id="hlaIntro"></p>
+    <label class="habit-modal-field" id="hlaNoteWrap" for="hlaNote">
+      <span>Qué pasó <small>(opcional: servirá para mejorar el reglamento)</small></span>
+      <textarea id="hlaNote" class="modal-input" maxlength="300" placeholder="Ej. cogí el móvil de la mesilla al despertarme"></textarea>
+    </label>
+    <div class="hla-list" id="hlaList"></div>
+    <label class="habit-modal-field" for="hlaCustom">
+      <span>Otra acción <small>(opcional, para hoy)</small></span>
+      <input type="text" id="hlaCustom" class="modal-input" maxlength="200" placeholder="Ej. dejar el cargador en el pasillo">
+    </label>
+    <button type="button" class="hla-reopen" id="hlaReopen" onclick="HabitHub.reopenNow()" hidden>Ya es una recaída · reabrir el reto (21 días)</button>
+    <div class="modal-buttons">
+      <button class="modal-btn secondary" onclick="HabitHub.skip()">Ahora no</button>
+      <button class="modal-btn primary" onclick="HabitHub.accept()">Añadir a Hoy y al calendario</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: caída en un hábito terminado (mantenimiento) -->
 <div class="modal-overlay" id="modalHabitLapse">
   <div class="modal hl-modal">
@@ -2498,14 +2522,14 @@
 
 <script src="timer-core.js?v=397"></script>
 <script src="data-core.js?v=466"></script>
-<script src="sync-core.js?v=342"></script>
+<script src="sync-core.js?v=469"></script>
 <script src="document-sync-core.js?v=433"></script>
 <script src="event-sync-core.js?v=342"></script>
 <script src="task-sync-bootstrap.js?v=342" id="taskSyncBootstrapScript"></script>
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=397"></script>
 <script src="crono-state-store.js?v=397"></script>
-<script src="app.js?v=468"></script>
+<script src="app.js?v=469"></script>
 <script src="manual-study-activity.js?v=430"></script>
 <script src="chamber-factor-migration.js?v=430"></script>
 <script src="daily-study-minutes.js?v=464" id="dailyStudyMinutesFixScript"></script>
@@ -2521,15 +2545,16 @@
 <script src="german-study.js?v=435"></script>
 <script src="study-session-ux.js?v=436"></script>
 <script src="crono-resume-layout.js?v=432"></script>
-<script src="piano-rooms.js?v=464"></script>
+<script src="piano-rooms.js?v=469"></script>
 <script src="reservation-dashboard.js?v=467"></script>
 <script src="device-recovery.js?v=460"></script>
 <script src="ipad-today.js?v=461"></script>
 <script src="google-calendar.js?v=342"></script>
 <script src="timer-objectives.js?v=439"></script>
-<script src="habit-rulebook.js?v=466"></script>
-<script src="habit-maintenance.js?v=466"></script>
-<script src="habits-page.js?v=466"></script>
+<script src="habit-rulebook.js?v=469"></script>
+<script src="habit-maintenance.js?v=469"></script>
+<script src="habit-hub.js?v=469"></script>
+<script src="habits-page.js?v=469"></script>
 <script src="obra-select-picker.js?v=468"></script>
 <script src="effort-incentives-ui.js?v=435"></script>
 <script src="metronome.js?v=368"></script>
@@ -2545,7 +2570,7 @@
 <!-- Última capa del iPad: al final para ganar a las capas antiguas (como desktop-app.css). -->
 <link rel="stylesheet" href="ipad-app.css?v=464">
 <script src="settings.js?v=457"></script>
-<script src="mobile-v2.js?v=464"></script>
+<script src="mobile-v2.js?v=469"></script>
 </body>
 <script>
   // Activation/reload belongs exclusively to UpdateSafety.

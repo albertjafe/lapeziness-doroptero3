@@ -331,7 +331,11 @@
     // En un hábito terminado, las caídas apuntadas viajan solas como casos que resolver.
     const M = root.HabitMaintenance;
     const upkeep = M && typeof root.habitAllChallenges === 'function' ? M.state(root.habitAllChallenges(), habit, todayKey) : null;
-    lastPrompt = buildPrompt(habit, { todayKey, cases: el('hrbCases') ? el('hrbCases').value : '', lapses: upkeep && upkeep.applies ? upkeep.lapses.slice(0, 15) : [] });
+    // Y en un reto en curso, las recaídas en las que apuntaste qué pasó.
+    const relapses = Object.entries(habit.logs || {}).filter(([, log]) => log && log.status === 'failed' && log.note)
+      .map(([date, log]) => ({ date, note: log.note })).sort((a, b) => b.date.localeCompare(a.date));
+    const lapses = (upkeep && upkeep.applies ? upkeep.lapses : []).concat(relapses).slice(0, 15);
+    lastPrompt = buildPrompt(habit, { todayKey, cases: el('hrbCases') ? el('hrbCases').value : '', lapses });
     const note = el('hrbCopyNote');
     const fallback = el('hrbPromptFallback');
     try {
