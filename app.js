@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-28-habit-maintenance-v466';
+const APP_VERSION = '2026-09-29-obra-picker-v468';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -18819,7 +18819,8 @@ updateEstado = function(dim, val) {
 function buildObraSelectOptions(selectId) {
   const select = document.getElementById(selectId);
   if (!select) return;
-  const obras = (db.obras || []).sort((a, b) => a.name.localeCompare(b.name));
+  // Copia: ordenar db.obras en su sitio reordenaba el repertorio guardado.
+  const obras = (db.obras || []).slice().sort((a, b) => a.name.localeCompare(b.name));
   let opts = '<option value="">— selecciona —</option>';
   obras.forEach(o => {
     const movs = (o.movimientos || []).filter(m => m.name);
@@ -27929,8 +27930,15 @@ if (window.visualViewport) {
 }
 
 // Abre el modal picker. Resetea el buscador y renderiza.
-function openCronoObraPicker(mode) {
+// mode 'select': elige para un desplegable de obras (registro manual, editar
+// sesión…); targetId es ese <select>, que recibe el valor y su change.
+let _obraPickerTarget = null;
+function openCronoObraPicker(mode, targetId) {
   _obraPickerMode = mode || 'crono';
+  _obraPickerTarget = _obraPickerMode === 'select' ? (targetId || null) : null;
+  // Encima de la ventana que lo pide: openModal solo lo mueve al final la primera vez.
+  const pickerOverlay = document.getElementById('modalCronoObraPicker');
+  if (_obraPickerMode === 'select' && pickerOverlay && pickerOverlay.parentNode === document.body) document.body.appendChild(pickerOverlay);
   const search = document.getElementById('cronoObraPickerSearch');
   const title = document.getElementById('cronoObraPickerTitle');
   const subtitle = document.getElementById('cronoObraPickerSubtitle');
@@ -27955,6 +27963,7 @@ function openCronoObraPicker(mode) {
 
 function closeCronoObraPicker() {
   _obraPickerMode = 'crono';
+  _obraPickerTarget = null;
   closeModal('modalCronoObraPicker');
 }
 
@@ -27995,7 +28004,9 @@ function renderCronoObraPicker() {
   }
   const currentValue = _obraPickerMode === 'change'
     ? (crono.movId ? 'mov::' + crono.obraId + '::' + crono.movId : 'obra::' + crono.obraId)
-    : (sel?.value || '');
+    : _obraPickerMode === 'select'
+      ? (document.getElementById(_obraPickerTarget)?.value || '')
+      : (sel?.value || '');
 
   // Obras y actividades MEZCLADAS en una sola lista, en orden de uso reciente
   // (lo último que tocaste arriba del todo, sin separar por tipo).
@@ -28012,7 +28023,10 @@ function renderCronoObraPicker() {
     const composerSpan = (o.composer && o.composer !== '—')
       ? '<span class="crono-picker-composer">· ' + escapeHtmlSafe(o.composer) + '</span>'
       : '';
-    const movs = isActivity ? [] : (o.movimientos || []).filter(m => m.name);
+    let movs = isActivity ? [] : (o.movimientos || []).filter(m => m.name);
+    // Si lo buscado es un movimiento (y no la obra), solo se muestran los que coinciden.
+    const obraMatches = !q || (o.name + ' ' + ((o.composer && o.composer !== '—') ? o.composer : '')).toLowerCase().includes(q);
+    if (!obraMatches) movs = movs.filter(m => m.name.toLowerCase().includes(q));
     let html = '';
     if (!movs.length) {
       const val = 'obra::' + o.id;
@@ -28060,8 +28074,18 @@ function pickCronoObra(val) {
   const parts = String(val).split('::');  // 'obra::id' | 'mov::id::movId'
   if (parts.length >= 2) bumpCronoPickRecency(parts[1]);
   const pickerMode = _obraPickerMode;
+  const pickerTarget = _obraPickerTarget;
   _obraPickerMode = 'crono';
+  _obraPickerTarget = null;
   closeModal('modalCronoObraPicker');
+  if (pickerMode === 'select') {
+    const target = document.getElementById(pickerTarget);
+    if (!target) return;
+    if (![...target.options].some(option => option.value === val)) buildObraSelectOptions(target.id);
+    target.value = val;
+    target.dispatchEvent(new Event('change', { bubbles: true }));
+    return;
+  }
   if (pickerMode === 'pase') {
     const obraId = parts[1];
     const movId  = parts[0] === 'mov' && parts[2] ? parts[2] : null;

@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v467';
+const CACHE = 'estudio-v468';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -6,7 +6,7 @@ const ASSETS = [
   "./activity-dashboard.js?v=436",
   "./activity-self-tracker.js?v=402",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=466",
+  "./app.js?v=468",
   "./german-rewards.js?v=426",
   "./achievement-rewards.js?v=435",
   "./piano-rewards.js?v=435",
@@ -138,6 +138,8 @@ const ASSETS = [
   "./habit-rulebook.js?v=466",
   "./habit-maintenance.js?v=466",
   "./habits-page.js?v=466",
+  "./obra-select-picker.js?v=468",
+  "./obra-select-picker.css?v=468",
   "./update-safety.js?v=378",
   "./work-catalog.js?v=342",
   "./work-difficulty-integration.js?v=342",

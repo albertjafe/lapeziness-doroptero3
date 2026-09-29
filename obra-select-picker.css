@@ -1,0 +1,51 @@
+/* Desplegables de obras con buscador (obra-select-picker.js). */
+select.obra-pick-native {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+.obra-pick-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border2, var(--border));
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-family: var(--ui-font, inherit);
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.obra-pick-btn.modal-input { margin-bottom: 12px; }
+.obra-pick-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.obra-pick-btn:disabled { opacity: .5; cursor: default; }
+.obra-pick-icon { flex: 0 0 auto; width: 17px; height: 17px; fill: none; stroke: var(--text3); stroke-width: 2; stroke-linecap: round; }
+.obra-pick-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.obra-pick-btn.is-empty .obra-pick-label { color: var(--text3); }
+.obra-pick-chev { flex: 0 0 auto; color: var(--text3); font-size: 20px; line-height: 1; }
+
+/* Registro rápido de Hoy: el botón ocupa el hueco del desplegable. */
+#view-session .session-quick-study .obra-pick-btn {
+  height: 44px;
+  border-radius: 7px;
+  padding: 0 10px;
+  font: 650 11px/1.2 var(--font-sans, -apple-system, BlinkMacSystemFont, sans-serif);
+}
+#view-session .session-quick-study .obra-pick-icon { width: 14px; height: 14px; }
+@media (max-width: 699px) {
+  #view-session .session-quick-study .obra-pick-btn { grid-column: 2; grid-row: 1; }
+}
