@@ -333,7 +333,8 @@ test('on the phone your reservations come first: day bar, today, tomorrow, then 
   await expect(page.locator('#reservationDayBar .rd-daybar-track i')).toHaveCount(2);
   await expect(page.locator('#reservationAgendaTitle')).toContainText('Hoy');
   await expect(page.locator('#reservationAgendaMeta')).toContainText('2 reservas');
-  await expect(page.locator('#reservationBookingList .rd-booking.is-current .rd-booking-progress')).toBeVisible();
+  // La otra reserva del ejemplo (15:30–17:00) también está en curso si la prueba corre a esa hora.
+  await expect(page.locator('#reservationBookingList .rd-booking.is-current', { hasText: 'Aula 113' }).locator('.rd-booking-progress')).toBeVisible();
   await expect(page.locator('#reservationTransition')).toContainText('Mañana');
   await expect(page.locator('#reservationTransition')).toContainText('Aula 30.204');
   const screenTop = (await page.locator('#aulasDashboard').boundingBox()).y;
