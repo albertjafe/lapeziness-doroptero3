@@ -96,3 +96,47 @@ test('iPad horizontal: lista y ficha fija al lado; Registrar solidez abre su ven
   await pane.getByRole('button', { name: 'Registrar solidez' }).click();
   await expect(page.locator('#modalPaseQuality')).toHaveClass(/visible/);
 });
+
+test('obras sin ficha: el aviso lleva a unir el estudio con la misma obra o a recuperarla', async ({ page }) => {
+  const data = fixture();
+  data.sessionPlants.push(
+    { id: 'lost1', obraId: 'oLost', mins: 40, startedAt: iso(-5), endedAt: iso(-5) },
+    { id: 'lost2', obraId: 'oLost', mins: 20, startedAt: iso(-4), endedAt: iso(-4) },
+    { id: 'gone1', obraId: 'oGone', mins: 15, startedAt: iso(-3), endedAt: iso(-3) },
+  );
+  data.sesiones.push({ fecha: day(-5), items: [{ obraId: 'oLost', obraName: 'Étude n.º 7 «Galamb borong», Libro II' }, { obraId: 'oGone', obraName: 'Hommage à Rameau' }] });
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await page.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* offline test */' }));
+  await page.addInitScript(value => {
+    localStorage.setItem('alberto_piano_v2', JSON.stringify(value));
+    localStorage.setItem('alberto_sync_v1', JSON.stringify({ localRevision: 0, dirtyRevision: 0, lastSyncedRevision: 0 }));
+  }, data);
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.ObrasV3 && typeof db !== 'undefined');
+  await expect(page.locator('#splashScreen')).toHaveClass(/gone/, { timeout: 15000 });
+  await page.evaluate(() => { try { closeModal('modalCloudSync'); } catch (e) {} showView('obras'); });
+
+  const alert = page.locator('[data-open-orphans]');
+  await expect(alert).toContainText('2 obras con estudio no tienen ficha');
+  await alert.click();
+  const sheet = page.locator('#ob3OrphansOverlay');
+  await expect(sheet).toHaveClass(/open/);
+  const lost = sheet.locator('[data-orphan="oLost"]');
+  await expect(lost).toContainText('1 h · 2 tramos');
+  await expect(lost).toContainText('Parece la misma que');
+  page.once('dialog', dialog => dialog.accept());
+  await lost.locator('[data-orphan-action="join"]').click();
+  await expect(lost).toHaveCount(0);
+  // Sin obra parecida no se une a ciegas: hay que elegirla.
+  const gone = sheet.locator('[data-orphan="oGone"]');
+  await expect(gone.locator('[data-orphan-target]')).toHaveValue('');
+  await gone.locator('[data-orphan-action="recover"]').click();
+  await expect(sheet).toContainText('No queda ninguna');
+  const result = await page.evaluate(() => ({
+    ligeti: db.sessionPlants.filter(p => p.obraId === 'ligeti').map(p => [p.id, p._fieldClock && !!p._fieldClock.obraId]),
+    recovered: db.obras.find(o => o.id === 'oGone')?.name,
+  }));
+  expect(result).toEqual({ ligeti: [['lost1', true], ['lost2', true]], recovered: 'Hommage à Rameau' });
+  await sheet.locator('[data-orphan-action="close"]').click();
+  await expect(alert).toHaveCount(0);
+});

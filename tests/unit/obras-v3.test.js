@@ -79,3 +79,68 @@ describe('obras v3 · ficha', () => {
     expect(bootstrap).not.toMatch(/obra-premium\.js|obras-redesign\.js|obras-unified-library\.js/);
   });
 });
+
+describe('obras v3 · obras sin ficha', () => {
+  const Doc = require('../../document-sync-core.js');
+  const DataCore = require('../../data-core.js');
+  const Ledger = require('../../study-ledger-sync.js');
+  globalThis.DocumentSyncCore = Doc; // el historial maestro lo busca en el global, como en la app
+  const doc = () => ({
+    obras: [{ id: 'oNew', name: "Reflets dans l'eau, Images, Book I, L.110/1", composer: 'Debussy', movimientos: [] }, { id: 'x', name: 'Otra', composer: 'Bach' }],
+    sessionPlants: [
+      { id: 'run_a', obraId: 'oOld', movId: 'mGone', mins: 300, startedAt: '2026-09-07T17:00:00Z', endedAt: '2026-09-07T22:00:00Z' },
+      { id: 'run_b', obraId: 'oOld', mins: 25, startedAt: '2026-09-21T07:00:00Z', endedAt: '2026-09-21T07:25:00Z' },
+      { id: 'run_c', obraId: 'oRam', mins: 52, startedAt: '2026-09-10T09:00:00Z', endedAt: '2026-09-10T09:52:00Z' },
+      { id: 'run_d', obraId: 'oNew', mins: 49, startedAt: '2026-09-29T11:00:00Z', endedAt: '2026-09-29T11:49:00Z' },
+      { obraId: 'oLegacy', mins: 10, startedAt: '2026-01-01T10:00:00Z' },
+      { id: 'rest', obraId: '_rest_', mins: 5, startedAt: '2026-09-29T12:00:00Z' },
+    ],
+    sesiones: [{ fecha: '2026-09-10', items: [{ obraId: 'oRam', obraName: 'Hommage à Rameau, Images, Book I, L.110/2' }, { obraId: 'oOld', obraName: "Reflets dans l'eau, Images, Book I, L.110/1" }] }],
+  });
+
+  it('finds study without a work, named from the history, and suggests the same title', () => {
+    const d = doc();
+    const list = O.orphans(d, Date.parse('2026-09-29T12:00:00Z'));
+    expect(list.map(o => [o.id, o.name, o.minutes, o.count, o.recent])).toEqual([
+      ['oOld', "Reflets dans l'eau, Images, Book I, L.110/1", 325, 2, true],
+      ['oRam', 'Hommage à Rameau, Images, Book I, L.110/2', 52, 1, true],
+    ]);
+    expect(O.suggestedMatch(d.obras, list[0]).id).toBe('oNew');
+    expect(O.suggestedMatch(d.obras, list[1])).toBeNull();
+    expect(O.orphanMeta(list[0])).toBe('5 h 25 min · 2 tramos · 7 sep – 21 sep');
+    const html = strip(O.orphansHtml(list, d.obras));
+    expect(html).toContain('Parece la misma que «Reflets dans l&#039;eau, Images, Book I, L.110/1»: únelas');
+    d.obrasSinFichaOcultas = { oRam: '2026-09-29T12:00:00Z' };
+    expect(O.orphans(d).find(o => o.id === 'oRam').hidden).toBe(true);
+  });
+
+  it('recovering keeps the id so all its study comes back', () => {
+    const d = doc();
+    d.obras.push(O.recoveredWork(O.orphans(d).find(o => o.id === 'oRam'), '2026-09-29T12:00:00Z'));
+    expect(d.obras.at(-1)).toMatchObject({ id: 'oRam', name: 'Hommage à Rameau, Images, Book I, L.110/2', tipo: 'obra', recoveredAt: '2026-09-29T12:00:00Z' });
+    expect(O.orphans(d).map(o => o.id)).toEqual(['oOld']);
+  });
+
+  it('joining moves the study with a field clock that survives merges with an old copy, without duplicates', () => {
+    const old = doc();
+    const edited = doc();
+    const target = edited.obras[0];
+    expect(O.moveStudy(edited, 'oOld', 'oNew', '2026-09-29T12:30:00Z', target)).toBe(2);
+    expect(edited.sessionPlants[0]).toMatchObject({ obraId: 'oNew', movId: null, _fieldClock: { obraId: '2026-09-29T12:30:00Z', movId: '2026-09-29T12:30:00Z' } });
+    // Documento: fusión en ambos sentidos con una copia que aún tiene la obra vieja.
+    for (const merged of [Doc.merge(old, edited), Doc.merge(edited, old), Doc.mergeRemote(old, edited)]) {
+      const plants = merged.sessionPlants.filter(p => p.id === 'run_a' || p.id === 'run_b');
+      expect(plants.map(p => p.obraId)).toEqual(['oNew', 'oNew']);
+    }
+    const domain = DataCore.mergeStudyHistory(edited, old);
+    expect(domain.sessionPlants.filter(p => p.id === 'run_a')).toHaveLength(1);
+    // Historial maestro: el tramo editado se sube y otro dispositivo lo aplica.
+    const rows = Ledger.pendingRows(edited, {}, 'u', '2026-09-29T12:31:00Z').filter(r => r.record_key === 'id:run_a');
+    expect(rows).toHaveLength(1);
+    const phone = doc();
+    const pushed = { ['sessionPlants\u0000id:run_a']: Ledger.fingerprint(phone.sessionPlants[0]) };
+    Ledger.applyRows(phone, rows, pushed);
+    expect(phone.sessionPlants.filter(p => p.id === 'run_a').map(p => p.obraId)).toEqual(['oNew']);
+    expect(O.orphans(edited).map(o => o.id)).toEqual(['oRam']);
+  });
+});

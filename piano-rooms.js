@@ -76,7 +76,7 @@
   loadStyle('cronoReadinessLayoutStyles','./crono-readiness-layout.css?v=342');
   loadStyle('cronoIdleHierarchyStyles','./crono-idle-hierarchy.css?v=342');
   loadStyle('cronoRunningPremiumStyles','./crono-running-premium.css?v=384');
-  loadStyle('obrasV3Styles','./obras-v3.css?v=469');
+  loadStyle('obrasV3Styles','./obras-v3.css?v=470');
   loadStyle('workDifficultyStyles','./work-difficulty.css?v=342');
   loadStyle('eventPlanningStyles','./event-planning.css?v=342');
   loadStyle('eventPlanningUiV2Styles','./event-planning-ui-v2.css?v=436');
@@ -117,7 +117,7 @@
     load('workStructureCatalogScript','./work-structure-catalog.js?v=381',function(){
       load('soloRepertoireStructureScript','./solo-repertoire-structure.js?v=361',function(){
         load('ensembleRepertoireCatalogScript','./ensemble-repertoire-catalog.js?v=381',function(){
-          load('obrasV3Script','./obras-v3.js?v=469',function(){
+          load('obrasV3Script','./obras-v3.js?v=470',function(){
             load('workDifficultyIntegrationScript','./work-difficulty-integration.js?v=469');
           });
         });

@@ -151,3 +151,21 @@ html.platform-windows .ob3-overlay { z-index: 1150; }
   .ob3-stat > strong { font-size: 17px; }
   .ob3-count { display: none; }
 }
+
+/* --- Obras sin ficha --- */
+.ob3-alert { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 12px; width: 100%; margin: 0 0 16px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--orange, #d9822b) 45%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--orange, #d9822b) 10%, var(--bg2)); color: var(--text); text-align: left; font: 600 15px/1.3 var(--ob3-font); cursor: pointer; }
+.ob3-alert small { grid-column: 1; font-weight: 400; font-size: 13px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ob3-alert b { grid-column: 2; grid-row: 1 / span 2; color: var(--accent); font-weight: 600; white-space: nowrap; }
+.ob3-orphan { padding: 14px; border-radius: 14px; background: var(--ob3-soft); margin-bottom: 10px; }
+.ob3-orphan.is-hidden { opacity: .6; }
+.ob3-orphan > header { display: flex; flex-direction: column; gap: 3px; }
+.ob3-orphan > header b { font-size: 16px; line-height: 1.3; }
+.ob3-orphan > header small { font-size: 13px; color: var(--text3); }
+.ob3-orphan .ob3-hint { margin: 8px 0 0; font-size: 13px; }
+.ob3-orphan-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.ob3-orphan-actions .ob3-btn { background: var(--bg2); }
+.ob3-orphan-actions .ob3-btn.is-primary { background: var(--accent); }
+.ob3-orphan-join { display: flex; align-items: center; gap: 6px; flex: 1 1 220px; min-width: 0; font-size: 13px; color: var(--text3); }
+.ob3-orphan-join select { flex: 1; min-width: 0; min-height: 44px; padding: 0 10px; border-radius: 11px; border: 1px solid var(--ob3-line); background: var(--bg); color: var(--text); font: 15px var(--ob3-font); }
+.ob3-orphan-name { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; font-size: 13px; color: var(--text3); }
+.ob3-orphan-name input { min-height: 44px; padding: 0 12px; border-radius: 11px; border: 1px solid var(--ob3-line); background: var(--bg); color: var(--text); font: 16px var(--ob3-font); }

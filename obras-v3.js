@@ -267,13 +267,103 @@
       '</div><footer class="ob3-sheet-foot"><button type="button" class="ob3-btn" data-action="archive">Gestionar obras históricas</button></footer>';
   }
 
-  const pure = { esc, norm, fmtStudy, fmtDuration, relativeDays, untilLabel, storedScore, studyIndex, addRecent, nextEvent, priority, sortWorks, matches, rowHtml, historyRowHtml, sheetViewHtml, sheetEditHtml, historicalDetailHtml };
+  /* ---------- Obras sin ficha ----------
+     Estudio (plantas) cuya obra ya no está en la lista: una obra que no llegó
+     a sincronizarse o que se borró. El nombre sale de las sesiones del
+     historial (obraName). Se puede recuperar con su id (vuelve con todo su
+     estudio) o unir con otra obra: cada tramo cambia de obra con su reloj de
+     campo, así que la sincronización propaga el cambio y no lo duplica. */
+  function orphans(d, nowMs) {
+    const known = new Set((d.obras || []).filter(w => w && w.id != null).map(w => String(w.id)));
+    const hidden = d.obrasSinFichaOcultas || {};
+    const map = new Map();
+    ['sessionPlants', 'forestPlants'].forEach(key => (d[key] || []).forEach(p => {
+      if (!p || p.failed || p.tipo === 'descanso' || !p.obraId || p.obraId === '_rest_') return;
+      const id = String(p.obraId);
+      if (known.has(id) || (p.id == null && p.runId == null)) return;
+      const mins = Math.max(0, Math.round(Number(p.mins) || 0));
+      if (!mins) return;
+      const o = map.get(id) || { id, name: '', minutes: 0, count: 0, first: '', last: '' };
+      o.minutes += mins; o.count += 1;
+      const at = String(p.startedAt || '');
+      if (at && (!o.first || at < o.first)) o.first = at;
+      if (at > o.last) o.last = at;
+      map.set(id, o);
+    }));
+    (d.sesiones || []).forEach(sesion => (sesion && sesion.items || []).forEach(item => {
+      const o = item && map.get(String(item.obraId || ''));
+      if (o && !o.name) o.name = String(item.obraName || item.name || '').trim();
+    }));
+    const now = nowMs || Date.now();
+    return [...map.values()].map(o => Object.assign(o, {
+      hidden: !!hidden[o.id],
+      recent: !!o.last && now - Date.parse(o.last) <= 60 * DAY,
+    })).sort((a, b) => b.minutes - a.minutes);
+  }
+  const titleBase = name => norm(String(name || '').split(',')[0]);
+  // La obra de la lista que parece la misma (mismo título antes de la primera coma).
+  function suggestedMatch(works, orphan) {
+    const base = titleBase(orphan.name);
+    if (!base) return null;
+    return (works || []).find(w => w && w.tipo !== 'actividad' && titleBase(w.name) === base) || null;
+  }
+  function recoveredWork(orphan, nowIso) {
+    return { id: orphan.id, name: orphan.name || 'Obra recuperada', composer: '', tipo: 'obra', origen: null, dificultad: null, duracion: null,
+      sol: 1, solHistory: [], notes: '', createdAt: nowIso, updatedAt: nowIso, recoveredAt: nowIso };
+  }
+  // Pasa el estudio de una obra a otra. Solo tramos con id (identidad estable).
+  function moveStudy(d, fromId, toId, nowIso, target) {
+    const movIds = new Set(((target && target.movimientos) || []).map(m => String(m && m.id)));
+    let moved = 0;
+    ['sessionPlants', 'forestPlants'].forEach(key => (d[key] || []).forEach(p => {
+      if (!p || String(p.obraId) !== String(fromId) || (p.id == null && p.runId == null)) return;
+      const clock = { obraId: nowIso };
+      p.obraId = toId;
+      if (p.movId && !movIds.has(String(p.movId))) { p.movId = null; clock.movId = nowIso; }
+      p._fieldClock = Object.assign({}, p._fieldClock, clock);
+      p.updatedAt = nowIso;
+      moved += 1;
+    }));
+    return moved;
+  }
+  function orphanMeta(o) {
+    const day = iso => { const t = new Date(iso); return isNaN(t) ? '' : t.getDate() + ' ' + ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][t.getMonth()]; };
+    const range = o.first && o.last ? (day(o.first) === day(o.last) ? day(o.first) : day(o.first) + ' – ' + day(o.last)) : '';
+    return [fmtStudy(o.minutes), o.count + (o.count === 1 ? ' tramo' : ' tramos'), range].filter(Boolean).join(' · ');
+  }
+  function orphansHtml(list, works) {
+    const options = (works || []).filter(w => w && w.tipo !== 'actividad')
+      .slice().sort((a, b) => norm(a.name).localeCompare(norm(b.name), 'es'));
+    const items = list.map(o => {
+      const match = suggestedMatch(works, o);
+      // Sin una obra que parezca la misma, hay que elegirla: nunca se une a la primera de la lista.
+      const opts = (match ? '' : '<option value="" selected disabled>Elige la obra…</option>') +
+        (match ? [match] : []).concat(options.filter(w => w !== match)).map(w =>
+          '<option value="' + esc(w.id) + '">' + esc((w === match ? '★ ' : '') + (w.name || 'Obra') + (w.composer && w.composer !== '—' ? ' · ' + w.composer : '')) + '</option>').join('');
+      return '<article class="ob3-orphan' + (o.hidden ? ' is-hidden' : '') + '" data-orphan="' + esc(o.id) + '">' +
+        '<header><b>' + esc(o.name || 'Obra sin nombre') + '</b><small>' + esc(orphanMeta(o)) + '</small></header>' +
+        (o.name ? '' : '<label class="ob3-orphan-name"><span>Nombre para recuperarla</span><input data-orphan-name placeholder="Ej. Reflets dans l\'eau" maxlength="160"></label>') +
+        (match ? '<p class="ob3-hint">Parece la misma que «' + esc(match.name) + '»: únelas para sumar su estudio.</p>' : '') +
+        '<div class="ob3-orphan-actions">' +
+          '<button type="button" class="ob3-btn' + (match ? '' : ' is-primary') + '" data-orphan-action="recover">Recuperar</button>' +
+          (options.length ? '<label class="ob3-orphan-join"><span>Unir con</span><select data-orphan-target>' + opts + '</select></label>' +
+            '<button type="button" class="ob3-btn' + (match ? ' is-primary' : '') + '" data-orphan-action="join">Unir</button>' : '') +
+          '<button type="button" class="ob3-link" data-orphan-action="' + (o.hidden ? 'show' : 'hide') + '">' + (o.hidden ? 'Mostrar' : 'Ocultar') + '</button>' +
+        '</div></article>';
+    }).join('');
+    return '<header class="ob3-sheet-head"><div class="ob3-sheet-titles"><span class="ob3-eyebrow">Repertorio</span><h2 class="ob3-title">Obras sin ficha</h2>' +
+        '<p class="ob3-meta">Hay estudio guardado de obras que ya no están en tu lista (por ejemplo, porque no llegaron a sincronizarse). Recupéralas o únelas con la obra que ya tienes; su estudio no se pierde.</p></div>' +
+        '<button type="button" class="ob3-close" data-orphan-action="close" aria-label="Cerrar">✕</button></header>' +
+      '<div class="ob3-sheet-body">' + (items || '<p class="ob3-empty">No queda ninguna: todo tu estudio tiene su obra.</p>') + '</div>';
+  }
+
+  const pure = { esc, norm, fmtStudy, fmtDuration, relativeDays, untilLabel, storedScore, studyIndex, addRecent, nextEvent, priority, sortWorks, matches, rowHtml, historyRowHtml, sheetViewHtml, sheetEditHtml, historicalDetailHtml, orphans, suggestedMatch, recoveredWork, moveStudy, orphanMeta, orphansHtml };
   if (!root.document) return pure;
 
   /* ---------- Interfaz ---------- */
 
   const doc = root.document;
-  const state = { query: '', scope: 'all', sort: 'smart', selectedId: null, selectedKind: 'work', showActivities: false, menuOpen: false };
+  const state = { query: '', scope: 'all', sort: 'smart', selectedId: null, selectedKind: 'work', showActivities: false, menuOpen: false, orphanCount: 0 };
   // Una ficha flotante (móvil / iPad vertical) y un panel fijo (iPad horizontal, escritorio).
   const sheet = { id: null, mode: 'view', draft: null, message: '', diffShown: null };
   const pane = { id: null, mode: 'view', draft: null, message: '', diffShown: null };
@@ -361,7 +451,7 @@
       '<div class="ob3-head-row">' +
         '<label class="ob3-search"><span aria-hidden="true">⌕</span><input id="ob3Search" type="search" autocomplete="off" placeholder="Buscar obra o compositor"></label>' +
         '<div class="ob3-menu-wrap"><button type="button" class="ob3-icon" id="ob3MenuBtn" aria-label="Más opciones" aria-expanded="false">···</button>' +
-          '<div class="ob3-menu" id="ob3Menu" hidden><button type="button" data-menu="activities">Mostrar actividades</button><button type="button" data-menu="archive">Gestionar obras históricas</button></div></div>' +
+          '<div class="ob3-menu" id="ob3Menu" hidden><button type="button" data-menu="activities">Mostrar actividades</button><button type="button" data-menu="archive">Gestionar obras históricas</button><button type="button" data-menu="orphans" hidden>Obras sin ficha</button></div></div>' +
         '<button type="button" class="ob3-add" id="ob3Add">＋ Añadir</button>' +
       '</div>' +
       '<div class="ob3-head-row is-filters">' +
@@ -387,6 +477,7 @@
       state.menuOpen = false; syncMenu();
       if (b.dataset.menu === 'activities') { state.showActivities = !state.showActivities; render(); }
       if (b.dataset.menu === 'archive') openArchive();
+      if (b.dataset.menu === 'orphans') openOrphans();
     });
     doc.addEventListener('click', e => {
       if (state.menuOpen && !e.target.closest('.ob3-menu-wrap')) { state.menuOpen = false; syncMenu(); }
@@ -397,6 +488,8 @@
     if (!menu || !btn) return;
     menu.hidden = !state.menuOpen;
     btn.setAttribute('aria-expanded', state.menuOpen ? 'true' : 'false');
+    const lost = menu.querySelector('[data-menu="orphans"]');
+    if (lost) { lost.hidden = !state.orphanCount; lost.textContent = 'Obras sin ficha (' + state.orphanCount + ')'; }
     const act = menu.querySelector('[data-menu="activities"]');
     if (act) act.textContent = state.showActivities ? 'Ocultar actividades' : 'Mostrar actividades';
   }
@@ -404,6 +497,72 @@
     if (typeof root.openHistoricalRepertoire !== 'function') return;
     root.openHistoricalRepertoire();
     setTimeout(() => { const p = doc.getElementById('historicalRepertoirePanel'); if (p && p.scrollIntoView) p.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 40);
+  }
+
+  /* --- Obras sin ficha --- */
+  let orphanOverlay = null;
+  function openOrphans() {
+    if (!orphanOverlay) {
+      orphanOverlay = doc.createElement('div');
+      orphanOverlay.id = 'ob3OrphansOverlay';
+      orphanOverlay.className = 'ob3-overlay';
+      orphanOverlay.innerHTML = '<section class="ob3-sheet" role="dialog" aria-modal="true" aria-label="Obras sin ficha"><div class="ob3-card" id="ob3OrphansContent"></div></section>';
+      orphanOverlay.addEventListener('click', e => {
+        if (e.target === orphanOverlay) return closeOrphans();
+        const button = e.target.closest('[data-orphan-action]');
+        if (button) onOrphanAction(button);
+      });
+      doc.body.appendChild(orphanOverlay);
+    }
+    paintOrphans();
+    if (orphanOverlay.nextSibling) doc.body.appendChild(orphanOverlay);
+    orphanOverlay.classList.add('open');
+    doc.body.classList.add('ob3-lock');
+  }
+  function closeOrphans() {
+    if (!orphanOverlay) return;
+    orphanOverlay.classList.remove('open');
+    if (!(overlay && overlay.classList.contains('open'))) doc.body.classList.remove('ob3-lock');
+  }
+  function paintOrphans() {
+    const d = data();
+    const box = doc.getElementById('ob3OrphansContent');
+    if (!d || !box) return;
+    const list = orphans(d).sort((a, b) => Number(a.hidden) - Number(b.hidden) || b.minutes - a.minutes);
+    box.innerHTML = orphansHtml(list, (d.obras || []).filter(w => w && !w.deleted));
+  }
+  function toast(text) { if (typeof root.showToast === 'function') root.showToast(text); }
+  function onOrphanAction(button) {
+    const action = button.dataset.orphanAction;
+    if (action === 'close') return closeOrphans();
+    const card = button.closest('[data-orphan]');
+    const d = data();
+    if (!card || !d) return;
+    const id = card.dataset.orphan;
+    const orphan = orphans(d).find(o => o.id === id);
+    if (!orphan) return paintOrphans();
+    const nowIso = new Date().toISOString();
+    if (action === 'hide' || action === 'show') {
+      d.obrasSinFichaOcultas = Object.assign({}, d.obrasSinFichaOcultas);
+      if (action === 'hide') d.obrasSinFichaOcultas[id] = nowIso; else delete d.obrasSinFichaOcultas[id];
+    } else if (action === 'recover') {
+      d.obras = Array.isArray(d.obras) ? d.obras : [];
+      const typed = card.querySelector('[data-orphan-name]');
+      const name = orphan.name || String(typed ? typed.value : '').trim();
+      if (!name) { if (typed) typed.focus(); toast('Escribe el nombre de la obra para recuperarla'); return; }
+      if (!workById(id)) d.obras.push(recoveredWork(Object.assign({}, orphan, { name }), nowIso));
+      toast('Recuperada: ' + name + ' · ' + fmtStudy(orphan.minutes));
+    } else if (action === 'join') {
+      const select = card.querySelector('[data-orphan-target]');
+      const target = select && select.value && workById(select.value);
+      if (!target) { if (select) select.focus(); toast('Elige con qué obra unirla'); return; }
+      if (!root.confirm('¿Unir «' + (orphan.name || 'esta obra') + '» con «' + (target.name || 'la obra elegida') + '»? Sus ' + fmtStudy(orphan.minutes) + ' pasan a esa obra.')) return;
+      const moved = moveStudy(d, id, target.id, nowIso, target);
+      toast(moved ? 'Unidas: ' + fmtStudy(orphan.minutes) + ' pasan a «' + (target.name || 'la obra') + '»' : 'No había tramos que mover');
+    } else return;
+    persist();
+    render();
+    paintOrphans();
   }
 
   function render() {
@@ -430,6 +589,13 @@
     }
     const sel = (kind, id) => wide && state.selectedKind === kind && String(state.selectedId) === String(id);
     let html = '';
+    const lost = orphans(d, now);
+    state.orphanCount = lost.length;
+    const pending = lost.filter(o => !o.hidden && o.recent);
+    if (pending.length && !state.query) {
+      html += '<button type="button" class="ob3-alert" data-open-orphans>' + (pending.length === 1 ? '1 obra con estudio no tiene ficha' : pending.length + ' obras con estudio no tienen ficha') +
+        '<small>' + esc(pending.map(o => o.name || 'Obra sin nombre').join(' · ')) + '</small><b>Revisar ›</b></button>';
+    }
     if (state.scope !== 'history') {
       const smart = state.sort === 'smart' && !state.query;
       const now6 = smart ? sortWorks(infos.filter(i => i.priority >= 25), 'smart').slice(0, 6) : [];
@@ -458,6 +624,7 @@
   }
 
   function onListClick(e) {
+    if (e.target.closest('[data-open-orphans]')) return openOrphans();
     const row = e.target.closest('[data-work-id],[data-history-id]');
     if (!row || !e.currentTarget.contains(row)) return;
     const isHistory = row.hasAttribute('data-history-id');
