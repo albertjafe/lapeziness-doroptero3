@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-30-actualizar-seguro-v475';
+const APP_VERSION = '2026-09-30-jornada-v476';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -14634,6 +14634,9 @@ function renderStatsDashboard() {
 
   // Tarjeta comparativa: este periodo vs los dos anteriores (estilo Forest)
   if (_statsRange !== 'todo') cards += _statsComparisonCard();
+
+  // Jornada (últimos 14 días): inicio, tiempo hasta 4 h, ritmo y huecos largos.
+  if (window.StudyJourney) cards += window.StudyJourney.statsCard();
 
   cards += _statsAvailabilityCard(periodo.start, periodo.end);
 

@@ -164,13 +164,13 @@
     if (!s.applies) return '';
     const id = jsArg(s.familyId);
     const head = s.level === 'relapse'
-      ? '<p class="hp-maint-state is-relapse"><b>Esto ya es una recaída.</b> ' + plural(s.week, 'caída', 'caídas') + ' en 7 días · ' + plural(s.month, 'caída', 'caídas') + ' en 30. Toca reabrir el reto.</p>'
+      ? '<p class="hp-maint-state is-relapse"><b>Esto ya es una recaída.</b> ' + plural(s.recent, 'caída', 'caídas') + ' en ' + M.SHORT_DAYS + ' días · ' + plural(s.month, 'caída', 'caídas') + ' en ' + M.LONG_DAYS + '. Toca reabrir el reto.</p>'
       : s.level === 'warn'
         ? '<p class="hp-maint-state is-warn"><b>Caída aislada.</b> No borra el reto: vuelve a la norma. ' + plural(s.daysClean, 'día', 'días') + ' sin caídas desde la última.</p>'
         : '<p class="hp-maint-state is-ok"><b>' + plural(s.daysClean, 'día', 'días') + ' sin caídas</b> desde que terminaste el reto.</p>';
     const stats = '<div class="hp-maint-stats">' +
-      '<div><span>7 días</span><strong>' + s.week + '<small> / ' + M.WEEK_LIMIT + '</small></strong></div>' +
-      '<div><span>30 días</span><strong>' + s.month + '<small> / ' + M.MONTH_LIMIT + '</small></strong></div>' +
+      '<div><span>' + M.SHORT_DAYS + ' días</span><strong>' + s.recent + '<small> / ' + M.SHORT_LIMIT + '</small></strong></div>' +
+      '<div><span>' + M.LONG_DAYS + ' días</span><strong>' + s.month + '<small> / ' + M.LONG_LIMIT + '</small></strong></div>' +
       '<div><span>Sin caídas</span><strong>' + s.daysClean + '<small> d</small></strong></div></div>';
     let actions;
     if (s.reopen) {
@@ -192,7 +192,7 @@
       '</ul></details>' : '';
     return '<section class="hp-block hp-maint"><h3>Mantenimiento</h3>' + head + stats + actions + list +
       '<p class="hp-maint-rule">Una caída no borra el reto ni el trofeo: se apunta y esa misma noche se vuelve a la norma. ' +
-      M.WEEK_LIMIT + ' caídas en 7 días o ' + M.MONTH_LIMIT + ' en 30 ya son una recaída y el reto se reabre (' + M.REOPEN_DAYS + ' días, sin premio en puntos, a la vez que tu hábito en curso).</p></section>';
+      M.SHORT_LIMIT + ' caídas en ' + M.SHORT_DAYS + ' días o ' + M.LONG_LIMIT + ' en ' + M.LONG_DAYS + ' ya son una recaída y el reto se reabre (' + M.REOPEN_DAYS + ' días, sin premio en puntos, a la vez que tu hábito en curso).</p></section>';
   }
 
   function stateOf(habit, key, todayKey) {
@@ -292,7 +292,7 @@
 
   const HOW = '<details class="hp-how"><summary>Cómo funcionan los hábitos</summary><ul>' +
     '<li>Solo hay un hábito nuevo en curso a la vez: termina (o borra) el actual antes de crear otro. Además puede haber un reto reabierto de uno terminado.</li>' +
-    '<li><b>Mantenimiento</b>: si caes después de terminar un reto, apúntalo en ese hábito. Una caída no borra nada; 2 en 7 días o 3 en 30 reabren el reto.</li>' +
+    '<li><b>Mantenimiento</b>: si caes después de terminar un reto, apúntalo en ese hábito. Una caída no borra nada; 3 en 14 días o 4 en 30 reabren el reto (14 días).</li>' +
     '<li><b>Hacer</b>: marcas cada día que lo cumples. <b>Evitar</b>: solo tocas si recaes.</li>' +
     '<li>Un fallo corta la racha, pero no reinicia el reto ni borra los días logrados.</li>' +
     '<li><b>Reglamento</b>: la IA lo redacta a partir de tu hábito y tus dudas (qué es recaída, qué no, excepciones y casos). Cada versión rige desde el día siguiente a guardarla.</li>' +

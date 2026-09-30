@@ -149,7 +149,7 @@ test('a lapse after finishing keeps the trophy; the threshold reopens the challe
   await page.addInitScript(value => {
     const key = offset => { const d = new Date(); d.setDate(d.getDate() + offset); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
     const doc = { ...value, habitChallenges: [
-      { id: 'habit-bed', title: 'No móvil en la cama', mode: 'avoid', startDate: key(-40), durationDays: 21, logs: {}, createdAt: '2026-08-23T14:35:00Z', updatedAt: '2026-09-12T12:00:00Z' },
+      { id: 'habit-bed', title: 'No móvil en la cama', mode: 'avoid', startDate: key(-40), durationDays: 21, logs: {}, maintenanceLogs: { [key(-6)]: { status: 'lapse', at: '2026-09-01T22:00:00Z', note: 'Siesta con el móvil' } }, createdAt: '2026-08-23T14:35:00Z', updatedAt: '2026-09-12T12:00:00Z' },
       { id: 'habit-detox', title: 'Desintoxicación por la mañana', mode: 'avoid', startDate: key(-2), durationDays: 21, logs: {}, createdAt: '2026-09-26T07:00:00Z', updatedAt: '2026-09-26T07:00:00Z' },
     ] };
     Object.defineProperty(navigator, 'platform', { configurable: true, get: () => 'MacIntel' });
@@ -184,11 +184,11 @@ test('a lapse after finishing keeps the trophy; the threshold reopens the challe
   await maint.getByRole('button', { name: 'Registrar caída', exact: true }).click();
   await page.locator('#hlToday').click();
   await page.locator('#modalHabitLapse .modal-btn.primary').click();
-  // Con la segunda caída en 7 días, la propia ventana de acciones ofrece reabrir.
+  // Con la tercera caída en 14 días, la propia ventana de acciones ofrece reabrir.
   await expect(page.locator('#hlaReopen')).toBeVisible();
   await actions.getByRole('button', { name: 'Ahora no' }).click();
   await expect(maint.locator('.hp-maint-state')).toContainText('Esto ya es una recaída');
-  await maint.getByRole('button', { name: 'Reabrir el reto (21 días)', exact: true }).click();
+  await maint.getByRole('button', { name: 'Reabrir el reto (14 días)', exact: true }).click();
 
   await expect(page.locator('.hp-detail .hp-kicker')).toContainText('reabierto');
   const actives = await page.evaluate(() => habitActiveChallenges().map(h => [h.title, !!h.reopenOf]));

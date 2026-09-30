@@ -229,7 +229,7 @@
       field('Descripción', habit.description),
       field('Por qué lo hago', habit.motivation),
       field('Qué cuenta como cumplirlo', habit.successCriteria),
-      ...(finished ? ['- Estado: reto terminado el ' + endKey + '. Ahora está en mantenimiento: la norma sigue rigiendo sin fecha final; cada caída se apunta y 2 caídas en 7 días o 3 en 30 reabren el reto.'] : []),
+      ...(finished ? ['- Estado: reto terminado el ' + endKey + '. Ahora está en mantenimiento: la norma sigue rigiendo sin fecha final; cada caída se apunta y 3 caídas en 14 días o 4 en 30 reabren el reto (14 días).'] : []),
       '',
       current ? 'REGLAMENTO ACTUAL (mejóralo con los casos nuevos; no lo rehagas sin motivo)' : 'REGLAMENTO ACTUAL',
       current ? format(current, habit.mode) : 'Todavía no tiene.',

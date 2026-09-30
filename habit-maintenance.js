@@ -1,8 +1,8 @@
 /* Mantenimiento de los hábitos terminados. Una caída después de terminar un
    reto no borra el trofeo ni reescribe el reto: se apunta en el hábito
    original (maintenanceLogs, un registro por día que la sincronización fusiona
-   día a día) y cuenta para un umbral. Con 2 caídas en 7 días o 3 en 30 ya es
-   una recaída y se reabre el reto (21 días), que puede convivir con el hábito
+   día a día) y cuenta para un umbral. Con 3 caídas en 14 días o 4 en 30 ya es
+   una recaída y se reabre el reto (14 días), que puede convivir con el hábito
    nuevo en curso: como mucho uno principal y uno reabierto a la vez. El reto
    reabierto no tiene premio en puntos, para que caer nunca salga a cuenta. */
 (function (root, factory) {
@@ -12,9 +12,15 @@
 })(typeof window !== 'undefined' ? window : globalThis, function (root) {
   'use strict';
 
-  const WEEK_LIMIT = 2;     // caídas en 7 días que ya son recaída
-  const MONTH_LIMIT = 3;    // caídas en 30 días que ya son recaída
-  const REOPEN_DAYS = 21;
+  /* Hasta el 30-09-2026 eran 2 en 7 días o 3 en 30 y 21 días de reto: dos malos
+     días ya obligaban a empezar de nuevo, lo que invita al «ya da igual». Tres
+     caídas en dos semanas sí son un patrón, y un refuerzo corto no tapa durante
+     tanto tiempo el hábito siguiente. */
+  const SHORT_DAYS = 14;
+  const SHORT_LIMIT = 3;    // caídas en 14 días que ya son recaída
+  const LONG_DAYS = 30;
+  const LONG_LIMIT = 4;     // caídas en 30 días que ya son recaída
+  const REOPEN_DAYS = 14;
   const UNDO_MINUTES = 15;  // solo se quita una caída si fue un toque por error
 
   const validKey = key => /^\d{4}-\d{2}-\d{2}$/.test(String(key || ''));
@@ -63,13 +69,13 @@
     const lapses = lapsesOf(origin);
     const counted = lapses.filter(l => l.date >= windowStart && l.date <= todayKey);
     const inLast = days => counted.filter(l => dayNum(todayKey) - dayNum(l.date) < days).length;
-    const week = inLast(7);
-    const month = inLast(30);
+    const recent = inLast(SHORT_DAYS);
+    const month = inLast(LONG_DAYS);
     const since = counted.length ? counted[0].date : lastEnd;
-    const level = week >= WEEK_LIMIT || month >= MONTH_LIMIT ? 'relapse' : month ? 'warn' : 'ok';
+    const level = recent >= SHORT_LIMIT || month >= LONG_LIMIT ? 'relapse' : month ? 'warn' : 'ok';
     return {
       applies: true, familyId: id, origin, reopen, lastEnd, windowStart, lapses, counted,
-      week, month, level, daysClean: Math.max(0, dayNum(todayKey) - dayNum(since)),
+      recent, month, level, daysClean: Math.max(0, dayNum(todayKey) - dayNum(since)),
       todayLapse: counted.some(l => l.date === todayKey),
     };
   }
@@ -226,12 +232,12 @@
     const challenge = reopenChallenge(all, habit, todayKey, new Date().toISOString(), root.HabitRulebook || null);
     const ok = persist(stored => { stored.push(challenge); return true; });
     if (!ok) return;
-    toast(challenge.startDate === todayKey ? 'Reto reabierto: 21 días desde hoy' : 'Reto reabierto: 21 días desde mañana');
+    toast('Reto reabierto: ' + REOPEN_DAYS + ' días desde ' + (challenge.startDate === todayKey ? 'hoy' : 'mañana'));
     if (typeof root.openHabitos === 'function') root.openHabitos(challenge.id);
   }
 
   return {
-    WEEK_LIMIT, MONTH_LIMIT, REOPEN_DAYS, UNDO_MINUTES,
+    SHORT_DAYS, SHORT_LIMIT, LONG_DAYS, LONG_LIMIT, REOPEN_DAYS, UNDO_MINUTES,
     familyId, endKey, isComplete, lapsesOf, state, reopenChallenge, canUndo,
     openLapse, setLapseDay, syncChips, saveLapse, removeLapse, reopen,
   };

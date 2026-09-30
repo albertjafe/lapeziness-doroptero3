@@ -104,32 +104,37 @@ describe('mantenimiento · caídas después de terminar un reto', () => {
 
   it('counts clean days from the end of the challenge', () => {
     const s = M.state([bed()], bed(), '2026-09-28');
-    expect(s).toMatchObject({ applies: true, lastEnd: '2026-09-12', windowStart: '2026-09-13', week: 0, month: 0, level: 'ok', daysClean: 16 });
+    expect(s).toMatchObject({ applies: true, lastEnd: '2026-09-12', windowStart: '2026-09-13', recent: 0, month: 0, level: 'ok', daysClean: 16 });
   });
 
   it('one lapse is a warning, never a reset', () => {
     const h = bed({ maintenanceLogs: { '2026-09-27': lapse('2026-09-27', 'Cogí el móvil de la mesilla') } });
     const s = M.state([h], h, '2026-09-28');
-    expect(s).toMatchObject({ level: 'warn', week: 1, month: 1, daysClean: 1, todayLapse: false });
+    expect(s).toMatchObject({ level: 'warn', recent: 1, month: 1, daysClean: 1, todayLapse: false });
     expect(s.lapses[0]).toMatchObject({ date: '2026-09-27', note: 'Cogí el móvil de la mesilla' });
   });
 
-  it('two lapses in 7 days or three in 30 are a relapse; cleared ones do not count', () => {
-    const week = bed({ maintenanceLogs: { '2026-09-22': lapse('2026-09-22'), '2026-09-27': lapse('2026-09-27') } });
-    expect(M.state([week], week, '2026-09-28').level).toBe('relapse');
-    const month = bed({ maintenanceLogs: { '2026-09-01': lapse('2026-09-01'), '2026-09-14': lapse('2026-09-14'), '2026-09-20': lapse('2026-09-20'), '2026-09-27': lapse('2026-09-27') } });
-    const s = M.state([month], month, '2026-09-28');
+  it('three lapses in 14 days or four in 30 are a relapse; two in a week are not; cleared ones do not count', () => {
+    const two = bed({ maintenanceLogs: { '2026-09-22': lapse('2026-09-22'), '2026-09-27': lapse('2026-09-27') } });
+    expect(M.state([two], two, '2026-09-28')).toMatchObject({ recent: 2, level: 'warn' });
+    const fortnight = bed({ maintenanceLogs: { '2026-09-16': lapse('2026-09-16'), '2026-09-22': lapse('2026-09-22'), '2026-09-27': lapse('2026-09-27') } });
+    expect(M.state([fortnight], fortnight, '2026-09-28')).toMatchObject({ recent: 3, level: 'relapse' });
+    // 13-09 queda fuera de los 14 días (15-28), pero dentro de los 30.
+    const spread = bed({ maintenanceLogs: { '2026-09-13': lapse('2026-09-13'), '2026-09-20': lapse('2026-09-20'), '2026-09-27': lapse('2026-09-27') } });
+    expect(M.state([spread], spread, '2026-09-28')).toMatchObject({ recent: 2, month: 3, level: 'warn' });
+    const month = bed({ maintenanceLogs: { '2026-09-01': lapse('2026-09-01'), '2026-09-13': lapse('2026-09-13'), '2026-09-14': lapse('2026-09-14'), '2026-09-20': lapse('2026-09-20'), '2026-10-05': lapse('2026-10-05') } });
+    const s = M.state([month], month, '2026-10-06');
     // La del 1 de septiembre fue durante el reto: no cuenta para el mantenimiento.
-    expect(s).toMatchObject({ week: 1, month: 3, level: 'relapse' });
-    const cleared = bed({ maintenanceLogs: { '2026-09-22': lapse('2026-09-22'), '2026-09-27': { status: 'clear', at: '2026-09-27T22:05:00Z' } } });
+    expect(s).toMatchObject({ recent: 1, month: 4, level: 'relapse' });
+    const cleared = bed({ maintenanceLogs: { '2026-09-16': lapse('2026-09-16'), '2026-09-22': lapse('2026-09-22'), '2026-09-27': { status: 'clear', at: '2026-09-27T22:05:00Z' } } });
     expect(M.state([cleared], cleared, '2026-09-28').level).toBe('warn');
   });
 
-  it('reopens a 21-day challenge that inherits the rules in force and no points', () => {
+  it('reopens a 14-day challenge that inherits the rules in force and no points', () => {
     const rulebooks = R.withRulebook(bed(), R.parse(BED).rulebook, '2026-09-20', '2026-09-20T20:00:00Z');
     const h = bed({ description: 'Nada de pantallas en la cama.', effortReward: { points: 3 }, rulebooks, maintenanceLogs: { '2026-09-27': lapse('2026-09-27') } });
     const reopened = M.reopenChallenge([h], h, '2026-09-28', '2026-09-28T10:00:00.000Z', R);
-    expect(reopened).toMatchObject({ title: 'No móvil en la cama', mode: 'avoid', durationDays: 21, startDate: '2026-09-28', reopenOf: 'habit-bed', description: 'Nada de pantallas en la cama.', reward: '' });
+    expect(reopened).toMatchObject({ title: 'No móvil en la cama', mode: 'avoid', durationDays: 14, startDate: '2026-09-28', reopenOf: 'habit-bed', description: 'Nada de pantallas en la cama.', reward: '' });
     expect(reopened.effortReward).toBeUndefined();
     expect(reopened.rulebooks).toHaveLength(1);
     expect(reopened.rulebooks[0]).toMatchObject({ effectiveFrom: '2026-09-28' });
@@ -145,7 +150,7 @@ describe('mantenimiento · caídas después de terminar un reto', () => {
     const again = { id: 'habit-bed-2', title: origin.title, mode: 'avoid', startDate: '2026-09-28', durationDays: 21, logs: {}, reopenOf: 'habit-bed' };
     expect(M.state([origin, again], origin, '2026-10-01').reopen.id).toBe('habit-bed-2');
     const after = M.state([origin, again], origin, '2026-10-25');
-    expect(after).toMatchObject({ reopen: null, lastEnd: '2026-10-18', windowStart: '2026-10-19', week: 0, month: 0, level: 'ok' });
+    expect(after).toMatchObject({ reopen: null, lastEnd: '2026-10-18', windowStart: '2026-10-19', recent: 0, month: 0, level: 'ok' });
     expect(M.familyId(again)).toBe('habit-bed');
   });
 
@@ -172,17 +177,17 @@ describe('mantenimiento · página de hábitos', () => {
   it('shows the clean streak, the counters and the lapse button', () => {
     const html = strip(page.maintenanceHtml(bed(), [bed()], '2026-09-28'));
     expect(html).toContain('Mantenimiento 16 días sin caídas desde que terminaste el reto.');
-    expect(html).toContain('7 días 0 / 2 30 días 0 / 3');
+    expect(html).toContain('14 días 0 / 3 30 días 0 / 4');
     expect(html).toContain('Registrar caída');
     expect(html).toContain('Reabrir el reto por mi cuenta');
   });
 
   it('asks to reopen once the lapses reach the threshold', () => {
-    const h = bed({ maintenanceLogs: { '2026-09-22': lapse('2026-09-22', 'siesta'), '2026-09-27': lapse('2026-09-27', 'mesilla') } });
+    const h = bed({ maintenanceLogs: { '2026-09-17': lapse('2026-09-17', 'sofá'), '2026-09-22': lapse('2026-09-22', 'siesta'), '2026-09-27': lapse('2026-09-27', 'mesilla') } });
     const html = strip(page.maintenanceHtml(h, [h], '2026-09-28'));
-    expect(html).toContain('Esto ya es una recaída. 2 caídas en 7 días');
-    expect(html).toContain('Reabrir el reto (21 días)');
-    expect(html).toContain('Caídas apuntadas 2');
+    expect(html).toContain('Esto ya es una recaída. 3 caídas en 14 días');
+    expect(html).toContain('Reabrir el reto (14 días)');
+    expect(html).toContain('Caídas apuntadas 3');
     expect(html).toContain('27 sept mesilla');
   });
 });
