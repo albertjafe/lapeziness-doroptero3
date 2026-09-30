@@ -76,6 +76,9 @@ test('qualifies at 15:00, keeps the cap and pauses when leaving Deutsch',async({
   await prepare(page);await importPack(page);await createGoal(page);
   await page.clock.install();
   await page.getByRole('button',{name:'Estudiar tarjetas',exact:true}).click();
+  // The session is created after the click is handled; under load the next
+  // evaluate could run first. Poll from the test side (the page clock is fake).
+  await expect.poll(()=>page.evaluate(()=>!!db.germanStudy?.sessions?.[0])).toBe(true);
   await page.evaluate(()=>{const s=db.germanStudy.sessions[0],day=GermanRewards.dayKey();s.segments=[{id:day,day,seconds:899}];saveData();});
   await page.clock.runFor(1000);
   await expect(page.locator('#germanMinimum')).toContainText('15 min mínimos ✓');
