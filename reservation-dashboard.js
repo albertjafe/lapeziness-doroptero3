@@ -66,6 +66,12 @@
   let startupDraftAt = 0;
   // Acción destructiva pendiente de confirmar: 'shutdown' | 'cancel_start'.
   let confirmAction = null;
+  // Vista «Mínima»: solo la barra del día y la lista; lo demás, en una fila
+  // de símbolos arriba y desplegable con «⋯». Se recuerda por dispositivo.
+  const VIEW_KEY = 'reservationDashboardView';
+  let viewMode = (() => { try { return localStorage.getItem(VIEW_KEY) === 'minimal' ? 'minimal' : 'full'; } catch (e) { return 'full'; } })();
+  let miniMore = false;
+  let miniTomorrow = false;
   // Editor de una reserva (app → monitor → Asimut). Solo en la lista del día
   // que vigila el monitor; { id, start, end, cancelAsk }.
   let bookingEdit = null;
@@ -910,6 +916,55 @@
 
   function bindRefresh() {
     el('reservationRefresh')?.addEventListener('click', () => refresh(true));
+    el('reservationViewToggle')?.addEventListener('click', () => {
+      viewMode = viewMode === 'minimal' ? 'full' : 'minimal';
+      miniMore = false;
+      miniTomorrow = false;
+      try { localStorage.setItem(VIEW_KEY, viewMode); } catch (e) {}
+      render();
+    });
+    el('reservationMiniBar')?.addEventListener('click', event => {
+      const button = event.target.closest('button');
+      if (!button) return;
+      if (button.dataset.mini === 'more') { miniMore = !miniMore; render(); }
+      else if (button.dataset.mini === 'tomorrow') { miniTomorrow = !miniTomorrow; render(); }
+      else if (button.dataset.command) sendCommand(button);
+    });
+  }
+
+  function applyViewMode(state, row) {
+    const screen = el('aulasDashboard');
+    if (!screen) return;
+    // El menú de arranque se ve siempre completo.
+    const startup = el('reservationDashboardContent')?.classList.contains('is-startup');
+    const minimal = viewMode === 'minimal' && !startup;
+    screen.classList.toggle('is-minimal', minimal);
+    screen.classList.toggle('is-mini-open', minimal && miniMore);
+    screen.classList.toggle('is-mini-tomorrow', minimal && miniTomorrow);
+    const toggle = el('reservationViewToggle');
+    if (toggle) {
+      toggle.setAttribute('aria-pressed', viewMode === 'minimal' ? 'true' : 'false');
+      toggle.setAttribute('aria-label', viewMode === 'minimal' ? 'Vista completa' : 'Vista mínima');
+      toggle.title = viewMode === 'minimal' ? 'Vista completa' : 'Vista mínima';
+      toggle.textContent = viewMode === 'minimal' ? '☰' : '◱';
+    }
+    const bar = el('reservationMiniBar');
+    if (!bar) return;
+    bar.hidden = !minimal;
+    if (!minimal || !state) return;
+    const monitor = state.monitor || {};
+    const offline = ageMs(row) > OFFLINE_MS || monitor.online === false;
+    const quota = state.quota || {};
+    const rf = Math.max(0, Number(quota.rf_mins) || 0);
+    const sz = Math.max(0, Number(quota.sz_mins) || 0);
+    const tomorrow = Array.isArray(state.transition?.reservations) ? state.transition.reservations : [];
+    bar.innerHTML = `
+      <span class="rd-mini-chip" title="Cuota que te queda en Asimut">RF <b>${rf}</b>${quota.sz_applicable ? ` · SZ <b>${sz}</b>` : ''}</span>
+      ${tomorrow.length ? `<button type="button" class="rd-mini-chip" data-mini="tomorrow" aria-pressed="${miniTomorrow ? 'true' : 'false'}" title="Reservas de mañana">☾ Mañana <b>${tomorrow.length}</b></button>` : ''}
+      <span class="rd-mini-spacer"></span>
+      <button type="button" class="rd-mini-icon ${monitor.paused ? 'is-paused' : ''}" data-command="${monitor.paused ? 'resume' : 'pause'}" ${offline ? 'disabled' : ''}
+        aria-label="${monitor.paused ? 'Reanudar el monitor' : 'Pausar el monitor'}" title="${monitor.paused ? 'Reanudar' : 'Pausar'}">${monitor.paused ? '▶' : '⏸'}</button>
+      <button type="button" class="rd-mini-icon" data-mini="more" aria-expanded="${miniMore ? 'true' : 'false'}" aria-label="${miniMore ? 'Ocultar el resto' : 'Ver todo: controles, monitor y ajustes'}" title="${miniMore ? 'Ocultar' : 'Más'}">${miniMore ? '✕' : '⋯'}</button>`;
   }
 
   function render() {
@@ -929,6 +984,7 @@
       empty.innerHTML = `<div class="rd-empty-mark">↗</div><strong>${escapeHtml(notice.title)}</strong><p>${escapeHtml(notice.body)}</p>`;
       setStatus(notice.status, notice.kind);
       renderTodayCard(null);
+      applyViewMode(null, null);
       return;
     }
     const state = row.state || {};
@@ -1013,6 +1069,7 @@
     renderTransition(state.transition);
     applyTab();
     renderTodayCard(row);
+    applyViewMode(state, row);
   }
 
   function commandPayload(button) {

@@ -412,3 +412,29 @@ body[data-view="aulas"] .piano-rooms-open { display: none !important; }
 }
 .aulas-screen .rd-action.is-primary { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 650; }
 .aulas-screen .rd-action.is-primary:disabled { opacity: .45; }
+
+/* ── Vista mínima: barra del día + lista; el resto tras «⋯» ─────────── */
+.aulas-screen .rd-view-toggle[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.aulas-screen .rd-mini { display: flex; align-items: center; gap: 8px; margin: 0 0 2px; }
+.aulas-screen .rd-mini[hidden] { display: none; }
+.aulas-screen .rd-mini-spacer { flex: 1; }
+.aulas-screen .rd-mini-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 34px; padding: 0 12px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--bg2); color: var(--text2); font: inherit; font-size: 13.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.aulas-screen .rd-mini-chip b { color: var(--text); font-weight: 700; }
+.aulas-screen button.rd-mini-chip { cursor: pointer; }
+.aulas-screen button.rd-mini-chip[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 12%, var(--bg2)); border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); color: var(--accent); }
+.aulas-screen .rd-mini-icon { width: 38px; height: 38px; min-height: 38px; padding: 0; border: 1px solid var(--border); border-radius: 50%; background: var(--bg2);
+  color: var(--text2); font: inherit; font-size: 15px; cursor: pointer; }
+.aulas-screen .rd-mini-icon.is-paused { background: color-mix(in srgb, #b07a2c 14%, var(--bg2)); color: #8a5a17; }
+.aulas-screen .rd-mini-icon[aria-expanded="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.aulas-screen .rd-mini-icon:disabled { opacity: .45; cursor: default; }
+/* Lo que se oculta (sigue en la página, solo no se ve). Los avisos de conexión no se ocultan. */
+.aulas-screen.is-minimal:not(.is-mini-open) :is(.rd-controlbar, .rd-tabs, .rd-panes, #reservationQuotaCard) { display: none !important; }
+.aulas-screen.is-minimal:not(.is-mini-open) .rd-hero:is([data-health="live"], [data-health="stale"]) { display: none !important; }
+.aulas-screen.is-minimal:not(.is-mini-tomorrow) #reservationTransition { display: none !important; }
+.aulas-screen.is-minimal .rd-pane-tabs { display: none; }
+.aulas-screen.is-minimal .rd-daybar-legend { display: none; }
+/* Una sola columna centrada, también en escritorio. */
+@media (min-width: 1000px) {
+  .aulas-screen.is-minimal:not(.is-mini-open) #reservationDashboardContent:not(.is-startup) { display: block !important; max-width: 820px; margin-inline: auto; }
+}

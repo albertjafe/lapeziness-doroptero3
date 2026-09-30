@@ -44,10 +44,10 @@ const aulasView = indexHtml.match(/<div class="view" id="view-aulas">[\s\S]*?\r?
 const todayCard = indexHtml.match(/<button type="button" class="aulas-today-card"[\s\S]*?<\/button>/)[0];
 
 async function mountDashboard(page, row) {
-  await page.goto('/reservation-dashboard.css?v=471');
+  await page.goto('/reservation-dashboard.css?v=472');
   await page.setContent(`<!doctype html><html lang="es" data-theme="marmol"><head>
     <link rel="stylesheet" href="http://127.0.0.1:4173/styles.css?v=464">
-    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=471">
+    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=472">
   </head><body data-view="aulas">${todayCard}${aulasView}</body></html>`);
 
   await page.evaluate((row) => {
@@ -80,7 +80,7 @@ async function mountDashboard(page, row) {
     };
     window.getSB = () => client;
   }, row);
-  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=471' });
+  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=472' });
 }
 
 test('renders live reservations and sends a safe monitor command', async ({ page }) => {
@@ -468,4 +468,37 @@ test('tus reservas se cambian desde la app: ±15, candado y cancelar con confirm
     await window.ReservationDashboard.refresh(false);
   });
   await expect(list.locator('.rd-booking-edit')).toHaveCount(0);
+});
+
+test('vista mínima: solo la barra y la lista; el resto tras símbolos y «⋯»', async ({ page }) => {
+  const row = structuredClone(sampleRow);
+  row.state.monitor.phase = 'running';
+  row.state.transition = { date: '2099-01-02', reservations: [{ event_id: 95, start: '11:00', end: '12:00', room: '113', type: 'Einzelbuchung' }] };
+  await mountDashboard(page, row);
+  const screen = page.locator('#aulasDashboard');
+  await expect(page.locator('#reservationMiniBar')).toBeHidden();
+  await page.getByRole('button', { name: 'Vista mínima' }).click();
+  await expect(screen).toHaveClass(/is-minimal/);
+  await expect(page.locator('#reservationMiniBar')).toContainText('RF 105 · SZ 75');
+  await expect(page.locator('#reservationDayBar')).toBeVisible();
+  await expect(page.locator('#reservationBookingList')).toBeVisible();
+  for (const hidden of ['.rd-controlbar', '.rd-tabs', '.rd-panes', '#reservationQuotaCard', '#reservationTransition']) {
+    await expect(page.locator(`#aulasDashboard ${hidden}`)).toBeHidden();
+  }
+  // Mañana y «⋯» despliegan lo oculto; ⏸ manda la orden sin abrir nada.
+  await page.getByRole('button', { name: /Mañana/ }).click();
+  await expect(page.locator('#reservationTransition')).toBeVisible();
+  await page.getByRole('button', { name: 'Pausar el monitor' }).click();
+  expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({ command: 'pause' });
+  await page.getByRole('button', { name: /Ver todo/ }).click();
+  await expect(page.locator('#aulasDashboard .rd-controlbar')).toBeVisible();
+  await expect(page.locator('#reservationQuotaCard')).toBeVisible();
+  if (process.env.CAPTURE_RESERVATION_DASHBOARD) await page.screenshot({ path: 'test-results/aulas-minima-abierta.png', fullPage: true });
+  await page.getByRole('button', { name: 'Ocultar el resto' }).click();
+  await expect(page.locator('#aulasDashboard .rd-controlbar')).toBeHidden();
+  // Se recuerda por dispositivo y se vuelve a la completa con el mismo botón.
+  expect(await page.evaluate(() => localStorage.getItem('reservationDashboardView'))).toBe('minimal');
+  await page.getByRole('button', { name: 'Vista completa' }).click();
+  await expect(screen).not.toHaveClass(/is-minimal/);
+  await expect(page.locator('#aulasDashboard .rd-controlbar')).toBeVisible();
 });
