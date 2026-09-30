@@ -8,6 +8,8 @@ const fixture = () => ({
   obras: [
     { id: 'b', name: 'Partita nº 2', composer: 'Bach', dificultad: 7, movimientos: [{ id: 'cap', name: 'Capriccio', solHistory: [] }, { id: 'sin', name: 'Sinfonia', solHistory: [{ date: day(3).toISOString(), val: 60 }] }] },
     { id: 'c', name: 'Balada nº 1', composer: 'Chopin', movimientos: [], solHistory: [{ date: day(2).toISOString(), val: 55 }] },
+    // Sin evento: por muy baja que esté, no es «urgente».
+    { id: 'n', name: 'Sonata suelta', composer: 'Scriabin', dificultad: 9, movimientos: [], solHistory: [{ date: day(40).toISOString(), val: 5 }] },
   ],
   eventos: [{ id: 'e', nombre: 'Recital', tipo: 'concierto', fecha: day(-10).toISOString().slice(0, 10), obras: ['b', 'c'] }],
   sessionPlants: [{ id: 'p', obraId: 'c', mins: 50, startedAt: day(1).toISOString(), endedAt: day(1).toISOString() }],
@@ -32,6 +34,10 @@ test('Hoy v2: anillo con una frase, Para hoy urgente y ▶ abre el cronómetro c
   // Las prioridades del Profesor llegan tras cargar su núcleo.
   await expect(page.locator('#mv2Hoy .mv2-parahoy .mv2-plan').first()).toBeVisible({ timeout: 15000 });
   await expect(page.locator('#mv2Hoy .mv2-parahoy')).toContainText('lo más urgente');
+  await expect(page.locator('#mv2Hoy .mv2-parahoy')).toContainText('Recital');
+  await expect(page.locator('#mv2Hoy .mv2-parahoy')).not.toContainText('Sonata suelta');
+  // Aulas va justo debajo de las horas.
+  expect(await page.evaluate(() => document.querySelector('#mv2Hoy .mv2-summary').nextElementSibling.classList.contains('mv2-aulas'))).toBe(true);
   const first = page.locator('#mv2Hoy .mv2-plan').first();
   const label = (await first.locator('b').textContent()).trim();
   await first.click();

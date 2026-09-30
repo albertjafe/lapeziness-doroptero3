@@ -124,7 +124,9 @@
     if (urgentCache.pending !== sig) {
       urgentCache.pending = sig;
       handoff.buildReportAsync(data, { now: new Date().toISOString(), googleCalendarState: {} }).then(report => {
-        const rows = (report.units || []).filter(u => u.priority && u.priority.band !== 'mantenimiento').slice(0, MAX_PARA_HOY).map(u => ({
+        // Solo lo que exige un evento o proyecto futuro enlazado (la regla del Profesor):
+        // una obra sin compromiso no es «urgente» aunque lleve tiempo sin tocarse.
+        const rows = (report.units || []).filter(u => u.nextEvent && u.priority && !['mantenimiento', 'sin_evento'].includes(u.priority.band)).slice(0, MAX_PARA_HOY).map(u => ({
           obraId: u.obraId, movId: u.movId, label: u.label, composer: u.composer,
           detail: [u.solidity == null ? 'sin medir' : Math.round(u.solidity) + ' %', (u.priority.reasons || [])[0]].filter(Boolean).join(' · '),
         }));
@@ -165,7 +167,7 @@
     const rows = urgentRows(data);
     const head = '<div class="mv2-line"><span class="mv2-lbl">Para hoy · lo más urgente</span><button type="button" class="mv2-link" onclick="MobileV2.openPaste()">Pegar plan</button></div>';
     if (rows == null) return head + '<p class="mv2-muted">Calculando prioridades…</p>';
-    if (!rows.length) return head + '<p class="mv2-muted">Nada urgente: ningún compromiso próximo con repertorio. Estudia lo que prefieras.</p>';
+    if (!rows.length) return head + '<p class="mv2-muted">Nada urgente: ningún evento ni proyecto próximo tiene obras enlazadas. Estudia lo que prefieras.</p>';
     return head + rows.map(r => '<button type="button" class="mv2-plan" onclick="MobileV2.studyNow(\'' + jsArg(r.obraId) + '\',\'' + jsArg(r.movId || '') + '\')">' +
       '<span class="mv2-play" aria-hidden="true">▶</span><span class="mv2-plan-copy"><b>' + esc(r.label) + '</b><small>' + esc(r.detail) + '</small></span></button>').join('');
   }
@@ -227,6 +229,10 @@
         '<div class="mv2-summary-copy"><b>' + esc(sentence(done, t)) + '</b><span class="mv2-muted">' + esc(rewardLine(data)) + '</span>' +
         // El registro por horas de hoy (antes solo en la portada clásica del iPad).
         '<button type="button" class="mv2-link mv2-sessions" onclick="openSesionesDetalle(this)">Sesiones de hoy ›</button></div></div>' +
+      // Justo debajo de las horas, tus reservas de hoy: solo la línea del día. Tocar una franja abre su editor aquí mismo.
+      '<section class="mv2-card mv2-aulas' + (roomsSummary ? ' is-' + roomsSummary.kind : '') + '">' +
+        '<button type="button" class="mv2-aulas-head" onclick="showView(\'aulas\')"><span class="mv2-lbl">Aulas</span><b>' + esc(aulas) + '</b><span class="mv2-chev" aria-hidden="true">›</span></button>' +
+        '<div class="aulas-screen rd-embed" id="mv2DayBar"></div></section>' +
       '<div class="mv2-card mv2-parahoy">' + paraHoyHtml(data) + '</div></div><div class="mv2-col mv2-col-side">' +
       // Hub: hábitos (día del reto, hoy, acciones y mantenimiento) y accesos a todo lo demás.
       (root.HabitHub ? root.HabitHub.renderHoyCard() : '') +
@@ -237,11 +243,7 @@
         // En el móvil Aulas ocupa el sitio de Profesor en la barra inferior; en el iPad está en la barra.
         (phoneWidth() ? tile('Profesor', 'Plan de hoy', "showView('profesor')") : '') +
       '</nav>' +
-      '<button type="button" class="mv2-add" onclick="MobileV2.openAdd()">＋ Añadir estudio, nota o tarea</button>' +
-      // Abajo, tus reservas de hoy: solo la línea del día. Tocar una franja abre su editor aquí mismo.
-      '<section class="mv2-card mv2-aulas' + (roomsSummary ? ' is-' + roomsSummary.kind : '') + '">' +
-        '<button type="button" class="mv2-aulas-head" onclick="showView(\'aulas\')"><span class="mv2-lbl">Aulas</span><b>' + esc(aulas) + '</b><span class="mv2-chev" aria-hidden="true">›</span></button>' +
-        '<div class="aulas-screen rd-embed" id="mv2DayBar"></div></section></div>';
+      '<button type="button" class="mv2-add" onclick="MobileV2.openAdd()">＋ Añadir estudio, nota o tarea</button></div>';
     // Mismo contenido → no se toca el DOM (evita parpadeos, también a mitad del gesto lateral).
     if (host.__mv2Html !== html) {
       host.innerHTML = html; host.__mv2Html = html;

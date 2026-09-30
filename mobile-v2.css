@@ -380,5 +380,5 @@ html.mv2-on .mv2-aulas-head .mv2-lbl { grid-column: 1; }
 html.mv2-on .mv2-aulas-head b { grid-column: 1; display: block; margin-top: 2px; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html.mv2-on .mv2-aulas-head .mv2-chev { grid-column: 2; grid-row: 1 / span 2; }
 html.mv2-on .mv2-aulas.is-error .mv2-aulas-head b { color: var(--red, #b4564b); }
-html.mv2-tablet .mv2-col-side .mv2-aulas { grid-column: 1 / -1; }
+
 html.mv2-tablet .mv2-aulas-head b { font-size: 16.5px; }
