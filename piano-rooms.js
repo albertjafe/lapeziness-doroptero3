@@ -90,7 +90,7 @@
       load('taskSyncResilienceScript','./task-sync-resilience.js?v=342');
     });
   });
-  load('updateSafetyScript','./update-safety.js?v=378');
+  load('updateSafetyScript','./update-safety.js?v=475');
   load('cronoRunningPremiumScript','./crono-running-premium.js?v=464');
   load('eventPlanningScript','./event-planning.js?v=377',function(){
     load('competitionPlanningSeedScript','./competition-planning-seed.js?v=342',function(){

@@ -99,7 +99,7 @@ function harness({ dirty = 1, synced = 1, controlled = true, syncCompletes = tru
   return { window, calls, messages, storage, context, registration, listeners };
 }
 
-describe('UpdateSafety v6', () => {
+describe('UpdateSafety v7', () => {
   it('blocks promotion during Deutsch and during recovery before its addon loads', async () => {
     const h = harness();
     h.window.GermanStudy = { hasActiveSession: () => true };
@@ -148,9 +148,37 @@ describe('UpdateSafety v6', () => {
     expect(calls).not.toContain('save-local');
     expect(calls).not.toContain('cloud-write');
     expect(calls.indexOf('verify-cloud')).toBeGreaterThan(calls.indexOf('sync'));
-    expect(calls.indexOf('check-update')).toBeGreaterThan(calls.indexOf('verify-cloud'));
-    expect(calls.indexOf('activate')).toBeGreaterThan(calls.indexOf('check-update'));
+    // The worker is already downloaded: promotion does not ask the server again.
+    expect(calls).not.toContain('check-update');
+    expect(calls.indexOf('activate')).toBeGreaterThan(calls.indexOf('verify-cloud'));
   });
+  it('downloads the new version first when none is waiting yet', async () => {
+    const h = harness();
+    const worker = h.registration.waiting;
+    h.registration.waiting = null;
+    h.registration.update = () => { h.calls.push('check-update'); h.registration.waiting = worker; return Promise.resolve(); };
+    expect(await h.window.UpdateSafety.safeUpdate()).toBe(true);
+    expect(h.calls.indexOf('activate')).toBeGreaterThan(h.calls.indexOf('check-update'));
+  });
+  it('a failed download says so instead of blaming the data', async () => {
+    const h = harness();
+    h.registration.waiting = null;
+    h.registration.update = () => Promise.reject(new Error('offline'));
+    expect(await h.window.UpdateSafety.safeUpdate()).toBe(false);
+    expect(h.messages).toHaveLength(0);
+    expect(h.calls.some(call => call.includes('No se pudo descargar la versión nueva'))).toBe(true);
+    expect(h.calls.some(call => call.includes('confirmados como seguros'))).toBe(false);
+  });
+  it('a slow cloud does not hold the update: local data is durable and sync stays pending', async () => {
+    const h = harness({ dirty: 5, synced: 4 });
+    h.window.syncPendingCloudChanges = () => new Promise(() => {});
+    h.context.syncPendingCloudChanges = h.window.syncPendingCloudChanges;
+    const started = Date.now();
+    expect(await h.window.UpdateSafety.safeUpdate()).toBe(true);
+    expect(Date.now() - started).toBeLessThan(6000);
+    expect(h.messages).toHaveLength(1);
+    expect(h.window.UpdateSafety.syncMetaPending()).toBe(true);
+  }, 10000);
 
   it('allows a durably saved pending revision without marking it synchronized', async () => {
     const { window, calls, messages } = harness({ dirty: 5, synced: 4, syncCompletes:false });
@@ -158,7 +186,7 @@ describe('UpdateSafety v6', () => {
 
     expect(result).toBe(true);
     expect(messages).toHaveLength(1);
-    expect(calls).toContain('check-update');
+    expect(calls).toContain('activate');
     expect(window.UpdateSafety.syncMetaPending()).toBe(true);
   });
   it('persists and uploads an actual in-memory edit before promotion',async()=>{
@@ -175,16 +203,28 @@ describe('UpdateSafety v6', () => {
     expect(h.calls).not.toContain('cloud-write');
     expect(JSON.parse(h.storage.get('alberto_piano_v2'))._localRevision).toBe(12);
   });
-  it('does not promote the worker if an edit arrives while update() awaits the server',async()=>{
+  it('an edit that arrives while the cloud syncs is saved on the device before promotion',async()=>{
+    // Before v475 any change during the wait (e.g. the background sync merging
+    // cloud data) aborted the update with «datos no confirmados como seguros».
     const h=harness();
-    h.registration.update=async()=>{
-      h.context.db.eventos.push({id:'just-created'});
-      h.storage.set('alberto_piano_v2',JSON.stringify(h.context.db));
-      h.storage.set('alberto_sync_v1',JSON.stringify({dirtyRevision:2,lastSyncedRevision:1}));
+    h.window.syncPendingCloudChanges=async()=>{h.calls.push('sync');h.context.db.eventos.push({id:'just-created'});return true;};
+    h.context.syncPendingCloudChanges=h.window.syncPendingCloudChanges;
+    expect(await h.window.UpdateSafety.safeUpdate()).toBe(true);
+    expect(h.messages).toHaveLength(1);
+    expect(h.calls.lastIndexOf('save-local')).toBeLessThan(h.calls.indexOf('activate'));
+    expect(JSON.parse(h.storage.get('alberto_piano_v2')).eventos[0].id).toBe('just-created');
+  });
+  it('does not promote while an edit that arrives mid-update cannot be saved',async()=>{
+    const h=harness();
+    h.window.syncPendingCloudChanges=async()=>{
+      h.context.db.eventos.push({id:'unsaveable'});
+      h.window.saveLocalNow=()=>h.calls.push('save-local-noop');h.context.saveLocalNow=h.window.saveLocalNow;
+      return true;
     };
+    h.context.syncPendingCloudChanges=h.window.syncPendingCloudChanges;
     expect(await h.window.UpdateSafety.safeUpdate()).toBe(false);
     expect(h.messages).toHaveLength(0);
-    expect(JSON.parse(h.storage.get('alberto_piano_v2')).eventos[0].id).toBe('just-created');
+    expect(h.calls.some(call => call.includes('No se pudo guardar la copia'))).toBe(true);
   });
   it('blocks activation when neither localStorage nor the rescue durably holds current memory',async()=>{
     const h=harness();h.context.db.obras=[{id:'unsaved'}];

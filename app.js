@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-30-hoy-urgente-v474';
+const APP_VERSION = '2026-09-30-actualizar-seguro-v475';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -28351,6 +28351,11 @@ function _swUpdateInit() {
 function _swShowBanner() {
   const b = document.getElementById('swUpdateBanner');
   if (b) b.style.display = 'flex';
+  // Los avisos suben por encima del banner (en el móvil quedaban debajo).
+  try {
+    document.body.classList.add('sw-banner-on');
+    if (b) document.documentElement.style.setProperty('--sw-banner-h', b.offsetHeight + 'px');
+  } catch (e) {}
 }
 
 async function swHardRefresh() { return swDoUpdate(); }
@@ -28393,6 +28398,7 @@ async function checkForAppUpdate(manual) {
     }
     const banner = document.getElementById('swUpdateBanner');
     if (banner) banner.style.display = 'none';
+    try { document.body.classList.remove('sw-banner-on'); } catch (e) {}
     updateAppVersionInfo('Versión local: ' + APP_VERSION + ' · al día');
     if (manual) showToast('No hay actualización pendiente');
   } catch (err) {

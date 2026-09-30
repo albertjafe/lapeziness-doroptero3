@@ -66,8 +66,29 @@
     try { if(typeof root.showToast === 'function') root.showToast(message); } catch(error) {}
   }
   function updateBanner(){ return root.document && root.document.getElementById('swUpdateBanner'); }
-  function hideBanner(){ const banner = updateBanner(); if(banner) banner.style.display = 'none'; }
-  function showBanner(){ const banner = updateBanner(); if(banner) banner.style.display = 'flex'; }
+  function bannerClass(on){
+    try {
+      root.document.body.classList.toggle('sw-banner-on', !!on);
+      const banner = updateBanner();
+      if(on && banner) root.document.documentElement.style.setProperty('--sw-banner-h', banner.offsetHeight + 'px');
+    } catch(error) {}
+  }
+  function hideBanner(){ const banner = updateBanner(); if(banner) banner.style.display = 'none'; bannerClass(false); }
+  function showBanner(){ const banner = updateBanner(); if(banner) banner.style.display = 'flex'; bannerClass(true); }
+  /* El aviso vive en el propio banner: un toast de 2 s quedaba tapado por él
+     en el móvil y no se llegaba a leer. */
+  function bannerMessage(text, tone){
+    const el = root.document && root.document.getElementById('swUpdateMsg');
+    if(!el) return false;
+    el.textContent = text || 'Nueva versión disponible';
+    if(el.dataset) el.dataset.tone = tone || '';
+    bannerClass(updateBanner()?.style?.display !== 'none');
+    return true;
+  }
+  function notify(text, tone){
+    showBanner();
+    if(!bannerMessage(text, tone)) toast(text);
+  }
   function buttonState(text, disabled){
     const banner = updateBanner();
     const button = banner && banner.querySelector('button');
@@ -87,9 +108,8 @@
       promotionFallbackTimer = null;
       if(reloading) return;
       explicitPromotionRequested = false;
-      showBanner();
-      buttonState('Actualizar →', false);
-      toast('La actualización no terminó de aplicarse. Puedes volver a intentarlo.');
+      buttonState('Reintentar →', false);
+      notify('La versión nueva no terminó de aplicarse. Tus datos están a salvo.', 'warn');
     }, 12000);
   }
 
@@ -292,58 +312,109 @@
     return { registration, waiting };
   }
 
+  function stageError(stage, error){
+    const wrapped = error && typeof error === 'object' ? error : new Error(String(error));
+    wrapped.stage = stage;
+    return wrapped;
+  }
+
+  /* Deja la copia local al día y comprobada. Si mientras tanto llegan cambios
+     (la sincronización que sigue en segundo plano fusiona datos de la nube),
+     se vuelve a guardar en vez de abortar: lo que importa es que lo que hay en
+     memoria esté en el dispositivo justo antes de recargar. */
+  async function protectLocalCopy(attempts){
+    let lastError = null;
+    for(let attempt = 0; attempt < attempts; attempt += 1){
+      try {
+        const snapshot = await snapshotBeforeUpdate();
+        if (root.LocalSaveResilience?.flush) await root.LocalSaveResilience.flush();
+        if (timerActive()) throw new Error('Timer finalization pending');
+        if (sameDocumentContent(snapshot.raw, currentDbRaw()) && await hasDurableCopy(currentDbRaw())) return snapshot;
+        lastError = new Error('State changed during update');
+      } catch(error) {
+        lastError = error;
+        if (timerActive()) break;
+      }
+      await wait(150);
+    }
+    throw stageError('local', lastError || new Error('No durable local snapshot'));
+  }
+
+  /* La nube tiene un margen corto: sus cambios pendientes quedan marcados en
+     este dispositivo y se suben al reabrir, así que no hay que esperarla. */
+  const CLOUD_BUDGET_MS = 4000;
+  async function syncWithinBudget(){
+    try { await withTimeout(syncEverything(), CLOUD_BUDGET_MS, 'nube lenta'); }
+    catch(error) { console.warn('[update-safety] copia local protegida; nube pendiente', error); }
+  }
+
+  async function pendingWorker(){
+    const registration = await root.navigator?.serviceWorker?.getRegistration?.();
+    // Ya descargada: no hace falta volver a preguntar al servidor.
+    if (registration && registration.waiting) return registration.waiting;
+    try { return (await checkForUpdate()).waiting; }
+    catch(error) { throw stageError('download', error); }
+  }
+
+  const FAILURE_TEXT = {
+    local: 'No se pudo guardar la copia en este dispositivo, así que no actualizo. Vuelve a intentarlo en un momento.',
+    download: 'No se pudo descargar la versión nueva (¿conexión?). Tus datos están a salvo.',
+  };
+
   async function safeUpdate(){
     if(updating) return false;
     const pendingTimer = uncommittedTimerSnapshot();
     if(timerActive()){
-      toast(pendingTimer
+      notify(pendingTimer
         ? 'Hay una sesión de estudio aún sin consolidar. No se actualizará hasta que quede guardada.'
         : root.GermanStudy?.hasActiveSession()
           ? 'Termina la sesión de Deutsch antes de actualizar. Tu progreso está guardado.'
-          : 'Termina el cronómetro y guarda la píldora Hecho antes de actualizar.');
+          : 'Termina el cronómetro y guarda la píldora Hecho antes de actualizar.', 'warn');
       return false;
     }
     updating = true;
     explicitPromotionRequested = false;
     clearPromotionFallback();
-    const button = buttonState('Protegiendo datos…', true);
+    const button = buttonState('Guardando…', true);
+    bannerMessage('Guardando tus datos en este dispositivo…');
+    let failed = false;
     try {
-      await snapshotBeforeUpdate();
+      await protectLocalCopy(2);
       // Updating code does not remove local data. A remote outage must not
       // prevent installing the fix when the full current document is durable.
       // Keep dirty metadata intact so synchronization resumes after reopening.
-      try { await syncEverything(); }
-      catch(error) { console.warn('[update-safety] copia local protegida; nube pendiente',error); }
-      const protectedSnapshot = await snapshotBeforeUpdate();
-      if(button) button.textContent = 'Copia local segura · actualizando…';
+      if(button) button.textContent = 'Subiendo…';
+      bannerMessage('Copia local segura · subiendo a la nube…');
+      await syncWithinBudget();
 
-      const { waiting } = await checkForUpdate();
+      if(button) button.textContent = 'Instalando…';
+      bannerMessage('Copia local segura · instalando la versión nueva…');
+      const waiting = await pendingWorker();
       if(!waiting){
         hideBanner();
         toast('Datos seguros. No queda una versión en espera; al reabrir se comprobará de nuevo.');
         return true;
       }
-      // Network checks may have yielded while the user entered more data.
-      if (root.LocalSaveResilience?.flush) await root.LocalSaveResilience.flush();
-      if (timerActive() || !sameDocumentContent(protectedSnapshot.raw,currentDbRaw())) throw new Error('State changed during update');
-      if (!await hasDurableCopy(currentDbRaw())) throw new Error('Unpersisted edits');
-      // The durable-copy lookup can yield to new input too.
-      if (timerActive() || !sameDocumentContent(protectedSnapshot.raw,currentDbRaw())) throw new Error('State changed during update');
+      // Justo antes de recargar: lo que haya en memoria, al dispositivo.
+      await protectLocalCopy(3);
       explicitPromotionRequested = true;
       hideBanner();
       waiting.postMessage({ type:'SAFE_SKIP_WAITING', safe:true, requestedAt:new Date().toISOString() });
       armPromotionFallback();
       return true;
     } catch(error) {
+      failed = true;
       explicitPromotionRequested = false;
       clearPromotionFallback();
       console.warn('[update-safety] actualización cancelada', error);
-      showBanner();
-      toast('No se actualiza: tus datos todavía no están confirmados como seguros.');
+      const text = timerActive()
+        ? 'Has empezado a estudiar: la actualización espera a que termines.'
+        : FAILURE_TEXT[error && error.stage] || FAILURE_TEXT.local;
+      notify(text, 'warn');
       return false;
     } finally {
       updating = false;
-      if(button){ button.disabled = false; button.textContent = 'Actualizar →'; }
+      if(button){ button.disabled = false; button.textContent = failed ? 'Reintentar →' : 'Actualizar →'; }
     }
   }
 
@@ -374,12 +445,11 @@
         root.location.reload();
       } catch (error) {
         reloading = false;
-        showBanner();
-        toast('Guarda los cambios antes de reabrir la actualización.');
+        notify('Guarda los cambios antes de reabrir la actualización.', 'warn');
       }
     });
     root.UpdateSafety = {
-      version:6,
+      version:7,
       safeUpdate,
       checkForUpdate,
       snapshotBeforeUpdate,

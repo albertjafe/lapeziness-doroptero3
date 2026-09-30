@@ -3583,6 +3583,11 @@
     pointer-events: none;
   }
   .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+  /* Con el banner «Nueva versión» abajo, los avisos van encima de él. */
+  body.sw-banner-on .toast,
+  body.sw-banner-on .undo-toast { bottom: calc(var(--sw-banner-h, 64px) + 12px); z-index: 9999; }
+  #swUpdateMsg[data-tone="warn"] { font-weight: 600; }
+  #swUpdateBanner button:disabled { opacity: .75; cursor: progress; }
 
   /* TOAST CON DESHACER */
   .undo-toast {
