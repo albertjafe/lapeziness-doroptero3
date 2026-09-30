@@ -66,6 +66,10 @@
   let startupDraftAt = 0;
   // Acción destructiva pendiente de confirmar: 'shutdown' | 'cancel_start'.
   let confirmAction = null;
+  // Editor de una reserva (app → monitor → Asimut). Solo en la lista del día
+  // que vigila el monitor; { id, start, end, cancelAsk }.
+  let bookingEdit = null;
+  let bookingEditable = false;
   // «Reciclar cuota» toca una reserva real: pide un segundo toque explícito.
   let labRecycleConfirm = false;
   let confirmTimer = null;
@@ -300,7 +304,47 @@
       </div>` : ''}`;
   }
 
-  function renderReservations(day, reservations, targetId) {
+  const hm = minutes => `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
+
+  function editorHtml(day, item, status) {
+    const edit = bookingEdit;
+    const a0 = toMinutes(item.start), b0 = toMinutes(item.end);
+    const a = toMinutes(edit.start), b = toMinutes(edit.end);
+    const changed = a !== a0 || b !== b0;
+    const locked = Boolean(item.locked);
+    const started = status === 'current';
+    const diff = (b - a) - (b0 - a0);
+    const stepper = (field, value, disabled, label) => `
+      <div class="rd-edit-field"><span>${label}</span>
+        <div class="rd-stepper">
+          <button type="button" data-step="${field}:-15" aria-label="${label} 15 min antes" ${disabled ? 'disabled' : ''}>−</button>
+          <b>${hm(value)}</b>
+          <button type="button" data-step="${field}:15" aria-label="${label} 15 min después" ${disabled ? 'disabled' : ''}>+</button>
+        </div>
+      </div>`;
+    return `<div class="rd-edit" data-edit-for="${escapeHtml(item.event_id)}">
+      ${locked ? '<p class="rd-edit-note">Protegida con candado: el monitor no la toca. Quita el candado para cambiarla o cancelarla.</p>' : ''}
+      <div class="rd-edit-times">
+        ${stepper('start', a, locked || started, 'Inicio')}
+        ${stepper('end', b, locked, 'Fin')}
+      </div>
+      <p class="rd-edit-diff">${changed
+        ? `${escapeHtml(item.start)}–${escapeHtml(item.end)} → <b>${hm(a)}–${hm(b)}</b> · ${durationLabel(b - a)} (${diff >= 0 ? '+' : '−'}${durationLabel(Math.abs(diff)) || '0 min'})`
+        : `${started ? 'Ya empezó: solo puedes mover el final. ' : ''}Toca − y + para mover el inicio o el final de 15 en 15.`}</p>
+      <div class="rd-edit-actions">
+        <button type="button" class="rd-action is-primary" data-edit-save ${changed && !locked ? '' : 'disabled'}>Guardar en Asimut</button>
+        <button type="button" class="rd-action" data-edit-lock>${locked ? '🔓 Quitar candado' : '🔒 Proteger'}</button>
+      </div>
+      <div class="rd-edit-danger">${edit.cancelAsk
+        ? `<span>¿Cancelar esta reserva? El hueco no se volverá a reservar solo.</span>
+           <button type="button" class="rd-action" data-edit-cancel-no>No</button>
+           <button type="button" class="rd-action is-danger" data-edit-cancel-yes>Sí, cancelar</button>`
+        : `<button type="button" class="rd-link-danger" data-edit-cancel-ask ${locked ? 'disabled' : ''}>Cancelar reserva…</button>`}</div>
+      <p class="rd-edit-hint">Lo hace el monitor, como en Telegram. Si Asimut no lo permite (cuota, aula ocupada), no cambia nada y te lo dice.</p>
+    </div>`;
+  }
+
+  function renderReservations(day, reservations, targetId, options = {}) {
     const list = el(targetId);
     if (!list) return;
     const items = Array.isArray(reservations) ? reservations : [];
@@ -325,7 +369,9 @@
         const left = Math.max(0, Math.round((endAt - Date.now()) / 60000));
         progress = `<span class="rd-booking-left">quedan ${durationLabel(left) || 'unos segundos'}</span><i class="rd-booking-progress" aria-hidden="true"><em style="width:${pct.toFixed(1)}%"></em></i>`;
       }
-      return `<article class="rd-booking is-${status}">
+      const canEdit = options.editable && status !== 'past' && item.event_id;
+      const editing = canEdit && bookingEdit && String(bookingEdit.id) === String(item.event_id);
+      return `<article class="rd-booking is-${status}${editing ? ' is-editing' : ''}" data-event-id="${escapeHtml(item.event_id || '')}">
         <div class="rd-booking-time"><b>${escapeHtml(item.start || '—')}</b><span>${escapeHtml(item.end || '—')}</span></div>
         <div class="rd-booking-line" aria-hidden="true"><i></i></div>
         <div class="rd-booking-main">
@@ -338,8 +384,57 @@
           ${item.confirmed ? '<span class="is-confirmed">Confirmada</span>' : ''}
           <small>${statusLabel}</small>
         </div>
-      </article>`;
+        ${canEdit ? `<button type="button" class="rd-booking-edit" data-edit-open="${escapeHtml(item.event_id)}" aria-expanded="${editing ? 'true' : 'false'}" aria-label="Cambiar la reserva de las ${escapeHtml(item.start)}">${editing ? '✕' : '✎'}</button>` : ''}
+      </article>${editing ? editorHtml(day, item, status) : ''}`;
     }).join('');
+  }
+
+  function bookingById(id) {
+    const items = currentRow()?.state?.reservations;
+    return (Array.isArray(items) ? items : []).find(item => String(item.event_id) === String(id)) || null;
+  }
+
+  function openBookingEditor(id) {
+    const item = bookingById(id);
+    if (!item || !bookingEditable) return;
+    bookingEdit = bookingEdit && String(bookingEdit.id) === String(id)
+      ? null
+      : { id: item.event_id, start: item.start, end: item.end, cancelAsk: false };
+    render();
+    if (bookingEdit) el('reservationBookingList')?.querySelector(`[data-event-id="${CSS.escape(String(id))}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  function onBookingListClick(event) {
+    const target = event.target.closest('button');
+    if (!target) return;
+    const open = target.dataset.editOpen;
+    if (open) { openBookingEditor(open); return; }
+    if (!bookingEdit) return;
+    const item = bookingById(bookingEdit.id);
+    if (!item) { bookingEdit = null; render(); return; }
+    if (target.dataset.step) {
+      const [field, delta] = target.dataset.step.split(':');
+      const a = toMinutes(bookingEdit.start), b = toMinutes(bookingEdit.end);
+      let na = a, nb = b;
+      if (field === 'start') na = Math.max(8 * 60, Math.min(b - 15, a + Number(delta)));
+      else nb = Math.min(22 * 60 + 30, Math.max(a + 15, b + Number(delta)));
+      bookingEdit = { ...bookingEdit, start: hm(na), end: hm(nb) };
+      render();
+    } else if ('editSave' in target.dataset) {
+      postCommand('reservation_modify', { event_id: item.event_id, start: bookingEdit.start, end: bookingEdit.end }, target);
+      bookingEdit = null;
+      render();
+    } else if ('editLock' in target.dataset) {
+      postCommand('reservation_lock', { event_id: item.event_id, locked: !item.locked }, target);
+    } else if ('editCancelAsk' in target.dataset) {
+      bookingEdit = { ...bookingEdit, cancelAsk: true }; render();
+    } else if ('editCancelNo' in target.dataset) {
+      bookingEdit = { ...bookingEdit, cancelAsk: false }; render();
+    } else if ('editCancelYes' in target.dataset) {
+      postCommand('reservation_cancel', { event_id: item.event_id }, target);
+      bookingEdit = null;
+      render();
+    }
   }
 
   function quotaCard(quota) {
@@ -380,16 +475,46 @@
     const nowMin = now.getHours() * 60 + now.getMinutes();
     const ticks = [];
     for (let h = Math.ceil(from / 60) * 60; h <= to; h += 120) ticks.push(h);
+    const clip = (a, b) => [Math.max(from, a), Math.min(to, b)];
+    const band = (cls, a, b, label) => {
+      const [x, y] = clip(a, b);
+      return y > x ? `<s class="${cls}" style="left:${pos(x)};width:${((y - x) / span * 100).toFixed(2)}%">${label ? `<small>${label}</small>` : ''}</s>` : '';
+    };
+    // Franja SZ (10–15, entre semana) y tramo gratis de 2 h (cuarto en curso + 2 h).
+    const weekday = state.date ? new Date(`${state.date}T12:00:00`).getDay() : 0;
+    const hasSz = weekday >= 1 && weekday <= 5;
+    const freeFrom = Math.floor(nowMin / 15) * 15;
+    const freeTo = freeFrom + 120;
+    const showFree = isToday && freeTo > from && freeFrom < to;
+    const hourLines = [];
+    for (let h = Math.ceil(from / 60) * 60 + 60; h < to; h += 60) hourLines.push(h);
+    const ghost = bookingEdit && items.some(item => String(item.event_id) === String(bookingEdit.id))
+      ? [toMinutes(bookingEdit.start), toMinutes(bookingEdit.end)] : null;
     bar.innerHTML = `
-      <div class="rd-daybar-track" role="img" aria-label="Tus reservas del día sobre la franja ${escapeHtml(Math.floor(from / 60))}:00–${escapeHtml(Math.floor(to / 60))}:${pad(to % 60)}">
+      <div class="rd-daybar-track" role="group" aria-label="Tus reservas del día sobre la franja ${escapeHtml(Math.floor(from / 60))}:00–${escapeHtml(Math.floor(to / 60))}:${pad(to % 60)}">
+        ${hasSz ? band('rd-daybar-sz', 600, 900, 'SZ') : ''}
+        ${showFree ? band('rd-daybar-free', freeFrom, freeTo, 'gratis') : ''}
+        ${hourLines.map(h => `<u style="left:${pos(h)}"></u>`).join('')}
         ${items.map(item => {
           const a = toMinutes(item.start), b = toMinutes(item.end);
           if (a == null || b == null) return '';
-          return `<i class="is-${timelineStatus(state.date, item)}" style="left:${pos(a)};width:${((b - a) / span * 100).toFixed(2)}%" title="${escapeHtml(item.start)}–${escapeHtml(item.end)} · Aula ${escapeHtml(roomLabel(item.room))}"></i>`;
+          const width = (b - a) / span * 100;
+          const editing = ghost && String(bookingEdit.id) === String(item.event_id);
+          const room = String(roomLabel(item.room) || '').replace(/^10\./, '');
+          return `<button type="button" class="rd-daybar-block is-${timelineStatus(state.date, item)}${item.locked ? ' is-locked' : ''}${editing ? ' is-editing' : ''}"
+            style="left:${pos(a)};width:${width.toFixed(2)}%" data-edit-open="${escapeHtml(item.event_id || '')}"
+            aria-label="${escapeHtml(item.start)}–${escapeHtml(item.end)} · Aula ${escapeHtml(roomLabel(item.room))}${item.locked ? ' · protegida' : ''}" ${bookingEditable && item.event_id ? '' : 'tabindex="-1"'}>
+            ${width >= 9 ? `<em>${item.locked ? '🔒 ' : ''}${escapeHtml(room)}</em>` : ''}</button>`;
         }).join('')}
+        ${ghost && ghost[0] != null && ghost[1] != null ? `<i class="rd-daybar-ghost" style="left:${pos(Math.max(from, ghost[0]))};width:${((Math.min(to, ghost[1]) - Math.max(from, ghost[0])) / span * 100).toFixed(2)}%" aria-hidden="true"></i>` : ''}
         ${isToday && nowMin >= from && nowMin <= to ? `<b class="rd-daybar-now" style="left:${pos(nowMin)}"></b>` : ''}
       </div>
-      <div class="rd-daybar-ticks" aria-hidden="true">${ticks.map(h => `<span style="left:${pos(h)}">${Math.floor(h / 60)}</span>`).join('')}</div>`;
+      <div class="rd-daybar-ticks" aria-hidden="true">${ticks.map(h => `<span style="left:${pos(h)}">${Math.floor(h / 60)}</span>`).join('')}</div>
+      <div class="rd-daybar-legend">
+        ${hasSz ? '<span><i class="is-sz"></i>SZ 10–15</span>' : ''}
+        ${showFree ? `<span><i class="is-free"></i>gratis hasta las ${hm(freeTo)}</span>` : ''}
+        ${bookingEditable && items.some(item => item.event_id) ? '<span class="rd-daybar-tip">Toca una reserva para cambiarla</span>' : ''}
+      </div>`;
   }
 
   function agendaSummary(items) {
@@ -852,8 +977,25 @@
     help.hidden = !helpText;
     help.textContent = helpText || '';
     renderStartup(state, health);
-    renderReservations(state.date, state.reservations, 'reservationBookingList');
+    const monitorLive = !(ageMs(row) > OFFLINE_MS || state.monitor?.online === false);
+    bookingEditable = monitorLive && !['awaiting_start', 'starting', 'closed'].includes(state.monitor?.phase);
+    if (!bookingEditable) bookingEdit = null;
+    if (bookingEdit && !bookingById(bookingEdit.id)) bookingEdit = null;
+    renderReservations(state.date, state.reservations, 'reservationBookingList', { editable: bookingEditable });
     renderDayBar(state);
+    const agendaEl = el('reservationBookingList');
+    if (agendaEl && !agendaEl.dataset.editBound) {
+      agendaEl.dataset.editBound = '1';
+      agendaEl.addEventListener('click', onBookingListClick);
+    }
+    const barEl = el('reservationDayBar');
+    if (barEl && !barEl.dataset.editBound) {
+      barEl.dataset.editBound = '1';
+      barEl.addEventListener('click', event => {
+        const block = event.target.closest('[data-edit-open]');
+        if (block && block.dataset.editOpen) openBookingEditor(block.dataset.editOpen);
+      });
+    }
     const agendaTitle = el('reservationAgendaTitle');
     if (agendaTitle) agendaTitle.textContent = state.date
       ? `${state.date === localIsoDate(new Date()) ? 'Hoy' : 'Día'} · ${formatDate(state.date)}` : 'Tus reservas';

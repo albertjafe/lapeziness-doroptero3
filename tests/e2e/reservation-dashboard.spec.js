@@ -44,10 +44,10 @@ const aulasView = indexHtml.match(/<div class="view" id="view-aulas">[\s\S]*?\r?
 const todayCard = indexHtml.match(/<button type="button" class="aulas-today-card"[\s\S]*?<\/button>/)[0];
 
 async function mountDashboard(page, row) {
-  await page.goto('/reservation-dashboard.css?v=467');
+  await page.goto('/reservation-dashboard.css?v=471');
   await page.setContent(`<!doctype html><html lang="es" data-theme="marmol"><head>
     <link rel="stylesheet" href="http://127.0.0.1:4173/styles.css?v=464">
-    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=467">
+    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=471">
   </head><body data-view="aulas">${todayCard}${aulasView}</body></html>`);
 
   await page.evaluate((row) => {
@@ -80,7 +80,7 @@ async function mountDashboard(page, row) {
     };
     window.getSB = () => client;
   }, row);
-  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=467' });
+  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=471' });
 }
 
 test('renders live reservations and sends a safe monitor command', async ({ page }) => {
@@ -330,7 +330,7 @@ test('on the phone your reservations come first: day bar, today, tomorrow, then 
 
   // Lo primero de la pantalla: la línea del día y tus reservas.
   await expect(page.locator('#reservationHero')).toBeHidden();
-  await expect(page.locator('#reservationDayBar .rd-daybar-track i')).toHaveCount(2);
+  await expect(page.locator('#reservationDayBar .rd-daybar-block')).toHaveCount(2);
   await expect(page.locator('#reservationAgendaTitle')).toContainText('Hoy');
   await expect(page.locator('#reservationAgendaMeta')).toContainText('2 reservas');
   // La otra reserva del ejemplo (15:30–17:00) también está en curso si la prueba corre a esa hora.
@@ -413,4 +413,59 @@ test('«reciclar cuota» del laboratorio pide confirmación antes de tocar una r
   await lab.getByRole('button', { name: 'Sí, probar reciclar' }).click();
   expect(await page.evaluate(() => window.__dashboardWrites.length)).toBe(writes + 1);
   expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({ command: 'run_quota_lab', payload: { reciclar: true } });
+});
+
+test('tus reservas se cambian desde la app: ±15, candado y cancelar con confirmación', async ({ page }) => {
+  // Mañana: todas las reservas son «próximas» sea la hora que sea.
+  const tomorrow = new Date(Date.now() + 86400000);
+  const day = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+  const row = structuredClone(sampleRow);
+  row.state.date = day;
+  row.state.monitor.target_date = day;
+  row.state.monitor.phase = 'running';
+  await mountDashboard(page, row);
+  const list = page.locator('#reservationBookingList');
+  const writes = () => page.evaluate(() => window.__dashboardWrites.at(-1));
+
+  // La barra: cada reserva es un botón; tocarlo abre su editor.
+  await page.locator('#reservationDayBar .rd-daybar-block').first().click();
+  const editor = list.locator('.rd-edit[data-edit-for="91"]');
+  await expect(editor).toBeVisible();
+  await expect(editor.getByRole('button', { name: 'Guardar en Asimut' })).toBeDisabled();
+  await editor.getByRole('button', { name: 'Inicio 15 min después' }).click();
+  await editor.getByRole('button', { name: 'Fin 15 min después' }).click();
+  await expect(list.locator('.rd-edit-diff')).toContainText('10:15–12:15');
+  await expect(page.locator('#reservationDayBar .rd-daybar-ghost')).toHaveCount(1);
+  await list.getByRole('button', { name: 'Guardar en Asimut' }).click();
+  expect(await writes()).toMatchObject({ command: 'reservation_modify', payload: { event_id: 91, start: '10:15', end: '12:15' } });
+  await expect(list.locator('.rd-edit')).toHaveCount(0);
+
+  // Protegida: no se mueve ni se cancela hasta quitar el candado.
+  await list.locator('[data-edit-open="92"]').click();
+  const locked = list.locator('.rd-edit[data-edit-for="92"]');
+  await expect(locked).toContainText('Protegida con candado');
+  await expect(locked.getByRole('button', { name: 'Fin 15 min después' })).toBeDisabled();
+  await expect(locked.getByRole('button', { name: 'Cancelar reserva…' })).toBeDisabled();
+  await locked.getByRole('button', { name: '🔓 Quitar candado' }).click();
+  expect(await writes()).toMatchObject({ command: 'reservation_lock', payload: { event_id: 92, locked: false } });
+
+  // Cancelar pide un segundo toque.
+  await list.locator('[data-edit-open="92"]').click(); // cierra
+  await list.locator('[data-edit-open="91"]').click();
+  await list.getByRole('button', { name: 'Cancelar reserva…' }).click();
+  await expect(list.locator('.rd-edit-danger')).toContainText('no se volverá a reservar solo');
+  const before = await page.evaluate(() => window.__dashboardWrites.length);
+  await list.getByRole('button', { name: 'No', exact: true }).click();
+  expect(await page.evaluate(() => window.__dashboardWrites.length)).toBe(before);
+  await list.getByRole('button', { name: 'Cancelar reserva…' }).click();
+  await list.getByRole('button', { name: 'Sí, cancelar' }).click();
+  expect(await writes()).toMatchObject({ command: 'reservation_cancel', payload: { event_id: 91 } });
+  if (process.env.CAPTURE_RESERVATION_DASHBOARD) await page.screenshot({ path: 'test-results/aulas-editar.png', fullPage: true });
+
+  // Sin monitor conectado no se ofrece editar.
+  await page.evaluate(async () => {
+    window.__row.state.monitor.online = false;
+    await window.ReservationDashboard.refresh(false);
+  });
+  await expect(list.locator('.rd-booking-edit')).toHaveCount(0);
 });

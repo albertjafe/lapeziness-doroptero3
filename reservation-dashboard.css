@@ -154,13 +154,56 @@
 .aulas-screen .rd-agenda { display: grid; gap: 10px; margin: 0 0 14px; }
 .aulas-screen .rd-agenda .rd-card-head > span { color: var(--text); font-size: 14px; letter-spacing: .02em; }
 .aulas-screen .rd-daybar { padding: 2px 4px 0; }
-.aulas-screen .rd-daybar-track { position: relative; height: 22px; border-radius: 8px; background: var(--bg3); overflow: hidden; }
-.aulas-screen .rd-daybar-track i { position: absolute; top: 3px; bottom: 3px; border-radius: 5px; background: color-mix(in srgb, var(--accent) 55%, var(--bg3)); }
-.aulas-screen .rd-daybar-track i.is-past { background: color-mix(in srgb, var(--text3) 35%, var(--bg3)); }
-.aulas-screen .rd-daybar-track i.is-current { background: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
-.aulas-screen .rd-daybar-now { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--rd-bad); border-radius: 2px; }
+/* Barra del día: fondo con la franja SZ (10–15) y el tramo gratis de 2 h; cada
+   reserva es un botón que abre su editor; la vista previa va con borde discontinuo. */
+.aulas-screen .rd-daybar-track { position: relative; height: 34px; border-radius: 10px; background: var(--bg3); overflow: hidden; }
+.aulas-screen .rd-daybar-track s { position: absolute; top: 0; bottom: 0; text-decoration: none; pointer-events: none; }
+.aulas-screen .rd-daybar-sz { background: repeating-linear-gradient(135deg, color-mix(in srgb, #b07a2c 13%, transparent) 0 6px, transparent 6px 12px); border-left: 1px dashed color-mix(in srgb, #b07a2c 45%, transparent); border-right: 1px dashed color-mix(in srgb, #b07a2c 45%, transparent); }
+.aulas-screen .rd-daybar-sz small { position: absolute; top: 2px; left: 4px; font-size: 9px; font-weight: 800; letter-spacing: .06em; color: color-mix(in srgb, #b07a2c 80%, var(--text3)); }
+.aulas-screen .rd-daybar-free { background: color-mix(in srgb, var(--rd-ok, #3f8f5a) 16%, transparent); box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--rd-ok, #3f8f5a) 55%, transparent); }
+.aulas-screen .rd-daybar-track u { position: absolute; top: 0; bottom: 0; width: 1px; background: color-mix(in srgb, var(--text3) 14%, transparent); pointer-events: none; }
+.aulas-screen .rd-daybar-block { position: absolute; top: 4px; bottom: 4px; min-width: 6px; margin: 0; padding: 0 4px; border: 0; border-radius: 7px; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; font: inherit; color: #fff; cursor: pointer;
+  background: color-mix(in srgb, var(--accent) 62%, var(--bg3)); box-shadow: 0 1px 2px rgba(0, 0, 0, .12); }
+.aulas-screen .rd-daybar-block em { font-style: normal; font-size: 11.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.aulas-screen .rd-daybar-block.is-past { background: color-mix(in srgb, var(--text3) 38%, var(--bg3)); }
+.aulas-screen .rd-daybar-block.is-current { background: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.aulas-screen .rd-daybar-block.is-locked { background-image: repeating-linear-gradient(135deg, rgba(255, 255, 255, .16) 0 5px, transparent 5px 10px); }
+.aulas-screen .rd-daybar-block.is-editing { opacity: .35; }
+.aulas-screen .rd-daybar-ghost { position: absolute; top: 3px; bottom: 3px; border-radius: 8px; border: 2px dashed var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); pointer-events: none; }
+.aulas-screen .rd-daybar-now { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--rd-bad); border-radius: 2px; z-index: 2; }
 .aulas-screen .rd-daybar-ticks { position: relative; height: 16px; margin-top: 3px; }
 .aulas-screen .rd-daybar-ticks span { position: absolute; transform: translateX(-50%); color: var(--text3); font-size: 11px; font-variant-numeric: tabular-nums; }
+.aulas-screen .rd-daybar-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 2px; color: var(--text3); font-size: 11.5px; }
+.aulas-screen .rd-daybar-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.aulas-screen .rd-daybar-legend i { width: 14px; height: 9px; border-radius: 3px; }
+.aulas-screen .rd-daybar-legend i.is-sz { background: repeating-linear-gradient(135deg, color-mix(in srgb, #b07a2c 35%, transparent) 0 3px, transparent 3px 6px); border: 1px dashed color-mix(in srgb, #b07a2c 55%, transparent); }
+.aulas-screen .rd-daybar-legend i.is-free { background: color-mix(in srgb, var(--rd-ok, #3f8f5a) 25%, transparent); box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--rd-ok, #3f8f5a) 60%, transparent); }
+.aulas-screen .rd-daybar-tip { margin-left: auto; }
+.aulas-screen .rd-daybar-free small { position: absolute; bottom: 3px; right: 4px; font-size: 9px; font-weight: 800; letter-spacing: .04em; color: color-mix(in srgb, var(--rd-ok, #3f8f5a) 85%, var(--text)); }
+@media (max-width: 700px) { .aulas-screen .rd-daybar-legend { display: none; } }
+
+/* Editor de una reserva */
+.aulas-screen .rd-booking { grid-template-columns: 58px 14px minmax(0, 1fr) auto auto; }
+.aulas-screen .rd-booking-edit { width: 38px; height: 38px; min-height: 38px; padding: 0; border: 1px solid var(--border); border-radius: 11px; background: var(--bg2); color: var(--accent); font: inherit; font-size: 16px; cursor: pointer; }
+.aulas-screen .rd-booking.is-editing { border-bottom: 0; }
+.aulas-screen .rd-booking.is-editing .rd-booking-edit { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.aulas-screen .rd-edit { display: grid; gap: 10px; margin: 0 0 10px; padding: 12px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 6%, var(--bg2)); border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border)); }
+.aulas-screen .rd-edit-times { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.aulas-screen .rd-edit-field { display: grid; gap: 4px; }
+.aulas-screen .rd-edit-field > span { color: var(--text3); font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.aulas-screen .rd-stepper { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; border: 1px solid var(--border); border-radius: 12px; background: var(--bg2); overflow: hidden; }
+.aulas-screen .rd-stepper button { height: 44px; min-height: 44px; border: 0; background: none; color: var(--accent); font: inherit; font-size: 22px; font-weight: 600; cursor: pointer; }
+.aulas-screen .rd-stepper button:disabled { color: var(--text3); opacity: .45; cursor: default; }
+.aulas-screen .rd-stepper b { text-align: center; font-size: 18px; font-variant-numeric: tabular-nums; }
+.aulas-screen .rd-edit-diff, .aulas-screen .rd-edit-note, .aulas-screen .rd-edit-hint { margin: 0; color: var(--text2); font-size: 13.5px; line-height: 1.45; }
+.aulas-screen .rd-edit-hint { color: var(--text3); font-size: 12.5px; }
+.aulas-screen .rd-edit-note { color: #8a5a17; }
+.aulas-screen .rd-edit-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.aulas-screen .rd-edit-danger { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.aulas-screen .rd-edit-danger span { flex: 1 1 200px; font-size: 13.5px; color: var(--text2); }
+.aulas-screen .rd-link-danger { background: none; border: 0; padding: 4px 0; min-height: 34px; font: inherit; font-size: 14px; color: var(--rd-bad, #b4564b); cursor: pointer; }
+.aulas-screen .rd-link-danger:disabled { opacity: .45; cursor: default; }
 .aulas-screen .rd-booking-left { color: var(--accent) !important; font-weight: 600; }
 .aulas-screen .rd-booking-progress { display: block; height: 5px; margin-top: 4px; border-radius: 5px; background: color-mix(in srgb, var(--accent) 16%, var(--bg3)); overflow: hidden; }
 .aulas-screen .rd-booking-progress em { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
@@ -356,7 +399,8 @@ body[data-view="aulas"] .piano-rooms-open { display: none !important; }
   .aulas-screen .rd-topline { flex-wrap: wrap; }
   .aulas-screen .rd-hero { padding: 18px 16px 16px; }
   .aulas-screen .rd-hero-time { display: none; }
-  .aulas-screen .rd-booking { grid-template-columns: 52px 12px minmax(0, 1fr); }
+  .aulas-screen .rd-booking { grid-template-columns: 52px 12px minmax(0, 1fr) auto; }
+  .aulas-screen .rd-daybar-tip { display: none; }
   .aulas-screen .rd-booking-flags { display: none; }
   .aulas-screen .rd-start-modes { grid-template-columns: 1fr; }
   .aulas-screen .rd-monitor-meta, .aulas-screen .rd-settings-summary { grid-template-columns: 1fr 1fr; }
@@ -366,3 +410,5 @@ body[data-view="aulas"] .piano-rooms-open { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .aulas-screen *, .aulas-screen *::before, .aulas-screen *::after { animation: none !important; transition: none !important; }
 }
+.aulas-screen .rd-action.is-primary { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 650; }
+.aulas-screen .rd-action.is-primary:disabled { opacity: .45; }

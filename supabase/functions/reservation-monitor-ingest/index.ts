@@ -24,6 +24,9 @@ const allowedCommands = new Set([
   "cancel_start",
   "shutdown",
   "run_quota_lab",
+  "reservation_modify",
+  "reservation_cancel",
+  "reservation_lock",
 ]);
 const allowedPhases = new Set(["awaiting_start", "starting", "running", "closed"]);
 

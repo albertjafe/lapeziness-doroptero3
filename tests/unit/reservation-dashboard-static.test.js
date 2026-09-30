@@ -70,4 +70,16 @@ describe('reservation monitor dashboard', () => {
     expect(edge).toContain('quota_lab: cleanQuotaLab(raw.quota_lab)');
     expect(dashboard).toContain('data-command="run_quota_lab"');
   });
+
+  it('allows editing, cancelling and locking your reservations in every layer', () => {
+    const migration = fs.readFileSync('supabase/migrations/20260930090000_reservation_monitor_edit_commands.sql', 'utf8');
+    for (const command of ['reservation_modify', 'reservation_cancel', 'reservation_lock']) {
+      expect(migration).toContain(`'${command}'`);
+      expect(edge).toContain(`"${command}"`);
+      expect(dashboard).toContain(`'${command}'`);
+    }
+    // La migración nueva conserva todas las órdenes anteriores.
+    const previous = fs.readFileSync('supabase/migrations/20260927180000_reservation_monitor_quota_lab.sql', 'utf8');
+    for (const [, command] of previous.matchAll(/'([a-z_]+)'/g)) expect(migration).toContain(`'${command}'`);
+  });
 });
