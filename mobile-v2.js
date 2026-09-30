@@ -198,10 +198,6 @@
     return text;
   }
 
-  function lineCard(label, value, action, extraClass) {
-    return '<button type="button" class="mv2-card mv2-rowcard ' + (extraClass || '') + '" onclick="' + action + '"><span><span class="mv2-lbl">' + label + '</span><b>' + value + '</b></span><span class="mv2-chev" aria-hidden="true">›</span></button>';
-  }
-
   function tile(label, sub, action) {
     return '<button type="button" class="mv2-tile" onclick="' + action + '"><b>' + label + '</b><small>' + sub + '</small></button>';
   }
@@ -234,7 +230,6 @@
       '<div class="mv2-card mv2-parahoy">' + paraHoyHtml(data) + '</div></div><div class="mv2-col mv2-col-side">' +
       // Hub: hábitos (día del reto, hoy, acciones y mantenimiento) y accesos a todo lo demás.
       (root.HabitHub ? root.HabitHub.renderHoyCard() : '') +
-      lineCard('Aulas', esc(aulas), "showView('aulas')", roomsSummary ? 'is-' + roomsSummary.kind : '') +
       '<nav class="mv2-tiles" aria-label="Accesos">' +
         tile('Alemán', 'Tarjetas', "showView('deutsch')") +
         tile('Premios', 'Hucha y logros', 'openPremios()') +
@@ -242,9 +237,16 @@
         // En el móvil Aulas ocupa el sitio de Profesor en la barra inferior; en el iPad está en la barra.
         (phoneWidth() ? tile('Profesor', 'Plan de hoy', "showView('profesor')") : '') +
       '</nav>' +
-      '<button type="button" class="mv2-add" onclick="MobileV2.openAdd()">＋ Añadir estudio, nota o tarea</button></div>';
+      '<button type="button" class="mv2-add" onclick="MobileV2.openAdd()">＋ Añadir estudio, nota o tarea</button>' +
+      // Abajo, tus reservas de hoy: solo la línea del día. Tocar una franja abre su editor aquí mismo.
+      '<section class="mv2-card mv2-aulas' + (roomsSummary ? ' is-' + roomsSummary.kind : '') + '">' +
+        '<button type="button" class="mv2-aulas-head" onclick="showView(\'aulas\')"><span class="mv2-lbl">Aulas</span><b>' + esc(aulas) + '</b><span class="mv2-chev" aria-hidden="true">›</span></button>' +
+        '<div class="aulas-screen rd-embed" id="mv2DayBar"></div></section></div>';
     // Mismo contenido → no se toca el DOM (evita parpadeos, también a mitad del gesto lateral).
-    if (host.__mv2Html !== html) { host.innerHTML = html; host.__mv2Html = html; }
+    if (host.__mv2Html !== html) {
+      host.innerHTML = html; host.__mv2Html = html;
+      if (root.ReservationDashboard && typeof root.ReservationDashboard.paintHoy === 'function') root.ReservationDashboard.paintHoy();
+    }
   }
 
   /* ── Hojas: «＋ Añadir» y «Pegar plan» ─────────────────────────── */

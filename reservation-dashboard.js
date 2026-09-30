@@ -76,6 +76,8 @@
   // que vigila el monitor; { id, start, end, cancelAsk }.
   let bookingEdit = null;
   let bookingEditable = false;
+  // Hoja rápida: el mismo editor, abierto desde la línea del día de Hoy.
+  let quickOpen = false;
   // «Reciclar cuota» toca una reserva real: pide un segundo toque explícito.
   let labRecycleConfirm = false;
   let confirmTimer = null;
@@ -464,9 +466,13 @@
   function renderDayBar(state) {
     const bar = el('reservationDayBar');
     if (!bar) return;
-    const items = Array.isArray(state.reservations) ? state.reservations : [];
     if (!state.date) { bar.hidden = true; return; }
     bar.hidden = false;
+    bar.innerHTML = dayBarHtml(state);
+  }
+  // `compact`: solo la línea y las horas (Hoy), sin leyenda.
+  function dayBarHtml(state, { compact = false } = {}) {
+    const items = Array.isArray(state.reservations) ? state.reservations : [];
     let from = toMinutes(state.monitor?.monitor_window?.start) ?? 600;
     let to = toMinutes(state.monitor?.monitor_window?.end) ?? 1230;
     items.forEach(item => {
@@ -496,7 +502,7 @@
     for (let h = Math.ceil(from / 60) * 60 + 60; h < to; h += 60) hourLines.push(h);
     const ghost = bookingEdit && items.some(item => String(item.event_id) === String(bookingEdit.id))
       ? [toMinutes(bookingEdit.start), toMinutes(bookingEdit.end)] : null;
-    bar.innerHTML = `
+    return `
       <div class="rd-daybar-track" role="group" aria-label="Tus reservas del día sobre la franja ${escapeHtml(Math.floor(from / 60))}:00–${escapeHtml(Math.floor(to / 60))}:${pad(to % 60)}">
         ${hasSz ? band('rd-daybar-sz', 600, 900, 'SZ') : ''}
         ${showFree ? band('rd-daybar-free', freeFrom, freeTo, 'gratis') : ''}
@@ -516,11 +522,98 @@
         ${isToday && nowMin >= from && nowMin <= to ? `<b class="rd-daybar-now" style="left:${pos(nowMin)}"></b>` : ''}
       </div>
       <div class="rd-daybar-ticks" aria-hidden="true">${ticks.map(h => `<span style="left:${pos(h)}">${Math.floor(h / 60)}</span>`).join('')}</div>
-      <div class="rd-daybar-legend">
+      ${compact ? '' : `<div class="rd-daybar-legend">
         ${hasSz ? '<span><i class="is-sz"></i>SZ 10–15</span>' : ''}
         ${showFree ? `<span><i class="is-free"></i>gratis hasta las ${hm(freeTo)}</span>` : ''}
         ${bookingEditable && items.some(item => item.event_id) ? '<span class="rd-daybar-tip">Toca una reserva para cambiarla</span>' : ''}
-      </div>`;
+      </div>`}`;
+  }
+
+  /* ── Hoy: la línea del día y una hoja con el editor ─────────────
+   * La tarjeta de Aulas de Hoy (mobile-v2) deja un `#mv2DayBar`; aquí se
+   * pinta la misma línea y, al tocar una franja, se abre el editor de esa
+   * reserva sin salir de Hoy. */
+  function paintHoy(target) {
+    const box = target || el('mv2DayBar');
+    if (!box) return;
+    const row = currentRow();
+    const state = row?.state || {};
+    const items = Array.isArray(state.reservations) ? state.reservations : [];
+    const today = state.date === localIsoDate(new Date());
+    box.innerHTML = !row || !state.date
+      ? '<p class="rd-embed-empty">Sin lectura del monitor todavía.</p>'
+      : (today ? '' : `<p class="rd-embed-tip">Reservas del ${escapeHtml(formatDate(state.date))}</p>`) +
+        dayBarHtml(state, { compact: true }) + (items.length ? (bookingEditable ? '<p class="rd-embed-tip">Toca una franja para cambiarla.</p>' : '')
+        : `<p class="rd-embed-empty">Sin reservas ${today ? 'hoy' : 'ese día'}.</p>`);
+    if (!box.dataset.quickBound) {
+      box.dataset.quickBound = '1';
+      box.addEventListener('click', event => {
+        const block = event.target.closest('[data-edit-open]');
+        if (!block || !block.dataset.editOpen) return;
+        event.stopPropagation();
+        openQuick(block.dataset.editOpen);
+      });
+    }
+  }
+
+  function openQuick(id) {
+    const item = bookingById(id);
+    // Sin monitor en marcha no se puede cambiar nada: se abre la pantalla de Aulas.
+    if (!item || !bookingEditable) { if (typeof window.showView === 'function') window.showView('aulas'); return; }
+    bookingEdit = { id: item.event_id, start: item.start, end: item.end, cancelAsk: false };
+    quickOpen = true;
+    render();
+  }
+
+  function closeQuick() {
+    quickOpen = false;
+    bookingEdit = null;
+    render();
+  }
+
+  function renderQuick() {
+    let sheet = el('rdQuickSheet');
+    const row = currentRow();
+    const item = quickOpen && bookingEdit ? bookingById(bookingEdit.id) : null;
+    if (!item) {
+      quickOpen = false;
+      if (sheet) sheet.hidden = true;
+      return;
+    }
+    if (!sheet) {
+      sheet = document.createElement('div');
+      sheet.id = 'rdQuickSheet';
+      sheet.className = 'rd-quick-overlay';
+      sheet.innerHTML = '<section class="aulas-screen rd-embed rd-quick" role="dialog" aria-modal="true" aria-labelledby="rdQuickTitle"><div id="rdQuickBody"></div></section>';
+      sheet.addEventListener('click', event => {
+        if (event.target === sheet || event.target.closest('[data-quick-close]')) { closeQuick(); return; }
+        if (event.target.closest('[data-quick-aulas]')) {
+          quickOpen = false;
+          render();
+          if (typeof window.showView === 'function') window.showView('aulas');
+          return;
+        }
+        onBookingListClick(event);
+      });
+      document.body.appendChild(sheet);
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && quickOpen && !sheet.hidden) closeQuick();
+      });
+    }
+    const state = row?.state || {};
+    const status = timelineStatus(state.date, item);
+    const body = el('rdQuickBody');
+    if (body) body.innerHTML = `
+      <header class="rd-quick-head">
+        <div><span class="rd-kicker">${status === 'current' ? 'En curso' : 'Reserva de hoy'}</span>
+          <strong id="rdQuickTitle">Aula ${escapeHtml(roomLabel(item.room))} · ${escapeHtml(item.start)}–${escapeHtml(item.end)}</strong></div>
+        <button type="button" class="rd-quick-close" data-quick-close aria-label="Cerrar">✕</button>
+      </header>
+      <div class="rd-daybar">${dayBarHtml(state, { compact: true })}</div>
+      ${editorHtml(state.date, item, status)}
+      <button type="button" class="rd-quick-more" data-quick-aulas>Abrir Aulas ›</button>`;
+    if (sheet.nextSibling) document.body.appendChild(sheet);
+    sheet.hidden = false;
   }
 
   function agendaSummary(items) {
@@ -985,6 +1078,9 @@
       setStatus(notice.status, notice.kind);
       renderTodayCard(null);
       applyViewMode(null, null);
+      bookingEditable = false;
+      paintHoy();
+      renderQuick();
       return;
     }
     const state = row.state || {};
@@ -1039,6 +1135,8 @@
     if (bookingEdit && !bookingById(bookingEdit.id)) bookingEdit = null;
     renderReservations(state.date, state.reservations, 'reservationBookingList', { editable: bookingEditable });
     renderDayBar(state);
+    paintHoy();
+    renderQuick();
     const agendaEl = el('reservationBookingList');
     if (agendaEl && !agendaEl.dataset.editBound) {
       agendaEl.dataset.editBound = '1';
@@ -1237,6 +1335,6 @@
       || el('view-session')?.classList.contains('active') || el('view-aulas')?.classList.contains('active')) start();
   }
 
-  window.ReservationDashboard = { refresh, setPane, setTab, summary: () => lastSummary };
+  window.ReservationDashboard = { refresh, setPane, setTab, summary: () => lastSummary, paintHoy, openQuick, closeQuick };
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', init) : init();
 })();

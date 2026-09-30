@@ -44,10 +44,10 @@ const aulasView = indexHtml.match(/<div class="view" id="view-aulas">[\s\S]*?\r?
 const todayCard = indexHtml.match(/<button type="button" class="aulas-today-card"[\s\S]*?<\/button>/)[0];
 
 async function mountDashboard(page, row) {
-  await page.goto('/reservation-dashboard.css?v=472');
+  await page.goto('/reservation-dashboard.css?v=473');
   await page.setContent(`<!doctype html><html lang="es" data-theme="marmol"><head>
     <link rel="stylesheet" href="http://127.0.0.1:4173/styles.css?v=464">
-    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=472">
+    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=473">
   </head><body data-view="aulas">${todayCard}${aulasView}</body></html>`);
 
   await page.evaluate((row) => {
@@ -80,7 +80,7 @@ async function mountDashboard(page, row) {
     };
     window.getSB = () => client;
   }, row);
-  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=472' });
+  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=473' });
 }
 
 test('renders live reservations and sends a safe monitor command', async ({ page }) => {
@@ -501,4 +501,55 @@ test('vista mínima: solo la barra y la lista; el resto tras símbolos y «⋯»
   await page.getByRole('button', { name: 'Vista completa' }).click();
   await expect(screen).not.toHaveClass(/is-minimal/);
   await expect(page.locator('#aulasDashboard .rd-controlbar')).toBeVisible();
+});
+
+test('Hoy: la línea del día abre el editor de esa franja sin salir de Hoy', async ({ page }) => {
+  // Mañana: las dos reservas son «próximas» sea la hora que sea.
+  const tomorrow = new Date(Date.now() + 86400000);
+  const day = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
+  const row = structuredClone(sampleRow);
+  row.state.date = day;
+  row.state.monitor.target_date = day;
+  row.state.monitor.phase = 'running';
+  await mountDashboard(page, row);
+  // El hueco que deja la tarjeta de Aulas de Hoy (mobile-v2).
+  await page.evaluate(() => {
+    const box = document.createElement('div');
+    box.className = 'aulas-screen rd-embed';
+    box.id = 'mv2DayBar';
+    document.body.prepend(box);
+    window.__views = [];
+    window.showView = view => window.__views.push(view);
+    window.ReservationDashboard.paintHoy();
+  });
+  const bar = page.locator('#mv2DayBar');
+  await expect(bar.locator('.rd-daybar-block')).toHaveCount(2);
+  await expect(bar).toContainText('Toca una franja para cambiarla');
+  await expect(bar.locator('.rd-daybar-legend')).toHaveCount(0);
+
+  await bar.locator('[data-edit-open="91"]').click();
+  const sheet = page.locator('#rdQuickSheet');
+  await expect(sheet).toBeVisible();
+  await expect(sheet).toContainText('Aula 113 · 10:00–12:00');
+  await sheet.getByRole('button', { name: 'Fin 15 min después' }).click();
+  await expect(sheet.locator('.rd-edit-diff')).toContainText('10:00–12:15');
+  await expect(sheet.locator('.rd-daybar-ghost')).toHaveCount(1);
+  await sheet.getByRole('button', { name: 'Guardar en Asimut' }).click();
+  expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({ command: 'reservation_modify', payload: { event_id: 91, start: '10:00', end: '12:15' } });
+  await expect(sheet).toBeHidden();
+
+  // ✕ cierra sin mandar nada.
+  await bar.locator('[data-edit-open="92"]').click();
+  await expect(sheet).toContainText('Protegida con candado');
+  const before = await page.evaluate(() => window.__dashboardWrites.length);
+  await sheet.getByRole('button', { name: 'Cerrar' }).click();
+  await expect(sheet).toBeHidden();
+  expect(await page.evaluate(() => window.__dashboardWrites.length)).toBe(before);
+
+  // Sin el monitor en marcha no se puede cambiar: tocar abre Aulas.
+  await page.evaluate(async () => { window.__row.state.monitor.online = false; await window.ReservationDashboard.refresh(false); });
+  await expect(bar).not.toContainText('Toca una franja');
+  await bar.locator('[data-edit-open="91"]').click();
+  expect(await page.evaluate(() => window.__views)).toEqual(['aulas']);
+  await expect(sheet).toBeHidden();
 });

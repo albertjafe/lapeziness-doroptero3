@@ -371,3 +371,14 @@ html.mv2-tablet .mv2-evcopy b { font-size: 16px; }
 html.mv2-tablet .mv2-evcopy small { font-size: 13.5px; }
 html.mv2-tablet .mv2-count b { font-size: 21px; }
 html.mv2-tablet .mv2-seg { font-size: 15px; }
+
+/* Hoy · Aulas abajo: resumen + línea del día (v473). La barra la pinta
+   reservation-dashboard.js en #mv2DayBar; tocar una franja abre su editor. */
+html.mv2-on .mv2-aulas { display: grid; gap: 10px; }
+html.mv2-on .mv2-aulas-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 10px; width: 100%; padding: 0; border: 0; background: none; color: var(--text); text-align: left; font: inherit; cursor: pointer; }
+html.mv2-on .mv2-aulas-head .mv2-lbl { grid-column: 1; }
+html.mv2-on .mv2-aulas-head b { grid-column: 1; display: block; margin-top: 2px; font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html.mv2-on .mv2-aulas-head .mv2-chev { grid-column: 2; grid-row: 1 / span 2; }
+html.mv2-on .mv2-aulas.is-error .mv2-aulas-head b { color: var(--red, #b4564b); }
+html.mv2-tablet .mv2-col-side .mv2-aulas { grid-column: 1 / -1; }
+html.mv2-tablet .mv2-aulas-head b { font-size: 16.5px; }

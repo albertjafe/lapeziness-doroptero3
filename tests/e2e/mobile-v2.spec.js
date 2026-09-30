@@ -75,7 +75,7 @@ test('Hoy v2: nada se pierde — registro rápido, diario y Aulas siguen a un to
   // Aulas es una pantalla propia y ocupa el sitio de Profesor en la barra;
   // Profesor sigue a un toque desde Hoy.
   await expect(page.locator('#aulasTodayCard')).toBeHidden();
-  await page.locator('#mv2Hoy .mv2-rowcard', { hasText: 'Aulas' }).click();
+  await page.locator('#mv2Hoy .mv2-aulas-head').click();
   await expect(page.locator('#view-aulas')).toBeVisible();
   await expect(page.locator('.nav-btn[data-view="aulas"]')).toBeVisible();
   await expect(page.locator('.nav-btn[data-view="profesor"]')).toBeHidden();
