@@ -44,10 +44,10 @@ const aulasView = indexHtml.match(/<div class="view" id="view-aulas">[\s\S]*?\r?
 const todayCard = indexHtml.match(/<button type="button" class="aulas-today-card"[\s\S]*?<\/button>/)[0];
 
 async function mountDashboard(page, row) {
-  await page.goto('/reservation-dashboard.css?v=478');
+  await page.goto('/reservation-dashboard.css?v=479');
   await page.setContent(`<!doctype html><html lang="es" data-theme="marmol"><head>
     <link rel="stylesheet" href="http://127.0.0.1:4173/styles.css?v=464">
-    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=478">
+    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=479">
   </head><body data-view="aulas">${todayCard}${aulasView}</body></html>`);
 
   await page.evaluate((row) => {
@@ -80,7 +80,7 @@ async function mountDashboard(page, row) {
     };
     window.getSB = () => client;
   }, row);
-  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=478' });
+  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=479' });
 }
 
 test('renders live reservations and sends a safe monitor command', async ({ page }) => {
@@ -597,4 +597,28 @@ test('laboratorio de aulas: lanza con { aulas: true } y muestra la antelación a
   await expect(lab.locator('tbody tr').nth(1)).toContainText('no');
   await lab.getByRole('button', { name: /Probar acceso a todas las aulas/ }).click();
   expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({ command: 'run_quota_lab', payload: { aulas: true } });
+});
+
+test('tipo de reserva: Emma por defecto en grupo con Alberto, y se puede cambiar', async ({ page }) => {
+  const row = structuredClone(sampleRow);
+  row.source = 'emma';
+  row.state.monitor.booking_type = 'grupo_alberto';
+  await mountDashboard(page, row);
+  await page.evaluate(() => { localStorage.setItem('reservationDashboardSource', 'emma'); });
+  await page.evaluate(() => window.ReservationDashboard.refresh(false));
+  const box = page.locator('#reservationSettingControls .rd-booking-type');
+  await expect(box.getByRole('radio')).toHaveCount(3);
+  await expect(box.getByRole('radio', { name: 'Grupo con Alberto' })).toHaveAttribute('aria-checked', 'true');
+  await expect(box).toContainText('Alberto de participante');
+  await box.getByRole('radio', { name: 'Anónima' }).click();
+  expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({ command: 'set_booking_type', payload: { type: 'anon' } });
+});
+
+test('tipo de reserva: Alberto no tiene la opción de grupo', async ({ page }) => {
+  const row = structuredClone(sampleRow);
+  row.state.monitor.booking_type = 'anon';
+  await mountDashboard(page, row);
+  const box = page.locator('#reservationSettingControls .rd-booking-type');
+  await expect(box.getByRole('radio')).toHaveCount(2);
+  await expect(box.getByRole('radio', { name: 'Anónima' })).toHaveAttribute('aria-checked', 'true');
 });

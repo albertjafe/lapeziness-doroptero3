@@ -632,6 +632,27 @@
     return list.length ? `${list.length} ${list.length === 1 ? 'reserva' : 'reservas'} · ${durationLabel(total)}` : 'sin reservas';
   }
 
+  // Tipo de reserva (01-10-2026). «Grupo con Alberto» solo existe en el perfil
+  // de Emma: la firma Emma y Alberto va de participante (su tarjeta abre).
+  const BOOKING_TYPES = [
+    { type: 'grupo_alberto', label: 'Grupo con Alberto', hint: 'Anónima, firmada por Emma y con Alberto de participante: abre su tarjeta.', only: 'emma' },
+    { type: 'anon', label: 'Anónima', hint: 'Einzelbuchung (anonym): solo quien firma.' },
+    { type: 'normal', label: 'Con nombre', hint: 'Einzelbuchung con tu nombre visible.' },
+  ];
+  function bookingTypeHtml(monitor, disabled) {
+    const current = monitor.booking_type;
+    if (!current) return '';
+    const options = BOOKING_TYPES.filter(item => !item.only || item.only === selectedSource);
+    const active = options.find(item => item.type === current) || options[0];
+    return `<div class="rd-booking-type">
+      <span class="rd-toggle-copy"><b>Tipo de reserva</b><small>${escapeHtml(active.hint)}</small></span>
+      <div class="rd-segment" role="radiogroup" aria-label="Tipo de reserva">
+        ${options.map(item => `<button type="button" role="radio" aria-checked="${item.type === current ? 'true' : 'false'}"
+          class="${item.type === current ? 'active' : ''}" data-command="set_booking_type" data-type="${item.type}" ${disabled || item.type === current ? 'disabled' : ''}>${escapeHtml(item.label)}</button>`).join('')}
+      </div>
+    </div>`;
+  }
+
   function toggleButton(item, enabled, disabled) {
     return `<button type="button" class="rd-toggle ${enabled ? 'active' : ''}" data-command="${item.command}" data-enabled="${enabled ? 'false' : 'true'}" role="switch" aria-checked="${enabled ? 'true' : 'false'}" ${disabled ? 'disabled' : ''}>
       <span class="rd-toggle-copy"><b>${escapeHtml(item.label)}</b><small>${escapeHtml(item.hint)}</small></span><i aria-hidden="true"></i>
@@ -671,7 +692,7 @@
         <button type="button" class="rd-action ${watchesTomorrow ? 'active' : ''}" data-command="target_tomorrow" aria-pressed="${watchesTomorrow ? 'true' : 'false'}" ${offline ? 'disabled' : ''}><b>Mañana</b></button>
       </div>`;
 
-    settingsWrap.innerHTML = TOGGLES
+    settingsWrap.innerHTML = bookingTypeHtml(monitor, offline) + TOGGLES
       .filter(item => !(item.optional && monitor[item.key] == null))
       .map(item => toggleButton(item, monitor[item.key], offline)).join('');
     const summary = el('reservationActiveSettings');
@@ -1192,6 +1213,7 @@
 
   function commandPayload(button) {
     if (button.dataset.command === 'set_operating_mode') return { mode: button.dataset.mode };
+    if (button.dataset.command === 'set_booking_type') return { type: button.dataset.type };
     if (button.dataset.enabled != null) return { enabled: button.dataset.enabled === 'true' };
     return {};
   }

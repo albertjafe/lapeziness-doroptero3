@@ -463,3 +463,10 @@ body[data-view="aulas"] .piano-rooms-open { display: none !important; }
 html.platform-windows .rd-quick-overlay { z-index: 1150; }
 
 .aulas-screen .rd-lab-rooms { margin-top: 8px; }
+
+/* Tipo de reserva (Ajustes) */
+.aulas-screen .rd-booking-type { display: grid; gap: 10px; padding: 12px 16px; border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+.aulas-screen .rd-segment { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border-radius: 13px; background: var(--bg3); }
+.aulas-screen .rd-segment button { min-height: 40px; padding: 0 8px; border: 0; border-radius: 10px; background: none; color: var(--text2); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+.aulas-screen .rd-segment button.active { background: var(--bg2); color: var(--accent); box-shadow: 0 1px 3px rgba(0, 0, 0, .1); cursor: default; opacity: 1; }
+.aulas-screen .rd-segment button:disabled:not(.active) { opacity: .45; cursor: default; }

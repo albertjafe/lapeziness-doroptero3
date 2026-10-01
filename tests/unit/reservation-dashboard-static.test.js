@@ -82,4 +82,14 @@ describe('reservation monitor dashboard', () => {
     const previous = fs.readFileSync('supabase/migrations/20260927180000_reservation_monitor_quota_lab.sql', 'utf8');
     for (const [, command] of previous.matchAll(/'([a-z_]+)'/g)) expect(migration).toContain(`'${command}'`);
   });
+
+  it('allows choosing the booking type in every layer and keeps every previous command', () => {
+    const migration = fs.readFileSync('supabase/migrations/20261001120000_reservation_monitor_booking_type.sql', 'utf8');
+    expect(migration).toContain("'set_booking_type'");
+    expect(edge).toContain('"set_booking_type"');
+    expect(edge).toContain('booking_type: cleanChoice(monitorRaw.booking_type, ["grupo_alberto", "anon", "normal"])');
+    expect(dashboard).toContain('data-command="set_booking_type"');
+    const previous = fs.readFileSync('supabase/migrations/20260930090000_reservation_monitor_edit_commands.sql', 'utf8');
+    for (const [, command] of previous.matchAll(/'([a-z_]+)'/g)) expect(migration).toContain(`'${command}'`);
+  });
 });

@@ -27,6 +27,7 @@ const allowedCommands = new Set([
   "reservation_modify",
   "reservation_cancel",
   "reservation_lock",
+  "set_booking_type",
 ]);
 const allowedPhases = new Set(["awaiting_start", "starting", "running", "closed"]);
 
@@ -247,6 +248,7 @@ function cleanState(value: unknown) {
       madrugada_enabled: cleanBoolean(monitorRaw.madrugada_enabled),
       aachen_only: cleanBoolean(monitorRaw.aachen_only),
       emergency_enabled: cleanBoolean(monitorRaw.emergency_enabled),
+      booking_type: cleanChoice(monitorRaw.booking_type, ["grupo_alberto", "anon", "normal"]),
       min_slot_duration: cleanInteger(monitorRaw.min_slot_duration, 15, 720),
       monitor_window: {
         start: cleanTime((monitorRaw.monitor_window as Record<string, unknown> | undefined)?.start),
