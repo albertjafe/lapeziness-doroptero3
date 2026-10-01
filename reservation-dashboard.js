@@ -89,7 +89,8 @@
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
     })[ch]);
   }
-  function sourceLabel(source) { return source === 'emma' ? 'Emma' : 'Alberto'; }
+  const SOURCE_LABELS = { alberto: 'Alberto', emma: 'Emma', chen: 'Chen' };
+  function sourceLabel(source) { return SOURCE_LABELS[source] || 'Alberto'; }
   function pad(value) { return String(value).padStart(2, '0'); }
   function localIsoDate(date) {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -632,20 +633,22 @@
     return list.length ? `${list.length} ${list.length === 1 ? 'reserva' : 'reservas'} · ${durationLabel(total)}` : 'sin reservas';
   }
 
-  // Tipo de reserva (01-10-2026). «Grupo con Alberto» solo existe en el perfil
-  // de Emma: la firma Emma y Alberto va de participante (su tarjeta abre).
+  // Tipo de reserva (01-10-2026). «Grupo con Alberto» solo existe en los
+  // perfiles prestados (Emma, Chen): firma ese perfil y Alberto va de
+  // participante (su tarjeta abre).
   const BOOKING_TYPES = [
-    { type: 'grupo_alberto', label: 'Grupo con Alberto', hint: 'Anónima, firmada por Emma y con Alberto de participante: abre su tarjeta.', only: 'emma' },
+    { type: 'grupo_alberto', label: 'Grupo con Alberto', hint: 'Anónima, firmada por {perfil} y con Alberto de participante: abre su tarjeta.', notFor: 'alberto' },
     { type: 'anon', label: 'Anónima', hint: 'Einzelbuchung (anonym): solo quien firma.' },
     { type: 'normal', label: 'Con nombre', hint: 'Einzelbuchung con tu nombre visible.' },
   ];
   function bookingTypeHtml(monitor, disabled) {
     const current = monitor.booking_type;
     if (!current) return '';
-    const options = BOOKING_TYPES.filter(item => !item.only || item.only === selectedSource);
+    const options = BOOKING_TYPES.filter(item => item.notFor !== selectedSource);
     const active = options.find(item => item.type === current) || options[0];
+    const hint = active.hint.replace('{perfil}', sourceLabel(selectedSource));
     return `<div class="rd-booking-type">
-      <span class="rd-toggle-copy"><b>Tipo de reserva</b><small>${escapeHtml(active.hint)}</small></span>
+      <span class="rd-toggle-copy"><b>Tipo de reserva</b><small>${escapeHtml(hint)}</small></span>
       <div class="rd-segment" role="radiogroup" aria-label="Tipo de reserva">
         ${options.map(item => `<button type="button" role="radio" aria-checked="${item.type === current ? 'true' : 'false'}"
           class="${item.type === current ? 'active' : ''}" data-command="set_booking_type" data-type="${item.type}" ${disabled || item.type === current ? 'disabled' : ''}>${escapeHtml(item.label)}</button>`).join('')}

@@ -80,7 +80,7 @@ async function mountDashboard(page, row) {
     };
     window.getSB = () => client;
   }, row);
-  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=479' });
+  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=480' });
 }
 
 test('renders live reservations and sends a safe monitor command', async ({ page }) => {
@@ -621,4 +621,20 @@ test('tipo de reserva: Alberto no tiene la opción de grupo', async ({ page }) =
   const box = page.locator('#reservationSettingControls .rd-booking-type');
   await expect(box.getByRole('radio')).toHaveCount(2);
   await expect(box.getByRole('radio', { name: 'Anónima' })).toHaveAttribute('aria-checked', 'true');
+});
+
+test('perfil Chen: aparece en el selector y reserva en grupo con Alberto', async ({ page }) => {
+  const emma = structuredClone(sampleRow);
+  emma.source = 'emma';
+  emma.heartbeat_at = emma.observed_at = emma.updated_at = new Date(Date.now() - 60 * 60000).toISOString();
+  const chen = structuredClone(sampleRow);
+  chen.source = 'chen';
+  chen.state.monitor.booking_type = 'grupo_alberto';
+  await mountDashboard(page, chen);
+  await page.evaluate(rows => { window.__rows = rows; localStorage.setItem('reservationDashboardSource', 'chen'); }, [emma, chen]);
+  await page.evaluate(() => window.ReservationDashboard.refresh(false));
+  await expect(page.locator('#reservationSourceSwitch [data-source="chen"]')).toHaveText('Chen');
+  const box = page.locator('#reservationSettingControls .rd-booking-type');
+  await expect(box.getByRole('radio', { name: 'Grupo con Alberto' })).toHaveAttribute('aria-checked', 'true');
+  await expect(box).toContainText('firmada por Chen');
 });

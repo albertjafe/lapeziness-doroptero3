@@ -83,6 +83,16 @@ describe('reservation monitor dashboard', () => {
     for (const [, command] of previous.matchAll(/'([a-z_]+)'/g)) expect(migration).toContain(`'${command}'`);
   });
 
+  it('accepts the third monitor source «chen» in every layer', () => {
+    const migration = fs.readFileSync('supabase/migrations/20261001150000_reservation_monitor_source_chen.sql', 'utf8');
+    for (const table of ['tokens', 'state', 'commands']) {
+      expect(migration).toContain(`reservation_monitor_${table}_source_check`);
+    }
+    expect(migration.match(/'alberto', 'emma', 'chen'/g)).toHaveLength(3);
+    expect(edge).toContain('const allowedSources = new Set(["alberto", "emma", "chen"]);');
+    expect(dashboard).toContain("chen: 'Chen'");
+  });
+
   it('allows choosing the booking type in every layer and keeps every previous command', () => {
     const migration = fs.readFileSync('supabase/migrations/20261001120000_reservation_monitor_booking_type.sql', 'utf8');
     expect(migration).toContain("'set_booking_type'");

@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-const allowedSources = new Set(["alberto", "emma"]);
+const allowedSources = new Set(["alberto", "emma", "chen"]);
 const allowedCommands = new Set([
   "pause",
   "resume",
