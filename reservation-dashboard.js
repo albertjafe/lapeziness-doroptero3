@@ -709,6 +709,8 @@
     const when = lab.finished_at ? relativeAge(lab.finished_at) : '';
     const questions = Array.isArray(lab.questions) ? lab.questions : [];
     const tests = Array.isArray(lab.tests) ? lab.tests : [];
+    // El laboratorio de AULAS comparte el mismo hueco: sus preguntas empiezan por «aulas_».
+    const roomLab = questions.some(q => String(q.id || '').startsWith('aulas_'));
     wrap.innerHTML = `
       <p class="rd-lab-intro">Prueba en Asimut cómo se combinan la SZ, el RF y el tramo gratis de 2 h <b>sin reservar nada</b>: son simulaciones que Asimut evalúa y descarta (también ampliar hacia atrás, reservas pegadas, otras aulas y la ventana de antelación). Tarda un par de minutos.</p>
       ${running ? `<p class="rd-lab-status is-running">En marcha… ${escapeHtml(lab.progress || '')}</p>` : ''}
@@ -719,14 +721,21 @@
           <span><b>${escapeHtml(q.title || q.id)}</b><small>${escapeHtml(q.text || '')}</small></span>
         </li>`).join('')}</ul>
       <p class="rd-lab-meta">Último laboratorio ${escapeHtml(when)} · ${tests.length} simulaciones</p>
-      <details class="rd-lab-tests"><summary>Ver las simulaciones</summary>
-        <table><thead><tr><th>Prueba</th><th>Día</th><th>Horario</th><th>SZ</th><th>RF</th></tr></thead><tbody>
-        ${tests.map(t => `<tr><td>${escapeHtml(t.id)}</td><td>${escapeHtml(formatDate(t.day))}</td><td>${escapeHtml(t.ini || '')}–${escapeHtml(t.fin || '')}</td>
-          <td>${t.sz ? 'se pasa' : 'cabe'}</td><td>${t.rf ? 'se pasa' : 'cabe'}</td></tr>`).join('')}
-        </tbody></table>
+      <details class="rd-lab-tests"><summary>${roomLab ? 'Ver aula por aula' : 'Ver las simulaciones'}</summary>
+        ${roomLab
+          ? `<table><thead><tr><th>Aula</th><th>Antelación</th><th>Acceso</th></tr></thead><tbody>
+            ${tests.map(t => `<tr><td>${escapeHtml(t.id)}</td><td>${escapeHtml((t.codes || [])[0] || '—')}</td><td>${t.sz ? 'no' : 'sí'}</td></tr>`).join('')}
+            </tbody></table>`
+          : `<table><thead><tr><th>Prueba</th><th>Día</th><th>Horario</th><th>SZ</th><th>RF</th></tr></thead><tbody>
+            ${tests.map(t => `<tr><td>${escapeHtml(t.id)}</td><td>${escapeHtml(formatDate(t.day))}</td><td>${escapeHtml(t.ini || '')}–${escapeHtml(t.fin || '')}</td>
+              <td>${t.sz ? 'se pasa' : 'cabe'}</td><td>${t.rf ? 'se pasa' : 'cabe'}</td></tr>`).join('')}
+            </tbody></table>`}
       </details>` : ''}
       <button type="button" class="rd-action rd-lab-run" data-command="run_quota_lab" ${offline || running ? 'disabled' : ''}>
         <span aria-hidden="true">⚗</span><b>${running ? 'Laboratorio en marcha…' : questions.length ? 'Repetir laboratorio' : 'Lanzar laboratorio'}</b>
+      </button>
+      <button type="button" class="rd-action rd-lab-run rd-lab-rooms" data-ui="lab-rooms" ${offline || running ? 'disabled' : ''}>
+        <span aria-hidden="true">▦</span><b>Probar acceso a todas las aulas</b>
       </button>
       <div class="rd-lab-recycle">
         ${labRecycleConfirm && !offline && !running ? `
@@ -738,6 +747,7 @@
           <button type="button" class="rd-link" data-ui="lab-recycle-ask" ${offline || running ? 'disabled' : ''}>Probar también «reciclar cuota»…</button>`}
       </div>`;
     wrap.querySelector('[data-command="run_quota_lab"]')?.addEventListener('click', event => sendCommand(event.currentTarget));
+    wrap.querySelector('[data-ui="lab-rooms"]')?.addEventListener('click', event => postCommand('run_quota_lab', { aulas: true }, event.currentTarget));
     wrap.querySelector('[data-ui="lab-recycle-ask"]')?.addEventListener('click', () => { labRecycleConfirm = true; renderQuotaLab(state, offline); });
     wrap.querySelector('[data-ui="lab-recycle-cancel"]')?.addEventListener('click', () => { labRecycleConfirm = false; renderQuotaLab(state, offline); });
     wrap.querySelector('[data-ui="lab-recycle-go"]')?.addEventListener('click', event => {

@@ -44,10 +44,10 @@ const aulasView = indexHtml.match(/<div class="view" id="view-aulas">[\s\S]*?\r?
 const todayCard = indexHtml.match(/<button type="button" class="aulas-today-card"[\s\S]*?<\/button>/)[0];
 
 async function mountDashboard(page, row) {
-  await page.goto('/reservation-dashboard.css?v=473');
+  await page.goto('/reservation-dashboard.css?v=478');
   await page.setContent(`<!doctype html><html lang="es" data-theme="marmol"><head>
     <link rel="stylesheet" href="http://127.0.0.1:4173/styles.css?v=464">
-    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=473">
+    <link rel="stylesheet" href="http://127.0.0.1:4173/reservation-dashboard.css?v=478">
   </head><body data-view="aulas">${todayCard}${aulasView}</body></html>`);
 
   await page.evaluate((row) => {
@@ -80,7 +80,7 @@ async function mountDashboard(page, row) {
     };
     window.getSB = () => client;
   }, row);
-  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=477' });
+  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=478' });
 }
 
 test('renders live reservations and sends a safe monitor command', async ({ page }) => {
@@ -573,4 +573,28 @@ test('si el perfil recordado no da señal, Aulas muestra el monitor que sí est�
   // Elegir a mano sigue funcionando.
   await switcher.getByRole('button', { name: /Alberto/ }).click();
   await expect(switcher.locator('button.active')).toContainText('Alberto');
+});
+
+test('laboratorio de aulas: lanza con { aulas: true } y muestra la antelación aula por aula', async ({ page }) => {
+  const row = structuredClone(sampleRow);
+  row.source = 'emma';
+  row.state.quota_lab = {
+    status: 'done', finished_at: new Date().toISOString(),
+    questions: [
+      { id: 'aulas_total', title: 'Aulas de Emma: acceso', verdict: 'yes', text: 'Asimut deja reservar 2 de 3 aulas. Sin acceso: 1.' },
+      { id: 'aulas_15 h', title: 'Antelación 15 h: 1 aulas', verdict: 'yes', text: '10.235' },
+    ],
+    tests: [
+      { id: '10.235', day: '2099-01-02', ini: '12:00', fin: '12:15', min: 15, sz: false, rf: false, codes: ['15 h'] },
+      { id: '30.113', day: '2099-01-02', ini: '12:00', fin: '12:15', min: 15, sz: true, rf: false, codes: ['no'] },
+    ],
+  };
+  await mountDashboard(page, row);
+  const lab = page.locator('#reservationQuotaLab');
+  await expect(lab).toContainText('Asimut deja reservar 2 de 3 aulas');
+  await lab.getByText('Ver aula por aula').click();
+  await expect(lab.locator('tbody tr').first()).toContainText('15 h');
+  await expect(lab.locator('tbody tr').nth(1)).toContainText('no');
+  await lab.getByRole('button', { name: /Probar acceso a todas las aulas/ }).click();
+  expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({ command: 'run_quota_lab', payload: { aulas: true } });
 });

@@ -461,3 +461,5 @@ body[data-view="aulas"] .piano-rooms-open { display: none !important; }
   .aulas-screen.rd-quick { border-radius: 22px; box-shadow: 0 24px 70px rgba(0, 0, 0, .24); }
 }
 html.platform-windows .rd-quick-overlay { z-index: 1150; }
+
+.aulas-screen .rd-lab-rooms { margin-top: 8px; }
