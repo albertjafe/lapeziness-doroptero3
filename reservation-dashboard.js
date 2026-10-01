@@ -21,6 +21,7 @@
   };
   let rows = [];
   let selectedSource = localStorage.getItem('reservationDashboardSource') || 'alberto';
+  let sourcePickedHere = false; // elegido a mano en esta visita: manda aunque no dé señal
   let pollTimer = null;
   let clockTimer = null;
   let channel = null;
@@ -226,6 +227,14 @@
     const available = Array.from(new Set(rows.map(row => row.source).filter(Boolean)));
     if (!available.length) available.push(selectedSource);
     if (!available.includes(selectedSource)) selectedSource = available[0];
+    // Si el perfil recordado no da señal y otro sí, se muestra el que está en
+    // marcha (p. ej. Emma mientras la cuenta de Alberto está bloqueada). Lo que
+    // elijas a mano en el selector manda durante la visita.
+    const live = source => rows.some(row => row.source === source && ageMs(row) <= OFFLINE_MS);
+    if (!sourcePickedHere && !live(selectedSource)) {
+      const other = available.find(source => source !== selectedSource && live(source));
+      if (other) selectedSource = other;
+    }
     wrap.hidden = available.length < 2;
     wrap.innerHTML = available.map(source => `
       <button type="button" data-source="${escapeHtml(source)}" class="${source === selectedSource ? 'active' : ''}">
@@ -234,6 +243,7 @@
     wrap.querySelectorAll('[data-source]').forEach(button => {
       button.addEventListener('click', () => {
         selectedSource = button.dataset.source;
+        sourcePickedHere = true;
         localStorage.setItem('reservationDashboardSource', selectedSource);
         render();
       });

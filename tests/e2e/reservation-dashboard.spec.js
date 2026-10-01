@@ -64,7 +64,7 @@ async function mountDashboard(page, row) {
         if (table === 'reservation_monitor_state') {
           const builder = {
             select() { return builder; }, eq() { return builder; },
-            order: async () => ({ data: [window.__row], error: null }),
+            order: async () => ({ data: window.__rows || [window.__row], error: null }),
           };
           return builder;
         }
@@ -80,7 +80,7 @@ async function mountDashboard(page, row) {
     };
     window.getSB = () => client;
   }, row);
-  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=473' });
+  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=477' });
 }
 
 test('renders live reservations and sends a safe monitor command', async ({ page }) => {
@@ -552,4 +552,25 @@ test('Hoy: la línea del día abre el editor de esa franja sin salir de Hoy', as
   await bar.locator('[data-edit-open="91"]').click();
   expect(await page.evaluate(() => window.__views)).toEqual(['aulas']);
   await expect(sheet).toBeHidden();
+});
+
+test('si el perfil recordado no da señal, Aulas muestra el monitor que sí está en marcha', async ({ page }) => {
+  const alberto = structuredClone(sampleRow);
+  alberto.heartbeat_at = alberto.observed_at = alberto.updated_at = new Date(Date.now() - 60 * 60000).toISOString();
+  const emma = structuredClone(sampleRow);
+  emma.source = 'emma';
+  emma.state.reservations = [{ event_id: 501, start: '16:00', end: '17:30', room: '235', type: 'Einzelbuchung' }];
+  await mountDashboard(page, alberto);
+  await page.evaluate(async rows => {
+    localStorage.setItem('reservationDashboardSource', 'alberto');
+    window.__rows = rows;
+    await window.ReservationDashboard.refresh(false);
+  }, [alberto, emma]);
+  const switcher = page.locator('#reservationSourceSwitch');
+  await expect(switcher).toBeVisible();
+  await expect(switcher.locator('button.active')).toContainText('Emma');
+  await expect(page.locator('#reservationBookingList')).toContainText('Aula 235');
+  // Elegir a mano sigue funcionando.
+  await switcher.getByRole('button', { name: /Alberto/ }).click();
+  await expect(switcher.locator('button.active')).toContainText('Alberto');
 });

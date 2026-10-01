@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v476';
+const CACHE = 'estudio-v477';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -78,7 +78,7 @@ const ASSETS = [
   "./piano-rooms.css?v=369",
   "./piano-rooms.js?v=470",
   "./reservation-dashboard.css?v=473",
-  "./reservation-dashboard.js?v=473",
+  "./reservation-dashboard.js?v=477",
   "./device-recovery.js?v=460",
   "./device-recovery.css?v=460",
   "./planning-enhancements-v3.css?v=377",
