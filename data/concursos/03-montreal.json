@@ -1,0 +1,178 @@
+{
+  "id": "montreal-2027",
+  "nombre": "Concours musical international de Montréal – Piano 2027",
+  "edicion": "Piano 2027",
+  "ciudad": "Montreal",
+  "pais": "Canadá",
+  "web": "https://www.concoursmontreal.ca/en/piano-2027/",
+  "fechas": {
+    "inicio": "2027-04-24",
+    "fin": "2027-05-05",
+    "nota": "Llegada el 22-04; hay que estar libre del 23-04 al 05-05."
+  },
+  "plazo": {
+    "fecha": "2026-10-31",
+    "hora": "23:59",
+    "zona": "hora de Montreal (EDT)",
+    "nota": "Resultado de la preselección el 18-12-2026; confirmar antes del 22-12. Programa definitivo de todas las rondas antes del 18-01-2027.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": 200,
+    "moneda": "CAD",
+    "nota": "No reembolsable."
+  },
+  "edad": {
+    "min": 18,
+    "max": 30,
+    "aFecha": "2027-04-24",
+    "nacidoDesde": "1996-04-25",
+    "nacidoHasta": "2009-04-24",
+    "texto": "18–30 años al empezar el concurso: nacidos entre el 25-04-1996 y el 24-04-2009. No pueden participar finalistas de ediciones de piano anteriores.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": true,
+    "duracion": "4 vídeos, uno por obra",
+    "resumen": "Bach preludio y fuga · sonata completa de Haydn, Mozart, Beethoven o Schubert · estudio virtuoso · obra de estilo contrastante (se admite un solo movimiento).",
+    "detalles": [
+      "Una cámara fija, un solo ángulo (sin zoom ni movimientos); cada obra en una toma continua, sin editar.",
+      "Grabados después del 1-07-2025.",
+      "Vídeos en directo multicámara de concursos WFIMC: a criterio del concurso (consultar a candidates@concoursmontreal.ca).",
+      "Preselección anónima: el jurado no ve nombre, edad, nacionalidad, biografía ni profesores."
+    ]
+  },
+  "rondas": [
+    {
+      "nombre": "1ª ronda (25 pianistas)",
+      "fecha": "2027-04-24",
+      "duracion": "25–28 min",
+      "repertorio": [
+        "Al menos 3 obras de 3 periodos distintos; se admite un solo movimiento.",
+        "De memoria; sin salir del escenario. Pasan 12."
+      ]
+    },
+    {
+      "nombre": "Semifinal (12)",
+      "fecha": "2027-04-28",
+      "duracion": "50–55 min",
+      "repertorio": [
+        "Sonata completa de Haydn, Mozart, Beethoven o Schubert.",
+        "Una obra de compositor canadiense (de una lista que envían en diciembre; puede tocarse con partitura).",
+        "Otra obra libre.",
+        "De memoria salvo la obra canadiense; se puede salir del escenario una vez. Pasan 6."
+      ]
+    },
+    {
+      "nombre": "Música de cámara (6)",
+      "fecha": "2027-04-30",
+      "duracion": null,
+      "repertorio": [
+        "Concierto de Mozart en versión para piano y cuarteto de cuerda: K. 413, 414, 415 o 449. De memoria."
+      ]
+    },
+    {
+      "nombre": "Final · con orquesta (6)",
+      "fecha": "2027-05-04",
+      "duracion": null,
+      "repertorio": [
+        "Un concierto con la Orchestre symphonique de Montréal: Bartók 3; Beethoven 1–5; Chopin 1, 2; Grieg; Liszt 1, 2; Prokófiev 2, 3; Rachmáninov 2, 3, Rapsodia Paganini; Ravel en Sol y para la mano izquierda; Saint-Saëns 2, 5; Schumann; Chaikovski 1."
+      ]
+    }
+  ],
+  "premios": [
+    {
+      "puesto": "1.º",
+      "importe": 70000,
+      "moneda": "CAD",
+      "extra": "30.000 $ de premio + 40.000 $ de beca de desarrollo profesional Joseph Rouleau."
+    },
+    {
+      "puesto": "2.º",
+      "importe": 25000,
+      "moneda": "CAD",
+      "extra": "15.000 $ + beca Rouleau de 10.000 $."
+    },
+    {
+      "puesto": "3.º",
+      "importe": 20000,
+      "moneda": "CAD",
+      "extra": "10.000 $ + beca Rouleau de 10.000 $."
+    },
+    {
+      "puesto": "Premio de grabación Steinway",
+      "importe": 55000,
+      "moneda": "CAD",
+      "extra": ""
+    },
+    {
+      "puesto": "Premio del público ICI Musique",
+      "importe": 5000,
+      "moneda": "CAD",
+      "extra": ""
+    },
+    {
+      "puesto": "Mejor artista canadiense (André Bourbeau)",
+      "importe": 5000,
+      "moneda": "CAD",
+      "extra": ""
+    },
+    {
+      "puesto": "Obra canadiense · Música de cámara",
+      "importe": 2500,
+      "moneda": "CAD",
+      "extra": "Cada uno."
+    },
+    {
+      "puesto": "Jurado joven Robert Trempe",
+      "importe": 1500,
+      "moneda": "CAD",
+      "extra": ""
+    }
+  ],
+  "premiosNota": "Bolsa total 216.300 CAD. Asesoría artística con Agence Station Bleue para los laureados. Quien no pasa a semifinal toca en «Concours On the Road».",
+  "jurado": [
+    "Angela Cheng (Canadá), presidenta",
+    "Janina Fialkowska (Canadá)",
+    "Sofya Gulyak (Rusia/EE. UU.)",
+    "Olga Kern (Rusia/EE. UU.)",
+    "Roberto Plano (Italia)",
+    "Charles Richard-Hamelin (Canadá)",
+    "Antti Siirala (Finlandia)",
+    "Danwen Wei (China)"
+  ],
+  "juradoNota": "Jurado internacional. El de preselección es confidencial. Director invitado: Gergely Madaras; cuarteto: Viano Quartet.",
+  "alojamiento": {
+    "estado": "si",
+    "texto": "Gratis en familia de acogida en el área de Montreal (otro alojamiento, a cuenta propia)."
+  },
+  "viaje": {
+    "estado": "si",
+    "texto": "Vuelo de ida y vuelta en turista (o equivalente) y una maleta facturada. Visado a cuenta propia."
+  },
+  "otros": [
+    "Ensayos: 40 min con el cuarteto; 40 min con el director y 45 min con la OSM.",
+    "Sin compromisos profesionales del 23-04 al 05-05-2027.",
+    "Se ceden los derechos de grabación y emisión."
+  ],
+  "estadoBases": "publicadas",
+  "fuentes": [
+    {
+      "titulo": "Rules, information and conditions of participation 2027 (PDF)",
+      "url": "https://cms.concoursmontreal.ca/uploads/fichiers/reglements-2027-en.pdf",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "Piano 2027 · fechas, premios y jurado",
+      "url": "https://www.concoursmontreal.ca/en/piano-2027/",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "Participate",
+      "url": "https://concoursmontreal.ca/en/participate",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": []
+}

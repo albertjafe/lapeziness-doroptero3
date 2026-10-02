@@ -334,6 +334,9 @@ Cuando el slider "¿Cómo fue esta sesión?" del modal Hecho llega a **≥ `DEST
 
 `body.crono-focus` usa `touch-action: none` (bloquea pellizco). Los modales sobre el cronómetro ahora usan `touch-action: pan-y` (antes `auto`): permiten scroll vertical pero **no** pinch-zoom, evitando que la pantalla quede ampliada al cerrar el modal.
 
+### Concursos · dosier de piano (oct 2026, v481)
+Sección propia (`concursos-dossier.js/css`, `#view-concursos`): fichas por plazo con avisos de cierre, elegibilidad por edad calculada desde `db.perfil.fechaNacimiento`, rondas, premios, jurado, alojamiento/viaje y fuentes oficiales. Importa/exporta el formato de `docs/DOSIER_CONCURSOS_FORMATO.md`; la ficha se guarda como texto JSON (ver APP_MAP §5). **Información fiable**: solo bases oficiales, lo no publicado queda en `sinConfirmar`, nunca se inventa. Pruebas: `tests/unit/concursos-dossier.test.js`, `tests/e2e/concursos-dossier.spec.js` (reloj fijo 2-10-2026).
+
 ### Ajustes · listas agrupadas premium (sep 2026, v457)
 
 `#view-ajustes` se rehízo como **listas agrupadas tipo Ajustes de iOS** en todas las plataformas. Marcado: `.ajustes-body.st-layout` = `nav.st-index` (enlaces `data-st-jump` → secciones) + `.st-main` con `section.st-group` (`#stCuenta`, `#stApariencia`, `#stSonido`, `#stAvisos`, `#stEstudio`, `#stDatos`), cada una con `h2.st-title` y `.st-list` de filas `.st-row` (`st-ico` cuadrado de color vía `--c`, `st-label` con `<b>`+`<small>`, `st-ctl`). Variantes: `st-row--stack` (control debajo), `st-row--link` (fila-botón con chevron), `details.st-fold` (Exportar para IA, Importar de Forest). Se conservan TODOS los ids/handlers anteriores; la cabecera interna `.ajustes-header` queda oculta (el título es el de la app). Estadísticas, Disponibilidad y Hora de comienzo viven en «Estudio». La fila «Diseño en el móvil» la inserta `mobile-v2.js` en `#stAppearanceList` (oculta ≥701px).

@@ -1,0 +1,148 @@
+{
+  "id": "geza-anda-2027",
+  "nombre": "Concours Géza Anda 2027",
+  "edicion": "2027",
+  "ciudad": "Zúrich",
+  "pais": "Suiza",
+  "web": "https://geza-anda.ch/concours-2027/",
+  "fechas": {
+    "inicio": "2027-05-25",
+    "fin": "2027-06-06",
+    "nota": "Reunión inicial, sorteo y prueba de piano el 25-05; final el 5-06 con la Tonhalle-Orchester Zürich (dir. Mikhail Pletnev); recepción de prensa el 6-06."
+  },
+  "plazo": {
+    "fecha": "2027-02-01",
+    "hora": null,
+    "zona": null,
+    "nota": "Solicitud online en geza-anda.ch del 19-11-2026 al 1-02-2027. Invitaciones a Zúrich hasta finales de marzo de 2027.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": null,
+    "moneda": "CHF",
+    "nota": "Las bases y la web no mencionan cuota de inscripción."
+  },
+  "edad": {
+    "min": null,
+    "max": null,
+    "aFecha": null,
+    "nacidoDesde": "1995-05-27",
+    "nacidoHasta": null,
+    "texto": "Abierto a todos los países, nacidos después del 26-05-1995.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": true,
+    "duracion": "≈ 30 min",
+    "resumen": "Vídeo de unos 30 min en una sola toma: una sonata de Scarlatti (≥ 3 min), obra(s) del repertorio 1765–1828 y obra(s) de 1829 a hoy.",
+    "detalles": [
+      "Sin editar; manos visibles y la cara al menos una vez al principio.",
+      "En YouTube no público, enlace en la solicitud (otras plataformas solo en emergencias y consultándolo).",
+      "No puede contener obras ni partes de obras del repertorio del concurso 2027.",
+      "Ganadores de un premio principal en el Chopin de Varsovia o el Rubinstein desde el 1-01-2024 pueden enviar en su lugar el enlace público de su final o recital (≥ 30 min)."
+    ]
+  },
+  "rondas": [
+    {
+      "nombre": "1ª ronda · audición",
+      "fecha": "2027-05-26",
+      "duracion": "máx. 25 min",
+      "repertorio": [
+        "Se prepara de listas cerradas y 90 min antes te dicen qué tocar, en este orden:",
+        "1) Tres piezas (Rameau «La Poule» o «L'Egiptienne»; Couperin «Le Tic-Toc-Choc» o «La Couperin»; Royer «L'Aimable» o «Le Vertigo») o un Preludio y Fuga del Clave bien temperado, libro I.",
+        "2) Dos sonatas de Beethoven de la lista: op. 2/1, 10/1, 13, 26, 27/1, 27/2, 81a, 101, 109.",
+        "3) Tres estudios de la lista: Chopin op. 10 (salvo 3 y 6) y op. 25 (salvo 7), Liszt Estudios de Paganini S. 141 y Trois Études de concert S. 144.",
+        "Pasan 12."
+      ]
+    },
+    {
+      "nombre": "2ª ronda · recital (12)",
+      "fecha": "2027-05-29",
+      "duracion": "50–55 min",
+      "repertorio": [
+        "Preparar dos programas distintos, cada uno con comentario escrito sobre su concepto.",
+        "A) Una obra mayor de la lista (Beethoven op. 2/3, 22, 31/2, 57, 110, 111; Mozart K. 333, K. 533/494; Haydn Hob. XVI:50, 52; Schubert D 537, 664, 784, 960, Impromptus D 899; Schumann Davidsbündlertänze, Carnaval, Kinderszenen, Kreisleriana; Brahms op. 5, 9, 24, 35, 117; Chopin Sonata op. 35 o las 4 Baladas; Liszt Dante, Balada 2; Ravel Gaspard; Bartók Sonata, Out of Doors).",
+        "B) Una o varias obras menores de la lista (Mozart, Schubert, Mendelssohn, Schumann, Brahms, Chopin, Liszt, Debussy, Ravel, Franck, Bartók).",
+        "C) Opcional: una obra libre de máx. 10 min. Pasan 6."
+      ]
+    },
+    {
+      "nombre": "Semifinal Mozart · con orquesta (6)",
+      "fecha": "2027-06-02",
+      "duracion": null,
+      "repertorio": [
+        "Preparar dos conciertos de Mozart: K. 450, 456, 466, 467, 482, 488, 491, 537; el jurado elige uno. Con el Musikkollegium Winterthur (dir. Gergely Madaras). Pasan 3."
+      ]
+    },
+    {
+      "nombre": "Final · con orquesta (3)",
+      "fecha": "2027-06-05",
+      "duracion": null,
+      "repertorio": [
+        "Preparar dos conciertos de compositores distintos (el jurado elige uno): Beethoven 3 o 5; Chopin 1 o 2; Liszt 2 + Fantasía húngara; Rachmáninov 2; Saint-Saëns 5; Bartók 3.",
+        "Propina obligatoria: Kurtág, Játékok I n.º 74 «Perpetuum mobile» o «... feuilles mortes ...»."
+      ]
+    }
+  ],
+  "premios": [
+    {
+      "puesto": "1.º",
+      "importe": 40000,
+      "moneda": "CHF",
+      "extra": "Conciertos y gestión gratuita de 2027 a 2030."
+    },
+    {
+      "puesto": "2.º",
+      "importe": 30000,
+      "moneda": "CHF",
+      "extra": "Conciertos y gestión gratuita de 2027 a 2030."
+    },
+    {
+      "puesto": "3.º",
+      "importe": 20000,
+      "moneda": "CHF",
+      "extra": "Conciertos y gestión gratuita de 2027 a 2030."
+    }
+  ],
+  "premiosNota": "Premios especiales: del público, Mozart (Musikkollegium Winterthur, concierto), Liszt-Bartók, Beethoven (G. Henle, ediciones Urtext), Hortense Anda, Fondation Thiébaud-Frey (3.000 CHF + recital) y concierto con la Orquesta de la Radio Nacional Búlgara.",
+  "jurado": [
+    "Gerhard Oppitz, presidente",
+    "Elena Bashkirova",
+    "Numa Bischof Ullmann",
+    "Ingrid Fliter",
+    "David Fray",
+    "Rico Gulda",
+    "Momo Kodama",
+    "Jinsang Lee"
+  ],
+  "juradoNota": "",
+  "alojamiento": {
+    "estado": "si",
+    "texto": "Alojamiento en familias de acogida en Zúrich y alrededores."
+  },
+  "viaje": {
+    "estado": "desconocido",
+    "texto": "Las bases no dicen nada del viaje."
+  },
+  "otros": [
+    "Todas las rondas son públicas y se retransmiten online."
+  ],
+  "estadoBases": "publicadas",
+  "fuentes": [
+    {
+      "titulo": "CGA 2027 · Rules and Repertoire (PDF)",
+      "url": "https://geza-anda.ch/wp-content/uploads/2025/11/CGA-2027_Rules-and-Repertoire.pdf",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "Concours Géza Anda 2027",
+      "url": "https://geza-anda.ch/concours-2027/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": [
+    "cuota",
+    "viaje"
+  ]
+}

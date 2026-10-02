@@ -347,6 +347,40 @@
     return { parents, deadlines, watch };
   }
 
+  // Dosier de concursos (concursos-dossier.js, 02-10-2026): una ficha del
+  // dosier entra en la planificación con el mismo id de origen que el seed, así
+  // que los 24 concursos del dosier 2026–2027 quedan enlazados sin duplicarse.
+  function linkedDossierEvent(id){
+    if(!dbReady() || !id) return null;
+    const source=sourceId({ id });
+    return db.eventos.find(ev => ev && ev.planSourceId===source && !ev.esHito) || null;
+  }
+  function importDossierEntry(comp){
+    if(!dbReady() || !comp || !comp.id) return null;
+    upsertPlan(comp);
+    const parent=upsertParent(comp);
+    if(comp.deadline) upsertDeadline(comp,parent);
+    save();
+    rerender();
+    renderWatchlist();
+    return parent;
+  }
+  // Solo si la persona lo pide: alinea fechas y plazo del plan con el dosier.
+  function syncDossierDates(comp){
+    const ev=linkedDossierEvent(comp && comp.id);
+    if(!ev) return false;
+    if(comp.start) ev.fecha=comp.start;
+    ev.fechaFin=comp.end || '';
+    if(comp.deadline) ev.deadline=comp.deadline;
+    ev.updatedAt=new Date().toISOString();
+    const milestone=db.eventos.find(item => item && item.parentSourceId===sourceId(comp) && item.hitoTipo==='deadline');
+    if(milestone && comp.deadline){ milestone.fecha=comp.deadline; milestone.updatedAt=ev.updatedAt; }
+    else if(comp.deadline) upsertDeadline(comp,ev);
+    save();
+    rerender();
+    return true;
+  }
+
   function currentType(){
     const active=document.querySelector('#eventoTipoSelector .evento-tipo-btn.active');
     if(!active) return 'concurso';
@@ -619,6 +653,7 @@
     window.EventPlanning={
       version:2, sourceSnapshot:SOURCE_SNAPSHOT, competitions:COMPETITIONS.map(item=>Object.assign({},item)),
       importCompetitions, openImportModal, closeImportModal, renderWatchlist, decorateCards,
+      importDossierEntry, linkedDossierEvent, syncDossierDates,
       statuses:Object.assign({},STATUS_LABELS),
     };
   }

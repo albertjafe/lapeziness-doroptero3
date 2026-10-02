@@ -854,6 +854,7 @@ const VIEW_CONTEXT = {
   casa: { eyebrow: 'Estratos', title: 'La Casa' },
   historial: { eyebrow: 'Resumen', title: 'Estadísticas' },
   deutsch: { eyebrow: 'Tarjetas y estudio libre', title: 'Alemán' },
+  concursos: { eyebrow: 'Dosier de piano', title: 'Concursos' },
   ajustes: { eyebrow: 'Cuenta, aspecto y datos', title: 'Ajustes' },
   premios: { eyebrow: 'Hucha, rachas y logros', title: 'Premios' },
   habitos: { eyebrow: 'Normas, días y colección', title: 'Hábitos' }

@@ -1,0 +1,143 @@
+{
+  "id": "international-german-piano-award-2026",
+  "nombre": "XV German Piano Award · International Piano Masters",
+  "edicion": "XV (2026)",
+  "ciudad": "Kronberg im Taunus",
+  "pais": "Alemania",
+  "web": "https://ipf-frankfurt.com/international-german-piano-award/igpa-2026-dates-rules-req/",
+  "fechas": {
+    "inicio": "2026-11-20",
+    "fin": "2026-11-22",
+    "nota": "Casals Forum de la Kronberg Academy. Llegada el 20; pruebas el 21 y 22; salida el 24."
+  },
+  "plazo": {
+    "fecha": "2026-10-15",
+    "hora": null,
+    "zona": null,
+    "nota": "Nominaciones anunciadas como tarde el 29-10-2026. Hasta 6 nominados; candidaturas revisadas de forma anónima.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": 80,
+    "moneda": "EUR",
+    "nota": "No reembolsable; transferencia y justificante con la solicitud."
+  },
+  "edad": {
+    "min": null,
+    "max": null,
+    "aFecha": null,
+    "nacidoDesde": null,
+    "nacidoHasta": null,
+    "texto": "Las bases 2026 no fijan límite de edad. Abierto a todas las nacionalidades; los nominados de ediciones anteriores pueden volver a presentarse.",
+    "sinLimite": true
+  },
+  "video": {
+    "exige": true,
+    "duracion": "≈ 20 min",
+    "resumen": "Vídeo de unos 20 min, repertorio libre de piano solo que incluya una obra clásico-romántica.",
+    "detalles": [
+      "Archivo de vídeo (máx. 4 GB por archivo); no se aceptan enlaces de YouTube.",
+      "Grabación profesional con la máxima calidad de imagen y sonido.",
+      "Grabación de menos de 12 meses en el momento de enviarla.",
+      "Sin composiciones propias.",
+      "Envío en un único paquete (WeTransfer, Dropbox o similar) a office@german-piano-award.com con CV narrativo (no en tabla) y al menos 3 fotos en color de 300 dpi (una horizontal)."
+    ]
+  },
+  "rondas": [
+    {
+      "nombre": "Preselección (vídeo)",
+      "fecha": null,
+      "duracion": "≈ 20 min",
+      "repertorio": [
+        "Libre, piano solo, con una obra clásico-romántica.",
+        "Lo del vídeo solo puede repetirse en una de las fases."
+      ]
+    },
+    {
+      "nombre": "1ª fase · recital",
+      "fecha": "2026-11-21",
+      "duracion": "30 min",
+      "repertorio": [
+        "Programa libre de piano solo, variedad de estilos, obras completas, de memoria. Pasan 4."
+      ]
+    },
+    {
+      "nombre": "2ª fase · recital",
+      "fecha": "2026-11-21",
+      "duracion": "30 min",
+      "repertorio": [
+        "Libre, variedad de estilos, obras completas, de memoria; sin repetir la 1ª fase. Pasan 2."
+      ]
+    },
+    {
+      "nombre": "3ª fase · recital",
+      "fecha": "2026-11-22",
+      "duracion": "45 min",
+      "repertorio": [
+        "Libre, variedad de estilos, obras completas, de memoria; sin repetir fases anteriores."
+      ]
+    },
+    {
+      "nombre": "Gran Premio · con orquesta",
+      "fecha": "2026-11-22",
+      "duracion": null,
+      "repertorio": [
+        "Opción 1: Beethoven Concierto n.º 4 op. 58 + Chaikovski Concierto n.º 1 op. 23.",
+        "Opción 2: Saint-Saëns Concierto n.º 2 op. 22 + Chaikovski Concierto n.º 1 op. 23.",
+        "La opción se asigna tras la 3ª fase, por acuerdo o sorteo. Philharmonia Frankfurt, dir. Juri Gilbo."
+      ]
+    }
+  ],
+  "premios": [
+    {
+      "puesto": "German Piano Award",
+      "importe": 20000,
+      "moneda": "EUR",
+      "extra": "Producción de CD; invitación a ser jurado en una edición futura."
+    },
+    {
+      "puesto": "Premio del público Schott Music",
+      "importe": 3000,
+      "moneda": "EUR",
+      "extra": ""
+    },
+    {
+      "puesto": "Premio a finalista Hauck & Aufhäuser Kulturstiftung",
+      "importe": 3000,
+      "moneda": "EUR",
+      "extra": ""
+    }
+  ],
+  "premiosNota": "Conciertos para ganadores y/o nominados; certificado para todos los nominados.",
+  "jurado": [],
+  "juradoNota": "Directores, directores artísticos y pianistas más el laureado 2025; los nombres se publican junto con los nominados.",
+  "alojamiento": {
+    "estado": "si",
+    "texto": "Hotel cubierto para los nominados durante el concurso; almuerzo bufé y piano de cola para estudiar."
+  },
+  "viaje": {
+    "estado": "parcial",
+    "texto": "Se reembolsa el 50 % del viaje con factura."
+  },
+  "otros": [
+    "Todo de memoria en las fases presenciales.",
+    "Sin composiciones propias."
+  ],
+  "estadoBases": "publicadas",
+  "fuentes": [
+    {
+      "titulo": "IGPA 2026 · Rules, Repertoire & Artistic Guidelines (PDF)",
+      "url": "https://ipf-frankfurt.com/wp-content/uploads/2026/09/IGPA-Guidelines_.pdf",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "IGPA 2026 · Dates, rules, requirements",
+      "url": "https://ipf-frankfurt.com/international-german-piano-award/igpa-2026-dates-rules-req/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": [
+    "jurado"
+  ]
+}

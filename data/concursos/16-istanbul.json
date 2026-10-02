@@ -1,0 +1,111 @@
+{
+  "id": "istanbul-orchestrasion-2026",
+  "nombre": "7.º International Piano Competition Istanbul Orchestra'Sion",
+  "edicion": "7.ª (2026)",
+  "ciudad": "Estambul",
+  "pais": "Turquía",
+  "web": "https://www.nds.k12.tr/-International-Piano-Competition",
+  "fechas": {
+    "inicio": "2026-11-10",
+    "fin": "2026-11-15",
+    "nota": "Sorteo el 10-11; 1ª ronda 11–12; 2ª 13; 3ª 14; final con orquesta el 15-11. Sala del Liceo Notre Dame de Sion, piano Steinway D."
+  },
+  "plazo": {
+    "fecha": null,
+    "hora": null,
+    "zona": null,
+    "nota": "Inscripción cerrada: la preselección fue en septiembre de 2026 y los resultados se comunicaron desde el 30-09-2026.",
+    "cerrado": true
+  },
+  "cuota": {
+    "importe": null,
+    "moneda": "EUR",
+    "nota": "No consultada (inscripción cerrada)."
+  },
+  "edad": {
+    "min": null,
+    "max": null,
+    "aFecha": null,
+    "nacidoDesde": null,
+    "nacidoHasta": null,
+    "texto": "No consultada (inscripción cerrada).",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": true,
+    "duracion": null,
+    "resumen": "Preselección por DVD o archivos audiovisuales.",
+    "detalles": []
+  },
+  "rondas": [
+    {
+      "nombre": "1ª ronda",
+      "fecha": "2026-11-11",
+      "duracion": null,
+      "repertorio": []
+    },
+    {
+      "nombre": "2ª ronda",
+      "fecha": "2026-11-13",
+      "duracion": null,
+      "repertorio": []
+    },
+    {
+      "nombre": "3ª ronda",
+      "fecha": "2026-11-14",
+      "duracion": null,
+      "repertorio": []
+    },
+    {
+      "nombre": "Final · con orquesta",
+      "fecha": "2026-11-15",
+      "duracion": null,
+      "repertorio": [
+        "Con la orquesta Orchestra'Sion, dir. Orçun Orçunsel."
+      ]
+    }
+  ],
+  "premios": [],
+  "premiosNota": "Se entregan en el recital de gala; importes no consultados.",
+  "jurado": [
+    "Jean-Yves Clément, presidente",
+    "Toros Can",
+    "Geoffroy Couteau",
+    "Juliette Journaux",
+    "Joseph Moog",
+    "Gülsin Onay",
+    "Denis Pascal"
+  ],
+  "juradoNota": "",
+  "alojamiento": {
+    "estado": "desconocido",
+    "texto": ""
+  },
+  "viaje": {
+    "estado": "desconocido",
+    "texto": ""
+  },
+  "otros": [
+    "Ficha resumida: la inscripción de 2026 ya está cerrada. Útil para la próxima edición."
+  ],
+  "estadoBases": "parciales",
+  "fuentes": [
+    {
+      "titulo": "Competition · fechas",
+      "url": "https://www.nds.k12.tr/-Competition-",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "Jury",
+      "url": "https://www.nds.k12.tr/-Jury-453-",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": [
+    "cuota",
+    "edad",
+    "rondas",
+    "premios"
+  ]
+}

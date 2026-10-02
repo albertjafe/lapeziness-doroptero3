@@ -1,0 +1,87 @@
+{
+  "id": "ciurlionis-2027",
+  "nombre": "X Concurso Internacional M. K. Čiurlionis (piano y órgano)",
+  "edicion": "X (2027)",
+  "ciudad": "Vilna",
+  "pais": "Lituania",
+  "web": "https://ciurlionis.link/en/b/competition-rules",
+  "fechas": {
+    "inicio": "2027-09-16",
+    "fin": "2027-09-23",
+    "nota": "Piano: 1ª ronda el 16-09, 2ª el 19-09, final y clausura el 23-09-2027 (según el resumen del buscador de la página de horarios)."
+  },
+  "plazo": {
+    "fecha": null,
+    "hora": null,
+    "zona": null,
+    "nota": "No encontrado.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": null,
+    "moneda": "EUR",
+    "nota": "No encontrada."
+  },
+  "edad": {
+    "min": null,
+    "max": null,
+    "aFecha": null,
+    "nacidoDesde": "1993-01-01",
+    "nacidoHasta": null,
+    "texto": "Pianistas de cualquier nacionalidad nacidos el 1-01-1993 o después (organistas: desde el 1-01-1988), según el resumen del buscador de las reglas oficiales.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": null,
+    "duracion": null,
+    "resumen": "No consultado.",
+    "detalles": []
+  },
+  "rondas": [],
+  "premios": [],
+  "premiosNota": "No consultados.",
+  "jurado": [],
+  "juradoNota": "",
+  "alojamiento": {
+    "estado": "desconocido",
+    "texto": ""
+  },
+  "viaje": {
+    "estado": "desconocido",
+    "texto": ""
+  },
+  "otros": [
+    "La web oficial (ciurlionis.link) pide verificación humana y no se ha podido leer directamente: comprueba las reglas allí."
+  ],
+  "estadoBases": "sin verificar",
+  "fuentes": [
+    {
+      "titulo": "Competition Rules (requiere verificación)",
+      "url": "https://ciurlionis.link/en/b/competition-rules",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "Schedules",
+      "url": "https://ciurlionis.link/en/b/schedule",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "WFIMC · Čiurlionis Competition",
+      "url": "https://www.wfimc.org/member-competition/vilnius-international-mk-ciurlionis-piano-and-organ-competition",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": null,
+  "sinConfirmar": [
+    "fechas",
+    "plazo",
+    "cuota",
+    "edad",
+    "video",
+    "rondas",
+    "premios",
+    "jurado",
+    "alojamiento",
+    "viaje"
+  ]
+}

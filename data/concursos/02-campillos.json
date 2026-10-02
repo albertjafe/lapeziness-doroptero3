@@ -1,0 +1,144 @@
+{
+  "id": "campillos-2026",
+  "nombre": "XX Concurso Internacional de Piano de Campillos",
+  "edicion": "XX (2026)",
+  "ciudad": "Campillos (Málaga)",
+  "pais": "España",
+  "web": "https://www.concursointernacionalpiano.es/",
+  "fechas": {
+    "inicio": "2026-12-04",
+    "fin": "2026-12-08",
+    "nota": "Salón de actos del IES Camilo José Cela e Iglesia Santa María del Reposo."
+  },
+  "plazo": {
+    "fecha": "2026-10-15",
+    "hora": null,
+    "zona": null,
+    "nota": "Preselección: máximo 60 pianistas, comunicada hacia el 20 de octubre. Formulario en concursointernacionalpiano.es/application/.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": 125,
+    "moneda": "EUR",
+    "nota": "Solo los preseleccionados; se paga antes del 25 de octubre."
+  },
+  "edad": {
+    "min": null,
+    "max": null,
+    "aFecha": null,
+    "nacidoDesde": null,
+    "nacidoHasta": null,
+    "texto": "Abierto a todas las nacionalidades sin límite de edad.",
+    "sinLimite": true
+  },
+  "video": {
+    "exige": true,
+    "duracion": "10–15 min",
+    "resumen": "Enlace de vídeo (YouTube o similar) de 10–15 min con una o varias obras libres.",
+    "detalles": [
+      "Calidad de imagen y sonido lo mejor posible; manos y cara siempre visibles.",
+      "Las obras del vídeo pueden repetirse en las rondas presenciales.",
+      "Con la inscripción: copia del pasaporte, foto artística (.jpg) y CV (.doc, .docx o .pdf)."
+    ]
+  },
+  "rondas": [
+    {
+      "nombre": "1ª ronda",
+      "fecha": "2026-12-04",
+      "duracion": "máx. 15 min",
+      "repertorio": [
+        "Libre."
+      ]
+    },
+    {
+      "nombre": "Semifinal",
+      "fecha": "2026-12-06",
+      "duracion": "máx. 25 min",
+      "repertorio": [
+        "Libre."
+      ]
+    },
+    {
+      "nombre": "Final · con orquesta",
+      "fecha": "2026-12-08",
+      "duracion": null,
+      "repertorio": [
+        "Un concierto con la Orquesta Sinfónica de Málaga: Beethoven n.º 5, Chopin n.º 2, Liszt n.º 1, Grieg, Chaikovski n.º 1 o Rachmaninov n.º 2."
+      ]
+    }
+  ],
+  "premios": [
+    {
+      "puesto": "1.º",
+      "importe": 8000,
+      "moneda": "EUR",
+      "extra": "Diploma y recitales en salas y festivales de España."
+    },
+    {
+      "puesto": "2.º",
+      "importe": 4000,
+      "moneda": "EUR",
+      "extra": "Diploma."
+    },
+    {
+      "puesto": "3.º",
+      "importe": 2000,
+      "moneda": "EUR",
+      "extra": "Diploma."
+    },
+    {
+      "puesto": "Mejor pianista español",
+      "importe": 1000,
+      "moneda": "EUR",
+      "extra": ""
+    },
+    {
+      "puesto": "Becas de viaje (orquesta y público)",
+      "importe": 250,
+      "moneda": "EUR",
+      "extra": "Cada una."
+    }
+  ],
+  "premiosNota": "Sujetos a impuestos españoles; el jurado puede dejar premios desiertos.",
+  "jurado": [
+    "Akemi Alink (Japón/Países Bajos)",
+    "Fabio Bidini (Italia/EE. UU.)",
+    "Filippo Gamba (Italia)",
+    "Juan Lago (España)",
+    "Vanessa Latarche (Reino Unido)",
+    "Matti Raekallio (Finlandia)",
+    "Chun-Chieh Yen (Taiwán)"
+  ],
+  "juradoNota": "",
+  "alojamiento": {
+    "estado": "desconocido",
+    "texto": "Las bases y la web no mencionan alojamiento."
+  },
+  "viaje": {
+    "estado": "no",
+    "texto": "No se menciona ayuda de viaje (solo las becas de 250 € como premio especial)."
+  },
+  "otros": [
+    "No pueden participar ganadores de un 1.er premio anterior ni alumnos oficiales o privados del jurado (actuales o de los dos años anteriores).",
+    "Todo de memoria, incluida la música contemporánea.",
+    "No se puede repetir una obra en dos rondas ni cambiar el repertorio enviado en la inscripción.",
+    "Pianos de estudio de Royal Pianos durante el concurso; prueba de piano Shigeru Kawai el 4-12 (5 min)."
+  ],
+  "estadoBases": "publicadas",
+  "fuentes": [
+    {
+      "titulo": "Competition Rules 2026",
+      "url": "https://www.concursointernacionalpiano.es/rules/",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "Jurado 2026",
+      "url": "https://www.concursointernacionalpiano.es/jurado/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": [
+    "alojamiento"
+  ]
+}

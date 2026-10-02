@@ -1,0 +1,77 @@
+{
+  "id": "pozzoli-2027",
+  "nombre": "Concorso Pianistico Internazionale Ettore Pozzoli",
+  "edicion": "2027",
+  "ciudad": "Seregno",
+  "pais": "Italia",
+  "web": "https://www.concorsopozzoli.it/",
+  "fechas": {
+    "inicio": null,
+    "fin": null,
+    "nota": "La web oficial aún no publica la edición 2027 (solo 2025 y el Elsa Pozzoli 2026). El dosier anterior hablaba de 25-09 a 3-10-2027, sin confirmar."
+  },
+  "plazo": {
+    "fecha": null,
+    "hora": null,
+    "zona": null,
+    "nota": "Sin publicar.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": null,
+    "moneda": "EUR",
+    "nota": "Sin publicar."
+  },
+  "edad": {
+    "min": null,
+    "max": null,
+    "aFecha": null,
+    "nacidoDesde": null,
+    "nacidoHasta": null,
+    "texto": "Reglamento 2027 sin publicar.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": null,
+    "duracion": null,
+    "resumen": "Sin publicar.",
+    "detalles": []
+  },
+  "rondas": [],
+  "premios": [],
+  "premiosNota": "Sin publicar.",
+  "jurado": [],
+  "juradoNota": "Sin publicar.",
+  "alojamiento": {
+    "estado": "desconocido",
+    "texto": ""
+  },
+  "viaje": {
+    "estado": "desconocido",
+    "texto": ""
+  },
+  "otros": [
+    "En seguimiento: revisar cuando se publique el bando 2027 (contacto: staff@concorsopozzoli.it)."
+  ],
+  "estadoBases": "pendientes",
+  "fuentes": [
+    {
+      "titulo": "Concorso Pozzoli",
+      "url": "https://www.concorsopozzoli.it/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": [
+    "fechas",
+    "plazo",
+    "cuota",
+    "edad",
+    "video",
+    "rondas",
+    "premios",
+    "jurado",
+    "alojamiento",
+    "viaje"
+  ]
+}

@@ -1,0 +1,160 @@
+{
+  "id": "iturbi-2027",
+  "nombre": "XXIV Concurso Internacional de Piano de València Iturbi",
+  "edicion": "XXIV (2027)",
+  "ciudad": "València",
+  "pais": "España",
+  "web": "https://pianoiturbi.dival.es/concurso-2027/convocatoria/",
+  "fechas": {
+    "inicio": "2027-06-02",
+    "fin": "2027-06-12",
+    "nota": "Acogida y sorteo el 1-06-2027 por la tarde. Gala de clausura el 12-06."
+  },
+  "plazo": {
+    "fecha": "2026-11-05",
+    "hora": "23:59",
+    "zona": "CET (UTC+1)",
+    "nota": "Inscripción telemática en pianoiturbi.dival.es desde el 2-07-2026. Lista de 22 seleccionados el 15-01-2027. Cambios de programa hasta el 28-02-2027.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": null,
+    "moneda": "EUR",
+    "nota": "El extracto de bases no menciona cuota de inscripción."
+  },
+  "edad": {
+    "min": null,
+    "max": null,
+    "aFecha": null,
+    "nacidoDesde": "1992-06-02",
+    "nacidoHasta": null,
+    "texto": "Cualquier nacionalidad, nacidos a partir del 2-06-1992 (incluido). No pueden participar ganadores de un 1.er premio anterior ni quien haya recibido clases (incluidas clases magistrales) de miembros del jurado desde el 2-06-2025.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": true,
+    "duracion": "20–30 min",
+    "resumen": "Programa libre de 20–30 min, preferiblemente en HD, enviado como URL en el formulario.",
+    "detalles": [
+      "Cada obra en una única toma, sin cortes; cara y manos siempre en plano.",
+      "Grabado después del 1-01-2026; el enlace debe seguir disponible (verse y descargarse) hasta el 31-01-2027.",
+      "Puede incluir obras del programa propuesto para el concurso.",
+      "Documentación: pasaporte o DNI, CV (estudios con profesorado, concursos, actuaciones, grabaciones), dos cartas de recomendación con contacto, foto y méritos opcionales.",
+      "En el formulario hay que indicar el programa de las cuatro pruebas con su duración aproximada."
+    ]
+  },
+  "rondas": [
+    {
+      "nombre": "Preselección (vídeo)",
+      "fecha": null,
+      "duracion": "20–30 min",
+      "repertorio": [
+        "Libre. En enero de 2027 se eligen 22 concursantes."
+      ]
+    },
+    {
+      "nombre": "1ª fase · recital (22)",
+      "fecha": "2027-06-02",
+      "duracion": "máx. 40 min",
+      "repertorio": [
+        "Los dos recitales (1ª y 2ª fase) deben incluir entre ambos: una obra de Beethoven; una obra de Mozart; un Nocturno de Chopin; una Balada, Scherzo o Polonesa de Chopin (vale la Polonesa-Fantasía); una pieza de Goyescas (Granados), de Iberia, Navarra o La Vega (Albéniz) o la Fantasía Bética (Falla).",
+        "Todo de memoria. Pasan 10."
+      ]
+    },
+    {
+      "nombre": "2ª fase · recital (10)",
+      "fecha": "2027-06-05",
+      "duracion": "máx. 60 min",
+      "repertorio": [
+        "Programa libre que completa los apartados obligatorios. Pasan 6."
+      ]
+    },
+    {
+      "nombre": "Semifinal · con orquesta (6)",
+      "fecha": "2027-06-08",
+      "duracion": null,
+      "repertorio": [
+        "Uno de los cinco conciertos de Beethoven. Pasan 3."
+      ]
+    },
+    {
+      "nombre": "Final · con orquesta (3)",
+      "fecha": "2027-06-11",
+      "duracion": null,
+      "repertorio": [
+        "Un concierto: Chopin 1, 2; Liszt 1, 2; Schumann; Brahms 1, 2; Chaikovski 1; Saint-Saëns 2, 5; Prokófiev 2, 3; Ravel en Sol; Rachmáninov 1, 2, 3, Rapsodia Paganini; Britten op. 13; Strauss Burleske; Bartók 2, 3; Rodrigo Concierto heroico; Palau Concierto dramático."
+      ]
+    }
+  ],
+  "premios": [
+    {
+      "puesto": "1.º",
+      "importe": 30000,
+      "moneda": "EUR",
+      "extra": "Conciertos en España y en el extranjero durante 2028."
+    },
+    {
+      "puesto": "2.º",
+      "importe": 20000,
+      "moneda": "EUR",
+      "extra": "Conciertos en 2028."
+    },
+    {
+      "puesto": "3.º",
+      "importe": 10000,
+      "moneda": "EUR",
+      "extra": "Conciertos en 2028."
+    },
+    {
+      "puesto": "Semifinalistas no finalistas",
+      "importe": 6000,
+      "moneda": "EUR",
+      "extra": "Conciertos en España."
+    },
+    {
+      "puesto": "Mejor obra de Beethoven (1ª o 2ª fase)",
+      "importe": 2000,
+      "moneda": "EUR",
+      "extra": ""
+    },
+    {
+      "puesto": "Mejor interpretación de música española",
+      "importe": 2000,
+      "moneda": "EUR",
+      "extra": ""
+    }
+  ],
+  "premiosNota": "Premios sujetos a la fiscalidad vigente; pueden quedar desiertos; el 1.er premio no se concede ex aequo.",
+  "jurado": [],
+  "juradoNota": "Jurado del concurso no publicado en el extracto. Preselección: Ana María Guijarro (presidenta), Carles Marín y Ángel Sanzo.",
+  "alojamiento": {
+    "estado": "parcial",
+    "texto": "No hay alojamiento: ayuda de 1.000 € a cada concursante para viaje y manutención, más 300 € a quien pase a la 2ª fase."
+  },
+  "viaje": {
+    "estado": "parcial",
+    "texto": "Incluido en la ayuda de 1.000 € (+300 € en 2ª fase)."
+  },
+  "otros": [
+    "Todo el concurso de memoria.",
+    "El orden de actuación se sortea y se mantiene en todas las pruebas."
+  ],
+  "estadoBases": "publicadas",
+  "fuentes": [
+    {
+      "titulo": "Convocatoria 2027",
+      "url": "https://pianoiturbi.dival.es/concurso-2027/convocatoria/",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "Extracto de bases XXIV Concurso (PDF)",
+      "url": "https://pianoiturbi.dival.es/wp-content/uploads/2026/07/cipvi-extracto-bases-xxiv-concurso-iturbi-cas.pdf",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": [
+    "jurado",
+    "cuota"
+  ]
+}

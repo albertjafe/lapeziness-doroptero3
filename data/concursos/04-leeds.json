@@ -1,0 +1,165 @@
+{
+  "id": "leeds-2027",
+  "nombre": "Leeds International Piano Competition 2027",
+  "edicion": "2027",
+  "ciudad": "Leeds (1ª ronda en 7 ciudades)",
+  "pais": "Reino Unido",
+  "web": "https://www.leedspiano.com/2027-competition/",
+  "fechas": {
+    "inicio": "2027-03-30",
+    "fin": "2027-09-18",
+    "nota": "1ª ronda internacional 30-03 a 6-04-2027 en Pekín, Berlín, Londres, Nueva York, París, Seúl o Viena; fases de Leeds del 8 al 18-09-2027."
+  },
+  "plazo": {
+    "fecha": "2026-10-31",
+    "hora": null,
+    "zona": null,
+    "nota": "Solicitud en Acceptd (app.getacceptd.com/leedspiano). Hay tarifa anticipada reducida y una más cara para solicitudes tardías.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": null,
+    "moneda": "GBP",
+    "nota": "Importes no publicados en las páginas consultadas: tarifa anticipada reducida y recargo por solicitud tardía (no reembolsable)."
+  },
+  "edad": {
+    "min": null,
+    "max": 35,
+    "aFecha": null,
+    "nacidoDesde": "1991-09-19",
+    "nacidoHasta": "2007-03-30",
+    "texto": "Todas las nacionalidades, nacidos entre el 19-09-1991 y el 30-03-2007 (inclusive). No pueden participar ganadores de un 1.er premio anterior.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": true,
+    "duracion": "20–25 min",
+    "resumen": "Grabación de preselección de 20–25 min, repertorio libre (sin compositores, periodos ni estilos obligatorios).",
+    "detalles": [
+      "Una interpretación continua, sin presentaciones habladas.",
+      "Hecha en los 12 meses anteriores al plazo.",
+      "Además, vídeo de verificación grabado a la vez con cámara fija (vale un móvil) y formulario de verificación.",
+      "Con la solicitud: pasaporte, biografía y CV, contacto de referencias y repertorio (incluidos tres conciertos posibles para la final)."
+    ]
+  },
+  "rondas": [
+    {
+      "nombre": "Preselección (grabación)",
+      "fecha": null,
+      "duracion": "20–25 min",
+      "repertorio": [
+        "Libre. Pasan 60."
+      ]
+    },
+    {
+      "nombre": "1ª ronda internacional (60)",
+      "fecha": "2027-03-30",
+      "duracion": "20–25 min",
+      "repertorio": [
+        "Recital libre en una de las 7 sedes. Pasan 24."
+      ]
+    },
+    {
+      "nombre": "2ª ronda · Leeds (24)",
+      "fecha": "2027-09-08",
+      "duracion": "40 min",
+      "repertorio": [
+        "Recital libre. Pasan 10."
+      ]
+    },
+    {
+      "nombre": "Semifinal (10)",
+      "fecha": "2027-09-12",
+      "duracion": "60 min + propina de ~4 min",
+      "repertorio": [
+        "Recital libre. Pasan 5."
+      ]
+    },
+    {
+      "nombre": "Final de conciertos (5)",
+      "fecha": "2027-09-17",
+      "duracion": null,
+      "repertorio": [
+        "Concierto con orquesta en el Leeds Town Hall; se indican tres opciones en la solicitud y se revisan al pasar a la 2ª ronda."
+      ]
+    }
+  ],
+  "premios": [
+    {
+      "puesto": "1.º",
+      "importe": 50000,
+      "moneda": "GBP",
+      "extra": ""
+    },
+    {
+      "puesto": "2.º",
+      "importe": 20000,
+      "moneda": "GBP",
+      "extra": ""
+    },
+    {
+      "puesto": "3.º",
+      "importe": 15000,
+      "moneda": "GBP",
+      "extra": ""
+    },
+    {
+      "puesto": "4.º",
+      "importe": 6000,
+      "moneda": "GBP",
+      "extra": ""
+    },
+    {
+      "puesto": "5.º",
+      "importe": 6000,
+      "moneda": "GBP",
+      "extra": ""
+    }
+  ],
+  "premiosNota": "Además: Prize-winners Circle Award, premio de la Royal Liverpool Philharmonic Society, premio del público medici.tv, Encore Prize y Leeds Piano Trail Prize.",
+  "jurado": [
+    "Sir Stephen Hough (director artístico, presidente)",
+    "Piotr Anderszewski",
+    "Lucas Debargue",
+    "Janina Fialkowska",
+    "Alexander Gavrylyuk",
+    "Orli Shaham",
+    "Yeol Eum Son",
+    "Kathryn Stott",
+    "Errollyn Wallen CBE"
+  ],
+  "juradoNota": "",
+  "alojamiento": {
+    "estado": "parcial",
+    "texto": "1ª ronda internacional: todo a cuenta del pianista (puede haber ayudas a discreción). Fases de Leeds: alojamiento, comidas y transporte local cubiertos."
+  },
+  "viaje": {
+    "estado": "parcial",
+    "texto": "1ª ronda: a cuenta propia. Fases de Leeds: contribución a un viaje razonable, reembolsada dentro de los límites publicados. Hay becas si la situación económica impide participar."
+  },
+  "otros": [
+    "Sin compositores, periodos ni estilos obligatorios en ninguna ronda."
+  ],
+  "estadoBases": "publicadas",
+  "fuentes": [
+    {
+      "titulo": "2027 Competition",
+      "url": "https://www.leedspiano.com/2027-competition/",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "Competition Regulations",
+      "url": "https://www.leedspiano.com/competition-regulations/",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "Application guidance",
+      "url": "https://www.leedspiano.com/application-guidance/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": [
+    "cuota"
+  ]
+}

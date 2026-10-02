@@ -1,0 +1,134 @@
+{
+  "id": "sydney-2027",
+  "nombre": "Sydney International Piano Competition 2027",
+  "edicion": "2027 · 50.º aniversario",
+  "ciudad": "Sídney",
+  "pais": "Australia",
+  "web": "https://www.pianoplus.com.au/2027-competition/",
+  "fechas": {
+    "inicio": "2027-07-10",
+    "fin": "2027-07-24",
+    "nota": "Hay que llegar como tarde el 7-07-2027. Final con la Sydney Symphony Orchestra en la Ópera de Sídney."
+  },
+  "plazo": {
+    "fecha": "2026-12-15",
+    "hora": "23:59",
+    "zona": "AEDT",
+    "nota": "Solicitud en Acceptd. Tardías hasta el 31-12-2026 (300 USD) y hasta el 8-01-2027 (375 USD). Respuesta antes de finales de febrero de 2027. El repertorio no se puede cambiar tras enviar.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": 225,
+    "moneda": "USD",
+    "nota": "No reembolsable; 300 USD tardía y 375 USD muy tardía."
+  },
+  "edad": {
+    "min": 18,
+    "max": 35,
+    "aFecha": null,
+    "nacidoDesde": "1991-07-25",
+    "nacidoHasta": "2009-07-10",
+    "texto": "18–35 años durante todo el concurso: nacidos entre el 25-07-1991 y el 10-07-2009 (inclusive), sin excepciones.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": true,
+    "duracion": "20–30 min",
+    "resumen": "Grabación de 20–30 min de piano solo con obras de al menos 3 compositores (se admiten movimientos sueltos).",
+    "detalles": [
+      "Una grabación o varias de obras enteras, sin editar; cara y manos siempre visibles.",
+      "Rótulo de 3–5 s con nombre completo, lugar y fecha de la grabación; contador de fotogramas visible y continuo.",
+      "Calidad técnica excelente, preferiblemente profesional; hecha en los 12 meses anteriores a la solicitud. La posproducción de sonido se admite si se declara.",
+      "Una de las obras puede repetirse en el concurso.",
+      "Con la solicitud: biografía de 150–500 palabras, pasaporte, fotos profesionales en color (300 dpi, ≥1,8 MB), estudios, dos referencias con email y teléfono y actividad de los últimos 5 años."
+    ]
+  },
+  "rondas": [
+    {
+      "nombre": "Preliminar · ronda 1 (32)",
+      "fecha": "2027-07-10",
+      "duracion": "20 min",
+      "repertorio": [
+        "Recital libre con obras de al menos 2 compositores.",
+        "En la ronda 1 o 2: obra(s) australiana(s) publicadas de al menos 7 min."
+      ]
+    },
+    {
+      "nombre": "Preliminar · ronda 2 (32)",
+      "fecha": null,
+      "duracion": "30 min",
+      "repertorio": [
+        "Recital libre con al menos 2 compositores distintos de los de la ronda 1. Pasan 12."
+      ]
+    },
+    {
+      "nombre": "Cuartos · música de cámara (12)",
+      "fecha": null,
+      "duracion": null,
+      "repertorio": [
+        "Preparar una pareja de obras de cada grupo; se asigna uno al pasar.",
+        "Violín (Jack Liebeck): Beethoven Sonata op. 30/2 + Kreisler Caprice viennois; Brahms Sonata 3 + Kreisler Liebesleid; Fauré Sonata 1 + Kreisler Syncopation; Franck Sonata + Chopin/Sarasate Nocturno op. 9/2.",
+        "Violonchelo (Timo-Veikko Valve): Beethoven Sonata op. 5/2 + Webern pieza n.º 1 (1899); Brahms Sonata 1 + Chopin Largo op. 65; Prokófiev Sonata op. 119 + Sibelius Romance op. 78/2; Rachmáninov Sonata op. 19 + Scriabin Romance."
+      ]
+    },
+    {
+      "nombre": "Cuartos · recital (12)",
+      "fecha": null,
+      "duracion": "70 min",
+      "repertorio": [
+        "Recital libre de dos o más obras en torno a un TEMA, con presentaciones habladas en inglés y una propina anunciada (todo dentro de los 70 min). Pasan 6."
+      ]
+    },
+    {
+      "nombre": "Semifinal (6)",
+      "fecha": null,
+      "duracion": null,
+      "repertorio": [
+        "Un concierto de Beethoven (n.º 1 a 5) en versión con quinteto de cuerda. Pasan 3."
+      ]
+    },
+    {
+      "nombre": "Final (3)",
+      "fecha": null,
+      "duracion": null,
+      "repertorio": [
+        "Con la Sydney Symphony Orchestra (dir. Benjamin Northey): Bartók 2; Chopin 1; Jachaturián; Liszt 2; cualquier concierto de Mozart; Prokófiev 2; Rachmáninov Rapsodia Paganini; Ravel en Sol; Saint-Saëns 2; Schumann; Chaikovski 1; Carl Vine 1."
+      ]
+    }
+  ],
+  "premios": [],
+  "premiosNota": "Más de 200.000 $ australianos en premios; el desglose no aparece en las bases consultadas. El ganador queda bajo contrato exclusivo de actuaciones en Australia hasta el 31-12-2028. Premios sujetos a impuestos australianos.",
+  "jurado": [],
+  "juradoNota": "Piers Lane AO preside sin voto; jurado internacional de 7 con voto, se publicará al anunciarse.",
+  "alojamiento": {
+    "estado": "si",
+    "texto": "Alojamiento y dietas diarias desde la llegada mientras sigas en el concurso (al ser eliminado, a cuenta propia desde el día siguiente). Sin transporte local. Salas de estudio diarias."
+  },
+  "viaje": {
+    "estado": "parcial",
+    "texto": "Contribución de 2/3 de un billete de ida y vuelta en turista desde tu aeropuerto internacional más cercano, máx. 3.000 AUD."
+  },
+  "otros": [
+    "Todo de memoria salvo la música de cámara y la obra australiana si se aprueba.",
+    "Quien ya participó no puede repetir obras de aquella edición.",
+    "Visado tramitado por el concurso (papeles antes del 28-02-2027); seguro de salud y viaje obligatorio."
+  ],
+  "estadoBases": "publicadas",
+  "fuentes": [
+    {
+      "titulo": "2027 Rules and Regulations",
+      "url": "https://www.pianoplus.com.au/2027-rules-and-regulations/",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "2027 Competition",
+      "url": "https://www.pianoplus.com.au/2027-competition/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": [
+    "premios",
+    "jurado"
+  ]
+}

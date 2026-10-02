@@ -1,0 +1,111 @@
+{
+  "id": "hummel-2027",
+  "nombre": "12.º Concurso Internacional de Piano Johann Nepomuk Hummel",
+  "edicion": "12.ª (2027)",
+  "ciudad": "Bratislava",
+  "pais": "Eslovaquia",
+  "web": "https://www.filharmonia.sk/en/hummel",
+  "fechas": {
+    "inicio": "2027-09-12",
+    "fin": "2027-09-18",
+    "nota": "Fechas según la WFIMC; la web de la Filarmónica Eslovaca solo dice «coming soon»."
+  },
+  "plazo": {
+    "fecha": null,
+    "hora": null,
+    "zona": null,
+    "nota": "Sin publicar. Referencia: en 2024 (11.ª edición) el plazo fue el 15 de julio.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": null,
+    "moneda": "EUR",
+    "nota": "Sin publicar. En 2024 fueron 50 € (rebajados de 70 €)."
+  },
+  "edad": {
+    "min": null,
+    "max": null,
+    "aFecha": null,
+    "nacidoDesde": null,
+    "nacidoHasta": null,
+    "texto": "Sin publicar para 2027. En 2024: nacidos después del 7-09-1994 (unos 30 años al empezar el concurso).",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": null,
+    "duracion": null,
+    "resumen": "Bases 2027 sin publicar.",
+    "detalles": []
+  },
+  "rondas": [
+    {
+      "nombre": "Referencia 2024 · 1ª ronda",
+      "fecha": null,
+      "duracion": "máx. 25 min",
+      "repertorio": [
+        "Sonata de Mozart, estudio de Hummel, estudio de Chopin y obra de Liszt, Scriabin, Rachmáninov o Debussy. Pasan 12."
+      ]
+    },
+    {
+      "nombre": "Referencia 2024 · 2ª ronda",
+      "fecha": null,
+      "duracion": "50–60 min",
+      "repertorio": [
+        "Recital de varios estilos con una gran obra romántica. Pasan 3."
+      ]
+    },
+    {
+      "nombre": "Referencia 2024 · final",
+      "fecha": null,
+      "duracion": null,
+      "repertorio": [
+        "Quinteto con piano de Hummel y un concierto de Mozart, Beethoven o Hummel."
+      ]
+    }
+  ],
+  "premios": [],
+  "premiosNota": "Sin publicar para 2027. En 2024: 6.000 € + tres conciertos con la Filarmónica Eslovaca / 4.000 € / 2.000 €.",
+  "jurado": [],
+  "juradoNota": "Sin publicar.",
+  "alojamiento": {
+    "estado": "desconocido",
+    "texto": "En 2024 la secretaría ayudaba a reservar alojamiento (no se decía que fuera gratis)."
+  },
+  "viaje": {
+    "estado": "desconocido",
+    "texto": "Sin publicar."
+  },
+  "otros": [
+    "Las rondas de 2024 son solo orientativas: comprueba las bases 2027 cuando salgan."
+  ],
+  "estadoBases": "pendientes",
+  "fuentes": [
+    {
+      "titulo": "Slovak Philharmonic · Hummel Competition",
+      "url": "https://www.filharmonia.sk/en/hummel",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "WFIMC · Hummel Piano Competition",
+      "url": "https://www.wfimc.org/member-competition/bratislava-international-johann-nepomuk-hummel-piano-competition",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "11.ª edición (2024), referencia",
+      "url": "https://www.filharmonia.sk/en/hummel/h11",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": [
+    "plazo",
+    "cuota",
+    "edad",
+    "video",
+    "rondas",
+    "premios",
+    "jurado",
+    "alojamiento",
+    "viaje"
+  ]
+}

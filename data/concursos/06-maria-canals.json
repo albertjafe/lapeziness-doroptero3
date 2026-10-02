@@ -1,0 +1,166 @@
+{
+  "id": "maria-canals-2027",
+  "nombre": "Concurso Internacional de Piano Maria Canals de Barcelona",
+  "edicion": "72.ª (2027)",
+  "ciudad": "Barcelona",
+  "pais": "España",
+  "web": "https://mariacanals.org/concurs/inscripcio-i-reglament/",
+  "fechas": {
+    "inicio": "2027-03-07",
+    "fin": "2027-03-18",
+    "nota": "Petit Palau y Palau de la Música Catalana. Prueba de piano y acreditación el 6-03; sorteo online el 3-03 a las 15 h (conexión obligatoria). Laureados hasta el 19-03."
+  },
+  "plazo": {
+    "fecha": "2026-11-23",
+    "hora": "24:00",
+    "zona": "hora de Barcelona",
+    "nota": "Inscripción solo por Muvac. Aceptación como tarde el 21-12-2026; confirmar y pagar antes del 31-12-2026. El programa no se puede cambiar después del 23-11 (solo fuerza mayor hasta el 31-12).",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": 200,
+    "moneda": "EUR",
+    "nota": "60 € de preselección (Muvac) + 140 € de participación si te seleccionan (transferencia antes del 31-12-2026). No reembolsables."
+  },
+  "edad": {
+    "min": 17,
+    "max": 29,
+    "aFecha": "2027-01-01",
+    "nacidoDesde": null,
+    "nacidoHasta": null,
+    "texto": "Entre 17 y 29 años a 1 de enero de 2027. Pueden repetir participantes de ediciones anteriores salvo ganadores del 1.er premio. No pueden presentarse alumnos que hayan trabajado con el comité de preselección o el jurado en los últimos tres cursos.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": true,
+    "duracion": "máx. 20 min en total (dos vídeos)",
+    "resumen": "Dos vídeos con cámara fija y sin posproducción: un movimiento rápido de una sonata de Beethoven y una obra libre.",
+    "detalles": [
+      "Movimientos de Beethoven no admitidos: 1.er mov. de las op. 26, op. 28, op. 101, op. 109 y op. 110.",
+      "Grabación continua y sin manipular (cualquier edición descalifica); buena calidad.",
+      "Indicar compositor y título completo de cada pieza.",
+      "Con la inscripción: perfil y CV de Muvac, foto reciente en alta resolución, DNI o pasaporte, carta de presentación en inglés y formulario del programa con la duración de cada obra.",
+      "Comité de preselección: Yukiko Akagi, Billy Eidi y Catherine Vickers."
+    ]
+  },
+  "rondas": [
+    {
+      "nombre": "1ª prueba",
+      "fecha": "2027-03-07",
+      "duracion": "máx. 20 min",
+      "repertorio": [
+        "Bach: un Preludio y Fuga del Clave bien temperado.",
+        "Beethoven: una sonata completa (la dirección artística elige qué movimiento(s) se tocan; sin repeticiones salvo excepciones). No se admiten las op. 2/1, 10/1, 13, 14/1, 14/2, 26, 27/2, 28, 31/2, 49/1, 49/2, 79 ni 90.",
+        "Un estudio de Chopin, Liszt, Debussy, Rachmáninov o Scriabin.",
+        "Pasan 18."
+      ]
+    },
+    {
+      "nombre": "2ª prueba (18)",
+      "fecha": "2027-03-11",
+      "duracion": "máx. 40 min",
+      "repertorio": [
+        "Obra contemporánea (≤ 5 min) compuesta desde 1995.",
+        "Una obra romántica de la lista: Brahms (Sonatas op. 1, 2, 5; Variaciones Händel; Paganini cuad. I o II), Chopin (Baladas, Scherzos, Sonatas op. 35 y 58, Andante spianato y Gran Polonesa, Polonesas op. 44 y 61, Fantasía op. 49), Franck (Prélude, Choral et Fugue), Liszt (Sonata, Dante, Rapsodia española, Mephisto-Vals, Balada 2), Rachmáninov (Sonata 2 versión 1931, Variaciones Corelli), Schubert (D 850, D 894, D 960, Wanderer), Schumann (Carnaval, Kreisleriana, Sonata op. 22, Fantasía op. 17, Estudios sinfónicos con póstumos).",
+        "Una obra o parte de ciclo de un compositor nacido desde 1860.",
+        "Obras de 3 compositores distintos. Pasan 6; el resto, Medalla de Honor."
+      ]
+    },
+    {
+      "nombre": "Semifinal (6)",
+      "fecha": "2027-03-14",
+      "duracion": "máx. 50 min",
+      "repertorio": [
+        "Recital libre; obligatoria al menos una de las dos obras de compositores españoles.",
+        "No valen los Estudios op. 10/25 ni Preludios op. 28 de Chopin, ni Fantasiestücke op. 12 de Schumann, ni obras ya tocadas. Pasan 3."
+      ]
+    },
+    {
+      "nombre": "Final · con orquesta (3)",
+      "fecha": "2027-03-17",
+      "duracion": null,
+      "repertorio": [
+        "Uno de: Beethoven 4; Chopin 1; Schumann; Brahms 2; Chaikovski 1; Rachmáninov 2, 3; Prokófiev 2, 3."
+      ]
+    }
+  ],
+  "premios": [
+    {
+      "puesto": "1.º (Premio Fundación Occident)",
+      "importe": 25000,
+      "moneda": "EUR",
+      "extra": "4 conciertos con orquestas españolas (Sevilla o Granada, Bilbao, Tenerife o Valencia, Madrid) y medalla de oro."
+    },
+    {
+      "puesto": "2.º (Premio Maria Font de Carulla)",
+      "importe": 10000,
+      "moneda": "EUR",
+      "extra": "Medalla."
+    },
+    {
+      "puesto": "3.º (Premio Fundació Vila Casas)",
+      "importe": 6000,
+      "moneda": "EUR",
+      "extra": "Medalla."
+    },
+    {
+      "puesto": "4.º semifinalista",
+      "importe": 2000,
+      "moneda": "EUR",
+      "extra": "Concierto en Las Arcadias Fleming."
+    },
+    {
+      "puesto": "5.º y 6.º semifinalistas",
+      "importe": 1500,
+      "moneda": "EUR",
+      "extra": "Cada uno."
+    },
+    {
+      "puesto": "Mejor intérprete de Mompou · Blancafort · Bianchini · J. A. Medina",
+      "importe": 1500,
+      "moneda": "EUR",
+      "extra": "Cada uno (Bianchini, con concierto en España)."
+    }
+  ],
+  "premiosNota": "Además: premio del público, 25 h de grabación (Lluís Soler), recitales para el mejor español (Instituto Cervantes de Palermo) y otros premios-concierto.",
+  "jurado": [
+    "Yukiko Akagi (Japón)",
+    "Salvador Brotons (Cataluña)",
+    "Florian Hölscher (Alemania)",
+    "Juan Lago (España)",
+    "Pascal Nemirowski (Francia)",
+    "Stanislav Pochekin (Rusia)",
+    "Inesa Sinkevych (Ucrania/Israel)",
+    "Marie Vermeulin (Francia)",
+    "Uta Weyand (Alemania)"
+  ],
+  "juradoNota": "Los eliminados en 1ª o 2ª prueba pueden hablar con el jurado el 10 o el 13 de marzo.",
+  "alojamiento": {
+    "estado": "parcial",
+    "texto": "Desde el día siguiente a pasar a la 2ª prueba: alojamiento y desayuno en habitación compartida hasta el día después de la eliminación (semifinalistas y finalistas, hasta después de la clausura). La 1ª prueba, a cuenta propia. Piano de estudio (casa de familia o escuela), mínimo 3 h diarias."
+  },
+  "viaje": {
+    "estado": "no",
+    "texto": "Las bases no mencionan ayuda de viaje."
+  },
+  "otros": [
+    "Obligatorio: obras de 2 compositores españoles (al menos uno catalán) y al menos una obra de compositora a lo largo del concurso.",
+    "Todo de memoria; máximo 2 obras del mismo compositor en las rondas de recital; sin piano preparado.",
+    "Obra encargada opcional: Marc Migó, Tres ensoñaciones (2026)."
+  ],
+  "estadoBases": "publicadas",
+  "fuentes": [
+    {
+      "titulo": "Reglamento del Concurso 2027 (PDF, castellano)",
+      "url": "https://mariacanals.org/wp-content/uploads/2026/10/Reglamento-CAST_2027-1.pdf",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "Inscripción y reglamento",
+      "url": "https://mariacanals.org/concurs/inscripcio-i-reglament/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": []
+}

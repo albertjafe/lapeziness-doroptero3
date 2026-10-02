@@ -1,0 +1,103 @@
+{
+  "id": "cipce-mompou-2026",
+  "nombre": "CIPCE · Concurso Internacional de Piano Compositores de España",
+  "edicion": "2026 (Senior)",
+  "ciudad": "Las Rozas de Madrid",
+  "pais": "España",
+  "web": "https://cipce.org/en/rules/",
+  "fechas": {
+    "inicio": "2026-11-08",
+    "fin": "2026-11-14",
+    "nota": "Auditorio Joaquín Rodrigo."
+  },
+  "plazo": {
+    "fecha": "2026-10-01",
+    "hora": null,
+    "zona": null,
+    "nota": "Plazo ya cerrado.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": null,
+    "moneda": "EUR",
+    "nota": "No indicada en la página de reglas."
+  },
+  "edad": {
+    "min": null,
+    "max": 35,
+    "aFecha": "2026-11-14",
+    "nacidoDesde": null,
+    "nacidoHasta": null,
+    "texto": "Menores de 36 años el día de inicio o durante el concurso.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": true,
+    "duracion": "15–20 min",
+    "resumen": "Enlace de YouTube o Vimeo de 15–20 min, repertorio libre, grabado en los últimos 2 años.",
+    "detalles": []
+  },
+  "rondas": [
+    {
+      "nombre": "1ª ronda (vídeo)",
+      "fecha": null,
+      "duracion": "15–20 min",
+      "repertorio": [
+        "Libre. Pasan como máximo 46."
+      ]
+    },
+    {
+      "nombre": "2ª ronda",
+      "fecha": null,
+      "duracion": "máx. 30 min",
+      "repertorio": [
+        "Libre con al menos 5 min de Federico Mompou (dosier anterior). Pasan como máximo 10."
+      ]
+    },
+    {
+      "nombre": "Semifinal",
+      "fecha": null,
+      "duracion": "máx. 40 min",
+      "repertorio": [
+        "Libre (conviene música española para el premio especial; dosier anterior). Pasan 3."
+      ]
+    },
+    {
+      "nombre": "Final · con orquesta",
+      "fecha": null,
+      "duracion": null,
+      "repertorio": [
+        "Concierto de una lista (dosier anterior)."
+      ]
+    }
+  ],
+  "premios": [],
+  "premiosNota": "La página de reglas no da importes.",
+  "jurado": [],
+  "juradoNota": "Ver cipce.org/en/jury/.",
+  "alojamiento": {
+    "estado": "parcial",
+    "texto": "Plazas de hotel con condiciones especiales por orden de inscripción; llegada desde el 8-11-2026."
+  },
+  "viaje": {
+    "estado": "no",
+    "texto": "Viaje y visado a cuenta del concursante."
+  },
+  "otros": [
+    "Piano: Yangtze River CGF-X1."
+  ],
+  "estadoBases": "parciales",
+  "fuentes": [
+    {
+      "titulo": "Rules · CIPCE 2026",
+      "url": "https://cipce.org/en/rules/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": [
+    "cuota",
+    "premios",
+    "jurado"
+  ]
+}

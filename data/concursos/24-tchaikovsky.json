@@ -1,0 +1,77 @@
+{
+  "id": "tchaikovsky-2027",
+  "nombre": "XVIII Concurso Internacional Chaikovski",
+  "edicion": "2027",
+  "ciudad": "Moscú / San Petersburgo",
+  "pais": "Rusia",
+  "web": "https://tchaikovskycompetition.com/en/",
+  "fechas": {
+    "inicio": null,
+    "fin": null,
+    "nota": "La web oficial solo dice «See you in 2027»; sin fechas ni bases."
+  },
+  "plazo": {
+    "fecha": null,
+    "hora": null,
+    "zona": null,
+    "nota": "Sin publicar.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": null,
+    "moneda": null,
+    "nota": "Sin publicar."
+  },
+  "edad": {
+    "min": null,
+    "max": null,
+    "aFecha": null,
+    "nacidoDesde": null,
+    "nacidoHasta": null,
+    "texto": "Bases 2027 sin publicar.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": null,
+    "duracion": null,
+    "resumen": "Sin publicar.",
+    "detalles": []
+  },
+  "rondas": [],
+  "premios": [],
+  "premiosNota": "Sin publicar.",
+  "jurado": [],
+  "juradoNota": "Sin publicar.",
+  "alojamiento": {
+    "estado": "desconocido",
+    "texto": ""
+  },
+  "viaje": {
+    "estado": "desconocido",
+    "texto": ""
+  },
+  "otros": [
+    "En seguimiento: revisar cuando se publiquen las bases."
+  ],
+  "estadoBases": "pendientes",
+  "fuentes": [
+    {
+      "titulo": "Tchaikovsky Competition",
+      "url": "https://tchaikovskycompetition.com/en/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": [
+    "fechas",
+    "plazo",
+    "cuota",
+    "edad",
+    "video",
+    "rondas",
+    "premios",
+    "jurado",
+    "alojamiento",
+    "viaje"
+  ]
+}

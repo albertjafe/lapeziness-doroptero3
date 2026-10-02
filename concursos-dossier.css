@@ -1,0 +1,79 @@
+/* Concursos · dosier de piano (concursos-dossier.js). Usa los tokens del tema. */
+#view-concursos { max-width: 920px; margin: auto; padding: 16px 16px 120px; color: var(--text);
+  --cd-ok: #2f9e6b; --cd-bad: #d0573f; --cd-warn: #c9851f; }
+#view-concursos button, #view-concursos select, #view-concursos input { font: inherit; color: inherit; }
+#view-concursos button { border: 1px solid var(--border2); border-radius: 12px; padding: 9px 14px; background: var(--bg2); cursor: pointer; min-height: 40px; }
+#view-concursos button:hover { border-color: var(--accent); }
+#view-concursos :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+#view-concursos .cd-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; }
+
+
+.cd-profile { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px; border: 1px solid var(--border2); border-radius: 16px; background: var(--card, var(--bg2)); }
+.cd-profile label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text2); }
+.cd-profile input { border: 1px solid var(--border2); border-radius: 10px; padding: 6px 8px; background: var(--bg2); }
+.cd-profile p { margin: 0; font-size: 13px; color: var(--text2); flex: 1 1 260px; }
+
+.cd-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 16px 0 8px; }
+.cd-segment { display: inline-flex; border: 1px solid var(--border2); border-radius: 13px; overflow: hidden; background: var(--bg2); }
+#view-concursos .cd-segment button { border: 0; border-radius: 0; background: transparent; min-height: 38px; }
+#view-concursos .cd-segment button.active { background: var(--accent); color: var(--bg); font-weight: 700; }
+.cd-segment button span { opacity: .7; font-size: 12px; margin-left: 2px; }
+.cd-sort { font-size: 13px; color: var(--text2); display: flex; gap: 6px; align-items: center; }
+.cd-sort select { border: 1px solid var(--border2); border-radius: 10px; padding: 6px 8px; background: var(--bg2); }
+.cd-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.cd-file { position: relative; display: inline-flex; align-items: center; border: 1px solid var(--border2); border-radius: 12px; padding: 9px 14px; background: var(--bg2); cursor: pointer; min-height: 40px; box-sizing: border-box; }
+.cd-file:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+.cd-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.cd-message { margin: 6px 0 12px; padding: 10px 14px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 14%, var(--card, var(--bg2))); font-size: 14px; }
+.cd-empty { color: var(--text3); padding: 30px 0; text-align: center; }
+
+.cd-list { display: grid; gap: 12px; }
+.cd-card { border: 1px solid var(--border2); border-radius: 18px; background: var(--card, var(--bg2)); overflow: hidden; }
+.cd-card[open] { border-color: color-mix(in srgb, var(--accent) 45%, var(--border2)); }
+.cd-card > summary { list-style: none; cursor: pointer; padding: 14px 16px 12px; }
+.cd-card > summary::-webkit-details-marker { display: none; }
+.cd-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cd-chip { font-size: 12px; font-weight: 650; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border2); color: var(--text2); white-space: nowrap; }
+.cd-dl-urgent { background: color-mix(in srgb, var(--cd-bad) 18%, transparent); border-color: var(--cd-bad); color: var(--text); }
+.cd-dl-soon { background: color-mix(in srgb, var(--cd-warn) 18%, transparent); border-color: var(--cd-warn); color: var(--text); }
+.cd-dl-open { border-color: color-mix(in srgb, var(--accent) 60%, var(--border2)); color: var(--text); }
+.cd-dl-closed, .cd-dl-finished, .cd-dl-pending, .cd-muted, .cd-el-unknown { color: var(--text3); }
+.cd-el-yes { color: var(--cd-ok); border-color: color-mix(in srgb, var(--cd-ok) 55%, transparent); }
+.cd-el-no { color: var(--cd-bad); border-color: color-mix(in srgb, var(--cd-bad) 55%, transparent); }
+.cd-plan { background: var(--bg3); color: var(--text); }
+.cd-fav { color: var(--accent); border-color: var(--accent); }
+.cd-name { margin: 9px 0 2px; font-size: 18px; line-height: 1.25; }
+.cd-where { margin: 0; font-size: 13px; color: var(--text2); }
+.cd-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0 0; }
+.cd-facts div { min-width: 0; }
+.cd-facts dt { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); }
+.cd-facts dd { margin: 2px 0 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+
+.cd-detail { padding: 0 16px 16px; border-top: 1px solid var(--border2); }
+.cd-sec { padding: 12px 0 2px; }
+.cd-sec h4 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .07em; color: var(--accent); }
+.cd-sec p, .cd-sec li { font-size: 14px; line-height: 1.5; margin: 4px 0; overflow-wrap: anywhere; }
+.cd-sec ul { margin: 4px 0; padding-left: 20px; }
+.cd-rounds { margin: 0; padding-left: 20px; }
+.cd-rounds > li { margin: 8px 0; }
+.cd-rounds > li > span { color: var(--text2); font-size: 13px; }
+.cd-prizes { border-collapse: collapse; width: 100%; font-size: 14px; }
+.cd-prizes th, .cd-prizes td { text-align: left; padding: 5px 8px 5px 0; vertical-align: top; border-bottom: 1px solid var(--border2); }
+.cd-prizes td:nth-child(2) { white-space: nowrap; font-weight: 650; }
+.cd-age.cd-el-yes b { color: var(--cd-ok); } .cd-age.cd-el-no b { color: var(--cd-bad); }
+.cd-unconfirmed { font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--cd-warn); font-weight: 600; }
+.cd-warn { color: var(--cd-warn); font-size: 13px; margin: 10px 0 0; }
+.cd-sources a { color: var(--accent); }
+.cd-sources span, .cd-verified { color: var(--text3); font-size: 12px; }
+.cd-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; align-items: center; }
+.cd-actions .cd-warn { flex-basis: 100%; margin: 0; }
+
+.cd-dialog { max-width: 640px; width: calc(100% - 32px); border: 1px solid var(--border2); border-radius: 18px; background: var(--card, var(--bg2)); color: var(--text); padding: 18px; }
+.cd-dialog::backdrop { background: rgba(0, 0, 0, .45); }
+.cd-dialog h2 { margin: 0 0 6px; font-size: 20px; }
+.cd-dialog p { font-size: 14px; color: var(--text2); }
+.cd-dialog textarea { width: 100%; box-sizing: border-box; font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; border: 1px solid var(--border2); border-radius: 10px; background: var(--bg2); color: var(--text); padding: 10px; }
+
+@media (max-width: 640px) {
+  .cd-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

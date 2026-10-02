@@ -1,0 +1,138 @@
+{
+  "id": "london-classic-2027",
+  "nombre": "London Classic Piano Competition 2027",
+  "edicion": "2027 · preselección de Classic Piano 2028",
+  "ciudad": "Londres",
+  "pais": "Reino Unido",
+  "web": "https://london.classicpiano.eu/",
+  "fechas": {
+    "inicio": "2027-04-02",
+    "fin": "2027-04-04",
+    "nota": "Royal College of Music. Es uno de los 6 concursos previos del Classic Piano International Competition (Barcelona, Palau de la Música, 10–20-09-2028)."
+  },
+  "plazo": {
+    "fecha": "2026-12-15",
+    "hora": null,
+    "zona": null,
+    "nota": "Inscripción online y después subir el vídeo. Los 20 seleccionados reciben aviso al menos 8 semanas antes. El programa no se puede cambiar después del plazo.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": 100,
+    "moneda": "EUR",
+    "nota": "50 € por la preselección en vídeo + 50 € si te seleccionan. No reembolsables."
+  },
+  "edad": {
+    "min": 15,
+    "max": 30,
+    "aFecha": "2028-09-10",
+    "nacidoDesde": null,
+    "nacidoHasta": null,
+    "texto": "Haber cumplido 15 años el primer día del concurso previo de 2027 y no tener más de 30 el primer día de la Gran Final de Barcelona (10-09-2028). Quien ya se clasificó para la Gran Final no puede presentarse a otro concurso previo.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": true,
+    "duracion": "máx. 30 min",
+    "resumen": "Un Preludio y Fuga del Clave bien temperado (libro I o II), dos estudios de dos compositores distintos y una obra libre, de memoria.",
+    "detalles": [
+      "Vale móvil o cámara; manos, cara, silueta completa y todo el instrumento en plano; sin editar.",
+      "Enlaces públicos de YouTube o Vimeo (tres enlaces o uno con capítulos); nada privado ni para descargar.",
+      "Título o descripción con tu nombre, compositor y obra.",
+      "Grabado como mucho 6 meses antes de inscribirse.",
+      "Las obras del vídeo no pueden tocarse en las rondas de Londres."
+    ]
+  },
+  "rondas": [
+    {
+      "nombre": "Preselección (vídeo)",
+      "fecha": null,
+      "duracion": "máx. 30 min",
+      "repertorio": [
+        "Preludio y Fuga de Bach, dos estudios de compositores distintos y una obra libre. Pasan 20."
+      ]
+    },
+    {
+      "nombre": "1ª ronda (20)",
+      "fecha": "2027-04-02",
+      "duracion": "máx. 25 min",
+      "repertorio": [
+        "Un estudio virtuoso de Chopin, Liszt, Rachmáninov, Prokófiev, Scriabin, Stravinski, Debussy o Ligeti.",
+        "Una obra (sin transcripciones ni estudios) de Bach, Brahms, Schumann, Chopin, Liszt, Médtner, Chaikovski, Bartók, Rachmáninov o Prokófiev.",
+        "Una obra libre."
+      ]
+    },
+    {
+      "nombre": "2ª ronda",
+      "fecha": null,
+      "duracion": "40–45 min",
+      "repertorio": [
+        "Sonata n.º 2 de Alexey Shor (partitura descargable; se puede tocar con partitura).",
+        "Una sonata completa de Haydn, Mozart o Beethoven.",
+        "Una obra libre. Sin repetir la 1ª ronda; todo lo demás de memoria."
+      ]
+    }
+  ],
+  "premios": [
+    {
+      "puesto": "1.º",
+      "importe": 20000,
+      "moneda": "EUR",
+      "extra": "Plaza en la Gran Final de Barcelona 2028 con todos los gastos pagados."
+    },
+    {
+      "puesto": "2.º",
+      "importe": 10000,
+      "moneda": "EUR",
+      "extra": "Plaza en la Gran Final de Barcelona 2028 con todos los gastos pagados."
+    },
+    {
+      "puesto": "3.º",
+      "importe": 5000,
+      "moneda": "EUR",
+      "extra": ""
+    }
+  ],
+  "premiosNota": "La Gran Final de Barcelona reparte 330.000 € en premios.",
+  "jurado": [
+    "Michel Beroff (Francia), presidente",
+    "Dmitri Alexeev (Reino Unido)",
+    "Peter Donohoe (Reino Unido)",
+    "Klaus Hellwig (Alemania)",
+    "Momo Kodama (Japón)",
+    "Vanessa Latarche (Reino Unido)",
+    "Giuliano Mazzoccante (Italia)"
+  ],
+  "juradoNota": "La web anuncia seis miembros más. Las votaciones del jurado se publican tras los resultados.",
+  "alojamiento": {
+    "estado": "no",
+    "texto": "Viaje, alojamiento y visado en Londres a cuenta del participante. Para los clasificados a Barcelona: vuelos, alojamiento y pensión completa pagados."
+  },
+  "viaje": {
+    "estado": "no",
+    "texto": "A cuenta propia (solo se paga el viaje a la Gran Final de Barcelona)."
+  },
+  "otros": [
+    "Cada obra solo puede aparecer una vez en todo el concurso (vídeo, 1ª o 2ª ronda)."
+  ],
+  "estadoBases": "publicadas",
+  "fuentes": [
+    {
+      "titulo": "London Classic Piano Competition 2027",
+      "url": "https://london.classicpiano.eu/",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "Competition Rules",
+      "url": "https://london.classicpiano.eu/general-info/competition-rules/",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "Jury members",
+      "url": "https://london.classicpiano.eu/jury-members/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": []
+}

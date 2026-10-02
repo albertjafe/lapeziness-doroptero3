@@ -1,0 +1,151 @@
+{
+  "id": "epinal-2027",
+  "nombre": "31.º Concours International de Piano d'Épinal",
+  "edicion": "31.ª (2027)",
+  "ciudad": "Épinal",
+  "pais": "Francia",
+  "web": "https://www.concours-international-piano-epinal.org/competition-2025/rules-and-regulations/",
+  "fechas": {
+    "inicio": "2027-03-12",
+    "fin": "2027-03-21",
+    "nota": "Llegada y prueba de piano el 12-03 (13–17 h, Théâtre Municipal). Final el 21-03 a las 15 h en el Auditorium de La Louvière."
+  },
+  "plazo": {
+    "fecha": "2026-11-30",
+    "hora": null,
+    "zona": null,
+    "nota": "Inscripción online desde el 1-09-2026. Admitidos (máx. 85) publicados desde el 20-12-2026; confirmar y pagar antes del 15-01-2027. Cambios de programa hasta el 15-02-2027.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": 120,
+    "moneda": "EUR",
+    "nota": "80 € al inscribirse (preselección) + 40 € de participación si te admiten. Sin reembolso, comisiones bancarias aparte."
+  },
+  "edad": {
+    "min": null,
+    "max": null,
+    "aFecha": null,
+    "nacidoDesde": "1996-03-22",
+    "nacidoHasta": "2011-03-12",
+    "texto": "Nacidos después del 21-03-1996 y antes del 13-03-2011.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": true,
+    "duracion": "máx. 15 min",
+    "resumen": "Un enlace de YouTube con un movimiento rápido de sonata clásica (Beethoven, Clementi, Haydn o Mozart) y un estudio libre.",
+    "detalles": [
+      "Cámara fija, cara y manos siempre visibles, sin edición ni posproducción; reciente y de buena calidad.",
+      "Las dos obras pueden grabarse por separado pero unidas en un único archivo; un solo enlace; nombres de las piezas en la descripción.",
+      "El enlace debe seguir accesible durante toda la preselección (si no, eliminación sin reembolso).",
+      "Finalistas de un concurso WFIMC celebrado desde el 1-01-2024: exentos de vídeo, pagan los 120 € al inscribirse.",
+      "Con la inscripción: DNI o pasaporte, CV en francés o inglés, foto artística reciente y justificante de pago."
+    ]
+  },
+  "rondas": [
+    {
+      "nombre": "Preselección (vídeo)",
+      "fecha": null,
+      "duracion": "máx. 15 min",
+      "repertorio": [
+        "Movimiento de sonata clásica + estudio libre. Pueden repetirse en el concurso."
+      ]
+    },
+    {
+      "nombre": "1ª ronda",
+      "fecha": "2027-03-13",
+      "duracion": "máx. 20 min",
+      "repertorio": [
+        "Repartir entre 1ª y 2ª ronda: un Preludio y Fuga del Clave bien temperado; un Estudio de Chopin op. 10 u op. 25; un estudio de otro compositor; una obra u opus romántico (7–30 min) compuesto entre 1820 y 1899; una sonata completa de Beethoven, Clementi, Haydn, Mozart o Schubert (repeticiones opcionales)."
+      ]
+    },
+    {
+      "nombre": "2ª ronda",
+      "fecha": "2027-03-16",
+      "duracion": "máx. 35 min",
+      "repertorio": [
+        "Resto de las obras obligatorias (solo esas 5 obras entre las dos rondas)."
+      ]
+    },
+    {
+      "nombre": "Semifinal · recital",
+      "fecha": "2027-03-19",
+      "duracion": "40–50 min",
+      "repertorio": [
+        "Programa libre con «Intermezzo» de Christian Lauba (encargo, ~5'30; se puede tocar con partitura) y una obra de un compositor francés (siglos XVII–XXI). Pasan 4."
+      ]
+    },
+    {
+      "nombre": "Final · con orquesta (4)",
+      "fecha": "2027-03-21",
+      "duracion": null,
+      "repertorio": [
+        "Un concierto: Mozart 21 K 467; Beethoven 4; Chopin 2; Liszt 2; Ravel en Sol; Prokófiev 3. Ensayo con orquesta el 20-03."
+      ]
+    }
+  ],
+  "premios": [
+    {
+      "puesto": "1.er Gran Premio",
+      "importe": 10000,
+      "moneda": "EUR",
+      "extra": ""
+    },
+    {
+      "puesto": "2.º",
+      "importe": 4000,
+      "moneda": "EUR",
+      "extra": ""
+    },
+    {
+      "puesto": "3.º",
+      "importe": 2000,
+      "moneda": "EUR",
+      "extra": ""
+    },
+    {
+      "puesto": "4.º",
+      "importe": 1000,
+      "moneda": "EUR",
+      "extra": ""
+    }
+  ],
+  "premiosNota": "Premios especiales: música contemporánea (Lauba), mejor Estudio de Chopin, música francesa, Jeunesses Musicales de France (mejor francés) y premio del público al concierto. Posibles conciertos en festivales regionales.",
+  "jurado": [],
+  "juradoNota": "7 personalidades internacionales; la composición de 2027 se anunciará más adelante.",
+  "alojamiento": {
+    "estado": "parcial",
+    "texto": "A cuenta del concursante, pero se puede pedir alojamiento gratis en familia de acogida al inscribirse (según disponibilidad). Piano de estudio en la familia o en el Conservatorio."
+  },
+  "viaje": {
+    "estado": "no",
+    "texto": "Viaje a cuenta del concursante."
+  },
+  "otros": [
+    "Ninguna obra puede repetirse en el concurso (salvo las del vídeo).",
+    "Todo de memoria salvo la obra contemporánea obligatoria."
+  ],
+  "estadoBases": "publicadas",
+  "fuentes": [
+    {
+      "titulo": "Rules and regulations 2027",
+      "url": "https://www.concours-international-piano-epinal.org/competition-2025/rules-and-regulations/",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "Program of the competition",
+      "url": "https://www.concours-international-piano-epinal.org/competition-2025/program-of-the-competition/",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "Calendar",
+      "url": "https://www.concours-international-piano-epinal.org/competition-2025/calendar/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": [
+    "jurado"
+  ]
+}

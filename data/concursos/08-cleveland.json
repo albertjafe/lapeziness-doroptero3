@@ -1,0 +1,165 @@
+{
+  "id": "cleveland-2027",
+  "nombre": "Cleveland International Piano Competition 2027",
+  "edicion": "2027",
+  "ciudad": "Cleveland (1ª ronda también en París)",
+  "pais": "Estados Unidos",
+  "web": "https://pianocleveland.org/2027-cipc/",
+  "fechas": {
+    "inicio": "2027-03-10",
+    "fin": "2027-08-08",
+    "nota": "1ª ronda: Cleveland (CIM) 10–14-03-2027 o París (Salle Cortot) 17–20-03-2027. Fase final en Cleveland del 25-07 al 8-08-2027."
+  },
+  "plazo": {
+    "fecha": "2026-12-04",
+    "hora": "23:59",
+    "zona": "EST",
+    "nota": "Solicitud en Acceptd (app.getacceptd.com/pianocleveland). Tarifa reducida hasta el 4-11-2026. Resultados de la preselección en enero de 2027.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": 200,
+    "moneda": "USD",
+    "nota": "150 $ hasta el 4-11-2026 (early bird); 200 $ después."
+  },
+  "edad": {
+    "min": 18,
+    "max": 32,
+    "aFecha": "2027-08-07",
+    "nacidoDesde": null,
+    "nacidoHasta": null,
+    "texto": "«Candidates aged 18-32 on or after August 7, 2027» (18–32 años a 7-08-2027). No pueden participar ganadores de un 1.er premio anterior.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": true,
+    "duracion": "20–25 min",
+    "resumen": "Grabación de 20–25 min de estilos diversos, con una obra de Haydn, Mozart, Beethoven o Schubert y una obra de virtuosismo.",
+    "detalles": [
+      "Grabada en el último año.",
+      "Se eligen 50–60 pianistas para la 1ª ronda."
+    ]
+  },
+  "rondas": [
+    {
+      "nombre": "Preselección (vídeo)",
+      "fecha": null,
+      "duracion": "20–25 min",
+      "repertorio": [
+        "Estilos diversos; una obra de Haydn/Mozart/Beethoven/Schubert y una de virtuosismo."
+      ]
+    },
+    {
+      "nombre": "1ª ronda · Cleveland o París (50–60)",
+      "fecha": "2027-03-10",
+      "duracion": "2 programas de 25–30 min",
+      "repertorio": [
+        "Dos programas de estilos diversos (se permite repetir compositores). Pasan 16."
+      ]
+    },
+    {
+      "nombre": "Cuartos de final (16)",
+      "fecha": "2027-07-25",
+      "duracion": "35–40 min",
+      "repertorio": [
+        "Recital libre con al menos dos obras de estilos distintos, una de un compositor de un colectivo tradicionalmente infrarrepresentado.",
+        "Una transcripción para dúo de pianos (ceremonia inaugural). Pasan 8."
+      ]
+    },
+    {
+      "nombre": "Semifinal (8)",
+      "fecha": "2027-07-30",
+      "duracion": "45 min",
+      "repertorio": [
+        "Recital tipo salón hablando al público, con una obra de compositor infrarrepresentado.",
+        "Un trío con piano de la lista (Beethoven, Brahms, Dvořák, Mendelssohn, Schubert o Clara Schumann). Pasan 4."
+      ]
+    },
+    {
+      "nombre": "Final (4)",
+      "fecha": "2027-08-04",
+      "duracion": null,
+      "repertorio": [
+        "Pieza de virtuosismo (5–7 min).",
+        "Dos obras a cuatro manos (Debussy Petite Suite, Fauré Dolly, Schubert Marches militaires, Brahms Danzas húngaras).",
+        "Concierto con The Cleveland Orchestra (lista: Bach, A. Beach, Beethoven, Brahms, Chopin, Grieg, Haydn, Mendelssohn, Mozart, F. Price, Prokófiev, Rachmáninov, Ravel, Saint-Saëns, C. y R. Schumann, Chaikovski).",
+        "Pieza de gala (5–7 min)."
+      ]
+    }
+  ],
+  "premios": [
+    {
+      "puesto": "1.º",
+      "importe": 100000,
+      "moneda": "USD",
+      "extra": "Debut en Carnegie Hall y servicios de management."
+    },
+    {
+      "puesto": "2.º",
+      "importe": 50000,
+      "moneda": "USD",
+      "extra": ""
+    },
+    {
+      "puesto": "3.º",
+      "importe": 25000,
+      "moneda": "USD",
+      "extra": ""
+    },
+    {
+      "puesto": "4.º",
+      "importe": 15000,
+      "moneda": "USD",
+      "extra": ""
+    },
+    {
+      "puesto": "Semifinalistas",
+      "importe": 2000,
+      "moneda": "USD",
+      "extra": ""
+    },
+    {
+      "puesto": "Cuartofinalistas que no pasan",
+      "importe": 1000,
+      "moneda": "USD",
+      "extra": ""
+    },
+    {
+      "puesto": "Premio Cynthia Reece (mujeres)",
+      "importe": 20000,
+      "moneda": "USD",
+      "extra": ""
+    }
+  ],
+  "premiosNota": "Premios especiales de 1.500–2.500 $ (barroco, Beethoven, Chopin, Mozart, compositora, música estadounidense, público) y Premio Schmelzer de liderazgo (5.000 $).",
+  "jurado": [
+    "Anne-Marie McDermott (EE. UU.), presidenta",
+    "Melvin Chen",
+    "Simone Dinnerstein",
+    "Maike Charlotte Fuchs (Alemania)",
+    "Claire-Marie Le Guay (Francia)",
+    "Matthew Loden",
+    "Sergio Tiempo (Venezuela)",
+    "Danwen Wei (China)"
+  ],
+  "juradoNota": "Jurado de la fase de Cleveland (cuartos a final). 1ª ronda: Bishara Haroni, Yaron Kohlberg, Gesa Lücker, Samir Nikocevic, Natasha Paremski. Preselección: Kathryn Brown, Angela Cheng, Stanislav Khristenko, Yaron Kohlberg, Marina Lomazov, Henning Vauth, Dongni Xie.",
+  "alojamiento": {
+    "estado": "parcial",
+    "texto": "1ª ronda: a cuenta propia (solo la ayuda de viaje). Desde cuartos de final: alojamiento, comidas, pianos de estudio y transporte en Cleveland."
+  },
+  "viaje": {
+    "estado": "parcial",
+    "texto": "1ª ronda: ayuda de hasta 500 $. Cuartofinalistas: vuelo de ida y vuelta en turista a Cleveland (Roe Green Travel Fund)."
+  },
+  "otros": [],
+  "estadoBases": "publicadas",
+  "fuentes": [
+    {
+      "titulo": "2027 CIPC",
+      "url": "https://pianocleveland.org/2027-cipc/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": []
+}

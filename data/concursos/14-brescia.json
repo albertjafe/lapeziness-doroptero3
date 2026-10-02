@@ -1,0 +1,120 @@
+{
+  "id": "brescia-classica-2026",
+  "nombre": "Brescia Classica International Piano Competition",
+  "edicion": "2026",
+  "ciudad": "Brescia",
+  "pais": "Italia",
+  "web": "https://www.facebook.com/bresciaclassica/",
+  "fechas": {
+    "inicio": "2026-10-19",
+    "fin": "2026-10-25",
+    "nota": "Fechas del dosier anterior (16-08-2026); no se han podido verificar hoy."
+  },
+  "plazo": {
+    "fecha": "2026-09-26",
+    "hora": null,
+    "zona": null,
+    "nota": "Plazo ya cerrado.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": null,
+    "moneda": "EUR",
+    "nota": "Sin verificar."
+  },
+  "edad": {
+    "min": null,
+    "max": null,
+    "aFecha": null,
+    "nacidoDesde": null,
+    "nacidoHasta": null,
+    "texto": "Según el dosier anterior: sin límite de edad; no admite ganadores previos del 1.er premio. Sin verificar.",
+    "sinLimite": true
+  },
+  "video": {
+    "exige": false,
+    "duracion": null,
+    "resumen": "Según el dosier anterior, las bases no exigían vídeo de preselección. Sin verificar.",
+    "detalles": []
+  },
+  "rondas": [
+    {
+      "nombre": "1ª ronda",
+      "fecha": null,
+      "duracion": "máx. 20 min",
+      "repertorio": [
+        "Programa libre (dosier anterior, sin verificar)."
+      ]
+    },
+    {
+      "nombre": "2ª ronda",
+      "fecha": null,
+      "duracion": "40–50 min",
+      "repertorio": [
+        "Libre (dosier anterior, sin verificar)."
+      ]
+    },
+    {
+      "nombre": "Final · con orquesta",
+      "fecha": null,
+      "duracion": null,
+      "repertorio": [
+        "Un concierto de una lista amplia (dosier anterior, sin verificar)."
+      ]
+    }
+  ],
+  "premios": [
+    {
+      "puesto": "1.º",
+      "importe": 5000,
+      "moneda": "EUR",
+      "extra": ""
+    },
+    {
+      "puesto": "2.º",
+      "importe": 3500,
+      "moneda": "EUR",
+      "extra": ""
+    },
+    {
+      "puesto": "3.º",
+      "importe": 1000,
+      "moneda": "EUR",
+      "extra": ""
+    }
+  ],
+  "premiosNota": "Importes del dosier anterior, sin verificar.",
+  "jurado": [],
+  "juradoNota": "No publicado en las bases consultadas en agosto.",
+  "alojamiento": {
+    "estado": "desconocido",
+    "texto": ""
+  },
+  "viaje": {
+    "estado": "desconocido",
+    "texto": ""
+  },
+  "otros": [
+    "La web oficial (bresciaclassica.com) no responde: datos procedentes del dosier de agosto de 2026."
+  ],
+  "estadoBases": "sin verificar",
+  "fuentes": [
+    {
+      "titulo": "Dosier anterior (PDF de bases de agosto de 2026, no accesible hoy)",
+      "url": "https://www.bresciaclassica.com/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": null,
+  "sinConfirmar": [
+    "fechas",
+    "cuota",
+    "edad",
+    "video",
+    "rondas",
+    "premios",
+    "jurado",
+    "alojamiento",
+    "viaje"
+  ]
+}

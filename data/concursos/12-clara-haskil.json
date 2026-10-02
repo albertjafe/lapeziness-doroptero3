@@ -1,0 +1,155 @@
+{
+  "id": "clara-haskil-2027",
+  "nombre": "32.º Concours International de Piano Clara Haskil",
+  "edicion": "32.ª (2027)",
+  "ciudad": "Vevey",
+  "pais": "Suiza",
+  "web": "https://clara-haskil.ch/",
+  "fechas": {
+    "inicio": "2027-08-26",
+    "fin": "2027-09-03",
+    "nota": "Théâtre Le Reflet. Llegada y acogida el 25-08 (9–16 h), con prueba breve del Steinway D."
+  },
+  "plazo": {
+    "fecha": "2027-04-07",
+    "hora": null,
+    "zona": null,
+    "nota": "Solo online en clarahaskil.getacceptd.com (abierto desde el 31-03-2026). Resultado de la preselección y partitura de la obra obligatoria como tarde el 3-05-2027. El programa no se puede cambiar tras confirmar.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": 100,
+    "moneda": "EUR",
+    "nota": "No reembolsable; se paga en Acceptd."
+  },
+  "edad": {
+    "min": null,
+    "max": null,
+    "aFecha": null,
+    "nacidoDesde": "1998-09-04",
+    "nacidoHasta": "2009-09-03",
+    "texto": "Cualquier nacionalidad, nacidos entre el 4-09-1998 y el 3-09-2009.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": true,
+    "duracion": "2 archivos",
+    "resumen": "Mozart: 2.º y 3.er movimientos de una sonata (si es K. 282 o K. 331, el primero y el último) + Schumann: Variaciones «Abegg» op. 1 completas.",
+    "detalles": [
+      "Cada archivo en una toma, una sola cámara fija, sin cortes ni edición; cara y manos siempre visibles.",
+      "Dos archivos separados: los dos movimientos de Mozart y la obra de Schumann.",
+      "Repeticiones a elección del pianista.",
+      "Preselección a puerta cerrada en abril de 2027 (presidenta + un miembro del jurado). Quien no pase puede pedir una valoración escrita."
+    ]
+  },
+  "rondas": [
+    {
+      "nombre": "Preselección (vídeo)",
+      "fecha": null,
+      "duracion": null,
+      "repertorio": [
+        "Mozart (2 movimientos de sonata) + Schumann «Abegg» op. 1."
+      ]
+    },
+    {
+      "nombre": "Cuartos de final (24)",
+      "fecha": "2027-08-26",
+      "duracion": "55–60 min",
+      "repertorio": [
+        "Un Preludio y Fuga de Bach (BWV 846–893), o dos sonatas contrastantes de Scarlatti, o dos de Soler.",
+        "Una sonata completa de Beethoven o Schubert.",
+        "Obra obligatoria de ~5 min (se envía al seleccionarte; puede tocarse con partitura).",
+        "Programa libre (sin piano preparado). Pasan 6."
+      ]
+    },
+    {
+      "nombre": "Semifinal (6)",
+      "fecha": "2027-08-31",
+      "duracion": null,
+      "repertorio": [
+        "Un quinteto con piano: Amy Beach op. 67, Brahms op. 34, Dvořák n.º 2 op. 81 o Schumann op. 44 (sin repeticiones; dos ensayos; con partitura).",
+        "25–30 min de obras de Albéniz, Bartók, L. Boulanger, Brahms, Chopin, Debussy, Enescu, Fauré, Hindemith, Liszt, Médtner, F. Hensel-Mendelssohn, F. Mendelssohn, Poulenc, Ravel, C. o R. Schumann. Pasan 3."
+      ]
+    },
+    {
+      "nombre": "Final · con orquesta (3)",
+      "fecha": "2027-09-03",
+      "duracion": null,
+      "repertorio": [
+        "Un concierto de Mozart completo: K. 271, 453, 456, 459, 466, 467, 482, 488, 491, 503, 537 o 595 (dir. Gábor Takács-Nagy, dos ensayos).",
+        "Propina: una Romanza sin palabras de Mendelssohn (op. 19, 30, 38, 53, 62, 67, 85 o 102)."
+      ]
+    }
+  ],
+  "premios": [
+    {
+      "puesto": "Premio Clara Haskil (único)",
+      "importe": 25000,
+      "moneda": "CHF",
+      "extra": "Conciertos con socios en Suiza y el extranjero y ayuda para encontrar agencia. No se comparte; puede quedar desierto."
+    },
+    {
+      "puesto": "Resto de finalistas",
+      "importe": 5000,
+      "moneda": "CHF",
+      "extra": "Cada uno."
+    },
+    {
+      "puesto": "Premio del público",
+      "importe": 3000,
+      "moneda": "CHF",
+      "extra": ""
+    },
+    {
+      "puesto": "Premio Modern Times (obra encargada)",
+      "importe": 3000,
+      "moneda": "CHF",
+      "extra": ""
+    },
+    {
+      "puesto": "Premio «Coup de cœur» (La Jeune Critique)",
+      "importe": 3000,
+      "moneda": "CHF",
+      "extra": ""
+    },
+    {
+      "puesto": "Premio Children's Corner",
+      "importe": 2000,
+      "moneda": "CHF",
+      "extra": ""
+    }
+  ],
+  "premiosNota": "",
+  "jurado": [
+    "Hisako Kawamura, presidenta",
+    "Blythe Teh Engstroem",
+    "Ingrid Fliter",
+    "Heinz Holliger",
+    "Steven Osborne",
+    "Kazuki Yamada",
+    "Thomas Zehetmair"
+  ],
+  "juradoNota": "Tras cada resultado (desde cuartos) hay sesiones de valoración con el jurado para los eliminados.",
+  "alojamiento": {
+    "estado": "si",
+    "texto": "Alojamiento gratis garantizado en familia de acogida si se pide (o lista de hoteles asociados, a cuenta propia). Piano de estudio garantizado."
+  },
+  "viaje": {
+    "estado": "parcial",
+    "texto": "A cuenta propia; a los semifinalistas se les reembolsa hasta 1.000 CHF con recibos."
+  },
+  "otros": [
+    "Ninguna obra puede programarse dos veces de la preselección a la semifinal.",
+    "Todo de memoria salvo la obra obligatoria y los quintetos."
+  ],
+  "estadoBases": "publicadas",
+  "fuentes": [
+    {
+      "titulo": "Regulations & programme 2027 (PDF, marzo 2026)",
+      "url": "https://clara-haskil.ch/wp-content/uploads/2026/04/CCH-2027-reglement-EN.pdf",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": []
+}

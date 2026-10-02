@@ -1,0 +1,3175 @@
+{
+  "formato": "dosier-concursos-piano",
+  "version": 1,
+  "generado": "2026-10-02",
+  "autor": "Claude · bases oficiales consultadas el 2 de octubre de 2026",
+  "concursos": [
+    {
+      "id": "international-german-piano-award-2026",
+      "nombre": "XV German Piano Award · International Piano Masters",
+      "edicion": "XV (2026)",
+      "ciudad": "Kronberg im Taunus",
+      "pais": "Alemania",
+      "web": "https://ipf-frankfurt.com/international-german-piano-award/igpa-2026-dates-rules-req/",
+      "fechas": {
+        "inicio": "2026-11-20",
+        "fin": "2026-11-22",
+        "nota": "Casals Forum de la Kronberg Academy. Llegada el 20; pruebas el 21 y 22; salida el 24."
+      },
+      "plazo": {
+        "fecha": "2026-10-15",
+        "hora": null,
+        "zona": null,
+        "nota": "Nominaciones anunciadas como tarde el 29-10-2026. Hasta 6 nominados; candidaturas revisadas de forma anónima.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": 80,
+        "moneda": "EUR",
+        "nota": "No reembolsable; transferencia y justificante con la solicitud."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Las bases 2026 no fijan límite de edad. Abierto a todas las nacionalidades; los nominados de ediciones anteriores pueden volver a presentarse.",
+        "sinLimite": true
+      },
+      "video": {
+        "exige": true,
+        "duracion": "≈ 20 min",
+        "resumen": "Vídeo de unos 20 min, repertorio libre de piano solo que incluya una obra clásico-romántica.",
+        "detalles": [
+          "Archivo de vídeo (máx. 4 GB por archivo); no se aceptan enlaces de YouTube.",
+          "Grabación profesional con la máxima calidad de imagen y sonido.",
+          "Grabación de menos de 12 meses en el momento de enviarla.",
+          "Sin composiciones propias.",
+          "Envío en un único paquete (WeTransfer, Dropbox o similar) a office@german-piano-award.com con CV narrativo (no en tabla) y al menos 3 fotos en color de 300 dpi (una horizontal)."
+        ]
+      },
+      "rondas": [
+        {
+          "nombre": "Preselección (vídeo)",
+          "fecha": null,
+          "duracion": "≈ 20 min",
+          "repertorio": [
+            "Libre, piano solo, con una obra clásico-romántica.",
+            "Lo del vídeo solo puede repetirse en una de las fases."
+          ]
+        },
+        {
+          "nombre": "1ª fase · recital",
+          "fecha": "2026-11-21",
+          "duracion": "30 min",
+          "repertorio": [
+            "Programa libre de piano solo, variedad de estilos, obras completas, de memoria. Pasan 4."
+          ]
+        },
+        {
+          "nombre": "2ª fase · recital",
+          "fecha": "2026-11-21",
+          "duracion": "30 min",
+          "repertorio": [
+            "Libre, variedad de estilos, obras completas, de memoria; sin repetir la 1ª fase. Pasan 2."
+          ]
+        },
+        {
+          "nombre": "3ª fase · recital",
+          "fecha": "2026-11-22",
+          "duracion": "45 min",
+          "repertorio": [
+            "Libre, variedad de estilos, obras completas, de memoria; sin repetir fases anteriores."
+          ]
+        },
+        {
+          "nombre": "Gran Premio · con orquesta",
+          "fecha": "2026-11-22",
+          "duracion": null,
+          "repertorio": [
+            "Opción 1: Beethoven Concierto n.º 4 op. 58 + Chaikovski Concierto n.º 1 op. 23.",
+            "Opción 2: Saint-Saëns Concierto n.º 2 op. 22 + Chaikovski Concierto n.º 1 op. 23.",
+            "La opción se asigna tras la 3ª fase, por acuerdo o sorteo. Philharmonia Frankfurt, dir. Juri Gilbo."
+          ]
+        }
+      ],
+      "premios": [
+        {
+          "puesto": "German Piano Award",
+          "importe": 20000,
+          "moneda": "EUR",
+          "extra": "Producción de CD; invitación a ser jurado en una edición futura."
+        },
+        {
+          "puesto": "Premio del público Schott Music",
+          "importe": 3000,
+          "moneda": "EUR",
+          "extra": ""
+        },
+        {
+          "puesto": "Premio a finalista Hauck & Aufhäuser Kulturstiftung",
+          "importe": 3000,
+          "moneda": "EUR",
+          "extra": ""
+        }
+      ],
+      "premiosNota": "Conciertos para ganadores y/o nominados; certificado para todos los nominados.",
+      "jurado": [],
+      "juradoNota": "Directores, directores artísticos y pianistas más el laureado 2025; los nombres se publican junto con los nominados.",
+      "alojamiento": {
+        "estado": "si",
+        "texto": "Hotel cubierto para los nominados durante el concurso; almuerzo bufé y piano de cola para estudiar."
+      },
+      "viaje": {
+        "estado": "parcial",
+        "texto": "Se reembolsa el 50 % del viaje con factura."
+      },
+      "otros": [
+        "Todo de memoria en las fases presenciales.",
+        "Sin composiciones propias."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "IGPA 2026 · Rules, Repertoire & Artistic Guidelines (PDF)",
+          "url": "https://ipf-frankfurt.com/wp-content/uploads/2026/09/IGPA-Guidelines_.pdf",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "IGPA 2026 · Dates, rules, requirements",
+          "url": "https://ipf-frankfurt.com/international-german-piano-award/igpa-2026-dates-rules-req/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "jurado"
+      ]
+    },
+    {
+      "id": "campillos-2026",
+      "nombre": "XX Concurso Internacional de Piano de Campillos",
+      "edicion": "XX (2026)",
+      "ciudad": "Campillos (Málaga)",
+      "pais": "España",
+      "web": "https://www.concursointernacionalpiano.es/",
+      "fechas": {
+        "inicio": "2026-12-04",
+        "fin": "2026-12-08",
+        "nota": "Salón de actos del IES Camilo José Cela e Iglesia Santa María del Reposo."
+      },
+      "plazo": {
+        "fecha": "2026-10-15",
+        "hora": null,
+        "zona": null,
+        "nota": "Preselección: máximo 60 pianistas, comunicada hacia el 20 de octubre. Formulario en concursointernacionalpiano.es/application/.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": 125,
+        "moneda": "EUR",
+        "nota": "Solo los preseleccionados; se paga antes del 25 de octubre."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Abierto a todas las nacionalidades sin límite de edad.",
+        "sinLimite": true
+      },
+      "video": {
+        "exige": true,
+        "duracion": "10–15 min",
+        "resumen": "Enlace de vídeo (YouTube o similar) de 10–15 min con una o varias obras libres.",
+        "detalles": [
+          "Calidad de imagen y sonido lo mejor posible; manos y cara siempre visibles.",
+          "Las obras del vídeo pueden repetirse en las rondas presenciales.",
+          "Con la inscripción: copia del pasaporte, foto artística (.jpg) y CV (.doc, .docx o .pdf)."
+        ]
+      },
+      "rondas": [
+        {
+          "nombre": "1ª ronda",
+          "fecha": "2026-12-04",
+          "duracion": "máx. 15 min",
+          "repertorio": [
+            "Libre."
+          ]
+        },
+        {
+          "nombre": "Semifinal",
+          "fecha": "2026-12-06",
+          "duracion": "máx. 25 min",
+          "repertorio": [
+            "Libre."
+          ]
+        },
+        {
+          "nombre": "Final · con orquesta",
+          "fecha": "2026-12-08",
+          "duracion": null,
+          "repertorio": [
+            "Un concierto con la Orquesta Sinfónica de Málaga: Beethoven n.º 5, Chopin n.º 2, Liszt n.º 1, Grieg, Chaikovski n.º 1 o Rachmaninov n.º 2."
+          ]
+        }
+      ],
+      "premios": [
+        {
+          "puesto": "1.º",
+          "importe": 8000,
+          "moneda": "EUR",
+          "extra": "Diploma y recitales en salas y festivales de España."
+        },
+        {
+          "puesto": "2.º",
+          "importe": 4000,
+          "moneda": "EUR",
+          "extra": "Diploma."
+        },
+        {
+          "puesto": "3.º",
+          "importe": 2000,
+          "moneda": "EUR",
+          "extra": "Diploma."
+        },
+        {
+          "puesto": "Mejor pianista español",
+          "importe": 1000,
+          "moneda": "EUR",
+          "extra": ""
+        },
+        {
+          "puesto": "Becas de viaje (orquesta y público)",
+          "importe": 250,
+          "moneda": "EUR",
+          "extra": "Cada una."
+        }
+      ],
+      "premiosNota": "Sujetos a impuestos españoles; el jurado puede dejar premios desiertos.",
+      "jurado": [
+        "Akemi Alink (Japón/Países Bajos)",
+        "Fabio Bidini (Italia/EE. UU.)",
+        "Filippo Gamba (Italia)",
+        "Juan Lago (España)",
+        "Vanessa Latarche (Reino Unido)",
+        "Matti Raekallio (Finlandia)",
+        "Chun-Chieh Yen (Taiwán)"
+      ],
+      "juradoNota": "",
+      "alojamiento": {
+        "estado": "desconocido",
+        "texto": "Las bases y la web no mencionan alojamiento."
+      },
+      "viaje": {
+        "estado": "no",
+        "texto": "No se menciona ayuda de viaje (solo las becas de 250 € como premio especial)."
+      },
+      "otros": [
+        "No pueden participar ganadores de un 1.er premio anterior ni alumnos oficiales o privados del jurado (actuales o de los dos años anteriores).",
+        "Todo de memoria, incluida la música contemporánea.",
+        "No se puede repetir una obra en dos rondas ni cambiar el repertorio enviado en la inscripción.",
+        "Pianos de estudio de Royal Pianos durante el concurso; prueba de piano Shigeru Kawai el 4-12 (5 min)."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "Competition Rules 2026",
+          "url": "https://www.concursointernacionalpiano.es/rules/",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Jurado 2026",
+          "url": "https://www.concursointernacionalpiano.es/jurado/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "alojamiento"
+      ]
+    },
+    {
+      "id": "montreal-2027",
+      "nombre": "Concours musical international de Montréal – Piano 2027",
+      "edicion": "Piano 2027",
+      "ciudad": "Montreal",
+      "pais": "Canadá",
+      "web": "https://www.concoursmontreal.ca/en/piano-2027/",
+      "fechas": {
+        "inicio": "2027-04-24",
+        "fin": "2027-05-05",
+        "nota": "Llegada el 22-04; hay que estar libre del 23-04 al 05-05."
+      },
+      "plazo": {
+        "fecha": "2026-10-31",
+        "hora": "23:59",
+        "zona": "hora de Montreal (EDT)",
+        "nota": "Resultado de la preselección el 18-12-2026; confirmar antes del 22-12. Programa definitivo de todas las rondas antes del 18-01-2027.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": 200,
+        "moneda": "CAD",
+        "nota": "No reembolsable."
+      },
+      "edad": {
+        "min": 18,
+        "max": 30,
+        "aFecha": "2027-04-24",
+        "nacidoDesde": "1996-04-25",
+        "nacidoHasta": "2009-04-24",
+        "texto": "18–30 años al empezar el concurso: nacidos entre el 25-04-1996 y el 24-04-2009. No pueden participar finalistas de ediciones de piano anteriores.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": true,
+        "duracion": "4 vídeos, uno por obra",
+        "resumen": "Bach preludio y fuga · sonata completa de Haydn, Mozart, Beethoven o Schubert · estudio virtuoso · obra de estilo contrastante (se admite un solo movimiento).",
+        "detalles": [
+          "Una cámara fija, un solo ángulo (sin zoom ni movimientos); cada obra en una toma continua, sin editar.",
+          "Grabados después del 1-07-2025.",
+          "Vídeos en directo multicámara de concursos WFIMC: a criterio del concurso (consultar a candidates@concoursmontreal.ca).",
+          "Preselección anónima: el jurado no ve nombre, edad, nacionalidad, biografía ni profesores."
+        ]
+      },
+      "rondas": [
+        {
+          "nombre": "1ª ronda (25 pianistas)",
+          "fecha": "2027-04-24",
+          "duracion": "25–28 min",
+          "repertorio": [
+            "Al menos 3 obras de 3 periodos distintos; se admite un solo movimiento.",
+            "De memoria; sin salir del escenario. Pasan 12."
+          ]
+        },
+        {
+          "nombre": "Semifinal (12)",
+          "fecha": "2027-04-28",
+          "duracion": "50–55 min",
+          "repertorio": [
+            "Sonata completa de Haydn, Mozart, Beethoven o Schubert.",
+            "Una obra de compositor canadiense (de una lista que envían en diciembre; puede tocarse con partitura).",
+            "Otra obra libre.",
+            "De memoria salvo la obra canadiense; se puede salir del escenario una vez. Pasan 6."
+          ]
+        },
+        {
+          "nombre": "Música de cámara (6)",
+          "fecha": "2027-04-30",
+          "duracion": null,
+          "repertorio": [
+            "Concierto de Mozart en versión para piano y cuarteto de cuerda: K. 413, 414, 415 o 449. De memoria."
+          ]
+        },
+        {
+          "nombre": "Final · con orquesta (6)",
+          "fecha": "2027-05-04",
+          "duracion": null,
+          "repertorio": [
+            "Un concierto con la Orchestre symphonique de Montréal: Bartók 3; Beethoven 1–5; Chopin 1, 2; Grieg; Liszt 1, 2; Prokófiev 2, 3; Rachmáninov 2, 3, Rapsodia Paganini; Ravel en Sol y para la mano izquierda; Saint-Saëns 2, 5; Schumann; Chaikovski 1."
+          ]
+        }
+      ],
+      "premios": [
+        {
+          "puesto": "1.º",
+          "importe": 70000,
+          "moneda": "CAD",
+          "extra": "30.000 $ de premio + 40.000 $ de beca de desarrollo profesional Joseph Rouleau."
+        },
+        {
+          "puesto": "2.º",
+          "importe": 25000,
+          "moneda": "CAD",
+          "extra": "15.000 $ + beca Rouleau de 10.000 $."
+        },
+        {
+          "puesto": "3.º",
+          "importe": 20000,
+          "moneda": "CAD",
+          "extra": "10.000 $ + beca Rouleau de 10.000 $."
+        },
+        {
+          "puesto": "Premio de grabación Steinway",
+          "importe": 55000,
+          "moneda": "CAD",
+          "extra": ""
+        },
+        {
+          "puesto": "Premio del público ICI Musique",
+          "importe": 5000,
+          "moneda": "CAD",
+          "extra": ""
+        },
+        {
+          "puesto": "Mejor artista canadiense (André Bourbeau)",
+          "importe": 5000,
+          "moneda": "CAD",
+          "extra": ""
+        },
+        {
+          "puesto": "Obra canadiense · Música de cámara",
+          "importe": 2500,
+          "moneda": "CAD",
+          "extra": "Cada uno."
+        },
+        {
+          "puesto": "Jurado joven Robert Trempe",
+          "importe": 1500,
+          "moneda": "CAD",
+          "extra": ""
+        }
+      ],
+      "premiosNota": "Bolsa total 216.300 CAD. Asesoría artística con Agence Station Bleue para los laureados. Quien no pasa a semifinal toca en «Concours On the Road».",
+      "jurado": [
+        "Angela Cheng (Canadá), presidenta",
+        "Janina Fialkowska (Canadá)",
+        "Sofya Gulyak (Rusia/EE. UU.)",
+        "Olga Kern (Rusia/EE. UU.)",
+        "Roberto Plano (Italia)",
+        "Charles Richard-Hamelin (Canadá)",
+        "Antti Siirala (Finlandia)",
+        "Danwen Wei (China)"
+      ],
+      "juradoNota": "Jurado internacional. El de preselección es confidencial. Director invitado: Gergely Madaras; cuarteto: Viano Quartet.",
+      "alojamiento": {
+        "estado": "si",
+        "texto": "Gratis en familia de acogida en el área de Montreal (otro alojamiento, a cuenta propia)."
+      },
+      "viaje": {
+        "estado": "si",
+        "texto": "Vuelo de ida y vuelta en turista (o equivalente) y una maleta facturada. Visado a cuenta propia."
+      },
+      "otros": [
+        "Ensayos: 40 min con el cuarteto; 40 min con el director y 45 min con la OSM.",
+        "Sin compromisos profesionales del 23-04 al 05-05-2027.",
+        "Se ceden los derechos de grabación y emisión."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "Rules, information and conditions of participation 2027 (PDF)",
+          "url": "https://cms.concoursmontreal.ca/uploads/fichiers/reglements-2027-en.pdf",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Piano 2027 · fechas, premios y jurado",
+          "url": "https://www.concoursmontreal.ca/en/piano-2027/",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Participate",
+          "url": "https://concoursmontreal.ca/en/participate",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": []
+    },
+    {
+      "id": "leeds-2027",
+      "nombre": "Leeds International Piano Competition 2027",
+      "edicion": "2027",
+      "ciudad": "Leeds (1ª ronda en 7 ciudades)",
+      "pais": "Reino Unido",
+      "web": "https://www.leedspiano.com/2027-competition/",
+      "fechas": {
+        "inicio": "2027-03-30",
+        "fin": "2027-09-18",
+        "nota": "1ª ronda internacional 30-03 a 6-04-2027 en Pekín, Berlín, Londres, Nueva York, París, Seúl o Viena; fases de Leeds del 8 al 18-09-2027."
+      },
+      "plazo": {
+        "fecha": "2026-10-31",
+        "hora": null,
+        "zona": null,
+        "nota": "Solicitud en Acceptd (app.getacceptd.com/leedspiano). Hay tarifa anticipada reducida y una más cara para solicitudes tardías.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": null,
+        "moneda": "GBP",
+        "nota": "Importes no publicados en las páginas consultadas: tarifa anticipada reducida y recargo por solicitud tardía (no reembolsable)."
+      },
+      "edad": {
+        "min": null,
+        "max": 35,
+        "aFecha": null,
+        "nacidoDesde": "1991-09-19",
+        "nacidoHasta": "2007-03-30",
+        "texto": "Todas las nacionalidades, nacidos entre el 19-09-1991 y el 30-03-2007 (inclusive). No pueden participar ganadores de un 1.er premio anterior.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": true,
+        "duracion": "20–25 min",
+        "resumen": "Grabación de preselección de 20–25 min, repertorio libre (sin compositores, periodos ni estilos obligatorios).",
+        "detalles": [
+          "Una interpretación continua, sin presentaciones habladas.",
+          "Hecha en los 12 meses anteriores al plazo.",
+          "Además, vídeo de verificación grabado a la vez con cámara fija (vale un móvil) y formulario de verificación.",
+          "Con la solicitud: pasaporte, biografía y CV, contacto de referencias y repertorio (incluidos tres conciertos posibles para la final)."
+        ]
+      },
+      "rondas": [
+        {
+          "nombre": "Preselección (grabación)",
+          "fecha": null,
+          "duracion": "20–25 min",
+          "repertorio": [
+            "Libre. Pasan 60."
+          ]
+        },
+        {
+          "nombre": "1ª ronda internacional (60)",
+          "fecha": "2027-03-30",
+          "duracion": "20–25 min",
+          "repertorio": [
+            "Recital libre en una de las 7 sedes. Pasan 24."
+          ]
+        },
+        {
+          "nombre": "2ª ronda · Leeds (24)",
+          "fecha": "2027-09-08",
+          "duracion": "40 min",
+          "repertorio": [
+            "Recital libre. Pasan 10."
+          ]
+        },
+        {
+          "nombre": "Semifinal (10)",
+          "fecha": "2027-09-12",
+          "duracion": "60 min + propina de ~4 min",
+          "repertorio": [
+            "Recital libre. Pasan 5."
+          ]
+        },
+        {
+          "nombre": "Final de conciertos (5)",
+          "fecha": "2027-09-17",
+          "duracion": null,
+          "repertorio": [
+            "Concierto con orquesta en el Leeds Town Hall; se indican tres opciones en la solicitud y se revisan al pasar a la 2ª ronda."
+          ]
+        }
+      ],
+      "premios": [
+        {
+          "puesto": "1.º",
+          "importe": 50000,
+          "moneda": "GBP",
+          "extra": ""
+        },
+        {
+          "puesto": "2.º",
+          "importe": 20000,
+          "moneda": "GBP",
+          "extra": ""
+        },
+        {
+          "puesto": "3.º",
+          "importe": 15000,
+          "moneda": "GBP",
+          "extra": ""
+        },
+        {
+          "puesto": "4.º",
+          "importe": 6000,
+          "moneda": "GBP",
+          "extra": ""
+        },
+        {
+          "puesto": "5.º",
+          "importe": 6000,
+          "moneda": "GBP",
+          "extra": ""
+        }
+      ],
+      "premiosNota": "Además: Prize-winners Circle Award, premio de la Royal Liverpool Philharmonic Society, premio del público medici.tv, Encore Prize y Leeds Piano Trail Prize.",
+      "jurado": [
+        "Sir Stephen Hough (director artístico, presidente)",
+        "Piotr Anderszewski",
+        "Lucas Debargue",
+        "Janina Fialkowska",
+        "Alexander Gavrylyuk",
+        "Orli Shaham",
+        "Yeol Eum Son",
+        "Kathryn Stott",
+        "Errollyn Wallen CBE"
+      ],
+      "juradoNota": "",
+      "alojamiento": {
+        "estado": "parcial",
+        "texto": "1ª ronda internacional: todo a cuenta del pianista (puede haber ayudas a discreción). Fases de Leeds: alojamiento, comidas y transporte local cubiertos."
+      },
+      "viaje": {
+        "estado": "parcial",
+        "texto": "1ª ronda: a cuenta propia. Fases de Leeds: contribución a un viaje razonable, reembolsada dentro de los límites publicados. Hay becas si la situación económica impide participar."
+      },
+      "otros": [
+        "Sin compositores, periodos ni estilos obligatorios en ninguna ronda."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "2027 Competition",
+          "url": "https://www.leedspiano.com/2027-competition/",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Competition Regulations",
+          "url": "https://www.leedspiano.com/competition-regulations/",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Application guidance",
+          "url": "https://www.leedspiano.com/application-guidance/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "cuota"
+      ]
+    },
+    {
+      "id": "iturbi-2027",
+      "nombre": "XXIV Concurso Internacional de Piano de València Iturbi",
+      "edicion": "XXIV (2027)",
+      "ciudad": "València",
+      "pais": "España",
+      "web": "https://pianoiturbi.dival.es/concurso-2027/convocatoria/",
+      "fechas": {
+        "inicio": "2027-06-02",
+        "fin": "2027-06-12",
+        "nota": "Acogida y sorteo el 1-06-2027 por la tarde. Gala de clausura el 12-06."
+      },
+      "plazo": {
+        "fecha": "2026-11-05",
+        "hora": "23:59",
+        "zona": "CET (UTC+1)",
+        "nota": "Inscripción telemática en pianoiturbi.dival.es desde el 2-07-2026. Lista de 22 seleccionados el 15-01-2027. Cambios de programa hasta el 28-02-2027.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": null,
+        "moneda": "EUR",
+        "nota": "El extracto de bases no menciona cuota de inscripción."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": "1992-06-02",
+        "nacidoHasta": null,
+        "texto": "Cualquier nacionalidad, nacidos a partir del 2-06-1992 (incluido). No pueden participar ganadores de un 1.er premio anterior ni quien haya recibido clases (incluidas clases magistrales) de miembros del jurado desde el 2-06-2025.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": true,
+        "duracion": "20–30 min",
+        "resumen": "Programa libre de 20–30 min, preferiblemente en HD, enviado como URL en el formulario.",
+        "detalles": [
+          "Cada obra en una única toma, sin cortes; cara y manos siempre en plano.",
+          "Grabado después del 1-01-2026; el enlace debe seguir disponible (verse y descargarse) hasta el 31-01-2027.",
+          "Puede incluir obras del programa propuesto para el concurso.",
+          "Documentación: pasaporte o DNI, CV (estudios con profesorado, concursos, actuaciones, grabaciones), dos cartas de recomendación con contacto, foto y méritos opcionales.",
+          "En el formulario hay que indicar el programa de las cuatro pruebas con su duración aproximada."
+        ]
+      },
+      "rondas": [
+        {
+          "nombre": "Preselección (vídeo)",
+          "fecha": null,
+          "duracion": "20–30 min",
+          "repertorio": [
+            "Libre. En enero de 2027 se eligen 22 concursantes."
+          ]
+        },
+        {
+          "nombre": "1ª fase · recital (22)",
+          "fecha": "2027-06-02",
+          "duracion": "máx. 40 min",
+          "repertorio": [
+            "Los dos recitales (1ª y 2ª fase) deben incluir entre ambos: una obra de Beethoven; una obra de Mozart; un Nocturno de Chopin; una Balada, Scherzo o Polonesa de Chopin (vale la Polonesa-Fantasía); una pieza de Goyescas (Granados), de Iberia, Navarra o La Vega (Albéniz) o la Fantasía Bética (Falla).",
+            "Todo de memoria. Pasan 10."
+          ]
+        },
+        {
+          "nombre": "2ª fase · recital (10)",
+          "fecha": "2027-06-05",
+          "duracion": "máx. 60 min",
+          "repertorio": [
+            "Programa libre que completa los apartados obligatorios. Pasan 6."
+          ]
+        },
+        {
+          "nombre": "Semifinal · con orquesta (6)",
+          "fecha": "2027-06-08",
+          "duracion": null,
+          "repertorio": [
+            "Uno de los cinco conciertos de Beethoven. Pasan 3."
+          ]
+        },
+        {
+          "nombre": "Final · con orquesta (3)",
+          "fecha": "2027-06-11",
+          "duracion": null,
+          "repertorio": [
+            "Un concierto: Chopin 1, 2; Liszt 1, 2; Schumann; Brahms 1, 2; Chaikovski 1; Saint-Saëns 2, 5; Prokófiev 2, 3; Ravel en Sol; Rachmáninov 1, 2, 3, Rapsodia Paganini; Britten op. 13; Strauss Burleske; Bartók 2, 3; Rodrigo Concierto heroico; Palau Concierto dramático."
+          ]
+        }
+      ],
+      "premios": [
+        {
+          "puesto": "1.º",
+          "importe": 30000,
+          "moneda": "EUR",
+          "extra": "Conciertos en España y en el extranjero durante 2028."
+        },
+        {
+          "puesto": "2.º",
+          "importe": 20000,
+          "moneda": "EUR",
+          "extra": "Conciertos en 2028."
+        },
+        {
+          "puesto": "3.º",
+          "importe": 10000,
+          "moneda": "EUR",
+          "extra": "Conciertos en 2028."
+        },
+        {
+          "puesto": "Semifinalistas no finalistas",
+          "importe": 6000,
+          "moneda": "EUR",
+          "extra": "Conciertos en España."
+        },
+        {
+          "puesto": "Mejor obra de Beethoven (1ª o 2ª fase)",
+          "importe": 2000,
+          "moneda": "EUR",
+          "extra": ""
+        },
+        {
+          "puesto": "Mejor interpretación de música española",
+          "importe": 2000,
+          "moneda": "EUR",
+          "extra": ""
+        }
+      ],
+      "premiosNota": "Premios sujetos a la fiscalidad vigente; pueden quedar desiertos; el 1.er premio no se concede ex aequo.",
+      "jurado": [],
+      "juradoNota": "Jurado del concurso no publicado en el extracto. Preselección: Ana María Guijarro (presidenta), Carles Marín y Ángel Sanzo.",
+      "alojamiento": {
+        "estado": "parcial",
+        "texto": "No hay alojamiento: ayuda de 1.000 € a cada concursante para viaje y manutención, más 300 € a quien pase a la 2ª fase."
+      },
+      "viaje": {
+        "estado": "parcial",
+        "texto": "Incluido en la ayuda de 1.000 € (+300 € en 2ª fase)."
+      },
+      "otros": [
+        "Todo el concurso de memoria.",
+        "El orden de actuación se sortea y se mantiene en todas las pruebas."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "Convocatoria 2027",
+          "url": "https://pianoiturbi.dival.es/concurso-2027/convocatoria/",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Extracto de bases XXIV Concurso (PDF)",
+          "url": "https://pianoiturbi.dival.es/wp-content/uploads/2026/07/cipvi-extracto-bases-xxiv-concurso-iturbi-cas.pdf",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "jurado",
+        "cuota"
+      ]
+    },
+    {
+      "id": "maria-canals-2027",
+      "nombre": "Concurso Internacional de Piano Maria Canals de Barcelona",
+      "edicion": "72.ª (2027)",
+      "ciudad": "Barcelona",
+      "pais": "España",
+      "web": "https://mariacanals.org/concurs/inscripcio-i-reglament/",
+      "fechas": {
+        "inicio": "2027-03-07",
+        "fin": "2027-03-18",
+        "nota": "Petit Palau y Palau de la Música Catalana. Prueba de piano y acreditación el 6-03; sorteo online el 3-03 a las 15 h (conexión obligatoria). Laureados hasta el 19-03."
+      },
+      "plazo": {
+        "fecha": "2026-11-23",
+        "hora": "24:00",
+        "zona": "hora de Barcelona",
+        "nota": "Inscripción solo por Muvac. Aceptación como tarde el 21-12-2026; confirmar y pagar antes del 31-12-2026. El programa no se puede cambiar después del 23-11 (solo fuerza mayor hasta el 31-12).",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": 200,
+        "moneda": "EUR",
+        "nota": "60 € de preselección (Muvac) + 140 € de participación si te seleccionan (transferencia antes del 31-12-2026). No reembolsables."
+      },
+      "edad": {
+        "min": 17,
+        "max": 29,
+        "aFecha": "2027-01-01",
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Entre 17 y 29 años a 1 de enero de 2027. Pueden repetir participantes de ediciones anteriores salvo ganadores del 1.er premio. No pueden presentarse alumnos que hayan trabajado con el comité de preselección o el jurado en los últimos tres cursos.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": true,
+        "duracion": "máx. 20 min en total (dos vídeos)",
+        "resumen": "Dos vídeos con cámara fija y sin posproducción: un movimiento rápido de una sonata de Beethoven y una obra libre.",
+        "detalles": [
+          "Movimientos de Beethoven no admitidos: 1.er mov. de las op. 26, op. 28, op. 101, op. 109 y op. 110.",
+          "Grabación continua y sin manipular (cualquier edición descalifica); buena calidad.",
+          "Indicar compositor y título completo de cada pieza.",
+          "Con la inscripción: perfil y CV de Muvac, foto reciente en alta resolución, DNI o pasaporte, carta de presentación en inglés y formulario del programa con la duración de cada obra.",
+          "Comité de preselección: Yukiko Akagi, Billy Eidi y Catherine Vickers."
+        ]
+      },
+      "rondas": [
+        {
+          "nombre": "1ª prueba",
+          "fecha": "2027-03-07",
+          "duracion": "máx. 20 min",
+          "repertorio": [
+            "Bach: un Preludio y Fuga del Clave bien temperado.",
+            "Beethoven: una sonata completa (la dirección artística elige qué movimiento(s) se tocan; sin repeticiones salvo excepciones). No se admiten las op. 2/1, 10/1, 13, 14/1, 14/2, 26, 27/2, 28, 31/2, 49/1, 49/2, 79 ni 90.",
+            "Un estudio de Chopin, Liszt, Debussy, Rachmáninov o Scriabin.",
+            "Pasan 18."
+          ]
+        },
+        {
+          "nombre": "2ª prueba (18)",
+          "fecha": "2027-03-11",
+          "duracion": "máx. 40 min",
+          "repertorio": [
+            "Obra contemporánea (≤ 5 min) compuesta desde 1995.",
+            "Una obra romántica de la lista: Brahms (Sonatas op. 1, 2, 5; Variaciones Händel; Paganini cuad. I o II), Chopin (Baladas, Scherzos, Sonatas op. 35 y 58, Andante spianato y Gran Polonesa, Polonesas op. 44 y 61, Fantasía op. 49), Franck (Prélude, Choral et Fugue), Liszt (Sonata, Dante, Rapsodia española, Mephisto-Vals, Balada 2), Rachmáninov (Sonata 2 versión 1931, Variaciones Corelli), Schubert (D 850, D 894, D 960, Wanderer), Schumann (Carnaval, Kreisleriana, Sonata op. 22, Fantasía op. 17, Estudios sinfónicos con póstumos).",
+            "Una obra o parte de ciclo de un compositor nacido desde 1860.",
+            "Obras de 3 compositores distintos. Pasan 6; el resto, Medalla de Honor."
+          ]
+        },
+        {
+          "nombre": "Semifinal (6)",
+          "fecha": "2027-03-14",
+          "duracion": "máx. 50 min",
+          "repertorio": [
+            "Recital libre; obligatoria al menos una de las dos obras de compositores españoles.",
+            "No valen los Estudios op. 10/25 ni Preludios op. 28 de Chopin, ni Fantasiestücke op. 12 de Schumann, ni obras ya tocadas. Pasan 3."
+          ]
+        },
+        {
+          "nombre": "Final · con orquesta (3)",
+          "fecha": "2027-03-17",
+          "duracion": null,
+          "repertorio": [
+            "Uno de: Beethoven 4; Chopin 1; Schumann; Brahms 2; Chaikovski 1; Rachmáninov 2, 3; Prokófiev 2, 3."
+          ]
+        }
+      ],
+      "premios": [
+        {
+          "puesto": "1.º (Premio Fundación Occident)",
+          "importe": 25000,
+          "moneda": "EUR",
+          "extra": "4 conciertos con orquestas españolas (Sevilla o Granada, Bilbao, Tenerife o Valencia, Madrid) y medalla de oro."
+        },
+        {
+          "puesto": "2.º (Premio Maria Font de Carulla)",
+          "importe": 10000,
+          "moneda": "EUR",
+          "extra": "Medalla."
+        },
+        {
+          "puesto": "3.º (Premio Fundació Vila Casas)",
+          "importe": 6000,
+          "moneda": "EUR",
+          "extra": "Medalla."
+        },
+        {
+          "puesto": "4.º semifinalista",
+          "importe": 2000,
+          "moneda": "EUR",
+          "extra": "Concierto en Las Arcadias Fleming."
+        },
+        {
+          "puesto": "5.º y 6.º semifinalistas",
+          "importe": 1500,
+          "moneda": "EUR",
+          "extra": "Cada uno."
+        },
+        {
+          "puesto": "Mejor intérprete de Mompou · Blancafort · Bianchini · J. A. Medina",
+          "importe": 1500,
+          "moneda": "EUR",
+          "extra": "Cada uno (Bianchini, con concierto en España)."
+        }
+      ],
+      "premiosNota": "Además: premio del público, 25 h de grabación (Lluís Soler), recitales para el mejor español (Instituto Cervantes de Palermo) y otros premios-concierto.",
+      "jurado": [
+        "Yukiko Akagi (Japón)",
+        "Salvador Brotons (Cataluña)",
+        "Florian Hölscher (Alemania)",
+        "Juan Lago (España)",
+        "Pascal Nemirowski (Francia)",
+        "Stanislav Pochekin (Rusia)",
+        "Inesa Sinkevych (Ucrania/Israel)",
+        "Marie Vermeulin (Francia)",
+        "Uta Weyand (Alemania)"
+      ],
+      "juradoNota": "Los eliminados en 1ª o 2ª prueba pueden hablar con el jurado el 10 o el 13 de marzo.",
+      "alojamiento": {
+        "estado": "parcial",
+        "texto": "Desde el día siguiente a pasar a la 2ª prueba: alojamiento y desayuno en habitación compartida hasta el día después de la eliminación (semifinalistas y finalistas, hasta después de la clausura). La 1ª prueba, a cuenta propia. Piano de estudio (casa de familia o escuela), mínimo 3 h diarias."
+      },
+      "viaje": {
+        "estado": "no",
+        "texto": "Las bases no mencionan ayuda de viaje."
+      },
+      "otros": [
+        "Obligatorio: obras de 2 compositores españoles (al menos uno catalán) y al menos una obra de compositora a lo largo del concurso.",
+        "Todo de memoria; máximo 2 obras del mismo compositor en las rondas de recital; sin piano preparado.",
+        "Obra encargada opcional: Marc Migó, Tres ensoñaciones (2026)."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "Reglamento del Concurso 2027 (PDF, castellano)",
+          "url": "https://mariacanals.org/wp-content/uploads/2026/10/Reglamento-CAST_2027-1.pdf",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Inscripción y reglamento",
+          "url": "https://mariacanals.org/concurs/inscripcio-i-reglament/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": []
+    },
+    {
+      "id": "epinal-2027",
+      "nombre": "31.º Concours International de Piano d'Épinal",
+      "edicion": "31.ª (2027)",
+      "ciudad": "Épinal",
+      "pais": "Francia",
+      "web": "https://www.concours-international-piano-epinal.org/competition-2025/rules-and-regulations/",
+      "fechas": {
+        "inicio": "2027-03-12",
+        "fin": "2027-03-21",
+        "nota": "Llegada y prueba de piano el 12-03 (13–17 h, Théâtre Municipal). Final el 21-03 a las 15 h en el Auditorium de La Louvière."
+      },
+      "plazo": {
+        "fecha": "2026-11-30",
+        "hora": null,
+        "zona": null,
+        "nota": "Inscripción online desde el 1-09-2026. Admitidos (máx. 85) publicados desde el 20-12-2026; confirmar y pagar antes del 15-01-2027. Cambios de programa hasta el 15-02-2027.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": 120,
+        "moneda": "EUR",
+        "nota": "80 € al inscribirse (preselección) + 40 € de participación si te admiten. Sin reembolso, comisiones bancarias aparte."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": "1996-03-22",
+        "nacidoHasta": "2011-03-12",
+        "texto": "Nacidos después del 21-03-1996 y antes del 13-03-2011.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": true,
+        "duracion": "máx. 15 min",
+        "resumen": "Un enlace de YouTube con un movimiento rápido de sonata clásica (Beethoven, Clementi, Haydn o Mozart) y un estudio libre.",
+        "detalles": [
+          "Cámara fija, cara y manos siempre visibles, sin edición ni posproducción; reciente y de buena calidad.",
+          "Las dos obras pueden grabarse por separado pero unidas en un único archivo; un solo enlace; nombres de las piezas en la descripción.",
+          "El enlace debe seguir accesible durante toda la preselección (si no, eliminación sin reembolso).",
+          "Finalistas de un concurso WFIMC celebrado desde el 1-01-2024: exentos de vídeo, pagan los 120 € al inscribirse.",
+          "Con la inscripción: DNI o pasaporte, CV en francés o inglés, foto artística reciente y justificante de pago."
+        ]
+      },
+      "rondas": [
+        {
+          "nombre": "Preselección (vídeo)",
+          "fecha": null,
+          "duracion": "máx. 15 min",
+          "repertorio": [
+            "Movimiento de sonata clásica + estudio libre. Pueden repetirse en el concurso."
+          ]
+        },
+        {
+          "nombre": "1ª ronda",
+          "fecha": "2027-03-13",
+          "duracion": "máx. 20 min",
+          "repertorio": [
+            "Repartir entre 1ª y 2ª ronda: un Preludio y Fuga del Clave bien temperado; un Estudio de Chopin op. 10 u op. 25; un estudio de otro compositor; una obra u opus romántico (7–30 min) compuesto entre 1820 y 1899; una sonata completa de Beethoven, Clementi, Haydn, Mozart o Schubert (repeticiones opcionales)."
+          ]
+        },
+        {
+          "nombre": "2ª ronda",
+          "fecha": "2027-03-16",
+          "duracion": "máx. 35 min",
+          "repertorio": [
+            "Resto de las obras obligatorias (solo esas 5 obras entre las dos rondas)."
+          ]
+        },
+        {
+          "nombre": "Semifinal · recital",
+          "fecha": "2027-03-19",
+          "duracion": "40–50 min",
+          "repertorio": [
+            "Programa libre con «Intermezzo» de Christian Lauba (encargo, ~5'30; se puede tocar con partitura) y una obra de un compositor francés (siglos XVII–XXI). Pasan 4."
+          ]
+        },
+        {
+          "nombre": "Final · con orquesta (4)",
+          "fecha": "2027-03-21",
+          "duracion": null,
+          "repertorio": [
+            "Un concierto: Mozart 21 K 467; Beethoven 4; Chopin 2; Liszt 2; Ravel en Sol; Prokófiev 3. Ensayo con orquesta el 20-03."
+          ]
+        }
+      ],
+      "premios": [
+        {
+          "puesto": "1.er Gran Premio",
+          "importe": 10000,
+          "moneda": "EUR",
+          "extra": ""
+        },
+        {
+          "puesto": "2.º",
+          "importe": 4000,
+          "moneda": "EUR",
+          "extra": ""
+        },
+        {
+          "puesto": "3.º",
+          "importe": 2000,
+          "moneda": "EUR",
+          "extra": ""
+        },
+        {
+          "puesto": "4.º",
+          "importe": 1000,
+          "moneda": "EUR",
+          "extra": ""
+        }
+      ],
+      "premiosNota": "Premios especiales: música contemporánea (Lauba), mejor Estudio de Chopin, música francesa, Jeunesses Musicales de France (mejor francés) y premio del público al concierto. Posibles conciertos en festivales regionales.",
+      "jurado": [],
+      "juradoNota": "7 personalidades internacionales; la composición de 2027 se anunciará más adelante.",
+      "alojamiento": {
+        "estado": "parcial",
+        "texto": "A cuenta del concursante, pero se puede pedir alojamiento gratis en familia de acogida al inscribirse (según disponibilidad). Piano de estudio en la familia o en el Conservatorio."
+      },
+      "viaje": {
+        "estado": "no",
+        "texto": "Viaje a cuenta del concursante."
+      },
+      "otros": [
+        "Ninguna obra puede repetirse en el concurso (salvo las del vídeo).",
+        "Todo de memoria salvo la obra contemporánea obligatoria."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "Rules and regulations 2027",
+          "url": "https://www.concours-international-piano-epinal.org/competition-2025/rules-and-regulations/",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Program of the competition",
+          "url": "https://www.concours-international-piano-epinal.org/competition-2025/program-of-the-competition/",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Calendar",
+          "url": "https://www.concours-international-piano-epinal.org/competition-2025/calendar/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "jurado"
+      ]
+    },
+    {
+      "id": "cleveland-2027",
+      "nombre": "Cleveland International Piano Competition 2027",
+      "edicion": "2027",
+      "ciudad": "Cleveland (1ª ronda también en París)",
+      "pais": "Estados Unidos",
+      "web": "https://pianocleveland.org/2027-cipc/",
+      "fechas": {
+        "inicio": "2027-03-10",
+        "fin": "2027-08-08",
+        "nota": "1ª ronda: Cleveland (CIM) 10–14-03-2027 o París (Salle Cortot) 17–20-03-2027. Fase final en Cleveland del 25-07 al 8-08-2027."
+      },
+      "plazo": {
+        "fecha": "2026-12-04",
+        "hora": "23:59",
+        "zona": "EST",
+        "nota": "Solicitud en Acceptd (app.getacceptd.com/pianocleveland). Tarifa reducida hasta el 4-11-2026. Resultados de la preselección en enero de 2027.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": 200,
+        "moneda": "USD",
+        "nota": "150 $ hasta el 4-11-2026 (early bird); 200 $ después."
+      },
+      "edad": {
+        "min": 18,
+        "max": 32,
+        "aFecha": "2027-08-07",
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "«Candidates aged 18-32 on or after August 7, 2027» (18–32 años a 7-08-2027). No pueden participar ganadores de un 1.er premio anterior.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": true,
+        "duracion": "20–25 min",
+        "resumen": "Grabación de 20–25 min de estilos diversos, con una obra de Haydn, Mozart, Beethoven o Schubert y una obra de virtuosismo.",
+        "detalles": [
+          "Grabada en el último año.",
+          "Se eligen 50–60 pianistas para la 1ª ronda."
+        ]
+      },
+      "rondas": [
+        {
+          "nombre": "Preselección (vídeo)",
+          "fecha": null,
+          "duracion": "20–25 min",
+          "repertorio": [
+            "Estilos diversos; una obra de Haydn/Mozart/Beethoven/Schubert y una de virtuosismo."
+          ]
+        },
+        {
+          "nombre": "1ª ronda · Cleveland o París (50–60)",
+          "fecha": "2027-03-10",
+          "duracion": "2 programas de 25–30 min",
+          "repertorio": [
+            "Dos programas de estilos diversos (se permite repetir compositores). Pasan 16."
+          ]
+        },
+        {
+          "nombre": "Cuartos de final (16)",
+          "fecha": "2027-07-25",
+          "duracion": "35–40 min",
+          "repertorio": [
+            "Recital libre con al menos dos obras de estilos distintos, una de un compositor de un colectivo tradicionalmente infrarrepresentado.",
+            "Una transcripción para dúo de pianos (ceremonia inaugural). Pasan 8."
+          ]
+        },
+        {
+          "nombre": "Semifinal (8)",
+          "fecha": "2027-07-30",
+          "duracion": "45 min",
+          "repertorio": [
+            "Recital tipo salón hablando al público, con una obra de compositor infrarrepresentado.",
+            "Un trío con piano de la lista (Beethoven, Brahms, Dvořák, Mendelssohn, Schubert o Clara Schumann). Pasan 4."
+          ]
+        },
+        {
+          "nombre": "Final (4)",
+          "fecha": "2027-08-04",
+          "duracion": null,
+          "repertorio": [
+            "Pieza de virtuosismo (5–7 min).",
+            "Dos obras a cuatro manos (Debussy Petite Suite, Fauré Dolly, Schubert Marches militaires, Brahms Danzas húngaras).",
+            "Concierto con The Cleveland Orchestra (lista: Bach, A. Beach, Beethoven, Brahms, Chopin, Grieg, Haydn, Mendelssohn, Mozart, F. Price, Prokófiev, Rachmáninov, Ravel, Saint-Saëns, C. y R. Schumann, Chaikovski).",
+            "Pieza de gala (5–7 min)."
+          ]
+        }
+      ],
+      "premios": [
+        {
+          "puesto": "1.º",
+          "importe": 100000,
+          "moneda": "USD",
+          "extra": "Debut en Carnegie Hall y servicios de management."
+        },
+        {
+          "puesto": "2.º",
+          "importe": 50000,
+          "moneda": "USD",
+          "extra": ""
+        },
+        {
+          "puesto": "3.º",
+          "importe": 25000,
+          "moneda": "USD",
+          "extra": ""
+        },
+        {
+          "puesto": "4.º",
+          "importe": 15000,
+          "moneda": "USD",
+          "extra": ""
+        },
+        {
+          "puesto": "Semifinalistas",
+          "importe": 2000,
+          "moneda": "USD",
+          "extra": ""
+        },
+        {
+          "puesto": "Cuartofinalistas que no pasan",
+          "importe": 1000,
+          "moneda": "USD",
+          "extra": ""
+        },
+        {
+          "puesto": "Premio Cynthia Reece (mujeres)",
+          "importe": 20000,
+          "moneda": "USD",
+          "extra": ""
+        }
+      ],
+      "premiosNota": "Premios especiales de 1.500–2.500 $ (barroco, Beethoven, Chopin, Mozart, compositora, música estadounidense, público) y Premio Schmelzer de liderazgo (5.000 $).",
+      "jurado": [
+        "Anne-Marie McDermott (EE. UU.), presidenta",
+        "Melvin Chen",
+        "Simone Dinnerstein",
+        "Maike Charlotte Fuchs (Alemania)",
+        "Claire-Marie Le Guay (Francia)",
+        "Matthew Loden",
+        "Sergio Tiempo (Venezuela)",
+        "Danwen Wei (China)"
+      ],
+      "juradoNota": "Jurado de la fase de Cleveland (cuartos a final). 1ª ronda: Bishara Haroni, Yaron Kohlberg, Gesa Lücker, Samir Nikocevic, Natasha Paremski. Preselección: Kathryn Brown, Angela Cheng, Stanislav Khristenko, Yaron Kohlberg, Marina Lomazov, Henning Vauth, Dongni Xie.",
+      "alojamiento": {
+        "estado": "parcial",
+        "texto": "1ª ronda: a cuenta propia (solo la ayuda de viaje). Desde cuartos de final: alojamiento, comidas, pianos de estudio y transporte en Cleveland."
+      },
+      "viaje": {
+        "estado": "parcial",
+        "texto": "1ª ronda: ayuda de hasta 500 $. Cuartofinalistas: vuelo de ida y vuelta en turista a Cleveland (Roe Green Travel Fund)."
+      },
+      "otros": [],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "2027 CIPC",
+          "url": "https://pianocleveland.org/2027-cipc/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": []
+    },
+    {
+      "id": "sydney-2027",
+      "nombre": "Sydney International Piano Competition 2027",
+      "edicion": "2027 · 50.º aniversario",
+      "ciudad": "Sídney",
+      "pais": "Australia",
+      "web": "https://www.pianoplus.com.au/2027-competition/",
+      "fechas": {
+        "inicio": "2027-07-10",
+        "fin": "2027-07-24",
+        "nota": "Hay que llegar como tarde el 7-07-2027. Final con la Sydney Symphony Orchestra en la Ópera de Sídney."
+      },
+      "plazo": {
+        "fecha": "2026-12-15",
+        "hora": "23:59",
+        "zona": "AEDT",
+        "nota": "Solicitud en Acceptd. Tardías hasta el 31-12-2026 (300 USD) y hasta el 8-01-2027 (375 USD). Respuesta antes de finales de febrero de 2027. El repertorio no se puede cambiar tras enviar.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": 225,
+        "moneda": "USD",
+        "nota": "No reembolsable; 300 USD tardía y 375 USD muy tardía."
+      },
+      "edad": {
+        "min": 18,
+        "max": 35,
+        "aFecha": null,
+        "nacidoDesde": "1991-07-25",
+        "nacidoHasta": "2009-07-10",
+        "texto": "18–35 años durante todo el concurso: nacidos entre el 25-07-1991 y el 10-07-2009 (inclusive), sin excepciones.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": true,
+        "duracion": "20–30 min",
+        "resumen": "Grabación de 20–30 min de piano solo con obras de al menos 3 compositores (se admiten movimientos sueltos).",
+        "detalles": [
+          "Una grabación o varias de obras enteras, sin editar; cara y manos siempre visibles.",
+          "Rótulo de 3–5 s con nombre completo, lugar y fecha de la grabación; contador de fotogramas visible y continuo.",
+          "Calidad técnica excelente, preferiblemente profesional; hecha en los 12 meses anteriores a la solicitud. La posproducción de sonido se admite si se declara.",
+          "Una de las obras puede repetirse en el concurso.",
+          "Con la solicitud: biografía de 150–500 palabras, pasaporte, fotos profesionales en color (300 dpi, ≥1,8 MB), estudios, dos referencias con email y teléfono y actividad de los últimos 5 años."
+        ]
+      },
+      "rondas": [
+        {
+          "nombre": "Preliminar · ronda 1 (32)",
+          "fecha": "2027-07-10",
+          "duracion": "20 min",
+          "repertorio": [
+            "Recital libre con obras de al menos 2 compositores.",
+            "En la ronda 1 o 2: obra(s) australiana(s) publicadas de al menos 7 min."
+          ]
+        },
+        {
+          "nombre": "Preliminar · ronda 2 (32)",
+          "fecha": null,
+          "duracion": "30 min",
+          "repertorio": [
+            "Recital libre con al menos 2 compositores distintos de los de la ronda 1. Pasan 12."
+          ]
+        },
+        {
+          "nombre": "Cuartos · música de cámara (12)",
+          "fecha": null,
+          "duracion": null,
+          "repertorio": [
+            "Preparar una pareja de obras de cada grupo; se asigna uno al pasar.",
+            "Violín (Jack Liebeck): Beethoven Sonata op. 30/2 + Kreisler Caprice viennois; Brahms Sonata 3 + Kreisler Liebesleid; Fauré Sonata 1 + Kreisler Syncopation; Franck Sonata + Chopin/Sarasate Nocturno op. 9/2.",
+            "Violonchelo (Timo-Veikko Valve): Beethoven Sonata op. 5/2 + Webern pieza n.º 1 (1899); Brahms Sonata 1 + Chopin Largo op. 65; Prokófiev Sonata op. 119 + Sibelius Romance op. 78/2; Rachmáninov Sonata op. 19 + Scriabin Romance."
+          ]
+        },
+        {
+          "nombre": "Cuartos · recital (12)",
+          "fecha": null,
+          "duracion": "70 min",
+          "repertorio": [
+            "Recital libre de dos o más obras en torno a un TEMA, con presentaciones habladas en inglés y una propina anunciada (todo dentro de los 70 min). Pasan 6."
+          ]
+        },
+        {
+          "nombre": "Semifinal (6)",
+          "fecha": null,
+          "duracion": null,
+          "repertorio": [
+            "Un concierto de Beethoven (n.º 1 a 5) en versión con quinteto de cuerda. Pasan 3."
+          ]
+        },
+        {
+          "nombre": "Final (3)",
+          "fecha": null,
+          "duracion": null,
+          "repertorio": [
+            "Con la Sydney Symphony Orchestra (dir. Benjamin Northey): Bartók 2; Chopin 1; Jachaturián; Liszt 2; cualquier concierto de Mozart; Prokófiev 2; Rachmáninov Rapsodia Paganini; Ravel en Sol; Saint-Saëns 2; Schumann; Chaikovski 1; Carl Vine 1."
+          ]
+        }
+      ],
+      "premios": [],
+      "premiosNota": "Más de 200.000 $ australianos en premios; el desglose no aparece en las bases consultadas. El ganador queda bajo contrato exclusivo de actuaciones en Australia hasta el 31-12-2028. Premios sujetos a impuestos australianos.",
+      "jurado": [],
+      "juradoNota": "Piers Lane AO preside sin voto; jurado internacional de 7 con voto, se publicará al anunciarse.",
+      "alojamiento": {
+        "estado": "si",
+        "texto": "Alojamiento y dietas diarias desde la llegada mientras sigas en el concurso (al ser eliminado, a cuenta propia desde el día siguiente). Sin transporte local. Salas de estudio diarias."
+      },
+      "viaje": {
+        "estado": "parcial",
+        "texto": "Contribución de 2/3 de un billete de ida y vuelta en turista desde tu aeropuerto internacional más cercano, máx. 3.000 AUD."
+      },
+      "otros": [
+        "Todo de memoria salvo la música de cámara y la obra australiana si se aprueba.",
+        "Quien ya participó no puede repetir obras de aquella edición.",
+        "Visado tramitado por el concurso (papeles antes del 28-02-2027); seguro de salud y viaje obligatorio."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "2027 Rules and Regulations",
+          "url": "https://www.pianoplus.com.au/2027-rules-and-regulations/",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "2027 Competition",
+          "url": "https://www.pianoplus.com.au/2027-competition/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "premios",
+        "jurado"
+      ]
+    },
+    {
+      "id": "london-classic-2027",
+      "nombre": "London Classic Piano Competition 2027",
+      "edicion": "2027 · preselección de Classic Piano 2028",
+      "ciudad": "Londres",
+      "pais": "Reino Unido",
+      "web": "https://london.classicpiano.eu/",
+      "fechas": {
+        "inicio": "2027-04-02",
+        "fin": "2027-04-04",
+        "nota": "Royal College of Music. Es uno de los 6 concursos previos del Classic Piano International Competition (Barcelona, Palau de la Música, 10–20-09-2028)."
+      },
+      "plazo": {
+        "fecha": "2026-12-15",
+        "hora": null,
+        "zona": null,
+        "nota": "Inscripción online y después subir el vídeo. Los 20 seleccionados reciben aviso al menos 8 semanas antes. El programa no se puede cambiar después del plazo.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": 100,
+        "moneda": "EUR",
+        "nota": "50 € por la preselección en vídeo + 50 € si te seleccionan. No reembolsables."
+      },
+      "edad": {
+        "min": 15,
+        "max": 30,
+        "aFecha": "2028-09-10",
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Haber cumplido 15 años el primer día del concurso previo de 2027 y no tener más de 30 el primer día de la Gran Final de Barcelona (10-09-2028). Quien ya se clasificó para la Gran Final no puede presentarse a otro concurso previo.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": true,
+        "duracion": "máx. 30 min",
+        "resumen": "Un Preludio y Fuga del Clave bien temperado (libro I o II), dos estudios de dos compositores distintos y una obra libre, de memoria.",
+        "detalles": [
+          "Vale móvil o cámara; manos, cara, silueta completa y todo el instrumento en plano; sin editar.",
+          "Enlaces públicos de YouTube o Vimeo (tres enlaces o uno con capítulos); nada privado ni para descargar.",
+          "Título o descripción con tu nombre, compositor y obra.",
+          "Grabado como mucho 6 meses antes de inscribirse.",
+          "Las obras del vídeo no pueden tocarse en las rondas de Londres."
+        ]
+      },
+      "rondas": [
+        {
+          "nombre": "Preselección (vídeo)",
+          "fecha": null,
+          "duracion": "máx. 30 min",
+          "repertorio": [
+            "Preludio y Fuga de Bach, dos estudios de compositores distintos y una obra libre. Pasan 20."
+          ]
+        },
+        {
+          "nombre": "1ª ronda (20)",
+          "fecha": "2027-04-02",
+          "duracion": "máx. 25 min",
+          "repertorio": [
+            "Un estudio virtuoso de Chopin, Liszt, Rachmáninov, Prokófiev, Scriabin, Stravinski, Debussy o Ligeti.",
+            "Una obra (sin transcripciones ni estudios) de Bach, Brahms, Schumann, Chopin, Liszt, Médtner, Chaikovski, Bartók, Rachmáninov o Prokófiev.",
+            "Una obra libre."
+          ]
+        },
+        {
+          "nombre": "2ª ronda",
+          "fecha": null,
+          "duracion": "40–45 min",
+          "repertorio": [
+            "Sonata n.º 2 de Alexey Shor (partitura descargable; se puede tocar con partitura).",
+            "Una sonata completa de Haydn, Mozart o Beethoven.",
+            "Una obra libre. Sin repetir la 1ª ronda; todo lo demás de memoria."
+          ]
+        }
+      ],
+      "premios": [
+        {
+          "puesto": "1.º",
+          "importe": 20000,
+          "moneda": "EUR",
+          "extra": "Plaza en la Gran Final de Barcelona 2028 con todos los gastos pagados."
+        },
+        {
+          "puesto": "2.º",
+          "importe": 10000,
+          "moneda": "EUR",
+          "extra": "Plaza en la Gran Final de Barcelona 2028 con todos los gastos pagados."
+        },
+        {
+          "puesto": "3.º",
+          "importe": 5000,
+          "moneda": "EUR",
+          "extra": ""
+        }
+      ],
+      "premiosNota": "La Gran Final de Barcelona reparte 330.000 € en premios.",
+      "jurado": [
+        "Michel Beroff (Francia), presidente",
+        "Dmitri Alexeev (Reino Unido)",
+        "Peter Donohoe (Reino Unido)",
+        "Klaus Hellwig (Alemania)",
+        "Momo Kodama (Japón)",
+        "Vanessa Latarche (Reino Unido)",
+        "Giuliano Mazzoccante (Italia)"
+      ],
+      "juradoNota": "La web anuncia seis miembros más. Las votaciones del jurado se publican tras los resultados.",
+      "alojamiento": {
+        "estado": "no",
+        "texto": "Viaje, alojamiento y visado en Londres a cuenta del participante. Para los clasificados a Barcelona: vuelos, alojamiento y pensión completa pagados."
+      },
+      "viaje": {
+        "estado": "no",
+        "texto": "A cuenta propia (solo se paga el viaje a la Gran Final de Barcelona)."
+      },
+      "otros": [
+        "Cada obra solo puede aparecer una vez en todo el concurso (vídeo, 1ª o 2ª ronda)."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "London Classic Piano Competition 2027",
+          "url": "https://london.classicpiano.eu/",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Competition Rules",
+          "url": "https://london.classicpiano.eu/general-info/competition-rules/",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Jury members",
+          "url": "https://london.classicpiano.eu/jury-members/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": []
+    },
+    {
+      "id": "geza-anda-2027",
+      "nombre": "Concours Géza Anda 2027",
+      "edicion": "2027",
+      "ciudad": "Zúrich",
+      "pais": "Suiza",
+      "web": "https://geza-anda.ch/concours-2027/",
+      "fechas": {
+        "inicio": "2027-05-25",
+        "fin": "2027-06-06",
+        "nota": "Reunión inicial, sorteo y prueba de piano el 25-05; final el 5-06 con la Tonhalle-Orchester Zürich (dir. Mikhail Pletnev); recepción de prensa el 6-06."
+      },
+      "plazo": {
+        "fecha": "2027-02-01",
+        "hora": null,
+        "zona": null,
+        "nota": "Solicitud online en geza-anda.ch del 19-11-2026 al 1-02-2027. Invitaciones a Zúrich hasta finales de marzo de 2027.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": null,
+        "moneda": "CHF",
+        "nota": "Las bases y la web no mencionan cuota de inscripción."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": "1995-05-27",
+        "nacidoHasta": null,
+        "texto": "Abierto a todos los países, nacidos después del 26-05-1995.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": true,
+        "duracion": "≈ 30 min",
+        "resumen": "Vídeo de unos 30 min en una sola toma: una sonata de Scarlatti (≥ 3 min), obra(s) del repertorio 1765–1828 y obra(s) de 1829 a hoy.",
+        "detalles": [
+          "Sin editar; manos visibles y la cara al menos una vez al principio.",
+          "En YouTube no público, enlace en la solicitud (otras plataformas solo en emergencias y consultándolo).",
+          "No puede contener obras ni partes de obras del repertorio del concurso 2027.",
+          "Ganadores de un premio principal en el Chopin de Varsovia o el Rubinstein desde el 1-01-2024 pueden enviar en su lugar el enlace público de su final o recital (≥ 30 min)."
+        ]
+      },
+      "rondas": [
+        {
+          "nombre": "1ª ronda · audición",
+          "fecha": "2027-05-26",
+          "duracion": "máx. 25 min",
+          "repertorio": [
+            "Se prepara de listas cerradas y 90 min antes te dicen qué tocar, en este orden:",
+            "1) Tres piezas (Rameau «La Poule» o «L'Egiptienne»; Couperin «Le Tic-Toc-Choc» o «La Couperin»; Royer «L'Aimable» o «Le Vertigo») o un Preludio y Fuga del Clave bien temperado, libro I.",
+            "2) Dos sonatas de Beethoven de la lista: op. 2/1, 10/1, 13, 26, 27/1, 27/2, 81a, 101, 109.",
+            "3) Tres estudios de la lista: Chopin op. 10 (salvo 3 y 6) y op. 25 (salvo 7), Liszt Estudios de Paganini S. 141 y Trois Études de concert S. 144.",
+            "Pasan 12."
+          ]
+        },
+        {
+          "nombre": "2ª ronda · recital (12)",
+          "fecha": "2027-05-29",
+          "duracion": "50–55 min",
+          "repertorio": [
+            "Preparar dos programas distintos, cada uno con comentario escrito sobre su concepto.",
+            "A) Una obra mayor de la lista (Beethoven op. 2/3, 22, 31/2, 57, 110, 111; Mozart K. 333, K. 533/494; Haydn Hob. XVI:50, 52; Schubert D 537, 664, 784, 960, Impromptus D 899; Schumann Davidsbündlertänze, Carnaval, Kinderszenen, Kreisleriana; Brahms op. 5, 9, 24, 35, 117; Chopin Sonata op. 35 o las 4 Baladas; Liszt Dante, Balada 2; Ravel Gaspard; Bartók Sonata, Out of Doors).",
+            "B) Una o varias obras menores de la lista (Mozart, Schubert, Mendelssohn, Schumann, Brahms, Chopin, Liszt, Debussy, Ravel, Franck, Bartók).",
+            "C) Opcional: una obra libre de máx. 10 min. Pasan 6."
+          ]
+        },
+        {
+          "nombre": "Semifinal Mozart · con orquesta (6)",
+          "fecha": "2027-06-02",
+          "duracion": null,
+          "repertorio": [
+            "Preparar dos conciertos de Mozart: K. 450, 456, 466, 467, 482, 488, 491, 537; el jurado elige uno. Con el Musikkollegium Winterthur (dir. Gergely Madaras). Pasan 3."
+          ]
+        },
+        {
+          "nombre": "Final · con orquesta (3)",
+          "fecha": "2027-06-05",
+          "duracion": null,
+          "repertorio": [
+            "Preparar dos conciertos de compositores distintos (el jurado elige uno): Beethoven 3 o 5; Chopin 1 o 2; Liszt 2 + Fantasía húngara; Rachmáninov 2; Saint-Saëns 5; Bartók 3.",
+            "Propina obligatoria: Kurtág, Játékok I n.º 74 «Perpetuum mobile» o «... feuilles mortes ...»."
+          ]
+        }
+      ],
+      "premios": [
+        {
+          "puesto": "1.º",
+          "importe": 40000,
+          "moneda": "CHF",
+          "extra": "Conciertos y gestión gratuita de 2027 a 2030."
+        },
+        {
+          "puesto": "2.º",
+          "importe": 30000,
+          "moneda": "CHF",
+          "extra": "Conciertos y gestión gratuita de 2027 a 2030."
+        },
+        {
+          "puesto": "3.º",
+          "importe": 20000,
+          "moneda": "CHF",
+          "extra": "Conciertos y gestión gratuita de 2027 a 2030."
+        }
+      ],
+      "premiosNota": "Premios especiales: del público, Mozart (Musikkollegium Winterthur, concierto), Liszt-Bartók, Beethoven (G. Henle, ediciones Urtext), Hortense Anda, Fondation Thiébaud-Frey (3.000 CHF + recital) y concierto con la Orquesta de la Radio Nacional Búlgara.",
+      "jurado": [
+        "Gerhard Oppitz, presidente",
+        "Elena Bashkirova",
+        "Numa Bischof Ullmann",
+        "Ingrid Fliter",
+        "David Fray",
+        "Rico Gulda",
+        "Momo Kodama",
+        "Jinsang Lee"
+      ],
+      "juradoNota": "",
+      "alojamiento": {
+        "estado": "si",
+        "texto": "Alojamiento en familias de acogida en Zúrich y alrededores."
+      },
+      "viaje": {
+        "estado": "desconocido",
+        "texto": "Las bases no dicen nada del viaje."
+      },
+      "otros": [
+        "Todas las rondas son públicas y se retransmiten online."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "CGA 2027 · Rules and Repertoire (PDF)",
+          "url": "https://geza-anda.ch/wp-content/uploads/2025/11/CGA-2027_Rules-and-Repertoire.pdf",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Concours Géza Anda 2027",
+          "url": "https://geza-anda.ch/concours-2027/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "cuota",
+        "viaje"
+      ]
+    },
+    {
+      "id": "clara-haskil-2027",
+      "nombre": "32.º Concours International de Piano Clara Haskil",
+      "edicion": "32.ª (2027)",
+      "ciudad": "Vevey",
+      "pais": "Suiza",
+      "web": "https://clara-haskil.ch/",
+      "fechas": {
+        "inicio": "2027-08-26",
+        "fin": "2027-09-03",
+        "nota": "Théâtre Le Reflet. Llegada y acogida el 25-08 (9–16 h), con prueba breve del Steinway D."
+      },
+      "plazo": {
+        "fecha": "2027-04-07",
+        "hora": null,
+        "zona": null,
+        "nota": "Solo online en clarahaskil.getacceptd.com (abierto desde el 31-03-2026). Resultado de la preselección y partitura de la obra obligatoria como tarde el 3-05-2027. El programa no se puede cambiar tras confirmar.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": 100,
+        "moneda": "EUR",
+        "nota": "No reembolsable; se paga en Acceptd."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": "1998-09-04",
+        "nacidoHasta": "2009-09-03",
+        "texto": "Cualquier nacionalidad, nacidos entre el 4-09-1998 y el 3-09-2009.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": true,
+        "duracion": "2 archivos",
+        "resumen": "Mozart: 2.º y 3.er movimientos de una sonata (si es K. 282 o K. 331, el primero y el último) + Schumann: Variaciones «Abegg» op. 1 completas.",
+        "detalles": [
+          "Cada archivo en una toma, una sola cámara fija, sin cortes ni edición; cara y manos siempre visibles.",
+          "Dos archivos separados: los dos movimientos de Mozart y la obra de Schumann.",
+          "Repeticiones a elección del pianista.",
+          "Preselección a puerta cerrada en abril de 2027 (presidenta + un miembro del jurado). Quien no pase puede pedir una valoración escrita."
+        ]
+      },
+      "rondas": [
+        {
+          "nombre": "Preselección (vídeo)",
+          "fecha": null,
+          "duracion": null,
+          "repertorio": [
+            "Mozart (2 movimientos de sonata) + Schumann «Abegg» op. 1."
+          ]
+        },
+        {
+          "nombre": "Cuartos de final (24)",
+          "fecha": "2027-08-26",
+          "duracion": "55–60 min",
+          "repertorio": [
+            "Un Preludio y Fuga de Bach (BWV 846–893), o dos sonatas contrastantes de Scarlatti, o dos de Soler.",
+            "Una sonata completa de Beethoven o Schubert.",
+            "Obra obligatoria de ~5 min (se envía al seleccionarte; puede tocarse con partitura).",
+            "Programa libre (sin piano preparado). Pasan 6."
+          ]
+        },
+        {
+          "nombre": "Semifinal (6)",
+          "fecha": "2027-08-31",
+          "duracion": null,
+          "repertorio": [
+            "Un quinteto con piano: Amy Beach op. 67, Brahms op. 34, Dvořák n.º 2 op. 81 o Schumann op. 44 (sin repeticiones; dos ensayos; con partitura).",
+            "25–30 min de obras de Albéniz, Bartók, L. Boulanger, Brahms, Chopin, Debussy, Enescu, Fauré, Hindemith, Liszt, Médtner, F. Hensel-Mendelssohn, F. Mendelssohn, Poulenc, Ravel, C. o R. Schumann. Pasan 3."
+          ]
+        },
+        {
+          "nombre": "Final · con orquesta (3)",
+          "fecha": "2027-09-03",
+          "duracion": null,
+          "repertorio": [
+            "Un concierto de Mozart completo: K. 271, 453, 456, 459, 466, 467, 482, 488, 491, 503, 537 o 595 (dir. Gábor Takács-Nagy, dos ensayos).",
+            "Propina: una Romanza sin palabras de Mendelssohn (op. 19, 30, 38, 53, 62, 67, 85 o 102)."
+          ]
+        }
+      ],
+      "premios": [
+        {
+          "puesto": "Premio Clara Haskil (único)",
+          "importe": 25000,
+          "moneda": "CHF",
+          "extra": "Conciertos con socios en Suiza y el extranjero y ayuda para encontrar agencia. No se comparte; puede quedar desierto."
+        },
+        {
+          "puesto": "Resto de finalistas",
+          "importe": 5000,
+          "moneda": "CHF",
+          "extra": "Cada uno."
+        },
+        {
+          "puesto": "Premio del público",
+          "importe": 3000,
+          "moneda": "CHF",
+          "extra": ""
+        },
+        {
+          "puesto": "Premio Modern Times (obra encargada)",
+          "importe": 3000,
+          "moneda": "CHF",
+          "extra": ""
+        },
+        {
+          "puesto": "Premio «Coup de cœur» (La Jeune Critique)",
+          "importe": 3000,
+          "moneda": "CHF",
+          "extra": ""
+        },
+        {
+          "puesto": "Premio Children's Corner",
+          "importe": 2000,
+          "moneda": "CHF",
+          "extra": ""
+        }
+      ],
+      "premiosNota": "",
+      "jurado": [
+        "Hisako Kawamura, presidenta",
+        "Blythe Teh Engstroem",
+        "Ingrid Fliter",
+        "Heinz Holliger",
+        "Steven Osborne",
+        "Kazuki Yamada",
+        "Thomas Zehetmair"
+      ],
+      "juradoNota": "Tras cada resultado (desde cuartos) hay sesiones de valoración con el jurado para los eliminados.",
+      "alojamiento": {
+        "estado": "si",
+        "texto": "Alojamiento gratis garantizado en familia de acogida si se pide (o lista de hoteles asociados, a cuenta propia). Piano de estudio garantizado."
+      },
+      "viaje": {
+        "estado": "parcial",
+        "texto": "A cuenta propia; a los semifinalistas se les reembolsa hasta 1.000 CHF con recibos."
+      },
+      "otros": [
+        "Ninguna obra puede programarse dos veces de la preselección a la semifinal.",
+        "Todo de memoria salvo la obra obligatoria y los quintetos."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "Regulations & programme 2027 (PDF, marzo 2026)",
+          "url": "https://clara-haskil.ch/wp-content/uploads/2026/04/CCH-2027-reglement-EN.pdf",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": []
+    },
+    {
+      "id": "hummel-2027",
+      "nombre": "12.º Concurso Internacional de Piano Johann Nepomuk Hummel",
+      "edicion": "12.ª (2027)",
+      "ciudad": "Bratislava",
+      "pais": "Eslovaquia",
+      "web": "https://www.filharmonia.sk/en/hummel",
+      "fechas": {
+        "inicio": "2027-09-12",
+        "fin": "2027-09-18",
+        "nota": "Fechas según la WFIMC; la web de la Filarmónica Eslovaca solo dice «coming soon»."
+      },
+      "plazo": {
+        "fecha": null,
+        "hora": null,
+        "zona": null,
+        "nota": "Sin publicar. Referencia: en 2024 (11.ª edición) el plazo fue el 15 de julio.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": null,
+        "moneda": "EUR",
+        "nota": "Sin publicar. En 2024 fueron 50 € (rebajados de 70 €)."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Sin publicar para 2027. En 2024: nacidos después del 7-09-1994 (unos 30 años al empezar el concurso).",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": null,
+        "duracion": null,
+        "resumen": "Bases 2027 sin publicar.",
+        "detalles": []
+      },
+      "rondas": [
+        {
+          "nombre": "Referencia 2024 · 1ª ronda",
+          "fecha": null,
+          "duracion": "máx. 25 min",
+          "repertorio": [
+            "Sonata de Mozart, estudio de Hummel, estudio de Chopin y obra de Liszt, Scriabin, Rachmáninov o Debussy. Pasan 12."
+          ]
+        },
+        {
+          "nombre": "Referencia 2024 · 2ª ronda",
+          "fecha": null,
+          "duracion": "50–60 min",
+          "repertorio": [
+            "Recital de varios estilos con una gran obra romántica. Pasan 3."
+          ]
+        },
+        {
+          "nombre": "Referencia 2024 · final",
+          "fecha": null,
+          "duracion": null,
+          "repertorio": [
+            "Quinteto con piano de Hummel y un concierto de Mozart, Beethoven o Hummel."
+          ]
+        }
+      ],
+      "premios": [],
+      "premiosNota": "Sin publicar para 2027. En 2024: 6.000 € + tres conciertos con la Filarmónica Eslovaca / 4.000 € / 2.000 €.",
+      "jurado": [],
+      "juradoNota": "Sin publicar.",
+      "alojamiento": {
+        "estado": "desconocido",
+        "texto": "En 2024 la secretaría ayudaba a reservar alojamiento (no se decía que fuera gratis)."
+      },
+      "viaje": {
+        "estado": "desconocido",
+        "texto": "Sin publicar."
+      },
+      "otros": [
+        "Las rondas de 2024 son solo orientativas: comprueba las bases 2027 cuando salgan."
+      ],
+      "estadoBases": "pendientes",
+      "fuentes": [
+        {
+          "titulo": "Slovak Philharmonic · Hummel Competition",
+          "url": "https://www.filharmonia.sk/en/hummel",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "WFIMC · Hummel Piano Competition",
+          "url": "https://www.wfimc.org/member-competition/bratislava-international-johann-nepomuk-hummel-piano-competition",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "11.ª edición (2024), referencia",
+          "url": "https://www.filharmonia.sk/en/hummel/h11",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "plazo",
+        "cuota",
+        "edad",
+        "video",
+        "rondas",
+        "premios",
+        "jurado",
+        "alojamiento",
+        "viaje"
+      ]
+    },
+    {
+      "id": "brescia-classica-2026",
+      "nombre": "Brescia Classica International Piano Competition",
+      "edicion": "2026",
+      "ciudad": "Brescia",
+      "pais": "Italia",
+      "web": "https://www.facebook.com/bresciaclassica/",
+      "fechas": {
+        "inicio": "2026-10-19",
+        "fin": "2026-10-25",
+        "nota": "Fechas del dosier anterior (16-08-2026); no se han podido verificar hoy."
+      },
+      "plazo": {
+        "fecha": "2026-09-26",
+        "hora": null,
+        "zona": null,
+        "nota": "Plazo ya cerrado.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": null,
+        "moneda": "EUR",
+        "nota": "Sin verificar."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Según el dosier anterior: sin límite de edad; no admite ganadores previos del 1.er premio. Sin verificar.",
+        "sinLimite": true
+      },
+      "video": {
+        "exige": false,
+        "duracion": null,
+        "resumen": "Según el dosier anterior, las bases no exigían vídeo de preselección. Sin verificar.",
+        "detalles": []
+      },
+      "rondas": [
+        {
+          "nombre": "1ª ronda",
+          "fecha": null,
+          "duracion": "máx. 20 min",
+          "repertorio": [
+            "Programa libre (dosier anterior, sin verificar)."
+          ]
+        },
+        {
+          "nombre": "2ª ronda",
+          "fecha": null,
+          "duracion": "40–50 min",
+          "repertorio": [
+            "Libre (dosier anterior, sin verificar)."
+          ]
+        },
+        {
+          "nombre": "Final · con orquesta",
+          "fecha": null,
+          "duracion": null,
+          "repertorio": [
+            "Un concierto de una lista amplia (dosier anterior, sin verificar)."
+          ]
+        }
+      ],
+      "premios": [
+        {
+          "puesto": "1.º",
+          "importe": 5000,
+          "moneda": "EUR",
+          "extra": ""
+        },
+        {
+          "puesto": "2.º",
+          "importe": 3500,
+          "moneda": "EUR",
+          "extra": ""
+        },
+        {
+          "puesto": "3.º",
+          "importe": 1000,
+          "moneda": "EUR",
+          "extra": ""
+        }
+      ],
+      "premiosNota": "Importes del dosier anterior, sin verificar.",
+      "jurado": [],
+      "juradoNota": "No publicado en las bases consultadas en agosto.",
+      "alojamiento": {
+        "estado": "desconocido",
+        "texto": ""
+      },
+      "viaje": {
+        "estado": "desconocido",
+        "texto": ""
+      },
+      "otros": [
+        "La web oficial (bresciaclassica.com) no responde: datos procedentes del dosier de agosto de 2026."
+      ],
+      "estadoBases": "sin verificar",
+      "fuentes": [
+        {
+          "titulo": "Dosier anterior (PDF de bases de agosto de 2026, no accesible hoy)",
+          "url": "https://www.bresciaclassica.com/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": null,
+      "sinConfirmar": [
+        "fechas",
+        "cuota",
+        "edad",
+        "video",
+        "rondas",
+        "premios",
+        "jurado",
+        "alojamiento",
+        "viaje"
+      ]
+    },
+    {
+      "id": "cipce-mompou-2026",
+      "nombre": "CIPCE · Concurso Internacional de Piano Compositores de España",
+      "edicion": "2026 (Senior)",
+      "ciudad": "Las Rozas de Madrid",
+      "pais": "España",
+      "web": "https://cipce.org/en/rules/",
+      "fechas": {
+        "inicio": "2026-11-08",
+        "fin": "2026-11-14",
+        "nota": "Auditorio Joaquín Rodrigo."
+      },
+      "plazo": {
+        "fecha": "2026-10-01",
+        "hora": null,
+        "zona": null,
+        "nota": "Plazo ya cerrado.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": null,
+        "moneda": "EUR",
+        "nota": "No indicada en la página de reglas."
+      },
+      "edad": {
+        "min": null,
+        "max": 35,
+        "aFecha": "2026-11-14",
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Menores de 36 años el día de inicio o durante el concurso.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": true,
+        "duracion": "15–20 min",
+        "resumen": "Enlace de YouTube o Vimeo de 15–20 min, repertorio libre, grabado en los últimos 2 años.",
+        "detalles": []
+      },
+      "rondas": [
+        {
+          "nombre": "1ª ronda (vídeo)",
+          "fecha": null,
+          "duracion": "15–20 min",
+          "repertorio": [
+            "Libre. Pasan como máximo 46."
+          ]
+        },
+        {
+          "nombre": "2ª ronda",
+          "fecha": null,
+          "duracion": "máx. 30 min",
+          "repertorio": [
+            "Libre con al menos 5 min de Federico Mompou (dosier anterior). Pasan como máximo 10."
+          ]
+        },
+        {
+          "nombre": "Semifinal",
+          "fecha": null,
+          "duracion": "máx. 40 min",
+          "repertorio": [
+            "Libre (conviene música española para el premio especial; dosier anterior). Pasan 3."
+          ]
+        },
+        {
+          "nombre": "Final · con orquesta",
+          "fecha": null,
+          "duracion": null,
+          "repertorio": [
+            "Concierto de una lista (dosier anterior)."
+          ]
+        }
+      ],
+      "premios": [],
+      "premiosNota": "La página de reglas no da importes.",
+      "jurado": [],
+      "juradoNota": "Ver cipce.org/en/jury/.",
+      "alojamiento": {
+        "estado": "parcial",
+        "texto": "Plazas de hotel con condiciones especiales por orden de inscripción; llegada desde el 8-11-2026."
+      },
+      "viaje": {
+        "estado": "no",
+        "texto": "Viaje y visado a cuenta del concursante."
+      },
+      "otros": [
+        "Piano: Yangtze River CGF-X1."
+      ],
+      "estadoBases": "parciales",
+      "fuentes": [
+        {
+          "titulo": "Rules · CIPCE 2026",
+          "url": "https://cipce.org/en/rules/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "cuota",
+        "premios",
+        "jurado"
+      ]
+    },
+    {
+      "id": "istanbul-orchestrasion-2026",
+      "nombre": "7.º International Piano Competition Istanbul Orchestra'Sion",
+      "edicion": "7.ª (2026)",
+      "ciudad": "Estambul",
+      "pais": "Turquía",
+      "web": "https://www.nds.k12.tr/-International-Piano-Competition",
+      "fechas": {
+        "inicio": "2026-11-10",
+        "fin": "2026-11-15",
+        "nota": "Sorteo el 10-11; 1ª ronda 11–12; 2ª 13; 3ª 14; final con orquesta el 15-11. Sala del Liceo Notre Dame de Sion, piano Steinway D."
+      },
+      "plazo": {
+        "fecha": null,
+        "hora": null,
+        "zona": null,
+        "nota": "Inscripción cerrada: la preselección fue en septiembre de 2026 y los resultados se comunicaron desde el 30-09-2026.",
+        "cerrado": true
+      },
+      "cuota": {
+        "importe": null,
+        "moneda": "EUR",
+        "nota": "No consultada (inscripción cerrada)."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "No consultada (inscripción cerrada).",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": true,
+        "duracion": null,
+        "resumen": "Preselección por DVD o archivos audiovisuales.",
+        "detalles": []
+      },
+      "rondas": [
+        {
+          "nombre": "1ª ronda",
+          "fecha": "2026-11-11",
+          "duracion": null,
+          "repertorio": []
+        },
+        {
+          "nombre": "2ª ronda",
+          "fecha": "2026-11-13",
+          "duracion": null,
+          "repertorio": []
+        },
+        {
+          "nombre": "3ª ronda",
+          "fecha": "2026-11-14",
+          "duracion": null,
+          "repertorio": []
+        },
+        {
+          "nombre": "Final · con orquesta",
+          "fecha": "2026-11-15",
+          "duracion": null,
+          "repertorio": [
+            "Con la orquesta Orchestra'Sion, dir. Orçun Orçunsel."
+          ]
+        }
+      ],
+      "premios": [],
+      "premiosNota": "Se entregan en el recital de gala; importes no consultados.",
+      "jurado": [
+        "Jean-Yves Clément, presidente",
+        "Toros Can",
+        "Geoffroy Couteau",
+        "Juliette Journaux",
+        "Joseph Moog",
+        "Gülsin Onay",
+        "Denis Pascal"
+      ],
+      "juradoNota": "",
+      "alojamiento": {
+        "estado": "desconocido",
+        "texto": ""
+      },
+      "viaje": {
+        "estado": "desconocido",
+        "texto": ""
+      },
+      "otros": [
+        "Ficha resumida: la inscripción de 2026 ya está cerrada. Útil para la próxima edición."
+      ],
+      "estadoBases": "parciales",
+      "fuentes": [
+        {
+          "titulo": "Competition · fechas",
+          "url": "https://www.nds.k12.tr/-Competition-",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Jury",
+          "url": "https://www.nds.k12.tr/-Jury-453-",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "cuota",
+        "edad",
+        "rondas",
+        "premios"
+      ]
+    },
+    {
+      "id": "pozzoli-2027",
+      "nombre": "Concorso Pianistico Internazionale Ettore Pozzoli",
+      "edicion": "2027",
+      "ciudad": "Seregno",
+      "pais": "Italia",
+      "web": "https://www.concorsopozzoli.it/",
+      "fechas": {
+        "inicio": null,
+        "fin": null,
+        "nota": "La web oficial aún no publica la edición 2027 (solo 2025 y el Elsa Pozzoli 2026). El dosier anterior hablaba de 25-09 a 3-10-2027, sin confirmar."
+      },
+      "plazo": {
+        "fecha": null,
+        "hora": null,
+        "zona": null,
+        "nota": "Sin publicar.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": null,
+        "moneda": "EUR",
+        "nota": "Sin publicar."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Reglamento 2027 sin publicar.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": null,
+        "duracion": null,
+        "resumen": "Sin publicar.",
+        "detalles": []
+      },
+      "rondas": [],
+      "premios": [],
+      "premiosNota": "Sin publicar.",
+      "jurado": [],
+      "juradoNota": "Sin publicar.",
+      "alojamiento": {
+        "estado": "desconocido",
+        "texto": ""
+      },
+      "viaje": {
+        "estado": "desconocido",
+        "texto": ""
+      },
+      "otros": [
+        "En seguimiento: revisar cuando se publique el bando 2027 (contacto: staff@concorsopozzoli.it)."
+      ],
+      "estadoBases": "pendientes",
+      "fuentes": [
+        {
+          "titulo": "Concorso Pozzoli",
+          "url": "https://www.concorsopozzoli.it/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "fechas",
+        "plazo",
+        "cuota",
+        "edad",
+        "video",
+        "rondas",
+        "premios",
+        "jurado",
+        "alojamiento",
+        "viaje"
+      ]
+    },
+    {
+      "id": "maj-lind-2027",
+      "nombre": "6.º Helsinki International Maj Lind Piano Competition",
+      "edicion": "6.ª (2027)",
+      "ciudad": "Helsinki",
+      "pais": "Finlandia",
+      "web": "https://majlindcompetition.fi/en/competition/rules-and-prizes/",
+      "fechas": {
+        "inicio": "2027-10-15",
+        "fin": "2027-10-28",
+        "nota": "Sibelius Academy. Ceremonia inaugural y sorteo el 13-10-2027 (en persona o con representante autorizado por escrito)."
+      },
+      "plazo": {
+        "fecha": "2027-05-20",
+        "hora": "16:00",
+        "zona": "CET",
+        "nota": "Solicitud en majlindcompetition.fi, abre el 1-04-2027. Admitidos publicados como tarde el 16-06-2027. Cambios de repertorio hasta el 29-07-2027.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": 100,
+        "moneda": "EUR",
+        "nota": "No reembolsable."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": "1997-01-01",
+        "nacidoHasta": null,
+        "texto": "Pianistas nacidos en 1997 o después, de cualquier nacionalidad.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": true,
+        "duracion": "≥ 10 min + un estudio",
+        "resumen": "Programa de al menos 10 min de Beethoven, Clementi, Dusík, Haydn, Hummel, Mozart o Schubert, más un estudio virtuoso.",
+        "detalles": [
+          "Deben verse bien la interpretación, las manos y la cara; sin editar (obras o movimientos pueden ir en tomas distintas).",
+          "Indicar cuándo y dónde se grabó; como mucho de hace 2 años."
+        ]
+      },
+      "rondas": [
+        {
+          "nombre": "1ª ronda (~40)",
+          "fecha": "2027-10-15",
+          "duracion": "máx. 45 min con pausas",
+          "repertorio": [
+            "Música anterior a 1757 (≥ 5 min).",
+            "Una obra completa (≥ 10 min) de Beethoven, Clementi, Dusík, Haydn, Hummel, Mozart o Schubert.",
+            "Tres estudios: uno de Chopin; uno de Alkan, Bartók, Debussy, Liszt, Prokófiev, Rachmáninov, Saint-Saëns, Scriabin o Stravinski; uno compuesto después de 1975 (no propio).",
+            "Programa libre (sin obras propias). Pasan como máximo 14."
+          ]
+        },
+        {
+          "nombre": "2ª ronda (≤ 14)",
+          "fecha": null,
+          "duracion": "50–60 min con pausas",
+          "repertorio": [
+            "Obra encargada a Jukka Tiensuu (5–8 min; se envía antes del 1-08-2027; con partitura).",
+            "Al menos 5 min de Sibelius de las op. 5, 12, 24, 34, 40, 41, 58, 67, 68, 74, 75, 76, 85, 94, 96a, 96c, 97, 99, 101, 103 o 114.",
+            "Programa libre. Opcional: improvisación sobre un tema dado 20 min antes u obra propia (partitura con la solicitud). Pasan 6."
+          ]
+        },
+        {
+          "nombre": "Final (6) · trío y concierto",
+          "fecha": null,
+          "duracion": null,
+          "repertorio": [
+            "Un trío con piano: Beethoven op. 70/2, Fanny Hensel op. 11, Schumann op. 63, Brahms op. 87, Ravel o Magnus Lindberg (2011/12).",
+            "Un concierto: Bartók 2, 3; Beethoven 3, 4, 5; Brahms 1, 2; Chopin 1, 2; Grieg; Lindberg 1; Liszt 1, 2; Mozart K. 450, 459, 467, 482; Prokófiev 2, 3; Rachmáninov 2, 3, Rapsodia; Ravel en Sol y mano izquierda; Saint-Saëns 2, 5; Schumann; Chaikovski 1; Tiensuu."
+          ]
+        }
+      ],
+      "premios": [
+        {
+          "puesto": "1.º",
+          "importe": 30000,
+          "moneda": "EUR",
+          "extra": ""
+        },
+        {
+          "puesto": "2.º",
+          "importe": 25000,
+          "moneda": "EUR",
+          "extra": ""
+        },
+        {
+          "puesto": "3.º",
+          "importe": 20000,
+          "moneda": "EUR",
+          "extra": ""
+        },
+        {
+          "puesto": "Otros tres finalistas",
+          "importe": 8000,
+          "moneda": "EUR",
+          "extra": "Cada uno."
+        },
+        {
+          "puesto": "Premio de música de cámara",
+          "importe": 8000,
+          "moneda": "EUR",
+          "extra": ""
+        },
+        {
+          "puesto": "Mejor obra encargada (Tiensuu)",
+          "importe": 1500,
+          "moneda": "EUR",
+          "extra": ""
+        }
+      ],
+      "premiosNota": "Premios entregados el 28-10-2027; el jurado puede repartirlos de otra forma.",
+      "jurado": [],
+      "juradoNota": "9 miembros: presidente, 7 no finlandeses y 1 finlandés (nombres en la página Jury cuando se publiquen).",
+      "alojamiento": {
+        "estado": "si",
+        "texto": "Alojamiento gratis mientras sigas en el concurso."
+      },
+      "viaje": {
+        "estado": "parcial",
+        "texto": "Viaje a cuenta propia; posible ayuda de viaje para concursantes de fuera de Europa, a petición. Visado a cuenta propia."
+      },
+      "otros": [
+        "Todo de memoria salvo la obra encargada, obras contemporáneas exigentes y el trío.",
+        "Las obras libres deben incluir música de compositoras (no solo hombres)."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "Rules and prizes 2027",
+          "url": "https://majlindcompetition.fi/en/competition/rules-and-prizes/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "jurado"
+      ]
+    },
+    {
+      "id": "ciurlionis-2027",
+      "nombre": "X Concurso Internacional M. K. Čiurlionis (piano y órgano)",
+      "edicion": "X (2027)",
+      "ciudad": "Vilna",
+      "pais": "Lituania",
+      "web": "https://ciurlionis.link/en/b/competition-rules",
+      "fechas": {
+        "inicio": "2027-09-16",
+        "fin": "2027-09-23",
+        "nota": "Piano: 1ª ronda el 16-09, 2ª el 19-09, final y clausura el 23-09-2027 (según el resumen del buscador de la página de horarios)."
+      },
+      "plazo": {
+        "fecha": null,
+        "hora": null,
+        "zona": null,
+        "nota": "No encontrado.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": null,
+        "moneda": "EUR",
+        "nota": "No encontrada."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": "1993-01-01",
+        "nacidoHasta": null,
+        "texto": "Pianistas de cualquier nacionalidad nacidos el 1-01-1993 o después (organistas: desde el 1-01-1988), según el resumen del buscador de las reglas oficiales.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": null,
+        "duracion": null,
+        "resumen": "No consultado.",
+        "detalles": []
+      },
+      "rondas": [],
+      "premios": [],
+      "premiosNota": "No consultados.",
+      "jurado": [],
+      "juradoNota": "",
+      "alojamiento": {
+        "estado": "desconocido",
+        "texto": ""
+      },
+      "viaje": {
+        "estado": "desconocido",
+        "texto": ""
+      },
+      "otros": [
+        "La web oficial (ciurlionis.link) pide verificación humana y no se ha podido leer directamente: comprueba las reglas allí."
+      ],
+      "estadoBases": "sin verificar",
+      "fuentes": [
+        {
+          "titulo": "Competition Rules (requiere verificación)",
+          "url": "https://ciurlionis.link/en/b/competition-rules",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Schedules",
+          "url": "https://ciurlionis.link/en/b/schedule",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "WFIMC · Čiurlionis Competition",
+          "url": "https://www.wfimc.org/member-competition/vilnius-international-mk-ciurlionis-piano-and-organ-competition",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": null,
+      "sinConfirmar": [
+        "fechas",
+        "plazo",
+        "cuota",
+        "edad",
+        "video",
+        "rondas",
+        "premios",
+        "jurado",
+        "alojamiento",
+        "viaje"
+      ]
+    },
+    {
+      "id": "hamamatsu-2027",
+      "nombre": "13.º Concurso Internacional de Piano de Hamamatsu",
+      "edicion": "13.ª (2027)",
+      "ciudad": "Hamamatsu",
+      "pais": "Japón",
+      "web": "https://www.hipic.jp/en/prospectus/",
+      "fechas": {
+        "inicio": "2027-11-07",
+        "fin": "2027-11-29",
+        "nota": "ACT CITY Hamamatsu. Concierto inaugural el 7-11; inscripción en persona el 10 u 11-11; sorteo el 12-11; final 27–28-11; concierto de premiados el 29-11."
+      },
+      "plazo": {
+        "fecha": "2027-02-28",
+        "hora": "24:00",
+        "zona": "hora de Japón",
+        "nota": "Solicitud online del 8-01 al 28-02-2027 en «My page» de hipic.jp. Resultados de la preselección antes del 30-06-2027. Cambios de repertorio hasta el 31-08-2027.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": 20000,
+        "moneda": "JPY",
+        "nota": "Con tarjeta antes del cierre; no reembolsable."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": "1997-01-01",
+        "nacidoHasta": null,
+        "texto": "Pianistas nacidos el 1-01-1997 o después.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": true,
+        "duracion": "máx. 30 min",
+        "resumen": "Un MP4 nuevo con, seguidos y sin parar la cámara: una pieza del Clave bien temperado, una sonata de la lista (Mozart, Haydn o movimientos indicados de Beethoven) y un estudio de Chopin, Liszt, Debussy, Scriabin, Rachmáninov, Bartók, Stravinski, Prokófiev o Ligeti.",
+        "detalles": [
+          "Beethoven: 1.er movimiento de op. 2/2, 2/3, 7, 10/1–3, 13, 22, 28, 31/1–3, 53, 54, 57, 106 o 111; o 1.º y 2.º de op. 27/1, 78, 81a, 101, 109 o 110. Mozart: sonatas K. 279–284, 309–311, 330–333, 457, 533, 545, 570, 576. Haydn: Hob. XVI:1–52.",
+          "Ángulo fijo, sin editar, cara y manos visibles; grabado expresamente para esta edición y solo con obras de la lista.",
+          "Además: foto en color reciente (300 dpi, de frente, medio cuerpo), pasaporte en PDF y dos cartas de recomendación (al menos una de un pianista)."
+        ]
+      },
+      "rondas": [
+        {
+          "nombre": "1ª fase",
+          "fecha": "2027-11-13",
+          "duracion": "máx. 20 min",
+          "repertorio": [
+            "Libre (obras publicadas) con al menos un estudio."
+          ]
+        },
+        {
+          "nombre": "2ª fase",
+          "fecha": "2027-11-19",
+          "duracion": "máx. 40 min",
+          "repertorio": [
+            "Abre con la obra nueva de Eisuke Tsuchida (5–7 min; partitura 3 meses antes; con partitura).",
+            "Dos o más obras de dos o más periodos de la lista de compositores clásicos, románticos y modernos/contemporáneos, sin repetir la 1ª fase."
+          ]
+        },
+        {
+          "nombre": "3ª fase",
+          "fecha": "2027-11-23",
+          "duracion": "máx. 70 min",
+          "repertorio": [
+            "Abre con una sonata para violín (edición Henle) con el violinista del concurso: Beethoven n.º 1, 5 o 10; Brahms n.º 1, 2 o 3.",
+            "Recital libre sin repetir obras de fases anteriores."
+          ]
+        },
+        {
+          "nombre": "Final · con orquesta",
+          "fecha": "2027-11-27",
+          "duracion": null,
+          "repertorio": [
+            "Con la Tokyo Symphony Orchestra (dir. Naoto Otomo): Mozart K. 271, 466, 467, 482, 488, 491, 503, 537, 595; Beethoven 1–5; Chopin 1, 2; Schumann; Liszt 1, 2; Brahms 1, 2; Saint-Saëns 2, 4, 5; Chaikovski 1, 2; Grieg; Rachmáninov 1, 2, 3, Rapsodia; Ravel en Sol y mano izquierda; Bartók 1, 2, 3; Prokófiev 2, 3."
+          ]
+        }
+      ],
+      "premios": [
+        {
+          "puesto": "1.º",
+          "importe": 4000000,
+          "moneda": "JPY",
+          "extra": "Medalla de oro; al menos 10 actuaciones en Japón y fuera antes de marzo de 2029 (200.000 ¥ cada una, con viaje y alojamiento) y Premio del Alcalde de Sapporo."
+        },
+        {
+          "puesto": "2.º",
+          "importe": 2500000,
+          "moneda": "JPY",
+          "extra": "Medalla de plata."
+        },
+        {
+          "puesto": "3.º",
+          "importe": 1500000,
+          "moneda": "JPY",
+          "extra": "Medalla de bronce."
+        },
+        {
+          "puesto": "4.º",
+          "importe": 1000000,
+          "moneda": "JPY",
+          "extra": ""
+        },
+        {
+          "puesto": "5.º",
+          "importe": 800000,
+          "moneda": "JPY",
+          "extra": ""
+        },
+        {
+          "puesto": "6.º",
+          "importe": 600000,
+          "moneda": "JPY",
+          "extra": ""
+        },
+        {
+          "puesto": "Mejor intérprete de la obra japonesa",
+          "importe": 300000,
+          "moneda": "JPY",
+          "extra": ""
+        },
+        {
+          "puesto": "Diploma de mérito · Premio a la sonata para violín",
+          "importe": 150000,
+          "moneda": "JPY",
+          "extra": "Cada uno."
+        }
+      ],
+      "premiosNota": "Además, premio del público. Todo sujeto a impuestos japoneses. Los premiados tocan gratis en el concierto del 29-11.",
+      "jurado": [
+        "Momo Kodama (Japón), presidenta",
+        "Rodolphe Bruneau Boulmier (Francia)",
+        "Akiko Ebi (Japón)",
+        "Till Fellner (Austria)",
+        "Ralf Gothóni (Finlandia/Alemania)",
+        "Michael Haefliger (Suiza)",
+        "HaeSun Paik (Corea del Sur)",
+        "Arabella Pare (Alemania/Reino Unido)",
+        "Ewa Pobłocka (Polonia)",
+        "Ayako Uehara (Japón)",
+        "Xiaohan Wang (China)"
+      ],
+      "juradoNota": "",
+      "alojamiento": {
+        "estado": "si",
+        "texto": "Hotel indicado por la secretaría pagado desde la inscripción hasta la mañana siguiente a tu última fase (finalistas, hasta el 30-11). Sala de estudio con piano de cola: ≥ 4 h/día en 1ª fase y 12 h/día después."
+      },
+      "viaje": {
+        "estado": "parcial",
+        "texto": "Ayuda de 100.000 ¥ para extranjeros que viven fuera de Asia (50.000 ¥ si viven en Asia). Visado a cuenta propia."
+      },
+      "otros": [
+        "Todo de memoria y completo salvo la obra japonesa y la sonata para violín."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "Prospectus 13th HIPIC (PDF)",
+          "url": "https://www.hipic.jp/pdf/prospectus_en.pdf",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Prospectus",
+          "url": "https://www.hipic.jp/en/prospectus/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": []
+    },
+    {
+      "id": "rncm-mottram-2027",
+      "nombre": "RNCM James Mottram International Piano Competition",
+      "edicion": "2027",
+      "ciudad": "Mánchester",
+      "pais": "Reino Unido",
+      "web": "https://www.rncm.ac.uk/jmipc/",
+      "fechas": {
+        "inicio": null,
+        "fin": null,
+        "nota": "Noviembre de 2027, fechas por confirmar."
+      },
+      "plazo": {
+        "fecha": null,
+        "hora": null,
+        "zona": null,
+        "nota": "La inscripción para 2027 abre en abril de 2027.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": null,
+        "moneda": "GBP",
+        "nota": "Sin publicar."
+      },
+      "edad": {
+        "min": null,
+        "max": 29,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Menores de 30 años (la fecha de referencia exacta no está publicada todavía).",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": null,
+        "duracion": null,
+        "resumen": "Sin publicar.",
+        "detalles": []
+      },
+      "rondas": [],
+      "premios": [
+        {
+          "puesto": "1.º",
+          "importe": 10000,
+          "moneda": "GBP",
+          "extra": ""
+        }
+      ],
+      "premiosNota": "Resto de premios sin publicar.",
+      "jurado": [
+        "Graham Scott (RNCM), presidente"
+      ],
+      "juradoNota": "Resto del jurado sin publicar.",
+      "alojamiento": {
+        "estado": "desconocido",
+        "texto": ""
+      },
+      "viaje": {
+        "estado": "desconocido",
+        "texto": ""
+      },
+      "otros": [
+        "Bienal. Revisar en abril de 2027 cuando abra la inscripción."
+      ],
+      "estadoBases": "pendientes",
+      "fuentes": [
+        {
+          "titulo": "JMIPC",
+          "url": "https://www.rncm.ac.uk/jmipc/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "fechas",
+        "plazo",
+        "cuota",
+        "edad",
+        "video",
+        "rondas",
+        "jurado",
+        "alojamiento",
+        "viaje"
+      ]
+    },
+    {
+      "id": "telekom-beethoven-2027",
+      "nombre": "Telekom Beethoven Competition Bonn 2027",
+      "edicion": "2027",
+      "ciudad": "Bonn",
+      "pais": "Alemania",
+      "web": "https://www.telekom-beethoven-competition.de/tbc/competition-2027/eligibility",
+      "fechas": {
+        "inicio": "2027-12-03",
+        "fin": "2027-12-11",
+        "nota": "Llegada y sorteo el 1-12-2027 (10–16 h, en persona con documento). Sede: central de Deutsche Telekom."
+      },
+      "plazo": {
+        "fecha": null,
+        "hora": null,
+        "zona": null,
+        "nota": "La inscripción en Muvac abre el 1-12-2026 a las 10:00 CET; la fecha de cierre no aparece en las páginas consultadas.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": null,
+        "moneda": "EUR",
+        "nota": "Hay cuota de inscripción (no se devuelve si no participas), pero el importe no aparece en las páginas consultadas."
+      },
+      "edad": {
+        "min": 18,
+        "max": 31,
+        "aFecha": null,
+        "nacidoDesde": "1995-12-11",
+        "nacidoHasta": "2009-12-01",
+        "texto": "18 años cumplidos el 1-12-2027 y sin cumplir 32 antes del 11-12-2027: nacidos entre el 11-12-1995 y el 1-12-2009 (inclusive). Excluidos alumnos actuales del jurado (con clase regular ≥ 1 año en los 3 años previos) y los premiados 1.º–3.º de ediciones anteriores.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": true,
+        "duracion": null,
+        "resumen": "Vídeo sin editar ni cortes dentro de cada obra: un Preludio y Fuga de Bach y una de las tres últimas sonatas de Beethoven (op. 109, 110 u 111).",
+        "detalles": [
+          "Deben verse y oírse claramente.",
+          "Esas obras quedan fijadas para la 1ª ronda. Se eligen hasta 28 participantes."
+        ]
+      },
+      "rondas": [
+        {
+          "nombre": "1ª ronda (28)",
+          "fecha": "2027-12-03",
+          "duracion": "45 min",
+          "repertorio": [
+            "Preludio y Fuga de Bach + sonata op. 109, 110 u 111 (las del vídeo).",
+            "Una obra de Beethoven: Variaciones op. 34, Bagatelas op. 119, Variaciones WoO 73, WoO 75 o WoO 80, Rondós op. 51, Fantasía op. 77, Andante favori WoO 57 o Rondo a capriccio op. 129 + Polonesa op. 89."
+          ]
+        },
+        {
+          "nombre": "2ª ronda",
+          "fecha": "2027-12-06",
+          "duracion": "60 min",
+          "repertorio": [
+            "Una sonata de Beethoven (no las op. 2/1, 10/1, 10/2, 14/1, 14/2, 49/1, 49/2, 78, 110 ni 111), o las Variaciones Diabelli op. 120 o Eroica op. 35.",
+            "Obras de Brahms, Czerny, Haydn, Hummel, Liszt, Mendelssohn, Moscheles, Reger, Ries, Schubert, Schumann, R. Strauss, Weber, Woelfl o compositoras del ámbito clásico-romántico (Fanny Hensel, Le Beau, Emilie Mayer, Clara Schumann...). Ver la lista exacta en la web."
+          ]
+        },
+        {
+          "nombre": "Semifinal (6)",
+          "fecha": null,
+          "duracion": "40 min",
+          "repertorio": [
+            "Una sonata de Beethoven: op. 2/1, 10/1, 10/2, 14/1, 14/2, 54 o 78.",
+            "Obras de Schönberg, Bartók, Stravinski, Webern, Berg, Prokófiev, Hindemith, Ullmann, Eisler, Shostakóvich o compositoras de la modernidad del siglo XX (L. Boulanger, Tailleferre, Crawford Seeger, Bacewicz, Kaprálová, Ustvolskaya...)."
+          ]
+        },
+        {
+          "nombre": "Final de cámara",
+          "fecha": null,
+          "duracion": null,
+          "repertorio": [
+            "Obra contemporánea compuesta después del 31-12-2000 (máx. 10 min, con partitura).",
+            "Un trío de Beethoven (op. 1/1–3, op. 70/1–2) con miembros del Beethoven Trio Bonn (con partitura)."
+          ]
+        },
+        {
+          "nombre": "Final con orquesta",
+          "fecha": "2027-12-11",
+          "duracion": null,
+          "repertorio": [
+            "Un concierto para piano de Beethoven."
+          ]
+        }
+      ],
+      "premios": [
+        {
+          "puesto": "1.º",
+          "importe": 50000,
+          "moneda": "EUR",
+          "extra": "Concierto de Año Nuevo con la Beethoven Orchester Bonn y 10.000 € para proyectos artísticos."
+        },
+        {
+          "puesto": "2.º",
+          "importe": 25000,
+          "moneda": "EUR",
+          "extra": ""
+        },
+        {
+          "puesto": "3.º",
+          "importe": 10000,
+          "moneda": "EUR",
+          "extra": ""
+        },
+        {
+          "puesto": "Mejor concierto en la final · Música de cámara",
+          "importe": 2000,
+          "moneda": "EUR",
+          "extra": "Cada uno."
+        },
+        {
+          "puesto": "Compositora (2ª ronda) · Schumann · Contemporánea · Beethoven-Haus (público)",
+          "importe": 1000,
+          "moneda": "EUR",
+          "extra": "Cada uno; el de la Beethoven-Haus incluye recital y busto."
+        }
+      ],
+      "premiosNota": "Conciertos con socios (gira de la Klassische Philharmonie Bonn, Beethovenfest, Cracovia, Marvão, red Steinway...) y coaching de autopromoción para los tres primeros.",
+      "jurado": [],
+      "juradoNota": "No publicado en las páginas consultadas.",
+      "alojamiento": {
+        "estado": "si",
+        "texto": "Alojamiento gratis durante el concurso (familia, hotel o apartamento a elección de la organización). Pianos de cola de estudio en la sede."
+      },
+      "viaje": {
+        "estado": "parcial",
+        "texto": "Se reembolsan gastos reales con recibos originales hasta 300 € (Europa) o 600 € (fuera de Europa). Visado a cuenta propia."
+      },
+      "otros": [
+        "Todo el solo de memoria salvo la obra contemporánea posterior a 1980.",
+        "El repertorio enviado es vinculante.",
+        "Hay que declarar contratos con agencias."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "Eligibility (condiciones 2027)",
+          "url": "https://www.telekom-beethoven-competition.de/tbc/competition-2027/eligibility",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Repertoire 2027",
+          "url": "https://www.telekom-beethoven-competition.de/tbc/competition-2027/repertoire",
+          "consultado": "2026-10-02"
+        },
+        {
+          "titulo": "Prizes 2027",
+          "url": "https://www.telekom-beethoven-competition.de/tbc/competition-2027/prizes",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "plazo",
+        "cuota",
+        "jurado"
+      ]
+    },
+    {
+      "id": "xiamen-2027",
+      "nombre": "Xiamen International Piano Competition",
+      "edicion": "2027",
+      "ciudad": "Xiamen",
+      "pais": "China",
+      "web": "https://zhuanti.ccom.edu.cn/xipceng/index.htm",
+      "fechas": {
+        "inicio": null,
+        "fin": null,
+        "nota": "La web oficial solo muestra la edición de 2024 (concluida)."
+      },
+      "plazo": {
+        "fecha": null,
+        "hora": null,
+        "zona": null,
+        "nota": "Sin publicar.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": null,
+        "moneda": null,
+        "nota": "Sin publicar."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Bases 2027 sin publicar.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": null,
+        "duracion": null,
+        "resumen": "Sin publicar.",
+        "detalles": []
+      },
+      "rondas": [],
+      "premios": [],
+      "premiosNota": "Sin publicar.",
+      "jurado": [],
+      "juradoNota": "Sin publicar.",
+      "alojamiento": {
+        "estado": "desconocido",
+        "texto": ""
+      },
+      "viaje": {
+        "estado": "desconocido",
+        "texto": ""
+      },
+      "otros": [
+        "En seguimiento: revisar cuando se publiquen las bases."
+      ],
+      "estadoBases": "pendientes",
+      "fuentes": [
+        {
+          "titulo": "XIPC (web oficial, edición 2024)",
+          "url": "https://zhuanti.ccom.edu.cn/xipceng/index.htm",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "fechas",
+        "plazo",
+        "cuota",
+        "edad",
+        "video",
+        "rondas",
+        "premios",
+        "jurado",
+        "alojamiento",
+        "viaje"
+      ]
+    },
+    {
+      "id": "tchaikovsky-2027",
+      "nombre": "XVIII Concurso Internacional Chaikovski",
+      "edicion": "2027",
+      "ciudad": "Moscú / San Petersburgo",
+      "pais": "Rusia",
+      "web": "https://tchaikovskycompetition.com/en/",
+      "fechas": {
+        "inicio": null,
+        "fin": null,
+        "nota": "La web oficial solo dice «See you in 2027»; sin fechas ni bases."
+      },
+      "plazo": {
+        "fecha": null,
+        "hora": null,
+        "zona": null,
+        "nota": "Sin publicar.",
+        "cerrado": false
+      },
+      "cuota": {
+        "importe": null,
+        "moneda": null,
+        "nota": "Sin publicar."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Bases 2027 sin publicar.",
+        "sinLimite": false
+      },
+      "video": {
+        "exige": null,
+        "duracion": null,
+        "resumen": "Sin publicar.",
+        "detalles": []
+      },
+      "rondas": [],
+      "premios": [],
+      "premiosNota": "Sin publicar.",
+      "jurado": [],
+      "juradoNota": "Sin publicar.",
+      "alojamiento": {
+        "estado": "desconocido",
+        "texto": ""
+      },
+      "viaje": {
+        "estado": "desconocido",
+        "texto": ""
+      },
+      "otros": [
+        "En seguimiento: revisar cuando se publiquen las bases."
+      ],
+      "estadoBases": "pendientes",
+      "fuentes": [
+        {
+          "titulo": "Tchaikovsky Competition",
+          "url": "https://tchaikovskycompetition.com/en/",
+          "consultado": "2026-10-02"
+        }
+      ],
+      "verificado": "2026-10-02",
+      "sinConfirmar": [
+        "fechas",
+        "plazo",
+        "cuota",
+        "edad",
+        "video",
+        "rondas",
+        "premios",
+        "jurado",
+        "alojamiento",
+        "viaje"
+      ]
+    }
+  ]
+}

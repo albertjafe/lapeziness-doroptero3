@@ -1,0 +1,171 @@
+{
+  "id": "hamamatsu-2027",
+  "nombre": "13.º Concurso Internacional de Piano de Hamamatsu",
+  "edicion": "13.ª (2027)",
+  "ciudad": "Hamamatsu",
+  "pais": "Japón",
+  "web": "https://www.hipic.jp/en/prospectus/",
+  "fechas": {
+    "inicio": "2027-11-07",
+    "fin": "2027-11-29",
+    "nota": "ACT CITY Hamamatsu. Concierto inaugural el 7-11; inscripción en persona el 10 u 11-11; sorteo el 12-11; final 27–28-11; concierto de premiados el 29-11."
+  },
+  "plazo": {
+    "fecha": "2027-02-28",
+    "hora": "24:00",
+    "zona": "hora de Japón",
+    "nota": "Solicitud online del 8-01 al 28-02-2027 en «My page» de hipic.jp. Resultados de la preselección antes del 30-06-2027. Cambios de repertorio hasta el 31-08-2027.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": 20000,
+    "moneda": "JPY",
+    "nota": "Con tarjeta antes del cierre; no reembolsable."
+  },
+  "edad": {
+    "min": null,
+    "max": null,
+    "aFecha": null,
+    "nacidoDesde": "1997-01-01",
+    "nacidoHasta": null,
+    "texto": "Pianistas nacidos el 1-01-1997 o después.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": true,
+    "duracion": "máx. 30 min",
+    "resumen": "Un MP4 nuevo con, seguidos y sin parar la cámara: una pieza del Clave bien temperado, una sonata de la lista (Mozart, Haydn o movimientos indicados de Beethoven) y un estudio de Chopin, Liszt, Debussy, Scriabin, Rachmáninov, Bartók, Stravinski, Prokófiev o Ligeti.",
+    "detalles": [
+      "Beethoven: 1.er movimiento de op. 2/2, 2/3, 7, 10/1–3, 13, 22, 28, 31/1–3, 53, 54, 57, 106 o 111; o 1.º y 2.º de op. 27/1, 78, 81a, 101, 109 o 110. Mozart: sonatas K. 279–284, 309–311, 330–333, 457, 533, 545, 570, 576. Haydn: Hob. XVI:1–52.",
+      "Ángulo fijo, sin editar, cara y manos visibles; grabado expresamente para esta edición y solo con obras de la lista.",
+      "Además: foto en color reciente (300 dpi, de frente, medio cuerpo), pasaporte en PDF y dos cartas de recomendación (al menos una de un pianista)."
+    ]
+  },
+  "rondas": [
+    {
+      "nombre": "1ª fase",
+      "fecha": "2027-11-13",
+      "duracion": "máx. 20 min",
+      "repertorio": [
+        "Libre (obras publicadas) con al menos un estudio."
+      ]
+    },
+    {
+      "nombre": "2ª fase",
+      "fecha": "2027-11-19",
+      "duracion": "máx. 40 min",
+      "repertorio": [
+        "Abre con la obra nueva de Eisuke Tsuchida (5–7 min; partitura 3 meses antes; con partitura).",
+        "Dos o más obras de dos o más periodos de la lista de compositores clásicos, románticos y modernos/contemporáneos, sin repetir la 1ª fase."
+      ]
+    },
+    {
+      "nombre": "3ª fase",
+      "fecha": "2027-11-23",
+      "duracion": "máx. 70 min",
+      "repertorio": [
+        "Abre con una sonata para violín (edición Henle) con el violinista del concurso: Beethoven n.º 1, 5 o 10; Brahms n.º 1, 2 o 3.",
+        "Recital libre sin repetir obras de fases anteriores."
+      ]
+    },
+    {
+      "nombre": "Final · con orquesta",
+      "fecha": "2027-11-27",
+      "duracion": null,
+      "repertorio": [
+        "Con la Tokyo Symphony Orchestra (dir. Naoto Otomo): Mozart K. 271, 466, 467, 482, 488, 491, 503, 537, 595; Beethoven 1–5; Chopin 1, 2; Schumann; Liszt 1, 2; Brahms 1, 2; Saint-Saëns 2, 4, 5; Chaikovski 1, 2; Grieg; Rachmáninov 1, 2, 3, Rapsodia; Ravel en Sol y mano izquierda; Bartók 1, 2, 3; Prokófiev 2, 3."
+      ]
+    }
+  ],
+  "premios": [
+    {
+      "puesto": "1.º",
+      "importe": 4000000,
+      "moneda": "JPY",
+      "extra": "Medalla de oro; al menos 10 actuaciones en Japón y fuera antes de marzo de 2029 (200.000 ¥ cada una, con viaje y alojamiento) y Premio del Alcalde de Sapporo."
+    },
+    {
+      "puesto": "2.º",
+      "importe": 2500000,
+      "moneda": "JPY",
+      "extra": "Medalla de plata."
+    },
+    {
+      "puesto": "3.º",
+      "importe": 1500000,
+      "moneda": "JPY",
+      "extra": "Medalla de bronce."
+    },
+    {
+      "puesto": "4.º",
+      "importe": 1000000,
+      "moneda": "JPY",
+      "extra": ""
+    },
+    {
+      "puesto": "5.º",
+      "importe": 800000,
+      "moneda": "JPY",
+      "extra": ""
+    },
+    {
+      "puesto": "6.º",
+      "importe": 600000,
+      "moneda": "JPY",
+      "extra": ""
+    },
+    {
+      "puesto": "Mejor intérprete de la obra japonesa",
+      "importe": 300000,
+      "moneda": "JPY",
+      "extra": ""
+    },
+    {
+      "puesto": "Diploma de mérito · Premio a la sonata para violín",
+      "importe": 150000,
+      "moneda": "JPY",
+      "extra": "Cada uno."
+    }
+  ],
+  "premiosNota": "Además, premio del público. Todo sujeto a impuestos japoneses. Los premiados tocan gratis en el concierto del 29-11.",
+  "jurado": [
+    "Momo Kodama (Japón), presidenta",
+    "Rodolphe Bruneau Boulmier (Francia)",
+    "Akiko Ebi (Japón)",
+    "Till Fellner (Austria)",
+    "Ralf Gothóni (Finlandia/Alemania)",
+    "Michael Haefliger (Suiza)",
+    "HaeSun Paik (Corea del Sur)",
+    "Arabella Pare (Alemania/Reino Unido)",
+    "Ewa Pobłocka (Polonia)",
+    "Ayako Uehara (Japón)",
+    "Xiaohan Wang (China)"
+  ],
+  "juradoNota": "",
+  "alojamiento": {
+    "estado": "si",
+    "texto": "Hotel indicado por la secretaría pagado desde la inscripción hasta la mañana siguiente a tu última fase (finalistas, hasta el 30-11). Sala de estudio con piano de cola: ≥ 4 h/día en 1ª fase y 12 h/día después."
+  },
+  "viaje": {
+    "estado": "parcial",
+    "texto": "Ayuda de 100.000 ¥ para extranjeros que viven fuera de Asia (50.000 ¥ si viven en Asia). Visado a cuenta propia."
+  },
+  "otros": [
+    "Todo de memoria y completo salvo la obra japonesa y la sonata para violín."
+  ],
+  "estadoBases": "publicadas",
+  "fuentes": [
+    {
+      "titulo": "Prospectus 13th HIPIC (PDF)",
+      "url": "https://www.hipic.jp/pdf/prospectus_en.pdf",
+      "consultado": "2026-10-02"
+    },
+    {
+      "titulo": "Prospectus",
+      "url": "https://www.hipic.jp/en/prospectus/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": []
+}

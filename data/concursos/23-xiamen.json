@@ -1,0 +1,77 @@
+{
+  "id": "xiamen-2027",
+  "nombre": "Xiamen International Piano Competition",
+  "edicion": "2027",
+  "ciudad": "Xiamen",
+  "pais": "China",
+  "web": "https://zhuanti.ccom.edu.cn/xipceng/index.htm",
+  "fechas": {
+    "inicio": null,
+    "fin": null,
+    "nota": "La web oficial solo muestra la edición de 2024 (concluida)."
+  },
+  "plazo": {
+    "fecha": null,
+    "hora": null,
+    "zona": null,
+    "nota": "Sin publicar.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": null,
+    "moneda": null,
+    "nota": "Sin publicar."
+  },
+  "edad": {
+    "min": null,
+    "max": null,
+    "aFecha": null,
+    "nacidoDesde": null,
+    "nacidoHasta": null,
+    "texto": "Bases 2027 sin publicar.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": null,
+    "duracion": null,
+    "resumen": "Sin publicar.",
+    "detalles": []
+  },
+  "rondas": [],
+  "premios": [],
+  "premiosNota": "Sin publicar.",
+  "jurado": [],
+  "juradoNota": "Sin publicar.",
+  "alojamiento": {
+    "estado": "desconocido",
+    "texto": ""
+  },
+  "viaje": {
+    "estado": "desconocido",
+    "texto": ""
+  },
+  "otros": [
+    "En seguimiento: revisar cuando se publiquen las bases."
+  ],
+  "estadoBases": "pendientes",
+  "fuentes": [
+    {
+      "titulo": "XIPC (web oficial, edición 2024)",
+      "url": "https://zhuanti.ccom.edu.cn/xipceng/index.htm",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": [
+    "fechas",
+    "plazo",
+    "cuota",
+    "edad",
+    "video",
+    "rondas",
+    "premios",
+    "jurado",
+    "alojamiento",
+    "viaje"
+  ]
+}

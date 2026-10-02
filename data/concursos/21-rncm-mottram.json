@@ -1,0 +1,85 @@
+{
+  "id": "rncm-mottram-2027",
+  "nombre": "RNCM James Mottram International Piano Competition",
+  "edicion": "2027",
+  "ciudad": "Mánchester",
+  "pais": "Reino Unido",
+  "web": "https://www.rncm.ac.uk/jmipc/",
+  "fechas": {
+    "inicio": null,
+    "fin": null,
+    "nota": "Noviembre de 2027, fechas por confirmar."
+  },
+  "plazo": {
+    "fecha": null,
+    "hora": null,
+    "zona": null,
+    "nota": "La inscripción para 2027 abre en abril de 2027.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": null,
+    "moneda": "GBP",
+    "nota": "Sin publicar."
+  },
+  "edad": {
+    "min": null,
+    "max": 29,
+    "aFecha": null,
+    "nacidoDesde": null,
+    "nacidoHasta": null,
+    "texto": "Menores de 30 años (la fecha de referencia exacta no está publicada todavía).",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": null,
+    "duracion": null,
+    "resumen": "Sin publicar.",
+    "detalles": []
+  },
+  "rondas": [],
+  "premios": [
+    {
+      "puesto": "1.º",
+      "importe": 10000,
+      "moneda": "GBP",
+      "extra": ""
+    }
+  ],
+  "premiosNota": "Resto de premios sin publicar.",
+  "jurado": [
+    "Graham Scott (RNCM), presidente"
+  ],
+  "juradoNota": "Resto del jurado sin publicar.",
+  "alojamiento": {
+    "estado": "desconocido",
+    "texto": ""
+  },
+  "viaje": {
+    "estado": "desconocido",
+    "texto": ""
+  },
+  "otros": [
+    "Bienal. Revisar en abril de 2027 cuando abra la inscripción."
+  ],
+  "estadoBases": "pendientes",
+  "fuentes": [
+    {
+      "titulo": "JMIPC",
+      "url": "https://www.rncm.ac.uk/jmipc/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": [
+    "fechas",
+    "plazo",
+    "cuota",
+    "edad",
+    "video",
+    "rondas",
+    "jurado",
+    "alojamiento",
+    "viaje"
+  ]
+}

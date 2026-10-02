@@ -1,0 +1,140 @@
+{
+  "id": "maj-lind-2027",
+  "nombre": "6.º Helsinki International Maj Lind Piano Competition",
+  "edicion": "6.ª (2027)",
+  "ciudad": "Helsinki",
+  "pais": "Finlandia",
+  "web": "https://majlindcompetition.fi/en/competition/rules-and-prizes/",
+  "fechas": {
+    "inicio": "2027-10-15",
+    "fin": "2027-10-28",
+    "nota": "Sibelius Academy. Ceremonia inaugural y sorteo el 13-10-2027 (en persona o con representante autorizado por escrito)."
+  },
+  "plazo": {
+    "fecha": "2027-05-20",
+    "hora": "16:00",
+    "zona": "CET",
+    "nota": "Solicitud en majlindcompetition.fi, abre el 1-04-2027. Admitidos publicados como tarde el 16-06-2027. Cambios de repertorio hasta el 29-07-2027.",
+    "cerrado": false
+  },
+  "cuota": {
+    "importe": 100,
+    "moneda": "EUR",
+    "nota": "No reembolsable."
+  },
+  "edad": {
+    "min": null,
+    "max": null,
+    "aFecha": null,
+    "nacidoDesde": "1997-01-01",
+    "nacidoHasta": null,
+    "texto": "Pianistas nacidos en 1997 o después, de cualquier nacionalidad.",
+    "sinLimite": false
+  },
+  "video": {
+    "exige": true,
+    "duracion": "≥ 10 min + un estudio",
+    "resumen": "Programa de al menos 10 min de Beethoven, Clementi, Dusík, Haydn, Hummel, Mozart o Schubert, más un estudio virtuoso.",
+    "detalles": [
+      "Deben verse bien la interpretación, las manos y la cara; sin editar (obras o movimientos pueden ir en tomas distintas).",
+      "Indicar cuándo y dónde se grabó; como mucho de hace 2 años."
+    ]
+  },
+  "rondas": [
+    {
+      "nombre": "1ª ronda (~40)",
+      "fecha": "2027-10-15",
+      "duracion": "máx. 45 min con pausas",
+      "repertorio": [
+        "Música anterior a 1757 (≥ 5 min).",
+        "Una obra completa (≥ 10 min) de Beethoven, Clementi, Dusík, Haydn, Hummel, Mozart o Schubert.",
+        "Tres estudios: uno de Chopin; uno de Alkan, Bartók, Debussy, Liszt, Prokófiev, Rachmáninov, Saint-Saëns, Scriabin o Stravinski; uno compuesto después de 1975 (no propio).",
+        "Programa libre (sin obras propias). Pasan como máximo 14."
+      ]
+    },
+    {
+      "nombre": "2ª ronda (≤ 14)",
+      "fecha": null,
+      "duracion": "50–60 min con pausas",
+      "repertorio": [
+        "Obra encargada a Jukka Tiensuu (5–8 min; se envía antes del 1-08-2027; con partitura).",
+        "Al menos 5 min de Sibelius de las op. 5, 12, 24, 34, 40, 41, 58, 67, 68, 74, 75, 76, 85, 94, 96a, 96c, 97, 99, 101, 103 o 114.",
+        "Programa libre. Opcional: improvisación sobre un tema dado 20 min antes u obra propia (partitura con la solicitud). Pasan 6."
+      ]
+    },
+    {
+      "nombre": "Final (6) · trío y concierto",
+      "fecha": null,
+      "duracion": null,
+      "repertorio": [
+        "Un trío con piano: Beethoven op. 70/2, Fanny Hensel op. 11, Schumann op. 63, Brahms op. 87, Ravel o Magnus Lindberg (2011/12).",
+        "Un concierto: Bartók 2, 3; Beethoven 3, 4, 5; Brahms 1, 2; Chopin 1, 2; Grieg; Lindberg 1; Liszt 1, 2; Mozart K. 450, 459, 467, 482; Prokófiev 2, 3; Rachmáninov 2, 3, Rapsodia; Ravel en Sol y mano izquierda; Saint-Saëns 2, 5; Schumann; Chaikovski 1; Tiensuu."
+      ]
+    }
+  ],
+  "premios": [
+    {
+      "puesto": "1.º",
+      "importe": 30000,
+      "moneda": "EUR",
+      "extra": ""
+    },
+    {
+      "puesto": "2.º",
+      "importe": 25000,
+      "moneda": "EUR",
+      "extra": ""
+    },
+    {
+      "puesto": "3.º",
+      "importe": 20000,
+      "moneda": "EUR",
+      "extra": ""
+    },
+    {
+      "puesto": "Otros tres finalistas",
+      "importe": 8000,
+      "moneda": "EUR",
+      "extra": "Cada uno."
+    },
+    {
+      "puesto": "Premio de música de cámara",
+      "importe": 8000,
+      "moneda": "EUR",
+      "extra": ""
+    },
+    {
+      "puesto": "Mejor obra encargada (Tiensuu)",
+      "importe": 1500,
+      "moneda": "EUR",
+      "extra": ""
+    }
+  ],
+  "premiosNota": "Premios entregados el 28-10-2027; el jurado puede repartirlos de otra forma.",
+  "jurado": [],
+  "juradoNota": "9 miembros: presidente, 7 no finlandeses y 1 finlandés (nombres en la página Jury cuando se publiquen).",
+  "alojamiento": {
+    "estado": "si",
+    "texto": "Alojamiento gratis mientras sigas en el concurso."
+  },
+  "viaje": {
+    "estado": "parcial",
+    "texto": "Viaje a cuenta propia; posible ayuda de viaje para concursantes de fuera de Europa, a petición. Visado a cuenta propia."
+  },
+  "otros": [
+    "Todo de memoria salvo la obra encargada, obras contemporáneas exigentes y el trío.",
+    "Las obras libres deben incluir música de compositoras (no solo hombres)."
+  ],
+  "estadoBases": "publicadas",
+  "fuentes": [
+    {
+      "titulo": "Rules and prizes 2027",
+      "url": "https://majlindcompetition.fi/en/competition/rules-and-prizes/",
+      "consultado": "2026-10-02"
+    }
+  ],
+  "verificado": "2026-10-02",
+  "sinConfirmar": [
+    "jurado"
+  ]
+}

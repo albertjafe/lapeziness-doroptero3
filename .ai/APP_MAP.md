@@ -262,6 +262,14 @@ No presentar un día inventado como si el usuario lo hubiera elegido. El Profeso
 
 ---
 
+### Dosier de concursos (sección «Concursos», v481)
+
+- `concursos-dossier.js/css`, vista `#view-concursos` (escritorio: barra lateral; móvil/iPad: mosaico en Hoy). No forma parte del gesto lateral.
+- Datos: `db.concursosDosier.concursos = [{id, ficha, importado, origen, interes}]`. `ficha` es la ficha completa como **texto JSON** a propósito: reimportar la sustituye entera (un objeto con listas sin id se uniría a la versión vieja en `mergeRemote`). `interes` (`si`/`no`/`null`) es de la persona y no se pisa al importar.
+- `db.perfil.fechaNacimiento` (por defecto 1999-02-19): edad y elegibilidad se calculan siempre con la regla exacta de cada concurso (`nacidoDesde/Hasta`, `min/max/aFecha`, `sinLimite`); nunca se guardan.
+- Formato de importación `dosier-concursos-piano` v1: `docs/DOSIER_CONCURSOS_FORMATO.md` (botón «Instrucciones para la IA»). Primera carga: `data/concursos-dosier.json` (24 concursos, bases oficiales consultadas el 2-10-2026; fuentes en `data/concursos/*.json`, se junta con `node scripts/build-competition-dossier.mjs`). El seed no pisa fichas verificadas después.
+- «Añadir a mi plan» usa `EventPlanning.importDossierEntry` con el mismo origen `dossier-2026-2027:<id>` que el seed antiguo: los concursos ya planificados quedan enlazados sin duplicarse. Si fechas/plazo del plan difieren del dosier se ofrece `syncDossierDates`; nunca se cambian solos.
+
 ## 6. Profesor virtual
 
 El Profesor es una feature central. **No sustituirlo por un ranking determinista sin chat:** su objetivo es construir un Superinforme y abrir ChatGPT con el contexto musical.
@@ -407,7 +415,7 @@ Documentación pura (`.md`, instrucciones de IA) no necesita bump de SW porque n
 | slider/píldora táctil | `pase-liquid-direct-touch.js` |
 | pases/pasajes | `passage-tracker.js`, `daily-study-minutes.js`; buscar `Pase`/`paseHistory` en `app.js` para pases históricos |
 | eventos | `event-planning.js`, `event-repertoire-picker.js`, `event-movement-selector.js`, `event-sync-core.js` |
-| concursos | `event-planning.js`, `competition-planning-seed.js`, `event-planning-ui-v2.js` |
+| concursos | `event-planning.js`, `competition-planning-seed.js`, `event-planning-ui-v2.js`; dosier/edad: `concursos-dossier.js` |
 | proyectos personales | `planning-enhancements-v4.js` |
 | Profesor / ranking | `professor-core.js`, `professor-event-gate.js` |
 | Profesor / horas y hora real | `professor-duration-policy.js` |
