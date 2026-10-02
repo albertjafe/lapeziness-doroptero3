@@ -315,7 +315,11 @@ Deno.serve(async (req: Request) => {
     if (source !== tokenRow.source) return json(403, { error: "source_not_allowed" });
 
     const expiry = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    const reclaimBefore = new Date(Date.now() - 60 * 1000).toISOString();
+    // 02-10-2026: si la respuesta a un GET se pierde (el monitor deja de esperar),
+    // la orden ya consta como entregada; antes volvía a ofrecerse a los 60 s y
+    // parecía que Iniciar había que pulsarlo dos veces. Ahora a los 15 s: el
+    // monitor ignora las que ya tiene y su ACK vale aunque haya vuelto a pending.
+    const reclaimBefore = new Date(Date.now() - 15 * 1000).toISOString();
     await service
       .from("reservation_monitor_commands")
       .update({ status: "pending", claimed_at: null })
@@ -403,7 +407,7 @@ Deno.serve(async (req: Request) => {
       .eq("id", id)
       .eq("user_id", tokenRow.user_id)
       .eq("source", source)
-      .eq("status", "claimed");
+      .in("status", ["claimed", "pending"]);
     if (error) return json(500, { error: "ack_failed" });
     return json(200, { ok: true });
   }
