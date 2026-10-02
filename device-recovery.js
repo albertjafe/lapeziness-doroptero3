@@ -206,7 +206,10 @@
         });
       });
     });
+    let memory = null;
+    try { memory = current ? JSON.parse(JSON.stringify(current)) : null; } catch (_) { memory = null; }
     lastCapture = {
+      formato: 'copia-completa-app',
       capturedAt: new Date().toISOString(),
       device: deviceLabel(),
       userAgent: navigator.userAgent,
@@ -215,6 +218,9 @@
       copies,
       localStorage: local.items,
       indexedDB: idb,
+      // 02-10-2026: también lo que la app tiene en memoria; «Comprobar una
+      // copia» (copy-check.js) lo compara después de actualizar.
+      memory,
     };
     return lastCapture;
   }
@@ -237,6 +243,7 @@
       else parts.push({ source: `localStorage:${key}`, value });
     });
     parts.unshift({ source: 'localStorage:(pequeñas)', value: small });
+    if (capture.memory) parts.push({ source: 'memory', value: capture.memory });
     Object.entries(capture.indexedDB).forEach(([name, stores]) => {
       Object.entries(stores).forEach(([storeName, content]) => parts.push({ source: `idb:${name}/${storeName}`, value: content }));
     });
@@ -299,7 +306,7 @@
     const blob = new Blob([JSON.stringify({ ...rest, copies }, null, 1)], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `rescate-${capture.device.toLowerCase()}-${capture.capturedAt.slice(0, 16).replace(/[:T]/g, '-')}.json`;
+    link.download = `copia-completa-${capture.device.toLowerCase()}-${capture.capturedAt.slice(0, 16).replace(/[:T]/g, '-')}.json`;
     document.body.appendChild(link);
     link.click();
     setTimeout(() => { URL.revokeObjectURL(link.href); link.remove(); }, 1000);

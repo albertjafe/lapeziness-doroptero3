@@ -334,6 +334,9 @@ Cuando el slider "¿Cómo fue esta sesión?" del modal Hecho llega a **≥ `DEST
 
 `body.crono-focus` usa `touch-action: none` (bloquea pellizco). Los modales sobre el cronómetro ahora usan `touch-action: pan-y` (antes `auto`): permiten scroll vertical pero **no** pinch-zoom, evitando que la pantalla quede ampliada al cerrar el modal.
 
+### Sincronización: 57014 en la protección de obras y «Comprobar una copia» (oct 2026, v482)
+El guardado del iPad se cancelaba (57014) porque `protect_study_works()` recorría el historial completo por cada movimiento borrado; ahora usa un índice por guardado (migración `20261002180000_…`, ver APP_MAP §2). Para actualizar sin miedo: Ajustes → «Recuperar datos de este dispositivo» → «Revisar» → «Descargar copia completa»; tras actualizar, «Comprobar una copia…» con ese archivo dice qué falta y lo recupera (solo añade). Pruebas: `study-guard-postgres.test.js`, `copy-check.test.js`, `copy-check.spec.js`. Al medir en producción, siempre `set statement_timeout`.
+
 ### Concursos · dosier de piano (oct 2026, v481)
 Sección propia (`concursos-dossier.js/css`, `#view-concursos`): fichas por plazo con avisos de cierre, elegibilidad por edad calculada desde `db.perfil.fechaNacimiento`, rondas, premios, jurado, alojamiento/viaje y fuentes oficiales. Importa/exporta el formato de `docs/DOSIER_CONCURSOS_FORMATO.md`; la ficha se guarda como texto JSON (ver APP_MAP §5). **Información fiable**: solo bases oficiales, lo no publicado queda en `sinConfirmar`, nunca se inventa. Pruebas: `tests/unit/concursos-dossier.test.js`, `tests/e2e/concursos-dossier.spec.js` (reloj fijo 2-10-2026).
 

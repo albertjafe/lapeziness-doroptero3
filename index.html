@@ -1304,7 +1304,13 @@
             <div class="st-actions">
               <button type="button" class="st-btn st-btn--primary" id="deviceRecoveryScan">Revisar este dispositivo</button>
               <button type="button" class="st-btn" id="deviceRecoveryUpload" disabled>Enviar para revisión</button>
-              <button type="button" class="st-btn" id="deviceRecoveryDownload" disabled>Descargar copia</button>
+              <button type="button" class="st-btn" id="deviceRecoveryDownload" disabled>Descargar copia completa</button>
+            </div>
+            <div class="copy-check">
+              <p class="device-recovery-note"><b>Comprobar una copia.</b> Elige un archivo guardado antes («Descargar copia completa», el «JSON completo» de Exportar para IA o una copia antigua). La app te dice qué hay en la copia que falta ahora y puedes recuperarlo: solo añade, nunca cambia ni borra nada.</p>
+              <label class="st-btn copy-check-pick">Comprobar una copia…<input type="file" id="copyCheckFile" accept=".json,application/json"></label>
+              <div id="copyCheckFeedback" class="st-feedback" style="display:none" role="status" aria-live="polite"></div>
+              <div id="copyCheckResult" class="copy-check-result"></div>
             </div>
             <div id="deviceRecoveryFeedback" class="st-feedback" style="display:none" role="status" aria-live="polite"></div>
             <div id="deviceRecoveryList" class="device-recovery-list"></div>
@@ -2557,7 +2563,8 @@
 <script src="crono-resume-layout.js?v=432"></script>
 <script src="piano-rooms.js?v=481"></script>
 <script src="reservation-dashboard.js?v=480"></script>
-<script src="device-recovery.js?v=460"></script>
+<script src="device-recovery.js?v=482"></script>
+<script src="copy-check.js?v=482"></script>
 <script src="ipad-today.js?v=461"></script>
 <script src="google-calendar.js?v=342"></script>
 <script src="timer-objectives.js?v=439"></script>
@@ -2577,7 +2584,7 @@
 <script src="desktop-app.js?v=461"></script>
 <link rel="stylesheet" href="mobile-v2.css?v=474">
 <link rel="stylesheet" href="settings.css?v=464">
-<link rel="stylesheet" href="device-recovery.css?v=460">
+<link rel="stylesheet" href="device-recovery.css?v=482">
 <!-- Última capa del iPad: al final para ganar a las capas antiguas (como desktop-app.css). -->
 <link rel="stylesheet" href="ipad-app.css?v=464">
 <script src="settings.js?v=457"></script>

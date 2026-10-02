@@ -14,3 +14,19 @@
 #deviceRecoveryFeedback[data-kind="warn"] { color:#9a5f25; }
 #deviceRecoveryFeedback[data-kind="error"] { color:#a6574e; }
 @media(max-width:560px){ .device-recovery-copy dl { grid-template-columns:1fr; } .device-recovery-head { flex-direction:column; gap:2px; } .device-recovery-head small { white-space:normal; } }
+
+/* Comprobar una copia (copy-check.js, 02-10-2026). */
+.copy-check { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border2); }
+.copy-check-pick { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+.copy-check-pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.copy-check-pick:focus-within { outline: 3px solid var(--accent); outline-offset: 2px; }
+.copy-check-result { margin-top: 10px; }
+.copy-check-ok { color: #2f9e6b; font-weight: 600; }
+.copy-check-group { border: 1px solid var(--border2); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
+.copy-check-head { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.copy-check-head span { color: var(--text3); font-size: 12px; margin-left: auto; }
+.copy-check-group ul { margin: 6px 0 0; padding-left: 22px; font-size: 13px; }
+.copy-check-group li { margin: 2px 0; overflow-wrap: anywhere; }
+.copy-check-group li.is-deleted { color: var(--text3); text-decoration: line-through; }
+.copy-check-group small { color: var(--text3); }
+.copy-check-more { list-style: none; color: var(--text3); }
