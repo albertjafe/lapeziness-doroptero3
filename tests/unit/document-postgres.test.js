@@ -21,6 +21,7 @@ beforeAll(async()=>{
   await pg.exec(sql('20260918205809_optimize_document_tombstone_pruning.sql'));
   await pg.exec(sql('20260919142631_preserve_sync_acknowledgement_fields.sql'));
   await pg.exec(sql('20260922175710_optimize_sync_object_assembly.sql'));
+  await pg.exec(sql('20261002180000_index_study_reference_checks.sql'));
   // The helper's original migration predates this checkout; its deployed
   // definition is captured as a fixture, without data or production mutations.
   await pg.exec(`create trigger trg_00_preserve_crono_tasks before update of data on user_data for each row execute function preserve_crono_tasks_on_user_data_update();
