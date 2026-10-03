@@ -274,6 +274,13 @@ No presentar un día inventado como si el usuario lo hubiera elegido. El Profeso
 - Formato de importación `dosier-concursos-piano` v1: `docs/DOSIER_CONCURSOS_FORMATO.md` (botón «Instrucciones para la IA»). Primera carga: `data/concursos-dosier.json` (24 concursos, bases oficiales consultadas el 2-10-2026; fuentes en `data/concursos/*.json`, se junta con `node scripts/build-competition-dossier.mjs`). El seed no pisa fichas verificadas después.
 - «Añadir a mi plan» usa `EventPlanning.importDossierEntry` con el mismo origen `dossier-2026-2027:<id>` que el seed antiguo: los concursos ya planificados quedan enlazados sin duplicarse. Si fechas/plazo del plan difieren del dosier se ofrece `syncDossierDates`; nunca se cambian solos.
 
+### Oportunidades: festivales, becas y seguimiento (v483)
+
+- La vista `#view-concursos` se llama ahora **Oportunidades** (barra lateral y mosaico de Hoy). Marcado fijo: `#opTabs` (pestañas Concursos · Festivales · Becas · Seguimiento, recordada en `localStorage alberto_oportunidades_tab`), `#cdPanel` (el dosier de concursos pinta aquí: `concursos-dossier.js` busca `#cdPanel` antes que `#view-concursos`) y `#opPanel`.
+- `oportunidades.js/css` (`OportunidadesCore` UMD + vista). Fichas en `db.oportunidades.fichas = [{id, tipo, ficha, importado, origen, interes}]`, con la **misma regla de texto JSON** que los concursos. Formato `dosier-oportunidades` v1 (`docs/DOSIER_OPORTUNIDADES_FORMATO.md`); dosier inicial `data/oportunidades-dosier.json` (`seedVersion`, no pisa fichas verificadas después). La edad se calcula con `ConcursosDossierCore.eligibility`.
+- **Seguimiento**: `db.oportunidades.contactos = [{id: 'ct-…', nombre, tipo, persona, email, telefono, nota, oportunidadId, estado, enviado, ultimoContacto, proximo, creado, archivado}]` — registros con id, así que la sincronización los une uno a uno. Estados `pendiente → enviado → llamado → conversando → cerrado | descartado`; «Email enviado» y «Llamé» fijan `proximo` a +7 días (`FOLLOW_UP_DAYS`). Nunca se borra: se archiva. Tabla en escritorio, tarjetas ≤ 900 px. La insignia roja de la pestaña cuenta solo seguimientos vencidos (`followSummary().calls`), no los «Por contactar».
+- Pruebas: `tests/unit/oportunidades.test.js`, `tests/e2e/oportunidades.spec.js` (reloj fijo 3-10-2026).
+
 ## 6. Profesor virtual
 
 El Profesor es una feature central. **No sustituirlo por un ranking determinista sin chat:** su objetivo es construir un Superinforme y abrir ChatGPT con el contexto musical.

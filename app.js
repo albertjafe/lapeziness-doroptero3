@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-09-30-jornada-v476';
+const APP_VERSION = '2026-10-03-oportunidades-v483';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -854,7 +854,7 @@ const VIEW_CONTEXT = {
   casa: { eyebrow: 'Estratos', title: 'La Casa' },
   historial: { eyebrow: 'Resumen', title: 'Estadísticas' },
   deutsch: { eyebrow: 'Tarjetas y estudio libre', title: 'Alemán' },
-  concursos: { eyebrow: 'Dosier de piano', title: 'Concursos' },
+  concursos: { eyebrow: 'Concursos, festivales y becas', title: 'Oportunidades' },
   ajustes: { eyebrow: 'Cuenta, aspecto y datos', title: 'Ajustes' },
   premios: { eyebrow: 'Hucha, rachas y logros', title: 'Premios' },
   habitos: { eyebrow: 'Normas, días y colección', title: 'Hábitos' }

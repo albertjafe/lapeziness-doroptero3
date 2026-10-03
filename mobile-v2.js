@@ -241,7 +241,7 @@
       '<nav class="mv2-tiles" aria-label="Accesos">' +
         tile('Alemán', 'Tarjetas', "showView('deutsch')") +
         tile('Premios', 'Hucha y logros', 'openPremios()') +
-        tile('Concursos', 'Dosier de piano', "showView('concursos')") +
+        tile('Oportunidades', 'Concursos, festivales y becas', "showView('concursos')") +
         tile('Historial', 'Estadísticas', "openSessionArchive('history')") +
         // En el móvil Aulas ocupa el sitio de Profesor en la barra inferior; en el iPad está en la barra.
         (phoneWidth() ? tile('Profesor', 'Plan de hoy', "showView('profesor')") : '') +

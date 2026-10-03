@@ -272,7 +272,8 @@
 
   const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const ready = () => { try { return typeof db !== 'undefined' && db && typeof db === 'object'; } catch (error) { return false; } };
-  const view = () => document.getElementById('view-concursos');
+  // Desde la vista «Oportunidades» el dosier vive en su pestaña (#cdPanel).
+  const view = () => document.getElementById('cdPanel') || document.getElementById('view-concursos');
   function state() {
     if (!db.concursosDosier || typeof db.concursosDosier !== 'object') db.concursosDosier = { concursos: [] };
     if (!Array.isArray(db.concursosDosier.concursos)) db.concursosDosier.concursos = [];
@@ -462,6 +463,7 @@
         <div class="cd-actions"><button type="button" class="cd-primary" data-action="copy-ai">Copiar</button><button type="button" data-action="template">Descargar plantilla</button><button type="button" data-action="close-ai">Cerrar</button></div>
       </dialog>`;
     if (document.body.getAttribute('data-view') === 'concursos') window.scrollTo(0, scrollY);
+    if (window.Oportunidades && window.Oportunidades.refreshTabs) window.Oportunidades.refreshTabs();
   }
 
   function download(name, data) {

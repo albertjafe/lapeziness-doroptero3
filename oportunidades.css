@@ -1,0 +1,82 @@
+/* Oportunidades · pestañas Concursos / Festivales / Becas / Seguimiento (oportunidades.js).
+   Reutiliza las piezas .cd-* de concursos-dossier.css; aquí solo lo propio. */
+#view-concursos .op-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 16px; padding: 4px; border: 1px solid var(--border2); border-radius: 15px; background: var(--bg2); }
+#view-concursos .op-tabs:empty { display: none; }
+#view-concursos button.op-tab { flex: 1 1 auto; border: 0; border-radius: 11px; background: transparent; min-height: 40px; padding: 8px 14px; font-weight: 600; color: var(--text2); white-space: nowrap; }
+#view-concursos button.op-tab:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--text); }
+#view-concursos button.op-tab.active { background: var(--card, var(--bg)); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.op-tab > span { font-size: 12px; font-weight: 600; opacity: .6; margin-left: 2px; }
+.op-tab > span.op-tab-due { opacity: 1; display: inline-block; min-width: 18px; padding: 1px 6px; border-radius: 999px; background: var(--cd-bad); color: #fff; font-size: 11px; line-height: 16px; text-align: center; }
+
+#view-concursos #opPanel .cd-sec a { color: var(--accent); }
+.op-intro { margin: 0 0 4px; font-size: 14px; line-height: 1.5; color: var(--text2); }
+#view-concursos a.op-btn-link { display: inline-flex; align-items: center; min-height: 40px; box-sizing: border-box; padding: 9px 14px; border: 1px solid var(--border2); border-radius: 12px; background: var(--bg2); color: var(--text); text-decoration: none; }
+#view-concursos a.op-btn-link:hover { border-color: var(--accent); }
+
+/* Seguimiento */
+.op-follow-head { padding: 12px 16px; border: 1px solid var(--border2); border-radius: 16px; background: var(--card, var(--bg2)); }
+.op-follow-head p { margin: 0; font-size: 14px; line-height: 1.5; }
+.op-follow-head p.op-hint { margin-top: 4px; font-size: 13px; color: var(--text3); }
+
+.op-add { margin: 0 0 12px; border: 1px dashed var(--border2); border-radius: 14px; background: var(--bg2); }
+.op-add[open] { border-style: solid; }
+.op-add > summary { list-style: none; cursor: pointer; padding: 11px 14px; font-weight: 650; color: var(--accent); }
+.op-add > summary::-webkit-details-marker { display: none; }
+.op-add > .op-form { padding: 0 14px 14px; }
+.op-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+.op-form label { display: grid; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text2); min-width: 0; }
+#view-concursos .op-form input, #view-concursos .op-form select, #view-concursos .op-form textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border2); border-radius: 10px; padding: 8px 10px; background: var(--card, var(--bg)); font: inherit; font-size: 15px; font-weight: 400; color: var(--text); min-height: 40px; }
+.op-form .op-form-wide { grid-column: 1 / -1; }
+.op-form .cd-actions { margin-top: 2px; }
+
+.op-suggest { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0 0 12px; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 9%, var(--card, var(--bg2))); }
+.op-suggest p { margin: 0; flex: 1 1 300px; font-size: 14px; line-height: 1.45; }
+
+/* Tabla de contactos (ayuntamientos, festivales, becas) */
+.op-table-wrap { border: 1px solid var(--border2); border-radius: 16px; background: var(--card, var(--bg2)); overflow: hidden; }
+.op-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.op-table thead th { padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); border-bottom: 1px solid var(--border2); background: var(--bg2); }
+.op-table tbody th, .op-table tbody td { padding: 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border2); font-weight: 400; }
+.op-table tbody tr:last-child > * { border-bottom: 0; }
+.op-row.is-due > th { box-shadow: inset 3px 0 0 var(--cd-bad); }
+.op-c-name { min-width: 150px; }
+.op-name { display: block; font-weight: 700; font-size: 15px; line-height: 1.3; }
+.op-kind { display: block; margin-top: 2px; font-size: 12px; color: var(--text3); }
+.op-note { display: block; margin-top: 6px; font-size: 13px; line-height: 1.4; color: var(--text2); overflow-wrap: anywhere; }
+.op-c-state .cd-chips { gap: 4px; }
+.op-dates { display: block; margin-top: 6px; font-size: 12px; color: var(--text3); }
+.op-c-next { min-width: 140px; line-height: 1.4; }
+.op-c-next.due { font-weight: 650; color: var(--text); }
+.op-c-data { min-width: 170px; font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.op-c-data > * { display: block; }
+.op-c-data a { color: var(--accent); }
+.op-missing { color: var(--cd-warn); }
+.op-c-actions .cd-actions { margin: 0; gap: 6px; justify-content: flex-end; }
+#view-concursos .op-c-actions button { min-height: 36px; padding: 7px 11px; font-size: 13px; }
+.op-edit-row > td { background: var(--bg2); }
+.op-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Hasta 900 px la tabla se apila: cada contacto es una tarjeta */
+@media (max-width: 900px) {
+  .op-table-wrap { border: 0; background: transparent; overflow: visible; }
+  .op-table, .op-table tbody, .op-table tr, .op-table tbody th, .op-table tbody td { display: block; width: auto; }
+  .op-table thead { display: none; }
+  .op-table tbody { display: grid; gap: 10px; }
+  .op-table tbody tr.op-row { border: 1px solid var(--border2); border-radius: 16px; background: var(--card, var(--bg2)); padding: 12px 14px; }
+  .op-table tbody tr.op-row.is-due { border-color: color-mix(in srgb, var(--cd-bad) 55%, var(--border2)); box-shadow: inset 3px 0 0 var(--cd-bad); }
+  .op-row.is-due > th { box-shadow: none; }
+  .op-table tbody tr.op-row > * { padding: 0; border: 0; min-width: 0; }
+  .op-table tbody tr.op-row > * + * { margin-top: 8px; }
+  .op-c-state { display: flex !important; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  .op-c-state .op-dates { margin: 0; }
+  .op-c-next::before, .op-c-data::before { content: attr(data-label); display: block; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); margin-bottom: 1px; }
+  .op-c-actions .cd-actions { justify-content: flex-start; }
+  .op-c-actions:empty { display: none !important; }
+  .op-table tbody tr.op-edit-row { margin-top: -6px; border: 1px solid var(--border2); border-top: 0; border-radius: 0 0 16px 16px; background: var(--bg2); }
+  .op-table tbody tr.op-edit-row > td { padding: 12px 14px; border: 0; }
+}
+
+@media (max-width: 520px) {
+  .op-form { grid-template-columns: minmax(0, 1fr); }
+  #view-concursos button.op-tab { padding: 8px 10px; font-size: 14px; }
+}

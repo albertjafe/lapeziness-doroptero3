@@ -1,0 +1,743 @@
+{
+  "formato": "dosier-oportunidades",
+  "version": 1,
+  "generado": "2026-10-03",
+  "autor": "Claude (fuentes oficiales consultadas el 3-10-2026)",
+  "oportunidades": [
+    {
+      "id": "aienruta-clasicos-2027",
+      "tipo": "festival",
+      "nombre": "AIEnRUTa-Clásicos",
+      "entidad": "AIE · Sociedad de Artistas Intérpretes o Ejecutantes de España",
+      "ciudad": "Varias ciudades",
+      "pais": "España",
+      "web": "https://www.aie.es/promocion/aienruta-clasicos/",
+      "resumen": "Circuito de música clásica para jóvenes intérpretes: un comité elige cada año unos 8 o 10 solistas o formaciones, que dan conciertos en distintas ciudades españolas (por ejemplo, en la Universidad de Alcalá).",
+      "via": {
+        "tipo": "convocatoria",
+        "texto": "Inscripción online en el formulario de la web de AIE. Un comité de expertos en música clásica elige a los participantes."
+      },
+      "plazo": {
+        "fecha": "2026-10-28",
+        "nota": "Plazo publicado en la web de AIE: hasta el 28 de octubre de 2026.",
+        "cerrado": false,
+        "abierto": false,
+        "recurrente": "Anual"
+      },
+      "fechas": {
+        "inicio": null,
+        "fin": null,
+        "nota": "Los conciertos de la edición anterior fueron en marzo (Alcalá, 12–14 de marzo de 2024)."
+      },
+      "dotacion": {
+        "importe": null,
+        "moneda": "EUR",
+        "nota": "La web no publica cuánto se paga por concierto."
+      },
+      "edad": {
+        "min": null,
+        "max": 30,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Edad máxima: 30 años. La web no dice a qué fecha.",
+        "sinLimite": false
+      },
+      "requisitos": [
+        "Jóvenes intérpretes de música clásica, solistas o formaciones.",
+        "La web no aclara si hay que ser socio de AIE: conviene preguntarlo."
+      ],
+      "envio": {
+        "resumen": "Formulario online de la propia página.",
+        "documentos": [],
+        "email": null,
+        "url": "https://www.aie.es/promocion/aienruta-clasicos/"
+      },
+      "contacto": {
+        "nombre": null,
+        "email": null,
+        "telefono": null
+      },
+      "otros": [],
+      "estadoBases": "parciales",
+      "fuentes": [
+        {
+          "titulo": "AIE · AIEnRUTa-Clásicos",
+          "url": "https://www.aie.es/promocion/aienruta-clasicos/",
+          "consultado": "2026-10-03"
+        },
+        {
+          "titulo": "Universidad de Alcalá · AIEnRUTa-Clásicos 2024",
+          "url": "https://cultura.uah.es/es/evento/AIEnRUTa-Clasicos-2024",
+          "consultado": "2026-10-03"
+        }
+      ],
+      "verificado": "2026-10-03",
+      "sinConfirmar": [
+        "dotacion",
+        "requisitos",
+        "fechas"
+      ]
+    },
+    {
+      "id": "encuentro-santander-2027",
+      "tipo": "festival",
+      "nombre": "Encuentro de Música y Academia de Santander",
+      "entidad": "Fundación Albéniz · Escuela Superior de Música Reina Sofía",
+      "ciudad": "Santander y Cantabria",
+      "pais": "España",
+      "web": "https://www.encuentrodesantander.es",
+      "resumen": "Academia y festival de verano: jóvenes músicos seleccionados trabajan con grandes maestros y tocan en más de 60 conciertos por Santander y Cantabria. Piano incluido.",
+      "via": {
+        "tipo": "audicion",
+        "texto": "Dos fases: preselección por CV y vídeo, y entrevista online."
+      },
+      "plazo": {
+        "fecha": null,
+        "nota": "Referencia 2025: solicitudes hasta el 31 de enero y resultados a principios de marzo. La convocatoria de 2027 aún no está publicada.",
+        "cerrado": false,
+        "abierto": false,
+        "recurrente": "Anual, en enero"
+      },
+      "fechas": {
+        "inicio": null,
+        "fin": null,
+        "nota": "Referencia 2025: del 2 al 27 de julio."
+      },
+      "dotacion": {
+        "importe": null,
+        "moneda": "EUR",
+        "nota": "Todo pagado: viaje (desde la UE), alojamiento y dieta de 30 € al día. Tasa de inscripción de 15 a 50 € según la fecha."
+      },
+      "edad": {
+        "min": 18,
+        "max": 31,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Referencia 2025: instrumentistas de 18 a 31 años a 1 de julio.",
+        "sinLimite": false
+      },
+      "requisitos": [
+        "Instrumentos: vientos, cuerdas, piano y canto."
+      ],
+      "envio": {
+        "resumen": "CV y vídeo sin editar de unos 20 minutos con el repertorio que pidan para piano.",
+        "documentos": [
+          "CV",
+          "Vídeo sin editar (≈ 20 min)"
+        ],
+        "email": "encuentro@albeniz.com",
+        "url": "https://www.encuentrodesantander.es"
+      },
+      "contacto": {
+        "nombre": null,
+        "email": "encuentro@albeniz.com",
+        "telefono": null
+      },
+      "otros": [
+        "El repertorio exacto del vídeo depende del instrumento y se publica con la convocatoria."
+      ],
+      "estadoBases": "pendientes",
+      "fuentes": [
+        {
+          "titulo": "Escuela Reina Sofía · Audiciones Encuentro de Santander 2025 (PDF)",
+          "url": "https://escuelasuperiordemusicareinasofia.es/sites/default/files/2025-01/audiciones-ENCUENTRO-ESP-25-print.pdf",
+          "consultado": "2026-10-03"
+        }
+      ],
+      "verificado": "2026-10-03",
+      "sinConfirmar": [
+        "plazo",
+        "fechas",
+        "edad"
+      ]
+    },
+    {
+      "id": "embajada-espana-berlin",
+      "tipo": "festival",
+      "nombre": "Embajada de España en Berlín · Cultura",
+      "entidad": "Consejería cultural de la Embajada de España en Alemania",
+      "ciudad": "Berlín",
+      "pais": "Alemania",
+      "web": "https://exteriores.gob.es/Embajadas/berlin/es/Embajada/Paginas/Cultura-y-Ciencia.aspx",
+      "resumen": "La embajada recibe propuestas de artistas españoles para su programación cultural en Alemania. No da subvenciones: colabora con instituciones y usa el catálogo de música de la AECID.",
+      "via": {
+        "tipo": "propuesta",
+        "texto": "Propuesta por correo electrónico. Tienen preferencia los proyectos cofinanciados y los que llegan con una institución o sala alemana detrás."
+      },
+      "plazo": {
+        "fecha": null,
+        "nota": "Sin plazo: se reciben propuestas todo el año.",
+        "cerrado": false,
+        "abierto": true,
+        "recurrente": "Todo el año"
+      },
+      "fechas": {
+        "inicio": null,
+        "fin": null,
+        "nota": ""
+      },
+      "dotacion": {
+        "importe": null,
+        "moneda": "EUR",
+        "nota": "La embajada no concede ayudas propias."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Sin límite de edad.",
+        "sinLimite": true
+      },
+      "requisitos": [
+        "Artistas españoles."
+      ],
+      "envio": {
+        "resumen": "Descripción detallada del proyecto, presupuesto con sus fuentes de financiación y trayectoria del artista.",
+        "documentos": [
+          "Descripción del proyecto",
+          "Presupuesto y financiación",
+          "CV o dossier"
+        ],
+        "email": "emb.berlin.cul@maec.es",
+        "url": null
+      },
+      "contacto": {
+        "nombre": null,
+        "email": "emb.berlin.cul@maec.es",
+        "telefono": null
+      },
+      "otros": [
+        "Útil para tocar en Alemania junto a una sala o festival que te programe: la embajada puede apoyar y difundir.",
+        "Si una entidad alemana te invita, puede pedir la ayuda PICE de Acción Cultural Española para tu viaje."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "Embajada de España en Alemania · Cultura y Ciencia",
+          "url": "https://exteriores.gob.es/Embajadas/berlin/es/Embajada/Paginas/Cultura-y-Ciencia.aspx",
+          "consultado": "2026-10-03"
+        }
+      ],
+      "verificado": "2026-10-03",
+      "sinConfirmar": []
+    },
+    {
+      "id": "embajada-espana-viena",
+      "tipo": "festival",
+      "nombre": "Embajada de España en Austria · Consejería Cultural",
+      "entidad": "Consejería Cultural y Científica de la Embajada de España en Viena",
+      "ciudad": "Viena",
+      "pais": "Austria",
+      "web": "https://exteriores.gob.es/Embajadas/viena/es/Embajada/Paginas/Consejer%C3%ADa-Cultural.aspx",
+      "resumen": "La consejería busca dar visibilidad a artistas españoles en Austria, con atención especial a los emergentes. Publica listas de instituciones, festivales y salas austriacas y orienta hacia las ayudas PICE (AC/E) y el catálogo de la AECID.",
+      "via": {
+        "tipo": "propuesta",
+        "texto": "Contacto directo por correo con la consejería para presentarte y pedir orientación o colaboración."
+      },
+      "plazo": {
+        "fecha": null,
+        "nota": "Sin plazo: contacto en cualquier momento.",
+        "cerrado": false,
+        "abierto": true,
+        "recurrente": "Todo el año"
+      },
+      "fechas": {
+        "inicio": null,
+        "fin": null,
+        "nota": ""
+      },
+      "dotacion": {
+        "importe": null,
+        "moneda": "EUR",
+        "nota": "Sin ayudas propias publicadas."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Sin límite de edad.",
+        "sinLimite": true
+      },
+      "requisitos": [
+        "Artistas españoles."
+      ],
+      "envio": {
+        "resumen": "Presentación breve, dossier y propuesta concreta (programa, posibles salas o fechas).",
+        "documentos": [
+          "Dossier",
+          "Propuesta de programa"
+        ],
+        "email": "emb.viena@maec.es",
+        "url": null
+      },
+      "contacto": {
+        "nombre": "Leyre Lozano Mendía, consejera cultural y científica",
+        "email": "emb.viena@maec.es",
+        "telefono": "+43 1 505 57 88"
+      },
+      "otros": [
+        "Dirección: Argentinierstraße 34, 1040 Viena.",
+        "Vives y estudias en Austria: un pianista español del Mozarteum con programa de música española encaja en lo que buscan."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "Embajada de España en Austria · Consejería Cultural y Científica",
+          "url": "https://exteriores.gob.es/Embajadas/viena/es/Embajada/Paginas/Consejer%C3%ADa-Cultural.aspx",
+          "consultado": "2026-10-03"
+        }
+      ],
+      "verificado": "2026-10-03",
+      "sinConfirmar": []
+    },
+    {
+      "id": "fundacion-juan-march-propuestas",
+      "tipo": "festival",
+      "nombre": "Fundación Juan March · propuestas de concierto",
+      "entidad": "Fundación Juan March",
+      "ciudad": "Madrid",
+      "pais": "España",
+      "web": "https://www.march.es",
+      "resumen": "Una de las salas de cámara y recital más prestigiosas de Madrid. En sus páginas de conciertos invita a quien quiera participar a enviar propuestas.",
+      "via": {
+        "tipo": "propuesta",
+        "texto": "La fundación dice: «Si quieres participar en los conciertos de la Fundación Juan March, haznos llegar tus propuestas». El canal exacto (formulario o correo) no se ha podido comprobar."
+      },
+      "plazo": {
+        "fecha": null,
+        "nota": "Sin plazo publicado.",
+        "cerrado": false,
+        "abierto": true,
+        "recurrente": "Todo el año"
+      },
+      "fechas": {
+        "inicio": null,
+        "fin": null,
+        "nota": ""
+      },
+      "dotacion": {
+        "importe": null,
+        "moneda": "EUR",
+        "nota": ""
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Sin límite publicado.",
+        "sinLimite": false
+      },
+      "requisitos": [],
+      "envio": {
+        "resumen": "Una propuesta de programa con idea clara (los ciclos de la Juan March suelen ser temáticos).",
+        "documentos": [],
+        "email": null,
+        "url": "https://www.march.es"
+      },
+      "contacto": {
+        "nombre": null,
+        "email": null,
+        "telefono": null
+      },
+      "otros": [
+        "Su programación es temática: un programa con hilo (música española, transcripciones) tiene más opciones que un recital genérico."
+      ],
+      "estadoBases": "sin verificar",
+      "fuentes": [
+        {
+          "titulo": "Fundación Juan March · Mompou: música para piano",
+          "url": "https://www.march.es/es/madrid/mompou-musica-para-piano",
+          "consultado": "2026-10-03"
+        }
+      ],
+      "verificado": null,
+      "sinConfirmar": [
+        "envio",
+        "plazo",
+        "dotacion",
+        "edad"
+      ]
+    },
+    {
+      "id": "pice-movilidad-2027",
+      "tipo": "beca",
+      "nombre": "PICE Movilidad · Acción Cultural Española",
+      "entidad": "Acción Cultural Española (AC/E)",
+      "ciudad": "",
+      "pais": "España",
+      "web": "https://www.accioncultural.es",
+      "resumen": "Ayuda para el viaje, alojamiento y gastos de artistas españoles invitados a un evento en el extranjero. La pide la entidad que te invita, no tú.",
+      "via": {
+        "tipo": "organizador",
+        "texto": "Solo pueden solicitarla instituciones extranjeras (públicas o privadas) que organicen un evento con creadores españoles. Cofinancian al menos el 50 %."
+      },
+      "plazo": {
+        "fecha": null,
+        "nota": "Referencia 2026: tres plazos (8 sep 2025–9 ene 2026, 10 ene–9 may y 10 may–7 sep de 2026) para eventos hasta febrero de 2027. Los de 2027 aún no están publicados.",
+        "cerrado": false,
+        "abierto": false,
+        "recurrente": "Tres plazos al año"
+      },
+      "fechas": {
+        "inicio": null,
+        "fin": null,
+        "nota": ""
+      },
+      "dotacion": {
+        "importe": 5000,
+        "moneda": "EUR",
+        "nota": "Máximo 5.000 € por participante y 15.000 € por evento: alojamiento, manutención, viajes, transporte interno, traducción y seguros."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Sin límite de edad.",
+        "sinLimite": true
+      },
+      "requisitos": [
+        "Artista español o residente en España, invitado a un evento organizado por una entidad extranjera.",
+        "La entidad aporta al menos el 50 % del coste."
+      ],
+      "envio": {
+        "resumen": "La entidad extranjera presenta acreditación jurídica, capacidad de facturación, CV de los artistas y dosier del proyecto, en castellano o inglés.",
+        "documentos": [
+          "CV del artista",
+          "Dosier del proyecto"
+        ],
+        "email": "picemovilidad.documentacion@accioncultural.es",
+        "url": "https://www.accioncultural.es/media/2026/PICE/Bases-Esp-Mov2026.pdf"
+      },
+      "contacto": {
+        "nombre": null,
+        "email": "picemovilidad.documentacion@accioncultural.es",
+        "telefono": null
+      },
+      "otros": [
+        "Cuando un festival o sala de Alemania o Austria te programe, pásales esta ayuda: les abarata contratarte."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "AC/E · Bases PICE Movilidad 2026 (PDF)",
+          "url": "https://www.accioncultural.es/media/2026/PICE/Bases-Esp-Mov2026.pdf",
+          "consultado": "2026-10-03"
+        }
+      ],
+      "verificado": "2026-10-03",
+      "sinConfirmar": [
+        "plazo"
+      ]
+    },
+    {
+      "id": "lacaixa-posgrado-extranjero-2027",
+      "tipo": "beca",
+      "nombre": "Becas «la Caixa» de posgrado en el extranjero",
+      "entidad": "Fundación «la Caixa»",
+      "ciudad": "",
+      "pais": "España",
+      "web": "https://fundacionlacaixa.org/es/becas-posgrado-extranjero-convocatoria",
+      "resumen": "Becas para másteres y doctorados en el extranjero (Espacio Europeo de Educación Superior, que incluye Austria y Alemania, Norteamérica y Asia-Pacífico). Todas las disciplinas salvo MBA.",
+      "via": {
+        "tipo": "convocatoria",
+        "texto": "Solicitud online en la web de la fundación."
+      },
+      "plazo": {
+        "fecha": null,
+        "nota": "Convocatoria 2026: hasta el 19 de enero de 2026. Referencia 2024: hasta el 31 de enero. La de 2027 aún no está publicada.",
+        "cerrado": false,
+        "abierto": false,
+        "recurrente": "Anual, en enero"
+      },
+      "fechas": {
+        "inicio": null,
+        "fin": null,
+        "nota": "Estudios de hasta 24 meses."
+      },
+      "dotacion": {
+        "importe": null,
+        "moneda": "EUR",
+        "nota": "Matrícula y asignación mensual; los importes de 2027 no se han podido comprobar."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Sin límite de edad; se exige haber terminado el grado en un periodo concreto (referencia 2024: entre enero de 2015 y julio de 2024).",
+        "sinLimite": true
+      },
+      "requisitos": [
+        "Nacionalidad española o portuguesa.",
+        "Nivel avanzado del idioma del programa.",
+        "Título de grado de una universidad española (o portuguesa); comprobar si el Título Superior de Música cuenta.",
+        "Unas 100 becas (referencia 2024)."
+      ],
+      "envio": {
+        "resumen": "Formulario online con expediente, CV, cartas y plan de estudios.",
+        "documentos": [],
+        "email": null,
+        "url": "https://fundacionlacaixa.org/es/becas-posgrado-extranjero-convocatoria"
+      },
+      "contacto": {
+        "nombre": null,
+        "email": null,
+        "telefono": null
+      },
+      "otros": [
+        "Para un siguiente máster o un doctorado artístico fuera de España."
+      ],
+      "estadoBases": "parciales",
+      "fuentes": [
+        {
+          "titulo": "UAM · Becas «la Caixa» posgrado 2024",
+          "url": "https://www.uam.es/uam/en/internacional/movilidad-estudiantes/postgrado-lacaixa-2024",
+          "consultado": "2026-10-03"
+        },
+        {
+          "titulo": "Fundación «la Caixa» · Convocatoria 2026 (material informativo)",
+          "url": "https://caixaresearch.org/documents/d/guest/becas-posgrado-extranjero-convocatoria-2026-mailing-informativo-pdf",
+          "consultado": "2026-10-03"
+        }
+      ],
+      "verificado": "2026-10-03",
+      "sinConfirmar": [
+        "plazo",
+        "dotacion",
+        "requisitos"
+      ]
+    },
+    {
+      "id": "mozarteum-leistungsstipendium-2026",
+      "tipo": "beca",
+      "nombre": "Mozarteum · Leistungsstipendium (beca al rendimiento)",
+      "entidad": "Universität Mozarteum Salzburg",
+      "ciudad": "Salzburgo",
+      "pais": "Austria",
+      "web": "https://www.moz.ac.at",
+      "resumen": "Pago único de 750 a 1.500 € por buen expediente a estudiantes del Mozarteum.",
+      "via": {
+        "tipo": "convocatoria",
+        "texto": "Formulario entregado en Studien- und Prüfungsmanagement o por correo."
+      },
+      "plazo": {
+        "fecha": "2026-10-31",
+        "nota": "Cada año del 1 de septiembre al 31 de octubre.",
+        "cerrado": false,
+        "abierto": false,
+        "recurrente": "Anual, septiembre–octubre"
+      },
+      "fechas": {
+        "inicio": null,
+        "fin": null,
+        "nota": ""
+      },
+      "dotacion": {
+        "importe": 1500,
+        "moneda": "EUR",
+        "nota": "Entre 750 y 1.500 €, pago único."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Sin límite de edad.",
+        "sinLimite": true
+      },
+      "requisitos": [
+        "Ciudadanía de la UE/EEE (España vale).",
+        "Matriculado en grado, máster, diploma o doctorado del Mozarteum.",
+        "Al menos 2 semestres completados en el programa.",
+        "Más de 30 ECTS en el curso evaluado y nota media de 2,0 o mejor.",
+        "No haberla recibido ya dos veces."
+      ],
+      "envio": {
+        "resumen": "Formulario, certificado de notas, datos bancarios y documentos del programa.",
+        "documentos": [
+          "Antrag Leistungsstipendium",
+          "Certificado de notas",
+          "Datos bancarios"
+        ],
+        "email": "studienabteilung@moz.ac.at",
+        "url": "https://www.moz.ac.at/Downloads-Studierende/general/Stipendien/Antrag-Leistungsstipendium.pdf"
+      },
+      "contacto": {
+        "nombre": "Studien- und Prüfungsmanagement, Mirabellplatz 1",
+        "email": "studienabteilung@moz.ac.at",
+        "telefono": null
+      },
+      "otros": [
+        "Si empezaste en el Mozarteum este curso, aún no cumples los 2 semestres: te toca en septiembre–octubre de 2027."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "Mozarteum · Antrag Leistungsstipendium (PDF)",
+          "url": "https://www.moz.ac.at/Downloads-Studierende/general/Stipendien/Antrag-Leistungsstipendium.pdf",
+          "consultado": "2026-10-03"
+        }
+      ],
+      "verificado": "2026-10-03",
+      "sinConfirmar": []
+    },
+    {
+      "id": "mozarteum-foerderungsstipendium-2026",
+      "tipo": "beca",
+      "nombre": "Mozarteum · Förderungsstipendium (beca para proyectos)",
+      "entidad": "Universität Mozarteum Salzburg",
+      "ciudad": "Salzburgo",
+      "pais": "Austria",
+      "web": "https://www.moz.ac.at",
+      "resumen": "Ayuda única de 750 a 3.600 € para gastos de un proyecto de fin de estudios: viajes de investigación, material específico, libros o grabaciones.",
+      "via": {
+        "tipo": "convocatoria",
+        "texto": "Solicitud con descripción del proyecto, presupuesto e informe de tu profesor."
+      },
+      "plazo": {
+        "fecha": "2026-10-31",
+        "nota": "Dos plazos al año: 1 sep–31 oct (semestre de invierno) y 1 mar–30 abr (semestre de verano).",
+        "cerrado": false,
+        "abierto": false,
+        "recurrente": "Septiembre–octubre y marzo–abril"
+      },
+      "fechas": {
+        "inicio": null,
+        "fin": null,
+        "nota": ""
+      },
+      "dotacion": {
+        "importe": 3600,
+        "moneda": "EUR",
+        "nota": "Entre 750 y 3.600 €, pago único. No cubre manutención, ordenadores ni trabajo propio."
+      },
+      "edad": {
+        "min": null,
+        "max": null,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Sin límite de edad.",
+        "sinLimite": true
+      },
+      "requisitos": [
+        "Ciudadanía de la UE/EEE.",
+        "Estudiante ordinario del Mozarteum, dentro de la duración normal de los estudios.",
+        "El proyecto tiene que estar ligado a tu trabajo o proyecto final."
+      ],
+      "envio": {
+        "resumen": "Descripción del trabajo, desglose de costes, plan de financiación y valoración del profesor.",
+        "documentos": [
+          "Antrag Förderungsstipendium",
+          "Descripción y presupuesto",
+          "Informe del profesor"
+        ],
+        "email": "studienabteilung@moz.ac.at",
+        "url": "https://www.moz.ac.at/Downloads-Studierende/general/Stipendien/Antrag-F%C3%B6rderungsstipendium.pdf"
+      },
+      "contacto": {
+        "nombre": "Studien- und Prüfungsmanagement, Mirabellplatz 1",
+        "email": "studienabteilung@moz.ac.at",
+        "telefono": null
+      },
+      "otros": [
+        "Si tu proyecto final incluye una grabación o un trabajo sobre música española, puede encajar aquí."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "Mozarteum · Antrag Förderungsstipendium (PDF)",
+          "url": "https://www.moz.ac.at/Downloads-Studierende/general/Stipendien/Antrag-F%C3%B6rderungsstipendium.pdf",
+          "consultado": "2026-10-03"
+        }
+      ],
+      "verificado": "2026-10-03",
+      "sinConfirmar": []
+    },
+    {
+      "id": "injuve-creacion-joven-2027",
+      "tipo": "beca",
+      "nombre": "Ayudas Injuve para la Creación Joven",
+      "entidad": "Instituto de la Juventud (Injuve)",
+      "ciudad": "",
+      "pais": "España",
+      "web": "https://www.injuve.es",
+      "resumen": "Ayudas a jóvenes creadores, música incluida. La modalidad de movilidad (hasta 5.000 €) puede cubrir una gira o conciertos fuera; la de producción (hasta 5.000 €), por ejemplo, una grabación.",
+      "via": {
+        "tipo": "convocatoria",
+        "texto": "Solicitud por sede electrónica en 20 días hábiles desde que se publica el extracto en el BOE."
+      },
+      "plazo": {
+        "fecha": null,
+        "nota": "Convocatoria 2026-2027: extracto en el BOE en abril de 2026 y 20 días hábiles para solicitar, para proyectos de 2027. La siguiente se espera en primavera de 2027.",
+        "cerrado": false,
+        "abierto": false,
+        "recurrente": "Anual, en primavera"
+      },
+      "fechas": {
+        "inicio": null,
+        "fin": null,
+        "nota": "Los proyectos se hacen durante el año siguiente a la convocatoria."
+      },
+      "dotacion": {
+        "importe": 5000,
+        "moneda": "EUR",
+        "nota": "Investigación hasta 3.000 €; producción y movilidad hasta 5.000 €; emprendimiento hasta 10.000 €."
+      },
+      "edad": {
+        "min": 18,
+        "max": 29,
+        "aFecha": null,
+        "nacidoDesde": null,
+        "nacidoHasta": null,
+        "texto": "Mayor de 18 y menor de 30 años en la fecha límite de la solicitud (hasta 35 en emprendimiento).",
+        "sinLimite": false
+      },
+      "requisitos": [
+        "Nacionalidad española o residencia legal en España."
+      ],
+      "envio": {
+        "resumen": "Proyecto, presupuesto y CV por la sede electrónica.",
+        "documentos": [
+          "Proyecto",
+          "Presupuesto",
+          "CV"
+        ],
+        "email": null,
+        "url": "https://www.injuve.es/sites/default/files/adjuntos/2026/04/260407%20Resoluci%C3%B3n%20Conv.%20A.%20Creaci%C3%B3n%2026_27.pdf"
+      },
+      "contacto": {
+        "nombre": null,
+        "email": null,
+        "telefono": null
+      },
+      "otros": [
+        "Cumples 30 en febrero de 2029: te quedan las convocatorias de 2027 y 2028."
+      ],
+      "estadoBases": "publicadas",
+      "fuentes": [
+        {
+          "titulo": "Injuve · Resolución de la convocatoria 2026-2027 (PDF)",
+          "url": "https://www.injuve.es/sites/default/files/adjuntos/2026/04/260407%20Resoluci%C3%B3n%20Conv.%20A.%20Creaci%C3%B3n%2026_27.pdf",
+          "consultado": "2026-10-03"
+        }
+      ],
+      "verificado": "2026-10-03",
+      "sinConfirmar": [
+        "plazo"
+      ]
+    }
+  ]
+}

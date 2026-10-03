@@ -29,8 +29,9 @@ test('dosier de concursos: edad, plazos, plan, importar y sincronización del es
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await prepare(page);
-  await page.getByRole('button', { name: 'Concursos', exact: true }).click();
+  await page.getByRole('button', { name: 'Oportunidades', exact: true }).click();
   const view = page.locator('#view-concursos');
+  await expect(view.getByRole('tab', { name: /^Concursos/ })).toHaveAttribute('aria-selected', 'true');
   await expect(view.locator('.cd-card')).not.toHaveCount(0);
   await expect(view.locator('.cd-profile')).toContainText('Tienes 27 años');
   expect(await page.evaluate(() => db.perfil.fechaNacimiento)).toBe('1999-02-19');
@@ -94,7 +95,7 @@ test('dosier de concursos: edad, plazos, plan, importar y sincronización del es
 
 test('móvil: se entra desde Hoy y las fichas caben sin scroll lateral', async ({ page }) => {
   await prepare(page, { width: 390, height: 844 });
-  await page.locator('.mv2-tile:has-text("Concursos")').first().click();
+  await page.locator('.mv2-tile:has-text("Oportunidades")').first().click();
   const view = page.locator('#view-concursos');
   await expect(view.locator('.cd-card')).not.toHaveCount(0);
   await view.locator('.cd-card').first().locator('summary').click();
