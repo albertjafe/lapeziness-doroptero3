@@ -656,6 +656,25 @@
     </div>`;
   }
 
+  // Modo de migración (03-10-2026): «Solo tiempo» migra únicamente si el bloque
+  // nuevo dura 30 min o más que el actual, sea el aula mejor o peor.
+  const MIGRATION_MODES = [
+    { mode: 'calidad', label: 'Calidad y tiempo', hint: 'Sube a un aula mejor o gana algo de tiempo.' },
+    { mode: 'tiempo', label: 'Solo tiempo (+30 min)', hint: 'Solo si el bloque nuevo dura 30 min o más; la calidad del aula no cuenta.' },
+  ];
+  function migrationModeHtml(monitor, disabled) {
+    const current = monitor.migration_mode;
+    if (!current) return '';
+    const active = MIGRATION_MODES.find(item => item.mode === current) || MIGRATION_MODES[0];
+    return `<div class="rd-booking-type rd-migration-mode">
+      <span class="rd-toggle-copy"><b>Modo de migración</b><small>${escapeHtml(active.hint)}</small></span>
+      <div class="rd-segment" role="radiogroup" aria-label="Modo de migración">
+        ${MIGRATION_MODES.map(item => `<button type="button" role="radio" aria-checked="${item.mode === current ? 'true' : 'false'}"
+          class="${item.mode === current ? 'active' : ''}" data-command="set_migration" data-mig-mode="${item.mode}" ${disabled || item.mode === current ? 'disabled' : ''}>${escapeHtml(item.label)}</button>`).join('')}
+      </div>
+    </div>`;
+  }
+
   function toggleButton(item, enabled, disabled) {
     return `<button type="button" class="rd-toggle ${enabled ? 'active' : ''}" data-command="${item.command}" data-enabled="${enabled ? 'false' : 'true'}" role="switch" aria-checked="${enabled ? 'true' : 'false'}" ${disabled ? 'disabled' : ''}>
       <span class="rd-toggle-copy"><b>${escapeHtml(item.label)}</b><small>${escapeHtml(item.hint)}</small></span><i aria-hidden="true"></i>
@@ -697,7 +716,7 @@
 
     settingsWrap.innerHTML = bookingTypeHtml(monitor, offline) + TOGGLES
       .filter(item => !(item.optional && monitor[item.key] == null))
-      .map(item => toggleButton(item, monitor[item.key], offline)).join('');
+      .map(item => toggleButton(item, monitor[item.key], offline) + (item.command === 'set_migration' ? migrationModeHtml(monitor, offline) : '')).join('');
     const summary = el('reservationActiveSettings');
     if (summary) summary.innerHTML = settingsSummary(monitor);
     else settingsWrap.insertAdjacentHTML('beforeend', settingsSummary(monitor));
@@ -1217,6 +1236,7 @@
   function commandPayload(button) {
     if (button.dataset.command === 'set_operating_mode') return { mode: button.dataset.mode };
     if (button.dataset.command === 'set_booking_type') return { type: button.dataset.type };
+    if (button.dataset.migMode) return { mode: button.dataset.migMode };
     if (button.dataset.enabled != null) return { enabled: button.dataset.enabled === 'true' };
     return {};
   }

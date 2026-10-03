@@ -249,6 +249,7 @@ function cleanState(value: unknown) {
       aachen_only: cleanBoolean(monitorRaw.aachen_only),
       emergency_enabled: cleanBoolean(monitorRaw.emergency_enabled),
       booking_type: cleanChoice(monitorRaw.booking_type, ["grupo_alberto", "anon", "normal"]),
+      migration_mode: cleanChoice(monitorRaw.migration_mode, ["calidad", "tiempo"]),
       min_slot_duration: cleanInteger(monitorRaw.min_slot_duration, 15, 720),
       monitor_window: {
         start: cleanTime((monitorRaw.monitor_window as Record<string, unknown> | undefined)?.start),

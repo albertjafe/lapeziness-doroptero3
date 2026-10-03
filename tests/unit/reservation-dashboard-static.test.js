@@ -83,6 +83,12 @@ describe('reservation monitor dashboard', () => {
     for (const [, command] of previous.matchAll(/'([a-z_]+)'/g)) expect(migration).toContain(`'${command}'`);
   });
 
+  it('passes the migration mode through the Edge Function and the dashboard', () => {
+    expect(edge).toContain('migration_mode: cleanChoice(monitorRaw.migration_mode, ["calidad", "tiempo"])');
+    expect(dashboard).toContain('data-mig-mode="${item.mode}"');
+    expect(dashboard).toContain('if (button.dataset.migMode) return { mode: button.dataset.migMode };');
+  });
+
   it('accepts the third monitor source «chen» in every layer', () => {
     const migration = fs.readFileSync('supabase/migrations/20261001150000_reservation_monitor_source_chen.sql', 'utf8');
     for (const table of ['tokens', 'state', 'commands']) {

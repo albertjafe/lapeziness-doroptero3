@@ -80,7 +80,7 @@ async function mountDashboard(page, row) {
     };
     window.getSB = () => client;
   }, row);
-  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=480' });
+  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=484' });
 }
 
 test('renders live reservations and sends a safe monitor command', async ({ page }) => {
@@ -637,4 +637,23 @@ test('perfil Chen: aparece en el selector y reserva en grupo con Alberto', async
   const box = page.locator('#reservationSettingControls .rd-booking-type');
   await expect(box.getByRole('radio', { name: 'Grupo con Alberto' })).toHaveAttribute('aria-checked', 'true');
   await expect(box).toContainText('firmada por Chen');
+});
+
+test('modo de migración: «Solo tiempo (+30 min)» se elige desde Ajustes', async ({ page }) => {
+  const row = structuredClone(sampleRow);
+  row.state.monitor.migration_enabled = true;
+  row.state.monitor.migration_mode = 'calidad';
+  await mountDashboard(page, row);
+  const box = page.locator('#reservationSettingControls .rd-migration-mode');
+  await expect(box.getByRole('radio')).toHaveCount(2);
+  await expect(box.getByRole('radio', { name: 'Calidad y tiempo' })).toHaveAttribute('aria-checked', 'true');
+  await box.getByRole('radio', { name: 'Solo tiempo (+30 min)' }).click();
+  expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({ command: 'set_migration', payload: { mode: 'tiempo' } });
+});
+
+test('modo de migración: un monitor antiguo sin el dato no muestra el selector', async ({ page }) => {
+  const row = structuredClone(sampleRow);
+  delete row.state.monitor.migration_mode;
+  await mountDashboard(page, row);
+  await expect(page.locator('#reservationSettingControls .rd-migration-mode')).toHaveCount(0);
 });
