@@ -19,6 +19,7 @@ For implementation facts, current source code is the final authority. If code co
 
 Before changing code:
 
+0. Read `USUARIO.md` (user profile, goals and design constraints; public repo: never add health, relationship or personal names to it).
 1. Read `.ai/APP_MAP.md` first. It is the tracked, canonical, remote-friendly architecture/feature map.
 2. If `.ai/runtime/REPO_MAP.md` exists, use it only as optional extra local detail. `.ai/REPO_MAP.md` is only a compatibility pointer/seed.
 3. If the bridge workflow is in use and `.ai/runtime/CURRENT_TASK.md` exists, read it in full.

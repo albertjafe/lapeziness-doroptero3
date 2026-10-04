@@ -2,6 +2,8 @@
 
 ## Proyecto
 
+**Antes de nada, lee `USUARIO.md`**: quién es el usuario, sus objetivos y cómo diseñar para él (tendencia a la obsesión: nada de contadores que inviten a vigilarse).
+
 App PWA para práctica de piano de Alberto. Sirve como planificador de estudio con cronómetro y sincronización con Supabase. UI completamente en **español**.
 
 ## MÉTRICA ÚNICA: SOLIDEZ (refactor jun 2026)
