@@ -57,7 +57,8 @@ async function mountDashboard(page, row) {
     window.__row = row;
     const client = {
       auth: {
-        getSession: async () => ({ data: { session: { user: { id: row.user_id } } } }),
+        // window.__hang simula una sesión que nunca responde (dispositivo dormido).
+        getSession: () => (window.__hang ? new Promise(() => {}) : Promise.resolve({ data: { session: { user: { id: row.user_id } } } })),
         onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
       },
       from(table) {
@@ -80,7 +81,7 @@ async function mountDashboard(page, row) {
     };
     window.getSB = () => client;
   }, row);
-  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=484' });
+  await page.addScriptTag({ url: 'http://127.0.0.1:4173/reservation-dashboard.js?v=488' });
 }
 
 test('renders live reservations and sends a safe monitor command', async ({ page }) => {
@@ -656,4 +657,26 @@ test('modo de migración: un monitor antiguo sin el dato no muestra el selector'
   delete row.state.monitor.migration_mode;
   await mountDashboard(page, row);
   await expect(page.locator('#reservationSettingControls .rd-migration-mode')).toHaveCount(0);
+});
+
+test('una consulta colgada no deja la pantalla parada ni culpa al monitor', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-10-04T14:00:00Z') });
+  const row = structuredClone(sampleRow);
+  row.heartbeat_at = row.observed_at = row.updated_at = '2026-10-04T14:00:00Z';
+  await mountDashboard(page, row);
+  await expect(page.locator('#reservationHero')).not.toContainText('sin señal');
+  // La sesión se cuelga: antes `loading` quedaba en true para siempre.
+  await page.evaluate(() => { window.__hang = true; window.ReservationDashboard.refresh(false); });
+  await page.clock.runFor(5 * 60 * 1000);
+  await expect(page.locator('#reservationHero')).toContainText('Pantalla sin actualizar');
+  await expect(page.locator('#reservationHero')).not.toContainText('Monitor sin señal');
+  // Vuelve la conexión y el monitor seguía enviando: la pantalla se recupera sola.
+  await page.evaluate(() => {
+    window.__hang = false;
+    const now = new Date().toISOString();
+    window.__row.heartbeat_at = window.__row.observed_at = window.__row.updated_at = now;
+  });
+  await page.clock.runFor(70 * 1000);
+  await expect(page.locator('#reservationHero')).not.toContainText('Pantalla sin actualizar');
+  await expect(page.locator('#reservationHero')).not.toContainText('sin señal');
 });

@@ -28,6 +28,22 @@
   let commandChannel = null;
   let userId = null;
   let loading = false;
+  // 04-10-2026: una consulta colgada (p. ej. renovar la sesión al despertar el
+  // dispositivo) dejaba `loading` en true para siempre y la pantalla mostraba
+  // «sin señal» aunque el monitor siguiera enviando. Cada consulta tiene ahora
+  // límite y la pantalla distingue «no me actualizo» de «el monitor calla».
+  let loadingSince = 0;
+  let lastFetchOk = 0;
+  const FETCH_TIMEOUT_MS = 20 * 1000;
+  function withTimeout(promise, label) {
+    let timer;
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`${label}: tiempo agotado`)), FETCH_TIMEOUT_MS); }),
+    ]).finally(() => clearTimeout(timer));
+  }
+  // La pantalla lleva tiempo sin conseguir datos: no culpes al monitor.
+  function screenIsStale() { return lastFetchOk > 0 && Date.now() - lastFetchOk > OFFLINE_MS; }
   let connectionNotice = null;
   const pendingCommands = new Map();
   // Menú de arranque: mismo orden y opciones que la entrada segura de Telegram.
@@ -151,7 +167,7 @@
     const phase = state?.monitor?.phase;
     // Cierre limpio publicado: no es «sin señal» aunque el latido se apague.
     if (phase === 'closed') return 'closed';
-    if (ageMs(row) > OFFLINE_MS) return 'offline';
+    if (ageMs(row) > OFFLINE_MS) return screenIsStale() ? 'screen_stale' : 'offline';
     if (phase === 'awaiting_start') return 'awaiting';
     if (phase === 'starting') return 'starting';
     if (state?.monitor?.online === false) return state.monitor.error ? 'failing' : 'stopped';
@@ -277,6 +293,10 @@
       eyebrow = 'Monitor cerrado';
       title = 'Cerrado sin errores';
       subtitle = `Se cerró ${escapeHtml(relativeAge(row.observed_at))}; para volver a abrirlo hace falta el ordenador`;
+    } else if (health === 'screen_stale') {
+      eyebrow = 'Pantalla sin actualizar';
+      title = 'Reintentando…';
+      subtitle = `Este dispositivo no recibe datos desde ${escapeHtml(formatClock(new Date(lastFetchOk).toISOString()))}; el monitor puede seguir funcionando`;
     } else if (health === 'offline') {
       eyebrow = 'Monitor sin conexión reciente';
       title = 'Estado en espera';
@@ -1043,6 +1063,7 @@
       starting: { title: 'Arrancando…', detail: 'Entrando en Asimut', kind: 'warn' },
       closed: { title: 'Monitor cerrado', detail: '', kind: 'idle' },
       offline: { title: 'Monitor sin señal', detail: relativeAge(row.heartbeat_at), kind: 'error' },
+      screen_stale: { title: 'Pantalla sin actualizar', detail: `desde ${formatClock(new Date(lastFetchOk).toISOString())}`, kind: 'error' },
       failing: { title: 'El monitor está fallando', detail: state.monitor?.error?.attempt ? `intento ${state.monitor.error.attempt}` : '', kind: 'error' },
       stopped: { title: 'Monitor detenido', detail: '', kind: 'error' },
     }[health];
@@ -1163,6 +1184,8 @@
       setStatus(`Monitor cerrado ${relativeAge(row.observed_at)} · última lectura de Asimut ${lastReadLabel(row)}`, 'stale');
     } else if (health === 'offline') {
       setStatus(`Sin señal del ordenador desde ${formatClock(row.heartbeat_at)} (${relativeAge(row.heartbeat_at)})`, 'error');
+    } else if (health === 'screen_stale') {
+      setStatus(`Esta pantalla no consigue actualizarse desde ${formatClock(new Date(lastFetchOk).toISOString())}: puede ser la conexión de este dispositivo, no el monitor. Reintentando…`, 'error');
     } else if (health === 'failing') {
       const attempt = state.monitor.error.attempt;
       setStatus(`El monitor está fallando${attempt ? ` · intento ${attempt}` : ''} · última lectura de Asimut: ${lastReadLabel(row)}`, 'error');
@@ -1328,12 +1351,14 @@
   }
 
   async function refresh(manual) {
-    if (loading) return;
+    // Nunca bloquear para siempre: una consulta de más de 30 s se da por perdida.
+    if (loading && Date.now() - loadingSince < FETCH_TIMEOUT_MS + 10 * 1000) return;
     loading = true;
+    loadingSince = Date.now();
     if (manual) setStatus('Actualizando…', 'loading');
     try {
       const sb = getSB();
-      const { data: { session } } = await sb.auth.getSession();
+      const { data: { session } } = await withTimeout(sb.auth.getSession(), 'Sesión');
       if (!session?.user?.id) {
         userId = null;
         rows = [];
@@ -1344,15 +1369,17 @@
       const changedUser = userId !== session.user.id;
       if (changedUser) rows = [];
       userId = session.user.id;
-      const { data, error } = await sb.from('reservation_monitor_state')
+      const { data, error } = await withTimeout(sb.from('reservation_monitor_state')
         .select('user_id,source,schema_version,instance_id,observed_at,heartbeat_at,state,updated_at')
         .eq('user_id', userId)
-        .order('source', { ascending: true });
+        .order('source', { ascending: true }), 'Lectura');
       if (error) throw error;
+      lastFetchOk = Date.now();
       connectionNotice = null;
       rows = Array.isArray(data) ? data : [];
       render();
-      if (changedUser || !channel) await subscribe(sb);
+      // El canal en directo se cae a veces al dormir el dispositivo: se rehace.
+      if (changedUser || !channel || ['closed', 'errored'].includes(channel.state)) await subscribe(sb);
     } catch (error) {
       connectionNotice = { title: 'No se pudo conectar', body: 'Comprueba la conexión del iPad y pulsa actualizar. Las últimas reservas recibidas se conservan.', status: `Dashboard no disponible: ${error.message || error}`, kind: 'error' };
       render();
