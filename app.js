@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-10-04-apertura-v487';
+const APP_VERSION = '2026-10-04-seda-v489';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -18393,6 +18393,62 @@ function playNoiseBurst(cutoff, q, dur, vol, delay = 0) {
   else ac.resume().then(schedule).catch(() => { _markAudioFailure('noise-resume-failed'); });
 }
 
+// Tono «seda»: seno con un leve deslizamiento de afinación al atacar (redondo,
+// como una tecla con fieltro), filtrado cálido y, si se pide, un parcial de
+// cristal que se apaga antes que la nota. Base del paquete Seda.
+//   opts.glide: cuánto empieza por encima (>0, cae a la nota) o por debajo (<0, sube).
+//   opts.bright: corte del paso-bajo (Hz). opts.partial: múltiplo del parcial
+//   (2 octava, 2.76 marimba, 4 cristal); opts.partialVol: su nivel relativo.
+function playSilkTone(freq, dur = 0.12, vol = 0.08, delay = 0, opts = {}) {
+  vol = vol * appSoundGain();
+  if (vol <= 0) return;
+  const ac = getAC();
+  if (!ac || ac.state === 'closed') return;
+  const glide = opts.glide ?? 0.04;
+  const bright = opts.bright ?? 3200;
+  const partial = opts.partial || 0;
+  const partialVol = opts.partialVol ?? 0.15;
+  const schedule = () => {
+    if (ac.state !== 'running') return;
+    try {
+      const t0 = ac.currentTime + delay;
+      const stopAt = t0 + dur + 0.03;
+      const filt = ac.createBiquadFilter();
+      filt.type = 'lowpass';
+      filt.frequency.value = bright;
+      filt.Q.value = 0.5;
+      const out = ac.createGain();
+      filt.connect(out); out.connect(ac.destination);
+      out.gain.setValueAtTime(0, t0);
+      out.gain.linearRampToValueAtTime(vol, t0 + 0.006);
+      out.gain.exponentialRampToValueAtTime(Math.max(0.0008, vol * 0.22), t0 + dur * 0.55);
+      out.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      const voices = [[freq, 1, 1]];
+      if (partial) voices.push([freq * partial, partialVol, 0.35]);
+      voices.forEach(([f, level, life]) => {
+        const osc = ac.createOscillator();
+        const g = ac.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(f * (1 + glide), t0);
+        osc.frequency.exponentialRampToValueAtTime(f, t0 + 0.035);
+        g.gain.setValueAtTime(level, t0);
+        if (life < 1) g.gain.exponentialRampToValueAtTime(Math.max(0.0001, level * 0.04), t0 + dur * life);
+        osc.connect(g); g.connect(filt);
+        osc.start(t0);
+        osc.stop(stopAt);
+        _scheduleCleanup(osc, stopAt, ac);
+        _scheduleCleanup(g, stopAt, ac);
+      });
+      _scheduleCleanup(filt, stopAt, ac);
+      _scheduleCleanup(out, stopAt, ac);
+    } catch(e) {
+      _markAudioFailure('silk-failed');
+    }
+  };
+  if (ac.state === 'running') schedule();
+  else ac.resume().then(schedule).catch(() => { _markAudioFailure('silk-resume-failed'); });
+}
+
 // Despertar el contexto de audio cuando la app vuelve al foreground.
 // iOS lo suspende automáticamente y a veces no se recupera solo.
 function _wakeAudioContext() {
@@ -18631,6 +18687,65 @@ const SFX_PACKS = {
     memlapse() {
       playNoiseBurst(1500, 1, 0.12, 0.07, 0);
     },
+  },
+
+  // ── SEDA ──
+  // Premium y discreto: teclas con fieltro (seno con un leve deslizamiento),
+  // brillo de cristal muy tenue y armonía en Do mayor. Abrir sube, cerrar
+  // baja; guardar y terminar resuelven. Es el único paquete que también suena
+  // en interruptores, deslizadores, cerrar, pasajes e hitos (muy suave).
+  silk: {
+    tick() {
+      playSilkTone(880, 0.11, 0.075, 0, { partial: 2, partialVol: 0.12 });
+      playNoiseBurst(2600, 0.7, 0.012, 0.022, 0);
+    },
+    nav() { playSilkTone(1046.5, 0.07, 0.04, 0, { glide: 0.03, bright: 2800 }); },
+    toggle() {
+      playSilkTone(659.25, 0.08, 0.06, 0, { glide: 0.06 });
+      playNoiseBurst(2200, 0.7, 0.01, 0.02, 0);
+    },
+    slider() { playSilkTone(1318.5, 0.035, 0.022, 0, { glide: 0.02, bright: 4000 }); },
+    open() { playSilkTone(587.33, 0.16, 0.05, 0, { glide: -0.10, partial: 2, partialVol: 0.10 }); },
+    close() { playSilkTone(783.99, 0.14, 0.045, 0, { glide: 0.12 }); },
+    add() {
+      playSilkTone(587.33, 0.16, 0.07, 0, { partial: 2.76, partialVol: 0.12 });
+      playSilkTone(880.0, 0.22, 0.07, 0.07, { partial: 2.76, partialVol: 0.12 });
+    },
+    del() {
+      playSilkTone(659.25, 0.12, 0.055, 0, { glide: 0.05 });
+      playSilkTone(493.88, 0.18, 0.05, 0.06, { glide: 0.05, bright: 2200 });
+    },
+    skip() { playSilkTone(392.0, 0.09, 0.05, 0, { glide: 0.08, bright: 1800 }); },
+    save() {
+      playSilkTone(659.25, 0.30, 0.07, 0, { partial: 4, partialVol: 0.08 });
+      playSilkTone(987.77, 0.42, 0.065, 0.08, { partial: 4, partialVol: 0.08 });
+    },
+    saveSession() {
+      [[523.25, 0], [659.25, 0.08], [783.99, 0.16], [1046.5, 0.26]].forEach(([f, d], i) =>
+        playSilkTone(f, 0.5 + i * 0.12, 0.065, d, { partial: 4, partialVol: 0.07 }));
+      playSilkTone(261.63, 0.9, 0.04, 0.26, { glide: 0, bright: 1200 });
+    },
+    startSession() {
+      playSilkTone(392.0, 0.5, 0.06, 0, { glide: 0.02, partial: 2, partialVol: 0.12 });
+      playSilkTone(587.33, 0.7, 0.06, 0.12, { glide: 0.02, partial: 2, partialVol: 0.10 });
+    },
+    generate() {
+      [1174.66, 1396.91, 1760.0].forEach((f, i) =>
+        playSilkTone(f, 0.22, 0.04, i * 0.06, { partial: 2, partialVol: 0.08, bright: 4200 }));
+    },
+    pase() {
+      playSilkTone(880.0, 0.22, 0.06, 0, { partial: 2.76, partialVol: 0.10 });
+      playSilkTone(1046.5, 0.30, 0.06, 0.10, { partial: 2.76, partialVol: 0.10 });
+    },
+    pasaje() {
+      playSilkTone(698.46, 0.20, 0.06, 0, { partial: 2.76, partialVol: 0.10 });
+      playSilkTone(1046.5, 0.28, 0.055, 0.08, { partial: 2.76, partialVol: 0.10 });
+    },
+    milestone() {
+      [523.25, 659.25, 783.99].forEach(f => playSilkTone(f, 1.1, 0.045, 0, { glide: 0, partial: 2, partialVol: 0.10 }));
+      playSilkTone(1567.98, 0.9, 0.035, 0.18, { glide: 0, partial: 2, partialVol: 0.15, bright: 5000 });
+    },
+    memlapse() { playSilkTone(220.0, 0.40, 0.06, 0, { glide: 0.03, bright: 1200 }); },
   },
 };
 
@@ -20089,13 +20204,16 @@ function _installAuthSync(sb) {
 }
 
 async function initApp() {
-  // Hide splash after a guaranteed minimum display time.
+  // Hide splash after a guaranteed minimum display time: the drawing ends near
+  // 1.45 s and the gold sheen near 2.2 s; the exit (styles.css) takes ~1.25 s.
+  // It never blocks taps (pointer-events: none).
+  const _splashCalm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   setTimeout(function() {
     const s = document.getElementById('splashScreen');
     if (!s || s.classList.contains('gone')) return;
     s.classList.add('fade-out');
-    setTimeout(function() { s.classList.add('gone'); }, 650);
-  }, 1200);
+    setTimeout(function() { s.classList.add('gone'); }, _splashCalm ? 50 : 1300);
+  }, _splashCalm ? 700 : 2000);
 
   // Load local data first so app is usable immediately
   db = loadData();
