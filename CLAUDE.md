@@ -334,6 +334,9 @@ Cuando el slider "¿Cómo fue esta sesión?" del modal Hecho llega a **≥ `DEST
 
 `body.crono-focus` usa `touch-action: none` (bloquea pellizco). Los modales sobre el cronómetro ahora usan `touch-action: pan-y` (antes `auto`): permiten scroll vertical pero **no** pinch-zoom, evitando que la pantalla quede ampliada al cerrar el modal.
 
+### Olas · registro de un toque (oct 2026, v485)
+`olas.js` (`window.Olas`) + reglas en `mobile-v2.css`. En Hoy v2 (móvil e iPad), junto a «Sesiones de hoy», un botón **Ola** (`.mv2-ola`, siempre igual: **sin contador** en Hoy a propósito). Cada toque añade `{id, at}` a `db.olas` (solo se añade; «Deshacer» del toast marca `undone: true`, nunca se borra un registro). Toques a ≤ 10 s del anterior son la misma ola y cuentan como mucho 3 (leve / fuerte / muy fuerte); la **carga del día** suma las olas. Calendario v2: selector **Horas · Olas** (`MobileV2.calLayer`, recordado en `localStorage alberto_cal_layer`); en Olas, casillas `o0` (tranquilo, verde) a `o4` (8+, naranja) y `none` antes del primer toque o en el futuro; bajo el mes «N de M días tranquilos · media X/día · mes anterior Y». La hoja del día lista «Olas: HH:MM ×n». Sin texto, motivo ni tema: apuntar es ponerle nombre, no analizar. Pruebas: `tests/unit/olas.test.js`, `tests/e2e/olas.spec.js`.
+
 ### Sincronización: 57014 en la protección de obras y «Comprobar una copia» (oct 2026, v482)
 El guardado del iPad se cancelaba (57014) porque `protect_study_works()` recorría el historial completo por cada movimiento borrado; ahora usa un índice por guardado (migración `20261002180000_…`, ver APP_MAP §2). Para actualizar sin miedo: Ajustes → «Recuperar datos de este dispositivo» → «Revisar» → «Descargar copia completa»; tras actualizar, «Comprobar una copia…» con ese archivo dice qué falta y lo recupera (solo añade). Pruebas: `study-guard-postgres.test.js`, `copy-check.test.js`, `copy-check.spec.js`. Al medir en producción, siempre `set statement_timeout`.
 

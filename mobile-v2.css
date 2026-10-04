@@ -32,6 +32,14 @@ html.mv2-on .mv2-ring small { display: block; font-size: 11px; font-weight: 500;
 html.mv2-on .mv2-summary-copy { display: grid; gap: 4px; min-width: 0; }
 html.mv2-on .mv2-summary-copy b { font-size: 16px; line-height: 1.35; }
 html.mv2-on .mv2-sessions { justify-self: start; padding: 4px 0; min-height: 34px; }
+/* Olas (olas.js): un toque discreto junto a «Sesiones de hoy». Sin contador. */
+html.mv2-on .mv2-summary-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+html.mv2-on .mv2-ola {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 4px 13px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text3); font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: transform .12s ease, background-color .12s ease, color .12s ease;
+}
+html.mv2-on .mv2-ola:active { transform: scale(.94); background: color-mix(in srgb, var(--orange) 18%, var(--bg)); color: var(--text); }
 
 html.mv2-on .mv2-parahoy { display: grid; gap: 2px; }
 html.mv2-on .mv2-plan {
@@ -236,6 +244,18 @@ html.mv2-on :is(.mv2-day, .mv2-legend i).l2 { background: color-mix(in srgb, var
 html.mv2-on :is(.mv2-day, .mv2-legend i).l3 { background: color-mix(in srgb, var(--accent) 55%, var(--bg2)); color: #fff; }
 html.mv2-on :is(.mv2-day, .mv2-legend i).l4 { background: color-mix(in srgb, var(--accent) 78%, #000 0%); color: #fff; }
 html.mv2-on :is(.mv2-day, .mv2-legend i).l5 { background: color-mix(in srgb, var(--accent) 88%, #000); color: #fff; }
+/* Capa «Olas»: tranquilo en verde suave, olas en naranja; sin registro = neutro. */
+html.mv2-on .mv2-cal-layers { display: flex; width: max-content; margin: -2px auto 10px; padding: 3px; gap: 2px; border-radius: 10px; background: var(--bg3); }
+html.mv2-on .mv2-cal-layers button { font: inherit; font-size: 12.5px; font-weight: 600; min-height: 30px; padding: 3px 14px; border: 0; border-radius: 8px; background: none; color: var(--text3); cursor: pointer; }
+html.mv2-on .mv2-cal-layers button.is-on { background: var(--bg2); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+html.mv2-on :is(.mv2-day, .mv2-legend i).none { background: var(--bg3); color: var(--text3); }
+html.mv2-on :is(.mv2-day, .mv2-legend i).o0 { background: color-mix(in srgb, var(--green) 24%, var(--bg2)); }
+html.mv2-on :is(.mv2-day, .mv2-legend i).o1 { background: color-mix(in srgb, var(--orange) 20%, var(--bg2)); }
+html.mv2-on :is(.mv2-day, .mv2-legend i).o2 { background: color-mix(in srgb, var(--orange) 40%, var(--bg2)); }
+html.mv2-on :is(.mv2-day, .mv2-legend i).o3 { background: color-mix(in srgb, var(--orange) 62%, var(--bg2)); color: #fff; }
+html.mv2-on :is(.mv2-day, .mv2-legend i).o4 { background: color-mix(in srgb, var(--orange) 85%, #000); color: #fff; }
+html.mv2-on .mv2-legend-gap { margin-left: 8px; }
+html.mv2-on .mv2-cal-olas .mv2-ev { background: var(--accent); }
 html.mv2-on .mv2-day.today { box-shadow: inset 0 0 0 2px var(--text); font-weight: 700; }
 html.mv2-on .mv2-ev { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 50%; background: var(--orange); }
 html.mv2-on .mv2-legend { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 10px; font-size: 11.5px; color: var(--text3); }
@@ -280,6 +300,8 @@ html.mv2-tablet .mv2-card { padding: 18px 20px; border-radius: 20px; }
 html.mv2-tablet .mv2-lbl { font-size: 12px; }
 html.mv2-tablet .mv2-muted { font-size: 14.5px; }
 html.mv2-tablet .mv2-link { font-size: 14.5px; min-height: 40px; }
+html.mv2-tablet .mv2-ola { font-size: 14.5px; min-height: 42px; padding: 4px 16px; }
+html.mv2-tablet .mv2-cal-layers button { font-size: 13.5px; min-height: 34px; padding: 4px 18px; }
 html.mv2-tablet .mv2-summary { gap: 22px; }
 html.mv2-tablet .mv2-ring { flex-basis: 124px; width: 124px; height: 124px; }
 html.mv2-tablet .mv2-ring span { width: 102px; height: 102px; font-size: 22px; }

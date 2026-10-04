@@ -227,8 +227,10 @@
     const html = '<div class="mv2-col mv2-col-main">' +
       '<div class="mv2-card mv2-summary"><div class="mv2-ring" style="--p:' + pct + '" role="img" aria-label="' + fmtMin(done) + ' de 4 horas"><span>' + fmtMin(done) + '<small>de 4 h</small></span></div>' +
         '<div class="mv2-summary-copy"><b>' + esc(sentence(done, t)) + '</b><span class="mv2-muted">' + esc(rewardLine(data)) + '</span>' +
-        // El registro por horas de hoy (antes solo en la portada clásica del iPad).
-        '<button type="button" class="mv2-link mv2-sessions" onclick="openSesionesDetalle(this)">Sesiones de hoy ›</button></div></div>' +
+        // El registro por horas de hoy (antes solo en la portada clásica del iPad)
+        // y, al lado, el toque de «Ola» (olas.js): siempre igual, sin contador.
+        '<div class="mv2-summary-actions"><button type="button" class="mv2-link mv2-sessions" onclick="openSesionesDetalle(this)">Sesiones de hoy ›</button>' +
+        (root.Olas ? root.Olas.hoyButtonHtml() : '') + '</div></div></div>' +
       // Al volver de un hueco largo: ¿qué fue? (un toque; study-journey.js).
       (root.StudyJourney ? root.StudyJourney.hoyPromptHtml() : '') +
       // Justo debajo de las horas, tus reservas de hoy: solo la línea del día. Tocar una franja abre su editor aquí mismo.
@@ -421,6 +423,17 @@
   const WEEKDAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
   let calOffset = 0;
   let renderingCalendar = false;
+  // Capa del mapa: «horas» (estudio) u «olas» (olas.js). Recordada por dispositivo.
+  const LAYER_KEY = 'alberto_cal_layer';
+  function layer() {
+    let v = 'horas';
+    try { v = root.localStorage.getItem(LAYER_KEY) === 'olas' ? 'olas' : 'horas'; } catch (e) {}
+    return v === 'olas' && root.Olas ? 'olas' : 'horas';
+  }
+  function calLayer(value) {
+    try { root.localStorage.setItem(LAYER_KEY, value === 'olas' ? 'olas' : 'horas'); } catch (e) {}
+    renderCal();
+  }
   // Niveles del mapa: 0 · <1 h · <2,5 h · <4 h · 4 h+ · 5 h+
   function level(min) { return !min ? 0 : min < 60 ? 1 : min < 150 ? 2 : min < 240 ? 3 : min < 300 ? 4 : 5; }
   const parseDay = key => { const [y, m, d] = String(key).split('-').map(Number); return new Date(y, m - 1, d, 12); };
@@ -481,12 +494,16 @@
     const events = eventsByDay(data), today = dayKey();
     let actions = {};
     try { actions = root.HabitHub && typeof root.habitAllChallenges === 'function' ? root.HabitHub.byDay(root.habitAllChallenges()) : {}; } catch (e) { actions = {}; }
+    const waves = layer() === 'olas';
+    const O = root.Olas, waveLoads = waves ? O.loadByDay(data) : null, waveFirst = waves ? O.firstDay(data) : null;
     let cells = '';
     const weeks = Math.ceil((((first.getDay() + 6) % 7) + new Date(year, month + 1, 0).getDate()) / 7);
     for (let i = 0; i < weeks * 7; i++) {
       const d = new Date(gridStart); d.setDate(gridStart.getDate() + i);
       const k = dayKey(d), m = Math.round(mins[k] || 0), other = d.getMonth() !== month, ev = events[k];
-      cells += '<button type="button" class="mv2-day l' + level(m) + (other ? ' other' : '') + (k === today ? ' today' : '') + '" data-day="' + k + '" aria-label="' + d.getDate() + ' de ' + MONTHS[d.getMonth()] + ': ' + (m ? fmtMin(m) : 'sin estudio') + (ev ? ', ' + ev.length + ' evento' + (ev.length > 1 ? 's' : '') : '') + '">' +
+      const tone = waves ? O.dayClass(k, waveLoads, waveFirst, today) : 'l' + level(m);
+      const state = waves ? O.cellLabel(k, waveLoads, waveFirst, today) : (m ? fmtMin(m) : 'sin estudio');
+      cells += '<button type="button" class="mv2-day ' + tone + (other ? ' other' : '') + (k === today ? ' today' : '') + '" data-day="' + k + '" aria-label="' + d.getDate() + ' de ' + MONTHS[d.getMonth()] + ': ' + state + (ev ? ', ' + ev.length + ' evento' + (ev.length > 1 ? 's' : '') : '') + '">' +
         '<span>' + d.getDate() + '</span>' + (ev ? '<i class="mv2-ev" aria-hidden="true"></i>' : '') +
         (actions[k] ? '<i class="mv2-act' + (actions[k].every(x => x.action.doneAt) ? ' is-done' : '') + '" aria-hidden="true"></i>' : '') + '</button>';
     }
@@ -497,12 +514,18 @@
       return '<button type="button" class="mv2-evrow" onclick="openEditEvento(\'' + jsArg(e.id) + '\')"><span class="mv2-count"><b>' + (days === 0 ? 'hoy' : days) + '</b>' + (days === 0 ? '' : '<small>' + (days === 1 ? 'día' : 'días') + '</small>') + '</span>' +
         '<span class="mv2-evcopy"><b>' + esc(e.nombre || 'Evento') + '</b><small>' + parseDay(k).getDate() + ' ' + MONTHS_SHORT[parseDay(k).getMonth()] + (works.length ? ' · ' + esc(works.slice(0, 3).join(', ')) + (works.length > 3 ? '…' : '') : '') + '</small></span></button>';
     }).join('') : '<p class="mv2-muted">Sin eventos próximos.</p>';
+    const sub = waves ? O.monthLine(data, year, month, today) : (monthTotal ? fmtMin(monthTotal) + ' estudiadas' : 'Sin estudio registrado');
+    const layers = O ? '<div class="mv2-cal-layers" role="group" aria-label="Qué muestra el mapa">' +
+      ['horas', 'olas'].map(v => '<button type="button" class="' + ((waves ? 'olas' : 'horas') === v ? 'is-on' : '') + '" aria-pressed="' + ((waves ? 'olas' : 'horas') === v) + '" onclick="MobileV2.calLayer(\'' + v + '\')">' + (v === 'horas' ? 'Horas' : 'Olas') + '</button>').join('') + '</div>' : '';
+    const legend = waves
+      ? '<span>Tranquilo</span><i class="o0"></i><span class="mv2-legend-gap">Olas</span><i class="o1"></i><i class="o2"></i><i class="o3"></i><i class="o4"></i><span>8+</span>'
+      : '<span>Horas</span><i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i><span>5 h+</span>';
     const html =
-      '<div class="mv2-card"><div class="mv2-cal-head"><button type="button" class="mv2-cal-nav" onclick="MobileV2.calMove(-1)" aria-label="Mes anterior">‹</button>' +
-        '<div><b>' + MONTHS[month].charAt(0).toUpperCase() + MONTHS[month].slice(1) + ' ' + year + '</b><small>' + (monthTotal ? fmtMin(monthTotal) + ' estudiadas' : 'Sin estudio registrado') + '</small></div>' +
-        '<button type="button" class="mv2-cal-nav" onclick="MobileV2.calMove(1)" aria-label="Mes siguiente">›</button></div>' +
+      '<div class="mv2-card' + (waves ? ' mv2-cal-olas' : '') + '"><div class="mv2-cal-head"><button type="button" class="mv2-cal-nav" onclick="MobileV2.calMove(-1)" aria-label="Mes anterior">‹</button>' +
+        '<div><b>' + MONTHS[month].charAt(0).toUpperCase() + MONTHS[month].slice(1) + ' ' + year + '</b><small>' + esc(sub) + '</small></div>' +
+        '<button type="button" class="mv2-cal-nav" onclick="MobileV2.calMove(1)" aria-label="Mes siguiente">›</button></div>' + layers +
         '<div class="mv2-cal-grid" role="grid">' + ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(w => '<span class="mv2-wd">' + w + '</span>').join('') + cells + '</div>' +
-        '<div class="mv2-legend"><span>Horas</span><i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i><i class="l4"></i><i class="l5"></i><span>5 h+</span><span class="mv2-legend-ev"><i class="mv2-ev"></i>Evento</span><span class="mv2-legend-ev"><i class="mv2-act"></i>Acción</span></div></div>' +
+        '<div class="mv2-legend">' + legend + '<span class="mv2-legend-ev"><i class="mv2-ev"></i>Evento</span><span class="mv2-legend-ev"><i class="mv2-act"></i>Acción</span></div></div>' +
       '<div class="mv2-card"><div class="mv2-line"><span class="mv2-lbl">Próximos eventos</span><button type="button" class="mv2-link" onclick="openAddEvento()">＋ Añadir</button></div>' + evRows +
         '<button type="button" class="mv2-link mv2-more" onclick="MobileV2.calClassic(true)">Lista completa, hábitos y Google ›</button></div>';
     // Igual que antes → no se toca el DOM (al terminar el gesto lateral se
@@ -528,7 +551,9 @@
     } catch (e) {}
     let flashes = 0;
     try { flashes = (typeof root.getAllDestellos === 'function' ? root.getAllDestellos() : []).filter(f => dayKey(new Date(f.date)) === key).length; } catch (e) {}
-    const extras = [habits, flashes ? '✨ ' + flashes + (flashes === 1 ? ' destello' : ' destellos') : ''].filter(Boolean).join(' · ');
+    let waveLine = '';
+    try { waveLine = root.Olas ? root.Olas.dayLine(data, key) : ''; } catch (e) {}
+    const extras = [habits, flashes ? '✨ ' + flashes + (flashes === 1 ? ' destello' : ' destellos') : '', esc(waveLine)].filter(Boolean).join(' · ');
     let acts = '';
     try {
       const H = root.HabitHub;
@@ -613,5 +638,5 @@
   }
   if (doc) install();
 
-  return { active, renderCal, openDay, editDay, calMove, calClassic, segmentsOf, level, closeTools, design, setDesign, planToday, parsePlan, parseMinutes, matchUnit, savePlan, clearPlan, renderHoy, studyNow, openAdd, addStudy, addNote, toggleRooms, openPaste, pasteFromClipboard, confirmPaste, closeSheet, sentence };
+  return { active, renderCal, openDay, editDay, calMove, calLayer, calClassic, segmentsOf, level, closeTools, design, setDesign, planToday, parsePlan, parseMinutes, matchUnit, savePlan, clearPlan, renderHoy, studyNow, openAdd, addStudy, addNote, toggleRooms, openPaste, pasteFromClipboard, confirmPaste, closeSheet, sentence };
 });

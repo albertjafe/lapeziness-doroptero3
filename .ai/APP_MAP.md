@@ -436,6 +436,7 @@ Documentación pura (`.md`, instrucciones de IA) no necesita bump de SW porque n
 | Piano Rooms | `piano-rooms-core.js`; recordar que `piano-rooms.js` es loader general |
 | reservas Asimut en vivo | `reservation-dashboard.js`, `reservation-dashboard.css`, `supabase/functions/reservation-monitor-ingest`, migración `202609080001_*`; monitor externo `study_dashboard_bridge.py` |
 | histórico | `historical-repertoire.js`, `historical-events.js` |
+| olas (registro de un toque de TOC/obsesión) | `olas.js` (datos `db.olas`, solo se añade; deshacer = `undone:true`); botón en Hoy y capa «Olas» del calendario en `mobile-v2.js/css` |
 
 ---
 
