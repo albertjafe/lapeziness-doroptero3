@@ -66,7 +66,10 @@ describe('piano rewards follow canonical study time',()=>{
     const next=P.live(state,db.germanStudy.goals,'g',1,day);
     expect(next.today).toBeCloseTo(P.baseReward(7201,P.POLICIES[5]),6);
     expect(next.hourlyRate).toBeCloseTo(.22,6);
-    expect(db.germanStudy.effortWallet).toMatchObject({version:1,displayGoalId:'g',seedGoalIds:['g'],redemptions:[]});
+    expect(db.germanStudy.effortWallet).toMatchObject({version:1,seedGoalIds:['g'],redemptions:[]});
+    // La elección solo la escribe el usuario; al leer se usa el primer objetivo.
+    expect(db.germanStudy.effortWallet).not.toHaveProperty('displayGoalId');
+    expect(P.activeGoal(db).id).toBe('g');
     const comparable=structuredClone(db);delete comparable.germanStudy.effortWallet;
     expect(comparable).toEqual(before);
   });

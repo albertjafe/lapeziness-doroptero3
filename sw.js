@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v485';
+const CACHE = 'estudio-v486';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -9,7 +9,7 @@ const ASSETS = [
   "./app.js?v=483",
   "./german-rewards.js?v=426",
   "./achievement-rewards.js?v=435",
-  "./piano-rewards.js?v=435",
+  "./piano-rewards.js?v=486",
   "./german-srs.js?v=378",
   "./german-import.js?v=382",
   "./german-session.js?v=404",
@@ -26,7 +26,7 @@ const ASSETS = [
   "./habits-page.css?v=466",
   "./desktop-app.css?v=441",
   "./desktop-app.js?v=461",
-  "./mobile-v2.css?v=485",
+  "./mobile-v2.css?v=486",
   "./ipad-app.css?v=464",
   "./settings.css?v=464",
   "./settings.js?v=457",

@@ -103,15 +103,20 @@
     const scale=goalScale(goal);return scale>0?Math.max(0,Number(goal?.amount)||0)/scale:Infinity;
   }
   function ensureEffortWallet(db){
-    if(!db)return {version:1,createdAt:new Date(0).toISOString(),seedGoalIds:[],seedCostPoints:{},displayGoalId:null,redemptions:[]};
-    db.germanStudy||={version:1,materials:[],reviews:[],sessions:[],goals:[],ledger:[]};
+    const transient=()=>({version:1,createdAt:new Date(0).toISOString(),seedGoalIds:[],seedCostPoints:{},redemptions:[]});
+    if(!db)return transient();
+    // Al abrir la app el documento puede estar aún a medio cargar (sin objetivos
+    // ni monedero). Crear aquí un monedero nuevo le daba relojes más recientes
+    // que el guardado y, al fusionar, pisaba en todos los dispositivos el
+    // objetivo elegido. Sin objetivos no se crea ni se guarda nada.
     const st=db.germanStudy;
-    if(!Array.isArray(st.goals))st.goals=[];
+    if(!st||!Array.isArray(st.goals)||!st.goals.length)return st?.effortWallet&&Number(st.effortWallet.version)===1?st.effortWallet:transient();
     const active=availableGoals(db);
     if(!st.effortWallet || Number(st.effortWallet.version)!==1){
       const seedGoalIds=active.map(g=>g.id),seedCostPoints={};
       active.forEach(goal=>{seedCostPoints[goal.id]=goalCostPoints(goal);});
-      st.effortWallet={version:1,createdAt:new Date().toISOString(),seedGoalIds,seedCostPoints,displayGoalId:active[0]?.id||null,redemptions:[]};
+      // Sin displayGoalId: lo escribe solo el usuario al elegir (activeGoal cae al primero).
+      st.effortWallet={version:1,createdAt:new Date().toISOString(),seedGoalIds,seedCostPoints,redemptions:[]};
     }
     const wallet=st.effortWallet;
     if(!Array.isArray(wallet.seedGoalIds))wallet.seedGoalIds=[];
@@ -133,7 +138,8 @@
     });
     if(!Array.isArray(wallet.redemptions))wallet.redemptions=[];
     if(!wallet.createdAt)wallet.createdAt=new Date().toISOString();
-    if(!active.some(g=>g.id===wallet.displayGoalId))wallet.displayGoalId=active[0]?.id||null;
+    // No se reescribe displayGoalId si no es válido: activeGoal elige el primero al leer,
+    // y así un monedero a medio cargar nunca sustituye la elección guardada.
     return wallet;
   }
   function activeGoal(db){
@@ -755,9 +761,13 @@
       const database=currentDb();if(!database)return;
       const data=new FormData(form),name=String(data.get('name')||'').trim(),amount=Math.round(Number(data.get('amount'))*100)/100;
       if(!name||!Number.isFinite(amount)||amount<.01||amount>1e8){root.alert?.('Introduce un nombre y un precio válidos.');return;}
-      const st=database.germanStudy,wallet=ensureEffortWallet(database),now=new Date().toISOString(),id=form.dataset.id;
-      if(id){const goal=st.goals.find(g=>g.id===id&&!g.deletedAt);if(goal){goal.name=name;goal.amount=amount;goal.updatedAt=now;}}
-      else{const goal={id:(root.crypto?.randomUUID?.()||('goal_'+Date.now())),name,amount,createdAt:now,rewardPolicy:JSON.parse(JSON.stringify(GermanRewards.CONFIG))};st.goals.push(goal);if(!wallet.displayGoalId)wallet.displayGoalId=goal.id;}
+      database.germanStudy||={version:1,materials:[],reviews:[],sessions:[],goals:[],ledger:[]};
+      const st=database.germanStudy,now=new Date().toISOString(),id=form.dataset.id;
+      if(!Array.isArray(st.goals))st.goals=[];
+      if(id){const goal=st.goals.find(g=>g.id===id&&!g.deletedAt);if(goal){goal.name=name;goal.amount=amount;goal.updatedAt=now;}ensureEffortWallet(database);}
+      else{const goal={id:(root.crypto?.randomUUID?.()||('goal_'+Date.now())),name,amount,createdAt:now,rewardPolicy:JSON.parse(JSON.stringify(GermanRewards.CONFIG))};st.goals.push(goal);
+        // El primer objetivo queda elegido; con más, se mantiene el que ya tenías.
+        const wallet=ensureEffortWallet(database);if(availableGoals(database).length===1)wallet.displayGoalId=goal.id;}
       adding=false;editingId=null;saveAndRefresh();
     },true);
     root.PianoRewardsWallet={render:()=>{const host=doc.getElementById('germanSharedGoal');if(host)delete host.dataset.effortSignature;render();}};

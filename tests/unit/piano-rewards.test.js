@@ -243,3 +243,40 @@ describe('piano progressive taximeter',()=>{
   });
 
 });
+
+describe('objetivo elegido en el cronómetro', () => {
+  const P = require('../../piano-rewards.js');
+  const goals = () => [
+    { id: 'kindle', name: 'Kindle', amount: 220, createdAt: '2026-09-15T10:00:00.000Z' },
+    { id: 'banda', name: 'Banda pecho', amount: 40, createdAt: '2026-10-02T11:00:00.000Z' },
+  ];
+  it('a half-loaded document (no goals yet) never creates or saves a wallet', () => {
+    const empty = { sessionPlants: [], sesiones: [] };
+    expect(P.activeGoal(empty)).toBeNull();
+    P.walletSnapshot(empty);
+    expect(empty.germanStudy).toBeUndefined();
+    const noGoals = { germanStudy: { goals: [] } };
+    P.walletSnapshot(noGoals);
+    expect(noGoals.germanStudy.effortWallet).toBeUndefined();
+  });
+  it('the app never writes the choice by itself; reading falls back to the first goal', () => {
+    const d = { germanStudy: { goals: goals() } };
+    expect(P.activeGoal(d).id).toBe('kindle');
+    expect(d.germanStudy.effortWallet).not.toHaveProperty('displayGoalId');
+  });
+  it('a saved choice survives goals arriving late and a wallet recreated elsewhere', () => {
+    const DocumentSyncCore = require('../../document-sync-core.js');
+    const saved = { germanStudy: { goals: goals(), effortWallet: { version: 1, createdAt: '2026-09-27T00:00:00.000Z', seedGoalIds: ['kindle'], seedCostPoints: {}, displayGoalId: 'banda', redemptions: [], _fieldClock: { displayGoalId: '2026-10-02T18:14:59.057Z' } } } };
+    // Choice points to a goal that has not loaded yet: it is kept, not rewritten.
+    const partial = { germanStudy: { goals: [goals()[0]], effortWallet: structuredClone(saved.germanStudy.effortWallet) } };
+    expect(P.activeGoal(partial).id).toBe('kindle');
+    expect(partial.germanStudy.effortWallet.displayGoalId).toBe('banda');
+    // Another device that started without a wallet creates one without a choice;
+    // after its save is tracked and merged, the stored choice still wins.
+    const fresh = { germanStudy: { goals: goals() } };
+    P.activeGoal(fresh);
+    const tracked = DocumentSyncCore.track(fresh, { germanStudy: { goals: goals() } }, '2026-10-03T18:04:41.000Z');
+    const merged = DocumentSyncCore.mergeRemote(saved, tracked);
+    expect(P.activeGoal(merged).id).toBe('banda');
+  });
+});
