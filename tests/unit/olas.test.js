@@ -104,4 +104,21 @@ describe('olas: registrar y deshacer', () => {
     expect(html).toContain('Olas.tap()');
     expect(html).not.toMatch(/\d+\s*olas?/i);
   });
+
+  it('while a wave lasts the button shows its intensity, then returns to calm', () => {
+    const prev = globalThis.db;
+    globalThis.db = {};
+    try {
+      expect(O.currentLevel()).toBe(0);
+      expect([1, 2, 3, 4].map(() => O.tap().taps)).toEqual([1, 2, 3, 4]);
+      expect(O.currentLevel()).toBe(3);
+      expect(O.currentLevel(Date.now() + O.WAVE_GAP_MS + 1)).toBe(0);
+      O.calm();
+      expect(O.currentLevel()).toBe(0);
+      expect(O.hoyButtonHtml(2)).toContain('data-level="2"');
+      expect(O.hoyButtonHtml(3)).toContain('>Ola<');
+      expect(O.hoyButtonHtml()).toContain('data-level="0"');
+      expect(O.hoyButtonHtml()).toContain('>Ola<');
+    } finally { O.calm(); globalThis.db = prev; }
+  });
 });

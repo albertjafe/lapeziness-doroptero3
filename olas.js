@@ -119,10 +119,57 @@
   }
 
   /* ── Botón de Hoy ─────────────────────────────────────────────────── */
-  const WAVE_SVG = '<svg viewBox="0 0 24 12" width="20" height="10" aria-hidden="true"><path d="M1 7c2.5-4 5-4 7.5 0s5 4 7.5 0 5-4 7-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-  function hoyButtonHtml() {
-    // Siempre igual: Hoy no muestra cuántas llevas (no invita a vigilarlas).
-    return '<button type="button" class="mv2-ola" onclick="Olas.tap()" aria-label="Anotar una ola">' + WAVE_SVG + '<span>Ola</span></button>';
+  // En reposo el botón es siempre igual: Hoy no muestra cuántas llevas (no
+  // invita a vigilarlas). Solo mientras dura la ola (10 s desde el último
+  // toque) enseña la intensidad que se está anotando: una, dos o tres crestas
+  // y un color más intenso (el aviso dice «fuerte» / «muy fuerte»); luego
+  // vuelve sola a la calma. La palabra no cambia: el botón no salta de ancho.
+  const LEVEL_NAME = ['', 'leve', 'fuerte', 'muy fuerte'];
+  const WAVE_SVG = '<svg viewBox="0 0 24 18" width="24" height="18" aria-hidden="true">' +
+    '<path class="w3" pathLength="1" d="M1 5c2.5-3.2 5-3.2 7.5 0s5 3.2 7.5 0 5-3.2 7-.8"/>' +
+    '<path class="w2" pathLength="1" d="M1 9.5c2.5-3.6 5-3.6 7.5 0s5 3.6 7.5 0 5-3.6 7-.9"/>' +
+    '<path class="w1" pathLength="1" d="M1 14c2.5-4 5-4 7.5 0s5 4 7.5 0 5-4 7-1"/></svg>';
+  const live = { level: 0, until: 0, timer: null };
+
+  function currentLevel(now = Date.now()) { return live.level && now < live.until ? live.level : 0; }
+
+  function hoyButtonHtml(level = 0) {
+    // Marcado estable (Hoy no rehace el DOM si no cambia); refresh() pinta la ola en curso.
+    const l = Math.max(0, Math.min(MAX_PER_WAVE, level | 0));
+    return '<button type="button" class="mv2-ola" data-level="' + l + '" onclick="Olas.tap()" aria-label="Anotar una ola">' +
+      WAVE_SVG + '<span class="mv2-ola-label">Ola</span></button>';
+  }
+
+  function paint(pulse) {
+    if (!doc) return;
+    const l = currentLevel();
+    doc.querySelectorAll('.mv2-ola').forEach(btn => {
+      btn.setAttribute('data-level', String(l));
+      btn.setAttribute('aria-label', l ? 'Anotar una ola (ahora: ' + LEVEL_NAME[l] + ')' : 'Anotar una ola');
+      if (!pulse) return;
+      // Se reinicia la animación de la cresta nueva y sale un anillo.
+      btn.classList.remove('is-surge'); void btn.offsetWidth; btn.classList.add('is-surge');
+      const ring = doc.createElement('span');
+      ring.className = 'mv2-ola-ring';
+      ring.setAttribute('aria-hidden', 'true');
+      ring.addEventListener('animationend', () => ring.remove());
+      btn.appendChild(ring);
+      setTimeout(() => ring.remove(), 1200);
+    });
+  }
+
+  function calm() {
+    if (live.timer) clearTimeout(live.timer);
+    live.level = 0; live.until = 0; live.timer = null;
+    paint(false);
+  }
+
+  function rise(taps, now = Date.now()) {
+    if (live.timer) clearTimeout(live.timer);
+    live.level = Math.max(1, Math.min(MAX_PER_WAVE, taps || 1));
+    live.until = now + WAVE_GAP_MS;
+    live.timer = setTimeout(calm, WAVE_GAP_MS + 50);
+    paint(true);
   }
 
   function newId(now) { return 'ola-' + now.getTime().toString(36) + '-' + Math.random().toString(36).slice(2, 7); }
@@ -156,14 +203,15 @@
     if (!res) return null;
     persist();
     try { if (typeof Haptics !== 'undefined') Haptics.light(); } catch (e) {}
+    rise(res.taps);
     const msg = res.taps >= MAX_PER_WAVE ? 'Ola anotada · muy fuerte' : res.taps === 2 ? 'Ola anotada · fuerte' : 'Ola anotada';
     const id = res.rec.id;
     try {
-      if (typeof root.showUndoToast === 'function') root.showUndoToast(msg, () => { if (undo(database(), id)) { persist(); if (typeof root.showToast === 'function') root.showToast('Toque quitado'); } }, UNDO_MS);
+      if (typeof root.showUndoToast === 'function') root.showUndoToast(msg, () => { if (undo(database(), id)) { calm(); persist(); if (typeof root.showToast === 'function') root.showToast('Toque quitado'); } }, UNDO_MS);
       else if (typeof root.showToast === 'function') root.showToast(msg);
     } catch (e) {}
     return res;
   }
 
-  return { WAVE_GAP_MS, MAX_PER_WAVE, taps, wavesByDay, loadByDay, firstDay, level, monthSummary, monthLine, dayClass, dayLine, cellLabel, hoyButtonHtml, record, undo, tap };
+  return { WAVE_GAP_MS, MAX_PER_WAVE, taps, wavesByDay, loadByDay, firstDay, level, monthSummary, monthLine, dayClass, dayLine, cellLabel, hoyButtonHtml, currentLevel, calm, refresh: () => paint(false), record, undo, tap };
 });

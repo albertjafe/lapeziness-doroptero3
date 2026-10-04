@@ -20,16 +20,25 @@ test('Olas: un toque en Hoy anota la ola, sin contador; Deshacer la quita y todo
   const button = page.locator('#mv2Hoy .mv2-ola');
   await expect(button).toBeVisible();
   await expect(button).toHaveText('Ola');
+  await expect(button).toHaveAttribute('data-level', '0');
   await button.click();
   await expect(page.locator('#undoToast')).toHaveClass(/visible/);
   await expect(page.locator('#undoToastMsg')).toHaveText('Ola anotada');
+  await expect(button).toHaveAttribute('data-level', '1');
   await button.click();
   await expect(page.locator('#undoToastMsg')).toHaveText('Ola anotada · fuerte');
-  // Hoy no cambia: no hay número que vigilar.
+  // Mientras dura la ola, el botón enseña la intensidad que se anota (crestas y color),
+  // no un recuento del día; la palabra no cambia.
   await expect(button).toHaveText('Ola');
+  await expect(button).toHaveAttribute('data-level', '2');
+  await expect(button).toHaveAttribute('aria-label', 'Anotar una ola (ahora: fuerte)');
   expect(await page.evaluate(() => db.olas.length)).toBe(2);
-  // Deshacer quita el último toque (lo marca, no lo borra).
+  // Si Hoy se repinta a mitad de la ola, la intensidad se conserva.
+  await page.evaluate(() => { const h = document.getElementById('mv2Hoy'); h.__mv2Html = ''; MobileV2.renderHoy && MobileV2.renderHoy(); });
+  await expect(page.locator('#mv2Hoy .mv2-ola')).toHaveAttribute('data-level', '2');
+  // Deshacer quita el último toque (lo marca, no lo borra) y el botón vuelve a la calma.
   await page.locator('#undoToastBtn').click();
+  await expect(button).toHaveAttribute('data-level', '0');
   expect(await page.evaluate(() => db.olas.map(t => !!t.undone))).toEqual([false, true]);
   const today = keyOf(new Date());
   expect(await page.evaluate(k => Olas.loadByDay(db)[k], today)).toBe(1);

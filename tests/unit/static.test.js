@@ -203,19 +203,19 @@ describe('quality wiring', () => {
     expect(sessionHome).toContain('#view-session .session-focus-card');
   });
 
-  it('ships one vector music mark and correctly sized app icons', () => {
+  it('ships one vector piano mark (icon and splash) and correctly sized app icons', () => {
     const svg = fs.readFileSync(path.join(root, 'icon.svg'), 'utf8');
     const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
     const pngSize = filename => {
       const png = fs.readFileSync(path.join(root, filename));
       return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
     };
-    const markPath = 'M262 292V96c0-11 9-20 20-20';
+    // El piano de cola visto desde arriba: el mismo contorno en el icono y en la apertura.
+    const markPath = 'M150 380V132c0-38 30-62 68-62';
 
     expect(svg).toContain(markPath);
-    expect(svg.match(/<path\b/g)).toHaveLength(1);
-    expect(svg).not.toContain('<ellipse');
     expect(svg).not.toContain('<text');
+    expect(svg).not.toContain('<image');
     expect(html).toContain(markPath);
     expect(html).not.toContain('font-family="serif">♪');
     expect(pngSize('icon-192.png')).toEqual({ width: 192, height: 192 });

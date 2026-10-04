@@ -252,6 +252,7 @@
     // Mismo contenido → no se toca el DOM (evita parpadeos, también a mitad del gesto lateral).
     if (host.__mv2Html !== html) {
       host.innerHTML = html; host.__mv2Html = html;
+      if (root.Olas && typeof root.Olas.refresh === 'function') root.Olas.refresh();
       if (root.ReservationDashboard && typeof root.ReservationDashboard.paintHoy === 'function') root.ReservationDashboard.paintHoy();
     }
   }
