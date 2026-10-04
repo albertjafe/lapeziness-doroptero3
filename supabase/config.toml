@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.reservation-monitor-ingest]
 verify_jwt = false
+
+[functions.monitor-release]
+verify_jwt = false
