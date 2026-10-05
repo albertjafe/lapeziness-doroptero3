@@ -44,6 +44,16 @@ html.mv2-on .mv2-ola {
   transition: transform .12s ease, background-color 1.4s ease, color 1.4s ease, border-color 1.4s ease, box-shadow 1.4s ease;
 }
 html.mv2-on .mv2-ola svg { width: 24px; height: 18px; overflow: visible; flex: none; }
+/* «Compulsión»: al lado de la ola, neutro y más discreto (sin color de alarma ni contador). */
+html.mv2-on .mv2-compulsion {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 6px 16px; border-radius: 999px;
+  border: 1.5px solid var(--border, rgba(127,127,127,.35)); background: transparent; color: var(--text2);
+  font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  transition: transform .12s ease, background-color .3s ease;
+}
+html.mv2-on .mv2-compulsion:active { transform: scale(.94); background: var(--bg3); }
+html.mv2-on .mv2-ola-pair { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px; min-width: 0; max-width: 100%; }
+html.mv2-on .mv2-ola-week { margin: 10px 2px 0; font-size: 13px; line-height: 1.4; color: var(--text2); }
 html.mv2-on .mv2-ola path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 0; transition: opacity .5s ease; }
 html.mv2-on .mv2-ola .w2, html.mv2-on .mv2-ola .w3 { opacity: 0; }
 html.mv2-on .mv2-ola-label { min-width: 0; white-space: nowrap; }
@@ -330,6 +340,7 @@ html.mv2-tablet .mv2-lbl { font-size: 12px; }
 html.mv2-tablet .mv2-muted { font-size: 14.5px; }
 html.mv2-tablet .mv2-link { font-size: 14.5px; min-height: 40px; }
 html.mv2-tablet .mv2-ola { font-size: 16.5px; min-height: 50px; padding: 6px 22px; }
+html.mv2-tablet .mv2-compulsion { font-size: 16.5px; min-height: 50px; padding: 6px 20px; }
 html.mv2-tablet .mv2-ola svg { width: 28px; height: 21px; }
 html.mv2-tablet .mv2-cal-layers button { font-size: 13.5px; min-height: 34px; padding: 4px 18px; }
 html.mv2-tablet .mv2-summary { gap: 22px; }

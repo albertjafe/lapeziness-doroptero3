@@ -10,7 +10,11 @@
    Cada toque es una unidad de ruido. Los toques seguidos (≤ 10 s entre uno y
    el siguiente) son la misma ola y cuentan como mucho 3: un toque = leve,
    tres = muy fuerte. Si dura o vuelve, otro toque más tarde. La carga del
-   día suma las olas, así refleja a la vez intensidad y duración. */
+   día suma las olas, así refleja a la vez intensidad y duración.
+
+   Al lado, «Compulsión» (un toque cuando haces algo para calmarla). Ambas
+   se comparan por semanas en el calendario: «Esta semana: N olas · M
+   compulsiones», con la semana anterior. */
 (function (root, factory) {
   const api = factory(root);
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
@@ -104,11 +108,58 @@
       (prev.tracked ? ' · mes anterior ' + fmtMean(prev.mean) : '');
   }
 
-  // Línea para la hoja del día: horas e intensidad de cada ola.
+  /* ── Compulsiones (05-10-2026) ──────────────────────────────────────
+     Un toque cuando haces algo para calmar la ola: preguntar a una IA,
+     buscar, comprobar, pedir que te tranquilicen. Sin detalle. Es lo que se
+     puede cambiar, así que es lo que se compara semana a semana; no se
+     deduce «pasó sola» ni se mide duración (no hay que vigilar la ola).
+     Datos: db.compulsiones = [{ id, at }] — solo se añade; «Deshacer» marca
+     `undone`. Cada toque cuenta uno. */
+  function compulsions(data) {
+    return (data && Array.isArray(data.compulsiones) ? data.compulsiones : [])
+      .filter(t => t && !t.undone && Number.isFinite(new Date(t.at).getTime()))
+      .map(t => ({ id: t.id, time: new Date(t.at).getTime() }))
+      .sort((a, b) => a.time - b.time);
+  }
+
+  // Lunes 00:00 (hora del dispositivo) de la semana de `d`.
+  function weekStart(d = new Date()) {
+    const s = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    s.setDate(s.getDate() - ((s.getDay() + 6) % 7));
+    return s;
+  }
+
+  // Olas (no toques) y compulsiones de la semana que empieza en `start`.
+  function weekSummary(data, start) {
+    const from = start.getTime();
+    const to = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7).getTime();
+    const inWeek = t => t >= from && t < to;
+    const waves = Object.values(wavesByDay(data)).reduce((n, list) => n + list.filter(w => inWeek(w.start)).length, 0);
+    return { waves, compulsions: compulsions(data).filter(c => inWeek(c.time)).length };
+  }
+
+  const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+
+  // «Esta semana: 12 olas · 4 compulsiones · semana anterior: 15 olas · 7 compulsiones».
+  function weekLine(data, now = new Date()) {
+    const first = [taps(data)[0], compulsions(data)[0]].filter(Boolean).map(t => t.time);
+    if (!first.length) return '';
+    const start = weekStart(now);
+    const cur = weekSummary(data, start);
+    const prevStart = new Date(start.getFullYear(), start.getMonth(), start.getDate() - 7);
+    const prev = Math.min(...first) < start.getTime() ? weekSummary(data, prevStart) : null;
+    return 'Esta semana: ' + plural(cur.waves, 'ola', 'olas') + ' · ' + plural(cur.compulsions, 'compulsión', 'compulsiones') +
+      (prev ? ' · semana anterior: ' + plural(prev.waves, 'ola', 'olas') + ' · ' + plural(prev.compulsions, 'compulsión', 'compulsiones') : '');
+  }
+
+  // Línea para la hoja del día: horas e intensidad de cada ola y horas de las compulsiones.
   function dayLine(data, key) {
-    const list = wavesByDay(data)[key];
-    if (!list || !list.length) return '';
-    return 'Olas: ' + list.map(w => hhmm(new Date(w.start)) + (w.load > 1 ? ' ×' + w.load : '')).join(', ');
+    const list = wavesByDay(data)[key] || [];
+    const comps = compulsions(data).filter(c => dayKey(new Date(c.time)) === key);
+    const parts = [];
+    if (list.length) parts.push('Olas: ' + list.map(w => hhmm(new Date(w.start)) + (w.load > 1 ? ' ×' + w.load : '')).join(', '));
+    if (comps.length) parts.push('Compulsiones: ' + comps.map(c => hhmm(new Date(c.time))).join(', '));
+    return parts.join(' · ');
   }
 
   function cellLabel(key, loads, first, today = dayKey()) {
@@ -213,5 +264,39 @@
     return res;
   }
 
-  return { WAVE_GAP_MS, MAX_PER_WAVE, taps, wavesByDay, loadByDay, firstDay, level, monthSummary, monthLine, dayClass, dayLine, cellLabel, hoyButtonHtml, currentLevel, calm, refresh: () => paint(false), record, undo, tap };
+  // Botón «Compulsión» de Hoy: discreto y siempre igual (sin contador, sin juicio).
+  function compulsionButtonHtml() {
+    return '<button type="button" class="mv2-compulsion" onclick="Olas.tapCompulsion()" aria-label="Anotar una compulsión">Compulsión</button>';
+  }
+
+  function recordCompulsion(data, now = new Date()) {
+    if (!data) return null;
+    if (!Array.isArray(data.compulsiones)) data.compulsiones = [];
+    const rec = { id: 'comp-' + now.getTime().toString(36) + '-' + Math.random().toString(36).slice(2, 7), at: now.toISOString() };
+    data.compulsiones.push(rec);
+    return rec;
+  }
+
+  function undoCompulsion(data, id) {
+    const rec = data && Array.isArray(data.compulsiones) ? data.compulsiones.find(t => t && t.id === id) : null;
+    if (!rec || rec.undone) return false;
+    rec.undone = true;
+    return true;
+  }
+
+  function tapCompulsion() {
+    const rec = recordCompulsion(database());
+    if (!rec) return null;
+    persist();
+    try { if (typeof Haptics !== 'undefined') Haptics.light(); } catch (e) {}
+    try {
+      const id = rec.id;
+      if (typeof root.showUndoToast === 'function') root.showUndoToast('Compulsión anotada', () => { if (undoCompulsion(database(), id)) { persist(); if (typeof root.showToast === 'function') root.showToast('Toque quitado'); } }, UNDO_MS);
+      else if (typeof root.showToast === 'function') root.showToast('Compulsión anotada');
+    } catch (e) {}
+    return rec;
+  }
+
+  return { WAVE_GAP_MS, MAX_PER_WAVE, taps, wavesByDay, loadByDay, firstDay, level, monthSummary, monthLine, dayClass, dayLine, cellLabel, hoyButtonHtml, currentLevel, calm, refresh: () => paint(false), record, undo, tap,
+    compulsions, weekStart, weekSummary, weekLine, compulsionButtonHtml, recordCompulsion, undoCompulsion, tapCompulsion };
 });

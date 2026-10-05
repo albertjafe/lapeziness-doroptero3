@@ -81,3 +81,37 @@ test('Olas: la capa del calendario distingue días tranquilos, olas y días sin 
   await cal.getByRole('button', { name: 'Horas', exact: true }).click();
   await expect(cal.locator('.mv2-legend')).toContainText('5 h+');
 });
+
+test('Compulsión: un toque en Hoy al lado de Ola, Deshacer, y resumen semanal en el calendario', async ({ page }) => {
+  // Esta semana: una ola de hoy (dos toques = una ola) y, la semana anterior, una ola y una compulsión.
+  const now = new Date();
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7), 9);
+  const lastWeek = new Date(monday.getTime() - 3 * 86400000);
+  const today9 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 30);
+  await boot(page, {
+    olas: [{ id: 'p', at: lastWeek.toISOString() }, { id: 'a', at: today9.toISOString() }, { id: 'b', at: new Date(today9.getTime() + 3000).toISOString() }],
+    compulsiones: [{ id: 'k0', at: new Date(lastWeek.getTime() + 600000).toISOString() }],
+  });
+  const comp = page.locator('#mv2Hoy .mv2-compulsion');
+  await expect(comp).toBeVisible();
+  await expect(comp).toHaveText('Compulsión');
+  await expect(page.locator('#mv2Hoy .mv2-ola')).toHaveText('Ola');
+  await comp.click();
+  await expect(page.locator('#undoToastMsg')).toHaveText('Compulsión anotada');
+  await comp.click();
+  await page.locator('#undoToastBtn').click();
+  // Sigue igual: sin contador en Hoy.
+  await expect(comp).toHaveText('Compulsión');
+  expect(await page.evaluate(() => db.compulsiones.map(c => !!c.undone))).toEqual([false, false, true]);
+  await expect.poll(() => page.evaluate(() => (JSON.parse(localStorage.getItem('alberto_piano_v2') || '{}').compulsiones || []).length)).toBe(3);
+
+  await page.evaluate(() => { localStorage.setItem('alberto_cal_layer', 'olas'); showView('calendario'); });
+  const cal = page.locator('#mv2Cal');
+  await expect(cal.locator('.mv2-ola-week')).toHaveText('Esta semana: 1 ola · 1 compulsión · semana anterior: 1 ola · 1 compulsión');
+  await cal.locator(`.mv2-day[data-day="${keyOf(now)}"]`).first().click();
+  await expect(page.locator('#mv2DaySheet')).toContainText('Compulsiones:');
+  // En la capa Horas no aparece.
+  await page.locator('#mv2DaySheet').getByRole('button', { name: 'Cerrar' }).click();
+  await cal.getByRole('button', { name: 'Horas', exact: true }).click();
+  await expect(cal.locator('.mv2-ola-week')).toHaveCount(0);
+});

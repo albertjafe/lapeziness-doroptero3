@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v489';
+const CACHE = 'estudio-v490';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -26,12 +26,12 @@ const ASSETS = [
   "./habits-page.css?v=466",
   "./desktop-app.css?v=441",
   "./desktop-app.js?v=461",
-  "./mobile-v2.css?v=487",
+  "./mobile-v2.css?v=490",
   "./ipad-app.css?v=464",
   "./settings.css?v=464",
   "./settings.js?v=457",
-  "./mobile-v2.js?v=487",
-  "./olas.js?v=487",
+  "./mobile-v2.js?v=490",
+  "./olas.js?v=490",
   "./habit-trophies.css?v=383",
   "./desktop-workspace.css?v=388",
   "./desktop-calendar-v389.css?v=389",

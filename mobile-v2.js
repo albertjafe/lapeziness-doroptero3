@@ -228,9 +228,9 @@
       '<div class="mv2-card mv2-summary"><div class="mv2-ring" style="--p:' + pct + '" role="img" aria-label="' + fmtMin(done) + ' de 4 horas"><span>' + fmtMin(done) + '<small>de 4 h</small></span></div>' +
         '<div class="mv2-summary-copy"><b>' + esc(sentence(done, t)) + '</b><span class="mv2-muted">' + esc(rewardLine(data)) + '</span>' +
         // El registro por horas de hoy (antes solo en la portada clásica del iPad)
-        // y, al lado, el toque de «Ola» (olas.js): siempre igual, sin contador.
+        // y, al lado, los toques de «Ola» y «Compulsión» (olas.js): siempre iguales, sin contador.
         '<div class="mv2-summary-actions"><button type="button" class="mv2-link mv2-sessions" onclick="openSesionesDetalle(this)">Sesiones de hoy ›</button>' +
-        (root.Olas ? root.Olas.hoyButtonHtml() : '') + '</div></div></div>' +
+        (root.Olas ? '<span class="mv2-ola-pair">' + root.Olas.hoyButtonHtml() + (root.Olas.compulsionButtonHtml ? root.Olas.compulsionButtonHtml() : '') + '</span>' : '') + '</div></div></div>' +
       // Al volver de un hueco largo: ¿qué fue? (un toque; study-journey.js).
       (root.StudyJourney ? root.StudyJourney.hoyPromptHtml() : '') +
       // Justo debajo de las horas, tus reservas de hoy: solo la línea del día. Tocar una franja abre su editor aquí mismo.
@@ -516,6 +516,9 @@
         '<span class="mv2-evcopy"><b>' + esc(e.nombre || 'Evento') + '</b><small>' + parseDay(k).getDate() + ' ' + MONTHS_SHORT[parseDay(k).getMonth()] + (works.length ? ' · ' + esc(works.slice(0, 3).join(', ')) + (works.length > 3 ? '…' : '') : '') + '</small></span></button>';
     }).join('') : '<p class="mv2-muted">Sin eventos próximos.</p>';
     const sub = waves ? O.monthLine(data, year, month, today) : (monthTotal ? fmtMin(monthTotal) + ' estudiadas' : 'Sin estudio registrado');
+    // Olas y compulsiones de esta semana frente a la anterior (solo en el mes en curso).
+    const nowD = new Date();
+    const weekText = waves && O.weekLine && year === nowD.getFullYear() && month === nowD.getMonth() ? O.weekLine(data) : '';
     const layers = O ? '<div class="mv2-cal-layers" role="group" aria-label="Qué muestra el mapa">' +
       ['horas', 'olas'].map(v => '<button type="button" class="' + ((waves ? 'olas' : 'horas') === v ? 'is-on' : '') + '" aria-pressed="' + ((waves ? 'olas' : 'horas') === v) + '" onclick="MobileV2.calLayer(\'' + v + '\')">' + (v === 'horas' ? 'Horas' : 'Olas') + '</button>').join('') + '</div>' : '';
     const legend = waves
@@ -526,7 +529,8 @@
         '<div><b>' + MONTHS[month].charAt(0).toUpperCase() + MONTHS[month].slice(1) + ' ' + year + '</b><small>' + esc(sub) + '</small></div>' +
         '<button type="button" class="mv2-cal-nav" onclick="MobileV2.calMove(1)" aria-label="Mes siguiente">›</button></div>' + layers +
         '<div class="mv2-cal-grid" role="grid">' + ['L', 'M', 'X', 'J', 'V', 'S', 'D'].map(w => '<span class="mv2-wd">' + w + '</span>').join('') + cells + '</div>' +
-        '<div class="mv2-legend">' + legend + '<span class="mv2-legend-ev"><i class="mv2-ev"></i>Evento</span><span class="mv2-legend-ev"><i class="mv2-act"></i>Acción</span></div></div>' +
+        '<div class="mv2-legend">' + legend + '<span class="mv2-legend-ev"><i class="mv2-ev"></i>Evento</span><span class="mv2-legend-ev"><i class="mv2-act"></i>Acción</span></div>' +
+        (weekText ? '<p class="mv2-ola-week">' + esc(weekText) + '</p>' : '') + '</div>' +
       '<div class="mv2-card"><div class="mv2-line"><span class="mv2-lbl">Próximos eventos</span><button type="button" class="mv2-link" onclick="openAddEvento()">＋ Añadir</button></div>' + evRows +
         '<button type="button" class="mv2-link mv2-more" onclick="MobileV2.calClassic(true)">Lista completa, hábitos y Google ›</button></div>';
     // Igual que antes → no se toca el DOM (al terminar el gesto lateral se

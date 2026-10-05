@@ -122,3 +122,59 @@ describe('olas: registrar y deshacer', () => {
     } finally { O.calm(); globalThis.db = prev; }
   });
 });
+
+describe('compulsiones: registrar, semana y hoja del día', () => {
+  it('records compulsions apart from waves and undo only marks them', () => {
+    const data = {};
+    const rec = O.recordCompulsion(data, new Date(2026, 9, 5, 10));
+    expect(rec.id).toMatch(/^comp-/);
+    expect(data.compulsiones).toHaveLength(1);
+    expect(data.olas).toBeUndefined();
+    expect(O.loadByDay(data)).toEqual({});
+    expect(O.undoCompulsion(data, rec.id)).toBe(true);
+    expect(data.compulsiones[0].undone).toBe(true);
+    expect(O.compulsions(data)).toEqual([]);
+    expect(O.undoCompulsion(data, rec.id)).toBe(false);
+  });
+
+  it('weeks start on Monday in device time', () => {
+    const s = O.weekStart(new Date(2026, 9, 7, 18)); // miércoles 7-10-2026
+    expect([s.getFullYear(), s.getMonth(), s.getDate(), s.getHours()]).toEqual([2026, 9, 5, 0]);
+    expect(O.weekStart(new Date(2026, 9, 11, 23)).getDate()).toBe(5); // domingo
+    expect(O.weekStart(new Date(2026, 9, 12, 0, 5)).getDate()).toBe(12); // lunes siguiente
+  });
+
+  it('counts waves (not taps) and compulsions this week against the previous one', () => {
+    const data = {
+      olas: [
+        tap('p1', at(1, 9)), tap('p2', at(2, 9)), // semana anterior (jueves 1 y viernes 2)
+        tap('a', at(5, 9)), tap('b', at(5, 9, 0, 4)), // misma ola, 2 toques
+        tap('c', at(6, 20)), tap('d', at(7, 8), { undone: true }),
+      ],
+      compulsiones: [tap('k0', at(2, 9, 20)), tap('k1', at(5, 9, 15)), tap('k2', at(7, 8, 30), { undone: true })],
+    };
+    expect(O.weekSummary(data, O.weekStart(new Date(2026, 9, 7, 12)))).toEqual({ waves: 2, compulsions: 1 });
+    expect(O.weekLine(data, new Date(2026, 9, 7, 12)))
+      .toBe('Esta semana: 2 olas · 1 compulsión · semana anterior: 2 olas · 1 compulsión');
+  });
+
+  it('shows no previous week before anything was recorded and nothing without records', () => {
+    expect(O.weekLine({}, new Date(2026, 9, 7, 12))).toBe('');
+    const data = { olas: [tap('a', at(6, 9))], compulsiones: [] };
+    expect(O.weekLine(data, new Date(2026, 9, 7, 12))).toBe('Esta semana: 1 ola · 0 compulsiones');
+  });
+
+  it('the day sheet lists compulsion times after the waves', () => {
+    const data = { olas: [tap('a', at(5, 9))], compulsiones: [tap('k', at(5, 9, 15)), tap('k2', at(6, 11))] };
+    const h = iso => { const t = new Date(iso); return String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0'); };
+    expect(O.dayLine(data, '2026-10-05')).toBe('Olas: ' + h(at(5, 9)) + ' · Compulsiones: ' + h(at(5, 9, 15)));
+    expect(O.dayLine(data, '2026-10-06')).toBe('Compulsiones: ' + h(at(6, 11)));
+  });
+
+  it('the compulsion button is always the same markup (no counter)', () => {
+    const html = O.compulsionButtonHtml();
+    expect(html).toContain('Olas.tapCompulsion()');
+    expect(html).toContain('>Compulsión<');
+    expect(html.replace(/<[^>]*>/g, '')).toBe('Compulsión');
+  });
+});
