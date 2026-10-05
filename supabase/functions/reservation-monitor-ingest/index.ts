@@ -28,6 +28,10 @@ const allowedCommands = new Set([
   "reservation_cancel",
   "reservation_lock",
   "set_booking_type",
+  "franja_add",
+  "franja_remove",
+  "franja_skip",
+  "franja_resume",
 ]);
 const allowedPhases = new Set(["awaiting_start", "starting", "running", "closed"]);
 
@@ -180,6 +184,21 @@ function cleanReservation(value: unknown) {
   };
 }
 
+// Franjas protegidas (06-10-2026): la próxima de cada semanal y las puntuales.
+function cleanFranja(value: unknown) {
+  const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    id: cleanText(raw.id, 40),
+    kind: cleanChoice(raw.kind, ["semanal", "puntual"]),
+    date: cleanDate(raw.date),
+    start: cleanTime(raw.start),
+    end: cleanTime(raw.end),
+    name: cleanText(raw.name, 40),
+    status: cleanText(raw.status, 90),
+    paused: cleanBoolean(raw.paused),
+  };
+}
+
 function cleanQuota(value: unknown) {
   const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
   return {
@@ -269,6 +288,10 @@ function cleanState(value: unknown) {
       priority_rooms: Array.isArray(monitorRaw.priority_rooms)
         ? monitorRaw.priority_rooms.slice(0, 120).map((room) => cleanInteger(room, 1, 99_999)).filter(Boolean)
         : [],
+      // null = monitor antiguo que aún no publica franjas (la app oculta la tarjeta).
+      franjas: Array.isArray(monitorRaw.franjas)
+        ? monitorRaw.franjas.slice(0, 16).map(cleanFranja).filter((f) => f.id && f.date && f.start && f.end)
+        : null,
     },
     scans,
     success_rate: cleanText(raw.success_rate, 12) || "100%",

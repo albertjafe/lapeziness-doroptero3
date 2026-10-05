@@ -761,6 +761,108 @@
     danger.querySelector('[data-ui="cancel-confirm"]')?.addEventListener('click', () => askConfirm(null));
   }
 
+  /* Franjas protegidas (06-10-2026): «protege estas horas». El monitor busca una
+   * sola aula para toda la franja (mejor de grupo 5), cambia solo los trozos,
+   * le da prioridad de cuota y pone candados. Las puntuales se crean y se quitan
+   * aquí; la semanal (la clase de Chen) se salta o se reanuda por día. Un
+   * monitor antiguo no publica `franjas` (null) y la tarjeta no aparece. */
+  const WEEKDAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  let franjaNotice = null;
+  function isoPlusDays(days) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return localIsoDate(d);
+  }
+  function franjaDayLabel(iso) {
+    if (iso === isoPlusDays(0)) return 'Hoy';
+    if (iso === isoPlusDays(1)) return 'Mañana';
+    return formatDate(iso);
+  }
+  function quarterOptions(selected) {
+    let html = '';
+    for (let m = 7 * 60; m <= 23 * 60; m += 15) {
+      const value = `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+      html += `<option value="${value}" ${value === selected ? 'selected' : ''}>${value}</option>`;
+    }
+    return html;
+  }
+  function franjaStatus(text) {
+    const value = String(text || '').trim();
+    return value ? value.charAt(0).toUpperCase() + value.slice(1) : '';
+  }
+  function franjaItemHtml(f, offline) {
+    const [y, m, d] = f.date.split('-').map(Number);
+    const weekday = WEEKDAYS[new Date(y, m - 1, d).getDay()];
+    const when = `${franjaDayLabel(f.date)} · ${f.start}–${f.end}` + (f.kind === 'semanal' ? ` · cada ${weekday}` : '');
+    const buttons = [];
+    if (f.paused) buttons.push(`<button type="button" class="rd-action" data-command="franja_resume" data-franja-date="${escapeHtml(f.date)}" ${offline ? 'disabled' : ''}><b>Reanudar este día</b></button>`);
+    else if (f.kind === 'semanal') buttons.push(`<button type="button" class="rd-action" data-command="franja_skip" data-franja-date="${escapeHtml(f.date)}" ${offline ? 'disabled' : ''}><b>No proteger este día</b></button>`);
+    if (f.kind === 'puntual') buttons.push(`<button type="button" class="rd-action" data-command="franja_remove" data-franja-id="${escapeHtml(f.id)}" ${offline ? 'disabled' : ''}><b>Quitar</b></button>`);
+    return `<div class="rd-franja ${f.paused ? 'is-paused' : ''}">
+      <div class="rd-franja-copy"><b>${escapeHtml(f.name || 'Franja protegida')}</b><span>${escapeHtml(when)}</span><small>${escapeHtml(franjaStatus(f.status))}</small></div>
+      <div class="rd-franja-actions">${buttons.join('')}</div>
+    </div>`;
+  }
+  function franjaFormHtml() {
+    const days = [0, 1, 2, 3, 4, 5, 6, 7].map(n => {
+      const iso = isoPlusDays(n);
+      return `<option value="${iso}" ${n === 1 ? 'selected' : ''}>${escapeHtml(n < 2 ? franjaDayLabel(iso) : formatDate(iso))}</option>`;
+    }).join('');
+    return `<form class="rd-franja-new" data-ui="franja-form" novalidate>
+      <b>Proteger unas horas</b>
+      <div class="rd-franja-fields">
+        <label>Día<select name="date">${days}</select></label>
+        <label>Desde<select name="start">${quarterOptions('10:00')}</select></label>
+        <label>Hasta<select name="end">${quarterOptions('12:00')}</select></label>
+      </div>
+      <label class="rd-franja-name">Nombre <small>(opcional)</small><input name="name" maxlength="40" placeholder="Franja protegida" autocomplete="off"></label>
+      <button type="submit" class="rd-action rd-action-main"><b>Proteger</b><small>Una sola aula para toda la franja, mejor de grupo 5</small></button>
+      <p class="rd-franja-notice" data-franja-notice hidden></p>
+    </form>`;
+  }
+  function paintFranjaNotice(wrap) {
+    const notice = wrap?.querySelector('[data-franja-notice]');
+    if (!notice) return;
+    notice.hidden = !franjaNotice;
+    notice.textContent = franjaNotice?.text || '';
+    notice.classList.toggle('is-error', Boolean(franjaNotice && !franjaNotice.ok));
+  }
+  function renderFranjas(state, row) {
+    const card = el('reservationFranjas');
+    const listWrap = el('reservationFranjaList');
+    const formWrap = el('reservationFranjaForm');
+    if (!card || !listWrap || !formWrap) return;
+    const franjas = state.monitor?.franjas;
+    card.hidden = !Array.isArray(franjas);
+    if (card.hidden) return;
+    const offline = ageMs(row) > OFFLINE_MS || state.monitor?.online === false;
+    listWrap.innerHTML = franjas.length
+      ? franjas.map(f => franjaItemHtml(f, offline)).join('')
+      : '<p class="rd-franja-empty">Ninguna franja protegida.</p>';
+    listWrap.querySelectorAll('[data-command]').forEach(button => button.addEventListener('click', () => sendCommand(button)));
+    // El formulario se pinta una vez: repintarlo a cada lectura borraría lo que escribes.
+    if (!formWrap.dataset.ready) {
+      formWrap.innerHTML = franjaFormHtml();
+      formWrap.dataset.ready = '1';
+      formWrap.querySelector('[data-ui="franja-form"]').addEventListener('submit', event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = Object.fromEntries(new FormData(form));
+        if (data.end <= data.start) {
+          franjaNotice = { ok: false, text: 'La hora de fin tiene que ser posterior a la de inicio.' };
+          paintFranjaNotice(formWrap);
+          return;
+        }
+        franjaNotice = { ok: true, text: 'Enviando al monitor…' };
+        paintFranjaNotice(formWrap);
+        postCommand('franja_add', { date: data.date, start: data.start, end: data.end, name: String(data.name || '').trim() },
+          form.querySelector('button[type="submit"]'));
+      });
+    }
+    formWrap.querySelector('button[type="submit"]').disabled = offline;
+    paintFranjaNotice(formWrap);
+  }
+
   /* Laboratorio de cuotas: el monitor hace simulaciones type=check en Asimut
    * (nunca reserva) y publica aquí qué reglas ha confirmado. */
   const LAB_ICON = { yes: '✓', no: '✗', unknown: '?' };
@@ -1251,6 +1353,7 @@
     renderControls(state, row);
     renderQuotaLab(state, ageMs(row) > OFFLINE_MS || state.monitor?.online === false);
     renderTransition(state.transition);
+    renderFranjas(state, row);
     applyTab();
     renderTodayCard(row);
     applyViewMode(state, row);
@@ -1260,6 +1363,8 @@
     if (button.dataset.command === 'set_operating_mode') return { mode: button.dataset.mode };
     if (button.dataset.command === 'set_booking_type') return { type: button.dataset.type };
     if (button.dataset.migMode) return { mode: button.dataset.migMode };
+    if (button.dataset.franjaId) return { id: button.dataset.franjaId };
+    if (button.dataset.franjaDate) return { date: button.dataset.franjaDate };
     if (button.dataset.enabled != null) return { enabled: button.dataset.enabled === 'true' };
     return {};
   }
@@ -1326,6 +1431,13 @@
     // Una selección rechazada no debe quedarse pintada como si valiera.
     if (command.command === 'startup_select' && command.status !== 'applied') startupDraft = {};
     if (command.command === 'startup_select' && command.status === 'applied') return;
+    // Las franjas responden también dentro de su tarjeta (la línea de estado queda lejos).
+    if (String(command.command || '').startsWith('franja_')) {
+      franjaNotice = { ok: command.status === 'applied', text: command.result || (command.status === 'applied' ? 'Hecho' : 'El monitor no lo aplicó') };
+      const nameInput = el('reservationFranjaForm')?.querySelector('input[name="name"]');
+      if (command.command === 'franja_add' && command.status === 'applied' && nameInput) nameInput.value = '';
+      paintFranjaNotice(el('reservationFranjaForm'));
+    }
     setStatus(command.result || (command.status === 'applied' ? 'Orden aplicada' : 'La orden no se aplicó'), command.status === 'applied' ? 'ok' : 'error');
     window.setTimeout(() => refresh(false), 500);
   }

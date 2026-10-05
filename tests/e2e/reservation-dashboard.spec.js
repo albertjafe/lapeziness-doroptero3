@@ -1,6 +1,9 @@
 import fs from 'node:fs';
 import { expect, test } from '@playwright/test';
 
+// Fecha local (no UTC): entre las 00:00 y las 02:00 de Europa, UTC aún es «ayer».
+const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+
 const sampleRow = {
   user_id: '00000000-0000-4000-8000-000000000001',
   source: 'alberto',
@@ -9,7 +12,7 @@ const sampleRow = {
   heartbeat_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
   state: {
-    date: new Date().toISOString().slice(0, 10),
+    date: todayLocal(),
     reservations: [
       { event_id: 91, start: '10:00', end: '12:00', room: '113', type: 'Einzelbuchung', status: 'upcoming', locked: false, confirmed: false },
       { event_id: 92, start: '15:30', end: '17:00', room: '308', type: 'VIP', status: 'upcoming', locked: true, confirmed: false },
@@ -19,7 +22,7 @@ const sampleRow = {
     monitor: {
       online: true,
       paused: false,
-      target_date: new Date().toISOString().slice(0, 10),
+      target_date: todayLocal(),
       operating_mode: { code: '2', name: 'Grabación' },
       efficient: true,
       paod_state: 'PAOD off',
@@ -32,7 +35,7 @@ const sampleRow = {
       monitor_window: { start: '10:00', end: '20:30' },
       blind_periods: [], blinded_rooms: [], blinded_groups: [4], priority_rooms: [113, 308],
     },
-    scans: [{ group: 5, date: new Date().toISOString().slice(0, 10), mode: 'booking', observed_at: new Date().toISOString() }],
+    scans: [{ group: 5, date: todayLocal(), mode: 'booking', observed_at: new Date().toISOString() }],
     success_rate: '84%',
   },
 };
@@ -170,7 +173,7 @@ test('shows a failing monitor with its error and never mistakes missing data for
     const readAt = new Date(Date.now() - 20 * 60 * 1000).toISOString();
     Object.assign(window.__row.state, {
       last_read_at: readAt,
-      date: new Date().toISOString().slice(0, 10),
+      date: (d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)(new Date()),
       reservations: [{ event_id: 7, start: '10:00', end: '12:00', room: '30113', type: '', status: 'upcoming', locked: false, confirmed: false }],
     });
     window.__row.state.monitor.error.attempt = 2;
@@ -380,7 +383,7 @@ test('launches the quota lab from Ajustes and shows its conclusions', async ({ p
       { id: 'horizonte', title: 'El tramo gratis va del cuarto actual a +2 h', verdict: 'yes', text: 'Ahora es gratis hasta las 11:00.' },
       { id: 'sz_lineal', title: 'SZ: al cruzar 10:00/15:00 solo pagas lo de dentro', verdict: 'unknown', text: 'Hace falta SZ libre.' },
     ],
-    tests: [{ id: 'SZ_EXACTA', day: new Date().toISOString().slice(0, 10), ini: '10:00', fin: '11:00', min: 60, sz: false, rf: false, codes: [] }],
+    tests: [{ id: 'SZ_EXACTA', day: todayLocal(), ini: '10:00', fin: '11:00', min: 60, sz: false, rf: false, codes: [] }],
   };
   await mountDashboard(page, running);
   const lab = page.locator('#reservationQuotaLab');
@@ -679,4 +682,58 @@ test('una consulta colgada no deja la pantalla parada ni culpa al monitor', asyn
   await page.clock.runFor(70 * 1000);
   await expect(page.locator('#reservationHero')).not.toContainText('Pantalla sin actualizar');
   await expect(page.locator('#reservationHero')).not.toContainText('sin señal');
+});
+
+test('franjas protegidas: lista, quitar, saltar un día y proteger unas horas nuevas', async ({ page }) => {
+  // Monitor antiguo (sin `franjas`): la tarjeta no aparece.
+  await mountDashboard(page, sampleRow);
+  await expect(page.locator('#reservationBookingList')).toContainText('Aula 308');
+  await expect(page.locator('#reservationFranjas')).toBeHidden();
+
+  const iso = days => { const d = new Date(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const row = structuredClone(sampleRow);
+  row.source = 'chen';
+  row.state.monitor.franjas = [
+    { id: 'p-x', kind: 'puntual', date: iso(1), start: '10:00', end: '12:30', name: 'Ensayo', status: 'lista: aula 302', paused: false },
+    { id: 'w0-14:30', kind: 'semanal', date: iso(3), start: '14:30', end: '16:00', name: 'Clase de Chen', status: 'se asegura desde el …', paused: false },
+    { id: 'p-y', kind: 'puntual', date: iso(2), start: '09:00', end: '10:00', name: 'Franja protegida', status: 'en tus manos: no la toco este día', paused: true },
+  ];
+  await mountDashboard(page, row);
+  await page.evaluate(() => { window.__rows = [window.__row]; localStorage.setItem('reservationDashboardSource', 'chen'); });
+  const card = page.locator('#reservationFranjas');
+  await expect(card).toBeVisible();
+  const items = card.locator('.rd-franja');
+  await expect(items).toHaveCount(3);
+  await expect(items.nth(0)).toContainText('Ensayo');
+  await expect(items.nth(0)).toContainText('Mañana · 10:00–12:30');
+  await expect(items.nth(0)).toContainText('Lista: aula 302');
+  await expect(items.nth(1)).toContainText('cada');
+  await expect(items.nth(2)).toHaveClass(/is-paused/);
+
+  const writes = () => page.evaluate(() => window.__dashboardWrites);
+  await items.nth(0).getByRole('button', { name: 'Quitar' }).click();
+  await expect.poll(async () => (await writes()).at(-1)).toMatchObject({ command: 'franja_remove', payload: { id: 'p-x' } });
+  await items.nth(1).getByRole('button', { name: 'No proteger este día' }).click();
+  await expect.poll(async () => (await writes()).at(-1)).toMatchObject({ command: 'franja_skip', payload: { date: iso(3) } });
+  await items.nth(2).getByRole('button', { name: 'Reanudar este día' }).click();
+  await expect.poll(async () => (await writes()).at(-1)).toMatchObject({ command: 'franja_resume', payload: { date: iso(2) } });
+
+  // Formulario: fin antes que inicio no se envía.
+  const form = card.locator('[data-ui="franja-form"]');
+  await form.locator('select[name="start"]').selectOption('13:00');
+  await form.locator('select[name="end"]').selectOption('12:00');
+  const before = (await writes()).length;
+  await form.getByRole('button', { name: /Proteger/ }).click();
+  await expect(card.locator('[data-franja-notice]')).toContainText('posterior');
+  expect((await writes()).length).toBe(before);
+  // Bien: mañana 13:00–15:30 con nombre.
+  await form.locator('select[name="end"]').selectOption('15:30');
+  await form.locator('input[name="name"]').fill('Clase con María');
+  await form.getByRole('button', { name: /Proteger/ }).click();
+  await expect.poll(async () => (await writes()).at(-1)).toMatchObject({
+    command: 'franja_add', payload: { date: iso(1), start: '13:00', end: '15:30', name: 'Clase con María' },
+  });
+  // Lo escrito sobrevive a los repintados de cada lectura.
+  await page.evaluate(() => window.ReservationDashboard.refresh(false));
+  await expect(form.locator('input[name="name"]')).toHaveValue('Clase con María');
 });

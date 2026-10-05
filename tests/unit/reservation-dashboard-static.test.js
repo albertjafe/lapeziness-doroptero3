@@ -108,4 +108,18 @@ describe('reservation monitor dashboard', () => {
     const previous = fs.readFileSync('supabase/migrations/20260930090000_reservation_monitor_edit_commands.sql', 'utf8');
     for (const [, command] of previous.matchAll(/'([a-z_]+)'/g)) expect(migration).toContain(`'${command}'`);
   });
+
+  it('allows the protected-slot (franja) commands in every layer and keeps earlier commands', () => {
+    const migration = fs.readFileSync('supabase/migrations/20261006120000_reservation_monitor_franja_commands.sql', 'utf8');
+    for (const command of ['franja_add', 'franja_remove', 'franja_skip', 'franja_resume']) {
+      expect(migration).toContain(`'${command}'`);
+      expect(edge).toContain(`"${command}"`);
+      expect(dashboard).toContain(command);
+    }
+    const previous = fs.readFileSync('supabase/migrations/20261001120000_reservation_monitor_booking_type.sql', 'utf8');
+    for (const [, command] of previous.matchAll(/'([a-z_]+)'/g)) expect(migration).toContain(`'${command}'`);
+    // Un monitor antiguo no publica franjas: null, y la app oculta la tarjeta.
+    expect(edge).toContain('franjas: Array.isArray(monitorRaw.franjas)');
+    expect(dashboard).toContain('card.hidden = !Array.isArray(franjas);');
+  });
 });

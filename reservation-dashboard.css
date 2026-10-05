@@ -470,3 +470,32 @@ html.platform-windows .rd-quick-overlay { z-index: 1150; }
 .aulas-screen .rd-segment button { min-height: 40px; padding: 0 8px; border: 0; border-radius: 10px; background: none; color: var(--text2); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }
 .aulas-screen .rd-segment button.active { background: var(--bg2); color: var(--accent); box-shadow: 0 1px 3px rgba(0, 0, 0, .1); cursor: default; opacity: 1; }
 .aulas-screen .rd-segment button:disabled:not(.active) { opacity: .45; cursor: default; }
+
+/* ── Franjas protegidas (06-10-2026) ─────────────────────────── */
+.aulas-screen .rd-franjas { margin-top: 12px; }
+.aulas-screen .rd-franja-list { display: grid; gap: 8px; padding: 4px 12px 10px; }
+.aulas-screen .rd-franja { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); }
+.aulas-screen .rd-franja.is-paused { border-style: dashed; opacity: .82; }
+.aulas-screen .rd-franja-copy { display: grid; gap: 2px; min-width: 0; flex: 1 1 220px; }
+.aulas-screen .rd-franja-copy b { font-size: 15.5px; }
+.aulas-screen .rd-franja-copy span { color: var(--text2); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.aulas-screen .rd-franja-copy small { color: var(--text3); font-size: 12.5px; }
+.aulas-screen .rd-franja.is-paused .rd-franja-copy small { color: var(--rd-warn); }
+.aulas-screen .rd-franja-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.aulas-screen .rd-franja-actions .rd-action { min-height: 36px; padding: 6px 12px; font-size: 13.5px; }
+.aulas-screen .rd-franja-empty { margin: 2px 4px 4px; color: var(--text3); font-size: 13.5px; }
+.aulas-screen .rd-franja-new { display: grid; gap: 10px; margin: 0 12px 14px; padding: 12px; border-radius: 12px; background: var(--bg3); }
+.aulas-screen .rd-franja-new > b { font-size: 14px; }
+.aulas-screen .rd-franja-fields { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 8px; }
+.aulas-screen .rd-franja-new label { display: grid; gap: 4px; color: var(--text3); font-size: 12.5px; font-weight: 600; min-width: 0; }
+.aulas-screen .rd-franja-new :is(select, input) { width: 100%; min-width: 0; min-height: 40px; padding: 6px 10px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg2); color: var(--text); font: inherit; font-size: 15px; font-weight: 500; }
+.aulas-screen .rd-franja-name small { font-weight: 400; }
+.aulas-screen .rd-franja-new .rd-action-main { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 52px; }
+.aulas-screen .rd-franja-notice { margin: 0; font-size: 13.5px; color: var(--rd-ok); }
+.aulas-screen .rd-franja-notice.is-error { color: var(--rd-bad); }
+@media (max-width: 420px) {
+  .aulas-screen .rd-franja-fields { grid-template-columns: 1fr 1fr; }
+  .aulas-screen .rd-franja-fields label:first-child { grid-column: 1 / -1; }
+}
