@@ -16,6 +16,15 @@ html.mv2-on .mv2-card {
   box-shadow: 0 1px 2px rgba(0, 0, 0, .04); color: var(--text);
 }
 html.mv2-on .mv2-lbl { display: block; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text3); }
+/* Icono de color por bloque de Hoy (MobileV2.icon): se distinguen de un vistazo. */
+html.mv2-on .mv2-ico { display: inline-grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 7px; background: var(--c, var(--accent)); color: #fff; }
+html.mv2-on .mv2-ico svg { width: 16px; height: 16px; }
+html.mv2-on .mv2-lbl.has-ico { display: flex; align-items: center; gap: 8px; }
+html.mv2-on .mv2-tile.has-ico { grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; align-items: center; }
+html.mv2-on .mv2-tile.has-ico .mv2-ico { grid-row: 1 / span 2; width: 30px; height: 30px; border-radius: 9px; }
+html.mv2-on .mv2-tile.has-ico .mv2-ico svg { width: 18px; height: 18px; }
+html.mv2-tablet .mv2-ico { width: 26px; height: 26px; }
+html.mv2-tablet .mv2-tile.has-ico .mv2-ico { width: 34px; height: 34px; border-radius: 10px; }
 html.mv2-on .mv2-muted { color: var(--text3); font-size: 13px; margin: 6px 0 0; line-height: 1.45; }
 html.mv2-on .mv2-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 html.mv2-on .mv2-pill { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--bg3); color: var(--text2); font-weight: 600; white-space: nowrap; }

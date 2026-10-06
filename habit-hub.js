@@ -161,7 +161,7 @@
           '<button type="button" class="hh-up-lapse" onclick="HabitMaintenance.openLapse(\'' + jsArg(s.familyId) + '\')">Caída</button></div>').join('') + '</div>';
       }
     }
-    return '<div class="mv2-card mv2-habits"><div class="mv2-line"><span class="mv2-lbl">Hábitos</span><button type="button" class="mv2-link" onclick="openHabitos()">Ver todos ›</button></div>' + body + '</div>';
+    return '<div class="mv2-card mv2-habits"><div class="mv2-line"><span class="mv2-lbl has-ico">' + (root.MobileV2 && root.MobileV2.icon ? root.MobileV2.icon('habitos') : '') + 'Hábitos</span><button type="button" class="mv2-link" onclick="openHabitos()">Ver todos ›</button></div>' + body + '</div>';
   }
 
   // `sub` sustituye la línea pequeña (por defecto: el hábito y si va con retraso).

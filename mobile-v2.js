@@ -159,13 +159,13 @@
     const plan = planToday(data);
     if (plan) {
       const total = plan.items.reduce((s, it) => s + (Number(it.minutes) || 0), 0);
-      return '<div class="mv2-line"><span class="mv2-lbl">Para hoy · plan del Profesor</span><span class="mv2-pill">' + fmtMin(total) + '</span></div>' +
+      return '<div class="mv2-line"><span class="mv2-lbl has-ico">' + icon('parahoy') + 'Para hoy · plan del Profesor</span><span class="mv2-pill">' + fmtMin(total) + '</span></div>' +
         plan.items.map(it => '<button type="button" class="mv2-plan" onclick="MobileV2.studyNow(\'' + jsArg(it.obraId || '') + '\',\'' + jsArg(it.movId || '') + '\')">' +
           '<span class="mv2-play" aria-hidden="true">▶</span><span class="mv2-plan-copy"><b>' + esc(it.label) + '</b><small>' + esc([fmtMin(it.minutes), it.purpose].filter(Boolean).join(' · ')) + (it.obraId ? '' : ' · sin obra enlazada') + '</small></span></button>').join('') +
         '<div class="mv2-plan-actions"><button type="button" onclick="MobileV2.openPaste()">Pegar otro plan</button><button type="button" onclick="MobileV2.clearPlan()">Quitar plan</button></div>';
     }
     const rows = urgentRows(data);
-    const head = '<div class="mv2-line"><span class="mv2-lbl">Para hoy · lo más urgente</span><button type="button" class="mv2-link" onclick="MobileV2.openPaste()">Pegar plan</button></div>';
+    const head = '<div class="mv2-line"><span class="mv2-lbl has-ico">' + icon('parahoy') + 'Para hoy · lo más urgente</span><button type="button" class="mv2-link" onclick="MobileV2.openPaste()">Pegar plan</button></div>';
     if (rows == null) return head + '<p class="mv2-muted">Calculando prioridades…</p>';
     if (!rows.length) return head + '<p class="mv2-muted">Nada urgente: ningún evento ni proyecto próximo tiene obras enlazadas. Estudia lo que prefieras.</p>';
     return head + rows.map(r => '<button type="button" class="mv2-plan" onclick="MobileV2.studyNow(\'' + jsArg(r.obraId) + '\',\'' + jsArg(r.movId || '') + '\')">' +
@@ -200,8 +200,26 @@
     return text;
   }
 
-  function tile(label, sub, action) {
-    return '<button type="button" class="mv2-tile" onclick="' + action + '"><b>' + label + '</b><small>' + sub + '</small></button>';
+  /* Iconos de Hoy: un cuadrado de color por bloque, para distinguirlos de un
+     vistazo. Aulas usa el mismo edificio que la barra inferior. */
+  const ICONS = {
+    aulas: ['#2f8f83', '<path d="M4 20V6.5L12 3l8 3.5V20"/><path d="M9 20v-5.5h6V20"/><path d="M8 9.5h1.5M14.5 9.5H16"/>'],
+    parahoy: ['#3f7fc0', '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".6"/>'],
+    habitos: ['#4f9d69', '<circle cx="12" cy="12" r="8.5"/><path d="M8.2 12.3l2.6 2.6 5-5.4"/>'],
+    aleman: ['#d08a2c', '<path d="M5 6.5h14v9H11l-4 3v-3H5z"/><path d="M9 11h6"/>'],
+    premios: ['#c39a1e', '<path d="M12 4l2.3 4.8 5.2.7-3.8 3.6.9 5.2L12 15.8 7.4 18.3l.9-5.2-3.8-3.6 5.2-.7z"/>'],
+    oportunidades: ['#c2566e', '<path d="M6.5 21V4"/><path d="M6.5 4.5h10.5l-2 3.7 2 3.8H6.5"/>'],
+    historial: ['#7a6cc4', '<path d="M4 20h16M7 16.5V11M12 16.5V6.5M17 16.5v-4"/>'],
+    profesor: ['#a0704a', '<path d="M4 19.5V6.8A2.8 2.8 0 0 1 6.8 4H12v15.5H6.8A2.8 2.8 0 0 0 4 22"/><path d="M20 19.5V6.8A2.8 2.8 0 0 0 17.2 4H12v15.5h5.2A2.8 2.8 0 0 1 20 22"/>'],
+  };
+  function icon(name) {
+    const it = ICONS[name];
+    if (!it) return '';
+    return '<span class="mv2-ico" style="--c:' + it[0] + '" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + it[1] + '</svg></span>';
+  }
+
+  function tile(label, sub, action, ico) {
+    return '<button type="button" class="mv2-tile' + (ico ? ' has-ico' : '') + '" onclick="' + action + '">' + icon(ico) + '<b>' + label + '</b><small>' + sub + '</small></button>';
   }
 
   function renderHoy() {
@@ -235,18 +253,18 @@
       (root.StudyJourney ? root.StudyJourney.hoyPromptHtml() : '') +
       // Justo debajo de las horas, tus reservas de hoy: solo la línea del día. Tocar una franja abre su editor aquí mismo.
       '<section class="mv2-card mv2-aulas' + (roomsSummary ? ' is-' + roomsSummary.kind : '') + '">' +
-        '<button type="button" class="mv2-aulas-head" onclick="showView(\'aulas\')"><span class="mv2-lbl">Aulas</span><b>' + esc(aulas) + '</b><span class="mv2-chev" aria-hidden="true">›</span></button>' +
+        '<button type="button" class="mv2-aulas-head" onclick="showView(\'aulas\')"><span class="mv2-lbl has-ico">' + icon('aulas') + 'Aulas</span><b>' + esc(aulas) + '</b><span class="mv2-chev" aria-hidden="true">›</span></button>' +
         '<div class="aulas-screen rd-embed" id="mv2DayBar"></div></section>' +
       '<div class="mv2-card mv2-parahoy">' + paraHoyHtml(data) + '</div></div><div class="mv2-col mv2-col-side">' +
       // Hub: hábitos (día del reto, hoy, acciones y mantenimiento) y accesos a todo lo demás.
       (root.HabitHub ? root.HabitHub.renderHoyCard() : '') +
       '<nav class="mv2-tiles" aria-label="Accesos">' +
-        tile('Alemán', 'Tarjetas', "showView('deutsch')") +
-        tile('Premios', 'Hucha y logros', 'openPremios()') +
-        tile('Oportunidades', 'Concursos, festivales y becas', "showView('concursos')") +
-        tile('Historial', 'Estadísticas', "openSessionArchive('history')") +
+        tile('Alemán', 'Tarjetas', "showView('deutsch')", 'aleman') +
+        tile('Premios', 'Hucha y logros', 'openPremios()', 'premios') +
+        tile('Oportunidades', 'Concursos, festivales y becas', "showView('concursos')", 'oportunidades') +
+        tile('Historial', 'Estadísticas', "openSessionArchive('history')", 'historial') +
         // En el móvil Aulas ocupa el sitio de Profesor en la barra inferior; en el iPad está en la barra.
-        (phoneWidth() ? tile('Profesor', 'Plan de hoy', "showView('profesor')") : '') +
+        (phoneWidth() ? tile('Profesor', 'Plan de hoy', "showView('profesor')", 'profesor') : '') +
       '</nav>' +
       '<button type="button" class="mv2-add" onclick="MobileV2.openAdd()">＋ Añadir estudio, nota o tarea</button></div>';
     // Mismo contenido → no se toca el DOM (evita parpadeos, también a mitad del gesto lateral).
@@ -643,5 +661,5 @@
   }
   if (doc) install();
 
-  return { active, renderCal, openDay, editDay, calMove, calLayer, calClassic, segmentsOf, level, closeTools, design, setDesign, planToday, parsePlan, parseMinutes, matchUnit, savePlan, clearPlan, renderHoy, studyNow, openAdd, addStudy, addNote, toggleRooms, openPaste, pasteFromClipboard, confirmPaste, closeSheet, sentence };
+  return { active, icon, renderCal, openDay, editDay, calMove, calLayer, calClassic, segmentsOf, level, closeTools, design, setDesign, planToday, parsePlan, parseMinutes, matchUnit, savePlan, clearPlan, renderHoy, studyNow, openAdd, addStudy, addNote, toggleRooms, openPaste, pasteFromClipboard, confirmPaste, closeSheet, sentence };
 });
