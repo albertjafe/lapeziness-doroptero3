@@ -737,3 +737,48 @@ test('franjas protegidas: lista, quitar, saltar un día y proteger unas horas nu
   await page.evaluate(() => window.ReservationDashboard.refresh(false));
   await expect(form.locator('input[name="name"]')).toHaveValue('Clase con María');
 });
+
+test('salas premium: tabla día × sala, filtro por horas y correo de reserva ya escrito', async ({ page }) => {
+  await mountDashboard(page, sampleRow);
+  await expect(page.locator('#reservationBookingList')).toContainText('Aula 308');
+  await expect(page.locator('#reservationPremium')).toBeHidden();
+
+  const iso = days => { const d = new Date(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const row = structuredClone(sampleRow);
+  row.state.premium = {
+    updated_at: new Date().toISOString(), horizon_days: 60,
+    rooms: [
+      { id: 41, name: '10.114 (Köln)', short: '10.114', window: '10:00–21:00', email_to: 'sala@example.org', subject: 'Reservierung 10.114', templates: ['Hallo,\nam {fecha} von {h1} bis {h2} Uhr.'] },
+      { id: 17, name: 'Kammermusiksaal (Köln)', short: 'Kammermusik', window: '10:00–21:00', email_to: 'sala@example.org', subject: 'Reservierung Kammermusiksaal', templates: ['{fecha} {h1}-{h2}'] },
+    ],
+    free: [
+      { room: 41, date: iso(2), start: '10:30', end: '15:00' },
+      { room: 41, date: iso(2), start: '17:00', end: '18:00' },
+      { room: 17, date: iso(2), start: '12:00', end: '13:30' },
+      { room: 17, date: iso(5), start: '10:00', end: '11:00' },
+    ],
+  };
+  await mountDashboard(page, row);
+  const card = page.locator('#reservationPremium');
+  await expect(card).toBeVisible();
+  await expect(card.locator('th[scope="col"]')).toHaveText(['Día', '10.114', 'Kammermusik']);
+  // Por defecto ≥ 2 h: solo el día +2 en la 10.114 (4,5 h); la Kammermusik (1,5 h) y el día +5 no.
+  await expect(card.locator('tr th[scope="row"]')).toHaveCount(1);
+  await expect(card.locator('.rd-premium-cell')).toHaveCount(1);
+  await expect(card.locator('.rd-premium-cell')).toHaveText('4,5 h');
+  await card.getByRole('radio', { name: '≥ 1 h' }).click();
+  await expect(card.locator('tr th[scope="row"]')).toHaveCount(2);
+  await expect(card.locator('.rd-premium-cell').first()).toContainText('×2');
+  expect(await page.evaluate(() => localStorage.getItem('reservationPremiumMin'))).toBe('60');
+  // Tocar la celda: huecos del día y correo con fecha alemana y horas en punto.
+  await card.locator('.rd-premium-cell').first().click();
+  const detail = card.locator('.rd-premium-detail');
+  await expect(detail).toContainText('10:30–15:00');
+  await expect(detail).toContainText('17:00–18:00');
+  const href = await detail.locator('a').first().getAttribute('href');
+  const [y, m, d] = iso(2).split('-').map(Number);
+  const de = new Date(y, m - 1, d).toLocaleDateString('de-DE', { weekday: 'long' });
+  expect(href.startsWith('mailto:sala@example.org?subject=Reservierung%2010.114&body=')).toBe(true);
+  expect(decodeURIComponent(href.split('&body=')[1])).toBe(`Hallo,\nam ${de}, den ${d}. ${new Date(y, m - 1, d).toLocaleDateString('de-DE', { month: 'long' })} von 11:00 bis 15:00 Uhr.`);
+  await expect(detail.locator('a').first()).toContainText('11:00–15:00');
+});

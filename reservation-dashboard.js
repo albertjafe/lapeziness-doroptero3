@@ -863,6 +863,105 @@
     paintFranjaNotice(formWrap);
   }
 
+  /* Salas premium (07-10-2026): 10.114, Kammermusiksaal y Konzertsaal Aachen se
+   * reservan por correo. El monitor publica cada hora sus huecos de 1 h o más
+   * en los próximos 60 días; aquí, tabla día × sala con el hueco más largo y,
+   * al tocar, los huecos del día y el correo de reserva ya escrito. */
+  const PREMIUM_MIN_KEY = 'reservationPremiumMin';
+  const PREMIUM_MINS = [60, 120, 240];
+  let premiumPick = null; // { room, date }
+  const DE_DAYS = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+  const DE_MONTHS = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+  function premiumMin() {
+    try { const v = Number(localStorage.getItem(PREMIUM_MIN_KEY)); return PREMIUM_MINS.includes(v) ? v : 120; } catch (e) { return 120; }
+  }
+  function hoursLabel(minutes) {
+    const h = minutes / 60;
+    return (Number.isInteger(h) ? String(h) : h.toFixed(1).replace('.', ',')) + ' h';
+  }
+  function slotMinutes(slot) { return toMinutes(slot.end) - toMinutes(slot.start); }
+  function germanDate(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return `${DE_DAYS[date.getDay()]}, den ${d}. ${DE_MONTHS[m - 1]}`;
+  }
+  // Como en Telegram: horas en punto dentro del hueco (si caben 1 h o más).
+  function emailHours(slot) {
+    const a = toMinutes(slot.start), b = toMinutes(slot.end);
+    const ra = Math.ceil(a / 60) * 60, rb = Math.floor(b / 60) * 60;
+    const [s, e] = rb - ra >= 60 ? [ra, rb] : [a, b];
+    return [`${pad(Math.floor(s / 60))}:${pad(s % 60)}`, `${pad(Math.floor(e / 60))}:${pad(e % 60)}`];
+  }
+  function premiumMailto(room, slot) {
+    if (!room.email_to || !room.templates?.length) return '';
+    const [h1, h2] = emailHours(slot);
+    const template = room.templates[Math.floor(Math.random() * room.templates.length)];
+    const body = template.replaceAll('{fecha}', germanDate(slot.date)).replaceAll('{h1}', h1).replaceAll('{h2}', h2);
+    return `mailto:${room.email_to}?subject=${encodeURIComponent(room.subject || '')}&body=${encodeURIComponent(body)}`;
+  }
+  function premiumTone(minutes) { return minutes >= 240 ? 3 : minutes >= 120 ? 2 : minutes >= 60 ? 1 : 0; }
+  function renderPremium(state) {
+    const card = el('reservationPremium');
+    const body = el('reservationPremiumBody');
+    if (!card || !body) return;
+    const premium = state.premium;
+    card.hidden = !premium || !Array.isArray(premium.rooms) || !premium.rooms.length;
+    if (card.hidden) return;
+    const meta = el('reservationPremiumMeta');
+    if (meta) meta.textContent = premium.updated_at ? `por correo · act. ${formatClock(premium.updated_at)}` : 'se reservan por correo';
+    const min = premiumMin();
+    const rooms = premium.rooms;
+    const byDay = new Map();
+    for (const slot of premium.free || []) {
+      if (slotMinutes(slot) < min) continue;
+      if (!byDay.has(slot.date)) byDay.set(slot.date, new Map());
+      const cell = byDay.get(slot.date);
+      if (!cell.has(slot.room)) cell.set(slot.room, []);
+      cell.get(slot.room).push(slot);
+    }
+    const days = [...byDay.keys()].sort();
+    if (premiumPick && !byDay.get(premiumPick.date)?.has(premiumPick.room)) premiumPick = null;
+    const chips = `<div class="rd-segment rd-premium-min" role="radiogroup" aria-label="Duración mínima">${PREMIUM_MINS.map(v => `
+      <button type="button" role="radio" aria-checked="${v === min}" class="${v === min ? 'active' : ''}" data-premium-min="${v}">≥ ${hoursLabel(v)}</button>`).join('')}</div>`;
+    const head = `<tr><th scope="col">Día</th>${rooms.map(r => `<th scope="col" title="${escapeHtml(r.name || '')}">${escapeHtml(r.short || r.name || '')}</th>`).join('')}</tr>`;
+    const rows = days.map(day => {
+      const cells = rooms.map(r => {
+        const slots = byDay.get(day).get(r.id) || [];
+        if (!slots.length) return '<td class="is-empty">—</td>';
+        const best = Math.max(...slots.map(slotMinutes));
+        const picked = premiumPick && premiumPick.date === day && premiumPick.room === r.id;
+        return `<td><button type="button" class="rd-premium-cell t${premiumTone(best)} ${picked ? 'is-picked' : ''}" data-premium-day="${day}" data-premium-room="${r.id}"
+          aria-label="${escapeHtml(`${r.short || r.name}, ${formatDate(day)}: hasta ${hoursLabel(best)} seguidas`)}">${hoursLabel(best)}${slots.length > 1 ? `<small>×${slots.length}</small>` : ''}</button></td>`;
+      }).join('');
+      return `<tr><th scope="row">${escapeHtml(franjaDayLabel(day))}</th>${cells}</tr>`;
+    }).join('');
+    let detail = '';
+    if (premiumPick) {
+      const room = rooms.find(r => r.id === premiumPick.room);
+      const slots = byDay.get(premiumPick.date).get(premiumPick.room);
+      detail = `<div class="rd-premium-detail"><b>${escapeHtml(room.name || room.short)} · ${escapeHtml(formatDate(premiumPick.date))}</b>
+        ${slots.map(slot => {
+          const link = premiumMailto(room, slot);
+          const [h1, h2] = emailHours(slot);
+          return `<div class="rd-premium-slot"><span>${slot.start}–${slot.end} <small>(${hoursLabel(slotMinutes(slot))})</small></span>
+            ${link ? `<a class="rd-action" href="${escapeHtml(link)}"><b>Escribir correo</b><small>${h1}–${h2}</small></a>` : ''}</div>`;
+        }).join('')}</div>`;
+    }
+    body.innerHTML = chips + (days.length
+      ? `<div class="rd-premium-scroll"><table class="rd-premium-table">${head}${rows}</table></div>${detail}`
+      : `<p class="rd-franja-empty">Ningún hueco de ${hoursLabel(min)} o más en los próximos ${premium.horizon_days || 60} días.</p>`);
+    body.querySelectorAll('[data-premium-min]').forEach(button => button.addEventListener('click', () => {
+      try { localStorage.setItem(PREMIUM_MIN_KEY, button.dataset.premiumMin); } catch (e) {}
+      renderPremium(state);
+    }));
+    body.querySelectorAll('[data-premium-day]').forEach(button => button.addEventListener('click', () => {
+      const pick = { date: button.dataset.premiumDay, room: Number(button.dataset.premiumRoom) };
+      premiumPick = premiumPick && premiumPick.date === pick.date && premiumPick.room === pick.room ? null : pick;
+      renderPremium(state);
+      if (premiumPick) body.querySelector('.rd-premium-detail')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }));
+  }
+
   /* Laboratorio de cuotas: el monitor hace simulaciones type=check en Asimut
    * (nunca reserva) y publica aquí qué reglas ha confirmado. */
   const LAB_ICON = { yes: '✓', no: '✗', unknown: '?' };
@@ -1354,6 +1453,7 @@
     renderQuotaLab(state, ageMs(row) > OFFLINE_MS || state.monitor?.online === false);
     renderTransition(state.transition);
     renderFranjas(state, row);
+    renderPremium(state);
     applyTab();
     renderTodayCard(row);
     applyViewMode(state, row);

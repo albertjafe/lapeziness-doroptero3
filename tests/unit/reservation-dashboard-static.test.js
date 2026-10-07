@@ -122,4 +122,11 @@ describe('reservation monitor dashboard', () => {
     expect(edge).toContain('franjas: Array.isArray(monitorRaw.franjas)');
     expect(dashboard).toContain('card.hidden = !Array.isArray(franjas);');
   });
+
+  it('passes the premium rooms (email-booked halls) through the Edge Function to the dashboard', () => {
+    expect(edge).toContain('premium: cleanPremium(raw.premium),');
+    expect(edge).toContain('function cleanMultiline(');
+    expect(dashboard).toContain('renderPremium(state);');
+    expect(dashboard).toContain("card.hidden = !premium || !Array.isArray(premium.rooms) || !premium.rooms.length;");
+  });
 });

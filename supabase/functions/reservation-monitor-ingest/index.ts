@@ -199,6 +199,42 @@ function cleanFranja(value: unknown) {
   };
 }
 
+// Salas premium (07-10-2026): huecos libres de 1 h o más en 60 días y la
+// plantilla del correo de reserva de cada sala (texto con saltos de línea).
+function cleanMultiline(value: unknown, max = 1200): string | null {
+  if (typeof value !== "string") return null;
+  const clean = value.replace(/\r\n?/g, "\n").replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, " ").trim().slice(0, max);
+  return clean || null;
+}
+
+function cleanPremium(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const rooms = Array.isArray(raw.rooms) ? raw.rooms.slice(0, 6).map((item) => {
+    const r = item && typeof item === "object" ? item as Record<string, unknown> : {};
+    const email = cleanText(r.email_to, 120);
+    return {
+      id: cleanInteger(r.id, 1, 99_999),
+      name: cleanText(r.name, 60),
+      short: cleanText(r.short, 24),
+      window: cleanText(r.window, 20),
+      email_to: email && /^[^\s@]+@[^\s@]+$/.test(email) ? email : null,
+      subject: cleanText(r.subject, 120),
+      templates: Array.isArray(r.templates) ? r.templates.slice(0, 4).map((t) => cleanMultiline(t)).filter(Boolean) : [],
+    };
+  }).filter((r) => r.id) : [];
+  const free = Array.isArray(raw.free) ? raw.free.slice(0, 600).map((item) => {
+    const f = item && typeof item === "object" ? item as Record<string, unknown> : {};
+    return { room: cleanInteger(f.room, 1, 99_999), date: cleanDate(f.date), start: cleanTime(f.start), end: cleanTime(f.end) };
+  }).filter((f) => f.room && f.date && f.start && f.end) : [];
+  return {
+    updated_at: cleanInstant(raw.updated_at),
+    horizon_days: cleanInteger(raw.horizon_days, 1, 120),
+    rooms,
+    free,
+  };
+}
+
 function cleanQuota(value: unknown) {
   const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
   return {
@@ -295,6 +331,7 @@ function cleanState(value: unknown) {
     },
     scans,
     success_rate: cleanText(raw.success_rate, 12) || "100%",
+    premium: cleanPremium(raw.premium),
   };
 }
 

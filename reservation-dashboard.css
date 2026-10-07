@@ -499,3 +499,25 @@ html.platform-windows .rd-quick-overlay { z-index: 1150; }
   .aulas-screen .rd-franja-fields { grid-template-columns: 1fr 1fr; }
   .aulas-screen .rd-franja-fields label:first-child { grid-column: 1 / -1; }
 }
+
+/* ── Salas premium (07-10-2026) ──────────────────────────────── */
+.aulas-screen .rd-premium { margin-top: 12px; }
+.aulas-screen .rd-premium-min { margin: 2px 12px 10px; }
+.aulas-screen .rd-premium-scroll { max-height: 380px; overflow: auto; margin: 0 12px; border-radius: 12px; border: 1px solid var(--border); -webkit-overflow-scrolling: touch; }
+.aulas-screen .rd-premium-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.aulas-screen .rd-premium-table th, .aulas-screen .rd-premium-table td { padding: 4px 6px; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+.aulas-screen .rd-premium-table thead th, .aulas-screen .rd-premium-table tr:first-child th { position: sticky; top: 0; z-index: 1; background: var(--bg3); color: var(--text2); font-size: 12.5px; font-weight: 700; }
+.aulas-screen .rd-premium-table th[scope="row"] { text-align: left; color: var(--text2); font-weight: 600; background: var(--bg2); }
+.aulas-screen .rd-premium-table td.is-empty { color: var(--text3); }
+.aulas-screen .rd-premium-cell { display: inline-flex; align-items: baseline; justify-content: center; gap: 3px; min-width: 64px; min-height: 34px; padding: 4px 8px;
+  border-radius: 9px; border: 1px solid transparent; font: inherit; font-weight: 650; cursor: pointer; color: var(--text); background: var(--bg3); }
+.aulas-screen .rd-premium-cell small { font-size: 11px; font-weight: 500; color: var(--text3); }
+.aulas-screen .rd-premium-cell.t1 { background: color-mix(in srgb, var(--rd-ok) 12%, var(--bg2)); }
+.aulas-screen .rd-premium-cell.t2 { background: color-mix(in srgb, var(--rd-ok) 26%, var(--bg2)); }
+.aulas-screen .rd-premium-cell.t3 { background: color-mix(in srgb, var(--rd-ok) 46%, var(--bg2)); color: color-mix(in srgb, var(--rd-ok) 30%, #08150d); }
+.aulas-screen .rd-premium-cell.is-picked { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.aulas-screen .rd-premium-detail { display: grid; gap: 8px; margin: 10px 12px 14px; padding: 12px; border-radius: 12px; background: var(--bg3); }
+.aulas-screen .rd-premium-slot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.aulas-screen .rd-premium-slot small { color: var(--text3); }
+.aulas-screen .rd-premium-slot .rd-action { display: inline-flex; flex-direction: column; align-items: flex-start; min-height: 40px; padding: 6px 12px; text-decoration: none; color: inherit; }
+.aulas-screen .rd-premium .rd-franja-empty { margin: 4px 16px 14px; }
