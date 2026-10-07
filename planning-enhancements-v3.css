@@ -243,3 +243,49 @@
 
 .pase-liquid-meter,
 .pase-liquid-meter .pase-liquid-input { touch-action: none; }
+
+/* Selector de escala de la obra (v494). */
+.solidity-scale-chooser {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0 0 6px;
+}
+.solidity-scale-choice {
+  min-width: 0;
+  padding: 9px 10px;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--bg3);
+  color: var(--text2);
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.solidity-scale-choice b { color: var(--text); font-size: 12px; }
+.solidity-scale-choice span { font-size: 10.5px; line-height: 1.35; }
+.solidity-scale-choice.is-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg3));
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.solidity-scale-choice.is-active b { color: var(--accent); }
+.solidity-scale-reason {
+  margin: 0 0 12px;
+  color: var(--text3);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+.solidity-scale-auto {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.solidity-guide-v3[data-ensemble-semantics="v6-scale"] .solidity-guide-contexts { grid-template-columns: 1fr; }

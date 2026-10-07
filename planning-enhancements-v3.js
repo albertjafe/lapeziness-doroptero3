@@ -37,18 +37,6 @@
     { key:/tchaikovsky/i, url:'https://www.tchaikovskycompetition.com/en/' },
   ];
 
-  const GUIDE_BANDS = [
-    ['0–9', 'Apenas empezada', 'Estás descubriendo notas, digitación o estructura. No existe todavía un pase reconocible de principio a fin.'],
-    ['10–24', 'En construcción', 'Hay fragmentos que empiezan a responder, pero todavía dependes de parar, aislar y reconstruir. Grandes zonas siguen sin estar disponibles de forma continua.'],
-    ['25–39', 'Se cae', 'Reconoces casi todo el camino, pero un pase pierde el hilo, obliga a reiniciar o deja agujeros importantes. El resultado cambia muchísimo de un intento a otro.'],
-    ['40–54', 'Frágil', 'Puedes llegar al final en condiciones de estudio, aunque con paradas, vacilaciones, simplificaciones o errores que rompen claramente la continuidad. Todavía hay bastante factor suerte.'],
-    ['55–69', 'Estable con atención', 'La obra sale mayoritariamente entera. Hay fallos o zonas tensas, pero normalmente puedes seguir y recuperar. Necesitas vigilancia consciente para que no se desmonte.'],
-    ['70–79', 'Estable', 'Los pases completos suelen funcionar. Los errores no destruyen el discurso y el plan musical sobrevive. Ya puedes trabajar más en calidad que en mera supervivencia.'],
-    ['80–89', 'Segura', 'Varios pases completos son consistentes. Puedes concentrarte en sonido, fraseo y decisiones musicales sin temer constantemente una caída. Es razonable probar clase, grabación o situación de exposición.'],
-    ['90–96', 'Brillante · lista para exponer', 'Funciona repetidamente incluso con presión, cansancio o una sola oportunidad. Los problemas son locales y rara vez comprometen el conjunto.'],
-    ['97–99', 'Fiabilidad excepcional', 'Nivel de concurso o grabación muy asentado: múltiples pases y días confirman una consistencia extraordinaria. Aun así, 100 queda reservado para tu máximo estándar.'],
-    ['100', 'Referencia', 'La tocarías ahora en público y esperarías que saliera perfecta. Es el techo subjetivo de la app, no una promesa estadística de que jamás pueda ocurrir un error.'],
-  ];
 
   function appDb(){
     try { if(typeof db !== 'undefined' && db) return db; } catch(error){}
@@ -464,23 +452,14 @@
     refresh();
   }
 
+  // La escala (nombres, tramos y descripciones) vive en app.js; aquí solo se
+  // monta el contenedor. planning-enhancements-v4 la adapta a la obra.
   function guideHtml(){
-    const rows = GUIDE_BANDS.map(([range,label,copy]) => {
-      const limits=guideBandLimits(range);
-      return `<div class="solidity-guide-row" data-rating-min="${limits.min}" data-rating-max="${limits.max}"><strong>${range}</strong><span><b>${label}</b>${copy}</span></div>`;
-    }).join('');
+    let body='';
+    try{if(typeof window.paseScaleGuideBodyHtml==='function')body=window.paseScaleGuideBodyHtml('solo');}catch(error){}
     return `<details class="solidity-guide-v3" open>
-      <summary>Guía completa para puntuar la píldora <span>0–100</span></summary>
-      <div class="solidity-guide-body">
-        <p class="solidity-guide-principle"><strong>Regla principal:</strong> puntúa lo que la obra puede hacer <em>hoy</em>, no el número de horas que llevas, lo difícil que sea ni lo bien que la tocaste hace años. La pregunta es: “si hago ahora un pase en las condiciones para las que la preparo, ¿qué fiabilidad tiene?”.</p>
-        <div class="solidity-guide-bands">${rows}</div>
-        <div class="solidity-guide-contexts">
-          <section><h4>Obra nueva</h4><p>La cobertura cuenta. Una obra con páginas todavía no aprendidas no puede recibir una puntuación alta porque los fragmentos conocidos salgan muy bien. Usa como referencia el pase completo y, si hay movimientos, deja que el movimiento más débil limite la nota del conjunto.</p><p><b>Anclas útiles:</b> 25 = “se cae”; 45 = “frágil”; 65 = “sale con atención”; 80 = “sale entera con seguridad”; 95 = “lista para exponer”.</p></section>
-          <section><h4>Cámara · con partitura</h4><p><strong>No penalices por tocar con partitura.</strong> La memoria no forma parte de la puntuación si la interpretación prevista es con partitura. Valora continuidad, entradas, cambios de tempo, coordinación, capacidad de escuchar y reaccionar, estabilidad rítmica, navegación de página y recuperación tras un error. Un 90–95 con partitura puede ser plenamente “de escenario”.</p><p>En un ensayo sin compañeros, puntúa lo que realmente puedes saber: tu parte y tus entradas. Cuando haya ensayos conjuntos, deja que la experiencia real del ensemble mande.</p></section>
-          <section><h4>Repertorio recuperado</h4><p>No copies automáticamente la antigua puntuación. Si la tocaste en concurso hace cinco años pero hoy el primer pase es frágil, registra el nivel de hoy. El historial previo sirve para que la app estime que recuperar será más rápido; <strong>no infla la píldora actual</strong>.</p><p>Es normal que una recuperación salte de 35 a 70 mucho más deprisa que una obra nueva. Cuando vuelva la fiabilidad de los pases, sube la nota sin miedo.</p></section>
-        </div>
-        <p class="solidity-guide-foot"><strong>Para grabación o concurso:</strong> exige evidencia más dura antes de usar 90+. Idealmente varios pases completos, en más de un día y con condiciones parecidas a la exposición real. Una toma brillante aislada no convierte automáticamente la obra en 95.</p>
-      </div>
+      <summary>Guía para puntuar <span>0–100</span></summary>
+      <div class="solidity-guide-body">${body}</div>
     </details>`;
   }
 

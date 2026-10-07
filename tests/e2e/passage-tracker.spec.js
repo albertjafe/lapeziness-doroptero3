@@ -166,7 +166,7 @@ test('direct solidity pills never start the global view swipe and expose the qui
   await addPassage(page);
   await expect(page.locator('#cronoTargetSolidityMeter')).toBeVisible();
   await page.locator('#cronoTargetSolidity .crono-target-solidity-guide summary').click();
-  await expect(page.locator('#cronoTargetSolidityGuide')).toContainText('Aprendida');
+  await expect(page.locator('#cronoTargetSolidityGuide')).toContainText('En dedos');
 
   const meter = page.locator('#cronoPassageTracker .passage-inline-meter');
   const box = await meter.boundingBox();

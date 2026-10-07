@@ -50,14 +50,15 @@ test('shows one detailed guide and highlights the current done-rating range', as
   expect(await guide.evaluate(element => element.tagName)).toBe('DETAILS');
   await expect(guide.locator('summary')).toContainText('Guía para puntuar');
   await expect(guide).toHaveAttribute('open', '');
-  await expect(guide).toContainText('70–79');
-  await expect(guide).toContainText('Brillante · lista para exponer');
+  await expect(guide).toContainText('72–79');
+  await expect(guide).toContainText('Lista para escena');
   await expect(page.locator('#hechoRatingGuide')).toBeHidden();
 
   await page.evaluate(() => hechoSelectSolidez(pasePctToPosition(72)));
   const current = guide.locator('.solidity-guide-row.is-current');
   await expect(current).toHaveCount(1);
-  await expect(current).toContainText('70–79');
+  await expect(current).toContainText('72–79');
+  await expect(current).toContainText('Estable');
 });
 
 test('restores the exact last planted movement after reopening the stopwatch', async ({ page }) => {

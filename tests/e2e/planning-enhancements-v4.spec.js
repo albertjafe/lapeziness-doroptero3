@@ -62,15 +62,25 @@ test('inline dictated task stores clean text and maximum priority', async ({ pag
   expect(await page.evaluate(() => cronoTasks().at(-1)?.text)).toBe('Revisar coda');
 });
 
-test('readiness guide scores own part first and adds ensemble evidence at the end', async ({ page }) => {
-  await prepare(page);
+test('quick rating uses the same scale names as the pill for each work', async ({ page }) => {
+  const data = structuredClone(base);
+  data.obras.push({ id:'trio', name:'Trío', composer:'Brahms', tipo:'obra', repertoireCategory:'camara', movimientos:[], sol:50, solHistory:[] });
+  await prepare(page, { data });
+  await page.evaluate(() => openQuickSolidezTarget('obra_1'));
   const guide = page.locator('#solidityGuideQuickV3');
-  await expect(guide).toContainText('Cámara · tu parte primero');
-  await expect(guide).toContainText('Durante el estudio solo, puntúa tu propia parte');
-  await expect(guide).toContainText('Concierto con orquesta');
-  await expect(guide).toContainText('especialmente importante para 90+');
-  await expect(guide).toContainText('Repertorio recuperado');
-  await expect(guide).toContainText('cómo está hoy');
+  await expect(guide.locator('summary')).toContainText('Obra nueva');
+  await expect(guide).toContainText('Cada tramo exige toda la obra');
+  await expect(page.locator('#quickSolRubric')).toContainText('En dedos');
+  await expect(page.locator('#quickSolRubric')).toContainText('Lista para escena');
+  await page.evaluate(() => quickSolidezPreset(65, false));
+  await expect(page.locator('#quickSolLabel')).toHaveText('Memorizada');
+  await expect(page.locator('#quickSolRubric .quick-sol-rubric-btn.active')).toContainText('Memorizada');
+  await page.evaluate(() => { closeModal('modalQuickSolidez'); openQuickSolidezTarget('trio'); });
+  await expect(guide.locator('summary')).toContainText('Cámara');
+  await expect(guide).toContainText('Puntúa solo tu parte');
+  await expect(page.locator('#quickSolRubric')).toContainText('Montada');
+  await expect(page.locator('#quickSolRubric')).toContainText('Ensayada');
+  await expect(page.locator('#quickSolRubric')).not.toContainText('Memorizada');
 });
 
 test('Hecho adapts its scale and guide to chamber works and real study history', async ({ page }, testInfo) => {
@@ -94,7 +104,8 @@ test('Hecho adapts its scale and guide to chamber works and real study history',
   await expect(page.locator('#hechoSolidezMeter')).not.toContainText('Memoria');
   const guide = page.locator('#solidityGuideHechoV3');
   await expect(guide.locator('summary')).toContainText('Cámara');
-  await expect(guide).toContainText('La partitura es parte normal de la interpretación');
+  await expect(guide).toContainText('Tocar con partitura no resta');
+  await expect(guide).toContainText('90 o más exige haberla probado con el grupo');
   await expect(guide).toContainText('1 h 30 min de estudio real en 2 sesiones');
   expect((await page.locator('#modalHechoDatos .hecho-modal').boundingBox()).width).toBeGreaterThan(800);
   await page.screenshot({path:testInfo.outputPath('hecho-camara.png')});
@@ -115,19 +126,25 @@ test('Hecho uses accompaniment semantics without memory criteria', async ({ page
   await expect(page.locator('#hechoSolidezMeter')).not.toContainText('Memoria');
   const guide = page.locator('#solidityGuideHechoV3');
   await expect(guide.locator('summary')).toContainText('Acompañamiento');
-  await expect(guide).toContainText('seguir al solista');
-  await expect(guide).toContainText('La memoria no forma parte de la puntuación');
+  await expect(guide).toContainText('Sin ensayar con el solista puedes llegar hasta 89');
+  await expect(guide).toContainText('la memoria no cuenta en esta escala');
 });
 
-test('Hecho treats historical-only or long-dormant solo repertoire as new, then recognises recent real work', async ({ page }) => {
+test('Hecho keeps a stable scale: long pause only suggests recovery, and your choice survives new study', async ({ page }) => {
   const data = structuredClone(base);
   data.historicalRepertoire = [{id:'old',name:'Bach · Preludio',estimatedHours:80,lastPlayedYear:2018}];
   data.sessionPlants = [{id:'old-study',obraId:'obra_1',mins:180,startedAt:'2020-01-10T12:00:00.000Z'}];
   await prepare(page, { data });
   await page.evaluate(() => openHechoDatos('obra_1', 20));
   const guide = page.locator('#solidityGuideHechoV3');
-  await expect(guide.locator('summary')).toContainText('Reinicio tras larga pausa');
+  await expect(guide.locator('summary')).toContainText('Obra nueva');
+  await expect(guide).toContainText('si ya la tocaste, elige «Recuperación»');
   await expect(guide).toContainText('últimos 3 años');
+  await guide.locator('.solidity-scale-choice', { hasText:'Recuperación' }).click();
+  await expect(guide.locator('summary')).toContainText('Recuperación');
+  await expect(guide).toContainText('Escala elegida por ti');
+  await expect(page.locator('#hechoSolidezMeter')).toContainText('Despertando');
+  expect(await page.evaluate(() => findObra('obra_1').solidityScale)).toBe('repertorio');
 
   await page.evaluate(() => {
     const now=Date.now();
@@ -137,7 +154,7 @@ test('Hecho treats historical-only or long-dormant solo repertoire as new, then 
     );
     openHechoDatos('obra_1',20);
   });
-  await expect(guide.locator('summary')).toContainText('Obra ya trabajada');
+  await expect(guide.locator('summary')).toContainText('Recuperación');
   await expect(guide).toContainText('estudio real en 3 sesiones');
 });
 

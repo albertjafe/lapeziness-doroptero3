@@ -4825,33 +4825,106 @@ function paseClampPct(value, fallback) {
 }
 
 const PASE_RATING_LOG_A = 3;
+// Fuente única de la escala de solidez. Todas las escalas comparten los mismos
+// cortes (un 72 significa la misma fiabilidad en cualquier obra); cambian el
+// nombre y lo que hay que observar según la situación de la obra. La píldora,
+// las marcas del deslizador, la guía rápida, la guía detallada, «Hecho», el
+// registro rápido y las tarjetas de obra leen todas de aquí.
 const PASE_RATING_PROFILES = {
   solo: {
-    guides: [[15,'Leída'],[30,'Digitada'],[50,'Aprendida'],[65,'Memoria'],[80,'A punto'],[90,'Escena'],[97,'Excelente']],
-    stages: [[97,'Excelente'],[90,'Lista para escena'],[80,'A punto'],[72,'Estable'],[60,'Memorizada'],[45,'Aprendida'],[30,'Digitada'],[15,'Leída'],[0,'Iniciada']],
-    note: 'Escala logarítmica · más precisión cerca de escena',
-  },
-  camara: {
-    guides: [[15,'Orientada'],[30,'Montada'],[50,'Continua'],[65,'Flexible'],[80,'Segura'],[90,'Ensayada'],[97,'Escena']],
-    stages: [[97,'Lista para escena'],[90,'Ensayada'],[80,'Segura'],[72,'Estable'],[60,'Flexible'],[45,'Continua'],[30,'Montada'],[15,'Orientada'],[0,'Iniciada']],
-    note: 'Tu parte primero · el conjunto añade evidencia real',
-  },
-  acompanamiento: {
-    guides: [[15,'Orientada'],[30,'Montada'],[50,'Continua'],[65,'Atenta'],[80,'Flexible'],[90,'Ensayada'],[97,'Lista']],
-    stages: [[97,'Lista para audición'],[90,'Ensayada'],[80,'Flexible'],[72,'Estable'],[60,'Atenta'],[45,'Continua'],[30,'Montada'],[15,'Orientada'],[0,'Iniciada']],
-    note: 'Continuidad, escucha y capacidad de seguir al solista',
+    title: 'Obra nueva',
+    choice: 'La estás aprendiendo por primera vez',
+    note: 'Primera vez que la aprendes · manda el pase completo y el tramo más débil',
+    bands: [
+      [0, 'Iniciada', 'Todavía no la has leído entera: conoces el principio o algunas páginas sueltas.'],
+      [15, 'Leída', 'La has leído de principio a fin, despacio y parando. Notas y ritmo identificados, pero sin digitación ni pedal fijados.'],
+      [30, 'Digitada', 'Digitación y pedal decididos en toda la obra. Tocas cada sección por separado a tempo lento; aún no hay un pase seguido.'],
+      [45, 'En dedos', 'Todas las notas están en las manos: puedes tocarla entera a tempo de estudio, aunque con paradas, dudas y zonas que se tambalean.'],
+      [60, 'Memorizada', 'Entera de memoria (o con la partitura, si así la vas a tocar) y cerca del tempo. Llegas al final, pero necesitas atención constante y algún reenganche.'],
+      [72, 'Estable', 'Los pases completos a tempo suelen salir. Los errores no rompen el discurso y ya trabajas más el sonido y el fraseo que las notas.'],
+      [80, 'A punto', 'Varios pases seguidos, en días distintos, salen consistentes. Puedes llevarla a clase, grabarla de prueba o tocarla ante alguien.'],
+      [90, 'Lista para escena', 'Sale bien a la primera, con nervios o cansancio, en condiciones parecidas al concierto: pase ante gente o grabación de una sola toma.'],
+      [97, 'Excelente', 'Nivel de concurso o grabación definitiva, confirmado en varios días y situaciones. 100 es tu referencia máxima.'],
+    ],
   },
   repertorio: {
-    guides: [[15,'Dormida'],[30,'Recuperando'],[50,'Disponible'],[65,'Repertorio'],[80,'Sólida'],[90,'Escena'],[97,'Excepcional']],
-    stages: [[97,'Excepcional'],[90,'De escena'],[80,'Sólida'],[72,'Fiable'],[60,'En repertorio'],[45,'Disponible'],[30,'En recuperación'],[15,'Dormida'],[0,'Fuera de forma']],
-    note: 'Estado actual de una obra que ya forma parte de tu repertorio',
+    title: 'Recuperación',
+    choice: 'Ya la tocaste y la estás volviendo a poner en forma',
+    note: 'Ya la tocaste · puntúa cómo está hoy, no cómo estuvo',
+    bands: [
+      [0, 'Olvidada', 'Hay que volver a leerla: no recuerdas cómo sigue ni las digitaciones.'],
+      [15, 'Dormida', 'Recuerdas la forma y algunos pasajes, pero no puedes tocar secciones enteras sin mirar la partitura.'],
+      [30, 'Despertando', 'Las manos recuerdan la digitación. Tocas las secciones despacio, con partitura o memoria a medias y con huecos.'],
+      [45, 'Disponible', 'La tocas entera a tempo de estudio, con paradas, lagunas de memoria o pasajes que todavía simplificas.'],
+      [60, 'Recuperada', 'Vuelve a estar entera de memoria y cerca del tempo. Llegas al final con atención y algún reenganche.'],
+      [72, 'Estable', 'Los pases completos a tempo suelen salir. Los errores no rompen el discurso y ya trabajas más el sonido y el fraseo que las notas.'],
+      [80, 'A punto', 'Varios pases seguidos, en días distintos, salen consistentes. Puedes llevarla a clase, grabarla de prueba o tocarla ante alguien.'],
+      [90, 'Lista para escena', 'Sale bien a la primera, con nervios o cansancio, en condiciones parecidas al concierto: pase ante gente o grabación de una sola toma.'],
+      [97, 'Excelente', 'Nivel de concurso o grabación definitiva, confirmado en varios días y situaciones. 100 es tu referencia máxima.'],
+    ],
+  },
+  camara: {
+    title: 'Cámara',
+    choice: 'Música de cámara: puntúas tu parte',
+    note: 'Tu parte primero · la partitura no resta · 90+ pide ensayo con el grupo',
+    bands: [
+      [0, 'Iniciada', 'Todavía no has leído tu parte entera.'],
+      [15, 'Orientada', 'Has leído tu parte y conoces la estructura y lo que hacen los demás (partitura general o grabación).'],
+      [30, 'Montada', 'Digitación y pedal decididos. Tocas cada sección de tu parte a tempo lento, por separado.'],
+      [45, 'Continua', 'Tocas tu parte entera seguida, a tempo de estudio, con paradas en los pasajes difíciles.'],
+      [60, 'Flexible', 'Tu parte sale entera cerca del tempo, contando silencios y entradas. Si fallas, te reenganchas sin parar.'],
+      [72, 'Estable', 'Tu parte sale completa a tempo de forma fiable, con los pasos de página resueltos, y te queda atención para escuchar a los demás.'],
+      [80, 'Segura', 'Lista para ensayar: entradas, cambios de tempo y silencios dominados; un error no te saca. Es el techo sin ensayo conjunto.'],
+      [90, 'Ensayada', 'Probada en ensayos con el grupo: coordinación, balance y reacción funcionan. Sin ensayo conjunto, no pases de 89.'],
+      [97, 'Lista para escena', 'Los pases completos con el grupo salen una y otra vez en condiciones de concierto.'],
+    ],
+  },
+  acompanamiento: {
+    title: 'Acompañamiento',
+    choice: 'Acompañas a un solista o tocas una reducción',
+    note: 'Continuidad, escucha y capacidad de seguir al solista · la partitura no resta',
+    bands: [
+      [0, 'Iniciada', 'Todavía no has leído el acompañamiento entero.'],
+      [15, 'Orientada', 'Lo has leído entero y conoces la parte del solista y la estructura.'],
+      [30, 'Montada', 'Reducción decidida (qué tocas y qué dejas), digitación fijada y secciones a tempo lento.'],
+      [45, 'Continua', 'Lo tocas entero seguido a tempo de estudio, con paradas en los pasajes difíciles.'],
+      [60, 'Atenta', 'Sale entero cerca del tempo sin perder el sitio, siguiendo la parte del solista en la partitura.'],
+      [72, 'Estable', 'Sale completo y fiable a tempo, y te queda atención para respiraciones, cortes y balance.'],
+      [80, 'Flexible', 'Sigues cambios de tempo y rubato y te reencuentras si el solista se salta algo. Es el techo sin ensayar con el solista.'],
+      [90, 'Ensayada', 'Probada con el solista en ensayo o clase: entradas, cortes y balance funcionan. Sin ensayo, no pases de 89.'],
+      [97, 'Lista para audición', 'Funciona una y otra vez con el solista en condiciones de audición o concierto.'],
+    ],
   },
   pase: {
-    guides: [[15,'Se para'],[35,'Con cortes'],[60,'Continuo'],[80,'Sólido'],[95,'De escena']],
-    stages: [[97,'Excepcional'],[90,'Pase de escena'],[80,'Pase sólido'],[72,'Fiable'],[60,'Continuo'],[45,'Completo con tensión'],[30,'Con cortes'],[15,'Se interrumpe'],[0,'No arranca']],
+    title: 'Pase',
     note: 'Resultado de este pase: continuidad, control y respuesta bajo presión',
+    marks: [15, 30, 60, 80, 90],
+    bands: [
+      [0, 'No arranca', 'No llegas a hacer un pase reconocible.'],
+      [15, 'Se interrumpe', 'Paras varias veces y tienes que volver a empezar secciones.'],
+      [30, 'Con cortes', 'Llegas al final, pero con cortes o saltos que rompen la continuidad.'],
+      [45, 'Completo con tensión', 'Sin cortarte, pero con muchos fallos y bastante suerte.'],
+      [60, 'Continuo', 'Seguido de principio a fin; los fallos se notan, pero no te sacan.'],
+      [72, 'Fiable', 'Seguido y controlado; los errores son pequeños y locales.'],
+      [80, 'Pase sólido', 'Musicalmente convincente y con pocos errores.'],
+      [90, 'Pase de escena', 'Lo darías por bueno en un concierto o una grabación.'],
+      [97, 'Excepcional', 'De lo mejor que puedes tocar esta obra.'],
+    ],
   },
 };
+// Derivados: tramos [mín, máx, nombre, descripción], etapas para buscar el
+// nombre de una cifra y las marcas del deslizador (siete caben sin amontonarse,
+// así que se omiten el 0 y el 72).
+Object.values(PASE_RATING_PROFILES).forEach(profile => {
+  profile.ranges = profile.bands.map((band, index) => {
+    const next = profile.bands[index + 1];
+    return [band[0], next ? next[0] - 1 : 100, band[1], band[2]];
+  });
+  profile.stages = profile.bands.slice().reverse().map(band => [band[0], band[1]]);
+  const marks = profile.marks || [15, 30, 45, 60, 80, 90, 97];
+  profile.guides = profile.bands.filter(band => marks.includes(band[0])).map(band => [band[0], band[1]]);
+});
+const PASE_RATING_SCALE_CHOICES = ['solo', 'repertorio', 'camara', 'acompanamiento'];
 
 function paseNormalizeProfile(value) {
   const normalized = String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -4862,19 +4935,121 @@ function paseNormalizeProfile(value) {
   return 'solo';
 }
 
+// Escala de una obra. Es estable: no cambia sola porque registres un pase o
+// acumules horas. Orden: lo que elijas en la guía › categoría (cámara o
+// acompañamiento) › origen «recuperación», obra histórica o larga pausa ›
+// obra nueva.
 function paseWorkRatingProfile(obra, surface) {
   if (surface === 'pase') return 'pase';
   if (!obra) return 'solo';
+  if (PASE_RATING_SCALE_CHOICES.includes(obra.solidityScale)) return obra.solidityScale;
   const explicit = [obra.repertoireCategory, obra.categoria, obra.category, obra.tipoObra, obra.instrumentation, obra.instrumentacion, obra.tipo]
     .filter(Boolean).join(' ');
   const direct = paseNormalizeProfile(explicit);
-  if (direct !== 'solo') return direct;
+  if (direct === 'camara' || direct === 'acompanamiento') return direct;
   try {
     const match = window.EnsembleRepertoireCatalog?.matchEntry?.(obra);
     if (match?.category === 'acompanamiento') return 'acompanamiento';
     if (match?.category === 'camara') return 'camara';
   } catch (error) {}
-  return paseWorkStudyContext(obra.id).isRepertoire ? 'repertorio' : 'solo';
+  if (direct === 'repertorio') return 'repertorio';
+  return paseWorkAutoRecovery(obra) ? 'repertorio' : 'solo';
+}
+
+function paseWorkAutoRecovery(obra) {
+  if (!obra) return false;
+  if (String(obra.origen || '').toLowerCase() === 'recuperacion' || obra.historicalSourceId) return true;
+  // Sin origen indicado: una obra ya tocada en público se trata como recuperación.
+  return !obra.origen && paseWorkStudyContext(obra.id).performedAtEvent;
+}
+
+// Por qué la obra usa esa escala, para mostrarlo en la guía.
+function paseWorkScaleReason(obra) {
+  if (!obra) return '';
+  if (PASE_RATING_SCALE_CHOICES.includes(obra.solidityScale)) return 'Escala elegida por ti';
+  const profile = paseWorkRatingProfile(obra);
+  if (profile === 'camara' || profile === 'acompanamiento') return 'Automática · por la categoría de la obra';
+  if (profile === 'repertorio') {
+    if (String(obra.origen || '').toLowerCase() === 'recuperacion' || obra.historicalSourceId) return 'Automática · la añadiste como recuperación';
+    return 'Automática · ya la tocaste en un evento';
+  }
+  const base = String(obra.origen || '').toLowerCase() === 'nueva' ? 'Automática · la añadiste como obra nueva' : 'Automática · no consta que la hayas tocado antes';
+  return paseWorkStudyContext(obra.id).state === 'larga-pausa'
+    ? base + '. No la estudias desde hace más de 3 años: si ya la tocaste, elige «Recuperación».'
+    : base;
+}
+
+function paseSetWorkScale(obraId, profile) {
+  const obra = findObra(obraId);
+  if (!obra) return null;
+  // null explícito (no delete) para que la sincronización no resucite la elección anterior.
+  obra.solidityScale = profile && PASE_RATING_SCALE_CHOICES.includes(profile) ? profile : null;
+  obra.updatedAt = new Date().toISOString();
+  saveData();
+  try { renderCronoTargetSolidity(); } catch (error) {}
+  return paseWorkRatingProfile(obra);
+}
+
+function paseScaleRangeLabel(range) {
+  return range[0] === range[1] ? String(range[0]) : range[0] + '–' + range[1];
+}
+
+// Lista de tramos de una escala, con la fila actual marcada.
+function paseScaleBandsHtml(profile, currentPct) {
+  const definition = paseProfileDefinition(profile);
+  const current = currentPct == null ? null : paseClampPct(currentPct);
+  return '<div class="solidity-guide-bands" data-rating-profile="' + paseNormalizeProfile(profile) + '">' + definition.ranges.map(range => {
+    const isCurrent = current != null && current >= range[0] && current <= range[1];
+    return '<div class="solidity-guide-row' + (isCurrent ? ' is-current' : '') + '" data-rating-min="' + range[0] + '" data-rating-max="' + range[1] + '"' + (isCurrent ? ' aria-current="true"' : '') + '>' +
+      '<strong>' + paseScaleRangeLabel(range) + '</strong><span><b>' + range[2] + '</b>' + range[3] + '</span></div>';
+  }).join('') + '</div>';
+}
+
+const PASE_SCALE_USAGE = {
+  solo: [
+    'Cada tramo exige <strong>toda la obra</strong> (o todo el movimiento que puntúas). Si quedan páginas sin leer, no pases de 14; sin digitar, de 29; con notas aún sin aprender, de 44, aunque lo demás salga muy bien.',
+    'Con movimientos, puntúa cada uno; la obra entera la limita el más débil.',
+  ],
+  repertorio: [
+    'No copies la nota que tuvo: si hoy el primer pase se cae, es un 30 o un 45 aunque la tocaras en concierto. Haberla tocado antes no sube la nota de hoy; solo hace que la app espere una recuperación más rápida.',
+    'Es normal subir de 30 a 70 en pocos días. Desde 72, la escala es la misma que la de una obra nueva.',
+  ],
+  camara: [
+    'Puntúa solo <strong>tu parte</strong>. Estudiando solo puedes llegar hasta 89; 90 o más exige haberla probado con el grupo.',
+    'Tocar con partitura no resta: la memoria no cuenta en esta escala.',
+  ],
+  acompanamiento: [
+    'Puntúa tu acompañamiento. Sin ensayar con el solista puedes llegar hasta 89; 90 o más exige ensayo, clase o audición con él.',
+    'Tocar con partitura no resta: la memoria no cuenta en esta escala.',
+  ],
+};
+
+// Cuerpo completo de la guía para una escala. Si se pasa obraId, añade el
+// selector para cambiar la escala de esa obra.
+function paseScaleGuideBodyHtml(profile, options) {
+  const opts = options || {};
+  const key = paseNormalizeProfile(profile);
+  const definition = paseProfileDefinition(key);
+  const obra = opts.obraId ? findObra(opts.obraId) : null;
+  let chooser = '';
+  if (obra) {
+    const reason = paseWorkScaleReason(obra);
+    chooser = '<div class="solidity-scale-chooser" role="group" aria-label="Escala de esta obra">' +
+      PASE_RATING_SCALE_CHOICES.map(choice => {
+        const item = PASE_RATING_PROFILES[choice];
+        const active = choice === key;
+        return '<button type="button" class="solidity-scale-choice' + (active ? ' is-active' : '') + '" data-solidity-scale="' + choice + '" aria-pressed="' + active + '">' +
+          '<b>' + item.title + '</b><span>' + item.choice + '</span></button>';
+      }).join('') +
+      '</div><p class="solidity-scale-reason">' + escapeHtmlSafe(reason) +
+      (obra.solidityScale ? ' · <button type="button" class="solidity-scale-auto" data-solidity-scale="">volver a la automática</button>' : '') + '</p>';
+  }
+  const usage = (PASE_SCALE_USAGE[key] || []).map(text => '<p>' + text + '</p>').join('');
+  return '<p class="solidity-guide-principle"><strong>Regla principal:</strong> puntúa cómo saldría <em>hoy</em> un pase completo en las condiciones para las que la preparas. No cuentan las horas que lleva, lo difícil que sea ni cómo estuvo antes. Elige el tramo cuya descripción se cumple entera; si dudas entre dos, quédate con el de abajo.</p>' +
+    chooser +
+    paseScaleBandsHtml(key, opts.currentPct) +
+    '<div class="solidity-guide-contexts"><section><h4>' + definition.title + ' · cómo usarla</h4>' + usage + (opts.evidenceHtml || '') + '</section></div>' +
+    '<p class="solidity-guide-foot"><strong>Para escena, grabación o concurso:</strong> 90 o más pide varios pases completos, en más de un día y en condiciones parecidas a la actuación. Una toma brillante aislada no basta.</p>';
 }
 
 function paseWorkStudyContext(obraId) {
@@ -5244,6 +5419,8 @@ function renderCronoTargetSolidity() {
   const title = document.getElementById('cronoTargetSolidityTitle');
   const previous = document.getElementById('cronoTargetSolidityPrevious');
   if (title) title.textContent = target.label;
+  const scale = document.getElementById('cronoTargetSolidityScale');
+  if (scale) scale.textContent = 'Escala · ' + paseProfileDefinition(target.ratingProfile).title;
   if (previous) previous.textContent = latest == null ? 'Primera valoración · referencia 50%' : 'Último valor · ' + latest + '%';
   const guide = document.getElementById('cronoTargetSolidityGuide');
   if (guide) guide.innerHTML = paseQuickGuideHtml(target.ratingProfile);
@@ -7075,13 +7252,9 @@ function solPctColor(pct) {
   return 'var(--red)';
 }
 
-function solPctLabel(pct) {
-  if (pct >= 90) return 'Lista para escenario';
-  if (pct >= 72) return 'Sólida';
-  if (pct >= 50) return 'Construyendo';
-  if (pct >= 28) return 'Frágil';
-  if (pct >= 10) return 'Empezando';
-  return 'Sin solidez aún';
+// Mismo nombre que la píldora: se lee de la escala de la obra.
+function solPctLabel(pct, obra) {
+  return paseRatingStage(pct, obra ? paseWorkRatingProfile(obra) : 'solo');
 }
 
 function hechoJs(s) {
@@ -10096,7 +10269,7 @@ function renderObraCardSimple(o) {
     +     '<div class="obra-sol-bar"><div class="obra-sol-fill" style="width:' + pct + '%;background:' + col + '"></div></div>'
     +     '<div class="obra-sol-row">'
     +       '<strong style="color:' + col + '">' + (hasHist ? pct + '%' : '—') + '</strong>'
-    +       '<span class="obra-sol-label">' + (hasHist ? solPctLabel(pct) : 'Primer pase pendiente') + '</span>'
+    +       '<span class="obra-sol-label">' + (hasHist ? solPctLabel(pct, o) : 'Primer pase pendiente') + '</span>'
     +       decayHint +
         '<span class="obra-sol-medir">Pase ›</span>'
     +     '</div>'
@@ -21932,8 +22105,10 @@ function cronoPendingTaskCount(kind) {
   return cronoTasks().filter(task => !task.done && cronoTaskKind(task) === 'personal' && (!kind || kind === 'personal')).length;
 }
 
+// El contador de la pestaña cuenta todas las pendientes, también las de piano
+// (los avisos y la pausa de tareas siguen usando solo las personales).
 function cronoActiveTaskCount() {
-  return cronoPendingTaskCount();
+  return cronoTasks().filter(task => !task.done).length;
 }
 
 const _cronoTaskComposer = {
@@ -22492,21 +22667,54 @@ function cronoRenderTaskCount() {
   if (!count) document.querySelectorAll('.crono-run-drawer.task-reminder-active').forEach(drawer => drawer.classList.remove('task-reminder-active'));
 }
 
+// Lista de tareas (v495): una sola lista con todas las pendientes, sin tope,
+// agrupada por urgencia y con filtro Todas / Personal / Piano.
+const CRONO_TASK_FILTER_KEY = 'alberto_crono_task_filter_v1';
+const CRONO_TASK_DONE_SHOWN = 40;
+let _cronoTaskFilter = null;
+
+function cronoTaskFilter() {
+  if (_cronoTaskFilter) return _cronoTaskFilter;
+  let saved = '';
+  try { saved = localStorage.getItem(CRONO_TASK_FILTER_KEY) || ''; } catch (e) {}
+  _cronoTaskFilter = ['all', 'personal', 'piano'].includes(saved) ? saved : 'all';
+  return _cronoTaskFilter;
+}
+
+function cronoSetTaskFilter(filter) {
+  _cronoTaskFilter = ['all', 'personal', 'piano'].includes(filter) ? filter : 'all';
+  try { localStorage.setItem(CRONO_TASK_FILTER_KEY, _cronoTaskFilter); } catch (e) {}
+  ['idle', 'running'].forEach(source => {
+    const state = cronoTaskComposerState(source);
+    if (!state.open) state.kind = _cronoTaskFilter === 'piano' ? 'piano' : 'personal';
+  });
+  renderCronoTasks();
+}
+
+function cronoSetTaskComposerKind(source, kind) {
+  const state = cronoTaskComposerState(source);
+  state.kind = kind === 'piano' ? 'piano' : 'personal';
+  if (state.kind === 'personal') state.tomorrow = false;
+  cronoUpdateTaskComposer(source);
+  document.getElementById(source === 'idle' ? 'cronoIdleTaskInput' : 'cronoTaskInput')?.focus();
+}
+
 function renderCronoTasks() {
   const tasks = cronoTasks();
+  const filter = cronoTaskFilter();
   const doneTime = task => Date.parse(task.doneAt || task.createdAt || '') || 0;
   const pendingTime = task => Date.parse(task.createdAt || '') || 0;
-  const byKind = kind => ({
-    pending: tasks
-      .filter(task => !task.done && cronoTaskKind(task) === kind)
-      .sort((a, b) => (cronoTaskPriority(b) - cronoTaskPriority(a)) || (pendingTime(b) - pendingTime(a)))
-      .slice(0, 12),
-    done: tasks
-      .filter(task => task.done && cronoTaskKind(task) === kind)
-      .sort((a, b) => doneTime(b) - doneTime(a)),
-  });
-  const piano = byKind('piano');
-  const personal = byKind('personal');
+  const matches = task => filter === 'all' || cronoTaskKind(task) === filter;
+  const allPending = tasks.filter(task => !task.done);
+  const pending = allPending.filter(matches)
+    .sort((a, b) => (cronoTaskPriority(b) - cronoTaskPriority(a)) || (pendingTime(b) - pendingTime(a)));
+  const done = tasks.filter(task => task.done && matches(task))
+    .sort((a, b) => doneTime(b) - doneTime(a));
+  const counts = {
+    all: allPending.length,
+    personal: allPending.filter(task => cronoTaskKind(task) === 'personal').length,
+    piano: allPending.filter(task => cronoTaskKind(task) === 'piano').length,
+  };
   const row = t => {
     const priority = cronoTaskPriority(t);
     const priorityLabel = cronoTaskPriorityLabel(priority);
@@ -22529,33 +22737,47 @@ function renderCronoTasks() {
         'onpointermove="cronoTaskPressMove(event)" onpointerup="cronoTaskPressEnd(event)" onpointercancel="cronoTaskPressCancel()" ' +
         'oncontextmenu="event.preventDefault()" aria-label="' + escapeHtmlSafe(t.text) + '. Prioridad ' + priorityLabel + '. Pulsa para cambiar; mantén pulsado para editar.">' +
         taskCopy +
+        (filter === 'all' && cronoTaskKind(t) === 'piano' ? '<span class="crono-task-kind-tag">Piano</span>' : '') +
         '<span class="crono-task-priority" aria-hidden="true"><i></i><i></i><i></i><i></i><em>' + priorityLabel + '</em></span>' +
         (dueLabel ? '<span class="crono-task-due-tag">' + dueLabel + '</span>' : '') +
       '</button>' +
     '</div>';
   };
-  const lane = (kind, title, group, source) => {
-    const clean = !group.pending.length;
-    const completed = group.done.length
-      ? '<details class="crono-task-completed">' +
-          '<summary><span>' + group.done.length + (group.done.length === 1 ? ' hecha' : ' hechas') + '</span>' +
-            '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="7 8 10 11 13 8"/></svg>' +
-          '</summary>' +
-          '<div class="crono-task-completed-list">' + group.done.map(row).join('') + '</div>' +
-        '</details>'
-      : '';
-    return '<section class="crono-task-lane ' + kind + (clean ? ' is-clean' : '') + '">' +
-      '<div class="crono-task-lane-head"><span class="crono-task-lane-dot"></span><strong>' + title + '</strong>' +
-        (clean ? '' : '<span class="crono-task-lane-count">' + group.pending.length + '</span>') +
-        '<button type="button" class="crono-task-lane-add" onclick="cronoOpenTaskComposerForKind(\'' + source + '\',\'' + kind + '\')" aria-label="Añadir tarea de ' + title + '">' +
+  const groups = [3, 2, 1, 0].map(priority => ({
+    priority,
+    tasks: pending.filter(task => cronoTaskPriority(task) === priority),
+  })).filter(group => group.tasks.length);
+  const board = source => {
+    const chip = (key, label) =>
+      '<button type="button" class="crono-task-filter' + (filter === key ? ' active' : '') + '" aria-pressed="' + (filter === key) + '" onclick="cronoSetTaskFilter(\'' + key + '\')">' +
+        label + '<b>' + counts[key] + '</b></button>';
+    const addKind = filter === 'piano' ? 'piano' : 'personal';
+    const head =
+      '<div class="crono-task-board-head">' +
+        '<div class="crono-task-filters" role="group" aria-label="Filtrar tareas">' +
+          chip('all', 'Todas') + chip('personal', 'Personal') + chip('piano', 'Piano') +
+        '</div>' +
+        '<button type="button" class="crono-task-lane-add crono-task-board-add" onclick="cronoOpenTaskComposerForKind(\'' + source + '\',\'' + addKind + '\')" aria-label="Añadir tarea de ' + (addKind === 'piano' ? 'Piano' : 'Personal') + '">' +
           '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>' +
         '</button>' +
-      '</div>' +
-      '<div class="crono-task-list">' +
-        (clean ? '<div class="crono-task-clean" role="status"><span class="crono-task-clean-check" aria-hidden="true"></span><strong>Todo limpio</strong></div>' : group.pending.map(row).join('')) +
-        completed +
-      '</div>' +
-    '</section>';
+      '</div>';
+    const body = groups.length
+      ? groups.map(group =>
+          '<section class="crono-task-group priority-' + group.priority + '">' +
+            '<h4><span>' + cronoTaskPriorityLabel(group.priority) + '</span><b>' + group.tasks.length + '</b></h4>' +
+            group.tasks.map(row).join('') +
+          '</section>').join('')
+      : '<div class="crono-task-clean" role="status"><span class="crono-task-clean-check" aria-hidden="true"></span><strong>Todo limpio</strong></div>';
+    const completed = done.length
+      ? '<details class="crono-task-completed">' +
+          '<summary><span>' + done.length + (done.length === 1 ? ' hecha' : ' hechas') + '</span>' +
+            '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="7 8 10 11 13 8"/></svg>' +
+          '</summary>' +
+          '<div class="crono-task-completed-list">' + done.slice(0, CRONO_TASK_DONE_SHOWN).map(row).join('') + '</div>' +
+        '</details>'
+      : '';
+    return '<section class="crono-task-board" data-filter="' + filter + '">' + head +
+      '<div class="crono-task-list crono-task-board-list">' + body + completed + '</div></section>';
   };
   [
     { id: 'cronoIdleTasksPanel', inputId: 'cronoIdleTaskInput', source: 'idle' },
@@ -22574,18 +22796,18 @@ function renderCronoTasks() {
             '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6"></path></svg>' +
           '</button>' +
         '</div>' +
-        (composer.kind === 'piano' ? '<button type="button" class="crono-task-tomorrow-btn" onclick="cronoToggleTaskTomorrow(\'' + target.source + '\')" aria-pressed="false">Mañana</button>' : '') +
+        '<div class="crono-task-kind-switch" role="group" aria-label="Tipo de tarea">' +
+          '<button type="button" class="crono-task-kind-btn" data-kind="personal" onclick="cronoSetTaskComposerKind(\'' + target.source + '\',\'personal\')">Personal</button>' +
+          '<button type="button" class="crono-task-kind-btn" data-kind="piano" onclick="cronoSetTaskComposerKind(\'' + target.source + '\',\'piano\')">Piano</button>' +
+        '</div>' +
+        '<button type="button" class="crono-task-tomorrow-btn" onclick="cronoToggleTaskTomorrow(\'' + target.source + '\')" aria-pressed="false"' + (composer.kind === 'piano' ? '' : ' hidden') + '>Mañana</button>' +
         '<div class="crono-task-compose-actions">' +
           '<button type="button" class="crono-task-cancel-btn" onclick="cronoCloseTaskComposer(\'' + target.source + '\')" aria-label="Cancelar">×</button>' +
           '<button type="button" class="crono-task-add-btn" onclick="addCronoTask(\'' + target.source + '\')" aria-label="Guardar tarea">✓</button>' +
         '</div>' +
       '</div>'
       : '';
-    const html =
-      composerHtml +
-      '<div class="crono-task-columns">' +
-        lane('personal', 'Personal', personal, target.source) +
-      '</div>';
+    const html = composerHtml + board(target.source);
     // Mismo contenido y nadie ha tocado el panel → no se reconstruye (cronoRender
     // se llama a menudo; rehacer ~50 tareas costaba ~25 ms por llamada).
     if (activeInput || el.__taskHtml !== html || el.__taskFirst !== el.firstElementChild || !el.firstElementChild) {
@@ -26227,19 +26449,35 @@ function selectQuickSolTarget(key) {
   if (context) context.textContent = _quickSolContextText(target);
 }
 
-const QUICK_SOL_RUBRIC_VALUES = [25, 45, 65, 80, 95];
+// Atajos del registro rápido: cinco tramos de la escala de la obra, cada uno
+// guardado en su punto medio para no sesgar la cifra.
+const QUICK_SOL_RUBRIC_BANDS = [30, 45, 60, 80, 90];
 
-function _quickSolClosestRubricValue(pct) {
-  return QUICK_SOL_RUBRIC_VALUES.reduce((best, v) =>
-    Math.abs(v - pct) < Math.abs(best - pct) ? v : best
-  , QUICK_SOL_RUBRIC_VALUES[0]);
+function _quickSolProfile() {
+  const target = _quickSolSelectedTarget();
+  return paseWorkRatingProfile(target ? findObra(target.obraId) : null);
+}
+
+function _quickSolRenderRubric() {
+  const wrap = document.getElementById('quickSolRubric');
+  if (!wrap) return;
+  const profile = _quickSolProfile();
+  if (wrap.dataset.ratingProfile === profile) return;
+  wrap.dataset.ratingProfile = profile;
+  wrap.innerHTML = paseProfileDefinition(profile).ranges
+    .filter(range => QUICK_SOL_RUBRIC_BANDS.includes(range[0]))
+    .map(range => {
+      const mid = Math.round((range[0] + range[1]) / 2);
+      return '<button type="button" class="quick-sol-rubric-btn" data-val="' + mid + '" data-rating-min="' + range[0] + '" data-rating-max="' + range[1] + '"' +
+        ' title="' + escapeHtmlSafe(range[3]) + '" onclick="quickSolidezPreset(' + mid + ',true)">' +
+        '<strong>' + escapeHtmlSafe(range[2]) + '</strong><span>' + paseScaleRangeLabel(range) + '</span></button>';
+    }).join('');
 }
 
 function _quickSolSyncRubric(pct) {
-  const closest = _quickSolClosestRubricValue(pct);
+  _quickSolRenderRubric();
   document.querySelectorAll('#quickSolRubric .quick-sol-rubric-btn').forEach(btn => {
-    const val = parseInt(btn.getAttribute('data-val') || 0);
-    btn.classList.toggle('active', val === closest);
+    btn.classList.toggle('active', pct >= Number(btn.dataset.ratingMin) && pct <= Number(btn.dataset.ratingMax));
   });
   const save = document.getElementById('quickSolSaveLabel');
   if (save) save.textContent = 'Guardar ' + pct + '%';
@@ -26255,7 +26493,7 @@ function updateQuickSolidez(val) {
     value.textContent = pct + '%';
     value.style.color = color;
   }
-  if (label) label.textContent = solPctLabel(pct);
+  if (label) label.textContent = paseRatingStage(pct, _quickSolProfile());
   fillSlider(slider, color);
   _quickSolSyncRubric(pct);
 }
@@ -28679,7 +28917,7 @@ renderObraCardSimple = function(o) {
       '<div class="obra-sol-bar"><div class="obra-sol-fill" style="width:' + pct + '%;background:' + col + '"></div></div>' +
       '<div class="obra-sol-row">' +
         '<strong style="color:' + col + '">' + (scoreCount ? pct + '%' : '—') + '</strong>' +
-        '<span class="obra-sol-label">' + (scoreCount ? solPctLabel(pct) : 'Aún sin medir') + '</span>' +
+        '<span class="obra-sol-label">' + (scoreCount ? solPctLabel(pct, o) : 'Aún sin medir') + '</span>' +
         '<span class="obra-sol-medir">Registrar pase</span>' +
       '</div>' +
     '</button>' +

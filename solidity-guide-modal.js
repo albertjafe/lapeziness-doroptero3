@@ -1,6 +1,7 @@
 /* Modal de ayuda detallada para la píldora de solidez del cronómetro.
- * Reutiliza la guía completa que ya mantiene planning-enhancements-v3 para
- * que la escala de Hecho y la ayuda durante una sesión nunca diverjan.
+ * Muestra la escala de la obra que se está estudiando (obra nueva,
+ * recuperación, cámara o acompañamiento) desde la fuente única de app.js, la
+ * misma que da nombre a la píldora, y permite cambiar la escala de esa obra.
  */
 (function solidityGuideModal(){
   'use strict';
@@ -9,49 +10,19 @@
   const TRIGGER_ID = 'cronoTargetSolidityGuideButton';
   let lastFocus = null;
 
-  const FALLBACK_BANDS = [
-    ['0–9', 'Apenas empezada', 'Estás descubriendo notas, digitación o estructura. No existe todavía un pase reconocible de principio a fin.'],
-    ['10–24', 'En construcción', 'Hay fragmentos que empiezan a responder, pero todavía dependes de parar, aislar y reconstruir. Grandes zonas siguen sin estar disponibles de forma continua.'],
-    ['25–39', 'Se cae', 'Reconoces casi todo el camino, pero un pase pierde el hilo, obliga a reiniciar o deja agujeros importantes. El resultado cambia muchísimo de un intento a otro.'],
-    ['40–54', 'Frágil', 'Puedes llegar al final en condiciones de estudio, aunque con paradas, vacilaciones, simplificaciones o errores que rompen claramente la continuidad. Todavía hay bastante factor suerte.'],
-    ['55–69', 'Estable con atención', 'La obra sale mayoritariamente entera. Hay fallos o zonas tensas, pero normalmente puedes seguir y recuperar. Necesitas vigilancia consciente para que no se desmonte.'],
-    ['70–79', 'Estable', 'Los pases completos suelen funcionar. Los errores no destruyen el discurso y el plan musical sobrevive. Ya puedes trabajar más en calidad que en mera supervivencia.'],
-    ['80–89', 'Segura', 'Varios pases completos son consistentes. Puedes concentrarte en sonido, fraseo y decisiones musicales sin temer constantemente una caída. Es razonable probar clase, grabación o situación de exposición.'],
-    ['90–96', 'Brillante · lista para exponer', 'Funciona repetidamente incluso con presión, cansancio o una sola oportunidad. Los problemas son locales y rara vez comprometen el conjunto.'],
-    ['97–99', 'Fiabilidad excepcional', 'Nivel de concurso o grabación muy asentado: múltiples pases y días confirman una consistencia extraordinaria. Aun así, 100 queda reservado para tu máximo estándar.'],
-    ['100', 'Referencia', 'La tocarías ahora en público y esperarías que saliera perfecta. Es el techo subjetivo de la app, no una promesa estadística de que jamás pueda ocurrir un error.'],
-  ];
-
-  function stripIds(root) {
-    if (!root?.querySelectorAll) return;
-    if (root.id) root.removeAttribute('id');
-    root.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
+  function currentTarget() {
+    try { return typeof cronoSolidityTarget === 'function' ? cronoSolidityTarget() : null; } catch (error) { return null; }
   }
 
-  function fallbackGuide() {
+  function guideContent() {
+    const target = currentTarget();
+    const profile = target?.ratingProfile || 'solo';
     const guide = document.createElement('div');
-    guide.className = 'solidity-guide-v3 solidity-guide-modal-fallback';
-    const rows = FALLBACK_BANDS.map(([range, label, copy]) => {
-      const parts = String(range).split('–').map(Number);
-      const min = Number.isFinite(parts[0]) ? parts[0] : 0;
-      const max = Number.isFinite(parts[1]) ? parts[1] : min;
-      return `<div class="solidity-guide-row" data-rating-min="${min}" data-rating-max="${max}"><strong>${range}</strong><span><b>${label}</b>${copy}</span></div>`;
-    }).join('');
-    guide.innerHTML = `
-      <div class="solidity-guide-principle"><strong>Regla principal:</strong> puntúa lo que la obra puede hacer <em>hoy</em>. La cifra describe fiabilidad actual, no las horas históricas acumuladas.</div>
-      <div class="solidity-guide-bands">${rows}</div>
-      <p class="solidity-guide-foot"><strong>Para escena, grabación o concurso:</strong> reserva 90+ para varios pases completos y repetibles bajo condiciones parecidas a la exposición real.</p>`;
+    guide.className = 'solidity-guide-v3 solidity-guide-modal-copy';
+    guide.dataset.ratingProfile = profile;
+    guide.innerHTML = '<div class="solidity-guide-body">' +
+      paseScaleGuideBodyHtml(profile, { obraId: target?.obraId || null, currentPct: currentScore() }) + '</div>';
     return guide;
-  }
-
-  function guideClone() {
-    const source = document.querySelector('#solidityGuideHechoV3 .solidity-guide-v3');
-    if (!source) return fallbackGuide();
-    const clone = source.cloneNode(true);
-    stripIds(clone);
-    if (clone.tagName === 'DETAILS') clone.open = true;
-    clone.classList.add('solidity-guide-modal-copy');
-    return clone;
   }
 
   function currentScore() {
@@ -91,10 +62,31 @@
         <div class="solidity-scale-modal-body" id="cronoSolidityGuideBody"></div>
       </section>`;
     modal.addEventListener('click', event => {
-      if (event.target.closest('[data-solidity-guide-close]')) closeGuide();
+      if (event.target.closest('[data-solidity-guide-close]')) { closeGuide(); return; }
+      const choice = event.target.closest('[data-solidity-scale]');
+      if (choice) chooseScale(choice);
     });
     document.body.appendChild(modal);
     return modal;
+  }
+
+  function renderBody(modal) {
+    const body = modal.querySelector('#cronoSolidityGuideBody');
+    if (!body) return;
+    body.replaceChildren(guideContent());
+    const target = currentTarget();
+    const kicker = modal.querySelector('.solidity-scale-modal-head span');
+    if (kicker) kicker.textContent = 'Escala · ' + paseProfileDefinition(target?.ratingProfile || 'solo').title;
+    markCurrentBand(body);
+  }
+
+  function chooseScale(button) {
+    const target = currentTarget();
+    if (!target?.obraId || typeof paseSetWorkScale !== 'function') return;
+    paseSetWorkScale(target.obraId, button.dataset.solidityScale || null);
+    const modal = document.getElementById(MODAL_ID);
+    if (modal) renderBody(modal);
+    modal?.querySelector('.solidity-scale-choice.is-active')?.focus({ preventScroll:true });
   }
 
   function openGuide() {
@@ -102,8 +94,7 @@
     const body = modal.querySelector('#cronoSolidityGuideBody');
     if (!body) return;
     lastFocus = document.activeElement;
-    body.replaceChildren(guideClone());
-    markCurrentBand(body);
+    renderBody(modal);
     modal.hidden = false;
     modal.classList.add('is-open');
     document.body.classList.add('solidity-scale-modal-open');

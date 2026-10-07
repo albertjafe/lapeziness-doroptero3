@@ -23,8 +23,8 @@ describe('PWA version boundary',()=>{
     const h=harness();await h.lifecycle('install');
     expect(h.calls).not.toContain('skip');
     expect(await (await h.fetch('/?view=cronometro','navigate')).text()).toContain('A:');
-    expect(await (await h.fetch('/app.js?v=489')).text()).toContain('A:');
-    expect(await (await h.fetch('/solidity-guide-modal.js?v=377')).text()).toContain('A:');
+    expect(await (await h.fetch('/app.js?v=495')).text()).toContain('A:');
+    expect(await (await h.fetch('/solidity-guide-modal.js?v=494')).text()).toContain('A:');
     expect(h.calls).not.toContain('network');
   });
   it('offline navigation and scripts come from the same precache',async()=>{
@@ -37,7 +37,7 @@ describe('PWA version boundary',()=>{
     expect((await h.fetch('/work-structure-catalog.js?v=381')).status).toBe(200);
     expect((await h.fetch('/solo-repertoire-structure.js?v=361')).status).toBe(200);
     expect((await h.fetch('/professor-practice-dedup.js?v=363')).status).toBe(200);
-    expect((await h.fetch('/solidity-guide-modal.css?v=377')).status).toBe(200);
+    expect((await h.fetch('/solidity-guide-modal.css?v=494')).status).toBe(200);
   });
   it('ignores unsafe promotion and forces a real navigation after explicit promotion',async()=>{
     const h=harness();
@@ -56,7 +56,7 @@ describe('PWA version boundary',()=>{
   it('activation preserves unrelated caches and the previous shell for old tabs',async()=>{
     const h=harness();['estudio-v340','estudio-v341','user-content'].forEach(k=>h.stores.set(k,new Map()));
     await h.lifecycle('install');await h.lifecycle('activate');
-    expect([...h.stores.keys()].sort()).toEqual(['estudio-v341','estudio-v493','user-content']);
+    expect([...h.stores.keys()].sort()).toEqual(['estudio-v341','estudio-v495','user-content']);
     expect(h.calls.some(x=>x.startsWith('navigate:'))).toBe(false);
   });
   it('never serves a new script under an uncached old version URL',async()=>{

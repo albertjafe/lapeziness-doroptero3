@@ -1699,7 +1699,7 @@ test('starts task dictation automatically and keeps manual editing available', a
     text: 'Recordar la postura al tocar', kind: 'personal', done: false,
   });
   expect(await page.evaluate(() => window.__taskRecognitionInstances[0]?.stopped)).toBe(true);
-  await expect(panel.locator('.crono-task-lane.personal')).toContainText('Recordar la postura al tocar');
+  await expect(panel.locator('.crono-task-board .crono-task-group')).toContainText('Recordar la postura al tocar');
 });
 
 test('uses the task circle to toggle and the task name to edit', async ({ page }) => {

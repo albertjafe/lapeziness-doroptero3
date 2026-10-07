@@ -35,7 +35,7 @@ async function prepare(page) {
   });
 }
 
-test('live solidity help opens the same detailed 0–100 copy as Hecho', async ({ page }) => {
+test('live solidity help shows the scale of the work being studied and lets you change it', async ({ page }) => {
   await prepare(page);
 
   await expect(page.locator('#cronoTargetSolidityGuideButton')).toBeVisible();
@@ -48,22 +48,21 @@ test('live solidity help opens the same detailed 0–100 copy as Hecho', async (
   await expect(modal).toBeVisible();
   await expect(page.locator('#cronoTargetSolidity .crono-target-solidity-guide')).not.toHaveAttribute('open', '');
   await expect(modal).toContainText('Qué significa cada puntuación');
-  await expect(modal).toContainText('Apenas empezada');
-  await expect(modal).toContainText('Estás descubriendo notas, digitación o estructura');
-  await expect(modal).toContainText('Fiabilidad excepcional');
-  await expect(modal).toContainText('múltiples pases y días confirman una consistencia extraordinaria');
-  await expect(modal).toContainText('Referencia');
+  await expect(modal).toContainText('Escala · Obra nueva');
+  // El tramo marcado es el que nombra la píldora.
+  const pill = (await page.locator('#cronoTargetSolidityValue').textContent()).split('·')[1].trim();
+  await expect(modal.locator('.solidity-guide-row.is-current b')).toHaveText(pill);
+  await expect(modal).toContainText('Todas las notas están en las manos');
+  await modal.locator('.solidity-scale-choice', { hasText:'Recuperación' }).click();
+  await expect(modal).toContainText('Escala · Recuperación');
+  await expect(modal.locator('.solidity-scale-choice.is-active')).toContainText('Recuperación');
+  await expect(page.locator('#cronoTargetSolidityScale')).toHaveText('Escala · Recuperación');
+  const pillAfter = (await page.locator('#cronoTargetSolidityValue').textContent()).split('·')[1].trim();
+  await expect(modal.locator('.solidity-guide-row.is-current b')).toHaveText(pillAfter);
+  expect(await page.evaluate(() => findObra('obra_modal').solidityScale)).toBe('repertorio');
+  await modal.locator('.solidity-scale-auto').click();
+  await expect(modal).toContainText('Escala · Obra nueva');
 
-  const copies = await page.evaluate(() => {
-    const normalizedCopy = selector => (document.querySelector(selector)?.textContent || '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    return {
-      hecho: normalizedCopy('#solidityGuideHechoV3 .solidity-guide-bands'),
-      modal: normalizedCopy('#cronoSolidityGuideModal .solidity-guide-bands'),
-    };
-  });
-  expect(copies.modal).toBe(copies.hecho);
 
   await modal.getByRole('button', { name:'Cerrar guía' }).click();
   await expect(modal).toBeHidden();

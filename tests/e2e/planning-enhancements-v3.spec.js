@@ -96,16 +96,17 @@ test('project can stay deadline-free and persists its progress', async ({ page }
   expect(await page.evaluate(event => PlanningEnhancementsV3.projectWindow(event), saved)).toBeNull();
 });
 
-test('solidity guide covers new works, chamber with score and recovered repertoire', async ({ page }) => {
+test('solidity guide shows one exact scale with a description for every range', async ({ page }) => {
   await prepare(page);
   const guide = page.locator('#solidityGuideQuickV3');
   await expect(guide).toContainText('Obra nueva');
-  await expect(guide).toContainText('Cámara · tu parte primero');
-  await expect(guide).toContainText('la memoria tampoco se penaliza');
-  await expect(guide).toContainText('Repertorio recuperado');
-  await expect(guide).toContainText('sin falsear la medición actual');
+  await expect(guide).toContainText('Regla principal');
+  await expect(guide.locator('.solidity-guide-row')).toHaveCount(9);
+  await expect(guide).toContainText('45–59');
+  await expect(guide).toContainText('En dedos');
   await expect(guide).toContainText('90–96');
-  await expect(guide).toContainText('100');
+  await expect(guide).toContainText('97–100');
+  await expect(guide).toContainText('Una toma brillante aislada no basta');
 });
 
 test('competition dossier exposes a clickable official website', async ({ page }) => {
