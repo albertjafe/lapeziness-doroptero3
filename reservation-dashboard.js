@@ -68,6 +68,7 @@
     { command: 'set_emergency', key: 'emergency_enabled', label: 'Emergencia', hint: 'Rellena huecos de última hora entre tus reservas' },
     { command: 'set_madrugada', key: 'madrugada_enabled', label: 'Madrugada', hint: 'Permite reservar entre 23:30 y 07:30' },
     { command: 'set_aachen', key: 'aachen_only', label: 'Solo Aachen', hint: 'Busca únicamente en el campus de Aachen' },
+    { command: 'set_absorbe', key: 'absorbe_enabled', label: 'Absorber huecos', hint: 'Alarga tus reservas hacia el hueco libre de al lado', optional: true },
   ];
   const TAB_KEY = 'reservationDashboardTab';
   const LAST_START_KEY = 'reservationDashboardLastStart_';
@@ -738,7 +739,7 @@
       .filter(item => !(item.optional && monitor[item.key] == null))
       .map(item => toggleButton(item, monitor[item.key], offline) + (item.command === 'set_migration' ? migrationModeHtml(monitor, offline) : '')).join('');
     const summary = el('reservationActiveSettings');
-    if (summary) summary.innerHTML = settingsSummary(monitor);
+    if (summary) renderBlinds(summary, monitor, offline);
     else settingsWrap.insertAdjacentHTML('beforeend', settingsSummary(monitor));
 
     const danger = el('reservationDangerControls') || actionWrap;
@@ -1055,6 +1056,114 @@
       <div><dt>Aulas prioritarias</dt><dd>${escapeHtml(listLabel(settings.priority_rooms, roomLabel))}</dd></div>
       ${settings.no_rebook_count != null ? `<div><dt>Huecos sin re-reservar</dt><dd>${escapeHtml(settings.no_rebook_count || 'ninguno')}</dd></div>` : ''}
     </dl>`;
+  }
+
+  /* Blindajes, VIP y hora de inicio (07-10-2026): antes solo en Telegram.
+   * Cada cambio manda la lista completa (set_blinds / set_priority /
+   * set_inicio). Un monitor antiguo no publica absorbe_enabled: entonces la
+   * tarjeta se queda de solo lectura. El editor solo se repinta si cambian
+   * los datos (no se pierde lo que estás escribiendo). */
+  function blindsEditable(monitor) { return typeof monitor.absorbe_enabled === 'boolean'; }
+  function parseRooms(text) {
+    return [...new Set(String(text || '').split(/[\s,;]+/)
+      .map(token => Number(token.replace(/^10\./, '').trim()))
+      .filter(n => Number.isInteger(n) && n > 0 && n < 100000))];
+  }
+  function timeOptions(fromMin, toMin, selected) {
+    let html = '';
+    for (let m = fromMin; m <= toMin; m += 15) {
+      const value = `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+      html += `<option value="${value}" ${value === selected ? 'selected' : ''}>${value}</option>`;
+    }
+    return html;
+  }
+  function blindChips(values, kind, label, disabled) {
+    return values.length
+      ? values.map((value, index) => `<span class="rd-chip">${escapeHtml(label(value))}<button type="button" aria-label="Quitar ${escapeHtml(label(value))}"
+          data-blind-remove="${kind}" data-index="${index}" ${disabled}>✕</button></span>`).join('')
+      : '<small class="rd-blind-none">ninguna</small>';
+  }
+  function blindsEditorHtml(monitor, offline) {
+    const dis = offline ? 'disabled' : '';
+    const periods = (monitor.blind_periods || []).filter(p => Array.isArray(p) && p[0] && p[1]);
+    const groups = monitor.blinded_groups || [];
+    const win = monitor.monitor_window || {};
+    const startMin = toMinutes(win.start || '10:00') + 15;
+    const endMin = toMinutes(win.end || '20:30') - 15;
+    return `<div class="rd-blinds">
+      <section><b>Franjas ciegas</b><small>No reserva nada que toque estas horas</small>
+        <div class="rd-chips">${blindChips(periods, 'period', p => `${p[0]}–${p[1]}`, dis)}</div>
+        <div class="rd-blind-add"><select name="period_start" aria-label="Desde">${timeOptions(7 * 60, 23 * 60, '13:00')}</select><span>–</span>
+          <select name="period_end" aria-label="Hasta">${timeOptions(7 * 60, 23 * 60, '14:00')}</select>
+          <button type="button" class="rd-action" data-blind-add="period" ${dis}><b>Añadir</b></button></div>
+      </section>
+      <section><b>Aulas blindadas</b><small>Nunca las reserva</small>
+        <div class="rd-chips">${blindChips(monitor.blinded_rooms || [], 'room', roomLabel, dis)}</div>
+        <div class="rd-blind-add"><input name="rooms" inputmode="numeric" placeholder="p. ej. 318 239" aria-label="Aulas que blindar" autocomplete="off">
+          <button type="button" class="rd-action" data-blind-add="room" ${dis}><b>Blindar</b></button></div>
+      </section>
+      <section><b>Grupos blindados</b><small>Ninguna aula de ese grupo</small>
+        <div class="rd-segment">${[4, 5].map(g => `<button type="button" role="switch" aria-checked="${groups.includes(g)}"
+          class="${groups.includes(g) ? 'active' : ''}" data-blind-group="${g}" ${dis}>Grupo ${g}</button>`).join('')}</div>
+      </section>
+      <section><b>Aulas VIP</b><small>Las busca con prioridad máxima</small>
+        <div class="rd-chips">${blindChips(monitor.priority_rooms || [], 'vip', roomLabel, dis)}</div>
+        <div class="rd-blind-add"><input name="vip" inputmode="numeric" placeholder="p. ej. 113 308" aria-label="Aulas VIP que añadir" autocomplete="off">
+          <button type="button" class="rd-action" data-blind-add="vip" ${dis}><b>Añadir</b></button></div>
+      </section>
+      <section><b>Hoy, no antes de</b><small>Solo hoy: mañana vuelve a empezar al inicio del horario</small>
+        <select name="inicio" aria-label="Hora de inicio de hoy" ${dis}><option value="off" ${monitor.inicio_today ? '' : 'selected'}>Sin límite</option>${timeOptions(startMin, endMin, monitor.inicio_today || '')}</select>
+      </section>
+    </div>`;
+  }
+  function renderBlinds(wrap, monitor, offline) {
+    const hint = el('reservationBlindsHint');
+    if (!blindsEditable(monitor)) {
+      if (hint) hint.textContent = 'se cambian en Telegram';
+      wrap.dataset.sig = '';
+      wrap.innerHTML = settingsSummary(monitor);
+      return;
+    }
+    if (hint) hint.textContent = 'se aplican al momento';
+    const periods = (monitor.blind_periods || []).filter(p => Array.isArray(p) && p[0] && p[1]);
+    const rooms = monitor.blinded_rooms || [];
+    const vip = monitor.priority_rooms || [];
+    const groups = monitor.blinded_groups || [];
+    const sig = JSON.stringify([periods, rooms, vip, groups, monitor.inicio_today || null, offline]);
+    if (wrap.dataset.sig === sig) return;
+    wrap.dataset.sig = sig;
+    wrap.innerHTML = blindsEditorHtml(monitor, offline);
+    const send = (command, payload, button) => postCommand(command, payload, button);
+    wrap.querySelectorAll('[data-blind-remove]').forEach(button => button.addEventListener('click', () => {
+      const index = Number(button.dataset.index);
+      const kind = button.dataset.blindRemove;
+      if (kind === 'period') send('set_blinds', { periods: periods.filter((_, i) => i !== index) }, button);
+      if (kind === 'room') send('set_blinds', { rooms: rooms.filter((_, i) => i !== index) }, button);
+      if (kind === 'vip') send('set_priority', { rooms: vip.filter((_, i) => i !== index) }, button);
+    }));
+    wrap.querySelector('[data-blind-add="period"]')?.addEventListener('click', event => {
+      const a = wrap.querySelector('[name="period_start"]').value;
+      const b = wrap.querySelector('[name="period_end"]').value;
+      if (b <= a) { setStatus('La franja ciega tiene que terminar después de empezar.', 'error'); return; }
+      send('set_blinds', { periods: [...periods, [a, b]] }, event.currentTarget);
+    });
+    [['room', 'rooms', rooms, 'set_blinds'], ['vip', 'vip', vip, 'set_priority']].forEach(([kind, field, current, command]) => {
+      wrap.querySelector(`[data-blind-add="${kind}"]`)?.addEventListener('click', event => {
+        const input = wrap.querySelector(`[name="${field}"]`);
+        const added = parseRooms(input.value);
+        if (!added.length) { setStatus('Escribe uno o más números de aula, p. ej. 318 239.', 'error'); return; }
+        const next = [...new Set([...current, ...added])];
+        send(command, { rooms: next }, event.currentTarget);
+        input.value = '';
+      });
+    });
+    wrap.querySelectorAll('[data-blind-group]').forEach(button => button.addEventListener('click', () => {
+      const g = Number(button.dataset.blindGroup);
+      send('set_blinds', { groups: groups.includes(g) ? groups.filter(x => x !== g) : [...groups, g] }, button);
+    }));
+    wrap.querySelector('[name="inicio"]')?.addEventListener('change', event => {
+      send('set_inicio', { time: event.currentTarget.value }, null);
+    });
   }
 
   function askConfirm(action) {
@@ -1480,6 +1589,20 @@
   }
 
   // quiet: selección del menú de arranque, ya reflejada en pantalla al tocar.
+  // Órdenes al instante (07-10-2026): aviso por Realtime al canal del monitor
+  // («rmon-<usuario>») para que recoja la orden ya, sin esperar a su consulta.
+  // Si falla no pasa nada: el monitor la recoge igual en su siguiente consulta.
+  function pingMonitor() {
+    try {
+      if (typeof SUPABASE_URL === 'undefined' || typeof SUPABASE_KEY === 'undefined' || !userId) return;
+      fetch(`${SUPABASE_URL}/realtime/v1/api/broadcast`, {
+        method: 'POST',
+        headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ topic: `rmon-${userId}`, event: 'cmd', payload: { source: selectedSource }, private: false }] }),
+      }).catch(() => {});
+    } catch (_) {}
+  }
+
   async function postCommand(command, payload, button, { quiet = false } = {}) {
     if (!userId || !command || button?.disabled) return;
     if (button) {
@@ -1495,6 +1618,7 @@
         payload: payload || {},
       }).select('id').single();
       if (error) throw error;
+      pingMonitor();
       pendingCommands.set(data.id, button || { quiet: true, command });
       if (!quiet) setStatus('Orden enviada al monitor…', 'loading');
       window.setTimeout(() => {

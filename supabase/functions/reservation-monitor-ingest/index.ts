@@ -32,6 +32,10 @@ const allowedCommands = new Set([
   "franja_remove",
   "franja_skip",
   "franja_resume",
+  "set_blinds",
+  "set_priority",
+  "set_inicio",
+  "set_absorbe",
 ]);
 const allowedPhases = new Set(["awaiting_start", "starting", "running", "closed"]);
 
@@ -324,6 +328,9 @@ function cleanState(value: unknown) {
       priority_rooms: Array.isArray(monitorRaw.priority_rooms)
         ? monitorRaw.priority_rooms.slice(0, 120).map((room) => cleanInteger(room, 1, 99_999)).filter(Boolean)
         : [],
+      // 07-10-2026: hora de inicio de hoy y absorbedor (null en monitores antiguos).
+      inicio_today: cleanTime(monitorRaw.inicio_today),
+      absorbe_enabled: typeof monitorRaw.absorbe_enabled === "boolean" ? monitorRaw.absorbe_enabled : null,
       // null = monitor antiguo que aún no publica franjas (la app oculta la tarjeta).
       franjas: Array.isArray(monitorRaw.franjas)
         ? monitorRaw.franjas.slice(0, 16).map(cleanFranja).filter((f) => f.id && f.date && f.start && f.end)
@@ -438,7 +445,9 @@ Deno.serve(async (req: Request) => {
     await service.from("reservation_monitor_tokens")
       .update({ last_used_at: new Date().toISOString() })
       .eq("id", tokenRow.id);
-    return json(200, { ok: true, commands: claimedCommands });
+    // Canal de Realtime por el que la app avisa al monitor de una orden nueva
+    // (solo despierta su consulta; las órdenes siguen viniendo por aquí).
+    return json(200, { ok: true, commands: claimedCommands, channel: `rmon-${tokenRow.user_id}` });
   }
 
   let body: Record<string, unknown>;

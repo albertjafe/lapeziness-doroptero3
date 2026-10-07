@@ -782,3 +782,52 @@ test('salas premium: tabla día × sala, filtro por horas y correo de reserva ya
   expect(decodeURIComponent(href.split('&body=')[1])).toBe(`Hallo,\nam ${de}, den ${d}. ${new Date(y, m - 1, d).toLocaleDateString('de-DE', { month: 'long' })} von 11:00 bis 15:00 Uhr.`);
   await expect(detail.locator('a').first()).toContainText('11:00–15:00');
 });
+
+test('blindajes, VIP, hora de inicio y absorbedor se editan desde la app y avisan al monitor al instante', async ({ page }) => {
+  // Monitor antiguo (sin absorbe_enabled): solo lectura, como antes.
+  await mountDashboard(page, sampleRow);
+  await expect(page.locator('#reservationBlindsHint')).toHaveText('se cambian en Telegram');
+  await expect(page.locator('#reservationActiveSettings .rd-settings-summary')).toBeVisible();
+  await expect(page.locator('[data-command="set_absorbe"]')).toHaveCount(0);
+
+  const row = structuredClone(sampleRow);
+  Object.assign(row.state.monitor, {
+    absorbe_enabled: true, inicio_today: null,
+    blind_periods: [['13:00', '14:00']], blinded_rooms: [318], blinded_groups: [4], priority_rooms: [113],
+  });
+  const pings = [];
+  await page.route('**/realtime/v1/api/broadcast', async route => { pings.push(route.request().postDataJSON()); await route.fulfill({ status: 202, body: '' }); });
+  await mountDashboard(page, row);
+  await page.evaluate(() => { window.SUPABASE_URL = 'http://127.0.0.1:4173'; window.SUPABASE_KEY = 'clave-publica'; });
+  const blinds = page.locator('#reservationActiveSettings .rd-blinds');
+  await expect(page.locator('#reservationBlindsHint')).toHaveText('se aplican al momento');
+  await expect(blinds).toContainText('13:00–14:00');
+  await expect(blinds.locator('.rd-chip', { hasText: '318' })).toBeVisible();
+  const last = () => page.evaluate(() => window.__dashboardWrites.at(-1));
+
+  await blinds.getByRole('button', { name: 'Quitar 318' }).click();
+  await expect.poll(last).toMatchObject({ command: 'set_blinds', payload: { rooms: [] } });
+  await expect.poll(() => pings.length).toBeGreaterThan(0);
+  expect(pings[0]).toMatchObject({ messages: [{ topic: `rmon-${row.user_id}`, event: 'cmd', payload: { source: 'alberto' } }] });
+
+  await blinds.locator('[name="rooms"]').fill('239, 10.240');
+  await blinds.locator('[data-blind-add="room"]').click();
+  await expect.poll(last).toMatchObject({ command: 'set_blinds', payload: { rooms: [318, 239, 240] } });
+  await blinds.locator('[name="period_start"]').selectOption('15:00');
+  await blinds.locator('[name="period_end"]').selectOption('16:00');
+  await blinds.locator('[data-blind-add="period"]').click();
+  await expect.poll(last).toMatchObject({ command: 'set_blinds', payload: { periods: [['13:00', '14:00'], ['15:00', '16:00']] } });
+  await blinds.getByRole('switch', { name: 'Grupo 5' }).click();
+  await expect.poll(last).toMatchObject({ command: 'set_blinds', payload: { groups: [4, 5] } });
+  await blinds.locator('[name="vip"]').fill('308');
+  await blinds.locator('[data-blind-add="vip"]').click();
+  await expect.poll(last).toMatchObject({ command: 'set_priority', payload: { rooms: [113, 308] } });
+  await blinds.locator('[name="inicio"]').selectOption('12:00');
+  await expect.poll(last).toMatchObject({ command: 'set_inicio', payload: { time: '12:00' } });
+  await page.locator('[data-command="set_absorbe"]').click();
+  await expect.poll(last).toMatchObject({ command: 'set_absorbe', payload: { enabled: false } });
+  // Lo escrito sobrevive a las lecturas periódicas si los datos no cambian.
+  await blinds.locator('[name="rooms"]').fill('401');
+  await page.evaluate(() => window.ReservationDashboard.refresh(false));
+  await expect(blinds.locator('[name="rooms"]')).toHaveValue('401');
+});

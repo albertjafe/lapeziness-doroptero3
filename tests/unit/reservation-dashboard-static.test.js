@@ -129,4 +129,18 @@ describe('reservation monitor dashboard', () => {
     expect(dashboard).toContain('renderPremium(state);');
     expect(dashboard).toContain("card.hidden = !premium || !Array.isArray(premium.rooms) || !premium.rooms.length;");
   });
+
+  it('edits blinds, VIP, start time and the absorber from the app in every layer, with an instant Realtime ping', () => {
+    const migration = fs.readFileSync('supabase/migrations/20261007120000_reservation_monitor_settings_commands.sql', 'utf8');
+    for (const command of ['set_blinds', 'set_priority', 'set_inicio', 'set_absorbe']) {
+      expect(migration).toContain(`'${command}'`);
+      expect(edge).toContain(`"${command}"`);
+      expect(dashboard).toContain(command);
+    }
+    const previous = fs.readFileSync('supabase/migrations/20261006120000_reservation_monitor_franja_commands.sql', 'utf8');
+    for (const [, command] of previous.matchAll(/'([a-z_]+)'/g)) expect(migration).toContain(`'${command}'`);
+    expect(edge).toContain('channel: `rmon-${tokenRow.user_id}`');
+    expect(edge).toContain('inicio_today: cleanTime(monitorRaw.inicio_today),');
+    expect(dashboard).toContain('topic: `rmon-${userId}`');
+  });
 });
