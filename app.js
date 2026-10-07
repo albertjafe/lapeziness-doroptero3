@@ -22114,16 +22114,25 @@ function cronoActiveTaskCount() {
 const _cronoTaskComposer = {
   idle: { kind: 'personal', tomorrow: false, open: false },
   running: { kind: 'personal', tomorrow: false, open: false },
+  board: { kind: 'personal', tomorrow: false, open: false },
 };
+const CRONO_TASK_SURFACES = {
+  idle: { panel: 'cronoIdleTasksPanel', input: 'cronoIdleTaskInput' },
+  running: { panel: 'cronoTasksPanel', input: 'cronoTaskInput' },
+  board: { panel: 'cronoBoardTasksPanel', input: 'cronoBoardTaskInput' },
+};
+function cronoTaskSurface(source) {
+  return CRONO_TASK_SURFACES[source] || CRONO_TASK_SURFACES.idle;
+}
 let _cronoTaskRecognition = null;
 let _cronoTaskVoiceSource = null;
 
 function cronoTaskComposerState(source) {
-  return source === 'running' ? _cronoTaskComposer.running : _cronoTaskComposer.idle;
+  return _cronoTaskComposer[source] || _cronoTaskComposer.idle;
 }
 
 function cronoTaskVoiceInput(source) {
-  return document.getElementById(source === 'running' ? 'cronoTaskInput' : 'cronoIdleTaskInput');
+  return document.getElementById(cronoTaskSurface(source).input);
 }
 
 function cronoSetTaskVoiceState(source, active) {
@@ -22249,7 +22258,7 @@ function cronoToggleTaskTomorrow(source) {
 }
 
 function cronoUpdateTaskComposer(source) {
-  const panel = document.getElementById(source === 'running' ? 'cronoTasksPanel' : 'cronoIdleTasksPanel');
+  const panel = document.getElementById(cronoTaskSurface(source).panel);
   if (!panel) return;
   const state = cronoTaskComposerState(source);
   panel.querySelectorAll('.crono-task-kind-btn').forEach(button => {
@@ -22559,8 +22568,7 @@ function cronoRenderTaskBreakPrompt() {
     cronoRenderTaskBreakUrgency();
     return;
   }
-  const visible = pending.slice(0, 6);
-  list.innerHTML = visible.map(task => {
+  list.innerHTML = pending.map(task => {
     const kind = cronoTaskKind(task);
     const priority = cronoTaskPriority(task);
     const priorityLabel = cronoTaskPriorityLabel(priority);
@@ -22571,9 +22579,7 @@ function cronoRenderTaskBreakPrompt() {
           (priority === 3 ? ' · <b>Urgentísima</b> · toca para marcar “Ya está hecha”' : '') + '</small>' +
       '</span>' +
     '</button>';
-  }).join('') + (pending.length > visible.length
-    ? '<div class="crono-task-break-more">+' + (pending.length - visible.length) + ' más</div>'
-    : '');
+  }).join('');
   cronoRenderTaskBreakUrgency();
 }
 
@@ -22684,7 +22690,7 @@ function cronoTaskFilter() {
 function cronoSetTaskFilter(filter) {
   _cronoTaskFilter = ['all', 'personal', 'piano'].includes(filter) ? filter : 'all';
   try { localStorage.setItem(CRONO_TASK_FILTER_KEY, _cronoTaskFilter); } catch (e) {}
-  ['idle', 'running'].forEach(source => {
+  ['idle', 'running', 'board'].forEach(source => {
     const state = cronoTaskComposerState(source);
     if (!state.open) state.kind = _cronoTaskFilter === 'piano' ? 'piano' : 'personal';
   });
@@ -22696,7 +22702,7 @@ function cronoSetTaskComposerKind(source, kind) {
   state.kind = kind === 'piano' ? 'piano' : 'personal';
   if (state.kind === 'personal') state.tomorrow = false;
   cronoUpdateTaskComposer(source);
-  document.getElementById(source === 'idle' ? 'cronoIdleTaskInput' : 'cronoTaskInput')?.focus();
+  document.getElementById(cronoTaskSurface(source).input)?.focus();
 }
 
 function renderCronoTasks() {
@@ -22747,6 +22753,11 @@ function renderCronoTasks() {
     priority,
     tasks: pending.filter(task => cronoTaskPriority(task) === priority),
   })).filter(group => group.tasks.length);
+  // En el teléfono la hoja es baja: muestra las más urgentes y un botón grande
+  // a la vista completa. En el iPad la hoja es alta y muestra la lista entera.
+  const CRONO_TASK_PREVIEW = 4;
+  const preview = source => source !== 'board' && document.documentElement.classList.contains('mv2-on') &&
+    !document.documentElement.classList.contains('mv2-tablet');
   const board = source => {
     const chip = (key, label) =>
       '<button type="button" class="crono-task-filter' + (filter === key ? ' active' : '') + '" aria-pressed="' + (filter === key) + '" onclick="cronoSetTaskFilter(\'' + key + '\')">' +
@@ -22760,15 +22771,33 @@ function renderCronoTasks() {
         '<button type="button" class="crono-task-lane-add crono-task-board-add" onclick="cronoOpenTaskComposerForKind(\'' + source + '\',\'' + addKind + '\')" aria-label="Añadir tarea de ' + (addKind === 'piano' ? 'Piano' : 'Personal') + '">' +
           '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>' +
         '</button>' +
+        (source === 'board' ? '' :
+          '<button type="button" class="crono-task-board-expand" onclick="cronoOpenTaskBoard()" aria-label="Ver todas las tareas en grande" title="Ver en grande">' +
+            '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3h5v5M8 17H3v-5M17 3l-6 6M3 17l6-6"/></svg>' +
+          '</button>') +
       '</div>';
-    const body = groups.length
-      ? groups.map(group =>
+    let shownGroups = groups;
+    let hidden = 0;
+    if (preview(source)) {
+      let budget = CRONO_TASK_PREVIEW;
+      shownGroups = groups.map(group => {
+        const tasksShown = group.tasks.slice(0, Math.max(0, budget));
+        budget -= tasksShown.length;
+        return { priority: group.priority, total: group.tasks.length, tasks: tasksShown };
+      }).filter(group => group.tasks.length);
+      hidden = pending.length - shownGroups.reduce((sum, group) => sum + group.tasks.length, 0);
+    }
+    const moreButton = hidden > 0
+      ? '<button type="button" class="crono-task-board-more" onclick="cronoOpenTaskBoard()">Ver las ' + pending.length + ' tareas en grande <span aria-hidden="true">↗</span></button>'
+      : '';
+    const body = shownGroups.length
+      ? moreButton + shownGroups.map(group =>
           '<section class="crono-task-group priority-' + group.priority + '">' +
-            '<h4><span>' + cronoTaskPriorityLabel(group.priority) + '</span><b>' + group.tasks.length + '</b></h4>' +
+            '<h4><span>' + cronoTaskPriorityLabel(group.priority) + '</span><b>' + (group.total || group.tasks.length) + '</b></h4>' +
             group.tasks.map(row).join('') +
           '</section>').join('')
       : '<div class="crono-task-clean" role="status"><span class="crono-task-clean-check" aria-hidden="true"></span><strong>Todo limpio</strong></div>';
-    const completed = done.length
+    const completed = done.length && !preview(source)
       ? '<details class="crono-task-completed">' +
           '<summary><span>' + done.length + (done.length === 1 ? ' hecha' : ' hechas') + '</span>' +
             '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="7 8 10 11 13 8"/></svg>' +
@@ -22776,12 +22805,13 @@ function renderCronoTasks() {
           '<div class="crono-task-completed-list">' + done.slice(0, CRONO_TASK_DONE_SHOWN).map(row).join('') + '</div>' +
         '</details>'
       : '';
-    return '<section class="crono-task-board" data-filter="' + filter + '">' + head +
-      '<div class="crono-task-list crono-task-board-list">' + body + completed + '</div></section>';
+    return '<section class="crono-task-board' + (preview(source) ? ' is-preview' : '') + '" data-filter="' + filter + '">' + head +
+      '<div class="crono-task-list crono-task-board-list" data-no-view-swipe>' + body + completed + '</div></section>';
   };
   [
     { id: 'cronoIdleTasksPanel', inputId: 'cronoIdleTaskInput', source: 'idle' },
     { id: 'cronoTasksPanel', inputId: 'cronoTaskInput', source: 'running' },
+    { id: 'cronoBoardTasksPanel', inputId: 'cronoBoardTaskInput', source: 'board' },
   ].forEach(target => {
     const el = document.getElementById(target.id);
     if (!el) return;
@@ -22825,6 +22855,38 @@ function renderCronoTasks() {
   });
   cronoApplyTaskDensity();
   cronoRenderTaskCount();
+  const boardCount = document.getElementById('cronoBoardTaskCount');
+  if (boardCount) boardCount.textContent = counts.all ? counts.all + (counts.all === 1 ? ' pendiente' : ' pendientes') : 'Todo limpio';
+}
+
+// Vista grande de tareas: pantalla completa en el móvil, ventana amplia en el
+// ordenador. Un solo contenedor con desplazamiento y, si cabe, dos columnas.
+function cronoOpenTaskBoard() {
+  let modal = document.getElementById('modalTaskBoard');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modalTaskBoard';
+    modal.className = 'modal-overlay task-board-overlay';
+    modal.innerHTML =
+      '<div class="modal task-board-modal" role="dialog" aria-modal="true" aria-labelledby="cronoBoardTitle" data-no-view-swipe>' +
+        '<header class="task-board-modal-head">' +
+          '<div><h2 id="cronoBoardTitle">Tareas</h2><small id="cronoBoardTaskCount"></small></div>' +
+          '<button type="button" class="task-board-modal-close" onclick="cronoCloseTaskBoard()" aria-label="Cerrar tareas">×</button>' +
+        '</header>' +
+        '<div class="task-board-modal-body crono-tasks-panel" id="cronoBoardTasksPanel"></div>' +
+      '</div>';
+    modal.addEventListener('click', event => { if (event.target === modal) cronoCloseTaskBoard(); });
+    document.body.appendChild(modal);
+  }
+  renderCronoTasks();
+  openModal('modalTaskBoard');
+  try { Haptics.light(); } catch (e) {}
+}
+
+function cronoCloseTaskBoard() {
+  const state = cronoTaskComposerState('board');
+  if (state.open) cronoCloseTaskComposer('board');
+  closeModal('modalTaskBoard');
 }
 
 function cronoTaskInputKey(ev, source) {
@@ -22844,8 +22906,7 @@ function addCronoTask(source) {
     cronoOpenTaskComposer(source);
     return;
   }
-  const inputId = source === 'idle' ? 'cronoIdleTaskInput' : 'cronoTaskInput';
-  const input = document.getElementById(inputId);
+  const input = document.getElementById(cronoTaskSurface(source).input);
   const text = (input?.value || '').replace(/\s+/g, ' ').trim();
   if (!text) {
     showToast('Dicta o escribe una tarea');

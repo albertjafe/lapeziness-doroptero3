@@ -56,7 +56,7 @@
 .crono-task-board-add { flex: 0 0 auto; }
 
 /* Lista: ocupa todo el alto disponible y es la única parte que se desplaza. */
-#view-cronometro .crono-task-board .crono-task-board-list {
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-board-list {
   display: flex !important;
   flex-direction: column;
   gap: 10px !important;
@@ -95,7 +95,7 @@
 .crono-task-group > h4 b { font-weight: 700; color: var(--text3); }
 
 /* Filas compactas: casilla, texto en hasta dos líneas y etiquetas a la derecha. */
-#view-cronometro .crono-task-board .crono-task-row {
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-row {
   min-height: 44px !important;
   margin: 0 !important;
   padding: 0 !important;
@@ -108,11 +108,11 @@
   background: var(--bg2) !important;
   box-shadow: none !important;
 }
-#view-cronometro .crono-task-board .crono-task-row.priority-3 { border-left-color: #d64545 !important; }
-#view-cronometro .crono-task-board .crono-task-row.priority-2 { border-left-color: #e07a2f !important; }
-#view-cronometro .crono-task-board .crono-task-row.priority-1 { border-left-color: #c8a030 !important; }
-#view-cronometro .crono-task-board .crono-task-row.priority-0 { border-left-color: var(--border2) !important; }
-#view-cronometro .crono-task-board .crono-task-toggle {
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-row.priority-3 { border-left-color: #d64545 !important; }
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-row.priority-2 { border-left-color: #e07a2f !important; }
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-row.priority-1 { border-left-color: #c8a030 !important; }
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-row.priority-0 { border-left-color: var(--border2) !important; }
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-toggle {
   width: 44px !important;
   height: 100% !important;
   min-height: 44px;
@@ -120,7 +120,7 @@
   place-items: center;
   padding: 0 !important;
 }
-#view-cronometro .crono-task-board .crono-task-open {
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-open {
   min-width: 0;
   min-height: 44px !important;
   padding: 6px 10px 6px 0 !important;
@@ -129,7 +129,7 @@
   gap: 8px;
   text-align: left;
 }
-#view-cronometro .crono-task-board .crono-task-text {
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-text {
   flex: 1 1 auto;
   min-width: 0;
   display: -webkit-box !important;
@@ -144,11 +144,11 @@
   font-weight: 550 !important;
   line-height: 1.3 !important;
 }
-#view-cronometro .crono-task-board .crono-task-row.priority-3 .crono-task-text { color: var(--text) !important; }
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-row.priority-3 .crono-task-text { color: var(--text) !important; }
 /* La urgencia ya la dice el grupo: el indicador de barras sobra en la fila. */
-#view-cronometro .crono-task-board .crono-task-priority { display: none !important; }
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-priority { display: none !important; }
 .crono-task-kind-tag,
-#view-cronometro .crono-task-board .crono-task-due-tag {
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-due-tag {
   flex: 0 0 auto;
   padding: 3px 6px;
   border-radius: 6px;
@@ -158,16 +158,16 @@
   letter-spacing: .03em;
   text-transform: uppercase;
 }
-#view-cronometro .crono-task-board .crono-task-due-tag {
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-due-tag {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent);
 }
-#view-cronometro .crono-task-board .crono-task-row.is-done .crono-task-text {
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-row.is-done .crono-task-text {
   color: var(--text3) !important;
   text-decoration: line-through;
 }
-#view-cronometro .crono-task-board .crono-task-completed { margin-top: 2px; }
-#view-cronometro .crono-task-board .crono-task-completed-list { display: grid; gap: 4px; margin-top: 6px; }
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-completed { margin-top: 2px; }
+:is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-completed-list { display: grid; gap: 4px; margin-top: 6px; }
 
 /* Compositor: selector Personal / Piano. */
 .crono-task-kind-switch {
@@ -203,9 +203,207 @@
 
 /* Móvil: texto y filas algo mayores para el dedo. */
 @media (max-width: 899px) {
-  #view-cronometro .crono-task-board .crono-task-text { font-size: 14px !important; }
-  #view-cronometro .crono-task-board .crono-task-row { min-height: 44px !important; }
+  :is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-text { font-size: 14px !important; }
+  :is(#view-cronometro, #modalTaskBoard) .crono-task-board .crono-task-row { min-height: 44px !important; }
 }
 
 /* El asa de la hoja móvil no pinta nada fuera del modo móvil (salía como una caja gris). */
 html:not(.mv2-on) #view-cronometro .mv2-sheet-toggle { display: none !important; }
+
+/* ── v496: vista grande, alto completo y pausa de tareas ── */
+
+.crono-task-board-expand {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  background: var(--bg2);
+  color: var(--text2);
+  cursor: pointer;
+}
+.crono-task-board-expand svg { width: 16px; height: 16px; }
+.crono-task-board-more {
+  width: 100%;
+  min-height: 46px;
+  border: 1px dashed var(--border2);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--bg2));
+  color: var(--accent);
+  font: 700 13.5px/1 var(--font-ui, system-ui, sans-serif);
+  cursor: pointer;
+}
+
+/* Escritorio: la lista del panel usa todo el alto disponible (antes 390 px fijos). */
+html.platform-windows body.crono-focus:not(.crono-running) #view-cronometro .crono-idle-drawer-panel[data-panel="tareas"] .crono-task-list.crono-task-board-list,
+#view-cronometro .crono-tasks-panel .crono-task-board:not(.is-preview) .crono-task-board-list {
+  max-height: max(390px, calc(100dvh - 330px)) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding-right: 2px;
+}
+#view-cronometro .crono-task-board.is-preview .crono-task-board-list { max-height: none !important; overflow: visible !important; }
+
+/* Vista grande. */
+#modalTaskBoard.task-board-overlay { z-index: 10050; }
+#modalTaskBoard .task-board-modal {
+  width: min(860px, 94vw) !important;
+  max-width: none !important;
+  height: min(88dvh, 920px);
+  max-height: none !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden !important;
+  border-radius: 16px !important;
+  background: var(--bg2) !important;
+}
+#modalTaskBoard .task-board-modal-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border);
+}
+#modalTaskBoard .task-board-modal-head h2 {
+  margin: 0;
+  color: var(--text);
+  font: 600 clamp(24px, 4vw, 30px)/1 'Cormorant Garamond', Georgia, serif;
+}
+#modalTaskBoard .task-board-modal-head small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text3);
+  font: 600 11px/1.2 var(--font-mono, ui-monospace, monospace);
+}
+#modalTaskBoard .task-board-modal-close {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  background: var(--bg3);
+  color: var(--text2);
+  font: 300 26px/1 var(--font-ui, system-ui, sans-serif);
+  cursor: pointer;
+}
+#modalTaskBoard .task-board-modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding: 12px 16px max(18px, env(safe-area-inset-bottom));
+}
+#modalTaskBoard .crono-task-board-head {
+  position: sticky;
+  top: -12px;
+  z-index: 2;
+  margin: -12px -16px 0;
+  padding: 12px 16px 8px;
+  background: var(--bg2);
+}
+#modalTaskBoard .crono-task-board .crono-task-board-list { max-height: none !important; overflow: visible !important; }
+#modalTaskBoard .crono-task-group > h4 { top: 44px; }
+#modalTaskBoard .crono-task-add { margin-bottom: 10px; }
+/* En pantallas anchas, dos columnas para ver todo de un vistazo. */
+@media (min-width: 760px) {
+  #modalTaskBoard .crono-task-board .crono-task-board-list {
+    display: block !important;
+    columns: 2;
+    column-gap: 18px;
+  }
+  #modalTaskBoard .crono-task-group { break-inside: avoid; margin-bottom: 14px; }
+  #modalTaskBoard .crono-task-group > h4 { position: static; }
+  #modalTaskBoard .crono-task-completed { break-inside: avoid; }
+}
+@media (max-width: 759px) {
+  #modalTaskBoard.task-board-overlay { padding: 0 !important; align-items: stretch !important; }
+  #modalTaskBoard .task-board-modal {
+    width: 100vw !important;
+    height: 100dvh;
+    border-radius: 0 !important;
+    padding-top: env(safe-area-inset-top) !important;
+  }
+}
+
+/* Pausa de tareas: lista completa con su propio desplazamiento; título y botón siempre a la vista. */
+#modalCronoTaskBreak .crono-task-break-modal {
+  display: flex !important;
+  flex-direction: column;
+  max-height: min(88dvh, 820px) !important;
+  overflow: hidden !important;
+  padding: 22px 22px max(18px, env(safe-area-inset-bottom)) !important;
+}
+#modalCronoTaskBreak .crono-task-break-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 14px -10px 12px !important;
+  padding: 4px 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  gap: 6px !important;
+  align-content: start;
+}
+#modalCronoTaskBreak .crono-task-break-list { display: flex !important; flex-direction: column; }
+#modalCronoTaskBreak .crono-task-break-item {
+  flex: 0 0 auto;
+  min-height: 48px !important;
+  height: auto !important;
+  padding: 8px 12px !important;
+}
+#modalCronoTaskBreak .crono-task-break-copy strong { font-size: 14px; }
+#modalCronoTaskBreak .crono-task-break-close { flex: 0 0 auto; }
+@media (max-width: 559px) {
+  #modalCronoTaskBreak .crono-task-break-modal {
+    width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top)) !important;
+  }
+}
+
+/* ── v496 · iPad y teléfono (diseño móvil): la lista es el único contenedor que
+   se desplaza y llena la hoja. Antes se desplazaba la hoja entera, o nada. ── */
+html.mv2-on:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer):has(.crono-run-drawer-panel.active[data-panel="tareas"]) .crono-run-drawer-panels {
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden !important;
+}
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-run-drawer-panel.active[data-panel="tareas"],
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-run-drawer-panel.active[data-panel="tareas"] .crono-idle-tasks,
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-run-drawer-panel.active[data-panel="tareas"] .crono-tasks-panel {
+  flex: 1 1 auto;
+  min-height: 0 !important;
+  max-height: none !important;
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden !important;
+}
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-run-drawer-panel.active[data-panel="tareas"] .crono-task-board { flex: 1 1 auto; min-height: 0; }
+html.mv2-on:not(#m):not(#m) #view-cronometro .crono-run-drawer-panel.active[data-panel="tareas"] .crono-task-board:not(.is-preview) .crono-task-board-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding-bottom: 12px;
+}
+/* iPad: con Tareas abierta, la hoja sube más para que quepan muchas más. */
+html.mv2-tablet:not(#m):not(#m) #view-cronometro :is(#cronoIdleDrawer, #cronoRunDrawer).mv2-sheet-open:has(.crono-run-drawer-panel.active[data-panel="tareas"]) {
+  height: 84dvh !important;
+  max-height: 84dvh !important;
+}
+html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-task-board .crono-task-text { font-size: 15px !important; }
+html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-task-board .crono-task-row { min-height: 48px !important; }
+/* iPad: en la vista grande, el texto también algo mayor. */
+html.mv2-tablet #modalTaskBoard .crono-task-board .crono-task-text { font-size: 15px !important; }
