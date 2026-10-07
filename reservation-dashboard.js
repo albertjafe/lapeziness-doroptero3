@@ -864,6 +864,84 @@
     paintFranjaNotice(formWrap);
   }
 
+  /* Observatorio de huecos (07-10-2026): el monitor registra cada tramo que se
+   * libera (≥ 30 min, aún no empezado) y qué pasa con él. Aquí, por franja
+   * horaria, día de la semana, día del mes / mes, y cuándo aparecen. Las
+   * medias son por día observado, para comparar días de forma justa. */
+  const OBS_TAB_KEY = 'reservationObsTab';
+  const OBS_TABS = [['franjas', 'Franjas'], ['semana', 'Semana'], ['mes', 'Mes'], ['cuando', 'Cuándo']];
+  const WD_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+  function obsTab() {
+    try { const v = localStorage.getItem(OBS_TAB_KEY); return OBS_TABS.some(t => t[0] === v) ? v : 'franjas'; } catch (e) { return 'franjas'; }
+  }
+  function obsMins(m) {
+    if (m == null) return '—';
+    return m >= 60 ? hoursLabel(Math.round(m / 6) * 6) : `${m} min`;
+  }
+  function obsPct(part, total) { return total ? `${Math.round(part / total * 100)} %` : '—'; }
+  function obsTone(value, max) {
+    if (!value || !max) return 0;
+    const f = value / max;
+    return f >= .66 ? 3 : f >= .33 ? 2 : 1;
+  }
+  function obsBars(items, labelOf, valueOf, fmt) {
+    const max = Math.max(1, ...items.map(valueOf).map(v => v || 0));
+    return `<div class="rd-obs-bars">${items.map(item => {
+      const v = valueOf(item) || 0;
+      return `<div class="rd-obs-bar"><span>${escapeHtml(labelOf(item))}</span><i style="--w:${Math.round(v / max * 100)}%"></i><b>${fmt(v, item)}</b></div>`;
+    }).join('')}</div>`;
+  }
+  function renderObservatorio(state) {
+    const card = el('reservationObservatorio');
+    const body = el('reservationObsBody');
+    if (!card || !body) return;
+    const obs = state.observatorio;
+    card.hidden = !obs || typeof obs !== 'object';
+    if (card.hidden) return;
+    const meta = el('reservationObsMeta');
+    if (meta) meta.textContent = obs.dias
+      ? `${obs.dias} ${obs.dias === 1 ? 'día' : 'días'} observados${obs.desde ? ` · desde ${formatDate(obs.desde)}` : ''}`
+      : 'recogiendo datos';
+    const tab = obsTab();
+    const total = obs.total || {};
+    const tabs = `<div class="rd-segment rd-obs-tabs" role="tablist" aria-label="Vista del observatorio">${OBS_TABS.map(([key, label]) => `
+      <button type="button" role="tab" aria-selected="${key === tab}" class="${key === tab ? 'active' : ''}" data-obs-tab="${key}">${label}</button>`).join('')}</div>`;
+    const resumen = `<p class="rd-obs-summary">${total.n
+      ? `<b>${total.n}</b> huecos liberados · <b>${obsMins(total.min_dia)}</b> al día · el monitor cogió <b>${obsPct(total.nuestro, total.n)}</b>, otros <b>${obsPct(total.otro, total.n)}</b>, sin usar <b>${obsPct(total.sin_usar, total.n)}</b>${total.cuota ? ` · <b>${total.cuota}</b> sin poder coger por cuota` : ''}.`
+      : 'Aún no hay huecos liberados registrados. El monitor los anota mientras está en marcha; las tendencias empiezan a ser fiables tras unas dos semanas.'}</p>`;
+    let view = '';
+    if (tab === 'franjas') {
+      const rows = (obs.bandas || []).map(b => `<tr><th scope="row">${escapeHtml(b.label || '')}</th>
+        <td>${obsMins(b.min_dia)}</td><td>${b.vida_med == null ? '—' : `${b.vida_med} min`}</td>
+        <td>${obsPct(b.nuestro, b.n)}</td><td>${obsPct(b.otro, b.n)}</td><td>${b.cuota || 0}</td></tr>`).join('');
+      view = `<div class="rd-obs-scroll"><table class="rd-obs-table"><tr><th scope="col">Franja</th><th scope="col" title="Minutos liberados por día observado">Libera/día</th>
+        <th scope="col" title="Cuánto dura libre (mediana)">Dura libre</th><th scope="col">Nuestro</th><th scope="col">Otros</th><th scope="col" title="Veces que no se pudo coger por cuota">Por cuota</th></tr>${rows}</table></div>
+        <p class="rd-obs-note">«Dura libre» corto = mucha competencia: hay que estar atento y tener cuota.</p>`;
+    } else if (tab === 'semana') {
+      const labels = (obs.bandas || []).map(b => b.label || '');
+      const values = (obs.semana || []).flatMap(w => w.bandas || []).filter(v => v != null);
+      const max = Math.max(0, ...values);
+      const rows = (obs.semana || []).map(w => `<tr><th scope="row">${WD_SHORT[w.wd] || ''}<small>${w.dias} d</small></th>${(w.bandas || []).map(v =>
+        `<td class="rd-obs-heat t${obsTone(v, max)}">${v == null ? '—' : obsMins(v)}</td>`).join('')}</tr>`).join('');
+      view = `<div class="rd-obs-scroll"><table class="rd-obs-table rd-obs-heatmap"><tr><th scope="col">Día</th>${labels.map(l => `<th scope="col">${escapeHtml(l)}</th>`).join('')}</tr>${rows}</table></div>
+        <p class="rd-obs-note">Minutos liberados por día observado de cada tipo. «d» = días observados.</p>`;
+    } else if (tab === 'mes') {
+      const dom = obs.mes_dia || [];
+      const meses = obs.meses || [];
+      view = (dom.length ? `<h4 class="rd-obs-h">Por día del mes</h4>${obsBars(dom, d => String(d.dia), d => d.min_dia, (v, d) => `${obsMins(v)} <small>${d.dias} d</small>`)}` : '')
+        + (meses.length ? `<h4 class="rd-obs-h">Por mes</h4>${obsBars(meses, m => m.mes, m => m.min_dia, (v, m) => `${obsMins(v)} <small>${m.dias} d</small>`)}` : '')
+        || '<p class="rd-franja-empty">Todavía no hay días suficientes.</p>';
+    } else {
+      view = `<h4 class="rd-obs-h">Con cuánta antelación se liberan</h4>${obsBars(obs.antelacion || [], a => a.label || '', a => a.n, v => String(v))}
+        <h4 class="rd-obs-h">A qué hora aparecen</h4>${obsBars((obs.horas_vistas || []).filter(h => h.n), h => `${h.h}:00`, h => h.n, v => String(v))}`;
+    }
+    body.innerHTML = tabs + resumen + view;
+    body.querySelectorAll('[data-obs-tab]').forEach(button => button.addEventListener('click', () => {
+      try { localStorage.setItem(OBS_TAB_KEY, button.dataset.obsTab); } catch (e) {}
+      renderObservatorio(state);
+    }));
+  }
+
   /* Salas premium (07-10-2026): 10.114, Kammermusiksaal y Konzertsaal Aachen se
    * reservan por correo. El monitor publica cada hora sus huecos de 1 h o más
    * en los próximos 60 días; aquí, tabla día × sala con el hueco más largo y,
@@ -1563,6 +1641,7 @@
     renderTransition(state.transition);
     renderFranjas(state, row);
     renderPremium(state);
+    renderObservatorio(state);
     applyTab();
     renderTodayCard(row);
     applyViewMode(state, row);

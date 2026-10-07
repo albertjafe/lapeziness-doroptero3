@@ -239,6 +239,52 @@ function cleanPremium(value: unknown) {
   };
 }
 
+// Observatorio de huecos (07-10-2026): cuándo se liberan aulas y qué pasa con
+// ellas, agregado por franja horaria, día de la semana, día del mes y mes.
+function cleanObsGroup(value: unknown) {
+  const g = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const n = (key: string, max = 1_000_000) => cleanInteger(g[key], 0, max);
+  return {
+    n: n("n") ?? 0, min: n("min", 100_000_000) ?? 0, min_dia: n("min_dia"), vida_med: n("vida_med"),
+    nuestro: n("nuestro") ?? 0, otro: n("otro") ?? 0, sin_usar: n("sin_usar") ?? 0, cuota: n("cuota") ?? 0,
+  };
+}
+
+function cleanObservatorio(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const list = (key: string, max: number) => Array.isArray(raw[key]) ? (raw[key] as unknown[]).slice(0, max) : [];
+  const obj = (item: unknown) => item && typeof item === "object" ? item as Record<string, unknown> : {};
+  return {
+    updated_at: cleanInstant(raw.updated_at),
+    desde: cleanDate(raw.desde),
+    dias: cleanInteger(raw.dias, 0, 100_000) ?? 0,
+    abiertos: cleanInteger(raw.abiertos, 0, 100_000) ?? 0,
+    total: cleanObsGroup(raw.total),
+    bandas: list("bandas", 12).map((item) => ({ ...cleanObsGroup(item), label: cleanText(obj(item).label, 12) })),
+    semana: list("semana", 7).map((item) => {
+      const r = obj(item);
+      return {
+        ...cleanObsGroup(r),
+        wd: cleanInteger(r.wd, 0, 6),
+        dias: cleanInteger(r.dias, 0, 100_000) ?? 0,
+        bandas: Array.isArray(r.bandas) ? r.bandas.slice(0, 12).map((v) => cleanInteger(v, 0, 1_000_000)) : [],
+      };
+    }),
+    mes_dia: list("mes_dia", 31).map((item) => {
+      const r = obj(item);
+      return { dia: cleanInteger(r.dia, 1, 31), dias: cleanInteger(r.dias, 0, 100_000) ?? 0, min_dia: cleanInteger(r.min_dia, 0, 1_000_000), n: cleanInteger(r.n, 0, 1_000_000) ?? 0 };
+    }),
+    meses: list("meses", 36).map((item) => {
+      const r = obj(item);
+      const mes = typeof r.mes === "string" && /^\d{4}-\d{2}$/.test(r.mes) ? r.mes : null;
+      return { mes, dias: cleanInteger(r.dias, 0, 100_000) ?? 0, min_dia: cleanInteger(r.min_dia, 0, 1_000_000), n: cleanInteger(r.n, 0, 1_000_000) ?? 0 };
+    }).filter((m) => m.mes),
+    antelacion: list("antelacion", 8).map((item) => ({ label: cleanText(obj(item).label, 12), n: cleanInteger(obj(item).n, 0, 1_000_000) ?? 0 })),
+    horas_vistas: list("horas_vistas", 24).map((item) => ({ h: cleanInteger(obj(item).h, 0, 23), n: cleanInteger(obj(item).n, 0, 1_000_000) ?? 0 })),
+  };
+}
+
 function cleanQuota(value: unknown) {
   const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
   return {
@@ -339,6 +385,7 @@ function cleanState(value: unknown) {
     scans,
     success_rate: cleanText(raw.success_rate, 12) || "100%",
     premium: cleanPremium(raw.premium),
+    observatorio: cleanObservatorio(raw.observatorio),
   };
 }
 

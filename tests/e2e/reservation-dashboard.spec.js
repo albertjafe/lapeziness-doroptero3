@@ -783,6 +783,48 @@ test('salas premium: tabla día × sala, filtro por horas y correo de reserva ya
   await expect(detail.locator('a').first()).toContainText('11:00–15:00');
 });
 
+test('observatorio: resumen, franjas, semana, mes y cuándo, con la pestaña recordada', async ({ page }) => {
+  await mountDashboard(page, sampleRow);
+  await expect(page.locator('#reservationObservatorio')).toBeHidden();
+  const g = (n, min_dia, nuestro, otro, cuota, vida) => ({ n, min: n * 60, min_dia, vida_med: vida, nuestro, otro, sin_usar: n - nuestro - otro, cuota });
+  const row = structuredClone(sampleRow);
+  row.state.observatorio = {
+    updated_at: new Date().toISOString(), desde: '2026-10-01', dias: 6, abiertos: 2,
+    total: g(20, 200, 8, 10, 3, 25),
+    bandas: [
+      { ...g(2, 20, 0, 2, 2, 6), label: '8–10' }, { ...g(5, 50, 1, 4, 1, 8), label: '10–12' },
+      { ...g(3, 30, 1, 2, 0, 15), label: '12–14' }, { ...g(3, 30, 2, 1, 0, 30), label: '14–16' },
+      { ...g(4, 40, 2, 1, 0, 60), label: '16–18' }, { ...g(3, 30, 2, 0, 0, 90), label: '18–21' },
+    ],
+    semana: [0, 1, 2, 3, 4, 5, 6].map(wd => ({ ...g(wd < 5 ? 4 : 0, wd < 5 ? 40 : 0, 1, 2, 0, 20), wd, dias: wd < 5 ? 1 : 0, bandas: wd < 5 ? [5, 20, 10, 5, 0, 0] : [null, null, null, null, null, null] })),
+    mes_dia: [{ dia: 1, dias: 1, min_dia: 90, n: 3 }, { dia: 2, dias: 1, min_dia: 30, n: 1 }],
+    meses: [{ mes: '2026-10', dias: 6, min_dia: 200, n: 20 }],
+    antelacion: [{ label: '< 1 h', n: 6 }, { label: '1–3 h', n: 8 }, { label: '3–12 h', n: 4 }, { label: '> 12 h', n: 2 }],
+    horas_vistas: [{ h: 8, n: 5 }, { h: 9, n: 7 }, { h: 10, n: 0 }],
+  };
+  await mountDashboard(page, row);
+  const card = page.locator('#reservationObservatorio');
+  await expect(card).toBeVisible();
+  await expect(card.locator('#reservationObsMeta')).toContainText('6 días observados');
+  await expect(card.locator('.rd-obs-summary')).toContainText('20 huecos liberados');
+  await expect(card.locator('.rd-obs-summary')).toContainText('3 sin poder coger por cuota');
+  await expect(card.locator('.rd-obs-table tr')).toHaveCount(7);
+  await expect(card.locator('.rd-obs-table')).toContainText('8–10');
+  await card.getByRole('tab', { name: 'Semana' }).click();
+  await expect(card.locator('.rd-obs-heatmap th[scope="row"]')).toHaveCount(7);
+  await expect(card.locator('.rd-obs-heat.t3')).toHaveCount(5);
+  expect(await page.evaluate(() => localStorage.getItem('reservationObsTab'))).toBe('semana');
+  await card.getByRole('tab', { name: 'Mes' }).click();
+  await expect(card).toContainText('Por día del mes');
+  await expect(card.locator('.rd-obs-bar')).toHaveCount(3);
+  await card.getByRole('tab', { name: 'Cuándo' }).click();
+  await expect(card).toContainText('Con cuánta antelación se liberan');
+  await expect(card.locator('.rd-obs-bar')).toHaveCount(6);
+  // Recordada tras repintar.
+  await page.evaluate(() => window.ReservationDashboard.refresh(false));
+  await expect(card.getByRole('tab', { name: 'Cuándo' })).toHaveAttribute('aria-selected', 'true');
+});
+
 test('blindajes, VIP, hora de inicio y absorbedor se editan desde la app y avisan al monitor al instante', async ({ page }) => {
   // Monitor antiguo (sin absorbe_enabled): solo lectura, como antes.
   await mountDashboard(page, sampleRow);

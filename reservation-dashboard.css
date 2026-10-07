@@ -539,3 +539,27 @@ html.platform-windows .rd-quick-overlay { z-index: 1150; }
 .aulas-screen .rd-blind-add input { flex: 1 1 140px; min-width: 0; }
 .aulas-screen .rd-blinds > section > select { justify-self: start; }
 .aulas-screen .rd-blind-add .rd-action { min-height: 38px; padding: 6px 14px; }
+
+/* Observatorio de huecos (07-10-2026). */
+.aulas-screen .rd-obs { margin-top: 12px; }
+.aulas-screen .rd-obs-tabs { margin: 2px 12px 8px; }
+.aulas-screen .rd-obs-summary { margin: 0 14px 10px; color: var(--text2); font-size: 13.5px; line-height: 1.45; }
+.aulas-screen .rd-obs-summary b { color: var(--text); font-variant-numeric: tabular-nums; }
+.aulas-screen .rd-obs-scroll { margin: 0 12px; overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; -webkit-overflow-scrolling: touch; }
+.aulas-screen .rd-obs-table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.aulas-screen .rd-obs-table th, .aulas-screen .rd-obs-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: center; white-space: nowrap; }
+.aulas-screen .rd-obs-table tr:first-child th { background: var(--bg3); color: var(--text2); font-size: 12px; font-weight: 700; }
+.aulas-screen .rd-obs-table th[scope="row"] { text-align: left; color: var(--text2); font-weight: 600; background: var(--bg2); }
+.aulas-screen .rd-obs-table th[scope="row"] small { margin-left: 5px; color: var(--text3); font-size: 11px; font-weight: 500; }
+.aulas-screen .rd-obs-table tr:last-child th, .aulas-screen .rd-obs-table tr:last-child td { border-bottom: 0; }
+.aulas-screen .rd-obs-heat.t1 { background: color-mix(in srgb, var(--rd-ok) 12%, var(--bg2)); }
+.aulas-screen .rd-obs-heat.t2 { background: color-mix(in srgb, var(--rd-ok) 28%, var(--bg2)); }
+.aulas-screen .rd-obs-heat.t3 { background: color-mix(in srgb, var(--rd-ok) 48%, var(--bg2)); font-weight: 700; }
+.aulas-screen .rd-obs-note { margin: 8px 14px 12px; color: var(--text3); font-size: 12px; }
+.aulas-screen .rd-obs-h { margin: 12px 14px 6px; color: var(--text2); font-size: 12.5px; font-weight: 700; }
+.aulas-screen .rd-obs-bars { display: grid; gap: 4px; margin: 0 14px 12px; }
+.aulas-screen .rd-obs-bar { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.aulas-screen .rd-obs-bar span { color: var(--text2); }
+.aulas-screen .rd-obs-bar i { display: block; height: 10px; border-radius: 6px; background: linear-gradient(90deg, color-mix(in srgb, var(--rd-ok) 55%, var(--bg2)) var(--w), var(--bg3) var(--w)); }
+.aulas-screen .rd-obs-bar b { min-width: 72px; text-align: right; color: var(--text); font-weight: 600; }
+.aulas-screen .rd-obs-bar b small { color: var(--text3); font-weight: 500; }
