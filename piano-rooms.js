@@ -83,7 +83,7 @@
   loadStyle('planningEnhancementsV3Styles','./planning-enhancements-v3.css?v=494');
   loadStyle('planningEnhancementsV4Styles','./planning-enhancements-v4.css?v=377');
   loadStyle('solidityGuideModalStyles','./solidity-guide-modal.css?v=494');
-  loadStyle('taskBoardStyles','./task-board.css?v=496');
+  loadStyle('taskBoardStyles','./task-board.css?v=498');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=461');
   load('paseLiquidDirectTouchScript','./pase-liquid-direct-touch.js?v=342');
   load('cronoSaveResilienceScript','./crono-save-resilience.js?v=397',function(){

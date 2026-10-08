@@ -20,3 +20,19 @@ describe('server-authoritative remote merge',()=>{
     expect(Doc.merge(server,client).obras[0].dificultad).toBe(5);
   });
 });
+
+describe('records with different ids',()=>{
+  it('a new habit challenge replaces the old one instead of inheriting its fields',()=>{
+    const stored={habitChallenge:{id:'habit_old',title:'Viejo',completedAt:'2026-08-22',rewardClaimedAt:'2026-10-06T09:44:08Z',
+      logs:{'2026-08-02':{status:'failed'}},updatedAt:'2026-08-22T10:00:00Z'}};
+    const incoming={habitChallenge:{id:'habit_new',title:'Nuevo',startDate:'2026-10-07',logs:{'2026-10-07':{status:'failed'}},updatedAt:'2026-10-08T10:00:00Z'}};
+    expect(Doc.mergeRemote(stored,incoming).habitChallenge).toEqual(incoming.habitChallenge);
+    // Al revés (el servidor ya tiene el nuevo): el viejo de otro dispositivo no lo pisa.
+    expect(Doc.mergeRemote(incoming,stored).habitChallenge).toEqual(incoming.habitChallenge);
+  });
+  it('the same record still merges field by field',()=>{
+    const a={habitChallenge:{id:'h',title:'A',logs:{'2026-10-07':{status:'failed'}},updatedAt:'2026-10-07T10:00:00Z'}};
+    const b={habitChallenge:{id:'h',title:'A',logs:{'2026-10-08':{status:'failed'}},updatedAt:'2026-10-08T10:00:00Z'}};
+    expect(Object.keys(Doc.mergeRemote(a,b).habitChallenge.logs).sort()).toEqual(['2026-10-07','2026-10-08']);
+  });
+});

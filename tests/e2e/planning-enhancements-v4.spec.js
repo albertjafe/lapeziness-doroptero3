@@ -217,7 +217,7 @@ test('deadline-free general projects remain visible and editable', async ({ page
   await expect(page.locator('#view-profesor')).not.toContainText('null días');
 });
 
-test('iPad auto-starts task dictation and writes the transcript again', async ({ page }) => {
+test('iPad dictates tasks from the microphone button (no automatic permission prompt) and writes the transcript', async ({ page }) => {
   await page.setViewportSize({ width:834, height:1194 });
   await prepare(page, { ios:true });
   await expect.poll(() => page.evaluate(() => Boolean(window.PlanningV4SpeechFix?.restored))).toBe(true);
@@ -228,6 +228,9 @@ test('iPad auto-starts task dictation and writes the transcript again', async ({
   await panel.getByRole('button', { name:'Añadir tarea de Personal' }).click();
   const input = panel.locator('#cronoIdleTaskInput');
   await expect(input).toBeFocused();
+  // Abrir la caja no arranca el micrófono (el navegador pedía permiso cada vez).
+  expect(await page.evaluate(() => window.__taskRecognitionInstances.some(instance => instance.started))).toBe(false);
+  await panel.locator('[id^="cronoTaskVoiceBtn"]').click();
   await expect.poll(() => page.evaluate(() => window.__taskRecognitionInstances.some(instance => instance.started))).toBe(true);
   await expect(page.locator('html')).not.toHaveClass(/planning-ios-keyboard-dictation/);
   await expect(panel.locator('[id^="cronoTaskVoiceBtn"]')).toBeVisible();

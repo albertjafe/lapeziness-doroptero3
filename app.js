@@ -126,7 +126,28 @@ function saveLocalNow() {
   }
 }
 
+// Tareas (08-10-2026): guardar un documento de ~4 MB lleva ~0,5 s; las acciones
+// de tareas pintan primero y guardan en cuanto el navegador ha pintado, en un
+// solo guardado aunque se toquen varias seguidas. Lo pendiente se guarda sí o
+// sí antes de sincronizar con la nube y al ocultar o cerrar la app.
+let _saveSoonTimer = null;
+function saveDataSoon() {
+  if (_saveSoonTimer) return;
+  _saveSoonTimer = setTimeout(flushSaveDataSoon, 300);
+}
+function flushSaveDataSoon() {
+  if (!_saveSoonTimer) return false;
+  clearTimeout(_saveSoonTimer);
+  _saveSoonTimer = null;
+  return saveData();
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', flushSaveDataSoon);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSaveDataSoon(); });
+}
+
 function saveData() {
+  if (_saveSoonTimer) { clearTimeout(_saveSoonTimer); _saveSoonTimer = null; }
   try {
     saveLocalNow();
   } catch(e) {
@@ -508,6 +529,7 @@ async function syncToCloud(snapshotDb, revision) {
   return _runCloudOperation(() => epoch === _cloudAuthEpoch ? _syncToCloudNow(snapshotDb, revision) : false);
 }
 async function _syncToCloudNow(snapshotDb, revision) {
+  if (typeof flushSaveDataSoon === 'function') flushSaveDataSoon();
   const authEpoch = _cloudAuthEpoch;
   try {
     const sb = getSB();
@@ -20666,6 +20688,16 @@ function habitNormalize(habit) {
   if (habit.mode !== 'do' && habit.mode !== 'avoid') habit.mode = 'do';
   habit.durationDays = Math.max(1, Math.min(365, Math.round(Number(habit.durationDays) || 21)));
   if (!habit.logs || typeof habit.logs !== 'object') habit.logs = {};
+  // 08-10-2026: la sincronización llegó a mezclar un reto nuevo con restos del
+  // anterior. Nada anterior al inicio cuenta: ni registros, ni fecha de fin, ni
+  // premio cobrado.
+  const start = String(habit.startDate);
+  Object.keys(habit.logs).forEach(day => { if (day < start) delete habit.logs[day]; });
+  if (habit.completedAt) {
+    const done = /^\d{4}-\d{2}-\d{2}$/.test(String(habit.completedAt)) ? String(habit.completedAt) : habitDayKey(habit.completedAt);
+    if (done && done < start) delete habit.completedAt;
+  }
+  if (habit.rewardClaimedAt && habitDayKey(habit.rewardClaimedAt) < start) delete habit.rewardClaimedAt;
   return habit;
 }
 
@@ -22046,8 +22078,8 @@ function cronoCompleteUrgentTask(id, button) {
   if (!task || task.done || !button || button.classList.contains('is-completing')) return;
   task.done = true;
   task.doneAt = new Date().toISOString();
-  saveData();
   renderCronoTasks();
+  saveDataSoon();
   button.classList.add('is-completing');
   button.disabled = true;
   try { Haptics.success(); } catch (e) {}
@@ -22221,7 +22253,9 @@ function cronoOpenTaskComposer(source) {
   const state = cronoTaskComposerState(source);
   state.open = true;
   renderCronoTasks();
-  cronoStartTaskVoice(source, false);
+  // 08-10-2026: el dictado ya no arranca solo al abrir (el navegador pedía
+  // permiso de micrófono cada vez). Se escribe directamente; el micrófono, si
+  // se quiere, con su botón.
   requestAnimationFrame(() => {
     const input = cronoTaskVoiceInput(source);
     if (input) input.focus();
@@ -22398,7 +22432,43 @@ function cronoTaskBreakResetUrgency() {
   _cronoTaskBreakUrgentChallenge = null;
 }
 
-function cronoTaskBreakMathChallenge() {
+// Escalada (08-10-2026): cuanto más se ignoran las urgentísimas, más difícil
+// es la cuenta para silenciar el aviso. Sube un nivel por cada vez que se
+// silencia sin hacerla y otro por cada 2 días que lleva pendiente; vuelve a 0
+// al completar una urgentísima.
+const CRONO_URGENT_IGNORES_KEY = 'alberto_urgent_ignores_v1';
+function cronoUrgentIgnores() {
+  try { return Math.max(0, Math.floor(Number(localStorage.getItem(CRONO_URGENT_IGNORES_KEY)) || 0)); } catch (e) { return 0; }
+}
+function cronoUrgentIgnoresSet(value) {
+  try { localStorage.setItem(CRONO_URGENT_IGNORES_KEY, String(Math.max(0, value))); } catch (e) {}
+}
+function cronoUrgentLevel() {
+  const days = Math.max(0, ...cronoTaskBreakUrgentPending().map(task => cronoTaskPendingDays(task, Date.now())));
+  return Math.min(5, cronoUrgentIgnores() + Math.floor(days / 2));
+}
+function cronoTaskBreakMathChallenge(level) {
+  const r = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
+  if (level >= 5) {
+    const a = r(12, 29), b = r(3, 9), c = r(11, 25), d = r(3, 8);
+    return { question: a + ' × ' + b + ' + ' + c + ' × ' + d + ' = ?', answer: a * b + c * d };
+  }
+  if (level === 4) {
+    const a = r(13, 39), b = r(6, 9), c = r(101, 189);
+    return { question: a + ' × ' + b + ' − ' + c + ' = ?', answer: a * b - c };
+  }
+  if (level === 3) {
+    const a = r(12, 29), b = r(12, 19);
+    return { question: a + ' × ' + b + ' = ?', answer: a * b };
+  }
+  if (level === 2) {
+    const a = r(23, 89), b = r(6, 9);
+    return { question: a + ' × ' + b + ' = ?', answer: a * b };
+  }
+  if (level === 1) {
+    const a = r(24, 79), b = r(17, 68), c = r(13, 49);
+    return { question: a + ' + ' + b + ' + ' + c + ' = ?', answer: a + b + c };
+  }
   const operation = Math.floor(Math.random() * 3);
   if (operation === 0) {
     const a = 12 + Math.floor(Math.random() * 28);
@@ -22484,7 +22554,9 @@ function cronoRenderTaskBreakUrgency() {
     return;
   }
 
-  if (!_cronoTaskBreakUrgentChallenge) _cronoTaskBreakUrgentChallenge = cronoTaskBreakMathChallenge();
+  const level = cronoUrgentLevel();
+  if (!_cronoTaskBreakUrgentChallenge) _cronoTaskBreakUrgentChallenge = cronoTaskBreakMathChallenge(level);
+  if (alertCopy && level > 0) alertCopy.textContent += ' Nivel ' + level + ' de 5: cada vez que lo silencias sin hacerla, la cuenta se complica.';
   if (question) question.textContent = _cronoTaskBreakUrgentChallenge.question;
   if (math) math.hidden = false;
   if (close) close.hidden = true;
@@ -22511,7 +22583,7 @@ function closeCronoTaskBreakPrompt() {
   }
   if (_cronoTaskBreakUrgentStage === 2) {
     _cronoTaskBreakUrgentStage = 3;
-    _cronoTaskBreakUrgentChallenge = cronoTaskBreakMathChallenge();
+    _cronoTaskBreakUrgentChallenge = cronoTaskBreakMathChallenge(cronoUrgentLevel());
     cronoRenderTaskBreakUrgency();
     cronoTaskBreakStartAlarm();
     cronoTaskBreakBump();
@@ -22529,6 +22601,7 @@ function cronoSubmitTaskBreakMath(event) {
   if (!_cronoTaskBreakUrgentChallenge || !input) return false;
   const answer = Number(String(input.value || '').trim());
   if (Number.isFinite(answer) && answer === _cronoTaskBreakUrgentChallenge.answer) {
+    cronoUrgentIgnoresSet(cronoUrgentIgnores() + 1);
     cronoTaskBreakStopAlarm();
     try { Haptics.success(); } catch (e) {}
     cronoTaskBreakResetUrgency();
@@ -22623,11 +22696,11 @@ function cronoOpenTaskBreakPrompt() {
 function cronoCompleteTaskFromBreak(id, button) {
   const task = cronoTasks().find(item => item.id === id);
   if (!task || task.done || !button || button.classList.contains('is-completing')) return;
-  if (cronoTaskPriority(task) === 3) cronoTaskBreakStopAlarm();
+  if (cronoTaskPriority(task) === 3) { cronoTaskBreakStopAlarm(); cronoUrgentIgnoresSet(0); }
   task.done = true;
   task.doneAt = new Date().toISOString();
-  saveData();
   renderCronoTasks();
+  saveDataSoon();
   button.classList.add('is-completing');
   button.disabled = true;
   try { Haptics.success(); } catch(e) {}
@@ -22805,7 +22878,11 @@ function renderCronoTasks() {
           '<div class="crono-task-completed-list">' + done.slice(0, CRONO_TASK_DONE_SHOWN).map(row).join('') + '</div>' +
         '</details>'
       : '';
-    return '<section class="crono-task-board' + (preview(source) ? ' is-preview' : '') + '" data-filter="' + filter + '">' + head +
+    const quick = '<form class="crono-task-quick" onsubmit="return cronoQuickAddTask(event,\'' + source + '\')">' +
+        '<input id="cronoQuickTask-' + source + '" class="crono-task-quick-input" type="text" maxlength="140" autocomplete="off" enterkeyhint="done"' +
+          ' placeholder="Nueva tarea' + (filter === 'piano' ? ' de piano' : '') + '… ↵" aria-label="Nueva tarea: escribe y pulsa Intro">' +
+      '</form>';
+    return '<section class="crono-task-board' + (preview(source) ? ' is-preview' : '') + '" data-filter="' + filter + '">' + head + quick +
       '<div class="crono-task-list crono-task-board-list" data-no-view-swipe>' + body + completed + '</div></section>';
   };
   [
@@ -22815,6 +22892,10 @@ function renderCronoTasks() {
   ].forEach(target => {
     const el = document.getElementById(target.id);
     if (!el) return;
+    const quickId = 'cronoQuickTask-' + target.source;
+    const quickEl = document.getElementById(quickId);
+    const quickDraft = quickEl ? quickEl.value : '';
+    const quickFocused = document.activeElement && document.activeElement.id === quickId;
     const composer = cronoTaskComposerState(target.source);
     const activeInput = document.activeElement && document.activeElement.id === target.inputId;
     const currentDraft = activeInput ? (document.getElementById(target.inputId)?.value || '') : '';
@@ -22846,6 +22927,11 @@ function renderCronoTasks() {
       el.__taskFirst = el.firstElementChild;
     }
     cronoUpdateTaskComposer(target.source);
+    const quickNew = document.getElementById(quickId);
+    if (quickNew && quickNew !== quickEl) {
+      quickNew.value = quickDraft;
+      if (quickFocused) { quickNew.focus(); quickNew.setSelectionRange(quickDraft.length, quickDraft.length); }
+    }
     const input = document.getElementById(target.inputId);
     if (input && activeInput) {
       input.value = currentDraft;
@@ -22889,6 +22975,38 @@ function cronoCloseTaskBoard() {
   closeModal('modalTaskBoard');
 }
 
+// Alta rápida (08-10-2026): escribir y pulsar Intro, sin abrir nada. Tipo según
+// el filtro (Piano si se está viendo Piano; si no, Personal), prioridad normal.
+function cronoQuickAddTask(event, source) {
+  if (event) event.preventDefault();
+  const input = document.getElementById('cronoQuickTask-' + source);
+  const text = (input?.value || '').replace(/\s+/g, ' ').trim();
+  if (!text) return false;
+  const now = new Date().toISOString();
+  const kind = cronoTaskFilter() === 'piano' ? 'piano' : 'personal';
+  cronoTasks().push({ id: 'ct' + Date.now(), text, kind, tomorrow: false, dueDate: null, done: false, priority: 0, createdAt: now, updatedAt: now });
+  if (input) input.value = '';
+  renderCronoTasks();
+  document.getElementById('cronoQuickTask-' + source)?.focus();
+  saveDataSoon();
+  try { Haptics.light(); } catch (e) {}
+  return false;
+}
+
+document.addEventListener('keydown', event => {
+  if (event.key !== 'n' && event.key !== 'N') return;
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
+  const target = event.target;
+  if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+  if (document.querySelector('.modal-overlay.visible')) return;
+  if (document.body.getAttribute('data-view') !== 'cronometro') return;
+  const running = typeof crono !== 'undefined' && crono && crono.state !== 'idle';
+  const input = document.getElementById(running ? 'cronoQuickTask-running' : 'cronoQuickTask-idle');
+  if (!input || !input.offsetParent) return;
+  event.preventDefault();
+  input.focus();
+});
+
 function cronoTaskInputKey(ev, source) {
   if (!ev) return;
   if (ev.key === 'Enter') {
@@ -22926,9 +23044,9 @@ function addCronoTask(source) {
   if (_cronoTaskVoiceSource === source) cronoStopTaskVoice(false);
   composer.open = false;
   composer.tomorrow = false;
-  saveData();
   if (input) input.value = '';
   renderCronoTasks();
+  saveDataSoon();
   showToast('Tarea añadida · ' + (composer.kind === 'piano' ? 'Piano' : 'Personal'));
 }
 
@@ -23007,8 +23125,8 @@ function cronoTaskBodyClick(event, id) {
   task.priority = next;
   task.priorityChangedAt = changedAt;
   task.updatedAt = changedAt;
-  saveData();
   renderCronoTasks();
+  saveDataSoon();
   document.querySelectorAll('.crono-task-row[data-task-id="' + CSS.escape(String(id)) + '"]').forEach(row => {
     row.classList.add('is-priority-changing');
     setTimeout(() => row.classList.remove('is-priority-changing'), 440);
@@ -23056,10 +23174,10 @@ function saveCronoTaskEdit() {
   }
   task.text = text;
   task.updatedAt = new Date().toISOString();
-  saveData();
   closeModal('modalCronoTaskEdit');
   _cronoTaskEditId = null;
   renderCronoTasks();
+  saveDataSoon();
   showToast('Tarea actualizada');
 }
 
@@ -23072,8 +23190,9 @@ function toggleCronoTask(id, toggleButton) {
     task.done = !task.done;
     task.doneAt = task.done ? changedAt : null;
     task.updatedAt = changedAt;
-    saveData();
+    if (task.done && cronoTaskPriority(task) === 3) cronoUrgentIgnoresSet(0);
     renderCronoTasks();
+    saveDataSoon();
   };
   if (task.done || !rowEl || !toggleButton) {
     commitToggle();

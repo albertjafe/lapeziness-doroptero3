@@ -123,3 +123,51 @@ for (const [label, size] of [['portrait', { width: 834, height: 1194 }], ['lands
     await context.close();
   });
 }
+
+test('quick add: type and press Enter, no dialog; N focuses it on desktop', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await prepare(page);
+  const input = page.locator('#cronoQuickTask-idle');
+  await expect(input).toBeVisible();
+  await page.locator('body').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('n');
+  await expect(input).toBeFocused();
+  await input.fill('Llamar al afinador');
+  await input.press('Enter');
+  await expect(input).toHaveValue('');
+  await expect(input).toBeFocused();
+  expect(await page.evaluate(() => cronoTasks().at(-1))).toMatchObject({ text: 'Llamar al afinador', kind: 'personal', priority: 0, done: false });
+  await expect(page.locator('#cronoIdleTasksPanel .crono-task-board-list')).toContainText('Llamar al afinador');
+  // Se guarda enseguida (sin bloquear el toque).
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('alberto_piano_v2')).cronoTasks.some(t => t.text === 'Llamar al afinador'))).toBe(true);
+  // Desde el filtro Piano, la tarea rápida es de piano.
+  await page.locator('#cronoIdleTasksPanel .crono-task-filter', { hasText: 'Piano' }).click();
+  await page.locator('#cronoQuickTask-idle').fill('Digitar compás 40');
+  await page.locator('#cronoQuickTask-idle').press('Enter');
+  expect(await page.evaluate(() => cronoTasks().at(-1).kind)).toBe('piano');
+});
+
+test('the more urgent tasks are ignored, the harder the math to silence them', async ({ page }) => {
+  await prepare(page);
+  const levels = await page.evaluate(() => {
+    localStorage.setItem('alberto_urgent_ignores_v1', '0');
+    const l0 = cronoUrgentLevel();
+    localStorage.setItem('alberto_urgent_ignores_v1', '3');
+    const l3 = cronoUrgentLevel();
+    localStorage.setItem('alberto_urgent_ignores_v1', '9');
+    const l9 = cronoUrgentLevel();
+    const q = [0, 1, 2, 3, 4, 5].map(level => cronoTaskBreakMathChallenge(level));
+    // Completar una urgentísima reinicia la escalada.
+    const urgent = cronoTasks().find(t => t.priority === 3 && !t.done);
+    toggleCronoTask(urgent.id, null);
+    return { l0, l3, l9, after: Number(localStorage.getItem('alberto_urgent_ignores_v1')), q };
+  });
+  expect(levels.l3).toBeGreaterThanOrEqual(3);
+  expect(levels.l9).toBe(5);
+  expect(levels.after).toBe(0);
+  levels.q.forEach(({ question, answer }) => {
+    const expr = question.replace(' = ?', '').replaceAll('×', '*').replaceAll('−', '-');
+    expect(Function(`return ${expr}`)()).toBe(answer);
+  });
+  expect(levels.q[5].question).toMatch(/×.*\+.*×/);
+});

@@ -407,3 +407,28 @@ html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-task-board .crono-task-t
 html.mv2-tablet:not(#m):not(#m) #view-cronometro .crono-task-board .crono-task-row { min-height: 48px !important; }
 /* iPad: en la vista grande, el texto también algo mayor. */
 html.mv2-tablet #modalTaskBoard .crono-task-board .crono-task-text { font-size: 15px !important; }
+
+/* Alta rápida (08-10-2026): escribir y pulsar Intro. */
+.crono-task-quick { margin: 0; }
+.crono-task-quick-input {
+  width: 100%;
+  min-height: 42px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px dashed var(--border2);
+  border-radius: 10px;
+  background: var(--bg2);
+  color: var(--text);
+  font: 500 14px/1.2 var(--font-ui, system-ui, sans-serif);
+}
+.crono-task-quick-input::placeholder { color: var(--text3); }
+.crono-task-quick-input:focus { outline: none; border-style: solid; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+
+/* Escritorio (08-10-2026): las tareas son lo importante, no el cronómetro. En
+   pantallas medianas (portátil) la mesa de trabajo se lleva al menos la mitad. */
+@media (min-width: 1280px) and (max-width: 1799px) {
+  html.platform-windows:not(#tb):not(#tb):not(#tb) #view-cronometro .crono-idle-console,
+  html.platform-windows:not(#tb):not(#tb):not(#tb) body.crono-running #view-cronometro .crono-wrap {
+    grid-template-columns: minmax(560px, 1fr) minmax(440px, 1.1fr) !important;
+  }
+}

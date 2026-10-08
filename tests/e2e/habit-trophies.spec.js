@@ -200,3 +200,22 @@ test('a lapse after finishing keeps the trophy; the threshold reopens the challe
   await page.evaluate(() => openHabitChallengeModal());
   await expect(page.locator('#habitTitleInput')).toHaveValue('Desintoxicación por la mañana');
 });
+
+test('a new challenge carrying leftovers of an old one is not shown as finished in August', async ({ page }) => {
+  await prepare(page);
+  const result = await page.evaluate(() => {
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    const start = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const habit = habitNormalize({
+      id: 'habit_new', title: 'Sin consumo hasta 1 h de estudio', mode: 'avoid', startDate: start, durationDays: 21,
+      completedAt: '2026-08-22', rewardClaimedAt: '2026-08-22T09:44:08Z',
+      logs: { '2026-08-02': { status: 'failed' }, [start]: { status: 'failed' } },
+    });
+    return { completed: habitIsCompleted(habit, new Date()), logs: Object.keys(habit.logs), completedAt: habit.completedAt ?? null,
+      claimed: habit.rewardClaimedAt ?? null, start };
+  });
+  expect(result.completed).toBe(false);
+  expect(result.completedAt).toBeNull();
+  expect(result.claimed).toBeNull();
+  expect(result.logs).toEqual([result.start]);
+});

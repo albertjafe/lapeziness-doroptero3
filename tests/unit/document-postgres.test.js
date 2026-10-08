@@ -22,6 +22,7 @@ beforeAll(async()=>{
   await pg.exec(sql('20260919142631_preserve_sync_acknowledgement_fields.sql'));
   await pg.exec(sql('20260922175710_optimize_sync_object_assembly.sql'));
   await pg.exec(sql('20261002180000_index_study_reference_checks.sql'));
+  await pg.exec(sql('20261008151000_document_merge_record_identity.sql'));
   // The helper's original migration predates this checkout; its deployed
   // definition is captured as a fixture, without data or production mutations.
   await pg.exec(`create trigger trg_00_preserve_crono_tasks before update of data on user_data for each row execute function preserve_crono_tasks_on_user_data_update();
@@ -33,6 +34,15 @@ async function write(id,a,b){
   return (await pg.query('update user_data set data=$2 where id=$1 returning data',[id,JSON.stringify(b)])).rows[0].data;
 }
 describe('real PostgreSQL migration with existing protection triggers',()=>{
+  it('a new record with another id replaces the old one instead of merging its fields',async()=>{
+    const oldChallenge={id:'habit_old',title:'Viejo',completedAt:'2026-08-22',rewardClaimedAt:'2026-10-06T09:44:08Z',
+      logs:{'2026-08-02':{status:'failed'}},updatedAt:'2026-08-22T10:00:00Z'};
+    const newChallenge={id:'habit_new',title:'Nuevo',startDate:'2026-10-07',logs:{'2026-10-07':{status:'failed'}},updatedAt:'2026-10-08T10:00:00Z'};
+    const merged=await write('identity-user',{habitChallenge:oldChallenge},{habitChallenge:newChallenge});
+    expect(merged.habitChallenge).toEqual(newChallenge);
+    expect(await pg.query(`select public.document_merge($1::jsonb,$2::jsonb) as r`,[JSON.stringify({id:'a',x:1,updatedAt:'2026-10-09'}),JSON.stringify({id:'b',y:2,updatedAt:'2026-10-01'})]).then(r=>r.rows[0].r)).toEqual({id:'a',x:1,updatedAt:'2026-10-09'});
+  });
+
   it('partial uploads retain the full history and preserve edits and tombstones like full uploads',async()=>{
     const old={obras:[{id:'w',name:'Sonata',movimientos:[{id:'m',name:'I'}],unknown:{keep:true}}],
       forestPlants:Array.from({length:7426},(_,i)=>({id:'forest-'+i,mins:30,unknown:'history '.repeat(45)})),

@@ -38,6 +38,12 @@
     // Remote conflicts default to the server (left). Local revision and record/
     // document dates cannot prove a field edit on another device.
     if (!object(left) || !object(right)) return clone(remote || revisionOrder > 0 || (!revisionOrder && inheritedLeft > inheritedRight) ? left : right);
+    // Different ids are different records (e.g. a new habit challenge replacing
+    // the old one): keep the newer one whole instead of resurrecting old fields.
+    if (left.id != null && right.id != null && String(left.id) !== String(right.id)) {
+      const l = stampOf(left), r = stampOf(right);
+      return clone(r > l ? right : l > r ? left : (remote || revisionOrder > 0 ? left : right));
+    }
     const result = {};
     const leftTime = stampOf(left) || inheritedLeft, rightTime = stampOf(right) || inheritedRight;
     const clocks = maxMap(left._fieldClock, right._fieldClock);

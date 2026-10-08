@@ -1667,7 +1667,7 @@ test('blocks the first study start for a three-day urgent task until it is compl
   await expect(gate).not.toHaveClass(/visible/);
 });
 
-test('starts task dictation automatically and keeps manual editing available', async ({ page }) => {
+test('opens the task box ready to type and dictates only from the microphone button', async ({ page }) => {
   await page.setViewportSize({ width: 430, height: 932 });
   await prepare(page);
   await page.evaluate(() => {
@@ -1685,6 +1685,9 @@ test('starts task dictation automatically and keeps manual editing available', a
   const panel = page.locator('#cronoIdleTasksPanel');
   await panel.getByRole('button', { name: 'Añadir tarea de Personal' }).click();
   await expect(panel.locator('#cronoIdleTaskInput')).toBeFocused();
+  // Abrir no pide micrófono.
+  expect(await page.evaluate(() => window.__taskRecognitionInstances.length)).toBe(0);
+  await panel.locator('#cronoTaskVoiceBtn-idle').click();
   await expect(panel.locator('#cronoTaskVoiceBtn-idle')).toHaveClass(/is-listening/);
   expect(await page.evaluate(() => window.__taskRecognitionInstances[0]?.started)).toBe(true);
 
