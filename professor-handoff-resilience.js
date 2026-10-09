@@ -247,6 +247,8 @@
       // Hábitos y premios dependen de módulos de la interfaz que el worker no carga.
       habits:summary?summary.habitsFor(data,new Date(opts.now)):[],
       rewards:summary?summary.rewardsFor(data,new Date(opts.now)):{available:false},
+      // Deporte y sueño (body-log.js), también calculados aquí.
+      body:summary&&summary.bodyFor?summary.bodyFor(data,new Date(opts.now)):null,
     };
     const fallback=()=>{
       const report=root.ProfessorCore.buildReport(data,{asOf:new Date(opts.now),googleCalendarState:opts.googleCalendarState,activeSession:opts.activeSession});
@@ -257,7 +259,7 @@
     if(typeof root.Worker !== 'function')return Promise.resolve().then(fallback);
     try {
       if(!reportWorker){
-        reportWorker=new root.Worker('./professor-report-worker.js?v=438');
+        reportWorker=new root.Worker('./professor-report-worker.js?v=500');
         reportWorker.onmessage=({data:result})=>{
           const pending=pendingReports.get(result.id);if(!pending)return;
           pendingReports.delete(result.id);

@@ -52,8 +52,8 @@
                 load('professorDurationPolicyScript','./professor-duration-policy.js?v=349',function(){
                   load('professorDashboardScript','./professor-dashboard.js?v=396',function(){
                     load('professorEventGateUiScript','./professor-event-gate-ui.js?v=342');
-                    load('professorSummaryScript','./professor-summary.js?v=438');
-                    load('professorHandoffResilienceScript','./professor-handoff-resilience.js?v=438',function(){
+                    load('professorSummaryScript','./professor-summary.js?v=500');
+                    load('professorHandoffResilienceScript','./professor-handoff-resilience.js?v=500',function(){
                       load('professorTemporaryChatScript','./professor-temporary-chat.js?v=342');
                     });
                   });

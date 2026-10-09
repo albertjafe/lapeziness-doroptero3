@@ -1,0 +1,26 @@
+/* Deporte y sueño (body-log.js). Tarjetas de Hoy v2 y hoja «Deporte». */
+html.mv2-on .mv2-card.bl-sleep { padding: 12px 14px; display: grid; gap: 10px; }
+html.mv2-on .bl-q { margin: 0; display: flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 600; color: var(--text); }
+html.mv2-on .bl-choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.bl-choice, .bl-seg button, .bl-mins button {
+  font: inherit; font-size: 15px; font-weight: 600; min-height: 44px; padding: 6px 10px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg2, var(--bg)); color: var(--text);
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: transform .12s ease, background-color .15s ease;
+}
+.bl-choice:active, .bl-seg button:active, .bl-mins button:active { transform: scale(.96); }
+
+html.mv2-on .mv2-card.bl-sport { padding: 12px 14px; display: grid; gap: 6px; }
+html.mv2-on .bl-sport-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+html.mv2-on .bl-today { margin: 0; font-size: 14px; color: var(--text2, var(--text)); }
+
+.bl-modal { display: grid; gap: 14px; }
+.bl-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bl-mins { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.bl-seg button.is-on, .bl-mins button.is-on { background: #2f9e74; border-color: #2f9e74; color: #fff; }
+.bl-other { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text2, var(--text)); }
+.bl-other input { flex: 1; min-width: 0; min-height: 44px; font: inherit; font-size: 16px; padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg2, var(--bg)); color: var(--text); }
+.bl-actions { margin-top: 2px; }
+
+html.mv2-tablet .bl-q { font-size: 16px; }
+html.mv2-tablet .bl-choice { font-size: 16px; min-height: 48px; }
+@media (prefers-reduced-motion: reduce) { .bl-choice, .bl-seg button, .bl-mins button { transition: none; } }

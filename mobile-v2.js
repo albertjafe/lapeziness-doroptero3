@@ -251,6 +251,8 @@
         (root.Olas ? '<span class="mv2-ola-pair">' + root.Olas.hoyButtonHtml() + (root.Olas.compulsionButtonHtml ? root.Olas.compulsionButtonHtml() : '') + '</span>' : '') + '</div></div></div>' +
       // Al volver de un hueco largo: ¿qué fue? (un toque; study-journey.js).
       (root.StudyJourney ? root.StudyJourney.hoyPromptHtml() : '') +
+      // Por la mañana, hasta contestar: ¿qué tal has dormido? (body-log.js; sin números en Hoy).
+      (root.BodyLog ? root.BodyLog.sleepPromptHtml(data) : '') +
       // Justo debajo de las horas, tus reservas de hoy: solo la línea del día. Tocar una franja abre su editor aquí mismo.
       '<section class="mv2-card mv2-aulas' + (roomsSummary ? ' is-' + roomsSummary.kind : '') + '">' +
         '<button type="button" class="mv2-aulas-head" onclick="showView(\'aulas\')"><span class="mv2-lbl has-ico">' + icon('aulas') + 'Aulas</span><b>' + esc(aulas) + '</b><span class="mv2-chev" aria-hidden="true">›</span></button>' +
@@ -258,6 +260,8 @@
       '<div class="mv2-card mv2-parahoy">' + paraHoyHtml(data) + '</div></div><div class="mv2-col mv2-col-side">' +
       // Hub: hábitos (día del reto, hoy, acciones y mantenimiento) y accesos a todo lo demás.
       (root.HabitHub ? root.HabitHub.renderHoyCard() : '') +
+      // Deporte: tipo y minutos en un toque (body-log.js).
+      (root.BodyLog ? root.BodyLog.sportCardHtml(data) : '') +
       '<nav class="mv2-tiles" aria-label="Accesos">' +
         tile('Alemán', 'Tarjetas', "showView('deutsch')", 'aleman') +
         tile('Premios', 'Hucha y logros', 'openPremios()', 'premios') +
@@ -576,7 +580,9 @@
     try { flashes = (typeof root.getAllDestellos === 'function' ? root.getAllDestellos() : []).filter(f => dayKey(new Date(f.date)) === key).length; } catch (e) {}
     let waveLine = '';
     try { waveLine = root.Olas ? root.Olas.dayLine(data, key) : ''; } catch (e) {}
-    const extras = [habits, flashes ? '✨ ' + flashes + (flashes === 1 ? ' destello' : ' destellos') : '', esc(waveLine)].filter(Boolean).join(' · ');
+    let bodyLine = '';
+    try { bodyLine = root.BodyLog ? root.BodyLog.dayLine(data, key) : ''; } catch (e) {}
+    const extras = [habits, flashes ? '✨ ' + flashes + (flashes === 1 ? ' destello' : ' destellos') : '', esc(waveLine), esc(bodyLine)].filter(Boolean).join(' · ');
     let acts = '';
     try {
       const H = root.HabitHub;

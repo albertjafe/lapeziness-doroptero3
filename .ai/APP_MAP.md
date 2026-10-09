@@ -246,6 +246,7 @@ Estados:
 ### Archivos
 
 - `event-planning.js`: núcleo de planificación de eventos/concursos + seed detallado del dossier 2026–2027.
+- `body-log.js`: deporte (tipo y minutos) y sueño (bien/regular/mal) en Hoy, hoja del día y resumen del Profesor.
 - `event-dedupe.js`: quita copias repetidas de concursos y plazos del dosier tras descargar la nube (el antiguo seed `competition-planning-seed.js` se borró).
 - `event-planning-ui-v2.js/css`: interfaz móvil/modal de concurso.
 - `event-planning-enhancements.js/css`: mejoras posteriores del modelo/UI.

@@ -157,6 +157,20 @@
     return lines.join('\n');
   }
 
+  // Deporte y sueño (body-log.js). «Sin dato» no es un día malo ni bueno.
+  function bodySection(body) {
+    if (!body || !Array.isArray(body.days)) return '';
+    const h = m => (m / 60).toFixed(1).replace('.', ',') + ' h';
+    const s = body.sleep || {};
+    const lines = [
+      `- Deporte: ${body.sportDays} de ${body.days.length} días · cardio ${h(body.cardioMin)} · fuerza ${h(body.fuerzaMin)}`,
+      `- Sueño (cómo dijo que durmió): bien ${s.bien || 0} · regular ${s.regular || 0} · mal ${s.mal || 0} · sin dato ${s.sinDato || 0}`,
+      ...body.days.filter(d => d.cardio || d.fuerza || d.sleep).map(d =>
+        `- ${d.day}: ${[d.cardio ? 'cardio ' + d.cardio + ' min' : '', d.fuerza ? 'fuerza ' + d.fuerza + ' min' : '', d.sleep ? 'durmió ' + d.sleep : ''].filter(Boolean).join(' · ')}`),
+    ];
+    return ['DEPORTE Y SUEÑO · últimos ' + body.days.length + ' días («sin dato» = no lo apuntó):', ...lines].join('\n');
+  }
+
   function rewardsSection(rewards) {
     if (!rewards || !rewards.available) return '';
     const lines = ['PREMIOS Y DINERO (motivación; no cambian qué es musicalmente urgente):'];
@@ -208,6 +222,7 @@
       tasksSection(r),
       availabilitySection(r),
       habitsSection(r.habits),
+      bodySection(r.body),
       rewardsSection(r.rewards),
       qualitySection(r, units),
       'FIN_RESUMEN_FIABLE',
@@ -245,6 +260,11 @@
         effortStatus: reward && reward.status !== 'none' ? ({ earned: 'ganado', active: 'en juego', failed: 'perdido' }[reward.status] || reward.status) : null,
       };
     });
+  }
+
+  function bodyFor(data, now) {
+    const B = root.BodyLog;
+    try { return B ? B.recent(data, now, 14) : null; } catch (error) { return null; }
   }
 
   function rewardsFor(data, now, api) {
@@ -285,5 +305,5 @@
     return out;
   }
 
-  return { buildSummary, habitsFor, rewardsFor, otherHistory, unitLine };
+  return { buildSummary, habitsFor, rewardsFor, bodyFor, otherHistory, unitLine };
 });
