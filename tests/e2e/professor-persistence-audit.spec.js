@@ -141,13 +141,14 @@ test('worker and main report are equivalent; opening ChatGPT keeps every unit an
     window.open=()=>({opener:null,location:{replace:url=>window.__auditOpened.push(url)},close(){}});
     Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async t=>{window.__auditClipboard=t;}}});
     showView('profesor');
-    // habits/rewards/otherHistory are handoff extras layered on top of the core report.
-    const {habits,rewards,otherHistory,...workerCore}=worker;
-    return {main:JSON.parse(JSON.stringify(main)),worker:JSON.parse(JSON.stringify(workerCore)),calls,extras:{habits,rewards,otherHistory}};
+    // habits/rewards/body/otherHistory are handoff extras layered on top of the core report.
+    const {habits,rewards,body,otherHistory,...workerCore}=worker;
+    return {main:JSON.parse(JSON.stringify(main)),worker:JSON.parse(JSON.stringify(workerCore)),calls,extras:{habits,rewards,body,otherHistory}};
   });
   expect(result.calls,'heavy report computation must run off the main thread').toBe(0);
   expect(result.worker).toEqual(result.main);
   expect(result.extras.habits).toEqual([]);expect(result.extras.otherHistory).toHaveProperty('germanStudy');
+  expect(result.extras.body.days).toHaveLength(14);
   await page.locator('#professorUserNote').fill('No perder ningún movimiento');
   const openedAfter=Date.now();
   await page.locator('[data-prof-mode="remaining"]').click();
