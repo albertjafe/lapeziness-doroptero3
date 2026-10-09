@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-10-07-ajustes-v493';
+const APP_VERSION = '2026-10-09-concursos-v499';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -680,6 +680,11 @@ async function _loadFromCloudNow(options = {}) {
     const pending = needsUpload || durableMeta.dirtyRevision > revision;
     _writeSyncMeta({ localRevision, dirtyRevision:localRevision, lastSyncedRevision:pending ? meta.lastSyncedRevision : revision });
     _lastCloudSnapshot = { userId:user.id, updatedAt:data?.updated_at || null };
+    // Señal para lo que solo debe decidir con el documento completo (p. ej. event-dedupe.js).
+    try {
+      window.__studyCloudHydrated = Date.now();
+      window.dispatchEvent(new CustomEvent('study-cloud-hydrated'));
+    } catch (_) {}
     _setCloudStage(pending ? 'Quedan cambios por subir' : 'Historial descargado y guardado');
     refreshStudyViews();
     if (pending) enqueueCloudSync({ immediate:true });

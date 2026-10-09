@@ -246,7 +246,7 @@ Estados:
 ### Archivos
 
 - `event-planning.js`: núcleo de planificación de eventos/concursos + seed detallado del dossier 2026–2027.
-- `competition-planning-seed.js`: import/seed inicial de concursos.
+- `event-dedupe.js`: quita copias repetidas de concursos y plazos del dosier tras descargar la nube (el antiguo seed `competition-planning-seed.js` se borró).
 - `event-planning-ui-v2.js/css`: interfaz móvil/modal de concurso.
 - `event-planning-enhancements.js/css`: mejoras posteriores del modelo/UI.
 - `event-repertoire-picker.js/css`: búsqueda, filtrado y presentación del selector de repertorio de un evento.
@@ -430,7 +430,7 @@ Documentación pura (`.md`, instrucciones de IA) no necesita bump de SW porque n
 | slider/píldora táctil | `pase-liquid-direct-touch.js` |
 | pases/pasajes | `passage-tracker.js`, `daily-study-minutes.js`; buscar `Pase`/`paseHistory` en `app.js` para pases históricos |
 | eventos | `event-planning.js`, `event-repertoire-picker.js`, `event-movement-selector.js`, `event-sync-core.js` |
-| concursos | `event-planning.js`, `competition-planning-seed.js`, `event-planning-ui-v2.js`; dosier/edad: `concursos-dossier.js` |
+| concursos | `event-planning.js`, `event-dedupe.js`, `event-planning-ui-v2.js`; dosier/edad: `concursos-dossier.js` |
 | proyectos personales | `planning-enhancements-v4.js` |
 | Profesor / ranking | `professor-core.js`, `professor-event-gate.js` |
 | Profesor / horas y hora real | `professor-duration-policy.js` |

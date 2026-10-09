@@ -206,7 +206,7 @@
       parent = db.eventos.find(event => event && String(event.fecha || '') === MONTREAL.start && /montr[eé]al/i.test(String(event.nombre || '')));
     }
     if(!parent){
-      parent = { id:uid('competition'), nombre:MONTREAL.name, tipo:'concurso', fecha:MONTREAL.start, fechaFin:MONTREAL.end, obras:[], rondas:[], estado:'standby' };
+      parent = { id:'competition_montreal-2027', nombre:MONTREAL.name, tipo:'concurso', fecha:MONTREAL.start, fechaFin:MONTREAL.end, obras:[], rondas:[], estado:'standby' };
       db.eventos.push(parent);
       changed = true;
     }
@@ -228,7 +228,7 @@
       deadline = db.eventos.find(event => event && String(event.fecha || '') === MONTREAL.deadline && /montr[eé]al/i.test(String(event.nombre || '')));
     }
     if(!deadline){
-      deadline = { id:uid('deadline'), nombre:'Vídeo / inscripción · ' + MONTREAL.name, tipo:'concurso', fecha:MONTREAL.deadline, fechaFin:'', obras:parent.obras.slice(), rondas:[], estado:'standby' };
+      deadline = { id:'deadline_montreal-2027', nombre:'Vídeo / inscripción · ' + MONTREAL.name, tipo:'concurso', fecha:MONTREAL.deadline, fechaFin:'', obras:parent.obras.slice(), rondas:[], estado:'standby' };
       db.eventos.push(deadline);
       changed = true;
     }
@@ -462,7 +462,8 @@
   }
 
   function install(){
-    ensureMontreal();
+    // ensureMontreal ya no corre al abrir: lo hacía sobre un documento a medio
+    // cargar y creaba copias del concurso de Montreal (ver event-dedupe.js).
     ensureModalContainers();
     installModalObserver();
     installHeaderRefresh();

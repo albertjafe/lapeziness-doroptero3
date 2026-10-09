@@ -193,6 +193,14 @@
   function norm(value){ return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(); }
   function uid(prefix){ return (prefix || 'ep') + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
   function sourceId(comp){ return 'dossier-2026-2027:' + comp.id; }
+  // Id estable por concurso: si dos dispositivos lo crean a la vez, la fusión
+  // (por id) los une en vez de sumar copias (ver event-dedupe.js).
+  function stableId(prefix, comp){
+    const id = prefix + '_' + String(comp.id).replace(/[^A-Za-z0-9_-]+/g,'-');
+    const taken = dbReady() && (db.eventos.some(ev => ev && String(ev.id) === id) ||
+      (Array.isArray(db.planningEventTombstones) && db.planningEventTombstones.some(t => String(t) === id)));
+    return taken ? uid(prefix) : id;
+  }
   function sourceForEvent(ev){ return String(ev && (ev.planSourceId || ev.parentSourceId) || ''); }
   function bySource(source){ return dbReady() ? db.eventos.find(ev => sourceForEvent(ev) === source || ev.planSourceId === source) : null; }
 
@@ -291,7 +299,7 @@
     if(!comp.start) return null;
     let ev=findExisting(comp,comp.start,'parent');
     if(!ev){
-      ev={ id:uid('competition'), nombre:comp.name, tipo:'concurso', fecha:comp.start, fechaFin:comp.end||'', obras:[], rondas:[] };
+      ev={ id:stableId('competition',comp), nombre:comp.name, tipo:'concurso', fecha:comp.start, fechaFin:comp.end||'', obras:[], rondas:[] };
       db.eventos.push(ev);
     }
     return enrichParent(ev,comp);
@@ -306,7 +314,7 @@
     if(!comp.deadline) return null;
     let ev=findExisting(comp,comp.deadline,'deadline');
     if(!ev){
-      ev={ id:uid('deadline'), nombre:deadlineTitle(comp), tipo:'concurso', fecha:comp.deadline, fechaFin:'', obras:[], rondas:[] };
+      ev={ id:stableId('deadline',comp), nombre:deadlineTitle(comp), tipo:'concurso', fecha:comp.deadline, fechaFin:'', obras:[], rondas:[] };
       db.eventos.push(ev);
     }
     ev.estado = ev.estado || 'standby';

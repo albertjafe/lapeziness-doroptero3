@@ -93,9 +93,9 @@
   });
   load('updateSafetyScript','./update-safety.js?v=475');
   load('cronoRunningPremiumScript','./crono-running-premium.js?v=464');
-  load('eventPlanningScript','./event-planning.js?v=481',function(){
-    load('competitionPlanningSeedScript','./competition-planning-seed.js?v=342',function(){
-      load('eventPlanningUiV2Script','./event-planning-ui-v2.js?v=342',function(){
+  load('eventPlanningScript','./event-planning.js?v=499',function(){
+    load('eventDedupeScript','./event-dedupe.js?v=499',function(){
+      load('eventPlanningUiV2Script','./event-planning-ui-v2.js?v=499',function(){
         load('planningEnhancementsV3Script','./planning-enhancements-v3.js?v=494',function(){
           load('solidityGuideModalScript','./solidity-guide-modal.js?v=494');
           load('planningEnhancementsV4Script','./planning-enhancements-v4.js?v=494',function(){

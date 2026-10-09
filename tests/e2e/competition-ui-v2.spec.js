@@ -62,8 +62,12 @@ test('mobile header keeps the next competition deadline compact', async ({ page 
 test('Montreal is present once and its iPad modal leads with place dates prize age and video', async ({ page }) => {
   await page.setViewportSize({ width:1024, height:768 });
   await prepare(page);
+  await page.waitForFunction(() => window.CompetitionPlanningUiV2);
 
   const state = await page.evaluate(() => {
+    // Ya no se crea al abrir (lo hacía sobre un documento a medio cargar): solo a petición, y una vez.
+    CompetitionPlanningUiV2.ensureMontreal();
+    CompetitionPlanningUiV2.ensureMontreal();
     const source = 'dossier-2026-2027:montreal-2027';
     const parents = db.eventos.filter(event => event.planSourceId === source && !event.esHito);
     const deadlines = db.eventos.filter(event => event.parentSourceId === source && event.hitoTipo === 'deadline');

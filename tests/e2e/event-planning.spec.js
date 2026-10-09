@@ -102,3 +102,21 @@ test('keeps competitions without exact dates in follow-up instead of inventing c
   await expect(page.locator('#competitionWatchlist')).toBeVisible();
   await expect(page.locator('#competitionWatchlist')).toContainText('Concursos sin fecha exacta');
 });
+
+test('al abrir sin nube no se siembran concursos; tras descargar la nube se quitan las copias repetidas', async ({ page }) => {
+  const SRC = 'dossier-2026-2027:maria-canals-2027';
+  const copy = id => ({ id, nombre: 'Maria Canals International Piano Competition', tipo: 'concurso', fecha: '2027-03-07', estado: 'standby', obras: [], rondas: [], planSourceId: SRC });
+  // Documento sin la marca del antiguo seed: antes se importaban 21 concursos con ids nuevos.
+  const data = { ...fixture, competitionPlanningSeedVersion: undefined, eventos: [copy('competition_m2_b'), copy('competition_m1_a'), { id: 'ev_own', nombre: 'Recital', fecha: '2027-01-10', obras: ['obra_1'] }] };
+  await prepare(page, data);
+  await page.waitForFunction(() => window.EventDedupe);
+  await page.waitForTimeout(600);
+  expect(await page.evaluate(() => db.eventos.length)).toBe(3);
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('study-cloud-hydrated')));
+  const after = await page.evaluate(() => ({ ids: db.eventos.map(e => e.id).sort(), tomb: db.planningEventTombstones }));
+  expect(after.ids).toEqual(['competition_m1_a', 'ev_own']);
+  expect(after.tomb).toContain('competition_m2_b');
+  // Un concurso nuevo del dosier entra con id estable (la fusión une, no suma).
+  const id = await page.evaluate(() => { EventPlanning.importCompetitions(['leeds-2027'], false); return db.eventos.find(e => e.planSourceId === 'dossier-2026-2027:leeds-2027').id; });
+  expect(id).toBe('competition_leeds-2027');
+});
