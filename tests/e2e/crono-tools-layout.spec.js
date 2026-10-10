@@ -62,10 +62,12 @@ for(const size of [{width:1194,height:834},{width:834,height:1194},{width:390,he
   await page.locator('#modalHechoDatos').getByRole('button',{name:'Hecho',exact:true}).click();
   await expect.poll(()=>page.evaluate(()=>JSON.stringify(db.sesiones))).toContain('Destello desde el botón');
   await expect.poll(()=>page.evaluate(()=>db.obras[0].movimientos[0].paseHistory?.length||0)).toBe(1);
+  // El pase de la sesión es un pase normal: deja su punto de solidez («pase-solo»)
+  // encima de la valoración tomada durante el estudio, que se conserva.
   expect(await page.evaluate(()=>({
-    scores:db.obras[0].movimientos[0].solHistory.map(item=>item.inputVal),
-    context:db.obras[0].movimientos[0].solHistory[0].context,
+    history:db.obras[0].movimientos[0].solHistory.map(item=>[item.context,item.inputVal??item.val]),
     passScore:db.obras[0].movimientos[0].paseHistory[0].solidezPct,
-  }))).toEqual({scores:[67],context:'observacion-libre',passScore:67});
+    plantPase:db.sessionPlants.find(p=>p.obraId==='w')?.paseId===db.obras[0].movimientos[0].paseHistory[0].id,
+  }))).toEqual({history:[['pase-solo',67],['observacion-libre',67]],passScore:67,plantPase:true});
   expect(await page.evaluate(()=>db.cronoTasks.some(t=>t.id==='piano'))).toBe(true);
 });

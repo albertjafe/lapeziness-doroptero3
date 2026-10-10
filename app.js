@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-10-10-pases-v502';
+const APP_VERSION = '2026-10-10-pase-en-sesion-v503';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -7308,6 +7308,21 @@ function hechoSelectSolidez(position, button) {
   if (selection) selection.textContent = val + '% · ' + paseRatingStage(val, profile);
 }
 
+// Pase dentro de la sesión: el mismo registro que «¿Cómo fue el pase?» (tipo,
+// escala de pase y guía), guardado con la sesión y enlazado a su tramo.
+let _hechoPassTipo = 'solo';
+let _hechoPassPct = null;
+
+function hechoResetPassDetail() {
+  _hechoPassTipo = 'solo';
+  _hechoPassPct = null;
+  const host = document.getElementById('hechoPassMeterHost');
+  if (host) host.innerHTML = '';
+  document.querySelectorAll('#hechoPassTipos .pase-tipo-btn').forEach(b => b.classList.toggle('active', b.classList.contains('solo')));
+  const details = document.querySelector('#hechoPassGuide details');
+  if (details) details.open = false;
+}
+
 function hechoSetPassOccurred(value) {
   _hechoPassOccurred = value === true;
   document.querySelectorAll('[data-hecho-pass]').forEach(button => {
@@ -7315,10 +7330,71 @@ function hechoSetPassOccurred(value) {
     button.classList.toggle('active', active);
     button.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
+  const section = document.getElementById('hechoPassOccurredSection');
+  if (section) section.classList.toggle('is-on', _hechoPassOccurred);
+  const detail = document.getElementById('hechoPassDetail');
+  if (detail) detail.hidden = !_hechoPassOccurred;
   const hint = document.getElementById('hechoPassOccurredHint');
   if (hint) hint.textContent = _hechoPassOccurred
-    ? 'Se guardará un pase con el valor visible en la píldora.'
-    : 'Si marcas Sí, el valor de la píldora quedará asociado al pase.';
+    ? 'Se guarda como un pase de esta sesión, igual que si lo apuntas aparte.'
+    : 'Si marcas Sí, el pase se guarda dentro de esta sesión: no hace falta apuntarlo aparte.';
+  if (!_hechoPassOccurred) return;
+  const host = document.getElementById('hechoPassMeterHost');
+  if (host && !host.firstChild) {
+    if (_hechoPassPct == null) {
+      const previous = paseTargetPreviousPct(_hechoObraId, _hechoMovId || null);
+      _hechoPassPct = paseClampPct(_hechoQuickSolidezVal != null ? _hechoQuickSolidezVal : (previous == null ? 50 : previous));
+    }
+    host.innerHTML = paseLiquidMeterHtml({
+      id: 'hechoPassMeter', inputId: 'hechoPassPercent', value: _hechoPassPct,
+      previous: paseTargetPreviousPct(_hechoObraId, _hechoMovId || null),
+      ratingProfile: 'pase',
+      oninput: 'hechoSelectPassPct(this.value,this)', onchange: 'paseLiquidCommitHaptic()',
+    });
+  }
+  paseSetTipoHint('hechoPassTipoHint', _hechoPassTipo);
+  paseRenderGuide('hechoPassGuide');
+}
+
+function hechoSelectPassTipo(tipo, btn) {
+  _hechoPassTipo = normalizePaseTipo(tipo);
+  document.querySelectorAll('#hechoPassTipos .pase-tipo-btn').forEach(b => b.classList.toggle('active', b === btn));
+  paseSetTipoHint('hechoPassTipoHint', _hechoPassTipo);
+}
+
+function hechoSelectPassPct(value, input) {
+  _hechoPassPct = updatePaseLiquidMeter(input, value);
+}
+
+// Guarda el pase de la sesión como un pase normal (paseHistory + solidez del
+// pase) y marca el tramo del cronómetro como «con pase».
+function hechoSavePassEntry(obraId, movId, opts) {
+  const o = opts || {};
+  const target = movId ? findMovimiento(obraId, movId) : findObra(obraId);
+  if (!target) return null;
+  const pct = paseClampPct(o.pct);
+  const tipo = normalizePaseTipo(o.tipo || 'solo');
+  const date = o.date || new Date().toISOString();
+  const entry = {
+    id: createPaseId(), date, score: pasePctToLegacyScore(pct), solidezPct: pct,
+    quality: pasePctToQuality(pct), tipo, takes: null, note: o.note || '', faults: [],
+    momento: 'durante', source: 'cierre-sesion', runId: o.runId || null,
+  };
+  if (!Array.isArray(target.paseHistory)) target.paseHistory = [];
+  target.paseHistory.unshift(entry);
+  if (target.paseHistory.length > 40) target.paseHistory = target.paseHistory.slice(0, 40);
+  target.lastPase = date;
+  linkPasePctToTargetHistory(obraId, movId || null, pct, tipo, date);
+  const plant = o.runId ? (db.sessionPlants || []).find(p => p && (p.runId === o.runId || p.id === 'run_' + o.runId)) : null;
+  if (plant) {
+    plant.pase = true;
+    plant.paseId = entry.id;
+    plant.paseScore = entry.score;
+    plant.pasePct = pct;
+    plant.paseTipo = tipo;
+    plant.updatedAt = new Date().toISOString();
+  }
+  return entry;
 }
 
 function hechoToggleAdvanced() {
@@ -7888,6 +7964,7 @@ function openHechoDatos(planId, minPlan, opts) {
   const isActividad = obra && obra.tipo === 'actividad';
   const passOccurredSection = document.getElementById('hechoPassOccurredSection');
   if (passOccurredSection) passOccurredSection.style.display = !isActividad && !isEditMode ? '' : 'none';
+  hechoResetPassDetail();
   hechoSetPassOccurred(false);
 
   _hechoShowCompas = !isActividad && !!(entity && entity.compasesTotal) && fase === 'digitando';
@@ -8245,40 +8322,27 @@ function closeHechoDatos(save) {
   const legacyPaseSlidersEnabled = false;
   if (zoneSnapshot && entity) hechoStoreZoneSnapshot(entity, zoneSnapshot);
 
+  // El pase va antes que la solidez: la valoración final de la sesión queda
+  // como la última medida de la obra.
+  let hechoPassEntry = null;
+  if (_hechoPassOccurred && obra && obra.tipo !== 'actividad' && !_hechoEditMode) {
+    const passPct = _hechoPassPct != null
+      ? _hechoPassPct
+      : paseClampPct(document.getElementById('hechoPassPercent')?.dataset?.paseValue ?? _hechoQuickSolidezVal ?? 50);
+    hechoPassEntry = hechoSavePassEntry(obraId, movId || null, {
+      pct: passPct,
+      tipo: _hechoPassTipo,
+      date: pendingSessionTimes?.endedAt || new Date().toISOString(),
+      runId: pendingSessionTimes?.runId || null,
+    });
+  }
+
   if (_hechoQuickSolidezVal != null && obra && obra.tipo !== 'actividad') {
     sessionSolRatings[planId] = recordSessionSolidez(obraId, movId, _hechoQuickSolidezVal, null, {
       source: 'cierre-sesion',
       activeElapsedMs: Math.max(0, Number(minutos) || 0) * 60000,
       runId: pendingSessionTimes?.runId || null,
     }) || _hechoQuickSolidezVal;
-  }
-
-  if (_hechoPassOccurred && obra && obra.tipo !== 'actividad' && !_hechoEditMode) {
-    const passTarget = movId ? entity : obra;
-    const passSlider = document.getElementById('hechoSolidezSlider');
-    const passPct = _hechoQuickSolidezVal != null
-      ? _hechoQuickSolidezVal
-      : paseClampPct(passSlider?.dataset?.paseValue ?? cronoLatestSolidityValue({ entity: passTarget, movId } ) ?? 50);
-    const passAt = new Date().toISOString();
-    if (passTarget) {
-      if (!Array.isArray(passTarget.paseHistory)) passTarget.paseHistory = [];
-      passTarget.paseHistory.unshift({
-        id: 'pase_session_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8),
-        date: passAt,
-        tipo: 'informal',
-        score: pasePctToLegacyScore(passPct),
-        solidezPct: passPct,
-        quality: pasePctToQuality(passPct),
-        nota,
-        momento: 'durante',
-        source: 'cierre-sesion',
-        activeElapsedMs: Math.max(0, Number(minutos) || 0) * 60000,
-        runId: pendingSessionTimes?.runId || null,
-        timingPrecision: 'session-total',
-      });
-      if (passTarget.paseHistory.length > 40) passTarget.paseHistory = passTarget.paseHistory.slice(0, 40);
-      passTarget.lastPase = passAt;
-    }
   }
 
   // ★ Aplicar el cambio de minutos al estado en memoria.
@@ -8573,6 +8637,7 @@ function closeHechoDatos(save) {
       startedAt: startedAt,
       endedAt: endedAt,
       timestamp: endedAt, // legacy compat
+      paseId: hechoPassEntry ? hechoPassEntry.id : null,
     });
     // En editMode, fusionamos esta apertura con la última sub-sesión real:
     // mantenemos los minutos/timestamps originales y solo actualizamos los

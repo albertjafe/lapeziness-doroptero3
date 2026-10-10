@@ -1665,7 +1665,21 @@
         <button type="button" class="active" data-hecho-pass="no" aria-pressed="true" onclick="hechoSetPassOccurred(false)">No</button>
         <button type="button" data-hecho-pass="yes" aria-pressed="false" onclick="hechoSetPassOccurred(true)">Sí</button>
       </div>
-      <small id="hechoPassOccurredHint">Si marcas Sí, el valor de la píldora quedará asociado al pase.</small>
+      <small id="hechoPassOccurredHint">Si marcas Sí, el pase se guarda dentro de esta sesión: no hace falta apuntarlo aparte.</small>
+      <div class="hecho-pass-detail" id="hechoPassDetail" hidden>
+        <div class="pase-tipo-label">Tipo de pase</div>
+        <div class="pase-tipo-row" id="hechoPassTipos">
+          <button type="button" class="pase-tipo-btn solo active" onclick="hechoSelectPassTipo('solo',this)">Solo</button>
+          <button type="button" class="pase-tipo-btn informal" onclick="hechoSelectPassTipo('informal',this)">Informal</button>
+          <button type="button" class="pase-tipo-btn evento" onclick="hechoSelectPassTipo('evento',this)">Evento</button>
+          <button type="button" class="pase-tipo-btn concurso" onclick="hechoSelectPassTipo('concurso',this)">Concurso</button>
+          <button type="button" class="pase-tipo-btn grabacion" onclick="hechoSelectPassTipo('grabacion',this)">Grabación</button>
+        </div>
+        <p class="pase-tipo-hint" id="hechoPassTipoHint"></p>
+        <div class="hecho-pass-q">¿Cómo fue el pase?</div>
+        <div class="pscore-modal-row" id="hechoPassMeterHost"></div>
+        <div class="pase-guide-host" id="hechoPassGuide"></div>
+      </div>
     </section>
 
     <div class="hecho-fast-actions" id="hechoFastActions" style="display:none">
@@ -2575,7 +2589,7 @@
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=397"></script>
 <script src="crono-state-store.js?v=397"></script>
-<script src="app.js?v=502"></script>
+<script src="app.js?v=503"></script>
 <script src="manual-study-activity.js?v=430"></script>
 <script src="chamber-factor-migration.js?v=430"></script>
 <script src="daily-study-minutes.js?v=464" id="dailyStudyMinutesFixScript"></script>
@@ -2621,7 +2635,7 @@
 <!-- Última capa del iPad: al final para ganar a las capas antiguas (como desktop-app.css). -->
 <link rel="stylesheet" href="ipad-app.css?v=464">
 <!-- Ventanas de pase: más anchas, guía para puntuar y sin mapa de fallos. -->
-<link rel="stylesheet" href="pase-modal.css?v=502">
+<link rel="stylesheet" href="pase-modal.css?v=503">
 <script src="settings.js?v=457"></script>
 <script src="olas.js?v=490"></script>
 <script src="body-log.js?v=501"></script>
