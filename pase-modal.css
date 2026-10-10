@@ -1,0 +1,77 @@
+/* Ventanas de pase (oct 2026): «¿Cómo fue el pase?» y «¿Qué obras has pasado?».
+   Capa final (al final del <body>): selectores con peso de dos ids para ganar a
+   las capas antiguas sin pelear regla a regla. Más anchas en iPad y escritorio,
+   letra legible en la escala, guía para puntuar y aclaración del tipo de pase.
+   El mapa de fallos se retiró de la interfaz: las marcas guardadas se conservan. */
+
+html:not(#pm):not(#pm) #paseQFaultBtn,
+html:not(#pm):not(#pm) #modalCronoPaseRapido .pase-fault-launch,
+html:not(#pm):not(#pm) #graficoFaultMap { display: none !important; }
+
+/* Tamaño: en pantallas anchas, ventana amplia con su propio scroll. */
+@media (min-width: 701px) {
+  html:not(#pm):not(#pm) #modalPaseQuality .modal.pase-quality-modal {
+    width: min(720px, calc(100vw - 48px)); max-width: none;
+    max-height: min(90dvh, 980px); overflow-y: auto; overscroll-behavior: contain;
+    padding: 28px 32px 26px;
+  }
+  html:not(#pm):not(#pm) #modalCronoPaseRapido .modal.crono-pase-rapido-modal {
+    width: min(760px, calc(100vw - 48px)); max-width: none;
+    height: min(90dvh, 1040px); max-height: min(90dvh, 1040px);
+    padding: 28px 32px 24px;
+  }
+  html:not(#pm):not(#pm) #modalPaseQuality .modal-title,
+  html:not(#pm):not(#pm) #modalCronoPaseRapido .modal-title { font-size: 22px; }
+  html:not(#pm):not(#pm) #paseQualityName { font-size: 18px !important; }
+  html:not(#pm):not(#pm) #modalCronoPaseRapido .crono-pase-rapido-sub { font-size: 15px; }
+  html:not(#pm):not(#pm) #modalCronoPaseRapido .crono-pase-item-name { font-size: 20px; }
+  html:not(#pm):not(#pm) #modalCronoPaseRapido .crono-pase-picker-item { min-height: 50px; font-size: 16px; }
+  html:not(#pm):not(#pm) #modalCronoPaseRapido .crono-pase-search { font-size: 16px; min-height: 46px; }
+}
+
+/* Escala del deslizador: legible (antes 7–8,5 px). */
+html:not(#pm):not(#pm) .pase-quality-modal [data-rating-profile="pase"] .pase-liquid-guide b,
+html:not(#pm):not(#pm) #modalCronoPaseRapido [data-rating-profile="pase"] .pase-liquid-guide b { font-size: 11px; }
+html:not(#pm):not(#pm) .pase-quality-modal [data-rating-profile="pase"] .pase-liquid-guide em,
+html:not(#pm):not(#pm) #modalCronoPaseRapido [data-rating-profile="pase"] .pase-liquid-guide em { font-size: 10px; }
+html:not(#pm):not(#pm) .pase-quality-modal [data-rating-profile="pase"] .pase-liquid-scale-note,
+html:not(#pm):not(#pm) #modalCronoPaseRapido [data-rating-profile="pase"] .pase-liquid-scale-note { font-size: 12px; }
+html:not(#pm):not(#pm) .pase-quality-modal .pase-liquid-readout,
+html:not(#pm):not(#pm) #modalCronoPaseRapido .pase-liquid-readout { font-size: 13px; }
+html:not(#pm):not(#pm) .pase-quality-modal .pase-liquid-readout strong,
+html:not(#pm):not(#pm) #modalCronoPaseRapido .pase-liquid-readout strong { font-size: 16px; }
+
+/* Tipo de pase: misma letra que el resto y una frase que explica el elegido. */
+html:not(#pm):not(#pm) #modalPaseQuality .pase-tipo-btn,
+html:not(#pm):not(#pm) #modalCronoPaseRapido .pase-tipo-btn { font-family: inherit; font-size: 15px; min-height: 44px; letter-spacing: 0; }
+html:not(#pm):not(#pm) #modalPaseQuality .pase-tipo-label,
+html:not(#pm):not(#pm) #modalCronoPaseRapido .pase-tipo-label { font-family: inherit; font-size: 12px; margin-top: 4px; }
+.pase-tipo-hint { margin: 8px 0 14px; font-size: 14px; line-height: 1.45; color: var(--text2, var(--text)); }
+
+/* Guía para puntuar. */
+.pase-guide-host { margin: 10px 0 4px; }
+.pase-guide { border: 1px solid var(--border); border-radius: 14px; background: var(--bg2, var(--bg)); }
+.pase-guide > summary { cursor: pointer; list-style: none; padding: 12px 14px; font-size: 15px; font-weight: 600; color: var(--accent); }
+.pase-guide > summary::-webkit-details-marker { display: none; }
+.pase-guide > summary::after { content: ' ›'; }
+.pase-guide[open] > summary::after { content: ' ⌄'; }
+.pase-guide .pg-lead { margin: 0 14px 10px; font-size: 14px; line-height: 1.5; color: var(--text); }
+.pase-guide .pg-bands { list-style: none; margin: 0; padding: 0 14px; display: grid; gap: 2px; }
+.pase-guide .pg-bands li { display: grid; grid-template-columns: 64px 150px 1fr; gap: 10px; align-items: baseline; padding: 7px 0; border-top: 1px solid var(--border); font-size: 14px; line-height: 1.4; }
+.pase-guide .pg-range { font-variant-numeric: tabular-nums; color: var(--text3, var(--text2)); }
+.pase-guide .pg-desc { color: var(--text2, var(--text)); }
+.pase-guide .pg-tips { margin: 10px 14px 14px; padding-left: 18px; font-size: 13.5px; line-height: 1.5; color: var(--text2, var(--text)); }
+.pase-guide .pg-tips li + li { margin-top: 4px; }
+@media (max-width: 560px) {
+  .pase-guide .pg-bands li { grid-template-columns: 52px 1fr; }
+  .pase-guide .pg-desc { grid-column: 2; }
+}
+
+/* Detalle de los pases: la guía no aplasta las tarjetas. Todo el paso hace scroll
+   y los botones se quedan a la vista abajo. */
+html:not(#pm):not(#pm) #modalCronoPaseRapido .crono-pase-detail-stage { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+html:not(#pm):not(#pm) #modalCronoPaseRapido .crono-pase-items { flex: none; overflow: visible; max-height: none; min-height: 0; }
+html:not(#pm):not(#pm) #modalCronoPaseRapido .crono-pase-detail-stage > .modal-buttons {
+  position: sticky; bottom: 0; z-index: 2; margin-top: 12px; padding-top: 12px;
+  background: var(--bg2, var(--bg)); box-shadow: 0 -10px 14px -10px rgba(0,0,0,.18);
+}

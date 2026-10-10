@@ -1489,71 +1489,41 @@ test('keeps competition passes distinct from general events', async ({ page }) =
   expect(state.stageContext).toBe('pase-concurso');
 });
 
-test('configures a work map, records a visual fault and shows it in pass history', async ({ page }) => {
-  await page.setViewportSize({ width: 430, height: 932 });
+test('pases: sin mapa de fallos, guía para puntuar, tipo explicado y la obra estudiada la última sale primero', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 1366 });
   await prepare(page);
   await page.evaluate(() => {
+    const ago = m => new Date(Date.now() - m * 60000).toISOString();
     db.obras = [
-      { id: 'obra_mapa', name: 'Sonata', composer: 'A.', tipo: 'obra', movimientos: [], paseHistory: [], solHistory: [], escHistory: [] },
+      { id: 'a', name: 'Allegro', composer: 'A.', tipo: 'obra', movimientos: [], paseHistory: [{ id: 'old', date: ago(9000), solidezPct: 60, tipo: 'solo', faults: [{ id: 'f1', x: 0.3, kind: 'fallo' }] }], solHistory: [] },
+      { id: 'z', name: 'Zeta', composer: 'Z.', tipo: 'obra', movimientos: [], paseHistory: [], solHistory: [] },
     ];
+    db.sessionPlants = [{ id: 'pz', obraId: 'z', mins: 30, startedAt: ago(90), endedAt: ago(60) }];
     openCronoPaseRapido();
   });
-
-  await page.locator('#cronoPaseSelectionList .crono-pase-picker-item').click();
+  // La que estudiaste la última, primero.
+  await expect(page.locator('#cronoPaseSelectionList .crono-pase-picker-item').first()).toContainText('Zeta');
+  await page.locator('#cronoPaseSelectionList .crono-pase-picker-item', { hasText: 'Allegro' }).click();
   await page.locator('#cronoPaseContinueBtn').click();
-  await page.locator('.crono-pase-item .pase-fault-launch').click();
-  await expect(page.locator('#modalPaseFaultMap')).toHaveClass(/visible/);
-
-  await page.locator('#paseFaultTotalBars').fill('300');
-  await page.locator('#paseFaultTotalBars').press('Tab');
-  await page.locator('.pase-fault-section-row input[type="text"]').fill('Exposición y desarrollo');
-  await page.locator('.pase-fault-type.suciedad').click();
-  const timeline = page.locator('#paseFaultTimeline');
-  const box = await timeline.boundingBox();
-  await timeline.click({ position: { x: box.width * 0.5, y: box.height * 0.45 } });
-  await page.locator('.pase-fault-label input').fill('Entrada del desarrollo');
-  await page.getByRole('button', { name: 'Guardar mapa' }).click();
-
-  await expect(page.locator('.crono-pase-item .pase-fault-launch')).toContainText('1 marca');
-  const position74 = await page.evaluate(() => pasePctToPosition(74).toFixed(2));
-  await page.locator('.crono-pase-item .pase-liquid-input').fill(position74);
-  await page.getByRole('button', { name: 'Guardar pases' }).click();
-
-  const state = await page.evaluate(() => {
-    const obra = findObra('obra_mapa');
-    openGrafico('obra_mapa', null);
-    renderGraficoSvg();
-    return { map: obra.paseFaultMap, fault: obra.paseHistory[0].faults[0] };
-  });
-  expect(state.map).toMatchObject({ totalBars: 300, configured: true });
-  expect(state.fault).toMatchObject({ type: 'suciedad', label: 'Entrada del desarrollo' });
-  expect(state.fault.bar).toBeGreaterThanOrEqual(145);
-  expect(state.fault.bar).toBeLessThanOrEqual(155);
-  await expect(page.locator('#graficoFaultMap .pase-fault-marker.suciedad')).toHaveCount(1);
-  await expect(page.locator('#graficoFaultMap')).toContainText('1 marca');
-
-  await page.evaluate(() => openEditPase('obra_mapa', null, findObra('obra_mapa').paseHistory[0].id, ''));
-  await expect(page.locator('#paseQFaultBtn')).toContainText('1 marca');
-  await page.locator('#paseQFaultBtn').click();
-  await expect(page.locator('#paseFaultTimeline .pase-fault-marker')).toHaveCount(1);
-  await page.locator('.pase-fault-type.memoria').click();
-  const editTimeline = page.locator('#paseFaultTimeline');
-  const editBox = await editTimeline.boundingBox();
-  await editTimeline.click({ position: { x: editBox.width * 0.75, y: editBox.height * 0.45 } });
-  await page.locator('.pase-fault-label input').fill('Recuerdo de la coda');
-  await page.getByRole('button', { name: 'Guardar mapa' }).click();
-  await page.locator('#paseQSaveBtn').click();
-  expect(await page.evaluate(() => findObra('obra_mapa').paseHistory[0].faults)).toHaveLength(2);
-  await page.evaluate(() => {
-    const obra = findObra('obra_mapa');
-    obra.paseHistory.unshift({
-      id: 'pase_repetido', date: new Date(Date.now() + 1000).toISOString(), score: 6, tipo: 'solo',
-      faults: [{ id: 'fault_repetido', type: 'suciedad', position: 0.51, bar: 153, label: 'Entrada del desarrollo' }],
-    });
-    renderGraficoSvg();
-  });
-  await expect(page.locator('#graficoFaultMap')).toContainText('1 zona recurrente');
-  await expect(page.locator('#graficoFaultMap .pase-fault-marker.suciedad b')).toHaveText('2');
+  await expect(page.locator('#cronoPaseItems .crono-pase-item')).toHaveCount(1);
+  await expect(page.locator('#modalCronoPaseRapido .pase-fault-launch')).toHaveCount(0);
+  await expect(page.locator('#cronoPaseTipoHint')).toContainText('sin grabar');
+  await page.locator('#modalCronoPaseRapido .pase-tipo-btn.grabacion').click();
+  await expect(page.locator('#cronoPaseTipoHint')).toContainText('te grabas en vídeo o audio, aunque estés solo');
+  const guide = page.locator('#cronoPaseGuide details.pase-guide');
+  await guide.locator('summary').click();
+  await expect(guide).toContainText('Pase de escena');
+  await expect(guide).toContainText('Si dudas entre dos tramos, quédate con el más bajo');
+  // En iPad la ventana es amplia.
+  expect(await page.evaluate(() => document.querySelector('#modalCronoPaseRapido .modal').getBoundingClientRect().width)).toBeGreaterThan(650);
+  await page.evaluate(() => closeModal('modalCronoPaseRapido'));
+  // La ventana de un pase: sin mapa de fallos y las marcas antiguas se conservan.
+  await page.evaluate(() => registerPase('a'));
+  await expect(page.locator('#modalPaseQuality')).toHaveClass(/visible/);
+  await expect(page.locator('#paseQFaultBtn')).toBeHidden();
+  await expect(page.locator('#paseQGuide details.pase-guide')).toHaveCount(1);
+  expect(await page.evaluate(() => document.querySelector('#modalPaseQuality .modal').getBoundingClientRect().width)).toBeGreaterThan(650);
+  expect(await page.evaluate(() => findObra('a').paseHistory[0].faults.length)).toBe(1);
 });
 
 test('keeps the pass save action visible and supports repeated passes per work', async ({ page }) => {
@@ -1579,7 +1549,8 @@ test('keeps the pass save action visible and supports repeated passes per work',
     const save = document.querySelector('#modalCronoPaseRapido .crono-pase-detail-stage .modal-btn.primary');
     const modalBox = document.querySelector('#modalCronoPaseRapido .modal').getBoundingClientRect();
     const saveBox = save.getBoundingClientRect();
-    return { scrolls: list.scrollHeight > list.clientHeight, saveVisible: saveBox.bottom <= modalBox.bottom + 1 && saveBox.top >= modalBox.top - 1 };
+    const stage = document.querySelector('#modalCronoPaseRapido .crono-pase-detail-stage');
+    return { scrolls: stage.scrollHeight > stage.clientHeight || list.scrollHeight > list.clientHeight, saveVisible: saveBox.bottom <= modalBox.bottom + 1 && saveBox.top >= modalBox.top - 1 };
   });
   expect(geometry.scrolls).toBe(true);
   expect(geometry.saveVisible).toBe(true);

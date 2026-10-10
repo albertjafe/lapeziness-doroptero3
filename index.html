@@ -2215,17 +2215,19 @@
   <div class="modal pase-quality-modal">
     <div class="modal-title" id="paseQualityTitle">¿Cómo fue el pase?</div>
     <div id="paseQualityName" style="font-family:'Cormorant Garamond',serif;font-size:15px;color:var(--text2);margin-bottom:14px"></div>
+    <div class="pase-tipo-label">Tipo de pase</div>
+    <div class="pase-tipo-row">
+      <button class="pase-tipo-btn solo active" onclick="selectPaseTipo('solo',this)">Solo</button>
+      <button class="pase-tipo-btn informal" onclick="selectPaseTipo('informal',this)">Informal</button>
+      <button class="pase-tipo-btn evento" onclick="selectPaseTipo('evento',this)">Evento</button>
+      <button class="pase-tipo-btn concurso" onclick="selectPaseTipo('concurso',this)">Concurso</button>
+      <button class="pase-tipo-btn grabacion" onclick="selectPaseTipo('grabacion',this)">Grabación</button>
+    </div>
+    <p class="pase-tipo-hint" id="paseQTipoHint"></p>
     <div class="pscore-modal-row" id="paseQScoreBtns"></div>
+    <div class="pase-guide-host" id="paseQGuide"></div>
     <details class="pase-advanced-details">
       <summary>Añadir detalles</summary>
-      <div class="pase-tipo-label">Contexto</div>
-      <div class="pase-tipo-row">
-        <button class="pase-tipo-btn solo active" onclick="selectPaseTipo('solo',this)">Solo</button>
-        <button class="pase-tipo-btn informal" onclick="selectPaseTipo('informal',this)">Informal</button>
-        <button class="pase-tipo-btn evento" onclick="selectPaseTipo('evento',this)">Evento</button>
-        <button class="pase-tipo-btn concurso" onclick="selectPaseTipo('concurso',this)">Concurso</button>
-        <button class="pase-tipo-btn grabacion" onclick="selectPaseTipo('grabacion',this)">Grabación</button>
-      </div>
       <div id="paseQTakesWrap" class="pase-takes-wrap" hidden>
         <label for="paseQTakes">Takes</label>
         <input class="modal-input" id="paseQTakes" type="number" min="1" max="99" step="1" inputmode="numeric" placeholder="n.º de intentos">
@@ -2234,7 +2236,7 @@
       <div style="font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin:10px 0 6px">Fecha del pase · puede ser otro día</div>
       <input class="modal-input" id="paseQFecha" type="date" style="margin-bottom:0">
     </details>
-    <button type="button" class="pase-fault-launch" id="paseQFaultBtn" onclick="openPaseFaultMapFromQuality()">
+    <button type="button" class="pase-fault-launch" id="paseQFaultBtn" hidden onclick="openPaseFaultMapFromQuality()">
       <span>Mapa de fallos</span><strong>Sin marcas</strong>
     </button>
     <div class="modal-buttons">
@@ -2273,6 +2275,8 @@
         <button class="pase-tipo-btn concurso" onclick="selectCronoPaseTipo('concurso',this)">Concurso</button>
         <button class="pase-tipo-btn grabacion" onclick="selectCronoPaseTipo('grabacion',this)">Grabación</button>
       </div>
+      <p class="pase-tipo-hint" id="cronoPaseTipoHint"></p>
+      <div class="pase-guide-host" id="cronoPaseGuide"></div>
 
       <div class="crono-pase-items" id="cronoPaseItems"></div>
       <div class="crono-pase-total" id="cronoPaseTotal">0 min</div>
@@ -2571,7 +2575,7 @@
 <script src="readiness-core.js?v=342"></script>
 <script src="push-client.js?v=397"></script>
 <script src="crono-state-store.js?v=397"></script>
-<script src="app.js?v=500"></script>
+<script src="app.js?v=502"></script>
 <script src="manual-study-activity.js?v=430"></script>
 <script src="chamber-factor-migration.js?v=430"></script>
 <script src="daily-study-minutes.js?v=464" id="dailyStudyMinutesFixScript"></script>
@@ -2616,6 +2620,8 @@
 <link rel="stylesheet" href="device-recovery.css?v=482">
 <!-- Última capa del iPad: al final para ganar a las capas antiguas (como desktop-app.css). -->
 <link rel="stylesheet" href="ipad-app.css?v=464">
+<!-- Ventanas de pase: más anchas, guía para puntuar y sin mapa de fallos. -->
+<link rel="stylesheet" href="pase-modal.css?v=502">
 <script src="settings.js?v=457"></script>
 <script src="olas.js?v=490"></script>
 <script src="body-log.js?v=501"></script>

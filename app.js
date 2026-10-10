@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-10-10-cronometro-deporte-v501';
+const APP_VERSION = '2026-10-10-pases-v502';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -7100,7 +7100,7 @@ function renderForestPendientes() {
     return;
   }
   // Construir <option>s con todas las obras existentes para los selectores
-  const obras = (db.obras || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+  const obras = sortObrasByRecency(db.obras);
   const obrasOptions = obras.map(o =>
     '<option value="' + o.id + '">' + (o.name || '?') + (o.composer && o.composer !== '—' ? ' · ' + o.composer : '') + '</option>'
   ).join('');
@@ -15056,7 +15056,7 @@ function _timedStudyOptionValue(obraId, movId) {
 
 function _timedStudyOptions(selectedObraId, selectedMovId, tag) {
   const options = [];
-  (db.obras || []).slice().sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(obra => {
+  sortObrasByRecency(db.obras).forEach(obra => {
     const movements = (obra.movimientos || []).filter(m => m && m.name);
     options.push({ value: _timedStudyOptionValue(obra.id, null), label: obra.name || obra.id });
     if (movements.length) {
@@ -16063,6 +16063,36 @@ function scoreColor(n) {
   return 'var(--red)';
 }
 
+// Qué significa cada tipo de pase: «Grabación» es grabarte (aunque estés solo);
+// «Solo» es tocar sin nadie escuchando ni grabando.
+const PASE_TIPO_HINTS = {
+  solo: 'Solo: tú solo, sin nadie escuchando y sin grabar.',
+  informal: 'Informal: delante de alguien (tu pareja, amigos, un compañero, en clase).',
+  evento: 'Evento: audición, concierto o prueba con público.',
+  concurso: 'Concurso: una ronda de concurso.',
+  grabacion: 'Grabación: te grabas en vídeo o audio, aunque estés solo. Puntúa después de verte o escucharte.',
+};
+function paseTipoHintText(tipo) { return PASE_TIPO_HINTS[normalizePaseTipo(tipo)] || PASE_TIPO_HINTS.solo; }
+function paseSetTipoHint(id, tipo) { const el = document.getElementById(id); if (el) el.textContent = paseTipoHintText(tipo); }
+
+// Guía para puntuar un pase: los mismos tramos que la escala del deslizador.
+function paseScoringGuideHtml() {
+  const def = paseProfileDefinition('pase');
+  const rows = (def.ranges || []).slice().reverse().map(r =>
+    '<li><span class="pg-range">' + r[0] + (r[1] > r[0] ? '–' + r[1] : '') + '</span><b>' + r[2] + '</b><span class="pg-desc">' + r[3] + '</span></li>').join('');
+  return '<details class="pase-guide"><summary>Cómo puntuar el pase</summary>' +
+    '<p class="pg-lead">Puntúa <b>este pase</b>, no la obra en general: de principio a fin, sin parar a arreglar. 100 % es «lo toco en público y sale perfecto».</p>' +
+    '<ul class="pg-bands">' + rows + '</ul>' +
+    '<ul class="pg-tips">' +
+      '<li>Elige el tramo cuya descripción encaje mejor y ajusta dentro de él.</li>' +
+      '<li>Si dudas entre dos tramos, quédate con el más bajo.</li>' +
+      '<li>Compara con la descripción, no con tu pase anterior ni con cómo te sientes hoy.</li>' +
+      '<li>Si te grabaste, puntúa después de verte o escucharte, no al terminar de tocar.</li>' +
+      '<li>Con público, el mismo resultado vale más: anota el tipo de pase para que se tenga en cuenta.</li>' +
+    '</ul></details>';
+}
+function paseRenderGuide(id) { const el = document.getElementById(id); if (el && !el.firstChild) el.innerHTML = paseScoringGuideHtml(); }
+
 function buildPaseScoreBtns() {
   const row = document.getElementById('paseQScoreBtns');
   if (!row) return;
@@ -16093,7 +16123,9 @@ function registerPase(obraId, movId) {
   buildPaseScoreBtns();
   document.querySelectorAll('#modalPaseQuality .pase-tipo-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('#modalPaseQuality .pase-tipo-btn.solo')?.classList.add('active');
-  updatePaseTakesVisibility('solo'); updatePaseQualityFaultButton(); openModal('modalPaseQuality');
+  updatePaseTakesVisibility('solo'); updatePaseQualityFaultButton();
+  paseSetTipoHint('paseQTipoHint', 'solo'); paseRenderGuide('paseQGuide');
+  openModal('modalPaseQuality');
 }
 
 function editPaseFromHistory(button) {
@@ -16137,6 +16169,7 @@ function openEditPase(obraId, movId, entryId, entryIndex) {
   });
   updatePaseTakesVisibility(paseTipoSelected);
   updatePaseQualityFaultButton();
+  paseSetTipoHint('paseQTipoHint', paseTipoSelected); paseRenderGuide('paseQGuide');
   saveData();
   openModal('modalPaseQuality');
 }
@@ -16152,6 +16185,7 @@ function selectPaseTipo(tipo, btn) {
   row.querySelectorAll('.pase-tipo-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active', paseTipoSelected);
   updatePaseTakesVisibility(paseTipoSelected);
+  paseSetTipoHint('paseQTipoHint', paseTipoSelected);
 }
 
 function selectPasePct(value, input) {
@@ -16275,7 +16309,7 @@ function cronoPaseDraftKey(obraId, movId) {
 }
 
 function cronoPaseBuildSelectionGroups() {
-  const recency = getCronoPickRecency();
+  const recency = obraRecency();
   const obras = (db.obras || [])
     .filter(obra => obra && obra.tipo !== 'actividad')
     .slice()
@@ -16344,6 +16378,7 @@ function openCronoPaseRapido() {
   if (date) date.value = dateInputValueFromIso();
   document.querySelectorAll('#modalCronoPaseRapido .pase-tipo-btn').forEach(b => b.classList.remove('active'));
   document.querySelector('#modalCronoPaseRapido .pase-tipo-btn.solo')?.classList.add('active');
+  paseSetTipoHint('cronoPaseTipoHint', 'solo'); paseRenderGuide('cronoPaseGuide');
   cronoPaseRender();
   cronoPaseBackToSelection();
   openModal('modalCronoPaseRapido');
@@ -16354,6 +16389,7 @@ function selectCronoPaseTipo(tipo, btn) {
   const row = btn?.closest('.pase-tipo-row') || document;
   row.querySelectorAll('.pase-tipo-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active', cronoPaseTipoSelected);
+  paseSetTipoHint('cronoPaseTipoHint', cronoPaseTipoSelected);
   if (document.getElementById('cronoPaseDetailStage')?.hidden === false) cronoPaseRender();
 }
 
@@ -16421,7 +16457,7 @@ function cronoPaseAdvanceToDetails() {
   document.getElementById('cronoPaseSelectStage').hidden = true;
   document.getElementById('cronoPaseDetailStage').hidden = false;
   document.getElementById('cronoPaseModalTitle').textContent = '¿Cómo ha salido cada pase?';
-  document.getElementById('cronoPaseModalSub').textContent = 'Cada tarjeta es un pase. Ajusta resultado, duración y fallos con espacio.';
+  document.getElementById('cronoPaseModalSub').textContent = 'Cada tarjeta es un pase: ajusta su resultado y su duración.';
   cronoPaseRender();
 }
 
@@ -16532,7 +16568,7 @@ function cronoPaseRender() {
         ? '<label class="crono-pase-count"><span>N de pases de esta obra</span><input type="number" min="1" max="20" step="1" value="' + (group.items.length || 1) + '" onchange="cronoPaseSetCount(\'' + group.targetKey + '\',this.value)" oninput="cronoPaseSetCount(\'' + group.targetKey + '\',this.value)" aria-label="Numero de pases"></label>'
         : '') +
       meter +
-      '<button type="button" class="pase-fault-launch compact ' + ((it.faults || []).length ? 'has-faults' : '') + '" onclick="openPaseFaultMapFromCrono(\'' + it.key + '\')"><span>Mapa de fallos</span><strong>' + ((it.faults || []).length ? ((it.faults || []).length + ((it.faults || []).length === 1 ? ' marca' : ' marcas')) : 'Sin marcas') + '</strong></button>' +
+      // El mapa de fallos se retiró de la interfaz (oct 2026); las marcas antiguas se conservan.
       (normalizePaseTipo(cronoPaseTipoSelected) === 'grabacion'
         ? '<label class="crono-pase-takes"><span>Takes de esta obra</span><input type="number" min="1" max="99" step="1" inputmode="numeric" value="' + (it.takes || '') + '" placeholder="—" onchange="cronoPaseSetTakes(\'' + it.key + '\',this.value)" aria-label="Takes de esta obra"></label>'
         : '') +
@@ -19139,7 +19175,7 @@ function buildObraSelectOptions(selectId) {
   const select = document.getElementById(selectId);
   if (!select) return;
   // Copia: ordenar db.obras en su sitio reordenaba el repertorio guardado.
-  const obras = (db.obras || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+  const obras = sortObrasByRecency(db.obras);
   let opts = '<option value="">— selecciona —</option>';
   obras.forEach(o => {
     const movs = (o.movimientos || []).filter(m => m.name);
@@ -28307,7 +28343,7 @@ function cronoOpenChangeObra() {
 function cronoFillSelectInto(select) {
   if (!select) return;
   const prev = select.value;
-  const obras = (db.obras || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+  const obras = sortObrasByRecency(db.obras);
   let opts = '<option value="">Elige una obra o actividad</option>';
   obras.forEach(o => {
     // Las actividades no tienen movimientos
@@ -28344,7 +28380,7 @@ function cronoSelectLastUsed() {
   if (crono && (crono.state === 'running' || crono.state === 'paused')) return;
   const sel = document.getElementById('cronoObraSelect');
   if (!sel || sel.value) return;
-  const recency = getCronoPickRecency();
+  const recency = obraRecency();
   let bestVal = '', bestT = -1;
   Array.from(sel.options).forEach(opt => {
     if (!opt.value) return;
@@ -28439,6 +28475,32 @@ function getCronoPickRecency() {
   try { return JSON.parse(localStorage.getItem('cronoPickRecency') || '{}') || {}; }
   catch (e) { return {}; }
 }
+// Orden único de las obras en todos los selectores: primero la última que
+// estudiaste (tramos reales del cronómetro, sincronizados entre dispositivos) o
+// la última que elegiste en este dispositivo, lo más reciente de las dos.
+let _obraStudyRecencyMemo = null;
+function obraLastStudiedMap() {
+  const sp = Array.isArray(db?.sessionPlants) ? db.sessionPlants : [], fp = Array.isArray(db?.forestPlants) ? db.forestPlants : [];
+  const key = sp.length + '|' + fp.length + '|' + (sp[sp.length - 1]?.endedAt || sp[sp.length - 1]?.startedAt || '') + '|' + (fp[fp.length - 1]?.startedAt || '');
+  if (_obraStudyRecencyMemo && _obraStudyRecencyMemo.db === db && _obraStudyRecencyMemo.key === key) return _obraStudyRecencyMemo.map;
+  const map = {};
+  [sp, fp].forEach(list => list.forEach(p => {
+    if (!p || p.failed || p.undone || p.tipo === 'descanso' || !p.obraId || p.obraId === '_rest_') return;
+    const t = new Date(p.endedAt || p.startedAt || 0).getTime();
+    if (Number.isFinite(t) && t > (map[p.obraId] || 0)) map[p.obraId] = t;
+  }));
+  _obraStudyRecencyMemo = { db, key, map };
+  return map;
+}
+function obraRecency() {
+  const picks = getCronoPickRecency(), studied = obraLastStudiedMap(), out = Object.assign({}, studied);
+  Object.keys(picks).forEach(id => { if ((picks[id] || 0) > (out[id] || 0)) out[id] = picks[id]; });
+  return out;
+}
+function sortObrasByRecency(list) {
+  const r = obraRecency();
+  return (list || []).slice().sort((a, b) => ((r[b?.id] || 0) - (r[a?.id] || 0)) || String(a?.name || '').localeCompare(String(b?.name || ''), 'es'));
+}
 function bumpCronoPickRecency(obraId) {
   if (!obraId) return;
   try {
@@ -28527,7 +28589,7 @@ function renderCronoObraPicker() {
   const sel = document.getElementById('cronoObraSelect');
   if (!list) return;
   const q = (search?.value || '').toLowerCase().trim();
-  const recency = getCronoPickRecency();
+  const recency = obraRecency();
   const events = cronoPickerEvents();
   if (_cronoPickerEventId === null) _cronoPickerEventId = cronoPickerInitialEvent();
   if (_cronoPickerEventId && !events.some(ev => ev.id === _cronoPickerEventId)) _cronoPickerEventId = '';
