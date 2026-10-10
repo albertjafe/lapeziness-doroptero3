@@ -58,13 +58,48 @@
     return out;
   }
 
-  function addSport(data, kind, minutes, now = new Date()) {
+  function addSport(data, kind, minutes, now = new Date(), extra) {
     const min = Math.round(Number(minutes));
     if (!data || !KINDS[kind] || !(min > 0) || min > 600) return null;
     if (!Array.isArray(data.deporteEventos)) data.deporteEventos = [];
-    const rec = { id: newId('deporte_' + kind, now), at: now.toISOString(), date: now.toDateString(), kind, minutes: min, label: KINDS[kind] + ' · ' + fmtMin(min) };
+    const rec = Object.assign({ id: newId('deporte_' + kind, now), at: now.toISOString(), date: now.toDateString(), kind, minutes: min, label: KINDS[kind] + ' · ' + fmtMin(min) }, extra || {});
     data.deporteEventos.push(rec);
     return rec;
+  }
+
+  /* ── Cronómetro de deporte ─────────────────────────────────────────
+     db.sportTimer = { id, kind, startedAt, endedAt? }. Activo = sin endedAt.
+     Nunca se pone a null: terminar o descartar escribe endedAt (o discarded),
+     así la fusión entre dispositivos lo ve como un cambio y no lo resucita.
+     Es independiente del cronómetro de estudio: no cuenta para las 4 h, la
+     racha ni la hucha. */
+  const LONG_MIN = 150; // más que esto suele ser un olvido: se pide confirmar los minutos
+  function activeTimer(data) {
+    const t = data && data.sportTimer;
+    return t && KINDS[t.kind] && !t.endedAt && Number.isFinite(new Date(t.startedAt).getTime()) ? t : null;
+  }
+  function timerMinutes(t, now = new Date()) { return Math.max(0, Math.round((now - new Date(t.startedAt)) / 60000)); }
+  function startTimer(data, kind, now = new Date()) {
+    if (!data || !KINDS[kind] || activeTimer(data)) return null;
+    // endedAt/discarded en null a propósito: guardar nunca quita campos (la fusión
+    // conserva los que faltan), así que hay que vaciarlos de forma explícita.
+    data.sportTimer = { id: newId('sport_timer', now), kind, startedAt: now.toISOString(), endedAt: null, discarded: false };
+    return data.sportTimer;
+  }
+  // Termina y devuelve el registro creado (null si dura menos de un minuto).
+  function stopTimer(data, now = new Date(), minutes, kind) {
+    const t = activeTimer(data);
+    if (!t) return null;
+    const min = minutes != null ? Math.round(Number(minutes)) : timerMinutes(t, now);
+    data.sportTimer = Object.assign({}, t, { endedAt: now.toISOString() });
+    if (!(min >= 1)) return null;
+    return addSport(data, KINDS[kind] ? kind : t.kind, min, now, { source: 'timer', startedAt: t.startedAt, endedAt: now.toISOString() });
+  }
+  function discardTimer(data, now = new Date()) {
+    const t = activeTimer(data);
+    if (!t) return false;
+    data.sportTimer = Object.assign({}, t, { endedAt: now.toISOString(), discarded: true });
+    return true;
   }
 
   function setSleep(data, quality, now = new Date()) {
@@ -123,10 +158,21 @@
       Object.keys(QUALITY).map(q => '<button type="button" class="bl-choice" onclick="BodyLog.tapSleep(\'' + q + '\')">' + QUALITY[q] + '</button>').join('') + '</div></div>';
   }
 
+  const hhmm = iso => { const d = new Date(iso); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+
+  // Sin contador en marcha: la tarjeta dice desde cuándo, no cuántos segundos llevas.
   function sportCardHtml(data, now = new Date()) {
     const today = sportText(sportByDay(data)[dayKey(now)]);
-    return '<div class="mv2-card bl-sport"><div class="bl-sport-head"><span class="mv2-lbl has-ico">' + SPORT_ICON + 'Deporte</span>' +
-      '<button type="button" class="mv2-link" onclick="BodyLog.openSport()">＋ Apuntar</button></div>' +
+    const t = activeTimer(data);
+    const head = '<div class="bl-sport-head"><span class="mv2-lbl has-ico">' + SPORT_ICON + 'Deporte</span>' +
+      (t ? '' : '<button type="button" class="mv2-link" onclick="BodyLog.openSport()">＋ Apuntar a mano</button>') + '</div>';
+    const body = t
+      ? '<div class="bl-running"><p class="bl-running-txt"><span class="bl-dot" aria-hidden="true"></span>' + KINDS[t.kind] + ' en marcha · desde las ' + hhmm(t.startedAt) + '</p>' +
+        '<div class="bl-run-actions"><button type="button" class="bl-stop" onclick="BodyLog.stop()">Terminar</button>' +
+        '<button type="button" class="mv2-link bl-discard" onclick="BodyLog.discard()">Descartar</button></div></div>'
+      : '<div class="bl-starts">' + Object.keys(KINDS).map(k =>
+          '<button type="button" class="bl-start" onclick="BodyLog.start(\'' + k + '\')"><span aria-hidden="true">▶</span> ' + KINDS[k] + '</button>').join('') + '</div>';
+    return '<div class="mv2-card bl-sport' + (t ? ' is-running' : '') + '">' + head + body +
       (today ? '<p class="bl-today">Hoy: ' + esc(today) + '</p>' : '') + '</div>';
   }
 
@@ -156,11 +202,51 @@
     return rec;
   }
 
-  const draft = { kind: 'cardio', minutes: 30 };
+  const draft = { kind: 'cardio', minutes: 30, fromTimer: false };
+
+  function start(kind) {
+    const t = startTimer(database(), kind);
+    if (!t) return null;
+    draft.kind = kind;
+    haptic(); persist();
+    try { if (typeof root.showToast === 'function') root.showToast(KINDS[kind] + ' en marcha'); } catch (e) {}
+    return t;
+  }
+  function stop() {
+    const data = database(), t = activeTimer(data);
+    if (!t) return null;
+    const min = timerMinutes(t);
+    if (min > LONG_MIN) {
+      // Probablemente se quedó encendido: que confirme los minutos.
+      draft.kind = t.kind; draft.minutes = min; draft.fromTimer = true;
+      openSport(true);
+      return null;
+    }
+    const rec = stopTimer(data);
+    haptic(); persist();
+    if (!rec) { try { if (typeof root.showToast === 'function') root.showToast('Menos de un minuto: no se guarda'); } catch (e) {} return null; }
+    toastUndo('Deporte anotado · ' + rec.label.toLowerCase(), 'deporteEventos', rec.id);
+    return rec;
+  }
+  function discard() {
+    const data = database(), t = activeTimer(data);
+    if (!t || !discardTimer(data)) return false;
+    persist();
+    // Un toque por error no pierde la sesión: «Deshacer» lo vuelve a poner en marcha.
+    try {
+      if (typeof root.showUndoToast === 'function') root.showUndoToast('Cronómetro descartado', () => {
+        const d = database();
+        if (d && d.sportTimer && d.sportTimer.id === t.id && !activeTimer(d)) { d.sportTimer = Object.assign({}, d.sportTimer, { endedAt: null, discarded: false }); persist(); }
+      }, UNDO_MS);
+      else if (typeof root.showToast === 'function') root.showToast('Cronómetro descartado');
+    } catch (e) {}
+    return true;
+  }
 
   function sheetHtml() {
     return '<div class="modal bl-modal" role="dialog" aria-labelledby="blSportTitle">' +
-      '<div class="modal-title" id="blSportTitle">Deporte</div>' +
+      '<div class="modal-title" id="blSportTitle">' + (draft.fromTimer ? '¿Cuántos minutos fueron?' : 'Deporte') + '</div>' +
+      (draft.fromTimer ? '<p class="bl-hint">El cronómetro lleva ' + fmtMin(draft.minutes) + '. Si se quedó encendido, corrígelo.</p>' : '') +
       '<div class="bl-seg" role="radiogroup" aria-label="Tipo">' + Object.keys(KINDS).map(k =>
         '<button type="button" role="radio" data-kind="' + k + '" aria-checked="' + (draft.kind === k) + '" class="' + (draft.kind === k ? 'is-on' : '') + '" onclick="BodyLog.pickKind(\'' + k + '\')">' + KINDS[k] + '</button>').join('') + '</div>' +
       '<div class="bl-mins" role="radiogroup" aria-label="Minutos">' + MINUTES.map(m =>
@@ -175,8 +261,9 @@
     if (el) el.innerHTML = sheetHtml();
   }
 
-  function openSport() {
+  function openSport(fromTimer) {
     if (!doc) return;
+    if (fromTimer === false || (fromTimer == null && !activeTimer(database()))) draft.fromTimer = false;
     let el = doc.getElementById('modalBodySport');
     if (!el) {
       el = doc.createElement('div');
@@ -189,6 +276,7 @@
     else el.classList.add('visible');
   }
   function closeSport() {
+    draft.fromTimer = false;
     if (typeof root.closeModal === 'function') root.closeModal('modalBodySport');
     else { const el = doc && doc.getElementById('modalBodySport'); if (el) el.classList.remove('visible'); }
   }
@@ -200,7 +288,10 @@
     doc.querySelectorAll('#modalBodySport .bl-mins [data-min]').forEach(b => { const on = Number(b.dataset.min) === draft.minutes; b.classList.toggle('is-on', on); b.setAttribute('aria-checked', String(on)); });
   }
   function saveSport() {
-    const rec = addSport(database(), draft.kind, draft.minutes);
+    const data = database();
+    const rec = draft.fromTimer && activeTimer(data)
+      ? stopTimer(data, new Date(), draft.minutes, draft.kind)
+      : addSport(data, draft.kind, draft.minutes);
     if (!rec) { if (typeof root.showToast === 'function') root.showToast('Elige los minutos'); return null; }
     closeSport(); haptic(); persist();
     toastUndo('Deporte anotado · ' + rec.label.toLowerCase(), 'deporteEventos', rec.id);
@@ -208,5 +299,6 @@
   }
 
   return { KINDS, QUALITY, MINUTES, dayKey, sportByDay, sleepByDay, addSport, setSleep, undo, dayLine, recent, hoyHtml, sleepPromptHtml, sportCardHtml,
-    tapSleep, openSport, closeSport, pickKind, pickMinutes, typeMinutes, saveSport };
+    tapSleep, openSport, closeSport, pickKind, pickMinutes, typeMinutes, saveSport,
+    activeTimer, timerMinutes, startTimer, stopTimer, discardTimer, start, stop, discard };
 });

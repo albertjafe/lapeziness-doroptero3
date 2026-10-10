@@ -43,7 +43,7 @@ describe('body-log: sueño', () => {
     expect(B.sleepPromptHtml(data, at(10, 17))).toBe('');
     B.setSleep(data, 'mal', at(10, 8));
     expect(B.sleepPromptHtml(data, at(10, 9))).toBe('');
-    expect(B.sportCardHtml({}, at(10, 9)).replace(/<[^>]*>/g, '')).toBe('Deporte＋ Apuntar');
+    expect(B.sportCardHtml({}, at(10, 9)).replace(/<[^>]*>/g, '')).toBe('Deporte＋ Apuntar a mano▶ Cardio▶ Fuerza');
   });
 });
 
@@ -67,5 +67,43 @@ describe('body-log: calendario e informe', () => {
     expect(text).toContain('DEPORTE Y SUEÑO · últimos 14 días');
     expect(text).toContain('- 2026-10-09: cardio 30 min · durmió regular');
     expect(text).toContain('sin dato 12');
+  });
+});
+
+describe('body-log: cronómetro de deporte', () => {
+  it('starts once, survives a reload (lives in the document) and saves its minutes on stop', () => {
+    const data = {};
+    expect(B.startTimer(data, 'cardio', at(10, 9, 0))).toMatchObject({ kind: 'cardio' });
+    expect(B.startTimer(data, 'fuerza', at(10, 9, 5))).toBeNull(); // ya hay uno en marcha
+    const reloaded = JSON.parse(JSON.stringify(data));
+    expect(B.activeTimer(reloaded).kind).toBe('cardio');
+    // En marcha, la tarjeta dice desde cuándo, sin minutos que vigilar.
+    const card = B.sportCardHtml(reloaded, at(10, 9, 20)).replace(/<[^>]*>/g, '');
+    expect(card).toContain('Cardio en marcha · desde las 09:00');
+    expect(card).not.toMatch(/\d+\s*min/);
+    const rec = B.stopTimer(reloaded, at(10, 9, 32));
+    expect(rec).toMatchObject({ kind: 'cardio', minutes: 32, source: 'timer' });
+    expect(B.activeTimer(reloaded)).toBeNull();
+    expect(reloaded.sportTimer.endedAt).toBeTruthy(); // nunca null: la fusión no lo resucita
+    expect(B.sportByDay(reloaded)['2026-10-10']).toEqual({ cardio: 32, fuerza: 0 });
+  });
+
+  it('less than a minute is not saved; discard keeps nothing; a corrected stop uses the given minutes', () => {
+    const a = {}; B.startTimer(a, 'fuerza', at(10, 9)); expect(B.stopTimer(a, new Date(at(10, 9).getTime() + 20000))).toBeNull();
+    expect(a.deporteEventos || []).toHaveLength(0);
+    const b = {}; B.startTimer(b, 'cardio', at(10, 9)); expect(B.discardTimer(b, at(10, 9, 10))).toBe(true);
+    expect(b.sportTimer.discarded).toBe(true); expect(B.activeTimer(b)).toBeNull();
+    const c = {}; B.startTimer(c, 'cardio', at(10, 9)); // se quedó encendido toda la mañana
+    expect(B.timerMinutes(B.activeTimer(c), at(10, 13))).toBe(240);
+    expect(B.stopTimer(c, at(10, 13), 45, 'fuerza')).toMatchObject({ minutes: 45, kind: 'fuerza' });
+  });
+
+  it('a second session starts clean even though saving keeps fields that are missing', () => {
+    const data = {};
+    B.startTimer(data, 'cardio', at(10, 9)); B.stopTimer(data, at(10, 9, 30));
+    const old = data.sportTimer;
+    B.startTimer(data, 'fuerza', at(10, 18));
+    const kept = Object.assign({}, old, data.sportTimer); // lo que hace la fusión con campos ausentes
+    expect(B.activeTimer({ sportTimer: kept })).toMatchObject({ kind: 'fuerza' });
   });
 });

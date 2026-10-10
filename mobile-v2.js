@@ -251,12 +251,13 @@
         (root.Olas ? '<span class="mv2-ola-pair">' + root.Olas.hoyButtonHtml() + (root.Olas.compulsionButtonHtml ? root.Olas.compulsionButtonHtml() : '') + '</span>' : '') + '</div></div></div>' +
       // Al volver de un hueco largo: ¿qué fue? (un toque; study-journey.js).
       (root.StudyJourney ? root.StudyJourney.hoyPromptHtml() : '') +
-      // Por la mañana, hasta contestar: ¿qué tal has dormido? (body-log.js; sin números en Hoy).
-      (root.BodyLog ? root.BodyLog.sleepPromptHtml(data) : '') +
       // Justo debajo de las horas, tus reservas de hoy: solo la línea del día. Tocar una franja abre su editor aquí mismo.
       '<section class="mv2-card mv2-aulas' + (roomsSummary ? ' is-' + roomsSummary.kind : '') + '">' +
         '<button type="button" class="mv2-aulas-head" onclick="showView(\'aulas\')"><span class="mv2-lbl has-ico">' + icon('aulas') + 'Aulas</span><b>' + esc(aulas) + '</b><span class="mv2-chev" aria-hidden="true">›</span></button>' +
         '<div class="aulas-screen rd-embed" id="mv2DayBar"></div></section>' +
+      // Por la mañana, hasta contestar: ¿qué tal has dormido? (body-log.js; sin números en Hoy).
+      // Va tras Aulas: las reservas siguen justo debajo de las horas.
+      (root.BodyLog ? root.BodyLog.sleepPromptHtml(data) : '') +
       '<div class="mv2-card mv2-parahoy">' + paraHoyHtml(data) + '</div></div><div class="mv2-col mv2-col-side">' +
       // Hub: hábitos (día del reto, hoy, acciones y mantenimiento) y accesos a todo lo demás.
       (root.HabitHub ? root.HabitHub.renderHoyCard() : '') +

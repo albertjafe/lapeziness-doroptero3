@@ -24,3 +24,24 @@ html.mv2-on .bl-today { margin: 0; font-size: 14px; color: var(--text2, var(--te
 html.mv2-tablet .bl-q { font-size: 16px; }
 html.mv2-tablet .bl-choice { font-size: 16px; min-height: 48px; }
 @media (prefers-reduced-motion: reduce) { .bl-choice, .bl-seg button, .bl-mins button { transition: none; } }
+
+/* Cronómetro de deporte (v501): sin contador en marcha, solo «desde las HH:MM». */
+html.mv2-on .bl-starts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bl-start, .bl-stop {
+  font: inherit; font-size: 15px; font-weight: 700; min-height: 46px; padding: 6px 12px; border-radius: 12px; cursor: pointer;
+  border: 1.5px solid color-mix(in srgb, #2f9e74 45%, transparent); background: color-mix(in srgb, #2f9e74 12%, var(--bg2, var(--bg)));
+  color: color-mix(in srgb, #2f9e74 75%, var(--text)); -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: transform .12s ease;
+}
+.bl-start span { font-size: 12px; margin-right: 2px; }
+.bl-start:active, .bl-stop:active { transform: scale(.96); }
+html.mv2-on .bl-sport.is-running { border-color: color-mix(in srgb, #2f9e74 55%, var(--border)); }
+html.mv2-on .bl-running { display: grid; gap: 10px; }
+html.mv2-on .bl-running-txt { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--text); }
+.bl-dot { width: 9px; height: 9px; border-radius: 50%; background: #2f9e74; box-shadow: 0 0 0 0 color-mix(in srgb, #2f9e74 50%, transparent); animation: blPulse 2.4s ease-out infinite; flex: none; }
+@keyframes blPulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, #2f9e74 45%, transparent); } 70%, 100% { box-shadow: 0 0 0 8px transparent; } }
+html.mv2-on .bl-run-actions { display: flex; align-items: center; gap: 14px; }
+.bl-stop { flex: 1; background: #2f9e74; border-color: #2f9e74; color: #fff; }
+.bl-discard { color: var(--text3, var(--text2)); }
+.bl-hint { margin: -4px 0 0; font-size: 14px; line-height: 1.4; color: var(--text2, var(--text)); }
+html.mv2-tablet .bl-start, html.mv2-tablet .bl-stop { font-size: 16px; min-height: 50px; }
+@media (prefers-reduced-motion: reduce) { .bl-dot { animation: none; } .bl-start, .bl-stop { transition: none; } }
