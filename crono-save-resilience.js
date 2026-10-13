@@ -65,16 +65,29 @@
     return Array.from(map.values()).sort((a,b)=>String(a.startedAt||'').localeCompare(String(b.startedAt||'')));
   }
 
+  // En iPad, al reabrir la app tras cerrarla el sistema en segundo plano,
+  // indexedDB.open puede quedarse sin responder: nunca se espera más de esto.
+  const IDB_OPEN_TIMEOUT_MS=4000;
   function openRescueDb(){
     return new Promise((resolve,reject)=>{
       if(typeof indexedDB==='undefined'){ reject(new Error('IndexedDB unavailable')); return; }
+      let settled=false;
+      const timer=setTimeout(()=>{ settled=true; reject(new Error('IndexedDB open timeout')); },IDB_OPEN_TIMEOUT_MS);
       const request=indexedDB.open(IDB_NAME,1);
       request.onupgradeneeded=()=>{
         const database=request.result;
         if(!database.objectStoreNames.contains(IDB_STORE)) database.createObjectStore(IDB_STORE,{keyPath:'id'});
       };
-      request.onsuccess=()=>resolve(request.result);
-      request.onerror=()=>reject(request.error||new Error('IndexedDB open failed'));
+      request.onsuccess=()=>{
+        clearTimeout(timer);
+        if(settled){ try { request.result.close(); } catch(e) {} return; }
+        settled=true;resolve(request.result);
+      };
+      request.onerror=()=>{
+        clearTimeout(timer);
+        if(settled) return;
+        settled=true;reject(request.error||new Error('IndexedDB open failed'));
+      };
     });
   }
 
@@ -351,6 +364,11 @@
     if(documentRow && documentRescueExpired(documentRow)) await rescueDelete(DOCUMENT_RESCUE_ID);
     try { if(changed && typeof refreshStudyViews==='function') refreshStudyViews(); } catch(e) {}
   }
+
+  // El cronómetro espera a este rescate al arrancar: pase lo que pase con
+  // IndexedDB, queda listo como mucho a los RECOVERY_MAX_WAIT_MS.
+  const RECOVERY_MAX_WAIT_MS=6000;
+  setTimeout(()=>resolveRecovery(),RECOVERY_MAX_WAIT_MS);
 
   function boot(attempt){
     const finishReady=installFinishPatch() || (typeof finishStudyBlock==='function' && !!finishStudyBlock.__resilientTimerSave);

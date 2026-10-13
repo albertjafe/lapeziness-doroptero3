@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v503';
+const CACHE = 'estudio-v504';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -6,7 +6,7 @@ const ASSETS = [
   "./activity-dashboard.js?v=436",
   "./activity-self-tracker.js?v=402",
   "./add-obra-premium.css?v=342",
-  "./app.js?v=503",
+  "./app.js?v=504",
   "./german-rewards.js?v=426",
   "./achievement-rewards.js?v=435",
   "./piano-rewards.js?v=486",
@@ -48,7 +48,7 @@ const ASSETS = [
   "./crono-resume-layout.js?v=432",
   "./crono-running-premium.css?v=384",
   "./crono-running-premium.js?v=464",
-  "./crono-save-resilience.js?v=397",
+  "./crono-save-resilience.js?v=504",
   "./crono-state-store.js?v=397",
   "./daily-study-minutes.js?v=464",
   "./manual-study-activity.js?v=430",

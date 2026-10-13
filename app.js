@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-10-10-pase-en-sesion-v503';
+const APP_VERSION = '2026-10-13-crono-ipad-reabrir-v504';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -21500,6 +21500,9 @@ const CRONO_ICONS = {
 
 function cronoSaveState() {
   try {
+    // Hasta recuperar la sesión guardada, un estado «parado» (el inicial de la
+    // página) no puede pisar un cronómetro que sigue en marcha en el disco.
+    if (!_cronoHydrated && crono.state === 'idle') return;
     const snapshot = {
       state: crono.state,
       mode: crono.mode,
@@ -21541,6 +21544,7 @@ function cronoSaveState() {
 }
 
 let _cronoStorageWarning = false;
+const CRONO_HYDRATE_RESCUE_WAIT_MS = 3000;
 let _cronoHydrated = false;
 let _cronoHydrationPromise = null;
 function cronoLoadState(snapshot) {
@@ -28931,7 +28935,15 @@ function cronoHydrate() {
 
 async function cronoRestoreDurableState() {
   const snapshot = window.CronoStateStore ? await window.CronoStateStore.load() : null;
-  if (window.CronoSaveResilience?.ready) await window.CronoSaveResilience.ready;
+  // En iPad, al reabrir la app tras cerrarla el sistema en segundo plano,
+  // IndexedDB puede no responder nunca. El rescate de bloques es opcional para
+  // recuperar el cronómetro: como mucho se le espera unos segundos.
+  if (window.CronoSaveResilience?.ready) {
+    await Promise.race([
+      window.CronoSaveResilience.ready,
+      new Promise(resolve => setTimeout(resolve, CRONO_HYDRATE_RESCUE_WAIT_MS)),
+    ]);
+  }
   _cronoHydrated = true;
   if (typeof StudyPush !== 'undefined' && typeof StudyPush.reconcileStaleRuns === 'function') {
     StudyPush.reconcileStaleRuns();

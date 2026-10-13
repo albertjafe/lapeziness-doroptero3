@@ -86,7 +86,7 @@
   loadStyle('taskBoardStyles','./task-board.css?v=498');
   load('pianoRoomsCoreScript','./piano-rooms-core.js?v=461');
   load('paseLiquidDirectTouchScript','./pase-liquid-direct-touch.js?v=342');
-  load('cronoSaveResilienceScript','./crono-save-resilience.js?v=397',function(){
+  load('cronoSaveResilienceScript','./crono-save-resilience.js?v=504',function(){
     load('passageTrackerResilienceScript','./passage-tracker-resilience.js?v=372',function(){
       load('taskSyncResilienceScript','./task-sync-resilience.js?v=342');
     });
