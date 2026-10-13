@@ -5,7 +5,7 @@
 html.platform-ipad #view-cronometro .crono-screen-title { display: flex; align-items: center; gap: 10px; position: fixed; top: max(calc(env(safe-area-inset-top, 14px) + 12px), 38px); left: 28px; z-index: 50; font-size: 20px; color: var(--text); }
 html.platform-ipad #view-cronometro .crono-hours-btn { min-height: 44px; padding: 10px 14px; font-size: 14px; color: var(--text); background: var(--bg2); opacity: 1; }
 html.platform-ipad body[data-view="session"] .ipad-today-next .ipad-today-sessions { color: var(--text); background: var(--bg2); border: 1px solid var(--border2); }
-html.platform-ipad #modalSesionesDetalle .sesdet-modal { width: min(760px, 100%); max-width: 760px; height: min(86dvh, 1000px); max-height: calc(100dvh - 40px); overflow: hidden; border-radius: 22px; }
+html.platform-ipad #modalSesionesDetalle .sesdet-modal { width: min(760px, calc(100vw - 48px)); max-width: 760px; height: min(86dvh, 1000px); max-height: calc(100dvh - 40px); overflow: hidden; border-radius: 22px; }
 html.platform-ipad #modalSesionesDetalle .sesdet-header { padding: 22px 24px 18px; gap: 16px; }
 html.platform-ipad #modalSesionesDetalle .modal-title { font-size: 28px; }
 html.platform-ipad #modalSesionesDetalle .sesdet-hint { font-size: 14px; }
@@ -26,3 +26,14 @@ html.platform-ipad #modalSesionesDetalle .sesdet-edit-line label { font-size: 13
 html.platform-ipad #modalSesionesDetalle .sesdet-edit-line input { width: 110px; }
 html.platform-ipad #modalSesionesDetalle .sesdet-empty { padding: 32px 16px; font-size: 15px; }
 html.platform-ipad #modalSesionesDetalle :is(.sesdet-more, .sesdet-end) { font-size: 14px; }
+
+/* Eliminar un tramo (oct 2026): discreto hasta el primer toque, rojo al armarse. */
+#modalSesionesDetalle .sesdet-delete {
+  align-self: flex-start; margin-top: 4px; padding: 8px 12px; min-height: 36px;
+  border: 1px solid color-mix(in srgb, var(--red, #c0392b) 45%, var(--border2)); border-radius: 10px;
+  background: transparent; color: var(--red, #c0392b); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background-color .15s ease, color .15s ease;
+}
+#modalSesionesDetalle .sesdet-delete.is-armed { background: var(--red, #c0392b); color: #fff; border-color: var(--red, #c0392b); }
+html.platform-ipad #modalSesionesDetalle .sesdet-delete { min-height: 44px; font-size: 15px; padding: 10px 16px; }
+@media (prefers-reduced-motion: reduce) { #modalSesionesDetalle .sesdet-delete { transition: none; } }

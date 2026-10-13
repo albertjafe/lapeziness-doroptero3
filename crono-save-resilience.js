@@ -347,9 +347,13 @@
     }
 
     if(!Array.isArray(local.sessionPlants)) local.sessionPlants=[];
+    const tombs=local._deletedChildren&&local._deletedChildren.sessionPlants||{};
+    const identity=window.DocumentSyncCore&&window.DocumentSyncCore.identity;
     plantRows.forEach(row=>{
       const key=plantKey(row);
       if(!key) return;
+      // Un tramo eliminado a propósito no vuelve desde el rescate.
+      if(identity && tombs[identity(row)]) return;
       const index=local.sessionPlants.findIndex(item=>plantKey(item)===key);
       if(index<0){ local.sessionPlants.push(row); changed=true; }
       else if(JSON.stringify(local.sessionPlants[index])!==JSON.stringify(row)){

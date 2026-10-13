@@ -150,3 +150,50 @@ test('conserva el total canónico al redondear y al editar un registro con espej
   expect(mirrors.every(mins => mins === 30)).toBe(true);
   expect(await page.evaluate(() => getMinutosConcentradoHoy())).toBe(70);
 });
+
+test('eliminar un tramo manual o del cronómetro: segundo toque, deshacer y no vuelve al recargar', async ({ page }) => {
+  await page.setViewportSize({ width: 834, height: 1194 }); await boot(page, 3);
+  // Copia fantasma de un registro manual (tarjeta «restored_» sin hora): ya no cuenta dos veces.
+  await page.evaluate(() => {
+    const ses = db.sesiones[0];
+    ses.items.push({ _planId: 'restored_bach_1', obraId: 'bach', tick: 'hecho', estudiado: true, minutosPlan: 20, minutosReales: 20, startedAt: null, endedAt: null });
+    StudyEdit.repairManualMirrors(db); saveData();
+  });
+  expect(await page.evaluate(() => getMinutosConcentradoHoy())).toBe(75);
+  await page.getByRole('button', { name: 'Sesiones de hoy' }).click();
+  const modal = page.getByRole('dialog', { name: 'Registro de sesiones' });
+  // El registro manual (0-0, 20 min).
+  await modal.locator('[data-source="sessionPlants"][data-index="0"]').click();
+  const remove = modal.locator('.sesdet-delete');
+  await remove.click();
+  await expect(remove).toHaveText('Toca otra vez para eliminar');
+  expect(await page.evaluate(() => getMinutosConcentradoHoy())).toBe(75);
+  await remove.click();
+  expect(await page.evaluate(() => getMinutosConcentradoHoy())).toBe(55);
+  await expect(page.locator('#undoToast')).toContainText('Eliminado: Bach');
+  await page.locator('#undoToastBtn').click();
+  expect(await page.evaluate(() => getMinutosConcentradoHoy())).toBe(75);
+  // Ahora uno del cronómetro, y se queda eliminado tras recargar.
+  const timer = await page.evaluate(() => db.sessionPlants.findIndex(p => p.id === '0-1'));
+  await modal.locator(`[data-source="sessionPlants"][data-index="${timer}"]`).click();
+  await modal.locator('.sesdet-delete').click();
+  await modal.locator('.sesdet-delete').click();
+  expect(await page.evaluate(() => getMinutosConcentradoHoy())).toBe(55);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('alberto_piano_v2')));
+  expect(stored._deletedChildren.sessionPlants['id:0-1']).toBeTruthy();
+  await page.reload(); await page.waitForFunction(() => window.DailyStudyMinutes && window.StudyEdit);
+  expect(await page.evaluate(() => getMinutosConcentradoHoy())).toBe(55);
+});
+
+test('un registro manual de hoy no se duplica al rehacer la sesión desde la nube', async ({ page }) => {
+  await page.setViewportSize({ width: 834, height: 1194 }); await boot(page, 0);
+  const minutes = await page.evaluate(() => {
+    persistManualStudyHistory(studyRegisterResolveValue('obra::bach'), 80, sessionJournalDayKey(new Date()), { tick: 'hecho', useCurrentTime: true });
+    const before = getMinutosConcentradoHoy();
+    restoreSessionFromDbToday({ force: true });
+    _autoSaveTodayPlanNow();
+    const today = db.sesiones.find(s => new Date(s.date).toDateString() === new Date().toDateString());
+    return { before, after: getMinutosConcentradoHoy(), restored: today.items.filter(it => /^restored_/.test(it._planId || '')).length, live: currentPlan.length };
+  });
+  expect(minutes).toEqual({ before: 80, after: 80, restored: 0, live: 0 });
+});

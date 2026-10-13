@@ -326,6 +326,9 @@ html.mv2-on .mv2-stack { display: flex; height: 10px; border-radius: 5px; overfl
 html.mv2-on .mv2-seg { display: flex; justify-content: space-between; gap: 10px; width: 100%; font: inherit; color: inherit; background: none; border: 0; border-top: 1px solid var(--border); padding: 10px 0; font-size: 14px; text-align: left; }
 html.mv2-on .mv2-seg b { white-space: nowrap; flex: 0 0 auto; }
 html.mv2-on .mv2-seg.is-event { cursor: pointer; color: var(--orange); font-weight: 600; min-height: 44px; }
+html.mv2-on .mv2-seg.is-study { cursor: pointer; min-height: 44px; align-items: center; }
+html.mv2-on .mv2-seg.is-study b { color: var(--text2, var(--text)); }
+html.mv2-on .mv2-seg-hint { margin: 6px 0 0; font-size: 12.5px; }
 
 
 /* ── iPad (html.mv2-tablet): las mismas piezas, a escala de tableta ──

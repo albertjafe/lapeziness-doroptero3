@@ -594,7 +594,8 @@
     sheet('mv2DaySheet', title,
       '<div class="mv2-day-total"><span class="mv2-muted">Estudiado</span><b>' + (total ? fmtDur(total) : '—') + '</b></div>' +
       (stack ? '<div class="mv2-stack">' + stack + '</div>' : '') + ev +
-      (segs.length ? segs.map(sg => '<div class="mv2-seg"><span>' + hhmm(sg.start) + '–' + hhmm(sg.end) + ' · ' + esc(sg.label) + '</span><b>' + fmtMin(sg.mins) + '</b></div>').join('') : '<p class="mv2-muted">Sin tramos con hora este día.</p>') +
+      (segs.length ? segs.map(sg => '<button type="button" class="mv2-seg is-study" onclick="MobileV2.closeSheet(\'mv2DaySheet\');openSesionesDetalle(this,\'' + key + '\')"><span>' + hhmm(sg.start) + '–' + hhmm(sg.end) + ' · ' + esc(sg.label) + '</span><b>' + fmtMin(sg.mins) + ' ›</b></button>').join('') +
+        '<p class="mv2-muted mv2-seg-hint">Toca un tramo para cambiarlo o eliminarlo.</p>' : '<p class="mv2-muted">Sin tramos con hora este día.</p>') +
       acts + (extras ? '<p class="mv2-muted">' + extras + '</p>' : '') +
       '<div class="mv2-sheet-actions"><button type="button" onclick="MobileV2.closeSheet(\'mv2DaySheet\');openAddEventoOnDate(\'' + key + '\')">＋ Evento</button>' +
       '<button type="button" class="primary" onclick="MobileV2.closeSheet(\'mv2DaySheet\');MobileV2.editDay(\'' + key + '\')">Editar este día</button></div>');

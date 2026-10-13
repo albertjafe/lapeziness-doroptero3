@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-10-13-crono-ipad-reabrir-v504';
+const APP_VERSION = '2026-10-13-eliminar-estudio-v505';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -3363,6 +3363,11 @@ function restoreSessionFromDbToday(opts) {
   const groups = {};
   sesionHoy.items.forEach(it => {
     if (!it || !it.obraId) return;
+    // Los registros manuales, sus copias neutralizadas y las tarjetas cuyo
+    // estudio se quitó son historial, no tarjetas del plan: convertirlos en
+    // tarjeta hacía que el autoguardado los escribiera otra vez como estudio
+    // normal y contaran dos veces (study-edit.js).
+    if (it.manual || it.mirrorOf || it.deletedAt) return;
     // Usamos el _planId original si existe para preservar agregados
     const planIdKey = it._planId || (it.obraId + '::' + (it.movId || ''));
     if (!groups[planIdKey]) {
@@ -4069,8 +4074,25 @@ function finishStudyBlock(details) {
     return { entry, persisted: false, error: e };
   }
 }
+// Tarjetas del día que son solo historial (registro manual, copia
+// neutralizada, estudio quitado): no viven en memoria y el autoguardado las
+// conserva tal cual. Si una está en memoria, se saca de ella.
+function _todayHistoryOnlyItems(todayStr) {
+  const existing = (db.sesiones || []).find(s => new Date(s.date).toDateString() === todayStr);
+  if (!existing || !Array.isArray(existing.items)) return [];
+  if (window.StudyEdit && StudyEdit.repairManualMirrors(db, undefined, todayStr)) saveData();
+  const history = existing.items.filter(it => it && (it.manual || it.mirrorOf || it.deletedAt));
+  const ghostIds = new Set(history.map(it => it._planId).filter(Boolean));
+  if (ghostIds.size && Array.isArray(currentPlan) && currentPlan.some(e => ghostIds.has(e._planId || e.id))) {
+    currentPlan.filter(e => ghostIds.has(e._planId || e.id)).forEach(e => _editSyncLivePlan({ _planId: e._planId || e.id }, { remove: true }));
+    if (typeof saveDraft === 'function') saveDraft();
+  }
+  return history;
+}
+
 function _autoSaveTodayPlanNow() {
   try {
+    const historyOnly = _todayHistoryOnlyItems(new Date().toDateString());
     if (!Array.isArray(currentPlan) || currentPlan.length === 0) {
       // Si no hay nada en el plan, no auto-guardamos (la sesión vacía no
       // tiene sentido). Si el usuario hizo todo y luego eliminó todas las
@@ -4137,10 +4159,17 @@ function _autoSaveTodayPlanNow() {
     // tenemos en memoria, NO sobrescribir (sería pérdida de datos). Esto
     // protege contra timing en que currentPlan no se hubo restaurado del todo
     // antes del primer autoSave.
-    if (existing && Array.isArray(existing.items) && existing.items.length > items.length) {
-      console.warn('[autoSave] abortado: memoria (' + items.length + ') tiene menos items que db (' + existing.items.length + ')');
+    const liveExisting = existing && Array.isArray(existing.items)
+      ? existing.items.filter(it => it && !(it.manual || it.mirrorOf || it.deletedAt)).length : 0;
+    if (liveExisting > items.length) {
+      console.warn('[autoSave] abortado: memoria (' + items.length + ') tiene menos items que db (' + liveExisting + ')');
       return;
     }
+    // El historial del día (registros manuales, copias neutralizadas, estudio
+    // quitado) se conserva: no está en memoria y no debe desaparecer.
+    historyOnly.forEach(it => {
+      if (!items.some(x => (it._planId && x._planId === it._planId) || (it.id && x.id === it.id))) items.push(it);
+    });
     const sesion = {
       // ★ FIX: preservar la fecha original de la sesión cuando ya existía.
       // Si la pisamos con `today.toISOString()`, una sesión vieja podría
@@ -15234,6 +15263,63 @@ function _syncTimedStudyBlockToSession(oldPlant, plant) {
   }
 }
 
+// Tras quitar o devolver estudio: si es de hoy, el plan en memoria se rehace
+// desde el documento (si no, el autoguardado lo volvería a escribir).
+function _afterStudyEdit(day) {
+  _sesionesDetalleEditing = null;
+  if (_statsISO(new Date(day)) === _statsISO(new Date()) && typeof restoreSessionFromDbToday === 'function') {
+    restoreSessionFromDbToday({ force: true });
+    if (typeof saveDraft === 'function') saveDraft();
+  }
+  saveData();
+  if (document.getElementById('modalSesionesDetalle')?.classList.contains('visible')) renderSesionesDetalle();
+  try { if (typeof refreshStudyViews === 'function') refreshStudyViews(); } catch (e) {}
+  try { if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI(); } catch (e) {}
+  try { if (typeof renderRacha === 'function') renderRacha(); } catch (e) {}
+}
+
+// Eliminar un tramo del registro (manual o del cronómetro): segundo toque
+// para confirmar y «Deshacer» en el aviso.
+function deleteTimedStudy(source, index, button) {
+  const record = _timedStudyPlant(source, index);
+  if (!record || !window.StudyEdit) {
+    _sesionesDetalleEditing = null;
+    renderSesionesDetalle();
+    showToast('El registro ha cambiado. Abre de nuevo la sesión.');
+    return;
+  }
+  if (button && !button.classList.contains('is-armed')) {
+    button.classList.add('is-armed');
+    button.textContent = 'Toca otra vez para eliminar';
+    clearTimeout(button._disarm);
+    button._disarm = setTimeout(() => {
+      button.classList.remove('is-armed');
+      button.textContent = 'Eliminar esta sesión';
+    }, 4000);
+    return;
+  }
+  const name = _timedStudyPlantName(record);
+  let snapshot = null, day, mins;
+  if (source === 'sesiones') {
+    const si = Number(String(index).split('-')[0]);
+    const session = db.sesiones[si];
+    day = session?.date;
+    mins = _itemMinReal(record);
+    snapshot = StudyEdit.removeItem(db, session, record);
+  } else {
+    day = record.startedAt || record.endedAt;
+    mins = Number(record.mins) || 0;
+    snapshot = StudyEdit.removePlant(db, record);
+  }
+  if (!snapshot) { showToast('No se ha podido eliminar'); return; }
+  _afterStudyEdit(day);
+  showUndoToast('Eliminado: ' + name + ' · ' + Math.round(mins) + ' min', () => {
+    StudyEdit.undo(db, snapshot);
+    _afterStudyEdit(day);
+    showToast('Restaurado ✓');
+  });
+}
+
 function saveTimedStudyEdit(source, index) {
   const plant = _timedStudyPlant(source, index);
   const form = document.getElementById('sesdet-edit-' + source + '-' + index);
@@ -15339,6 +15425,7 @@ function renderSesionesDetalle() {
               '<button type="button" class="sesdet-save" data-source="' + p.source + '" data-index="' + p.index + '" onclick="saveTimedStudyEdit(this.dataset.source,this.dataset.index)">Guardar</button>' +
               '<button type="button" class="sesdet-cancel" data-source="' + p.source + '" data-index="' + p.index + '" onclick="toggleSesionesDetalleEdit(this.dataset.source,this.dataset.index)" aria-label="Cancelar edición">×</button>' +
             '</div>' +
+            '<button type="button" class="sesdet-delete" data-source="' + p.source + '" data-index="' + p.index + '" onclick="deleteTimedStudy(this.dataset.source,this.dataset.index,this)">Eliminar esta sesión</button>' +
           '</div>'
         : '';
       return '<div class="sesdet-row' + (isEditing ? ' is-editing' : '') + '">' +
@@ -15374,7 +15461,7 @@ function renderSesionesDetalle() {
   };
 }
 
-function openSesionesDetalle(opener) {
+function openSesionesDetalle(opener, dayKey) {
   const overlay = document.getElementById('modalSesionesDetalle');
   if (!overlay.classList.contains('visible')) overlay._sesionesOpener = opener && typeof opener.focus === 'function' ? opener : document.activeElement;
   _sesionesDetalleEditing = null;
@@ -15390,11 +15477,19 @@ function openSesionesDetalle(opener) {
     if (p && !p.failed && p.tipo !== 'descanso' && p.obraId !== '_rest_' && Number(p.mins) > 0) addDay(p.startedAt || p.endedAt);
   }));
   (db.sesiones || []).forEach(s => { if ((s.items || []).some(item => _itemMinReal(item) > 0)) addDay(s.date); });
+  if (dayKey && dayKey <= today) days.add(dayKey);
   _sesionesDetalleDays = [...days].sort().reverse();
-  _sesionesDetalleLoaded = 1;
+  // Desde el calendario se abre en el día tocado (con los posteriores encima).
+  const at = dayKey ? _sesionesDetalleDays.indexOf(dayKey) : -1;
+  _sesionesDetalleLoaded = at >= 0 ? at + 1 : 1;
   renderSesionesDetalle();
   openModal('modalSesionesDetalle');
-  document.getElementById('sesionesDetalleBody').scrollTop = 0;
+  const body = document.getElementById('sesionesDetalleBody');
+  body.scrollTop = 0;
+  if (at > 0) requestAnimationFrame(() => {
+    const section = body.querySelector('.sesdet-day[data-day="' + dayKey + '"]');
+    if (section) body.scrollTop = section.offsetTop - body.offsetTop;
+  });
   overlay.querySelector('.sesdet-close').focus({ preventScroll: true });
   overlay.onkeydown = event => {
     if (event.key === 'Escape') { event.preventDefault(); closeModal('modalSesionesDetalle'); }
@@ -19757,6 +19852,8 @@ function renderEditExistingItems() {
   }
   const tickIcons = { hecho: '✓', parcial: '≈', saltado: '✗', null: '·' };
   container.innerHTML = items.map((it, i) => {
+    // Copias neutralizadas y estudio quitado no se enseñan (study-edit.js).
+    if (!it || it.mirrorOf || it.deletedAt) return '';
     const tick = it.tick || null;
     const tickClass = tick || 'none';
     const tickIcon = tick ? tickIcons[tick] : '·';
@@ -19875,71 +19972,42 @@ function setEditExistingMinutos(itemIdx, val) {
   if (_editSesionEsHoy()) _editSyncLivePlan(item, { minutos });
 }
 
-// Elimina un item ya guardado (con confirmación)
+// Elimina un item ya guardado. Un registro manual se va con su tramo; una
+// tarjeta del cronómetro se lleva sus tramos con hora (si no, el estudio
+// seguiría contando) y queda marcada como quitada. Todo con lápidas para que
+// la nube no lo devuelva (study-edit.js). Se puede deshacer.
 function deleteEditExistingItem(itemIdx) {
   if (_editSesionIdx < 0) return;
   const s = db.sesiones[_editSesionIdx];
   if (!s.items || !s.items[itemIdx]) return;
   const item = s.items[itemIdx];
   const name = item.obraName || 'la entrada';
-  const eraHoy = _editSesionEsHoy();
-  const planId = item._planId;
-  const liveEntity = eraHoy && planId ? currentPlan.find(e => (e._planId || e.id) === planId) : null;
-  const manualPlant = manualStudyPlantForItem(item, s);
-  const snap = {
-    manualPlant, plantIdx: manualPlant ? db.sessionPlants.indexOf(manualPlant) : -1,
-    sesion: s, item, itemIdx, eraHoy, planId,
-    liveEntity, liveIdx: liveEntity ? currentPlan.indexOf(liveEntity) : -1,
-    tick: sessionTicks[planId], minPlan: sessionMinPlan[planId],
-    sol: sessionSolRatings[planId], prod: sessionProductivityRatings[planId],
-    agg: sessionAggregate[planId], dest: sessionDestello[planId],
-  };
-  if (item.manual && window.DocumentSyncCore) {
-    s._deletedChildren ??= {};
-    s._deletedChildren.items ??= {};
-    s._deletedChildren.items[DocumentSyncCore.identity(item)] = new Date().toISOString();
+  const snaps = [];
+  if (!item.manual) {
+    const subs = (s._aggregate && s._aggregate[item._planId] && s._aggregate[item._planId].subsessions) || [];
+    const starts = new Set(subs.map(x => x && x.startedAt).filter(Boolean));
+    if (item.startedAt) starts.add(item.startedAt);
+    ['sessionPlants', 'forestPlants'].forEach(list => (db[list] || []).slice().forEach(p => {
+      if (!p || !starts.has(p.startedAt) || p.obraId !== item.obraId || (p.movId || null) !== (item.movId || null)) return;
+      if (!(db[list] || []).includes(p)) return;
+      const snap = StudyEdit.removePlant(db, p);
+      if (snap) snaps.push(snap);
+    }));
   }
-  s.items.splice(itemIdx, 1);
-  if (manualPlant) db.sessionPlants.splice(snap.plantIdx, 1);
-  if (eraHoy) _editSyncLivePlan(item, { remove: true });
+  if (s.items.includes(item) && !item.deletedAt) {
+    const snap = StudyEdit.removeItem(db, s, item);
+    if (snap) snaps.push(snap);
+  }
+  if (!snaps.length) return;
+  const day = s.date;
+  _afterStudyEdit(day);
   renderEditExistingItems();
-  saveData();
-  if (eraHoy) { if (typeof saveDraft === 'function') saveDraft(); refreshConcentradoUI(); }
-  showUndoToast('Eliminado: ' + name, () => _undoDeleteEditItem(snap));
-}
-
-function _undoDeleteEditItem(snap) {
-  if (snap.item?.manual) {
-    // Deletion tombstones are permanent. Undo creates a new identity while
-    // retaining the original study block and its metadata.
-    const restoredId = 'manual_' + TimerCore.createRunId();
-    snap.item = {...snap.item, id: restoredId};
-    if (snap.manualPlant) {
-      snap.manualPlant = {...snap.manualPlant, id: restoredId, updatedAt: new Date().toISOString()};
-      snap.item.studyPlantId = restoredId;
-    }
-  }
-  if (snap.manualPlant && !db.sessionPlants.some(p => p.id === snap.manualPlant.id)) {
-    db.sessionPlants.splice(Math.min(snap.plantIdx, db.sessionPlants.length), 0, snap.manualPlant);
-  }
-  if (snap.sesion && Array.isArray(snap.sesion.items)) {
-    const at = Math.min(snap.itemIdx, snap.sesion.items.length);
-    snap.sesion.items.splice(at, 0, snap.item);
-  }
-  if (snap.eraHoy && snap.liveEntity && !currentPlan.some(e => (e._planId || e.id) === snap.planId)) {
-    const at = snap.liveIdx >= 0 ? Math.min(snap.liveIdx, currentPlan.length) : currentPlan.length;
-    currentPlan.splice(at, 0, snap.liveEntity);
-    if (snap.tick !== undefined) sessionTicks[snap.planId] = snap.tick;
-    if (snap.minPlan !== undefined) sessionMinPlan[snap.planId] = snap.minPlan;
-    if (snap.sol !== undefined) sessionSolRatings[snap.planId] = snap.sol;
-    if (snap.prod !== undefined) sessionProductivityRatings[snap.planId] = snap.prod;
-    if (snap.agg !== undefined) sessionAggregate[snap.planId] = snap.agg;
-    if (snap.dest !== undefined) sessionDestello[snap.planId] = snap.dest;
-  }
-  saveData();
-  if (snap.eraHoy) { if (typeof saveDraft === 'function') saveDraft(); refreshConcentradoUI(); }
-  renderEditExistingItems();
-  showToast('Restaurado ✓');
+  showUndoToast('Eliminado: ' + name, () => {
+    snaps.slice().reverse().forEach(snap => StudyEdit.undo(db, snap));
+    _afterStudyEdit(day);
+    renderEditExistingItems();
+    showToast('Restaurado ✓');
+  });
 }
 
 function addEditObraItem() {
