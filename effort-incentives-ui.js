@@ -28,7 +28,9 @@
   function persistSecretSeen(){try{root.localStorage?.setItem(SECRET_SEEN_KEY,JSON.stringify([...secretSeen()]));}catch(error){}}
   function currentCelebratedRows(){
     const data=database();if(!data)return [];
-    try{return P.walletSnapshot(data).bonusRows.filter(celebrated);}catch(error){return [];}
+    // 14-10-2026: se mira cada 1,8 s; el saldo se recalcula solo si cambian los datos.
+    const snapshot=()=>P.walletSnapshot(data);
+    try{return (typeof root.memoByData==='function'&&typeof db!=='undefined'&&data===db?root.memoByData('wallet-snapshot',snapshot):snapshot()).bonusRows.filter(celebrated);}catch(error){return [];}
   }
   function rowEuro(row,goal){return goal?P.rowEffortPoints(row)*P.goalScale(goal):0;}
   function showSecretReward(row){

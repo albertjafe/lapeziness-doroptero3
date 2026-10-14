@@ -88,17 +88,94 @@ function _writeSyncMeta(meta) {
 }
 
 var _lastSavedDocument = null;
+// Guardado por secciones (14-10-2026). Seguir los cambios y fusionar con el
+// disco recorría el documento entero (~4 MB, ~360 ms por acción). A nivel raíz
+// cada sección (tareas, sesiones, plantas…) se fusiona por separado, así que
+// basta hacerlo con las que cambiaron, conservando relojes, borrados y fechas.
+// Solo se usa cuando el disco es exactamente lo último que escribió esta
+// pestaña; si otra pestaña o la nube lo tocaron, se va por el camino completo.
+var _saveCache = null;      // { json, keys: Map(sección → JSON) } = lo que hay en disco
+var _savePrepared = null;   // { changed: Set, strings: Map } de la última preparación rápida
+const _SAVE_ROOT_FIELDS = ['_fieldClock', '_deletedChildren', '_savedAt', '_localRevision', 'correctedAt', 'manualSavedAt', 'updatedAt', 'createdAt'];
+const _SAVE_INTERNAL = new Set(['_fieldClock', '_deletedChildren', '_savedAt', '_localRevision']);
 function _prepareLocalDocument(markDirty) {
+  _savePrepared = null;
   if (typeof DocumentSyncCore === 'undefined') return;
   if (markDirty) {
     const stamp = new Date(Math.max(Date.now(), Date.parse(db._savedAt || '') + 1 || 0)).toISOString();
+    let raw = null;
+    try { raw = localStorage.getItem(DB_KEY); } catch (_) {}
+    if (_saveCache && _lastSavedDocument && raw !== null && raw === _saveCache.json) {
+      _prepareChangedSections(stamp);
+      return;
+    }
     let disk = {};
-    try { disk = JSON.parse(localStorage.getItem(DB_KEY) || '{}'); } catch (_) {}
+    try { disk = JSON.parse(raw || '{}'); } catch (_) {}
     const tracked = DocumentSyncCore.track(db, _lastSavedDocument || disk, stamp);
     DocumentSyncCore.assign(db, DocumentSyncCore.merge(disk, tracked));
   }
 }
-function _rememberLocalDocument() { _lastSavedDocument = JSON.parse(JSON.stringify(db)); }
+function _prepareChangedSections(stamp) {
+  const last = _lastSavedDocument;
+  const strings = new Map();
+  const changed = new Set();
+  for (const k of new Set([...Object.keys(db), ...Object.keys(last)])) {
+    if (_SAVE_INTERNAL.has(k)) continue;
+    const str = db[k] === undefined ? undefined : JSON.stringify(db[k]);
+    if (str !== undefined) strings.set(k, str);
+    if (str !== _saveCache.keys.get(k)) changed.add(k);
+  }
+  if (changed.size) {
+    const pick = src => {
+      const out = {};
+      changed.forEach(k => { if (src[k] !== undefined) out[k] = src[k]; });
+      _SAVE_ROOT_FIELDS.forEach(k => { if (src[k] !== undefined && out[k] === undefined) out[k] = src[k]; });
+      return out;
+    };
+    const partLast = pick(last);
+    const merged = DocumentSyncCore.merge(partLast, DocumentSyncCore.track(pick(db), partLast, stamp));
+    changed.forEach(k => {
+      if (merged[k] === undefined) delete db[k];
+      else db[k] = DocumentSyncCore.assign(db[k], merged[k]);
+    });
+    ['_fieldClock', '_deletedChildren', '_savedAt', '_localRevision'].forEach(k => {
+      if (merged[k] === undefined) delete db[k];
+      else db[k] = merged[k];
+    });
+  }
+  _savePrepared = { changed, strings };
+}
+function _rememberLocalDocument() {
+  const prepared = _savePrepared;
+  _savePrepared = null;
+  const reuse = !!(prepared && _saveCache && _lastSavedDocument);
+  const strings = new Map();
+  for (const k of Object.keys(db)) {
+    const value = db[k];
+    if (value === undefined || typeof value === 'function') continue;
+    strings.set(k, reuse && !_SAVE_INTERNAL.has(k) && !prepared.changed.has(k) && prepared.strings.has(k)
+      ? prepared.strings.get(k) : JSON.stringify(value));
+  }
+  const json = '{' + [...strings].map(([k, v]) => JSON.stringify(k) + ':' + v).join(',') + '}';
+  const before = _saveCache ? _saveCache.keys : null;
+  if (!before) _studyDataVersion++;
+  else {
+    for (const k of new Set([...strings.keys(), ...before.keys()])) {
+      if (!_MEMO_IGNORED_SECTIONS.has(k) && strings.get(k) !== before.get(k)) { _studyDataVersion++; break; }
+    }
+  }
+  if (reuse) {
+    for (const k of Object.keys(_lastSavedDocument)) if (!strings.has(k)) delete _lastSavedDocument[k];
+    strings.forEach((v, k) => {
+      if (_SAVE_INTERNAL.has(k) || prepared.changed.has(k) || !Object.hasOwn(_lastSavedDocument, k)) _lastSavedDocument[k] = JSON.parse(v);
+    });
+  } else {
+    _lastSavedDocument = JSON.parse(json);
+  }
+  let disk = null;
+  try { disk = localStorage.getItem(DB_KEY); } catch (_) {}
+  _saveCache = disk === json ? { json, keys: strings } : null;
+}
 
 function _writeLocalSnapshot(markDirty) {
   _prepareLocalDocument(markDirty);
@@ -124,6 +201,33 @@ function saveLocalNow() {
     console.error('[sync] no se pudo guardar localmente', e);
     throw e;
   }
+}
+
+// Cálculos derivados memorizados (14-10-2026). La preparación de cada obra y el
+// estado de premios recorren todo el historial (varios segundos con ~4 MB) y se
+// pedían varias veces por pintado con los mismos datos. Se recuerdan hasta que
+// cambian los datos (cada guardado local o sincronización cambia _savedAt o la
+// revisión) o cambia el minuto (dependen de la fecha).
+const _derivedMemo = new Map();
+// Versión de los datos de estudio: sube cuando cambia cualquier sección salvo
+// las tareas (no afectan a preparación ni premios). Se actualiza en cada
+// guardado y en cada sincronización (_rememberLocalDocument).
+const _MEMO_IGNORED_SECTIONS = new Set(['cronoTasks', 'cronoTaskTombstones', '_fieldClock', '_deletedChildren', '_savedAt', '_localRevision']);
+let _studyDataVersion = 0;
+function dataStamp() {
+  return _studyDataVersion + '|' + Math.floor(Date.now() / 60000);
+}
+function memoByData(key, compute) {
+  const stamp = dataStamp();
+  const hit = _derivedMemo.get(key);
+  if (hit && hit.stamp === stamp) return hit.value;
+  const value = compute();
+  if (_derivedMemo.size > 400) _derivedMemo.clear();
+  _derivedMemo.set(key, { stamp, value });
+  return value;
+}
+function cachedPianoStudyState() {
+  return memoByData('piano-study-state', () => PianoRewards.studyState(db));
 }
 
 // Tareas (08-10-2026): guardar un documento de ~4 MB lleva ~0,5 s; las acciones
@@ -19170,11 +19274,28 @@ function refreshSoundOptionUI() {
 }
 
 // SFX como proxy al pack activo
+// 14-10-2026: al confirmar «Hecho» se cerraba una ventana y se abría otra en
+// 180 ms y sonaban dos sonidos seguidos. Un paso de ventana (cerrar → abrir)
+// suena una sola vez, y un sonido repetido en menos de 90 ms no se duplica.
+let _sfxLastAt = 0;
+let _sfxLastProp = '';
+const _SFX_TRANSITION = new Set(['open', 'close']);
+// Sonidos «grandes»: dos de ellos en menos de 300 ms suenan como uno (p. ej. la
+// alarma de fin del temporizador y la ventana que se abre a la vez).
+const _SFX_MAJOR = new Set(['open', 'close', 'save', 'saveSession', 'milestone', 'startSession', 'pase', 'pasaje', 'generate', 'add', 'del']);
 const SFX = new Proxy({}, {
   get(_, prop) {
     return function(...args) {
       const pack = SFX_PACKS[_activeSoundPack] || SFX_PACKS.piano;
-      if (typeof pack[prop] === 'function') return pack[prop](...args);
+      if (typeof pack[prop] !== 'function') return undefined;
+      const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+      const gap = now - _sfxLastAt;
+      if (gap < 90 && prop === _sfxLastProp) return undefined;
+      if (gap < 450 && _SFX_TRANSITION.has(prop) && _SFX_TRANSITION.has(_sfxLastProp)) return undefined;
+      if (gap < 300 && _SFX_MAJOR.has(prop) && _SFX_MAJOR.has(_sfxLastProp)) return undefined;
+      _sfxLastAt = now;
+      _sfxLastProp = String(prop);
+      return pack[prop](...args);
     };
   }
 });
@@ -19377,19 +19498,21 @@ function writeSessionQuickStudyPref(value, minutes) {
 }
 
 function sessionQuickStudyRecentValue(select) {
-  const recent = (db.sessionPlants || []).slice().sort((a, b) => {
-    const aTime = new Date(a.endedAt || a.startedAt || 0).getTime();
-    const bTime = new Date(b.endedAt || b.startedAt || 0).getTime();
-    return bTime - aTime;
-  });
-  for (const entry of recent) {
+  // Una sola pasada (14-10-2026): la más reciente cuyo destino está en el
+  // desplegable; antes ordenaba todo el historial y recorría las opciones por
+  // cada registro.
+  const options = new Set([...select.options].map(option => option.value));
+  let best = '', bestTime = -Infinity;
+  for (const entry of db.sessionPlants || []) {
     if (!entry || !entry.obraId) continue;
-    const value = entry.movId
-      ? 'mov::' + entry.obraId + '::' + entry.movId
-      : 'obra::' + entry.obraId;
-    if ([...select.options].some(option => option.value === value)) return value;
+    const time = new Date(entry.endedAt || entry.startedAt || 0).getTime();
+    const t = Number.isNaN(time) ? -Infinity : time;
+    if (!(t > bestTime) && best) continue;
+    const value = entry.movId ? 'mov::' + entry.obraId + '::' + entry.movId : 'obra::' + entry.obraId;
+    if (!options.has(value)) continue;
+    if (!best || t > bestTime) { best = value; bestTime = t; }
   }
-  return '';
+  return best;
 }
 
 function renderSessionQuickStudy() {
@@ -26021,6 +26144,17 @@ function cronoEffectiveElapsedMs() {
 // La estimación es derivada: nunca se guarda en db ni se reduce con cada tick.
 function cronoReadinessEstimate(selectionValue) {
   if (typeof ReadinessCore === 'undefined' || typeof ReadinessCore.estimateReadiness !== 'function') return null;
+  // La función del modelo puede cambiar al cargarse sus capas: entra en la clave.
+  const modelKey = ReadinessCore.estimateReadiness;
+  const memo = _derivedMemo.get('readiness-model');
+  if (!memo || memo.value !== modelKey) {
+    for (const key of [..._derivedMemo.keys()]) if (key.startsWith('readiness:')) _derivedMemo.delete(key);
+    _derivedMemo.set('readiness-model', { stamp: '', value: modelKey });
+  }
+  return memoByData('readiness:' + String(selectionValue || ''), () => cronoReadinessEstimateUncached(selectionValue));
+}
+
+function cronoReadinessEstimateUncached(selectionValue) {
   const resolved = cronoResolveSelectValue(selectionValue);
   if (!resolved || !resolved.obraId) return null;
   const obra = findObra(resolved.obraId);
@@ -26328,7 +26462,7 @@ function cronoUpdatePianoReward() {
     const german = db.germanStudy || {};
     const goals = Array.isArray(german.goals) ? german.goals : [];
     const germanRows = GermanRewards.ledger(Array.isArray(german.sessions) ? german.sessions : [], goals);
-    const rewardState = PianoRewards.studyState(db);
+    const rewardState = cachedPianoStudyState();
     const activeSharedGoal = PianoRewards.activeGoal(db);
     const idleLive = PianoRewards.live(rewardState, goals, activeSharedGoal?.id || null, 0, PianoRewards.dayKey(), germanRows);
     if (idleGoalName) idleGoalName.textContent = activeSharedGoal?.name || 'Crear objetivo económico';

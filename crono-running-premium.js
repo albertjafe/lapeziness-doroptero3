@@ -317,7 +317,7 @@
       const german=db.germanStudy||{};
       const goals=Array.isArray(german.goals)?german.goals:[];
       const germanRows=GermanRewards.ledger(Array.isArray(german.sessions)?german.sessions:[],goals);
-      const rewardState=PianoRewards.studyState(db);
+      const rewardState=(typeof cachedPianoStudyState==='function'?cachedPianoStudyState():PianoRewards.studyState(db));
       const date=PianoRewards.dayKey();
       const idleGoal=PianoRewards.activeGoal(db);
       const idleBalance=document.getElementById('cronoPianoIdleGoalBalance');
@@ -375,7 +375,7 @@
   function currentRewardLive(){
     try{
       if(typeof PianoRewards==='undefined' || typeof db==='undefined') return null;
-      const state=PianoRewards.studyState(db);
+      const state=(typeof cachedPianoStudyState==='function'?cachedPianoStudyState():PianoRewards.studyState(db));
       const goals=(db && db.germanStudy && Array.isArray(db.germanStudy.goals))?db.germanStudy.goals:[];
       const activeCronoGoal=(typeof crono!=='undefined'&&crono.rewardGoalId)?goals.find(item=>item&&item.id===crono.rewardGoalId):null;
       const goal=activeCronoGoal||PianoRewards.activeGoal(db);

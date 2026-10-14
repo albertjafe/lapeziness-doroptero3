@@ -51,16 +51,17 @@
   function latestRecordedTarget(select) {
     const database = appDb();
     const plants = database && Array.isArray(database.sessionPlants) ? database.sessionPlants : [];
-    const recent = plants.slice().sort((a, b) => {
-      const aTime = new Date(a.endedAt || a.startedAt || 0).getTime() || 0;
-      const bTime = new Date(b.endedAt || b.startedAt || 0).getTime() || 0;
-      return bTime - aTime;
-    });
-    for (const plant of recent) {
+    // Una sola pasada (14-10-2026): mismo resultado que ordenar por fecha y
+    // quedarse con el primero que existe en el desplegable.
+    const options = new Set(Array.from(select?.options || []).map(option => option.value));
+    let best = '', bestTime = -Infinity;
+    for (const plant of plants) {
       const value = plantTargetValue(plant);
-      if (optionExists(select, value)) return value;
+      if (!value || !options.has(value)) continue;
+      const time = new Date(plant.endedAt || plant.startedAt || 0).getTime() || 0;
+      if (!best || time > bestTime) { best = value; bestTime = time; }
     }
-    return '';
+    return best;
   }
 
   function exactLastTargetForSelect(select) {
