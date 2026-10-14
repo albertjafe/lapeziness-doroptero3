@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v506';
+const CACHE = 'estudio-v507';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -9,8 +9,8 @@ const ASSETS = [
   "./study-edit.js?v=505",
   "./app.js?v=506",
   "./german-rewards.js?v=426",
-  "./achievement-rewards.js?v=435",
-  "./piano-rewards.js?v=486",
+  "./achievement-rewards.js?v=507",
+  "./piano-rewards.js?v=507",
   "./german-srs.js?v=378",
   "./german-import.js?v=382",
   "./german-session.js?v=404",
@@ -22,7 +22,7 @@ const ASSETS = [
   "./oportunidades.css?v=483",
   "./habit-trophies.js?v=433",
   "./study-ledger-sync.js?v=434",
-  "./effort-incentives-ui.js?v=506",
+  "./effort-incentives-ui.js?v=507",
   "./effort-incentives.css?v=440",
   "./habits-page.css?v=466",
   "./desktop-app.css?v=441",

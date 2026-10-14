@@ -18,7 +18,7 @@
 
   // Rows that deserve a celebration when they first appear.
   const celebrated=row=>row&&(row.secretAchievement||row.chest||row.achievement||row.progress);
-  function kicker(row){return row.chest?'COFRE SORPRESA':row.achievement?'LOGRO DESBLOQUEADO':row.progress?'PREMIO POR PROGRESO':'PREMIO SECRETO';}
+  function kicker(row){return row.chest?'COFRE SORPRESA':row.achievement?'LOGRO DESBLOQUEADO':row.process?'BUEN HÁBITO DE ESTUDIO':row.progress?'PREMIO POR PROGRESO':'PREMIO SECRETO';}
   function secretSeen(){
     if(secretSeenMemory)return secretSeenMemory;
     try{const raw=root.localStorage?.getItem(SECRET_SEEN_KEY);secretSeenMemory=new Set(raw?JSON.parse(raw):[]);}
@@ -30,7 +30,9 @@
     const data=database();if(!data)return [];
     // 14-10-2026: se mira cada 1,8 s; el saldo se recalcula solo si cambian los datos.
     const snapshot=()=>P.walletSnapshot(data);
-    try{return (typeof root.memoByData==='function'&&typeof db!=='undefined'&&data===db?root.memoByData('wallet-snapshot',snapshot):snapshot()).bonusRows.filter(celebrated);}catch(error){return [];}
+    // Las tareas no cuentan en la huella de datos: las urgentísimas hechas entran en la clave.
+    const urgentDone=(data.cronoTasks||[]).reduce((n,t)=>n+(t&&t.done&&Math.round(Number(t.priority)||0)===3?1:0),0);
+    try{return (typeof root.memoByData==='function'&&typeof db!=='undefined'&&data===db?root.memoByData('wallet-snapshot:'+urgentDone,snapshot):snapshot()).bonusRows.filter(celebrated);}catch(error){return [];}
   }
   function rowEuro(row,goal){return goal?P.rowEffortPoints(row)*P.goalScale(goal):0;}
   function showSecretReward(row){
@@ -133,6 +135,9 @@
       <span class="premios-kicker">LOGROS</span><h3 id="premiosAchievementsTitle">Premios por progreso</h3>
       <p>No solo cuentan las horas: también se premia estudiar bien.</p>
       <ul class="premios-list">${progress.map(([icon,title,text,value])=>`<li><b>${icon}</b><span><strong>${title}</strong><small>${text}</small></span><em>+${pts(value)}</em></li>`).join('')}</ul>
+      ${A&&Array.isArray(A.PROCESS)?`<h3 class="premios-subtitle">Buenos hábitos de estudio</h3>
+      <p>Premios pequeños por cómo estudias, nunca por encima del estudio: como mucho uno de cada al día y sin rachas que se rompan.</p>
+      <ul class="premios-list study-process-rewards">${A.PROCESS.map(p=>`<li><b>${esc(p.icon)}</b><span><strong>${esc(p.title)}</strong><small>${esc(p.description)}</small></span><em>+${pts(p.points)}</em></li>`).join('')}</ul>`:''}
       ${A?`<div class="premios-chest"><b>🎁</b><p><strong>Cofres sorpresa.</strong> Cada bloque de estudio de 45 min o más tiene 1 posibilidad entre ${A.CHEST_ODDS} de esconder un cofre de 0,2 a 1 punto. Nunca sabes cuándo.</p></div>`:''}
       <h3 class="premios-subtitle">Premios secretos del día</h3>
       <ul class="premios-list">${secrets.map(s=>found.has(s.id)?`<li><b>${esc(s.icon)}</b><span><strong>${esc(s.title)}</strong><small>${esc(s.description)}</small></span></li>`:`<li class="is-hidden"><b>?</b><span><strong>???</strong><small>Tiene que ver con cómo organizas tu día.</small></span></li>`).join('')}</ul>

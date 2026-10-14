@@ -53,3 +53,30 @@ test('a completed avoid cycle contributes once, survives reload and appears in b
  await page.evaluate(()=>{db.habitChallenges[0].logs[db.habitChallenges[0].startDate]={status:'failed'};saveData();});
  await expect.poll(()=>page.evaluate(()=>PianoRewards.walletSnapshot(db).points)).toBe(1.5);
 });
+test('study-habit rewards: listed in Premios and a recorded pass is celebrated once and paid',async({page})=>{
+ test.setTimeout(45000);await prepare(page);
+ await page.waitForTimeout(2500);
+ const before=await page.evaluate(()=>PianoRewards.walletSnapshot(db).points);
+ await page.evaluate(()=>{db.obras[0].paseHistory=[{date:new Date().toISOString(),tipo:'grabacion',score:7}];saveData();});
+ const toast=page.locator('#studySecretRewardToast');
+ await expect(toast).toContainText('BUEN HÁBITO DE ESTUDIO',{timeout:8000});
+ await expect(toast).toContainText('Pase grabado');
+ const after=await page.evaluate(()=>PianoRewards.walletSnapshot(db));
+ expect(after.points-before).toBeCloseTo(.25,5);
+ expect(after.bonusRows.filter(r=>r.process==='recorded-pass')).toHaveLength(1);
+ await toast.click();
+ await page.evaluate(()=>openPremios());
+ const list=page.locator('.study-process-rewards li');
+ await expect(list).toHaveCount(5);
+ await expect(page.locator('#studyIncentivesContent')).toContainText('Buenos hábitos de estudio');
+ await expect(page.locator('#studyIncentivesContent')).toContainText('Semana constante');
+ await expect(page.locator('.study-incentive-bonus-history')).toContainText('Pase grabado');
+ await page.reload();await page.waitForFunction(()=>window.PianoRewards&&window.StudyIncentives);await page.waitForTimeout(2500);
+ await expect(page.locator('#studySecretRewardToast')).toHaveCount(0);
+});
+test('an urgent task done within 48 h is celebrated even though tasks do not change the data stamp',async({page})=>{
+ test.setTimeout(45000);await prepare(page);
+ await page.waitForTimeout(2500);
+ await page.evaluate(()=>{const now=Date.now();db.cronoTasks=[{id:'u1',text:'Llamar al casero',kind:'personal',priority:3,done:true,createdAt:new Date(now-3600e3).toISOString(),doneAt:new Date(now).toISOString()}];saveData();});
+ await expect(page.locator('#studySecretRewardToast')).toContainText('Urgentísima resuelta',{timeout:8000});
+});

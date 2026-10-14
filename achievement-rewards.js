@@ -208,6 +208,89 @@
       .map(a => row('achievement:' + a.id, a.date, a.points, a.icon + ' ' + a.title, { achievement:true, icon:a.icon, description:a.description }));
   }
 
+  // Buenos hábitos de estudio (14-10-2026). Pequeños a propósito (una hora de
+  // estudio son 0,25 puntos): premian cómo se estudia, nunca sustituyen al
+  // estudio. Como mucho uno de cada tipo al día (la semana constante, uno por
+  // semana), sin rachas que se rompan y solo desde PROCESS_START_DAY.
+  const PROCESS_START_DAY = '2026-10-14';
+  const PROCESS = Object.freeze([
+    Object.freeze({ id:'recorded-pass', icon:'🎥', title:'Pase grabado', points:.25, description:'Registras un pase de tipo «grabación»: escucharte enseña más que cualquier otro pase.' }),
+    Object.freeze({ id:'early-start', icon:'☀️', title:'Arranque temprano', points:.15, description:'El primer bloque del día empieza antes de las 11:00 y dura 25 min o más.' }),
+    Object.freeze({ id:'deep-session', icon:'🧘', title:'Sesión profunda', points:.15, description:'Un bloque de 50 min o más con menos de 10 min de pausa en total.' }),
+    Object.freeze({ id:'urgent-task', icon:'✅', title:'Urgentísima resuelta', points:.10, description:'Una tarea urgentísima hecha en menos de 48 h desde que lo es.' }),
+    Object.freeze({ id:'steady-week', icon:'📅', title:'Semana constante', points:.75, description:'Cinco días de la misma semana (lunes a domingo) con 30 min o más de estudio.' })
+  ]);
+  const PROCESS_BY_ID = Object.fromEntries(PROCESS.map(p => [p.id, p]));
+  const processPays = (date, today) => !!date && date >= PROCESS_START_DAY && date <= today;
+  const RECORDING = /^(grabaci[oó]n|recording)$/i;
+  function weekStartOf(day) {
+    const [y, m, d] = day.split('-').map(Number);
+    const date = new Date(y, m - 1, d, 12);
+    date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+    return dayKey(date);
+  }
+  function processEvidence(db, sessions) {
+    const days = { 'recorded-pass':new Set(), 'early-start':new Set(), 'deep-session':new Set(), 'urgent-task':new Set() };
+    const weeks = [];
+    (db?.obras || []).forEach(obra => {
+      if (!obra || obra.deletedAt) return;
+      [obra, ...(obra.movimientos || [])].forEach(entity => (entity?.paseHistory || []).forEach(p => {
+        const day = p && RECORDING.test(String(p.tipo || '')) ? toDay(p.date) : '';
+        if (day) days['recorded-pass'].add(day);
+      }));
+    });
+    const byDay = new Map();
+    (sessions || []).forEach(s => {
+      if (!s || s.deleted || !s.date) return;
+      const seconds = Math.max(0, Number(s.seconds) || 0);
+      if (!byDay.has(s.date)) byDay.set(s.date, []);
+      byDay.get(s.date).push(s);
+      // Solo bloques cronometrados: en un registro manual no se ven las pausas.
+      if (s.manualEntry) return;
+      const span = (Date.parse(s.endedAt) - Date.parse(s.startedAt)) / 1000;
+      if (seconds >= 50 * 60 && Number.isFinite(span) && span >= seconds - 60 && span - seconds <= 10 * 60) days['deep-session'].add(s.date);
+    });
+    byDay.forEach((list, day) => {
+      const first = list.filter(s => !s.manualEntry && Number.isFinite(Date.parse(s.startedAt)) && Date.parse(s.endedAt) > Date.parse(s.startedAt))
+        .sort((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt))[0];
+      if (!first || toDay(first.startedAt) !== day || Number(first.seconds) < 25 * 60) return;
+      const start = new Date(first.startedAt);
+      if (start.getHours() < 11) days['early-start'].add(day);
+    });
+    const daysByWeek = new Map();
+    [...byDay.keys()].sort().forEach(day => {
+      const total = byDay.get(day).reduce((sum, s) => sum + Math.max(0, Number(s.seconds) || 0), 0);
+      if (total < 30 * 60) return;
+      const week = weekStartOf(day);
+      const count = (daysByWeek.get(week) || 0) + 1;
+      daysByWeek.set(week, count);
+      if (count === 5) weeks.push({ week, date:day });
+    });
+    (db?.cronoTasks || []).forEach(task => {
+      if (!task || task.deleted || !task.done || !task.doneAt || Math.round(Number(task.priority) || 0) !== 3) return;
+      const done = Date.parse(task.doneAt);
+      const since = Math.max(Date.parse(task.createdAt) || 0, Date.parse(task.priorityChangedAt) || 0);
+      if (Number.isFinite(done) && since && done >= since && done - since <= 48 * 3600e3) {
+        const day = toDay(task.doneAt);
+        if (day) days['urgent-task'].add(day);
+      }
+    });
+    return { days, weeks };
+  }
+  function processRows(db, sessions, today = dayKey()) {
+    const { days, weeks } = processEvidence(db, sessions);
+    const make = (key, def, date) => row('process:' + key, date, def.points, def.icon + ' ' + def.title,
+      { progress:'process', process:def.id, icon:def.icon, description:def.description });
+    const rows = [];
+    Object.entries(days).forEach(([id, set]) => [...set].sort().forEach(day => {
+      if (processPays(day, today)) rows.push(make(id + ':' + day, PROCESS_BY_ID[id], day));
+    }));
+    weeks.forEach(({ week, date }) => {
+      if (processPays(date, today)) rows.push(make('steady-week:' + week, PROCESS_BY_ID['steady-week'], date));
+    });
+    return rows;
+  }
+
   return { START_DAY, POINTS, CHEST_ODDS, CHEST_PRIZES, HIDDEN, progressRows, chestFor, chestRows, achievements, achievementRows,
-    solidCrossing, passageMasteries, preparedEvents };
+    solidCrossing, passageMasteries, preparedEvents, PROCESS_START_DAY, PROCESS, processRows };
 });

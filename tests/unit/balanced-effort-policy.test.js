@@ -7,9 +7,9 @@ const database=()=>({obras:[{id:'w',movimientos:[]}],sessionPlants:[],forestPlan
 const sessions=(hours=5,month='2026-10',n=20)=>Array.from({length:n},(_,i)=>({id:month+':'+i,date:month+'-'+String(i+1).padStart(2,'0'),
   goalId:'g',seconds:hours*3600,policyVersion:month<'2026-10'?5:6,activityType:'study'}));
 const points=rows=>rows.reduce((total,row)=>total+P.rowEffortPoints(row),0);
-// Surprise rewards (chests, secrets, achievements) are never previewed and
+// Surprise rewards (chests, secrets, achievements, study habits) are never previewed and
 // are tested on their own; these tests measure the monthly levels.
-const surprise=row=>/^bonus:(chest|secret|achievement|progress):/.test(row.id);
+const surprise=row=>/^bonus:(chest|secret|achievement|progress|process):/.test(row.id);
 const bonusRows=(...args)=>P.bonusRows(...args).filter(row=>!surprise(row));
 
 describe('future-only balanced effort policy',()=>{

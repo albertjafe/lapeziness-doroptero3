@@ -25,13 +25,13 @@ for(const [width,height] of [[834,1194],[1194,834]])test(`balanced effort ${widt
  await page.evaluate(()=>{crono.startTs=Date.now()-2*3600000;cronoSaveState();cronoUpdatePianoReward();});
  const live=await page.evaluate(()=>PianoRewards.live(PianoRewards.studyState(db),db.germanStudy.goals,'g',2*3600,PianoRewards.dayKey(),[],6));
  expect(live.rewardMultiplier).toBe(1.5);expect(live.walletPoints-before).toBeCloseTo(25+2.1*1.5-1,5);
- const surprise=()=>page.evaluate(()=>PianoRewards.walletSnapshot(db).rows.filter(r=>/^bonus:(secret|chest|achievement|progress):/.test(String(r.id))).reduce((sum,r)=>sum+PianoRewards.rowEffortPoints(r),0));
+ const surprise=()=>page.evaluate(()=>PianoRewards.walletSnapshot(db).rows.filter(r=>/^bonus:(secret|chest|achievement|progress|process):/.test(String(r.id))).reduce((sum,r)=>sum+PianoRewards.rowEffortPoints(r),0));
  const surpriseBefore=await surprise();
  await page.evaluate(()=>cronoFinish(crono.runId));
  await expect(page.locator('#modalHechoDatos')).toBeVisible();
  await page.locator('#modalHechoDatos').getByRole('button',{name:'Hecho',exact:true}).click();
  await expect(page.locator('#modalHechoDatos')).not.toBeVisible();
- // Surprise rewards (secrets, chests, achievements, progress) unlocked by saving
+ // Surprise rewards (secrets, chests, achievements, progress, study habits) unlocked by saving
  // this session are never predicted by the live meter.
  const saved=live.walletPoints+(await surprise())-surpriseBefore;
  await expect.poll(()=>page.evaluate(()=>PianoRewards.walletSnapshot(db).points)).toBeCloseTo(saved,5);
@@ -50,9 +50,12 @@ for(const [width,height] of [[834,1194],[1194,834]])test(`balanced effort ${widt
  });
  await expect(page.locator('#studyIncentivesContent')).toContainText('30 puntos abonados este mes');
  expect(await page.evaluate(()=>PianoRewards.bonusRows(db,PianoRewards.studyState(db).sessions).filter(r=>r.id.startsWith('bonus:study-month:')).map(PianoRewards.rowEffortPoints))).toEqual([10,15,5]);
- const upgraded=await page.evaluate(()=>PianoRewards.walletSnapshot(db).points);
+ // The test scales minutes without moving start/end times, so the study-habit
+ // rewards that look at a block's real span are left out of this comparison.
+ const withoutHabits=()=>page.evaluate(()=>{const s=PianoRewards.walletSnapshot(db);return s.points-s.bonusRows.filter(r=>r.process).reduce((n,r)=>n+PianoRewards.rowEffortPoints(r),0);});
+ const upgraded=await withoutHabits();
  await page.reload();await page.waitForFunction(()=>window.PianoRewards&&db.sessionPlants?.length===21);
- expect(await page.evaluate(()=>PianoRewards.walletSnapshot(db).points)).toBeCloseTo(upgraded,6);
+ expect(await withoutHabits()).toBeCloseTo(upgraded,6);
 });
 test('a running pre-transition policy and previous money survive reload and the boundary',async({page})=>{
  await prepare(page,834,1194,'2026-09-18T23:50:00+02:00');

@@ -187,7 +187,8 @@
       const fallbackPolicy=date>=BALANCED_POLICY_START_DAY?6:(Number.isFinite(blockMs)&&blockMs>=walletStart?5:4);
       sessions.push({...previous,id:'study-block:'+(block.id || block.runId || date+':'+index),goalId:goal.id,date,
         startedAt:block.startedAt || when,endedAt:block.endedAt || when,seconds:rawMins*60,
-        activityType:type,activityFactor:activityFactor(block.activityType ? block : previous || type),policyVersion:previous?.policyVersion || block.rewardPolicyVersion || fallbackPolicy});
+        activityType:type,activityFactor:activityFactor(block.activityType ? block : previous || type),policyVersion:previous?.policyVersion || block.rewardPolicyVersion || fallbackPolicy,
+        ...(block.manual===true||String(block.source||'')==='manual'?{manualEntry:true}:{})});
     });
     return project(sessions);
   }
@@ -513,6 +514,7 @@
       rows.push(...AchievementRewards.progressRows(db,today));
       rows.push(...AchievementRewards.chestRows(eligible,today));
       rows.push(...AchievementRewards.achievementRows(db,lifetimeMinutes(db,today),today));
+      if(typeof AchievementRewards.processRows==='function')rows.push(...AchievementRewards.processRows(db,eligible,today));
     }
     const habits=new Map((db.habitChallenges||[]).filter(h=>h?.id).map(h=>[h.id,h]));
     if(db.habitChallenge?.id&&!habits.has(db.habitChallenge.id))habits.set(db.habitChallenge.id,db.habitChallenge);
