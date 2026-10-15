@@ -346,6 +346,12 @@
 
   const hm = minutes => `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
 
+  // Día local de hoy («Hay un profesor» solo vale para hoy).
+  function isToday(day) {
+    const now = new Date();
+    return day === `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  }
+
   function editorHtml(day, item, status) {
     const edit = bookingEdit;
     const a0 = toMinutes(item.start), b0 = toMinutes(item.end);
@@ -380,6 +386,11 @@
            <button type="button" class="rd-action" data-edit-cancel-no>No</button>
            <button type="button" class="rd-action is-danger" data-edit-cancel-yes>Sí, cancelar</button>`
         : `<button type="button" class="rd-link-danger" data-edit-cancel-ask ${locked ? 'disabled' : ''}>Cancelar reserva…</button>`}</div>
+      ${isToday(day) && status !== 'past' ? `<div class="rd-edit-danger rd-edit-teacher">${edit.teacherAsk
+        ? `<span>¿Hay un profesor dentro? ${started ? 'Termino la reserva en el siguiente cuarto de hora' : 'Cancelo la reserva'}, blindo el aula ${escapeHtml(roomLabel(item.room))} el resto del día y sigo buscando esas horas en otras aulas.</span>
+           <button type="button" class="rd-action" data-edit-teacher-no>No</button>
+           <button type="button" class="rd-action is-danger" data-edit-teacher-yes>Sí, hay un profesor</button>`
+        : `<button type="button" class="rd-link-danger" data-edit-teacher-ask>👨‍🏫 Hay un profesor en el aula…</button>`}</div>` : ''}
       <p class="rd-edit-hint">Lo hace el monitor, como en Telegram. Si Asimut no lo permite (cuota, aula ocupada), no cambia nada y te lo dice.</p>
     </div>`;
   }
@@ -472,6 +483,16 @@
       bookingEdit = { ...bookingEdit, cancelAsk: false }; render();
     } else if ('editCancelYes' in target.dataset) {
       postCommand('reservation_cancel', { event_id: item.event_id }, target);
+      bookingEdit = null;
+      render();
+    } else if ('editTeacherAsk' in target.dataset) {
+      bookingEdit = { ...bookingEdit, teacherAsk: true, cancelAsk: false }; render();
+    } else if ('editTeacherNo' in target.dataset) {
+      bookingEdit = { ...bookingEdit, teacherAsk: false }; render();
+    } else if ('editTeacherYes' in target.dataset) {
+      // Misma orden que cancelar, con la marca: el monitor termina o cancela,
+      // blinda el aula hoy y no protege el hueco.
+      postCommand('reservation_cancel', { event_id: item.event_id, teacher: true }, target);
       bookingEdit = null;
       render();
     }

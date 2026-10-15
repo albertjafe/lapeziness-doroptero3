@@ -458,6 +458,8 @@ test('tus reservas se cambian desde la app: ±15, candado y cancelar con confirm
   await list.locator('[data-edit-open="91"]').click();
   await list.getByRole('button', { name: 'Cancelar reserva…' }).click();
   await expect(list.locator('.rd-edit-danger')).toContainText('no se volverá a reservar solo');
+  // «Hay un profesor» solo se ofrece para las reservas de hoy.
+  await expect(list.getByRole('button', { name: /Hay un profesor/ })).toHaveCount(0);
   const before = await page.evaluate(() => window.__dashboardWrites.length);
   await list.getByRole('button', { name: 'No', exact: true }).click();
   expect(await page.evaluate(() => window.__dashboardWrites.length)).toBe(before);
@@ -472,6 +474,32 @@ test('tus reservas se cambian desde la app: ±15, candado y cancelar con confirm
     await window.ReservationDashboard.refresh(false);
   });
   await expect(list.locator('.rd-booking-edit')).toHaveCount(0);
+});
+
+test('«Hay un profesor»: en una reserva empezada de hoy pide confirmación y manda cancelar con la marca de profesor', async ({ page }) => {
+  const now = new Date();
+  test.skip(now.getHours() < 1 || now.getHours() >= 22, 'necesita una reserva de hoy en curso');
+  const pad = n => String(n).padStart(2, '0');
+  const day = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const quarter = Math.floor((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
+  const hm = m => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+  const row = structuredClone(sampleRow);
+  row.state.date = day;
+  row.state.monitor.target_date = day;
+  row.state.monitor.phase = 'running';
+  Object.assign(row.state.reservations.find(r => r.event_id === 91), { start: hm(quarter - 15), end: hm(quarter + 90), locked: false });
+  await mountDashboard(page, row);
+  const list = page.locator('#reservationBookingList');
+  await list.locator('[data-edit-open="91"]').click();
+  await list.getByRole('button', { name: '👨‍🏫 Hay un profesor en el aula…' }).click();
+  await expect(list.locator('.rd-edit-teacher')).toContainText('Termino la reserva en el siguiente cuarto de hora');
+  await expect(list.locator('.rd-edit-teacher')).toContainText('sigo buscando esas horas en otras aulas');
+  const before = await page.evaluate(() => window.__dashboardWrites.length);
+  await list.locator('.rd-edit-teacher').getByRole('button', { name: 'No', exact: true }).click();
+  expect(await page.evaluate(() => window.__dashboardWrites.length)).toBe(before);
+  await list.getByRole('button', { name: '👨‍🏫 Hay un profesor en el aula…' }).click();
+  await list.getByRole('button', { name: 'Sí, hay un profesor' }).click();
+  expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({ command: 'reservation_cancel', payload: { event_id: 91, teacher: true } });
 });
 
 test('vista mínima: solo la barra y la lista; el resto tras símbolos y «⋯»', async ({ page }) => {
