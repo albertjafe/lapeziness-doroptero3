@@ -19338,9 +19338,14 @@ const Haptics = (() => {
   }
   // pattern: ms o array de ms para la API vibrate. iosReps: nº de toques del
   // switch para emular un patrón con énfasis en iOS (donde solo hay un toque fijo).
+  // 16-10-2026: el iPad no tiene motor háptico; el truco del interruptor solo
+  // hacía ruido (con «éxito», dos clics que se oían como un doble sonido).
+  const isIPad = typeof navigator !== 'undefined' && !/iPhone|iPod/.test(navigator.userAgent || '') &&
+    (/iPad/.test(navigator.userAgent || '') || (/Macintosh/.test(navigator.userAgent || '') && navigator.maxTouchPoints > 1));
   function fire(pattern, iosReps) {
     if (!enabled) return;
     if (canVibrate) { try { navigator.vibrate(pattern); } catch(e) {} return; }
+    if (isIPad) return;
     tapSwitch();
     const reps = iosReps || 1;
     for (let i = 1; i < reps; i++) setTimeout(tapSwitch, i * 70);
@@ -23181,7 +23186,7 @@ function renderCronoTasks() {
       : '';
     const quick = '<form class="crono-task-quick" onsubmit="return cronoQuickAddTask(event,\'' + source + '\')">' +
         '<input id="cronoQuickTask-' + source + '" class="crono-task-quick-input" type="text" maxlength="140" autocomplete="off" enterkeyhint="done"' +
-          ' placeholder="Nueva tarea' + (filter === 'piano' ? ' de piano' : '') + '… ↵" aria-label="Nueva tarea: escribe y pulsa Intro">' +
+          ' placeholder="Nueva tarea' + (filter === 'piano' ? ' de piano' : '') + '… · «urgente», «importante» ↵" aria-label="Nueva tarea: escribe y pulsa Intro. Urgentísima, urgente o importante al principio o al final ponen la prioridad; #piano o #personal, el tipo">' +
       '</form>';
     return '<section class="crono-task-board' + (preview(source) ? ' is-preview' : '') + '" data-filter="' + filter + '">' + head + quick +
       '<div class="crono-task-list crono-task-board-list" data-no-view-swipe>' + body + completed + '</div></section>';
@@ -23278,16 +23283,59 @@ function cronoCloseTaskBoard() {
 
 // Alta rápida (08-10-2026): escribir y pulsar Intro, sin abrir nada. Tipo según
 // el filtro (Piano si se está viendo Piano; si no, Personal), prioridad normal.
+// Escribir con teclado (16-10-2026): «urgentísima», «urgente» o «importante»
+// al principio o al final ponen la prioridad (también «!!!», «!!», «!»), y
+// «#piano» / «#personal» en cualquier sitio, el tipo. Se quitan del texto.
+// Solo en los extremos, para que «no es urgente que…» no cambie nada.
+const CRONO_TASK_PRIORITY_WORDS = [
+  [3, /^(?:muy\s+urgente|urgent[íi]sim[oa]s?|!!!)$/i],
+  [2, /^(?:urgentes?|!!)$/i],
+  [1, /^(?:importantes?|!)$/i],
+];
+function cronoParseTaskText(raw) {
+  let text = String(raw || '').replace(/\s+/g, ' ').trim();
+  let kind = null;
+  text = text.replace(/(^|\s)#(piano|personal)(?=[\s.,;:!?]|$)/gi, (_m, space, word) => { kind = word.toLowerCase(); return space; }).replace(/\s+/g, ' ').trim();
+  let priority = 0;
+  const wordAt = (piece) => {
+    const clean = piece.replace(/^[\s:,.;\-–—]+|[\s:,.;\-–—]+$/g, '');
+    for (const [level, re] of CRONO_TASK_PRIORITY_WORDS) if (re.test(clean)) return level;
+    return 0;
+  };
+  for (let changed = true; changed && text;) {
+    changed = false;
+    const head = text.match(/^(muy\s+urgente|\S+)[\s:,.;\-–—]*/i);
+    const headLevel = head && head[0].length < text.length ? wordAt(head[1]) : 0;
+    if (headLevel) { priority = Math.max(priority, headLevel); text = text.slice(head[0].length).trim(); changed = true; continue; }
+    const tail = text.match(/[\s:,.;\-–—]*(muy\s+urgente|\S+)$/i);
+    const tailLevel = tail && tail.index > 0 ? wordAt(tail[1]) : 0;
+    if (tailLevel) { priority = Math.max(priority, tailLevel); text = text.slice(0, tail.index).trim(); changed = true; }
+  }
+  text = text.replace(/[\s:,;\-–—]+$/, '').trim();
+  if (text) text = text.charAt(0).toUpperCase() + text.slice(1);
+  return { text, priority, kind };
+}
+
+function cronoTaskAddedToast(task) {
+  const parts = [cronoTaskKind(task) === 'piano' ? 'Piano' : 'Personal'];
+  if (cronoTaskPriority(task)) parts.push(cronoTaskPriorityLabel(cronoTaskPriority(task)));
+  showToast('Tarea añadida · ' + parts.join(' · '));
+}
+
 function cronoQuickAddTask(event, source) {
   if (event) event.preventDefault();
   const input = document.getElementById('cronoQuickTask-' + source);
-  const text = (input?.value || '').replace(/\s+/g, ' ').trim();
+  const parsed = cronoParseTaskText(input?.value || '');
+  const text = parsed.text;
   if (!text) return false;
   const now = new Date().toISOString();
-  const kind = cronoTaskFilter() === 'piano' ? 'piano' : 'personal';
-  cronoTasks().push({ id: 'ct' + Date.now(), text, kind, tomorrow: false, dueDate: null, done: false, priority: 0, createdAt: now, updatedAt: now });
+  const kind = parsed.kind || (cronoTaskFilter() === 'piano' ? 'piano' : 'personal');
+  const task = { id: 'ct' + Date.now(), text, kind, tomorrow: false, dueDate: null, done: false, priority: parsed.priority, createdAt: now, updatedAt: now };
+  if (parsed.priority) task.priorityChangedAt = now;
+  cronoTasks().push(task);
   if (input) input.value = '';
   renderCronoTasks();
+  if (parsed.priority || parsed.kind) cronoTaskAddedToast(task);
   document.getElementById('cronoQuickTask-' + source)?.focus();
   saveDataSoon();
   try { Haptics.light(); } catch (e) {}
@@ -23326,29 +23374,34 @@ function addCronoTask(source) {
     return;
   }
   const input = document.getElementById(cronoTaskSurface(source).input);
-  const text = (input?.value || '').replace(/\s+/g, ' ').trim();
+  const parsed = cronoParseTaskText(input?.value || '');
+  const text = parsed.text;
   if (!text) {
     showToast('Dicta o escribe una tarea');
     return;
   }
-  cronoTasks().push({
+  const kind = parsed.kind || composer.kind;
+  const now = new Date().toISOString();
+  const task = {
     id: 'ct' + Date.now(),
     text,
-    kind: composer.kind,
-    tomorrow: composer.kind === 'piano' && composer.tomorrow,
-    dueDate: composer.kind === 'piano' && composer.tomorrow ? habitKeyAt(habitDayKey(), 1) : null,
+    kind,
+    tomorrow: kind === 'piano' && composer.tomorrow,
+    dueDate: kind === 'piano' && composer.tomorrow ? habitKeyAt(habitDayKey(), 1) : null,
     done: false,
-    priority: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
+    priority: parsed.priority,
+    createdAt: now,
+    updatedAt: now,
+  };
+  if (parsed.priority) task.priorityChangedAt = now;
+  cronoTasks().push(task);
   if (_cronoTaskVoiceSource === source) cronoStopTaskVoice(false);
   composer.open = false;
   composer.tomorrow = false;
   if (input) input.value = '';
   renderCronoTasks();
   saveDataSoon();
-  showToast('Tarea añadida · ' + (composer.kind === 'piano' ? 'Piano' : 'Personal'));
+  cronoTaskAddedToast(task);
 }
 
 let _cronoTaskEditId = null;
@@ -23506,7 +23559,8 @@ function toggleCronoTask(id, toggleButton) {
   rowEl.setAttribute('aria-busy', 'true');
   try { Haptics.success(); } catch(e) {}
   const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  setTimeout(commitToggle, reducedMotion ? 80 : 520);
+  // 16-10-2026: casi al instante (antes 520 ms de animación, se notaba como lag).
+  setTimeout(commitToggle, reducedMotion ? 40 : 120);
 }
 
 let _cronoSessionButtonPress = null;

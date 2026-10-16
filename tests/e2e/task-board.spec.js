@@ -171,3 +171,39 @@ test('the more urgent tasks are ignored, the harder the math to silence them', a
   });
   expect(levels.q[5].question).toMatch(/×.*\+.*×/);
 });
+
+test('typing «urgente», «importante» or #piano puts the task in its place and removes the word', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await prepare(page);
+  const input = page.locator('#cronoQuickTask-idle');
+  const add = async text => { await input.fill(text); await input.press('Enter'); };
+  await add('urgentísima: pagar el alquiler');
+  await add('Llamar al casero urgente');
+  await add('revisar contrato importante');
+  await add('comprar cuerdas #piano');
+  await add('no es urgente que lo mire hoy');
+  const saved = await page.evaluate(() => db.cronoTasks.slice(-5).map(t => ({ text: t.text, priority: t.priority, kind: t.kind, changed: !!t.priorityChangedAt })));
+  expect(saved).toEqual([
+    { text: 'Pagar el alquiler', priority: 3, kind: 'personal', changed: true },
+    { text: 'Llamar al casero', priority: 2, kind: 'personal', changed: true },
+    { text: 'Revisar contrato', priority: 1, kind: 'personal', changed: true },
+    { text: 'Comprar cuerdas', priority: 0, kind: 'piano', changed: false },
+    { text: 'No es urgente que lo mire hoy', priority: 0, kind: 'personal', changed: false },
+  ]);
+  const board = page.locator('#cronoIdleTasksPanel .crono-task-board');
+  await expect(board.locator('.crono-task-group').first().locator('.crono-task-row').first()).toContainText('Pagar el alquiler');
+  await expect(input).toBeFocused();
+});
+
+test('marking a task done moves it almost at once', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  await prepare(page);
+  const ms = await page.evaluate(() => new Promise(resolve => {
+    const button = document.querySelector('#cronoIdleTasksPanel .crono-task-row[data-task-id="t5"] button[onclick^="toggleCronoTask"]');
+    const t0 = performance.now();
+    button.click();
+    const poll = () => db.cronoTasks.find(t => t.id === 't5').done ? resolve(performance.now() - t0) : setTimeout(poll, 10);
+    poll();
+  }));
+  expect(ms).toBeLessThan(300);   // antes, 520 ms de animación antes de moverla
+});

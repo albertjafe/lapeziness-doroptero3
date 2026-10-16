@@ -14399,7 +14399,7 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
 }
 .crono-task-row.is-completing {
   border-color: color-mix(in srgb, #2f855a 38%, var(--border2));
-  animation: crono-task-complete-surface 520ms ease both;
+  animation: crono-task-complete-surface 140ms ease both;
 }
 .crono-task-row.is-completing .crono-task-check,
 .crono-task-row.is-done .crono-task-check {
@@ -14419,7 +14419,7 @@ body.crono-interface-pinching #view-cronometro .crono-display-inner {
   color: #2f855a;
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
-  animation: crono-task-complete-text 520ms ease both;
+  animation: crono-task-complete-text 140ms ease both;
 }
 .crono-task-row.is-completing .crono-task-toggle:disabled {
   cursor: default;
