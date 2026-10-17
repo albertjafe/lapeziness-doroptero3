@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-10-17-fluidez-v511';
+const APP_VERSION = '2026-10-17-transicion-lateral-v512';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1058,6 +1058,26 @@ const VIEW_CONTEXT = {
   habitos: { eyebrow: 'Normas, días y colección', title: 'Hábitos' }
 };
 
+function updateHeaderNextEvent(headerSub, name) {
+  if (!headerSub) return;
+  const allowed = name === 'session' || name === 'calendario';
+  headerSub.hidden = !allowed;
+  const now = Date.now();
+  const proxEvento = (db.eventos || [])
+    .filter(ev => new Date(ev.fecha) > now)
+    .sort((a,b) => new Date(a.fecha) - new Date(b.fecha))[0];
+  if (proxEvento && allowed) {
+    const dias = Math.ceil((new Date(proxEvento.fecha) - now) / 86400000);
+    headerSub.replaceChildren(
+      Object.assign(document.createElement('span'), { className: 'header-event-name', textContent: proxEvento.nombre }),
+      Object.assign(document.createElement('b'), { className: 'header-event-days', textContent: dias + ' d' }));
+    headerSub.title = proxEvento.nombre + ' · ' + dias + ' d';
+  } else {
+    headerSub.textContent = '';
+    headerSub.removeAttribute('title');
+  }
+}
+
 function updateContextHeader(name) {
   const baseContext = VIEW_CONTEXT[name] || VIEW_CONTEXT.session;
   const sessionTitle = _sessionSectionMode === 'week' ? 'Semana' : _sessionSectionMode === 'history' ? 'Historial' : baseContext.title;
@@ -1069,11 +1089,11 @@ function updateContextHeader(name) {
   if (title) title.textContent = context.title;
   // El próximo evento solo acompaña a Hoy y Calendario (antes se quedaba pegado).
   const nextEvent = document.getElementById('packNameHeader');
-  if (nextEvent) nextEvent.hidden = !(name === 'session' || name === 'calendario');
+  updateHeaderNextEvent(nextEvent, name);
   if (date) {
     const showsDate = name === 'calendario';
     date.hidden = !showsDate;
-    if (!showsDate) date.textContent = '';
+    date.textContent = viewSwipeHeaderDate(name);
   }
   document.title = `${context.title} · Planificador de estudio`;
 }
@@ -1130,7 +1150,7 @@ function showView(name, options) {
     activeButton.setAttribute('aria-current', 'page');
   }
   updateContextHeader(name);
-  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  window.scrollTo({ top: 0, left: 0, behavior: opts.swipePrepared ? 'instant' : 'auto' });
   // Modo concentración: activar/desactivar al entrar/salir de cronometro
   if (name !== 'cronometro' && typeof cronoOnLeaveView === 'function') cronoOnLeaveView();
   if (name === 'session' && !opts.swipePrepared) {
@@ -1292,23 +1312,6 @@ function updateHeader() {
     const showsDate = currentView === 'calendario';
     dateEl.hidden = !showsDate;
     dateEl.textContent = showsDate ? `${meses[d.getMonth()]} ${d.getFullYear()}` : '';
-  }
-  // Show nearest upcoming event
-  const now = Date.now();
-  const proxEvento = (db.eventos || [])
-    .filter(ev => new Date(ev.fecha) > now)
-    .sort((a,b) => new Date(a.fecha) - new Date(b.fecha))[0];
-  const headerSub = document.getElementById('packNameHeader');
-  if (proxEvento && (currentView === 'session' || currentView === 'calendario')) {
-    const dias2 = Math.ceil((new Date(proxEvento.fecha) - now) / 86400000);
-    // Nombre y días por separado: si el nombre se recorta, los días siguen a la vista.
-    headerSub.replaceChildren(
-      Object.assign(document.createElement('span'), { className: 'header-event-name', textContent: proxEvento.nombre }),
-      Object.assign(document.createElement('b'), { className: 'header-event-days', textContent: dias2 + ' d' }));
-    headerSub.title = proxEvento.nombre + ' · ' + dias2 + ' d';
-  } else {
-    headerSub.textContent = '';
-    headerSub.removeAttribute('title');
   }
 }
 
@@ -1605,14 +1608,42 @@ function viewSwipeActiveElement() {
   return document.getElementById('view-' + name);
 }
 
+// Transform a viewport-sized carrier, not the narrower view. A transform (or
+// paint containment) on the view makes its fixed drawers use that view as their
+// viewport, so they resize/jump when the gesture releases the transform.
+function viewSwipePageFor(view) {
+  let page = view.parentElement;
+  if (!page.classList.contains('view-page')) {
+    page = document.createElement('div');
+    page.className = 'view-page';
+    view.before(page);
+    page.appendChild(view);
+  }
+  return page;
+}
+
+function viewSwipeWrapPage(view, kind) {
+  const page = viewSwipePageFor(view);
+  page.classList.add('view-swipe-page', 'view-swipe-page-' + kind);
+  return page;
+}
+
+function viewSwipeReleasePage(view, page) {
+  if (!view) return;
+  view.classList.remove('view-swipe-live', 'view-swipe-neighbor', 'view-swipe-settling');
+  ['transform', 'opacity', 'position', 'top', 'left', 'width', 'height', 'max-width', 'margin', 'box-sizing', 'z-index', 'pointer-events', '--view-swipe-settle-duration'].forEach(prop => view.style.removeProperty(prop));
+  if (page) {
+    page.classList.remove('view-swipe-page', 'view-swipe-page-current', 'view-swipe-page-neighbor', 'view-swipe-settling');
+    page.style.removeProperty('transform');
+    page.style.removeProperty('--view-swipe-settle-duration');
+  }
+}
+
 function viewSwipeCleanup(swipe) {
   if (!swipe) return;
   if (swipe.raf) cancelAnimationFrame(swipe.raf);
-  [swipe.view, swipe.neighbor].forEach(view => {
-    if (!view) return;
-    view.classList.remove('view-swipe-live', 'view-swipe-neighbor', 'view-swipe-settling');
-    ['transform', 'opacity', 'position', 'top', 'left', 'width', 'height', 'max-width', 'margin', 'box-sizing', 'z-index', 'pointer-events', '--view-swipe-settle-duration'].forEach(prop => view.style.removeProperty(prop));
-  });
+  viewSwipeReleasePage(swipe.view, swipe.page);
+  viewSwipeReleasePage(swipe.neighbor, swipe.neighborPage);
   [swipe.header, swipe.neighborHeader, swipe.nav, swipe.neighborNav].forEach(layer => layer?.remove());
   if (swipe.previewCronoState && !swipe.keepCronoPreview) {
     const state = swipe.previewCronoState;
@@ -1626,11 +1657,13 @@ function viewSwipeCleanup(swipe) {
     syncSessionSectionModeDom();
     renderSessionViewContent({ preview: true });
   }
+  if (!swipe.committed) window.scrollTo({ left: swipe.scrollX || 0, top: swipe.scrollY || 0, behavior: 'instant' });
 }
 
 function viewSwipeFreezeActive(swipe, rect) {
   if (swipe.viewFrozen || !swipe.view) return;
   swipe.viewFrozen = true;
+  swipe.page = viewSwipeWrapPage(swipe.view, 'current');
   if (document.documentElement.classList.contains('platform-ipad') && swipe.view.id === 'view-cronometro') {
     // También al cancelar, la sesión permanece en su posición sin otra entrada.
     swipe.view.classList.add('view-swipe-arrived');
@@ -1671,6 +1704,7 @@ function viewSwipePrepareCronoPreview(swipe, shouldPreview) {
     if (typeof cronoTimerInitDrag === 'function') cronoTimerInitDrag();
     if (typeof cronoRender === 'function') cronoRender();
     if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+    if (typeof renderCronoCalendar === 'function') renderCronoCalendar();
     if (typeof cronoMoveModeIndicator === 'function') requestAnimationFrame(cronoMoveModeIndicator);
   }
 }
@@ -1707,7 +1741,7 @@ function viewSwipeBuildHeader(name, kind) {
   if (info) info.style.display = name === 'session' ? '' : 'none';
   // Igual que updateContextHeader: el próximo evento solo en Hoy y Calendario.
   const nextEvent = header.querySelector('.header-next-event');
-  if (nextEvent) nextEvent.hidden = !(name === 'session' || name === 'calendario');
+  updateHeaderNextEvent(nextEvent, name);
   document.body.appendChild(header);
   return header;
 }
@@ -1748,9 +1782,8 @@ function viewSwipePrepareChrome(swipe, nextName, direction) {
 function viewSwipePrepareNeighbor(swipe, direction) {
   if (swipe.neighborDirection === direction && swipe.neighbor) return true;
   if (swipe.neighbor) {
-    const old = swipe.neighbor;
-    old.classList.remove('view-swipe-neighbor', 'view-swipe-settling');
-    ['transform', 'position', 'top', 'left', 'width', 'height', 'max-width', 'margin', 'box-sizing', 'z-index', 'pointer-events', '--view-swipe-settle-duration'].forEach(prop => old.style.removeProperty(prop));
+    viewSwipeReleasePage(swipe.neighbor, swipe.neighborPage);
+    swipe.neighborPage = null;
   }
   const nextIndex = swipe.index + direction;
   if (nextIndex < 0 || nextIndex >= SWIPE_VIEW_ORDER.length) {
@@ -1790,6 +1823,7 @@ function viewSwipePrepareNeighbor(swipe, direction) {
   // Medimos el DOM vivo con su geometría normal antes de fijarlo al lienzo.
   // El cronómetro puede incluir padding y superar el alto del viewport.
   const naturalRect = neighbor.getBoundingClientRect();
+  swipe.neighborPage = viewSwipeWrapPage(neighbor, 'neighbor');
   neighbor.style.position = 'fixed';
   neighbor.style.top = targetTop + 'px';
   neighbor.style.left = naturalRect.left + 'px';
@@ -1800,7 +1834,7 @@ function viewSwipePrepareNeighbor(swipe, direction) {
   neighbor.style.margin = '0';
   neighbor.style.zIndex = '301';
   neighbor.style.pointerEvents = 'none';
-  neighbor.style.transform = 'translate3d(' + (direction * swipe.width) + 'px,0,0)';
+  swipe.neighborPage.style.transform = 'translate3d(' + (direction * swipe.width) + 'px,0,0)';
   // Renderizamos como mucho una vez (nada si ya estaba al día). Al completar el
   // gesto showView reutiliza este mismo DOM sin reconstruirlo: lo que se ve a
   // mitad de gesto es exactamente la pantalla final.
@@ -1812,11 +1846,11 @@ function viewSwipeRenderFrame(swipe) {
   swipe.raf = null;
   if (_viewSwipe !== swipe || swipe.intent !== 'horizontal') return;
   const dx = swipe.renderDx || 0;
-  swipe.view.style.transform = 'translate3d(' + dx + 'px,0,0)';
+  swipe.page.style.transform = 'translate3d(' + dx + 'px,0,0)';
   if (swipe.header) swipe.header.style.transform = 'translate3d(' + dx + 'px,0,0)';
   if (swipe.nav) swipe.nav.style.transform = 'translate3d(' + dx + 'px,0,0)';
   if (swipe.neighbor) {
-    swipe.neighbor.style.transform = 'translate3d(' + (dx + swipe.neighborDirection * swipe.width) + 'px,0,0)';
+    swipe.neighborPage.style.transform = 'translate3d(' + (dx + swipe.neighborDirection * swipe.width) + 'px,0,0)';
   }
   if (swipe.neighborHeader) {
     swipe.neighborHeader.style.transform = 'translate3d(' + (dx + swipe.neighborDirection * swipe.width) + 'px,0,0)';
@@ -1834,15 +1868,10 @@ function viewSwipeSettleDuration(swipe, commit) {
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return 1;
   const progress = Math.min(1, Math.abs(swipe.dx || 0) / Math.max(1, swipe.width));
   const speed = Math.min(1.8, Math.abs(swipe.velocity || 0));
-  if (document.documentElement.classList.contains('platform-ipad')) {
-    const distance = (commit ? 1 - progress : progress) * swipe.width;
-    // La duración responde al recorrido pendiente y a la velocidad de salida.
-    return Math.round(Math.max(180, Math.min(360, distance / Math.max(.8, speed) * .65 + 110)));
-  }
-  const duration = commit
-    ? 405 - (speed * 72) + ((1 - progress) * 30)
-    : 285 + (progress * 90);
-  return Math.round(Math.max(commit ? 300 : 260, Math.min(commit ? 435 : 370, duration)));
+  const distance = (commit ? 1 - progress : progress) * swipe.width;
+  // A nearly completed slow drag should not wait another 180–435 ms for a
+  // barely moving tail. Keep the duration proportional on phones and iPads.
+  return Math.round(Math.max(60, Math.min(360, distance / Math.max(.8, speed) * .65 + 60)));
 }
 
 function viewSwipeSettle(swipe, commit, nextView) {
@@ -1857,52 +1886,65 @@ function viewSwipeSettle(swipe, commit, nextView) {
   _viewSwipe = null;
   document.body.classList.remove('view-swipe-dragging');
   document.body.classList.add('view-swipe-settling');
-  swipe.view.classList.add('view-swipe-settling');
-  swipe.neighbor?.classList.add('view-swipe-settling');
+  swipe.page.classList.add('view-swipe-settling');
+  swipe.neighborPage?.classList.add('view-swipe-settling');
   swipe.header?.classList.add('view-swipe-settling');
   swipe.neighborHeader?.classList.add('view-swipe-settling');
   swipe.nav?.classList.add('view-swipe-settling');
   swipe.neighborNav?.classList.add('view-swipe-settling');
   const duration = viewSwipeSettleDuration(swipe, commit);
-  const layers = [swipe.view, swipe.neighbor, swipe.header, swipe.neighborHeader, swipe.nav, swipe.neighborNav].filter(Boolean);
+  const layers = [swipe.page, swipe.neighborPage, swipe.header, swipe.neighborHeader, swipe.nav, swipe.neighborNav].filter(Boolean);
   layers.forEach(layer => layer.style.setProperty('--view-swipe-settle-duration', duration + 'ms'));
   const activeEnd = commit ? -swipe.neighborDirection * swipe.width : 0;
   const neighborEnd = commit ? 0 : swipe.neighborDirection * swipe.width;
-  requestAnimationFrame(() => {
-    swipe.view.style.transform = 'translate3d(' + activeEnd + 'px,0,0)';
-    if (swipe.neighbor) swipe.neighbor.style.transform = 'translate3d(' + neighborEnd + 'px,0,0)';
+  const applyEnd = () => {
+    swipe.page.style.transform = 'translate3d(' + activeEnd + 'px,0,0)';
+    if (swipe.neighborPage) swipe.neighborPage.style.transform = 'translate3d(' + neighborEnd + 'px,0,0)';
     if (swipe.header) swipe.header.style.transform = 'translate3d(' + activeEnd + 'px,0,0)';
     if (swipe.neighborHeader) swipe.neighborHeader.style.transform = 'translate3d(' + neighborEnd + 'px,0,0)';
     if (swipe.nav) swipe.nav.style.transform = 'translate3d(' + activeEnd + 'px,0,0)';
     if (swipe.neighborNav) swipe.neighborNav.style.transform = 'translate3d(' + neighborEnd + 'px,0,0)';
-  });
+  };
   let completed = false;
-  const transitionSource = swipe.neighbor || swipe.view;
+  let watchdog = null;
+  const transitionSource = swipe.neighborPage || swipe.page;
   const finish = () => {
     if (completed) return;
     completed = true;
+    clearTimeout(watchdog);
     transitionSource?.removeEventListener('transitionend', onTransitionEnd);
     if (commit && nextView) {
       // La capa que ya esta en x=0 se convierte en la vista activa. Su DOM fue
       // preparado antes del gesto, de modo que no hay un segundo render visible.
       document.body.classList.add('view-swipe-commit');
+      swipe.committed = true;
       if (nextView === 'cronometro') swipe.keepCronoPreview = true;
       if (nextView === 'session') swipe.keepSessionPreview = true;
       showView(nextView, { swipePrepared: true });
       if (nextView !== 'cronometro' && typeof adjustTopPadding === 'function') adjustTopPadding();
     }
-    // Dos pinturas completas permiten que la vista real y su cabecera adopten
-    // el estado final mientras las capas del gesto siguen cubriendolas.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      viewSwipeCleanup(swipe);
-      requestAnimationFrame(() => document.body.classList.remove('view-swipe-commit'));
-    }));
+    // Same DOM and geometry: hand off in this frame, without holding a preview
+    // over two more paints before revealing the final layout.
+    viewSwipeCleanup(swipe);
+    requestAnimationFrame(() => document.body.classList.remove('view-swipe-commit'));
   };
   const onTransitionEnd = event => {
     if (event.target === transitionSource && event.propertyName === 'transform') finish();
   };
   transitionSource?.addEventListener('transitionend', onTransitionEnd);
-  setTimeout(finish, duration + 90);
+  if (Math.abs(activeEnd - (swipe.renderDx || 0)) < 1 || duration === 1) {
+    applyEnd();
+    finish();
+    return;
+  }
+  transitionSource?.getBoundingClientRect();
+  requestAnimationFrame(() => {
+    if (completed) return;
+    applyEnd();
+    // The timeout follows the animation's actual start, not touchend: a busy
+    // frame must not make it cut the transition short before transitionend.
+    watchdog = setTimeout(finish, duration + 90);
+  });
 }
 
 function viewSwipeReset(animate) {
@@ -1926,6 +1968,12 @@ function initViewSwipeNavigation() {
   initViewSwipeNavigation._done = true;
   const root = document;
   if (!root) return;
+  // Keep the same parent throughout native touch tracking, cancellation and
+  // commit; reparenting the touched node mid-gesture can interrupt iPad input.
+  SWIPE_VIEW_ORDER.forEach(name => {
+    const view = document.getElementById('view-' + name);
+    if (view) viewSwipePageFor(view);
+  });
 
   root.addEventListener('touchstart', event => {
     if (event.target?.closest?.('.pase-liquid-meter, input[type="range"], [data-no-view-swipe]')) {
@@ -1952,6 +2000,8 @@ function initViewSwipeNavigation() {
       lastAt: performance.now(),
       velocity: 0,
       index,
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
       intent: null,
       view: viewSwipeActiveElement(),
       neighbor: null,
@@ -29238,9 +29288,9 @@ function cronoOnEnterView(options) {
     cronoTimerInitDrag();
     cronoRender();
     refreshConcentradoUI();
+    renderCronoCalendar();
   }
   _startCronoClock();
-  renderCronoCalendar();
   cronoStartTaskReminderLoop();
   setTimeout(() => {
     if (!cronoMaybeBlockUrgentTasks('enter')) cronoMaybeRemindTasks('enter');

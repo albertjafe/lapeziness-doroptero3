@@ -58,7 +58,7 @@
 .mobile-competition-deadline{display:none}
 @media(max-width:700px){
   .topbar{padding-top:max(env(safe-area-inset-top,0px),0px)}
-  #headerDate{display:none!important}
+  :is(#headerDate, .view-swipe-header .header-date){display:none!important}
   .piano-rooms-open span{display:none!important}
   .piano-rooms-open{min-width:44px!important;width:44px!important;padding-inline:0!important;justify-content:center!important}
   .mobile-competition-deadline{display:flex;width:calc(100% - 24px);margin:0 12px 8px;min-height:34px;align-items:center;gap:7px;min-width:0;padding:7px 9px;border:1px solid var(--border2);border-radius:11px;background:color-mix(in srgb,var(--accent) 4%,var(--bg2));color:var(--text2);text-align:left;cursor:pointer;box-sizing:border-box}

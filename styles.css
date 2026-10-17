@@ -119,7 +119,7 @@
   [data-theme="concierto"] .session-hero-title,
   [data-theme="concierto"] .stats-card-title,
   [data-theme="concierto"] .section-title,
-  [data-theme="concierto"] #headerTitle {
+  [data-theme="concierto"] :is(#headerTitle, .view-swipe-header .header-title) {
     font-family: 'Cormorant Garamond', serif !important;
     font-style: italic;
     letter-spacing: 0.01em;
@@ -173,7 +173,7 @@
   [data-theme="botanico"] .session-hero-title,
   [data-theme="botanico"] .stats-card-title,
   [data-theme="botanico"] .section-title,
-  [data-theme="botanico"] #headerTitle {
+  [data-theme="botanico"] :is(#headerTitle, .view-swipe-header .header-title) {
     font-family: 'Cormorant Garamond', serif !important;
     font-style: italic;
     letter-spacing: 0.01em;
@@ -224,7 +224,7 @@
   [data-theme="swiss"] .session-insight-main,
   [data-theme="swiss"] .prob-proj-val,
   [data-theme="swiss"] .modal-title,
-  [data-theme="swiss"] #headerTitle {
+  [data-theme="swiss"] :is(#headerTitle, .view-swipe-header .header-title) {
     font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif !important;
     font-weight: 800 !important; font-style: normal !important;
     letter-spacing: -0.01em;
@@ -343,7 +343,7 @@
   [data-theme="brutalista"] .obra-name,
   [data-theme="brutalista"] .session-hero-title,
   [data-theme="brutalista"] .modal-title,
-  [data-theme="brutalista"] #headerTitle {
+  [data-theme="brutalista"] :is(#headerTitle, .view-swipe-header .header-title) {
     font-family: 'JetBrains Mono', monospace !important;
     font-style: normal !important;
     font-weight: 800 !important;
@@ -426,7 +426,7 @@
   [data-theme^="marmol"] .evento-nombre,
   [data-theme^="marmol"] .modal-title,
   [data-theme^="marmol"] .header-title,
-  [data-theme^="marmol"] #headerTitle,
+  [data-theme^="marmol"] :is(#headerTitle, .view-swipe-header .header-title),
   [data-theme^="marmol"] .mes-nav-label {
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif !important;
     font-style: normal !important;
@@ -1099,7 +1099,7 @@
   [data-theme^="marmol"] .crono-destellos-pill-count { background: var(--accent); color: #fff; }
 
   /* ── SESIÓN · estilo "B · secciones iOS" (solo Mármol) ── */
-  [data-theme^="marmol"] #headerTitle { color: var(--text); }
+  [data-theme^="marmol"] :is(#headerTitle, .view-swipe-header .header-title) { color: var(--text); }
   /* Resumen compacto del día (sustituye al banner "Hoy") */
   .session-resumen-card { display: none; }
   [data-theme^="marmol"] .session-concentrado-banner { display: none !important; }
@@ -12182,7 +12182,7 @@ body.crono-paused .crono-pause-overlay-inner {
     letter-spacing: 0.01em; line-height: 1.25; text-transform: none;
   }
   .header-actions { display: flex; align-items: center; gap: 6px; min-width: 0; }
-  #packNameHeader { max-width: min(34vw, 220px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  :is(#packNameHeader, .view-swipe-header .header-next-event) { max-width: min(34vw, 220px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .settings-icon {
     width: 44px !important; min-width: 44px; min-height: 44px !important; height: 44px !important;
     display: inline-flex; align-items: center; justify-content: center;
@@ -12279,7 +12279,7 @@ body.crono-paused .crono-pause-overlay-inner {
   }
   @media (max-width: 390px) {
     .header { padding-left: 12px; padding-right: 12px; }
-    .header-actions #packNameHeader { display: none; }
+    .header-actions :is(#packNameHeader, .view-swipe-header .header-next-event) { display: none; }
     .view-action-row { gap: 8px; }
     .view-action-row button { padding-left: 10px !important; padding-right: 10px !important; }
   }
@@ -15698,7 +15698,6 @@ body.view-swipe-dragging {
 }
 body.view-swipe-dragging .view.active {
   animation: none !important;
-  will-change: transform, opacity;
 }
 body.view-swipe-dragging > .topbar:not(.view-swipe-header),
 body.view-swipe-settling > .topbar:not(.view-swipe-header) { visibility: hidden; }
@@ -15733,28 +15732,40 @@ body:is(.view-swipe-dragging, .view-swipe-settling) .view :is(.crono-run-drawer,
 }
 body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
 .view.view-swipe-live { position: relative; z-index: 302; }
+.view-page { display: contents; }
+.view-swipe-page {
+  display: block;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  overflow: clip;
+  contain: paint;
+  will-change: transform;
+  pointer-events: none;
+}
+.view-swipe-page-current { z-index: 302; }
+.view-swipe-page-neighbor { z-index: 301; }
 .view.view-swipe-neighbor {
   display: block !important;
   overflow: hidden;
   background: var(--bg);
-  contain: paint;
-  will-change: transform;
 }
 #view-cronometro.view-swipe-neighbor {
   display: flex !important;
 }
 /* Volver a mostrar una sesión en marcha no reinicia su animación de entrada. */
-html.platform-ipad #view-cronometro:is(.view-swipe-live, .view-swipe-neighbor, .view-swipe-arrived) #cronoStageRun {
+#view-cronometro:is(.view-swipe-live, .view-swipe-neighbor, .view-swipe-arrived) .crono-stage {
   animation: none !important;
 }
-.view.view-swipe-settling,
+.view-swipe-page.view-swipe-settling,
 .topbar.view-swipe-settling,
 .nav-bottom.view-swipe-settling {
   transition: transform var(--view-swipe-settle-duration, 380ms) cubic-bezier(.32,.72,0,1);
   will-change: transform;
 }
 @media (prefers-reduced-motion: reduce) {
-  .view.view-swipe-settling,
+  .view-swipe-page.view-swipe-settling,
   .topbar.view-swipe-settling,
   .nav-bottom.view-swipe-settling { transition-duration: 1ms; }
 }

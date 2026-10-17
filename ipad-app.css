@@ -8,12 +8,12 @@
 /* Aulas ya está en la barra inferior. */
 html.platform-ipad:not(#ip):not(#ip) .header-actions .piano-rooms-open { display: none !important; }
 /* Próximo evento: el nombre se recorta, los días siempre a la vista. */
-html.platform-ipad:not(#ip):not(#ip) .header-actions #packNameHeader {
+html.platform-ipad:not(#ip):not(#ip) .header-actions :is(#packNameHeader, .view-swipe-header .header-next-event) {
   display: inline-flex !important; align-items: center; gap: 8px; min-width: 0; max-width: min(44vw, 420px) !important;
   padding: 5px 5px 5px 12px; border: 1px solid var(--border2); border-radius: 999px; background: var(--bg2);
   color: var(--text2) !important; font: 500 13px/1.2 var(--font-system) !important; white-space: nowrap;
 }
-html.platform-ipad:not(#ip):not(#ip) .header-actions #packNameHeader:is(:empty, [hidden]) { display: none !important; }
+html.platform-ipad:not(#ip):not(#ip) .header-actions :is(#packNameHeader, .view-swipe-header .header-next-event):is(:empty, [hidden]) { display: none !important; }
 html.platform-ipad:not(#ip):not(#ip) .header-event-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 html.platform-ipad:not(#ip):not(#ip) .header-event-days {
   flex: 0 0 auto; padding: 3px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums;

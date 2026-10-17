@@ -8,6 +8,7 @@
 `CLAUDE.md` y las auditorías grandes son documentación histórica/específica, no contexto inicial.
 
 La revisión de fluidez v511, con cambios, pruebas, mediciones reproducibles y límites, está en [`docs/PERFORMANCE_V511_2026-10-17.md`](docs/PERFORMANCE_V511_2026-10-17.md).
+La continuidad del gesto lateral v512 se documenta en [`docs/SWIPE_CONTINUITY_V512_2026-10-17.md`](docs/SWIPE_CONTINUITY_V512_2026-10-17.md), con causas, cambios y regresiones frente a v511.
 
 ## Vista Piano Rooms
 

@@ -134,7 +134,7 @@
   }
 
   html.platform-windows .header-date,
-  html.platform-windows #packNameHeader {
+  html.platform-windows :is(#packNameHeader, .view-swipe-header .header-next-event) {
     font-size: 12px !important;
   }
 
