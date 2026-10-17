@@ -139,8 +139,11 @@
     if (current.__instantSyncImmediate) return true;
 
     const original = current;
+    // 17-10-2026: solo lo que pide ser inmediato lo es. Lo demás se sube cuando
+    // llevas unos segundos sin tocar nada: con ~4,5 MB, cada sincronización
+    // ocupa varios segundos en el iPad y antes saltaba tras cada toque.
     const wrapped = function enqueueImmediateCloudSync(options) {
-      const opts = Object.assign({}, options || {}, { immediate: true });
+      const opts = Object.assign({}, options || {});
       const result = original.call(this, opts);
       return result;
     };

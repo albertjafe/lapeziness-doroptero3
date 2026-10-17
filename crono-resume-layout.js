@@ -125,8 +125,8 @@ function loadPianoCompanion(id, src, cssId, cssHref) {
    sincronización inmediata. El mismo ID identifica siempre esta capa. */
 (function loadPersistenceResilience() {
   'use strict';
-  loadPianoCompanion('localSaveResilienceScript', './local-save-resilience.js?v=431');
-  if (!window.InstantSyncResilience) loadPianoCompanion('instantSyncResilienceScript', './instant-sync-resilience.js?v=432');
+  loadPianoCompanion('localSaveResilienceScript', './local-save-resilience.js?v=510');
+  if (!window.InstantSyncResilience) loadPianoCompanion('instantSyncResilienceScript', './instant-sync-resilience.js?v=510');
 }());
 
 /* Pasajes difíciles: módulo compañero cargado después de app.js para poder

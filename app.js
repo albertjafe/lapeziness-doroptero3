@@ -145,9 +145,13 @@ function _prepareChangedSections(stamp) {
   }
   _savePrepared = { changed, strings };
 }
-function _rememberLocalDocument() {
+// 17-10-2026: el texto que se guarda se arma por secciones (las que no
+// cambiaron se reutilizan) y el mismo texto sirve después para recordar lo que
+// hay en disco. Antes se convertía el documento entero dos veces por guardado
+// (~0,25 s cada vez en un iPad con ~4,5 MB).
+var _serialized = null;
+function _serializeLocalDocument() {
   const prepared = _savePrepared;
-  _savePrepared = null;
   const reuse = !!(prepared && _saveCache && _lastSavedDocument);
   const strings = new Map();
   for (const k of Object.keys(db)) {
@@ -157,6 +161,21 @@ function _rememberLocalDocument() {
       ? prepared.strings.get(k) : JSON.stringify(value));
   }
   const json = '{' + [...strings].map(([k, v]) => JSON.stringify(k) + ':' + v).join(',') + '}';
+  _serialized = { json, strings, prepared, reuse };
+  return json;
+}
+// writtenJson: el texto que esta pestaña acaba de escribir (sin él, se vuelve a
+// armar y se compara con lo que haya en disco, como antes).
+function _rememberLocalDocument(writtenJson) {
+  let serialized = _serialized;
+  _serialized = null;
+  if (!serialized || writtenJson === undefined || serialized.json !== writtenJson) {
+    _serializeLocalDocument();
+    serialized = _serialized;
+    _serialized = null;
+  }
+  _savePrepared = null;
+  const { json, strings, prepared, reuse } = serialized;
   const before = _saveCache ? _saveCache.keys : null;
   if (!before) _studyDataVersion++;
   else {
@@ -173,7 +192,8 @@ function _rememberLocalDocument() {
     _lastSavedDocument = JSON.parse(json);
   }
   let disk = null;
-  try { disk = localStorage.getItem(DB_KEY); } catch (_) {}
+  if (writtenJson !== undefined && writtenJson === json) disk = json;
+  else try { disk = localStorage.getItem(DB_KEY); } catch (_) {}
   _saveCache = disk === json ? { json, keys: strings } : null;
 }
 
@@ -186,8 +206,9 @@ function _writeLocalSnapshot(markDirty) {
     : currentMeta;
   db._savedAt = new Date().toISOString();
   if (nextMeta.localRevision) db._localRevision = nextMeta.localRevision;
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
-  _rememberLocalDocument();
+  const json = _serializeLocalDocument();
+  localStorage.setItem(DB_KEY, json);
+  _rememberLocalDocument(json);
   _writeSyncMeta(nextMeta);
   return nextMeta;
 }
@@ -237,7 +258,9 @@ function cachedPianoStudyState() {
 let _saveSoonTimer = null;
 function saveDataSoon() {
   if (_saveSoonTimer) return;
-  _saveSoonTimer = setTimeout(flushSaveDataSoon, 300);
+  // 17-10-2026: 900 ms sin tocar (antes 300): varias tareas seguidas no pagan
+  // un guardado de 4,5 MB entre toque y toque.
+  _saveSoonTimer = setTimeout(flushSaveDataSoon, 900);
 }
 function flushSaveDataSoon() {
   if (!_saveSoonTimer) return false;
@@ -252,13 +275,16 @@ if (typeof window !== 'undefined') {
 
 function saveData() {
   if (_saveSoonTimer) { clearTimeout(_saveSoonTimer); _saveSoonTimer = null; }
+  const studyVersionBefore = _studyDataVersion;
   try {
     saveLocalNow();
   } catch(e) {
     // Los datos siguen en memoria para que el usuario pueda reintentar.
     return false;
   }
-  refreshStudyViews();
+  // 17-10-2026: si solo cambiaron tareas, nada de lo que se repinta aquí
+  // (estudio, semana, premios, historial) cambia; las tareas ya se pintaron.
+  if (_studyDataVersion !== studyVersionBefore || !_saveCache) refreshStudyViews();
   enqueueCloudSync();
   // Las pantallas vecinas del gesto lateral se repintan en un rato libre.
   if (typeof viewSwipeScheduleWarm === 'function') viewSwipeScheduleWarm(1200);
@@ -548,11 +574,12 @@ function _mergeStudyHistory(base, other) {
   return _applyPulseDeletedIds(merged);
 }
 
-async function _persistCloudDocument(snapshot) {
+// json: el mismo documento ya convertido a texto (evita clonarlo de nuevo).
+async function _persistCloudDocument(snapshot, json) {
   if (typeof LocalSaveResilience !== 'undefined' && typeof LocalSaveResilience.persistSnapshot === 'function') {
-    if (await LocalSaveResilience.persistSnapshot(snapshot) === false) throw Object.assign(new Error('Local snapshot not durable'), { code:LocalSaveResilience.lastErrorCode?.() || 'LOCAL_PERSIST_FAILED' });
+    if (await LocalSaveResilience.persistSnapshot(snapshot, json) === false) throw Object.assign(new Error('Local snapshot not durable'), { code:LocalSaveResilience.lastErrorCode?.() || 'LOCAL_PERSIST_FAILED' });
   } else {
-    localStorage.setItem(DB_KEY, JSON.stringify(snapshot));
+    localStorage.setItem(DB_KEY, typeof json === 'string' ? json : JSON.stringify(snapshot));
   }
 }
 
@@ -628,6 +655,7 @@ function _runCloudOperation(operation) {
   _cloudOperationTail = next.catch(() => {});
   return next;
 }
+const _freshCloudSnapshots = new WeakSet();
 async function syncToCloud(snapshotDb, revision) {
   const epoch = _cloudAuthEpoch;
   return _runCloudOperation(() => epoch === _cloudAuthEpoch ? _syncToCloudNow(snapshotDb, revision) : false);
@@ -642,7 +670,10 @@ async function _syncToCloudNow(snapshotDb, revision) {
     if (authEpoch !== _cloudAuthEpoch) return false;
     _cloudSyncConnected = !!user;
     if (!user) { showSyncIndicator('Guardado local · conecta tu cuenta'); return false; }
-    const snapshot = JSON.parse(JSON.stringify(snapshotDb || db));
+    // Una copia recién armada para esta subida no se vuelve a clonar (4,5 MB).
+    const snapshot = snapshotDb && _freshCloudSnapshots.has(snapshotDb) ? snapshotDb : JSON.parse(JSON.stringify(snapshotDb || db));
+    const studyVersion = () => typeof _studyDataVersion === 'number' ? _studyDataVersion : NaN;
+    const studyVersionBeforeSync = studyVersion();
     for (let attempt = 0; attempt < 4; attempt++) {
       _setCloudStage('Leyendo la nube antes de subir');
       const read = await _cloudQuery(sb.from('user_data').select('data,updated_at').eq('id',user.id));
@@ -670,9 +701,17 @@ async function _syncToCloudNow(snapshotDb, revision) {
       DocumentSyncCore.assign(db, DocumentSyncCore.mergeRemote(write.data.data, db));
       const accepted = Math.max(Number(db._localRevision)||0, meta.localRevision);
       db._localRevision = accepted + (pending ? 1 : 0);
-      _rememberLocalDocument();
       _setCloudStage('Guardando la confirmación en este dispositivo');
-      await _persistCloudDocument(db);
+      // 17-10-2026: el texto que se recuerda es el mismo que se escribe, así el
+      // siguiente guardado sigue por el camino rápido (antes quedaba invalidado
+      // y costaba ~1 s). Si la escritura falla, el siguiente guardado lo nota
+      // al comparar con el disco y va por el camino completo.
+      let confirmedJson;
+      if (typeof _serializeLocalDocument === 'function') {
+        try { confirmedJson = _serializeLocalDocument(); } catch (_) { confirmedJson = undefined; _serialized = null; }
+      }
+      _rememberLocalDocument(confirmedJson);
+      await _persistCloudDocument(db, confirmedJson);
       // IndexedDB is asynchronous: edits saved during this write remain dirty.
       const durableMeta = _readSyncMeta();
       if (authEpoch !== _cloudAuthEpoch) return false;
@@ -683,7 +722,8 @@ async function _syncToCloudNow(snapshotDb, revision) {
       _setCloudStage(batch.remaining && !unconfirmed ? 'Lote confirmado; quedan cambios por subir' : stillPending ? 'Quedan cambios por subir' : 'Historial confirmado en la nube');
       if (unconfirmed) throw Object.assign(new Error('La respuesta de la nube no confirmó todo el historial'), { code:'CLOUD_CONFIRMATION_MISSING' });
       _cloudRetryAt = 0; _cloudRetryCount = 0;
-      if (typeof refreshStudyViews === 'function') refreshStudyViews();
+      // Solo si la nube trajo cambios de estudio (lo normal es que no).
+      if (typeof refreshStudyViews === 'function' && !(studyVersion() === studyVersionBeforeSync)) refreshStudyViews();
       showSyncIndicator(stillPending ? 'Sincronizando…' : '✓ sincronizado');
       return true;
     }
@@ -691,13 +731,16 @@ async function _syncToCloudNow(snapshotDb, revision) {
   } catch(e) { showSyncIndicator(_cloudSyncErrorText(e)); return false; }
 }
 
+// Cambios normales: se suben tras CLOUD_SYNC_QUIET_MS sin más cambios (cada
+// guardado reinicia la cuenta). Lo urgente pide { immediate:true }.
+const CLOUD_SYNC_QUIET_MS = 8000;
 function enqueueCloudSync(options) {
   const immediate = !!(options && options.immediate);
   if (_syncTimer) clearTimeout(_syncTimer);
   _syncTimer = setTimeout(() => {
     _syncTimer = null;
     syncPendingCloudChanges();
-  }, Math.max(immediate ? 0 : 300,cloudRetryDelay()));
+  }, Math.max(immediate ? 0 : CLOUD_SYNC_QUIET_MS,cloudRetryDelay()));
   return _syncPromise || Promise.resolve();
 }
 
@@ -711,13 +754,22 @@ async function syncPendingCloudChanges() {
         const meta = _readSyncMeta();
         if (typeof SyncCore === 'undefined' || !SyncCore.isDirty(meta)) break;
         const revision = meta.dirtyRevision;
-        let snapshot = JSON.parse(JSON.stringify(db));
+        if (typeof flushSaveDataSoon === 'function') flushSaveDataSoon();
+        let snapshot = null;
         try {
           const raw = localStorage.getItem(DB_KEY);
-          // Preserve actual document fields; domain normalizers synthesize
-          // empty defaults and would turn a download-only phone into an upload.
-          if (raw) snapshot = DocumentSyncCore.merge(JSON.parse(raw),snapshot);
-        } catch(e) {}
+          // 17-10-2026: si el disco es exactamente lo último que escribió esta
+          // pestaña, la copia es ese texto (fusionar disco y memoria daría lo
+          // mismo y cuesta ~1 s en un iPad con 4,5 MB).
+          if (raw && typeof _saveCache !== 'undefined' && _saveCache && raw === _saveCache.json) snapshot = JSON.parse(raw);
+          else {
+            snapshot = JSON.parse(JSON.stringify(db));
+            // Preserve actual document fields; domain normalizers synthesize
+            // empty defaults and would turn a download-only phone into an upload.
+            if (raw) snapshot = DocumentSyncCore.merge(JSON.parse(raw),snapshot);
+          }
+        } catch(e) { if (!snapshot) snapshot = JSON.parse(JSON.stringify(db)); }
+        _freshCloudSnapshots.add(snapshot);
         const ok = await syncToCloud(snapshot, revision);
         if (!ok) return false;
         const after = _readSyncMeta();

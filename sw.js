@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v509';
+const CACHE = 'estudio-v510';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -7,7 +7,7 @@ const ASSETS = [
   "./activity-self-tracker.js?v=402",
   "./add-obra-premium.css?v=342",
   "./study-edit.js?v=505",
-  "./app.js?v=509",
+  "./app.js?v=510",
   "./german-rewards.js?v=426",
   "./achievement-rewards.js?v=507",
   "./piano-rewards.js?v=507",
@@ -46,7 +46,7 @@ const ASSETS = [
   "./crono-idle-hierarchy.css?v=342",
   "./crono-readiness-layout.css?v=342",
   "./crono-resume-layout.css?v=342",
-  "./crono-resume-layout.js?v=432",
+  "./crono-resume-layout.js?v=510",
   "./crono-running-premium.css?v=384",
   "./crono-running-premium.js?v=506",
   "./crono-save-resilience.js?v=505",
@@ -75,8 +75,8 @@ const ASSETS = [
   "./icon-512.png",
   "./icon.svg",
   "./index.html",
-  "./instant-sync-resilience.js?v=432",
-  "./local-save-resilience.js?v=431",
+  "./instant-sync-resilience.js?v=510",
+  "./local-save-resilience.js?v=510",
   "./manifest.json",
   "./metronome.js?v=368",
   "./pase-liquid-direct-touch.js?v=342",

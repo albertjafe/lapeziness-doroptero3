@@ -20,6 +20,9 @@
   function currentDb(){
     try { return db; } catch(e) { return window.db||null; }
   }
+  function currentDbStrict(){
+    try { return db; } catch(e) { return undefined; }
+  }
 
   function show(message){
     try { if(typeof showSyncIndicator==='function') showSyncIndicator(message); } catch(e) {}
@@ -123,7 +126,17 @@
     return pending;
   }
 
-  function persistSnapshot(snapshot){
+  // json: el mismo documento ya convertido a texto por la app (17-10-2026):
+  // se escribe tal cual, sin clonar ni convertir otra vez 4,5 MB.
+  function persistSnapshot(snapshot,json){
+    if(typeof json==='string'){
+      try {
+        localStorage.setItem(DB_KEY,json);
+        return Promise.resolve(true);
+      } catch(error) {
+        return rescueCurrentSnapshot(clone(snapshot));
+      }
+    }
     const frozen=clone(snapshot);
     try {
       localStorage.setItem(DB_KEY,JSON.stringify(frozen));
@@ -146,8 +159,10 @@
         nextMeta=(typeof SyncCore!=='undefined') ? SyncCore.markDirty(currentMeta) : currentMeta;
         live._savedAt=new Date().toISOString();
         if(nextMeta && nextMeta.localRevision) live._localRevision=nextMeta.localRevision;
-        localStorage.setItem(DB_KEY,JSON.stringify(live));
-        if(typeof _rememberLocalDocument === 'function') _rememberLocalDocument();
+        // El mismo texto armado por secciones sirve para escribir y para recordar.
+        const json=(live===currentDbStrict() && typeof _serializeLocalDocument==='function') ? _serializeLocalDocument() : JSON.stringify(live);
+        localStorage.setItem(DB_KEY,json);
+        if(typeof _rememberLocalDocument === 'function') _rememberLocalDocument(json);
       } catch(error){
         pendingMeta=nextMeta||pendingMeta;
         console.warn('[sync] localStorage lleno/no disponible; usando IndexedDB',error);

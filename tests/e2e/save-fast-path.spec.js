@@ -78,3 +78,31 @@ test('if another tab wrote the document, the full path is used', async ({ page }
   expect(r.keepsOther).toBe(true);
   expect(r.keepsMine).toBe(true);
 });
+
+test('a task-only save does not repaint study views and the text is built once', async ({ page }) => {
+  await prepare(page);
+  const r = await page.evaluate(async () => {
+    saveData();
+    await new Promise(r => requestAnimationFrame(() => setTimeout(r, 50)));
+    let refreshes = 0, stringifiedDocs = 0;
+    const origRefresh = refreshConcentradoUI;
+    refreshConcentradoUI = function (...a) { refreshes++; return origRefresh.apply(this, a); };
+    const origStringify = JSON.stringify;
+    JSON.stringify = function (v, ...rest) { if (v === db) stringifiedDocs++; return origStringify.call(this, v, ...rest); };
+    try {
+      db.cronoTasks[2].priority = 3; db.cronoTasks[2].updatedAt = new Date().toISOString();
+      saveData();
+      await new Promise(r => requestAnimationFrame(() => setTimeout(r, 50)));
+      const tasksOnly = refreshes;
+      db.sesiones.push({ id: 'snew2', date: new Date().toISOString(), min: 30, items: [] });
+      saveData();
+      await new Promise(r => requestAnimationFrame(() => setTimeout(r, 50)));
+      return { tasksOnly, afterStudy: refreshes, stringifiedDocs, cache: !!_saveCache, saved: JSON.parse(localStorage.getItem('alberto_piano_v2')).cronoTasks[2].priority };
+    } finally { JSON.stringify = origStringify; refreshConcentradoUI = origRefresh; }
+  });
+  expect(r.tasksOnly).toBe(0);
+  expect(r.afterStudy).toBe(1);
+  expect(r.stringifiedDocs).toBe(0);   // se arma por secciones, nunca el documento entero
+  expect(r.cache).toBe(true);
+  expect(r.saved).toBe(3);
+});
