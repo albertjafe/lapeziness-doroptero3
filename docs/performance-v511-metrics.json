@@ -1,0 +1,2963 @@
+{
+  "date": "2026-10-17",
+  "baselineCommit": "0643daf15529f343debaf491cb9b1c123a283936",
+  "method": "One run per scenario; same authorized local snapshot; Chromium headless; touch layout emulates iPad geometry and UA; external requests and Service Workers blocked; no concurrent test suites. Raw private snapshot and profiles excluded.",
+  "documentBytes": 4219731,
+  "measurements": [
+    {
+      "version": "v510",
+      "layout": "touch",
+      "engine": "chromium",
+      "cpuRate": 1,
+      "errors": 0,
+      "phases": [
+        {
+          "name": "idle",
+          "handlerMs": 0,
+          "maxFrameGapMs": 16.8,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "cachedPianoStudyState",
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1
+            }
+          ]
+        },
+        {
+          "name": "enter-timer",
+          "handlerMs": 601.4,
+          "maxFrameGapMs": 650,
+          "longTasksMs": [
+            602
+          ],
+          "calls": [
+            {
+              "name": "cronoRenderReadinessEstimate",
+              "count": 4,
+              "total": 398.3,
+              "max": 398.1
+            },
+            {
+              "name": "cronoReadinessEstimate",
+              "count": 4,
+              "total": 397.6,
+              "max": 397.6
+            },
+            {
+              "name": "cronoReadinessEstimateUncached",
+              "count": 1,
+              "total": 397.5,
+              "max": 397.5
+            },
+            {
+              "name": "viewSwipeWarmView",
+              "count": 5,
+              "total": 61.1,
+              "max": 43.7
+            },
+            {
+              "name": "cronoRender",
+              "count": 1,
+              "total": 45.6,
+              "max": 45.6
+            },
+            {
+              "name": "renderObras",
+              "count": 1,
+              "total": 43.7,
+              "max": 43.7
+            },
+            {
+              "name": "renderSessionResumen",
+              "count": 2,
+              "total": 27.1,
+              "max": 14.3
+            },
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 1,
+              "total": 27,
+              "max": 27
+            },
+            {
+              "name": "refreshConcentradoUI",
+              "count": 1,
+              "total": 22.4,
+              "max": 22.4
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 13,
+              "total": 11.6,
+              "max": 4.5
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 2,
+              "total": 9.7,
+              "max": 7.9
+            },
+            {
+              "name": "renderSessionQuickStudy",
+              "count": 1,
+              "total": 2.6,
+              "max": 2.6
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 3,
+              "total": 1.7,
+              "max": 0.9
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 1,
+              "total": 1.1,
+              "max": 1.1
+            },
+            {
+              "name": "cronoFillSelectInto",
+              "count": 1,
+              "total": 0.9,
+              "max": 0.9
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 1,
+              "total": 0.6,
+              "max": 0.6
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 5,
+              "total": 0,
+              "max": 0
+            },
+            {
+              "name": "renderRacha",
+              "count": 1,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        },
+        {
+          "name": "open-task-board",
+          "handlerMs": 7.9,
+          "maxFrameGapMs": 116.6,
+          "longTasksMs": [
+            54
+          ],
+          "calls": [
+            {
+              "name": "cronoOpenTaskBoard",
+              "count": 1,
+              "total": 7.9,
+              "max": 7.9
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 1,
+              "total": 6.1,
+              "max": 6.1
+            },
+            {
+              "name": "openModal",
+              "count": 1,
+              "total": 1.5,
+              "max": 1.5
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 3,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        },
+        {
+          "name": "close-task-board",
+          "handlerMs": 0.5,
+          "maxFrameGapMs": 50.1,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "closeModal",
+              "count": 1,
+              "total": 0.4,
+              "max": 0.4
+            }
+          ]
+        },
+        {
+          "name": "open-work-picker",
+          "handlerMs": 24.8,
+          "maxFrameGapMs": 66.7,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "openCronoObraPicker",
+              "count": 1,
+              "total": 24.8,
+              "max": 24.8
+            },
+            {
+              "name": "openModal",
+              "count": 1,
+              "total": 1.2,
+              "max": 1.2
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 2,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        },
+        {
+          "name": "add-task-and-deferred-save",
+          "handlerMs": 22,
+          "maxFrameGapMs": 1599.8,
+          "longTasksMs": [
+            102,
+            1522,
+            61
+          ],
+          "calls": [
+            {
+              "name": "renderSessionResumen",
+              "count": 2,
+              "total": 1424.9,
+              "max": 1410.5
+            },
+            {
+              "name": "refreshConcentradoUI",
+              "count": 1,
+              "total": 1418.6,
+              "max": 1418.6
+            },
+            {
+              "name": "studyState",
+              "count": 3,
+              "total": 1291.7,
+              "max": 713.9
+            },
+            {
+              "name": "saveData",
+              "count": 1,
+              "total": 102.5,
+              "max": 102.5
+            },
+            {
+              "name": "saveLocalNow",
+              "count": 1,
+              "total": 100.3,
+              "max": 100.3
+            },
+            {
+              "name": "viewSwipeWarmView",
+              "count": 5,
+              "total": 78.2,
+              "max": 60.7
+            },
+            {
+              "name": "renderObras",
+              "count": 1,
+              "total": 60.7,
+              "max": 60.7
+            },
+            {
+              "name": "_prepareLocalDocument",
+              "count": 1,
+              "total": 47.1,
+              "max": 47.1
+            },
+            {
+              "name": "_prepareChangedSections",
+              "count": 1,
+              "total": 41.4,
+              "max": 41.4
+            },
+            {
+              "name": "studyBlocks",
+              "count": 6,
+              "total": 28.3,
+              "max": 6.1
+            },
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 1,
+              "total": 25.2,
+              "max": 25.2
+            },
+            {
+              "name": "cronoQuickAddTask",
+              "count": 1,
+              "total": 22,
+              "max": 22
+            },
+            {
+              "name": "renderHabitCalendar",
+              "count": 1,
+              "total": 21.9,
+              "max": 21.9
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 5,
+              "total": 17.7,
+              "max": 17.7
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 1,
+              "total": 11.6,
+              "max": 11.6
+            },
+            {
+              "name": "_serializeLocalDocument",
+              "count": 1,
+              "total": 7.9,
+              "max": 7.9
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 13,
+              "total": 6.7,
+              "max": 3.4
+            },
+            {
+              "name": "_rememberLocalDocument",
+              "count": 1,
+              "total": 5.4,
+              "max": 5.4
+            },
+            {
+              "name": "renderSessionQuickStudy",
+              "count": 2,
+              "total": 4.5,
+              "max": 2.4
+            },
+            {
+              "name": "renderMesCalendario",
+              "count": 1,
+              "total": 4.5,
+              "max": 4.5
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 1,
+              "total": 1.5,
+              "max": 1.5
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 1,
+              "total": 0.9,
+              "max": 0.9
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 1,
+              "total": 0.5,
+              "max": 0.5
+            },
+            {
+              "name": "renderRacha",
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1
+            },
+            {
+              "name": "refreshStudyViews",
+              "count": 1,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        },
+        {
+          "name": "task-only-save",
+          "handlerMs": 154.4,
+          "maxFrameGapMs": 2433.2,
+          "longTasksMs": [
+            2285
+          ],
+          "calls": [
+            {
+              "name": "renderSessionResumen",
+              "count": 2,
+              "total": 2173.2,
+              "max": 2157.5
+            },
+            {
+              "name": "refreshConcentradoUI",
+              "count": 1,
+              "total": 2166.8,
+              "max": 2166.8
+            },
+            {
+              "name": "studyState",
+              "count": 3,
+              "total": 1898.1,
+              "max": 959.7
+            },
+            {
+              "name": "saveData",
+              "count": 1,
+              "total": 154.4,
+              "max": 154.4
+            },
+            {
+              "name": "saveLocalNow",
+              "count": 1,
+              "total": 150.7,
+              "max": 150.7
+            },
+            {
+              "name": "studyBlocks",
+              "count": 6,
+              "total": 68,
+              "max": 38.6
+            },
+            {
+              "name": "viewSwipeWarmView",
+              "count": 3,
+              "total": 64,
+              "max": 45.1
+            },
+            {
+              "name": "renderHabitCalendar",
+              "count": 1,
+              "total": 60.5,
+              "max": 60.5
+            },
+            {
+              "name": "_prepareLocalDocument",
+              "count": 1,
+              "total": 56.4,
+              "max": 56.4
+            },
+            {
+              "name": "_prepareChangedSections",
+              "count": 1,
+              "total": 46.7,
+              "max": 46.7
+            },
+            {
+              "name": "renderObras",
+              "count": 1,
+              "total": 45.1,
+              "max": 45.1
+            },
+            {
+              "name": "_serializeLocalDocument",
+              "count": 1,
+              "total": 42.6,
+              "max": 42.6
+            },
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 1,
+              "total": 24.9,
+              "max": 24.9
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 4,
+              "total": 18.1,
+              "max": 18
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 13,
+              "total": 6.9,
+              "max": 3.4
+            },
+            {
+              "name": "_rememberLocalDocument",
+              "count": 1,
+              "total": 5.2,
+              "max": 5.2
+            },
+            {
+              "name": "renderSessionQuickStudy",
+              "count": 2,
+              "total": 5.1,
+              "max": 2.6
+            },
+            {
+              "name": "renderMesCalendario",
+              "count": 1,
+              "total": 4.9,
+              "max": 4.9
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 1,
+              "total": 1.1,
+              "max": 1.1
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 1,
+              "total": 0.8,
+              "max": 0.8
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 1,
+              "total": 0.5,
+              "max": 0.5
+            },
+            {
+              "name": "renderRacha",
+              "count": 2,
+              "total": 0.4,
+              "max": 0.4
+            },
+            {
+              "name": "refreshStudyViews",
+              "count": 1,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        },
+        {
+          "name": "save-manual-session",
+          "handlerMs": 3194.6,
+          "maxFrameGapMs": 3366.6,
+          "longTasksMs": [
+            3197,
+            171,
+            130,
+            1237
+          ],
+          "calls": [
+            {
+              "name": "saveSessionQuickStudy",
+              "count": 1,
+              "total": 3194.6,
+              "max": 3194.6
+            },
+            {
+              "name": "studyState",
+              "count": 4,
+              "total": 3032.9,
+              "max": 1009.4
+            },
+            {
+              "name": "refreshConcentradoUI",
+              "count": 2,
+              "total": 2283.7,
+              "max": 2236.5
+            },
+            {
+              "name": "renderSessionResumen",
+              "count": 3,
+              "total": 2280.9,
+              "max": 2225.7
+            },
+            {
+              "name": "persistManualStudyHistory",
+              "count": 1,
+              "total": 956.7,
+              "max": 956.7
+            },
+            {
+              "name": "saveLocalNow",
+              "count": 3,
+              "total": 949.2,
+              "max": 410.1
+            },
+            {
+              "name": "saveData",
+              "count": 2,
+              "total": 797.9,
+              "max": 413.9
+            },
+            {
+              "name": "_prepareLocalDocument",
+              "count": 3,
+              "total": 633.4,
+              "max": 293.1
+            },
+            {
+              "name": "_prepareChangedSections",
+              "count": 3,
+              "total": 540.4,
+              "max": 278.3
+            },
+            {
+              "name": "viewSwipeWarmView",
+              "count": 5,
+              "total": 147.7,
+              "max": 130.3
+            },
+            {
+              "name": "renderObras",
+              "count": 1,
+              "total": 130.3,
+              "max": 130.3
+            },
+            {
+              "name": "_serializeLocalDocument",
+              "count": 3,
+              "total": 67.5,
+              "max": 45.5
+            },
+            {
+              "name": "renderHabitCalendar",
+              "count": 1,
+              "total": 52,
+              "max": 52
+            },
+            {
+              "name": "studyBlocks",
+              "count": 8,
+              "total": 42.1,
+              "max": 7.2
+            },
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 1,
+              "total": 28.7,
+              "max": 28.7
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 6,
+              "total": 24.2,
+              "max": 24.1
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 22,
+              "total": 16.8,
+              "max": 4.9
+            },
+            {
+              "name": "renderSessionQuickStudy",
+              "count": 3,
+              "total": 14.9,
+              "max": 10.9
+            },
+            {
+              "name": "_rememberLocalDocument",
+              "count": 3,
+              "total": 13.6,
+              "max": 5.4
+            },
+            {
+              "name": "renderMesCalendario",
+              "count": 1,
+              "total": 4.9,
+              "max": 4.9
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 1,
+              "total": 1.2,
+              "max": 1.2
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 1,
+              "total": 0.7,
+              "max": 0.7
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 1,
+              "total": 0.5,
+              "max": 0.5
+            },
+            {
+              "name": "renderRacha",
+              "count": 3,
+              "total": 0.1,
+              "max": 0.1
+            },
+            {
+              "name": "refreshStudyViews",
+              "count": 3,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "v511",
+      "layout": "touch",
+      "engine": "chromium",
+      "cpuRate": 1,
+      "errors": 0,
+      "phases": [
+        {
+          "name": "idle",
+          "handlerMs": 0,
+          "maxFrameGapMs": 16.8,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "cachedPianoStudyState",
+              "count": 3,
+              "total": 0.3,
+              "max": 0.1
+            }
+          ]
+        },
+        {
+          "name": "enter-timer",
+          "handlerMs": 214.5,
+          "maxFrameGapMs": 233.4,
+          "longTasksMs": [
+            215
+          ],
+          "calls": [
+            {
+              "name": "cronoRenderReadinessEstimate",
+              "count": 4,
+              "total": 49,
+              "max": 48.7
+            },
+            {
+              "name": "cronoReadinessEstimate",
+              "count": 4,
+              "total": 48.3,
+              "max": 48.3
+            },
+            {
+              "name": "cronoReadinessEstimateUncached",
+              "count": 1,
+              "total": 48.2,
+              "max": 48.2
+            },
+            {
+              "name": "viewSwipeWarmView",
+              "count": 5,
+              "total": 47.5,
+              "max": 31.4
+            },
+            {
+              "name": "renderObras",
+              "count": 1,
+              "total": 31.4,
+              "max": 31.4
+            },
+            {
+              "name": "refreshConcentradoUI",
+              "count": 1,
+              "total": 24.7,
+              "max": 24.7
+            },
+            {
+              "name": "renderSessionResumen",
+              "count": 2,
+              "total": 23.6,
+              "max": 12.1
+            },
+            {
+              "name": "cronoRender",
+              "count": 1,
+              "total": 21.3,
+              "max": 21.3
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 2,
+              "total": 10.2,
+              "max": 8.6
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 11,
+              "total": 5.3,
+              "max": 2.8
+            },
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 1,
+              "total": 4,
+              "max": 4
+            },
+            {
+              "name": "renderSessionQuickStudy",
+              "count": 1,
+              "total": 3.1,
+              "max": 3.1
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 3,
+              "total": 2.6,
+              "max": 1.7
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 1,
+              "total": 1.2,
+              "max": 1.2
+            },
+            {
+              "name": "cronoFillSelectInto",
+              "count": 1,
+              "total": 0.9,
+              "max": 0.9
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 1,
+              "total": 0.7,
+              "max": 0.7
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 4,
+              "total": 0.2,
+              "max": 0.1
+            },
+            {
+              "name": "renderRacha",
+              "count": 1,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        },
+        {
+          "name": "open-task-board",
+          "handlerMs": 8.1,
+          "maxFrameGapMs": 133.3,
+          "longTasksMs": [
+            51
+          ],
+          "calls": [
+            {
+              "name": "cronoOpenTaskBoard",
+              "count": 1,
+              "total": 8.1,
+              "max": 8.1
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 1,
+              "total": 4.4,
+              "max": 4.4
+            },
+            {
+              "name": "openModal",
+              "count": 1,
+              "total": 3.3,
+              "max": 3.3
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 2,
+              "total": 0.2,
+              "max": 0.2
+            }
+          ]
+        },
+        {
+          "name": "close-task-board",
+          "handlerMs": 0.9,
+          "maxFrameGapMs": 66.6,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "closeModal",
+              "count": 1,
+              "total": 0.9,
+              "max": 0.9
+            }
+          ]
+        },
+        {
+          "name": "open-work-picker",
+          "handlerMs": 26.1,
+          "maxFrameGapMs": 99.9,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "openCronoObraPicker",
+              "count": 1,
+              "total": 26.1,
+              "max": 26.1
+            },
+            {
+              "name": "openModal",
+              "count": 1,
+              "total": 1,
+              "max": 1
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 2,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        },
+        {
+          "name": "add-task-and-deferred-save",
+          "handlerMs": 17.5,
+          "maxFrameGapMs": 100,
+          "longTasksMs": [
+            92
+          ],
+          "calls": [
+            {
+              "name": "saveData",
+              "count": 1,
+              "total": 92.4,
+              "max": 92.4
+            },
+            {
+              "name": "saveLocalNow",
+              "count": 1,
+              "total": 90,
+              "max": 90
+            },
+            {
+              "name": "_prepareLocalDocument",
+              "count": 1,
+              "total": 33.1,
+              "max": 33.1
+            },
+            {
+              "name": "_prepareChangedSections",
+              "count": 1,
+              "total": 29.2,
+              "max": 29.2
+            },
+            {
+              "name": "cronoQuickAddTask",
+              "count": 1,
+              "total": 17.5,
+              "max": 17.5
+            },
+            {
+              "name": "_serializeLocalDocument",
+              "count": 1,
+              "total": 14.6,
+              "max": 14.6
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 1,
+              "total": 9.3,
+              "max": 9.3
+            },
+            {
+              "name": "_rememberLocalDocument",
+              "count": 1,
+              "total": 2.5,
+              "max": 2.5
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 4,
+              "total": 0.2,
+              "max": 0.1
+            }
+          ]
+        },
+        {
+          "name": "task-only-save",
+          "handlerMs": 98.6,
+          "maxFrameGapMs": 116.6,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "saveData",
+              "count": 1,
+              "total": 98.6,
+              "max": 98.6
+            },
+            {
+              "name": "saveLocalNow",
+              "count": 1,
+              "total": 96.1,
+              "max": 96.1
+            },
+            {
+              "name": "_prepareLocalDocument",
+              "count": 1,
+              "total": 45.2,
+              "max": 45.2
+            },
+            {
+              "name": "_prepareChangedSections",
+              "count": 1,
+              "total": 35.4,
+              "max": 35.4
+            },
+            {
+              "name": "_serializeLocalDocument",
+              "count": 1,
+              "total": 5.9,
+              "max": 5.9
+            },
+            {
+              "name": "_rememberLocalDocument",
+              "count": 1,
+              "total": 2.9,
+              "max": 2.9
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 3,
+              "total": 0.2,
+              "max": 0.1
+            }
+          ]
+        },
+        {
+          "name": "save-manual-session",
+          "handlerMs": 287.4,
+          "maxFrameGapMs": 766.6,
+          "longTasksMs": [
+            294,
+            449
+          ],
+          "calls": [
+            {
+              "name": "refreshConcentradoUI",
+              "count": 1,
+              "total": 288.1,
+              "max": 288.1
+            },
+            {
+              "name": "saveSessionQuickStudy",
+              "count": 1,
+              "total": 287.4,
+              "max": 287.4
+            },
+            {
+              "name": "persistManualStudyHistory",
+              "count": 1,
+              "total": 285.6,
+              "max": 285.6
+            },
+            {
+              "name": "saveData",
+              "count": 1,
+              "total": 283.7,
+              "max": 283.7
+            },
+            {
+              "name": "saveLocalNow",
+              "count": 1,
+              "total": 281.2,
+              "max": 281.2
+            },
+            {
+              "name": "renderSessionResumen",
+              "count": 1,
+              "total": 268.2,
+              "max": 268.2
+            },
+            {
+              "name": "_prepareLocalDocument",
+              "count": 1,
+              "total": 220.4,
+              "max": 220.4
+            },
+            {
+              "name": "_prepareChangedSections",
+              "count": 1,
+              "total": 213.1,
+              "max": 213.1
+            },
+            {
+              "name": "studyState",
+              "count": 2,
+              "total": 164.3,
+              "max": 111.6
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 7,
+              "total": 112.1,
+              "max": 111.8
+            },
+            {
+              "name": "renderSessionQuickStudy",
+              "count": 2,
+              "total": 46.9,
+              "max": 42.6
+            },
+            {
+              "name": "renderHabitCalendar",
+              "count": 1,
+              "total": 35.3,
+              "max": 35.3
+            },
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 1,
+              "total": 16,
+              "max": 16
+            },
+            {
+              "name": "studyBlocks",
+              "count": 3,
+              "total": 14.4,
+              "max": 6.7
+            },
+            {
+              "name": "_serializeLocalDocument",
+              "count": 1,
+              "total": 11.5,
+              "max": 11.5
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 11,
+              "total": 11.1,
+              "max": 7.1
+            },
+            {
+              "name": "_rememberLocalDocument",
+              "count": 1,
+              "total": 7.2,
+              "max": 7.2
+            },
+            {
+              "name": "renderMesCalendario",
+              "count": 1,
+              "total": 7.1,
+              "max": 7.1
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 1,
+              "total": 5.6,
+              "max": 5.6
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 1,
+              "total": 0.7,
+              "max": 0.7
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 1,
+              "total": 0.6,
+              "max": 0.6
+            },
+            {
+              "name": "refreshStudyViews",
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1
+            },
+            {
+              "name": "renderRacha",
+              "count": 1,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "v510",
+      "layout": "desktop",
+      "engine": "chromium",
+      "cpuRate": 1,
+      "errors": 0,
+      "phases": [
+        {
+          "name": "idle",
+          "handlerMs": 0,
+          "maxFrameGapMs": 383.3,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "cachedPianoStudyState",
+              "count": 3,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        },
+        {
+          "name": "enter-timer",
+          "handlerMs": 883.6,
+          "maxFrameGapMs": 1033.3,
+          "longTasksMs": [
+            884,
+            56
+          ],
+          "calls": [
+            {
+              "name": "cronoRenderReadinessEstimate",
+              "count": 4,
+              "total": 615.8,
+              "max": 615.3
+            },
+            {
+              "name": "cronoReadinessEstimate",
+              "count": 4,
+              "total": 614.6,
+              "max": 614.6
+            },
+            {
+              "name": "cronoReadinessEstimateUncached",
+              "count": 1,
+              "total": 614.5,
+              "max": 614.5
+            },
+            {
+              "name": "cronoRender",
+              "count": 1,
+              "total": 75.1,
+              "max": 75.1
+            },
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 1,
+              "total": 46.1,
+              "max": 46.1
+            },
+            {
+              "name": "refreshConcentradoUI",
+              "count": 1,
+              "total": 33.8,
+              "max": 33.8
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 2,
+              "total": 16.8,
+              "max": 14.2
+            },
+            {
+              "name": "renderSessionResumen",
+              "count": 1,
+              "total": 15.1,
+              "max": 15.1
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 5,
+              "total": 7.7,
+              "max": 7.7
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 3,
+              "total": 2.3,
+              "max": 1.5
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 1,
+              "total": 1.8,
+              "max": 1.8
+            },
+            {
+              "name": "cronoFillSelectInto",
+              "count": 1,
+              "total": 1.4,
+              "max": 1.4
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 1,
+              "total": 0.4,
+              "max": 0.4
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 5,
+              "total": 0.2,
+              "max": 0.2
+            }
+          ]
+        },
+        {
+          "name": "open-task-board",
+          "handlerMs": 9.3,
+          "maxFrameGapMs": 166.6,
+          "longTasksMs": [
+            65
+          ],
+          "calls": [
+            {
+              "name": "cronoOpenTaskBoard",
+              "count": 1,
+              "total": 9.3,
+              "max": 9.3
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 1,
+              "total": 6.3,
+              "max": 6.3
+            },
+            {
+              "name": "openModal",
+              "count": 1,
+              "total": 2.4,
+              "max": 2.4
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1
+            }
+          ]
+        },
+        {
+          "name": "close-task-board",
+          "handlerMs": 0.9,
+          "maxFrameGapMs": 233.3,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "closeModal",
+              "count": 1,
+              "total": 0.8,
+              "max": 0.8
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 1,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        },
+        {
+          "name": "open-work-picker",
+          "handlerMs": 30.5,
+          "maxFrameGapMs": 150,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "openCronoObraPicker",
+              "count": 1,
+              "total": 30.5,
+              "max": 30.5
+            },
+            {
+              "name": "openModal",
+              "count": 1,
+              "total": 0.7,
+              "max": 0.7
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1
+            }
+          ]
+        },
+        {
+          "name": "add-task-and-deferred-save",
+          "handlerMs": 26.6,
+          "maxFrameGapMs": 866.6,
+          "longTasksMs": [
+            124,
+            768
+          ],
+          "calls": [
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 1,
+              "total": 706.9,
+              "max": 706.9
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 5,
+              "total": 703.1,
+              "max": 703.1
+            },
+            {
+              "name": "studyState",
+              "count": 1,
+              "total": 703.1,
+              "max": 703.1
+            },
+            {
+              "name": "saveData",
+              "count": 1,
+              "total": 123.9,
+              "max": 123.9
+            },
+            {
+              "name": "saveLocalNow",
+              "count": 1,
+              "total": 119.9,
+              "max": 119.9
+            },
+            {
+              "name": "_prepareLocalDocument",
+              "count": 1,
+              "total": 56.4,
+              "max": 56.4
+            },
+            {
+              "name": "_prepareChangedSections",
+              "count": 1,
+              "total": 51.5,
+              "max": 51.5
+            },
+            {
+              "name": "cronoQuickAddTask",
+              "count": 1,
+              "total": 26.6,
+              "max": 26.6
+            },
+            {
+              "name": "refreshConcentradoUI",
+              "count": 1,
+              "total": 17.8,
+              "max": 17.8
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 1,
+              "total": 15.6,
+              "max": 15.6
+            },
+            {
+              "name": "studyBlocks",
+              "count": 2,
+              "total": 13.4,
+              "max": 8.3
+            },
+            {
+              "name": "_serializeLocalDocument",
+              "count": 1,
+              "total": 8.4,
+              "max": 8.4
+            },
+            {
+              "name": "renderSessionResumen",
+              "count": 1,
+              "total": 7.9,
+              "max": 7.9
+            },
+            {
+              "name": "_rememberLocalDocument",
+              "count": 1,
+              "total": 5.1,
+              "max": 5.1
+            },
+            {
+              "name": "renderHabitCalendar",
+              "count": 1,
+              "total": 3.5,
+              "max": 3.5
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 3,
+              "total": 3.1,
+              "max": 3.1
+            },
+            {
+              "name": "renderSessionQuickStudy",
+              "count": 1,
+              "total": 2.3,
+              "max": 2.3
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 1,
+              "total": 1.4,
+              "max": 1.4
+            },
+            {
+              "name": "renderMesCalendario",
+              "count": 1,
+              "total": 1.1,
+              "max": 1.1
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 1,
+              "total": 0.7,
+              "max": 0.7
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 1,
+              "total": 0.5,
+              "max": 0.5
+            },
+            {
+              "name": "refreshStudyViews",
+              "count": 1,
+              "total": 0,
+              "max": 0
+            },
+            {
+              "name": "renderRacha",
+              "count": 1,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        },
+        {
+          "name": "task-only-save",
+          "handlerMs": 98.6,
+          "maxFrameGapMs": 850,
+          "longTasksMs": [
+            752
+          ],
+          "calls": [
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 1,
+              "total": 688.9,
+              "max": 688.9
+            },
+            {
+              "name": "studyState",
+              "count": 1,
+              "total": 683.7,
+              "max": 683.7
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 5,
+              "total": 683.7,
+              "max": 683.7
+            },
+            {
+              "name": "saveData",
+              "count": 1,
+              "total": 98.6,
+              "max": 98.6
+            },
+            {
+              "name": "saveLocalNow",
+              "count": 1,
+              "total": 96.5,
+              "max": 96.5
+            },
+            {
+              "name": "_prepareLocalDocument",
+              "count": 1,
+              "total": 42,
+              "max": 42
+            },
+            {
+              "name": "_prepareChangedSections",
+              "count": 1,
+              "total": 33.2,
+              "max": 33.2
+            },
+            {
+              "name": "refreshConcentradoUI",
+              "count": 1,
+              "total": 24,
+              "max": 24
+            },
+            {
+              "name": "renderSessionResumen",
+              "count": 1,
+              "total": 13.9,
+              "max": 13.9
+            },
+            {
+              "name": "studyBlocks",
+              "count": 2,
+              "total": 9.7,
+              "max": 5.6
+            },
+            {
+              "name": "_serializeLocalDocument",
+              "count": 1,
+              "total": 6.8,
+              "max": 6.8
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 3,
+              "total": 4.7,
+              "max": 4.7
+            },
+            {
+              "name": "renderHabitCalendar",
+              "count": 1,
+              "total": 4.3,
+              "max": 4.3
+            },
+            {
+              "name": "_rememberLocalDocument",
+              "count": 1,
+              "total": 3.3,
+              "max": 3.3
+            },
+            {
+              "name": "renderSessionQuickStudy",
+              "count": 1,
+              "total": 2.2,
+              "max": 2.2
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 1,
+              "total": 1,
+              "max": 1
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 1,
+              "total": 0.9,
+              "max": 0.9
+            },
+            {
+              "name": "renderMesCalendario",
+              "count": 1,
+              "total": 0.9,
+              "max": 0.9
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 1,
+              "total": 0.5,
+              "max": 0.5
+            },
+            {
+              "name": "refreshStudyViews",
+              "count": 1,
+              "total": 0,
+              "max": 0
+            },
+            {
+              "name": "renderRacha",
+              "count": 1,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        },
+        {
+          "name": "save-manual-session",
+          "handlerMs": 661.2,
+          "maxFrameGapMs": 1433.2,
+          "longTasksMs": [
+            665,
+            750
+          ],
+          "calls": [
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 1,
+              "total": 684,
+              "max": 684
+            },
+            {
+              "name": "studyState",
+              "count": 1,
+              "total": 679.3,
+              "max": 679.3
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 6,
+              "total": 679.3,
+              "max": 679.3
+            },
+            {
+              "name": "saveSessionQuickStudy",
+              "count": 1,
+              "total": 661.2,
+              "max": 661.2
+            },
+            {
+              "name": "persistManualStudyHistory",
+              "count": 1,
+              "total": 643.9,
+              "max": 643.9
+            },
+            {
+              "name": "saveLocalNow",
+              "count": 3,
+              "total": 639.3,
+              "max": 267.5
+            },
+            {
+              "name": "saveData",
+              "count": 2,
+              "total": 520.1,
+              "max": 269
+            },
+            {
+              "name": "_prepareLocalDocument",
+              "count": 3,
+              "total": 446.5,
+              "max": 215.6
+            },
+            {
+              "name": "_prepareChangedSections",
+              "count": 3,
+              "total": 405,
+              "max": 206.8
+            },
+            {
+              "name": "_serializeLocalDocument",
+              "count": 3,
+              "total": 29.4,
+              "max": 14.4
+            },
+            {
+              "name": "refreshConcentradoUI",
+              "count": 2,
+              "total": 29.2,
+              "max": 16.1
+            },
+            {
+              "name": "renderSessionQuickStudy",
+              "count": 2,
+              "total": 14.9,
+              "max": 12.6
+            },
+            {
+              "name": "_rememberLocalDocument",
+              "count": 3,
+              "total": 13.5,
+              "max": 5.3
+            },
+            {
+              "name": "renderSessionResumen",
+              "count": 2,
+              "total": 11.1,
+              "max": 6.3
+            },
+            {
+              "name": "studyBlocks",
+              "count": 2,
+              "total": 9.6,
+              "max": 5.5
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 6,
+              "total": 6.1,
+              "max": 3.1
+            },
+            {
+              "name": "renderHabitCalendar",
+              "count": 1,
+              "total": 3.9,
+              "max": 3.9
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 1,
+              "total": 1.2,
+              "max": 1.2
+            },
+            {
+              "name": "renderMesCalendario",
+              "count": 1,
+              "total": 0.8,
+              "max": 0.8
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 1,
+              "total": 0.6,
+              "max": 0.6
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 1,
+              "total": 0.5,
+              "max": 0.5
+            },
+            {
+              "name": "refreshStudyViews",
+              "count": 3,
+              "total": 0,
+              "max": 0
+            },
+            {
+              "name": "renderRacha",
+              "count": 2,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "v511",
+      "layout": "desktop",
+      "engine": "chromium",
+      "cpuRate": 1,
+      "errors": 0,
+      "phases": [
+        {
+          "name": "idle",
+          "handlerMs": 0,
+          "maxFrameGapMs": 83.4,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "cachedPianoStudyState",
+              "count": 2,
+              "total": 0.3,
+              "max": 0.2
+            }
+          ]
+        },
+        {
+          "name": "enter-timer",
+          "handlerMs": 274,
+          "maxFrameGapMs": 350,
+          "longTasksMs": [
+            274
+          ],
+          "calls": [
+            {
+              "name": "cronoRenderReadinessEstimate",
+              "count": 4,
+              "total": 50.9,
+              "max": 50.8
+            },
+            {
+              "name": "cronoReadinessEstimate",
+              "count": 4,
+              "total": 50.2,
+              "max": 50.2
+            },
+            {
+              "name": "cronoReadinessEstimateUncached",
+              "count": 1,
+              "total": 50,
+              "max": 50
+            },
+            {
+              "name": "refreshConcentradoUI",
+              "count": 1,
+              "total": 40.6,
+              "max": 40.6
+            },
+            {
+              "name": "cronoRender",
+              "count": 1,
+              "total": 32.1,
+              "max": 32.1
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 2,
+              "total": 11.3,
+              "max": 9.3
+            },
+            {
+              "name": "renderSessionResumen",
+              "count": 1,
+              "total": 7.4,
+              "max": 7.4
+            },
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 1,
+              "total": 3.6,
+              "max": 3.6
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 5,
+              "total": 3.5,
+              "max": 3.5
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 3,
+              "total": 1.4,
+              "max": 1.1
+            },
+            {
+              "name": "cronoFillSelectInto",
+              "count": 1,
+              "total": 1.2,
+              "max": 1.2
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 1,
+              "total": 1.2,
+              "max": 1.2
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 1,
+              "total": 0.6,
+              "max": 0.6
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 5,
+              "total": 0.5,
+              "max": 0.2
+            }
+          ]
+        },
+        {
+          "name": "open-task-board",
+          "handlerMs": 10.1,
+          "maxFrameGapMs": 100.1,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "cronoOpenTaskBoard",
+              "count": 1,
+              "total": 10.1,
+              "max": 10.1
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 1,
+              "total": 7.7,
+              "max": 7.7
+            },
+            {
+              "name": "openModal",
+              "count": 1,
+              "total": 2.1,
+              "max": 2.1
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1
+            }
+          ]
+        },
+        {
+          "name": "close-task-board",
+          "handlerMs": 0.4,
+          "maxFrameGapMs": 83.4,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "closeModal",
+              "count": 1,
+              "total": 0.3,
+              "max": 0.3
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 1,
+              "total": 0.1,
+              "max": 0.1
+            }
+          ]
+        },
+        {
+          "name": "open-work-picker",
+          "handlerMs": 24.4,
+          "maxFrameGapMs": 83.4,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "openCronoObraPicker",
+              "count": 1,
+              "total": 24.4,
+              "max": 24.4
+            },
+            {
+              "name": "openModal",
+              "count": 1,
+              "total": 1.2,
+              "max": 1.2
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 2,
+              "total": 0.3,
+              "max": 0.2
+            }
+          ]
+        },
+        {
+          "name": "add-task-and-deferred-save",
+          "handlerMs": 17.4,
+          "maxFrameGapMs": 83.3,
+          "longTasksMs": [
+            86
+          ],
+          "calls": [
+            {
+              "name": "saveData",
+              "count": 1,
+              "total": 86.1,
+              "max": 86.1
+            },
+            {
+              "name": "saveLocalNow",
+              "count": 1,
+              "total": 84.1,
+              "max": 84.1
+            },
+            {
+              "name": "_prepareLocalDocument",
+              "count": 1,
+              "total": 35.3,
+              "max": 35.3
+            },
+            {
+              "name": "_prepareChangedSections",
+              "count": 1,
+              "total": 30.7,
+              "max": 30.7
+            },
+            {
+              "name": "cronoQuickAddTask",
+              "count": 1,
+              "total": 17.4,
+              "max": 17.4
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 1,
+              "total": 9.3,
+              "max": 9.3
+            },
+            {
+              "name": "_serializeLocalDocument",
+              "count": 1,
+              "total": 6.8,
+              "max": 6.8
+            },
+            {
+              "name": "_rememberLocalDocument",
+              "count": 1,
+              "total": 2.7,
+              "max": 2.7
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 4,
+              "total": 0.1,
+              "max": 0.1
+            }
+          ]
+        },
+        {
+          "name": "task-only-save",
+          "handlerMs": 140.1,
+          "maxFrameGapMs": 133.3,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "saveData",
+              "count": 1,
+              "total": 139.9,
+              "max": 139.9
+            },
+            {
+              "name": "saveLocalNow",
+              "count": 1,
+              "total": 137.1,
+              "max": 137.1
+            },
+            {
+              "name": "_prepareLocalDocument",
+              "count": 1,
+              "total": 57,
+              "max": 57
+            },
+            {
+              "name": "_prepareChangedSections",
+              "count": 1,
+              "total": 46.7,
+              "max": 46.7
+            },
+            {
+              "name": "_rememberLocalDocument",
+              "count": 1,
+              "total": 19.1,
+              "max": 19.1
+            },
+            {
+              "name": "_serializeLocalDocument",
+              "count": 1,
+              "total": 16.6,
+              "max": 16.6
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 3,
+              "total": 0.2,
+              "max": 0.1
+            }
+          ]
+        },
+        {
+          "name": "save-manual-session",
+          "handlerMs": 277.1,
+          "maxFrameGapMs": 516.7,
+          "longTasksMs": [
+            287,
+            250
+          ],
+          "calls": [
+            {
+              "name": "saveSessionQuickStudy",
+              "count": 1,
+              "total": 277.1,
+              "max": 277.1
+            },
+            {
+              "name": "persistManualStudyHistory",
+              "count": 1,
+              "total": 275.4,
+              "max": 275.4
+            },
+            {
+              "name": "saveData",
+              "count": 1,
+              "total": 274,
+              "max": 274
+            },
+            {
+              "name": "saveLocalNow",
+              "count": 1,
+              "total": 270.9,
+              "max": 270.9
+            },
+            {
+              "name": "_prepareLocalDocument",
+              "count": 1,
+              "total": 212.9,
+              "max": 212.9
+            },
+            {
+              "name": "_prepareChangedSections",
+              "count": 1,
+              "total": 208.6,
+              "max": 208.6
+            },
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 1,
+              "total": 130.3,
+              "max": 130.3
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 8,
+              "total": 126.5,
+              "max": 125.7
+            },
+            {
+              "name": "studyState",
+              "count": 1,
+              "total": 125.4,
+              "max": 125.4
+            },
+            {
+              "name": "refreshConcentradoUI",
+              "count": 1,
+              "total": 50.2,
+              "max": 50.2
+            },
+            {
+              "name": "renderSessionResumen",
+              "count": 1,
+              "total": 29.3,
+              "max": 29.3
+            },
+            {
+              "name": "renderSessionQuickStudy",
+              "count": 2,
+              "total": 19.8,
+              "max": 11.1
+            },
+            {
+              "name": "_serializeLocalDocument",
+              "count": 1,
+              "total": 10.6,
+              "max": 10.6
+            },
+            {
+              "name": "studyBlocks",
+              "count": 1,
+              "total": 9.1,
+              "max": 9.1
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 3,
+              "total": 6.9,
+              "max": 6.9
+            },
+            {
+              "name": "_rememberLocalDocument",
+              "count": 1,
+              "total": 6.5,
+              "max": 6.5
+            },
+            {
+              "name": "renderHabitCalendar",
+              "count": 1,
+              "total": 4.1,
+              "max": 4.1
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 1,
+              "total": 2,
+              "max": 2
+            },
+            {
+              "name": "renderMesCalendario",
+              "count": 1,
+              "total": 1.1,
+              "max": 1.1
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 1,
+              "total": 0.8,
+              "max": 0.8
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 1,
+              "total": 0.6,
+              "max": 0.6
+            },
+            {
+              "name": "refreshStudyViews",
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1
+            },
+            {
+              "name": "renderRacha",
+              "count": 1,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "v510",
+      "layout": "touch-finish",
+      "engine": "chromium",
+      "cpuRate": 1,
+      "errors": 0,
+      "phases": [
+        {
+          "name": "idle",
+          "handlerMs": 0,
+          "maxFrameGapMs": 516.6,
+          "longTasksMs": [],
+          "calls": [
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 2,
+              "total": 4.1,
+              "max": 4.1
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 3,
+              "total": 0.1,
+              "max": 0.1
+            }
+          ]
+        },
+        {
+          "name": "enter-timer",
+          "handlerMs": 672.7,
+          "maxFrameGapMs": 699.9,
+          "longTasksMs": [
+            673
+          ],
+          "calls": [
+            {
+              "name": "cronoRenderReadinessEstimate",
+              "count": 4,
+              "total": 471.2,
+              "max": 471.1
+            },
+            {
+              "name": "cronoReadinessEstimate",
+              "count": 4,
+              "total": 470.6,
+              "max": 470.6
+            },
+            {
+              "name": "cronoReadinessEstimateUncached",
+              "count": 1,
+              "total": 470.4,
+              "max": 470.4
+            },
+            {
+              "name": "viewSwipeWarmView",
+              "count": 5,
+              "total": 61.9,
+              "max": 42.2
+            },
+            {
+              "name": "renderObras",
+              "count": 1,
+              "total": 42.2,
+              "max": 42.2
+            },
+            {
+              "name": "renderSessionResumen",
+              "count": 2,
+              "total": 30.1,
+              "max": 15.3
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 3,
+              "total": 28.2,
+              "max": 26.9
+            },
+            {
+              "name": "refreshConcentradoUI",
+              "count": 1,
+              "total": 24.3,
+              "max": 24.3
+            },
+            {
+              "name": "cronoRender",
+              "count": 1,
+              "total": 23.6,
+              "max": 23.6
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 2,
+              "total": 9,
+              "max": 7.3
+            },
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 1,
+              "total": 7.2,
+              "max": 7.2
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 11,
+              "total": 6.6,
+              "max": 3.3
+            },
+            {
+              "name": "renderSessionQuickStudy",
+              "count": 1,
+              "total": 3.7,
+              "max": 3.7
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 1,
+              "total": 1.1,
+              "max": 1.1
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 1,
+              "total": 1.1,
+              "max": 1.1
+            },
+            {
+              "name": "cronoFillSelectInto",
+              "count": 1,
+              "total": 1,
+              "max": 1
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 5,
+              "total": 0,
+              "max": 0
+            },
+            {
+              "name": "renderRacha",
+              "count": 1,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        },
+        {
+          "name": "finish-timed-session",
+          "handlerMs": 1485.9,
+          "maxFrameGapMs": 2633.1,
+          "longTasksMs": [
+            1514,
+            1053,
+            64,
+            459
+          ],
+          "calls": [
+            {
+              "name": "studyState",
+              "count": 5,
+              "total": 4940.9,
+              "max": 1951.2
+            },
+            {
+              "name": "renderSessionResumen",
+              "count": 4,
+              "total": 4877.2,
+              "max": 3918.7
+            },
+            {
+              "name": "viewSwipeWarmView",
+              "count": 2,
+              "total": 3943,
+              "max": 3924.3
+            },
+            {
+              "name": "cronoFinish",
+              "count": 1,
+              "total": 1485.8,
+              "max": 1485.8
+            },
+            {
+              "name": "refreshConcentradoUI",
+              "count": 2,
+              "total": 965.2,
+              "max": 917.4
+            },
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 3,
+              "total": 625.7,
+              "max": 611.3
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 8,
+              "total": 605.9,
+              "max": 605.9
+            },
+            {
+              "name": "cronoRender",
+              "count": 1,
+              "total": 455.4,
+              "max": 455.4
+            },
+            {
+              "name": "saveLocalNow",
+              "count": 3,
+              "total": 452.7,
+              "max": 197.9
+            },
+            {
+              "name": "cronoRenderReadinessEstimate",
+              "count": 2,
+              "total": 430,
+              "max": 429.9
+            },
+            {
+              "name": "cronoReadinessEstimateUncached",
+              "count": 1,
+              "total": 429.2,
+              "max": 429.2
+            },
+            {
+              "name": "cronoReadinessEstimate",
+              "count": 2,
+              "total": 429.2,
+              "max": 429.2
+            },
+            {
+              "name": "_prepareLocalDocument",
+              "count": 3,
+              "total": 181.9,
+              "max": 85.7
+            },
+            {
+              "name": "_prepareChangedSections",
+              "count": 3,
+              "total": 158.9,
+              "max": 82
+            },
+            {
+              "name": "studyBlocks",
+              "count": 10,
+              "total": 141.9,
+              "max": 64.2
+            },
+            {
+              "name": "finishStudyBlock",
+              "count": 1,
+              "total": 140.5,
+              "max": 140.5
+            },
+            {
+              "name": "saveData",
+              "count": 1,
+              "total": 118.7,
+              "max": 118.7
+            },
+            {
+              "name": "_rememberLocalDocument",
+              "count": 3,
+              "total": 52.8,
+              "max": 44.7
+            },
+            {
+              "name": "renderHabitCalendar",
+              "count": 1,
+              "total": 40.1,
+              "max": 40.1
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 24,
+              "total": 34.8,
+              "max": 13
+            },
+            {
+              "name": "_serializeLocalDocument",
+              "count": 3,
+              "total": 22,
+              "max": 8.6
+            },
+            {
+              "name": "renderSessionQuickStudy",
+              "count": 3,
+              "total": 18.8,
+              "max": 11.3
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 2,
+              "total": 10.8,
+              "max": 6.3
+            },
+            {
+              "name": "renderMesCalendario",
+              "count": 1,
+              "total": 6.7,
+              "max": 6.7
+            },
+            {
+              "name": "openModal",
+              "count": 1,
+              "total": 2,
+              "max": 2
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 1,
+              "total": 1.6,
+              "max": 1.6
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 2,
+              "total": 1.4,
+              "max": 0.8
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 2,
+              "total": 1.3,
+              "max": 0.7
+            },
+            {
+              "name": "refreshStudyViews",
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1
+            },
+            {
+              "name": "autoSaveTodayPlan",
+              "count": 1,
+              "total": 0.1,
+              "max": 0.1
+            },
+            {
+              "name": "renderRacha",
+              "count": 3,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "version": "v511",
+      "layout": "touch-finish",
+      "engine": "chromium",
+      "cpuRate": 1,
+      "errors": 0,
+      "phases": [
+        {
+          "name": "idle",
+          "handlerMs": 0,
+          "maxFrameGapMs": 133.3,
+          "longTasksMs": [
+            99
+          ],
+          "calls": [
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 2,
+              "total": 4.2,
+              "max": 4.2
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 3,
+              "total": 0.4,
+              "max": 0.2
+            }
+          ]
+        },
+        {
+          "name": "enter-timer",
+          "handlerMs": 415.9,
+          "maxFrameGapMs": 450,
+          "longTasksMs": [
+            417,
+            83
+          ],
+          "calls": [
+            {
+              "name": "cronoRenderReadinessEstimate",
+              "count": 4,
+              "total": 225,
+              "max": 224.8
+            },
+            {
+              "name": "cronoReadinessEstimate",
+              "count": 4,
+              "total": 224,
+              "max": 223.9
+            },
+            {
+              "name": "cronoReadinessEstimateUncached",
+              "count": 1,
+              "total": 223.6,
+              "max": 223.6
+            },
+            {
+              "name": "viewSwipeWarmView",
+              "count": 5,
+              "total": 108.4,
+              "max": 82
+            },
+            {
+              "name": "renderObras",
+              "count": 1,
+              "total": 82,
+              "max": 82
+            },
+            {
+              "name": "renderSessionResumen",
+              "count": 2,
+              "total": 42.7,
+              "max": 21.6
+            },
+            {
+              "name": "refreshConcentradoUI",
+              "count": 1,
+              "total": 37.7,
+              "max": 37.7
+            },
+            {
+              "name": "cronoRender",
+              "count": 1,
+              "total": 21.5,
+              "max": 21.5
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 2,
+              "total": 10.6,
+              "max": 8.3
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 11,
+              "total": 10.1,
+              "max": 6.3
+            },
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 1,
+              "total": 4.1,
+              "max": 4.1
+            },
+            {
+              "name": "renderSessionQuickStudy",
+              "count": 1,
+              "total": 3.9,
+              "max": 3.9
+            },
+            {
+              "name": "cronoFillSelectInto",
+              "count": 1,
+              "total": 1.9,
+              "max": 1.9
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 3,
+              "total": 1.9,
+              "max": 1.3
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 1,
+              "total": 1.2,
+              "max": 1.2
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 5,
+              "total": 1,
+              "max": 0.8
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 1,
+              "total": 0.4,
+              "max": 0.4
+            },
+            {
+              "name": "renderRacha",
+              "count": 1,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        },
+        {
+          "name": "finish-timed-session",
+          "handlerMs": 444.5,
+          "maxFrameGapMs": 933.4,
+          "longTasksMs": [
+            446,
+            421,
+            92,
+            95,
+            333,
+            446,
+            650,
+            389
+          ],
+          "calls": [
+            {
+              "name": "refreshConcentradoUI",
+              "count": 3,
+              "total": 876,
+              "max": 507.6
+            },
+            {
+              "name": "renderSessionResumen",
+              "count": 3,
+              "total": 773.1,
+              "max": 490.7
+            },
+            {
+              "name": "studyState",
+              "count": 5,
+              "total": 610.8,
+              "max": 162.3
+            },
+            {
+              "name": "saveLocalNow",
+              "count": 2,
+              "total": 592.3,
+              "max": 438.3
+            },
+            {
+              "name": "_autoSaveTodayPlanNow",
+              "count": 1,
+              "total": 446,
+              "max": 446
+            },
+            {
+              "name": "cronoFinish",
+              "count": 1,
+              "total": 444.5,
+              "max": 444.5
+            },
+            {
+              "name": "saveData",
+              "count": 1,
+              "total": 443.3,
+              "max": 443.3
+            },
+            {
+              "name": "_prepareLocalDocument",
+              "count": 2,
+              "total": 403.8,
+              "max": 307.3
+            },
+            {
+              "name": "_prepareChangedSections",
+              "count": 2,
+              "total": 394.1,
+              "max": 301.2
+            },
+            {
+              "name": "cachedPianoStudyState",
+              "count": 16,
+              "total": 207.9,
+              "max": 123.8
+            },
+            {
+              "name": "cronoUpdatePianoReward",
+              "count": 4,
+              "total": 165.4,
+              "max": 94.3
+            },
+            {
+              "name": "finishStudyBlock",
+              "count": 1,
+              "total": 155.2,
+              "max": 155.2
+            },
+            {
+              "name": "studyBlocks",
+              "count": 8,
+              "total": 122.6,
+              "max": 44.4
+            },
+            {
+              "name": "renderHabitCalendar",
+              "count": 2,
+              "total": 75,
+              "max": 40.4
+            },
+            {
+              "name": "cronoRender",
+              "count": 1,
+              "total": 66.2,
+              "max": 66.2
+            },
+            {
+              "name": "cronoRenderReadinessEstimate",
+              "count": 2,
+              "total": 39.1,
+              "max": 38.9
+            },
+            {
+              "name": "cronoReadinessEstimate",
+              "count": 2,
+              "total": 38.7,
+              "max": 38.7
+            },
+            {
+              "name": "cronoReadinessEstimateUncached",
+              "count": 1,
+              "total": 38.5,
+              "max": 38.5
+            },
+            {
+              "name": "getMinutosConcentradoHoy",
+              "count": 27,
+              "total": 35.2,
+              "max": 7.1
+            },
+            {
+              "name": "_serializeLocalDocument",
+              "count": 2,
+              "total": 20.4,
+              "max": 12
+            },
+            {
+              "name": "renderSessionQuickStudy",
+              "count": 2,
+              "total": 16.5,
+              "max": 12.4
+            },
+            {
+              "name": "renderMesCalendario",
+              "count": 2,
+              "total": 13.3,
+              "max": 8
+            },
+            {
+              "name": "_rememberLocalDocument",
+              "count": 2,
+              "total": 12.7,
+              "max": 8.4
+            },
+            {
+              "name": "renderCronoTasks",
+              "count": 2,
+              "total": 4.3,
+              "max": 2.4
+            },
+            {
+              "name": "renderCronoCalendar",
+              "count": 2,
+              "total": 3.9,
+              "max": 2.1
+            },
+            {
+              "name": "renderHabitChallenge",
+              "count": 3,
+              "total": 2.5,
+              "max": 1.1
+            },
+            {
+              "name": "openModal",
+              "count": 1,
+              "total": 2.3,
+              "max": 2.3
+            },
+            {
+              "name": "renderMemoryPanels",
+              "count": 3,
+              "total": 1.6,
+              "max": 0.6
+            },
+            {
+              "name": "refreshStudyViews",
+              "count": 2,
+              "total": 0.1,
+              "max": 0.1
+            },
+            {
+              "name": "autoSaveTodayPlan",
+              "count": 1,
+              "total": 0.1,
+              "max": 0.1
+            },
+            {
+              "name": "renderRacha",
+              "count": 2,
+              "total": 0,
+              "max": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

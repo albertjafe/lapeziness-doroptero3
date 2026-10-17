@@ -7,6 +7,8 @@
 
 `CLAUDE.md` y las auditorías grandes son documentación histórica/específica, no contexto inicial.
 
+La revisión de fluidez v511, con cambios, pruebas, mediciones reproducibles y límites, está en [`docs/PERFORMANCE_V511_2026-10-17.md`](docs/PERFORMANCE_V511_2026-10-17.md).
+
 ## Vista Piano Rooms
 
 La app incluye una vista **Salas** de solo lectura. Para mostrar disponibilidad real debe estar ejecutándose en el ordenador el puente local del monitor Piano Rooms:

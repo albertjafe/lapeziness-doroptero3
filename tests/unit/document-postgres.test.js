@@ -23,6 +23,11 @@ beforeAll(async()=>{
   await pg.exec(sql('20260922175710_optimize_sync_object_assembly.sql'));
   await pg.exec(sql('20261002180000_index_study_reference_checks.sql'));
   await pg.exec(sql('20261008151000_document_merge_record_identity.sql'));
+  await pg.exec(sql('20261008151000_document_merge_record_identity.sql').replaceAll('public.document_merge(', 'public.document_merge_v510('));
+  await pg.exec(sql('20260918205809_optimize_document_tombstone_pruning.sql').replaceAll('public.document_prune(', 'public.document_prune_v510('));
+  const previousEnforce=(await pg.query("select pg_get_functiondef('public.enforce_document_tombstones_after_guards()'::regprocedure) as definition")).rows[0].definition;
+  await pg.exec(previousEnforce.replaceAll('enforce_document_tombstones_after_guards','enforce_document_tombstones_v510'));
+  await pg.exec(sql('20261017184302_optimize_partial_document_sync.sql'));
   // The helper's original migration predates this checkout; its deployed
   // definition is captured as a fixture, without data or production mutations.
   await pg.exec(`create trigger trg_00_preserve_crono_tasks before update of data on user_data for each row execute function preserve_crono_tasks_on_user_data_update();
@@ -34,6 +39,37 @@ async function write(id,a,b){
   return (await pg.query('update user_data set data=$2 where id=$1 returning data',[id,JSON.stringify(b)])).rows[0].data;
 }
 describe('real PostgreSQL migration with existing protection triggers',()=>{
+  it('keeps legacy root tombstone behavior with missing, null, empty and populated collections',async()=>{
+    await pg.exec(`create table tombstone_before(id int,data jsonb);create table tombstone_after(id int,data jsonb);
+      create trigger enforce before update on tombstone_before for each row execute function enforce_document_tombstones_v510();
+      create trigger enforce before update on tombstone_after for each row execute function enforce_document_tombstones_after_guards();`);
+    const values=[{}, {eventos:null,unknown:{keep:1}}, {eventos:[],competitionPlans:[],cronoTasks:[]},
+      {cronoTasks:[{id:'keep'},{id:'gone'}],cronoTaskTombstones:['gone']},
+      {eventos:[{id:'event'}],planningEventTombstones:[{eventId:'event'}],competitionPlans:[{id:'plan'}],competitionPlanTombstones:[{planId:'plan'}]},
+      {cronoTasks:[{id:'keep'}],cronoTaskTombstones:[],_deletedChildren:{items:{gone:'stamp'}},items:[{id:'gone'}]}];
+    for(let i=0;i<values.length;i++){
+      for(const table of ['tombstone_before','tombstone_after'])await pg.query(`insert into ${table}(id,data) values($1,$2)`,[i,JSON.stringify(values[i])]);
+      const a=(await pg.query('update tombstone_before set data=$2 where id=$1 returning data',[i,JSON.stringify(values[i])])).rows[0].data;
+      const b=(await pg.query('update tombstone_after set data=$2 where id=$1 returning data',[i,JSON.stringify(values[i])])).rows[0].data;
+      expect(b).toEqual(a);
+    }
+  });
+  it('keeps v510 JSON merge and pruning results for partial and nested documents',async()=>{
+    const values=[null,{},[],0,'text',{nullable:null,empty:[],nested:{_savedAt:'keep',unknown:true}},
+      {id:'old',updatedAt:'2026-01-01',x:1},
+      {id:'new',updatedAt:'2026-02-01',x:2},
+      {items:[{id:'a'},{id:'b',unknown:{nested:true}}],_deletedChildren:{items:{a:'2026-01-01'}}},
+      {cronoTasks:[{id:'t',text:'one'}],_fieldClock:{cronoTasks:'2026-01-02'}}];
+    for(const a of values)for(const b of values){
+      const row=(await pg.query('select document_merge($1::jsonb,$2::jsonb) as current,document_merge_v510($1::jsonb,$2::jsonb) as previous',
+        [JSON.stringify(a),JSON.stringify(b)])).rows[0];
+      expect(row.current).toEqual(row.previous);
+    }
+    for(const value of values){
+      const row=(await pg.query('select document_prune($1::jsonb) as current,document_prune_v510($1::jsonb) as previous',[JSON.stringify(value)])).rows[0];
+      expect(row.current).toEqual(row.previous);
+    }
+  });
   it('a new record with another id replaces the old one instead of merging its fields',async()=>{
     const oldChallenge={id:'habit_old',title:'Viejo',completedAt:'2026-08-22',rewardClaimedAt:'2026-10-06T09:44:08Z',
       logs:{'2026-08-02':{status:'failed'}},updatedAt:'2026-08-22T10:00:00Z'};

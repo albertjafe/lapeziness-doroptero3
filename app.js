@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-10-13-eliminar-estudio-v505';
+const APP_VERSION = '2026-10-17-fluidez-v511';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -121,7 +121,11 @@ function _prepareChangedSections(stamp) {
   const changed = new Set();
   for (const k of new Set([...Object.keys(db), ...Object.keys(last)])) {
     if (_SAVE_INTERNAL.has(k)) continue;
-    const str = db[k] === undefined ? undefined : JSON.stringify(db[k]);
+    let str = db[k] === undefined ? undefined : JSON.stringify(db[k]);
+    // JSONB and legacy alias reconciliation may reorder object keys without
+    // editing any value. Compare inside a wrapper so nested transport/clock
+    // fields remain significant (sameContent only ignores root transport).
+    if (str !== _saveCache.keys.get(k) && DocumentSyncCore.sameContent({ value: db[k] }, { value: last[k] })) str = _saveCache.keys.get(k);
     if (str !== undefined) strings.set(k, str);
     if (str !== _saveCache.keys.get(k)) changed.add(k);
   }
@@ -227,11 +231,11 @@ function saveLocalNow() {
 // Cálculos derivados memorizados (14-10-2026). La preparación de cada obra y el
 // estado de premios recorren todo el historial (varios segundos con ~4 MB) y se
 // pedían varias veces por pintado con los mismos datos. Se recuerdan hasta que
-// cambian los datos (cada guardado local o sincronización cambia _savedAt o la
-// revisión) o cambia el minuto (dependen de la fecha).
+// cambia una sección de estudio o el minuto (dependen de la fecha). Los premios
+// incorporan además la firma de urgentísimas completadas.
 const _derivedMemo = new Map();
 // Versión de los datos de estudio: sube cuando cambia cualquier sección salvo
-// las tareas (no afectan a preparación ni premios). Se actualiza en cada
+// las tareas (sus premios llevan una firma aparte). Se actualiza en cada
 // guardado y en cada sincronización (_rememberLocalDocument).
 const _MEMO_IGNORED_SECTIONS = new Set(['cronoTasks', 'cronoTaskTombstones', '_fieldClock', '_deletedChildren', '_savedAt', '_localRevision']);
 let _studyDataVersion = 0;
@@ -248,7 +252,17 @@ function memoByData(key, compute) {
   return value;
 }
 function cachedPianoStudyState() {
-  return memoByData('piano-study-state', () => PianoRewards.studyState(db));
+  return memoByData('piano-study-state:' + pianoRewardTaskStamp(), () => PianoRewards.studyState(db));
+}
+function pianoRewardTaskStamp() {
+  // Task completions contribute process rewards. Text-only/new normal tasks
+  // leave the study projection intact; corrections of a completed urgent task
+  // must invalidate it even when the number of completed tasks is unchanged.
+  return JSON.stringify((db.cronoTasks || []).filter(t => t && t.done && Math.round(Number(t.priority) || 0) === 3)
+    .map(t => [t.id, t.createdAt, t.doneAt, t.completedAt, t.priorityChangedAt, t.deleted, t.deletedAt]));
+}
+function cachedPianoWalletSnapshot() {
+  return memoByData('piano-wallet:' + pianoRewardTaskStamp(), () => PianoRewards.walletSnapshot(db, cachedPianoStudyState()));
 }
 
 // Tareas (08-10-2026): guardar un documento de ~4 MB lleva ~0,5 s; las acciones
@@ -257,7 +271,7 @@ function cachedPianoStudyState() {
 // sí antes de sincronizar con la nube y al ocultar o cerrar la app.
 let _saveSoonTimer = null;
 function saveDataSoon() {
-  if (_saveSoonTimer) return;
+  if (_saveSoonTimer) clearTimeout(_saveSoonTimer);
   // 17-10-2026: 900 ms sin tocar (antes 300): varias tareas seguidas no pagan
   // un guardado de 4,5 MB entre toque y toque.
   _saveSoonTimer = setTimeout(flushSaveDataSoon, 900);
@@ -284,10 +298,11 @@ function saveData() {
   }
   // 17-10-2026: si solo cambiaron tareas, nada de lo que se repinta aquí
   // (estudio, semana, premios, historial) cambia; las tareas ya se pintaron.
-  if (_studyDataVersion !== studyVersionBefore || !_saveCache) refreshStudyViews();
+  const studyChanged = _studyDataVersion !== studyVersionBefore || !_saveCache;
+  if (studyChanged) refreshStudyViews();
   enqueueCloudSync();
   // Las pantallas vecinas del gesto lateral se repintan en un rato libre.
-  if (typeof viewSwipeScheduleWarm === 'function') viewSwipeScheduleWarm(1200);
+  if (studyChanged && typeof viewSwipeScheduleWarm === 'function') viewSwipeScheduleWarm(1200);
   return true;
 }
 
@@ -1507,8 +1522,9 @@ let _viewSwipeMultiTouch = false;
 // ── Vecinas listas de antemano ─────────────────────────────────────────────
 // El primer movimiento del dedo no debe pintar nada: si la vista vecina ya se
 // pintó con los mismos datos, se reutiliza tal cual (y al terminar el gesto
-// showView tampoco la repinta). La firma cambia con cada guardado o sync
-// (_localRevision), con el día y, en Hoy, con el minuto (lleva cifras en vivo).
+// showView tampoco la repinta). La firma cambia con datos de estudio, el día
+// y, en Hoy, el minuto y tareas que afectan a premios; una tarea normal no
+// obliga a reconstruir las pantallas vecinas en segundo plano.
 const _viewSwipeWarm = {};
 const _viewSwipeDbIds = new WeakMap();
 let _viewSwipeDbSeq = 0;
@@ -1527,10 +1543,10 @@ function viewSwipeContentSig(name) {
   const lastPlant = db && Array.isArray(db.sessionPlants) ? db.sessionPlants[db.sessionPlants.length - 1] : null;
   // Además de la revisión guardada, huellas baratas del contenido: un cambio aún
   // sin guardar (p. ej. un bloque recién añadido) también obliga a repintar.
-  const parts = [id, Number(db && db._localRevision) || 0, db && db._savedAt || '',
+  const parts = [id, _studyDataVersion,
     len('sessionPlants'), len('forestPlants'), len('sesiones'), len('obras'), len('eventos'), lastPlant ? lastPlant.mins + '@' + lastPlant.endedAt : '',
     now.getFullYear(), now.getMonth(), now.getDate()];
-  if (name === 'session') parts.push(now.getHours(), now.getMinutes(), typeof crono === 'object' && crono ? crono.state : '');
+  if (name === 'session') parts.push(now.getHours(), now.getMinutes(), typeof crono === 'object' && crono ? crono.state : '', pianoRewardTaskStamp());
   return parts.join('|');
 }
 
@@ -1560,7 +1576,8 @@ function viewSwipeScheduleWarm(delay) {
   clearTimeout(_viewSwipeWarmTimer);
   _viewSwipeWarmTimer = setTimeout(function warmNext() {
     _viewSwipeWarmTimer = null;
-    if (document.hidden || _viewSwipe || document.body.classList.contains('view-swipe-settling')) return viewSwipeScheduleWarm(900);
+    if (document.hidden || _viewSwipe || document.body.classList.contains('view-swipe-settling') ||
+        document.querySelector('.modal-overlay.visible') || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '')) return viewSwipeScheduleWarm(900);
     const index = SWIPE_VIEW_ORDER.indexOf(document.body.getAttribute('data-view') || 'session');
     if (index < 0) return;
     const pending = [SWIPE_VIEW_ORDER[index - 1], SWIPE_VIEW_ORDER[index + 1]]
@@ -19623,8 +19640,9 @@ function showSessionQuickStudyFeedback(message) {
 }
 
 function refreshAfterManualStudy() {
-  if (typeof renderRacha === 'function') renderRacha();
-  if (typeof refreshConcentradoUI === 'function') refreshConcentradoUI();
+  // The writer already queued the shared refresh. Join that frame instead of
+  // calculating today's summary/rewards twice before the button can repaint.
+  refreshStudyViews();
 }
 
 function saveSessionQuickStudy(event) {
@@ -19812,6 +19830,8 @@ function studyRegisterSaveCompas(resolved) {
 
 function persistManualStudyHistory(resolved, minutos, fecha, options) {
   const opts = options || {};
+  const activityType = window.ManualStudyActivity?.normalize(opts.activityType) || 'study';
+  const activityFactor = window.ManualStudyActivity?.factor(activityType) || 1;
   const date = new Date(fecha + 'T12:00:00');
   if (!resolved || !Number.isFinite(date.getTime()) || !minutos || minutos < 1) return null;
   const fechaStr = date.toDateString();
@@ -19830,6 +19850,8 @@ function persistManualStudyHistory(resolved, minutos, fecha, options) {
     note: opts.note || '',
     objetivo: '',
     manual: true,
+    activityType,
+    activityFactor,
     minutosEstudiados: minutos,
     minutosReales: minutos,
   };
@@ -19854,8 +19876,13 @@ function persistManualStudyHistory(resolved, minutos, fecha, options) {
     started.setHours(12, Math.min(59, Math.max(0, sesion.items.length - 1)), 0, 0);
     ended = new Date(started.getTime() + minutos * 60000);
   }
-  const plant = recordSessionPlant(resolved.obraId, resolved.movId, started.toISOString(), ended.toISOString(), minutos, { source: 'manual', id: item.id });
-  if (plant) item.studyPlantId = plant.id;
+  const plant = recordSessionPlant(resolved.obraId, resolved.movId, started.toISOString(), ended.toISOString(), minutos, { source: 'manual', id: item.id, activityType });
+  if (plant) {
+    plant.activityType = activityType;
+    plant.activityFactor = activityFactor;
+    plant.updatedAt = new Date().toISOString();
+    item.studyPlantId = plant.id;
+  }
   if (db.sesiones.length > 365) db.sesiones = db.sesiones.slice(0, 365);
   saveData();
   return { sesion, item, started, ended };
@@ -21014,7 +21041,9 @@ function habitKeyAt(startKey, offset) {
 }
 
 function habitStoredChallenges() {
-  const stored = Array.isArray(db.habitChallenges) ? db.habitChallenges : [];
+  // Reconcile a read view. Copying clocks/legacy fields into db while rendering
+  // otherwise manufactures another edit immediately after each durable save.
+  const stored = Array.isArray(db.habitChallenges) ? db.habitChallenges.slice() : [];
   const legacy = db.habitChallenge;
   if (legacy && legacy.id) {
     const index = stored.findIndex(habit => habit && habit.id === legacy.id);
@@ -21022,23 +21051,22 @@ function habitStoredChallenges() {
     if (index < 0) stored.unshift(legacy);
     else if (stored[index] !== legacy) {
       const merged = _mergeHabitChallenge(stored[index], legacy);
-      // Keep the legacy singleton and the list on the same live object. A
-      // second read while editing must not swap out the object being changed.
-      const current = window.DocumentSyncCore ? DocumentSyncCore.assign(stored[index], merged) : Object.assign(stored[index], merged);
       stored.splice(index, 1);
-      stored.unshift(current);
-      db.habitChallenge = current;
+      stored.unshift(merged);
     }
     if (legacyWasNotPrimary && _habitCalendarChallengeId && _habitCalendarChallengeId !== legacy.id) {
       _habitCalendarChallengeId = legacy.id;
     }
   }
-  db.habitChallenges = stored;
   return stored;
 }
 
 function habitNormalize(habit) {
   if (!habit || !habit.id || !habit.startDate || habit.deleted) return null;
+  // A read projection, never an edit of the durable document. Deleting stale
+  // fields in place made conservative merge restore them on every save, so a
+  // task-only edit repeatedly invalidated all study/reward calculations.
+  habit = { ...habit, logs: { ...(habit.logs && typeof habit.logs === 'object' ? habit.logs : {}) } };
   if (habit.mode !== 'do' && habit.mode !== 'avoid') habit.mode = 'do';
   habit.durationDays = Math.max(1, Math.min(365, Math.round(Number(habit.durationDays) || 21)));
   if (!habit.logs || typeof habit.logs !== 'object') habit.logs = {};
@@ -21102,7 +21130,8 @@ function habitPersistChallenges(challenges) {
     });
     all = db.habitChallenges.map(habitNormalize).filter(Boolean);
   }
-  db.habitChallenge = principal || reopened || all[0] || db.habitChallenges.find(habit => habit && habit.deleted) || null;
+  const selected = principal || reopened || all[0] || db.habitChallenges.find(habit => habit && habit.deleted) || null;
+  db.habitChallenge = selected ? db.habitChallenges.find(habit => habit && habit.id === selected.id) || selected : null;
 }
 
 function habitLogStatus(log) {
@@ -26266,19 +26295,22 @@ function cronoReadinessEstimateUncached(selectionValue) {
   const obra = findObra(resolved.obraId);
   if (!obra || obra.tipo === 'actividad') return null;
   try {
-    const workEstimate = ReadinessCore.estimateReadiness(db, resolved.obraId, { now: new Date() });
-    if (!workEstimate) return null;
-    const movementId = resolved.movId ?? resolved.movementId ?? resolved.movimientoId ?? null;
-    const movementEstimate = movementId != null && typeof ReadinessCore.estimateMovementReadiness === 'function'
-      ? ReadinessCore.estimateMovementReadiness(db, resolved.obraId, movementId, { now: new Date() })
-      : null;
-    return {
-      ...workEstimate,
-      workEstimate,
-      movementEstimate,
-      readinessScope: movementEstimate ? 'movement' : 'work',
-      selectedMovementId: movementId,
+    const compute = () => {
+      const workEstimate = ReadinessCore.estimateReadiness(db, resolved.obraId, { now: new Date() });
+      if (!workEstimate) return null;
+      const movementId = resolved.movId ?? resolved.movementId ?? resolved.movimientoId ?? null;
+      const movementEstimate = movementId != null && typeof ReadinessCore.estimateMovementReadiness === 'function'
+        ? ReadinessCore.estimateMovementReadiness(db, resolved.obraId, movementId, { now: new Date() })
+        : null;
+      return {
+        ...workEstimate,
+        workEstimate,
+        movementEstimate,
+        readinessScope: movementEstimate ? 'movement' : 'work',
+        selectedMovementId: movementId,
+      };
     };
+    return typeof ReadinessCore.withContext === 'function' ? ReadinessCore.withContext(db, compute) : compute();
   } catch (e) {
     return null;
   }
@@ -28313,6 +28345,15 @@ function cronoFinish(expectedRunId) {
   const mov = movId && obra.movimientos ? obra.movimientos.find(m => m.id === movId) : null;
   const startedAtIso = new Date(crono.startTs).toISOString();
   const endedAtIso = cronoEffectiveEndedAtIso(ms);
+  // Commit policy evidence in the same durable snapshot as the canonical
+  // block. Recording it afterwards required another full-document save.
+  if (crono.rewardGoalId && typeof PianoRewards !== 'undefined') {
+    PianoRewards.record(PianoRewards.ensure(db), {
+      id: runId, goalId: crono.rewardGoalId,
+      startedAt: startedAtIso, endedAt: endedAtIso, seconds: ms / 1000,
+      policyVersion: crono.rewardPolicyVersion, activityType: crono.activityType
+    });
+  }
   const blockResult = finishStudyBlock({
     obraId,
     movId,
@@ -28327,19 +28368,6 @@ function cronoFinish(expectedRunId) {
     cronoRender();
     refreshConcentradoUI();
     return;
-  }
-
-  if (crono.rewardGoalId && typeof PianoRewards !== 'undefined') {
-    const recorded = PianoRewards.record(PianoRewards.ensure(db), {
-      id: runId,
-      goalId: crono.rewardGoalId,
-      startedAt: startedAtIso,
-      endedAt: endedAtIso,
-      seconds: ms / 1000,
-      policyVersion: crono.rewardPolicyVersion,
-      activityType: crono.activityType
-    });
-    if (recorded) saveData();
   }
 
   // ── FUSIÓN: buscar tarjeta existente para la misma obra/movimiento ───────

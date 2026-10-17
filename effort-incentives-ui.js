@@ -29,10 +29,8 @@
   function currentCelebratedRows(){
     const data=database();if(!data)return [];
     // 14-10-2026: se mira cada 1,8 s; el saldo se recalcula solo si cambian los datos.
-    const snapshot=()=>P.walletSnapshot(data);
-    // Las tareas no cuentan en la huella de datos: las urgentísimas hechas entran en la clave.
-    const urgentDone=(data.cronoTasks||[]).reduce((n,t)=>n+(t&&t.done&&Math.round(Number(t.priority)||0)===3?1:0),0);
-    try{return (typeof root.memoByData==='function'&&typeof db!=='undefined'&&data===db?root.memoByData('wallet-snapshot:'+urgentDone,snapshot):snapshot()).bonusRows.filter(celebrated);}catch(error){return [];}
+    try{return (typeof root.cachedPianoWalletSnapshot==='function'&&typeof db!=='undefined'&&data===db
+      ?root.cachedPianoWalletSnapshot():P.walletSnapshot(data)).bonusRows.filter(celebrated);}catch(error){return [];}
   }
   function rowEuro(row,goal){return goal?P.rowEffortPoints(row)*P.goalScale(goal):0;}
   function showSecretReward(row){

@@ -106,3 +106,105 @@ test('a task-only save does not repaint study views and the text is built once',
   expect(r.cache).toBe(true);
   expect(r.saved).toBe(3);
 });
+
+test('reading legacy habits stays pure and task edits do not invalidate study caches', async ({ page }) => {
+  await prepare(page);
+  const result = await page.evaluate(async () => {
+    const today = habitDayKey();
+    db.habitChallenge = {id:'legacy-habit',mode:'avoid',durationDays:21,startDate:today,
+      logs:{'2020-01-01':{status:'failed'}},completedAt:'2020-01-02',rewardClaimedAt:'2020-01-03'};
+    db.habitChallenges = [db.habitChallenge];
+    saveData();
+    await new Promise(r => requestAnimationFrame(() => setTimeout(r,50)));
+    const before = JSON.stringify(db.habitChallenge), version = _studyDataVersion;
+    const views = [habitAllChallenges(), habitActiveChallenges(), habitCompletedChallenges()];
+    renderHabitChallenge();renderHabitCalendar();
+    const afterRead = JSON.stringify(db.habitChallenge);
+    let refreshes = 0;
+    const original = refreshConcentradoUI;
+    refreshConcentradoUI = () => {refreshes++;};
+    try {
+      db.cronoTasks[0].text = 'Solo cambia una tarea';
+      db.cronoTasks[0].updatedAt = new Date().toISOString();
+      saveData();
+      await new Promise(r => requestAnimationFrame(() => setTimeout(r,50)));
+      const saved=JSON.parse(localStorage.getItem('alberto_piano_v2'));
+      return {pure:before===afterRead,versionStable:version===_studyDataVersion,refreshes,
+        active:views[1].length,completed:views[2].length,projectedLogs:Object.keys(views[0][0].logs).length,
+        keepsLegacy:!!saved.habitChallenge.logs['2020-01-01']};
+    } finally {refreshConcentradoUI=original;}
+  });
+  expect(result).toEqual({pure:true,versionStable:true,refreshes:0,active:1,completed:0,projectedLogs:0,keepsLegacy:true});
+});
+
+test('manual activity mirrors are complete in one durable save', async ({ page }) => {
+  await prepare(page);
+  const result=await page.evaluate(()=>{
+    const set=Storage.prototype.setItem;let writes=0;
+    Storage.prototype.setItem=function(key,value){if(key===DB_KEY)writes++;return set.call(this,key,value);};
+    try {
+      const result=persistManualStudyHistory({obraId:'o1',movId:null,name:'Obra 1'},40,habitDayKey(),{activityType:'chamber',useCurrentTime:true});
+      const stored=JSON.parse(localStorage.getItem(DB_KEY));
+      const plant=stored.sessionPlants.find(x=>x.id===result.item.studyPlantId);
+      const item=stored.sesiones.flatMap(x=>x.items||[]).find(x=>x.id===result.item.id);
+      return {writes,plant:{type:plant.activityType,factor:plant.activityFactor,mins:plant.mins},
+        item:{type:item.activityType,factor:item.activityFactor,mins:item.minutosReales}};
+    } finally {Storage.prototype.setItem=set;}
+  });
+  expect(result).toEqual({writes:1,plant:{type:'chamber',factor:.5,mins:40},item:{type:'chamber',factor:.5,mins:40}});
+});
+
+test('task bursts wait for a real quiet interval and flush durably on demand', async ({ page }) => {
+  await prepare(page);
+  const result=await page.evaluate(async()=>{
+    let saves=0;const original=saveData;
+    saveData=function(){saves++;return original.apply(this,arguments);};
+    try {
+      saveDataSoon();await new Promise(r=>setTimeout(r,550));
+      saveDataSoon();await new Promise(r=>setTimeout(r,550));
+      const duringBurst=saves;
+      flushSaveDataSoon();return {duringBurst,afterFlush:saves,pending:!!_saveSoonTimer};
+    } finally {saveData=original;}
+  });
+  expect(result).toEqual({duringBurst:0,afterFlush:1,pending:false});
+});
+
+test('correcting an urgent task invalidates rewards even with the same completed count', async ({ page }) => {
+  await prepare(page);
+  const result=await page.evaluate(()=>{
+    const now=Date.now();
+    db.cronoTasks.push({id:'completed-urgent',text:'Synthetic urgent task',priority:3,done:true,
+      createdAt:new Date(now-2*3600e3).toISOString(),doneAt:new Date(now-3600e3).toISOString()});
+    saveData();
+    const first=cachedPianoWalletSnapshot(),reused=first===cachedPianoWalletSnapshot();
+    db.cronoTasks.find(t=>t.id==='completed-urgent').doneAt=new Date(now-5*3600e3).toISOString();
+    saveData();const corrected=cachedPianoWalletSnapshot();
+    const rows=snap=>snap.bonusRows.filter(row=>row.process==='urgent-task').length;
+    return {reused,invalidated:first!==corrected,before:rows(first),after:rows(corrected)};
+  });
+  expect(result).toEqual({reused:true,invalidated:true,before:1,after:0});
+});
+
+test('the first durable timer snapshot includes the canonical block and reward policy', async ({ page }) => {
+  await prepare(page);
+  const result=await page.evaluate(()=>{
+    const runId='one-atomic-session';
+    Object.assign(crono,{state:'running',mode:'stopwatch',runId,startTs:Date.now()-25*60000,
+      pausedMs:0,pauseStartTs:null,obraId:'o1',movId:null,displayName:'Synthetic session',isRest:false,
+      activityType:'chamber',targetDurationMs:null,rewardGoalId:'synthetic-goal',rewardPolicyVersion:6});
+    const set=Storage.prototype.setItem;let first;
+    Storage.prototype.setItem=function(key,value){
+      if(key===DB_KEY&&!first)first=JSON.parse(value);
+      return set.call(this,key,value);
+    };
+    try {
+      cronoFinish(runId);
+      const block=first.sessionPlants.find(p=>p.runId===runId);
+      const policy=first.pianoRewards.sessions.find(p=>p.id===runId);
+      return {block:{mins:block.mins,type:block.activityType,factor:DailyStudyMinutes.activityFactor(block)},
+        policy:{goal:policy.goalId,type:policy.activityType},state:crono.state,
+        blocks:first.sessionPlants.filter(p=>p.runId===runId).length};
+    } finally {Storage.prototype.setItem=set;}
+  });
+  expect(result).toEqual({block:{mins:25,type:'chamber',factor:.5},policy:{goal:'synthetic-goal',type:'chamber'},state:'idle',blocks:1});
+});

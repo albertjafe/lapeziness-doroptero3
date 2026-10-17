@@ -1,12 +1,12 @@
 /* Same musical algorithms as the UI, isolated from input/rendering. No network
  * data reads or persistence: each request contains one immutable snapshot. */
 self.window = self;
-importScripts('./readiness-core.js?v=342','./solidity-model.js?v=342',
+importScripts('./readiness-core.js?v=511','./solidity-model.js?v=342',
   './readiness-pill-model.js?v=342','./readiness-recovery-context.js?v=342',
   './work-difficulty-model.js?v=342','./work-difficulty-stored-priority.js?v=342',
   './professor-core.js?v=438','./professor-report-normalizer.js?v=342',
   './professor-competition-deadline-bridge.js?v=377','./professor-event-gate.js?v=377',
-  './professor-duration-policy.js?v=349','./professor-summary.js?v=500','./professor-handoff-resilience.js?v=500');
+  './professor-duration-policy.js?v=349','./professor-summary.js?v=500','./professor-handoff-resilience.js?v=511');
 WorkDifficultyModel.installReadiness(ReadinessCore);
 self.onmessage = ({data:request}) => {
   try {

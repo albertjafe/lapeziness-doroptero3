@@ -208,20 +208,45 @@
     };
   }
 
+  // Same first match as the historical recorded.find(identity OR timestamp),
+  // including ambiguous timestamps and nested passage ids. Build once per
+  // projection: legacy Forest blocks must not parse every recorded date again.
+  function evidenceLookup(records){
+    const byRun = new Map(), byPlant = new Map(), byPassage = new Map(), byTime = new Map();
+    const first = (map, key, entry) => { if (!map.has(key)) map.set(key, entry); };
+    (records || []).forEach((record, index) => {
+      if (!record || !record.id || record.deleted || record.deletedAt) return;
+      const entry = { record, index };
+      first(byRun, record.id, entry);
+      first(byPlant, 'run_' + record.id, entry);
+      first(byPassage, String(record.id), entry);
+      const time = Date.parse(record.startedAt);
+      if (Number.isFinite(time)) first(byTime, time, entry);
+    });
+    return evidence => {
+      let best = byRun.get(evidence?.runId);
+      const take = candidate => { if (candidate && (!best || candidate.index < best.index)) best = candidate; };
+      take(byPlant.get(evidence?.id));
+      const run = String(evidence?.runId || '');
+      for (let at = run.indexOf('::passage::'); at >= 0; at = run.indexOf('::passage::', at + 1)) take(byPassage.get(run.slice(0, at)));
+      if (evidence?.startedAt && best?.index !== 0) take(byTime.get(Date.parse(evidence.startedAt)));
+      return best?.record;
+    };
+  }
+
   function minutesByDay(start, end, database = appDb(), detailed = false){
     if (!database) return detailed ? [] : {};
     const startMs = start instanceof Date ? start.getTime() : new Date(start).getTime();
     const endMs = end instanceof Date ? end.getTime() : new Date(end).getTime();
     const days = Object.create(null);
     const seenPlants = new Set();
-    const recorded = (database.pianoRewards?.sessions || []).filter(item=>item && item.id && !item.deleted && !item.deletedAt);
+    const recorded = evidenceLookup(database.pianoRewards?.sessions);
     const activityEvidence = evidence => {
       // Older timer plants lack activity fields. The finished run retains the
       // original type; inherit it only with a verifiable identity/timestamp.
       // An explicit type on the canonical block always wins after an edit.
       if(evidence?.activityType != null || evidence?.activityFactor != null)return evidence;
-      return recorded.find(item=>evidence?.runId===item.id || String(evidence?.runId || '').startsWith(item.id+'::passage::') || evidence?.id==='run_'+item.id ||
-        (evidence?.startedAt && Date.parse(evidence.startedAt)===Date.parse(item.startedAt))) || evidence;
+      return recorded(evidence) || evidence;
     };
 
     const addPlant = plant => {
@@ -340,7 +365,7 @@
   }
 
   const studyBlocks = (start, end, database = appDb()) => minutesByDay(start, end, database, true);
-  const api = { version: FIX_VERSION, ACTIVITY_FACTORS, normalizeActivityType, activityFactor, minutesByDay, studyBlocks, todayMinutes, duplicatePlantKey, sessionItemKey, sessionPlanBackedByTimed, isPassageAllocationParent };
+  const api = { version: FIX_VERSION, ACTIVITY_FACTORS, normalizeActivityType, activityFactor, evidenceLookup, minutesByDay, studyBlocks, todayMinutes, duplicatePlantKey, sessionItemKey, sessionPlanBackedByTimed, isPassageAllocationParent };
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (typeof window === 'undefined') return;
   window.DailyStudyMinutes = api;

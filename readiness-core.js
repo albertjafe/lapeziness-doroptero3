@@ -87,11 +87,29 @@
     return result;
   }
 
-  function collectTimeline(db, obraId) {
+  function createContext(database) {
+    const plants = new Map(), items = new Map();
+    const add = (map, key, value) => { const id = idOf(key); if (!map.has(id)) map.set(id, []); map.get(id).push(value); };
+    for (const plant of [...(database.sessionPlants || []), ...(database.forestPlants || [])]) add(plants, obraIdOf(plant), plant);
+    (database.sesiones || []).forEach(session => (session.items || []).forEach((item, index) => add(items, obraIdOf(item), { session, item, index })));
+    return { database, plants, items, timelines: new Map() };
+  }
+
+  let activeContext = null;
+  function withContext(database, compute) {
+    if (activeContext?.database === database) return compute();
+    const previous = activeContext;
+    activeContext = createContext(database);
+    try { return compute(); } finally { activeContext = previous; }
+  }
+
+  function collectTimeline(db, obraId, context = activeContext) {
+    const indexed = context?.database === db ? context : null;
+    if (indexed?.timelines.has(idOf(obraId))) return indexed.timelines.get(idOf(obraId));
     const obra = (db.obras || []).find(item => idOf(item && item.id) === idOf(obraId));
     if (!obra || activity(obra)) return null;
     const practice = [], checkpoints = [];
-    const plants = [...(db.sessionPlants || []), ...(db.forestPlants || [])].filter(plant =>
+    const plants = (indexed ? indexed.plants.get(idOf(obraId)) || [] : [...(db.sessionPlants || []), ...(db.forestPlants || [])]).filter(plant =>
       idOf(obraIdOf(plant)) === idOf(obraId) && plant.tipo !== 'descanso' && num(plant.mins ?? plant.min ?? plant.minutes) > 0
     ).map(plant => ({
       minutes: Math.max(0, num(plant.mins ?? plant.min ?? plant.minutes)), date: timestampOf(plant), movementId: movementIdOf(plant),
@@ -103,7 +121,9 @@
       const key = dateKey(plant.date) + ':' + idOf(plant.movementId);
       plantBudgets.set(key, (plantBudgets.get(key) || 0) + plant.minutes);
     });
-    (db.sesiones || []).forEach(session => (session.items || []).forEach((item, index) => {
+    const sessionItems = indexed ? indexed.items.get(idOf(obraId)) || []
+      : (db.sesiones || []).flatMap(session => (session.items || []).map((item, index) => ({ session, item, index })));
+    sessionItems.forEach(({session, item, index}) => {
       if (idOf(obraIdOf(item)) !== idOf(obraId) || item.estudiado === false) return;
       const date = timestampOf(item, session);
       const minutes = realMinutes(item);
@@ -119,7 +139,7 @@
       const score = scoreOf({ solRating: item.solRating });
       const checkpointBaseId = item.id || item.itemId || session.id || session.sessionId || session.uid;
       if (score != null) checkpoints.push({ kind: 'session', score, date, movementId: movementIdOf(item), scope: scopeOf(item), weight: 0.75, id: checkpointBaseId ? idOf(checkpointBaseId) + ':' + index : '', source: item });
-    }));
+    });
     plants.forEach(plant => practice.push(plant));
     passEntries(obra).forEach(item => checkpoints.push(item));
     solHistoryEntries(obra).forEach(item => checkpoints.push(item));
@@ -143,7 +163,9 @@
       if (!duplicate) unique.push(point);
       else if (point.weight > duplicate.weight) Object.assign(duplicate, point);
     });
-    return { obra, practice, checkpoints: unique, allCheckpoints: checkpoints };
+    const result = { obra, practice, checkpoints: unique, allCheckpoints: checkpoints };
+    if (indexed) indexed.timelines.set(idOf(obraId), result);
+    return result;
   }
 
   function coverageFor(obra, checkpoints) {
@@ -183,8 +205,8 @@
     });
   }
 
-  function retention(db, targetTimeline, asOf) {
-    const timelines = (db.obras || []).map(obra => collectTimeline(db, obra.id)).filter(Boolean);
+  function retention(db, targetTimeline, asOf, context) {
+    const timelines = (db.obras || []).map(obra => collectTimeline(db, obra.id, context)).filter(Boolean);
     const pairs = [];
     timelines.forEach(timeline => {
       const points = timeline.checkpoints;
@@ -205,10 +227,10 @@
     return { retentionRate, penalty, pairs: source.length, daysSince: Math.max(0, daysSince) };
   }
 
-  function samplesFor(db, targetTimeline) {
+  function samplesFor(db, targetTimeline, context) {
     const samples = [];
     (db.obras || []).forEach(obra => {
-      const timeline = collectTimeline(db, obra.id);
+      const timeline = collectTimeline(db, obra.id, context);
       if (!timeline) return;
       for (let i = 1; i < timeline.checkpoints.length; i++) {
         const from = timeline.checkpoints[i - 1], to = timeline.checkpoints[i];
@@ -228,8 +250,8 @@
     return sorted[Math.floor(sorted.length / 2)];
   }
 
-  function speedFor(db, timeline, band) {
-    const samples = samplesFor(db, timeline);
+  function speedFor(db, timeline, band, context) {
+    const samples = samplesFor(db, timeline, context);
     const global = samples.filter(sample => sample.band === band).map(sample => sample.minutesPerPoint);
     const own = samples.filter(sample => sample.same && sample.band === band).map(sample => sample.minutesPerPoint);
     const fallback = [18, 22, 28, 36][band] || 30;
@@ -263,7 +285,10 @@
 
   function estimateReadiness(db, obraId, options) {
     const data = db || {};
-    const timeline = collectTimeline(data, obraId);
+    // Context is scoped to this calculation. Reusing the same mutable db in a
+    // later call must never reuse an obsolete timeline after an edit.
+    const context = activeContext?.database === data ? activeContext : createContext(data);
+    const timeline = collectTimeline(data, obraId, context);
     if (!timeline) return null;
     const observedDates = timeline.practice.concat(timeline.checkpoints).map(item => item.date).filter(Boolean);
     const latestObserved = observedDates.length ? new Date(Math.max(...observedDates.map(date => date.getTime()))) : null;
@@ -275,7 +300,7 @@
     const wholeCheckpoints = checkpoints.filter(point => point.scope !== 'passage' && point.scope !== 'movement');
     const latest = wholeCheckpoints.length ? wholeCheckpoints[wholeCheckpoints.length - 1].score : (normalizedScore(obra.sol) ?? 0);
     const weightedLatest = wholeCheckpoints.length ? wholeCheckpoints.reduce((sum, point) => sum + point.score * point.weight, 0) / wholeCheckpoints.reduce((sum, point) => sum + point.weight, 0) : latest;
-    const retentionInfo = retention(data, timeline, asOf);
+    const retentionInfo = retention(data, timeline, asOf, context);
     const effectiveScore = clamp(Math.min(latest, weightedLatest + 2) - retentionInfo.penalty, 0, 100);
     const movementWeak = movements.some(movement => movement.coverage < 1 && movement.score < targetScore) || (movements.length && Math.min(...movements.map(m => m.score)) < targetScore - 8);
     const distinctHighDates = new Set(wholeCheckpoints.filter(p => p.score >= targetScore && p.date).map(p => dateKey(p.date))).size;
@@ -289,7 +314,7 @@
     remainingPoints *= 1 - familiarityInfo.prior * (familiarityInfo.recovery ? 0.55 : 0.35);
     remainingPoints *= 1 + (1 - coverage) * 0.65;
     const band = bandOf(effectiveScore);
-    const speed = speedFor(data, timeline, band);
+    const speed = speedFor(data, timeline, band, context);
     let pointEstimateMinutes = Math.max(0, remainingPoints * speed.value);
     const isReady = Boolean(stable && !movementWeak && coverage >= 0.8 && effectiveScore >= targetScore);
     if (isReady) pointEstimateMinutes = 0;
@@ -432,5 +457,5 @@ function estimateMovementReadiness(db, obraId, movementId, options) {
   };
 }
 
-  return { estimateReadiness, estimateMovementReadiness, collectTimeline, realMinutes };
+  return { estimateReadiness, estimateMovementReadiness, collectTimeline, withContext, realMinutes };
 });

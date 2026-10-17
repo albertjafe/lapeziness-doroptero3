@@ -125,8 +125,8 @@
       root.recordSessionPlant=wrapped;
     }
 
-    // Tag both mirrors after the historical writer has created them. Then
-    // persist through the durable local path and queue the existing cloud sync.
+    // Resolve the UI choice before the writer creates either mirror. It now
+    // stores their complete activity fields in its single durable save.
     function patchPersistence(){
       if(typeof root.persistManualStudyHistory!=='function'||root.persistManualStudyHistory.__activityAware)return;
       const original=root.persistManualStudyHistory;
@@ -135,26 +135,7 @@
         const type=normalize(opts.activityType||selectedType());
         const result=original.call(this,resolved,minutos,fecha,{...opts,activityType:type});
         if(!result)return result;
-        const activityFactor=factor(type);
-        if(result.item){
-          result.item.activityType=type;
-          result.item.activityFactor=activityFactor;
-        }
-        const plantId=result.item?.studyPlantId;
-        const database=appDb();
-        const plants=Array.isArray(database?.sessionPlants)?database.sessionPlants:[];
-        const plant=(plantId&&plants.find(item=>item?.id===plantId))||
-          plants.find(item=>item?.source==='manual'&&item?.id===result.item?.id);
-        if(plant){
-          plant.activityType=type;
-          plant.activityFactor=activityFactor;
-          plant.updatedAt=new Date().toISOString();
-        }
-        try{if(typeof root.saveData==='function')root.saveData();}catch(error){}
-        try{if(typeof root.saveLocalNow==='function')root.saveLocalNow();}catch(error){}
-        try{if(typeof root.refreshStudyViews==='function')root.refreshStudyViews();}catch(error){}
-        try{if(typeof root.enqueueCloudSync==='function')root.enqueueCloudSync();}catch(error){}
-        return {...result,activityType:type,activityFactor};
+        return {...result,activityType:type,activityFactor:factor(type)};
       };
       wrapped.__activityAware=true;
       wrapped.__original=original;

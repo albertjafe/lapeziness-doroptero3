@@ -5,6 +5,13 @@ const require = createRequire(import.meta.url);
 const HabitTrophies = require('../../habit-trophies.js');
 
 describe('habit trophy collection', () => {
+  it('ignores completion evidence from an earlier cycle without changing the stored record',()=>{
+    const habit={id:'new-cycle',mode:'avoid',startDate:'2026-10-01',durationDays:21,
+      completedAt:'2026-08-22',rewardClaimedAt:'2026-08-23',logs:{'2026-08-02':{status:'failed'}}};
+    const before=structuredClone(habit);
+    expect(HabitTrophies.itemFor(habit,'2026-10-02T12:00:00')).toMatchObject({complete:false,status:'active',completedOn:null,failure:0});
+    expect(habit).toEqual(before);
+  });
   const habits = [
     {
       id: 'habit-bathroom', title: 'No coger el móvil en el baño', mode: 'avoid',

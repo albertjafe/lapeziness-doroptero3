@@ -168,14 +168,13 @@
     const start=new Date(firstDay+'T00:00:00'),end=new Date(today+'T00:00:00');end.setDate(end.getDate()+1);
     const sessions=[];
     const blocks=DailyStudyMinutes.studyBlocks(start,end,db);
-    const recorded=saved.sessions.filter(s=>s && s.id && !s.deleted && !s.deletedAt);
+    const recorded=DailyStudyMinutes.evidenceLookup(saved.sessions);
     const walletStart=Date.parse(wallet.createdAt)||Date.now();
     blocks.forEach((block,index)=>{
       const date=block.date;
       // Identity or timestamps join a surviving canonical block to its policy.
       // Never assign deleted class/chamber time to unrelated manual study.
-      const previous=recorded.find(s=>block.runId===s.id || String(block.runId || '').startsWith(s.id+'::passage::') || block.id==='run_'+s.id ||
-        (block.startedAt && Date.parse(block.startedAt)===Date.parse(s.startedAt)));
+      const previous=recorded(block);
       const attributedGoal=previous?.goalId || block.rewardGoalId;
       const goal=attributedGoal ? goals.find(g=>g.id===attributedGoal) : ordered.find(g=>dayKey(new Date(g.createdAt))<=date &&
         (!g.archivedAt || dayKey(new Date(g.archivedAt))>date) && (!g.deletedAt || dayKey(new Date(g.deletedAt))>date));
@@ -577,8 +576,8 @@
     const bonuses=state.bonusRows||bonusRows(db,state.sessions);
     return {goals,germanRows,pianoRows,bonusRows:bonuses,rows:[...germanRows,...pianoRows,...bonuses],state};
   }
-  function walletSnapshot(db){
-    const wallet=ensureEffortWallet(db),bundle=walletRows(db);
+  function walletSnapshot(db,pianoState=null){
+    const wallet=ensureEffortWallet(db),bundle=walletRows(db,pianoState);
     return {...bundle,wallet,points:walletPointsFromRows(bundle.rows,wallet)};
   }
   function goalProgressForDb(db,goalId){

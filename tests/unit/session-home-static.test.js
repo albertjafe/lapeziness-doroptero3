@@ -138,29 +138,29 @@ describe('focused session home', () => {
     expect(cronoPremium).toContain('__earnedCentFloor');
   });
 
-  it('ships the complete v482 runtime offline', () => {
+  it('ships the complete current runtime offline', () => {
     expect(index).toContain('session-home.css?v=374');
     expect(index).toContain('desktop-redesign.css?v=396');
-    expect(index).toContain('styles.css?v=509');
-    expect(index).toContain('app.js?v=510');
+    expect(index).toContain('styles.css?v=511');
+    expect(index).toContain('app.js?v=511');
     expect(index).toContain('crono-resume-layout.js?v=510');
-    expect(index).toContain('piano-rewards.js?v=507');
-    expect(index).toContain('daily-study-minutes.js?v=464');
-    expect(index).toContain('manual-study-activity.js?v=430');
+    expect(index).toContain('piano-rewards.js?v=511');
+    expect(index).toContain('daily-study-minutes.js?v=511');
+    expect(index).toContain('manual-study-activity.js?v=511');
     expect(index).toContain('chamber-factor-migration.js?v=430');
     expect(index).toContain('manual-study-activity.css?v=429');
     expect(index).toContain('german-rewards.js?v=426');
     expect(index).toContain('german-study.js?v=435');
     expect(index).toContain('german-study.css?v=426');
     expect(index).toContain('german-session.js?v=404');
-    expect(worker).toContain("const CACHE = 'estudio-v510'");
+    expect(worker).toContain("const CACHE = 'estudio-v511'");
     expect(worker).toContain('"./local-save-resilience.js?v=510"');
     expect(worker).toContain('"./instant-sync-resilience.js?v=510"');
     expect(worker).toContain('"./desktop-redesign.css?v=396"');
-    expect(worker).toContain('"./styles.css?v=509"');
-    expect(worker).toContain('"./piano-rewards.js?v=507"');
-    expect(worker).toContain('"./daily-study-minutes.js?v=464"');
-    expect(worker).toContain('"./manual-study-activity.js?v=430"');
+    expect(worker).toContain('"./styles.css?v=511"');
+    expect(worker).toContain('"./piano-rewards.js?v=511"');
+    expect(worker).toContain('"./daily-study-minutes.js?v=511"');
+    expect(worker).toContain('"./manual-study-activity.js?v=511"');
     expect(worker).toContain('"./chamber-factor-migration.js?v=430"');
     expect(worker).toContain('"./manual-study-activity.css?v=429"');
     expect(worker).toContain('"./german-rewards.js?v=426"');
@@ -195,10 +195,12 @@ describe('focused session home', () => {
     expect(manualStudyActivity).toContain("piano_class:Object.freeze({label:'Clase piano',factor:.5");
     expect(manualStudyActivity).toContain("makeSelect('sessionQuickStudyActivity'");
     expect(manualStudyActivity).toContain("makeSelect('studyRegisterActivity'");
-    expect(manualStudyActivity).toContain("plant.activityType=type");
-    expect(manualStudyActivity).toContain("plant.activityFactor=activityFactor");
-    expect(manualStudyActivity).toContain("saveLocalNow");
-    expect(manualStudyActivity).toContain("enqueueCloudSync");
+    expect(manualStudyActivity).toContain('original.call(this,resolved,minutos,fecha,{...opts,activityType:type})');
+    const writer = app.slice(app.indexOf('function persistManualStudyHistory'), app.indexOf('function confirmStudyRegister'));
+    expect(writer).toContain('plant.activityType = activityType');
+    expect(writer).toContain('plant.activityFactor = activityFactor');
+    expect(writer.indexOf('plant.activityFactor = activityFactor')).toBeLessThan(writer.indexOf('saveData()'));
+    expect(writer.match(/saveData\(\)/g)).toHaveLength(1);
   });
 
 });

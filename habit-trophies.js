@@ -40,7 +40,9 @@
     const today = dayKey(now);
     const index = dayNumber(today) - dayNumber(habit.startDate);
     if (!Number.isFinite(index)) return null;
-    const complete = Boolean(habit.completedAt) || index >= duration;
+    const completedOn = habit.completedAt ? dayKey(habit.completedAt) : '';
+    const validCompletion = Boolean(habit.completedAt) && (!completedOn || completedOn >= habit.startDate);
+    const complete = validCompletion || index >= duration;
     const evaluatedDays = Math.min(duration, Math.max(0, index));
     let success = 0;
     let failure = 0;
@@ -55,7 +57,7 @@
       if (habit.mode === 'do' && currentStatus === 'done') success += 1;
       if (habit.mode === 'avoid' && currentStatus === 'failed') failure += 1;
     }
-    const completionKey = habit.completedAt ? dayKey(habit.completedAt) : (complete ? keyAt(habit.startDate, duration - 1) : null);
+    const completionKey = validCompletion ? completedOn : (complete ? keyAt(habit.startDate, duration - 1) : null);
     const elapsed = Math.min(duration, Math.max(0, index + 1));
     return {
       habit,

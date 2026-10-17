@@ -37,12 +37,13 @@
   const familyId = habit => (habit && (habit.reopenOf || habit.id)) || '';
   function endKey(habit) {
     const stored = String(habit.completedAt || '');
-    if (validKey(stored)) return stored;
+    if (validKey(stored) && stored >= habit.startDate) return stored;
     const duration = Math.max(1, Math.round(Number(habit.durationDays) || 21));
     return keyAt(habit.startDate, duration - 1);
   }
   function isComplete(habit, todayKey) {
-    return !!habit.completedAt || todayKey > endKey(habit);
+    const completed = String(habit.completedAt || '').slice(0, 10);
+    return (!!habit.completedAt && (!validKey(completed) || completed >= habit.startDate)) || todayKey > endKey(habit);
   }
   const usable = habit => habit && habit.id && !habit.deleted && validKey(habit.startDate);
 

@@ -186,12 +186,15 @@
   function rewardLine(data) {
     const P = root.PianoRewards;
     if (!P || !data) return '';
-    const sig = (data._localRevision || '') + '|' + dayKey() + '|' + Math.floor(Date.now() / 60000);
+    const shared = typeof root.cachedPianoWalletSnapshot === 'function' && data === database();
+    const sig = shared ? root.dataStamp() + '|' + root.pianoRewardTaskStamp()
+      : (data._localRevision || '') + '|' + dayKey() + '|' + Math.floor(Date.now() / 60000);
     if (rewardCache.sig === sig) return rewardCache.text;
     let text = '';
     try {
-      const streak = P.streakStats(P.studyState(data).sessions);
-      const goal = P.activeGoal(data), progress = goal ? P.goalProgressForDb(data, goal.id) : null;
+      const snap = shared ? root.cachedPianoWalletSnapshot() : P.walletSnapshot(data);
+      const streak = P.streakStats(snap.state.sessions);
+      const goal = P.activeGoal(data), progress = goal ? P.goalProgressFromWallet(goal, snap.rows, snap.wallet) : null;
       const bits = ['Racha: ' + streak.current + (streak.current === 1 ? ' día' : ' días') + (streak.frozen ? ' (congelada)' : '')];
       if (goal && progress) bits.push(goal.name + ' ' + progress.amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €');
       text = bits.join(' · ');
