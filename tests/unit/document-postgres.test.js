@@ -23,7 +23,14 @@ beforeAll(async()=>{
   await pg.exec(sql('20260922175710_optimize_sync_object_assembly.sql'));
   await pg.exec(sql('20261002180000_index_study_reference_checks.sql'));
   await pg.exec(sql('20261008151000_document_merge_record_identity.sql'));
-  await pg.exec(sql('20261008151000_document_merge_record_identity.sql').replaceAll('public.document_merge(', 'public.document_merge_v510('));
+  // The old oracle must recurse through its own group helper too. Sharing the
+  // live helper would silently test new code on both sides for array records.
+  const previousGroup=(await pg.query("select pg_get_functiondef('public.document_merge_record_group(jsonb)'::regprocedure) as definition")).rows[0].definition;
+  await pg.exec(previousGroup.replaceAll('public.document_merge_record_group(', 'public.document_merge_record_group_v510(')
+    .replaceAll('public.document_merge(', 'public.document_merge_v510('));
+  await pg.exec(sql('20261008151000_document_merge_record_identity.sql')
+    .replaceAll('public.document_merge_record_group(', 'public.document_merge_record_group_v510(')
+    .replaceAll('public.document_merge(', 'public.document_merge_v510('));
   await pg.exec(sql('20260918205809_optimize_document_tombstone_pruning.sql').replaceAll('public.document_prune(', 'public.document_prune_v510('));
   const previousEnforce=(await pg.query("select pg_get_functiondef('public.enforce_document_tombstones_after_guards()'::regprocedure) as definition")).rows[0].definition;
   await pg.exec(previousEnforce.replaceAll('enforce_document_tombstones_after_guards','enforce_document_tombstones_v510'));
@@ -68,6 +75,20 @@ describe('real PostgreSQL migration with existing protection triggers',()=>{
     for(const value of values){
       const row=(await pg.query('select document_prune($1::jsonb) as current,document_prune_v510($1::jsonb) as previous',[JSON.stringify(value)])).rows[0];
       expect(row.current).toEqual(row.previous);
+    }
+  });
+  it('matches the independent v510 recursion for clocked nested records and deletions',async()=>{
+    for(let i=0;i<40;i++){
+      const a={_localRevision:i,items:[{id:'a',name:'stored',unknown:{keep:i},
+        children:[{id:'x',value:1},{id:'removed'}],_fieldClock:{name:'2026-01-01'}}],
+        _fieldClock:{items:'2026-02-01'}};
+      const b={_localRevision:i%3,items:[{id:'a',name:i%2?'edited':null,unknown:{newField:i},
+        children:[{id:'x',value:i,_fieldClock:{value:'2026-03-01'}},{id:'new',extra:{keep:true}}],
+        _deletedChildren:{children:{removed:'2026-03-01'}},_fieldClock:{name:'2026-03-01'}}],
+        _fieldClock:{items:i%2?'2026-03-01':'2026-01-01'}};
+      const row=(await pg.query('select document_merge($1::jsonb,$2::jsonb) as actual,document_merge_v510($1::jsonb,$2::jsonb) as previous',
+        [JSON.stringify(a),JSON.stringify(b)])).rows[0];
+      expect(row.actual).toEqual(row.previous);
     }
   });
   it('a new record with another id replaces the old one instead of merging its fields',async()=>{

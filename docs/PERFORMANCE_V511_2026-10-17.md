@@ -56,9 +56,9 @@ Contratos conservados: campos desconocidos, relojes y lápidas; CAS y comprobaci
 ## Verificación y reproducción
 
 - `npm run check`: correcto, 153 assets, sintaxis, versiones, IDs de carga únicos y precache coherentes.
-- Suite unitaria completa: **847/847 pruebas**, 102 archivos.
+- Suite unitaria completa local: **847/847 pruebas**, 102 archivos. Revisión posterior: **36/36 pruebas PostgreSQL**, con un caso adicional y una referencia v510 independiente también en la recursión de registros; la suite actual contiene 848 pruebas.
 - Regresiones dirigidas de guardado/cierre: **12 comprobaciones verificadas**, incluyendo cuota normal, fallo de borrador, cuota local agotada, pasaje activo y primer snapshot con política económica. Las pruebas de edición de retos también pasaron durante la implementación.
-- La ejecución local extendida de E2E quedó interrumpida por un reinicio del entorno. La comprobación completa de E2E y capturas se ejecuta en [Quality](https://github.com/albertjafe/lapeziness-doroptero3/actions/workflows/quality.yml), asociado al commit publicado. Consultar ese resultado para la versión que se revise.
+- Capturas locales: **6/6 pruebas visuales**. La ejecución local extendida de E2E quedó interrumpida por un reinicio del entorno. La comprobación completa de E2E y capturas se ejecuta en [Quality](https://github.com/albertjafe/lapeziness-doroptero3/actions/workflows/quality.yml), asociado al commit publicado. Consultar ese resultado para la versión que se revise.
 
 Pruebas nuevas/ampliadas:
 
@@ -66,7 +66,7 @@ Pruebas nuevas/ampliadas:
 - `tests/unit/readiness-context.test.js`: reutilización dentro de una operación, edición posterior del mismo objeto, contextos anidados y restauración tras excepción.
 - `tests/unit/habit-trophies.test.js` y E2E `save-fast-path`: lectura de un reto antiguo sin mutación ni invalidación de estudio por editar una tarea.
 - `tests/e2e/save-fast-path.spec.js`: equivalencia con el guardado completo, otra pestaña, alta manual con factor completo en una escritura, quietud real y vaciado explícito, corrección de recompensa urgente y primer snapshot del cronómetro con bloque/política.
-- `tests/unit/document-postgres.test.js`: comparación v510/v511 de fusión/poda, campos desconocidos, registros anidados y comportamiento de colecciones ausentes, `null`, vacías o con tombstones; conserva las pruebas de triggers, historias grandes, CAS y dispositivos offline.
+- `tests/unit/document-postgres.test.js`: comparación v510/v511 de fusión/poda, campos desconocidos, registros anidados y comportamiento de colecciones ausentes, `null`, vacías o con tombstones. La referencia clona también `document_merge_record_group` y dirige su recursión a `document_merge_v510`, para no compartir la implementación nueva en ambas ramas. Incluye 40 casos de registros anidados con relojes y bajas; conserva las pruebas de triggers, historias grandes, CAS y dispositivos offline.
 - Las comprobaciones estáticas de actividad manual apuntan ahora al escritor que posee la responsabilidad. Las del Service Worker verifican v511 y siguen exigiendo aislamiento de versiones, recuperación y promoción segura.
 
 Comandos desde la raíz:
