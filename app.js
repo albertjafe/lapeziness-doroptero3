@@ -12132,6 +12132,9 @@ function cronoCalendarCellKey(event, dateIso) {
 }
 
 function renderCronoCalendar() {
+  // 18-10-2026: el cronómetro ya no muestra calendario (solo hábitos); la
+  // agenda vive en Google/Apple Calendar. Se deja el cuerpo por si vuelve.
+  if (renderCronoCalendar.removed !== false) return;
   const grid = document.getElementById('cronoCalendarGrid');
   const label = document.getElementById('cronoCalendarLabel');
   if (!grid || !label) return;
@@ -12189,7 +12192,10 @@ function toggleCalendarHabitLayer(event) {
 }
 
 function switchCalTab(tab, btn) {
-  if (tab !== 'eventos' && tab !== 'mes' && tab !== 'objetivos') tab = 'eventos';
+  // 18-10-2026: el calendario de mes se quitó (la agenda vive en Google/Apple
+  // Calendar); quien pida «mes» —p. ej. una pestaña guardada— ve los eventos.
+  if (tab === 'mes') { tab = 'eventos'; btn = null; }
+  if (tab !== 'eventos' && tab !== 'objetivos') tab = 'eventos';
   _calendarMainTab = tab;
   document.querySelectorAll('#view-calendario > .calendar-view-tabs .cal-tab').forEach(button => {
     const active = button === btn || button.id === ({ eventos: 'calTabEventos', mes: 'calTabMes', objetivos: 'calTabObjetivos' })[tab];

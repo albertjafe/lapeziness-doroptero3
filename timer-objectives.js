@@ -656,7 +656,8 @@
 
   function setMode(mode) {
     // 'trophies' (la antigua vitrina) ya es la página de Hábitos.
-    timerMode = mode === 'calendar' ? 'calendar' : 'objectives';
+    // 18-10-2026: sin calendario en el cronómetro; siempre hábitos.
+    timerMode = 'objectives';
     const calendar = document.getElementById('cronoCalendarPanelInner');
     const objectives = trackerPanel();
     const tabs = document.querySelectorAll('.crono-calendar-objectives-tab[data-timer-panel]');
@@ -685,9 +686,8 @@
     const tabs = document.createElement('div');
     tabs.className = 'crono-calendar-objectives-tabs';
     tabs.setAttribute('role', 'tablist');
-    tabs.setAttribute('aria-label', 'Calendario o hábitos');
+    tabs.setAttribute('aria-label', 'Hábitos');
     tabs.innerHTML = `
-      <button type="button" class="crono-calendar-objectives-tab" data-timer-panel="calendar" role="tab" aria-selected="false">Calendario</button>
       <button type="button" class="crono-calendar-objectives-tab active" data-timer-panel="objectives" role="tab" aria-selected="true">Hábitos</button>
       <button type="button" class="crono-calendar-objectives-tab crono-open-habitos" data-open-habitos aria-label="Abrir la página de hábitos">Vitrina ›</button>
       <button type="button" class="crono-panel-size-toggle" id="cronoPanelSizeToggle" aria-pressed="false" aria-label="Hacer más pequeños el reloj y el tracker" title="Tamaño compacto">

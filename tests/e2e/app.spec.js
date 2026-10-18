@@ -68,47 +68,6 @@ test('opens every main view without page exceptions', async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem('piano_auto_creds'))).toBeNull();
 });
 
-test('shows cached Google events as a stable optional calendar layer', async ({ page }) => {
-  const now = new Date();
-  const date = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
-  await page.addInitScript(({ date, lastSync }) => {
-    localStorage.setItem('alberto_google_calendar_v1', JSON.stringify({
-      connected: true,
-      layer: true,
-      calendars: [{ id: 'primary', name: 'Personal', primary: true, color: '#4285f4' }],
-      selectedIds: ['primary'],
-      events: [{
-        id: 'google-event', calendarId: 'primary', calendarName: 'Personal', color: '#4285f4',
-        title: 'Ensayo con Marta', start: date, end: nextDate(date), allDay: true,
-      }],
-      lastSync,
-    }));
-
-    function nextDate(value) {
-      const parts = value.split('-').map(Number);
-      const next = new Date(parts[0], parts[1] - 1, parts[2] + 1, 12);
-      return [next.getFullYear(), String(next.getMonth() + 1).padStart(2, '0'), String(next.getDate()).padStart(2, '0')].join('-');
-    }
-  }, { date, lastSync: new Date().toISOString() });
-  await prepare(page);
-
-  await page.evaluate(() => {
-    showView('calendario');
-    switchCalTab('mes', document.getElementById('calTabMes'));
-  });
-  const toggle = page.locator('#calendarGoogleToggle');
-  await expect(toggle).toBeVisible();
-  await expect(toggle).toHaveAttribute('aria-checked', 'true');
-  await expect(page.locator('.mes-dot.google[title="Ensayo con Marta"]')).toHaveCount(1);
-  const before = await page.locator('#mesGrid').evaluate(element => element.getBoundingClientRect().height);
-
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-checked', 'false');
-  await expect(page.locator('.mes-dot.google')).toHaveCount(0);
-  const after = await page.locator('#mesGrid').evaluate(element => element.getBoundingClientRect().height);
-  expect(Math.abs(after - before)).toBeLessThanOrEqual(1);
-});
-
 test('uses mouse navigation only on Windows and preserves the iPad navigation', async ({ browser }) => {
   const windows = await browser.newContext({
     viewport: { width: 1024, height: 768 },
@@ -658,79 +617,6 @@ test('shows and updates the daily challenge history from calendar', async ({ bro
   }
 });
 
-test('shows objectives as a layer inside the monthly calendar', async ({ page }) => {
-  await prepare(page);
-  await page.evaluate(() => {
-    const today = habitDayKey();
-    const start = habitKeyAt(today, -20);
-    db.habitChallenge = {
-      id: 'integrated-calendar-habit', title: 'Leer sin móvil', mode: 'do', durationDays: 21,
-      startDate: start,
-      logs: { [today]: { status: 'done', at: new Date().toISOString() } },
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    saveData();
-    showView('calendario');
-    switchCalTab('mes', document.getElementById('calTabMes'));
-  });
-
-  await expect(page.locator('#calPanelMes')).toBeVisible();
-  await expect(page.locator('#calPanelObjetivos')).toBeHidden();
-  await expect(page.locator('#calendarHabitToggle')).toHaveAttribute('aria-checked', 'false');
-  const geometryOff = await page.evaluate(() => ({
-    panel: document.getElementById('calPanelMes').getBoundingClientRect().height,
-    grid: document.getElementById('mesGrid').getBoundingClientRect().height,
-    summary: document.getElementById('calendarHabitSummary').getBoundingClientRect().height,
-  }));
-  await page.locator('#calendarHabitToggle').click();
-  await expect(page.locator('#calendarHabitToggle')).toHaveAttribute('aria-checked', 'true');
-  await expect(page.locator('#mesGrid .habit-calendar-month-cell')).not.toHaveCount(0);
-  await expect(page.locator('#mesGrid .mes-dot')).toHaveCount(0);
-  await expect(page.locator(`.habit-calendar-month-cell[data-date="${await page.evaluate(() => habitDayKey())}"]`)).toHaveClass(/is-victory/);
-  const geometryOn = await page.evaluate(() => ({
-    panel: document.getElementById('calPanelMes').getBoundingClientRect().height,
-    grid: document.getElementById('mesGrid').getBoundingClientRect().height,
-    summary: document.getElementById('calendarHabitSummary').getBoundingClientRect().height,
-    legend: document.getElementById('mesLeyenda').getBoundingClientRect().height,
-  }));
-  expect(Math.abs(geometryOn.panel - geometryOff.panel)).toBeLessThanOrEqual(2);
-  expect(Math.abs(geometryOn.grid - geometryOff.grid)).toBeLessThanOrEqual(1);
-  expect(Math.abs(geometryOn.summary - geometryOff.summary)).toBeLessThanOrEqual(1);
-
-  await page.evaluate(() => {
-    const today = habitDayKey();
-    db.habitChallenge = {
-      id: 'integrated-calendar-future', title: 'Leer a diario', mode: 'do', durationDays: 3,
-      startDate: today, logs: {},
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    saveData();
-    renderMesCalendario();
-  });
-  await expect(page.locator('#mesGrid .habit-calendar-month-cell.is-target')).toHaveCount(1);
-  await expect(page.locator('#mesGrid .habit-calendar-month-cell.is-target .habit-month-mark')).toHaveText(String.fromCodePoint(9873));
-  await expect(page.locator('#mesGrid .habit-calendar-month-cell.is-target')).not.toHaveClass(/is-victory/);
-
-  await page.evaluate(() => {
-    const today = habitDayKey();
-    db.habitChallenge = {
-      id: 'integrated-calendar-avoid', title: 'No coger el móvil', mode: 'avoid', durationDays: 21,
-      startDate: habitKeyAt(today, -20), logs: {},
-      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    };
-    saveData();
-    renderMesCalendario();
-  });
-  const relapse = page.locator('.calendar-habit-icon-action.is-relapse');
-  await expect(relapse).toHaveAttribute('aria-label', 'Registrar recaída hoy');
-  await expect(relapse).toHaveText('!');
-  await page.locator('.calendar-habit-icon-action.is-relapse').click();
-  expect(await page.evaluate(() => habitLogStatus(db.habitChallenge.logs[habitDayKey()]))).toBe('failed');
-  await expect(page.locator('.calendar-habit-icon-action.is-relapse')).toHaveAttribute('aria-label', 'Quitar recaída de hoy');
-  await expect(page.locator('.calendar-habit-icon-edit')).toHaveAttribute('aria-label', 'Editar hábito');
-  await expect(page.locator('#mesLeyenda')).toBeEmpty();
-});
-
 test('moves expired objectives to the reward shelf while another objective stays active', async ({ page }) => {
   await prepare(page);
   await page.evaluate(() => {
@@ -786,16 +672,9 @@ test('marks today with a stronger border in both objective grids', async ({ page
   });
   await expect(page.locator('.habit-calendar-day.is-today')).toHaveCount(1);
   await expect(page.locator('.habit-calendar-day.is-today')).toHaveCSS('border-width', '2px');
-  await page.evaluate(() => {
-    showView('calendario');
-    switchCalTab('mes', document.getElementById('calTabMes'));
-    document.getElementById('calendarHabitToggle').click();
-  });
-  await expect(page.locator('#mesGrid .habit-calendar-month-cell.is-today')).toHaveCount(1);
-  await expect(page.locator('#mesGrid .habit-calendar-month-cell.is-today')).toHaveCSS('border-width', '2px');
 });
 
-test('loads the calendar and objectives switch inside the stopwatch', async ({ page }) => {
+test('the stopwatch shows the habits panel and no calendar', async ({ page }) => {
   await page.setViewportSize({ width: 834, height: 1194 });
   await prepare(page);
   await page.evaluate(() => {
@@ -812,7 +691,7 @@ test('loads the calendar and objectives switch inside the stopwatch', async ({ p
 
   const calendarTab = page.locator('.crono-calendar-objectives-tab[data-timer-panel="calendar"]');
   const objectivesTab = page.locator('.crono-calendar-objectives-tab[data-timer-panel="objectives"]');
-  await expect(calendarTab).toBeVisible();
+  await expect(calendarTab).toHaveCount(0);   // 18-10-2026: sin calendario en el cronómetro
   await expect(objectivesTab).toBeVisible();
   await expect(objectivesTab).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#cronoObjectivesPanel .crono-habit-tracker-action-icon')).toHaveAttribute('aria-label', 'Marcar hábito cumplido hoy');
@@ -873,10 +752,10 @@ test('loads the calendar and objectives switch inside the stopwatch', async ({ p
   expect(landscapeLayout.balancedHeight).toBeLessThanOrEqual(2);
   expect(landscapeLayout.documentFits).toBe(true);
 
-  await calendarTab.click();
-  await expect(calendarTab).toHaveAttribute('aria-selected', 'true');
-  await expect(page.locator('#cronoCalendarPanelInner')).not.toHaveAttribute('hidden', '');
-  await expect(page.locator('#cronoObjectivesPanel')).toBeHidden();
+  // Pedir el calendario (p. ej. un modo guardado) deja los hábitos a la vista.
+  await page.evaluate(() => setCronoCalendarObjectivesMode('calendar'));
+  await expect(page.locator('#cronoCalendarPanelInner')).toHaveAttribute('hidden', '');
+  await expect(page.locator('#cronoObjectivesPanel')).toBeVisible();
 });
 
 test('Pulso has no setting or controls and the task drawer remains usable',async({page})=>{
@@ -2326,3 +2205,11 @@ test('runs one persistent metronome from idle and active timer layouts', async (
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('alberto_metronome_v1')))).toMatchObject({ bpm: 85, beatsPerBar: 16 });
 });
 
+
+test('the calendar view has no month grid tab and a saved month tab opens the events', async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => { showView('calendario'); switchCalTab('mes', document.getElementById('calTabMes')); });
+  await expect(page.locator('#calTabMes')).toBeHidden();
+  await expect(page.locator('#calPanelMes')).toBeHidden();
+  await expect(page.locator('#calPanelEventos')).toBeVisible();
+});
