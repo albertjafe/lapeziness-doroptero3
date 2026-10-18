@@ -11640,7 +11640,7 @@ body.crono-running .crono-destellos-pill { display: none !important; }
   font-size: clamp(7px, 2.15vw, 8.5px);
   letter-spacing: 0.025em;
 }
-.nav.nav-bottom .nav-btn span {
+.nav.nav-bottom .nav-btn span:not(.ripple) {
   display: block;
   max-width: 100%;
   overflow: hidden;
@@ -15784,7 +15784,7 @@ body.crono-focus .nav-bottom.view-swipe-nav { display: grid !important; }
     gap: 0;
   }
   .nav.nav-bottom .nav-btn svg { width: 19px; height: 19px; }
-  .nav.nav-bottom .nav-btn span {
+  .nav.nav-bottom .nav-btn span:not(.ripple) {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -21020,7 +21020,7 @@ html.platform-windows .nav.nav-bottom .nav-btn svg {
   height: 22px;
 }
 
-html.platform-windows .nav.nav-bottom .nav-btn span {
+html.platform-windows .nav.nav-bottom .nav-btn span:not(.ripple) {
   position: static;
   display: block;
   width: auto;
@@ -22422,7 +22422,7 @@ body.crono-paused .crono-readiness-inline { visibility: hidden; }
 /* Barra inferior con texto: solo iconos obligaba a adivinar cada destino. */
 @media (max-width: 1199px), (hover: none) and (pointer: coarse) {
   html:not(.platform-windows) .nav.nav-bottom .nav-btn { gap: 2px; }
-  html:not(.platform-windows) .nav.nav-bottom .nav-btn span {
+  html:not(.platform-windows) .nav.nav-bottom .nav-btn span:not(.ripple) {
     position: static; width: auto; height: auto; margin: 0; clip: auto; overflow: hidden;
     display: block; max-width: 100%; text-overflow: ellipsis;
     font-size: 9.5px; line-height: 1.1; letter-spacing: 0; font-weight: 500;

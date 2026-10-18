@@ -10,6 +10,8 @@
 La revisión de fluidez v511, con cambios, pruebas, mediciones reproducibles y límites, está en [`docs/PERFORMANCE_V511_2026-10-17.md`](docs/PERFORMANCE_V511_2026-10-17.md).
 La continuidad del gesto lateral v512 se documenta en [`docs/SWIPE_CONTINUITY_V512_2026-10-17.md`](docs/SWIPE_CONTINUITY_V512_2026-10-17.md), con causas, cambios y regresiones frente a v511.
 
+Las correcciones de barra y avisos repetidos v513 están en [`docs/BUGFIXES_V513_2026-10-18.md`](docs/BUGFIXES_V513_2026-10-18.md), con reproducción, persistencia de reconocimientos y pruebas.
+
 ## Vista Piano Rooms
 
 La app incluye una vista **Salas** de solo lectura. Para mostrar disponibilidad real debe estar ejecutándose en el ordenador el puente local del monitor Piano Rooms:

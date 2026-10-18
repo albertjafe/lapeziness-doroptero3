@@ -8,6 +8,7 @@
   const RESCUE_KEY='latest';
   let pendingMeta=null;
   let rescuePromise=null;
+  let rescueRecovered=false;
   let lastPersistFailure=null;
   const IDB_DEADLINE=10000;
   function storageError(code,message){ return Object.assign(new Error(message),{code}); }
@@ -80,7 +81,7 @@
     return true;
   }
 
-  async function getRescueSnapshot(){
+  async function getRescueSnapshot({strict=false}={}){
     let database;
     try {
       database=await openRescueDb();
@@ -96,7 +97,7 @@
         tx.onerror=()=>finish(tx.error||new Error('IndexedDB read failed'));
       });
       return row;
-    } catch(e) { return null; }
+    } catch(e) { if(strict) throw e; return null; }
     finally { if(database) database.close(); }
   }
 
@@ -110,7 +111,20 @@
   function rescueCurrentSnapshot(snapshot){
     show('Guardando copia segura…');
     const previous=rescuePromise;
-    const pending=Promise.resolve(previous).then(()=>putRescueSnapshot(snapshot)).then(()=>{
+    // Startup normalizers can save the stale localStorage document before the
+    // asynchronous rescue has hydrated it. Never replace that only durable
+    // copy blindly. Capture the guard when queued, including queued old saves.
+    const protectStartup=!rescueRecovered;
+    const pending=Promise.resolve(previous).then(async()=>{
+      if(protectStartup){
+        const existing=await getRescueSnapshot({strict:true});
+        if(existing&&existing.data){
+          if(typeof window.DocumentSyncCore?.merge!=='function') throw storageError('IDB_MERGE_UNAVAILABLE','Cannot preserve startup rescue');
+          snapshot=window.DocumentSyncCore.merge(existing.data,snapshot);
+        }
+      }
+      return putRescueSnapshot(snapshot);
+    }).then(()=>{
       lastPersistFailure=null;
       show('✓ guardado en este dispositivo · sincronizando');
       enqueueImmediate();
@@ -219,10 +233,11 @@
   }
 
   async function recoverSnapshot(){
-    const row=await getRescueSnapshot();
-    const live=currentDb();
-    if(!row||!row.data||!live) return false;
     try {
+      const row=await getRescueSnapshot({strict:true});
+      const live=currentDb();
+      if(!live) return false;
+      if(!row||!row.data){rescueRecovered=true;return false;}
       const comparison=(typeof SyncCore!=='undefined'&&typeof SyncCore.compareDbFreshness==='function')
         ? SyncCore.compareDbFreshness(row.data,live)
         : ((Number(row.data._localRevision)||0)-(Number(live._localRevision)||0));
@@ -234,10 +249,11 @@
       if(window.DataCore&&typeof window.DataCore.mergeStudyHistory==='function'){
         recovered=typeof _mergeStudyHistory === 'function' ? _mergeStudyHistory(live,row.data) : window.DataCore.mergeStudyHistory(live,row.data);
       }
-      if(JSON.stringify(live) === JSON.stringify(recovered)) return false;
+      if(JSON.stringify(live) === JSON.stringify(recovered)){rescueRecovered=true;return false;}
       if(window.DocumentSyncCore) window.DocumentSyncCore.assign(live,recovered);
       else replaceObject(live,recovered);
       if(typeof _rememberLocalDocument === 'function') _rememberLocalDocument();
+      rescueRecovered=true;
       // Quota may have preserved an old running timer while its completed block
       // was rescued here. Reconcile only the exact run, never a different one.
       try {

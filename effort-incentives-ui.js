@@ -7,7 +7,7 @@
   const P=root.PianoRewards,H=root.HabitTrophies,A=root.AchievementRewards,G=root.GermanRewards,doc=root.document;
   if(!P||!H||!doc)return;
   const SECRET_SEEN_KEY='study_secret_bonus_seen_v1';
-  let secretToastTimer=null,secretSeenMemory=null;
+  let secretToastTimer=null,secretSeenMemory=null,rewardsPrimed=false;
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const time=seconds=>{const mins=Math.floor(Math.max(0,seconds)/60);return Math.floor(mins/60)+' h '+String(mins%60).padStart(2,'0')+' min';};
   const percent=multiplier=>'+'+((multiplier-1)*100).toLocaleString('es-ES',{maximumFractionDigits:1})+' %';
@@ -20,9 +20,13 @@
   const celebrated=row=>row&&(row.secretAchievement||row.chest||row.achievement||row.progress);
   function kicker(row){return row.chest?'COFRE SORPRESA':row.achievement?'LOGRO DESBLOQUEADO':row.process?'BUEN HÁBITO DE ESTUDIO':row.progress?'PREMIO POR PROGRESO':'PREMIO SECRETO';}
   function secretSeen(){
-    if(secretSeenMemory)return secretSeenMemory;
-    try{const raw=root.localStorage?.getItem(SECRET_SEEN_KEY);secretSeenMemory=new Set(raw?JSON.parse(raw):[]);}
-    catch(error){secretSeenMemory=new Set();}
+    if(!secretSeenMemory)secretSeenMemory=new Set();
+    // This small legacy cache also carries receipts between open tabs. Re-read
+    // it: a Set captured at startup misses notices acknowledged in another tab.
+    try{
+      const stored=JSON.parse(root.localStorage?.getItem(SECRET_SEEN_KEY)||'[]');
+      if(Array.isArray(stored))stored.forEach(id=>{if(typeof id==='string'&&id)secretSeenMemory.add(id);});
+    }catch(error){}
     return secretSeenMemory;
   }
   function persistSecretSeen(){try{root.localStorage?.setItem(SECRET_SEEN_KEY,JSON.stringify([...secretSeen()]));}catch(error){}}
@@ -49,12 +53,31 @@
     clearTimeout(secretToastTimer);secretToastTimer=setTimeout(close,6500);
   }
   function checkSecretRewards({prime=false}={}){
-    const rows=currentCelebratedRows(),seen=secretSeen();
-    if(prime&&!seen.size){rows.forEach(row=>seen.add(row.id));persistSecretSeen();return;}
-    const fresh=rows.filter(row=>row?.id&&!seen.has(row.id));
-    if(!fresh.length)return;
-    fresh.forEach(row=>seen.add(row.id));persistSecretSeen();
-    showSecretReward(fresh.at(-1));
+    const data=database();if(!data)return;
+    const rows=currentCelebratedRows().filter(row=>typeof row?.id==='string'&&row.id),seen=secretSeen();
+    const receipts=data.rewardNoticeSeen&&typeof data.rewardNoticeSeen==='object'&&!Array.isArray(data.rewardNoticeSeen)
+      ?data.rewardNoticeSeen:{};
+    const quiet=prime||!rewardsPrimed;
+    rewardsPrimed=true;
+    const fresh=rows.filter(row=>!seen.has(row.id)&&!Object.hasOwn(receipts,row.id));
+    let changed=false,cacheChanged=false;
+    const stamp=new Date().toISOString();
+    rows.forEach(row=>{
+      if(!seen.has(row.id)){seen.add(row.id);cacheChanged=true;}
+      if(!Object.hasOwn(receipts,row.id)){receipts[row.id]=stamp;changed=true;}
+    });
+    if(changed){
+      // Only a notice receipt, never a credit. The normal writer provides
+      // cross-device merge and IndexedDB rescue when localStorage is full.
+      data.rewardNoticeSeen=receipts;
+      if(typeof root.saveDataSoon==='function')root.saveDataSoon();
+      else if(typeof root.saveData==='function')root.saveData();
+    }
+    if(changed||cacheChanged)persistSecretSeen();
+    // A delayed download or restored snapshot is history, not a new award.
+    // Older rewards remain in Premios with their original dates and amounts.
+    const today=P.dayKey(),recent=quiet?[]:fresh.filter(row=>row.date===today);
+    if(recent.length)showSecretReward(recent.at(-1));
   }
 
   function weekStart(day){
@@ -184,6 +207,7 @@
   });
   const refresh=()=>{if(premiosVisible()){render();root.PianoRewardsWallet?.render?.();}checkSecretRewards();};
   setTimeout(()=>checkSecretRewards({prime:true}),300);
+  if(!root.__studyCloudHydrated)root.addEventListener('study-cloud-hydrated',()=>checkSecretRewards({prime:true}),{once:true});
   setInterval(()=>checkSecretRewards(),1800);
   doc.addEventListener('visibilitychange',()=>{if(doc.visibilityState==='visible')checkSecretRewards();});
   root.StudyIncentives={open,render,refresh,checkSecretRewards};

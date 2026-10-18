@@ -208,7 +208,7 @@
     opacity: .95;
     stroke-width: 1.8;
   }
-  html.platform-windows .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn) span {
+  html.platform-windows .nav.nav-bottom :is(.nav-btn, .desktop-nav-btn) span:not(.ripple) {
     position: static;
     display: block;
     width: auto;

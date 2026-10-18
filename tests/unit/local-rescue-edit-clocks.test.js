@@ -5,7 +5,7 @@ import {cloudAppHarness} from '../fixtures/cloud-app-harness.js';
 const source=readFileSync('local-save-resilience.js','utf8');
 const recovery=source.slice(source.indexOf('async function recoverSnapshot('),source.indexOf('function boot('));
 function harness(local,rescue,wait=Promise.resolve()){
-  const h=cloudAppHarness(local,local),ctx=h.boot();ctx.window=ctx;
+  const h=cloudAppHarness(local,local),ctx=h.boot();ctx.window=ctx;ctx.rescueRecovered=false;
   ctx.getRescueSnapshot=async()=>{await wait;return {data:structuredClone(rescue)};};
   ctx.currentDb=()=>ctx.db;ctx.show=()=>{};ctx.enqueueImmediate=()=>{};
   vm.runInContext(recovery,ctx);return {h,ctx};
