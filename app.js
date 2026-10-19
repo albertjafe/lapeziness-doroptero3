@@ -16869,7 +16869,42 @@ function cronoPaseSetMinutes(key, value) {
   if (!item) return;
   const n = Math.max(1, Math.min(180, parseInt(value || '0', 10) || item.minutes || 1));
   item.minutes = n;
+  item.minutesEdited = true;
   cronoPaseUpdateTotal();
+}
+
+// 19-10-2026: un pase hecho con el cronómetro en marcha forma parte de esa
+// sesión: sus minutos se descuentan del cronómetro en lugar de sumarse aparte
+// (30 min de cronómetro + pase de 11 = 41 min, no 52).
+function cronoPaseCanAbsorb() {
+  if (typeof crono === 'undefined' || !crono || !crono.startTs) return false;
+  if (crono.state !== 'running' && crono.state !== 'paused') return false;
+  const dateInput = document.getElementById('cronoPaseFecha')?.value || dateInputValueFromIso();
+  return dateInput === dateInputValueFromIso();
+}
+
+function cronoPaseAbsorbFromRun(totalMinutes) {
+  if (!cronoPaseCanAbsorb()) return 0;
+  const elapsed = cronoEffectiveElapsedMs();
+  const absorbMs = Math.min(Math.max(0, totalMinutes) * 60000, elapsed);
+  if (absorbMs <= 0) return 0;
+  crono.pausedMs = (Number(crono.pausedMs) || 0) + absorbMs;
+  // En una cuenta atrás, lo que queda por delante no cambia.
+  if (Number(crono.targetDurationMs) > 0) crono.targetDurationMs = Math.max(60000, crono.targetDurationMs - absorbMs);
+  cronoSaveState();
+  if (typeof StudyPush !== 'undefined') { try { StudyPush.syncRun({ reason: 'pase' }); } catch (e) {} }
+  if (typeof cronoRender === 'function') cronoRender();
+  return Math.round(absorbMs / 60000);
+}
+
+// La duración que pones en un pase pasa a ser la de esa obra o movimiento.
+function cronoPaseRememberDuration(item) {
+  if (!item || !item.minutesEdited) return;
+  const minutes = Math.max(1, parseInt(item.minutes || 0, 10) || 0);
+  const entity = item.movId ? findMovimiento(item.obraId, item.movId) : findObra(item.obraId);
+  if (!entity || Number(entity.duracion) === minutes) return;
+  entity.duracion = minutes;
+  entity.updatedAt = new Date().toISOString();
 }
 
 function cronoPaseSetCount(targetKey, value) {
@@ -16918,7 +16953,13 @@ function cronoPaseUpdateTotal() {
   const el = document.getElementById('cronoPaseTotal');
   if (!el) return;
   const total = cronoPaseDraft.reduce((s, it) => s + (parseInt(it.minutes || 0, 10) || 0), 0);
-  el.textContent = total ? ('Total: ' + total + ' min') : '0 min';
+  let note = '';
+  if (total && cronoPaseCanAbsorb()) {
+    const elapsedMin = Math.floor(cronoEffectiveElapsedMs() / 60000);
+    const taken = Math.min(total, elapsedMin);
+    note = ' · se descuentan del cronómetro (' + elapsedMin + ' min → ' + (elapsedMin - taken) + ' min de estudio + ' + total + ' de pase)';
+  }
+  el.textContent = (total ? ('Total: ' + total + ' min') : '0 min') + note;
 }
 
 function cronoPaseRender() {
@@ -17123,12 +17164,14 @@ function confirmCronoPaseRapido() {
     : new Date(dateInput + 'T12:00:00').toISOString();
   let cursor = new Date(new Date(dateIso).getTime() - total * 60000);
   let added = 0;
+  const absorbed = cronoPaseAbsorbFromRun(total);
   const comment = (document.getElementById('cronoPaseComment')?.value || '').trim().slice(0, 300);
   cronoPaseDraft.forEach(item => {
     const minutes = Math.max(1, parseInt(item.minutes || 0, 10) || 1);
     const started = new Date(cursor);
     const ended = new Date(cursor.getTime() + minutes * 60000);
     cursor = ended;
+    cronoPaseRememberDuration(item);
     cronoPaseRecordQuality(item, dateIso, comment);
     const res = cronoPaseAddToStudy(item, started.toISOString(), ended.toISOString(), comment);
     if (res) added += res.minutes;
@@ -17141,14 +17184,17 @@ function confirmCronoPaseRapido() {
   else saveData();
   closeModal('modalCronoPaseRapido');
   cronoPaseDraft = [];
-  if (typeof cronoPlayHarvest === 'function') {
+  const netAdded = Math.max(0, added - absorbed);
+  if (typeof cronoPlayHarvest === 'function' && netAdded > 0) {
     cronoPlayHarvest(
       prevConcentradoMin,
-      typeof getMinutosConcentradoHoy === 'function' ? getMinutosConcentradoHoy() : prevConcentradoMin + added,
-      added
+      typeof getMinutosConcentradoHoy === 'function' ? getMinutosConcentradoHoy() : prevConcentradoMin + netAdded,
+      netAdded
     );
   }
-  showToast('Pase guardado · +' + added + ' min');
+  showToast(absorbed
+    ? 'Pase guardado · ' + absorbed + ' min tomados del cronómetro' + (netAdded ? ' (+' + netAdded + ' min)' : '')
+    : 'Pase guardado · +' + added + ' min');
   try { if (typeof SFX !== 'undefined' && SFX.pase) SFX.pase(); } catch(e) {}
   try { Haptics.medium(); } catch(e) {}
 }

@@ -2213,3 +2213,39 @@ test('the calendar view has no month grid tab and a saved month tab opens the ev
   await expect(page.locator('#calPanelMes')).toBeHidden();
   await expect(page.locator('#calPanelEventos')).toBeVisible();
 });
+
+test('a pass during a running session is taken out of the stopwatch and its duration is remembered', async ({ page }) => {
+  await page.setViewportSize({ width: 1194, height: 834 });
+  await prepare(page);
+  await page.evaluate(async () => {
+    db.obras = [{ id: 'obra_x', name: 'Obra X', composer: 'X', tipo: 'obra', movimientos: [], paseHistory: [], duracion: 8 }];
+    saveData();
+    if (typeof cronoHydrate === 'function') cronoHydrate();
+    showView('cronometro'); crono.mode = 'stopwatch';
+    document.getElementById('cronoObraSelect').value = 'obra::obra_x';
+    cronoUpdateStartBtn(); cronoStart();
+    crono.startTs = Date.now() - 30 * 60000; cronoSaveState();
+    localStorage.setItem('cronoPickRecency', JSON.stringify({ obra_x: 100 }));
+    openCronoPaseRapido();
+  });
+  const modal = page.locator('#modalCronoPaseRapido');
+  if (await page.locator('#cronoPaseSelectStage').isVisible()) {
+    const pick = modal.locator('.crono-pase-picker-item', { hasText: 'Obra X' });
+    if ((await pick.getAttribute('aria-pressed')) !== 'true') await pick.click();
+    await page.locator('#cronoPaseContinueBtn').click();
+  }
+  const minutes = page.locator('#cronoPaseItems .crono-pase-min').first();
+  await minutes.fill('11');
+  await minutes.dispatchEvent('change');
+  await expect(page.locator('#cronoPaseTotal')).toContainText('30 min → 19 min de estudio + 11 de pase');
+  await page.evaluate(() => confirmCronoPaseRapido());
+  const after = await page.evaluate(() => ({
+    elapsedMin: Math.round(cronoEffectiveElapsedMs() / 60000),
+    passPlants: db.sessionPlants.filter(p => p.pase && p.obraId === 'obra_x').map(p => p.mins),
+    duracion: db.obras[0].duracion,
+    passes: db.obras[0].paseHistory.length,
+    running: crono.state,
+  }));
+  expect(after).toMatchObject({ elapsedMin: 19, passPlants: [11], duracion: 11, passes: 1, running: 'running' });
+  await expect(page.locator('.toast, #toast').first()).toContainText('11 min tomados del cronómetro');
+});
