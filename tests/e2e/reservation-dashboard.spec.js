@@ -803,12 +803,24 @@ test('salas premium: tabla día × sala, filtro por horas y correo de reserva ya
   const detail = card.locator('.rd-premium-detail');
   await expect(detail).toContainText('10:30–15:00');
   await expect(detail).toContainText('17:00–18:00');
-  const href = await detail.locator('a').first().getAttribute('href');
+  const outlook = detail.locator('a').first();
+  const href = await outlook.getAttribute('href');
   const [y, m, d] = iso(2).split('-').map(Number);
   const de = new Date(y, m - 1, d).toLocaleDateString('de-DE', { weekday: 'long' });
-  expect(href.startsWith('mailto:sala@example.org?subject=Reservierung%2010.114&body=')).toBe(true);
-  expect(decodeURIComponent(href.split('&body=')[1])).toBe(`Hallo,\nam ${de}, den ${d}. ${new Date(y, m - 1, d).toLocaleDateString('de-DE', { month: 'long' })} von 11:00 bis 15:00 Uhr.`);
-  await expect(detail.locator('a').first()).toContainText('11:00–15:00');
+  const expectedBody = `Hallo,\nam ${de}, den ${d}. ${new Date(y, m - 1, d).toLocaleDateString('de-DE', { month: 'long' })} von 11:00 bis 15:00 Uhr.`;
+  // Outlook de Microsoft 365, ya escrito y en otra pestaña.
+  expect(href.startsWith('https://outlook.office.com/mail/deeplink/compose?to=sala%40example.org&subject=Reservierung%2010.114&body=')).toBe(true);
+  expect(decodeURIComponent(href.split('&body=')[1])).toBe(expectedBody);
+  await expect(outlook).toHaveAttribute('target', '_blank');
+  await expect(outlook).toContainText('Escribir en Outlook');
+  await expect(outlook).toContainText('11:00–15:00');
+  // Alternativa para otra app de correo.
+  const mailto = await detail.locator('.rd-premium-mailto').first().getAttribute('href');
+  expect(mailto.startsWith('mailto:sala@example.org?subject=Reservierung%2010.114&body=')).toBe(true);
+  // Al tocar, el texto queda copiado para pegarlo si hiciera falta.
+  await page.evaluate(() => { window.__copied = null; navigator.clipboard.writeText = async t => { window.__copied = t; }; });
+  await detail.locator('.rd-premium-mailto').first().evaluate(a => { a.addEventListener('click', e => e.preventDefault(), { once: true }); a.click(); });
+  expect(await page.evaluate(() => window.__copied)).toBe(expectedBody);
 });
 
 test('observatorio: resumen, franjas, semana, mes y cuándo, con la pestaña recordada', async ({ page }) => {

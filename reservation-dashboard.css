@@ -563,3 +563,5 @@ html.platform-windows .rd-quick-overlay { z-index: 1150; }
 .aulas-screen .rd-obs-bar i { display: block; height: 10px; border-radius: 6px; background: linear-gradient(90deg, color-mix(in srgb, var(--rd-ok) 55%, var(--bg2)) var(--w), var(--bg3) var(--w)); }
 .aulas-screen .rd-obs-bar b { min-width: 72px; text-align: right; color: var(--text); font-weight: 600; }
 .aulas-screen .rd-obs-bar b small { color: var(--text3); font-weight: 500; }
+.aulas-screen .rd-premium-mail { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.aulas-screen .rd-premium-mailto { font-size: 12px; color: var(--text3); text-decoration: underline; }

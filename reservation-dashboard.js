@@ -992,12 +992,23 @@
     const [s, e] = rb - ra >= 60 ? [ra, rb] : [a, b];
     return [`${pad(Math.floor(s / 60))}:${pad(s % 60)}`, `${pad(Math.floor(e / 60))}:${pad(e % 60)}`];
   }
-  function premiumMailto(room, slot) {
-    if (!room.email_to || !room.templates?.length) return '';
+  // 21-10-2026: el correo se abre en Outlook de Microsoft 365 (la cuenta de
+  // la Hochschule) ya escrito; el texto también se copia por si hay que pegarlo.
+  // «mailto» queda como alternativa para otra app de correo.
+  function premiumEmail(room, slot) {
+    if (!room.email_to || !room.templates?.length) return null;
     const [h1, h2] = emailHours(slot);
     const template = room.templates[Math.floor(Math.random() * room.templates.length)];
     const body = template.replaceAll('{fecha}', germanDate(slot.date)).replaceAll('{h1}', h1).replaceAll('{h2}', h2);
-    return `mailto:${room.email_to}?subject=${encodeURIComponent(room.subject || '')}&body=${encodeURIComponent(body)}`;
+    const query = `to=${encodeURIComponent(room.email_to)}&subject=${encodeURIComponent(room.subject || '')}&body=${encodeURIComponent(body)}`;
+    return {
+      body,
+      outlook: `https://outlook.office.com/mail/deeplink/compose?${query}`,
+      mailto: `mailto:${room.email_to}?subject=${encodeURIComponent(room.subject || '')}&body=${encodeURIComponent(body)}`,
+    };
+  }
+  function copyPremiumBody(text) {
+    try { navigator.clipboard?.writeText(text).catch(() => {}); } catch (e) {}
   }
   function premiumTone(minutes) { return minutes >= 240 ? 3 : minutes >= 120 ? 2 : minutes >= 60 ? 1 : 0; }
   function renderPremium(state) {
@@ -1041,15 +1052,17 @@
       const slots = byDay.get(premiumPick.date).get(premiumPick.room);
       detail = `<div class="rd-premium-detail"><b>${escapeHtml(room.name || room.short)} · ${escapeHtml(formatDate(premiumPick.date))}</b>
         ${slots.map(slot => {
-          const link = premiumMailto(room, slot);
+          const mail = premiumEmail(room, slot);
           const [h1, h2] = emailHours(slot);
           return `<div class="rd-premium-slot"><span>${slot.start}–${slot.end} <small>(${hoursLabel(slotMinutes(slot))})</small></span>
-            ${link ? `<a class="rd-action" href="${escapeHtml(link)}"><b>Escribir correo</b><small>${h1}–${h2}</small></a>` : ''}</div>`;
+            ${mail ? `<span class="rd-premium-mail"><a class="rd-action" href="${escapeHtml(mail.outlook)}" target="_blank" rel="noopener" data-premium-body="${escapeHtml(mail.body)}"><b>Escribir en Outlook</b><small>${h1}–${h2} · ${escapeHtml(room.email_to)}</small></a>
+              <a class="rd-premium-mailto" href="${escapeHtml(mail.mailto)}" data-premium-body="${escapeHtml(mail.body)}">otra app</a></span>` : ''}</div>`;
         }).join('')}</div>`;
     }
     body.innerHTML = chips + (days.length
       ? `<div class="rd-premium-scroll"><table class="rd-premium-table">${head}${rows}</table></div>${detail}`
       : `<p class="rd-franja-empty">Ningún hueco de ${hoursLabel(min)} o más en los próximos ${premium.horizon_days || 60} días.</p>`);
+    body.querySelectorAll('[data-premium-body]').forEach(link => link.addEventListener('click', () => copyPremiumBody(link.dataset.premiumBody)));
     body.querySelectorAll('[data-premium-min]').forEach(button => button.addEventListener('click', () => {
       try { localStorage.setItem(PREMIUM_MIN_KEY, button.dataset.premiumMin); } catch (e) {}
       renderPremium(state);
