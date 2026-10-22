@@ -191,7 +191,7 @@
     });
     if (!ok) return;
     if (typeof root.closeModal === 'function') root.closeModal('modalHabitLapse');
-    // Con el hub, la app propone acciones (y reabrir si ya es recaída); si no, un aviso.
+    // Solo un aviso (lo da HabitHub si está; reabrir se ofrece en la página).
     if (root.HabitHub && typeof root.HabitHub.suggestAfter === 'function') root.HabitHub.suggestAfter(lapseHabitId, 'lapse', { note, day: date });
     else {
       const after = state(allHabits(), habit, todayKey);

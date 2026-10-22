@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v516';
+const CACHE = 'estudio-v517';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -138,8 +138,8 @@ const ASSETS = [
   "./timer-core.js?v=397",
   "./timer-objectives.js?v=514",
   "./habit-rulebook.js?v=476",
-  "./habit-maintenance.js?v=511",
-  "./habit-hub.js?v=492",
+  "./habit-maintenance.js?v=517",
+  "./habit-hub.js?v=517",
   "./habit-hub.css?v=492",
   "./study-journey.js?v=476",
   "./study-journey.css?v=476",

@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-10-18-barra-y-avisos-v513';
+const APP_VERSION = '2026-10-22-recaida-sin-ventana-v517';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -21579,7 +21579,7 @@ function registerHabitRelapse(event, challengeId) {
   renderMesCalendario();
   showToast(existing === 'failed' ? 'Recaída quitada' : 'Recaída registrada');
   try { Haptics.success(); } catch (e) {}
-  // Tras caer, la app propone qué hacer para que no se repita (habit-hub.js).
+  // Tras caer, solo un aviso corto (habit-hub.js); ninguna ventana.
   if (existing !== 'failed' && window.HabitHub) HabitHub.suggestAfter(habit.id, 'relapse', { day: metrics.todayKey });
 }
 

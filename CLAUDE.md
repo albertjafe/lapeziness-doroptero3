@@ -103,7 +103,7 @@ El metrónomo (drawer lateral derecho, ruleta de tempo, planificador con lookahe
 
 ## Estado actual (mayo 2026)
 
-Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v106`.
+Todas las funcionalidades listadas arriba están implementadas y en `main`. La versión de caché activa es `estudio-v517`.
 
 ### Pasajes difíciles (panel del cronómetro)
 
@@ -124,6 +124,9 @@ Hubo pérdida de datos: `saveData()` **no actualizaba `db._savedAt`**, así que 
 ### Obras sin ficha · recuperar o unir estudio huérfano (v470)
 
 Borrar una obra (`deleteObra`) conserva sus plantas, y una obra que no llegó a sincronizarse deja plantas sin obra. `ObrasV3.orphans(db)` agrupa las plantas **con id** (`id`/`runId`) cuyo `obraId` no está en `db.obras` (minutos, tramos, fechas) y saca el nombre de `sesiones[].items[].obraName`. Si alguna tuvo estudio en los últimos 60 días y no está oculta, la lista de Obras muestra un aviso `.ob3-alert` («N obras con estudio no tienen ficha · Revisar ›»); también está en `···` → «Obras sin ficha (N)». La ventana `#ob3OrphansOverlay` permite **Recuperar** (crea la obra con **el mismo id**: vuelve todo su estudio; si no hay nombre, pide uno), **Unir con…** (`moveStudy`: cambia `obraId` de cada planta y pone `_fieldClock.obraId` y `updatedAt`, y `movId: null` si el movimiento no existe en la obra destino; `suggestedMatch` propone la obra con el mismo título antes de la primera coma y, si no hay ninguna, el desplegable empieza en «Elige la obra…» para no unir a ciegas; pide confirmación) u **Ocultar** (`db.obrasSinFichaOcultas`). Las plantas se identifican por `id:` en `DocumentSyncCore`, `DataCore.mergePlants` y el historial maestro, así que el cambio de obra lo gana el reloj de campo más reciente en todas las fusiones y no se duplica (probado en `tests/unit/obras-v3.test.js`). Las `sesiones` **no** se tocan (sus items no tienen id y cambiar `obraId` los duplicaría). Así se recuperaron «Reflets dans l'eau» (unida a la ficha recreada) y «Hommage à Rameau». Pruebas: `tests/unit/obras-v3.test.js`, último caso de `tests/e2e/obras-v3.spec.js`.
+
+### Hábitos · sin ventana tras una recaída (oct 2026, v517)
+Registrar una recaída (`registerHabitRelapse`, `toggleHabitToday`) o una caída de mantenimiento ya **no abre `#modalHabitAction`**: `HabitHub.suggestAfter(id, 'relapse'|'lapse')` solo muestra un aviso corto («Recaída apuntada. Cierra y vuelve al plan»; en mantenimiento, «Caída apuntada…» o «Ya es una recaída: toca reabrir el reto», y reabrir sigue en la página del hábito). Motivo: tras caer, la ventana era una tarea más justo cuando lo útil es volver al plan. La ventana sigue para añadir acciones a mano (`suggestAfter(id, 'manual')`, «＋ Añadir» de la página del hábito). Pruebas: `tests/e2e/habit-hub.spec.js`, `tests/e2e/habit-trophies.spec.js`.
 
 ### Hábitos · hub en Hoy y acciones tras una caída (v469)
 

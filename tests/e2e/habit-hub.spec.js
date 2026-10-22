@@ -12,7 +12,7 @@ const fixture = () => ({
   ],
 });
 
-test('hub de Hoy: día del reto, recaída con acciones sugeridas que salen en Hoy y en el calendario', async ({ page }) => {
+test('hub de Hoy: día del reto, recaída sin ventana y acciones a mano que salen en Hoy y en el calendario', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.route('https://cdn.jsdelivr.net/**', route => route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* offline test */' }));
   await page.addInitScript(data => {
@@ -33,23 +33,24 @@ test('hub de Hoy: día del reto, recaída con acciones sugeridas que salen en Ho
   await expect(card).toContainText('No móvil en la cama');
 
   await card.locator('.hh-today').first().click();
+  // Tras una recaída ya no se abre ninguna ventana: solo el aviso.
   const modal = page.locator('#modalHabitAction');
+  await expect(page.locator('#toast')).toContainText('Recaída apuntada');
+  await expect(modal).not.toHaveClass(/visible/);
+  const status = await page.evaluate(k => { const h = db.habitChallenges.find(x => x.id === 'detox'); return h.logs[k] && h.logs[k].status; }, day(0));
+  expect(status).toBe('failed');
+
+  // Las acciones se añaden a mano («＋ Añadir» de la página del hábito).
+  await page.evaluate(() => HabitHub.suggestAfter('detox', 'manual'));
   await expect(modal).toHaveClass(/visible/);
-  await expect(modal).toContainText('Recaída apuntada');
   await expect(modal.locator('.hla-item')).toHaveCount(2);
-  await page.locator('#hlaNote').fill('Miré WhatsApp en el desayuno');
   await page.locator('#hlaCustom').fill('Cargador en el pasillo');
   await modal.getByRole('button', { name: 'Añadir a Hoy y al calendario' }).click();
   await expect(modal).not.toHaveClass(/visible/);
 
-  const stored = await page.evaluate(k => {
-    const h = db.habitChallenges.find(x => x.id === 'detox');
-    return { status: h.logs[k] && h.logs[k].status, note: h.logs[k] && h.logs[k].note, actions: (h.actions || []).map(a => a.text) };
-  }, day(0));
-  expect(stored.status).toBe('failed');
-  expect(stored.note).toBe('Miré WhatsApp en el desayuno');
-  expect(stored.actions).toContain('Cargador en el pasillo');
-  expect(stored.actions.length).toBe(3);
+  const actions = await page.evaluate(() => (db.habitChallenges.find(x => x.id === 'detox').actions || []).map(a => a.text));
+  expect(actions).toContain('Cargador en el pasillo');
+  expect(actions.length).toBe(3);
 
   await expect(card).toContainText('Acciones de hoy');
   await expect(card).toContainText('Cargador en el pasillo');

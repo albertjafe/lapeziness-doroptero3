@@ -248,10 +248,22 @@
     }
   }
 
-  /* Tras una caída: propone acciones; lo aceptado va al calendario. */
+  /* Tras una recaída o caída ya no se abre ninguna ventana (v517): solo un aviso
+     corto y vuelta a la norma. Las acciones se añaden a mano con «＋ Añadir». */
+  function noticeAfter(habit, kind) {
+    const M = root.HabitMaintenance;
+    if (kind === 'lapse') {
+      const s = M ? M.state(allHabits(), habit, todayKeyNow()) : null;
+      toast(s && s.applies && s.level === 'relapse' ? 'Caída apuntada. Ya es una recaída: toca reabrir el reto' : 'Caída apuntada. Esta noche, vuelta a la norma');
+    } else toast('Recaída apuntada. Cierra y vuelve al plan');
+  }
+
+  /* Acciones del hábito a mano: lo aceptado va a Hoy y al calendario. */
   function suggestAfter(habitId, kind, info) {
     const habit = allHabits().find(h => h.id === habitId);
-    if (!habit || !el('modalHabitAction')) return;
+    if (!habit) return;
+    if (kind !== 'manual') { noticeAfter(habit, kind); return; }
+    if (!el('modalHabitAction')) return;
     const todayKey = todayKeyNow();
     const list = suggestions(habit, { todayKey, rulebookApi: root.HabitRulebook || null });
     const M = root.HabitMaintenance;

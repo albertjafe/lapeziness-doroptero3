@@ -168,12 +168,9 @@ test('a lapse after finishing keeps the trophy; the threshold reopens the challe
   await page.locator('#hlNote').fill('Cogí el móvil de la mesilla');
   await page.locator('#modalHabitLapse .modal-btn.primary').click();
   await expect(page.locator('#modalHabitLapse')).not.toHaveClass(/visible/);
-  // Tras apuntarla, la app propone acciones; «Ahora no» las descarta.
+  // Tras apuntarla no se abre ninguna ventana: solo el aviso.
   const actions = page.locator('#modalHabitAction');
-  await expect(actions).toHaveClass(/visible/);
-  await expect(actions).toContainText('Caída apuntada');
-  await expect(page.locator('#hlaReopen')).toBeHidden();
-  await actions.getByRole('button', { name: 'Ahora no' }).click();
+  await expect(page.locator('#toast')).toContainText('Caída apuntada');
   await expect(actions).not.toHaveClass(/visible/);
   await expect(maint.locator('.hp-maint-state')).toContainText('Caída aislada');
   await expect(maint.locator('.hp-maint-list')).toContainText('Cogí el móvil de la mesilla');
@@ -184,9 +181,9 @@ test('a lapse after finishing keeps the trophy; the threshold reopens the challe
   await maint.getByRole('button', { name: 'Registrar caída', exact: true }).click();
   await page.locator('#hlToday').click();
   await page.locator('#modalHabitLapse .modal-btn.primary').click();
-  // Con la tercera caída en 14 días, la propia ventana de acciones ofrece reabrir.
-  await expect(page.locator('#hlaReopen')).toBeVisible();
-  await actions.getByRole('button', { name: 'Ahora no' }).click();
+  // Con la tercera caída en 14 días, el aviso lo dice y la página ofrece reabrir.
+  await expect(page.locator('#toast')).toContainText('Ya es una recaída');
+  await expect(actions).not.toHaveClass(/visible/);
   await expect(maint.locator('.hp-maint-state')).toContainText('Esto ya es una recaída');
   await maint.getByRole('button', { name: 'Reabrir el reto (14 días)', exact: true }).click();
 
