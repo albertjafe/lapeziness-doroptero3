@@ -913,3 +913,69 @@ test('blindajes, VIP, hora de inicio y absorbedor se editan desde la app y avisa
   await page.evaluate(() => window.ReservationDashboard.refresh(false));
   await expect(blinds.locator('[name="rooms"]')).toHaveValue('401');
 });
+
+test('pecera: interruptor en Ajustes, agua asegurada y plan, cuándo abre cada tramo y objetivo', async ({ page }) => {
+  // Monitor antiguo (sin pecera_enabled): ni interruptor ni tarjeta.
+  await mountDashboard(page, sampleRow);
+  await expect(page.locator('[data-command="set_pecera"]')).toHaveCount(0);
+  await expect(page.locator('#reservationPecera')).toBeHidden();
+
+  const row = structuredClone(sampleRow);
+  row.state.monitor.pecera_enabled = false;
+  row.state.pecera = { enabled: false, objetivo_min: 360 };
+  await mountDashboard(page, row);
+  await expect(page.locator('#reservationPecera')).toBeHidden();
+  const last = () => page.evaluate(() => window.__dashboardWrites.at(-1));
+  await page.locator('#reservationSettingControls [data-command="set_pecera"]').click();
+  await expect.poll(last).toMatchObject({ command: 'set_pecera', payload: { enabled: true } });
+
+  const now = Date.now();
+  const iso = ms => new Date(ms).toISOString();
+  const t = new Date(); t.setDate(t.getDate() + 1);
+  const tomorrow = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  row.state.monitor.pecera_enabled = true;
+  row.state.pecera = {
+    enabled: true, mode: 'sombra', date: tomorrow, updated_at: iso(now), objetivo_min: 360,
+    secured_min: 90, planned_min: 270, quota: { rf_mins: 390, sz_mins: 90 },
+    window: { start: '10:00', end: '20:30' },
+    own: [{ room: '10.112', start: '10:00', end: '11:30' }],
+    blocks: [
+      { room: '10.112', start: '11:30', end: '13:00', level: 3, kind: 'alargar', antelacion_h: 24, opens_at: iso(now - 3600e3), full_at: iso(now - 60e3), status: 'abierto', night: false },
+      { room: '10.202', start: '13:00', end: '16:00', level: 1, kind: 'nueva', antelacion_h: 15, opens_at: iso(now + 2 * 3600e3), full_at: iso(now + 5 * 3600e3), status: 'abre', night: false },
+    ],
+    next_race: { at: iso(now + 2 * 3600e3), room: '10.202', start: '13:00' },
+    madrugada_enabled: true, error: null,
+  };
+  row.state.clock = { offset_ms: 860, error_ms: 10, measured_at: iso(now) };
+  await page.evaluate(r => { window.__row = r; return window.ReservationDashboard.refresh(false); }, row);
+
+  const card = page.locator('#reservationPecera');
+  await expect(card).toBeVisible();
+  const summary = card.locator('.rd-pecera-summary');
+  await expect(summary).toContainText('1 h 30 min ya reservadas');
+  await expect(summary).toContainText('+4 h 30 min en el plan');
+  await expect(summary).toContainText('objetivo de 6 h cubierto');
+  await expect(card.locator('.rd-pecera-tank')).toHaveAttribute('aria-label', /1 h 30 min reservadas/);
+  await expect(card.locator('.rd-pecera-line .is-own')).toHaveCount(1);
+  await expect(card.locator('.rd-pecera-line .is-plan')).toHaveCount(2);
+  await expect(card.locator('.rd-pecera-line .is-plan.is-abre')).toHaveCount(1);
+  const blocks = card.locator('.rd-pecera-blocks li');
+  await expect(blocks.first()).toContainText('Alargar 10.112 hasta las 13:00');
+  await expect(blocks.first()).toContainText('ya se puede reservar');
+  await expect(blocks.nth(1)).toContainText('10.202 · 13:00–16:00');
+  await expect(blocks.nth(1)).toContainText('(15 h antes)');
+  await expect(card.locator('.rd-pecera-race')).toContainText('10.202 desde las 13:00');
+  await expect(card).toContainText('Cuota de mañana: RF 6 h 30 min · SZ 1 h 30 min');
+  await expect(card).toContainText('0,86 s adelantado');
+  await expect(card).toContainText('no reserva, no cancela ni alarga nada');
+
+  await card.getByRole('radio', { name: '5 h' }).click();
+  await expect.poll(last).toMatchObject({ command: 'set_pecera', payload: { objetivo_min: 300 } });
+  await expect(card.getByRole('radio', { name: '6 h' })).toBeDisabled();
+
+  // Si el último cálculo falló, se dice sin esconder el plan anterior.
+  row.state.pecera.error = 'RuntimeError: no pude leer la cuota de mañana';
+  await page.evaluate(r => { window.__row = r; return window.ReservationDashboard.refresh(false); }, row);
+  await expect(card.locator('.rd-pecera-error')).toContainText('no pude leer la cuota de mañana');
+  await expect(blocks).toHaveCount(2);
+});

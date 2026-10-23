@@ -565,3 +565,31 @@ html.platform-windows .rd-quick-overlay { z-index: 1150; }
 .aulas-screen .rd-obs-bar b small { color: var(--text3); font-weight: 500; }
 .aulas-screen .rd-premium-mail { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .aulas-screen .rd-premium-mailto { font-size: 12px; color: var(--text3); text-decoration: underline; }
+
+/* Pecera (23-10-2026): plan de mañana en sombra. */
+.aulas-screen .rd-pecera { --rd-water: #3a7fc1; }
+.aulas-screen #reservationPeceraBody { display: grid; gap: 10px; padding: 6px 16px 16px; }
+.aulas-screen .rd-pecera-top { display: flex; align-items: center; gap: 16px; }
+.aulas-screen .rd-pecera-tank { position: relative; flex: 0 0 64px; height: 84px; border: 2px solid color-mix(in srgb, var(--rd-water) 55%, var(--border)); border-top: 0; border-radius: 4px 4px 16px 16px; background: color-mix(in srgb, var(--rd-water) 6%, var(--bg2)); overflow: hidden; }
+.aulas-screen .rd-pecera-tank i { position: absolute; left: 0; right: 0; bottom: var(--b, 0%); height: var(--h, 0%); transition: height .6s ease, bottom .6s ease; }
+.aulas-screen .rd-pecera-tank .is-secured { bottom: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--rd-water) 70%, var(--bg2)), var(--rd-water)); }
+.aulas-screen .rd-pecera-tank .is-planned { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--rd-water) 32%, transparent) 0 6px, color-mix(in srgb, var(--rd-water) 14%, transparent) 6px 12px); }
+.aulas-screen .rd-pecera-summary { margin: 0; color: var(--text2); font-size: 14px; line-height: 1.5; }
+.aulas-screen .rd-pecera-summary b { color: var(--text); }
+.aulas-screen .rd-pecera-summary small { color: var(--text3); font-size: 12.5px; }
+.aulas-screen .rd-pecera-line { position: relative; height: 30px; border-radius: 9px; background: var(--bg3); }
+.aulas-screen .rd-pecera-line span { position: absolute; top: 3px; bottom: 3px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 6px; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+.aulas-screen .rd-pecera-line .is-own { background: var(--rd-water); color: #fff; }
+.aulas-screen .rd-pecera-line .is-plan { background: color-mix(in srgb, var(--rd-water) 26%, var(--bg2)); color: var(--text); }
+.aulas-screen .rd-pecera-line .is-plan.is-abre { background: transparent; border: 1.5px dashed color-mix(in srgb, var(--rd-water) 70%, var(--border)); color: var(--text2); }
+.aulas-screen .rd-pecera-hours { display: flex; justify-content: space-between; margin-top: -6px; color: var(--text3); font-size: 11px; }
+.aulas-screen .rd-pecera-race { margin: 0; padding: 8px 12px; border-radius: 11px; background: color-mix(in srgb, var(--rd-water) 10%, var(--bg2)); color: var(--text2); font-size: 13.5px; }
+.aulas-screen .rd-pecera-race b { color: var(--text); }
+.aulas-screen .rd-pecera-blocks { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.aulas-screen .rd-pecera-blocks li { display: grid; gap: 1px; padding: 8px 12px; border-left: 3px solid color-mix(in srgb, var(--rd-water) 45%, var(--border)); border-radius: 8px; background: var(--bg3); }
+.aulas-screen .rd-pecera-blocks li.is-abierto { border-left-color: var(--rd-ok); }
+.aulas-screen .rd-pecera-blocks li.is-abre { border-left-style: dashed; }
+.aulas-screen .rd-pecera-blocks b { font-size: 14px; font-weight: 600; }
+.aulas-screen .rd-pecera-blocks small { color: var(--text3); font-size: 12.5px; }
+.aulas-screen .rd-pecera-quota, .aulas-screen .rd-pecera-note, .aulas-screen .rd-pecera-clock { margin: 0; color: var(--text3); font-size: 12.5px; }
+.aulas-screen .rd-pecera-clock.is-warn, .aulas-screen .rd-pecera-error { margin: 0; color: var(--rd-warn); font-size: 13px; }

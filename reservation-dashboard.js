@@ -69,6 +69,7 @@
     { command: 'set_madrugada', key: 'madrugada_enabled', label: 'Madrugada', hint: 'Permite reservar entre 23:30 y 07:30' },
     { command: 'set_aachen', key: 'aachen_only', label: 'Solo Aachen', hint: 'Busca únicamente en el campus de Aachen' },
     { command: 'set_absorbe', key: 'absorbe_enabled', label: 'Absorber huecos', hint: 'Alarga tus reservas hacia el hueco libre de al lado', optional: true },
+    { command: 'set_pecera', key: 'pecera_enabled', label: 'Pecera (plan de mañana)', hint: 'En sombra: calcula el mejor plan de mañana y cuándo abre cada tramo; no reserva', optional: true },
   ];
   const TAB_KEY = 'reservationDashboardTab';
   const LAST_START_KEY = 'reservationDashboardLastStart_';
@@ -1078,6 +1079,88 @@
   /* Laboratorio de cuotas: el monitor hace simulaciones type=check en Asimut
    * (nunca reserva) y publica aquí qué reglas ha confirmado. */
   const LAB_ICON = { yes: '✓', no: '✗', unknown: '?' };
+  /* Pecera (23-10-2026): plan de mañana que el monitor calcula en sombra (no
+   * reserva nada). Agua llena = lo que ya tienes reservado; agua rayada = lo
+   * que propone el plan, hasta el objetivo. Cada bloque dice cuándo lo deja
+   * reservar Asimut (24 h, 15 h… antes de que acabe cada cuarto). */
+  const PECERA_OBJETIVOS = [240, 300, 360, 420, 480];
+  function peceraMins(minutes) { return minutes ? durationLabel(minutes) : '0 min'; }
+  function peceraWhen(iso) {
+    const date = parseDate(iso);
+    if (!date) return '—';
+    const day = localIsoDate(date);
+    const today = new Date();
+    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    const prefix = day === localIsoDate(today) ? 'hoy' : day === localIsoDate(tomorrow) ? 'mañana' : formatDate(day);
+    return `${prefix} a las ${formatClock(iso)}`;
+  }
+  function peceraStatus(block, madrugadaOn) {
+    if (block.status === 'abierto') return 'ya se puede reservar';
+    if (block.status === 'abriendo') return `abriéndose por cuartos · entero ${peceraWhen(block.full_at)}`;
+    if (block.status === 'abre') {
+      const night = block.night && !madrugadaOn ? ' · de madrugada, con Madrugada desactivada' : '';
+      return `abre ${peceraWhen(block.opens_at)}${block.antelacion_h ? ` (${block.antelacion_h} h antes)` : ''}${night}`;
+    }
+    return 'antelación desconocida';
+  }
+  function renderPecera(state, row) {
+    const card = el('reservationPecera');
+    const body = el('reservationPeceraBody');
+    if (!card || !body) return;
+    const pecera = state.pecera;
+    card.hidden = !pecera || pecera.enabled !== true;
+    if (card.hidden) return;
+    const offline = ageMs(row) > OFFLINE_MS || state.monitor?.online === false;
+    const objetivo = pecera.objetivo_min || 360;
+    const meta = el('reservationPeceraMeta');
+    if (meta) meta.textContent = pecera.date
+      ? `${formatDate(pecera.date)} · act. ${formatClock(pecera.updated_at)}` : 'en sombra: no reserva';
+    const chips = `<div class="rd-segment rd-pecera-goal" role="radiogroup" aria-label="Objetivo de mañana">${PECERA_OBJETIVOS.map(v => `
+      <button type="button" role="radio" aria-checked="${v === objetivo}" class="${v === objetivo ? 'active' : ''}" data-command="set_pecera" data-pecera-obj="${v}" ${offline || v === objetivo ? 'disabled' : ''}>${hoursLabel(v)}</button>`).join('')}</div>`;
+    const clock = state.clock && state.clock.measured_at && state.clock.offset_ms != null
+      ? `<p class="rd-pecera-clock ${Math.abs(state.clock.offset_ms) > 1000 ? 'is-warn' : ''}">Reloj: el ordenador del monitor va ${(Math.abs(state.clock.offset_ms) / 1000).toFixed(2).replace('.', ',')} s ${state.clock.offset_ms >= 0 ? 'adelantado' : 'atrasado'} respecto a Asimut; las ráfagas ya apuntan a la hora de Asimut.</p>`
+      : '';
+    const note = '<p class="rd-pecera-note">En sombra: solo calcula y dibuja; no reserva, no cancela ni alarga nada.</p>';
+    if (!pecera.date) {
+      body.innerHTML = `${pecera.error ? `<p class="rd-pecera-error">No pude calcular el plan: ${escapeHtml(pecera.error)}</p>` : '<p class="rd-franja-empty">Calculando el primer plan de mañana…</p>'}${chips}${note}${clock}`;
+      body.querySelectorAll('[data-command]').forEach(button => button.addEventListener('click', () => sendCommand(button)));
+      return;
+    }
+    const secured = pecera.secured_min || 0;
+    const planned = pecera.planned_min || 0;
+    const missing = Math.max(0, objetivo - secured - planned);
+    const pctSecured = Math.min(100, secured / objetivo * 100);
+    const pctPlanned = Math.min(100 - pctSecured, planned / objetivo * 100);
+    const tank = `<div class="rd-pecera-tank" role="img" aria-label="${escapeHtml(`${peceraMins(secured)} reservadas y ${peceraMins(planned)} en el plan de ${hoursLabel(objetivo)}`)}">
+      <i class="is-planned" style="--b:${pctSecured.toFixed(1)}%;--h:${pctPlanned.toFixed(1)}%"></i><i class="is-secured" style="--h:${pctSecured.toFixed(1)}%"></i></div>`;
+    const summary = `<p class="rd-pecera-summary"><b>${peceraMins(secured)}</b> ya reservadas<br><b>+${peceraMins(planned)}</b> en el plan<br>
+      <small>${missing ? `faltan ${peceraMins(missing)} para ${hoursLabel(objetivo)}` : `objetivo de ${hoursLabel(objetivo)} cubierto`}</small></p>`;
+    const ws = toMinutes(pecera.window?.start || '10:00');
+    const we = toMinutes(pecera.window?.end || '20:30');
+    const span = Math.max(1, we - ws);
+    const seg = (item, cls, label) => {
+      const a = Math.max(ws, toMinutes(item.start)), b = Math.min(we, toMinutes(item.end));
+      if (b <= a) return '';
+      return `<span class="${cls}" style="left:${((a - ws) / span * 100).toFixed(2)}%;width:${((b - a) / span * 100).toFixed(2)}%" title="${escapeHtml(`${label} ${item.start}–${item.end}`)}">${escapeHtml(label)}</span>`;
+    };
+    const line = `<div class="rd-pecera-line">${(pecera.own || []).map(o => seg(o, 'is-own', o.room || 'tuya')).join('')}${(pecera.blocks || []).map(b => seg(b, `is-plan is-${b.status}`, b.room || '')).join('')}</div>
+      <div class="rd-pecera-hours"><span>${escapeHtml(pecera.window?.start || '10:00')}</span><span>${escapeHtml(pecera.window?.end || '20:30')}</span></div>`;
+    const blocks = (pecera.blocks || []).length
+      ? `<ul class="rd-pecera-blocks">${pecera.blocks.map(b => `<li class="is-${b.status}">
+          <b>${b.kind === 'alargar' ? `Alargar ${escapeHtml(b.room || '')} hasta las ${b.end}` : `${escapeHtml(b.room || '')} · ${b.start}–${b.end}`}</b>
+          <small>${b.kind === 'alargar' ? `${b.start}–${b.end} · ` : ''}${escapeHtml(peceraStatus(b, pecera.madrugada_enabled))}</small></li>`).join('')}</ul>`
+      : `<p class="rd-franja-empty">${missing ? 'No queda nada libre que encaje (o falta cuota de mañana).' : 'No hace falta nada más para el objetivo.'}</p>`;
+    const race = pecera.next_race?.at
+      ? `<p class="rd-pecera-race">Próxima carrera: <b>${escapeHtml(peceraWhen(pecera.next_race.at))}</b> · ${escapeHtml(pecera.next_race.room || '')} desde las ${escapeHtml(pecera.next_race.start || '')}</p>`
+      : '';
+    const quota = pecera.quota
+      ? `<p class="rd-pecera-quota">Cuota de mañana: RF ${peceraMins(pecera.quota.rf_mins || 0)}${pecera.quota.sz_mins != null ? ` · SZ ${peceraMins(pecera.quota.sz_mins)}` : ''}</p>`
+      : '';
+    const error = pecera.error ? `<p class="rd-pecera-error">Último cálculo fallido: ${escapeHtml(pecera.error)}</p>` : '';
+    body.innerHTML = `<div class="rd-pecera-top">${tank}${summary}</div>${line}${race}${blocks}${quota}${error}${chips}${note}${clock}`;
+    body.querySelectorAll('[data-command]').forEach(button => button.addEventListener('click', () => sendCommand(button)));
+  }
+
   function renderQuotaLab(state, offline) {
     const wrap = el('reservationQuotaLab');
     if (!wrap) return;
@@ -1675,6 +1758,7 @@
     renderTransition(state.transition);
     renderFranjas(state, row);
     renderPremium(state);
+    renderPecera(state, row);
     renderObservatorio(state);
     applyTab();
     renderTodayCard(row);
@@ -1684,6 +1768,7 @@
   function commandPayload(button) {
     if (button.dataset.command === 'set_operating_mode') return { mode: button.dataset.mode };
     if (button.dataset.command === 'set_booking_type') return { type: button.dataset.type };
+    if (button.dataset.peceraObj) return { objetivo_min: Number(button.dataset.peceraObj) };
     if (button.dataset.migMode) return { mode: button.dataset.migMode };
     if (button.dataset.franjaId) return { id: button.dataset.franjaId };
     if (button.dataset.franjaDate) return { date: button.dataset.franjaDate };

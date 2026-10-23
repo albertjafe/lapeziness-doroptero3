@@ -143,4 +143,18 @@ describe('reservation monitor dashboard', () => {
     expect(edge).toContain('inicio_today: cleanTime(monitorRaw.inicio_today),');
     expect(dashboard).toContain('topic: `rmon-${userId}`');
   });
+
+  it('passes the Pecera (tomorrow plan in shadow mode) and the server clock through every layer', () => {
+    const migration = fs.readFileSync('supabase/migrations/20261023200000_reservation_monitor_pecera_command.sql', 'utf8');
+    expect(migration).toContain("'set_pecera'");
+    const previous = fs.readFileSync('supabase/migrations/20261007120000_reservation_monitor_settings_commands.sql', 'utf8');
+    for (const [, command] of previous.matchAll(/'([a-z_]+)'/g)) expect(migration).toContain(`'${command}'`);
+    expect(edge).toContain('"set_pecera"');
+    expect(edge).toContain('pecera: cleanPecera(raw.pecera),');
+    expect(edge).toContain('clock: cleanClock(raw.clock),');
+    expect(edge).toContain('pecera_enabled: typeof monitorRaw.pecera_enabled === "boolean" ? monitorRaw.pecera_enabled : null,');
+    expect(dashboard).toContain("command: 'set_pecera'");
+    expect(dashboard).toContain('renderPecera(state, row);');
+    expect(dashboard).toContain("card.hidden = !pecera || pecera.enabled !== true;");
+  });
 });

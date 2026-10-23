@@ -36,6 +36,7 @@ const allowedCommands = new Set([
   "set_priority",
   "set_inicio",
   "set_absorbe",
+  "set_pecera",
 ]);
 const allowedPhases = new Set(["awaiting_start", "starting", "running", "closed"]);
 
@@ -285,6 +286,66 @@ function cleanObservatorio(value: unknown) {
   };
 }
 
+// Pecera (23-10-2026): plan de mañana que el monitor calcula en sombra (no
+// reserva): lo ya asegurado, los bloques propuestos y cuándo abre cada uno.
+function cleanPeceraBlock(value: unknown) {
+  const r = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    room: cleanText(r.room, 24),
+    start: cleanTime(r.start),
+    end: cleanTime(r.end),
+    level: cleanInteger(r.level, 0, 999),
+    kind: cleanChoice(r.kind, ["nueva", "alargar"]) || "nueva",
+    antelacion_h: cleanInteger(r.antelacion_h, 0, 240),
+    opens_at: cleanInstant(r.opens_at),
+    full_at: cleanInstant(r.full_at),
+    status: cleanChoice(r.status, ["abierto", "abriendo", "abre", "desconocido"]) || "desconocido",
+    night: cleanBoolean(r.night),
+  };
+}
+
+function cleanPecera(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const objetivo = cleanInteger(raw.objetivo_min, 60, 480);
+  if (raw.enabled !== true) return { enabled: false, objetivo_min: objetivo };
+  const obj = (item: unknown) => item && typeof item === "object" ? item as Record<string, unknown> : {};
+  const quota = raw.quota && typeof raw.quota === "object" ? obj(raw.quota) : null;
+  const race = raw.next_race && typeof raw.next_race === "object" ? obj(raw.next_race) : null;
+  return {
+    enabled: true,
+    mode: cleanChoice(raw.mode, ["sombra"]) || "sombra",
+    date: cleanDate(raw.date),
+    updated_at: cleanInstant(raw.updated_at),
+    objetivo_min: objetivo,
+    secured_min: cleanInteger(raw.secured_min, 0, 1440),
+    planned_min: cleanInteger(raw.planned_min, 0, 1440),
+    quota: quota ? {
+      rf_mins: cleanInteger(quota.rf_mins, 0, 1440),
+      sz_mins: quota.sz_mins == null ? null : cleanInteger(quota.sz_mins, 0, 1440),
+    } : null,
+    window: { start: cleanTime(obj(raw.window).start), end: cleanTime(obj(raw.window).end) },
+    own: Array.isArray(raw.own) ? raw.own.slice(0, 24).map((item) => ({
+      room: cleanText(obj(item).room, 24), start: cleanTime(obj(item).start), end: cleanTime(obj(item).end),
+    })).filter((o) => o.start && o.end) : [],
+    blocks: Array.isArray(raw.blocks) ? raw.blocks.slice(0, 24).map(cleanPeceraBlock).filter((b) => b.start && b.end) : [],
+    next_race: race ? { at: cleanInstant(race.at), room: cleanText(race.room, 24), start: cleanTime(race.start) } : null,
+    madrugada_enabled: cleanBoolean(raw.madrugada_enabled),
+    error: cleanText(raw.error, 160),
+  };
+}
+
+// Reloj (23-10-2026): desfase medido entre el ordenador del monitor y Asimut.
+function cleanClock(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  return {
+    offset_ms: cleanInteger(raw.offset_ms, -600_000, 600_000),
+    error_ms: raw.error_ms == null ? null : cleanInteger(raw.error_ms, 0, 600_000),
+    measured_at: cleanInstant(raw.measured_at),
+  };
+}
+
 function cleanQuota(value: unknown) {
   const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
   return {
@@ -377,6 +438,8 @@ function cleanState(value: unknown) {
       // 07-10-2026: hora de inicio de hoy y absorbedor (null en monitores antiguos).
       inicio_today: cleanTime(monitorRaw.inicio_today),
       absorbe_enabled: typeof monitorRaw.absorbe_enabled === "boolean" ? monitorRaw.absorbe_enabled : null,
+      // 23-10-2026: interruptor de la Pecera (null en monitores antiguos: la app lo oculta).
+      pecera_enabled: typeof monitorRaw.pecera_enabled === "boolean" ? monitorRaw.pecera_enabled : null,
       // null = monitor antiguo que aún no publica franjas (la app oculta la tarjeta).
       franjas: Array.isArray(monitorRaw.franjas)
         ? monitorRaw.franjas.slice(0, 16).map(cleanFranja).filter((f) => f.id && f.date && f.start && f.end)
@@ -386,6 +449,8 @@ function cleanState(value: unknown) {
     success_rate: cleanText(raw.success_rate, 12) || "100%",
     premium: cleanPremium(raw.premium),
     observatorio: cleanObservatorio(raw.observatorio),
+    pecera: cleanPecera(raw.pecera),
+    clock: cleanClock(raw.clock),
   };
 }
 
