@@ -593,3 +593,10 @@ html.platform-windows .rd-quick-overlay { z-index: 1150; }
 .aulas-screen .rd-pecera-blocks small { color: var(--text3); font-size: 12.5px; }
 .aulas-screen .rd-pecera-quota, .aulas-screen .rd-pecera-note, .aulas-screen .rd-pecera-clock { margin: 0; color: var(--text3); font-size: 12.5px; }
 .aulas-screen .rd-pecera-clock.is-warn, .aulas-screen .rd-pecera-error { margin: 0; color: var(--rd-warn); font-size: 13px; }
+
+/* Reservas de hoy solo del perfil prestado → grupo con Alberto (24-10-2026). */
+.aulas-screen .rd-group-convert-wrap { padding: 0 12px 12px; }
+.aulas-screen .rd-group-convert { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--rd-warn) 35%, var(--border)); border-radius: 12px; background: color-mix(in srgb, var(--rd-warn) 7%, var(--bg2)); }
+.aulas-screen .rd-group-convert > span { display: grid; gap: 1px; font-size: 13.5px; }
+.aulas-screen .rd-group-convert > span small { color: var(--text3); font-size: 12.5px; }
+.aulas-screen .rd-group-confirm > span { font-size: 13.5px; }

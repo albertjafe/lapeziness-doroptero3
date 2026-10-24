@@ -684,6 +684,36 @@
     { type: 'anon', label: 'Anónima', hint: 'Einzelbuchung (anonym): solo quien firma.' },
     { type: 'normal', label: 'Con nombre', hint: 'Einzelbuchung con tu nombre visible.' },
   ];
+  /* 24-10-2026: reservas de hoy hechas solo a nombre del perfil prestado (Emma,
+   * Chen) → grupo con Alberto. El monitor primero cambia el tipo en la misma
+   * reserva (sin soltarla); solo si Asimut no lo deja, la cancela y la vuelve a
+   * reservar al momento (nunca a menos de 20 min ni si ya ha empezado). */
+  let groupConvertAsk = false;
+  function renderGroupConvert(state, row, live) {
+    const wrap = el('reservationGroupConvert');
+    if (!wrap) return;
+    const source = row?.source || selectedSource;
+    const pending = source === 'alberto' || state.date !== localIsoDate(new Date()) ? []
+      : (state.reservations || []).filter(r => r.status === 'upcoming' && r.type && !/^Gruppen/i.test(r.type));
+    wrap.hidden = !pending.length;
+    if (!pending.length) { groupConvertAsk = false; wrap.innerHTML = ''; return; }
+    const n = pending.length;
+    const list = pending.map(r => `${r.start} ${r.room}`).join(' · ');
+    wrap.innerHTML = groupConvertAsk && live
+      ? `<div class="rd-confirm rd-group-confirm" role="group" aria-label="Confirmar paso a grupo">
+          <span>¿Pasar ${n === 1 ? 'esta reserva' : `estas ${n} reservas`} a grupo con Alberto? Se cambian sin soltarlas; si Asimut no lo deja, se cancelan y se reservan al momento (nunca a menos de 20 min del inicio).</span>
+          <button type="button" class="rd-action" data-command="set_booking_type" data-type="grupo_alberto" data-convert="true"><b>Sí, pasar</b></button>
+          <button type="button" class="rd-action" data-ui="group-convert-no"><b>No</b></button>
+        </div>`
+      : `<div class="rd-group-convert">
+          <span><b>${n === 1 ? '1 reserva de hoy es' : `${n} reservas de hoy son`} solo de ${escapeHtml(sourceLabel(source))}</b><small>${escapeHtml(list)}</small></span>
+          <button type="button" class="rd-action" data-ui="group-convert-ask" ${live ? '' : 'disabled'}><b>Pasar a grupo con Alberto</b></button>
+        </div>`;
+    wrap.querySelector('[data-ui="group-convert-ask"]')?.addEventListener('click', () => { groupConvertAsk = true; renderGroupConvert(state, row, live); });
+    wrap.querySelector('[data-ui="group-convert-no"]')?.addEventListener('click', () => { groupConvertAsk = false; renderGroupConvert(state, row, live); });
+    wrap.querySelector('[data-command]')?.addEventListener('click', event => { groupConvertAsk = false; sendCommand(event.currentTarget); });
+  }
+
   function bookingTypeHtml(monitor, disabled) {
     const current = monitor.booking_type;
     if (!current) return '';
@@ -1725,6 +1755,7 @@
     if (!bookingEditable) bookingEdit = null;
     if (bookingEdit && !bookingById(bookingEdit.id)) bookingEdit = null;
     renderReservations(state.date, state.reservations, 'reservationBookingList', { editable: bookingEditable });
+    renderGroupConvert(state, row, bookingEditable);
     renderDayBar(state);
     paintHoy();
     renderQuick();
@@ -1767,7 +1798,9 @@
 
   function commandPayload(button) {
     if (button.dataset.command === 'set_operating_mode') return { mode: button.dataset.mode };
-    if (button.dataset.command === 'set_booking_type') return { type: button.dataset.type };
+    if (button.dataset.command === 'set_booking_type') {
+      return button.dataset.convert === 'true' ? { type: button.dataset.type, convertir: true } : { type: button.dataset.type };
+    }
     if (button.dataset.peceraObj) return { objetivo_min: Number(button.dataset.peceraObj) };
     if (button.dataset.migMode) return { mode: button.dataset.migMode };
     if (button.dataset.franjaId) return { id: button.dataset.franjaId };

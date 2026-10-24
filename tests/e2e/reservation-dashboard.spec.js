@@ -979,3 +979,40 @@ test('pecera: interruptor en Ajustes, agua asegurada y plan, cuándo abre cada t
   await expect(card.locator('.rd-pecera-error')).toContainText('no pude leer la cuota de mañana');
   await expect(blocks).toHaveCount(2);
 });
+
+test('reservas de hoy solo de Emma: botón para pasarlas a grupo con Alberto, con confirmación', async ({ page }) => {
+  const row = structuredClone(sampleRow);
+  row.source = 'emma';
+  row.state.monitor.booking_type = 'grupo_alberto';
+  const base = { locked: false, confirmed: false };
+  row.state.reservations = [
+    { ...base, event_id: 1, start: '09:00', end: '10:00', room: '332', type: 'Einzelbuchung (anonym)', status: 'past' },
+    { ...base, event_id: 2, start: '13:00', end: '15:00', room: '220', type: 'Einzelbuchung (anonym)', status: 'upcoming', locked: true },
+    { ...base, event_id: 3, start: '15:00', end: '18:00', room: '323', type: 'Gruppenbuchung (anonym)', status: 'upcoming' },
+    { ...base, event_id: 4, start: '18:00', end: '19:45', room: '332', type: 'Einzelbuchung', status: 'upcoming' },
+  ];
+  await mountDashboard(page, row);
+  const box = page.locator('#reservationGroupConvert');
+  await expect(box).toBeVisible();
+  await expect(box).toContainText('2 reservas de hoy son solo de Emma');
+  await expect(box).toContainText('13:00 220 · 18:00 332');
+  await box.getByRole('button', { name: 'Pasar a grupo con Alberto' }).click();
+  await expect(box).toContainText('¿Pasar estas 2 reservas a grupo con Alberto?');
+  await box.getByRole('button', { name: 'No' }).click();
+  await expect(box.getByRole('button', { name: 'Sí, pasar' })).toHaveCount(0);
+  const writesBefore = await page.evaluate(() => window.__dashboardWrites.length);
+  await box.getByRole('button', { name: 'Pasar a grupo con Alberto' }).click();
+  await box.getByRole('button', { name: 'Sí, pasar' }).click();
+  await expect.poll(() => page.evaluate(() => window.__dashboardWrites.length)).toBe(writesBefore + 1);
+  expect(await page.evaluate(() => window.__dashboardWrites.at(-1)))
+    .toMatchObject({ command: 'set_booking_type', payload: { type: 'grupo_alberto', convertir: true } });
+
+  // Ya todas en grupo: el aviso desaparece.
+  row.state.reservations = row.state.reservations.map(r => ({ ...r, type: 'Gruppenbuchung (anonym)' }));
+  await page.evaluate(r => { window.__row = r; return window.ReservationDashboard.refresh(false); }, row);
+  await expect(box).toBeHidden();
+
+  // Perfil de Alberto: nunca aparece (sus reservas son suyas).
+  await mountDashboard(page, sampleRow);
+  await expect(page.locator('#reservationGroupConvert')).toBeHidden();
+});
