@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-10-22-recaida-sin-ventana-v517';
+const APP_VERSION = '2026-10-25-tareas-de-hoy-v518';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -8567,7 +8567,9 @@ function closeHechoDatos(save) {
   const entity = movId ? findMovimiento(obraId, movId) : obra;
   const minutos = parseInt(document.getElementById('hechoMinutos').value) || _hechoMinPlan || null;
   const shouldOfferBreak = !!(save && _hechoSubSession && !_hechoEditMode && minutos >= CRONO_LONG_SESSION_BREAK_MIN);
-  const shouldOfferTaskBreak = !!(save && _hechoSubSession && !_hechoEditMode && cronoPendingTaskCount() > 0);
+  // v518: al terminar un bloque, una tarea de hoy en un aviso pequeño (tasks-today.js),
+  // en lugar de la ventana con todas las tareas, la alarma y el problema de cálculo.
+  const shouldOfferTaskBreak = !!(save && _hechoSubSession && !_hechoEditMode && window.TasksToday);
   const nota = document.getElementById('hechoNota').value.trim();
   const zoneSnapshot = obra && obra.tipo !== 'actividad' ? hechoCurrentZoneSnapshot(true) : null;
   const pendingSessionTimes = sessionAggregate[planId]?._pendingTimes || null;
@@ -8956,9 +8958,8 @@ function closeHechoDatos(save) {
   if (typeof renderCalendario === 'function') {
     try { renderCalendario(); } catch(e) {}
   }
-  if (shouldOfferTaskBreak) setTimeout(cronoOpenTaskBreakPrompt, 420);
-  else if (shouldOfferBreak) cronoMaybeShowLongSessionBreak(minutos);
-  else if (shouldCheckTaskReminder) setTimeout(() => cronoMaybeRemindTasks('session-end'), 180);
+  if (shouldOfferBreak) cronoMaybeShowLongSessionBreak(minutos);
+  if (shouldOfferTaskBreak) setTimeout(() => { try { TasksToday.offerBreak(); } catch (e) {} }, 420);
 }
 
 // Flash de éxito al guardar la sesión: aparece sobre el cronómetro con el
@@ -22555,6 +22556,9 @@ function cronoOpenUrgentTaskGate() {
 }
 
 function cronoMaybeBlockUrgentTasks(reason) {
+  // v518: retirado. El bloqueo del cronómetro por una tarea urgentísima lo
+  // sustituyen «las 3 de hoy» (tasks-today.js): presionaba más que ayudaba.
+  return false;
   if (crono.state !== 'idle') return false;
   const tasks = cronoUrgentTaskCandidates();
   if (!tasks.length) return false;
@@ -22613,6 +22617,8 @@ function toggleCronoTaskDensity() {
 }
 
 function cronoTaskDueLabel(task) {
+  // v518: cualquier tarea con fecha (no solo las notas de piano «para mañana»).
+  if (task?.dueDate && window.TasksToday) return TasksToday.dueLabel(task, habitDayKey());
   if (!task?.tomorrow) return '';
   if (!task.dueDate) return 'Mañana';
   const today = habitDayKey();
@@ -22816,6 +22822,8 @@ function cronoTaskReminderState() {
 }
 
 function cronoMaybeRemindTasks(reason) {
+  // v518: retirado (aviso «revisa tus tareas» cada pocos minutos en el cronómetro).
+  return false;
   const count = cronoPendingTaskCount('piano');
   if (!count) return false;
   const personalCount = cronoPendingTaskCount('personal');
@@ -23202,6 +23210,8 @@ function cronoCompleteTaskFromBreak(id, button) {
 
 function cronoStartTaskReminderLoop() {
   if (_cronoTaskReminderInterval) clearInterval(_cronoTaskReminderInterval);
+  _cronoTaskReminderInterval = null;
+  return; // v518: sin bucle de avisos de tareas.
   _cronoTaskReminderInterval = setInterval(() => {
     if (document.body.getAttribute('data-view') === 'cronometro' && crono.state === 'idle') {
       cronoMaybeRemindTasks('interval');
@@ -23476,6 +23486,9 @@ const CRONO_TASK_PRIORITY_WORDS = [
   [1, /^(?:importantes?|!)$/i],
 ];
 function cronoParseTaskText(raw) {
+  // v518: el lector de tasks-today.js entiende además fechas («mañana», «el jueves»)
+  // y prioridades pegadas por el dictado («UrgentePoner…»).
+  if (window.TasksToday && typeof TasksToday.parse === 'function') return TasksToday.parse(raw, habitDayKey());
   let text = String(raw || '').replace(/\s+/g, ' ').trim();
   let kind = null;
   text = text.replace(/(^|\s)#(piano|personal)(?=[\s.,;:!?]|$)/gi, (_m, space, word) => { kind = word.toLowerCase(); return space; }).replace(/\s+/g, ' ').trim();
@@ -23502,6 +23515,7 @@ function cronoParseTaskText(raw) {
 function cronoTaskAddedToast(task) {
   const parts = [cronoTaskKind(task) === 'piano' ? 'Piano' : 'Personal'];
   if (cronoTaskPriority(task)) parts.push(cronoTaskPriorityLabel(cronoTaskPriority(task)));
+  if (task.dueDate && window.TasksToday) parts.push(TasksToday.dueLabel(task));
   showToast('Tarea añadida · ' + parts.join(' · '));
 }
 
@@ -23513,12 +23527,12 @@ function cronoQuickAddTask(event, source) {
   if (!text) return false;
   const now = new Date().toISOString();
   const kind = parsed.kind || (cronoTaskFilter() === 'piano' ? 'piano' : 'personal');
-  const task = { id: 'ct' + Date.now(), text, kind, tomorrow: false, dueDate: null, done: false, priority: parsed.priority, createdAt: now, updatedAt: now };
+  const task = { id: 'ct' + Date.now(), text, kind, tomorrow: false, dueDate: parsed.dueDate || null, done: false, priority: parsed.priority, createdAt: now, updatedAt: now };
   if (parsed.priority) task.priorityChangedAt = now;
   cronoTasks().push(task);
   if (input) input.value = '';
   renderCronoTasks();
-  if (parsed.priority || parsed.kind) cronoTaskAddedToast(task);
+  if (parsed.priority || parsed.kind || parsed.dueDate) cronoTaskAddedToast(task);
   document.getElementById('cronoQuickTask-' + source)?.focus();
   saveDataSoon();
   try { Haptics.light(); } catch (e) {}
@@ -23570,7 +23584,7 @@ function addCronoTask(source) {
     text,
     kind,
     tomorrow: kind === 'piano' && composer.tomorrow,
-    dueDate: kind === 'piano' && composer.tomorrow ? habitKeyAt(habitDayKey(), 1) : null,
+    dueDate: parsed.dueDate || (kind === 'piano' && composer.tomorrow ? habitKeyAt(habitDayKey(), 1) : null),
     done: false,
     priority: parsed.priority,
     createdAt: now,

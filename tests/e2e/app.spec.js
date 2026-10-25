@@ -1038,7 +1038,7 @@ test('cancels or confirms a valid timer and saves visual solidity', async ({ pag
   await prepare(page);
   await page.evaluate(() => {
     db.cronoTasks = [
-      { id: 'ct_break', text: 'Responder el mensaje pendiente', kind: 'personal', priority: 3, done: false, createdAt: new Date().toISOString() },
+      { id: 'ct_break', text: 'Responder el mensaje pendiente', kind: 'personal', priority: 3, done: false, dueDate: habitDayKey(), createdAt: new Date().toISOString() },
       { id: 'ct_break_piano', text: 'Anotar la digitación de la coda', kind: 'piano', done: false, createdAt: new Date().toISOString() },
     ];
     showView('cronometro');
@@ -1079,17 +1079,14 @@ test('cancels or confirms a valid timer and saves visual solidity', async ({ pag
   await modal.getByRole('button', { name: 'Hecho' }).click();
   await expect(modal).not.toHaveClass(/visible/);
 
-  const taskBreak = page.locator('#modalCronoTaskBreak');
-  await expect(taskBreak).toHaveClass(/visible/);
-  // An urgentísima task replaces the '¿Un descanso?' kicker (v427).
-  await expect(taskBreak).toContainText('1 tarea urgentísima');
+  // v518: al terminar, una tarea de hoy en un aviso pequeño (sin ventana, alarma ni cálculo).
+  await expect(page.locator('#modalCronoTaskBreak')).toHaveCount(0);
+  const taskBreak = page.locator('#tdBreak');
+  await expect(taskBreak).toHaveClass(/open/);
   await expect(taskBreak).toContainText('Responder el mensaje pendiente');
-  await expect(taskBreak.locator('.crono-task-break-item.priority-3')).toContainText('Urgentísima');
-  await taskBreak.getByRole('button', { name: /Responder el mensaje pendiente/ }).click({ force: true });
-  await expect(taskBreak.locator('.crono-task-break-item.is-completing')).toHaveCount(1);
+  await taskBreak.getByRole('button', { name: 'Hecha' }).click();
   await expect.poll(() => page.evaluate(() => db.cronoTasks.find(task => task.id === 'ct_break')?.done)).toBe(true);
-  await taskBreak.getByRole('button', { name: 'OK, cerrar' }).click();
-  await expect(taskBreak).not.toHaveClass(/visible/);
+  await expect(taskBreak).not.toHaveClass(/open/);
 
   const saved = await page.evaluate(() => ({
     value: db.obras[0].solHistory[0]?.val,
@@ -1488,33 +1485,19 @@ test('edits a previous pass by date, type and result from the evolution history'
   expect(edited.date.slice(0, 10)).toBe('2026-08-03');
 });
 
-test('blocks the first study start for a three-day urgent task until it is completed', async ({ page }) => {
+test('an old urgent task no longer blocks the timer (v518)', async ({ page }) => {
   await page.setViewportSize({ width: 834, height: 1194 });
   await prepare(page);
   await page.evaluate(() => {
     db.cronoTasks = [{
-      id: 'ct_urgent_gate',
-      text: 'Resolver el pasaje pendiente',
-      kind: 'piano',
-      priority: 3,
-      done: false,
+      id: 'ct_urgent_gate', text: 'Resolver el pasaje pendiente', kind: 'piano', priority: 3, done: false,
       createdAt: new Date(Date.now() - 4 * 86400000).toISOString(),
     }];
     showView('cronometro');
   });
-
-  const gate = page.locator('#modalCronoUrgentTaskGate');
-  await expect(gate).toHaveClass(/visible/);
-  await expect(gate).toContainText('Una tarea antes del estudio');
-  await expect(gate.locator('.crono-urgent-task-item')).toHaveCount(1);
-  expect(await page.evaluate(() => {
-    cronoStart();
-    return crono.state;
-  })).toBe('idle');
-
-  await gate.locator('.crono-urgent-task-item').click();
-  await expect.poll(() => page.evaluate(() => db.cronoTasks[0].done)).toBe(true);
-  await expect(gate).not.toHaveClass(/visible/);
+  await page.waitForTimeout(300);
+  await expect(page.locator('#modalCronoUrgentTaskGate.visible')).toHaveCount(0);
+  expect(await page.evaluate(() => cronoMaybeBlockUrgentTasks('start'))).toBe(false);
 });
 
 test('opens the task box ready to type and dictates only from the microphone button', async ({ page }) => {

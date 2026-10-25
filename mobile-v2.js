@@ -258,6 +258,8 @@
       '<section class="mv2-card mv2-aulas' + (roomsSummary ? ' is-' + roomsSummary.kind : '') + '">' +
         '<button type="button" class="mv2-aulas-head" onclick="showView(\'aulas\')"><span class="mv2-lbl has-ico">' + icon('aulas') + 'Aulas</span><b>' + esc(aulas) + '</b><span class="mv2-chev" aria-hidden="true">›</span></button>' +
         '<div class="aulas-screen rd-embed" id="mv2DayBar"></div></section>' +
+      // Tareas de hoy: como mucho tres, apuntar en un toque (tasks-today.js).
+      (root.TasksToday ? root.TasksToday.hoyHtml(data) : '') +
       // Por la mañana, hasta contestar: ¿qué tal has dormido? (body-log.js; sin números en Hoy).
       // Va tras Aulas: las reservas siguen justo debajo de las horas.
       (root.BodyLog ? root.BodyLog.sleepPromptHtml(data) : '') +
@@ -277,7 +279,14 @@
       '<button type="button" class="mv2-add" onclick="MobileV2.openAdd()">＋ Añadir estudio, nota o tarea</button></div>';
     // Mismo contenido → no se toca el DOM (evita parpadeos, también a mitad del gesto lateral).
     if (host.__mv2Html !== html) {
+      // Hoy se repinta a menudo (cada minuto): no perder lo que se está escribiendo.
+      const draftEl = doc.getElementById('tdInput');
+      const draft = draftEl ? draftEl.value : '';
+      const typing = draftEl && doc.activeElement === draftEl;
       host.innerHTML = html; host.__mv2Html = html;
+      const fresh = doc.getElementById('tdInput');
+      if (fresh && draft) fresh.value = draft;
+      if (fresh && typing) { try { fresh.focus({ preventScroll: true }); fresh.setSelectionRange(draft.length, draft.length); } catch (e) {} }
       if (root.Olas && typeof root.Olas.refresh === 'function') root.Olas.refresh();
       if (root.ReservationDashboard && typeof root.ReservationDashboard.paintHoy === 'function') root.ReservationDashboard.paintHoy();
     }

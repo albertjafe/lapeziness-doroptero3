@@ -188,8 +188,10 @@ test('typing «urgente», «importante» or #piano puts the task in its place an
     { text: 'Llamar al casero', priority: 2, kind: 'personal', changed: true },
     { text: 'Revisar contrato', priority: 1, kind: 'personal', changed: true },
     { text: 'Comprar cuerdas', priority: 0, kind: 'piano', changed: false },
-    { text: 'No es urgente que lo mire hoy', priority: 0, kind: 'personal', changed: false },
+    // v518: «hoy» al final es la fecha; «urgente» en medio no cambia la prioridad.
+    { text: 'No es urgente que lo mire', priority: 0, kind: 'personal', changed: false },
   ]);
+  expect(await page.evaluate(() => db.cronoTasks.at(-1).dueDate === habitDayKey())).toBe(true);
   const board = page.locator('#cronoIdleTasksPanel .crono-task-board');
   await expect(board.locator('.crono-task-group').first().locator('.crono-task-row').first()).toContainText('Pagar el alquiler');
   await expect(input).toBeFocused();
