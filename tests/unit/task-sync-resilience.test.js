@@ -59,12 +59,46 @@ describe('task sync resilience', () => {
     expect(syncCore.indexOf('preSyncTaskRescue')).toBeLessThan(syncCore.indexOf('root.SyncCore'));
     const html = fs.readFileSync('index.html','utf8');
     expect(html.indexOf('task-sync-bootstrap.js')).toBeLessThan(html.indexOf('src="app.js'));
-    expect(loader).toContain("./task-sync-resilience.js?v=342");
+    expect(loader).toContain("./task-sync-resilience.js?v=521");
   });
 
   it('ships a database guard against revision regression', () => {
     const sql = fs.readFileSync('supabase/migrations/202609030003_task_sync_revision_guard.sql', 'utf8');
     expect(sql).toContain('if new_rev < old_rev');
     expect(sql).toContain('return old');
+  });
+  it('only downloads the whole document again when the cloud copy changed (26-10-2026)', async () => {
+    const selects = [];
+    let remoteAt = '2026-10-26T10:00:00Z';
+    const remoteData = { cronoTasks: [{ id: 't1', text: 'a', updatedAt: '2026-10-26T09:00:00Z' }], cronoTaskTombstones: [] };
+    const client = {
+      auth: { getUser: async () => ({ data: { user: { id: 'u1' } } }) },
+      from: () => ({
+        select: cols => ({
+          eq: () => ({
+            maybeSingle: async () => {
+              selects.push(cols);
+              return { data: cols === 'updated_at' ? { updated_at: remoteAt } : { data: remoteData, updated_at: remoteAt } };
+            },
+          }),
+        }),
+      }),
+    };
+    const saved = {};
+    globalThis.localStorage = { getItem: key => saved[key] ?? null, setItem: (key, value) => { saved[key] = value; } };
+    globalThis.db = { cronoTasks: [{ id: 't1', text: 'a', updatedAt: '2026-10-26T09:00:00Z' }], cronoTaskTombstones: [] };
+    globalThis.getSB = () => client;
+    try {
+      expect((await TaskSync.reconcile('startup')).ok).toBe(true);
+      expect(selects).toEqual(['data,updated_at']);
+      const again = await TaskSync.reconcile('visible');
+      expect(again.skipped).toBe('remote-unchanged');
+      expect(selects).toEqual(['data,updated_at', 'updated_at']);
+      remoteAt = '2026-10-26T10:05:00Z';
+      expect((await TaskSync.reconcile('visible')).skipped).toBeUndefined();
+      expect(selects).toEqual(['data,updated_at', 'updated_at', 'updated_at', 'data,updated_at']);
+    } finally {
+      delete globalThis.localStorage; delete globalThis.db; delete globalThis.getSB;
+    }
   });
 });

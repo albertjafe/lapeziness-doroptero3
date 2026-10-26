@@ -88,7 +88,7 @@
   load('paseLiquidDirectTouchScript','./pase-liquid-direct-touch.js?v=342');
   load('cronoSaveResilienceScript','./crono-save-resilience.js?v=505',function(){
     load('passageTrackerResilienceScript','./passage-tracker-resilience.js?v=372',function(){
-      load('taskSyncResilienceScript','./task-sync-resilience.js?v=342');
+      load('taskSyncResilienceScript','./task-sync-resilience.js?v=521');
     });
   });
   load('updateSafetyScript','./update-safety.js?v=475');

@@ -181,6 +181,21 @@
     return response && response.data ? response.data : null;
   }
 
+  // 26-10-2026: el documento pesa ~870 KB y el iPhone lo descargaba entero cada
+  // vez que la app volvía a primer plano (cientos de veces al día: agotó la
+  // cuota de Supabase). Antes se pregunta solo la fecha de la nube (~50 bytes):
+  // si nadie lo ha cambiado desde la última reconciliación y no hay rescate
+  // local nuevo, no hay nada que traer.
+  let lastRemoteUpdatedAt = null;
+  let lastRescueNewest = 0;
+  const PROBE_REASONS = new Set(['visible', 'pageshow', 'online', 'local-task-change']);
+  async function fetchRemoteUpdatedAt(client, userId) {
+    const query = client.from('user_data').select('updated_at').eq('id', userId);
+    const response = typeof query.maybeSingle === 'function' ? await query.maybeSingle() : await query.single();
+    if (response && response.error) throw response.error;
+    return response && response.data ? response.data.updated_at || null : null;
+  }
+
   async function reconcile(reason) {
     if (inFlight) return inFlight;
     inFlight = (async () => {
@@ -190,8 +205,18 @@
       const auth = await client.auth.getUser();
       const user = auth && auth.data && auth.data.user;
       if (!user || !user.id) return { ok: false, reason: 'no-user' };
+      if (lastRemoteUpdatedAt && PROBE_REASONS.has(reason)) {
+        const rescueNow = bestRescue(storage);
+        const rescueNewest = num(rescueNow && rescueNow.newestTaskAt);
+        const remoteAt = await fetchRemoteUpdatedAt(client, user.id);
+        if (remoteAt && remoteAt === lastRemoteUpdatedAt && rescueNewest <= lastRescueNewest) {
+          return { ok: true, reason, skipped: 'remote-unchanged' };
+        }
+      }
       const row = await fetchRemote(client, user.id);
       if (!row || !row.data) return { ok: false, reason: 'no-remote' };
+      lastRemoteUpdatedAt = row.updated_at || null;
+      lastRescueNewest = num((bestRescue(storage) || {}).newestTaskAt);
 
       const remoteData = row.data;
       const localData = database() || parseJson(storage.getItem(DB_KEY)) || {};
