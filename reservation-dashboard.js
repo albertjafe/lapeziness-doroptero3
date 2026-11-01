@@ -1191,6 +1191,152 @@
     body.querySelectorAll('[data-command]').forEach(button => button.addEventListener('click', () => sendCommand(button)));
   }
 
+  /* Ocupación de aulas (01-11-2026): tabla tipo Asimut de un grupo de aulas
+   * para hoy o mañana, con el nombre de cada reserva. El monitor la lee solo al
+   * pedirla aquí (una lectura de Asimut) y la deja 15 min en el estado. Tocar
+   * un hueco libre prepara el /paod para lanzarlo desde Telegram. */
+  const GRID_KEY = 'reservationRoomGrid';
+  let gridPick = null; // { room, free: [a, b] } o { room, ev: índice }
+  function gridPrefs() {
+    let p = {};
+    try { p = JSON.parse(localStorage.getItem(GRID_KEY) || '{}') || {}; } catch (e) {}
+    return {
+      day: p.day === 'hoy' ? 'hoy' : 'manana',
+      group: p.group === 4 ? 4 : 5,
+      win: ['24h', '15h'].includes(p.win) ? p.win : 'all',
+      sort: p.sort === 'libre' ? 'libre' : 'aula',
+    };
+  }
+  function minClock(m) { return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`; }
+  // Huecos libres en cuartos enteros (lo que admite /paod), y hoy solo desde ahora.
+  function gridFree(events, open, close, from) {
+    const out = [];
+    let cur = Math.max(open, from);
+    for (const ev of [...events].sort((x, y) => toMinutes(x.s) - toMinutes(y.s))) {
+      const a = toMinutes(ev.s), b = toMinutes(ev.e);
+      if (b <= cur) continue;
+      if (a > cur) out.push([cur, Math.min(a, close)]);
+      cur = Math.max(cur, b);
+      if (cur >= close) break;
+    }
+    if (cur < close) out.push([cur, close]);
+    return out.map(([a, b]) => [Math.ceil(a / 15) * 15, Math.floor(b / 15) * 15]).filter(([a, b]) => b - a >= 15);
+  }
+  function paodText(room, a, b, iso) {
+    const [y, m, d] = iso.split('-');
+    return `/paod ${room} ${minClock(a)} ${minClock(b)} ${d}-${m}-${y.slice(2)}`;
+  }
+  function renderRoomGrid(state, row) {
+    const card = el('reservationRoomGrid');
+    const body = el('reservationRoomGridBody');
+    if (!card || !body) return;
+    card.hidden = !state.date;
+    if (card.hidden) return;
+    const offline = ageMs(row) > OFFLINE_MS || state.monitor?.online === false;
+    const prefs = gridPrefs();
+    const iso = isoPlusDays(prefs.day === 'hoy' ? 0 : 1);
+    const rg = state.room_grid;
+    const grid = rg && rg.date === iso && rg.group === prefs.group ? rg : null;
+    const loading = grid?.status === 'loading';
+    const meta = el('reservationRoomGridMeta');
+    if (meta) meta.textContent = grid?.status === 'ok' && grid.fetched_at ? `leída a las ${formatClock(grid.fetched_at)}` : 'se lee al pedirla';
+    const seg = (key, items, cur, label) => `<div class="rd-segment" role="radiogroup" aria-label="${label}">${items.map(([v, l]) => `
+      <button type="button" role="radio" aria-checked="${v === cur}" class="${v === cur ? 'active' : ''}" data-grid-${key}="${v}">${l}</button>`).join('')}</div>`;
+    const controls = `<div class="rd-grid-controls">${seg('day', [['hoy', 'Hoy'], ['manana', 'Mañana']], prefs.day, 'Día')}${seg('group', [[5, 'Grupo 5'], [4, 'Grupo 4']], prefs.group, 'Grupo de aulas')}</div>
+      <button type="button" class="rd-action rd-grid-load" data-ui="grid-load" ${offline || loading ? 'disabled' : ''}>
+        <span aria-hidden="true">▦</span><b>${loading ? 'Leyendo Asimut…' : grid?.status === 'ok' ? 'Actualizar' : 'Ver ocupación'}</b></button>`;
+    let content;
+    if (!grid) {
+      content = `<p class="rd-franja-empty">${offline ? 'El monitor no está conectado.' : 'Toca «Ver ocupación»: el monitor la lee de Asimut una vez.'}</p>`;
+    } else if (loading) {
+      content = '<p class="rd-franja-empty">Leyendo Asimut…</p>';
+    } else if (grid.status === 'error') {
+      content = `<p class="rd-pecera-error">No pude leerla: ${escapeHtml(grid.error || 'error')}</p>`;
+    } else {
+      const open = toMinutes(grid.open || '09:00');
+      const close = Math.max(open + 60, toMinutes(grid.close || '22:00'));
+      const span = close - open;
+      const pct = m => ((Math.min(close, Math.max(open, m)) - open) / span * 100).toFixed(2);
+      const now = new Date();
+      const nowMin = iso === localIsoDate(now) ? now.getHours() * 60 + now.getMinutes() : null;
+      let rooms = (grid.rooms || []).filter(r => prefs.group === 4 || prefs.win === 'all' || r.win === prefs.win)
+        .map(r => {
+          const free = gridFree(r.ev, open, close, nowMin ?? 0);
+          return { ...r, free, best: Math.max(0, ...free.map(([a, b]) => b - a)) };
+        });
+      if (prefs.sort === 'libre') rooms = rooms.sort((x, y) => y.best - x.best || x.room - y.room);
+      if (gridPick && !rooms.some(r => r.room === gridPick.room)) gridPick = null;
+      const hours = [];
+      for (let h = Math.ceil(open / 60); h * 60 < close; h++) hours.push(h);
+      const axis = `<div class="rd-grid-row rd-grid-axis" aria-hidden="true"><span></span><div class="rd-grid-track">${hours.map(h => `<i style="left:${pct(h * 60)}%">${h}</i>`).join('')}</div></div>`;
+      const rowsHtml = rooms.map(r => {
+        const past = nowMin != null && nowMin > open ? `<i class="rd-grid-past" style="width:${pct(nowMin)}%"></i>` : '';
+        const free = r.free.map(([a, b]) => {
+          const picked = gridPick?.room === r.room && gridPick.free?.[0] === a;
+          return `<button type="button" class="rd-grid-free ${b - a >= 60 ? 'is-long' : ''} ${picked ? 'is-picked' : ''}" style="left:${pct(a)}%;width:${(+pct(b) - +pct(a)).toFixed(2)}%"
+            data-grid-room="${r.room}" data-grid-free="${a}-${b}" aria-label="${escapeHtml(`${r.label}: libre de ${minClock(a)} a ${minClock(b)}`)}">${b - a >= 60 ? hoursLabel(b - a) : ''}</button>`;
+        }).join('');
+        const evs = r.ev.map((ev, i) => {
+          const a = toMinutes(ev.s), b = toMinutes(ev.e);
+          if (b <= open || a >= close) return '';
+          const name = ev.m ? 'Tuya' : ev.n || 'Anónima';
+          const picked = gridPick?.room === r.room && gridPick.ev === i;
+          return `<button type="button" class="rd-grid-ev ${ev.m ? 'is-mine' : ''} ${ev.n || ev.m ? '' : 'is-anon'} ${picked ? 'is-picked' : ''}" style="left:${pct(a)}%;width:${(+pct(b) - +pct(a)).toFixed(2)}%"
+            data-grid-room="${r.room}" data-grid-ev="${i}" title="${escapeHtml(`${name} · ${ev.s}–${ev.e}`)}">${escapeHtml(name)}</button>`;
+        }).join('');
+        return `<div class="rd-grid-row"><span class="rd-grid-room"><b>${r.room}</b><small>${escapeHtml(r.win || '')}</small></span><div class="rd-grid-track">${past}${free}${evs}</div></div>`;
+      }).join('');
+      let detail = '';
+      const pr = gridPick && rooms.find(r => r.room === gridPick.room);
+      if (pr && gridPick.free) {
+        const [a, b] = gridPick.free;
+        const cmd = paodText(pr.room, a, b, iso);
+        detail = `<div class="rd-grid-detail"><b>${escapeHtml(pr.label)} · libre ${minClock(a)}–${minClock(b)}</b> <small>${hoursLabel(b - a)} · ventana ${escapeHtml(pr.win || '')}</small>
+          <code>${escapeHtml(cmd)}</code>
+          <button type="button" class="rd-action" data-grid-copy="${escapeHtml(cmd)}"><b>Copiar para Telegram</b></button></div>`;
+      } else if (pr && gridPick.ev != null && pr.ev[gridPick.ev]) {
+        const ev = pr.ev[gridPick.ev];
+        detail = `<div class="rd-grid-detail"><b>${escapeHtml(pr.label)} · ${ev.s}–${ev.e}</b>
+          <span>${escapeHtml(ev.m ? `Tuya${ev.n ? ` (${ev.n})` : ''}` : ev.n || 'Anónima')}${ev.t ? ` · <small>${escapeHtml(ev.t)}</small>` : ''}</span></div>`;
+      }
+      const filters = `<div class="rd-grid-controls">${prefs.group === 5 ? seg('win', [['all', 'Todas'], ['24h', '24 h'], ['15h', '15 h']], prefs.win, 'Ventana') : ''}${seg('sort', [['aula', 'Por aula'], ['libre', '+ libre']], prefs.sort, 'Orden')}</div>`;
+      content = `${filters}<div class="rd-grid">${axis}${rowsHtml || '<p class="rd-franja-empty">Ninguna aula con ese filtro.</p>'}</div>${detail}
+        <p class="rd-grid-legend"><i class="is-free"></i>libre <i class="is-mine"></i>tuya <i class="is-busy"></i>ocupada · toca un hueco para preparar el /paod</p>`;
+    }
+    body.innerHTML = controls + content;
+    const request = () => postCommand('room_grid', { date: isoPlusDays(gridPrefs().day === 'hoy' ? 0 : 1), group: gridPrefs().group }, body.querySelector('[data-ui="grid-load"]'));
+    const setPref = (key, value) => {
+      const next = { ...gridPrefs(), [key]: value };
+      try { localStorage.setItem(GRID_KEY, JSON.stringify(next)); } catch (e) {}
+      gridPick = null;
+      renderRoomGrid(state, row);
+      // Cambiar de día o de grupo pide esa tabla (si no está ya en pantalla).
+      if ((key === 'day' || key === 'group') && !offline) {
+        const g = state.room_grid;
+        const want = isoPlusDays(next.day === 'hoy' ? 0 : 1);
+        if (!g || g.date !== want || g.group !== next.group) request();
+      }
+    };
+    body.querySelector('[data-ui="grid-load"]')?.addEventListener('click', request);
+    body.querySelectorAll('[data-grid-day]').forEach(b => b.addEventListener('click', () => setPref('day', b.dataset.gridDay)));
+    body.querySelectorAll('[data-grid-group]').forEach(b => b.addEventListener('click', () => setPref('group', Number(b.dataset.gridGroup))));
+    body.querySelectorAll('[data-grid-win]').forEach(b => b.addEventListener('click', () => setPref('win', b.dataset.gridWin)));
+    body.querySelectorAll('[data-grid-sort]').forEach(b => b.addEventListener('click', () => setPref('sort', b.dataset.gridSort)));
+    body.querySelectorAll('[data-grid-room]').forEach(b => b.addEventListener('click', () => {
+      const room = Number(b.dataset.gridRoom);
+      const pick = b.dataset.gridFree ? { room, free: b.dataset.gridFree.split('-').map(Number) } : { room, ev: Number(b.dataset.gridEv) };
+      const same = gridPick && gridPick.room === room && (pick.free ? gridPick.free?.[0] === pick.free[0] : gridPick.ev === pick.ev);
+      gridPick = same ? null : pick;
+      renderRoomGrid(state, row);
+      if (gridPick) body.querySelector('.rd-grid-detail')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }));
+    body.querySelector('[data-grid-copy]')?.addEventListener('click', event => {
+      const button = event.currentTarget;
+      copyPremiumBody(button.dataset.gridCopy);
+      button.querySelector('b').textContent = 'Copiado ✓';
+    });
+  }
+
   function renderQuotaLab(state, offline) {
     const wrap = el('reservationQuotaLab');
     if (!wrap) return;
@@ -1790,6 +1936,7 @@
     renderFranjas(state, row);
     renderPremium(state);
     renderPecera(state, row);
+    renderRoomGrid(state, row);
     renderObservatorio(state);
     applyTab();
     renderTodayCard(row);

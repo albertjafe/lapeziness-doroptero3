@@ -1016,3 +1016,39 @@ test('reservas de hoy solo de Emma: botón para pasarlas a grupo con Alberto, co
   await mountDashboard(page, sampleRow);
   await expect(page.locator('#reservationGroupConvert')).toBeHidden();
 });
+
+test('ocupación de aulas: nombres de cada reserva, filtro 15 h y /paod preparado para un hueco libre', async ({ page }) => {
+  const d = new Date(); d.setDate(d.getDate() + 1);
+  const tomorrow = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const [y, m, dd] = tomorrow.split('-');
+  const row = structuredClone(sampleRow);
+  row.state.room_grid = {
+    status: 'ok', date: tomorrow, group: 5, open: '09:00', close: '22:00', fetched_at: new Date().toISOString(), error: null,
+    rooms: [
+      { room: 225, label: '10.225', win: '24h', ev: [{ s: '09:00', e: '11:00', n: 'Max Mustermann', t: 'Raumbuchung', m: false }, { s: '13:00', e: '15:30', n: null, t: null, m: true }] },
+      { room: 202, label: '10.202', win: '15h', ev: [{ s: '10:00', e: '20:00', n: null, t: null, m: false }] },
+    ],
+  };
+  await page.addInitScript(() => localStorage.removeItem('reservationRoomGrid'));
+  await mountDashboard(page, row);
+  const card = page.locator('#reservationRoomGrid');
+  await expect(card).toBeVisible();
+  await expect(card.locator('.rd-grid-ev').first()).toHaveText('Max Mustermann');
+  await expect(card.locator('.rd-grid-ev.is-mine')).toHaveText('Tuya');
+  if (process.env.CAPTURE_RESERVATION_DASHBOARD) {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await card.screenshot({ path: 'test-results/room-grid-mobile.png' });
+    await page.setViewportSize({ width: 1280, height: 720 });
+  }
+  // Hueco 11:00–13:00 de la 225 → /paod con la fecha explícita.
+  await card.locator('[data-grid-room="225"][data-grid-free^="660-"]').click();
+  await expect(card.locator('.rd-grid-detail code')).toHaveText(`/paod 225 11:00 13:00 ${dd}-${m}-${y.slice(2)}`);
+  // Filtro 15 h: solo la 202.
+  await card.getByRole('radio', { name: '15 h' }).click();
+  await expect(card.locator('.rd-grid-room b')).toHaveText(['202']);
+  // Cambiar a Grupo 4 pide esa tabla al monitor.
+  await card.getByRole('radio', { name: 'Grupo 4' }).click();
+  expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({
+    command: 'room_grid', payload: { date: tomorrow, group: 4 },
+  });
+});

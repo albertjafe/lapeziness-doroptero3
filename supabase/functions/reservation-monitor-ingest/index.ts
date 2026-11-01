@@ -37,6 +37,7 @@ const allowedCommands = new Set([
   "set_inicio",
   "set_absorbe",
   "set_pecera",
+  "room_grid",
 ]);
 const allowedPhases = new Set(["awaiting_start", "starting", "running", "closed"]);
 
@@ -346,6 +347,35 @@ function cleanClock(value: unknown) {
   };
 }
 
+// Ocupación de un grupo de aulas (01-11-2026): tabla tipo Asimut que el monitor
+// lee solo cuando la app la pide (orden room_grid) y publica durante 15 min.
+function cleanRoomGrid(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  const obj = (item: unknown) => item && typeof item === "object" ? item as Record<string, unknown> : {};
+  return {
+    status: cleanChoice(raw.status, ["loading", "ok", "error"]) || "error",
+    date: cleanDate(raw.date),
+    group: raw.group === 4 || raw.group === 5 ? raw.group : null,
+    open: cleanTime(raw.open),
+    close: cleanTime(raw.close),
+    fetched_at: cleanInstant(raw.fetched_at),
+    error: cleanText(raw.error, 160),
+    rooms: Array.isArray(raw.rooms) ? raw.rooms.slice(0, 80).map((item) => {
+      const r = obj(item);
+      return {
+        room: cleanInteger(r.room, 1, 99_999),
+        label: cleanText(r.label, 12),
+        win: cleanChoice(r.win, ["1h", "15h", "24h", "72h"]),
+        ev: Array.isArray(r.ev) ? r.ev.slice(0, 40).map((e) => {
+          const x = obj(e);
+          return { s: cleanTime(x.s), e: cleanTime(x.e), n: cleanText(x.n, 40), t: cleanText(x.t, 24), m: cleanBoolean(x.m) };
+        }).filter((x) => x.s && x.e) : [],
+      };
+    }).filter((r) => r.room) : [],
+  };
+}
+
 function cleanQuota(value: unknown) {
   const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
   return {
@@ -451,6 +481,7 @@ function cleanState(value: unknown) {
     observatorio: cleanObservatorio(raw.observatorio),
     pecera: cleanPecera(raw.pecera),
     clock: cleanClock(raw.clock),
+    room_grid: cleanRoomGrid(raw.room_grid),
   };
 }
 
