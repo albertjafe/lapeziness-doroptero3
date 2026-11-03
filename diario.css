@@ -1,0 +1,103 @@
+/* Diario (diario.js): una página de cuaderno por día. Solo variables del
+   tema. Las líneas van dentro de cada escrito (fondo local) para que la letra
+   caiga siempre sobre ellas, crezca lo que crezca el texto. */
+#view-diario {
+  --dia-line: 34px;
+  --dia-rule: color-mix(in srgb, var(--text) 13%, transparent);
+  --dia-margin: color-mix(in srgb, #c0564a 32%, transparent);
+  --dia-hand: 'Kalam', 'Caveat', 'Segoe Print', 'Bradley Hand', cursive;
+}
+.dia-page { max-width: 760px; margin: 0 auto; padding: 8px 16px 120px; }
+.dia-head { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 8px; margin: 4px 0 14px; }
+.dia-date { text-align: center; min-width: 0; }
+.dia-date small { display: block; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3, var(--text2)); }
+.dia-date h2 { margin: 2px 0 0; font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 400; font-size: 27px; line-height: 1.15; color: var(--text); }
+.dia-date h2::first-letter { text-transform: uppercase; }
+.dia-nav { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: var(--text2); font-size: 22px; line-height: 1; cursor: pointer; }
+.dia-nav:hover:not(:disabled) { background: var(--bg3); color: var(--text); }
+.dia-nav:disabled { opacity: .3; cursor: default; }
+.dia-back { display: block; margin: -6px auto 14px; padding: 6px 14px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text2); font-size: 12px; cursor: pointer; }
+
+.dia-paper {
+  position: relative;
+  padding: 18px 20px 26px 46px;
+  border-radius: 14px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--text) 4%, transparent);
+}
+/* Margen del cuaderno. */
+.dia-paper::before { content: ''; position: absolute; top: 0; bottom: 0; left: 32px; width: 1px; background: var(--dia-margin); }
+
+.dia-item, .dia-free { position: relative; padding-top: 12px; }
+.dia-item + .dia-item, .dia-item + .dia-free, .dia-free + .dia-item, .dia-free + .dia-free { margin-top: 6px; }
+.dia-item { cursor: text; }
+.dia-meta { display: flex; align-items: baseline; gap: 10px; min-width: 0; font-size: 12px; color: var(--text2); }
+.dia-time { flex: none; font-variant-numeric: tabular-nums; color: var(--text3, var(--text2)); }
+.dia-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-size: 13px; }
+.dia-title em { font-style: normal; color: var(--accent, var(--text2)); }
+.dia-dur { flex: none; color: var(--text3, var(--text2)); font-variant-numeric: tabular-nums; }
+.dia-sub { margin-top: 1px; font-size: 11px; color: var(--text3, var(--text2)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dia-free-head { font-size: 11px; color: var(--text3, var(--text2)); }
+.dia-crono { margin: 4px 0 0; font-family: var(--dia-hand); font-size: 16px; line-height: 1.45; color: var(--text2); }
+.dia-crono span { font-family: var(--ui-font); font-size: 10px; letter-spacing: .04em; color: var(--text3, var(--text2)); }
+
+.dia-ink {
+  display: block;
+  width: 100%;
+  min-height: var(--dia-line);
+  margin: 0;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  background-color: transparent;
+  background-image: linear-gradient(to bottom, transparent calc(var(--dia-line) - 1px), var(--dia-rule) calc(var(--dia-line) - 1px), var(--dia-rule) var(--dia-line));
+  background-size: 100% var(--dia-line);
+  background-attachment: local;
+  font-family: var(--dia-hand);
+  font-size: 20px;
+  line-height: var(--dia-line);
+  color: var(--text);
+  caret-color: var(--accent, var(--text));
+  -webkit-appearance: none;
+  appearance: none;
+}
+/* En Windows todos los campos llevan la fuente de la interfaz con !important
+   (desktop-windows-v390.css, html.platform-windows textarea): hace falta más
+   especificidad que esa regla. */
+html #view-diario textarea.dia-ink { font-family: var(--dia-hand) !important; }
+.dia-ink::placeholder { color: transparent; }
+.dia-ink:focus::placeholder, .dia-new .dia-ink::placeholder { color: color-mix(in srgb, var(--text) 30%, transparent); }
+.dia-item:hover .dia-ink:placeholder-shown:not(:focus)::placeholder { color: color-mix(in srgb, var(--text) 18%, transparent); }
+.dia-ink + .dia-ink { margin-top: 0; }
+.dia-new { margin-top: 18px !important; }
+.dia-empty { margin: 6px 0 4px; font-size: 13px; color: var(--text3, var(--text2)); }
+
+@media (max-width: 560px) {
+  .dia-page { padding: 4px 10px 120px; }
+  .dia-paper { padding: 14px 12px 20px 30px; }
+  .dia-paper::before { left: 20px; }
+  .dia-date h2 { font-size: 23px; }
+  .dia-ink { font-size: 19px; }
+}
+/* Barra inferior con Diario: 6 pestañas en el móvil (Profesor va oculto) y 7
+   en el iPad (antes 5 y 6, reservation-dashboard.css). */
+@media (max-width: 700px) {
+  html:not(.platform-windows) .nav.nav-bottom { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  /* Con 6 pestañas «Cronómetro» y «Calendario» no caben: su nombre corto
+     (el de data-short). El botón conserva su aria-label completo. */
+  html:not(.platform-windows) .nav.nav-bottom .nav-btn:is([data-view="cronometro"], [data-view="calendario"]) > span:not(.ripple) { position: relative; visibility: hidden; }
+  html:not(.platform-windows) .nav.nav-bottom .nav-btn:is([data-view="cronometro"], [data-view="calendario"]) > span:not(.ripple)::after { position: absolute; inset: 0; visibility: visible; text-align: center; }
+  html:not(.platform-windows) .nav.nav-bottom .nav-btn[data-view="cronometro"] > span:not(.ripple)::after { content: 'Crono'; }
+  html:not(.platform-windows) .nav.nav-bottom .nav-btn[data-view="calendario"] > span:not(.ripple)::after { content: 'Calend.'; }
+}
+@media (min-width: 701px) {
+  html:not(.platform-windows) .nav.nav-bottom { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+}
+
+html.platform-ipad .dia-page { padding-top: 16px; }
+html.platform-ipad .dia-date h2 { font-size: 30px; }
+html.platform-ipad .dia-ink { font-size: 21px; }

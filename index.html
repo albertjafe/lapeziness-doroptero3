@@ -27,7 +27,7 @@
 <link rel="alternate icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png?v=487">
 <script src="supabase-sdk-v2-116-0.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&family=Kalam:wght@400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=513">
 <link rel="stylesheet" href="study-session-ux.css?v=342">
 <link rel="stylesheet" href="crono-resume-layout.css?v=342">
@@ -43,6 +43,7 @@
 <link rel="stylesheet" href="habit-hub.css?v=492">
 <link rel="stylesheet" href="tasks-today.css?v=518">
 <link rel="stylesheet" href="study-journey.css?v=476">
+<link rel="stylesheet" href="diario.css?v=523">
 <link rel="stylesheet" href="desktop-redesign.css?v=513">
 <link rel="stylesheet" href="crono-start-layout.css?v=401">
 <link rel="stylesheet" href="ipad-today.css?v=407">
@@ -1087,6 +1088,7 @@
   </section>
 </div>
 <div class="view" id="view-deutsch" aria-label="Deutsch"></div>
+<div class="view" id="view-diario" aria-label="Diario"></div>
 <div class="view" id="view-concursos" aria-label="Oportunidades"><div class="op-tabs" id="opTabs" role="tablist" aria-label="Secciones"></div><div id="cdPanel" role="tabpanel" aria-labelledby="opTab-concursos"></div><div id="opPanel" role="tabpanel" hidden></div></div>
 <div class="view" id="view-premios">
   <div class="ajustes-header">
@@ -2529,6 +2531,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="17.5" r="2.6"/><circle cx="17.5" cy="15" r="2.6"/><path d="M9.6 17.5V6.5l10.5-2.5V15"/></svg>
     <span>Obras</span>
   </button>
+  <button class="nav-btn" aria-label="Diario" data-view="diario" data-short="Diario" onclick="showView('diario')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3.5h11.5A1.5 1.5 0 0 1 19 5v14.5a1.5 1.5 0 0 1-1.5 1.5H6z"/><path d="M6 3.5v17.5M3.5 7.5H6M3.5 12H6M3.5 16.5H6M10 8.5h5.5M10 12h5.5"/></svg>
+    <span>Diario</span>
+  </button>
   <button class="nav-btn" aria-label="Calendario" data-view="calendario" data-short="Calend." onclick="showView('calendario')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg>
     <span>Calendario</span>
@@ -2600,7 +2606,7 @@
 <script src="push-client.js?v=397"></script>
 <script src="crono-state-store.js?v=397"></script>
 <script src="study-edit.js?v=505"></script>
-<script src="app.js?v=518"></script>
+<script src="app.js?v=523"></script>
 <script src="manual-study-activity.js?v=511"></script>
 <script src="chamber-factor-migration.js?v=430"></script>
 <script src="obra-grouping-migration.js?v=515"></script>
@@ -2630,6 +2636,7 @@
 <script src="habit-maintenance.js?v=517"></script>
 <script src="habit-hub.js?v=517"></script>
 <script src="study-journey.js?v=476"></script>
+<script src="diario.js?v=523"></script>
 <script src="habits-page.js?v=476"></script>
 <script src="obra-select-picker.js?v=468"></script>
 <script src="effort-incentives-ui.js?v=513"></script>

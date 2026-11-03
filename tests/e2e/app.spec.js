@@ -234,7 +234,8 @@ test('keeps mobile navigation visible after removing the daily state panel', asy
     }));
     expect(state.navFits).toBe(true);
     expect(state.documentFits).toBe(true);
-    expect(state.navButtons).toHaveLength(5);
+    // Diario (v523) es la sexta pestaña: tiene que caber también a 320 px.
+    expect(state.navButtons).toHaveLength(6);
     expect(state.navButtons.every(btn => btn.width > 0 && btn.height >= 44 && btn.label)).toBe(true);
     expect(state.hasLegacyStatePanel).toBe(false);
     expect(state.hasDayPlanner).toBe(true);

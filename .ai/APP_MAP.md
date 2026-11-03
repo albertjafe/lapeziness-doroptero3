@@ -236,6 +236,11 @@ Desde el 02-10-2026 (`20261002180000_index_study_reference_checks.sql`), `protec
 - Sync seguro: `task-sync-bootstrap.js` + `task-sync-resilience.js`.
 - Existe copia local de rescate interna; la antigua UI manual de “Historial de tareas” fue retirada y **no debe reaparecer** salvo petición explícita.
 
+### Diario (v523)
+
+- `diario.js/css`, vista `#view-diario`, pestaña propia en la barra (6 en el móvil, 7 en el iPad; `diario.css` ajusta la rejilla). Una página por día: los bloques salen de `DailyStudyMinutes.studyBlocks` (mismos tramos canónicos), tramos seguidos de la misma obra con pausas ≤ 20 min se juntan y los pases van aparte. Las notas del cronómetro (`plant.notes`) se ven sin editar.
+- Lo escrito son entradas de **`db.dailyJournalEntries`** (el diario de siempre): con `ref` (`p:<id del primer tramo>`) y `about` (obra, movimiento y horas en texto) si van sobre un bloque; sin `ref` es del día. `day` = día del bloque. Se guarda al escribir (`saveDataSoon`); vaciar y salir de la línea la quita (lápida por id del documento). Un comentario cuyo bloque desaparece queda como entrada del día. El paquete para IA imprime `sobre <about>`. `Diario.day()`/`Diario.write()` son puras; pruebas `tests/unit/diario.test.js`, `tests/e2e/diario.spec.js`.
+
 ---
 
 ## 5. Eventos, concursos y proyectos personales
@@ -433,6 +438,7 @@ Documentación pura (`.md`, instrucciones de IA) no necesita bump de SW porque n
 | Quiero cambiar… | Mirar primero |
 |---|---|
 | navegación / shell | `index.html`, `app.js` (`showView`) |
+| diario (comentarios por bloque de estudio) | `diario.js`, `diario.css` |
 | Deutsch / alemán / hucha | `german-study.js/css`, `german-rewards.js`, `german-session.js`, `german-srs.js`, `german-import.js`; contrato en `docs/DEUTSCH.md` |
 | Cronómetro / hábitos / trofeos | `app.js` + `timer-core.js` + `timer-objectives.js` + `habit-trophies.js/css` + `crono-*` |
 | tareas | `app.js` (`cronoTask*`) + `planning-enhancements-v4.js` + `task-sync-*` |

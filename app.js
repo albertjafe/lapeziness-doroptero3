@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-10-25-tareas-de-hoy-v520';
+const APP_VERSION = '2026-11-03-diario-v523';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1052,6 +1052,7 @@ const VIEW_CONTEXT = {
   casa: { eyebrow: 'Estratos', title: 'La Casa' },
   historial: { eyebrow: 'Resumen', title: 'Estadísticas' },
   deutsch: { eyebrow: 'Tarjetas y estudio libre', title: 'Alemán' },
+  diario: { eyebrow: 'Lo que hiciste y lo que pensaste', title: 'Diario' },
   concursos: { eyebrow: 'Concursos, festivales y becas', title: 'Oportunidades' },
   ajustes: { eyebrow: 'Cuenta, aspecto y datos', title: 'Ajustes' },
   premios: { eyebrow: 'Hucha, rachas y logros', title: 'Premios' },
@@ -2351,7 +2352,7 @@ function renderSessionJournal() {
     const at = entry.at || '';
     return '<article class="session-journal-entry">' +
       '<div class="session-journal-entry-head">' +
-        '<span>' + escapeHtmlSafe(aiTimeLabel(at) || '--:--') + '</span>' +
+        '<span>' + escapeHtmlSafe(entry.about ? 'Sobre ' + entry.about : (aiTimeLabel(at) || '--:--')) + '</span>' +
         '<button type="button" onclick="deleteSessionJournalEntry(\'' + escapeHtmlSafe(entry.id || '') + '\')" aria-label="Eliminar entrada">×</button>' +
       '</div>' +
       '<p>' + escapeHtmlSafe(entry.text || '') + '</p>' +
@@ -18105,6 +18106,7 @@ function buildAiTextReport(options) {
     day: day.day,
     dayLabel: day.day === todayKey ? 'HOY' : day.label,
     at: entry.at || '',
+    about: entry.about || '',
     text: entry.text || '',
   })));
   const lines = [];
@@ -18121,6 +18123,7 @@ function buildAiTextReport(options) {
   lines.push('- Esta app registra estudio de piano. No presupongas contexto externo: interpreta sólo lo que aparece aquí.');
   lines.push('- Bloque con hora: tramo real registrado por cronómetro/temporizador/Forest. Es el dato más fiable para saber cuándo estudié y cuánto tiempo.');
   lines.push('- Nota de sesión: observación escrita o dictada antes de empezar, en un minuto concreto del cronómetro/temporizador, o después de terminar. Es input directo del usuario; úsalo como contexto prioritario.');
+  lines.push('- Entrada del diario: lo que escribí ese día. Si dice «sobre …», es mi comentario sobre ese bloque de estudio concreto (obra, movimiento y horas): léelo junto a ese bloque, como mi valoración de cómo fue.');
   lines.push('- Tarjeta/sesión guardada: resumen diario o tarjeta de estudio. Puede incluir obra, minutos, tick, nota, destello y datos agregados de sub-sesiones.');
   lines.push('- Pase: ejecución de una obra o movimiento. Es la medida principal de solidez. Tipos: solo = para mí; informal = ante pareja/amigos; evento = audición, concierto u otra situación formal; concurso = competición; grabación = sesión con takes. Resultado: porcentaje de 1 a 100; cuanto mayor, mejor salió.');
   lines.push('- Mapa de fallos del pase: marcas visuales por posición o compás. fallo = caída o interrupción; suciedad = imprecisión; memoria = problema de recuerdo. Las repeticiones cercanas señalan zonas recurrentes.');
@@ -18146,7 +18149,8 @@ function buildAiTextReport(options) {
   if (journalEntries.length) {
     lines.push('ENTRADAS DEL DIARIO');
     journalEntries.forEach(entry => {
-      const when = (entry.dayLabel || entry.day || '') + (entry.at ? ' · ' + aiTimeLabel(entry.at) : '');
+      // Un comentario del Diario sobre un bloque lleva la obra y sus horas.
+      const when = (entry.dayLabel || entry.day || '') + (entry.about ? ' · sobre ' + entry.about : (entry.at ? ' · ' + aiTimeLabel(entry.at) : ''));
       lines.push('- ' + when + ': "' + entry.text + '"');
     });
     lines.push('');
