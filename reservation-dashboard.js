@@ -68,6 +68,7 @@
     { command: 'set_emergency', key: 'emergency_enabled', label: 'Emergencia', hint: 'Rellena huecos de última hora entre tus reservas' },
     { command: 'set_madrugada', key: 'madrugada_enabled', label: 'Madrugada', hint: 'Permite reservar entre 23:30 y 07:30' },
     { command: 'set_aachen', key: 'aachen_only', label: 'Solo Aachen', hint: 'Busca únicamente en el campus de Aachen' },
+    { command: 'set_wuppertal', key: 'wuppertal_only', label: 'Solo Wuppertal', hint: 'Busca únicamente en el campus de Wuppertal', optional: true },
     { command: 'set_absorbe', key: 'absorbe_enabled', label: 'Absorber huecos', hint: 'Alarga tus reservas hacia el hueco libre de al lado', optional: true },
     { command: 'set_pecera', key: 'pecera_enabled', label: 'Pecera (plan de mañana)', hint: 'En sombra: calcula el mejor plan de mañana y cuándo abre cada tramo; no reserva', optional: true },
   ];
@@ -182,11 +183,11 @@
     if (error.retry_in_s) parts.push(`reintenta en ${error.retry_in_s} s`);
     return parts.filter(Boolean).join(' · ');
   }
-  // Aachen se guarda como 30xxx (convención interna del monitor); se muestra 30.xxx.
+  // Aachen y Wuppertal se guardan como 30xxx y 40xxx (convención interna del monitor); se muestran 30.xxx y 40.xxx.
   function roomLabel(room) {
     const text = String(room == null || room === '' ? '—' : room);
-    const aachen = /^30(\d{3})$/.exec(text);
-    return aachen ? `30.${aachen[1]}` : text;
+    const campus = /^([34]0)(\d{3})$/.exec(text);
+    return campus ? `${campus[1]}.${campus[2]}` : text;
   }
   function currentRow() {
     return rows.find(row => row.source === selectedSource) || rows[0] || null;
@@ -1202,7 +1203,7 @@
     try { p = JSON.parse(localStorage.getItem(GRID_KEY) || '{}') || {}; } catch (e) {}
     return {
       day: p.day === 'hoy' ? 'hoy' : 'manana',
-      group: p.group === 4 ? 4 : 5,
+      group: p.group === 4 ? 4 : p.group === 85 ? 85 : 5,
       win: ['24h', '15h'].includes(p.win) ? p.win : 'all',
       sort: p.sort === 'libre' ? 'libre' : 'aula',
     };
@@ -1233,6 +1234,11 @@
     card.hidden = !state.date;
     if (card.hidden) return;
     const offline = ageMs(row) > OFFLINE_MS || state.monitor?.online === false;
+    // Wuppertal (grupo 85) solo se ofrece si el monitor ya lo entiende.
+    const wuppertalOk = state.monitor?.wuppertal_only != null;
+    if (gridPrefs().group === 85 && !wuppertalOk) {
+      try { localStorage.setItem(GRID_KEY, JSON.stringify({ ...gridPrefs(), group: 5 })); } catch (e) {}
+    }
     const prefs = gridPrefs();
     const iso = isoPlusDays(prefs.day === 'hoy' ? 0 : 1);
     const rg = state.room_grid;
@@ -1242,7 +1248,7 @@
     if (meta) meta.textContent = grid?.status === 'ok' && grid.fetched_at ? `leída a las ${formatClock(grid.fetched_at)}` : 'se lee al pedirla';
     const seg = (key, items, cur, label) => `<div class="rd-segment" role="radiogroup" aria-label="${label}">${items.map(([v, l]) => `
       <button type="button" role="radio" aria-checked="${v === cur}" class="${v === cur ? 'active' : ''}" data-grid-${key}="${v}">${l}</button>`).join('')}</div>`;
-    const controls = `<div class="rd-grid-controls">${seg('day', [['hoy', 'Hoy'], ['manana', 'Mañana']], prefs.day, 'Día')}${seg('group', [[5, 'Grupo 5'], [4, 'Grupo 4']], prefs.group, 'Grupo de aulas')}</div>
+    const controls = `<div class="rd-grid-controls">${seg('day', [['hoy', 'Hoy'], ['manana', 'Mañana']], prefs.day, 'Día')}${seg('group', [[5, 'Grupo 5'], [4, 'Grupo 4'], ...(wuppertalOk ? [[85, 'Wuppertal']] : [])], prefs.group, 'Grupo de aulas')}</div>
       <button type="button" class="rd-action rd-grid-load" data-ui="grid-load" ${offline || loading ? 'disabled' : ''}>
         <span aria-hidden="true">▦</span><b>${loading ? 'Leyendo Asimut…' : grid?.status === 'ok' ? 'Actualizar' : 'Ver ocupación'}</b></button>`;
     let content;
@@ -1284,7 +1290,7 @@
           return `<button type="button" class="rd-grid-ev ${ev.m ? 'is-mine' : ''} ${ev.n || ev.m ? '' : 'is-anon'} ${picked ? 'is-picked' : ''}" style="left:${pct(a)}%;width:${(+pct(b) - +pct(a)).toFixed(2)}%"
             data-grid-room="${r.room}" data-grid-ev="${i}" title="${escapeHtml(`${name} · ${ev.s}–${ev.e}`)}">${escapeHtml(name)}</button>`;
         }).join('');
-        return `<div class="rd-grid-row"><span class="rd-grid-room"><b>${r.room}</b><small>${escapeHtml(r.win || '')}</small></span><div class="rd-grid-track">${past}${free}${evs}</div></div>`;
+        return `<div class="rd-grid-row"><span class="rd-grid-room"><b>${escapeHtml(prefs.group === 85 ? String(r.label || r.room).replace(/^40\./, '') : r.room)}</b><small>${escapeHtml(r.win || '')}</small></span><div class="rd-grid-track">${past}${free}${evs}</div></div>`;
       }).join('');
       let detail = '';
       const pr = gridPick && rooms.find(r => r.room === gridPick.room);
@@ -1299,7 +1305,7 @@
         detail = `<div class="rd-grid-detail"><b>${escapeHtml(pr.label)} · ${ev.s}–${ev.e}</b>
           <span>${escapeHtml(ev.m ? `Tuya${ev.n ? ` (${ev.n})` : ''}` : ev.n || 'Anónima')}${ev.t ? ` · <small>${escapeHtml(ev.t)}</small>` : ''}</span></div>`;
       }
-      const filters = `<div class="rd-grid-controls">${prefs.group === 5 ? seg('win', [['all', 'Todas'], ['24h', '24 h'], ['15h', '15 h']], prefs.win, 'Ventana') : ''}${seg('sort', [['aula', 'Por aula'], ['libre', '+ libre']], prefs.sort, 'Orden')}</div>`;
+      const filters = `<div class="rd-grid-controls">${prefs.group !== 4 ? seg('win', [['all', 'Todas'], ['24h', '24 h'], ['15h', '15 h']], prefs.win, 'Ventana') : ''}${seg('sort', [['aula', 'Por aula'], ['libre', '+ libre']], prefs.sort, 'Orden')}</div>`;
       content = `${filters}<div class="rd-grid">${axis}${rowsHtml || '<p class="rd-franja-empty">Ninguna aula con ese filtro.</p>'}</div>${detail}
         <p class="rd-grid-legend"><i class="is-free"></i>libre <i class="is-mine"></i>tuya <i class="is-busy"></i>ocupada · toca un hueco para preparar el /paod</p>`;
     }

@@ -47,6 +47,14 @@ describe('reservation monitor dashboard', () => {
     expect(migration).not.toContain("'patch_reservation'");
   });
 
+  it('allows set_wuppertal in the SQL check, the ingest whitelist and the app', () => {
+    const wuppertalMigration = fs.readFileSync('supabase/migrations/20261104120000_reservation_monitor_wuppertal_command.sql', 'utf8');
+    expect(wuppertalMigration).toContain("'set_wuppertal'");
+    expect(edge).toContain('"set_wuppertal"');
+    expect(edge).toContain('raw.group === 85');
+    expect(dashboard).toContain("command: 'set_wuppertal'");
+  });
+
   it('passes the monitor failure and real read time through the ingest sanitiser', () => {
     expect(edge).toContain('last_read_at: cleanInstant(raw.last_read_at)');
     expect(edge).toContain('error: cleanMonitorError(monitorRaw.error)');

@@ -18,6 +18,7 @@ const allowedCommands = new Set([
   "set_mirror",
   "set_madrugada",
   "set_aachen",
+  "set_wuppertal",
   "set_emergency",
   "startup_select",
   "start_monitor",
@@ -356,7 +357,7 @@ function cleanRoomGrid(value: unknown) {
   return {
     status: cleanChoice(raw.status, ["loading", "ok", "error"]) || "error",
     date: cleanDate(raw.date),
-    group: raw.group === 4 || raw.group === 5 ? raw.group : null,
+    group: raw.group === 4 || raw.group === 5 || raw.group === 85 ? raw.group : null,
     open: cleanTime(raw.open),
     close: cleanTime(raw.close),
     fetched_at: cleanInstant(raw.fetched_at),
@@ -443,6 +444,8 @@ function cleanState(value: unknown) {
       mirror_enabled: monitorRaw.mirror_enabled == null ? null : cleanBoolean(monitorRaw.mirror_enabled),
       madrugada_enabled: cleanBoolean(monitorRaw.madrugada_enabled),
       aachen_only: cleanBoolean(monitorRaw.aachen_only),
+      // 04-11-2026: solo Wuppertal (null en monitores antiguos: la app lo oculta).
+      wuppertal_only: typeof monitorRaw.wuppertal_only === "boolean" ? monitorRaw.wuppertal_only : null,
       emergency_enabled: cleanBoolean(monitorRaw.emergency_enabled),
       booking_type: cleanChoice(monitorRaw.booking_type, ["grupo_alberto", "anon", "normal"]),
       migration_mode: cleanChoice(monitorRaw.migration_mode, ["calidad", "tiempo"]),

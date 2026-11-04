@@ -1017,6 +1017,38 @@ test('reservas de hoy solo de Emma: botón para pasarlas a grupo con Alberto, co
   await expect(page.locator('#reservationGroupConvert')).toBeHidden();
 });
 
+test('Wuppertal: solo se ofrece si el monitor lo publica y usa el grupo 85', async ({ page }) => {
+  const d = new Date(); d.setDate(d.getDate() + 1);
+  const tomorrow = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const [y, m, dd] = tomorrow.split('-');
+  const row = structuredClone(sampleRow);
+  row.state.monitor.wuppertal_only = false;
+  row.state.room_grid = {
+    status: 'ok', date: tomorrow, group: 85, open: '08:00', close: '22:00', fetched_at: new Date().toISOString(), error: null,
+    rooms: [
+      { room: 40113, label: '40.113', win: '15h', ev: [{ s: '09:00', e: '19:00', n: null, t: null, m: false }] },
+      { room: 40115, label: '40.115', win: '24h', ev: [] },
+    ],
+  };
+  await page.addInitScript(() => localStorage.setItem('reservationRoomGrid', JSON.stringify({ group: 85 })));
+  await mountDashboard(page, row);
+  const card = page.locator('#reservationRoomGrid');
+  await expect(card.locator('.rd-grid-room b')).toHaveText(['113', '115']);
+  await card.locator('[data-grid-room="40113"][data-grid-free^="480-"]').click();
+  await expect(card.locator('.rd-grid-detail code')).toHaveText(`/paod 40113 08:00 09:00 ${dd}-${m}-${y.slice(2)}`);
+  await card.getByRole('radio', { name: '15 h' }).click();
+  await expect(card.locator('.rd-grid-room b')).toHaveText(['113']);
+});
+
+test('Wuppertal: un monitor antiguo no lo ofrece aunque estuviera guardado', async ({ page }) => {
+  const row = structuredClone(sampleRow);
+  await page.addInitScript(() => localStorage.setItem('reservationRoomGrid', JSON.stringify({ group: 85 })));
+  await mountDashboard(page, row);
+  const card = page.locator('#reservationRoomGrid');
+  await expect(card.getByRole('radio', { name: 'Grupo 5' })).toHaveAttribute('aria-checked', 'true');
+  await expect(card.getByRole('radio', { name: 'Wuppertal' })).toHaveCount(0);
+});
+
 test('ocupación de aulas: nombres de cada reserva, filtro 15 h y /paod preparado para un hueco libre', async ({ page }) => {
   const d = new Date(); d.setDate(d.getDate() + 1);
   const tomorrow = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
