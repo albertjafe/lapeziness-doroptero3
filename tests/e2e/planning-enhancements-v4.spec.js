@@ -159,6 +159,8 @@ test('Hecho keeps a stable scale: long pause only suggests recovery, and your ch
 });
 
 test('personal projects are isolated in their own events section with month target', async ({ page }) => {
+  // La fecha del ejemplo debe seguir siendo futura al comprobar su fila oculta.
+  await page.clock.setFixedTime(new Date('2026-10-15T12:00:00+02:00'));
   const data = structuredClone(base);
   data.eventos = [{
     id:'project_oct', nombre:'Terminar nueva composición', tipo:'proyecto', estado:'planificado',
