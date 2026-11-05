@@ -465,6 +465,12 @@ html.platform-windows .rd-quick-overlay { z-index: 1150; }
 .aulas-screen .rd-lab-rooms { margin-top: 8px; }
 
 /* Tipo de reserva (Ajustes) */
+.aulas-screen .rd-max-reservation { display: grid; gap: 10px; padding: 14px 16px; border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+.aulas-screen .rd-max-reservation-input { display: flex; gap: 8px; }
+.aulas-screen .rd-max-reservation select { flex: 1; min-width: 0; min-height: 44px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg2); color: var(--text); font: inherit; font-size: 16px; }
+.aulas-screen .rd-max-reservation .rd-action { flex: none; min-height: 44px; padding: 8px 16px; }
+.aulas-screen .rd-max-reservation p { margin: 0; color: var(--text3); font-size: 12.5px; line-height: 1.45; }
+.aulas-screen .rd-max-reservation select:disabled { opacity: .55; }
 .aulas-screen .rd-booking-type { display: grid; gap: 10px; padding: 12px 16px; border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
 .aulas-screen .rd-segment { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border-radius: 13px; background: var(--bg3); }
 .aulas-screen .rd-segment button { min-height: 40px; padding: 0 8px; border: 0; border-radius: 10px; background: none; color: var(--text2); font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; }

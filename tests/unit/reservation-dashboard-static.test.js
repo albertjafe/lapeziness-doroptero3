@@ -55,6 +55,16 @@ describe('reservation monitor dashboard', () => {
     expect(dashboard).toContain("command: 'set_wuppertal'");
   });
 
+  it('allows maximum duration across the command queue and preserves every earlier command', () => {
+    const latest = fs.readFileSync('supabase/migrations/20261105055613_reservation_monitor_max_duration.sql', 'utf8');
+    const previous = fs.readFileSync('supabase/migrations/20261104120000_reservation_monitor_wuppertal_command.sql', 'utf8');
+    for (const [, command] of previous.matchAll(/'([a-z_]+)'/g)) expect(latest).toContain(`'${command}'`);
+    expect(latest).toContain("'set_max_reservation'");
+    expect(edge).toContain('"set_max_reservation"');
+    expect(edge).toContain('max_reservation_minutes: cleanInteger(monitorRaw.max_reservation_minutes, 30, 1440)');
+    expect(dashboard).toContain("postCommand('set_max_reservation', { minutes }, durationApply)");
+  });
+
   it('passes the monitor failure and real read time through the ingest sanitiser', () => {
     expect(edge).toContain('last_read_at: cleanInstant(raw.last_read_at)');
     expect(edge).toContain('error: cleanMonitorError(monitorRaw.error)');

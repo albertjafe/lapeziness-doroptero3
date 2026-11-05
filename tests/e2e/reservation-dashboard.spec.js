@@ -690,6 +690,78 @@ test('modo de migración: un monitor antiguo sin el dato no muestra el selector'
   await expect(page.locator('#reservationSettingControls .rd-migration-mode')).toHaveCount(0);
 });
 
+for (const [name, width, height] of [['móvil', 390, 844], ['iPad', 834, 1112], ['escritorio', 1440, 900]]) {
+  test(`duración máxima en ${name}: envía cinco horas y espera la confirmación de Emma`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    const row = structuredClone(sampleRow);
+    row.source = 'emma';
+    row.state.monitor.max_reservation_minutes = 180;
+    await mountDashboard(page, row);
+    // En escritorio ambos paneles ya están visibles; la pestaña es táctil.
+    if (width < 1100) await page.locator('[data-rd-tab="ajustes"]').click();
+    const select = page.getByLabel('Duración máxima por reserva');
+    const apply = page.locator('[data-ui="apply-max-reservation"]');
+    const status = page.locator('#reservationMaxDurationStatus');
+    await expect(select).toHaveValue('180');
+    await expect(apply).toBeDisabled();
+    await expect(status).toContainText('Máximo actual de Emma:');
+    await select.selectOption('300');
+    expect(await page.evaluate(() => window.__dashboardWrites)).toHaveLength(0);
+    await apply.click();
+    expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({
+      source: 'emma', command: 'set_max_reservation', payload: { minutes: 300 },
+    });
+    await expect(status).toContainText('Pendiente de confirmación');
+    await page.evaluate(async () => {
+      window.__row.state.monitor.max_reservation_minutes = 300;
+      await window.ReservationDashboard.refresh(false);
+    });
+    await expect(select).toHaveValue('300');
+    await expect(status).toContainText('Máximo actual de Emma: 5 h');
+    await expect(apply).toBeDisabled();
+    const box = await select.boundingBox();
+    expect(box.width).toBeGreaterThan(100);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+    if (process.env.CAPTURE_RESERVATION_DASHBOARD) {
+      await select.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: `test-results/max-duration-${width}.png` });
+    }
+  });
+}
+
+test('duración máxima: un monitor antiguo no inventa un valor ni acepta cambios', async ({ page }) => {
+  await mountDashboard(page, sampleRow);
+  const select = page.getByLabel('Duración máxima por reserva');
+  await expect(select).toBeDisabled();
+  await expect(select).toHaveValue('');
+  await expect(page.locator('#reservationMaxDurationStatus')).toContainText('Actualiza y reinicia');
+  expect(await page.evaluate(() => window.__dashboardWrites)).toHaveLength(0);
+});
+
+test('duración máxima: no mezcla perfiles y deshabilita el control cuando el monitor está detenido', async ({ page }) => {
+  const alberto = structuredClone(sampleRow);
+  alberto.state.monitor.max_reservation_minutes = 240;
+  await mountDashboard(page, alberto);
+  const select = page.getByLabel('Duración máxima por reserva');
+  await expect(select).toHaveValue('240');
+  await page.evaluate(async () => {
+    const emma = structuredClone(window.__row);
+    emma.source = 'emma';
+    emma.state.monitor.max_reservation_minutes = 180;
+    window.__rows = [window.__row, emma];
+    await window.ReservationDashboard.refresh(false);
+  });
+  await page.locator('[data-source="emma"]').click();
+  await expect(select).toHaveValue('180');
+  await page.evaluate(async () => {
+    window.__rows[1].state.monitor.online = false;
+    await window.ReservationDashboard.refresh(false);
+  });
+  await expect(select).toBeDisabled();
+  expect(await page.evaluate(() => window.__dashboardWrites)).toHaveLength(0);
+});
+
 test('una consulta colgada no deja la pantalla parada ni culpa al monitor', async ({ page }) => {
   await page.clock.install({ time: new Date('2026-10-04T14:00:00Z') });
   const row = structuredClone(sampleRow);

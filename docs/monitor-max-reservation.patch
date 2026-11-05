@@ -1,0 +1,45 @@
+diff --git a/monitor_huecos_alberto.py b/monitor_huecos_alberto.py
+--- a/monitor_huecos_alberto.py
++++ b/monitor_huecos_alberto.py
+@@ -2381,8 +2381,24 @@ def _max_reserva_save():
+         with open(tmp, "w", encoding="utf-8") as _f:
+             _jm.dump({"horas": float(MAX_RESERVA_HORAS)}, _f)
+         os.replace(tmp, _MAX_RESERVA_FILE)
++        return True
+     except Exception as e:
+         print(f"[MAXDUR] Error guardando max_reserva.json: {e}")
++        return False
++
++
++def _max_reserva_set_minutes(minutes) -> str:
++    """Orden absoluta e idempotente de la app; confirma solo tras guardar."""
++    global MAX_RESERVA_HORAS
++    if (isinstance(minutes, bool) or not isinstance(minutes, int)
++            or not 30 <= minutes <= 1440 or minutes % 30):
++        raise ValueError("El máximo debe ser de 30 min a 24 h, en pasos de 30 min")
++    anterior = MAX_RESERVA_HORAS
++    MAX_RESERVA_HORAS = minutes / 60
++    if not _max_reserva_save():
++        MAX_RESERVA_HORAS = anterior
++        raise OSError("No pude guardar el máximo; se conserva el anterior")
++    return f"Máximo por reserva: {_max_reserva_lbl()} (respeta RF y SZ)"
+
+ def _max_reserva_td() -> timedelta | None:
+     """Duración máxima configurada para una reserva individual."""
+@@ -17954,6 +17970,7 @@ def _study_dashboard_snapshot(target: date, cuotas: dict, reservas_con_id: list
+             "booking_type": RESERVA_TIPO,
+             "migration_mode": MIG_MODO,
+             "min_slot_duration": int(MIN_SLOT_DURATION),
++            "max_reservation_minutes": int(round(MAX_RESERVA_HORAS * 60)),
+             "monitor_window": {
+                 "start": MONITOR_WINDOW_START_T.strftime("%H:%M"),
+                 "end": MONITOR_WINDOW_END_T.strftime("%H:%M"),
+@@ -19445,6 +19462,8 @@ def _apply_study_dashboard_command(command: dict) -> str:
+         label = _reserva_tipo_set(str(payload.get("type") or ""))
+         send_tg(f"🎫 Tipo de reserva: <b>{label}</b> (desde la app)")
+         result = f"Tipo de reserva: {label}"
++    elif name == "set_max_reservation":
++        result = _max_reserva_set_minutes(payload.get("minutes"))
+     elif name == "set_blinds":
+         result = _app_set_blinds(payload)
+     elif name == "set_priority":

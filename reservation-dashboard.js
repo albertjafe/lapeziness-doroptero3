@@ -730,6 +730,27 @@
     </div>`;
   }
 
+  function maxReservationHtml(monitor, disabled) {
+    const minutes = monitor.max_reservation_minutes;
+    const supported = Number.isInteger(minutes) && minutes >= 30 && minutes <= 1440;
+    const options = Array.from({ length: 48 }, (_, i) => (i + 1) * 30);
+    if (supported && !options.includes(minutes)) options.push(minutes);
+    options.sort((a, b) => a - b);
+    return `<div class="rd-max-reservation">
+      <label class="rd-toggle-copy" for="reservationMaxDuration"><b>Duración máxima por reserva</b><small>Respeta la disponibilidad y las cuotas RF y SZ.</small></label>
+      <div class="rd-max-reservation-input">
+        <select id="reservationMaxDuration" aria-describedby="reservationMaxDurationStatus" ${disabled || !supported ? 'disabled' : ''}>
+          ${!supported ? '<option value="">Sin dato del monitor</option>' : ''}
+          ${supported ? options.map(value => `<option value="${value}" ${value === minutes ? 'selected' : ''}>${durationLabel(value)}</option>`).join('') : ''}
+        </select>
+        <button type="button" class="rd-action" data-ui="apply-max-reservation" disabled>Aplicar</button>
+      </div>
+      <p id="reservationMaxDurationStatus" role="status">${supported
+        ? `Máximo actual de ${escapeHtml(sourceLabel(selectedSource))}: ${durationLabel(minutes)}.`
+        : 'Actualiza y reinicia el monitor para cambiar este ajuste desde la app.'}</p>
+    </div>`;
+  }
+
   // Modo de migración (03-10-2026): «Solo tiempo» migra únicamente si el bloque
   // nuevo dura 30 min o más que el actual, sea el aula mejor o peor.
   const MIGRATION_MODES = [
@@ -788,7 +809,7 @@
         <button type="button" class="rd-action ${watchesTomorrow ? 'active' : ''}" data-command="target_tomorrow" aria-pressed="${watchesTomorrow ? 'true' : 'false'}" ${offline ? 'disabled' : ''}><b>Mañana</b></button>
       </div>`;
 
-    settingsWrap.innerHTML = bookingTypeHtml(monitor, offline) + TOGGLES
+    settingsWrap.innerHTML = maxReservationHtml(monitor, offline) + bookingTypeHtml(monitor, offline) + TOGGLES
       .filter(item => !(item.optional && monitor[item.key] == null))
       .map(item => toggleButton(item, monitor[item.key], offline) + (item.command === 'set_migration' ? migrationModeHtml(monitor, offline) : '')).join('');
     const summary = el('reservationActiveSettings');
@@ -811,6 +832,21 @@
     [modeWrap, actionWrap, settingsWrap, danger].forEach(wrap => wrap.querySelectorAll('[data-command]').forEach(button => {
       button.addEventListener('click', () => sendCommand(button));
     }));
+    const durationSelect = el('reservationMaxDuration');
+    const durationApply = settingsWrap.querySelector('[data-ui="apply-max-reservation"]');
+    durationSelect?.addEventListener('change', () => {
+      durationApply.disabled = offline || Number(durationSelect.value) === monitor.max_reservation_minutes;
+    });
+    durationApply?.addEventListener('click', async () => {
+      const minutes = Number(durationSelect.value);
+      if (!Number.isInteger(minutes) || minutes < 30 || minutes > 1440 || offline) return;
+      durationSelect.disabled = true;
+      const id = await postCommand('set_max_reservation', { minutes }, durationApply);
+      if (id && durationApply.isConnected) {
+        el('reservationMaxDurationStatus').textContent = `Solicitado: ${durationLabel(minutes)}. Pendiente de confirmación del monitor.`;
+      }
+      durationSelect.disabled = offline;
+    });
     danger.querySelector('[data-ui="ask-shutdown"]')?.addEventListener('click', () => askConfirm('shutdown'));
     danger.querySelector('[data-ui="cancel-confirm"]')?.addEventListener('click', () => askConfirm(null));
   }
@@ -2015,6 +2051,7 @@
           pendingCommands.delete(data.id);
         }
       }, 15000);
+      return data.id;
     } catch (error) {
       if (button) {
         button.disabled = false;

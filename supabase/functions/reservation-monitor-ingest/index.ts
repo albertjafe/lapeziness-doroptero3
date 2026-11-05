@@ -29,6 +29,7 @@ const allowedCommands = new Set([
   "reservation_cancel",
   "reservation_lock",
   "set_booking_type",
+  "set_max_reservation",
   "franja_add",
   "franja_remove",
   "franja_skip",
@@ -450,6 +451,7 @@ function cleanState(value: unknown) {
       booking_type: cleanChoice(monitorRaw.booking_type, ["grupo_alberto", "anon", "normal"]),
       migration_mode: cleanChoice(monitorRaw.migration_mode, ["calidad", "tiempo"]),
       min_slot_duration: cleanInteger(monitorRaw.min_slot_duration, 15, 720),
+      max_reservation_minutes: cleanInteger(monitorRaw.max_reservation_minutes, 30, 1440),
       monitor_window: {
         start: cleanTime((monitorRaw.monitor_window as Record<string, unknown> | undefined)?.start),
         end: cleanTime((monitorRaw.monitor_window as Record<string, unknown> | undefined)?.end),
