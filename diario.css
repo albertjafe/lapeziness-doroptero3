@@ -98,6 +98,156 @@ html #view-diario textarea.dia-ink { font-family: var(--dia-hand) !important; }
   html:not(.platform-windows) .nav.nav-bottom { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }
 
+/* ── Libro de escritorio (v526): dos días a doble página, a toda la pestaña ── */
+@media (min-width: 1200px) {
+  html.platform-windows #view-diario {
+    --dia-line: 36px;
+    --dia-margin-x: 44px;
+    --dia-sheet: color-mix(in srgb, var(--bg2) 90%, #e8d9b8);
+    --dia-binding: color-mix(in srgb, var(--accent) 38%, #2b2019);
+  }
+  /* Sin el margen inferior ni el ancho máximo de las demás vistas (desktop-app.css): el libro llena la ventana. */
+  html.platform-windows:not(#dk):not(#dk) body #view-diario { padding-bottom: 0 !important; max-width: none !important; }
+  html.platform-windows:not(#dk):not(#dk) body[data-view="diario"] .app-content { padding-bottom: 0 !important; }
+  html.platform-windows .dia-book {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) 52px;
+    align-items: stretch;
+    gap: 8px;
+    height: calc(100dvh - 100px);   /* diario.js lo ajusta al hueco real */
+    min-height: 460px;
+    max-width: 1640px;
+    margin: 0 auto;
+  }
+  html.platform-windows .dia-side { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+  html.platform-windows .dia-turn {
+    width: 48px; height: 48px; border-radius: 50%;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text2); font-size: 26px; line-height: 1; cursor: pointer;
+    transition: background .15s, color .15s, transform .15s;
+  }
+  html.platform-windows .dia-turn:hover:not(:disabled) { background: var(--bg3); color: var(--text); transform: scale(1.06); }
+  html.platform-windows .dia-turn:disabled { opacity: .25; cursor: default; }
+  html.platform-windows .dia-book .dia-back { margin: 0; padding: 6px 10px; }
+
+  /* Tapa: asoma alrededor de las hojas. */
+  html.platform-windows .dia-cover {
+    min-width: 0; min-height: 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: var(--dia-binding);
+    box-shadow: 0 18px 44px color-mix(in srgb, #000 28%, transparent), 0 2px 6px color-mix(in srgb, #000 22%, transparent);
+  }
+  html.platform-windows .dia-spread {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    height: 100%;
+    /* Canto de las hojas de debajo, a ambos lados. */
+    box-shadow:
+      -2px 0 0 color-mix(in srgb, var(--dia-sheet) 92%, #000), -3px 0 0 color-mix(in srgb, var(--dia-sheet) 78%, #000),
+      -5px 0 0 color-mix(in srgb, var(--dia-sheet) 92%, #000), -6px 0 0 color-mix(in srgb, var(--dia-sheet) 78%, #000),
+      2px 0 0 color-mix(in srgb, var(--dia-sheet) 92%, #000), 3px 0 0 color-mix(in srgb, var(--dia-sheet) 78%, #000),
+      5px 0 0 color-mix(in srgb, var(--dia-sheet) 92%, #000), 6px 0 0 color-mix(in srgb, var(--dia-sheet) 78%, #000);
+  }
+
+  html.platform-windows .dia-book-page {
+    display: flex; flex-direction: column;
+    min-width: 0; min-height: 0; height: 100%;
+    max-width: none; margin: 0;
+    padding: 18px 26px 16px;
+    box-sizing: border-box;
+    background-color: var(--dia-sheet);
+    color: var(--text);
+    position: relative;
+    overflow: hidden;
+  }
+  /* El lomo: las hojas se hunden hacia el centro. */
+  html.platform-windows .dia-book-page.is-left { background-image: linear-gradient(to left, color-mix(in srgb, #000 20%, transparent), color-mix(in srgb, #000 5%, transparent) 26px, transparent 80px); }
+  html.platform-windows .dia-book-page.is-right { background-image: linear-gradient(to right, color-mix(in srgb, #000 20%, transparent), color-mix(in srgb, #000 5%, transparent) 26px, transparent 80px); }
+
+  html.platform-windows .dia-page-head { flex: none; text-align: center; padding-bottom: 10px; }
+  html.platform-windows .dia-page-head small { display: block; min-height: 14px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3, var(--text2)); }
+  html.platform-windows .dia-page-head h2 { margin: 2px 0 0; font-family: 'Cormorant Garamond', Georgia, serif !important; font-weight: 400; font-size: 30px; line-height: 1.1; color: var(--text); }
+  html.platform-windows .dia-page-head h2::first-letter { text-transform: uppercase; }
+
+  /* Hoja rayada entera: todo cae sobre la misma pauta y se desplaza con ella. */
+  html.platform-windows .dia-sheet {
+    flex: 1; min-height: 0;
+    display: flex; flex-direction: column;
+    overflow-y: auto; overflow-x: hidden;
+    padding: 0 8px 0 calc(var(--dia-margin-x) + 12px);
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--text) 18%, transparent) transparent;
+    cursor: text;
+    background-image:
+      linear-gradient(to right, transparent var(--dia-margin-x), var(--dia-margin) var(--dia-margin-x), var(--dia-margin) calc(var(--dia-margin-x) + 1px), transparent calc(var(--dia-margin-x) + 1px)),
+      linear-gradient(to bottom, transparent calc(var(--dia-line) - 1px), var(--dia-rule) calc(var(--dia-line) - 1px), var(--dia-rule) var(--dia-line));
+    background-size: 100% 100%, 100% var(--dia-line);
+    background-repeat: no-repeat, repeat;
+    background-attachment: local;
+  }
+  html.platform-windows .dia-sheet .dia-item,
+  html.platform-windows .dia-sheet .dia-free { flex: none; padding: 0; margin: 0 0 var(--dia-line); }
+  html.platform-windows .dia-sheet .dia-new { flex: 1 0 auto; margin: 0 0 var(--dia-line) !important; }
+  html.platform-windows .dia-sheet .dia-meta { height: var(--dia-line); line-height: var(--dia-line); align-items: baseline; font-size: 13.5px; }
+  html.platform-windows .dia-sheet .dia-title { font-size: 15px; font-weight: 600; }
+  html.platform-windows .dia-sheet .dia-sub,
+  html.platform-windows .dia-sheet .dia-free-head { height: var(--dia-line); line-height: var(--dia-line); margin: 0; font-size: 13px; }
+  html.platform-windows .dia-sheet .dia-crono { margin: 0; font-size: 19px; line-height: var(--dia-line); }
+  html.platform-windows .dia-sheet .dia-empty { flex: none; margin: 0 0 var(--dia-line); height: var(--dia-line); line-height: var(--dia-line); font-size: 14px; }
+  html.platform-windows .dia-sheet .dia-ink {
+    min-height: var(--dia-line);
+    background: none;
+    font-size: 23px;
+    line-height: var(--dia-line);
+    padding: 0;
+    cursor: text;
+  }
+
+  /* ── Giro de la hoja ── */
+  html.platform-windows .dia-turning { position: absolute; inset: 0; z-index: 3; perspective: 2600px; perspective-origin: 50% 45%; pointer-events: none; }
+  html.platform-windows .dia-slot,
+  html.platform-windows .dia-leaf { position: absolute; top: 0; bottom: 0; width: 50%; }
+  html.platform-windows .dia-slot.is-left,
+  html.platform-windows .dia-leaf.is-left { left: 0; }
+  html.platform-windows .dia-slot.is-right,
+  html.platform-windows .dia-leaf.is-right { right: 0; }
+  html.platform-windows .dia-leaf { transform-style: preserve-3d; will-change: transform; }
+  html.platform-windows .dia-leaf.is-right { transform-origin: left center; animation: dia-turn-next 760ms cubic-bezier(.42, .03, .3, 1) both; }
+  html.platform-windows .dia-leaf.is-left { transform-origin: right center; animation: dia-turn-prev 760ms cubic-bezier(.42, .03, .3, 1) both; }
+  html.platform-windows .dia-face { position: absolute; inset: 0; overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: var(--dia-sheet); }
+  html.platform-windows .dia-face.is-back { transform: rotateY(180deg); }
+  /* Luz: la hoja se oscurece al levantarse y se aclara al caer. */
+  html.platform-windows .dia-face::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: #000; opacity: 0; }
+  html.platform-windows .dia-face.is-front::after { animation: dia-shade-front 760ms ease-in both; }
+  html.platform-windows .dia-face.is-back::after { animation: dia-shade-back 760ms ease-out both; }
+  html.platform-windows .dia-slot::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: #000; animation: dia-shade-under 760ms ease-in-out both; }
+  @keyframes dia-turn-next { from { transform: rotateY(0deg); } to { transform: rotateY(-180deg); } }
+  @keyframes dia-turn-prev { from { transform: rotateY(0deg); } to { transform: rotateY(180deg); } }
+  @keyframes dia-shade-front { 0% { opacity: 0; } 100% { opacity: .26; } }
+  @keyframes dia-shade-back { 0% { opacity: .26; } 100% { opacity: 0; } }
+  @keyframes dia-shade-under { 0% { opacity: 0; } 55% { opacity: .1; } 100% { opacity: .22; } }
+
+  /* Abrir el libro: gira la tapa, y a la izquierda solo hay mesa hasta que cae. */
+  html.platform-windows .dia-turning.is-opening .dia-slot.is-left { left: -14px; top: -12px; bottom: -12px; width: calc(50% + 14px); background: var(--bg); }
+  html.platform-windows .dia-turning.is-opening .dia-slot.is-left::after { display: none; }
+  html.platform-windows .dia-turning.is-opening .dia-leaf { animation-duration: 950ms; animation-timing-function: cubic-bezier(.5, .02, .2, 1); }
+  html.platform-windows .dia-turning.is-opening .dia-face::after { animation-duration: 950ms; }
+  html.platform-windows .dia-cover-face {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--dia-binding);
+    color: color-mix(in srgb, #fff 82%, var(--dia-binding));
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 54px; letter-spacing: .06em;
+  }
+  html.platform-windows .dia-cover-face span { padding: 14px 44px; border-top: 1px solid currentColor; border-bottom: 1px solid currentColor; }
+}
+@media (min-width: 1200px) and (prefers-reduced-motion: reduce) {
+  html.platform-windows .dia-turn { transition: none; }
+}
+
 html.platform-ipad .dia-page { padding-top: 16px; }
 html.platform-ipad .dia-date h2 { font-size: 30px; }
 html.platform-ipad .dia-ink { font-size: 21px; }

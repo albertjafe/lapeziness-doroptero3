@@ -9,7 +9,10 @@
    - El día de la entrada es el del bloque, aunque se escriba otro día.
    - Borrar = dejar el texto vacío al salir. Si el bloque desaparece (tramo
      eliminado), el comentario no se pierde: queda como entrada del día.
-   - Las notas tomadas con el cronómetro en marcha se ven (sin editar). */
+   - Las notas tomadas con el cronómetro en marcha se ven (sin editar).
+   En el escritorio (v526) es un libro a toda la pestaña: dos días a doble
+   página, con hoy siempre a la derecha en la última, y la hoja gira al pasar.
+   El giro es solo visual: la página real ya está debajo y se ve al terminar. */
 (function (root, factory) {
   const api = factory(root);
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
@@ -37,6 +40,14 @@
     const d = dateOf(key);
     d.setDate(d.getDate() + offset);
     return dayKey(d);
+  }
+  // Doble página que contiene `key`: se cuenta desde hoy de dos en dos, para que
+  // la última tenga ayer a la izquierda y hoy a la derecha. Pura: la usan las pruebas.
+  function spreadOf(key, today) {
+    const utc = k => { const [y, m, d] = String(k).split('-').map(Number); return Date.UTC(y, m - 1, d); };
+    const back = Math.max(0, Math.round((utc(today) - utc(key)) / 86400000));
+    const right = shiftDay(today, -(back - (back % 2)));
+    return { left: shiftDay(right, -1), right };
   }
   function duration(mins) {
     const m = Math.max(0, Math.round(Number(mins) || 0));
@@ -189,7 +200,15 @@
   }
 
   // ---------- Vista ----------
+  const TURN_MS = 760;
+  const OPEN_MS = 950;
   let current = null;
+  let turning = null;
+  let opened = false;
+  let lastBook = false;
+  // Mismo umbral que la capa de escritorio de Windows (desktop-windows-v390.css).
+  const bookMode = () => !!(doc && doc.documentElement.classList.contains('platform-windows') && root.matchMedia && root.matchMedia('(min-width: 1200px)').matches);
+  const reducedMotion = () => !!(root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const view = () => doc && doc.getElementById('view-diario');
   const visible = () => doc && doc.body && doc.body.getAttribute('data-view') === 'diario';
@@ -229,32 +248,69 @@
     return d.toLocaleDateString('es-ES', opts);
   }
 
-  function render() {
-    const el = view(), database = appDb();
-    if (!el || !database) return;
-    const today = dayKey(new Date());
-    if (!current) current = today;
-    const data = day(database, current);
-    // Bloques y entradas del día por orden de hora; lo que no tiene hora, al final.
+  // Bloques y entradas del día por orden de hora; lo que no tiene hora, al final.
+  function pageBody(database, key) {
+    const data = day(database, key);
     const rows = [];
     data.items.forEach(item => rows.push({ ms: item.startMs ?? Infinity, html: itemHtml(item) }));
     data.general.forEach(entry => rows.push({ ms: parseMs(entry.at) ?? Infinity, html: generalHtml(entry) }));
     rows.sort((a, b) => a.ms - b.ms);
+    return (rows.length ? rows.map(r => r.html).join('') : '<p class="dia-empty">Este día no hay estudio registrado.</p>') +
+      '<div class="dia-free dia-new">' + ink({ free: '1' }, '', 'Escribe algo del día…') + '</div>';
+  }
+
+  function singlePage(database, today) {
     const isToday = current === today;
-    el.innerHTML =
-      '<section class="dia-page" data-day="' + current + '">' +
-        '<header class="dia-head">' +
-          '<button type="button" class="dia-nav" data-act="prev" aria-label="Día anterior">‹</button>' +
-          '<div class="dia-date"><small>' + (isToday ? 'Hoy' : '&nbsp;') + '</small><h2>' + esc(dateLabel(current)) + '</h2></div>' +
-          '<button type="button" class="dia-nav" data-act="next" aria-label="Día siguiente"' + (current >= today ? ' disabled' : '') + '>›</button>' +
-        '</header>' +
-        (isToday ? '' : '<button type="button" class="dia-back" data-act="today">Volver a hoy</button>') +
-        '<div class="dia-paper">' +
-          (rows.length ? rows.map(r => r.html).join('') : '<p class="dia-empty">Este día no hay estudio registrado.</p>') +
-          '<div class="dia-free dia-new">' + ink({ free: '1' }, '', 'Escribe algo del día…') + '</div>' +
-        '</div>' +
-      '</section>';
+    return '<section class="dia-page" data-day="' + current + '">' +
+      '<header class="dia-head">' +
+        '<button type="button" class="dia-nav" data-act="prev" aria-label="Día anterior">‹</button>' +
+        '<div class="dia-date"><small>' + (isToday ? 'Hoy' : '&nbsp;') + '</small><h2>' + esc(dateLabel(current)) + '</h2></div>' +
+        '<button type="button" class="dia-nav" data-act="next" aria-label="Día siguiente"' + (current >= today ? ' disabled' : '') + '>›</button>' +
+      '</header>' +
+      (isToday ? '' : '<button type="button" class="dia-back" data-act="today">Volver a hoy</button>') +
+      '<div class="dia-paper">' + pageBody(database, current) + '</div>' +
+    '</section>';
+  }
+
+  function bookPage(database, key, side, today) {
+    const tag = key === today ? 'Hoy' : key === shiftDay(today, -1) ? 'Ayer' : '&nbsp;';
+    return '<article class="dia-page dia-book-page is-' + side + '" data-day="' + key + '">' +
+      '<header class="dia-page-head"><small>' + tag + '</small><h2>' + esc(dateLabel(key)) + '</h2></header>' +
+      '<div class="dia-sheet">' + pageBody(database, key) + '</div>' +
+    '</article>';
+  }
+
+  function bookHtml(database, today) {
+    const spread = spreadOf(current, today);
+    current = spread.right;
+    const last = current >= today;
+    return '<section class="dia-book">' +
+      '<div class="dia-side">' +
+        '<button type="button" class="dia-turn" data-act="prev" aria-label="Páginas anteriores">‹</button>' +
+      '</div>' +
+      '<div class="dia-cover"><div class="dia-spread">' +
+        bookPage(database, spread.left, 'left', today) +
+        bookPage(database, spread.right, 'right', today) +
+      '</div></div>' +
+      '<div class="dia-side">' +
+        '<button type="button" class="dia-turn" data-act="next" aria-label="Páginas siguientes"' + (last ? ' disabled' : '') + '>›</button>' +
+        (last ? '' : '<button type="button" class="dia-back" data-act="today" aria-label="Volver a hoy">Hoy</button>') +
+      '</div>' +
+    '</section>';
+  }
+
+  function render() {
+    const el = view(), database = appDb();
+    if (!el || !database) return;
+    finishTurn();
+    const today = dayKey(new Date());
+    if (!current) current = today;
+    const scrolls = new Map([...el.querySelectorAll('.dia-sheet')].map(s => [s.parentElement.dataset.day, s.scrollTop]));
+    lastBook = bookMode();
+    el.innerHTML = lastBook ? bookHtml(database, today) : singlePage(database, today);
+    sizeBook();
     el.querySelectorAll('.dia-ink').forEach(fit);
+    el.querySelectorAll('.dia-sheet').forEach(s => { s.scrollTop = scrolls.get(s.parentElement.dataset.day) || 0; });
   }
 
   function fit(area) {
@@ -262,13 +318,119 @@
     area.style.height = area.scrollHeight + 'px';
   }
 
+  // El libro llena lo que queda de ventana bajo la cabecera, sin desplazar la página.
+  function sizeBook() {
+    const el = view();
+    const book = el && el.querySelector('.dia-book');
+    if (!book || !visible()) return;
+    const top = book.getBoundingClientRect().top + (root.scrollY || 0);
+    if (top > 0) book.style.height = Math.max(460, Math.floor(root.innerHeight - top - 16)) + 'px';
+  }
+
+  // ---------- Pasar la hoja ----------
+  // Copia inerte de una página para dibujarla sobre la hoja que gira.
+  function pageCopy(page) {
+    const copy = page.cloneNode(true);
+    copy.removeAttribute('data-day');
+    const real = page.querySelectorAll('textarea');
+    copy.querySelectorAll('textarea').forEach((area, i) => { area.value = real[i].value; area.tabIndex = -1; });
+    const sheet = page.querySelector('.dia-sheet');
+    return { copy, top: sheet ? sheet.scrollTop : 0 };
+  }
+
+  function slot(side, content) {
+    const box = doc.createElement('div');
+    box.className = 'dia-slot is-' + side;
+    if (content) {
+      box.appendChild(content.copy);
+      box.dataset.top = content.top;
+    }
+    return box;
+  }
+
+  function face(name, content) {
+    const box = doc.createElement('div');
+    box.className = 'dia-face is-' + name;
+    if (content && content.copy) {
+      box.appendChild(content.copy);
+      box.dataset.top = content.top;
+    } else if (content) {
+      box.appendChild(content);
+    }
+    return box;
+  }
+
+  function finishTurn() {
+    if (!turning) return;
+    clearTimeout(turning.timer);
+    turning.layer.remove();
+    turning = null;
+  }
+
+  function playLeaf(spread, under, leafSide, front, back, kind, ms) {
+    const layer = doc.createElement('div');
+    layer.className = 'dia-turning' + (kind ? ' is-' + kind : '');
+    layer.setAttribute('aria-hidden', 'true');
+    layer.inert = true;
+    const leaf = doc.createElement('div');
+    leaf.className = 'dia-leaf is-' + leafSide;
+    leaf.append(face('front', front), face('back', back));
+    under.forEach(u => layer.appendChild(u));
+    layer.appendChild(leaf);
+    spread.appendChild(layer);
+    layer.querySelectorAll('[data-top]').forEach(box => {
+      const sheet = box.querySelector('.dia-sheet');
+      if (sheet) sheet.scrollTop = Number(box.dataset.top) || 0;
+    });
+    turning = { layer, timer: setTimeout(finishTurn, ms + 60) };
+    leaf.addEventListener('animationend', e => { if (e.target === leaf && !e.pseudoElement) finishTurn(); });
+  }
+
+  function turnTo(key) {
+    const el = view();
+    const today = dayKey(new Date());
+    const target = spreadOf(key > today ? today : key, today).right;
+    if (editing()) doc.activeElement.blur();
+    finishTurn();
+    if (target === current) return;
+    const left = el.querySelector('.dia-spread > .is-left');
+    const right = el.querySelector('.dia-spread > .is-right');
+    const forward = target > current;
+    if (reducedMotion() || !left || !right) {
+      current = target;
+      render();
+      return;
+    }
+    const oldLeft = pageCopy(left), oldRight = pageCopy(right);
+    current = target;
+    render();
+    const spread = el.querySelector('.dia-spread');
+    const newPage = pageCopy(spread.querySelector(forward ? ':scope > .is-left' : ':scope > .is-right'));
+    if (forward) playLeaf(spread, [slot('left', oldLeft)], 'right', oldRight, newPage, '', TURN_MS);
+    else playLeaf(spread, [slot('right', oldRight)], 'left', oldLeft, newPage, '', TURN_MS);
+  }
+
+  // La primera vez que se entra, el libro se abre: gira la tapa.
+  function playOpening() {
+    if (opened) return;
+    opened = true;
+    const el = view();
+    const spread = el && el.querySelector('.dia-spread');
+    if (!spread || reducedMotion()) return;
+    const cover = doc.createElement('div');
+    cover.className = 'dia-cover-face';
+    cover.innerHTML = '<span>Diario</span>';
+    playLeaf(spread, [slot('left')], 'right', cover, pageCopy(spread.querySelector(':scope > .is-left')), 'opening', OPEN_MS);
+  }
+
   function commit(area, final) {
     const database = appDb();
     if (!database) return;
     const item = area.closest('.dia-item');
+    const page = area.closest('[data-day]');
     const id = write(database, {
       id: area.dataset.id || '',
-      key: current,
+      key: page ? page.dataset.day : current,
       ref: area.dataset.ref || '',
       about: item ? item.dataset.about : '',
       text: area.value,
@@ -282,11 +444,13 @@
   }
 
   function go(key) {
+    if (bookMode()) { turnTo(key); return; }
     const today = dayKey(new Date());
     current = key > today ? today : key;
     render();
     root.scrollTo && root.scrollTo({ top: 0, behavior: 'auto' });
   }
+  const step = direction => shiftDay(current, direction * (bookMode() ? 2 : 1));
 
   function init() {
     const el = view();
@@ -296,18 +460,19 @@
       const button = e.target.closest('[data-act]');
       if (button) {
         const act = button.dataset.act;
-        if (act === 'prev') go(shiftDay(current, -1));
-        else if (act === 'next') go(shiftDay(current, 1));
+        if (act === 'prev') go(step(-1));
+        else if (act === 'next') go(step(1));
         else if (act === 'today') go(dayKey(new Date()));
         return;
       }
-      // Tocar el bloque (no solo la línea) lleva a escribir sobre él.
-      const item = e.target.closest('.dia-item');
-      if (item && !e.target.closest('.dia-ink')) {
-        const areas = item.querySelectorAll('.dia-ink');
-        const area = areas[areas.length - 1];
-        if (area) { area.focus(); area.setSelectionRange(area.value.length, area.value.length); }
-      }
+      if (e.target.closest('.dia-ink')) return;
+      // Tocar el bloque (no solo la línea) lleva a escribir sobre él; en el libro,
+      // tocar lo vacío de la hoja lleva a la línea libre de ese día.
+      const scope = e.target.closest('.dia-item') || e.target.closest('.dia-sheet');
+      if (!scope) return;
+      const areas = scope.classList.contains('dia-sheet') ? scope.querySelectorAll('.dia-new .dia-ink') : scope.querySelectorAll('.dia-ink');
+      const area = areas[areas.length - 1];
+      if (area) { area.focus(); area.setSelectionRange(area.value.length, area.value.length); }
     });
     el.addEventListener('input', e => {
       if (!e.target.classList.contains('dia-ink')) return;
@@ -319,7 +484,7 @@
       const area = e.target;
       commit(area, true);
       // La línea nueva del día, ya escrita, pasa a ser una entrada más.
-      if (area.dataset.free && area.dataset.id) setTimeout(() => { if (!editing()) render(); }, 0);
+      if (area.dataset.free && area.dataset.id) setTimeout(() => { if (!editing() && !turning) render(); }, 0);
     });
     el.addEventListener('keydown', e => {
       if (!e.target.classList.contains('dia-ink')) return;
@@ -328,21 +493,29 @@
     doc.addEventListener('keydown', e => {
       if (!visible() || editing() || e.altKey || e.metaKey || e.ctrlKey) return;
       if (/INPUT|TEXTAREA|SELECT/.test((e.target && e.target.tagName) || '')) return;
-      if (e.key === 'ArrowLeft') { e.preventDefault(); go(shiftDay(current, -1)); }
-      else if (e.key === 'ArrowRight') { e.preventDefault(); go(shiftDay(current, 1)); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); go(step(-1)); }
+      else if (e.key === 'ArrowRight') { e.preventDefault(); go(step(1)); }
     });
     root.addEventListener('app:viewchange', e => {
-      if (e.detail && e.detail.name === 'diario') render();
+      if (!e.detail || e.detail.name !== 'diario') return;
+      render();
+      if (lastBook) playOpening();
     });
     // Lo que llega de otro dispositivo se ve al volver, salvo si estás escribiendo.
-    const refresh = () => { if (visible() && !editing()) render(); };
+    const refresh = () => { if (visible() && !editing() && !turning) render(); };
     root.addEventListener('focus', refresh);
     doc.addEventListener('visibilitychange', () => { if (!doc.hidden) refresh(); });
     root.addEventListener('storage', e => { if (e.key === 'alberto_piano_v2') refresh(); });
-    root.addEventListener('resize', () => { const v = view(); if (v && visible()) v.querySelectorAll('.dia-ink').forEach(fit); });
+    root.addEventListener('resize', () => {
+      const v = view();
+      if (!v || !visible()) return;
+      if (bookMode() !== lastBook && !editing()) { render(); return; }
+      sizeBook();
+      v.querySelectorAll('.dia-ink').forEach(fit);
+    });
   }
 
-  const api = { day, write, shiftDay, duration, MERGE_GAP_MIN, open: key => { if (key) current = key; if (typeof root.showView === 'function') root.showView('diario'); }, render };
+  const api = { day, write, shiftDay, spreadOf, duration, MERGE_GAP_MIN, open: key => { if (key) current = key; if (typeof root.showView === 'function') root.showView('diario'); }, render };
   if (doc) {
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', init);
     else init();

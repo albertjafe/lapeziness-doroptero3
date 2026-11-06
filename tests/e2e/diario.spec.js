@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 
 const keyOf = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+const dayKey = (offset = 0) => { const d = today(); d.setDate(d.getDate() + offset); return keyOf(d); };
 const at = (h, m, offset = 0) => { const d = today(); d.setDate(d.getDate() + offset); d.setHours(h, m, 0, 0); return d.toISOString(); };
 const plant = (id, obraId, h1, m1, h2, m2, extra = {}) => ({
   id, obraId, movId: extra.movId || null, startedAt: at(h1, m1, extra.offset), endedAt: at(h2, m2, extra.offset),
@@ -21,6 +22,7 @@ async function boot(page, extra = {}) {
       plant('b', 'haydn', 9, 50, 10, 30, { movId: 'h1' }),
       plant('c', 'chopin', 10, 45, 11, 30),
       plant('y', 'chopin', 17, 0, 18, 0, { offset: -1 }),
+      plant('w', 'haydn', 11, 0, 12, 0, { offset: -2 }),
     ],
     ...extra,
   };
@@ -33,55 +35,164 @@ async function boot(page, extra = {}) {
 
 const stored = page => page.evaluate(() => JSON.parse(localStorage.getItem('alberto_piano_v2') || '{}').dailyJournalEntries || []);
 
-test('Diario: pestaña propia; lo estudiado aparece solo y lo escrito se guarda solo, unido a su bloque', async ({ page }) => {
-  await boot(page);
-  await page.locator('.nav-btn[data-view="diario"]').first().click();
-  const view = page.locator('#view-diario');
-  await expect(view).toHaveClass(/active/);
-  await expect(page.locator('#headerTitle')).toHaveText('Diario');
-  const items = view.locator('.dia-item');
-  await expect(items).toHaveCount(2);
-  await expect(items.nth(0).locator('.dia-time')).toHaveText('09:00–10:30');
-  await expect(items.nth(0).locator('.dia-title')).toHaveText('Haydn · Sonata Hob. XVI:52');
-  await expect(items.nth(0).locator('.dia-crono')).toContainText('probar el pedal más corto');
+test.describe('una página por día (móvil, iPad, ventana estrecha)', () => {
+  test.use({ viewport: { width: 1000, height: 800 } });
 
-  // Tocar el bloque lleva a escribir; sin botón de guardar.
-  await items.nth(0).locator('.dia-meta').click();
-  await expect(items.nth(0).locator('.dia-ink')).toBeFocused();
-  await page.keyboard.type('El desarrollo sigue sucio en la mano izquierda');
-  await expect.poll(async () => (await stored(page)).map(e => [e.text, e.ref, e.day])).toEqual([
-    ['El desarrollo sigue sucio en la mano izquierda', 'p:a', keyOf(today())],
-  ]);
-  expect((await stored(page))[0].about).toBe('Haydn · Sonata Hob. XVI:52 · I. Allegro · 09:00–10:30');
+  test('Diario: pestaña propia; lo estudiado aparece solo y lo escrito se guarda solo, unido a su bloque', async ({ page }) => {
+    await boot(page);
+    await page.locator('.nav-btn[data-view="diario"]').first().click();
+    const view = page.locator('#view-diario');
+    await expect(view).toHaveClass(/active/);
+    await expect(page.locator('#headerTitle')).toHaveText('Diario');
+    await expect(view.locator('.dia-book')).toHaveCount(0);
+    const items = view.locator('.dia-item');
+    await expect(items).toHaveCount(2);
+    await expect(items.nth(0).locator('.dia-time')).toHaveText('09:00–10:30');
+    await expect(items.nth(0).locator('.dia-title')).toHaveText('Haydn · Sonata Hob. XVI:52');
+    await expect(items.nth(0).locator('.dia-crono')).toContainText('probar el pedal más corto');
 
-  // Una línea libre del día.
-  await view.locator('.dia-new .dia-ink').fill('Día tranquilo');
-  await page.keyboard.press('Escape');
-  await expect.poll(async () => (await stored(page)).map(e => e.text).sort()).toEqual(['Día tranquilo', 'El desarrollo sigue sucio en la mano izquierda']);
+    // Tocar el bloque lleva a escribir; sin botón de guardar.
+    await items.nth(0).locator('.dia-meta').click();
+    await expect(items.nth(0).locator('.dia-ink')).toBeFocused();
+    await page.keyboard.type('El desarrollo sigue sucio en la mano izquierda');
+    await expect.poll(async () => (await stored(page)).map(e => [e.text, e.ref, e.day])).toEqual([
+      ['El desarrollo sigue sucio en la mano izquierda', 'p:a', keyOf(today())],
+    ]);
+    expect((await stored(page))[0].about).toBe('Haydn · Sonata Hob. XVI:52 · I. Allegro · 09:00–10:30');
 
-  // Al volver, todo sigue en su sitio.
-  await page.reload();
-  await page.waitForFunction(() => window.Diario && typeof showView === 'function');
-  await page.evaluate(() => { try { closeModal('modalCloudSync'); } catch (e) {} showView('diario'); });
-  await expect(view.locator('.dia-item').first().locator('.dia-ink')).toHaveValue('El desarrollo sigue sucio en la mano izquierda');
-  await expect(view.locator('.dia-free:not(.dia-new) .dia-ink')).toHaveValue('Día tranquilo');
+    // Una línea libre del día.
+    await view.locator('.dia-new .dia-ink').fill('Día tranquilo');
+    await page.keyboard.press('Escape');
+    await expect.poll(async () => (await stored(page)).map(e => e.text).sort()).toEqual(['Día tranquilo', 'El desarrollo sigue sucio en la mano izquierda']);
 
-  // Vaciar un comentario y salir de la línea lo quita.
-  const ink = view.locator('.dia-item').first().locator('.dia-ink');
-  await ink.fill('');
-  await ink.blur();
-  await expect.poll(async () => (await stored(page)).map(e => e.text)).toEqual(['Día tranquilo']);
+    // Al volver, todo sigue en su sitio.
+    await page.reload();
+    await page.waitForFunction(() => window.Diario && typeof showView === 'function');
+    await page.evaluate(() => { try { closeModal('modalCloudSync'); } catch (e) {} showView('diario'); });
+    await expect(view.locator('.dia-item').first().locator('.dia-ink')).toHaveValue('El desarrollo sigue sucio en la mano izquierda');
+    await expect(view.locator('.dia-free:not(.dia-new) .dia-ink')).toHaveValue('Día tranquilo');
+
+    // Vaciar un comentario y salir de la línea lo quita.
+    const ink = view.locator('.dia-item').first().locator('.dia-ink');
+    await ink.fill('');
+    await ink.blur();
+    await expect.poll(async () => (await stored(page)).map(e => e.text)).toEqual(['Día tranquilo']);
+  });
+
+  test('Diario: se pasa de un día a otro y no deja ir al futuro', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => showView('diario'));
+    const view = page.locator('#view-diario');
+    await expect(view.locator('[data-act="next"]')).toBeDisabled();
+    await view.locator('[data-act="prev"]').click();
+    await expect(view.locator('.dia-item')).toHaveCount(1);
+    await expect(view.locator('.dia-item .dia-title')).toHaveText('Chopin · Balada n.º 4');
+    await expect(view.locator('[data-act="today"]')).toBeVisible();
+    await view.locator('[data-act="today"]').click();
+    await expect(view.locator('.dia-item')).toHaveCount(2);
+  });
 });
 
-test('Diario: se pasa de un día a otro y no deja ir al futuro', async ({ page }) => {
-  await boot(page);
-  await page.evaluate(() => showView('diario'));
-  const view = page.locator('#view-diario');
-  await expect(view.locator('[data-act="next"]')).toBeDisabled();
-  await view.locator('[data-act="prev"]').click();
-  await expect(view.locator('.dia-item')).toHaveCount(1);
-  await expect(view.locator('.dia-item .dia-title')).toHaveText('Chopin · Balada n.º 4');
-  await expect(view.locator('[data-act="today"]')).toBeVisible();
-  await view.locator('[data-act="today"]').click();
-  await expect(view.locator('.dia-item')).toHaveCount(2);
+test.describe('libro de escritorio', () => {
+  test.use({ viewport: { width: 1440, height: 860 } });
+
+  const pages = page => page.locator('#view-diario .dia-spread > .dia-book-page');
+  const settled = page => expect(page.locator('#view-diario .dia-turning')).toHaveCount(0, { timeout: 3000 });
+
+  test('se abre a toda la pestaña con ayer y hoy, sin desplazar la página', async ({ page }) => {
+    await boot(page);
+    await page.locator('.nav-btn[data-view="diario"]').first().click();
+    // La tapa se abre solo la primera vez.
+    await expect(page.locator('.dia-turning.is-opening')).toHaveCount(1);
+    await settled(page);
+    await expect(pages(page)).toHaveCount(2);
+    await expect(pages(page).nth(0)).toHaveAttribute('data-day', dayKey(-1));
+    await expect(pages(page).nth(1)).toHaveAttribute('data-day', dayKey(0));
+    await expect(pages(page).nth(1).locator('.dia-item').first().locator('.dia-crono')).toContainText('probar el pedal más corto');
+    await expect(page.locator('#view-diario [data-act="next"]')).toBeDisabled();
+
+    const size = await page.evaluate(() => {
+      const r = document.querySelector('.dia-cover').getBoundingClientRect();
+      return { w: r.width, bottom: r.bottom, inner: innerHeight, scroll: document.documentElement.scrollHeight };
+    });
+    expect(size.w).toBeGreaterThan(900);
+    expect(size.bottom).toBeLessThanOrEqual(size.inner);
+    expect(size.scroll).toBeLessThanOrEqual(size.inner);
+
+    await page.locator('.nav-btn[data-view="session"]').first().click();
+    await page.locator('.nav-btn[data-view="diario"]').first().click();
+    await expect(page.locator('.dia-turning')).toHaveCount(0);
+  });
+
+  test('la hoja gira al pasar y cada escrito queda en el día de su página', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => showView('diario'));
+    await settled(page);
+
+    await pages(page).nth(0).locator('.dia-item .dia-meta').click();
+    await page.keyboard.type('La coda de ayer');
+    await pages(page).nth(1).locator('.dia-new .dia-ink').click();
+    await page.keyboard.type('Nota de hoy sin guardar a mano');
+
+    await page.locator('#view-diario [data-act="prev"]').click();
+    await expect(page.locator('.dia-leaf')).toHaveCount(1);
+    await expect(pages(page).nth(0)).toHaveAttribute('data-day', dayKey(-3));
+    await expect(pages(page).nth(1)).toHaveAttribute('data-day', dayKey(-2));
+    await settled(page);
+    await expect(pages(page).nth(1).locator('.dia-title')).toHaveText('Haydn · Sonata Hob. XVI:52');
+    await expect.poll(async () => (await stored(page)).map(e => [e.text, e.day, e.ref || '']).sort()).toEqual([
+      ['La coda de ayer', dayKey(-1), 'p:y'],
+      ['Nota de hoy sin guardar a mano', dayKey(0), ''],
+    ]);
+
+    // Con las flechas del teclado se vuelve; en la última no se pasa de hoy.
+    await page.keyboard.press('ArrowRight');
+    await expect(pages(page).nth(1)).toHaveAttribute('data-day', dayKey(0));
+    await settled(page);
+    await page.keyboard.press('ArrowRight');
+    await expect(page.locator('.dia-turning')).toHaveCount(0);
+    await expect(pages(page).nth(0).locator('.dia-item .dia-ink')).toHaveValue('La coda de ayer');
+
+    // Dos seguidas sin esperar: se acaba la primera y empieza la segunda.
+    await page.locator('#view-diario [data-act="prev"]').click();
+    await page.locator('#view-diario [data-act="prev"]').click();
+    await expect(pages(page).nth(1)).toHaveAttribute('data-day', dayKey(-4));
+    await expect(page.locator('.dia-leaf')).toHaveCount(1);
+    await settled(page);
+    await page.locator('#view-diario [data-act="today"]').click();
+    await expect(pages(page).nth(1)).toHaveAttribute('data-day', dayKey(0));
+    await settled(page);
+    await expect(page.locator('#view-diario [data-act="today"]')).toHaveCount(0);
+  });
+
+  test('tocar lo vacío de la hoja lleva a escribir en ese día', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => showView('diario'));
+    await settled(page);
+    const sheet = pages(page).nth(0).locator('.dia-sheet');
+    const box = await sheet.boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height - 8);
+    await expect(pages(page).nth(0).locator('.dia-new .dia-ink')).toBeFocused();
+  });
+
+  test('si el sistema pide menos movimiento, cambia de hoja sin animación', async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await boot(page);
+    await page.evaluate(() => showView('diario'));
+    await expect(page.locator('.dia-turning')).toHaveCount(0);
+    await page.locator('#view-diario [data-act="prev"]').click();
+    await expect(pages(page).nth(1)).toHaveAttribute('data-day', dayKey(-2));
+    await expect(page.locator('.dia-turning')).toHaveCount(0);
+  });
+
+  test('al estrechar la ventana pasa a una página por día', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => showView('diario'));
+    await settled(page);
+    await page.setViewportSize({ width: 1000, height: 800 });
+    await expect(page.locator('#view-diario .dia-book')).toHaveCount(0);
+    await expect(page.locator('#view-diario .dia-page')).toHaveAttribute('data-day', dayKey(0));
+    await page.setViewportSize({ width: 1440, height: 860 });
+    await expect(pages(page)).toHaveCount(2);
+  });
 });

@@ -63,6 +63,27 @@ describe('Diario: el día se rellena solo', () => {
   });
 });
 
+describe('Diario: libro de escritorio', () => {
+  const today = '2026-11-06';
+
+  it('the last spread has yesterday on the left and today on the right', () => {
+    expect(D.spreadOf(today, today)).toEqual({ left: '2026-11-05', right: '2026-11-06' });
+    expect(D.spreadOf('2026-11-05', today)).toEqual({ left: '2026-11-05', right: '2026-11-06' });
+  });
+
+  it('turning goes two days at a time and every day belongs to one spread', () => {
+    expect(D.spreadOf('2026-11-04', today)).toEqual({ left: '2026-11-03', right: '2026-11-04' });
+    expect(D.spreadOf('2026-11-03', today)).toEqual({ left: '2026-11-03', right: '2026-11-04' });
+    expect(D.spreadOf('2026-11-02', today)).toEqual({ left: '2026-11-01', right: '2026-11-02' });
+  });
+
+  it('crosses months and the clock change, and never goes past today', () => {
+    expect(D.spreadOf('2026-10-31', today).right).toBe('2026-10-31');
+    expect(D.spreadOf('2026-10-24', '2026-10-26')).toEqual({ left: '2026-10-23', right: '2026-10-24' });
+    expect(D.spreadOf('2026-11-20', today).right).toBe(today);
+  });
+});
+
 describe('Diario: comentarios', () => {
   const now = new Date(2026, 10, 4, 9, 15);
 
