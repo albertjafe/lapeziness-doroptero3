@@ -1496,6 +1496,21 @@
           data-blind-remove="${kind}" data-index="${index}" ${disabled}>✕</button></span>`).join('')
       : '<small class="rd-blind-none">ninguna</small>';
   }
+  /* Huecos bloqueados (06-11-2026): los que el monitor no volverá a coger porque
+   * cancelaste o acortaste una reserva. Un monitor antiguo no los publica y la
+   * sección no aparece. */
+  function noRebookHtml(monitor, dis) {
+    const slots = monitor.no_rebook_slots;
+    if (!Array.isArray(slots)) return '';
+    const rows = slots.map(slot => `<div class="rd-blind-add rd-no-rebook-row">
+        <span>${escapeHtml(slot.room == null ? 'Todas las aulas' : roomLabel(slot.room))} · ${escapeHtml(formatDate(slot.date))} · ${escapeHtml(slot.start || '')}–${escapeHtml(slot.end || '')}</span>
+        <button type="button" class="rd-action" data-allow-rebook="${escapeHtml(slot.key)}" ${dis}><b>Permitir</b></button>
+      </div>`).join('');
+    return `<section class="rd-no-rebook"><b>Huecos bloqueados</b><small>No los reserva porque cancelaste o acortaste una reserva</small>
+        ${rows || '<small class="rd-blind-none">ninguno</small>'}
+        ${slots.length > 1 ? `<div class="rd-blind-add"><button type="button" class="rd-action" data-allow-rebook-all ${dis}><b>Permitir todo</b></button></div>` : ''}
+      </section>`;
+  }
   function blindsEditorHtml(monitor, offline) {
     const dis = offline ? 'disabled' : '';
     const periods = (monitor.blind_periods || []).filter(p => Array.isArray(p) && p[0] && p[1]);
@@ -1504,6 +1519,7 @@
     const startMin = toMinutes(win.start || '10:00') + 15;
     const endMin = toMinutes(win.end || '20:30') - 15;
     return `<div class="rd-blinds">
+      ${noRebookHtml(monitor, dis)}
       <section><b>Franjas ciegas</b><small>No reserva nada que toque estas horas</small>
         <div class="rd-chips">${blindChips(periods, 'period', p => `${p[0]}–${p[1]}`, dis)}</div>
         <div class="rd-blind-add"><select name="period_start" aria-label="Desde">${timeOptions(7 * 60, 23 * 60, '13:00')}</select><span>–</span>
@@ -1542,11 +1558,17 @@
     const rooms = monitor.blinded_rooms || [];
     const vip = monitor.priority_rooms || [];
     const groups = monitor.blinded_groups || [];
-    const sig = JSON.stringify([periods, rooms, vip, groups, monitor.inicio_today || null, offline]);
+    const sig = JSON.stringify([periods, rooms, vip, groups, monitor.inicio_today || null, monitor.no_rebook_slots ?? null, offline]);
     if (wrap.dataset.sig === sig) return;
     wrap.dataset.sig = sig;
     wrap.innerHTML = blindsEditorHtml(monitor, offline);
     const send = (command, payload, button) => postCommand(command, payload, button);
+    wrap.querySelectorAll('[data-allow-rebook]').forEach(button => button.addEventListener('click', () => {
+      send('allow_rebook', { key: button.dataset.allowRebook }, button);
+    }));
+    wrap.querySelector('[data-allow-rebook-all]')?.addEventListener('click', event => {
+      send('allow_rebook', { all: true }, event.currentTarget);
+    });
     wrap.querySelectorAll('[data-blind-remove]').forEach(button => button.addEventListener('click', () => {
       const index = Number(button.dataset.index);
       const kind = button.dataset.blindRemove;

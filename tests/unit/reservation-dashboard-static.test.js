@@ -65,6 +65,17 @@ describe('reservation monitor dashboard', () => {
     expect(dashboard).toContain("postCommand('set_max_reservation', { minutes }, durationApply)");
   });
 
+  it('allows allow_rebook across the command queue and preserves every earlier command', () => {
+    const latest = fs.readFileSync('supabase/migrations/20261106150000_reservation_monitor_allow_rebook.sql', 'utf8');
+    const previous = fs.readFileSync('supabase/migrations/20261105055613_reservation_monitor_max_duration.sql', 'utf8');
+    const commandList = sql => sql.slice(sql.indexOf('check (command in ('), sql.indexOf('));'));
+    for (const [, command] of commandList(previous).matchAll(/'([a-z_]+)'/g)) expect(latest).toContain(`'${command}'`);
+    expect(latest).toContain("'allow_rebook'");
+    expect(edge).toContain('"allow_rebook"');
+    expect(edge).toContain('no_rebook_slots: cleanNoRebookSlots(monitorRaw.no_rebook_slots)');
+    expect(dashboard).toContain("send('allow_rebook', { all: true }, event.currentTarget)");
+  });
+
   it('passes the monitor failure and real read time through the ingest sanitiser', () => {
     expect(edge).toContain('last_read_at: cleanInstant(raw.last_read_at)');
     expect(edge).toContain('error: cleanMonitorError(monitorRaw.error)');

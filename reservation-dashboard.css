@@ -539,6 +539,7 @@ html.platform-windows .rd-quick-overlay { z-index: 1150; }
 .aulas-screen .rd-chip button { width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; color: var(--text3); font: inherit; cursor: pointer; }
 .aulas-screen .rd-chip button:hover { background: color-mix(in srgb, var(--rd-bad) 14%, transparent); color: var(--rd-bad); }
 .aulas-screen .rd-blind-none { color: var(--text3); }
+.aulas-screen .rd-no-rebook-row span { flex: 1 1 180px; min-width: 0; font-size: 14px; }
 .aulas-screen .rd-blind-add { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .aulas-screen .rd-blind-add :is(select, input), .aulas-screen .rd-blinds > section > select {
   min-height: 38px; padding: 4px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg2); color: var(--text); font: inherit; font-size: 15px; }

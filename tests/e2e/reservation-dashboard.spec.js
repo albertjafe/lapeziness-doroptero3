@@ -730,6 +730,49 @@ for (const [name, width, height] of [['móvil', 390, 844], ['iPad', 834, 1112], 
   });
 }
 
+for (const [name, width, height] of [['móvil', 390, 844], ['iPad', 834, 1112], ['escritorio', 1440, 900]]) {
+  test(`huecos bloqueados en ${name}: se permite uno o todos`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    const row = structuredClone(sampleRow);
+    row.source = 'emma';
+    row.state.monitor.absorbe_enabled = true;
+    row.state.monitor.no_rebook_slots = [
+      { key: '*:20261106:1800:2030', room: null, date: '2026-11-06', start: '18:00', end: '20:30' },
+      { key: '40311:20261106:1700:1800', room: 40311, date: '2026-11-06', start: '17:00', end: '18:00' },
+    ];
+    await mountDashboard(page, row);
+    if (width < 1100) await page.locator('[data-rd-tab="ajustes"]').click();
+    const section = page.locator('.rd-no-rebook');
+    await expect(section).toContainText('Todas las aulas');
+    await expect(section).toContainText('18:00–20:30');
+    await expect(section).toContainText('40.311');
+    await section.getByRole('button', { name: 'Permitir', exact: true }).first().click();
+    expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({
+      source: 'emma', command: 'allow_rebook', payload: { key: '*:20261106:1800:2030' },
+    });
+    await section.getByRole('button', { name: 'Permitir todo' }).click();
+    expect(await page.evaluate(() => window.__dashboardWrites.at(-1))).toMatchObject({
+      source: 'emma', command: 'allow_rebook', payload: { all: true },
+    });
+    const box = await section.boundingBox();
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+    await page.evaluate(async () => {
+      window.__row.state.monitor.no_rebook_slots = [];
+      await window.ReservationDashboard.refresh(false);
+    });
+    await expect(section).toContainText('ninguno');
+    await expect(section.getByRole('button')).toHaveCount(0);
+  });
+}
+
+test('huecos bloqueados: un monitor antiguo no enseña la sección', async ({ page }) => {
+  const row = structuredClone(sampleRow);
+  row.state.monitor.absorbe_enabled = true;
+  await mountDashboard(page, row);
+  await expect(page.locator('.rd-blinds')).toHaveCount(1);
+  await expect(page.locator('.rd-no-rebook')).toHaveCount(0);
+});
+
 test('duración máxima: un monitor antiguo no inventa un valor ni acepta cambios', async ({ page }) => {
   await mountDashboard(page, sampleRow);
   const select = page.getByLabel('Duración máxima por reserva');

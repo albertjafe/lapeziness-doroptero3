@@ -30,6 +30,7 @@ const allowedCommands = new Set([
   "reservation_lock",
   "set_booking_type",
   "set_max_reservation",
+  "allow_rebook",
   "franja_add",
   "franja_remove",
   "franja_skip",
@@ -87,6 +88,21 @@ function cleanMonitorError(value: unknown) {
     at: cleanInstant(raw.at),
     retry_in_s: cleanInteger(raw.retry_in_s, 0, 86_400),
   };
+}
+
+// 06-11-2026: huecos bloqueados (null en monitores antiguos: la app oculta la sección).
+function cleanNoRebookSlots(value: unknown) {
+  if (!Array.isArray(value)) return null;
+  return value.slice(0, 40).flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const raw = item as Record<string, unknown>;
+    const key = cleanText(raw.key, 30);
+    const date = cleanDate(raw.date);
+    const start = cleanTime(raw.start);
+    const end = cleanTime(raw.end);
+    if (!key || !/^(\*|\d{1,6}):\d{8}:\d{4}:\d{4}$/.test(key) || !date || !start || !end) return [];
+    return [{ key, room: raw.room == null ? null : cleanInteger(raw.room, 1, 99_999), date, start, end }];
+  });
 }
 
 function cleanChoice(value: unknown, allowed: string[]): string | null {
@@ -452,6 +468,7 @@ function cleanState(value: unknown) {
       migration_mode: cleanChoice(monitorRaw.migration_mode, ["calidad", "tiempo"]),
       min_slot_duration: cleanInteger(monitorRaw.min_slot_duration, 15, 720),
       max_reservation_minutes: cleanInteger(monitorRaw.max_reservation_minutes, 30, 1440),
+      no_rebook_slots: cleanNoRebookSlots(monitorRaw.no_rebook_slots),
       monitor_window: {
         start: cleanTime((monitorRaw.monitor_window as Record<string, unknown> | undefined)?.start),
         end: cleanTime((monitorRaw.monitor_window as Record<string, unknown> | undefined)?.end),
