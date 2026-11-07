@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v527';
+const CACHE = 'estudio-v528';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",

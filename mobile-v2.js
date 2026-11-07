@@ -212,6 +212,7 @@
     aleman: ['#d08a2c', '<path d="M5 6.5h14v9H11l-4 3v-3H5z"/><path d="M9 11h6"/>'],
     premios: ['#c39a1e', '<path d="M12 4l2.3 4.8 5.2.7-3.8 3.6.9 5.2L12 15.8 7.4 18.3l.9-5.2-3.8-3.6 5.2-.7z"/>'],
     oportunidades: ['#c2566e', '<path d="M6.5 21V4"/><path d="M6.5 4.5h10.5l-2 3.7 2 3.8H6.5"/>'],
+    calendario: ['#4a78b5', '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/>'],
     historial: ['#7a6cc4', '<path d="M4 20h16M7 16.5V11M12 16.5V6.5M17 16.5v-4"/>'],
     profesor: ['#a0704a', '<path d="M4 19.5V6.8A2.8 2.8 0 0 1 6.8 4H12v15.5H6.8A2.8 2.8 0 0 0 4 22"/><path d="M20 19.5V6.8A2.8 2.8 0 0 0 17.2 4H12v15.5h5.2A2.8 2.8 0 0 1 20 22"/>'],
   };
@@ -258,25 +259,24 @@
       '<section class="mv2-card mv2-aulas' + (roomsSummary ? ' is-' + roomsSummary.kind : '') + '">' +
         '<button type="button" class="mv2-aulas-head" onclick="showView(\'aulas\')"><span class="mv2-lbl has-ico">' + icon('aulas') + 'Aulas</span><b>' + esc(aulas) + '</b><span class="mv2-chev" aria-hidden="true">›</span></button>' +
         '<div class="aulas-screen rd-embed" id="mv2DayBar"></div></section>' +
-      // Tareas de hoy: como mucho tres, apuntar en un toque (tasks-today.js).
-      (root.TasksToday ? root.TasksToday.hoyHtml(data) : '') +
+      // Tareas y «Para hoy» del Profesor retirados (nov 2026): las tareas van en el diario.
       // Por la mañana, hasta contestar: ¿qué tal has dormido? (body-log.js; sin números en Hoy).
       // Va tras Aulas: las reservas siguen justo debajo de las horas.
       (root.BodyLog ? root.BodyLog.sleepPromptHtml(data) : '') +
-      '<div class="mv2-card mv2-parahoy">' + paraHoyHtml(data) + '</div></div><div class="mv2-col mv2-col-side">' +
+      '</div><div class="mv2-col mv2-col-side">' +
       // Hub: hábitos (día del reto, hoy, acciones y mantenimiento) y accesos a todo lo demás.
       (root.HabitHub ? root.HabitHub.renderHoyCard() : '') +
       // Deporte: tipo y minutos en un toque (body-log.js).
       (root.BodyLog ? root.BodyLog.sportCardHtml(data) : '') +
       '<nav class="mv2-tiles" aria-label="Accesos">' +
+        // Calendario ya no está en la barra (nov 2026): su mapa de horas y olas, desde aquí.
+        tile('Calendario', 'Horas y olas del mes', "showView('calendario')", 'calendario') +
         tile('Alemán', 'Tarjetas', "showView('deutsch')", 'aleman') +
         tile('Premios', 'Hucha y logros', 'openPremios()', 'premios') +
         tile('Oportunidades', 'Concursos, festivales y becas', "showView('concursos')", 'oportunidades') +
         tile('Historial', 'Estadísticas', "openSessionArchive('history')", 'historial') +
-        // En el móvil Aulas ocupa el sitio de Profesor en la barra inferior; en el iPad está en la barra.
-        (phoneWidth() ? tile('Profesor', 'Plan de hoy', "showView('profesor')", 'profesor') : '') +
       '</nav>' +
-      '<button type="button" class="mv2-add" onclick="MobileV2.openAdd()">＋ Añadir estudio, nota o tarea</button></div>';
+      '<button type="button" class="mv2-add" onclick="MobileV2.openAdd()">＋ Añadir estudio o nota</button></div>';
     // Mismo contenido → no se toca el DOM (evita parpadeos, también a mitad del gesto lateral).
     if (host.__mv2Html !== html) {
       // Hoy se repinta a menudo (cada minuto): no perder lo que se está escribiendo.
@@ -315,14 +315,19 @@
     sheet('mv2AddSheet', 'Añadir', '<div class="mv2-sheet-list">' +
       item('MobileV2.addStudy()', '＋', 'Estudio de hoy', 'Minutos sin abrir el cronómetro') +
       item("typeof openSesionManual==='function'&&openSesionManual()", '📅', 'Estudio de otro día', 'Con fecha y detalles') +
-      item('MobileV2.addNote()', '✎', 'Nota en el diario', 'Algo que quieras recordar de hoy') +
-      item("showView('cronometro')", '☑', 'Tarea', 'En la mesa de trabajo del cronómetro') + '</div>');
+      item('MobileV2.addNote()', '✎', 'Diario', 'Una nota o una tarea de hoy') + '</div>');
   }
   function addStudy() {
     const d = doc.querySelector('#view-session .session-quick-disclosure');
     if (d) { d.open = true; reveal(d); }
   }
   function addNote() {
+    // El diario tiene pantalla propia: se escribe ahí, en la línea libre de hoy.
+    if (root.Diario && typeof root.Diario.open === 'function') {
+      root.Diario.open();
+      setTimeout(() => doc.querySelector('#view-diario .dia-new .dia-ink')?.focus(), 250);
+      return;
+    }
     const card = doc.getElementById('sessionJournalCard');
     reveal(card);
     if (card && card.classList.contains('is-collapsed') && typeof root.toggleSessionJournal === 'function') root.toggleSessionJournal();

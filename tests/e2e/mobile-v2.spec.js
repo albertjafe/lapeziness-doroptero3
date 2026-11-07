@@ -25,69 +25,41 @@ async function boot(page) {
   await page.evaluate(() => { try { closeModal('modalCloudSync'); } catch (e) {} showView('session'); });
 }
 
-test('Hoy v2: anillo con una frase, Para hoy urgente y ▶ abre el cronómetro con la obra', async ({ page }) => {
+test('Hoy v2: anillo con una frase y Aulas debajo; sin Para hoy, Tareas ni Profesor; Calendario a un toque', async ({ page }) => {
   await boot(page);
   await expect(page.locator('html')).toHaveClass(/mobile-v2/);
   await expect(page.locator('#mv2Hoy .mv2-summary')).toBeVisible();
   await expect(page.locator('#sessionResumenCard')).toBeHidden();
   await expect(page.locator('#mv2Hoy .mv2-summary b')).toHaveText(/4 h|empezado/);
-  // Las prioridades del Profesor llegan tras cargar su núcleo.
-  await expect(page.locator('#mv2Hoy .mv2-parahoy .mv2-plan').first()).toBeVisible({ timeout: 15000 });
-  await expect(page.locator('#mv2Hoy .mv2-parahoy')).toContainText('lo más urgente');
-  await expect(page.locator('#mv2Hoy .mv2-parahoy')).toContainText('Recital');
-  await expect(page.locator('#mv2Hoy .mv2-parahoy')).not.toContainText('Sonata suelta');
   // Aulas va justo debajo de las horas.
   expect(await page.evaluate(() => document.querySelector('#mv2Hoy .mv2-summary').nextElementSibling.classList.contains('mv2-aulas'))).toBe(true);
-  const first = page.locator('#mv2Hoy .mv2-plan').first();
-  const label = (await first.locator('b').textContent()).trim();
-  await first.click();
-  await expect(page.locator('body')).toHaveAttribute('data-view', 'cronometro');
-  const chosen = await page.evaluate(() => { const v = document.getElementById('cronoObraSelect').value; return cronoResolveSelectValue(v); });
-  expect(label).toContain(chosen.displayName);
-});
-
-test('Hoy v2: el plan del Profesor pegado sustituye a lo urgente y enlaza obras', async ({ page }) => {
-  await boot(page);
-  await page.locator('#mv2Hoy .mv2-link', { hasText: 'Pegar plan' }).click();
-  await page.locator('#mv2PasteInput').fill('Buen día.\nPLAN_PARA_HOY\n- 45 min | Balada nº 1 | coda en frío\n- 30 | Partita nº 2 · Capriccio | fuga lenta\n');
-  await page.getByRole('button', { name: 'Guardar plan' }).click();
-  await expect(page.locator('#mv2Hoy .mv2-parahoy')).toContainText('plan del Profesor');
-  await expect(page.locator('#mv2Hoy .mv2-plan')).toHaveCount(2);
-  await expect(page.locator('#mv2Hoy .mv2-pill')).toHaveText('1 h 15');
-  const saved = await page.evaluate(() => MobileV2.planToday(db).items.map(i => [i.obraId, i.movId || null, i.minutes]));
-  expect(saved).toEqual([['c', null, 45], ['b', 'cap', 30]]);
-  await page.locator('#mv2Hoy .mv2-plan').nth(1).click();
-  expect(await page.evaluate(() => document.getElementById('cronoObraSelect').value)).toBe('mov::b::cap');
-  await page.evaluate(() => showView('session'));
-  await page.getByRole('button', { name: 'Quitar plan' }).click();
-  await expect(page.locator('#mv2Hoy .mv2-parahoy')).toContainText('lo más urgente');
-  // Un plan nuevo sustituye entero al anterior (no se mezclan bloques).
-  await page.locator('#mv2Hoy .mv2-link', { hasText: 'Pegar plan' }).click();
-  await page.locator('#mv2PasteInput').fill('PLAN_PARA_HOY\n20 | Partita nº 2 · Sinfonia | lento');
-  await page.getByRole('button', { name: 'Guardar plan' }).click();
-  await expect(page.locator('#mv2Hoy .mv2-plan')).toHaveCount(1);
+  // Retirados en nov 2026: las tareas van en el diario.
+  await expect(page.locator('#mv2Hoy .mv2-parahoy, #mv2Hoy #tdInput')).toHaveCount(0);
+  await expect(page.locator('#mv2Hoy .mv2-tile', { hasText: 'Profesor' })).toHaveCount(0);
+  await expect(page.locator('.nav-btn[data-view="calendario"], .nav-btn[data-view="profesor"]')).toHaveCount(0);
+  await page.locator('#mv2Hoy .mv2-tile', { hasText: 'Calendario' }).click();
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'calendario');
+  await expect(page.locator('#mv2Cal .mv2-cal-grid')).toBeVisible();
 });
 
 test('Hoy v2: nada se pierde — registro rápido, diario y Aulas siguen a un toque', async ({ page }) => {
   await boot(page);
   await expect(page.locator('#view-session .session-quick-disclosure')).toBeHidden();
-  await page.getByRole('button', { name: /Añadir estudio, nota o tarea/ }).click();
+  await page.getByRole('button', { name: /Añadir estudio o nota/ }).click();
   await page.getByRole('button', { name: /Estudio de hoy/ }).click();
   await expect(page.locator('#view-session .session-quick-disclosure')).toBeVisible();
   await expect(page.locator('#sessionQuickStudyObra')).toBeVisible();
-  await page.getByRole('button', { name: /Añadir estudio, nota o tarea/ }).click();
-  await page.getByRole('button', { name: /Nota en el diario/ }).click();
-  await expect(page.locator('#sessionJournalInput')).toBeVisible();
-  // Aulas es una pantalla propia y ocupa el sitio de Profesor en la barra;
-  // Profesor sigue a un toque desde Hoy.
+  // La nota va al diario, en la línea libre de hoy.
+  await page.getByRole('button', { name: /Añadir estudio o nota/ }).click();
+  await page.locator('#mv2AddSheet').getByRole('button', { name: /Diario/ }).click();
+  await expect(page.locator('body')).toHaveAttribute('data-view', 'diario');
+  await expect(page.locator('#view-diario .dia-new .dia-ink')).toBeFocused();
+  // Aulas es una pantalla propia, en la barra.
+  await page.locator('.nav-btn[data-view="session"]').click();
   await expect(page.locator('#aulasTodayCard')).toBeHidden();
   await page.locator('#mv2Hoy .mv2-aulas-head').click();
   await expect(page.locator('#view-aulas')).toBeVisible();
   await expect(page.locator('.nav-btn[data-view="aulas"]')).toBeVisible();
-  await expect(page.locator('.nav-btn[data-view="profesor"]')).toBeHidden();
-  await page.locator('.nav-btn[data-view="session"]').click();
-  await page.locator('#mv2Hoy .mv2-tile', { hasText: 'Profesor' }).click();
-  await expect(page.locator('#view-profesor')).toBeVisible();
 });
 
 test('Ajustes: «Clásico» recupera el diseño anterior y «Nuevo» lo devuelve', async ({ page }) => {

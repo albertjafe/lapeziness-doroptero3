@@ -98,6 +98,8 @@
   }
 
   function addCronoButton() {
+    // Profesor retirado de la barra y del cronómetro (nov 2026): sin acceso directo.
+    return;
     const crono = document.getElementById('view-cronometro');
     if (!crono || crono.querySelector('.crono-professor-link') || document.getElementById('professorCronoOpen')) return;
     const button = document.createElement('button');

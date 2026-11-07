@@ -26,5 +26,6 @@ test('removes Casa from navigation and redirects legacy Casa navigation to Profe
 
   await page.evaluate(() => showView('casa'));
   await expect(page.locator('#view-profesor')).toHaveClass(/active/);
-  await expect(page.locator('.nav-btn[data-view="profesor"]')).toHaveClass(/active/);
+  // Profesor ya no está en la barra (nov 2026), pero su pantalla sigue.
+  await expect(page.locator('.nav-btn[data-view="profesor"]')).toHaveCount(0);
 });

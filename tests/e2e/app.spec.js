@@ -78,21 +78,21 @@ test('uses mouse navigation only on Windows and preserves the iPad navigation', 
 
   await expect(windowsPage.locator('html')).toHaveClass(/platform-windows/);
   const rail = windowsPage.locator('body > .nav-bottom');
-  const pulse = rail.locator('[data-view="profesor"]');
+  const pulse = rail.locator('[data-view="obras"]');
   await expect(pulse).toBeVisible();
   const railBox = await rail.boundingBox();
   expect(railBox.x).toBeLessThan(2);
   expect(railBox.width).toBeGreaterThanOrEqual(94);
   expect(railBox.height).toBeGreaterThanOrEqual(760);
   await pulse.click();
-  await expect(windowsPage.locator('#view-profesor')).toHaveClass(/active/);
-  await expect(windowsPage.locator('#headerTitle')).toContainText('Profesor');
+  await expect(windowsPage.locator('#view-obras')).toHaveClass(/active/);
+  await expect(windowsPage.locator('#headerTitle')).toContainText('Obras');
   expect(await windowsPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   await rail.locator('[data-view="cronometro"]').click();
   await expect(windowsPage.locator('#view-cronometro')).toHaveClass(/active/);
   await expect(rail).toBeVisible();
   await pulse.click();
-  await expect(windowsPage.locator('#view-profesor')).toHaveClass(/active/);
+  await expect(windowsPage.locator('#view-obras')).toHaveClass(/active/);
   await windows.close();
 
   const ipad = await browser.newContext({
@@ -234,8 +234,8 @@ test('keeps mobile navigation visible after removing the daily state panel', asy
     }));
     expect(state.navFits).toBe(true);
     expect(state.documentFits).toBe(true);
-    // Diario (v523) es la sexta pestaña: tiene que caber también a 320 px.
-    expect(state.navButtons).toHaveLength(6);
+    // Hoy, Crono, Obras, Diario y Aulas (nov 2026: fuera Calendario y Profesor).
+    expect(state.navButtons).toHaveLength(5);
     expect(state.navButtons.every(btn => btn.width > 0 && btn.height >= 44 && btn.label)).toBe(true);
     expect(state.hasLegacyStatePanel).toBe(false);
     expect(state.hasDayPlanner).toBe(true);

@@ -72,11 +72,49 @@ test.describe('una página por día (móvil, iPad, ventana estrecha)', () => {
     await expect(view.locator('.dia-item').first().locator('.dia-ink')).toHaveValue('El desarrollo sigue sucio en la mano izquierda');
     await expect(view.locator('.dia-free:not(.dia-new) .dia-ink')).toHaveValue('Día tranquilo');
 
-    // Vaciar un comentario y salir de la línea lo quita.
+    // Lo escrito se ve con formato; tocarlo abre el campo. Vaciarlo y salir lo quita.
+    await expect(view.locator('.dia-item').first().locator('.dia-fmt')).toHaveText('El desarrollo sigue sucio en la mano izquierda');
+    await view.locator('.dia-item').first().locator('.dia-fmt').click();
     const ink = view.locator('.dia-item').first().locator('.dia-ink');
+    await expect(ink).toBeFocused();
     await ink.fill('');
     await ink.blur();
     await expect.poll(async () => (await stored(page)).map(e => e.text)).toEqual(['Día tranquilo']);
+  });
+
+  test('Diario: «-» es una tarea de hoy con casilla y número, «+» una para otro día, y tras «:» letra pequeña', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => showView('diario'));
+    const view = page.locator('#view-diario');
+    const line = view.locator('.dia-new .dia-ink');
+    await line.click();
+    await page.keyboard.type('Tareas:');
+    await page.keyboard.press('Shift+Enter');
+    await page.keyboard.type('- Comprar los trenes');
+    await page.keyboard.press('Enter');
+    // Intro sigue la lista.
+    await expect(line).toHaveValue('Tareas:\n- Comprar los trenes\n- ');
+    await page.keyboard.type('Programa: quitar el profesor');
+    await page.keyboard.press('Enter');
+    // Intro en una línea de lista vacía la termina.
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('+ Regalo de mamá a las 9:52');
+    await page.keyboard.press('Escape');
+    const entry = view.locator('.dia-free:not(.dia-new)').first();
+    const items = entry.locator('.dia-li');
+    await expect(items).toHaveCount(3);
+    await expect(items.nth(0).locator('.dia-num')).toHaveText('1.');
+    await expect(items.nth(1).locator('.dia-num')).toHaveText('2.');
+    await expect(items.nth(1).locator('.dia-aside')).toHaveText('quitar el profesor');
+    await expect(items.nth(2)).toHaveClass(/is-later/);
+    await expect(items.nth(2).locator('.dia-num')).toHaveCount(0);
+    // Las horas no se parten.
+    await expect(items.nth(2).locator('.dia-aside')).toHaveCount(0);
+    // Marcar una casilla la guarda en el texto, sin abrir el campo.
+    await items.nth(0).locator('.dia-box').click();
+    await expect(items.nth(0)).toHaveClass(/is-done/);
+    await expect(entry.locator('.dia-ink')).toBeHidden();
+    await expect.poll(async () => (await stored(page)).map(e => e.text)).toEqual(['Tareas:\n- [x] Comprar los trenes\n- Programa: quitar el profesor\n+ Regalo de mamá a las 9:52']);
   });
 
   test('Diario: se pasa de un día a otro y no deja ir al futuro', async ({ page }) => {

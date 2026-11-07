@@ -125,3 +125,41 @@ describe('Diario: comentarios', () => {
     expect(D.day(data, '2026-11-03', deps).general.map(e => e.id)).toEqual(['old']);
   });
 });
+
+describe('formato del diario (v528)', () => {
+  it('«-» es tarea de hoy, «+» para otro día, «[x]» hecha; lo demás es texto', () => {
+    expect(D.parseLine('- Comprar trenes')).toEqual({ kind: 'today', done: false, text: 'Comprar trenes' });
+    expect(D.parseLine('- [x] LEEDS')).toEqual({ kind: 'today', done: true, text: 'LEEDS' });
+    expect(D.parseLine('+ Regalo de mamá')).toEqual({ kind: 'later', done: false, text: 'Regalo de mamá' });
+    expect(D.parseLine('-5 grados fuera').kind).toBe('text');
+    expect(D.parseLine('Tareas para luego:').kind).toBe('text');
+  });
+
+  it('tras «Etiqueta:» el resto va aparte, pero no parte horas ni enlaces', () => {
+    expect(D.splitAside('Programa: quita profesor')).toEqual(['Programa:', 'quita profesor']);
+    expect(D.splitAside('Son las 9:52. Acabo de empezar')).toBeNull();
+    expect(D.splitAside('Mira https://example.com')).toBeNull();
+    expect(D.splitAside('Tareas para luego:')).toBeNull();
+    expect(D.formatHtml('Programa: <b>')).toContain('<small class="dia-aside">&lt;b&gt;</small>');
+  });
+
+  it('numera cada lista de «-» desde 1 y la vuelve a empezar tras un texto', () => {
+    const html = D.formatHtml('- a\n- b\nHecho\n- c\n+ d');
+    expect([...html.matchAll(/dia-num">(\d+)\./g)].map(m => m[1])).toEqual(['1', '2', '1']);
+  });
+
+  it('marcar y desmarcar cambia solo esa línea', () => {
+    const text = 'Hoy:\n- uno\n+ dos';
+    expect(D.toggleLine(text, 1)).toBe('Hoy:\n- [x] uno\n+ dos');
+    expect(D.toggleLine(D.toggleLine(text, 2), 2)).toBe(text);
+    expect(D.toggleLine(text, 0)).toBe(text);
+  });
+
+  it('Intro sigue la lista y, en una línea vacía de la lista, la termina', () => {
+    expect(D.continueList('- uno', 5)).toEqual({ value: '- uno\n- ', caret: 8 });
+    expect(D.continueList('+ uno', 5)).toEqual({ value: '+ uno\n+ ', caret: 8 });
+    expect(D.continueList('- [x] uno', 9)).toEqual({ value: '- [x] uno\n- ', caret: 12 });
+    expect(D.continueList('a\n- ', 4)).toEqual({ value: 'a\n', caret: 2 });
+    expect(D.continueList('texto', 5)).toBeNull();
+  });
+});

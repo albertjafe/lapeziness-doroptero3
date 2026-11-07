@@ -76,26 +76,76 @@ html #view-diario textarea.dia-ink { font-family: var(--dia-hand) !important; }
 .dia-new { margin-top: 18px !important; }
 .dia-empty { margin: 6px 0 4px; font-size: 13px; color: var(--text3, var(--text2)); }
 
+/* ── Texto con formato (v528): listas con casilla y «Etiqueta: resto» ──
+   Se ve mientras no editas; tocarlo abre el campo. Misma letra y mismas
+   líneas que el campo, para que nada salte al pasar de uno a otro. */
+.dia-ink-wrap.is-fmt > .dia-ink { display: none; }
+.dia-fmt {
+  min-height: var(--dia-line);
+  padding: 0 2px;
+  background-image: linear-gradient(to bottom, transparent calc(var(--dia-line) - 1px), var(--dia-rule) calc(var(--dia-line) - 1px), var(--dia-rule) var(--dia-line));
+  background-size: 100% var(--dia-line);
+  font-family: var(--dia-hand);
+  font-size: 20px;
+  line-height: var(--dia-line);
+  color: var(--text);
+  overflow-wrap: anywhere;
+  cursor: text;
+  outline: none;
+}
+.dia-fmt:focus-visible { border-radius: 4px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, var(--text)) 45%, transparent); }
+.dia-l { min-height: var(--dia-line); }
+.dia-li { display: flex; align-items: flex-start; gap: .4em; }
+.dia-num { flex: none; min-width: 1.1em; font-size: .78em; color: var(--text2); font-variant-numeric: tabular-nums; }
+.dia-txt { flex: 1; min-width: 0; }
+.dia-aside { font-size: .74em; color: var(--text2); }
+.dia-box {
+  box-sizing: border-box;
+  position: relative;
+  flex: none;
+  width: .8em;
+  height: .8em;
+  margin-top: calc((var(--dia-line) - .8em) / 2);
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  font: inherit;
+  line-height: 1;
+  border: 1.6px solid color-mix(in srgb, var(--accent, var(--text)) 75%, transparent);
+  border-radius: .18em;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+/* Zona de toque más grande que la casilla dibujada. */
+.dia-box::after { content: ''; position: absolute; inset: -11px -9px; }
+/* «+»: para otro día, casilla redonda y discontinua. */
+.dia-li.is-later .dia-box { border-style: dashed; border-radius: 50%; border-color: color-mix(in srgb, var(--text) 45%, transparent); }
+.dia-li.is-done .dia-box { background: var(--accent, var(--text2)); border-style: solid; border-color: var(--accent, var(--text2)); }
+.dia-li.is-done .dia-box::before {
+  content: ''; position: absolute; left: 50%; top: 45%; width: .2em; height: .4em;
+  border: solid var(--bg2, #fff); border-width: 0 .1em .1em 0;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.dia-li.is-done .dia-txt { color: var(--text2); text-decoration: line-through; text-decoration-thickness: 1px; }
+.dia-li.is-done .dia-num { opacity: .6; }
+html.platform-ipad .dia-fmt { font-size: 21px; }
+
 @media (max-width: 560px) {
   .dia-page { padding: 4px 10px 120px; }
   .dia-paper { padding: 14px 12px 20px 30px; }
   .dia-paper::before { left: 20px; }
   .dia-date h2 { font-size: 23px; }
-  .dia-ink { font-size: 19px; }
+  .dia-ink, .dia-fmt { font-size: 19px; }
 }
-/* Barra inferior con Diario: 6 pestañas en el móvil (Profesor va oculto) y 7
-   en el iPad (antes 5 y 6, reservation-dashboard.css). */
+/* Barra inferior (nov 2026): Hoy, Cronómetro, Obras, Diario y Aulas.
+   Calendario se abre desde Hoy y Profesor se retiró. */
+html:not(.platform-windows) .nav.nav-bottom { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
 @media (max-width: 700px) {
-  html:not(.platform-windows) .nav.nav-bottom { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  /* Con 6 pestañas «Cronómetro» y «Calendario» no caben: su nombre corto
-     (el de data-short). El botón conserva su aria-label completo. */
-  html:not(.platform-windows) .nav.nav-bottom .nav-btn:is([data-view="cronometro"], [data-view="calendario"]) > span:not(.ripple) { position: relative; visibility: hidden; }
-  html:not(.platform-windows) .nav.nav-bottom .nav-btn:is([data-view="cronometro"], [data-view="calendario"]) > span:not(.ripple)::after { position: absolute; inset: 0; visibility: visible; text-align: center; }
-  html:not(.platform-windows) .nav.nav-bottom .nav-btn[data-view="cronometro"] > span:not(.ripple)::after { content: 'Crono'; }
-  html:not(.platform-windows) .nav.nav-bottom .nav-btn[data-view="calendario"] > span:not(.ripple)::after { content: 'Calend.'; }
-}
-@media (min-width: 701px) {
-  html:not(.platform-windows) .nav.nav-bottom { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  /* «Cronómetro» no cabe en el teléfono: su nombre corto (el de data-short). */
+  html:not(.platform-windows) .nav.nav-bottom .nav-btn[data-view="cronometro"] > span:not(.ripple) { position: relative; visibility: hidden; }
+  html:not(.platform-windows) .nav.nav-bottom .nav-btn[data-view="cronometro"] > span:not(.ripple)::after { position: absolute; inset: 0; visibility: visible; text-align: center; content: 'Crono'; }
 }
 
 /* ── Libro de escritorio (v526): dos días a doble página, a toda la pestaña ── */
@@ -196,6 +246,7 @@ html #view-diario textarea.dia-ink { font-family: var(--dia-hand) !important; }
   html.platform-windows .dia-sheet .dia-free-head { height: var(--dia-line); line-height: var(--dia-line); margin: 0; font-size: 13px; }
   html.platform-windows .dia-sheet .dia-crono { margin: 0; font-size: 19px; line-height: var(--dia-line); }
   html.platform-windows .dia-sheet .dia-empty { flex: none; margin: 0 0 var(--dia-line); height: var(--dia-line); line-height: var(--dia-line); font-size: 14px; }
+  html.platform-windows .dia-sheet .dia-fmt { background: none; font-size: 23px; padding: 0; }
   html.platform-windows .dia-sheet .dia-ink {
     min-height: var(--dia-line);
     background: none;
@@ -206,7 +257,7 @@ html #view-diario textarea.dia-ink { font-family: var(--dia-hand) !important; }
   }
 
   /* ── Giro de la hoja ── */
-  html.platform-windows .dia-turning { position: absolute; inset: 0; z-index: 3; perspective: 2600px; perspective-origin: 50% 45%; pointer-events: none; }
+  html.platform-windows .dia-turning { position: absolute; inset: 0; z-index: 3; perspective: 3200px; perspective-origin: 50% 50%; pointer-events: none; }
   html.platform-windows .dia-slot,
   html.platform-windows .dia-leaf { position: absolute; top: 0; bottom: 0; width: 50%; }
   html.platform-windows .dia-slot.is-left,

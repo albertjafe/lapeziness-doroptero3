@@ -120,8 +120,8 @@ test('Aulas es una pantalla propia en la barra lateral, con su atajo Alt', async
   await boot(page, 1366, 768);
   const nav = page.locator('.nav-bottom .nav-btn[data-view="aulas"]');
   await expect(nav).toBeVisible();
-  // En escritorio sigue también Profesor (en el móvil Aulas ocupa su sitio).
-  await expect(page.locator('.nav-bottom .nav-btn[data-view="profesor"]')).toBeVisible();
+  // Profesor salió de la barra en todas partes (nov 2026).
+  await expect(page.locator('.nav-bottom .nav-btn[data-view="profesor"]')).toHaveCount(0);
   await expect(page.locator('#aulasTodayCard')).toBeVisible();
   if (process.env.CAPTURE_WINDOWS_AULAS) await page.screenshot({ path: 'test-results/windows-hoy.png' });
   const shortcut = await nav.getAttribute('title');

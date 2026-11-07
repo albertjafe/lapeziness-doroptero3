@@ -43,7 +43,8 @@ async function touch(page, type, x, y = 420) {
 // Consulta y mide en el mismo paso: Hoy se repinta entero cuando llegan las
 // prioridades del Profesor y un nodo recién sustituido mediría 0.
 const box = (page, selector) => page.evaluate(sel => { const r = document.querySelector(sel).getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) }; }, selector);
-const settledHoy = page => expect(page.locator('#mv2Hoy .mv2-parahoy')).not.toContainText('Calculando', { timeout: 15000 });
+// «Para hoy» salió de Hoy (nov 2026): basta con que esté su columna lateral.
+const settledHoy = page => expect(page.locator('#mv2Hoy .mv2-col-side .mv2-tiles')).toBeVisible({ timeout: 15000 });
 
 for (const viewport of [{ width: 834, height: 1194 }, { width: 1194, height: 834 }]) {
   const wide = viewport.width > 1000;
@@ -56,9 +57,11 @@ for (const viewport of [{ width: 834, height: 1194 }, { width: 1194, height: 834
     await settledHoy(page);
     await expect(page.locator('#sessionResumenCard')).toBeHidden();
     await expect(page.locator('.ipad-today-next')).toBeHidden();
-    // En el iPad caben Aulas y Profesor en la barra: los accesos de Hoy son Alemán, Premios e Historial.
+    // Sin Profesor, Para hoy ni Tareas (nov 2026); Calendario se abre desde aquí.
     await expect(page.locator('#mv2Hoy .mv2-tile', { hasText: 'Historial' })).toBeVisible();
+    await expect(page.locator('#mv2Hoy .mv2-tile', { hasText: 'Calendario' })).toBeVisible();
     await expect(page.locator('#mv2Hoy .mv2-tile', { hasText: 'Profesor' })).toHaveCount(0);
+    await expect(page.locator('#mv2Hoy .mv2-parahoy, #mv2Hoy #tdInput')).toHaveCount(0);
     await expect(page.locator('#mv2Hoy .mv2-habits')).toBeVisible();
     const main = await box(page, '#mv2Hoy .mv2-col-main');
     const side = await box(page, '#mv2Hoy .mv2-col-side');
@@ -116,19 +119,12 @@ for (const viewport of [{ width: 834, height: 1194 }, { width: 1194, height: 834
     expect(await box(page, '#mv2Hoy .mv2-summary')).toEqual(expected);
   });
 
-  test(`iPad ${viewport.width}: calendario v2 y el gesto no lo vuelve a pintar al llegar`, async ({ page }) => {
+  test(`iPad ${viewport.width}: el calendario v2 se abre desde Hoy`, async ({ page }) => {
     await boot(page, viewport);
-    await page.evaluate(() => showView('obras'));
-    await touch(page, 'touchstart', viewport.width - 150);
-    await touch(page, 'touchmove', viewport.width / 2);
-    await expect(page.locator('#mv2Cal .mv2-cal-grid')).toBeVisible();
-    // Marca el contenido de la vista previa: si al llegar se repintara, se perdería.
-    await page.evaluate(() => { document.querySelector('#mv2Cal .mv2-card').dataset.preview = '1'; });
-    await touch(page, 'touchmove', 30);
-    await touch(page, 'touchend', 30);
+    await expect(page.locator('.nav-btn[data-view="calendario"]')).toHaveCount(0);
+    await page.locator('#mv2Hoy .mv2-tile', { hasText: 'Calendario' }).click();
     await expect(page.locator('body')).toHaveAttribute('data-view', 'calendario');
-    await expect(page.locator('body')).not.toHaveClass(/view-swipe-settling/);
-    await expect(page.locator('#mv2Cal .mv2-card[data-preview="1"]')).toHaveCount(1);
+    await expect(page.locator('#mv2Cal .mv2-cal-grid')).toBeVisible();
     const days = await box(page, '#mv2Cal .mv2-day');
     expect(days.height).toBeLessThan(80); // casillas bajas, no cuadradas de 100 px
     if (wide) expect((await box(page, '#mv2Cal > .mv2-card:nth-child(2)')).x).toBeGreaterThan((await box(page, '#mv2Cal > .mv2-card')).x + 100);

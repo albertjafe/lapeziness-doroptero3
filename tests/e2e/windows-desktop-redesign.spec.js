@@ -44,7 +44,8 @@ test('uses the approved compact Windows shell at desktop widths', async ({ page 
       plan: rect('.desktop-plan-heading'),
       side: rect('.desktop-today-side'),
       summaryColumns: getComputedStyle(document.getElementById('sessionResumenCard')).gridTemplateColumns.split(' ').filter(Boolean).length,
-      professorVisible: document.querySelector('.nav-btn[data-view="profesor"]').getBoundingClientRect().height > 0,
+      // Profesor y Calendario salieron de la barra (nov 2026).
+      retiredInRail: document.querySelectorAll('.nav-btn[data-view="profesor"], .nav-btn[data-view="calendario"]').length,
       fits: document.documentElement.scrollWidth <= innerWidth + 1,
     };
   });
@@ -57,7 +58,7 @@ test('uses the approved compact Windows shell at desktop widths', async ({ page 
   expect(layout.headerFont).toBeLessThanOrEqual(22);
   expect(layout.summaryColumns).toBe(5);
   expect(layout.side.left).toBeGreaterThan(layout.plan.right);
-  expect(layout.professorVisible).toBe(true);
+  expect(layout.retiredInRail).toBe(0);
   expect(layout.fits).toBe(true);
 
   await page.setViewportSize({ width: 1024, height: 900 });

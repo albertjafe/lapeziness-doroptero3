@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-11-06-aulas-permitir-v527';
+const APP_VERSION = '2026-11-07-diario-listas-v528';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -1519,7 +1519,8 @@ function renderCombinedSessionStats() {
 
 
 
-const SWIPE_VIEW_ORDER = ['session', 'cronometro', 'obras', 'calendario'];
+// Calendario ya no está en la barra (nov 2026): se abre desde Hoy.
+const SWIPE_VIEW_ORDER = ['session', 'cronometro', 'obras'];
 let _viewSwipe = null;
 let _viewSwipeMultiTouch = false;
 
@@ -8960,7 +8961,7 @@ function closeHechoDatos(save) {
     try { renderCalendario(); } catch(e) {}
   }
   if (shouldOfferBreak) cronoMaybeShowLongSessionBreak(minutos);
-  if (shouldOfferTaskBreak) setTimeout(() => { try { TasksToday.offerBreak(); } catch (e) {} }, 420);
+  // Tareas retiradas de la app (nov 2026): ya no se ofrecen al terminar un bloque.
 }
 
 // Flash de éxito al guardar la sesión: aparece sobre el cronómetro con el
@@ -21791,8 +21792,8 @@ window.addEventListener('pageshow', cronoHandleLifecycleResume);
 // Pases registrados durante la sesión (drawer lateral) — se pre-rellenan en el modal Hecho
 let _cronoDraftPases = { antesActive: false, antesVal: 50, despuesActive: false, despuesVal: 60 };
 let _cronoPaseDrawerOpen = false;
-let _cronoRunDrawerTab = 'tareas';
-let _cronoIdleDrawerTab = 'tareas';
+let _cronoRunDrawerTab = 'pasajes';
+let _cronoIdleDrawerTab = 'pasajes';
 
 // Tamaño fijo del reloj: el cronómetro ya no permite zoom con pellizco ni con
 // rueda. Estas constantes conservan el nombre por compatibilidad con pruebas y
@@ -24175,7 +24176,7 @@ function deleteMemoryCard(cardId) {
 }
 
 function cronoSetRunDrawerTab(tab) {
-  _cronoRunDrawerTab = ['metronomo', 'pasajes'].includes(tab) ? tab : 'tareas';
+  _cronoRunDrawerTab = tab === 'metronomo' ? 'metronomo' : 'pasajes';
   cronoUpdateRunDrawer();
   try { Haptics.light(); } catch(e) {}
 }
@@ -24183,7 +24184,8 @@ function cronoSetRunDrawerTab(tab) {
 function cronoUpdateRunDrawer() {
   const drawer = document.getElementById('cronoRunDrawer');
   if (!drawer) return;
-  const tab = ['metronomo', 'pasajes'].includes(_cronoRunDrawerTab) ? _cronoRunDrawerTab : 'tareas';
+  // Tareas retiradas de la mesa de trabajo (nov 2026): viven en el diario.
+  const tab = _cronoRunDrawerTab === 'metronomo' ? 'metronomo' : 'pasajes';
   drawer.dataset.tab = tab;
   drawer.querySelectorAll('.crono-run-drawer-tab').forEach(btn => {
     if (btn.dataset.action) {
@@ -24215,7 +24217,7 @@ function cronoSetObservation(value) {
 }
 
 function cronoSetIdleDrawerTab(tab) {
-  _cronoIdleDrawerTab = ['metronomo', 'pasajes'].includes(tab) ? tab : 'tareas';
+  _cronoIdleDrawerTab = tab === 'metronomo' ? 'metronomo' : 'pasajes';
   cronoUpdateIdleDrawer();
   try { Haptics.light(); } catch(e) {}
 }
@@ -24223,7 +24225,7 @@ function cronoSetIdleDrawerTab(tab) {
 function cronoUpdateIdleDrawer() {
   const drawer = document.getElementById('cronoIdleDrawer');
   if (!drawer) return;
-  const tab = ['metronomo', 'pasajes'].includes(_cronoIdleDrawerTab) ? _cronoIdleDrawerTab : 'tareas';
+  const tab = _cronoIdleDrawerTab === 'metronomo' ? 'metronomo' : 'pasajes';
   drawer.dataset.tab = tab;
   drawer.querySelectorAll('.crono-idle-drawer-tab').forEach(btn => {
     const active = btn.dataset.tab === tab;
@@ -28064,7 +28066,7 @@ function cronoStart() {
   if (typeof bumpCronoPickRecency === 'function') bumpCronoPickRecency(resolved.obraId);
 
   _cronoPaseDrawerReset();
-  _cronoRunDrawerTab = 'tareas';
+  _cronoRunDrawerTab = 'pasajes';
   _pasajeOpenId = null;
   _cronoLastRunDestelloKey = '';
   if (!Array.isArray(crono.notes)) crono.notes = [];
@@ -28125,7 +28127,7 @@ function cronoStartRest() {
   }
   if (cronoMaybeBlockUrgentTasks('rest')) return;
   const pushEnable = cronoRequestNotificationPermissionFromGesture();
-  _cronoRunDrawerTab = 'tareas';
+  _cronoRunDrawerTab = 'pasajes';
   _cronoLastRunDestelloKey = '';
   crono.notes = [];
   crono.state = 'running';
@@ -28637,7 +28639,7 @@ function cronoReset(pushStatus) {
   window.PianoActivityTypes?.set?.('study');
   _cronoPendingFinishRunId = null;
   _cronoFinalizingRunId = null;
-  _cronoRunDrawerTab = 'tareas';
+  _cronoRunDrawerTab = 'pasajes';
   crono.obraId = null;
   crono.movId = null;
   crono.displayName = '';

@@ -12,7 +12,12 @@
    - Las notas tomadas con el cronómetro en marcha se ven (sin editar).
    En el escritorio (v526) es un libro a toda la pestaña: dos días a doble
    página, con hoy siempre a la derecha en la última, y la hoja gira al pasar.
-   El giro es solo visual: la página real ya está debajo y se ve al terminar. */
+   El giro es solo visual: la página real ya está debajo y se ve al terminar.
+   Formato (v528): lo escrito se ve con formato mientras no lo editas.
+   «- algo» es una tarea de hoy, numerada y con casilla; «+ algo», una para
+   otro día (otra casilla). Hecha = «[x]» tras el signo, en el propio texto.
+   En «Etiqueta: resto», el resto va en letra pequeña (no en horas, 9:52).
+   Intro en una línea de lista sigue la lista; en una vacía, la termina. */
 (function (root, factory) {
   const api = factory(root);
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
@@ -59,6 +64,73 @@
     const ms = parseMs(entry.at);
     return ms == null ? '' : dayKey(new Date(ms));
   }
+  // ---------- Formato del texto (v528) ----------
+  const ITEM_RE = /^\s*([-+])(?=\s|$)\s*(?:\[([ xX])\]\s*)?(.*)$/;
+  function parseLine(line) {
+    const m = ITEM_RE.exec(String(line));
+    if (!m) return { kind: 'text', text: String(line) };
+    return { kind: m[1] === '-' ? 'today' : 'later', done: /x/i.test(m[2] || ''), text: m[3] };
+  }
+  // «Etiqueta: resto» → [etiqueta con los dos puntos, resto]. No parte horas
+  // (9:52) ni enlaces (https://), y la etiqueta es corta.
+  function splitAside(text) {
+    const s = String(text);
+    for (let i = 1; i < s.length && i <= 40; i++) {
+      if (s[i] !== ':') continue;
+      if (/\d/.test(s[i - 1]) || s[i + 1] !== ' ') return null;
+      const rest = s.slice(i + 1).trim();
+      return rest ? [s.slice(0, i + 1), rest] : null;
+    }
+    return null;
+  }
+  function inlineHtml(text) {
+    const parts = splitAside(text);
+    return parts ? esc(parts[0]) + ' <small class="dia-aside">' + esc(parts[1]) + '</small>' : esc(text);
+  }
+  // Una línea por <div>, con la misma altura que las líneas del cuaderno.
+  function formatHtml(text) {
+    let n = 0;
+    return String(text || '').split('\n').map((line, i) => {
+      const it = parseLine(line);
+      if (it.kind === 'text') {
+        n = 0;
+        return '<div class="dia-l">' + (it.text.trim() ? inlineHtml(it.text) : '&nbsp;') + '</div>';
+      }
+      const today = it.kind === 'today';
+      if (today) n += 1;
+      const label = (today ? 'Tarea de hoy' : 'Para otro día') + (it.done ? ', hecha' : '');
+      return '<div class="dia-l dia-li is-' + it.kind + (it.done ? ' is-done' : '') + '">' +
+        '<button type="button" class="dia-box" role="checkbox" aria-checked="' + it.done + '" aria-label="' + label + '" data-line="' + i + '"></button>' +
+        (today ? '<span class="dia-num">' + n + '.</span>' : '') +
+        '<span class="dia-txt">' + (it.text.trim() ? inlineHtml(it.text) : '&nbsp;') + '</span></div>';
+    }).join('');
+  }
+  // Marca o desmarca la línea `index` si es de lista. Pura: la usan las pruebas.
+  function toggleLine(text, index) {
+    const lines = String(text || '').split('\n');
+    const m = ITEM_RE.exec(lines[index] || '');
+    if (!m) return String(text || '');
+    const lead = /^\s*/.exec(lines[index])[0];
+    lines[index] = lead + m[1] + (/x/i.test(m[2] || '') ? ' ' : ' [x] ') + m[3];
+    return lines.join('\n');
+  }
+  // Intro dentro de una lista: el texto y la posición del cursor resultantes, o
+  // null si la línea no es de lista (Intro normal).
+  function continueList(text, caret) {
+    const value = String(text || '');
+    const start = value.lastIndexOf('\n', caret - 1) + 1;
+    const line = value.slice(start, caret);
+    const m = ITEM_RE.exec(line);
+    if (!m) return null;
+    if (!m[3].trim()) {
+      const next = value.slice(0, start) + value.slice(caret);
+      return { value: next, caret: start };
+    }
+    const prefix = /^\s*/.exec(line)[0] + m[1] + ' ';
+    const next = value.slice(0, caret) + '\n' + prefix + value.slice(caret);
+    return { value: next, caret: caret + 1 + prefix.length };
+  }
+
   function blockKey(block) {
     if (block.id) return 'p:' + block.id;
     return 'p:' + (block.obraId || block.obraName || '') + '@' + (block.startedAt || block.date || '');
@@ -214,10 +286,41 @@
   const visible = () => doc && doc.body && doc.body.getAttribute('data-view') === 'diario';
   const editing = () => { const a = doc && doc.activeElement; return !!(a && a.classList && a.classList.contains('dia-ink')); };
 
+  // El texto con formato se ve mientras no se edita; tocarlo abre el campo.
   function ink(attrs, text, placeholder) {
-    return '<textarea class="dia-ink" rows="1" maxlength="' + MAX_TEXT + '" spellcheck="true"' +
+    const has = !!String(text || '').trim();
+    return '<div class="dia-ink-wrap' + (has ? ' is-fmt' : '') + '">' +
+      '<textarea class="dia-ink" rows="1" maxlength="' + MAX_TEXT + '" spellcheck="true"' +
       Object.entries(attrs).map(([k, v]) => v ? ' data-' + k + '="' + esc(v) + '"' : '').join('') +
-      ' aria-label="' + esc(placeholder) + '" placeholder="' + esc(placeholder) + '">' + esc(text) + '</textarea>';
+      ' aria-label="' + esc(placeholder) + '" placeholder="' + esc(placeholder) + '">' + esc(text) + '</textarea>' +
+      (has ? '<div class="dia-fmt" tabindex="0" aria-label="' + esc(placeholder) + ' (toca para editar)">' + formatHtml(text) + '</div>' : '') +
+      '</div>';
+  }
+  // Pasa de la vista con formato al campo, con el cursor al final.
+  function edit(area) {
+    if (!area) return;
+    const wrap = area.parentElement;
+    if (wrap && wrap.classList.contains('is-fmt')) wrap.classList.remove('is-fmt');
+    fit(area);
+    area.focus();
+    try { area.setSelectionRange(area.value.length, area.value.length); } catch (e) {}
+  }
+  // Al salir del campo vuelve el formato (si hay texto).
+  function showFormatted(area) {
+    const wrap = area && area.parentElement;
+    if (!wrap || !wrap.classList.contains('dia-ink-wrap')) return;
+    const text = area.value;
+    let fmt = wrap.querySelector('.dia-fmt');
+    if (!text.trim()) { if (fmt) fmt.remove(); wrap.classList.remove('is-fmt'); return; }
+    if (!fmt) {
+      fmt = doc.createElement('div');
+      fmt.className = 'dia-fmt';
+      fmt.tabIndex = 0;
+      fmt.setAttribute('aria-label', (area.getAttribute('aria-label') || 'Texto') + ' (toca para editar)');
+      wrap.appendChild(fmt);
+    }
+    fmt.innerHTML = formatHtml(text);
+    wrap.classList.add('is-fmt');
   }
 
   function itemHtml(item) {
@@ -382,8 +485,18 @@
       const sheet = box.querySelector('.dia-sheet');
       if (sheet) sheet.scrollTop = Number(box.dataset.top) || 0;
     });
-    turning = { layer, timer: setTimeout(finishTurn, ms + 60) };
-    leaf.addEventListener('animationend', e => { if (e.target === leaf && !e.pseudoElement) finishTurn(); });
+    // Termina con la animación, no con un reloj: tras pintar el día nuevo el
+    // giro puede empezar unos cientos de ms tarde, y un reloj fijo quitaba la
+    // hoja a medio caer (el salto al final). El reloj solo es un seguro por si
+    // la animación no llega a correr (pestaña oculta, vista cambiada).
+    const state = { layer, timer: setTimeout(finishTurn, ms * 4) };
+    turning = state;
+    leaf.addEventListener('animationstart', e => {
+      if (e.target !== leaf || e.pseudoElement || turning !== state) return;
+      clearTimeout(state.timer);
+      state.timer = setTimeout(finishTurn, ms * 4);
+    });
+    leaf.addEventListener('animationend', e => { if (e.target === leaf && !e.pseudoElement && turning === state) finishTurn(); });
   }
 
   function turnTo(key) {
@@ -466,13 +579,25 @@
         return;
       }
       if (e.target.closest('.dia-ink')) return;
+      // Casilla de una tarea: se marca sin abrir el campo.
+      const box = e.target.closest('.dia-box');
+      if (box) {
+        const area = box.closest('.dia-ink-wrap')?.querySelector('.dia-ink');
+        if (!area) return;
+        area.value = toggleLine(area.value, Number(box.dataset.line));
+        commit(area, true);
+        showFormatted(area);
+        try { root.Haptics?.light?.(); } catch (err) {}
+        return;
+      }
+      const fmt = e.target.closest('.dia-fmt');
+      if (fmt) { edit(fmt.parentElement.querySelector('.dia-ink')); return; }
       // Tocar el bloque (no solo la línea) lleva a escribir sobre él; en el libro,
       // tocar lo vacío de la hoja lleva a la línea libre de ese día.
       const scope = e.target.closest('.dia-item') || e.target.closest('.dia-sheet');
       if (!scope) return;
       const areas = scope.classList.contains('dia-sheet') ? scope.querySelectorAll('.dia-new .dia-ink') : scope.querySelectorAll('.dia-ink');
-      const area = areas[areas.length - 1];
-      if (area) { area.focus(); area.setSelectionRange(area.value.length, area.value.length); }
+      edit(areas[areas.length - 1]);
     });
     el.addEventListener('input', e => {
       if (!e.target.classList.contains('dia-ink')) return;
@@ -483,12 +608,29 @@
       if (!e.target.classList.contains('dia-ink')) return;
       const area = e.target;
       commit(area, true);
+      if (!area.dataset.free) showFormatted(area);
       // La línea nueva del día, ya escrita, pasa a ser una entrada más.
       if (area.dataset.free && area.dataset.id) setTimeout(() => { if (!editing() && !turning) render(); }, 0);
     });
     el.addEventListener('keydown', e => {
+      if (e.target.classList.contains('dia-fmt') && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        edit(e.target.parentElement.querySelector('.dia-ink'));
+        return;
+      }
       if (!e.target.classList.contains('dia-ink')) return;
-      if (e.key === 'Escape' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); e.target.blur(); }
+      if (e.key === 'Escape' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); e.target.blur(); return; }
+      if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.isComposing) {
+        const area = e.target;
+        if (area.selectionStart !== area.selectionEnd) return;
+        const next = continueList(area.value, area.selectionStart);
+        if (!next) return;
+        e.preventDefault();
+        area.value = next.value;
+        area.setSelectionRange(next.caret, next.caret);
+        fit(area);
+        commit(area, false);
+      }
     });
     doc.addEventListener('keydown', e => {
       if (!visible() || editing() || e.altKey || e.metaKey || e.ctrlKey) return;
@@ -515,7 +657,7 @@
     });
   }
 
-  const api = { day, write, shiftDay, spreadOf, duration, MERGE_GAP_MIN, open: key => { if (key) current = key; if (typeof root.showView === 'function') root.showView('diario'); }, render };
+  const api = { day, write, shiftDay, spreadOf, duration, MERGE_GAP_MIN, parseLine, splitAside, formatHtml, toggleLine, continueList, open: key => { if (key) current = key; if (typeof root.showView === 'function') root.showView('diario'); }, render };
   if (doc) {
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', init);
     else init();

@@ -13,13 +13,11 @@ for(const size of [{width:1194,height:834},{width:834,height:1194},{width:390,he
   await page.evaluate(()=>{showView('cronometro');document.getElementById('cronoObraSelect').value='mov::w::iii';cronoUpdateStartBtn();PassageTracker.render();});
   await expect(page.locator('#cronoTargetSolidity')).toBeVisible();
   const idle=page.locator('#cronoIdleDrawer');
-  // Móvil v2: la mesa de trabajo es una hoja; se abre con su pestaña.
-  if(size.width<=700) await idle.getByRole('tab',{name:/Tareas/}).click();
-  await expect(idle.getByRole('button',{name:'Profesor'})).toBeVisible();
+  // Tareas y Profesor salieron de la mesa de trabajo (nov 2026): las tareas van en el diario.
+  await expect(idle.getByRole('tab',{name:/Tareas/})).toHaveCount(0);
+  await expect(idle.getByRole('button',{name:'Profesor'})).toHaveCount(0);
   await expect(idle.locator('[data-tab="memoria"]')).toHaveCount(0);
-  // Una sola lista: las tareas de piano también se ven, con su etiqueta.
-  await expect(idle.locator('.crono-task-board')).toContainText('Tarea antigua de piano');
-  await expect(idle).toContainText('Preparar ensayo');
+  // Móvil v2: la mesa de trabajo es una hoja; se abre con su pestaña.
   await idle.getByRole('tab',{name:'Pasajes',exact:true}).click();
   await expect(idle.locator('#cronoPassageTracker')).toBeVisible();
   await page.screenshot({path:test.info().outputPath('idle.png')});
@@ -42,10 +40,8 @@ for(const size of [{width:1194,height:834},{width:834,height:1194},{width:390,he
   await page.screenshot({path:test.info().outputPath('rating-inline.png')});
   await expect(page.locator('.crono-tomorrow-note-btn')).toHaveCount(0);
   await expect(page.locator('#cronoStageRun .crono-quick-destello-btn')).toHaveCount(1);
-  await run.getByRole('button',{name:'Profesor'}).click();
-  await expect(page.locator('#view-profesor')).toBeVisible();
+  await expect(run.getByRole('button',{name:'Profesor'})).toHaveCount(0);
   expect(await page.evaluate(()=>crono.state)).toBe('running');
-  await page.evaluate(()=>showView('cronometro'));
   await run.getByRole('tab',{name:'Pasajes',exact:true}).click();
   await page.screenshot({path:test.info().outputPath('running.png')});
   const panel=await run.locator('#cronoPassageTracker').boundingBox();

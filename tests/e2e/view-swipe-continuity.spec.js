@@ -80,28 +80,7 @@ for(const viewport of [{width:390,height:844},{width:834,height:1194},{width:119
     await expect(page.locator('.view-swipe-page,.view-swipe-header,.view-swipe-nav')).toHaveCount(0);
   });
 
-  test('the first calendar preview has the same header, content and nodes after arrival',async({page})=>{
-    await boot(page,viewport);
-    await page.evaluate(()=>showView('obras'));
-    const start=viewport.width-45;
-    await touch(page,'touchstart',start);
-    await touch(page,'touchmove',start-viewport.width*.65);
-    const selectors=['#mv2Cal','.mv2-cal-grid'];
-    const preview=await geometry(page,'#view-calendario',selectors);
-    const header=await page.locator('.view-swipe-header-neighbor').evaluate(node=>({height:node.getBoundingClientRect().height,
-      date:node.querySelector('.header-date').textContent,event:node.querySelector('.header-next-event').getBoundingClientRect().width}));
-    await page.evaluate(()=>{window.__calendarNodes=[document.querySelector('#mv2Cal .mv2-card'),document.querySelector('.mv2-cal-grid')];});
-    await touch(page,'touchend',start-viewport.width*.65);
-    await expect(page.locator('body')).toHaveAttribute('data-view','calendario');
-    await expect(page.locator('body')).not.toHaveClass(/view-swipe-settling/);
-    sameGeometry(await geometry(page,'#view-calendario',selectors),preview);
-    const arrived=await page.locator('body > .topbar').evaluate(node=>({height:node.getBoundingClientRect().height,
-      date:node.querySelector('.header-date').textContent,event:node.querySelector('.header-next-event').getBoundingClientRect().width}));
-    expect(arrived.date).toBe(header.date);
-    expect(Math.abs(arrived.height-header.height)).toBeLessThan(1);
-    expect(Math.abs(arrived.event-header.event)).toBeLessThan(1);
-    expect(await page.evaluate(()=>window.__calendarNodes.every(node=>node.isConnected))).toBe(true);
-  });
+  // Calendario ya no está en el gesto (nov 2026): se abre desde Hoy.
 });
 
 test('cancelling a scrolled page and reversing direction leave the original page intact',async({page})=>{
@@ -117,9 +96,10 @@ test('cancelling a scrolled page and reversing direction leave the original page
   await expect(page.locator('body')).not.toHaveClass(/view-swipe-settling/);
   expect(await page.evaluate(()=>window.scrollY)).toBe(scroll);
   await expect(page.locator('body')).toHaveAttribute('data-view','obras');
-  await touch(page,'touchstart',viewport.width/2);await touch(page,'touchmove',viewport.width/2+220);
-  await touch(page,'touchmove',100);await touch(page,'touchend',100);
-  await expect(page.locator('body')).toHaveAttribute('data-view','calendario');
+  // Obras es la última del gesto: empezar hacia la siguiente y volver hacia la anterior.
+  await touch(page,'touchstart',viewport.width/2);await touch(page,'touchmove',viewport.width/2-120);
+  await touch(page,'touchmove',viewport.width-40);await touch(page,'touchend',viewport.width-40);
+  await expect(page.locator('body')).toHaveAttribute('data-view','cronometro');
   await expect(page.locator('body')).not.toHaveClass(/view-swipe-settling/);
   await expect(page.locator('.view-swipe-page,.view-swipe-header,.view-swipe-nav')).toHaveCount(0);
   expect(await page.evaluate(()=>window.scrollY)).toBe(0);

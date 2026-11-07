@@ -299,16 +299,16 @@ test('records free score observations with exact passage time without assigning 
   expect(stored.observations.filter(item => item.score != null).map(item => item.score)).toEqual([58, 73]);
 });
 
-test('iPad landscape alternates tasks and passages in the same drawer', async ({ page }) => {
+test('iPad landscape: the drawer opens on passages and has no tasks tab', async ({ page }) => {
   await page.setViewportSize({ width: 1194, height: 834 });
   await prepare(page);
   await addPassage(page);
   const drawer = page.locator('#cronoIdleDrawer');
   await expect(drawer.locator('#cronoPassageTracker')).toBeVisible();
   await expect(drawer.locator('[data-panel="tareas"]')).toBeHidden();
-  await drawer.getByRole('tab', {name:'Tareas'}).click();
-  await expect(drawer.locator('#cronoPassageTracker')).toBeHidden();
-  await expect(drawer.locator('[data-panel="tareas"]')).toBeVisible();
-  await drawer.getByRole('tab', {name:'Pasajes', exact:true}).click();
+  await expect(drawer.getByRole('tab', {name:'Tareas'})).toHaveCount(0);
+  // Una petición antigua de la pestaña de tareas cae en Pasajes.
+  await page.evaluate(() => cronoSetIdleDrawerTab('tareas'));
+  await expect(drawer.locator('#cronoPassageTracker')).toBeVisible();
   await expect(drawer.locator('.crono-passage-row')).toHaveCount(1);
 });
