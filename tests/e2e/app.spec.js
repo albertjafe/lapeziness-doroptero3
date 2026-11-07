@@ -759,12 +759,13 @@ test('the stopwatch shows the habits panel and no calendar', async ({ page }) =>
   await expect(page.locator('#cronoObjectivesPanel')).toBeVisible();
 });
 
-test('Pulso has no setting or controls and the task drawer remains usable',async({page})=>{
+test('Pulso has no setting or controls and the drawer opens on passages',async({page})=>{
    await page.setViewportSize({width:834,height:1194});await prepare(page);await page.evaluate(()=>showView('cronometro'));
    await expect(page.locator('#view-pulse,.crono-moment-monitor,#cronoPulseVisibilityToggle')).toHaveCount(0);
+   // Tareas salieron de la mesa de trabajo (nov 2026): una petición antigua cae en Pasajes.
    await page.evaluate(()=>cronoSetIdleDrawerTab('tareas'));
-   await expect(page.locator('#cronoIdleTasksPanel')).toBeVisible();
-   expect(await page.locator('#cronoIdleTasksPanel .crono-task-list').count()).toBeGreaterThan(0);
+   await expect(page.locator('#cronoIdleDrawer')).toHaveAttribute('data-tab','pasajes');
+   await expect(page.locator('#cronoIdleTasksPanel')).toBeHidden();
  });
 
 test('adds manual study to today from the compact quick row', async ({ page }) => {
@@ -773,7 +774,7 @@ test('adds manual study to today from the compact quick row', async ({ page }) =
   await page.evaluate(() => showView('session'));
 
   // En el diseño móvil v2 el registro rápido está en «＋ Añadir → Estudio de hoy».
-  await page.getByRole('button', { name: /Añadir estudio, nota o tarea/ }).click();
+  await page.getByRole('button', { name: /Añadir estudio o nota/ }).click();
   await page.getByRole('button', { name: /Estudio de hoy/ }).click();
   const quick = page.locator('#sessionQuickStudy');
   await expect(quick).toBeVisible();
@@ -1080,14 +1081,9 @@ test('cancels or confirms a valid timer and saves visual solidity', async ({ pag
   await modal.getByRole('button', { name: 'Hecho' }).click();
   await expect(modal).not.toHaveClass(/visible/);
 
-  // v518: al terminar, una tarea de hoy en un aviso pequeño (sin ventana, alarma ni cálculo).
+  // Nov 2026: las tareas viven en el diario; al terminar no se ofrece ninguna.
   await expect(page.locator('#modalCronoTaskBreak')).toHaveCount(0);
-  const taskBreak = page.locator('#tdBreak');
-  await expect(taskBreak).toHaveClass(/open/);
-  await expect(taskBreak).toContainText('Responder el mensaje pendiente');
-  await taskBreak.getByRole('button', { name: 'Hecha' }).click();
-  await expect.poll(() => page.evaluate(() => db.cronoTasks.find(task => task.id === 'ct_break')?.done)).toBe(true);
-  await expect(taskBreak).not.toHaveClass(/open/);
+  await expect(page.locator('#tdBreak.open')).toHaveCount(0);
 
   const saved = await page.evaluate(() => ({
     value: db.obras[0].solHistory[0]?.val,
@@ -1501,99 +1497,7 @@ test('an old urgent task no longer blocks the timer (v518)', async ({ page }) =>
   expect(await page.evaluate(() => cronoMaybeBlockUrgentTasks('start'))).toBe(false);
 });
 
-test('opens the task box ready to type and dictates only from the microphone button', async ({ page }) => {
-  await page.setViewportSize({ width: 430, height: 932 });
-  await prepare(page);
-  await page.evaluate(() => {
-    window.__taskRecognitionInstances = [];
-    window.SpeechRecognition = class {
-      constructor() { window.__taskRecognitionInstances.push(this); }
-      start() { this.started = true; }
-      stop() { this.stopped = true; this.onend?.(); }
-      abort() { this.aborted = true; this.onend?.(); }
-    };
-    showView('cronometro');
-    cronoSetIdleDrawerTab('tareas');
-  });
-
-  const panel = page.locator('#cronoIdleTasksPanel');
-  await panel.getByRole('button', { name: 'Añadir tarea de Personal' }).click();
-  await expect(panel.locator('#cronoIdleTaskInput')).toBeFocused();
-  // Abrir no pide micrófono.
-  expect(await page.evaluate(() => window.__taskRecognitionInstances.length)).toBe(0);
-  await panel.locator('#cronoTaskVoiceBtn-idle').click();
-  await expect(panel.locator('#cronoTaskVoiceBtn-idle')).toHaveClass(/is-listening/);
-  expect(await page.evaluate(() => window.__taskRecognitionInstances[0]?.started)).toBe(true);
-
-  await page.evaluate(() => {
-    window.__taskRecognitionInstances[0].onresult({ results: [[{ transcript: 'Recordar la postura' }]] });
-  });
-  await expect(panel.locator('#cronoIdleTaskInput')).toHaveValue('Recordar la postura');
-  await panel.locator('#cronoIdleTaskInput').fill('Recordar la postura al tocar');
-  await panel.locator('.crono-task-add-btn').click();
-
-  expect(await page.evaluate(() => cronoTasks().at(-1))).toMatchObject({
-    text: 'Recordar la postura al tocar', kind: 'personal', done: false,
-  });
-  expect(await page.evaluate(() => window.__taskRecognitionInstances[0]?.stopped)).toBe(true);
-  await expect(panel.locator('.crono-task-board .crono-task-group')).toContainText('Recordar la postura al tocar');
-});
-
-test('uses the task circle to toggle and the task name to edit', async ({ page }) => {
-  await page.setViewportSize({ width: 834, height: 1194 });
-  await prepare(page);
-  await page.evaluate(() => {
-    db.cronoTasks = [{
-      id: 'ct_editable',
-      text: 'Revisar digitación',
-      kind: 'personal',
-      tomorrow: false,
-      done: false,
-      createdAt: new Date().toISOString(),
-    }];
-    showView('cronometro');
-    cronoSetIdleDrawerTab('tareas');
-    renderCronoTasks();
-  });
-
-  const panel = page.locator('#cronoIdleTasksPanel');
-  const pendingRow = panel.locator('.crono-task-row').first();
-  const toggle = pendingRow.locator('.crono-task-toggle');
-  await expect(pendingRow).toBeVisible();
-  // Trial actions re-resolve the locator if a scheduled task render replaces
-  // the row while scrolling, without toggling it during geometry checks.
-  await toggle.click({ trial: true });
-  const toggleBox = await toggle.boundingBox();
-  expect(toggleBox.width).toBeGreaterThanOrEqual(44);
-  expect(toggleBox.height).toBeGreaterThanOrEqual(44);
-
-  const taskOpen = pendingRow.locator('.crono-task-open');
-  const initialPriority = await page.evaluate(() => cronoTasks()[0].priority || 0);
-  await taskOpen.click();
-  await expect.poll(() => page.evaluate(() => cronoTasks()[0].priority)).toBe((initialPriority + 1) % 4);
-
-  await taskOpen.click({ trial: true });
-  const taskBox = await taskOpen.boundingBox();
-  await page.mouse.move(taskBox.x + taskBox.width / 2, taskBox.y + taskBox.height / 2);
-  await page.mouse.down();
-  await page.waitForTimeout(650);
-  await expect(page.locator('#modalCronoTaskEdit')).toHaveClass(/visible/);
-  await page.mouse.up();
-  await page.locator('#cronoTaskEditInput').fill('Revisar digitación final');
-  await page.locator('#modalCronoTaskEdit').getByRole('button', { name: 'Guardar' }).click();
-  await expect(page.locator('#modalCronoTaskEdit')).not.toHaveClass(/visible/);
-  await expect(panel.locator('.crono-task-row').first()).toContainText('Revisar digitación final');
-  expect(await page.evaluate(() => cronoTasks()[0].done)).toBe(false);
-
-  await panel.locator('.crono-task-row').first().locator('.crono-task-toggle').click();
-  await expect(panel.locator('.crono-task-completed summary')).toContainText('1 hecha');
-  await panel.locator('.crono-task-completed summary').click();
-  const completedRow = panel.locator('.crono-task-completed-list .crono-task-row').first();
-  await expect(completedRow).toContainText('Revisar digitación final');
-  await completedRow.locator('.crono-task-toggle').click();
-  await expect(panel.locator('.crono-task-row').first()).not.toHaveClass(/is-done/);
-  expect(await page.evaluate(() => cronoTasks()[0].done)).toBe(false);
-});
+// Las pruebas del cuadro de tareas del cronómetro se retiraron con él (nov 2026).
 
 test('retiring Pulso preserves the calendar, timer and task controls across sizes',async({page})=>{
    await prepare(page);
@@ -1601,8 +1505,8 @@ test('retiring Pulso preserves the calendar, timer and task controls across size
      await page.setViewportSize(viewport);await page.evaluate(()=>showView('cronometro'));
      await expect(page.locator('.crono-moment-monitor,.crono-fluid-panel')).toHaveCount(0);
      await expect(page.locator('#cronoStageIdle')).toBeVisible();
-     await page.evaluate(()=>cronoSetIdleDrawerTab('tareas'));
-     await expect(page.locator('#cronoIdleTasksPanel')).toBeVisible();
+     await page.evaluate(()=>cronoSetIdleDrawerTab('pasajes'));
+     await expect(page.locator('#cronoIdleDrawer')).toHaveAttribute('data-tab','pasajes');
    }
  });
 
@@ -1752,9 +1656,10 @@ test('keeps large touch iPads in the two-row tablet layout', async ({ browser })
   }
 });
 
-test('Hoy and calendar are the boundaries of touch swipe navigation',async({page})=>{
+test('Hoy and Obras are the boundaries of touch swipe navigation',async({page})=>{
    await prepare(page);
-   expect(await page.evaluate(()=>SWIPE_VIEW_ORDER)).toEqual(['session','cronometro','obras','calendario']);
+   // Calendario se abre desde Hoy (nov 2026), no con el gesto.
+   expect(await page.evaluate(()=>SWIPE_VIEW_ORDER)).toEqual(['session','cronometro','obras']);
    await page.evaluate(()=>showView('session'));
    await page.mouse.move(200,350);await page.mouse.down();await page.mouse.move(350,350,{steps:8});await page.mouse.up();
    await expect(page.locator('#view-session')).toHaveClass(/active/);

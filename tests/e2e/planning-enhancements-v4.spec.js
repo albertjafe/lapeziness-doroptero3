@@ -47,20 +47,7 @@ test('priority parser accepts masculine/feminine and strips spoken control words
   expect(parsed.map(item => item.text)).toEqual(['Revisar la coda','Arreglar digitación','Mandar correo','Escalas','Tocar lento']);
 });
 
-test('inline dictated task stores clean text and maximum priority', async ({ page }) => {
-  await page.setViewportSize({ width:430, height:932 });
-  await prepare(page);
-  await page.evaluate(() => showView('cronometro'));
-  // En el móvil v2 la mesa de trabajo es una hoja: se abre con su pestaña.
-  await page.locator('#cronoIdleDrawer [data-tab="tareas"]').click();
-  const panel = page.locator('#cronoIdleTasksPanel');
-  await panel.getByRole('button', { name:'Añadir tarea de Personal' }).click();
-  const input = panel.locator('#cronoIdleTaskInput');
-  await input.fill('Revisar coda urgentísimo');
-  await panel.locator('.crono-task-add-btn').click();
-  await expect.poll(() => page.evaluate(() => cronoTasks().at(-1)?.priority)).toBe(3);
-  expect(await page.evaluate(() => cronoTasks().at(-1)?.text)).toBe('Revisar coda');
-});
+// El cuadro de tareas del cronómetro se retiró (nov 2026): sin prueba de su dictado.
 
 test('quick rating uses the same scale names as the pill for each work', async ({ page }) => {
   const data = structuredClone(base);
@@ -219,29 +206,7 @@ test('deadline-free general projects remain visible and editable', async ({ page
   await expect(page.locator('#view-profesor')).not.toContainText('null días');
 });
 
-test('iPad dictates tasks from the microphone button (no automatic permission prompt) and writes the transcript', async ({ page }) => {
-  await page.setViewportSize({ width:834, height:1194 });
-  await prepare(page, { ios:true });
-  await expect.poll(() => page.evaluate(() => Boolean(window.PlanningV4SpeechFix?.restored))).toBe(true);
-  await page.evaluate(() => showView('cronometro'));
-  // En el móvil v2 la mesa de trabajo es una hoja: se abre con su pestaña.
-  await page.locator('#cronoIdleDrawer [data-tab="tareas"]').click();
-  const panel = page.locator('#cronoIdleTasksPanel');
-  await panel.getByRole('button', { name:'Añadir tarea de Personal' }).click();
-  const input = panel.locator('#cronoIdleTaskInput');
-  await expect(input).toBeFocused();
-  // Abrir la caja no arranca el micrófono (el navegador pedía permiso cada vez).
-  expect(await page.evaluate(() => window.__taskRecognitionInstances.some(instance => instance.started))).toBe(false);
-  await panel.locator('[id^="cronoTaskVoiceBtn"]').click();
-  await expect.poll(() => page.evaluate(() => window.__taskRecognitionInstances.some(instance => instance.started))).toBe(true);
-  await expect(page.locator('html')).not.toHaveClass(/planning-ios-keyboard-dictation/);
-  await expect(panel.locator('[id^="cronoTaskVoiceBtn"]')).toBeVisible();
-  await page.evaluate(() => {
-    const active = window.__taskRecognitionInstances.find(instance => instance.started && !instance.stopped);
-    active?.onresult?.({ results: [[{ transcript:'Recordar la postura urgentísima' }]] });
-  });
-  await expect(input).toHaveValue('Recordar la postura urgentísima');
-});
+// Ídem: el micrófono de tareas del cronómetro ya no se ve.
 
 test('slow pill drag keeps the last stable position after release', async ({ page }) => {
   await page.setViewportSize({ width:1024, height:768 });

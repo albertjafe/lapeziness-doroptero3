@@ -31,18 +31,7 @@ test('dictated task keywords set urgentissima, urgente, normal or blank priority
     PlanningEnhancementsV3.priorityFromText('Tarea normal'),
     PlanningEnhancementsV3.priorityFromText('Solo tocar lento'),
   ])).toEqual([3,2,1,0]);
-
-  await page.evaluate(() => {
-    showView('cronometro');
-    const select = document.getElementById('cronoObraSelect');
-    select.value = 'obra::obra_1';
-    cronoUpdateStartBtn();
-  });
-  const tasks = page.locator('#cronoIdleTasksPanel');
-  await tasks.getByRole('button', { name:'Añadir tarea de Personal' }).click();
-  await tasks.locator('#cronoIdleTaskInput').fill('Revisar el final urgentísima');
-  await tasks.locator('.crono-task-add-btn').click();
-  await expect.poll(() => page.evaluate(() => cronoTasks().find(item => item.text === 'Revisar el final')?.priority)).toBe(3);
+  // El cuadro de tareas del cronómetro se retiró (nov 2026); la lectura de la prioridad sigue.
 });
 
 test('project event can use a month instead of inventing an exact date', async ({ page }) => {

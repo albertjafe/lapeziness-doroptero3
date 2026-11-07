@@ -28,11 +28,10 @@ test('Professor is visible, opens, and exposes ChatGPT planning actions', async 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect.poll(() => page.evaluate(() => Boolean(window.ProfessorCore && window.renderProfessorDashboard))).toBe(true);
 
+  // Sin acceso en la barra ni en el cronómetro (nov 2026); la pantalla sigue.
   await page.evaluate(() => showView('cronometro'));
-  const shortcut = page.locator('#cronoIdleDrawer .crono-professor-link');
-  await expect(shortcut).toBeVisible();
-  await expect(shortcut).toContainText('Profesor');
-  await shortcut.click();
+  await expect(page.locator('#cronoIdleDrawer .crono-professor-link, #professorCronoOpen')).toHaveCount(0);
+  await page.evaluate(() => showView('profesor'));
 
   await expect(page.locator('#view-profesor')).toHaveClass(/active/);
   await expect(page.locator('#view-profesor')).toContainText('Superinforme');

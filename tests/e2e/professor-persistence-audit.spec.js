@@ -59,10 +59,8 @@ test('real workflow: repertoire, two movements, readiness, study, events, monthl
   await page.locator('#eventoProyectoMes').fill('2028-11');
   await page.locator(`#obraCheckList input[value="${wid}"]`).check();
   await page.locator('#modalAddEvento .modal-btn.primary').click();
-  await page.evaluate(()=>{showView('cronometro');cronoSetIdleDrawerTab('tareas');});
-  await page.locator('#cronoIdleTasksPanel button[aria-label="Añadir tarea de Personal"]').click();
-  await page.locator('#cronoIdleTaskInput').fill('Preparar la partitura urgentísima');
-  await page.locator('#cronoIdleTasksPanel .crono-task-add-btn').click();
+  // El cuadro de tareas del cronómetro se retiró (nov 2026): la tarea entra por la misma lista.
+  await page.evaluate(()=>{showView('cronometro');TasksToday.add('Preparar la partitura urgentísima');});
   await page.evaluate(({wid,mid})=>{
     document.getElementById('cronoObraSelect').value=`mov::${wid}::${mid}`;cronoUpdateStartBtn();cronoStart();
     crono.startTs=Date.now()-10*60000;cronoSaveState();
