@@ -1,4 +1,4 @@
-const CACHE = 'estudio-v528';
+const CACHE = 'estudio-v529';
 const SAFE_PROMOTION_MARKER = './__safe-promotion-v1';
 const ASSETS = [
   "./supabase-sdk-v2-116-0.js",
@@ -145,8 +145,8 @@ const ASSETS = [
   "./tasks-today.css?v=518",
   "./study-journey.js?v=476",
   "./study-journey.css?v=476",
-  "./diario.js?v=526",
-  "./diario.css?v=526",
+  "./diario.js?v=529",
+  "./diario.css?v=529",
   "./habits-page.js?v=476",
   "./obra-select-picker.js?v=468",
   "./obra-select-picker.css?v=468",

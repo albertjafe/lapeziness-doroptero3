@@ -17,6 +17,16 @@
 .dia-nav:hover:not(:disabled) { background: var(--bg3); color: var(--text); }
 .dia-nav:disabled { opacity: .3; cursor: default; }
 .dia-back { display: block; margin: -6px auto 14px; padding: 6px 14px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text2); font-size: 12px; cursor: pointer; }
+.dia-tools { display: flex; justify-content: center; align-items: center; gap: 8px; margin: -6px 0 14px; }
+.dia-tools .dia-back { margin: 0; }
+.dia-full {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border: 0; border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text2);
+  font-size: 12px; cursor: pointer;
+}
+.dia-full:hover { color: var(--text); }
+.dia-full svg { width: 15px; height: 15px; flex: none; }
 
 .dia-paper {
   position: relative;
@@ -80,6 +90,12 @@ html #view-diario textarea.dia-ink { font-family: var(--dia-hand) !important; }
    Se ve mientras no editas; tocarlo abre el campo. Misma letra y mismas
    líneas que el campo, para que nada salte al pasar de uno a otro. */
 .dia-ink-wrap.is-fmt > .dia-ink { display: none; }
+/* v529: mientras escribes solo se ve el campo (antes el formato seguía
+   debajo y el texto salía repetido). */
+.dia-ink-wrap:not(.is-fmt) > .dia-fmt { display: none; }
+/* styles.css pone la letra de la interfaz a todo (*): las líneas con formato
+   heredan la del cuaderno, como el campo. */
+.dia-fmt * { font-family: inherit; }
 .dia-fmt {
   min-height: var(--dia-line);
   padding: 0 2px;
@@ -298,6 +314,41 @@ html:not(.platform-windows) .nav.nav-bottom { grid-template-columns: repeat(5, m
 @media (min-width: 1200px) and (prefers-reduced-motion: reduce) {
   html.platform-windows .dia-turn { transition: none; }
 }
+
+/* ── Pantalla completa (v529): solo el diario, para escribir mucho ──
+   Tapa todo lo demás (menú, cabecera, barras). Página más grande y letra del
+   cuaderno algo más pequeña; fechas, horas y obras, al tamaño de siempre. */
+html.dia-focus, html.dia-focus body { overflow: hidden !important; }
+html.dia-focus #view-diario {
+  --dia-line: 30px;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483000;
+  width: auto !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom)) !important;
+  background: var(--bg);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+html.dia-focus .dia-page { max-width: 1180px; padding-bottom: 48px; }
+html.dia-focus #view-diario .dia-ink,
+html.dia-focus #view-diario .dia-fmt { font-size: 18px; }
+@media (min-width: 1200px) {
+  html.platform-windows.dia-focus #view-diario { --dia-line: 31px; }
+  html.platform-windows.dia-focus .dia-book { max-width: none; grid-template-columns: 44px minmax(0, 1fr) 44px; }
+  html.platform-windows.dia-focus .dia-turn { width: 40px; height: 40px; font-size: 22px; }
+  html.platform-windows.dia-focus .dia-book-page { padding: 12px 30px 10px; }
+  html.platform-windows.dia-focus .dia-page-head { padding-bottom: 6px; }
+  html.platform-windows.dia-focus .dia-page-head h2 { font-size: 25px; }
+  html.platform-windows.dia-focus #view-diario .dia-sheet .dia-ink,
+  html.platform-windows.dia-focus #view-diario .dia-sheet .dia-fmt { font-size: 19px; }
+}
+/* En el libro, el botón es redondo como los de pasar la hoja. */
+html.platform-windows .dia-book .dia-full { width: 40px; height: 40px; padding: 0; justify-content: center; border: 1px solid var(--border); background: transparent; }
+html.platform-windows .dia-book .dia-full:hover { background: var(--bg3); }
+html.platform-windows .dia-book .dia-full svg { width: 18px; height: 18px; }
 
 html.platform-ipad .dia-page { padding-top: 16px; }
 html.platform-ipad .dia-date h2 { font-size: 30px; }

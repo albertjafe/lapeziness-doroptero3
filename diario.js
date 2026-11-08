@@ -17,7 +17,12 @@
    «- algo» es una tarea de hoy, numerada y con casilla; «+ algo», una para
    otro día (otra casilla). Hecha = «[x]» tras el signo, en el propio texto.
    En «Etiqueta: resto», el resto va en letra pequeña (no en horas, 9:52).
-   Intro en una línea de lista sigue la lista; en una vacía, la termina. */
+   Intro en una línea de lista sigue la lista; en una vacía, la termina.
+   Pantalla completa (v529): un botón deja solo el diario, sin menú ni
+   cabecera, con la página más grande y la letra del cuaderno algo menor.
+   Si el navegador lo permite, también pasa a pantalla completa de verdad;
+   salir de ella (Esc) deja el diario a toda la ventana, y el botón «Salir»
+   o Esc sin estar escribiendo lo cierran. */
 (function (root, factory) {
   const api = factory(root);
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
@@ -278,6 +283,7 @@
   let turning = null;
   let opened = false;
   let lastBook = false;
+  let focusMode = false;
   // Mismo umbral que la capa de escritorio de Windows (desktop-windows-v390.css).
   const bookMode = () => !!(doc && doc.documentElement.classList.contains('platform-windows') && root.matchMedia && root.matchMedia('(min-width: 1200px)').matches);
   const reducedMotion = () => !!(root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -362,6 +368,15 @@
       '<div class="dia-free dia-new">' + ink({ free: '1' }, '', 'Escribe algo del día…') + '</div>';
   }
 
+  // Pantalla completa: abrir (cuatro esquinas hacia fuera) o salir (hacia dentro).
+  function focusButton(withText) {
+    const path = focusMode ? 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5' : 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5';
+    const label = focusMode ? 'Salir de pantalla completa' : 'Pantalla completa';
+    return '<button type="button" class="dia-full" data-act="focus" aria-pressed="' + focusMode + '" aria-label="' + label + '" title="' + label + '">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + path + '"/></svg>' +
+      (withText ? '<span>' + (focusMode ? 'Salir' : 'Pantalla completa') + '</span>' : '') + '</button>';
+  }
+
   function singlePage(database, today) {
     const isToday = current === today;
     return '<section class="dia-page" data-day="' + current + '">' +
@@ -370,7 +385,10 @@
         '<div class="dia-date"><small>' + (isToday ? 'Hoy' : '&nbsp;') + '</small><h2>' + esc(dateLabel(current)) + '</h2></div>' +
         '<button type="button" class="dia-nav" data-act="next" aria-label="Día siguiente"' + (current >= today ? ' disabled' : '') + '>›</button>' +
       '</header>' +
-      (isToday ? '' : '<button type="button" class="dia-back" data-act="today">Volver a hoy</button>') +
+      '<div class="dia-tools">' +
+        (isToday ? '' : '<button type="button" class="dia-back" data-act="today">Volver a hoy</button>') +
+        focusButton(true) +
+      '</div>' +
       '<div class="dia-paper">' + pageBody(database, current) + '</div>' +
     '</section>';
   }
@@ -390,6 +408,7 @@
     return '<section class="dia-book">' +
       '<div class="dia-side">' +
         '<button type="button" class="dia-turn" data-act="prev" aria-label="Páginas anteriores">‹</button>' +
+        focusButton(false) +
       '</div>' +
       '<div class="dia-cover"><div class="dia-spread">' +
         bookPage(database, spread.left, 'left', today) +
@@ -426,8 +445,26 @@
     const el = view();
     const book = el && el.querySelector('.dia-book');
     if (!book || !visible()) return;
-    const top = book.getBoundingClientRect().top + (root.scrollY || 0);
-    if (top > 0) book.style.height = Math.max(460, Math.floor(root.innerHeight - top - 16)) + 'px';
+    // A pantalla completa el diario va fijo sobre todo: no cuenta el desplazamiento de la página.
+    const top = book.getBoundingClientRect().top + (focusMode ? 0 : (root.scrollY || 0));
+    if (top > 0) book.style.height = Math.max(460, Math.floor(root.innerHeight - top - (focusMode ? 12 : 16))) + 'px';
+  }
+
+  // ---------- Pantalla completa ----------
+  function setFocus(on) {
+    on = !!on;
+    if (on === focusMode) return;
+    if (editing()) doc.activeElement.blur();
+    focusMode = on;
+    doc.documentElement.classList.toggle('dia-focus', on);
+    const el = doc.documentElement;
+    try {
+      if (on && !doc.fullscreenElement && el.requestFullscreen) el.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+      else if (!on && doc.fullscreenElement && doc.exitFullscreen) doc.exitFullscreen().catch(() => {});
+    } catch (err) {}
+    render();
+    const v = view();
+    if (v) v.scrollTop = 0;
   }
 
   // ---------- Pasar la hoja ----------
@@ -576,6 +613,7 @@
         if (act === 'prev') go(step(-1));
         else if (act === 'next') go(step(1));
         else if (act === 'today') go(dayKey(new Date()));
+        else if (act === 'focus') setFocus(!focusMode);
         return;
       }
       if (e.target.closest('.dia-ink')) return;
@@ -635,11 +673,13 @@
     doc.addEventListener('keydown', e => {
       if (!visible() || editing() || e.altKey || e.metaKey || e.ctrlKey) return;
       if (/INPUT|TEXTAREA|SELECT/.test((e.target && e.target.tagName) || '')) return;
-      if (e.key === 'ArrowLeft') { e.preventDefault(); go(step(-1)); }
+      if (e.key === 'Escape' && focusMode) { e.preventDefault(); setFocus(false); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); go(step(-1)); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); go(step(1)); }
     });
     root.addEventListener('app:viewchange', e => {
-      if (!e.detail || e.detail.name !== 'diario') return;
+      if (!e.detail) return;
+      if (e.detail.name !== 'diario') { if (focusMode) setFocus(false); return; }
       render();
       if (lastBook) playOpening();
     });
@@ -657,7 +697,7 @@
     });
   }
 
-  const api = { day, write, shiftDay, spreadOf, duration, MERGE_GAP_MIN, parseLine, splitAside, formatHtml, toggleLine, continueList, open: key => { if (key) current = key; if (typeof root.showView === 'function') root.showView('diario'); }, render };
+  const api = { day, write, shiftDay, spreadOf, duration, MERGE_GAP_MIN, parseLine, splitAside, formatHtml, toggleLine, continueList, open: key => { if (key) current = key; if (typeof root.showView === 'function') root.showView('diario'); }, render, setFocus, isFocus: () => focusMode };
   if (doc) {
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', init);
     else init();

@@ -77,6 +77,8 @@ test.describe('una página por día (móvil, iPad, ventana estrecha)', () => {
     await view.locator('.dia-item').first().locator('.dia-fmt').click();
     const ink = view.locator('.dia-item').first().locator('.dia-ink');
     await expect(ink).toBeFocused();
+    // Mientras escribes solo se ve el campo: el formato no se queda debajo repetido (v529).
+    await expect(view.locator('.dia-item').first().locator('.dia-fmt')).toBeHidden();
     await ink.fill('');
     await ink.blur();
     await expect.poll(async () => (await stored(page)).map(e => e.text)).toEqual(['Día tranquilo']);
@@ -110,6 +112,10 @@ test.describe('una página por día (móvil, iPad, ventana estrecha)', () => {
     await expect(items.nth(2).locator('.dia-num')).toHaveCount(0);
     // Las horas no se parten.
     await expect(items.nth(2).locator('.dia-aside')).toHaveCount(0);
+    // Con formato, la misma letra del cuaderno que al escribir (styles.css pone otra a todo).
+    const fonts = await entry.evaluate(w => [w.querySelector('.dia-ink'), w.querySelector('.dia-txt'), w.querySelector('.dia-aside')].map(e => getComputedStyle(e).fontFamily));
+    expect(new Set(fonts).size).toBe(1);
+    expect(fonts[0]).toContain('Kalam');
     // Marcar una casilla la guarda en el texto, sin abrir el campo.
     await items.nth(0).locator('.dia-box').click();
     await expect(items.nth(0)).toHaveClass(/is-done/);
@@ -128,6 +134,42 @@ test.describe('una página por día (móvil, iPad, ventana estrecha)', () => {
     await expect(view.locator('[data-act="today"]')).toBeVisible();
     await view.locator('[data-act="today"]').click();
     await expect(view.locator('.dia-item')).toHaveCount(2);
+  });
+
+  test('Diario: pantalla completa tapa todo lo demás, con la página más ancha y la letra algo menor', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => showView('diario'));
+    const view = page.locator('#view-diario');
+    const before = await view.locator('.dia-paper').evaluate(e => ({ w: e.getBoundingClientRect().width, font: getComputedStyle(e.querySelector('.dia-ink')).fontSize }));
+    await view.locator('[data-act="focus"]').click();
+    await expect(page.locator('html')).toHaveClass(/dia-focus/);
+    await expect(view.locator('[data-act="focus"]')).toHaveText('Salir');
+    const after = await page.evaluate(() => {
+      const v = document.getElementById('view-diario').getBoundingClientRect();
+      const paper = document.querySelector('#view-diario .dia-paper');
+      const hit = document.elementFromPoint(5, 5);
+      return { v: [v.left, v.top, v.width, v.height], w: paper.getBoundingClientRect().width,
+        font: getComputedStyle(paper.querySelector('.dia-ink')).fontSize, covered: !!(hit && hit.closest('#view-diario')),
+        meta: getComputedStyle(paper.querySelector('.dia-time')).fontSize };
+    });
+    expect(after.v).toEqual([0, 0, 1000, 800]);
+    expect(after.covered).toBe(true);
+    expect(after.w).toBeGreaterThan(before.w);
+    expect(parseFloat(after.font)).toBeLessThan(parseFloat(before.font));
+    expect(after.meta).toBe('12px');
+    // Se escribe igual que siempre.
+    await view.locator('.dia-new .dia-ink').click();
+    await page.keyboard.type('Escrito a pantalla completa');
+    await expect.poll(async () => (await stored(page)).map(e => e.text)).toContain('Escrito a pantalla completa');
+    // Esc termina de escribir; otro Esc sale.
+    await page.keyboard.press('Escape');
+    await expect(page.locator('html')).toHaveClass(/dia-focus/);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('html')).not.toHaveClass(/dia-focus/);
+    // Cambiar de pestaña también sale.
+    await view.locator('[data-act="focus"]').click();
+    await page.evaluate(() => showView('session'));
+    await expect(page.locator('html')).not.toHaveClass(/dia-focus/);
   });
 });
 
@@ -221,6 +263,28 @@ test.describe('libro de escritorio', () => {
     await page.locator('#view-diario [data-act="prev"]').click();
     await expect(pages(page).nth(1)).toHaveAttribute('data-day', dayKey(-2));
     await expect(page.locator('.dia-turning')).toHaveCount(0);
+  });
+
+  test('a pantalla completa el libro llena la ventana y el botón lo devuelve', async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => showView('diario'));
+    await settled(page);
+    const before = await page.locator('.dia-cover').evaluate(e => e.getBoundingClientRect().width);
+    await page.locator('#view-diario [data-act="focus"]').click();
+    await expect(page.locator('html')).toHaveClass(/dia-focus/);
+    const r = await page.evaluate(() => {
+      const c = document.querySelector('.dia-cover').getBoundingClientRect();
+      const hit = document.elementFromPoint(innerWidth / 2, 3);
+      return { w: c.width, bottom: c.bottom, inner: innerHeight, covered: !!(hit && hit.closest('#view-diario')) };
+    });
+    expect(r.w).toBeGreaterThan(before + 150);
+    expect(r.bottom).toBeLessThanOrEqual(r.inner);
+    expect(r.bottom).toBeGreaterThan(r.inner - 40);
+    expect(r.covered).toBe(true);
+    await expect(pages(page)).toHaveCount(2);
+    await page.locator('#view-diario [data-act="focus"]').click();
+    await expect(page.locator('html')).not.toHaveClass(/dia-focus/);
+    await expect.poll(() => page.locator('.dia-cover').evaluate(e => Math.round(e.getBoundingClientRect().width))).toBe(Math.round(before));
   });
 
   test('al estrechar la ventana pasa a una página por día', async ({ page }) => {
