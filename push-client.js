@@ -151,7 +151,9 @@
     if (!run || !run.runId || !['running','paused'].includes(run.state)) return null;
     const currentTime = Number(now) || Date.now();
     const elapsed = elapsedMs(run, currentTime);
-    const effectiveTime = run.state === 'paused' ? Number(run.pauseStartTs)+5*60000 : currentTime;
+    const pauseLimit = Number(run.pauseLimitMs) >= 60000 && Number(run.pauseLimitMs) <= 30*60000
+      ? Number(run.pauseLimitMs) : 5*60000;
+    const effectiveTime = run.state === 'paused' ? Number(run.pauseStartTs)+pauseLimit : currentTime;
     const target = Number(run.targetDurationMs) > 0
       ? Number(run.targetDurationMs)
       : (Number(run.targetMinutes) > 0 ? Number(run.targetMinutes) * 60000 : null);

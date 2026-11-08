@@ -49,6 +49,15 @@ describe('StudyPush timer snapshots', () => {
     expect(Date.parse(snapshot.ends_at)-now).toBe(10*60000);
     expect(now+3*60000-Date.parse(snapshot.started_at)).toBe(18*60000);
   });
+  it('schedules the automatic resume with the chosen break length',()=>{
+    const now=Date.parse('2026-09-16T12:00:00Z');
+    const snapshot=globalThis.StudyPush.runSnapshot({state:'paused',runId:'long-break',
+      startTs:now-100*60000,pauseStartTs:now-2*60000,pauseLimitMs:15*60000,pausedMs:0,targetDurationMs:null},now);
+    expect(Date.parse(snapshot.pause_until)-now).toBe(13*60000);
+    const odd=globalThis.StudyPush.runSnapshot({state:'paused',runId:'odd-break',
+      startTs:now-20*60000,pauseStartTs:now-2*60000,pauseLimitMs:999*60000,pausedMs:0,targetDurationMs:25*60000},now);
+    expect(Date.parse(odd.pause_until)-now).toBe(3*60000);
+  });
   it('does not move the deadline when a paused registration arrives after automatic resume',()=>{
     const now=Date.parse('2026-09-16T12:00:00Z');
     const snapshot=globalThis.StudyPush.runSnapshot({state:'paused',runId:'late-paused',

@@ -131,13 +131,13 @@ test('shows today study time prominently and includes the running stopwatch', as
       source: 'app',
     });
     crono.state = 'running';
-    crono.startTs = Date.now() - 5 * 60000;
+    crono.startTs = Date.now() - 15 * 60000;
     crono.pausedMs = 0;
     crono.targetMinutes = null;
     crono.targetDurationMs = null;
     renderSessionResumen();
   });
-  await expect(summary).toContainText('47 min');
+  await expect(summary).toContainText('57 min');
   await expect(summary).toContainText('en directo');
 });
 
@@ -894,6 +894,87 @@ test('shows pause as an accessible rest state', async ({ page }) => {
   await expect(page.locator('#cronoStageRun')).toHaveAttribute('inert', '');
 });
 
+test('suggests a break length from the study since the last break and lets it change', async ({ page }) => {
+  await prepare(page);
+  await page.evaluate(() => showView('cronometro'));
+  const start = async minutes => page.evaluate(m => {
+    cronoReset();
+    cronoRender();
+    crono.state = 'running';
+    crono.mode = 'stopwatch';
+    crono.isRest = false;
+    crono.obraId = 'obra_1';
+    crono.displayName = 'Bach · Preludio';
+    crono.startTs = Date.now() - m * 60 * 1000;
+    crono.pausedMs = 0;
+    crono.runId = 'e2e-break-' + m;
+    document.body.classList.add('crono-focus');
+    cronoPause();
+  }, minutes);
+  const overlay = page.locator('#cronoPauseOverlay');
+  const active = overlay.locator('.crono-pause-length.is-active');
+
+  await start(20);
+  await expect(active).toHaveText('5 min');
+  await expect(overlay.locator('#cronoPauseOverlayTime')).toHaveText(/^0[45]:\d\d$/);
+  await expect(overlay.locator('#cronoPauseHint')).toContainText('sin descansar');
+
+  await start(60);
+  await expect(active).toHaveText('10 min');
+  await start(95);
+  await expect(active).toHaveText('15 min');
+
+  await overlay.getByRole('button', { name: '5 min', exact: true }).click();
+  await expect(active).toHaveText('5 min');
+  await expect(overlay.locator('#cronoPauseOverlayTime')).toHaveText(/^0[45]:\d\d$/);
+  expect(await page.evaluate(() => crono.pauseLimitMs)).toBe(5 * 60 * 1000);
+  // The chosen length is part of the saved timer, so it survives a reload.
+  const saved = await page.evaluate(() => new Promise(resolve => {
+    const store = window.CronoStateStore;
+    if (!store) { cronoSetBreakMinutes(10); resolve(JSON.parse(localStorage.getItem('pianoCrono_v2')).pauseLimitMs); return; }
+    const original = store.save;
+    store.save = snapshot => { store.save = original; resolve(snapshot.pauseLimitMs); return original.call(store, snapshot); };
+    cronoSetBreakMinutes(10);
+  }));
+  expect(saved).toBe(10 * 60 * 1000);
+
+  // A real break (2 min or more) resets the count; a short one does not.
+  const after = await page.evaluate(() => {
+    crono.pauseStartTs = Date.now() - 30 * 1000;
+    cronoResume();
+    const shortBreak = crono.breakFromMs;
+    cronoPause();
+    crono.pauseStartTs = Date.now() - 3 * 60 * 1000;
+    cronoResume();
+    return { shortBreak, longBreak: Math.round(crono.breakFromMs / 60000) };
+  });
+  expect(after.shortBreak).toBe(0);
+  expect(after.longBreak).toBe(92); // 95 min minus the 3 min the pause is backdated
+  await page.evaluate(() => cronoReset());
+});
+
+test('a running session adds nothing to today until it reaches ten minutes', async ({ page }) => {
+  await prepare(page);
+  const totals = await page.evaluate(() => {
+    const base = getMinutosConcentradoHoy();
+    const at = minutes => {
+      crono.state = 'running';
+      crono.isRest = false;
+      crono.obraId = 'obra_1';
+      crono.startTs = Date.now() - minutes * 60 * 1000 - 1000;
+      crono.pausedMs = 0;
+      crono.pauseStartTs = 0;
+      return _doneMinHoy() - base;
+    };
+    const result = { nine: at(9), ten: at(10), twentyFive: at(25) };
+    crono.isRest = true;
+    result.rest = _doneMinHoy() - base;
+    cronoReset();
+    return result;
+  });
+  expect(totals).toEqual({ nine: 0, ten: 10, twentyFive: 25, rest: 0 });
+});
+
 test('shows a derived readiness estimate without counting down during a timer run', async ({ page }) => {
   let releaseRecovery;
   const recoveryLoading = new Promise(resolve => { releaseRecovery = resolve; });
@@ -1118,16 +1199,16 @@ test('shows work and movement totals together while a movement is running', asyn
     crono.movId = 'movement-a';
     crono.displayName = 'I. Allegro';
     crono.subName = 'Bach · Preludio';
-    crono.startTs = Date.now() - 5 * 60000;
+    crono.startTs = Date.now() - 15 * 60000;
     crono.pausedMs = 0;
     crono.color = null;
     showView('cronometro');
     cronoRender();
   });
-  await expect(page.locator('#cronoRunWorkTotal')).toHaveText('1h 5min');
-  await expect(page.locator('#cronoRunMovementTotal')).toHaveText('47 min');
+  await expect(page.locator('#cronoRunWorkTotal')).toHaveText('1h 15min');
+  await expect(page.locator('#cronoRunMovementTotal')).toHaveText('57 min');
   await expect(page.locator('.crono-run-work-total-separator')).toBeHidden();
-  await expect(page.locator('#cronoRunMovementTotal')).toHaveAttribute('aria-label', 'Tiempo total de este movimiento: 47 min');
+  await expect(page.locator('#cronoRunMovementTotal')).toHaveAttribute('aria-label', 'Tiempo total de este movimiento: 57 min');
 });
 
 test('discards only the active timer and preserves earlier study from today', async ({ page }) => {
@@ -1525,9 +1606,9 @@ test('keeps running clock actions inside the timer card across pinch zoom levels
       select.value = 'obra::obra_1';
       cronoUpdateStartBtn();
       cronoStart();
-      crono.startTs = Date.now() - 6 * 60000;
+      crono.startTs = Date.now() - 16 * 60000;
       cronoRender();
-      const expectedWorkTotal = '2h 41min';
+      const expectedWorkTotal = '2h 51min';
       const phraseCard = document.getElementById('cronoRunDestello');
       phraseCard.className = 'crono-run-destello size-xlong';
       phraseCard.innerHTML = '<span class="crono-run-destello-text">Una repetición consciente conserva el sonido, la dirección y la sensación exacta que quieres encontrar mañana sin añadir tensión innecesaria.</span>';
@@ -1584,7 +1665,7 @@ test('keeps running clock actions inside the timer card across pinch zoom levels
       expect(zoomLayout.phraseClamp).toBe('4');
     }
     expect(new Set(layout.layouts.map(item => item.phraseFontSize)).size).toBe(1);
-    expect(layout.today).toBe('6 min');
+    expect(layout.today).toBe('16 min');
     expect(layout.workTotal).toBe(layout.expectedWorkTotal);
     expect(layout.workTotalFits).toBe(true);
     expect(layout.milestoneCount).toBe(0);

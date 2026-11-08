@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-11-08-diario-pantalla-completa-v529';
+const APP_VERSION = '2026-11-08-descanso-a-medida-v530';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -13566,11 +13566,7 @@ function _fmtHourMin(min) {
 // Minutos netos REALES de hoy en vivo: lo ya consolidado + la sesión en marcha.
 function _doneMinHoy() {
   let m = (typeof getMinutosConcentradoHoy === 'function') ? getMinutosConcentradoHoy() : 0;
-  if (typeof crono !== 'undefined' && crono
-      && (crono.state === 'running' || crono.state === 'paused')
-      && typeof cronoEffectiveElapsedMs === 'function') {
-    m += Math.floor(cronoEffectiveElapsedMs() / 60000);
-  }
+  if (typeof cronoCountedLiveMinutes === 'function') m += cronoCountedLiveMinutes();
   return m;
 }
 
@@ -21038,7 +21034,33 @@ if (window.ResizeObserver) {
 
 const CRONO_STORAGE_KEY = 'pianoCrono_v2';
 const CRONO_MIN_MIN = 10;                  // mínimo de minutos para que cuente
-const CRONO_PAUSE_LIMIT_MS = 5 * 60 * 1000; // 5 minutos máx de pausa
+const CRONO_PAUSE_LIMIT_MS = 5 * 60 * 1000; // descanso por defecto (y el de las sesiones antiguas)
+// Descanso a medida: 5 min tras un bloque corto, 10 tras 50 min seguidos y 15
+// tras 90 min. Se puede cambiar dentro de la pausa. Una pausa de menos de 2 min
+// (una llamada, beber agua) no reinicia la cuenta «sin descansar».
+const CRONO_BREAK_OPTIONS_MIN = [5, 10, 15];
+const CRONO_BREAK_RESET_MS = 2 * 60 * 1000;
+function cronoSuggestedBreakMinutes(studyMs) {
+  const min = Math.floor(Math.max(0, Number(studyMs) || 0) / 60000);
+  if (min >= 90) return 15;
+  if (min >= 50) return 10;
+  return 5;
+}
+function cronoPauseLimitMs() {
+  const v = Number(crono.pauseLimitMs);
+  return v >= 60000 && v <= 30 * 60000 ? v : CRONO_PAUSE_LIMIT_MS;
+}
+function cronoStudySinceBreakMs() {
+  return Math.max(0, cronoEffectiveElapsedMs() - (Number(crono.breakFromMs) || 0));
+}
+// Minutos de la sesión en curso que ya cuentan: nada hasta los 10 min, porque
+// una sesión más corta no se guarda (sería fallida). Los descansos nunca cuentan.
+function cronoCountedLiveMinutes() {
+  if (typeof crono === 'undefined' || !crono || crono.isRest) return 0;
+  if (crono.state !== 'running' && crono.state !== 'paused') return 0;
+  const min = Math.floor(cronoEffectiveElapsedMs() / 60000);
+  return min >= CRONO_MIN_MIN ? min : 0;
+}
 const CRONO_FREE_LIMIT_MS = 120 * 60 * 1000; // corte duro del cronómetro libre
 
 // ── PALETA DE COLORES PERSONALIZABLES PARA OBRAS ────────────────────────────
@@ -21664,6 +21686,8 @@ const crono = {
   startTs: 0,            // ms al pulsar Comenzar
   pausedMs: 0,           // ms acumulados en pausa
   pauseStartTs: 0,       // ms del inicio de la pausa actual
+  pauseLimitMs: 0,       // duración del descanso actual (0 = 5 min)
+  breakFromMs: 0,        // tiempo de estudio al acabar el último descanso
   tickInterval: null,
   pauseInterval: null,
   lastCountdownSecond: null,
@@ -21908,6 +21932,8 @@ function cronoSaveState() {
       startTs: crono.startTs,
       pausedMs: crono.pausedMs,
       pauseStartTs: crono.pauseStartTs,
+      pauseLimitMs: Number(crono.pauseLimitMs) || 0,
+      breakFromMs: Number(crono.breakFromMs) || 0,
       notificationFiveMinuteSent: !!crono.notificationFiveMinuteSent,
       notificationTimerMinutesSent: Array.isArray(crono.notificationTimerMinutesSent)
         ? crono.notificationTimerMinutesSent.slice()
@@ -21984,6 +22010,8 @@ function cronoLoadState(snapshot) {
     crono.startTs = s.startTs;
     crono.pausedMs = s.pausedMs || 0;
     crono.pauseStartTs = s.pauseStartTs || 0;
+    crono.pauseLimitMs = Number(s.pauseLimitMs) || 0;
+    crono.breakFromMs = Number(s.breakFromMs) || 0;
     crono.notificationFiveMinuteSent = !!s.notificationFiveMinuteSent;
     crono.notificationTimerMinutesSent = Array.isArray(s.notificationTimerMinutesSent)
       ? s.notificationTimerMinutesSent
@@ -26614,7 +26642,7 @@ function cronoHandleLifecycleResume() {
 // ms restantes de pausa antes de auto-cierre
 function cronoPauseRemainingMs() {
   if (crono.state !== 'paused' || !crono.pauseStartTs) return 0;
-  return Math.max(0, CRONO_PAUSE_LIMIT_MS - (Date.now() - crono.pauseStartTs));
+  return Math.max(0, cronoPauseLimitMs() - (Date.now() - crono.pauseStartTs));
 }
 
 // ── Modo concentración (oculta topbar, muestra X) ───────────────────────────
@@ -26666,9 +26694,7 @@ function cronoUpdateRunWorkTotal() {
   const savedMovement = crono.movId && typeof getMinutosMovimiento === 'function'
     ? getMinutosMovimiento(crono.obraId, crono.movId)
     : 0;
-  const live = crono.state === 'running' || crono.state === 'paused'
-    ? Math.floor(cronoEffectiveElapsedMs() / 60000)
-    : 0;
+  const live = cronoCountedLiveMinutes();
   el.textContent = fmtMinutos(Math.max(0, Math.round(saved || 0) + live));
   if (movementEl) {
     const hasMovement = !!crono.movId;
@@ -27989,6 +28015,7 @@ function cronoStopTick() {
 
 function cronoStartPauseCountdown() {
   if (crono.pauseInterval) clearInterval(crono.pauseInterval);
+  cronoRenderBreakLengths();
   const update = () => {
     const remaining = cronoPauseRemainingMs();
     // Actualizar tanto el countdown legacy (si existe) como el del overlay nuevo
@@ -28000,7 +28027,8 @@ function cronoStartPauseCountdown() {
     if (ovSession) ovSession.textContent = 'Sesión pausada en ' + cronoFmt(cronoEffectiveElapsedMs());
     const ring = document.getElementById('cronoPauseRingArc');
     if (ring) {
-      const pct = CRONO_PAUSE_LIMIT_MS > 0 ? remaining / CRONO_PAUSE_LIMIT_MS : 0;
+      const limit = cronoPauseLimitMs();
+      const pct = limit > 0 ? remaining / limit : 0;
       ring.setAttribute('stroke-dashoffset', String(326.73 * (1 - pct)));
     }
     const note = document.getElementById('cronoPauseOverlayNote');
@@ -28011,7 +28039,9 @@ function cronoStartPauseCountdown() {
       // El tiempo de pausa se acabó → REANUDAR automáticamente la sesión.
       // (Antes se terminaba la sesión; ahora se renuda como en Forest.)
       cronoResume();
-      showToast('Pausa terminada · continúa la sesión');
+      showToast('Descanso terminado · continúa la sesión');
+      if (typeof SFX !== 'undefined' && SFX.startSession) SFX.startSession();
+      try { Haptics.heavy(); } catch(e) {}
     }
   };
   update();
@@ -28081,6 +28111,8 @@ function cronoStart() {
   crono.startTs = Date.now();
   crono.pausedMs = 0;
   crono.pauseStartTs = 0;
+  crono.pauseLimitMs = 0;
+  crono.breakFromMs = 0;
   crono.notificationFiveMinuteSent = false;
   crono.notificationTimerMinutesSent = [];
   crono.notificationLastMilestoneMinutes = 0;
@@ -28140,6 +28172,8 @@ function cronoStartRest() {
   crono.startTs = Date.now();
   crono.pausedMs = 0;
   crono.pauseStartTs = 0;
+  crono.pauseLimitMs = 0;
+  crono.breakFromMs = 0;
   crono.notificationFiveMinuteSent = false;
   crono.notificationTimerMinutesSent = [];
   crono.notificationLastMilestoneMinutes = 0;
@@ -28217,6 +28251,7 @@ function cronoPause() {
   if (crono.state !== 'running') return;
   cronoStopTick();
   cronoReleaseWakeLock();
+  crono.pauseLimitMs = cronoSuggestedBreakMinutes(cronoStudySinceBreakMs()) * 60000;
   crono.state = 'paused';
   crono.pauseStartTs = Date.now();
   cronoSaveState();
@@ -28228,15 +28263,48 @@ function cronoPause() {
 function cronoResume() {
   if (crono.state !== 'paused') return;
   cronoStopPauseCountdown();
-  const pauseDur = Math.min(CRONO_PAUSE_LIMIT_MS, Math.max(0, Date.now() - crono.pauseStartTs));
+  const pauseDur = Math.min(cronoPauseLimitMs(), Math.max(0, Date.now() - crono.pauseStartTs));
   crono.pausedMs += pauseDur;
   crono.pauseStartTs = 0;
+  crono.pauseLimitMs = 0;
   crono.state = 'running';
+  if (pauseDur >= CRONO_BREAK_RESET_MS) crono.breakFromMs = cronoEffectiveElapsedMs();
   cronoSaveState();
   if (typeof StudyPush !== 'undefined') StudyPush.syncRun({ reason: 'resume' });
   cronoRender();
   cronoStartTick();
   cronoAcquireWakeLock();
+}
+
+function cronoSetBreakMinutes(minutes) {
+  if (crono.state !== 'paused') return;
+  const min = Math.round(Number(minutes) || 0);
+  if (!CRONO_BREAK_OPTIONS_MIN.includes(min)) return;
+  crono.pauseLimitMs = min * 60000;
+  cronoSaveState();
+  if (typeof StudyPush !== 'undefined') StudyPush.pauseRun(crono.runId);
+  cronoStartPauseCountdown();
+  try { Haptics.light(); } catch(e) {}
+}
+
+function cronoRenderBreakLengths() {
+  const host = document.getElementById('cronoPauseLengths');
+  const hint = document.getElementById('cronoPauseHint');
+  if (!host) return;
+  const current = Math.round(cronoPauseLimitMs() / 60000);
+  const elapsed = Math.max(0, Date.now() - (crono.pauseStartTs || Date.now()));
+  host.innerHTML = CRONO_BREAK_OPTIONS_MIN.map(min => {
+    const done = min * 60000 <= elapsed;
+    return '<button type="button" class="crono-pause-length' + (min === current ? ' is-active' : '') + '" ' +
+      'data-break-min="' + min + '" aria-pressed="' + (min === current) + '"' + (done ? ' disabled' : '') +
+      ' onclick="cronoSetBreakMinutes(' + min + ')">' + min + ' min</button>';
+  }).join('');
+  if (hint) {
+    const studied = Math.floor(cronoStudySinceBreakMs() / 60000);
+    hint.textContent = studied >= 1
+      ? 'Llevas ' + fmtMinutosLargo(studied) + ' sin descansar'
+      : 'Elige cuánto quieres descansar';
+  }
 }
 
 function cronoStop() {
@@ -28628,6 +28696,7 @@ function cronoReset(pushStatus) {
   }
   cronoReleaseWakeLock();
   crono.state = 'idle';
+  if (typeof cronoRender === 'function') cronoRender._pauseFocusSet = false;
   crono.isRest = false;
   crono.targetMinutes = null;
   crono.targetDurationMs = null;
@@ -28648,6 +28717,8 @@ function cronoReset(pushStatus) {
   crono.startTs = 0;
   crono.pausedMs = 0;
   crono.pauseStartTs = 0;
+  crono.pauseLimitMs = 0;
+  crono.breakFromMs = 0;
   crono.notificationFiveMinuteSent = false;
   crono.notificationTimerMinutesSent = [];
   crono.notificationLastMilestoneMinutes = 0;
@@ -29411,9 +29482,12 @@ async function cronoRestoreDurableState() {
       // La pausa expiró estando la app cerrada. En lugar de terminar (como
       // antes), reanudamos la sesión: respetamos los ms acumulados de pausa
       // hasta el límite (5 min) y volvemos al estado running.
-      crono.pausedMs += CRONO_PAUSE_LIMIT_MS;
+      const pauseLimit = cronoPauseLimitMs();
+      crono.pausedMs += pauseLimit;
       crono.pauseStartTs = 0;
+      crono.pauseLimitMs = 0;
       crono.state = 'running';
+      if (pauseLimit >= CRONO_BREAK_RESET_MS) crono.breakFromMs = cronoEffectiveElapsedMs();
       cronoSaveState();
       cronoStartTick();
     } else if (crono.state === 'running') {

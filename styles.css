@@ -22428,3 +22428,39 @@ body.crono-paused .crono-readiness-inline { visibility: hidden; }
     font-size: 9.5px; line-height: 1.1; letter-spacing: 0; font-weight: 500;
   }
 }
+
+/* Descanso a medida (5 / 10 / 15 min) dentro de la pausa. */
+.crono-pause-hint {
+  margin: -10px auto 8px;
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+}
+.crono-pause-hint:empty { display: none; }
+.crono-pause-lengths {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 auto 16px;
+}
+.crono-pause-lengths:empty { display: none; }
+.crono-pause-length {
+  min-width: 64px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border2, var(--border));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text2);
+  font: 700 13px/1 var(--font-mono, 'JetBrains Mono', monospace);
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s, transform .12s;
+}
+.crono-pause-length:hover:not(:disabled) { border-color: var(--crono-color, var(--accent)); color: var(--text); }
+.crono-pause-length:active:not(:disabled) { transform: scale(.95); }
+.crono-pause-length.is-active {
+  border-color: var(--crono-color, var(--accent));
+  background: var(--crono-color, var(--accent));
+  color: #fff;
+}
+.crono-pause-length:disabled { opacity: .35; cursor: default; }
