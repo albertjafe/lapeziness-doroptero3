@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-10-18 · caché runtime v513
+**Estado:** CANÓNICO · actualizado 2026-11-09 · caché runtime v531
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -84,7 +84,7 @@ Capas actuales:
 - `task-sync-bootstrap.js`: captura temprana del estado de tareas antes de reconciliar.
 - `task-sync-resilience.js`: merge **por tarea**, timestamps, tombstones y rescates locales; evita que una lista vieja resucite tareas o borre tareas nuevas.
 - `persistence-guard.js`: archivo legado **no cargado**. Las rutas activas usan `local-save-resilience.js` y `update-safety.js`; no reintroducir otro escritor.
-- `update-safety.js`: exige una copia durable completa (localStorage o IndexedDB), guarda memoria solo cuando difiere semánticamente del disco e intenta sincronizar. Una nube pendiente no bloquea la corrección: conserva los metadatos pendientes. Verifica de nuevo copia y contenido tras los `await`; no promueve con cronómetro o píldora Hecho activos. Así una comprobación limpia no incrementa la revisión ni fuerza otra subida completa. `checkForUpdate()` solo consulta el registro del SW y espera a la instalación; no guarda, sincroniza ni activa. Una descarga fallida/agotada se informa como error, no como ausencia de actualización.
+- `update-safety.js`: exige una copia durable completa (localStorage o IndexedDB), guarda memoria solo cuando difiere semánticamente del disco e intenta sincronizar. Una nube pendiente no bloquea la corrección: conserva los metadatos pendientes. Verifica de nuevo copia y contenido tras los `await`; no promueve con cronómetro o píldora Hecho activos. Así una comprobación limpia no incrementa la revisión ni fuerza otra subida completa. La copia adicional previa a actualizar tiene plazos de 1500 ms de apertura/escritura, aborta una transacción expirada y cierra conexiones tardías; solo es opcional después de verificar la copia principal. Un rescate IndexedDB ya actual evita otra escritura completa. La memoria se vuelve a comparar tras la lectura asíncrona durable. El aviso se adapta al viewport visual y se mantiene sobre navegación/teclado. `checkForUpdate()` solo consulta el registro del SW y espera a la instalación; no guarda, sincroniza ni activa. Una descarga fallida/agotada se informa como error, no como ausencia de actualización.
 
 `app.js`: `_prepareLocalDocument` reconcilia memoria/disco antes de guardar; `_mergeStudyHistory` combina el merge de dominio con `DocumentSyncCore`. **Un único escritor de `user_data`: `syncToCloud`** lee la fila y hace update condicional por `updated_at` (CAS), con relectura y merge si hay conflicto. Los addons de tareas/cronómetro llaman al guardado común; no hacen upserts completos independientes. La descarga, cada intento CAS y la aceptación de su respuesta usan `mergeRemote(servidor, cliente)`, igual que `document_merge(OLD, NEW)` en SQL. Los cambios locales explícitos durante la petición siguen pendientes.
 
@@ -236,7 +236,12 @@ Desde el 02-10-2026 (`20261002180000_index_study_reference_checks.sql`), `protec
 - Sync seguro: `task-sync-bootstrap.js` + `task-sync-resilience.js`.
 - Existe copia local de rescate interna; la antigua UI manual de “Historial de tareas” fue retirada y **no debe reaparecer** salvo petición explícita.
 
-### Diario (v523)
+### Diario (v531)
+
+Detalle de cambios, pruebas y límites: [`docs/DIARIO_ACTUALIZACION_V531_2026-11-09.md`](../docs/DIARIO_ACTUALIZACION_V531_2026-11-09.md).
+
+- `diario-sections.js`: catálogo puro por `obraId`, combina pasajes existentes (`passageTracker.passages`, sin reescribirlos) y nombres nuevos en `db.journalSections`. `@` al principio de una línea y el botón «Sección» abren sugerencias solo dentro del bloque de esa obra. Seleccionar inserta un encabezado `[[Nombre]]` legible; la entrada conserva `obraId` y `sectionRefs` con IDs estables. Los campos nuevos usan el guardado/fusión habitual, sin otro escritor. Se conserva el texto histórico si se renombra/elimina un pasaje. No se crean relaciones por coincidencias de nombres entre obras.
+- Cabecera compacta: hora inicial, título breve e importe temporal; el título completo, movimientos e intervalo permanecen en «Detalle del estudio» y en `about`. Notas/listas, títulos y secciones tienen jerarquía y contraste propios también en el libro y pantalla completa. Los bloques canónicos y su referencia no cambian.
 
 - `diario.js/css`, vista `#view-diario`, pestaña propia en la barra (6 en el móvil, 7 en el iPad; `diario.css` ajusta la rejilla). Una página por día: los bloques salen de `DailyStudyMinutes.studyBlocks` (mismos tramos canónicos), tramos seguidos de la misma obra con pausas ≤ 20 min se juntan y los pases van aparte. Las notas del cronómetro (`plant.notes`) se ven sin editar.
 - Lo escrito son entradas de **`db.dailyJournalEntries`** (el diario de siempre): con `ref` (`p:<id del primer tramo>`) y `about` (obra, movimiento y horas en texto) si van sobre un bloque; sin `ref` es del día. `day` = día del bloque. Se guarda al escribir (`saveDataSoon`); vaciar y salir de la línea la quita (lápida por id del documento). Un comentario cuyo bloque desaparece queda como entrada del día. El paquete para IA imprime `sobre <about>`. `Diario.day()`/`Diario.write()`/`Diario.spreadOf()` son puras; pruebas `tests/unit/diario.test.js`, `tests/e2e/diario.spec.js`.

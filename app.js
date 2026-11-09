@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-11-08-descanso-a-medida-v530';
+const APP_VERSION = '2026-11-09-diario-y-actualizacion-v531';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -13791,8 +13791,8 @@ function _subtractBlocks(a, b, blocks) {
 // ventana de 3 meses. Para cada día se agrupan las prácticas en bloques (huecos
 // ≤ GAP cuentan como pausa dentro del bloque; huecos mayores = te desenganchaste
 // y no cuentan). bruto = suma de los tramos de bloque; neto = suma de minutos
-// practicados. Es tu ritmo real: cuánto neto sacas por hora de estar a ello,
-// pausas cortas incluidas. Base para predecir la hora de llegada a 4 h / 5 h.
+// practicados. Es una aproximación para la hora de llegada a 4 h / 5 h;
+// no distingue comida, recados ni distracciones, ni mide concentración.
 function _studyEfficiency() {
   const { plants, scope } = _recentPlants();
   const todayIso = _statsISO(new Date());
@@ -14022,7 +14022,7 @@ function _probEtaLine(t) {
       const remaining = target - t.done;
       const nBreaks = Math.max(1, Math.round(remaining / 50));
       const each = Math.round(eta.breakMin / nBreaks);
-      const ritmo = eta.eff ? ' · ritmo ' + Math.round(eta.eff * 100) + '% (neto/bruto)' : '';
+      const ritmo = eta.eff ? ' · ritmo orientativo ' + Math.round(eta.eff * 100) + '% (pausas estimadas)' : '';
       tip = ' title="A tu ritmo llegarías a ' + label + ' hacia las ' + _probEtaFmt(eta.etaMin) + '. Margen de pausa ' + eta.breakMin + ' min — p.ej. ' + nBreaks + ' pausas de ~' + each + ' min' + ritmo + '"';
       pausa = '<i class="prob-eta-rest">☕ ' + _fmtBreakShort(eta.breakMin) + '</i>';
     }

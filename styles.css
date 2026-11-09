@@ -22464,3 +22464,24 @@ body.crono-paused .crono-readiness-inline { visibility: hidden; }
   color: #fff;
 }
 .crono-pause-length:disabled { opacity: .35; cursor: default; }
+
+
+/* v531: update status must remain readable above navigation and the keyboard. */
+#swUpdateBanner {
+  z-index: 2147483646 !important;
+  box-sizing: border-box;
+  bottom: var(--sw-viewport-bottom, 0px) !important;
+  max-height: calc(var(--sw-viewport-height, 100dvh) - env(safe-area-inset-top, 0px) - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+#swUpdateMsg {
+  display: block; min-width: 0; max-width: 100%; flex: 1 1 240px;
+  white-space: normal; overflow-wrap: anywhere; line-height: 1.5;
+}
+#swUpdateBanner button { flex: 0 0 auto; min-height: 40px; max-width: 100%; white-space: normal; }
+@media (max-width: 600px) {
+  #swUpdateBanner { flex-direction: column; align-items: stretch !important; font-size: 13px !important; letter-spacing: 0 !important; text-align: left !important; padding-left: 16px !important; padding-right: 16px !important; }
+  #swUpdateMsg { flex: 0 1 auto; }
+  #swUpdateBanner button { align-self: flex-end; }
+}

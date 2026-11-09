@@ -47,7 +47,9 @@ test.describe('una página por día (móvil, iPad, ventana estrecha)', () => {
     await expect(view.locator('.dia-book')).toHaveCount(0);
     const items = view.locator('.dia-item');
     await expect(items).toHaveCount(2);
-    await expect(items.nth(0).locator('.dia-time')).toHaveText('09:00–10:30');
+    await expect(items.nth(0).locator('.dia-time')).toHaveText('09:00');
+    await items.nth(0).locator('.dia-study-details summary').click();
+    await expect(items.nth(0).locator('.dia-study-details')).toContainText('09:00–10:30');
     await expect(items.nth(0).locator('.dia-title')).toHaveText('Haydn · Sonata Hob. XVI:52');
     await expect(items.nth(0).locator('.dia-crono')).toContainText('probar el pedal más corto');
 

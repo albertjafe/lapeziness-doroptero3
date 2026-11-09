@@ -32,6 +32,7 @@
 
   const MERGE_GAP_MIN = 20;
   const MAX_TEXT = 4000;
+  const Sections = root.DiarioSections || null;
   const doc = root.document || null;
 
   const pad = n => String(n).padStart(2, '0');
@@ -99,6 +100,9 @@
       const it = parseLine(line);
       if (it.kind === 'text') {
         n = 0;
+        const section = /^\s*\[\[([^\]\n]+)\]\]\s*$/.exec(it.text);
+        if (section) return '<div class="dia-section-heading">' + esc(section[1]) + '</div>';
+        if (/^\s*[^:\n]{1,60}:\s*$/.test(it.text)) return '<div class="dia-note-heading">' + esc(it.text.trim()) + '</div>';
         return '<div class="dia-l">' + (it.text.trim() ? inlineHtml(it.text) : '&nbsp;') + '</div>';
       }
       const today = it.kind === 'today';
@@ -246,7 +250,7 @@
   }
 
   // Crea, cambia o (con texto vacío y `final`) quita la entrada. Devuelve su id.
-  function write(database, { id, key, ref, about, text, final }, now = new Date()) {
+  function write(database, { id, key, ref, about, text, final, obraId, sectionRefs }, now = new Date()) {
     const list = entries(database);
     const value = String(text || '').slice(0, MAX_TEXT);
     const index = id ? list.findIndex(e => e && e.id === id) : -1;
@@ -257,9 +261,12 @@
     const stamp = now.toISOString();
     if (index >= 0) {
       const entry = list[index];
-      if (entry.text === value) return entry.id;
+      const refsChanged = sectionRefs && JSON.stringify(entry.sectionRefs || []) !== JSON.stringify(sectionRefs);
+      if (entry.text === value && !refsChanged) return entry.id;
       entry.text = value;
       entry.updatedAt = stamp;
+      if (obraId) entry.obraId = obraId;
+      if (sectionRefs) entry.sectionRefs = sectionRefs;
       if (ref && about) entry.about = about;
       return entry.id;
     }
@@ -271,6 +278,8 @@
       text: value,
     };
     if (ref) { entry.ref = ref; entry.about = about || ''; }
+    if (obraId) entry.obraId = obraId;
+    if (sectionRefs && sectionRefs.length) entry.sectionRefs = sectionRefs;
     list.push(entry);
     if (list.length > 3000) list.splice(0, list.length - 3000);
     return entry.id;
@@ -329,23 +338,32 @@
     wrap.classList.add('is-fmt');
   }
 
+  function compactTitle(title) {
+    const parts = String(title || '').split(' · ');
+    const piece = (parts.length > 1 ? parts.slice(1).join(' · ') : parts[0]).split(',')[0].replace(/\s*\([^)]*\)/g, '').trim();
+    const composer = parts.length > 1 ? parts[0].trim().split(/\s+/).at(-1) : '';
+    return [composer, piece].filter(Boolean).join(' · ');
+  }
   function itemHtml(item) {
     const notes = item.cronoNotes.map(n => '<p class="dia-crono">' + (n.label ? '<span>' + esc(n.label) + '</span> ' : '') + esc(n.text) + '</p>').join('');
     const inks = item.entries.length
-      ? item.entries.map(e => ink({ id: e.id, ref: item.key }, e.text, 'Sobre ' + item.title)).join('')
+      ? item.entries.map(e => ink({ id: e.id, ref: item.key, sections: JSON.stringify(e.sectionRefs || []) }, e.text, 'Sobre ' + item.title)).join('')
       : ink({ ref: item.key }, '', 'Sobre ' + item.title);
     const pct = item.pct != null ? ' · ' + Math.round(item.pct) + ' %' : '';
-    return '<article class="dia-item' + (item.kind === 'pase' ? ' is-pase' : '') + '" data-ref="' + esc(item.key) + '" data-about="' + esc(item.about) + '">' +
-      '<div class="dia-meta"><span class="dia-time">' + esc(item.time) + '</span>' +
-      '<span class="dia-title">' + (item.kind === 'pase' ? '<em>Pase</em> ' : '') + esc(item.title) + '</span>' +
+    return '<article class="dia-item' + (item.kind === 'pase' ? ' is-pase' : '') + '" data-ref="' + esc(item.key) + '" data-work="' + esc(item.obraId) + '" data-about="' + esc(item.about) + '">' +
+      '<div class="dia-meta"><span class="dia-time">' + esc(item.startMs != null ? clock(item.startMs) : 'Sin hora') + '</span>' +
+      '<span class="dia-title" title="' + esc(item.title) + '">' + (item.kind === 'pase' ? '<em>Pase</em> ' : '') + esc(compactTitle(item.title)) + '</span>' +
       '<span class="dia-dur">' + esc(item.duration + pct) + '</span></div>' +
-      (item.movs ? '<div class="dia-sub">' + esc(item.movs) + '</div>' : '') +
-      notes + inks + '</article>';
+      '<details class="dia-study-details"><summary>Detalle del estudio</summary><div>' + esc(item.title) +
+      (item.movs ? ' · ' + esc(item.movs) : '') + ' · ' + esc(item.time) + '</div></details>' +
+      notes + inks +
+      (item.obraId && Sections ? '<button type="button" class="dia-section-add" data-act="section" aria-label="Insertar sección de ' + esc(item.title) + '">@ Sección</button>' : '') +
+      '</article>';
   }
 
   function generalHtml(entry) {
     const ms = parseMs(entry.at);
-    const head = entry.about ? entry.about : (ms != null ? clock(ms) : '');
+    const head = entry.about ? entry.about : [(ms != null ? clock(ms) : ''), 'Notas y listas'].filter(Boolean).join(' · ');
     return '<div class="dia-free">' + (head ? '<div class="dia-free-head">' + esc(head) + '</div>' : '') +
       ink({ id: entry.id }, entry.text, 'Del día') + '</div>';
   }
@@ -425,6 +443,7 @@
     const el = view(), database = appDb();
     if (!el || !database) return;
     finishTurn();
+    closeSectionPicker();
     const today = dayKey(new Date());
     if (!current) current = today;
     const scrolls = new Map([...el.querySelectorAll('.dia-sheet')].map(s => [s.parentElement.dataset.day, s.scrollTop]));
@@ -584,6 +603,8 @@
       ref: area.dataset.ref || '',
       about: item ? item.dataset.about : '',
       text: area.value,
+      obraId: item?.dataset.work || '',
+      sectionRefs: sectionReferences(area, database, item),
       final,
     });
     const before = area.dataset.saved != null ? area.dataset.saved : area.defaultValue;
@@ -591,6 +612,100 @@
     if (id) area.dataset.id = id; else delete area.dataset.id;
     area.dataset.saved = area.value;
     if (changed) persistSoon();
+  }
+
+  // One picker, owned by the textarea and work that opened it.
+  let sectionPicker = null;
+  let pickerSerial = 0;
+  function sectionReferences(area, database, item) {
+    if (!Sections || !item?.dataset.work) return undefined;
+    let previous = [];
+    try { previous = JSON.parse(area.dataset.sections || '[]'); } catch (e) {}
+    return Sections.references(area.value, Sections.catalog(database, item.dataset.work), previous);
+  }
+  function closeSectionPicker() {
+    if (!sectionPicker) return;
+    const { area, menu } = sectionPicker;
+    menu.remove();
+    area.removeAttribute('aria-controls');
+    area.removeAttribute('aria-activedescendant');
+    area.removeAttribute('aria-autocomplete');
+    area.removeAttribute('aria-expanded');
+    sectionPicker = null;
+  }
+  function highlightSection(index) {
+    if (!sectionPicker) return;
+    const buttons = [...sectionPicker.menu.querySelectorAll('.dia-section-choice')];
+    sectionPicker.index = (index + buttons.length) % buttons.length;
+    buttons.forEach((b,i) => b.setAttribute('aria-selected', String(i === sectionPicker.index)));
+    const current = buttons[sectionPicker.index];
+    if (current) sectionPicker.area.setAttribute('aria-activedescendant', current.id);
+  }
+  function offerSections(area) {
+    closeSectionPicker();
+    const work = area.closest('.dia-item')?.dataset.work;
+    if (!Sections || !work || area.selectionStart !== area.selectionEnd) return;
+    const range = Sections.queryAt(area.value, area.selectionStart);
+    if (!range) return;
+    const database = appDb(), rows = Sections.suggest(database, work, range.query);
+    const name = Sections.clean(range.query);
+    const exact = Sections.catalog(database, work).some(x => Sections.key(x.name) === Sections.key(name));
+    const options = rows.map(row => ({ row, label: row.name, detail: row.movement }));
+    if (name && !exact) options.push({ create: true, label: 'Crear «' + name + '»', detail: 'En esta obra' });
+    const menu = doc.createElement('div');
+    menu.className = 'dia-section-picker';
+    menu.id = 'dia-section-picker-' + (++pickerSerial);
+    menu.setAttribute('role', 'listbox');
+    menu.setAttribute('aria-label', 'Secciones de esta obra');
+    menu.innerHTML = options.length ? options.map((o,i) => '<button type="button" role="option" aria-selected="false" id="' + menu.id + '-' + i + '" class="dia-section-choice" data-choice="' + i + '"><span>' + esc(o.label) + '</span>' + (o.detail ? '<small>' + esc(o.detail) + '</small>' : '') + '</button>').join('') : '<p>Escribe un nombre para crear una sección de esta obra.</p>';
+    area.parentElement.appendChild(menu);
+    area.setAttribute('aria-controls', menu.id);
+    area.setAttribute('aria-autocomplete', 'list');
+    area.setAttribute('aria-expanded', 'true');
+    sectionPicker = { area, menu, range, work, options, index: 0 };
+    if (options.length) highlightSection(0);
+  }
+  function chooseSection(index) {
+    const picker = sectionPicker;
+    if (!picker || !picker.options[index]) return false;
+    const { area, work, range } = picker, database = appDb(), choice = picker.options[index];
+    if (!area.isConnected || area.closest('.dia-item')?.dataset.work !== work) { closeSectionPicker(); return false; }
+    const proposed = choice.create ? { name: Sections.clean(range.query) } : choice.row;
+    const next = Sections.insert(area.value, range, proposed);
+    if (next.value.length > MAX_TEXT) return false;
+    const row = choice.create ? Sections.register(database, work, range.query) : choice.row;
+    if (!row) return false;
+    let refs = [];
+    try { refs = JSON.parse(area.dataset.sections || '[]'); } catch(e) {}
+    area.dataset.sections = JSON.stringify([...refs.filter(x => Sections.key(x.name) !== Sections.key(row.name)), row]);
+    closeSectionPicker();
+    area.value = next.value;
+    edit(area);
+    area.setSelectionRange(next.caret, next.caret);
+    fit(area);
+    commit(area, false);
+    return true;
+  }
+  function beginSection(item) {
+    const area = [...item.querySelectorAll('.dia-ink')].at(-1);
+    if (!area) return;
+    edit(area);
+    const prefix = area.value && !area.value.endsWith('\n') ? '\n' : '';
+    if (area.value.length + prefix.length + 1 > MAX_TEXT) return;
+    area.value += prefix + '@';
+    area.setSelectionRange(area.value.length, area.value.length);
+    fit(area);
+    offerSections(area);
+  }
+  function sectionKey(e) {
+    if (!sectionPicker || sectionPicker.area !== e.target) return false;
+    if (e.key === 'Escape') { e.preventDefault(); closeSectionPicker(); return true; }
+    if (!sectionPicker.options.length || e.isComposing) return false;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault(); highlightSection(sectionPicker.index + (e.key === 'ArrowDown' ? 1 : -1)); return true;
+    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chooseSection(sectionPicker.index); return true; }
+    return false;
   }
 
   function go(key) {
@@ -606,7 +721,12 @@
     const el = view();
     if (!el || el.dataset.diaReady) return;
     el.dataset.diaReady = '1';
+    el.addEventListener('pointerdown', e => {
+      if (e.target.closest('.dia-section-choice')) e.preventDefault();
+    });
     el.addEventListener('click', e => {
+      const option = e.target.closest('.dia-section-choice');
+      if (option) { chooseSection(Number(option.dataset.choice)); return; }
       const button = e.target.closest('[data-act]');
       if (button) {
         const act = button.dataset.act;
@@ -614,9 +734,10 @@
         else if (act === 'next') go(step(1));
         else if (act === 'today') go(dayKey(new Date()));
         else if (act === 'focus') setFocus(!focusMode);
+        else if (act === 'section') beginSection(button.closest('.dia-item'));
         return;
       }
-      if (e.target.closest('.dia-ink')) return;
+      if (e.target.closest('.dia-ink, .dia-study-details, .dia-section-picker')) return;
       // Casilla de una tarea: se marca sin abrir el campo.
       const box = e.target.closest('.dia-box');
       if (box) {
@@ -641,10 +762,12 @@
       if (!e.target.classList.contains('dia-ink')) return;
       fit(e.target);
       commit(e.target, false);
+      offerSections(e.target);
     });
     el.addEventListener('focusout', e => {
       if (!e.target.classList.contains('dia-ink')) return;
       const area = e.target;
+      setTimeout(() => { if (sectionPicker?.area === area && !area.parentElement.contains(doc.activeElement)) closeSectionPicker(); }, 0);
       commit(area, true);
       if (!area.dataset.free) showFormatted(area);
       // La línea nueva del día, ya escrita, pasa a ser una entrada más.
@@ -657,6 +780,7 @@
         return;
       }
       if (!e.target.classList.contains('dia-ink')) return;
+      if (sectionKey(e)) return;
       if (e.key === 'Escape' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); e.target.blur(); return; }
       if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.isComposing) {
         const area = e.target;
@@ -697,7 +821,7 @@
     });
   }
 
-  const api = { day, write, shiftDay, spreadOf, duration, MERGE_GAP_MIN, parseLine, splitAside, formatHtml, toggleLine, continueList, open: key => { if (key) current = key; if (typeof root.showView === 'function') root.showView('diario'); }, render, setFocus, isFocus: () => focusMode };
+  const api = { compactTitle, day, write, shiftDay, spreadOf, duration, MERGE_GAP_MIN, parseLine, splitAside, formatHtml, toggleLine, continueList, open: key => { if (key) current = key; if (typeof root.showView === 'function') root.showView('diario'); }, render, setFocus, isFocus: () => focusMode };
   if (doc) {
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', init);
     else init();

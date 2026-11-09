@@ -14,6 +14,7 @@
   let controlled = Boolean(root.navigator?.serviceWorker?.controller);
   let explicitPromotionRequested = false;
   let promotionFallbackTimer = null;
+  const BACKUP_DEADLINE_MS = 1500;
 
   function wait(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
   function withTimeout(promise, ms, label){
@@ -66,8 +67,19 @@
     try { if(typeof root.showToast === 'function') root.showToast(message); } catch(error) {}
   }
   function updateBanner(){ return root.document && root.document.getElementById('swUpdateBanner'); }
+  function bannerViewport(){
+    const viewport = root.visualViewport;
+    const style = root.document?.documentElement?.style;
+    if(!style) return;
+    const height = viewport ? viewport.height : root.innerHeight;
+    if(!(height > 0)) return;
+    const bottom = viewport ? Math.max(0, root.innerHeight - viewport.height - viewport.offsetTop) : 0;
+    style.setProperty('--sw-viewport-height', Math.round(height) + 'px');
+    style.setProperty('--sw-viewport-bottom', Math.round(bottom) + 'px');
+  }
   function bannerClass(on){
     try {
+      bannerViewport();
       root.document.body.classList.toggle('sw-banner-on', !!on);
       const banner = updateBanner();
       if(on && banner) root.document.documentElement.style.setProperty('--sw-banner-h', banner.offsetHeight + 'px');
@@ -170,15 +182,49 @@
   function openRescueDb(){
     return new Promise((resolve, reject) => {
       if(!root.indexedDB) { resolve(null); return; }
-      const request = root.indexedDB.open(RESCUE_DB, 1);
+      let settled = false, request;
+      const finish = (error, database) => {
+        if(settled){ if(database) database.close(); return; }
+        settled = true; clearTimeout(timer);
+        if(error) reject(error); else resolve(database);
+      };
+      const timer = setTimeout(() => finish(new Error('Pre-update backup open timeout')), BACKUP_DEADLINE_MS);
+      try { request = root.indexedDB.open(RESCUE_DB, 1); }
+      catch(error){ finish(error); return; }
       request.onupgradeneeded = () => {
+        if(settled){ try { request.transaction?.abort(); } catch(e) {} return; }
         const database = request.result;
         if(!database.objectStoreNames.contains(RESCUE_STORE)) database.createObjectStore(RESCUE_STORE, { keyPath:'id' });
       };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error || new Error('indexedDB open failed'));
-      request.onblocked = () => reject(new Error('indexedDB blocked'));
+      request.onsuccess = () => finish(null, request.result);
+      request.onerror = () => finish(request.error || new Error('indexedDB open failed'));
+      request.onblocked = () => finish(new Error('indexedDB blocked'));
     });
+  }
+
+  async function writeExtraBackup(snapshot){
+    const database = await openRescueDb();
+    if(!database) return;
+    try {
+      await new Promise((resolve, reject) => {
+        const tx = database.transaction(RESCUE_STORE, 'readwrite');
+        let settled = false;
+        const finish = error => {
+          if(settled) return;
+          settled = true; clearTimeout(timer);
+          if(error) reject(error); else resolve();
+        };
+        const timer = setTimeout(() => {
+          try { tx.abort(); } catch(e) {}
+          finish(new Error('Pre-update backup write timeout'));
+        }, BACKUP_DEADLINE_MS);
+        tx.oncomplete = () => finish();
+        tx.onerror = () => finish(tx.error || new Error('snapshot failed'));
+        tx.onabort = () => finish(new Error('snapshot aborted'));
+        try { tx.objectStore(RESCUE_STORE).put(snapshot); }
+        catch(error){ try { tx.abort(); } catch(e) {} finish(error); }
+      });
+    } finally { database.close(); }
   }
 
   async function hasDurableCopy(raw){
@@ -193,7 +239,10 @@
 
   async function snapshotBeforeUpdate(){
     if(timerActive()) throw new Error('Timer finalization pending');
-    persistMemoryLocally();
+    const initial = currentDbRaw();
+    // A current IndexedDB rescue is just as durable as localStorage. Do not
+    // create another revision/full write merely because localStorage is full.
+    if(!await hasDurableCopy(initial) || !sameDocumentContent(initial, currentDbRaw())) persistMemoryLocally();
     if (root.LocalSaveResilience?.flush) await root.LocalSaveResilience.flush();
     if(timerActive()) throw new Error('Timer finalization pending');
     const raw = currentDbRaw();
@@ -216,18 +265,8 @@
     }
 
     try {
-      const database = await withTimeout(openRescueDb(),2500,'indexedDB timeout');
-      if(database){
-        await new Promise((resolve, reject) => {
-          const tx = database.transaction(RESCUE_STORE, 'readwrite');
-          tx.objectStore(RESCUE_STORE).put(snapshot);
-          tx.oncomplete = resolve;
-          tx.onerror = () => reject(tx.error || new Error('snapshot failed'));
-          tx.onabort = () => reject(tx.error || new Error('snapshot aborted'));
-        });
-        database.close();
-        return snapshot;
-      }
+      await writeExtraBackup(snapshot);
+      return snapshot;
     } catch(error) {}
 
     /* Último recurso. Puede fallar por cuota; el estado principal ya está en
@@ -329,7 +368,10 @@
         const snapshot = await snapshotBeforeUpdate();
         if (root.LocalSaveResilience?.flush) await root.LocalSaveResilience.flush();
         if (timerActive()) throw new Error('Timer finalization pending');
-        if (sameDocumentContent(snapshot.raw, currentDbRaw()) && await hasDurableCopy(currentDbRaw())) return snapshot;
+        const observed = currentDbRaw();
+        const durable = await hasDurableCopy(observed);
+        // The durable read is asynchronous: verify memory again after it.
+        if (durable && !timerActive() && sameDocumentContent(snapshot.raw, observed) && sameDocumentContent(observed, currentDbRaw())) return snapshot;
         lastError = new Error('State changed during update');
       } catch(error) {
         lastError = error;
@@ -342,7 +384,7 @@
 
   /* La nube tiene un margen corto: sus cambios pendientes quedan marcados en
      este dispositivo y se suben al reabrir, así que no hay que esperarla. */
-  const CLOUD_BUDGET_MS = 4000;
+  const CLOUD_BUDGET_MS = 1500;
   async function syncWithinBudget(){
     try { await withTimeout(syncEverything(), CLOUD_BUDGET_MS, 'nube lenta'); }
     catch(error) { console.warn('[update-safety] copia local protegida; nube pendiente', error); }
@@ -440,7 +482,7 @@
       explicitPromotionRequested = false;
       clearPromotionFallback();
       try {
-        await snapshotBeforeUpdate();
+        await protectLocalCopy(3);
         hideBanner();
         root.location.reload();
       } catch (error) {
@@ -448,8 +490,12 @@
         notify('Guarda los cambios antes de reabrir la actualización.', 'warn');
       }
     });
+    root.visualViewport?.addEventListener?.('resize', bannerViewport);
+    root.visualViewport?.addEventListener?.('scroll', bannerViewport);
+    root.addEventListener?.('resize', bannerViewport);
+    bannerViewport();
     root.UpdateSafety = {
-      version:7,
+      version:8,
       safeUpdate,
       checkForUpdate,
       snapshotBeforeUpdate,

@@ -91,7 +91,7 @@
       load('taskSyncResilienceScript','./task-sync-resilience.js?v=521');
     });
   });
-  load('updateSafetyScript','./update-safety.js?v=475');
+  load('updateSafetyScript','./update-safety.js?v=531');
   load('cronoRunningPremiumScript','./crono-running-premium.js?v=506');
   load('eventPlanningScript','./event-planning.js?v=499',function(){
     load('eventDedupeScript','./event-dedupe.js?v=499',function(){

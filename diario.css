@@ -353,3 +353,65 @@ html.platform-windows .dia-book .dia-full svg { width: 18px; height: 18px; }
 html.platform-ipad .dia-page { padding-top: 16px; }
 html.platform-ipad .dia-date h2 { font-size: 30px; }
 html.platform-ipad .dia-ink { font-size: 21px; }
+
+
+/* v531: separate study, section headings and personal lists, including focus mode. */
+#view-diario .dia-item {
+  border-left: 3px solid color-mix(in srgb, var(--accent) 68%, var(--text));
+  padding: 12px 12px 10px;
+  margin-bottom: 16px;
+  border-radius: 0 10px 10px 0;
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg2));
+}
+#view-diario .dia-item.is-pase { border-left-color: var(--green, #54997c); }
+#view-diario .dia-meta {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 6px 10px; height: auto; min-height: 28px; line-height: 1.4;
+  align-items: baseline;
+}
+#view-diario .dia-title { font-family: var(--ui-font); font-size: 15px; font-weight: 650; white-space: normal; overflow-wrap: anywhere; }
+#view-diario .dia-time, #view-diario .dia-dur { font-family: var(--ui-font); font-size: 12px; line-height: 1.4; }
+#view-diario .dia-study-details { font-family: var(--ui-font); font-size: 11px; color: var(--text2); margin: 3px 0 9px; line-height: 1.5; }
+#view-diario .dia-study-details summary { cursor: pointer; width: fit-content; padding: 3px 0; }
+#view-diario .dia-study-details div { padding: 5px 0; overflow-wrap: anywhere; }
+#view-diario .dia-free:not(.dia-new) { padding: 12px; margin-bottom: 16px; border-top: 1px solid var(--border); }
+#view-diario .dia-free-head { height: auto; line-height: 1.4; margin-bottom: 6px; font-family: var(--ui-font); font-size: 11px; letter-spacing: .02em; }
+#view-diario .dia-note-heading, #view-diario .dia-section-heading {
+  font-family: var(--ui-font); font-size: .8em; font-weight: 650;
+  color: var(--text); min-height: var(--dia-line); line-height: var(--dia-line);
+}
+#view-diario .dia-section-heading { color: var(--accent); border-bottom: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); margin-top: 6px; }
+#view-diario .dia-li.is-today:not(.is-done) { background: color-mix(in srgb, var(--accent) 5%, transparent); border-radius: 5px; }
+#view-diario .dia-li.is-later { color: var(--text2); }
+#view-diario .dia-section-add {
+  display: block; margin: 5px 0 0; padding: 6px 10px; min-height: 36px;
+  border: 1px solid var(--border); border-radius: 7px; background: transparent;
+  color: var(--text2); font-family: var(--ui-font); font-size: 12px; cursor: pointer;
+}
+#view-diario .dia-section-picker {
+  position: relative; z-index: 3; max-height: 210px; overflow-y: auto;
+  margin: 5px 0 10px; padding: 5px; border: 1px solid var(--border); border-radius: 9px;
+  background: var(--bg2); box-shadow: 0 6px 18px #0002; font-family: var(--ui-font);
+}
+#view-diario .dia-section-picker p { margin: 7px; font-size: 12px; line-height: 1.4; color: var(--text2); }
+#view-diario .dia-section-choice {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+  text-align: left; width: 100%; min-height: 42px; padding: 9px 10px;
+  border: 0; border-radius: 5px; background: transparent; color: var(--text);
+  font-family: var(--ui-font); font-size: 13px; line-height: 1.4; cursor: pointer;
+}
+#view-diario .dia-section-choice small { color: var(--text2); font: inherit; font-size: 11px; }
+#view-diario .dia-section-choice[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 15%, var(--bg2)); }
+#view-diario .dia-section-add:focus-visible, #view-diario .dia-section-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+html.platform-windows #view-diario .dia-sheet .dia-item { padding: 10px 12px; margin: 0 0 18px; }
+html.platform-windows #view-diario .dia-sheet .dia-free:not(.dia-new) { padding: 10px 12px; margin: 0 0 18px; }
+html.platform-windows #view-diario .dia-sheet .dia-meta { height: auto; line-height: 1.4; }
+html.platform-windows #view-diario .dia-sheet .dia-free-head { height: auto; line-height: 1.4; margin-bottom: 6px; }
+@media (max-width: 480px) {
+  #view-diario .dia-paper { padding: 12px 10px 20px 20px; }
+  #view-diario .dia-paper::before { left: 10px; }
+  #view-diario .dia-meta { column-gap: 7px; }
+  #view-diario .dia-title { font-size: 13px; }
+  #view-diario .dia-time, #view-diario .dia-dur { font-size: 10px; }
+  #view-diario .dia-item { padding-left: 9px; padding-right: 9px; }
+}

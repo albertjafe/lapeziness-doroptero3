@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -286,5 +286,42 @@ describe('UpdateSafety v7', () => {
     expect(await h.window.UpdateSafety.safeUpdate()).toBe(true);
     expect(h.messages).toHaveLength(1);expect(h.storage.get('alberto_piano_v2')).toBe(before);
     expect(h.window.UpdateSafety.syncMetaPending()).toBe(true);
+  });
+});
+
+
+describe('bounded supplementary update backups',()=>{
+  it('a silent secondary write is aborted, while the verified primary copy remains intact',async()=>{
+    vi.useFakeTimers();
+    try{
+      const h=harness(),before=h.storage.get('alberto_piano_v2'),abort=vi.fn(),close=vi.fn();
+      const tx={abort,objectStore:()=>({put:vi.fn()})};
+      h.window.indexedDB={open(){const request={};queueMicrotask(()=>{request.result={transaction:()=>tx,close};request.onsuccess();});return request;}};
+      const saving=h.window.UpdateSafety.snapshotBeforeUpdate();
+      await vi.advanceTimersByTimeAsync(1600);
+      expect((await saving).raw).toBe(before);
+      expect(abort).toHaveBeenCalledOnce();expect(close).toHaveBeenCalledOnce();
+      expect(h.storage.get('alberto_piano_v2')).toBe(before);
+      expect(h.calls).not.toContain('save-local');
+    }finally{vi.useRealTimers();}
+  });
+  it('a late secondary database open closes instead of leaking a connection or starting a stale write',async()=>{
+    vi.useFakeTimers();
+    try{
+      const h=harness(),request={},close=vi.fn(),transaction=vi.fn();
+      h.window.indexedDB={open:()=>request};
+      const saving=h.window.UpdateSafety.snapshotBeforeUpdate();
+      await vi.advanceTimersByTimeAsync(1600);await saving;
+      request.result={close,transaction};request.onsuccess();
+      expect(close).toHaveBeenCalledOnce();expect(transaction).not.toHaveBeenCalled();
+    }finally{vi.useRealTimers();}
+  });
+  it('an already current IndexedDB primary copy does not cause another full save or revision',async()=>{
+    const h=harness({memoryDocument:{_localRevision:7,eventos:[{id:'current'}]},diskDocument:{_localRevision:1,eventos:[]}});
+    const durable=structuredClone(h.context.db);
+    h.window.LocalSaveResilience.getRescueSnapshot=async()=>({data:durable});
+    expect((await h.window.UpdateSafety.snapshotBeforeUpdate()).revision).toBe(7);
+    expect(h.calls).not.toContain('save-local');
+    expect(h.context.db).toEqual(durable);
   });
 });
