@@ -28,8 +28,8 @@ for(const width of [390,1366])test.describe('scoped diary sections '+width,()=>{
     await a.locator('[data-act="section"]').click();
     const area=a.locator('.dia-ink').first();
     await area.fill('@Oct');
-    await expect(a.getByRole('option')).toHaveCount(1);
-    await expect(a.getByRole('option')).toHaveText('Octavas');
+    await expect(a.getByRole('option')).toHaveText(['Octavas','Crear «Oct»En esta obra']);
+    await page.keyboard.press('ArrowDown');await page.keyboard.press('ArrowUp');
     await page.keyboard.press('Enter');await page.keyboard.insertText('Más estable hoy');
     await area.blur();
     await expect(a.locator('.dia-section-heading')).toHaveText('Octavas');
@@ -49,7 +49,7 @@ for(const width of [390,1366])test.describe('scoped diary sections '+width,()=>{
     await expect(b.locator('.dia-section-heading')).toHaveText('Desarrollo');
     await b.locator('[data-act="section"]').click();
     await b.locator('.dia-ink').fill('[[Desarrollo]]\nLento y claro\n@Des');
-    await expect(b.getByRole('option')).toHaveText('Desarrollo');
+    await expect(b.getByRole('option')).toHaveText(['Desarrollo','Crear «Des»En esta obra']);
     await page.keyboard.press('Escape');await b.locator('.dia-ink').blur();
     const free=today.locator('.dia-new .dia-ink');await free.fill('@Oct');
     await expect(page.locator('.dia-section-picker')).toHaveCount(0);
