@@ -1,11 +1,8 @@
-/* Diario (diario.js): una página de cuaderno por día. Solo variables del
-   tema. Las líneas van dentro de cada escrito (fondo local) para que la letra
-   caiga siempre sobre ellas, crezca lo que crezca el texto. */
+/* Diario: página continua, sin tarjetas ni pauta decorativa.
+   La jerarquía se expresa con espacio, peso y tamaño de letra. */
 #view-diario {
-  --dia-line: 34px;
-  --dia-rule: color-mix(in srgb, var(--text) 13%, transparent);
-  --dia-margin: color-mix(in srgb, #c0564a 32%, transparent);
-  --dia-hand: 'Kalam', 'Caveat', 'Segoe Print', 'Bradley Hand', cursive;
+  --dia-line: 30px;
+  --dia-hand: var(--ui-font, system-ui, sans-serif);
 }
 .dia-page { max-width: 760px; margin: 0 auto; padding: 8px 16px 120px; }
 .dia-head { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 8px; margin: 4px 0 14px; }
@@ -30,14 +27,13 @@
 
 .dia-paper {
   position: relative;
-  padding: 18px 20px 26px 46px;
-  border-radius: 14px;
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--text) 4%, transparent);
+  padding: 20px 8px 32px;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
-/* Margen del cuaderno. */
-.dia-paper::before { content: ''; position: absolute; top: 0; bottom: 0; left: 32px; width: 1px; background: var(--dia-margin); }
+
 
 .dia-item, .dia-free { position: relative; padding-top: 12px; }
 .dia-item + .dia-item, .dia-item + .dia-free, .dia-free + .dia-item, .dia-free + .dia-free { margin-top: 6px; }
@@ -64,11 +60,11 @@
   resize: none;
   overflow: hidden;
   background-color: transparent;
-  background-image: linear-gradient(to bottom, transparent calc(var(--dia-line) - 1px), var(--dia-rule) calc(var(--dia-line) - 1px), var(--dia-rule) var(--dia-line));
+  background-image: none;
   background-size: 100% var(--dia-line);
   background-attachment: local;
   font-family: var(--dia-hand);
-  font-size: 20px;
+  font-size: 18px;
   line-height: var(--dia-line);
   color: var(--text);
   caret-color: var(--accent, var(--text));
@@ -99,10 +95,10 @@ html #view-diario textarea.dia-ink { font-family: var(--dia-hand) !important; }
 .dia-fmt {
   min-height: var(--dia-line);
   padding: 0 2px;
-  background-image: linear-gradient(to bottom, transparent calc(var(--dia-line) - 1px), var(--dia-rule) calc(var(--dia-line) - 1px), var(--dia-rule) var(--dia-line));
+  background-image: none;
   background-size: 100% var(--dia-line);
   font-family: var(--dia-hand);
-  font-size: 20px;
+  font-size: 18px;
   line-height: var(--dia-line);
   color: var(--text);
   overflow-wrap: anywhere;
@@ -146,14 +142,13 @@ html #view-diario textarea.dia-ink { font-family: var(--dia-hand) !important; }
 }
 .dia-li.is-done .dia-txt { color: var(--text2); text-decoration: line-through; text-decoration-thickness: 1px; }
 .dia-li.is-done .dia-num { opacity: .6; }
-html.platform-ipad .dia-fmt { font-size: 21px; }
+html.platform-ipad .dia-fmt { font-size: 18px; }
 
 @media (max-width: 560px) {
   .dia-page { padding: 4px 10px 120px; }
-  .dia-paper { padding: 14px 12px 20px 30px; }
-  .dia-paper::before { left: 20px; }
+  .dia-paper { padding: 16px 4px 24px; }
   .dia-date h2 { font-size: 23px; }
-  .dia-ink, .dia-fmt { font-size: 19px; }
+  .dia-ink, .dia-fmt { font-size: 17px; }
 }
 /* Barra inferior (nov 2026): Hoy, Cronómetro, Obras, Diario y Aulas.
    Calendario se abre desde Hoy y Profesor se retiró. */
@@ -167,10 +162,9 @@ html:not(.platform-windows) .nav.nav-bottom { grid-template-columns: repeat(5, m
 /* ── Libro de escritorio (v526): dos días a doble página, a toda la pestaña ── */
 @media (min-width: 1200px) {
   html.platform-windows #view-diario {
-    --dia-line: 36px;
-    --dia-margin-x: 44px;
-    --dia-sheet: color-mix(in srgb, var(--bg2) 90%, #e8d9b8);
-    --dia-binding: color-mix(in srgb, var(--accent) 38%, #2b2019);
+    --dia-line: 30px;
+    --dia-sheet: var(--bg);
+    --dia-binding: var(--bg);
   }
   /* Sin el margen inferior ni el ancho máximo de las demás vistas (desktop-app.css): el libro llena la ventana. */
   html.platform-windows:not(#dk):not(#dk) body #view-diario { padding-bottom: 0 !important; max-width: none !important; }
@@ -201,20 +195,15 @@ html:not(.platform-windows) .nav.nav-bottom { grid-template-columns: repeat(5, m
     min-width: 0; min-height: 0;
     padding: 10px 12px;
     border-radius: 12px;
-    background: var(--dia-binding);
-    box-shadow: 0 18px 44px color-mix(in srgb, #000 28%, transparent), 0 2px 6px color-mix(in srgb, #000 22%, transparent);
+    background: transparent;
+    box-shadow: none;
   }
   html.platform-windows .dia-spread {
     position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     height: 100%;
-    /* Canto de las hojas de debajo, a ambos lados. */
-    box-shadow:
-      -2px 0 0 color-mix(in srgb, var(--dia-sheet) 92%, #000), -3px 0 0 color-mix(in srgb, var(--dia-sheet) 78%, #000),
-      -5px 0 0 color-mix(in srgb, var(--dia-sheet) 92%, #000), -6px 0 0 color-mix(in srgb, var(--dia-sheet) 78%, #000),
-      2px 0 0 color-mix(in srgb, var(--dia-sheet) 92%, #000), 3px 0 0 color-mix(in srgb, var(--dia-sheet) 78%, #000),
-      5px 0 0 color-mix(in srgb, var(--dia-sheet) 92%, #000), 6px 0 0 color-mix(in srgb, var(--dia-sheet) 78%, #000);
+    box-shadow: none;
   }
 
   html.platform-windows .dia-book-page {
@@ -228,30 +217,23 @@ html:not(.platform-windows) .nav.nav-bottom { grid-template-columns: repeat(5, m
     position: relative;
     overflow: hidden;
   }
-  /* El lomo: las hojas se hunden hacia el centro. */
-  html.platform-windows .dia-book-page.is-left { background-image: linear-gradient(to left, color-mix(in srgb, #000 20%, transparent), color-mix(in srgb, #000 5%, transparent) 26px, transparent 80px); }
-  html.platform-windows .dia-book-page.is-right { background-image: linear-gradient(to right, color-mix(in srgb, #000 20%, transparent), color-mix(in srgb, #000 5%, transparent) 26px, transparent 80px); }
+
 
   html.platform-windows .dia-page-head { flex: none; text-align: center; padding-bottom: 10px; }
   html.platform-windows .dia-page-head small { display: block; min-height: 14px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--text3, var(--text2)); }
   html.platform-windows .dia-page-head h2 { margin: 2px 0 0; font-family: 'Cormorant Garamond', Georgia, serif !important; font-weight: 400; font-size: 30px; line-height: 1.1; color: var(--text); }
   html.platform-windows .dia-page-head h2::first-letter { text-transform: uppercase; }
 
-  /* Hoja rayada entera: todo cae sobre la misma pauta y se desplaza con ella. */
+  /* Dos días con desplazamiento independiente sobre una superficie uniforme. */
   html.platform-windows .dia-sheet {
     flex: 1; min-height: 0;
     display: flex; flex-direction: column;
     overflow-y: auto; overflow-x: hidden;
-    padding: 0 8px 0 calc(var(--dia-margin-x) + 12px);
+    padding: 8px 4px 0;
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, var(--text) 18%, transparent) transparent;
     cursor: text;
-    background-image:
-      linear-gradient(to right, transparent var(--dia-margin-x), var(--dia-margin) var(--dia-margin-x), var(--dia-margin) calc(var(--dia-margin-x) + 1px), transparent calc(var(--dia-margin-x) + 1px)),
-      linear-gradient(to bottom, transparent calc(var(--dia-line) - 1px), var(--dia-rule) calc(var(--dia-line) - 1px), var(--dia-rule) var(--dia-line));
-    background-size: 100% 100%, 100% var(--dia-line);
-    background-repeat: no-repeat, repeat;
-    background-attachment: local;
+    background: none;
   }
   html.platform-windows .dia-sheet .dia-item,
   html.platform-windows .dia-sheet .dia-free { flex: none; padding: 0; margin: 0 0 var(--dia-line); }
@@ -262,11 +244,11 @@ html:not(.platform-windows) .nav.nav-bottom { grid-template-columns: repeat(5, m
   html.platform-windows .dia-sheet .dia-free-head { height: var(--dia-line); line-height: var(--dia-line); margin: 0; font-size: 13px; }
   html.platform-windows .dia-sheet .dia-crono { margin: 0; font-size: 19px; line-height: var(--dia-line); }
   html.platform-windows .dia-sheet .dia-empty { flex: none; margin: 0 0 var(--dia-line); height: var(--dia-line); line-height: var(--dia-line); font-size: 14px; }
-  html.platform-windows .dia-sheet .dia-fmt { background: none; font-size: 23px; padding: 0; }
+  html.platform-windows .dia-sheet .dia-fmt { background: none; font-size: 18px; padding: 0; }
   html.platform-windows .dia-sheet .dia-ink {
     min-height: var(--dia-line);
     background: none;
-    font-size: 23px;
+    font-size: 18px;
     line-height: var(--dia-line);
     padding: 0;
     cursor: text;
@@ -305,11 +287,11 @@ html:not(.platform-windows) .nav.nav-bottom { grid-template-columns: repeat(5, m
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     background: var(--dia-binding);
-    color: color-mix(in srgb, #fff 82%, var(--dia-binding));
+    color: var(--text);
     font-family: 'Cormorant Garamond', Georgia, serif;
     font-size: 54px; letter-spacing: .06em;
   }
-  html.platform-windows .dia-cover-face span { padding: 14px 44px; border-top: 1px solid currentColor; border-bottom: 1px solid currentColor; }
+  html.platform-windows .dia-cover-face span { padding: 14px 44px; border: 0; }
 }
 @media (min-width: 1200px) and (prefers-reduced-motion: reduce) {
   html.platform-windows .dia-turn { transition: none; }
@@ -328,13 +310,13 @@ html.dia-focus #view-diario {
   max-width: none !important;
   margin: 0 !important;
   padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom)) !important;
-  background: var(--bg);
+  background: var(--bg) !important;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 html.dia-focus .dia-page { max-width: 1180px; padding-bottom: 48px; }
 html.dia-focus #view-diario .dia-ink,
-html.dia-focus #view-diario .dia-fmt { font-size: 18px; }
+html.dia-focus #view-diario .dia-fmt { font-size: 17px; }
 @media (min-width: 1200px) {
   html.platform-windows.dia-focus #view-diario { --dia-line: 31px; }
   html.platform-windows.dia-focus .dia-book { max-width: none; grid-template-columns: 44px minmax(0, 1fr) 44px; }
@@ -343,7 +325,7 @@ html.dia-focus #view-diario .dia-fmt { font-size: 18px; }
   html.platform-windows.dia-focus .dia-page-head { padding-bottom: 6px; }
   html.platform-windows.dia-focus .dia-page-head h2 { font-size: 25px; }
   html.platform-windows.dia-focus #view-diario .dia-sheet .dia-ink,
-  html.platform-windows.dia-focus #view-diario .dia-sheet .dia-fmt { font-size: 19px; }
+  html.platform-windows.dia-focus #view-diario .dia-sheet .dia-fmt { font-size: 17px; }
 }
 /* En el libro, el botón es redondo como los de pasar la hoja. */
 html.platform-windows .dia-book .dia-full { width: 40px; height: 40px; padding: 0; justify-content: center; border: 1px solid var(--border); background: transparent; }
@@ -352,18 +334,17 @@ html.platform-windows .dia-book .dia-full svg { width: 18px; height: 18px; }
 
 html.platform-ipad .dia-page { padding-top: 16px; }
 html.platform-ipad .dia-date h2 { font-size: 30px; }
-html.platform-ipad .dia-ink { font-size: 21px; }
+html.platform-ipad .dia-ink { font-size: 18px; }
 
 
-/* v531: separate study, section headings and personal lists, including focus mode. */
+/* v532: una misma composición para estudio, secciones y notas. */
 #view-diario .dia-item {
-  border-left: 3px solid color-mix(in srgb, var(--accent) 68%, var(--text));
-  padding: 12px 12px 10px;
-  margin-bottom: 16px;
-  border-radius: 0 10px 10px 0;
-  background: color-mix(in srgb, var(--accent) 5%, var(--bg2));
+  border: 0;
+  padding: 0;
+  margin-bottom: 32px;
+  border-radius: 0;
+  background: transparent;
 }
-#view-diario .dia-item.is-pase { border-left-color: var(--green, #54997c); }
 #view-diario .dia-meta {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 6px 10px; height: auto; min-height: 28px; line-height: 1.4;
@@ -374,18 +355,18 @@ html.platform-ipad .dia-ink { font-size: 21px; }
 #view-diario .dia-study-details { font-family: var(--ui-font); font-size: 11px; color: var(--text2); margin: 3px 0 9px; line-height: 1.5; }
 #view-diario .dia-study-details summary { cursor: pointer; width: fit-content; padding: 3px 0; }
 #view-diario .dia-study-details div { padding: 5px 0; overflow-wrap: anywhere; }
-#view-diario .dia-free:not(.dia-new) { padding: 12px; margin-bottom: 16px; border-top: 1px solid var(--border); }
+#view-diario .dia-free:not(.dia-new) { padding: 0; margin-bottom: 32px; border: 0; }
 #view-diario .dia-free-head { height: auto; line-height: 1.4; margin-bottom: 6px; font-family: var(--ui-font); font-size: 11px; letter-spacing: .02em; }
 #view-diario .dia-note-heading, #view-diario .dia-section-heading {
   font-family: var(--ui-font); font-size: .8em; font-weight: 650;
   color: var(--text); min-height: var(--dia-line); line-height: var(--dia-line);
 }
-#view-diario .dia-section-heading { color: var(--accent); border-bottom: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); margin-top: 6px; }
-#view-diario .dia-li.is-today:not(.is-done) { background: color-mix(in srgb, var(--accent) 5%, transparent); border-radius: 5px; }
+#view-diario .dia-section-heading { color: var(--text); border: 0; margin-top: 12px; }
+#view-diario .dia-li.is-today:not(.is-done) { background: transparent; }
 #view-diario .dia-li.is-later { color: var(--text2); }
 #view-diario .dia-section-add {
-  display: block; margin: 5px 0 0; padding: 6px 10px; min-height: 36px;
-  border: 1px solid var(--border); border-radius: 7px; background: transparent;
+  display: block; margin: 5px 0 0; padding: 8px 0; min-height: 44px;
+  border: 0; border-radius: 0; background: transparent;
   color: var(--text2); font-family: var(--ui-font); font-size: 12px; cursor: pointer;
 }
 #view-diario .dia-section-picker {
@@ -403,15 +384,19 @@ html.platform-ipad .dia-ink { font-size: 21px; }
 #view-diario .dia-section-choice small { color: var(--text2); font: inherit; font-size: 11px; }
 #view-diario .dia-section-choice[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 15%, var(--bg2)); }
 #view-diario .dia-section-add:focus-visible, #view-diario .dia-section-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-html.platform-windows #view-diario .dia-sheet .dia-item { padding: 10px 12px; margin: 0 0 18px; }
-html.platform-windows #view-diario .dia-sheet .dia-free:not(.dia-new) { padding: 10px 12px; margin: 0 0 18px; }
+html.platform-windows #view-diario .dia-sheet .dia-item { padding: 0; margin: 0 0 32px; }
+html.platform-windows #view-diario .dia-sheet .dia-free:not(.dia-new) { padding: 0; margin: 0 0 32px; }
 html.platform-windows #view-diario .dia-sheet .dia-meta { height: auto; line-height: 1.4; }
 html.platform-windows #view-diario .dia-sheet .dia-free-head { height: auto; line-height: 1.4; margin-bottom: 6px; }
 @media (max-width: 480px) {
-  #view-diario .dia-paper { padding: 12px 10px 20px 20px; }
-  #view-diario .dia-paper::before { left: 10px; }
+  #view-diario .dia-paper { padding: 16px 4px 24px; }
   #view-diario .dia-meta { column-gap: 7px; }
   #view-diario .dia-title { font-size: 13px; }
   #view-diario .dia-time, #view-diario .dia-dur { font-size: 10px; }
-  #view-diario .dia-item { padding-left: 9px; padding-right: 9px; }
+  #view-diario .dia-item { padding-left: 0; padding-right: 0; }
 }
+
+/* Controles secundarios discretos, con foco y zonas de toque conservados. */
+#view-diario .dia-nav, #view-diario .dia-turn, #view-diario .dia-full { border: 0; }
+#view-diario .dia-section-add:hover { color: var(--text); text-decoration: underline; text-underline-offset: 4px; }
+#view-diario .dia-ink:focus-visible { outline: 1px solid var(--border); outline-offset: 5px; border-radius: 3px; }

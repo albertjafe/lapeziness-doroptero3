@@ -114,10 +114,10 @@ test.describe('una página por día (móvil, iPad, ventana estrecha)', () => {
     await expect(items.nth(2).locator('.dia-num')).toHaveCount(0);
     // Las horas no se parten.
     await expect(items.nth(2).locator('.dia-aside')).toHaveCount(0);
-    // Con formato, la misma letra del cuaderno que al escribir (styles.css pone otra a todo).
+    // La tipografía de interfaz es uniforme al escribir, leer listas y ver títulos.
     const fonts = await entry.evaluate(w => [w.querySelector('.dia-ink'), w.querySelector('.dia-txt'), w.querySelector('.dia-aside')].map(e => getComputedStyle(e).fontFamily));
     expect(new Set(fonts).size).toBe(1);
-    expect(fonts[0]).toContain('Kalam');
+    expect(fonts[0]).toBe(await view.locator('.dia-title').first().evaluate(e => getComputedStyle(e).fontFamily));
     // Marcar una casilla la guarda en el texto, sin abrir el campo.
     await items.nth(0).locator('.dia-box').click();
     await expect(items.nth(0)).toHaveClass(/is-done/);

@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-11-09 · caché runtime v531
+**Estado:** CANÓNICO · actualizado 2026-11-10 · caché runtime v532
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -236,16 +236,16 @@ Desde el 02-10-2026 (`20261002180000_index_study_reference_checks.sql`), `protec
 - Sync seguro: `task-sync-bootstrap.js` + `task-sync-resilience.js`.
 - Existe copia local de rescate interna; la antigua UI manual de “Historial de tareas” fue retirada y **no debe reaparecer** salvo petición explícita.
 
-### Diario (v531)
+### Diario (v532)
 
 Detalle de cambios, pruebas y límites: [`docs/DIARIO_ACTUALIZACION_V531_2026-11-09.md`](../docs/DIARIO_ACTUALIZACION_V531_2026-11-09.md).
 
 - `diario-sections.js`: catálogo puro por `obraId`, combina pasajes existentes (`passageTracker.passages`, sin reescribirlos) y nombres nuevos en `db.journalSections`. `@` al principio de una línea y el botón «Sección» abren sugerencias solo dentro del bloque de esa obra. Seleccionar inserta un encabezado `[[Nombre]]` legible; la entrada conserva `obraId` y `sectionRefs` con IDs estables. Los campos nuevos usan el guardado/fusión habitual, sin otro escritor. Se conserva el texto histórico si se renombra/elimina un pasaje. No se crean relaciones por coincidencias de nombres entre obras.
-- Cabecera compacta: hora inicial, título breve e importe temporal; el título completo, movimientos e intervalo permanecen en «Detalle del estudio» y en `about`. Notas/listas, títulos y secciones tienen jerarquía y contraste propios también en el libro y pantalla completa. Los bloques canónicos y su referencia no cambian.
+- Cabecera compacta: hora inicial, título breve e importe temporal; el título completo, movimientos e intervalo permanecen en «Detalle del estudio» y en `about`. Desde v532, notas/listas y secciones comparten tipografía de interfaz y superficie continua sin recuadros, rayas ni bandas de color; la jerarquía se basa en espacio y peso también en el libro y pantalla completa. Los bloques canónicos y su referencia no cambian.
 
 - `diario.js/css`, vista `#view-diario`, pestaña propia en la barra (6 en el móvil, 7 en el iPad; `diario.css` ajusta la rejilla). Una página por día: los bloques salen de `DailyStudyMinutes.studyBlocks` (mismos tramos canónicos), tramos seguidos de la misma obra con pausas ≤ 20 min se juntan y los pases van aparte. Las notas del cronómetro (`plant.notes`) se ven sin editar.
 - Lo escrito son entradas de **`db.dailyJournalEntries`** (el diario de siempre): con `ref` (`p:<id del primer tramo>`) y `about` (obra, movimiento y horas en texto) si van sobre un bloque; sin `ref` es del día. `day` = día del bloque. Se guarda al escribir (`saveDataSoon`); vaciar y salir de la línea la quita (lápida por id del documento). Un comentario cuyo bloque desaparece queda como entrada del día. El paquete para IA imprime `sobre <about>`. `Diario.day()`/`Diario.write()`/`Diario.spreadOf()` son puras; pruebas `tests/unit/diario.test.js`, `tests/e2e/diario.spec.js`.
-- **Libro de escritorio (v526)**: con `platform-windows` y ≥ 1200 px el Diario ocupa toda la pestaña como un libro: dos días a doble página (`spreadOf`: se cuenta desde hoy de dos en dos, hoy siempre a la derecha en la última), hoja rayada entera con desplazamiento propio y pauta común (`--dia-line`). Pasar de hoja: `turnTo` dibuja la página real ya nueva y encima una capa inerte (`.dia-turning`, copias) con la hoja girando en 3D; `finishTurn` la quita. La tapa se abre la primera vez que se entra (`playOpening`). Con `prefers-reduced-motion` no hay giro. Móvil, iPad y Windows estrecho siguen con una página por día. Cada escrito usa el día de su página (`data-day`), no `current`.
+- **Libro de escritorio (v526)**: con `platform-windows` y ≥ 1200 px el Diario ocupa toda la pestaña como un libro: dos días a doble página (`spreadOf`: se cuenta desde hoy de dos en dos, hoy siempre a la derecha en la última), superficie sin rayas ni marcos con desplazamiento propio y ritmo tipográfico común (`--dia-line`). Pasar de hoja: `turnTo` dibuja la página real ya nueva y encima una capa inerte (`.dia-turning`, copias) con la hoja girando en 3D; `finishTurn` la quita. La tapa se abre la primera vez que se entra (`playOpening`). Con `prefers-reduced-motion` no hay giro. Móvil, iPad y Windows estrecho siguen con una página por día. Cada escrito usa el día de su página (`data-day`), no `current`.
 
 ---
 
