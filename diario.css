@@ -400,3 +400,40 @@ html.platform-windows #view-diario .dia-sheet .dia-free-head { height: auto; lin
 #view-diario .dia-nav, #view-diario .dia-turn, #view-diario .dia-full { border: 0; }
 #view-diario .dia-section-add:hover { color: var(--text); text-decoration: underline; text-underline-offset: 4px; }
 #view-diario .dia-ink:focus-visible { outline: 1px solid var(--border); outline-offset: 5px; border-radius: 3px; }
+
+/* v533: una hoja de cuaderno, con una pauta tenue compartida por las notas.
+   El papel es una sola superficie: no hay tarjetas ni bandas por entrada. */
+#view-diario {
+  --dia-paper: color-mix(in srgb, var(--bg) 94%, #e8d8b6);
+  --dia-rule: color-mix(in srgb, var(--text) 8%, transparent);
+  --dia-margin: color-mix(in srgb, #ba786a 24%, transparent);
+}
+#view-diario .dia-paper {
+  background: var(--dia-paper);
+  padding: 24px 24px 32px 42px;
+  border-radius: 3px;
+}
+#view-diario .dia-paper::before {
+  content: ''; position: absolute; left: 26px; top: 0; bottom: 0;
+  width: 1px; background: var(--dia-margin); pointer-events: none;
+}
+#view-diario .dia-ink, #view-diario .dia-fmt {
+  background-image: linear-gradient(to bottom, transparent calc(var(--dia-line) - 1px), var(--dia-rule) calc(var(--dia-line) - 1px));
+  background-size: 100% var(--dia-line);
+  background-attachment: local;
+}
+@media (max-width: 560px) {
+  #view-diario .dia-paper { padding: 20px 12px 28px 28px; }
+  #view-diario .dia-paper::before { left: 16px; }
+}
+@media (min-width: 1200px) {
+  html.platform-windows #view-diario { --dia-sheet: var(--dia-paper); --dia-binding: var(--dia-paper); }
+  html.platform-windows #view-diario .dia-book-page { padding-left: 42px; }
+  html.platform-windows #view-diario .dia-book-page::before {
+    content: ''; position: absolute; left: 26px; top: 18px; bottom: 18px;
+    width: 1px; background: var(--dia-margin); pointer-events: none;
+  }
+}
+
+/* Mantener la pauta también tras varios encabezados dentro de una nota. */
+#view-diario .dia-section-heading { margin-top: 0; }

@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-11-10-diario-sereno-v532';
+const APP_VERSION = '2026-11-10-cuaderno-fluido-v533';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -235,9 +235,9 @@ function saveLocalNow() {
 // incorporan además la firma de urgentísimas completadas.
 const _derivedMemo = new Map();
 // Versión de los datos de estudio: sube cuando cambia cualquier sección salvo
-// tareas (sus premios llevan una firma aparte) y reconocimientos de avisos. Se actualiza en cada
+// tareas (sus premios llevan una firma aparte), diario y reconocimientos de avisos. Se actualiza en cada
 // guardado y en cada sincronización (_rememberLocalDocument).
-const _MEMO_IGNORED_SECTIONS = new Set(['cronoTasks', 'cronoTaskTombstones', 'rewardNoticeSeen', '_fieldClock', '_deletedChildren', '_savedAt', '_localRevision']);
+const _MEMO_IGNORED_SECTIONS = new Set(['cronoTasks', 'cronoTaskTombstones', 'rewardNoticeSeen', 'dailyJournalEntries', 'journalSections', '_fieldClock', '_deletedChildren', '_savedAt', '_localRevision']);
 let _studyDataVersion = 0;
 function dataStamp() {
   return _studyDataVersion + '|' + Math.floor(Date.now() / 60000);

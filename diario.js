@@ -316,6 +316,7 @@
     if (!area) return;
     const wrap = area.parentElement;
     if (wrap && wrap.classList.contains('is-fmt')) wrap.classList.remove('is-fmt');
+    fitStyles.delete(area);
     fit(area);
     area.focus();
     try { area.setSelectionRange(area.value.length, area.value.length); } catch (e) {}
@@ -454,9 +455,53 @@
     el.querySelectorAll('.dia-sheet').forEach(s => { s.scrollTop = scrolls.get(s.parentElement.dataset.day) || 0; });
   }
 
+  // Measure outside document flow: collapsing the live textarea to auto on
+  // each key clamps page scroll near its bottom (especially with the iPad keyboard).
+  let sizeProbe = null;
+  let fitStyles = new WeakMap();
+  const pendingFits = new Set();
+  let fitFrame = null;
   function fit(area) {
-    area.style.height = 'auto';
-    area.style.height = area.scrollHeight + 'px';
+    if (!area.isConnected || !area.getClientRects().length) return;
+    let config = fitStyles.get(area);
+    if (!config) {
+      const cs = root.getComputedStyle(area);
+      const properties = ['font-family','font-size','font-weight','font-style','line-height',
+        'letter-spacing','word-spacing','text-indent','text-transform','tab-size',
+        'padding-top','padding-bottom','padding-left','padding-right','overflow-wrap','word-break'];
+      config = 'position:fixed!important;left:-10000px!important;top:0!important;' +
+        'height:0!important;min-height:0!important;max-height:none!important;' +
+        'border:0!important;box-sizing:border-box!important;visibility:hidden!important;' +
+        'overflow:hidden!important;contain:strict!important;pointer-events:none!important;' +
+        'width:' + area.getBoundingClientRect().width + 'px!important;' +
+        properties.map(p => p + ':' + cs.getPropertyValue(p) + '!important;').join('');
+      fitStyles.set(area, config);
+    }
+    if (!sizeProbe) {
+      sizeProbe = doc.createElement('textarea');
+      sizeProbe.className = 'dia-size-probe';
+      sizeProbe.tabIndex = -1;
+      sizeProbe.setAttribute('aria-hidden', 'true');
+      sizeProbe.setAttribute('inert', '');
+      doc.body.appendChild(sizeProbe);
+    }
+    if (sizeProbe.dataset.config !== config) {
+      sizeProbe.style.cssText = config;
+      sizeProbe.dataset.config = config;
+    }
+    sizeProbe.wrap = area.wrap;
+    sizeProbe.value = area.value || ' ';
+    const height = sizeProbe.scrollHeight + 'px';
+    if (area.style.height !== height) area.style.height = height;
+  }
+  function scheduleFit(area) {
+    pendingFits.add(area);
+    if (fitFrame !== null) return;
+    fitFrame = root.requestAnimationFrame(() => {
+      fitFrame = null;
+      pendingFits.forEach(fit);
+      pendingFits.clear();
+    });
   }
 
   // El libro llena lo que queda de ventana bajo la cabecera, sin desplazar la página.
@@ -597,6 +642,9 @@
     if (!database) return;
     const item = area.closest('.dia-item');
     const page = area.closest('[data-day]');
+    const refs = sectionReferences(area, database, item, final);
+    const previous = (database.dailyJournalEntries || []).find(e => e.id === area.dataset.id);
+    const refsChanged = refs && JSON.stringify(previous?.sectionRefs || []) !== JSON.stringify(refs);
     const id = write(database, {
       id: area.dataset.id || '',
       key: page ? page.dataset.day : current,
@@ -604,11 +652,11 @@
       about: item ? item.dataset.about : '',
       text: area.value,
       obraId: item?.dataset.work || '',
-      sectionRefs: sectionReferences(area, database, item),
+      sectionRefs: refs,
       final,
     });
     const before = area.dataset.saved != null ? area.dataset.saved : area.defaultValue;
-    const changed = (area.dataset.id || '') !== id || before !== area.value;
+    const changed = (area.dataset.id || '') !== id || before !== area.value || refsChanged;
     if (id) area.dataset.id = id; else delete area.dataset.id;
     area.dataset.saved = area.value;
     if (changed) persistSoon();
@@ -617,11 +665,19 @@
   // One picker, owned by the textarea and work that opened it.
   let sectionPicker = null;
   let pickerSerial = 0;
-  function sectionReferences(area, database, item) {
+  const referenceCache = new WeakMap();
+  function sectionReferences(area, database, item, final) {
     if (!Sections || !item?.dataset.work) return undefined;
+    const work = item.dataset.work;
+    const headings = JSON.stringify(area.value.match(/^\s*\[\[([^\]\n]+)\]\]\s*$/gm) || []);
+    const selected = area.dataset.sections || '[]';
+    const cached = referenceCache.get(area);
+    if (!final && cached && cached.work === work && cached.headings === headings && cached.selected === selected) return cached.refs;
     let previous = [];
-    try { previous = JSON.parse(area.dataset.sections || '[]'); } catch (e) {}
-    return Sections.references(area.value, Sections.catalog(database, item.dataset.work), previous);
+    try { previous = JSON.parse(selected); } catch (e) {}
+    const refs = headings === '[]' ? [] : Sections.references(area.value, Sections.catalog(database, work), previous);
+    referenceCache.set(area, { work, headings, selected, refs });
+    return refs;
   }
   function closeSectionPicker() {
     if (!sectionPicker) return;
@@ -647,9 +703,11 @@
     if (!Sections || !work || area.selectionStart !== area.selectionEnd) return;
     const range = Sections.queryAt(area.value, area.selectionStart);
     if (!range) return;
-    const database = appDb(), rows = Sections.suggest(database, work, range.query);
+    const database = appDb(), catalog = Sections.catalog(database, work);
+    const query = Sections.key(range.query);
+    const rows = catalog.filter(x => !query || Sections.key(x.name).includes(query)).slice(0, 12);
     const name = Sections.clean(range.query);
-    const exact = Sections.catalog(database, work).some(x => Sections.key(x.name) === Sections.key(name));
+    const exact = catalog.some(x => Sections.key(x.name) === Sections.key(name));
     const options = rows.map(row => ({ row, label: row.name, detail: row.movement }));
     if (name && !exact) options.push({ create: true, label: 'Crear «' + name + '»', detail: 'En esta obra' });
     const menu = doc.createElement('div');
@@ -760,9 +818,9 @@
     });
     el.addEventListener('input', e => {
       if (!e.target.classList.contains('dia-ink')) return;
-      fit(e.target);
+      scheduleFit(e.target);
       commit(e.target, false);
-      offerSections(e.target);
+      if (!e.isComposing) offerSections(e.target);
     });
     el.addEventListener('focusout', e => {
       if (!e.target.classList.contains('dia-ink')) return;
@@ -813,11 +871,12 @@
     doc.addEventListener('visibilitychange', () => { if (!doc.hidden) refresh(); });
     root.addEventListener('storage', e => { if (e.key === 'alberto_piano_v2') refresh(); });
     root.addEventListener('resize', () => {
+      fitStyles = new WeakMap();
       const v = view();
       if (!v || !visible()) return;
       if (bookMode() !== lastBook && !editing()) { render(); return; }
       sizeBook();
-      v.querySelectorAll('.dia-ink').forEach(fit);
+      v.querySelectorAll('.dia-ink').forEach(scheduleFit);
     });
   }
 
