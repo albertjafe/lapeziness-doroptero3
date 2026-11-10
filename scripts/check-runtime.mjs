@@ -41,6 +41,12 @@ export function runtimeAssets(){
     const file=pending.pop();if(seen.has(file))continue;seen.add(file);
     const text=fs.readFileSync(path.join(root,file),'utf8');
     sources.set(file,text);
+    // Local fonts are runtime assets too; do not traverse their binary contents.
+    for(const m of text.matchAll(/['"]((?:\.\/)?fonts\/[\w-]+\.woff2)['"]/g)){
+      const url='./'+m[1].replace(/^\.\//,'');
+      if(!fs.existsSync(path.join(root,url.slice(2))))throw Error('Missing runtime font '+url);
+      assets.add(url);
+    }
     for(const m of text.matchAll(/['"]((?:\.\/)?[\w-]+\.(?:js|css)(?:\?v=\d+)?)['"]/g)){
       const url='./'+m[1].replace(/^\.\//,'');const name=url.slice(2).split('?')[0];
       if(name==='sw.js')continue;

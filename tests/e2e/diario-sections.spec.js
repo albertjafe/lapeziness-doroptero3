@@ -60,7 +60,7 @@ for(const width of [390,1366])test.describe('scoped diary sections '+width,()=>{
     await page.locator('[data-act="focus"]').first().click();
     const item=page.locator('[data-day="'+day()+'"] [data-work="w1"]');
     await expect(item.locator('.dia-title')).toHaveText('Composer · Sonata para piano');
-    await expect(item.locator('.dia-time')).toHaveText('09:00');
+    await expect(item.locator('.dia-time')).toHaveText('09:00–09:40');
     await item.locator('summary').click();
     await expect(item.locator('.dia-study-details')).toContainText('Op. 123');
     await expect(item.locator('.dia-study-details')).toContainText('09:00–09:40');

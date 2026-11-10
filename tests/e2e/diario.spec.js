@@ -47,7 +47,7 @@ test.describe('una página por día (móvil, iPad, ventana estrecha)', () => {
     await expect(view.locator('.dia-book')).toHaveCount(0);
     const items = view.locator('.dia-item');
     await expect(items).toHaveCount(2);
-    await expect(items.nth(0).locator('.dia-time')).toHaveText('09:00');
+    await expect(items.nth(0).locator('.dia-time')).toHaveText('09:00–10:30');
     await items.nth(0).locator('.dia-study-details summary').click();
     await expect(items.nth(0).locator('.dia-study-details')).toContainText('09:00–10:30');
     await expect(items.nth(0).locator('.dia-title')).toHaveText('Haydn · Sonata Hob. XVI:52');
@@ -114,9 +114,11 @@ test.describe('una página por día (móvil, iPad, ventana estrecha)', () => {
     await expect(items.nth(2).locator('.dia-num')).toHaveCount(0);
     // Las horas no se parten.
     await expect(items.nth(2).locator('.dia-aside')).toHaveCount(0);
-    // La tipografía de interfaz es uniforme al escribir, leer listas y ver títulos.
+    // La misma letra manuscrita al escribir, leer listas y ver títulos.
     const fonts = await entry.evaluate(w => [w.querySelector('.dia-ink'), w.querySelector('.dia-txt'), w.querySelector('.dia-aside')].map(e => getComputedStyle(e).fontFamily));
     expect(new Set(fonts).size).toBe(1);
+    expect(fonts[0]).toContain('Diario Kalam');
+    expect(await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check('22px "Diario Kalam"'); })).toBe(true);
     expect(fonts[0]).toBe(await view.locator('.dia-title').first().evaluate(e => getComputedStyle(e).fontFamily));
     // Marcar una casilla la guarda en el texto, sin abrir el campo.
     await items.nth(0).locator('.dia-box').click();
@@ -158,7 +160,7 @@ test.describe('una página por día (móvil, iPad, ventana estrecha)', () => {
     expect(after.covered).toBe(true);
     expect(after.w).toBeGreaterThan(before.w);
     expect(parseFloat(after.font)).toBeLessThan(parseFloat(before.font));
-    expect(after.meta).toBe('12px');
+    expect(after.meta).toBe('16px');
     // Se escribe igual que siempre.
     await view.locator('.dia-new .dia-ink').click();
     await page.keyboard.type('Escrito a pantalla completa');

@@ -1,8 +1,27 @@
-/* Diario: página continua, sin tarjetas ni pauta decorativa.
-   La jerarquía se expresa con espacio, peso y tamaño de letra. */
+/* Una sola letra para escribir y leer, disponible también sin conexión. */
+@font-face {
+  font-family: 'Diario Kalam';
+  src: url('./fonts/kalam-latin-ext.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Diario Kalam';
+  src: url('./fonts/kalam-latin.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
 #view-diario {
-  --dia-line: 30px;
-  --dia-hand: var(--ui-font, system-ui, sans-serif);
+  --dia-hand: 'Diario Kalam', 'Kalam', 'Segoe Print', cursive;
+  --dia-size: 22px;
+}
+/* La jerarquía se expresa con espacio y tamaño, sobre una hoja continua. */
+#view-diario {
+  --dia-line: 36px;
 }
 .dia-page { max-width: 760px; margin: 0 auto; padding: 8px 16px 120px; }
 .dia-head { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 8px; margin: 4px 0 14px; }
@@ -162,7 +181,7 @@ html:not(.platform-windows) .nav.nav-bottom { grid-template-columns: repeat(5, m
 /* ── Libro de escritorio (v526): dos días a doble página, a toda la pestaña ── */
 @media (min-width: 1200px) {
   html.platform-windows #view-diario {
-    --dia-line: 30px;
+    --dia-line: 36px;
     --dia-sheet: var(--bg);
     --dia-binding: var(--bg);
   }
@@ -302,7 +321,8 @@ html:not(.platform-windows) .nav.nav-bottom { grid-template-columns: repeat(5, m
    cuaderno algo más pequeña; fechas, horas y obras, al tamaño de siempre. */
 html.dia-focus, html.dia-focus body { overflow: hidden !important; }
 html.dia-focus #view-diario {
-  --dia-line: 30px;
+  --dia-line: 34px;
+  --dia-size: 21px;
   position: fixed !important;
   inset: 0 !important;
   z-index: 2147483000;
@@ -318,7 +338,7 @@ html.dia-focus .dia-page { max-width: 1180px; padding-bottom: 48px; }
 html.dia-focus #view-diario .dia-ink,
 html.dia-focus #view-diario .dia-fmt { font-size: 17px; }
 @media (min-width: 1200px) {
-  html.platform-windows.dia-focus #view-diario { --dia-line: 31px; }
+  html.platform-windows.dia-focus #view-diario { --dia-line: 34px; }
   html.platform-windows.dia-focus .dia-book { max-width: none; grid-template-columns: 44px minmax(0, 1fr) 44px; }
   html.platform-windows.dia-focus .dia-turn { width: 40px; height: 40px; font-size: 22px; }
   html.platform-windows.dia-focus .dia-book-page { padding: 12px 30px 10px; }
@@ -346,42 +366,51 @@ html.platform-ipad .dia-ink { font-size: 18px; }
   background: transparent;
 }
 #view-diario .dia-meta {
-  display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 6px 10px; height: auto; min-height: 28px; line-height: 1.4;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px; height: auto; min-height: 44px; line-height: 1.4;
+  padding-right: 44px;
   align-items: baseline;
 }
-#view-diario .dia-title { font-family: var(--ui-font); font-size: 15px; font-weight: 650; white-space: normal; overflow-wrap: anywhere; }
-#view-diario .dia-time, #view-diario .dia-dur { font-family: var(--ui-font); font-size: 12px; line-height: 1.4; }
-#view-diario .dia-study-details { font-family: var(--ui-font); font-size: 11px; color: var(--text2); margin: 3px 0 9px; line-height: 1.5; }
-#view-diario .dia-study-details summary { cursor: pointer; width: fit-content; padding: 3px 0; }
-#view-diario .dia-study-details div { padding: 5px 0; overflow-wrap: anywhere; }
+#view-diario .dia-title { font-size: 24px; font-weight: 400; white-space: normal; overflow-wrap: anywhere; }
+#view-diario .dia-dur { font-size: 18px; line-height: 1.4; color: var(--text2); white-space: nowrap; }
+#view-diario .dia-time { font-size: 16px; color: inherit; }
+#view-diario .dia-study-details { font-family: var(--ui-font); font-size: 16px; color: var(--text2); margin: 0; line-height: 1.5; }
+#view-diario .dia-study-details summary {
+  position: absolute; top: 0; right: 0; display: flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; padding: 0; list-style: none;
+  color: var(--text2); font-size: 24px; cursor: pointer; border-radius: 8px;
+}
+#view-diario .dia-study-details summary::-webkit-details-marker { display: none; }
+#view-diario .dia-study-details summary:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
+#view-diario .dia-study-details summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#view-diario .dia-study-details div { padding: 4px 0 16px; overflow-wrap: anywhere; }
 #view-diario .dia-free:not(.dia-new) { padding: 0; margin-bottom: 32px; border: 0; }
-#view-diario .dia-free-head { height: auto; line-height: 1.4; margin-bottom: 6px; font-family: var(--ui-font); font-size: 11px; letter-spacing: .02em; }
+#view-diario .dia-free-head { height: auto; line-height: 1.5; margin-bottom: 6px; font-size: 20px; color: var(--text); overflow-wrap: anywhere; }
 #view-diario .dia-note-heading, #view-diario .dia-section-heading {
-  font-family: var(--ui-font); font-size: .8em; font-weight: 650;
+  font-size: 1em; font-weight: 600;
   color: var(--text); min-height: var(--dia-line); line-height: var(--dia-line);
 }
 #view-diario .dia-section-heading { color: var(--text); border: 0; margin-top: 12px; }
 #view-diario .dia-li.is-today:not(.is-done) { background: transparent; }
 #view-diario .dia-li.is-later { color: var(--text2); }
 #view-diario .dia-section-add {
-  display: block; margin: 5px 0 0; padding: 8px 0; min-height: 44px;
+  display: block; margin: 6px 0 0 auto; padding: 8px 4px; min-height: 44px;
   border: 0; border-radius: 0; background: transparent;
-  color: var(--text2); font-family: var(--ui-font); font-size: 12px; cursor: pointer;
+  color: var(--text2); font-size: 18px; cursor: pointer;
 }
 #view-diario .dia-section-picker {
   position: relative; z-index: 3; max-height: 210px; overflow-y: auto;
   margin: 5px 0 10px; padding: 5px; border: 1px solid var(--border); border-radius: 9px;
   background: var(--bg2); box-shadow: 0 6px 18px #0002; font-family: var(--ui-font);
 }
-#view-diario .dia-section-picker p { margin: 7px; font-size: 12px; line-height: 1.4; color: var(--text2); }
+#view-diario .dia-section-picker p { margin: 7px; font-size: 16px; line-height: 1.4; color: var(--text2); }
 #view-diario .dia-section-choice {
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
   text-align: left; width: 100%; min-height: 42px; padding: 9px 10px;
   border: 0; border-radius: 5px; background: transparent; color: var(--text);
-  font-family: var(--ui-font); font-size: 13px; line-height: 1.4; cursor: pointer;
+  font-size: 20px; line-height: 1.4; cursor: pointer;
 }
-#view-diario .dia-section-choice small { color: var(--text2); font: inherit; font-size: 11px; }
+#view-diario .dia-section-choice small { color: var(--text2); font: inherit; font-size: 16px; }
 #view-diario .dia-section-choice[aria-selected="true"] { background: color-mix(in srgb, var(--accent) 15%, var(--bg2)); }
 #view-diario .dia-section-add:focus-visible, #view-diario .dia-section-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 html.platform-windows #view-diario .dia-sheet .dia-item { padding: 0; margin: 0 0 32px; }
@@ -391,8 +420,8 @@ html.platform-windows #view-diario .dia-sheet .dia-free-head { height: auto; lin
 @media (max-width: 480px) {
   #view-diario .dia-paper { padding: 16px 4px 24px; }
   #view-diario .dia-meta { column-gap: 7px; }
-  #view-diario .dia-title { font-size: 13px; }
-  #view-diario .dia-time, #view-diario .dia-dur { font-size: 10px; }
+  #view-diario .dia-title { font-size: 22px; }
+  #view-diario .dia-dur { font-size: 17px; }
   #view-diario .dia-item { padding-left: 0; padding-right: 0; }
 }
 
@@ -404,7 +433,7 @@ html.platform-windows #view-diario .dia-sheet .dia-free-head { height: auto; lin
 /* v533: una hoja de cuaderno, con una pauta tenue compartida por las notas.
    El papel es una sola superficie: no hay tarjetas ni bandas por entrada. */
 #view-diario {
-  --dia-paper: color-mix(in srgb, var(--bg) 94%, #e8d8b6);
+  --dia-paper: color-mix(in srgb, var(--bg2) 92%, #e8d8b6);
   --dia-rule: color-mix(in srgb, var(--text) 8%, transparent);
   --dia-margin: color-mix(in srgb, #ba786a 24%, transparent);
 }
@@ -437,3 +466,38 @@ html.platform-windows #view-diario .dia-sheet .dia-free-head { height: auto; lin
 
 /* Mantener la pauta también tras varios encabezados dentro de una nota. */
 #view-diario .dia-section-heading { margin-top: 0; }
+
+/* Misma tinta, tamaño y ritmo al teclear y al leer, en todos los dispositivos.
+   La especificidad evita que los estilos generales de Windows cambien la letra. */
+html #view-diario .dia-ink,
+html #view-diario .dia-fmt,
+html #view-diario .dia-fmt *,
+html #view-diario .dia-title,
+html #view-diario .dia-title em,
+html #view-diario .dia-dur,
+html #view-diario .dia-crono,
+html #view-diario .dia-free-head,
+html #view-diario .dia-section-add,
+html #view-diario .dia-section-choice,
+html #view-diario .dia-section-choice *,
+html #view-diario .dia-date *,
+html #view-diario .dia-page-head * { font-family: var(--dia-hand) !important; }
+html #view-diario .dia-ink,
+html #view-diario .dia-fmt,
+html #view-diario .dia-crono { font-size: var(--dia-size) !important; line-height: var(--dia-line); }
+#view-diario .dia-crono { color: var(--text); margin: 0; }
+#view-diario .dia-aside { font-size: .9em; color: inherit; }
+#view-diario .dia-num { font-size: .9em; color: inherit; }
+#view-diario .dia-section-heading { text-decoration: underline; text-decoration-color: var(--dia-margin); text-underline-offset: 5px; }
+html #view-diario .dia-date h2, html #view-diario .dia-page-head h2 { font-size: 30px; line-height: 1.4; }
+html #view-diario .dia-date small, html #view-diario .dia-page-head small { font-size: 18px; letter-spacing: 0; text-transform: none; color: var(--text2); }
+#view-diario .dia-full, #view-diario .dia-back { min-height: 44px; font-size: 15px; }
+#view-diario .dia-ink:focus::placeholder, #view-diario .dia-new .dia-ink::placeholder { color: var(--text2); }
+#view-diario .dia-paper { min-height: 340px; }
+@media (max-width: 560px) {
+  #view-diario { --dia-size: 21px; --dia-line: 34px; }
+  html.dia-focus #view-diario { --dia-size: 20px; }
+  html #view-diario .dia-date h2 { font-size: 26px; }
+  #view-diario .dia-meta { grid-template-columns: minmax(0, 1fr); row-gap: 0; padding-bottom: 8px; }
+}
+body[data-view="diario"] #headerEyebrow { display: none !important; }

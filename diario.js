@@ -346,26 +346,27 @@
     return [composer, piece].filter(Boolean).join(' · ');
   }
   function itemHtml(item) {
-    const notes = item.cronoNotes.map(n => '<p class="dia-crono">' + (n.label ? '<span>' + esc(n.label) + '</span> ' : '') + esc(n.text) + '</p>').join('');
+    const notes = item.cronoNotes.map(n => '<p class="dia-crono"' + (n.label ? ' title="' + esc(n.label) + '"' : '') + '>' + esc(n.text) + '</p>').join('');
     const inks = item.entries.length
       ? item.entries.map(e => ink({ id: e.id, ref: item.key, sections: JSON.stringify(e.sectionRefs || []) }, e.text, 'Sobre ' + item.title)).join('')
       : ink({ ref: item.key }, '', 'Sobre ' + item.title);
     const pct = item.pct != null ? ' · ' + Math.round(item.pct) + ' %' : '';
     return '<article class="dia-item' + (item.kind === 'pase' ? ' is-pase' : '') + '" data-ref="' + esc(item.key) + '" data-work="' + esc(item.obraId) + '" data-about="' + esc(item.about) + '">' +
-      '<div class="dia-meta"><span class="dia-time">' + esc(item.startMs != null ? clock(item.startMs) : 'Sin hora') + '</span>' +
+      '<div class="dia-meta">' +
       '<span class="dia-title" title="' + esc(item.title) + '">' + (item.kind === 'pase' ? '<em>Pase</em> ' : '') + esc(compactTitle(item.title)) + '</span>' +
       '<span class="dia-dur">' + esc(item.duration + pct) + '</span></div>' +
-      '<details class="dia-study-details"><summary>Detalle del estudio</summary><div>' + esc(item.title) +
-      (item.movs ? ' · ' + esc(item.movs) : '') + ' · ' + esc(item.time) + '</div></details>' +
+      '<details class="dia-study-details"><summary aria-label="Detalle del estudio" title="Detalle del estudio"><span aria-hidden="true">···</span></summary><div>' + esc(item.title) +
+      (item.movs ? ' · ' + esc(item.movs) : '') + '<br><span class="dia-time">' + esc(item.time || 'Sin hora') + '</span>' +
+      (item.cronoNotes.some(n => n.label) ? '<br>' + item.cronoNotes.filter(n => n.label).map(n => esc(n.label) + ': ' + esc(n.text)).join('<br>') : '') + '</div></details>' +
       notes + inks +
-      (item.obraId && Sections ? '<button type="button" class="dia-section-add" data-act="section" aria-label="Insertar sección de ' + esc(item.title) + '">@ Sección</button>' : '') +
+      (item.obraId && Sections ? '<button type="button" class="dia-section-add" data-act="section" aria-label="Insertar sección de ' + esc(item.title) + '">+ Sección</button>' : '') +
       '</article>';
   }
 
   function generalHtml(entry) {
     const ms = parseMs(entry.at);
-    const head = entry.about ? entry.about : [(ms != null ? clock(ms) : ''), 'Notas y listas'].filter(Boolean).join(' · ');
-    return '<div class="dia-free">' + (head ? '<div class="dia-free-head">' + esc(head) + '</div>' : '') +
+    const head = entry.about || '';
+    return '<div class="dia-free"' + (ms != null ? ' aria-label="Nota de las ' + esc(clock(ms)) + '"' : '') + '>' + (head ? '<div class="dia-free-head">' + esc(head) + '</div>' : '') +
       ink({ id: entry.id }, entry.text, 'Del día') + '</div>';
   }
 
@@ -383,7 +384,7 @@
     data.items.forEach(item => rows.push({ ms: item.startMs ?? Infinity, html: itemHtml(item) }));
     data.general.forEach(entry => rows.push({ ms: parseMs(entry.at) ?? Infinity, html: generalHtml(entry) }));
     rows.sort((a, b) => a.ms - b.ms);
-    return (rows.length ? rows.map(r => r.html).join('') : '<p class="dia-empty">Este día no hay estudio registrado.</p>') +
+    return rows.map(r => r.html).join('') +
       '<div class="dia-free dia-new">' + ink({ free: '1' }, '', 'Escribe algo del día…') + '</div>';
   }
 

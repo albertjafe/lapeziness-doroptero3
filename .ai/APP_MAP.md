@@ -1,6 +1,6 @@
 # AI App Map — Piano Practice PWA
 
-**Estado:** CANÓNICO · actualizado 2026-11-10 · caché runtime v533
+**Estado:** CANÓNICO · actualizado 2026-11-10 · caché runtime v534
 
 Este es el **primer archivo que debe leer una IA** antes de investigar el repositorio. Su objetivo es evitar reabrir `app.js`, `styles.css` y decenas de módulos para reconstruir la arquitectura desde cero.
 
@@ -236,14 +236,14 @@ Desde el 02-10-2026 (`20261002180000_index_study_reference_checks.sql`), `protec
 - Sync seguro: `task-sync-bootstrap.js` + `task-sync-resilience.js`.
 - Existe copia local de rescate interna; la antigua UI manual de “Historial de tareas” fue retirada y **no debe reaparecer** salvo petición explícita.
 
-### Diario (v533)
+### Diario (v534)
 
 Detalle de cambios, pruebas y límites: [`docs/DIARIO_ACTUALIZACION_V531_2026-11-09.md`](../docs/DIARIO_ACTUALIZACION_V531_2026-11-09.md).
 
 - `diario.js` mide la altura en un campo auxiliar fuera del flujo, agrupa el ajuste en un frame y solo modifica la altura real cuando cambia. Las referencias se reutilizan mientras los encabezados no cambian y se revalidan al salir; la composición del teclado no abre sugerencias intermedias. `dailyJournalEntries` y `journalSections` se guardan normalmente, pero no invalidan las proyecciones de estudio (`_MEMO_IGNORED_SECTIONS`). Diagnóstico y medición: [`docs/CUADERNO_FLUIDO_V533_2026-11-10.md`](../docs/CUADERNO_FLUIDO_V533_2026-11-10.md).
 
 - `diario-sections.js`: catálogo puro por `obraId`, combina pasajes existentes (`passageTracker.passages`, sin reescribirlos) y nombres nuevos en `db.journalSections`. `@` al principio de una línea y el botón «Sección» abren sugerencias solo dentro del bloque de esa obra. Seleccionar inserta un encabezado `[[Nombre]]` legible; la entrada conserva `obraId` y `sectionRefs` con IDs estables. Los campos nuevos usan el guardado/fusión habitual, sin otro escritor. Se conserva el texto histórico si se renombra/elimina un pasaje. No se crean relaciones por coincidencias de nombres entre obras.
-- Cabecera compacta: hora inicial, título breve e importe temporal; el título completo, movimientos e intervalo permanecen en «Detalle del estudio» y en `about`. Desde v533, notas/listas y secciones comparten tipografía de interfaz y una hoja cálida con margen único y pauta tenue, sin recuadros ni bandas de color; la jerarquía se basa en espacio y peso también en el libro y pantalla completa. Los bloques canónicos y su referencia no cambian.
+- Cabecera compacta: título breve y duración; el botón «···» (nombre accesible «Detalle del estudio») despliega título completo, movimientos, intervalo y contexto de las notas del cronómetro. Desde v534, fechas, títulos, notas, listas y secciones comparten la letra manuscrita Kalam local (`fonts/`, licencia OFL), precacheada para uso sin conexión. Hoja cálida con margen único y pauta tenue, sin recuadros ni bandas de color; sin rótulos repetidos en las notas libres. Misma letra al editar y leer, también en el libro y pantalla completa. Los bloques canónicos, sus referencias y el guardado no cambian. `scripts/check-runtime.mjs` incluye las fuentes locales en la auditoría de precaché.
 
 - `diario.js/css`, vista `#view-diario`, pestaña propia en la barra (6 en el móvil, 7 en el iPad; `diario.css` ajusta la rejilla). Una página por día: los bloques salen de `DailyStudyMinutes.studyBlocks` (mismos tramos canónicos), tramos seguidos de la misma obra con pausas ≤ 20 min se juntan y los pases van aparte. Las notas del cronómetro (`plant.notes`) se ven sin editar.
 - Lo escrito son entradas de **`db.dailyJournalEntries`** (el diario de siempre): con `ref` (`p:<id del primer tramo>`) y `about` (obra, movimiento y horas en texto) si van sobre un bloque; sin `ref` es del día. `day` = día del bloque. Se guarda al escribir (`saveDataSoon`); vaciar y salir de la línea la quita (lápida por id del documento). Un comentario cuyo bloque desaparece queda como entrada del día. El paquete para IA imprime `sobre <about>`. `Diario.day()`/`Diario.write()`/`Diario.spreadOf()` son puras; pruebas `tests/unit/diario.test.js`, `tests/e2e/diario.spec.js`.
