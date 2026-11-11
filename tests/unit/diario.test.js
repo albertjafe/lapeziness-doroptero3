@@ -31,10 +31,11 @@ const base = () => ({
 });
 
 describe('Diario: el día se rellena solo', () => {
-  it('joins consecutive pieces of the same work, keeps pases apart and orders by time', () => {
+  it('separates movements, keeps pases apart and orders by time without adding practice', () => {
     const day = D.day(base(), '2026-11-03', deps);
     expect(day.items.map(i => [i.kind, i.obraId, i.time, i.duration])).toEqual([
-      ['study', 'haydn', '10:00–11:30', '1 h 20'],
+      ['study', 'haydn', '10:00–10:40', '40 min'],
+      ['study', 'haydn', '10:50–11:30', '40 min'],
       ['study', 'chopin', '12:00–12:45', '45 min'],
       ['pase', 'chopin', '12:50–12:58', '8 min'],
       ['study', 'haydn', '16:00–16:30', '30 min'],
@@ -42,16 +43,36 @@ describe('Diario: el día se rellena solo', () => {
     const haydn = day.items[0];
     expect(haydn.key).toBe('p:a');
     expect(haydn.title).toBe('Haydn · Sonata Hob. XVI:52');
-    expect(haydn.movs).toBe('I. Allegro, II. Adagio');
-    expect(haydn.about).toBe('Haydn · Sonata Hob. XVI:52 · I. Allegro, II. Adagio · 10:00–11:30');
+    expect(haydn.movId).toBe('h1');
+    expect(haydn.movs).toBe('I. Allegro');
+    expect(haydn.about).toBe('Haydn · Sonata Hob. XVI:52 · I. Allegro · 10:00–10:40');
     expect(haydn.cronoNotes).toEqual([{ text: 'mano izquierda más ligera', label: 'min 12' }]);
-    expect(day.items[2].pct).toBe(82);
-    expect(day.items[2].about).toBe('Pase · Chopin · Balada n.º 4 · 12:50–12:58');
+    expect(day.items[3].pct).toBe(82);
+    expect(day.items[3].about).toBe('Pase · Chopin · Balada n.º 4 · 12:50–12:58');
+    expect(day.items.reduce((sum, item) => sum + item.rawMins, 0)).toBe(163);
+  });
+
+  it('merges the same movement and retains notes attached to any underlying block', () => {
+    const data = base();
+    data.sessionPlants[1].movId = 'h1';
+    data.dailyJournalEntries = [{ id:'old', day:'2026-11-03', ref:'p:b', text:'Nota antigua', about:'Contexto histórico', future:7 }];
+    const before = structuredClone(data);
+    const result = D.day(data, '2026-11-03', deps);
+    expect(result.items[0].duration).toBe('1 h 20');
+    expect(result.items[0].entries.map(e => e.id)).toEqual(['old']);
+    expect(result.general).toEqual([]);
+    expect(data).toEqual(before);
+    D.write(data, { id:'old', ref:'p:a', about:'Contexto nuevo', text:'Nota editada', obraId:'haydn', movId:'h1' });
+    expect(data.dailyJournalEntries[0]).toMatchObject({ ref:'p:b', about:'Contexto histórico', future:7, movId:'h1' });
+    data.sessionPlants[1].movId = 'h2';
+    const split = D.day(data, '2026-11-03', deps);
+    expect(split.items[1].entries.map(e => e.id)).toEqual(['old']);
+    expect(split.items[0].entries).toEqual([]);
   });
 
   it('a pause longer than 20 min starts a new block', () => {
     const data = base();
-    data.sessionPlants[1] = plant('b', 'haydn', 11, 1, 11, 30, { movId: 'h2' });
+    data.sessionPlants[1] = plant('b', 'haydn', 11, 1, 11, 30, { movId: 'h1' });
     const day = D.day(data, '2026-11-03', deps);
     expect(day.items.slice(0, 2).map(i => i.time)).toEqual(['10:00–10:40', '11:01–11:30']);
   });

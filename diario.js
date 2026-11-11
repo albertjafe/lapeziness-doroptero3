@@ -1,5 +1,5 @@
 /* Diario (v523): una página de cuaderno por día. Lo estudiado aparece solo y
-   en orden: los tramos seguidos de una misma obra (pausas de hasta 20 min) se
+   en orden: los tramos seguidos de una misma obra y movimiento (hasta 20 min) se
    juntan en un bloque, y los pases van aparte. Debajo de cada bloque se
    escribe lo que sea, sin botones: se guarda mientras escribes.
    - Cada comentario es una entrada de db.dailyJournalEntries (el diario de
@@ -192,18 +192,22 @@
       const isPase = !!b.pase;
       const last = items[items.length - 1];
       const joins = !isPase && last && last.kind === 'study' && last.obraId === (b.obraId || '') &&
+        last.movId === (b.movId || null) &&
         startMs != null && last.endMs != null && startMs - last.endMs <= MERGE_GAP_MIN * 60000;
       if (joins) {
         last.endMs = Math.max(last.endMs, endMs ?? startMs);
         last.rawMins += rawMins;
+        last.refs.push(blockKey(b));
         if (b.movId) last.movIds.push(b.movId);
         last.cronoNotes.push(...cronoNotes(b));
         return;
       }
       items.push({
         key: blockKey(b),
+        refs: [blockKey(b)],
         kind: isPase ? 'pase' : 'study',
         obraId: b.obraId || '',
+        movId: b.movId || null,
         obraName: b.obraName || '',
         movIds: b.movId ? [b.movId] : [],
         startMs, endMs, rawMins,
@@ -222,7 +226,7 @@
       item.entries = [];
     });
 
-    const byKey = new Map(items.map(item => [item.key, item]));
+    const byKey = new Map(items.flatMap(item => item.refs.map(ref => [ref, item])));
     const general = [];
     (database && Array.isArray(database.dailyJournalEntries) ? database.dailyJournalEntries : [])
       .filter(e => e && e.id && entryDay(e) === key)
@@ -250,7 +254,7 @@
   }
 
   // Crea, cambia o (con texto vacío y `final`) quita la entrada. Devuelve su id.
-  function write(database, { id, key, ref, about, text, final, obraId, sectionRefs }, now = new Date()) {
+  function write(database, { id, key, ref, about, text, final, obraId, movId, sectionRefs }, now = new Date()) {
     const list = entries(database);
     const value = String(text || '').slice(0, MAX_TEXT);
     const index = id ? list.findIndex(e => e && e.id === id) : -1;
@@ -266,8 +270,10 @@
       entry.text = value;
       entry.updatedAt = stamp;
       if (obraId) entry.obraId = obraId;
+      if (movId) entry.movId = movId;
       if (sectionRefs) entry.sectionRefs = sectionRefs;
-      if (ref && about) entry.about = about;
+      // Historical notes may describe an old block spanning several movements.
+      if (ref && about && !entry.about) entry.about = about;
       return entry.id;
     }
     const entry = {
@@ -279,6 +285,7 @@
     };
     if (ref) { entry.ref = ref; entry.about = about || ''; }
     if (obraId) entry.obraId = obraId;
+    if (movId) entry.movId = movId;
     if (sectionRefs && sectionRefs.length) entry.sectionRefs = sectionRefs;
     list.push(entry);
     if (list.length > 3000) list.splice(0, list.length - 3000);
@@ -345,15 +352,20 @@
     const composer = parts.length > 1 ? parts[0].trim().split(/\s+/).at(-1) : '';
     return [composer, piece].filter(Boolean).join(' · ');
   }
+  function movementTitle(name) {
+    const text = String(name || '').trim();
+    const number = /^([IVXLCDM]+|\d+)(?=[.\s·:–-]|$)/i.exec(text);
+    return number ? number[1] : text;
+  }
   function itemHtml(item) {
     const notes = item.cronoNotes.map(n => '<p class="dia-crono"' + (n.label ? ' title="' + esc(n.label) + '"' : '') + '>' + esc(n.text) + '</p>').join('');
     const inks = item.entries.length
-      ? item.entries.map(e => ink({ id: e.id, ref: item.key, sections: JSON.stringify(e.sectionRefs || []) }, e.text, 'Sobre ' + item.title)).join('')
+      ? item.entries.map(e => ink({ id: e.id, ref: e.ref || item.key, sections: JSON.stringify(e.sectionRefs || []) }, e.text, 'Sobre ' + item.title)).join('')
       : ink({ ref: item.key }, '', 'Sobre ' + item.title);
     const pct = item.pct != null ? ' · ' + Math.round(item.pct) + ' %' : '';
-    return '<article class="dia-item' + (item.kind === 'pase' ? ' is-pase' : '') + '" data-ref="' + esc(item.key) + '" data-work="' + esc(item.obraId) + '" data-about="' + esc(item.about) + '">' +
+    return '<article class="dia-item' + (item.kind === 'pase' ? ' is-pase' : '') + '" data-ref="' + esc(item.key) + '" data-work="' + esc(item.obraId) + '" data-movement="' + esc(item.movId || '') + '" data-about="' + esc(item.about) + '">' +
       '<div class="dia-meta">' +
-      '<span class="dia-title" title="' + esc(item.title) + '">' + (item.kind === 'pase' ? '<em>Pase</em> ' : '') + esc(compactTitle(item.title)) + '</span>' +
+      '<span class="dia-title" title="' + esc([item.title, item.movs].filter(Boolean).join(' · ')) + '">' + (item.kind === 'pase' ? '<em>Pase</em> ' : '') + esc([compactTitle(item.title), movementTitle(item.movs)].filter(Boolean).join(' · ')) + '</span>' +
       '<span class="dia-dur">' + esc(item.duration + pct) + '</span></div>' +
       '<details class="dia-study-details"><summary aria-label="Detalle del estudio" title="Detalle del estudio"><span aria-hidden="true">···</span></summary><div>' + esc(item.title) +
       (item.movs ? ' · ' + esc(item.movs) : '') + '<br><span class="dia-time">' + esc(item.time || 'Sin hora') + '</span>' +
@@ -459,11 +471,14 @@
   // Measure outside document flow: collapsing the live textarea to auto on
   // each key clamps page scroll near its bottom (especially with the iPad keyboard).
   let sizeProbe = null;
+  const nativeSizing = !!root.CSS?.supports?.('field-sizing', 'content');
   let fitStyles = new WeakMap();
   const pendingFits = new Set();
   let fitFrame = null;
   function fit(area) {
     if (!area.isConnected || !area.getClientRects().length) return;
+    // Native sizing lays out the editor once, without a second hidden textarea.
+    if (nativeSizing) { if (area.style.height) area.style.removeProperty('height'); return; }
     let config = fitStyles.get(area);
     if (!config) {
       const cs = root.getComputedStyle(area);
@@ -496,6 +511,7 @@
     if (area.style.height !== height) area.style.height = height;
   }
   function scheduleFit(area) {
+    if (nativeSizing) return;
     pendingFits.add(area);
     if (fitFrame !== null) return;
     fitFrame = root.requestAnimationFrame(() => {
@@ -653,6 +669,7 @@
       about: item ? item.dataset.about : '',
       text: area.value,
       obraId: item?.dataset.work || '',
+      movId: item?.dataset.movement || null,
       sectionRefs: refs,
       final,
     });
@@ -670,14 +687,15 @@
   function sectionReferences(area, database, item, final) {
     if (!Sections || !item?.dataset.work) return undefined;
     const work = item.dataset.work;
+    const movement = item.dataset.movement || null;
     const headings = JSON.stringify(area.value.match(/^\s*\[\[([^\]\n]+)\]\]\s*$/gm) || []);
     const selected = area.dataset.sections || '[]';
     const cached = referenceCache.get(area);
-    if (!final && cached && cached.work === work && cached.headings === headings && cached.selected === selected) return cached.refs;
+    if (!final && cached && cached.work === work && cached.movement === movement && cached.headings === headings && cached.selected === selected) return cached.refs;
     let previous = [];
     try { previous = JSON.parse(selected); } catch (e) {}
-    const refs = headings === '[]' ? [] : Sections.references(area.value, Sections.catalog(database, work), previous);
-    referenceCache.set(area, { work, headings, selected, refs });
+    const refs = headings === '[]' ? [] : Sections.references(area.value, Sections.catalog(database, work, movement), previous);
+    referenceCache.set(area, { work, movement, headings, selected, refs });
     return refs;
   }
   function closeSectionPicker() {
@@ -701,38 +719,40 @@
   function offerSections(area) {
     closeSectionPicker();
     const work = area.closest('.dia-item')?.dataset.work;
+    const movement = area.closest('.dia-item')?.dataset.movement || null;
     if (!Sections || !work || area.selectionStart !== area.selectionEnd) return;
     const range = Sections.queryAt(area.value, area.selectionStart);
     if (!range) return;
-    const database = appDb(), catalog = Sections.catalog(database, work);
+    const database = appDb(), catalog = Sections.catalog(database, work, movement);
     const query = Sections.key(range.query);
     const rows = catalog.filter(x => !query || Sections.key(x.name).includes(query)).slice(0, 12);
     const name = Sections.clean(range.query);
     const exact = catalog.some(x => Sections.key(x.name) === Sections.key(name));
     const options = rows.map(row => ({ row, label: row.name, detail: row.movement }));
-    if (name && !exact) options.push({ create: true, label: 'Crear «' + name + '»', detail: 'En esta obra' });
+    if (name && !exact) options.push({ create: true, label: 'Crear «' + name + '»', detail: movement ? 'En este movimiento' : 'En esta obra' });
     const menu = doc.createElement('div');
     menu.className = 'dia-section-picker';
     menu.id = 'dia-section-picker-' + (++pickerSerial);
     menu.setAttribute('role', 'listbox');
-    menu.setAttribute('aria-label', 'Secciones de esta obra');
+    menu.setAttribute('aria-label', movement ? 'Secciones de este movimiento' : 'Secciones de esta obra');
     menu.innerHTML = options.length ? options.map((o,i) => '<button type="button" role="option" aria-selected="false" id="' + menu.id + '-' + i + '" class="dia-section-choice" data-choice="' + i + '"><span>' + esc(o.label) + '</span>' + (o.detail ? '<small>' + esc(o.detail) + '</small>' : '') + '</button>').join('') : '<p>Escribe un nombre para crear una sección de esta obra.</p>';
     area.parentElement.appendChild(menu);
     area.setAttribute('aria-controls', menu.id);
     area.setAttribute('aria-autocomplete', 'list');
     area.setAttribute('aria-expanded', 'true');
-    sectionPicker = { area, menu, range, work, options, index: 0 };
+    sectionPicker = { area, menu, range, work, movement, options, index: 0 };
     if (options.length) highlightSection(0);
   }
   function chooseSection(index) {
     const picker = sectionPicker;
     if (!picker || !picker.options[index]) return false;
-    const { area, work, range } = picker, database = appDb(), choice = picker.options[index];
-    if (!area.isConnected || area.closest('.dia-item')?.dataset.work !== work) { closeSectionPicker(); return false; }
+    const { area, work, movement, range } = picker, database = appDb(), choice = picker.options[index];
+    const item = area.closest('.dia-item');
+    if (!area.isConnected || item?.dataset.work !== work || (item?.dataset.movement || null) !== movement) { closeSectionPicker(); return false; }
     const proposed = choice.create ? { name: Sections.clean(range.query) } : choice.row;
     const next = Sections.insert(area.value, range, proposed);
     if (next.value.length > MAX_TEXT) return false;
-    const row = choice.create ? Sections.register(database, work, range.query) : choice.row;
+    const row = choice.create ? Sections.register(database, work, range.query, new Date(), movement) : choice.row;
     if (!row) return false;
     let refs = [];
     try { refs = JSON.parse(area.dataset.sections || '[]'); } catch(e) {}
@@ -768,6 +788,7 @@
   }
 
   function go(key) {
+    if (editing()) doc.activeElement.blur();
     if (bookMode()) { turnTo(key); return; }
     const today = dayKey(new Date());
     current = key > today ? today : key;
@@ -776,10 +797,51 @@
   }
   const step = direction => shiftDay(current, direction * (bookMode() ? 2 : 1));
 
+  // One gesture chooses an axis. Its distance, rather than wheel event count,
+  // decides how many pages to turn; vertical scroll and pinch remain native.
+  let wheelGesture = null;
+  let wheelFrame = null;
+  let wheelTarget = null;
+  let composing = false;
+  function onDiaryWheel(e) {
+    if (!visible() || composing || e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.('.dia-section-picker')) return;
+    const now = root.performance.now();
+    const scale = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? root.innerWidth : 1;
+    if (!wheelGesture || now - wheelGesture.at > 220) {
+      wheelGesture = { at: now, x: 0, y: 0, axis: '', origin: current, count: 0,
+        distance: Math.max(120, Math.min(280, view().clientWidth * .24)) };
+    }
+    const gesture = wheelGesture;
+    gesture.at = now;
+    gesture.x += e.deltaX * scale;
+    gesture.y += e.deltaY * scale;
+    if (!gesture.axis && Math.max(Math.abs(gesture.x), Math.abs(gesture.y)) >= 8) {
+      if (Math.abs(gesture.x) > Math.abs(gesture.y) * 1.4) gesture.axis = 'x';
+      else if (Math.abs(gesture.y) > Math.abs(gesture.x) * 1.4) gesture.axis = 'y';
+    }
+    if (gesture.axis !== 'x') return;
+    e.preventDefault();
+    const count = Math.trunc(gesture.x / gesture.distance);
+    if (count === gesture.count) return;
+    gesture.count = count;
+    wheelTarget = shiftDay(gesture.origin, count * (bookMode() ? 2 : 1));
+    if (wheelFrame !== null) return;
+    wheelFrame = root.requestAnimationFrame(() => {
+      wheelFrame = null;
+      if (!visible() || composing || !wheelTarget) return;
+      const target = wheelTarget > dayKey(new Date()) ? dayKey(new Date()) : wheelTarget;
+      wheelTarget = null;
+      if (target !== current) go(target);
+    });
+  }
+
   function init() {
     const el = view();
     if (!el || el.dataset.diaReady) return;
     el.dataset.diaReady = '1';
+    el.addEventListener('wheel', onDiaryWheel, { passive: false });
+    el.addEventListener('compositionstart', () => { composing = true; });
+    el.addEventListener('compositionend', () => { composing = false; });
     el.addEventListener('pointerdown', e => {
       if (e.target.closest('.dia-section-choice')) e.preventDefault();
     });
@@ -862,6 +924,8 @@
     });
     root.addEventListener('app:viewchange', e => {
       if (!e.detail) return;
+      wheelGesture = null;
+      wheelTarget = null;
       if (e.detail.name !== 'diario') { if (focusMode) setFocus(false); return; }
       render();
       if (lastBook) playOpening();

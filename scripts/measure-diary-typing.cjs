@@ -1,6 +1,6 @@
 // Synthetic local diary benchmark; fresh browser context, no production reads/writes.
 // Start node tests/server.mjs, then node scripts/measure-diary-typing.cjs.
-const {chromium}=require('playwright');
+const {chromium}=require('@playwright/test');
 const baseURL=process.env.DIARY_BENCH_URL||'http://127.0.0.1:4173';
 if(!['127.0.0.1','localhost'].includes(new URL(baseURL).hostname))throw Error('Synthetic benchmark only: use a local server');
 (async()=>{const browser=await chromium.launch({headless:true,args:['--no-sandbox']});const page=await browser.newPage({viewport:{width:1024,height:800},serviceWorkers:'block'});await page.route('**/*',r=>new URL(r.request().url()).hostname===new URL(baseURL).hostname?r.continue():r.abort());

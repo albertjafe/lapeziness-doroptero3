@@ -5,6 +5,22 @@ const fixture=()=>({obras:[{id:'a',movimientos:[{id:'m',name:'I'}]},{id:'b'}],fu
   passageTracker:{passages:[{id:'p',obraId:'a',movId:'m',name:'Octavas',future:9},{id:'gone',obraId:'a',name:'Borrado',deletedAt:'2026-01-01'}]},
   journalSections:[{id:'b1',obraId:'b',name:'Desarrollo'}]});
 describe('named sections in the diary',()=>{
+  it('isolates movements and General, with stable names shared only within that movement',()=>{
+    const data=fixture();
+    data.obras[0].movimientos.push({id:'m2',name:'II'});
+    const now=new Date('2026-11-11T12:00:00Z');
+    expect(S.register(data,'a','Octavas',now,'m').id).toBe('p');
+    const second=S.register(data,'a','Octavas',now,'m2');
+    const general=S.register(data,'a','Octavas',now,null);
+    expect(new Set(['p',second.id,general.id]).size).toBe(3);
+    expect(S.register(data,'a','ÓCTAVAS',now,'m2').id).toBe(second.id);
+    expect(S.catalog(data,'a','m2').map(x=>x.id)).toEqual([second.id]);
+    expect(S.catalog(data,'a',null).map(x=>x.id)).toEqual([general.id]);
+    expect(S.references('[[Octavas]]',S.catalog(data,'a','m2'))).toEqual([expect.objectContaining({id:second.id,movId:'m2'})]);
+    expect(S.register(data,'a','Error',now,'missing')).toBeNull();
+    const other=fixture();other.obras[0].movimientos.push({id:'m2',name:'II'});
+    expect(S.register(other,'a','Octavas',now,'m2').id).toBe(second.id);
+  });
   it('suggests only this work, reuses passages and never mutates during lookup',()=>{
     const data=fixture(),before=structuredClone(data);
     expect(S.suggest(data,'a','oct')).toEqual([expect.objectContaining({id:'p',kind:'passage',movement:'I'})]);

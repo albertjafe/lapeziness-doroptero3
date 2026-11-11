@@ -1,4 +1,4 @@
-/* Named diary sections are scoped to a work. Reuse existing passage IDs; new
+/* Named diary sections are scoped to a work and movement. Reuse existing passage IDs; new
    names live in journalSections and use the common document writer.
    Rendering and suggestions never change the database. */
 (function(root,factory){
@@ -9,31 +9,35 @@
   'use strict';
   const clean=value=>String(value||'').replace(/[\[\]\r\n]/g,' ').replace(/\s+/g,' ').trim().slice(0,80);
   const key=value=>clean(value).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es');
-  function catalog(database,obraId){
+  function catalog(database,obraId,movId){
     if(!obraId)return [];
     const work=(database.obras||[]).find(x=>x&&String(x.id)===String(obraId));
     const rows=[];
     for(const [kind,list] of [['passage',database.passageTracker?.passages],['section',database.journalSections]]){
       for(const row of Array.isArray(list)?list:[]){
         if(!row||!row.id||row.deleted||row.deletedAt||String(row.obraId)!==String(obraId)||!clean(row.name))continue;
+        // Undefined is the legacy all-movements API; null is explicitly General.
+        if(movId!==undefined&&String(row.movId||'')!==String(movId||''))continue;
         const movement=(work?.movimientos||[]).find(x=>x&&String(x.id)===String(row.movId));
         rows.push({id:row.id,kind,name:clean(row.name),obraId:row.obraId,movId:row.movId||null,movement:movement?.name||''});
       }
     }
     return rows.sort((a,b)=>a.name.localeCompare(b.name,'es')||a.movement.localeCompare(b.movement,'es'));
   }
-  function suggest(database,obraId,query){
+  function suggest(database,obraId,query,movId){
     const q=key(query);
-    return catalog(database,obraId).filter(x=>!q||key(x.name).includes(q)).slice(0,12);
+    return catalog(database,obraId,movId).filter(x=>!q||key(x.name).includes(q)).slice(0,12);
   }
-  function register(database,obraId,name,now=new Date()){
+  function register(database,obraId,name,now=new Date(),movId){
     const value=clean(name);
     if(!value||!obraId||!(database.obras||[]).some(x=>x&&String(x.id)===String(obraId)))return null;
-    const existing=catalog(database,obraId).filter(x=>key(x.name)===key(value));
+    if(movId&&!(database.obras||[]).find(x=>String(x.id)===String(obraId))?.movimientos?.some(x=>String(x.id)===String(movId)))return null;
+    const existing=catalog(database,obraId,movId).filter(x=>key(x.name)===key(value));
     if(existing.length===1)return existing[0];
     if(existing.length>1)return null; // choose the named movement explicitly
     const stamp=now.toISOString();
-    const row={id:'section_'+encodeURIComponent(String(obraId)+'\u0000'+key(value)),obraId,name:value,createdAt:stamp,updatedAt:stamp};
+    const row={id:'section_'+encodeURIComponent(String(obraId)+'\u0000'+(movId?String(movId)+'\u0000':'')+key(value)),obraId,name:value,createdAt:stamp,updatedAt:stamp};
+    if(movId)row.movId=movId;
     if(!Array.isArray(database.journalSections))database.journalSections=[];
     database.journalSections.push(row);
     return {...row,kind:'section',movement:''};
@@ -58,7 +62,7 @@
       const prior=previous.find(x=>key(x.name)===name);
       const choices=rows.filter(x=>key(x.name)===name);
       const row=prior|| (choices.length===1?choices[0]:null);
-      if(row)out.push({id:row.id,kind:row.kind,name:row.name,obraId:row.obraId});
+      if(row)out.push({id:row.id,kind:row.kind,name:row.name,obraId:row.obraId,...(row.movId?{movId:row.movId}:{})});
     }
     return out;
   }

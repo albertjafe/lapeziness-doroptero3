@@ -16,6 +16,26 @@ async function boot(page){
   return page.locator('.dia-item .dia-ink');
 }
 test.use({viewport:{width:390,height:700},reducedMotion:'reduce'});
+test('native sizing avoids measurement copies; older browsers still grow and shrink',async({page})=>{
+  const area=await boot(page);
+  expect(await page.evaluate(()=>CSS.supports('field-sizing','content'))).toBe(true);
+  await expect(page.locator('.dia-size-probe')).toHaveCount(0);
+  await area.fill('Una línea\n'.repeat(100));
+  const tall=await area.evaluate(e=>e.clientHeight);
+  await area.fill('Breve');
+  await expect.poll(()=>area.evaluate(e=>e.clientHeight)).toBeLessThan(tall/2);
+  await page.addInitScript(()=>{
+    const supports=CSS.supports.bind(CSS);
+    CSS.supports=(...args)=>args[0]==='field-sizing'?false:supports(...args);
+  });
+  await page.reload();await expect(page.locator('#splashScreen')).toHaveClass(/gone/);await page.evaluate(()=>showView('diario'));
+  await page.locator('.dia-item .dia-fmt').click();
+  await area.fill('Otra línea\n'.repeat(100));
+  await expect.poll(()=>area.evaluate(e=>e.clientHeight)).toBeGreaterThan(2000);
+  await expect(page.locator('.dia-size-probe')).toHaveCount(1);
+  await area.fill('Breve');
+  await expect.poll(()=>area.evaluate(e=>e.clientHeight)).toBeLessThan(100);
+});
 test('prose keeps section references and autosaves without recalculating study or collapsing the editor',async({page})=>{
   const area=await boot(page);
   await page.evaluate(()=>{
