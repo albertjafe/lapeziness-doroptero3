@@ -236,7 +236,7 @@ Desde el 02-10-2026 (`20261002180000_index_study_reference_checks.sql`), `protec
 - Sync seguro: `task-sync-bootstrap.js` + `task-sync-resilience.js`.
 - Existe copia local de rescate interna; la antigua UI manual de “Historial de tareas” fue retirada y **no debe reaparecer** salvo petición explícita.
 
-### Diario (v535)
+### Diario (v536)
 
 Detalle de cambios, pruebas y límites: [`docs/DIARIO_ACTUALIZACION_V531_2026-11-09.md`](../docs/DIARIO_ACTUALIZACION_V531_2026-11-09.md).
 
@@ -248,6 +248,8 @@ Detalle de cambios, pruebas y límites: [`docs/DIARIO_ACTUALIZACION_V531_2026-11
 - `diario.js/css`, vista `#view-diario`, pestaña propia en la barra (6 en el móvil, 7 en el iPad; `diario.css` ajusta la rejilla). Una página por día: los bloques salen de `DailyStudyMinutes.studyBlocks` (mismos tramos canónicos), tramos seguidos de la misma obra y movimiento con pausas ≤ 20 min se juntan y los pases van aparte. Las notas del cronómetro (`plant.notes`) se ven sin editar.
 - Lo escrito son entradas de **`db.dailyJournalEntries`** (el diario de siempre): con `ref` (`p:<id del primer tramo>`) y `about` (obra, movimiento y horas en texto) si van sobre un bloque; sin `ref` es del día. `day` = día del bloque. Se guarda al escribir (`saveDataSoon`); vaciar y salir de la línea la quita (lápida por id del documento). Un comentario cuyo bloque desaparece queda como entrada del día. El paquete para IA imprime `sobre <about>`. `Diario.day()`/`Diario.write()`/`Diario.spreadOf()` son puras; pruebas `tests/unit/diario.test.js`, `tests/e2e/diario.spec.js`.
 - **Libro de escritorio (v526)**: con `platform-windows` y ≥ 1200 px el Diario ocupa toda la pestaña como un libro: dos días a doble página (`spreadOf`: se cuenta desde hoy de dos en dos, hoy siempre a la derecha en la última), hojas de cuaderno sin marcos por entrada, con desplazamiento propio y ritmo tipográfico común (`--dia-line`). Pasar de hoja: `turnTo` dibuja la página real ya nueva y encima una capa inerte (`.dia-turning`, copias) con la hoja girando en 3D; `finishTurn` la quita. La tapa se abre la primera vez que se entra (`playOpening`). Con `prefers-reduced-motion` no hay giro. Móvil, iPad y Windows estrecho siguen con una página por día. Cada escrito usa el día de su página (`data-day`), no `current`.
+
+- Desde v536, `Diario.typingDelay()` protege las ráfagas de escritura y composición. El escritor común espera hasta 2 s sin teclear (o salir/ocultar el editor) antes de preparar/fusionar instantáneas grandes de nube, también después de respuestas de red. `saveDataSoon` mantiene su guardado local a 900 ms y reinicia una subida ya programada. Si hubo nuevas ediciones durante una subida, `syncPendingCloudChanges` programa la siguiente con el intervalo normal; solo los lotes del mismo estado continúan sin pausa. Antes de aceptar nube se confirman las ediciones locales pendientes para preservar sus relojes. No hay escritor paralelo, borradores independientes ni cambio en CAS/tombstones. Prueba: `tests/e2e/diario-cloud-typing.spec.js`.
 
 - Trackpad: el gesto horizontal acumula distancia para avanzar una o varias páginas (dos días por hoja en escritorio); fija el eje del gesto y respeta scroll vertical, zoom y composición. No avanza más allá de hoy; salir del editor confirma sus referencias antes de cambiar de día. Detalles y medición: [`docs/DIARIO_MOVIMIENTOS_V535_2026-11-11.md`](../docs/DIARIO_MOVIMIENTOS_V535_2026-11-11.md).
 

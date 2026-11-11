@@ -307,6 +307,11 @@
   const view = () => doc && doc.getElementById('view-diario');
   const visible = () => doc && doc.body && doc.body.getAttribute('data-view') === 'diario';
   const editing = () => { const a = doc && doc.activeElement; return !!(a && a.classList && a.classList.contains('dia-ink')); };
+  let lastInputAt = 0;
+  // Cloud merges of the whole history must not compete with the next key.
+  // Local autosave keeps its independent 900 ms quiet interval.
+  const typingDelay = () => !visible() || !editing() || doc.hidden ? 0
+    : composing ? 250 : Math.max(0, 2000 - (Date.now() - lastInputAt));
 
   // El texto con formato se ve mientras no se edita; tocarlo abre el campo.
   function ink(attrs, text, placeholder) {
@@ -655,6 +660,7 @@
   }
 
   function commit(area, final) {
+    if (!final) lastInputAt = Date.now();
     const database = appDb();
     if (!database) return;
     const item = area.closest('.dia-item');
@@ -945,7 +951,7 @@
     });
   }
 
-  const api = { compactTitle, day, write, shiftDay, spreadOf, duration, MERGE_GAP_MIN, parseLine, splitAside, formatHtml, toggleLine, continueList, open: key => { if (key) current = key; if (typeof root.showView === 'function') root.showView('diario'); }, render, setFocus, isFocus: () => focusMode };
+  const api = { compactTitle, day, write, shiftDay, spreadOf, duration, MERGE_GAP_MIN, parseLine, splitAside, formatHtml, toggleLine, continueList, typingDelay, open: key => { if (key) current = key; if (typeof root.showView === 'function') root.showView('diario'); }, render, setFocus, isFocus: () => focusMode };
   if (doc) {
     if (doc.readyState === 'loading') doc.addEventListener('DOMContentLoaded', init);
     else init();

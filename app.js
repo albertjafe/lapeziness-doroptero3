@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-11-11-diario-movimientos-v535';
+const APP_VERSION = '2026-11-11-diario-sync-fluido-v536';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -270,7 +270,11 @@ function cachedPianoWalletSnapshot() {
 // solo guardado aunque se toquen varias seguidas. Lo pendiente se guarda sí o
 // sí antes de sincronizar con la nube y al ocultar o cerrar la app.
 let _saveSoonTimer = null;
+let _localEditGeneration = 0;
 function saveDataSoon() {
+  _localEditGeneration++;
+  // A timer queued by an earlier save must also respect unsaved typing.
+  if (_syncTimer) enqueueCloudSync();
   if (_saveSoonTimer) clearTimeout(_saveSoonTimer);
   // 17-10-2026: 900 ms sin tocar (antes 300): varias tareas seguidas no pagan
   // un guardado de 4,5 MB entre toque y toque.
@@ -288,6 +292,7 @@ if (typeof window !== 'undefined') {
 }
 
 function saveData() {
+  _localEditGeneration++;
   if (_saveSoonTimer) { clearTimeout(_saveSoonTimer); _saveSoonTimer = null; }
   const studyVersionBefore = _studyDataVersion;
   try {
@@ -671,17 +676,26 @@ function _runCloudOperation(operation) {
   return next;
 }
 const _freshCloudSnapshots = new WeakSet();
+async function _waitForDiaryQuiet(epoch = _cloudAuthEpoch) {
+  let delay;
+  while (epoch === _cloudAuthEpoch && (delay = globalThis.Diario?.typingDelay?.() || 0) > 0) {
+    await new Promise(resolve => setTimeout(resolve, Math.min(delay, 200)));
+  }
+}
 async function syncToCloud(snapshotDb, revision) {
   const epoch = _cloudAuthEpoch;
   return _runCloudOperation(() => epoch === _cloudAuthEpoch ? _syncToCloudNow(snapshotDb, revision) : false);
 }
 async function _syncToCloudNow(snapshotDb, revision) {
-  if (typeof flushSaveDataSoon === 'function') flushSaveDataSoon();
   const authEpoch = _cloudAuthEpoch;
+  if (globalThis.Diario?.typingDelay?.()) await _waitForDiaryQuiet(authEpoch);
+  if (authEpoch !== _cloudAuthEpoch) return false;
+  if (typeof flushSaveDataSoon === 'function') flushSaveDataSoon();
   try {
     const sb = getSB();
     const { data: { user }, error: authError } = await _cloudAuthUser(sb);
     if (authError) throw authError;
+    if (globalThis.Diario?.typingDelay?.()) await _waitForDiaryQuiet(authEpoch);
     if (authEpoch !== _cloudAuthEpoch) return false;
     _cloudSyncConnected = !!user;
     if (!user) { showSyncIndicator('Guardado local · conecta tu cuenta'); return false; }
@@ -693,6 +707,7 @@ async function _syncToCloudNow(snapshotDb, revision) {
       _setCloudStage('Leyendo la nube antes de subir');
       const read = await _cloudQuery(sb.from('user_data').select('data,updated_at').eq('id',user.id));
       if (read.error) throw read.error; // A failed read is NOT an empty account.
+      if (globalThis.Diario?.typingDelay?.()) await _waitForDiaryQuiet(authEpoch);
       if (authEpoch !== _cloudAuthEpoch) return false;
       const remote = read.data;
       const merged = DocumentSyncCore.mergeRemote(remote?.data || {}, snapshot);
@@ -709,7 +724,11 @@ async function _syncToCloudNow(snapshotDb, revision) {
         : await _cloudQuery(sb.from('user_data').insert(row).select('data,updated_at'));
       if (write.error) { if (write.error.code === '23505') continue; throw write.error; }
       if (!write.data) continue; // CAS conflict: reread and merge, never overwrite.
+      if (globalThis.Diario?.typingDelay?.()) await _waitForDiaryQuiet(authEpoch);
       if (authEpoch !== _cloudAuthEpoch) return false;
+      // Give edits made during the request their clocks before accepting it.
+      // Otherwise an old cloud field clock can overwrite unflushed text.
+      if (typeof flushSaveDataSoon === 'function') flushSaveDataSoon();
       const unconfirmed = !DocumentSyncCore.sameContent(DocumentSyncCore.mergeRemote(write.data.data, batch.expected), write.data.data);
       const meta = _readSyncMeta();
       const pending = meta.dirtyRevision > revision;
@@ -766,10 +785,14 @@ async function syncPendingCloudChanges() {
   _syncPromise = (async () => {
     try {
       while (true) {
+        const epoch = _cloudAuthEpoch;
+        if (globalThis.Diario?.typingDelay?.()) await _waitForDiaryQuiet(epoch);
+        if (epoch !== _cloudAuthEpoch) return false;
+        if (typeof flushSaveDataSoon === 'function') flushSaveDataSoon();
         const meta = _readSyncMeta();
         if (typeof SyncCore === 'undefined' || !SyncCore.isDirty(meta)) break;
         const revision = meta.dirtyRevision;
-        if (typeof flushSaveDataSoon === 'function') flushSaveDataSoon();
+        const editGeneration = _localEditGeneration;
         let snapshot = null;
         try {
           const raw = localStorage.getItem(DB_KEY);
@@ -789,6 +812,9 @@ async function syncPendingCloudChanges() {
         if (!ok) return false;
         const after = _readSyncMeta();
         if (!SyncCore.isDirty(after)) break;
+        // More batches of the same snapshot may continue immediately. New
+        // user edits get the normal quiet interval, not a continuous upload loop.
+        if (_localEditGeneration !== editGeneration) { enqueueCloudSync(); break; }
       }
       return true;
     } finally {
@@ -805,6 +831,8 @@ async function loadFromCloud(options = {}) {
 }
 async function _loadFromCloudNow(options = {}) {
   const authEpoch = _cloudAuthEpoch;
+  if (globalThis.Diario?.typingDelay?.()) await _waitForDiaryQuiet(authEpoch);
+  if (authEpoch !== _cloudAuthEpoch) return false;
   try {
     const sb = getSB();
     const { data: { user }, error: authError } = await _cloudAuthUser(sb);
@@ -826,7 +854,9 @@ async function _loadFromCloudNow(options = {}) {
       .select('data,updated_at').eq('id', user.id));
 
     if (error) throw error; // An unavailable row is not an empty account.
+    if (globalThis.Diario?.typingDelay?.()) await _waitForDiaryQuiet(authEpoch);
     if (authEpoch !== _cloudAuthEpoch) return false;
+    if (typeof flushSaveDataSoon === 'function') flushSaveDataSoon();
     if (!db || typeof db !== 'object' || Array.isArray(db)) return false;
     let local = db;
     try {
@@ -895,8 +925,9 @@ function requestCloudRefresh() {
         return false;
       }
     } while (_cloudRefreshAgain);
-    _setCloudStage('Sincronización completada');
-    showSyncIndicator('✓ sincronizado');
+    const pending = SyncCore.isDirty(_readSyncMeta()) || !!_saveSoonTimer;
+    _setCloudStage(pending ? 'Quedan cambios por subir' : 'Sincronización completada');
+    showSyncIndicator(pending ? 'Guardado local · pendiente de sincronizar' : '✓ sincronizado');
     return true;
   })().finally(() => { _cloudRefreshPromise = null; });
   return _cloudRefreshPromise;
