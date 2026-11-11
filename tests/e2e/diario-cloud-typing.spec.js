@@ -58,15 +58,24 @@ test('a cloud response arriving during typing waits, preserves the newer text an
 
 test('an already queued upload waits for typing; local autosave still happens without a save button',async({page})=>{
   await boot(page);
+  await page.clock.install();
   await page.locator('.dia-free:not(.dia-new) .dia-fmt').click();
   const area=page.locator('.dia-free:not(.dia-new) .dia-ink');
   await area.fill('Texto continuo');
   await page.evaluate(()=>{window.syncDone=false;syncPendingCloudChanges().then(()=>{syncDone=true;});});
   await area.pressSequentially(' y más letras',{delay:60});
   expect(await page.evaluate(()=>cloudTyping.writes)).toBe(0);
+  // Thinking for five seconds must not start a cloud merge. Local durability
+  // still happens at 900 ms, independently of the longer cloud quiet interval.
+  await page.clock.fastForward(5000);
   await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem(DB_KEY)).dailyJournalEntries[0].text)).toBe('Texto continuo y más letras');
+  expect(await page.evaluate(()=>cloudTyping.writes)).toBe(0);
+  await area.pressSequentially(' tras pensar');
+  await page.clock.fastForward(10000);
+  expect(await page.evaluate(()=>cloudTyping.writes)).toBe(0);
+  await page.clock.fastForward(5100);
   await expect.poll(()=>page.evaluate(()=>syncDone)).toBe(true);
-  expect(await page.evaluate(()=>cloudTyping.row.data.dailyJournalEntries.find(e=>e.id==='note').text)).toBe('Texto continuo y más letras');
+  expect(await page.evaluate(()=>cloudTyping.row.data.dailyJournalEntries.find(e=>e.id==='note').text)).toBe('Texto continuo y más letras tras pensar');
 });
 
 test('hiding the page or changing account releases the typing wait',async({page})=>{

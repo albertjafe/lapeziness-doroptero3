@@ -311,7 +311,7 @@
   // Cloud merges of the whole history must not compete with the next key.
   // Local autosave keeps its independent 900 ms quiet interval.
   const typingDelay = () => !visible() || !editing() || doc.hidden ? 0
-    : composing ? 250 : Math.max(0, 2000 - (Date.now() - lastInputAt));
+    : composing ? 250 : Math.max(0, 15000 - (Date.now() - lastInputAt));
 
   // El texto con formato se ve mientras no se edita; tocarlo abre el campo.
   function ink(attrs, text, placeholder) {

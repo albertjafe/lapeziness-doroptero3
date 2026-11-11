@@ -45,12 +45,24 @@ describe('named sections in the diary',()=>{
     data.passageTracker.passages.push({id:'p2',obraId:'a',name:'Octavas',movId:'m2'});
     expect(S.register(data,'a','Octavas')).toBeNull();
   });
-  it('recognizes @ only at the start of a line and inserts without losing adjacent text',()=>{
+  it('recognizes @ after a boundary and inserts without losing adjacent text',()=>{
     expect(S.queryAt('mail@example.org',10)).toBeNull();
     expect(S.queryAt('Notas\n@Oct',10)).toEqual({start:6,end:10,query:'Oct'});
     const next=S.insert('Notas\n@Oct\nDespués',{start:6,end:10},{name:'Octavas'});
     expect(next.value).toBe('Notas\n[[Octavas]]\nDespués');
     expect(next.value.slice(next.caret)).toBe('Después');
+  });
+  it('offers another section after prose or a heading on the same line without matching email',()=>{
+    for(const [prefix,separator] of [['[[Octavas]] ','\n'], ['[[Octavas]]\nMás estable. ','\n'], ['Texto\n  ','']]){
+      const text=prefix+'@Des';
+      const range=S.queryAt(text,text.length);
+      expect(range).toEqual({start:prefix.length,end:text.length,query:'Des'});
+      const next=S.insert(text+'\nTexto posterior',range,{name:'Desarrollo'});
+      expect(next.value).toBe(prefix+separator+'[[Desarrollo]]\nTexto posterior');
+      expect(next.value.slice(next.caret)).toBe('Texto posterior');
+    }
+    expect(S.queryAt('Escribe a mail@example.org',25)).toBeNull();
+    expect(S.queryAt('https://example.org/@persona',28)).toBeNull();
   });
   it('preserves stable references when the catalog changes, and drops removed references',()=>{
     const previous=[{id:'p',kind:'passage',name:'Octavas',obraId:'a'}];

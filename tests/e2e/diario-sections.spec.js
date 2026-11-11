@@ -68,6 +68,34 @@ for(const width of [390,1366])test.describe('scoped diary sections '+width,()=>{
     await item.locator('[data-act="section"]').click();await item.locator('.dia-ink').fill('@Arp');
     await expect(item.getByRole('option')).toHaveText('Crear «Arp»En esta obra');
   });
+  test('several sections in one editing session reopen the picker, including after text on the same line',async({page})=>{
+    await boot(page,width>1200);
+    const item=page.locator('[data-day="'+day()+'"] [data-work="w1"]');
+    const area=item.locator('.dia-ink');
+    await item.locator('[data-act="section"]').click();
+    await page.keyboard.press('Enter');
+    await page.keyboard.insertText('Primera nota. @Desarrollo');
+    await expect(item.getByRole('option',{name:/Crear «Desarrollo»/})).toBeVisible();
+    await page.keyboard.press('Enter');
+    await page.keyboard.insertText('Otra nota. @Oct');
+    await expect(item.getByRole('option').first()).toHaveText('Octavas');
+    await page.keyboard.press('Enter');
+    await page.keyboard.insertText('Última nota');
+    await area.blur();
+    await expect(item.locator('.dia-section-heading')).toHaveText(['Octavas','Desarrollo','Octavas']);
+    await expect(item.locator('.dia-fmt')).toContainText('Primera nota.');
+    await expect(item.locator('.dia-fmt')).toContainText('Otra nota.');
+    // The button must also work repeatedly in the same block.
+    await item.locator('[data-act="section"]').click();
+    await expect(item.getByRole('option')).toHaveText(['Desarrollo','Octavas']);
+    await page.keyboard.press('Enter');await area.blur();
+    await page.evaluate(()=>flushSaveDataSoon());
+    expect(await page.evaluate(()=>db.journalSections.filter(s=>s.name==='Desarrollo').length)).toBe(1);
+    await page.reload();await expect(page.locator('#splashScreen')).toHaveClass(/gone/);
+    await page.evaluate(()=>showView('diario'));
+    await expect(item.locator('.dia-section-heading')).toHaveText(['Octavas','Desarrollo','Octavas','Desarrollo']);
+    expect(await page.evaluate(()=>db.dailyJournalEntries.find(e=>e.ref==='p:a').sectionRefs.length)).toBe(2);
+  });
 });
 
 test('a long update warning stays readable above navigation and a reduced visual viewport',async({page})=>{

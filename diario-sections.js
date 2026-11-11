@@ -45,14 +45,18 @@
   function queryAt(text,caret){
     const value=String(text||''),end=Math.max(0,Math.min(value.length,Number(caret)||0));
     const start=value.lastIndexOf('\n',end-1)+1,line=value.slice(start,end);
-    const match=/^(\s*)@([^\[\]\n@]{0,80})$/.exec(line);
-    return match?{start:start+match[1].length,end,query:match[2]}:null;
+    // A new section can follow prose or another heading in the same editor.
+    // Require a word boundary so addresses such as mail@example.org stay text.
+    const match=/(^|[\t ])@([^\[\]\n@]{0,80})$/.exec(line);
+    return match?{start:start+match.index+match[1].length,end,query:match[2]}:null;
   }
   function insert(text,range,section){
     const value=String(text||''),token='[['+clean(section.name)+']]';
+    const before=value.slice(0,range.start);
+    const prefix=before.slice(before.lastIndexOf('\n')+1).trim()?'\n':'';
     const tail=value.slice(range.end),suffix=tail.startsWith('\n')?'':'\n';
-    const next=value.slice(0,range.start)+token+suffix+tail;
-    return {value:next,caret:range.start+token.length+1};
+    const next=before+prefix+token+suffix+tail;
+    return {value:next,caret:before.length+prefix.length+token.length+1};
   }
   function references(text,rows,previous=[]){
     const names=[...String(text||'').matchAll(/^\s*\[\[([^\]\n]+)\]\]\s*$/gm)].map(x=>key(x[1]));
