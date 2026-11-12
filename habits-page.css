@@ -1,6 +1,12 @@
 /* Página de Hábitos (#view-habitos). Solo variables de tema: vale en todos. */
 #view-habitos .habits-body { max-width: 760px; margin: 0 auto; }
 #habitsPageContent { display: grid; gap: 14px; padding-bottom: 32px; }
+.hp-toolbar { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
+.hp-picker { flex: 1 1 220px; min-width: 0; display: grid; gap: 7px; font-size: 14px; color: var(--text2); }
+.hp-picker select { width: 100%; min-width: 0; min-height: 46px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg2); color: var(--text); font: inherit; text-overflow: ellipsis; }
+.hp-add { min-height: 46px; padding: 10px 16px; border: 0; border-radius: 12px; font: inherit; font-weight: 700; color: var(--bg); background: var(--accent); cursor: pointer; }
+.hp-manage { display: flex; flex-wrap: wrap; gap: 8px; }
+.hp-manage .is-delete { color: var(--red); }
 
 .hp-empty, .hp-detail, .hp-collection, .hp-how {
   background: var(--bg2); border: 1px solid var(--border); border-radius: 18px;
@@ -76,7 +82,7 @@
 .hp-collection { padding: 16px; display: grid; gap: 12px; }
 .hp-collection-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .hp-collection-head span { font-size: 12px; color: var(--text3); }
-.hp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.hp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 10px; }
 .hp-card { display: grid; gap: 8px; align-content: start; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg); min-width: 0; }
 .hp-card-select { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 12px; align-items: center; text-align: left; font: inherit; color: inherit;
   padding: 0; border: 0; background: none; cursor: pointer; min-height: 56px; width: 100%; }

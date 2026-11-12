@@ -253,6 +253,9 @@
         '<p class="hp-desc">' + (habit.description ? esc(habit.description) : '<em>Sin descripción. Añádela en «Editar» para recordar el porqué.</em>') + '</p>' +
         '<p class="hp-dates">' + shortDate(habit.startDate, true) + ' → ' + shortDate(keyAt(habit.startDate, metrics.duration - 1), true) + ' · ' + plural(metrics.duration, 'día', 'días') + '</p>' +
       '</div></header>' +
+      '<div class="hp-manage" aria-label="Gestionar hábito">' +
+        '<button type="button" class="hp-edit" onclick="restartHabitChallenge(\'' + jsArg(habit.id) + '\')">Empezar de cero</button>' +
+        '<button type="button" class="hp-edit is-delete" onclick="deleteHabitChallenge(\'' + jsArg(habit.id) + '\')">Eliminar</button></div>' +
       '<progress class="hp-progress" max="100" value="' + metrics.progress + '" aria-label="' + metrics.progress + ' % del reto transcurrido"></progress>' +
       actionHtml(habit, metrics) +
       '<div class="hp-stats">' + stats.map(([label, value, sub]) => '<div><span>' + label + '</span><strong>' + value + '</strong><small>' + sub + '</small></div>').join('') + '</div>' +
@@ -291,7 +294,8 @@
   }
 
   const HOW = '<details class="hp-how"><summary>Cómo funcionan los hábitos</summary><ul>' +
-    '<li>Solo hay un hábito nuevo en curso a la vez: termina (o borra) el actual antes de crear otro. Además puede haber un reto reabierto de uno terminado.</li>' +
+    '<li>Añade hábitos cuando quieras. Elige uno en la lista de arriba para registrarlo o gestionarlo.</li>' +
+    '<li><b>Empezar de cero</b> sustituye el hábito por un reto nuevo con la misma regla. <b>Eliminar</b> lo quita, también si ya terminó. Ambas acciones son manuales y piden confirmación.</li>' +
     '<li><b>Mantenimiento</b>: si caes después de terminar un reto, apúntalo en ese hábito. Una caída no borra nada; 3 en 14 días o 4 en 30 reabren el reto (14 días).</li>' +
     '<li><b>Hacer</b>: marcas cada día que lo cumples. <b>Evitar</b>: solo tocas si recaes.</li>' +
     '<li>Un fallo corta la racha, pero no reinicia el reto ni borra los días logrados.</li>' +
@@ -314,12 +318,12 @@
     const active = principal || inProgress[0] || null;
     let habit = all.find(h => h.id === selectedId) || active || (items[0] && items[0].habit) || null;
     if (habit && habit.id !== selectedId) selectedId = habit.id;
-    const back = habit && active && habit.id !== active.id
-      ? '<button type="button" class="hp-back-current" data-hp-select="' + esc(active.id) + '">← Volver al hábito en curso</button>' : '';
-    const create = !principal
-      ? '<section class="hp-empty"><div><strong>' + (active ? 'Ningún hábito nuevo en curso' : all.length ? 'Ningún hábito en curso' : 'Aún no tienes hábitos') + '</strong><span>Una regla diaria clara, durante unas semanas. Los terminados quedan en tu colección.</span></div>' +
-        '<button type="button" onclick="openHabitChallengeModal()">Crear hábito</button></section>' : '';
-    host.innerHTML = create + back + (habit ? detailHtml(habit, todayKey, all) : '') + collectionHtml(items, habit && habit.id) + HOW;
+    const toolbar = '<div class="hp-toolbar">' + (all.length
+      ? '<label class="hp-picker">Tus hábitos<select aria-label="Elegir hábito" onchange="openHabitos(this.value)">' +
+        items.map(item => '<option value="' + esc(item.habit.id) + '"' + (habit && item.habit.id === habit.id ? ' selected' : '') + '>' + esc(item.habit.title || 'Hábito') + (item.complete ? ' · terminado' : ' · en curso') + '</option>').join('') + '</select></label>'
+      : '<p>Aún no tienes hábitos.</p>') +
+      '<button type="button" class="hp-add" onclick="openHabitChallengeModal(null,true)">＋ Añadir hábito</button></div>';
+    host.innerHTML = toolbar + (habit ? detailHtml(habit, todayKey, all) : '') + collectionHtml(items, habit && habit.id) + HOW;
   }
 
   function open(id) {

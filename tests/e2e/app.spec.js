@@ -509,7 +509,7 @@ test('uses a dedicated daily challenge composition on mobile', async ({ browser 
   }
 });
 
-test('keeps exactly one active objective and removes the second-objective controls', async ({ page }) => {
+test('keeps every active habit while the timer shows its principal objective', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await prepare(page);
   await page.evaluate(() => {
@@ -536,7 +536,7 @@ test('keeps exactly one active objective and removes the second-objective contro
   await expect(page.locator('[data-habit-slot="idle"] .crono-habit-trophy')).toHaveCount(1);
   await expect(page.locator('[data-habit-slot="idle"] .crono-habit-trophy-add')).toHaveCount(0);
   expect(await page.evaluate(() => habitActiveChallenges().map(habit => habit.title))).toEqual([
-    'No coger el móvil en el baño'
+    'No coger el móvil en el baño', 'No coger el móvil en la cama'
   ]);
   await page.evaluate(() => openHabitChallengeModal());
   await expect(page.locator('#modalHabitChallenge')).toHaveClass(/visible/);

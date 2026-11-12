@@ -136,14 +136,12 @@
     if (!metrics || !todayKey) return '';
     const active = habits.filter(h => !metrics(h).complete);
     const principal = active.find(h => !h.reopenOf) || null;
-    const reopened = active.find(h => h.reopenOf) || null;
     let body = '';
-    [[principal, ''], [reopened, 'reopened']].forEach(([habit, tag]) => {
-      if (!habit) return;
+    active.forEach(habit => {
       const m = metrics(habit);
-      body += habitRow(habit, m, habit.startDate > todayKey, tag);
+      body += habitRow(habit, m, habit.startDate > todayKey, habit.reopenOf ? 'reopened' : '');
     });
-    if (!principal) body += '<button type="button" class="hh-create" onclick="openHabitChallengeModal()">＋ Crear un hábito nuevo</button>';
+    if (!principal) body += '<button type="button" class="hh-create" onclick="openHabitChallengeModal(null,true)">＋ Crear un hábito nuevo</button>';
 
     const due = dueToday(habits, todayKey);
     if (due.length) {

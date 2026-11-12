@@ -252,6 +252,7 @@
         // El registro por horas de hoy (antes solo en la portada clásica del iPad)
         // y, al lado, los toques de «Ola» y «Compulsión» (olas.js): siempre iguales, sin contador.
         '<div class="mv2-summary-actions"><button type="button" class="mv2-link mv2-sessions" onclick="openSesionesDetalle(this)">Sesiones de hoy ›</button>' +
+        '<button type="button" class="mv2-link mv2-habits-access" onclick="openHabitos()">Hábitos ›</button>' +
         (root.Olas ? '<span class="mv2-ola-pair">' + root.Olas.hoyButtonHtml() + (root.Olas.compulsionButtonHtml ? root.Olas.compulsionButtonHtml() : '') + '</span>' : '') + '</div></div></div>' +
       // Al volver de un hueco largo: ¿qué fue? (un toque; study-journey.js).
       (root.StudyJourney ? root.StudyJourney.hoyPromptHtml() : '') +

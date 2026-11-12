@@ -181,6 +181,8 @@ Desde el 02-10-2026 (`20261002180000_index_study_reference_checks.sql`), `protec
 
 ### Cronómetro / sesión
 
+- **Hábitos**: acceso de un toque desde la cabecera de Hoy (`mobile-v2.js`) y la barra del escritorio. `habits-page.js/css` ofrece selector de todos los hábitos, alta siempre disponible y acciones manuales de eliminar o empezar de cero, incluidos terminados. Se admiten varios hábitos activos; `habitPersistChallenges` conserva todos y el cronómetro mantiene su principal y un reabierto. Eliminar marca `deleted` en el registro y sus reaperturas mediante el guardado común, conservando campos desconocidos. Empezar de cero prepara un alta con la misma regla, y solo al guardar y confirmar sustituye el anterior por otro ID, con fechas y registros nuevos; no arrastra logs ni premios. Ambas acciones avisan de la retirada del historial, trofeo y premios asociados; nunca son automáticas.
+
 - Núcleo histórico de UI y funciones: buscar en `app.js` por `cronoStart`, `cronoFinish`, `renderCronoTasks`, IDs `#view-cronometro`, etc.
 - `timer-core.js`: helpers de temporización.
 - `timer-objectives.js`: pestaña **Hábitos** vinculada al timer. El nombre del hábito activo abre su ficha; el modal amplio permite definir descripción, motivación, regla de éxito y celebración. Los hábitos terminados se abren en lectura desde la vitrina con sus reglas y fechas intactas.

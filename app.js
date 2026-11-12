@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-11-11-diario-pausas-secciones-v537';
+const APP_VERSION = '2026-11-12-habitos-acceso-gestion-v538';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -21257,11 +21257,10 @@ function habitAllChallenges() {
 }
 
 function habitActiveChallenges() {
-  // Un hábito nuevo en curso y, como mucho, un reto reabierto de uno ya
-  // terminado (recaída en mantenimiento); el principal siempre va primero.
-  // Los terminados siguen en habitAllChallenges() para la colección.
+  // Todos los retos en curso se conservan. El primero sigue siendo el
+  // principal del cronómetro; Hábitos permite gestionar cada uno por su id.
   const active = habitAllChallenges().filter(habit => !habitIsCompleted(habit));
-  return [active.find(habit => !habit.reopenOf), active.find(habit => habit.reopenOf)].filter(Boolean);
+  return active.filter(habit => !habit.reopenOf).concat(active.filter(habit => habit.reopenOf));
 }
 
 function habitPrincipalChallenge() {
@@ -21279,18 +21278,10 @@ function habitActiveChallenge(id) {
 
 function habitPersistChallenges(challenges) {
   db.habitChallenges = Array.isArray(challenges) ? challenges : [];
-  let all = db.habitChallenges.map(habitNormalize).filter(Boolean);
+  const all = db.habitChallenges.map(habitNormalize).filter(Boolean);
   const active = all.filter(habit => !habitIsCompleted(habit));
   const principal = active.find(habit => !habit.reopenOf);
   const reopened = active.find(habit => habit.reopenOf);
-  const keep = new Set([principal, reopened].filter(Boolean).map(habit => habit.id));
-  if (active.length > keep.size) {
-    db.habitChallenges = db.habitChallenges.filter(item => {
-      const normalized = habitNormalize(item);
-      return !normalized || habitIsCompleted(normalized) || keep.has(normalized.id);
-    });
-    all = db.habitChallenges.map(habitNormalize).filter(Boolean);
-  }
   const selected = principal || reopened || all[0] || db.habitChallenges.find(habit => habit && habit.deleted) || null;
   db.habitChallenge = selected ? db.habitChallenges.find(habit => habit && habit.id === selected.id) || selected : null;
 }
@@ -21415,7 +21406,8 @@ function habitTrophyHtml(input) {
 }
 
 function renderHabitChallenge() {
-  const habits = habitActiveChallenges();
+  const active = habitActiveChallenges();
+  const habits = [active.find(habit => !habit.reopenOf), active.find(habit => habit.reopenOf)].filter(Boolean);
   document.querySelectorAll('[data-habit-slot]').forEach(slot => {
     slot.classList.toggle('has-multiple', false);
     const html = habitTrophyHtml(habits);
@@ -21424,13 +21416,16 @@ function renderHabitChallenge() {
   renderHabitChallenge._dayKey = habitDayKey();
 }
 
-function openHabitChallengeModal(challengeId) {
-  const current = challengeId ? (habitAllChallenges().find(habit => habit.id === challengeId) || null) : habitPrincipalChallenge();
+let _habitRestartId = null;
+
+function openHabitChallengeModal(challengeId, createNew = false) {
+  _habitRestartId = null;
+  const current = createNew ? null : challengeId ? (habitAllChallenges().find(habit => habit.id === challengeId) || null) : habitPrincipalChallenge();
   const metrics = current ? habitMetrics(current) : null;
   const complete = !!(current && metrics.complete);
   const existing = !!(current && !complete);
   _habitEditingExisting = existing;
-  _habitEditingId = existing ? current.id : null;
+  _habitEditingId = current ? current.id : null;
   _habitModalMode = current ? current.mode : 'do';
   const title = document.getElementById('habitModalTitle');
   const intro = document.getElementById('habitModalIntro');
@@ -21468,7 +21463,7 @@ function openHabitChallengeModal(challengeId) {
     const hasDetails = Boolean(current && (current.description || current.motivation || current.successCriteria || current.reward));
     details.open = complete || hasDetails || !(window.matchMedia?.('(orientation: landscape) and (max-height: 600px)').matches);
   }
-  if (deleteBtn) deleteBtn.hidden = !existing;
+  if (deleteBtn) deleteBtn.hidden = !current;
   if (saveBtn) saveBtn.hidden = complete;
   if (cancelBtn) cancelBtn.textContent = complete ? 'Cerrar' : 'Cancelar';
   if (todayBtn) {
@@ -21491,6 +21486,26 @@ function openHabitChallengeModal(challengeId) {
   if (!complete && window.matchMedia?.('(hover: hover) and (pointer: fine)').matches) {
     setTimeout(() => input?.focus(), 140);
   }
+}
+
+function restartHabitChallenge(challengeId) {
+  const habit = habitAllChallenges().find(item => item.id === challengeId);
+  if (!habit) return;
+  openHabitChallengeModal(null, true);
+  _habitRestartId = habit.id;
+  _habitModalMode = habit.mode;
+  const fields = { habitTitleInput: 'title', habitDurationInput: 'durationDays', habitDescriptionInput: 'description', habitMotivationInput: 'motivation', habitCriteriaInput: 'successCriteria', habitRewardInput: 'reward' };
+  Object.entries(fields).forEach(([id, field]) => { document.getElementById(id).value = habit[field] || ''; });
+  document.getElementById('habitModalTitle').textContent = 'Empezar de cero';
+  document.getElementById('habitModalIntro').textContent = 'Un reto nuevo con la misma regla. Al guardarlo se sustituirá el anterior y se quitarán su historial, su trofeo y los premios asociados.';
+  updateHabitModalPreview();
+}
+
+function habitMarkDeleted(stored, habitId, now) {
+  // Keep the record and its unknown fields; the common save stamps the
+  // explicit deletion so an offline copy cannot bring the habit back.
+  return stored.map(item => item && (item.id === habitId || item.reopenOf === habitId)
+    ? { ...item, deleted: true, updatedAt: now } : item);
 }
 
 function setHabitMode(mode) {
@@ -21570,6 +21585,7 @@ function saveHabitChallenge() {
   }
   const now = new Date().toISOString();
   const current = _habitEditingExisting ? habitActiveChallenge(_habitEditingId) : null;
+  if (_habitEditingExisting && !current) { showToast('Este hábito ya no está en curso. Vuelve a abrir su ficha.'); return; }
   if (_habitEditingExisting && current) {
     current.title = title;
     if(!current.effortReward)current.durationDays = durationDays;
@@ -21583,13 +21599,12 @@ function saveHabitChallenge() {
     if (index >= 0) stored[index] = current;
     habitPersistChallenges(stored);
   } else {
-    if (habitPrincipalChallenge()) {
-      showToast('Termina el hábito actual antes de crear otro');
-      return;
-    }
+    const restart = _habitRestartId ? habitAllChallenges().find(habit => habit.id === _habitRestartId) : null;
+    if (_habitRestartId && !restart) { showToast('Este hábito ya no existe. Vuelve a abrir Hábitos.'); return; }
+    if (restart && !confirm('¿Empezar de cero «' + restart.title + '»?\n\nSe eliminarán el reto anterior y sus reaperturas, su historial, trofeo y premios asociados. El nuevo empezará sin registros.')) return;
     _habitCalendarOffset = 0;
     const challenge = {
-      id: 'habit_' + Date.now(),
+      id: 'habit_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
       title,
       mode: _habitModalMode === 'avoid' ? 'avoid' : 'do',
       durationDays,
@@ -21604,15 +21619,21 @@ function saveHabitChallenge() {
     };
     const effortReward=window.HabitTrophies?.createRewardPolicy(challenge,new Date(now));
     if(effortReward)challenge.effortReward=effortReward;
-    const stored = habitStoredChallenges();
+    if (restart && window.HabitRulebook) {
+      const rulebook = HabitRulebook.inForce(restart, startDate) || HabitRulebook.pending(restart, startDate);
+      if (rulebook) challenge.rulebooks = [{ ...rulebook, effectiveFrom: startDate, savedAt: now }];
+    }
+    const stored = restart ? habitMarkDeleted(habitStoredChallenges(), restart.id, now) : habitStoredChallenges();
     stored.push(challenge);
     habitPersistChallenges(stored);
+    _habitCalendarChallengeId = challenge.id;
   }
   saveData();
   renderHabitChallenge();
   renderHabitCalendar();
   renderMesCalendario();
   closeModal('modalHabitChallenge');
+  if (document.body.getAttribute('data-view') === 'habitos' && !_habitEditingExisting) openHabitos(_habitCalendarChallengeId);
   showToast(_habitEditingExisting ? 'Hábito actualizado' : (habitDayNumber(startDate) > habitDayNumber(habitDayKey()) ? 'Hábito programado' : 'Hábito iniciado'));
 }
 
@@ -21680,14 +21701,10 @@ function toggleHabitTodayFromModal(event) {
   if (habitActiveChallenge(_habitEditingId)) openHabitChallengeModal(_habitEditingId);
 }
 
-function deleteHabitChallenge() {
-  const habit = habitActiveChallenge(_habitEditingId);
-  if (!habit || !confirm('¿Eliminar este reto?')) return;
-  const stored = habitStoredChallenges();
-  const index = stored.findIndex(item => item && item.id === habit.id);
-  if (index >= 0) stored[index] = { id: habit.id, deleted: true, updatedAt: new Date().toISOString() };
-  else stored.push({ id: habit.id, deleted: true, updatedAt: new Date().toISOString() });
-  habitPersistChallenges(stored);
+function deleteHabitChallenge(challengeId) {
+  const habit = habitAllChallenges().find(item => item.id === (challengeId || _habitEditingId));
+  if (!habit || !confirm('¿Eliminar «' + habit.title + '»?\n\nSe quitarán de la app este hábito y sus reaperturas, su historial, trofeo y premios asociados.')) return;
+  habitPersistChallenges(habitMarkDeleted(habitStoredChallenges(), habit.id, new Date().toISOString()));
   _habitCalendarOffset = 0;
   saveData();
   renderHabitChallenge();
