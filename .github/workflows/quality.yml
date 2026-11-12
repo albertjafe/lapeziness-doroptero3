@@ -11,6 +11,19 @@ on:
 # CI, ver playwright.config.js), así que las pruebas con tiempos reales
 # siguen siendo deterministas.
 jobs:
+  monitor-console:
+    name: monitor console (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Filter and incremental log reader
+        shell: powershell
+        run: ./tests/monitor/test_console_reservations.ps1
+      - name: Isolated launcher and stdin
+        shell: powershell
+        run: ./tests/monitor/test_console_launcher.ps1
+
   static:
     name: check + unit
     runs-on: ubuntu-latest

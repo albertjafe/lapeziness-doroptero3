@@ -402,6 +402,8 @@ Schema 3 añade `recentStudyDays`: hasta 90 días locales con minutos por obra/m
 
 ### Puente del monitor Asimut
 
+- Consola local breve: `scripts/monitor/console-reservations.ps1`, desplegado junto al monitor externo y llamado por sus lanzadores. Solo presenta actividad real de reservas y motivos; conserva stdout/stderr completos y lee también el log de actividad existente. No llama a Asimut/Telegram ni cambia decisiones de reserva. `-FollowOnly` permite ver una ejecución activa sin reiniciarla. Instalación, atribución de cancelaciones y pruebas: [`docs/MONITOR_CONSOLE.md`](../docs/MONITOR_CONSOLE.md).
+
 - Migración `202609080001_reservation_monitor_dashboard.sql`: tablas separadas para tokens, estado y órdenes; RLS por `auth.uid()`, privilegios mínimos y publicación Realtime.
 - Edge Function `reservation-monitor-ingest`: autentica el monitor con un token local hasheado en servidor, sanea la instantánea, entrega órdenes y recibe acuses. La clave `service_role` nunca llega a Python ni al navegador.
 - El archivo externo `study_dashboard_bridge.py`, junto al monitor de escritorio, publica con cola no bloqueante y entrega las órdenes al hilo principal. Las llamadas al dashboard reutilizan la lectura ya hecha para Telegram y no aumentan peticiones a Asimut.
