@@ -104,6 +104,27 @@ function Write-ReservationEvents {
     }
 }
 
+function Write-MonitorStartupFailure {
+    param([System.Management.Automation.ErrorRecord]$Failure, [string]$LogPath, [string]$ExecutablePath)
+    $detail = $ExecutablePath + "`r`n" + $Failure.Exception.ToString() + "`r`n" + $Failure.ScriptStackTrace
+    $blocked = $detail -match 'Control de aplicaciones|App Control|application control|code integrity|firma digital|digital signature'
+    for ($exception = $Failure.Exception; $exception; $exception = $exception.InnerException) {
+        if ($exception -is [ComponentModel.Win32Exception] -and $exception.NativeErrorCode -in @(577, 1260)) { $blocked = $true }
+    }
+    if ($blocked) {
+        Write-Host 'Monitor sin iniciar: Windows ha bloqueado el ejecutable por su politica de seguridad.' -ForegroundColor Yellow
+    } else {
+        Write-Host 'No se pudo iniciar el monitor.' -ForegroundColor Yellow
+    }
+    $errorPath = $LogPath + '.launcher.log'
+    try {
+        [IO.File]::AppendAllText($errorPath, ('[{0:o}] Error de arranque{1}{2}{1}' -f [DateTimeOffset]::Now, "`r`n", $detail), [Text.Encoding]::UTF8)
+        Write-Host ('Detalle del error: ' + $errorPath)
+    } catch {
+        Write-Host ('No se pudo guardar el error. Causa original: ' + $Failure.Exception.Message) -ForegroundColor Yellow
+    }
+}
+
 if ($LibraryOnly) { return }
 $ErrorActionPreference = 'Stop'
 try { [Console]::OutputEncoding = New-Object Text.UTF8Encoding($false) } catch {}
@@ -128,6 +149,7 @@ try {
     # Show a short, dated history once, then follow only new lines. Technical
     # stderr is deliberately not echoed: its complete file remains available.
     $history = @(Read-ReservationLog $states[0])
+    if ($history.Count) { Write-Host 'Ultima actividad registrada (historial):' }
     Write-ReservationEvents -Events @($history | Select-Object -Last 12) -Seen $seen
     $null = @(Read-ReservationLog $states[1])
     if ($Once) { return }
@@ -138,7 +160,12 @@ try {
         $env:PYTHONIOENCODING = 'utf-8'
         # Inherit stdin so the monitor's existing console commands still work.
         # No second monitor, network client or booking writer is introduced.
-        $child = Start-Process -FilePath (Join-Path $MonitorDirectory 'Monitor Alberto.exe') -WorkingDirectory $MonitorDirectory -NoNewWindow -PassThru -RedirectStandardOutput $LogPath -RedirectStandardError ($LogPath + '.stderr.log')
+        try {
+            $child = Start-Process -FilePath (Join-Path $MonitorDirectory 'Monitor Alberto.exe') -WorkingDirectory $MonitorDirectory -NoNewWindow -PassThru -RedirectStandardOutput $LogPath -RedirectStandardError ($LogPath + '.stderr.log')
+        } catch {
+            Write-MonitorStartupFailure -Failure $_ -LogPath $LogPath -ExecutablePath (Join-Path $MonitorDirectory 'Monitor Alberto.exe')
+            exit 1
+        }
         $MonitorProcessId = $child.Id
     }
     while ($true) {

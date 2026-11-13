@@ -23,6 +23,9 @@ jobs:
       - name: Isolated launcher and stdin
         shell: powershell
         run: ./tests/monitor/test_console_launcher.ps1
+      - name: Startup failure and security policy diagnostics
+        shell: powershell
+        run: ./tests/monitor/test_console_startup_failure.ps1
 
   static:
     name: check + unit
