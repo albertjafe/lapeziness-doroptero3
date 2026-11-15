@@ -16,6 +16,17 @@ foreach ($line in @(
     '📋 Estado actual antes de cambios', '❌ TimeoutError: servidor caído'
 )) { Assert-True ($null -eq (Event $line)) ('Rutina visible: ' + $line) }
 Assert-True ((Event '✅ Reserva aula 123 (12:15–13:15) con perfil [group] — VERIFICADA').Kind -eq 'Reserva') 'Falta reserva confirmada'
+foreach ($mode in @('', ' VIP 🌟', ' ESPEJO 🪞')) {
+    $waitEvent = Event ('⏳ <b>Espera táctica' + $mode + '</b>: Aguardando ~42s antes de reservar aula 123 (12:15-14:45) · Grupo 5 | orig 11:00-20:30 ↵ <i>Usa /skip para cancelar esta reserva</i>')
+    Assert-True ($waitEvent.Kind -eq 'Espera' -and $waitEvent.Text -match '~42 s antes de reservar aula 123 \(12:15-14:45\)') 'Faltan tiempo o destino de la espera'
+    Assert-True ($waitEvent.Text -notmatch 'Grupo|orig|/skip') 'Espera demasiado técnica'
+    if ($mode) { Assert-True ($waitEvent.Text -match ($mode -replace '[^\p{L}]', '')) 'Se perdió el tipo de espera' }
+}
+$waitMigration = Event '⏳ <b>Espera táctica</b>: Aguardando ~8s antes de ejecutar la migración al aula 123 (12:15–15:45) · franja 15:00–19:00 (finde) +nextday ↵ <i>Usa /skip para cancelar esta migración</i>'
+Assert-True ($waitMigration.Kind -eq 'Espera' -and $waitMigration.Text -eq '~8 s antes de ejecutar la migración al aula 123 (12:15–15:45)') 'Falta espera de migración'
+$parallel = Event '⏳ <b>Esperas tácticas en paralelo</b> ↵ Todas las opciones empiezan a contar desde ahora; si una cae, las demás siguen vivas. ↵ • Aula 123 12:15–14:45 · ~42s · G5 ↵ • Aula 124 13:00-15:00 · ~90s · G3 · emergencia cerca ↵ • ... y 2 opciones mas ↵ <i>Usa /skip para cancelar la próxima acción táctica</i>'
+Assert-True ($parallel.Kind -eq 'Espera' -and $parallel.Text -eq 'En paralelo: aula 123 12:15–14:45 (~42 s); aula 124 13:00-15:00 (~90 s); y 2 opciones más') 'Se perdieron esperas en paralelo'
+Assert-True ($null -eq (ConvertTo-ReservationEvent '⏳ [RESERVA] Espera táctica de 42s (franja tarde · Grupo 5)' console)) 'Se duplica la espera desde stdout'
 Assert-True ((Event '✅ *Migración completada*: reservada aula 123 14:00–15:00').Kind -eq 'Migración') 'Falta migración'
 $why = Event '🧩 *Migración detectada* → Ejecutando… ↵ Mejora: una sala de mayor prioridad y 30 minutos más'
 Assert-True ($why.Text -match '30 minutos más' -and $why.Kind -eq 'Motivo de migración') 'Se perdió el motivo'

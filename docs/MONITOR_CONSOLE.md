@@ -5,7 +5,10 @@ del monitor externo. Se copia junto al ejecutable y los lanzadores `.cmd` lo
 invocan con `-Profile <perfil>` y `-LogPath <ruta de la ejecución>`.
 
 Muestra acciones confirmadas de reservas, ampliaciones, rescates, cancelaciones,
-migraciones y el motivo del traslado. Las decisiones teóricas, sondeos, HTTP,
+migraciones y el motivo del traslado. Incluye los segundos previstos de espera
+táctica antes de reservar o migrar, con aula y horario (también VIP, ESPEJO y
+opciones en paralelo). Son estimaciones, no duración real transcurrida; se
+muestra un aviso por decisión, sin cuenta atrás. Las decisiones teóricas, sondeos, HTTP,
 JSON, estadísticas y trazas se quedan en disco. La atribución de una cancelación
 solo se muestra si consta: detectar una desaparición no identifica al autor.
 Una persona que libera un hueco tampoco es necesariamente quien canceló otra

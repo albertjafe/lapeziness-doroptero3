@@ -36,6 +36,20 @@ function ConvertTo-ReservationEvent {
     # "no migration possible" and hypothetical plans are not booking events.
     $kind = $null
     if ($Source -eq 'console' -and $tag -in @('DESAPARECE','RECORTE')) { $kind = 'Cambio detectado' }
+    elseif ($body -match '^Espera táctica(?<mode>[^:]*): Aguardando (?<seconds>~?\d+)s antes de (?<action>(?:reservar aula|ejecutar la migración al aula) \d+ \([\d:]+[–-][\d:]+\))') {
+        $kind = 'Espera'
+        $mode = ($Matches.mode -replace '[^\p{L}\s]', '').Trim()
+        $body = $Matches.seconds + ' s antes de ' + $Matches.action
+        if ($mode) { $body += ' · ' + $mode }
+    }
+    elseif ($body -match '^Esperas tácticas en paralelo\b') {
+        $options = [regex]::Matches($body, 'Aula (\d+) ([\d:]+[–-][\d:]+) · (~?\d+)s')
+        if ($options.Count -eq 0) { return }
+        $kind = 'Espera'
+        $summary = @($options | ForEach-Object { 'aula ' + $_.Groups[1].Value + ' ' + $_.Groups[2].Value + ' (' + $_.Groups[3].Value + ' s)' })
+        $remaining = if ($body -match '\.\.\. y (\d+) opciones mas') { '; y ' + $Matches[1] + ' opciones más' } else { '' }
+        $body = 'En paralelo: ' + ($summary -join '; ') + $remaining
+    }
     elseif ($body -match '^(Migración completada|Migración PAOD confirmada)') { $kind = 'Migración' }
     elseif ($body -match '^Migración detectada.*Ejecutando') { $kind = 'Motivo de migración' }
     elseif ($body -match '^Migración en curso.*cancelando reservas') { $kind = 'Cancelación'; $body += ' · Por el monitor para migrar.' }
