@@ -26,6 +26,8 @@ jobs:
       - name: Startup failure and security policy diagnostics
         shell: powershell
         run: ./tests/monitor/test_console_startup_failure.ps1
+      - name: Whole class reservation planning (offline)
+        run: python tests/monitor/test_class_reservation_plan.py
 
   static:
     name: check + unit

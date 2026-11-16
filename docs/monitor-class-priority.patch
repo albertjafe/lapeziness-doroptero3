@@ -1,0 +1,217 @@
+--- a/monitor_huecos_alberto.py
++++ b/monitor_huecos_alberto.py
+@@ -15950,0 +15951,4 @@
++        clase = top_cand.get("clase_imprescindible")
++        if clase and not (ini <= clase[0] < clase[1] <= fin):
++            send_tg("❌ Migración de clase abortada: los límites recortan la hora imprescindible.")
++            return False
+@@ -16013,0 +16018,3 @@
++            if top_cand.get("clase_imprescindible"):
++                print(f"[FRANJA] Comprobación previa fallida ({type(exc).__name__}); conservo las reservas.")
++                return False
+@@ -16411 +16418 @@
+-                franjas.append({"dia": dia, "ini": fr["ini"], "fin": fr["fin"], "nombre": str(fr.get("nombre") or "Franja fija")})
++                franjas.append({**fr, "dia": dia, "ini": fr["ini"], "fin": fr["fin"], "nombre": str(fr.get("nombre") or "Franja fija")})
+@@ -16420 +16427 @@
+-                puntuales.append({"id": str(p["id"]), "fecha": str(p["fecha"]), "ini": p["ini"], "fin": p["fin"],
++                puntuales.append({**p, "id": str(p["id"]), "fecha": str(p["fecha"]), "ini": p["ini"], "fin": p["fin"],
+@@ -16427 +16434 @@
+-    return {"franjas": franjas, "puntuales": puntuales, "saltar": sorted({str(x) for x in data.get("saltar") or []}),
++    return {**data, "franjas": franjas, "puntuales": puntuales, "saltar": sorted({str(x) for x in data.get("saltar") or []}),
+@@ -16846,0 +16854,87 @@
++def _franja_margenes(fr: dict, ini: datetime, fin: datetime):
++    """Optional margins never replace the mandatory class interval."""
++    a = datetime.combine(ini.date(), datetime.strptime(fr.get("margen_ini", fr["ini"]), "%H:%M").time(), tzinfo=ini.tzinfo)
++    b = datetime.combine(fin.date(), datetime.strptime(fr.get("margen_fin", fr["fin"]), "%H:%M").time(), tzinfo=fin.tzinfo)
++    if not (a <= ini < fin <= b) or a.minute % 15 or b.minute % 15:
++        raise ValueError("Los márgenes deben rodear la clase y usar cuartos de hora")
++    return a, b
++
++
++def _franja_clase_entera(fr, d, ini, fin, ses, now, mias, tocan, occ):
++    """Try a whole class first, using the existing transaction/rollback path."""
++    from class_reservation_plan import full_class_plans
++    margen_ini, margen_fin = _franja_margenes(fr, ini, fin)
++    rooms = [a for a in _franja_salas_ordenadas()
++             if time.time() - _FRANJA_FALLOS.get((d, a), 0) > FRANJA_REINTENTO_S]
++    def allowed(aula, a, b, liberadas):
++        ids = {m["event_id"] for m in liberadas}
++        return (_franja_sala_libre(aula, a, b, occ, ids, now)
++                and not _franja_choque_1h(aula, a, b, mias, ids)
++                and not intersects_blind(a, b, d, ini.tzinfo, _blinds_efectivos(d)))
++    plans = full_class_plans(ini, fin, margen_ini, margen_fin, mias, rooms, now,
++                            allowed, MAX_RESERVA_HORAS * 60, obtener_grupo_aula)
++    if not plans:
++        return None
++    # One quota read for all candidates. Unknown quota must not release bookings.
++    try:
++        quota = fetch_cuotas_v2(ses["cookies"], ses["ua"], d)
++    except Exception:
++        quota = None
++    if not isinstance(quota, dict) or quota.get("rf_secs") is None:
++        return "pendiente: no pude comprobar la cuota para la clase"
++    def deficit(p):
++        liberadas = p["liberadas"]
++        rf = (p["fin"] - p["ini"]).total_seconds() / 60 - sum((m["fin"] - m["ini"]).total_seconds() / 60 for m in liberadas)
++        sz = _qlab_sz_minutes(p["ini"], p["fin"]) - sum(_qlab_sz_minutes(m["ini"], m["fin"]) for m in liberadas)
++        return (max(0, int(rf - quota["rf_secs"] // 60)),
++                max(0, int(sz - quota["sz_secs"] // 60)) if quota.get("sz_secs") is not None else 0)
++    plan = next((p for p in plans if not any(deficit(p))), None)
++    if plan is None:
++        # Reclaim quota only for the essential hour, never merely for margins.
++        core = min(plans, key=lambda p: (sum(deficit(p)), (p["fin"] - p["ini"]).total_seconds()))
++        return _franja_sin_cuota(d, fr["nombre"], f"{ini:%H:%M}–{fin:%H:%M}", deficit(core), ses, ini, now)
++    aula, a, b = plan["aula"], plan["ini"], plan["fin"]
++    if plan["unchanged"]:
++        return f"lista: aula {aula} {a:%H:%M}–{b:%H:%M} (clase entera)"
++    liberadas = plan["liberadas"]
++    if obtener_modo_reserva(ACTIVE_USER) == "anon" and liberadas:
++        return "aula para clase entera disponible; modo anónimo impide el cambio"
++    # Check again immediately before handing off, without releasing a lock.
++    if _manual_shutdown_requested():
++        return "pendiente: monitor cerrándose"
++    ok = False
++    try:
++        if plan["ampliar"] is not None:
++            ok, msg = _franja_ampliar(plan["ampliar"], a, b, ses, d)
++        elif not liberadas:
++            ok, msg = book_slot_hoy(ses["cookies"], ses["ua"], ACTIVE_USER, aula, a, b, mode=obtener_modo_reserva(ACTIVE_USER))
++        else:
++            cand = {"aula_objetivo": aula, "h_ini": a, "h_fin": b, "mig_ini": a, "mig_fin": b,
++                    "reservas_cubiertas": [(m["ini"], m["fin"], m["aula_str"], m["tipo"]) for m in liberadas],
++                    "clase_imprescindible": (ini, fin)}
++            send_tg(f"📌 {fr['nombre']}: priorizo la clase entera {ini:%H:%M}–{fin:%H:%M} "
++                    f"en aula {aula} ({a:%H:%M}–{b:%H:%M}); los extremos son opcionales.")
++            for m in liberadas:
++                _franja_candado(m["event_id"], False)
++            ok = ejecutar_migracion(cand, d)
++    finally:
++        # Includes new IDs assigned by a successful migration or its rollback.
++        try:
++            actuales = _franja_mias(ses["cookies"], ses["ua"], d, ini.tzinfo)
++        except Exception:
++            # Keep original IDs protected without claiming they still exist.
++            # Next successful class scan discovers and locks any replacement IDs.
++            for m in liberadas:
++                _reservation_set_locked(m["event_id"], True)
++            raise
++        for m in actuales:
++            if m["ini"] < fin and m["fin"] > ini:
++                _franja_candado(m["event_id"], True, d)
++    if not ok:
++        _FRANJA_FALLOS[(d, aula)] = time.time()
++        return f"cambio de clase a {aula} fallido; reviso las reservas restantes"
++    send_tg(f"📌 {fr['nombre']}: clase entera en aula {aula}, {a:%H:%M}–{b:%H:%M}. "
++            f"Horario imprescindible: {ini:%H:%M}–{fin:%H:%M}.")
++    return f"lista: aula {aula} {a:%H:%M}–{b:%H:%M} (clase entera)"
++
++
+@@ -16879,2 +16972,0 @@
+-    if entera and obtener_grupo_aula(entera[0]["aula"]) == 5:
+-        return f"lista: aula {entera[0]['aula']}"
+@@ -16887,93 +16979,3 @@
+-    propios = {m["event_id"] for m in tocan}
+-    # 26-10-2026: un trozo ya empezado se queda donde está (Asimut no deja
+-    # cancelarlo ni reservar en el pasado, y perdería su confirmación). El
+-    # cambio de aula mueve solo lo que aún no ha empezado, desde que acaba ese
+-    # trozo. Antes la envolvente lo incluía y el cambio fallaba entero.
+-    empezados = [m for m in tocan if m["ini"] <= now]
+-    tocan_futuros = [m for m in tocan if m["ini"] > now]
+-    ini_mov = max([ini] + [m["fin"] for m in empezados])
+-    # Envolvente: no se pierde tiempo propio fuera de la franja al cambiar.
+-    env_ini = min([ini_mov] + [m["ini"] for m in tocan_futuros])
+-    env_fin = max([fin] + [m["fin"] for m in tocan_futuros])
+-    if _intervalo_supera_max_reserva(env_ini, env_fin):
+-        env_ini, env_fin = ini_mov, fin
+-        tocan_mover = [m for m in tocan_futuros if m["ini"] >= ini_mov and m["fin"] <= fin]
+-    else:
+-        tocan_mover = tocan_futuros
+-    if ini_mov >= fin:
+-        tocan_mover = []
+-    candidatas = [a for a in _franja_salas_ordenadas(solo_grupo5=bool(entera))
+-                  if time.time() - _FRANJA_FALLOS.get((d, a), 0) > FRANJA_REINTENTO_S]
+-    # Si un aula donde ya hay un trozo sirve para toda la franja, se amplía esa
+-    # (mismo grupo primero): menos cambios que mudarse a otra.
+-    con_trozo = {m["aula"] for m in tocan}
+-    candidatas.sort(key=lambda a: (obtener_grupo_aula(a) != 5, a not in con_trozo))
+-    mover_ids = [m["event_id"] for m in tocan_mover]
+-    destino = next((a for a in candidatas if _franja_sala_libre(a, env_ini, env_fin, occ, propios, now)
+-                    and not _franja_choque_1h(a, env_ini, env_fin, mias, mover_ids)), None)
+-
+-    # 08-11-2026: si el único trozo que hay que mover ya está en esa aula, se
+-    # amplía (PATCH) en vez de cancelar y volver a reservar: no se suelta nada.
+-    if (destino is not None and len(tocan_mover) == 1 and tocan_mover[0]["aula"] == destino
+-            and (not entera or obtener_grupo_aula(destino) == 5)
+-            and obtener_modo_reserva(ACTIVE_USER) != "anon"):
+-        m = tocan_mover[0]
+-        falta = _franja_falta_cuota(cookies, ua, d, env_ini, env_fin, [m])
+-        if falta:
+-            return _franja_sin_cuota(d, nombre, rango, falta, ses, ini, now)
+-        ok, msg = _franja_ampliar(m, env_ini, env_fin, ses, d)
+-        if ok:
+-            send_tg(f"📌 <b>{nombre}</b> ({rango}): amplío el aula {destino} a "
+-                    f"{env_ini:%H:%M}–{env_fin:%H:%M}. Clase entera en una sola aula.")
+-            return f"ampliada: aula {destino} {env_ini:%H:%M}–{env_fin:%H:%M}"
+-        _franja_fallo(d, destino, msg, nombre, rango)
+-        return f"ampliar {destino} fallido: {msg[:120]}"
+-
+-    if destino is not None and not tocan:
+-        falta = _franja_falta_cuota(cookies, ua, d, ini, fin, [])
+-        if falta:
+-            return _franja_sin_cuota(d, nombre, rango, falta, ses, ini, now)
+-        modo = obtener_modo_reserva(ACTIVE_USER)
+-        ok, msg = book_slot_hoy(cookies, ua, ACTIVE_USER, destino, ini, fin, mode=modo)
+-        if not ok:
+-            _franja_fallo(d, destino, msg, nombre, rango)
+-        if ok:
+-            send_tg(f"📌 <b>{nombre}</b> asegurada: aula {destino} ({rango}).")
+-            for m in _franja_mias(cookies, ua, d, tz):
+-                if m["aula"] == destino and m["ini"] <= ini and m["fin"] >= fin:
+-                    _franja_candado(m["event_id"], True, d)
+-            return f"reservada: aula {destino}"
+-        return f"fallo al reservar {destino}: {msg}"
+-
+-    if destino is not None and tocan_mover and (not entera or obtener_grupo_aula(destino) == 5):
+-        if obtener_modo_reserva(ACTIVE_USER) == "anon":
+-            _franja_aviso(f"anon:{d}", f"📌 {nombre} ({rango}): hay una sola aula ({destino}) para toda la franja, pero en modo anónimo no cambio reservas solo.")
+-            return "cambio posible (modo anónimo)"
+-        nuevo_ini = env_ini
+-        nuevo_fin = env_fin
+-        falta = _franja_falta_cuota(cookies, ua, d, nuevo_ini, nuevo_fin, tocan_mover)
+-        if falta:
+-            return _franja_sin_cuota(d, nombre, rango, falta, ses, ini, now)
+-        cand = {
+-            "aula_objetivo": destino, "h_ini": env_ini, "h_fin": env_fin,
+-            "mig_ini": env_ini,
+-            "mig_fin": env_fin,
+-            "reservas_cubiertas": [(m["ini"], m["fin"], m["aula_str"], m["tipo"]) for m in tocan_mover],
+-        }
+-        for m in tocan_mover:
+-            _franja_candado(m["event_id"], False)
+-        motivo = "una sola aula" if not entera else "grupo 5"
+-        send_tg(f"📌 <b>{nombre}</b> ({rango}): cambio a {motivo} → aula {destino}.")
+-        ok = ejecutar_migracion(cand, d)
+-        if not ok:
+-            _FRANJA_FALLOS[(d, destino)] = time.time()
+-            # La restauración puede dar ids nuevos: se bloquea lo que exista ahora.
+-            for m in _franja_mias(cookies, ua, d, tz):
+-                if m["ini"] < fin and m["fin"] > ini:
+-                    _franja_candado(m["event_id"], True, d)
+-            return f"cambio a {destino} fallido (reservas anteriores restauradas)"
+-        for m in _franja_mias(cookies, ua, d, tz):
+-            if m["aula"] == destino and m["ini"] < fin and m["fin"] > ini:
+-                _franja_candado(m["event_id"], True, d)
+-        return f"cambiada a aula {destino}"
+-
++    resultado = _franja_clase_entera(fr, d, ini, fin, ses, now, mias, tocan, occ)
++    if resultado is not None:
++        return resultado
+@@ -16981 +16983 @@
+-        return f"asegurada en grupo 4 (aula {entera[0]['aula']}); esperando grupo 5"
++        return f"lista: aula {entera[0]['aula']} (clase entera)"
+@@ -16991 +16993 @@
+-        return "cubierta en trozos" if tocan else "sin aula todavía"
++        return ("cobertura parcial; falta " + ", ".join(f"{a:%H:%M}–{b:%H:%M}" for a, b in _franja_faltan(ini, fin, tocan))) if _franja_faltan(ini, fin, tocan) else "cubierta en trozos; busco una sola aula"
+@@ -17314,0 +17317,2 @@
++        if fr.get("margen_ini") or fr.get("margen_fin"):
++            estado = f"Margen {fr.get('margen_ini', fr['ini'])}–{fr.get('margen_fin', fr['fin'])} · {estado}"
