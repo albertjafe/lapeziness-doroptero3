@@ -21,3 +21,6 @@ try { throw 'Causa original de prueba' }
 catch { $output = Write-MonitorStartupFailure -Failure $_ -LogPath (Join-Path $fixture 'missing/monitor.log') 6>&1 }
 if (($output -join "`n") -notmatch 'Causa original de prueba') { throw 'Se perdio el error al fallar el guardado' }
 Write-Output 'OK: fallo de arranque visible, codigo 1, bloqueo explicado y detalle persistido sin iniciar procesos de reservas.'
+# The expected child failure was asserted above. GitHub's PowerShell wrapper
+# propagates LASTEXITCODE, so report this test's success instead of that child.
+$global:LASTEXITCODE = 0
