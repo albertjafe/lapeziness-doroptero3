@@ -1,0 +1,97 @@
+/* Aulas · Salzburgo (v539). Selector de campus y panel del monitor del
+   Mozarteum. Solo variables de tema; usa las tarjetas .rd-card de Aulas. */
+
+/* Selector Colonia / Salzburgo */
+.aulas-screen .aulas-campus-switch { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--bg3); }
+.aulas-screen .aulas-campus-switch button { min-height: 36px; padding: 0 14px; border: 0; border-radius: 9px; background: transparent; color: var(--text2); font-size: 14px; font-weight: 600; cursor: pointer; }
+.aulas-screen .aulas-campus-switch button.active { background: var(--bg2); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+
+/* Con Salzburgo se ocultan los mandos y paneles de Asimut. */
+.aulas-screen.is-salzburgo :is(#reservationSourceSwitch, .rd-pane-tabs, #reservationViewToggle, #reservationLivePanel, #reservationLegacyPanel) { display: none !important; }
+.aulas-screen:not(.is-salzburgo) #mozarteumPanel { display: none !important; }
+
+.moz-panel { display: flex; flex-direction: column; gap: 12px; }
+.moz-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 900px) { .moz-grid { grid-template-columns: 1.3fr 1fr; align-items: start; } }
+
+/* Hero */
+.moz-hero {
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 16px;
+  padding: 20px 20px 18px; border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  background: linear-gradient(140deg, color-mix(in srgb, var(--accent) 14%, var(--bg2)), var(--bg2) 70%);
+}
+.moz-hero-copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 260px; }
+.moz-kicker { flex-wrap: wrap; }
+.moz-hero-copy strong { font-size: 24px; line-height: 1.15; }
+.moz-hero-copy > span { color: var(--text2); }
+.moz-hero-copy small { color: var(--text3); font-size: 13px; }
+.moz-kicker { display: flex; align-items: center; gap: 8px; color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.moz-pill { padding: 2px 8px; border-radius: 99px; font-style: normal; font-size: 11px; letter-spacing: .02em; text-transform: none; background: var(--bg3); color: var(--text2); }
+.moz-pill.is-ok { background: color-mix(in srgb, var(--rd-ok) 16%, transparent); color: var(--rd-ok); }
+.moz-pill.is-warn { background: color-mix(in srgb, var(--rd-warn) 16%, transparent); color: var(--rd-warn); }
+.moz-pill.is-bad { background: color-mix(in srgb, var(--rd-bad) 16%, transparent); color: var(--rd-bad); }
+.moz-opening { flex-basis: 100%; margin: 4px 0 0; color: var(--text2); font-size: 14px; }
+.moz-tag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 99px; background: var(--bg3); color: var(--text3); font-size: 12px; }
+.moz-tag.is-ok { background: color-mix(in srgb, var(--rd-ok) 14%, transparent); color: var(--rd-ok); }
+
+/* Botones */
+.moz-btn { min-height: 40px; padding: 0 14px; border: 1px solid var(--border); border-radius: 11px; background: var(--bg2); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; }
+.moz-btn:hover { border-color: var(--accent); color: var(--accent); }
+.moz-btn.is-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.moz-btn.is-quiet { background: transparent; }
+.moz-btn:disabled { opacity: .5; cursor: default; }
+.moz-add { margin: 4px 16px 16px; }
+
+/* Franjas */
+.moz-franja-list { list-style: none; margin: 0; padding: 4px 16px 6px; display: flex; flex-direction: column; gap: 12px; }
+.moz-franja-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.moz-franja-head b { text-transform: capitalize; }
+.moz-franja-head span { color: var(--text2); font-variant-numeric: tabular-nums; }
+.moz-x { margin-left: auto; width: 32px; height: 32px; border: 0; border-radius: 9px; background: transparent; color: var(--text3); font-size: 15px; cursor: pointer; }
+.moz-x:hover { background: var(--bg3); color: var(--rd-bad); }
+.moz-bar { display: flex; gap: 2px; height: 30px; border-radius: 9px; overflow: hidden; }
+.moz-seg { display: flex; align-items: center; justify-content: center; min-width: 4px; overflow: hidden; white-space: nowrap; font-size: 11.5px; font-weight: 600; }
+.moz-seg em { font-style: normal; padding: 0 4px; overflow: hidden; text-overflow: ellipsis; }
+.moz-seg.is-ok { background: var(--rd-ok); color: #fff; }
+.moz-seg.is-search { background: color-mix(in srgb, var(--rd-warn) 30%, var(--bg2)); color: var(--text); }
+.moz-seg.is-later { background: repeating-linear-gradient(135deg, var(--bg3) 0 6px, color-mix(in srgb, var(--bg3) 60%, var(--bg2)) 6px 12px); color: var(--text3); }
+.moz-seg.is-past { background: var(--bg3); color: var(--text3); opacity: .6; }
+.moz-notice { margin: 8px 16px 0; padding: 8px 10px; border-radius: 10px; font-size: 13.5px; background: var(--bg3); }
+.moz-notice.is-ok { color: var(--rd-ok); }
+.moz-notice.is-bad { color: var(--rd-bad); }
+
+/* Formulario */
+.moz-form { display: flex; flex-direction: column; gap: 10px; padding: 8px 16px 16px; }
+.moz-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.moz-form label { display: flex; flex-direction: column; gap: 4px; color: var(--text3); font-size: 12.5px; font-weight: 600; }
+.moz-form :is(input, select) { min-height: 40px; padding: 0 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); font: inherit; font-size: 15px; }
+.moz-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.moz-presets button { display: flex; flex-direction: column; align-items: center; gap: 1px; min-height: 48px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg2); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; }
+.moz-presets button small { color: var(--text3); font-size: 11.5px; font-weight: 500; }
+.moz-presets button.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--bg2)); }
+.moz-form-hint { margin: 0; color: var(--text3); font-size: 12.5px; }
+.moz-form-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Reservas */
+.moz-days { display: flex; flex-direction: column; gap: 12px; padding: 4px 16px 16px; }
+.moz-day > b { display: block; margin-bottom: 4px; color: var(--text2); font-size: 13px; text-transform: capitalize; }
+.moz-booking { display: flex; align-items: baseline; gap: 10px; padding: 8px 10px; border-radius: 10px; background: var(--bg3); margin-bottom: 4px; }
+.moz-booking span { font-variant-numeric: tabular-nums; color: var(--text2); }
+.moz-booking small { margin-left: auto; color: var(--text3); font-size: 12px; }
+
+/* Leyenda y actividad */
+.moz-legend-card { padding: 4px 0; }
+.moz-legend, .moz-events { padding: 10px 16px; }
+.moz-legend summary, .moz-events summary { cursor: pointer; color: var(--text3); font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.moz-legend-keys { list-style: none; margin: 10px 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 14px; font-size: 13.5px; color: var(--text2); }
+.moz-legend-keys li { display: flex; align-items: center; gap: 8px; }
+.moz-legend-keys .moz-seg { width: 26px; height: 14px; border-radius: 4px; flex: none; }
+.moz-rules { margin: 6px 0 4px; padding-left: 18px; color: var(--text2); font-size: 13.5px; display: flex; flex-direction: column; gap: 4px; }
+.moz-events ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--text2); }
+.moz-events time { display: inline-block; width: 46px; color: var(--text3); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 520px) {
+  .aulas-screen.is-salzburgo .rd-topline { flex-wrap: wrap; }
+  .moz-hero-copy strong { font-size: 21px; }
+}

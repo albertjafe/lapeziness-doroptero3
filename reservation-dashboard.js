@@ -103,6 +103,13 @@
   let confirmTimer = null;
 
   function el(id) { return document.getElementById(id); }
+  // 19-11-2026: Aulas tiene dos campus. Con Salzburgo elegido, la línea de estado
+  // y la tarjeta de Hoy las pinta mozarteum-dashboard.js; este módulo sigue
+  // leyendo Asimut en segundo plano. La fila «mozarteum» no es un perfil Asimut.
+  const ASIMUT_SOURCES = ['alberto', 'emma', 'chen'];
+  function salzburgoShown() {
+    try { return localStorage.getItem('aulasCampus') === 'salzburgo'; } catch (_) { return false; }
+  }
   function escapeHtml(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -236,7 +243,7 @@
 
   function setStatus(text, kind) {
     const node = el('reservationDashboardStatus');
-    if (!node) return;
+    if (!node || salzburgoShown()) return;
     node.textContent = text;
     node.dataset.kind = kind || '';
   }
@@ -1821,7 +1828,7 @@
   function renderTodayCard(row) {
     const summary = summaryFor(row);
     lastSummary = summary;
-    const card = el('aulasTodayCard');
+    const card = salzburgoShown() ? null : el('aulasTodayCard');
     if (card) {
       card.dataset.kind = summary.kind;
       const title = card.querySelector('b');
@@ -2117,7 +2124,7 @@
         event: '*', schema: 'public', table: 'reservation_monitor_state', filter: `user_id=eq.${userId}`,
       }, payload => {
         const row = payload.new;
-        if (!userId || row?.user_id !== userId || !row?.source) return;
+        if (!userId || row?.user_id !== userId || !ASIMUT_SOURCES.includes(row?.source)) return;
         rows = rows.filter(item => item.source !== row.source).concat(row);
         render();
       })
@@ -2155,7 +2162,7 @@
       if (error) throw error;
       lastFetchOk = Date.now();
       connectionNotice = null;
-      rows = Array.isArray(data) ? data : [];
+      rows = Array.isArray(data) ? data.filter(item => ASIMUT_SOURCES.includes(item.source)) : [];
       render();
       // El canal en directo se cae a veces al dormir el dispositivo: se rehace.
       if (changedUser || !channel || ['closed', 'errored'].includes(channel.state)) await subscribe(sb);

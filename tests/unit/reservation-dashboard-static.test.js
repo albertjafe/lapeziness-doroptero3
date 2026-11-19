@@ -124,7 +124,7 @@ describe('reservation monitor dashboard', () => {
       expect(migration).toContain(`reservation_monitor_${table}_source_check`);
     }
     expect(migration.match(/'alberto', 'emma', 'chen'/g)).toHaveLength(3);
-    expect(edge).toContain('const allowedSources = new Set(["alberto", "emma", "chen"]);');
+    expect(edge).toContain('const allowedSources = new Set(["alberto", "emma", "chen", "mozarteum"]);');
     expect(dashboard).toContain("chen: 'Chen'");
   });
 

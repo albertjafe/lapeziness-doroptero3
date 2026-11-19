@@ -7,7 +7,9 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-const allowedSources = new Set(["alberto", "emma", "chen"]);
+// «mozarteum» (19-11-2026): monitor de aulas del Mozarteum Salzburgo. Mismo
+// canal y tablas; su estado tiene otra forma y se sanea con cleanMozState.
+const allowedSources = new Set(["alberto", "emma", "chen", "mozarteum"]);
 const allowedCommands = new Set([
   "pause",
   "resume",
@@ -41,6 +43,7 @@ const allowedCommands = new Set([
   "set_absorbe",
   "set_pecera",
   "room_grid",
+  "moz_franjas",
 ]);
 const allowedPhases = new Set(["awaiting_start", "starting", "running", "closed"]);
 
@@ -507,6 +510,56 @@ function cleanState(value: unknown) {
   };
 }
 
+// Mozarteum (19-11-2026): franjas deseadas, reservas propias de los próximos
+// días, cuota (minutos), próxima apertura y últimos sucesos. Sin datos de otras
+// personas: solo nombre de aula y horas.
+function cleanMozState(value: unknown) {
+  const raw = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const obj = (item: unknown) => item && typeof item === "object" ? item as Record<string, unknown> : {};
+  const monitorRaw = obj(raw.monitor);
+  const quotaRaw = obj(raw.quota);
+  const nextRaw = raw.next_opening && typeof raw.next_opening === "object" ? obj(raw.next_opening) : null;
+  const slot = (item: unknown) => {
+    const r = obj(item);
+    return { date: cleanDate(r.date), start: cleanTime(r.start), end: cleanTime(r.end) };
+  };
+  return {
+    kind: "mozarteum",
+    last_read_at: cleanInstant(raw.last_read_at),
+    monitor: {
+      online: cleanBoolean(monitorRaw.online),
+      phase: cleanChoice(monitorRaw.phase, ["starting", "running", "closed"]),
+      paused: cleanBoolean(monitorRaw.paused),
+      started_at: cleanInstant(monitorRaw.started_at),
+      error: cleanMonitorError(monitorRaw.error),
+    },
+    quota: {
+      free_min: cleanInteger(quotaRaw.free_min, -100_000, 100_000),
+      pending_min: cleanInteger(quotaRaw.pending_min, 0, 100_000),
+      spent_min: cleanInteger(quotaRaw.spent_min, 0, 100_000),
+    },
+    window_until: cleanInstant(raw.window_until),
+    franjas: Array.isArray(raw.franjas)
+      ? raw.franjas.slice(0, 60).map(slot).filter((f) => f.date && f.start && f.end)
+      : [],
+    reservations: Array.isArray(raw.reservations)
+      ? raw.reservations.slice(0, 120).map((item) => ({ ...slot(item), room: cleanText(obj(item).room, 24) }))
+        .filter((r) => r.date && r.start && r.end && r.room)
+      : [],
+    next_opening: nextRaw ? {
+      at: cleanInstant(nextRaw.at),
+      date: cleanDate(nextRaw.date),
+      start: cleanTime(nextRaw.start),
+      end: cleanTime(nextRaw.end),
+      wanted: cleanBoolean(nextRaw.wanted),
+    } : null,
+    events: Array.isArray(raw.events)
+      ? raw.events.slice(0, 25).map((item) => ({ at: cleanInstant(obj(item).at), text: cleanText(obj(item).text, 160) }))
+        .filter((e) => e.at && e.text)
+      : [],
+  };
+}
+
 async function sha256(value: string): Promise<string> {
   const bytes = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -668,7 +721,7 @@ Deno.serve(async (req: Request) => {
     instance_id: cleanText(body.instance_id, 100),
     observed_at: observedAt,
     heartbeat_at: now,
-    state: cleanState(body.state),
+    state: source === "mozarteum" ? cleanMozState(body.state) : cleanState(body.state),
     updated_at: now,
   }, { onConflict: "user_id,source" });
 
