@@ -15,7 +15,7 @@
   const PRESETS = [
     { id: 'manana', label: 'Mañana', start: '08:00', end: '14:00' },
     { id: 'tarde', label: 'Tarde', start: '14:00', end: '20:00' },
-    { id: 'dia', label: 'Todo el día', start: '08:00', end: '22:00' },
+    { id: 'dia', label: 'Todo el día', start: '07:30', end: '23:00' },
   ];
 
   let row = null;
@@ -98,16 +98,34 @@
   }
   function reservations() { return Array.isArray(state().reservations) ? state().reservations : []; }
 
-  // Bloques seguidos en la misma aula se enseñan como uno.
+  // Bloques seguidos en la misma aula se enseñan como uno, pero guardan cada reserva
+  // (items): cada una pide pasar el carné en sus primeros 15 min.
   function merged(list) {
     const out = [];
     [...list].sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)).forEach(r => {
       const last = out[out.length - 1];
       if (last && last.date === r.date && last.room === r.room && last.end === r.start) {
-        last.end = r.end; last.parts += 1;
-      } else out.push({ ...r, parts: 1 });
+        last.end = r.end; last.parts += 1; last.items.push(r);
+      } else out.push({ ...r, parts: 1, items: [r] });
     });
     return out;
+  }
+
+  const CHECKIN_MIN = 15;
+  function checkinEnd(r) { return hm(toMin(r.start) + CHECKIN_MIN); }
+  // La próxima reserva cuyo plazo para pasar el carné aún no ha terminado.
+  function nextCheckin() {
+    const now = Date.now();
+    return [...reservations()].sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start))
+      .find(r => at(r.date, toMin(r.start) + CHECKIN_MIN).getTime() > now) || null;
+  }
+  function checkinText(r) {
+    if (!r) return '';
+    const open = at(r.date, toMin(r.start)).getTime() <= Date.now();
+    const day = r.date === isoDay(new Date()) ? '' : `${dayLabel(r.date)} · `;
+    return open
+      ? `Pasa el carné ya: ${r.room}, antes de las ${checkinEnd(r)}`
+      : `Próximo carné: ${day}${r.room}, de ${r.start} a ${checkinEnd(r)}`;
   }
 
   // Estado de cada tramo horario de una franja.
@@ -172,6 +190,7 @@
         <span class="moz-kicker">Mozarteum · Salzburgo <i class="moz-pill is-${pill[0]}">${pill[1]}</i></span>
         <strong>${title}</strong>
         <span>${detail}</span>
+        ${nextCheckin() ? `<span class="moz-checkin${at(nextCheckin().date, toMin(nextCheckin().start)).getTime() <= now ? ' is-now' : ''}">🪪 ${esc(checkinText(nextCheckin()))}</span>` : ''}
         ${q.free_min != null ? `<small>Cuota: ${hours(q.free_min)} libres · ${hours(q.pending_min)} reservadas</small>` : ''}
       </div>
       ${canToggle ? `<button type="button" class="moz-btn" data-moz-command="${h === 'paused' ? 'resume' : 'pause'}">${h === 'paused' ? '▶ Reanudar' : '⏸ Pausar'}</button>` : ''}`;
@@ -227,10 +246,10 @@
         ${PRESETS.map((p, i) => `<button type="button" data-moz-preset="${p.id}" class="${i === 0 ? 'active' : ''}">${p.label}<small>${p.start}–${p.end}</small></button>`).join('')}
       </div>
       <div class="moz-form-row">
-        <label>Desde<select name="start">${timeOptions('08:00', '06:30', '21:30')}</select></label>
-        <label>Hasta<select name="end">${timeOptions('14:00', '07:00', '22:00')}</select></label>
+        <label>Desde<select name="start">${timeOptions('08:00', '07:30', '22:30')}</select></label>
+        <label>Hasta<select name="end">${timeOptions('14:00', '08:00', '23:00')}</select></label>
       </div>
-      <p class="moz-form-hint">Sábados y domingos el edificio abre de 08:00 a 18:00; fuera de horario no se reserva nada.</p>
+      <p class="moz-form-hint">Entre semana se reserva de 07:30 a 23:00; sábados y domingos, de 09:00 a 19:00. Fuera de horario no se reserva nada.</p>
       <div class="moz-form-actions">
         <button type="button" class="moz-btn is-quiet" data-moz-form="close">Cancelar</button>
         <button type="submit" class="moz-btn is-primary">Guardar</button>
@@ -243,10 +262,14 @@
     if (!list.length) return '<div class="rd-card-head"><span>Tus aulas</span></div><p class="rd-card-note">Ninguna reserva próxima.</p>';
     const byDay = {};
     list.forEach(r => { (byDay[r.date] = byDay[r.date] || []).push(r); });
-    return `<div class="rd-card-head"><span>Tus aulas</span><small>próximos 7 días</small></div>
+    return `<div class="rd-card-head"><span>Tus aulas</span><small>cada reserva, con su plazo para el carné</small></div>
       <div class="moz-days">${Object.keys(byDay).sort().map(day => `
         <div class="moz-day"><b>${esc(dayLabel(day))}</b>
-          ${byDay[day].map(r => `<div class="moz-booking"><span>${esc(r.start)}–${esc(r.end)}</span><strong>${esc(r.room)}</strong>${r.parts > 1 ? `<small>${r.parts} reservas seguidas</small>` : ''}</div>`).join('')}
+          ${byDay[day].map(r => `<div class="moz-booking"><div class="moz-booking-main"><span>${esc(r.start)}–${esc(r.end)}</span><strong>${esc(r.room)}</strong>${r.parts > 1 ? `<small>${r.parts} reservas</small>` : ''}</div>
+            <ul class="moz-parts">${r.items.map(x => {
+              const late = at(x.date, toMin(x.start) + CHECKIN_MIN).getTime() <= Date.now();
+              return `<li class="${late ? 'is-done' : ''}">${r.parts > 1 ? `<span>${esc(x.start)}–${esc(x.end)}</span>` : ''}<em>🪪 carné de ${esc(x.start)} a ${esc(checkinEnd(x))}</em></li>`;
+            }).join('')}</ul></div>`).join('')}
         </div>`).join('')}</div>`;
   }
 
@@ -262,10 +285,10 @@
       <ul class="moz-rules">
         <li>Cada hora en punto se abre la misma hora de dentro de 7 días (a las 15:00 se abre 14:00–15:00 del mismo día de la semana siguiente). El monitor dispara justo entonces.</li>
         <li>Máximo 2 h por reserva. El monitor encadena bloques de 1 h en la misma aula siempre que puede.</li>
-        <li>Entra con el carné en los primeros 15 min o se cobra todo y el aula queda libre para otros.</li>
+        <li>Pasa el carné por el pomo de la puerta en los primeros 15 min de <b>cada</b> reserva (también si es la misma aula que la anterior) o se cobra todo y el aula queda libre para otros. El lector de dentro, junto a la puerta, sirve para salir: termina la reserva.</li>
         <li>Si sales en los primeros 15 min no se cobra. Al salir, ficha en el lector: se devuelve el tiempo no usado.</li>
         <li>Puedes cancelar hasta 15 min antes del inicio.</li>
-        <li>Horario: lunes a viernes 06:30–22:00 · sábado y domingo 08:00–18:00.</li>
+        <li>Horario: lunes a viernes 07:30–23:00 · sábado y domingo 09:00–19:00.</li>
       </ul>
     </details>`;
   }
@@ -315,7 +338,9 @@
     if (small) small.textContent = 'Aulas · Salzburgo';
     card.dataset.kind = health() === 'live' ? 'ok' : health() === 'paused' ? 'stale' : 'idle';
     if (title) title.textContent = next ? `${current ? 'Ahora' : 'Próxima'} · ${next.room} ${next.start}–${next.end}` : 'Sin reservas en Salzburgo';
-    if (detail) detail.textContent = next ? dayLabel(next.date) : (franjas().length ? 'El monitor busca en tus franjas' : 'Añade los días que estarás allí');
+    const ci = nextCheckin();
+    const ciShort = ci ? `carné ${ci.start}–${checkinEnd(ci)}${ci.room !== next?.room || ci.date !== next?.date ? ` en ${ci.room}` : ''}` : '';
+    if (detail) detail.textContent = next ? (ci ? `${dayLabel(next.date)} · ${ciShort}` : dayLabel(next.date)) : (franjas().length ? 'El monitor busca en tus franjas' : 'Añade los días que estarás allí');
   }
 
   // ── Órdenes ───────────────────────────────────────────────────

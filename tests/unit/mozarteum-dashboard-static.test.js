@@ -36,8 +36,8 @@ describe('Aulas · Salzburgo (monitor del Mozarteum)', () => {
     expect(index).toContain('id="aulasCampusSwitch"');
     expect(index).toContain('data-campus="salzburgo"');
     expect(index).toContain('id="mozarteumPanel"');
-    expect(index).toContain('<script src="mozarteum-dashboard.js?v=539"></script>');
-    expect(worker).toContain('"./mozarteum-dashboard.js?v=539"');
-    expect(worker).toContain('"./mozarteum-dashboard.css?v=539"');
+    expect(index).toContain('<script src="mozarteum-dashboard.js?v=540"></script>');
+    expect(worker).toContain('"./mozarteum-dashboard.js?v=540"');
+    expect(worker).toContain('"./mozarteum-dashboard.css?v=540"');
   });
 });
