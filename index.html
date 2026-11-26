@@ -28,7 +28,7 @@
 <link rel="apple-touch-icon" href="icon-192.png?v=487">
 <script src="supabase-sdk-v2-116-0.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400&family=Caveat:wght@400;600;700&family=Kalam:wght@400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=531">
+<link rel="stylesheet" href="styles.css?v=541">
 <link rel="stylesheet" href="study-session-ux.css?v=342">
 <link rel="stylesheet" href="crono-resume-layout.css?v=342">
 <link rel="stylesheet" href="piano-rooms.css?v=369">
@@ -531,6 +531,8 @@
         <div class="crono-display-inner">
           <div class="crono-display" id="cronoDisplay">00:00</div>
           <div class="crono-run-target" id="cronoRunTarget" style="display:none"></div>
+          <button type="button" class="crono-extend-btn" id="cronoExtendBtn" onclick="cronoExtendTimer(5)" hidden
+                  aria-label="Añadir 5 minutos al temporizador">+5 min</button>
         </div>
         <div class="crono-run-action-rail" aria-label="Acciones de la sesion">
           <button type="button" class="crono-quick-destello-btn crono-run-side-destello" onclick="openQuickDestello()"
@@ -2607,7 +2609,7 @@
 <script src="push-client.js?v=530"></script>
 <script src="crono-state-store.js?v=397"></script>
 <script src="study-edit.js?v=505"></script>
-<script src="app.js?v=539"></script>
+<script src="app.js?v=541"></script>
 <script src="manual-study-activity.js?v=511"></script>
 <script src="chamber-factor-migration.js?v=430"></script>
 <script src="obra-grouping-migration.js?v=515"></script>

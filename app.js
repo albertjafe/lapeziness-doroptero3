@@ -1,7 +1,7 @@
 // ─── DATA ───────────────────────────────────────────────────────────────────
 
 const DB_KEY = 'alberto_piano_v2';
-const APP_VERSION = '2026-11-12-habitos-acceso-gestion-v538';
+const APP_VERSION = '2026-11-26-crono-ruleta-mas5-v541';
 // Auth & sync globals — declared with var to avoid TDZ errors
 var _authMode = 'login';
 var _sbClient = null;
@@ -27049,6 +27049,9 @@ function cronoRender() {
     }
     else tgt.style.display = 'none';
   }
+  // «+5 min»: alarga el temporizador en marcha (no en pausa ni en descansos).
+  const extendBtn = document.getElementById('cronoExtendBtn');
+  if (extendBtn) extendBtn.hidden = !(crono.state === 'running' && crono.targetMinutes != null && !crono.isRest);
 }
 function cronoUpdateStartBtn() {
   const btn = document.getElementById('cronoStartBtn');
@@ -27869,6 +27872,7 @@ function cronoTimerRenderSlider(skipStartUpdate) {
   if (wrap) {
     wrap.classList.toggle('timer-active', timedMode);
     wrap.classList.toggle('has-hours', displayText.split(':').length > 2);
+    wrap.toggleAttribute('data-no-view-swipe', crono.mode === 'timer');
   }
   const target = document.getElementById('cronoIdleTarget');
   if (target) {
@@ -27920,99 +27924,107 @@ function cronoTimerClientToSVG(clientX, clientY) {
   return { x: transformed.x, y: transformed.y };
 }
 
-// Inicializa drag handlers en el SVG del timer
+// Arrastre de la ruleta del temporizador (26-11-2026).
+// - Se sigue el dedo en TODO el reloj, también encima de los números (antes
+//   tapaban la ruleta a las 3, a las 9 y en el centro, y ahí no se movía).
+// - Giro relativo: el tiempo cambia según cuánto gira el dedo alrededor del
+//   centro, sin saltar al tocar; topa en 5 y 120 min sin dar la vuelta.
+// - Un toque corto sobre el aro salta a ese punto.
+// - En modo temporizador el reloj queda fuera del gesto de cambiar de
+//   pantalla (data-no-view-swipe, en cronoTimerRenderSlider): un movimiento
+//   horizontal sobre la ruleta ya no se lo lleva la navegación.
 function cronoTimerInitDrag() {
   const svg = document.getElementById('cronoTimerSvg');
+  const wrap = document.getElementById('cronoIdleDisplayWrap') || svg;
   const handle = document.getElementById('cronoTimerHandle');
-  if (!svg || svg._cronoBound) return;
-  svg._cronoBound = true;
+  if (!svg || !wrap || wrap._cronoBound) return;
+  wrap._cronoBound = true;
 
-  let isDragging = false;
-  let startedOnHandle = false;
+  const DEAD_ZONE = 14; // unidades SVG alrededor del centro: ángulo inestable
+  let drag = null; // { id, lastAngle, value, moved, x, y, tap }
 
-  // Distancia (en coords SVG) desde un punto al handle actual. Sirve para
-  // decidir si un down empezó SOBRE el handle (cerca del handle => arrastre
-  // suave sin saltar) o sobre el track (lejos => salto inmediato al punto).
-  function distToHandle(svgX, svgY) {
-    const m = crono.timerMinutes;
-    const theta = (m / TIMER_MAX_MINUTES) * 2 * Math.PI;
-    const hx = TIMER_CENTER + TIMER_RADIUS * Math.sin(theta);
-    const hy = TIMER_CENTER - TIMER_RADIUS * Math.cos(theta);
-    const dx = svgX - hx;
-    const dy = svgY - hy;
-    return Math.sqrt(dx*dx + dy*dy);
+  function angleAt(p) {
+    let a = Math.atan2(p.x - TIMER_CENTER, -(p.y - TIMER_CENTER));
+    if (a < 0) a += 2 * Math.PI;
+    return a;
   }
-
-  function onPointerMove(clientX, clientY) {
-    const p = cronoTimerClientToSVG(clientX, clientY);
-    if (!p) return;
-    let newMin = cronoTimerXYToMinutes(p.x, p.y);
-    const prev = crono.timerMinutes;
-    // Robust wrap detection using the raw angle, not the snapped value.
-    // Fast swipes can jump past multiple steps so checking newMin <= 5 is not enough.
-    const dx = p.x - TIMER_CENTER, dy = p.y - TIMER_CENTER;
-    let rawTheta = Math.atan2(dx, -dy);
-    if (rawTheta < 0) rawTheta += 2 * Math.PI; // 0..2π, 0 = 12 o'clock CW
-    const prevAngle = (prev / TIMER_MAX_MINUTES) * 2 * Math.PI;
-    // CW wrap: prev was in "late" sector (>288°) and raw jumped to "early" (<72°)
-    if (prevAngle > Math.PI * 1.6 && rawTheta < Math.PI * 0.4) {
-      newMin = TIMER_MAX_MINUTES;
-    }
-    // CCW wrap from min: prev was early, raw jumped to late → clamp at min
-    if (prevAngle < Math.PI * 0.4 && rawTheta > Math.PI * 1.6) {
-      newMin = TIMER_MIN_MINUTES;
-    }
-    if (newMin !== prev) {
-      crono.timerMinutes = newMin;
+  function clampMinutes(v) {
+    return Math.min(TIMER_MAX_MINUTES, Math.max(TIMER_MIN_MINUTES, v));
+  }
+  function apply(value) {
+    const snapped = clampMinutes(Math.round(value / TIMER_STEP_MINUTES) * TIMER_STEP_MINUTES);
+    if (snapped !== crono.timerMinutes) {
+      crono.timerMinutes = snapped;
       cronoTimerRenderSlider();
       _playCronoTick();
     }
   }
-
-  function onDown(e) {
-    e.preventDefault();
-    isDragging = true;
+  function canDrag(target) {
+    return crono.mode === 'timer' && !target?.closest?.('button, a, input, select, textarea');
+  }
+  function start(clientX, clientY, id) {
+    const p = cronoTimerClientToSVG(clientX, clientY);
+    if (!p) return false;
+    const dist = Math.hypot(p.x - TIMER_CENTER, p.y - TIMER_CENTER);
+    drag = {
+      id,
+      lastAngle: dist >= DEAD_ZONE ? angleAt(p) : null,
+      value: crono.timerMinutes,
+      moved: false,
+      x: clientX,
+      y: clientY,
+      tap: Math.abs(dist - TIMER_RADIUS) <= 26 ? cronoTimerXYToMinutes(p.x, p.y) : null,
+    };
     svg.classList.add('dragging');
     if (handle) handle.classList.add('dragging');
-    const t = e.touches ? e.touches[0] : e;
-    const p = cronoTimerClientToSVG(t.clientX, t.clientY);
-    // Si el punto está suficientemente cerca del handle (≈ 24 SVG units, que
-    // con viewBox 200 y r=88 es generoso para un dedo), NO saltar al punto:
-    // empezamos un arrastre suave desde la posición actual del handle. El
-    // handle seguirá al dedo gradualmente conforme se mueva.
-    // Si el punto está sobre el track lejos del handle, sí saltar (tap rápido).
-    if (p && distToHandle(p.x, p.y) < 24) {
-      startedOnHandle = true;
-      // No movemos nada en este frame; mantiene posición estable
-    } else {
-      startedOnHandle = false;
-      onPointerMove(t.clientX, t.clientY);
+    return true;
+  }
+  function move(clientX, clientY) {
+    if (!drag) return;
+    if (!drag.moved && Math.hypot(clientX - drag.x, clientY - drag.y) < 6) return;
+    drag.moved = true;
+    const p = cronoTimerClientToSVG(clientX, clientY);
+    if (!p) return;
+    if (Math.hypot(p.x - TIMER_CENTER, p.y - TIMER_CENTER) < DEAD_ZONE) { drag.lastAngle = null; return; }
+    const a = angleAt(p);
+    if (drag.lastAngle != null) {
+      let d = a - drag.lastAngle;
+      if (d > Math.PI) d -= 2 * Math.PI;
+      if (d < -Math.PI) d += 2 * Math.PI;
+      drag.value = clampMinutes(drag.value + d / (2 * Math.PI) * TIMER_MAX_MINUTES);
+      apply(drag.value);
     }
+    drag.lastAngle = a;
   }
-  function onMove(e) {
-    if (!isDragging) return;
-    e.preventDefault();
-    const t = e.touches ? e.touches[0] : e;
-    onPointerMove(t.clientX, t.clientY);
-  }
-  function onUp() {
-    if (!isDragging) return;
-    isDragging = false;
-    startedOnHandle = false;
+  function end() {
+    if (!drag) return;
+    if (!drag.moved && drag.tap != null) apply(drag.tap);
+    drag = null;
     svg.classList.remove('dragging');
     if (handle) handle.classList.remove('dragging');
     cronoSaveState();
   }
 
-  // Touch
-  svg.addEventListener('touchstart', onDown, { passive: false });
-  svg.addEventListener('touchmove', onMove, { passive: false });
-  svg.addEventListener('touchend', onUp);
-  svg.addEventListener('touchcancel', onUp);
-  // Mouse
-  svg.addEventListener('mousedown', onDown);
-  window.addEventListener('mousemove', onMove);
-  window.addEventListener('mouseup', onUp);
+  wrap.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1 || !canDrag(e.target)) return;
+    const t = e.touches[0];
+    if (start(t.clientX, t.clientY, t.identifier)) e.preventDefault();
+  }, { passive: false });
+  wrap.addEventListener('touchmove', e => {
+    if (!drag) return;
+    const t = Array.from(e.touches).find(item => item.identifier === drag.id);
+    if (!t) return;
+    e.preventDefault();
+    move(t.clientX, t.clientY);
+  }, { passive: false });
+  wrap.addEventListener('touchend', end);
+  wrap.addEventListener('touchcancel', end);
+  wrap.addEventListener('mousedown', e => {
+    if (e.button !== 0 || !canDrag(e.target)) return;
+    if (start(e.clientX, e.clientY, 'mouse')) e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => { if (drag && drag.id === 'mouse') move(e.clientX, e.clientY); });
+  window.addEventListener('mouseup', () => { if (drag && drag.id === 'mouse') end(); });
 }
 
 // ── Tick intervals ──────────────────────────────────────────────────────────
