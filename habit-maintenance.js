@@ -180,24 +180,42 @@
     const s = state(allHabits(), habit, todayKey);
     if (!validKey(date) || date > todayKey || date < s.windowStart) { toast('Elige un día después de terminar el reto y no posterior a hoy'); return; }
     const note = String(el('hlNote') ? el('hlNote').value : '').trim().slice(0, 300);
+    if (!recordLapse(lapseHabitId, date, note)) return;
+    if (typeof root.closeModal === 'function') root.closeModal('modalHabitLapse');
+  }
+
+  function recordLapse(habitId, date, note) {
     const nowIso = new Date().toISOString();
     const ok = persist(stored => {
-      const target = stored.find(h => h && h.id === lapseHabitId && !h.deleted);
+      const target = stored.find(h => h && h.id === habitId && !h.deleted);
       if (!target) return false;
       target.maintenanceLogs = Object.assign({}, target.maintenanceLogs || {});
       target.maintenanceLogs[date] = { status: 'lapse', at: nowIso, note };
       target.updatedAt = nowIso;
       return true;
     });
-    if (!ok) return;
-    if (typeof root.closeModal === 'function') root.closeModal('modalHabitLapse');
+    if (!ok) return false;
     // Solo un aviso (lo da HabitHub si está; reabrir se ofrece en la página).
-    if (root.HabitHub && typeof root.HabitHub.suggestAfter === 'function') root.HabitHub.suggestAfter(lapseHabitId, 'lapse', { note, day: date });
+    if (root.HabitHub && typeof root.HabitHub.suggestAfter === 'function') root.HabitHub.suggestAfter(habitId, 'lapse', { note, day: date });
     else {
-      const after = state(allHabits(), habit, todayKey);
-      toast(after.level === 'relapse' ? 'Caída apuntada. Ya es una recaída: toca reabrir el reto' : 'Caída apuntada. Esta noche, vuelta a la norma');
+      const habit = allHabits().find(h => h.id === habitId);
+      const after = habit ? state(allHabits(), habit, todayKeyNow()) : null;
+      toast(after && after.level === 'relapse' ? 'Caída apuntada. Ya es una recaída: toca reabrir el reto' : 'Caída apuntada. Esta noche, vuelta a la norma');
     }
     try { root.Haptics && root.Haptics.success(); } catch (error) {}
+    return true;
+  }
+
+  // Desde Hoy, un toque: caída de hoy, sin ventana ni motivo.
+  function quickLapse(habitId) {
+    const todayKey = todayKeyNow();
+    const habit = allHabits().find(h => h.id === habitId);
+    if (!habit) return false;
+    const s = state(allHabits(), habit, todayKey);
+    if (!s.applies) return false;
+    if (s.reopen) { toast('Tienes el reto reabierto en curso: apunta la caída allí'); return false; }
+    if (s.todayLapse) return true;
+    return recordLapse(s.familyId, todayKey, '');
   }
 
   function canUndo(lapse, now) {
@@ -240,6 +258,6 @@
   return {
     SHORT_DAYS, SHORT_LIMIT, LONG_DAYS, LONG_LIMIT, REOPEN_DAYS, UNDO_MINUTES,
     familyId, endKey, isComplete, lapsesOf, state, reopenChallenge, canUndo,
-    openLapse, setLapseDay, syncChips, saveLapse, removeLapse, reopen,
+    openLapse, setLapseDay, syncChips, saveLapse, quickLapse, removeLapse, reopen,
   };
 });

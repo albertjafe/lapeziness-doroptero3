@@ -26,19 +26,30 @@ test('hub de Hoy: día del reto, recaída sin ventana y acciones a mano que sale
   await page.evaluate(() => { try { closeModal('modalCloudSync'); } catch (e) {} showView('session'); });
 
   const card = page.locator('.mv2-habits');
-  await expect(card).toContainText('Desintoxicación por la mañana');
-  await expect(card).toContainText('Evitar · día 3 de 21');
-  await expect(card).toContainText('Hoy, sin recaída');
-  await expect(card).toContainText('En mantenimiento');
-  await expect(card).toContainText('No móvil en la cama');
+  // Lista de un toque: una palabra, su icono y «Caí».
+  await expect(card).toContainText('Mañanas');
+  await expect(card).toContainText('día 3 de 21');
+  await expect(card).toContainText('Cama');
+  await expect(card.locator('.hh-q-btn')).toHaveCount(2);
 
-  await card.locator('.hh-today').first().click();
+  await card.locator('.hh-q-btn').first().click();
   // Tras una recaída ya no se abre ninguna ventana: solo el aviso.
   const modal = page.locator('#modalHabitAction');
   await expect(page.locator('#toast')).toContainText('Recaída apuntada');
   await expect(modal).not.toHaveClass(/visible/);
   const status = await page.evaluate(k => { const h = db.habitChallenges.find(x => x.id === 'detox'); return h.logs[k] && h.logs[k].status; }, day(0));
   expect(status).toBe('failed');
+  await expect(card.locator('.hh-q-btn').first()).toHaveText('✓ Caído');
+
+  // Mantenimiento: también de un toque, sin ventana de fecha ni motivo.
+  await card.locator('.hh-q-btn').nth(1).click();
+  await expect(page.locator('#modalHabitLapse')).not.toHaveClass(/visible/);
+  const lapse = await page.evaluate(k => { const h = db.habitChallenges.find(x => x.id === 'bed'); return h.maintenanceLogs && h.maintenanceLogs[k] && h.maintenanceLogs[k].status; }, day(0));
+  expect(lapse).toBe('lapse');
+  await expect(card.locator('.hh-q-btn').nth(1)).toHaveText('✓ Caído');
+  // Otro toque enseguida la quita (toque por error).
+  await card.locator('.hh-q-btn').nth(1).click();
+  await expect(card.locator('.hh-q-btn').nth(1)).toHaveText('Caí');
 
   // Las acciones se añaden a mano («＋ Añadir» de la página del hábito).
   await page.evaluate(() => HabitHub.suggestAfter('detox', 'manual'));

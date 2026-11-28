@@ -98,33 +98,50 @@
 
   /* ---------- Tarjeta de Hoy ---------- */
 
-  function statusLine(habit, m) {
-    const kind = habit.mode === 'avoid' ? 'Evitar' : 'Hacer';
-    const streak = m.streak ? ' · racha ' + plural(m.streak, 'día', 'días') : '';
-    return kind + ' · día ' + m.day + ' de ' + m.duration + streak;
+  /* Hoy, cero fricción (28-11-2026): todos los hábitos en una lista de una
+     palabra con su icono y un botón grande «Caí» que apunta la caída de hoy de
+     un toque, sin ventana ni motivo. Vale igual para el reto en curso
+     (recaída del día) y para los terminados en mantenimiento (caída). Un
+     segundo toque en los primeros 15 min la quita (toque por error). El nombre
+     abre la página del hábito, donde sigue todo el detalle. */
+  const LABELS = [
+    [/ba[ñn]o/, '🚿', 'Baño'],
+    [/\bcama\b/, '🛏️', 'Cama'],
+    [/ma[ñn]ana/, '🌅', 'Mañanas'],
+    [/consum/, '🚫', 'Consumo'],
+    [/m[óo]vil|tel[ée]fono|pantalla/, '📱', 'Móvil'],
+    [/redes|instagram|tiktok|youtube/, '📵', 'Redes'],
+    [/alcohol|cerveza|vino/, '🍷', 'Alcohol'],
+    [/az[úu]car|dulce/, '🍬', 'Dulces'],
+    [/caf[ée]/, '☕', 'Café'],
+    [/dormir|sue[ñn]o|acostar/, '🌙', 'Sueño'],
+    [/deporte|correr|gimnasio|ejercicio/, '🏃', 'Deporte'],
+    [/estudi|piano|practic/, '🎹', 'Estudio'],
+  ];
+  const STOP = new Set('no sin el la los las lo de del en a al un una y o por para con hasta antes después despues nada cada día dia hacer coger usar mirar ver tomar'.split(' '));
+  function shortLabel(habit) {
+    const title = String((habit && habit.title) || '').trim();
+    const own = String((habit && habit.shortLabel) || '').trim();
+    const lower = title.toLowerCase();
+    const hit = LABELS.find(([re]) => re.test(lower));
+    if (own) return { icon: hit ? hit[1] : (habit.mode === 'do' ? '✅' : '⛔'), word: own };
+    if (hit) return { icon: hit[1], word: hit[2] };
+    const word = title.split(/\s+/).map(w => w.replace(/[.,;:¡!¿?«»"]+/g, '')).find(w => w.length > 2 && !STOP.has(w.toLowerCase()) && !/^\d/.test(w)) || title || 'Hábito';
+    return { icon: habit && habit.mode === 'do' ? '✅' : '⛔', word: word.charAt(0).toUpperCase() + word.slice(1) };
   }
 
-  function todayButton(habit, m) {
-    const id = jsArg(habit.id);
-    if (habit.mode === 'avoid') {
-      const failed = m.todayLog === 'failed';
-      return '<button type="button" class="hh-today' + (failed ? ' is-failed' : '') + '" onclick="HabitHub.today(\'' + id + '\')">' +
-        (failed ? 'Recaída hoy · quitar' : 'Registrar recaída') + '</button>';
-    }
-    const done = m.todayLog === 'done';
-    return '<button type="button" class="hh-today' + (done ? ' is-done' : ' is-do') + '" onclick="HabitHub.today(\'' + id + '\')">' + (done ? '✓ Hecho hoy' : 'Marcar hoy') + '</button>';
-  }
-
-  function habitRow(habit, m, planned, tag) {
-    const pct = Math.max(0, Math.min(100, Math.round(m.elapsed / m.duration * 100)));
-    const line = planned ? 'Empieza el ' + habit.startDate.slice(8, 10) + '/' + habit.startDate.slice(5, 7) + ' · ' + plural(m.duration, 'día', 'días') : statusLine(habit, m);
-    const today = planned ? '' : (habit.mode === 'avoid' && m.todayLog !== 'failed' ? '<span class="hh-ok">Hoy, sin recaída</span>' : '');
-    return '<div class="hh-habit' + (tag ? ' is-' + tag : '') + '">' +
-      '<button type="button" class="hh-open" onclick="openHabitos(\'' + jsArg(habit.id) + '\')">' +
-        (tag === 'reopened' ? '<span class="hh-tag">Reabierto</span>' : '') +
-        '<b>' + esc(habit.title || 'Hábito') + '</b><small>' + esc(line) + '</small>' + today +
-        '<span class="hh-bar" aria-hidden="true"><i style="width:' + pct + '%"></i></span></button>' +
-      (planned ? '' : todayButton(habit, m)) + '</div>';
+  function quickRowHtml(r) {
+    const L = shortLabel(r.habit);
+    const id = jsArg(r.id);
+    const title = r.habit.title || 'Hábito';
+    const isDo = r.habit.mode === 'do' && r.kind === 'active';
+    const btn = r.planned ? '' : '<button type="button" class="hh-q-btn' + (isDo ? ' is-do' : '') + (r.marked ? ' is-on' : '') + '" aria-pressed="' + r.marked + '"' +
+      ' aria-label="' + esc((isDo ? (r.marked ? 'Hecho hoy: ' : 'Marcar hecho hoy: ') : (r.marked ? 'Caída apuntada hoy: ' : 'Apuntar caída de hoy: ')) + title) + '"' +
+      ' onclick="HabitHub.quick(\'' + id + '\',\'' + r.kind + '\')">' + (isDo ? (r.marked ? '✓ Hecho' : 'Hecho') : (r.marked ? '✓ Caído' : 'Caí')) + '</button>';
+    return '<div class="hh-q-row' + (r.marked ? ' is-on' : '') + (r.level ? ' is-' + r.level : '') + '">' +
+      '<button type="button" class="hh-q-name" title="' + esc(title) + '" onclick="openHabitos(\'' + id + '\')">' +
+        '<span class="hh-q-ico" aria-hidden="true">' + L.icon + '</span>' +
+        '<span class="hh-q-txt"><b>' + esc(L.word) + '</b><small>' + esc(r.sub) + '</small></span></button>' + btn + '</div>';
   }
 
   function hoyHtml(env) {
@@ -136,28 +153,29 @@
     if (!metrics || !todayKey) return '';
     const active = habits.filter(h => !metrics(h).complete);
     const principal = active.find(h => !h.reopenOf) || null;
-    let body = '';
-    active.forEach(habit => {
+    const rows = active.map(habit => {
       const m = metrics(habit);
-      body += habitRow(habit, m, habit.startDate > todayKey, habit.reopenOf ? 'reopened' : '');
+      const planned = habit.startDate > todayKey;
+      const marked = !planned && m.todayLog === (habit.mode === 'avoid' ? 'failed' : 'done');
+      const sub = planned ? 'Empieza el ' + habit.startDate.slice(8, 10) + '/' + habit.startDate.slice(5, 7)
+        : (habit.reopenOf ? 'Reabierto · ' : '') + 'día ' + m.day + ' de ' + m.duration;
+      return { habit, id: habit.id, kind: 'active', planned, marked, sub, level: '' };
     });
+    if (M) {
+      const seen = new Set();
+      habits.filter(h => metrics(h).complete).map(h => M.state(habits, h, todayKey))
+        .filter(s => s.applies && !s.reopen && !seen.has(s.familyId) && seen.add(s.familyId))
+        .forEach(s => rows.push({
+          habit: s.origin, id: s.familyId, kind: 'upkeep', planned: false, marked: !!s.todayLapse, level: s.level,
+          sub: s.level === 'relapse' ? 'Toca reabrir el reto' : s.todayLapse ? 'Caída apuntada hoy' : plural(s.daysClean, 'día', 'días') + ' sin caer',
+        }));
+    }
+    let body = rows.length ? '<div class="hh-quick">' + rows.map(quickRowHtml).join('') + '</div>' : '';
     if (!principal) body += '<button type="button" class="hh-create" onclick="openHabitChallengeModal(null,true)">＋ Crear un hábito nuevo</button>';
 
     const due = dueToday(habits, todayKey);
     if (due.length) {
       body += '<div class="hh-actions"><span class="hh-sub">Acciones de hoy</span>' + due.map(({ habit, action, overdue }) => actionRowHtml(habit, action, overdue)).join('') + '</div>';
-    }
-
-    if (M) {
-      const seen = new Set();
-      const upkeep = habits.filter(h => metrics(h).complete).map(h => M.state(habits, h, todayKey))
-        .filter(s => s.applies && !s.reopen && !seen.has(s.familyId) && seen.add(s.familyId));
-      if (upkeep.length) {
-        body += '<div class="hh-upkeep"><span class="hh-sub">En mantenimiento</span>' + upkeep.map(s =>
-          '<div class="hh-up-row is-' + s.level + '"><button type="button" class="hh-up-open" onclick="openHabitos(\'' + jsArg(s.familyId) + '\')"><b>' + esc(s.origin.title || 'Hábito') + '</b>' +
-          '<small>' + (s.level === 'relapse' ? 'Recaída: toca reabrir el reto' : plural(s.daysClean, 'día', 'días') + ' sin caídas') + '</small></button>' +
-          '<button type="button" class="hh-up-lapse" onclick="HabitMaintenance.openLapse(\'' + jsArg(s.familyId) + '\')">Caída</button></div>').join('') + '</div>';
-      }
     }
     return '<div class="mv2-card mv2-habits"><div class="mv2-line"><span class="mv2-lbl has-ico">' + (root.MobileV2 && root.MobileV2.icon ? root.MobileV2.icon('habitos') : '') + 'Hábitos</span><button type="button" class="mv2-link" onclick="openHabitos()">Ver todos ›</button></div>' + body + '</div>';
   }
@@ -227,6 +245,33 @@
     if (habit.mode === 'avoid' && typeof root.registerHabitRelapse === 'function') root.registerHabitRelapse(null, habitId);
     else if (typeof root.toggleHabitToday === 'function') root.toggleHabitToday(null, habitId);
     refresh();
+  }
+
+  // Botón «Caí» / «Hecho» de Hoy: un toque apunta, otro en 15 min lo quita.
+  function quick(habitId, kind) {
+    const all = allHabits();
+    const habit = all.find(h => h.id === habitId);
+    if (!habit) return;
+    const todayKey = todayKeyNow();
+    const M = root.HabitMaintenance;
+    if (kind === 'upkeep') {
+      if (!M) return;
+      const s = M.state(all, habit, todayKey);
+      if (s.todayLapse) M.removeLapse(s.familyId, todayKey);
+      else M.quickLapse(s.familyId);
+      refresh();
+      return;
+    }
+    const log = habit.mode === 'avoid' && habit.logs ? habit.logs[todayKey] : null;
+    if (log && log.status === 'failed') {
+      const undoMin = (M && M.UNDO_MINUTES) || 15;
+      const at = Date.parse(log.at);
+      if (!(Number.isFinite(at) && Date.now() - at < undoMin * 60000)) {
+        toast('La caída de hoy ya está apuntada. Para quitarla, ábrela en Hábitos');
+        return;
+      }
+    }
+    today(habitId);
   }
 
   function toggle(habitId, actionId) {
@@ -349,6 +394,6 @@
 
   return {
     actionsOf, suggestions, withActions, toggled, dueToday, byDay, hoyHtml, actionRowHtml, pageHtml,
-    renderHoyCard, today, toggle, openAction, suggestAfter, accept, skip, reopenNow, refresh,
+    renderHoyCard, shortLabel, quick, today, toggle, openAction, suggestAfter, accept, skip, reopenNow, refresh,
   };
 });

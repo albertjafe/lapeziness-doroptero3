@@ -66,16 +66,37 @@ describe('hub · acciones', () => {
 });
 
 describe('hub · tarjeta de Hoy', () => {
-  it('shows the day of the challenge, today button, actions and maintenance', () => {
+  it('lists every habit as one word with a one-tap «Caí» button, plus today\'s actions', () => {
     const detox = habit({ actions: [{ id: 'a1', date: '2026-09-29', text: 'Cargador en el pasillo', type: 'task', doneAt: null }] });
     const bed = { id: 'bed', title: 'No móvil en la cama', mode: 'avoid', startDate: '2026-08-23', durationDays: 21, logs: {} };
     const html = H.hoyHtml({ habits: [detox, bed], todayKey: '2026-09-29', metrics: metricsAt('2026-09-29'), maintenanceApi: M });
     const text = strip(html);
-    expect(text).toContain('Desintoxicación por la mañana Evitar · día 3 de 21 · racha 2 días Hoy, sin recaída');
-    expect(text).toContain('Registrar recaída');
+    expect(text).toContain('🌅 Mañanas día 3 de 21 Caí');
+    expect(text).toContain('🛏️ Cama 17 días sin caer Caí');
+    expect(html).toContain("HabitHub.quick('h1','active')");
+    expect(html).toContain("HabitHub.quick('bed','upkeep')");
+    expect(html).not.toContain('HabitMaintenance.openLapse');
     expect(text).toContain('Acciones de hoy Cargador en el pasillo');
-    expect(text).toContain('En mantenimiento No móvil en la cama 17 días sin caídas Caída');
     expect(text).not.toContain('Crear un hábito nuevo');
+  });
+
+  it('shows the fall of today as marked, for the running challenge and for maintenance', () => {
+    const detox = habit({ logs: { '2026-09-29': { status: 'failed', at: '2026-09-29T08:00:00Z' } } });
+    const bed = { id: 'bed', title: 'No móvil en la cama', mode: 'avoid', startDate: '2026-08-23', durationDays: 21, logs: {},
+      maintenanceLogs: { '2026-09-29': { status: 'lapse', at: '2026-09-29T08:00:00Z', note: '' } } };
+    const text = strip(H.hoyHtml({ habits: [detox, bed], todayKey: '2026-09-29', metrics: metricsAt('2026-09-29'), maintenanceApi: M }));
+    expect(text).toContain('Mañanas día 3 de 21 ✓ Caído');
+    expect(text).toContain('Cama Caída apuntada hoy ✓ Caído');
+  });
+
+  it('derives one word and an icon from the title, or uses a short label', () => {
+    const w = title => H.shortLabel({ title, mode: 'avoid' });
+    expect(w('No coger el móvil en el baño')).toEqual({ icon: '🚿', word: 'Baño' });
+    expect(w('Sin consumo hasta 1 h de estudio')).toEqual({ icon: '🚫', word: 'Consumo' });
+    expect(w('Mañanas sin consumo hasta las 12')).toEqual({ icon: '🌅', word: 'Mañanas' });
+    expect(w('No comprar ropa nueva')).toEqual({ icon: '⛔', word: 'Comprar' });
+    expect(H.shortLabel({ title: 'Leer cada noche', mode: 'do' })).toEqual({ icon: '✅', word: 'Leer' });
+    expect(H.shortLabel({ title: 'No móvil en la cama', mode: 'avoid', shortLabel: 'Noche' }).word).toBe('Noche');
   });
 
   it('invites to create a habit when none is running', () => {
