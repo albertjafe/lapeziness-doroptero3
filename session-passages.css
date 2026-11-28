@@ -1,0 +1,48 @@
+/* Pasajes de la sesión (session-passages.js). Solo variables de tema. */
+.sp-pick { display: grid; justify-items: center; align-self: stretch; width: 100%; max-width: 100%; margin: 4px 0 0; min-width: 0; box-sizing: border-box; }
+.sp-pick[hidden] { display: none; }
+.sp-label { flex: none; align-self: center; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); }
+
+/* Centrada si cabe; si no, se desliza de lado sin cortar el primero. */
+.sp-chips { display: flex; align-items: center; gap: 8px; width: max-content; max-width: 100%; box-sizing: border-box; overflow-x: auto; padding: 2px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.sp-chips::-webkit-scrollbar { display: none; }
+.sp-chip { flex: none; font: inherit; font-size: 15px; font-weight: 650; min-height: 42px; padding: 7px 16px; border-radius: 21px; cursor: pointer;
+  border: 1.5px solid var(--border2, var(--border)); background: var(--bg2, var(--bg)); color: var(--text);
+  white-space: nowrap; -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: transform .12s ease, background .15s ease; }
+.sp-chip small { font-size: 12px; font-weight: 500; color: var(--text3); margin-left: 4px; }
+.sp-chip:active { transform: scale(.95); }
+.sp-chip.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.sp-chip.is-on small { color: rgba(255, 255, 255, .8); }
+.sp-add { border-style: dashed; color: var(--accent); background: none; }
+.sp-new { flex: none; display: flex; gap: 6px; align-items: center; }
+.sp-new-input { font: inherit; font-size: 16px; width: 190px; min-height: 44px; padding: 6px 12px; border-radius: 22px; border: 1.5px solid var(--accent); background: var(--bg); color: var(--text); }
+.sp-new-ok { font: inherit; font-size: 15px; font-weight: 700; min-height: 44px; padding: 6px 16px; border-radius: 22px; border: 0; background: var(--accent); color: #fff; cursor: pointer; }
+
+/* Ventana «Sesión completada» */
+.sp-hecho { display: grid; gap: 10px; margin: 14px 0 6px; }
+.sp-hecho[hidden] { display: none; }
+.sp-hecho-label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); }
+.sp-hecho-row { display: grid; gap: 8px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg2, var(--bg)); }
+.sp-hecho-name { font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+.sp-rates { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sp-rate { font: inherit; font-size: 15px; font-weight: 750; min-height: 46px; border-radius: 12px; cursor: pointer; border: 1.5px solid var(--border2, var(--border)); background: var(--bg); color: var(--text);
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.sp-rate:active { transform: scale(.96); }
+.sp-rate.is-mal.is-on { background: var(--red); border-color: var(--red); color: #fff; }
+.sp-rate.is-regular.is-on { background: var(--orange); border-color: var(--orange); color: #fff; }
+.sp-rate.is-bien.is-on { background: var(--green); border-color: var(--green); color: #fff; }
+.sp-note { font: inherit; font-size: 16px; min-height: 40px; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+
+/* Pase preparado (botón «＋ Pase» de la misma fila) */
+.sp-sep { flex: none; width: 1px; align-self: stretch; margin: 6px 2px; background: var(--border); }
+.sp-pase { color: var(--text2, var(--text)); }
+.sp-pase.is-on { background: color-mix(in srgb, var(--orange) 16%, var(--bg)); border-color: var(--orange); color: var(--text); }
+.sp-pase-bar { display: grid; gap: 6px; margin: 0 0 10px; }
+.sp-pase-bar[hidden], .sp-pase-skip[hidden] { display: none; }
+.sp-pase-clear { justify-self: start; font: inherit; font-size: 13px; font-weight: 600; color: var(--red); background: none; border: 0; padding: 6px 0; cursor: pointer; }
+.sp-pase-skip { display: block; width: 100%; margin: 10px 0 4px; font: inherit; font-size: 14px; font-weight: 600; color: var(--text2, var(--text)); background: none; border: 1px dashed var(--border2, var(--border)); border-radius: 12px; min-height: 44px; cursor: pointer; }
+
+/* iPhone girado: no cabe sin tapar «Iniciar». En vertical y en el iPad sí sale. */
+@media (orientation: landscape) and (max-height: 500px) {
+  #cronoPassagePick.sp-pick { display: none; }
+}

@@ -31,6 +31,8 @@
   'use strict';
 
   const MERGE_GAP_MIN = 20;
+  // Tipo de pase tal como se guarda (v543: se ve en el diario).
+  const PASE_TIPO = { solo: 'solo', informal: 'informal', evento: 'evento', concurso: 'concurso', grabacion: 'grabación' };
   const MAX_TEXT = 4000;
   const Sections = root.DiarioSections || null;
   const doc = root.document || null;
@@ -212,6 +214,7 @@
         movIds: b.movId ? [b.movId] : [],
         startMs, endMs, rawMins,
         pct: isPase ? (b.pasePct ?? b.paseScore ?? null) : null,
+        tipo: isPase ? (PASE_TIPO[b.paseTipo] || null) : null,
         cronoNotes: cronoNotes(b),
       });
     });
@@ -222,7 +225,7 @@
       item.movs = label.movs;
       item.time = item.startMs != null ? clock(item.startMs) + (item.endMs != null ? '–' + clock(item.endMs) : '') : 'sin hora';
       item.duration = duration(item.rawMins);
-      item.about = [item.kind === 'pase' ? 'Pase · ' + item.title : item.title, item.movs, item.time].filter(Boolean).join(' · ');
+      item.about = [item.kind === 'pase' ? 'Pase' + (item.tipo ? ' ' + item.tipo : '') + ' · ' + item.title : item.title, item.movs, item.time].filter(Boolean).join(' · ');
       item.entries = [];
     });
 
@@ -370,7 +373,7 @@
     const pct = item.pct != null ? ' · ' + Math.round(item.pct) + ' %' : '';
     return '<article class="dia-item' + (item.kind === 'pase' ? ' is-pase' : '') + '" data-ref="' + esc(item.key) + '" data-work="' + esc(item.obraId) + '" data-movement="' + esc(item.movId || '') + '" data-about="' + esc(item.about) + '">' +
       '<div class="dia-meta">' +
-      '<span class="dia-title" title="' + esc([item.title, item.movs].filter(Boolean).join(' · ')) + '">' + (item.kind === 'pase' ? '<em>Pase</em> ' : '') + esc([compactTitle(item.title), movementTitle(item.movs)].filter(Boolean).join(' · ')) + '</span>' +
+      '<span class="dia-title" title="' + esc([item.title, item.movs].filter(Boolean).join(' · ')) + '">' + (item.kind === 'pase' ? '<em>Pase' + (item.tipo ? ' · ' + esc(item.tipo) : '') + '</em> ' : '') + esc([compactTitle(item.title), movementTitle(item.movs)].filter(Boolean).join(' · ')) + '</span>' +
       '<span class="dia-dur">' + esc(item.duration + pct) + '</span></div>' +
       '<details class="dia-study-details"><summary aria-label="Detalle del estudio" title="Detalle del estudio"><span aria-hidden="true">···</span></summary><div>' + esc(item.title) +
       (item.movs ? ' · ' + esc(item.movs) : '') + '<br><span class="dia-time">' + esc(item.time || 'Sin hora') + '</span>' +
