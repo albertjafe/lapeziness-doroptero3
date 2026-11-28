@@ -72,6 +72,83 @@
     return fromHistory;
   }
 
+  /* Lo último plantado, en cualquier dispositivo (28-11-2026). Cada aparato
+     guardaba solo lo suyo: tras plantar en el iPad, el iPhone seguía con su
+     obra, su modo y sus minutos. Las plantaciones sí se sincronizan y ahora
+     llevan `timerMinutes` (0 = libre), así que al entrar en el cronómetro en
+     reposo se adopta la última que este aparato aún no conocía. Las de este
+     mismo aparato se marcan como vistas al plantar: no pisan lo que cambies
+     después en la ruleta. */
+  // Se guarda la hora de lo último conocido aquí (no un id): una plantación de
+  // otro aparato solo se adopta si es posterior, y nunca dos veces. La propia
+  // (por runId) no se adopta: lo que cambies luego en la ruleta se respeta.
+  const SEEN_PLANT_KEY = 'cronoPlantSeen_v2';
+  const plantKey = plant => String(plant.id || (plant.runId ? 'run_' + plant.runId : plant.obraId + '@' + plant.startedAt));
+  const plantTime = plant => new Date(plant.endedAt || plant.startedAt || 0).getTime() || 0;
+  function readSeenState() {
+    try {
+      const value = JSON.parse(localStorage.getItem(SEEN_PLANT_KEY) || 'null');
+      return { at: Number(value && value.at) || 0, own: String((value && value.own) || '') };
+    } catch (error) { return { at: 0, own: '' }; }
+  }
+  function writeSeenState(patch) {
+    try { localStorage.setItem(SEEN_PLANT_KEY, JSON.stringify(Object.assign(readSeenState(), patch))); } catch (error) {}
+  }
+  function isNewForDevice(plant) {
+    const seen = readSeenState();
+    return plantTime(plant) > seen.at && plantKey(plant) !== seen.own;
+  }
+
+  function latestPlant(select) {
+    const database = appDb();
+    const plants = database && Array.isArray(database.sessionPlants) ? database.sessionPlants : [];
+    const options = new Set(Array.from(select?.options || []).map(option => option.value));
+    let best = null, bestTime = -Infinity;
+    for (const plant of plants) {
+      if (plant && plant.source && plant.source !== 'app') continue;
+      const value = plantTargetValue(plant);
+      if (!value || !options.has(value)) continue;
+      const time = plantTime(plant);
+      if (!best || time > bestTime) { best = plant; bestTime = time; }
+    }
+    return best;
+  }
+
+  function applyPlantPreset(plant) {
+    const current = cronoState();
+    if (!current || current.state !== 'idle') return;
+    if (!isNewForDevice(plant)) return;
+    writeSeenState({ at: plantTime(plant) });
+    const value = plantTargetValue(plant);
+    writeLastTarget(value);
+    const select = document.getElementById('cronoObraSelect');
+    if (optionExists(select, value)) select.value = value;
+    const minutes = Number(plant.timerMinutes);
+    if (plant.timerMinutes != null && Number.isFinite(minutes)) {
+      if (minutes > 0) {
+        current.mode = 'timer';
+        current.timerMinutes = Math.min(120, Math.max(5, Math.round(minutes / 5) * 5));
+      } else current.mode = 'stopwatch';
+      if (typeof window.cronoSaveState === 'function') window.cronoSaveState();
+      if (typeof window.cronoApplyModeUI === 'function') window.cronoApplyModeUI();
+      if (typeof window.cronoTimerRenderSlider === 'function') window.cronoTimerRenderSlider();
+      if (typeof window.cronoRender === 'function') window.cronoRender();
+    }
+    syncCronoSelectionUi();
+  }
+
+  // Devuelve la obra de una plantación nueva para este aparato ('' si no la hay).
+  // El modo y los minutos se aplican tras recuperar el estado guardado, para
+  // que la recuperación no los pise.
+  function adoptNewPlant(select) {
+    const plant = latestPlant(select);
+    if (!plant || !isNewForDevice(plant)) return '';
+    if (typeof window.cronoHydrate === 'function') {
+      Promise.resolve(window.cronoHydrate()).then(() => applyPlantPreset(plant), () => applyPlantPreset(plant));
+    } else applyPlantPreset(plant);
+    return plantTargetValue(plant);
+  }
+
   function syncCronoSelectionUi() {
     if (typeof window.cronoUpdateSelectBtn === 'function') window.cronoUpdateSelectBtn();
     if (typeof window.cronoUpdateStartBtn === 'function') window.cronoUpdateStartBtn();
@@ -86,7 +163,7 @@
         const select = document.getElementById('cronoObraSelect');
         if (!select) return originalSelectLastUsed.apply(this, arguments);
 
-        const exact = exactLastTargetForSelect(select);
+        const exact = adoptNewPlant(select) || exactLastTargetForSelect(select);
         if (exact) {
           select.value = exact;
           syncCronoSelectionUi();
@@ -109,6 +186,9 @@
           const afterCrono = cronoState();
           if (selectedValue && afterCrono && afterCrono.state === 'running' && beforeState !== 'running') {
             writeLastTarget(selectedValue);
+            // Lo anterior a este arranque ya no cuenta, y su propia plantación
+            // (run_<id>) tampoco: no debe volver a aplicarse.
+            writeSeenState({ at: Date.now(), own: afterCrono.runId ? 'run_' + afterCrono.runId : '' });
           }
         };
         const result = originalStart.apply(this, arguments);
@@ -238,7 +318,9 @@
     key: LAST_TARGET_KEY,
     read: readLastTarget,
     write: writeLastTarget,
-    resolveForSelect: exactLastTargetForSelect
+    resolveForSelect: exactLastTargetForSelect,
+    seenKey: SEEN_PLANT_KEY,
+    adoptNewPlant
   };
 
   installExactLastTargetBehavior();

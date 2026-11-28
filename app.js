@@ -4286,6 +4286,9 @@ function recordSessionPlant(obraId, movId, startedAt, endedAt, mins, opts) {
   if (options.activityType) entry.activityType = options.activityType;
   if (options.rewardGoalId) entry.rewardGoalId = options.rewardGoalId;
   if (options.rewardPolicyVersion) entry.rewardPolicyVersion = options.rewardPolicyVersion;
+  // Cómo se plantó (28-11-2026): minutos del temporizador, o 0 si fue libre.
+  // Viaja con la sincronización para que otro dispositivo prepare lo mismo.
+  if (Number.isFinite(options.timerMinutes) && options.timerMinutes >= 0) entry.timerMinutes = Math.round(options.timerMinutes);
   if (options.pase) {
     entry.pase = true;
     if (options.paseId) entry.paseId = options.paseId;
@@ -28611,7 +28614,8 @@ function cronoFinish(expectedRunId) {
     endedAt: endedAtIso,
     mins: minutos,
     runId,
-    opts: { notes: cronoSessionNotes, activityType: crono.activityType, rewardGoalId: crono.rewardGoalId, rewardPolicyVersion: crono.rewardPolicyVersion }
+    opts: { notes: cronoSessionNotes, activityType: crono.activityType, rewardGoalId: crono.rewardGoalId, rewardPolicyVersion: crono.rewardPolicyVersion,
+      timerMinutes: crono.mode === 'timer' ? crono.timerMinutes : (crono.mode === 'stopwatch' ? 0 : null) }
   });
   if (!blockResult.persisted) {
     cronoReset('completed');
